@@ -215,17 +215,25 @@ class VeyrnoxEnclavePlugin : Plugin() {
         // Async — the biometric callback is what resolves/rejects. Without
         // setKeepAlive(true), the bridge releases the PluginCall as soon as
         // this method returns, and the eventual resolve/reject no-ops.
+        //
+        // Codex 2026-07-18 P2 follow-up: Capacitor retains keep-alive calls so
+        // they can emit MULTIPLE results — without an explicit setKeepAlive(false)
+        // before the terminal resolve/reject, each completed wrap would leave a
+        // retained PluginCall behind, leaking bridge slots over time. Reset the
+        // keep-alive on EVERY terminal path before surfacing the result.
         call.setKeepAlive(true)
         try {
             service.wrap(fragmentActivity, blobB64) { result ->
                 result.fold(
                     onSuccess = { b64 ->
                         val response = JSObject().apply { put("bundle", b64) }
+                        call.setKeepAlive(false)
                         call.resolve(response)
                     },
                     onFailure = { err ->
                         // Android PluginCall.reject signature is (message, code)
                         // — see the createWrappingKey note above (Codex 2026-07-17 P2-A).
+                        call.setKeepAlive(false)
                         if (err is EnclaveKeyService.WrapException) {
                             call.reject(err.message ?: err.code, err.code)
                         } else {
@@ -241,7 +249,8 @@ class VeyrnoxEnclavePlugin : Plugin() {
         } catch (e: Exception) {
             // Guard against a synchronous throw from the setup path (shouldn't
             // happen — service.wrap catches its own init errors — but I4
-            // defence-in-depth).
+            // defence-in-depth). Release the keep-alive on this terminal path too.
+            call.setKeepAlive(false)
             call.reject("wrap failed: ${e.javaClass.simpleName}", EnclaveKeyService.WrapErrors.WRAP_FAILED)
         }
     }
