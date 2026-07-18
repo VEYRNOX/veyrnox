@@ -205,7 +205,7 @@ export default function ReferralTracker() {
             <Gift className="h-6 w-6 text-primary" /> Referral Program
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Share Veyrnox and earn commission on every referral.
+            Share VEYRNOX and earn commission on every referral.
           </p>
         </div>
       </div>
@@ -325,7 +325,7 @@ export default function ReferralTracker() {
       <div className="rounded-xl border border-border bg-card p-5 space-y-3">
         <p className="text-xs text-muted-foreground uppercase tracking-widest">Rewards &amp; payouts</p>
         <p className="text-sm text-muted-foreground">
-          Earned commissions are paid out monthly. Reach Gold tier or above to claim external rewards.
+          Earned commissions are paid out monthly. Reach Gold tier or above to claim compensation.
         </p>
         <a
           href="mailto:rewards@veyrnox.com?subject=Referral%20Reward%20Claim"
