@@ -19,6 +19,7 @@ import { useTier } from "@/lib/TierProvider";
 import { FREE_FEATURES, SAFETY_PLUS_FEATURES } from "@/lib/tier";
 import {
   getOfferings,
+  getReferralOffering,
   purchasePackage,
   restorePurchases,
   manageSubscription,
@@ -26,7 +27,7 @@ import {
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
 } from "@/lib/purchases";
-import { getRedeemedCode, hasAttributed, markAttributed, PLAN_REVENUE_CENTS } from "@/lib/referral";
+import { getRedeemedCode, hasRedeemed, hasAttributed, markAttributed, PLAN_REVENUE_CENTS } from "@/lib/referral";
 import { recordAttribution } from "@/api/referralApi";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
@@ -51,49 +52,62 @@ export default function Subscription() {
   const { currentTier, refreshTier } = useTier();
   const [monthlyPackage, setMonthlyPackage] = useState(null);
   const [annualPackage, setAnnualPackage] = useState(null);
-  // Default to annual — it's the recommended plan per the pricing model
-  // (annual carries the discount; the toggle re-picks monthly if the user
-  // prefers it). Falls back to monthly on the render side if the annual
-  // package isn't in the offering yet (staged store rollout, I4).
+  const [referralMonthly, setReferralMonthly] = useState(null);
+  const [referralAnnual, setReferralAnnual] = useState(null);
   const [billing, setBilling] = useState("annual");
   const [busy, setBusy] = useState(false);
   const isNative = Capacitor.isNativePlatform();
+  const hasReferral = hasRedeemed();
 
   useEffect(() => {
     if (!isNative) return;
     let cancelled = false;
+
+    function extractPackages(offering) {
+      const packages = offering?.availablePackages ?? [];
+      const monthly = packages.find((p) => p.identifier === SAFETY_PLUS_MONTHLY_PACKAGE) ?? null;
+      const annual = packages.find((p) => p.identifier === SAFETY_PLUS_ANNUAL_PACKAGE) ?? null;
+      const fallback = !monthly && !annual ? packages[0] ?? null : null;
+      return { monthly: monthly ?? fallback, annual };
+    }
+
     getOfferings()
       .then((offering) => {
         if (cancelled) return;
-        const packages = offering?.availablePackages ?? [];
-        const monthly = packages.find((p) => p.identifier === SAFETY_PLUS_MONTHLY_PACKAGE) ?? null;
-        const annual = packages.find((p) => p.identifier === SAFETY_PLUS_ANNUAL_PACKAGE) ?? null;
-        // Fallback: some offerings may only carry one package during staged
-        // rollout. If neither known identifier matches, take the first
-        // package as a last resort so the button isn't permanently disabled
-        // when the offering exists but the identifiers drifted.
-        const fallback = !monthly && !annual ? packages[0] ?? null : null;
-        setMonthlyPackage(monthly ?? fallback);
+        const { monthly, annual } = extractPackages(offering);
+        setMonthlyPackage(monthly);
         setAnnualPackage(annual);
       })
       .catch((err) => {
-        // Leave the upgrade button disabled (no package to buy). Surface the
-        // reason for on-device debugging — a failed fetch here usually means the
-        // SDK isn't configured or the RevenueCat offering isn't set up, which
-        // otherwise presents as an unexplained permanently-disabled button.
         console.warn("Safety Plus offerings unavailable:", err);
       });
+
+    if (hasReferral) {
+      getReferralOffering()
+        .then((offering) => {
+          if (cancelled) return;
+          const { monthly, annual } = extractPackages(offering);
+          setReferralMonthly(monthly);
+          setReferralAnnual(annual);
+        })
+        .catch(() => {});
+    }
+
     return () => { cancelled = true; };
-  }, [isNative]);
+  }, [isNative, hasReferral]);
 
-  // If annual isn't available (staged rollout, or offering not yet configured),
-  // force the selection back to monthly rather than leaving a dead button.
-  const effectiveBilling = billing === "annual" && !annualPackage ? "monthly" : billing;
-  const selectedPackage = effectiveBilling === "annual" ? annualPackage : monthlyPackage;
-  const hasAnnualToggle = Boolean(annualPackage && monthlyPackage);
+  const hasDiscount = hasReferral && Boolean(referralMonthly || referralAnnual);
+  const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
+  const effectiveAnnual = (hasDiscount && referralAnnual) ? referralAnnual : annualPackage;
 
-  const monthlyPriceString = monthlyPackage?.product?.priceString ?? "$5.99/mo";
-  const annualPriceString = annualPackage?.product?.priceString ?? "$49.99/yr";
+  const effectiveBilling = billing === "annual" && !effectiveAnnual ? "monthly" : billing;
+  const selectedPackage = effectiveBilling === "annual" ? effectiveAnnual : effectiveMonthly;
+  const hasAnnualToggle = Boolean(effectiveAnnual && effectiveMonthly);
+
+  const monthlyPriceString = effectiveMonthly?.product?.priceString ?? "$5.99/mo";
+  const annualPriceString = effectiveAnnual?.product?.priceString ?? "$49.99/yr";
+  const regularMonthlyPrice = monthlyPackage?.product?.priceString;
+  const regularAnnualPrice = annualPackage?.product?.priceString;
   const selectedPriceString = effectiveBilling === "annual" ? annualPriceString : monthlyPriceString;
 
   async function handleUpgrade() {
@@ -177,6 +191,18 @@ export default function Subscription() {
         </div>
       )}
 
+      {hasDiscount && currentTier !== "safety_plus" && (
+        <div className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/5 p-4">
+          <Sparkles className="h-5 w-5 text-success shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-success">Referral discount applied</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              You used a friend's referral code — enjoy a discounted rate on Safety Plus.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card className={currentTier === "free" ? "border-primary/50" : undefined}>
           <CardHeader>
@@ -207,7 +233,14 @@ export default function Subscription() {
                 <Badge variant="outline" className={CURRENT_BADGE}>Current plan</Badge>
               )}
             </div>
-            <p className="text-2xl font-bold mt-1">{selectedPriceString}</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <p className="text-2xl font-bold">{selectedPriceString}</p>
+              {hasDiscount && (
+                <p className="text-base text-muted-foreground line-through">
+                  {effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice}
+                </p>
+              )}
+            </div>
             {effectiveBilling === "annual" && annualPackage && (
               <p className="text-xs text-muted-foreground mt-0.5">
                 Billed annually — 4 months free vs. monthly
@@ -239,6 +272,9 @@ export default function Subscription() {
                   Monthly
                   <span className="block text-xs text-muted-foreground font-normal">
                     {monthlyPriceString}
+                    {hasDiscount && regularMonthlyPrice && regularMonthlyPrice !== monthlyPriceString && (
+                      <span className="ml-1 line-through opacity-60">{regularMonthlyPrice}</span>
+                    )}
                   </span>
                 </button>
                 <button
@@ -261,6 +297,9 @@ export default function Subscription() {
                   </span>
                   <span className="block text-xs text-muted-foreground font-normal">
                     {annualPriceString}
+                    {hasDiscount && regularAnnualPrice && regularAnnualPrice !== annualPriceString && (
+                      <span className="ml-1 line-through opacity-60">{regularAnnualPrice}</span>
+                    )}
                   </span>
                 </button>
               </div>

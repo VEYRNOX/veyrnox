@@ -49,10 +49,22 @@ export async function configurePurchases() {
   configured = true;
 }
 
+export const REFERRAL_OFFERING_ID = 'referral';
+
 export async function getOfferings() {
   if (!isNative()) return null;
   const { current } = await Purchases.getOfferings();
   return current ?? null;
+}
+
+export async function getReferralOffering() {
+  if (!isNative()) return null;
+  try {
+    const { all } = await Purchases.getOfferings();
+    return all?.[REFERRAL_OFFERING_ID] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function purchasePackage(pkg) {
