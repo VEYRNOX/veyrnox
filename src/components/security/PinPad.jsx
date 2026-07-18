@@ -35,15 +35,22 @@
 
 import { Delete } from "lucide-react";
 import { pinPadReduce, keyToPinAction } from "@/lib/pinPadReducer";
+import { tapHaptic, actionHaptic } from "@/lib/haptics";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"];
 
 export default function PinPad({ value = "", onChange, onComplete, disabled = false, length = 8, submitLabel = "Continue", "aria-label": ariaLabel = "PIN entry", numericOnly = true }) {
   // Single dispatch for both button presses and physical keys: the reducer is the
   // only place the cap / numeric-only / explicit-submit rules live.
+  // Haptics fire on every dispatch — light for digit / clear / back (matches the
+  // visual flash on each key), medium for submit (matches the Continue button).
+  // I3 note: haptics are input-response feedback, not state signals; they fire
+  // identically for a real digit and a decoy digit — no session tell.
   const dispatch = (action) => {
     if (disabled) return;
     const r = pinPadReduce(value, action, length);
+    if (r.complete) actionHaptic();
+    else tapHaptic();
     if (r.changed) onChange(r.value);
     // complete is independent of changed: 'submit' completes without mutating value.
     if (r.complete) onComplete?.(r.value);
@@ -109,7 +116,11 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
         {Array.from({ length }, (_, i) => (
           <span
             key={i}
-            className={`h-3.5 w-3.5 rounded-full border ${i < value.length ? "bg-primary border-primary" : "border-border"}`}
+            className={`h-3.5 w-3.5 rounded-full border transition-all duration-150 ${
+              i < value.length
+                ? "bg-primary border-primary shadow-[0_0_10px_rgba(74,218,194,0.55)]"
+                : "border-border"
+            }`}
           />
         ))}
       </div>
@@ -135,7 +146,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
                 aria-label="Clear — re-enter PIN"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
-                className="h-16 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground active:bg-secondary/60 active:scale-[0.96] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
+                className="h-16 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground active:bg-secondary active:scale-[0.92] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
               >
                 Re-enter
               </button>
@@ -150,7 +161,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
                 aria-label="Delete last digit"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
-                className="h-16 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-secondary/60 active:scale-[0.96] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
+                className="h-16 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-secondary active:scale-[0.92] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
               >
                 <Delete className="h-5 w-5" />
               </button>
@@ -163,7 +174,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
               tabIndex={-1}
               disabled={disabled}
               onClick={() => press(k)}
-              className="h-16 rounded-xl bg-secondary/40 hover:bg-secondary active:bg-primary/20 active:scale-[0.96] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation text-2xl font-semibold mono-value disabled:opacity-40 disabled:active:scale-100"
+              className="h-16 rounded-xl bg-secondary/40 hover:bg-secondary active:bg-primary/40 active:scale-[0.92] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation text-2xl font-semibold mono-value disabled:opacity-40 disabled:active:scale-100"
             >
               {k}
             </button>
