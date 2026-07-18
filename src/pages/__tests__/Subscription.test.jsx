@@ -14,14 +14,14 @@ vi.mock('@capacitor/core', () => ({
 }));
 
 const getOfferings = vi.fn();
-const getReferralOffering = vi.fn();
+const getTierOffering = vi.fn();
 const purchasePackage = vi.fn();
 const restorePurchases = vi.fn();
 const manageSubscription = vi.fn();
 const setReferralAttribute = vi.fn();
 vi.mock('@/lib/purchases', () => ({
   getOfferings: (...a) => getOfferings(...a),
-  getReferralOffering: (...a) => getReferralOffering(...a),
+  getTierOffering: (...a) => getTierOffering(...a),
   purchasePackage: (...a) => purchasePackage(...a),
   restorePurchases: (...a) => restorePurchases(...a),
   manageSubscription: (...a) => manageSubscription(...a),
@@ -34,17 +34,27 @@ const hasRedeemedMock = vi.fn(() => false);
 const getRedeemedCodeMock = vi.fn(() => null);
 const hasAttributedMock = vi.fn(() => false);
 const markAttributedMock = vi.fn();
+const getTierMock = vi.fn(() => 'none');
+const getTierInfoMock = vi.fn(() => ({ key: 'none', commission: 0, next: null }));
+const getOfferingIdForTierMock = vi.fn(() => null);
+const calculateDiscountCentsMock = vi.fn((full, comm) => Math.round(full * comm / 100));
 vi.mock('@/lib/referral', () => ({
   hasRedeemed: () => hasRedeemedMock(),
   getRedeemedCode: () => getRedeemedCodeMock(),
   hasAttributed: () => hasAttributedMock(),
   markAttributed: () => markAttributedMock(),
-  PLAN_REVENUE_CENTS: { monthly: 599, annual: 4999 },
+  getTier: (...a) => getTierMock(...a),
+  getTierInfo: (...a) => getTierInfoMock(...a),
+  getOfferingIdForTier: (...a) => getOfferingIdForTierMock(...a),
+  calculateDiscountCents: (...a) => calculateDiscountCentsMock(...a),
+  PLAN_FULL_PRICE_CENTS: { monthly: 599, annual: 4999 },
 }));
 
 const recordAttribution = vi.fn();
+const fetchReferrerTier = vi.fn();
 vi.mock('@/api/referralApi', () => ({
   recordAttribution: (...a) => recordAttribution(...a),
+  fetchReferrerTier: (...a) => fetchReferrerTier(...a),
 }));
 
 const refreshTier = vi.fn();
@@ -237,26 +247,35 @@ describe('Subscription page — Manage subscription hidden when it should be', (
   });
 });
 
-describe('Subscription page — referral discount', () => {
+describe('Subscription page — tier-based referral discount', () => {
   const defaultPackages = [
     { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
     { identifier: '$rc_annual', product: { priceString: '$49.99' } },
   ];
-  const referralPackages = [
-    { identifier: '$rc_monthly', product: { priceString: '$3.99' } },
-    { identifier: '$rc_annual', product: { priceString: '$34.99' } },
+  const goldReferralPackages = [
+    { identifier: '$rc_monthly', product: { priceString: '$5.39' } },
+    { identifier: '$rc_annual', product: { priceString: '$44.99' } },
   ];
+
+  function setupGoldReferral() {
+    hasRedeemedMock.mockReturnValue(true);
+    getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
+    fetchReferrerTier.mockResolvedValue({ count: 5000 });
+    getTierMock.mockReturnValue('gold');
+    getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: { key: 'platinum', min: 10000 } });
+    getOfferingIdForTierMock.mockReturnValue('referral-gold');
+    getTierOffering.mockResolvedValue({ availablePackages: goldReferralPackages });
+  }
 
   beforeEach(() => {
     isNativePlatform.mockReturnValue(true);
     getOfferings.mockResolvedValue({ availablePackages: defaultPackages });
-    getReferralOffering.mockResolvedValue({ availablePackages: referralPackages });
   });
 
-  it('shows the discount banner when user has a redeemed referral code', async () => {
-    hasRedeemedMock.mockReturnValue(true);
+  it('shows the discount banner with tier commission when referrer has a tier', async () => {
+    setupGoldReferral();
     renderPage();
-    await waitFor(() => expect(screen.getByText(/referral discount applied/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/referral discount applied.*10% off/i)).toBeTruthy());
   });
 
   it('does not show the discount banner when no code has been redeemed', async () => {
@@ -267,23 +286,23 @@ describe('Subscription page — referral discount', () => {
   });
 
   it('does not show the discount banner when user is already on safety_plus', async () => {
-    hasRedeemedMock.mockReturnValue(true);
+    setupGoldReferral();
     useTierMock.mockReturnValue({ currentTier: 'safety_plus', tiers: [], refreshTier });
     renderPage();
     await waitFor(() => expect(screen.getByText(/Plans/i)).toBeTruthy());
     expect(screen.queryByText(/referral discount applied/i)).toBeNull();
   });
 
-  it('shows referral prices instead of default prices', async () => {
-    hasRedeemedMock.mockReturnValue(true);
+  it('shows tier-discounted prices instead of default prices', async () => {
+    setupGoldReferral();
     renderPage();
-    await waitFor(() => expect(screen.getAllByText('$34.99').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('$44.99').length).toBeGreaterThan(0));
   });
 
   it('shows strikethrough regular price next to the discounted price', async () => {
-    hasRedeemedMock.mockReturnValue(true);
+    setupGoldReferral();
     renderPage();
-    await waitFor(() => expect(screen.getAllByText('$34.99').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('$44.99').length).toBeGreaterThan(0));
     const regularPriceEls = screen.getAllByText('$49.99');
     const hasStrikethrough = regularPriceEls.some(
       (el) => el.classList.contains('line-through') || el.closest('.line-through')
@@ -291,38 +310,50 @@ describe('Subscription page — referral discount', () => {
     expect(hasStrikethrough).toBe(true);
   });
 
-  it('purchasing with discount records attribution', async () => {
-    hasRedeemedMock.mockReturnValue(true);
-    getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
+  it('purchasing with tier discount records attribution with discount_cents', async () => {
+    setupGoldReferral();
     hasAttributedMock.mockReturnValue(false);
     purchasePackage.mockResolvedValue({});
     refreshTier.mockResolvedValue('safety_plus');
     recordAttribution.mockResolvedValue({});
     setReferralAttribute.mockResolvedValue(undefined);
     renderPage();
-    await waitFor(() => expect(screen.getAllByText('$34.99').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('$44.99').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
-    await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-ABC123', 'annual', 4999));
+    await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-ABC123', 'annual', 4999, 500));
     expect(setReferralAttribute).toHaveBeenCalledWith('VYX-ABC123');
     expect(markAttributedMock).toHaveBeenCalled();
   });
 
   it('does not record attribution when already attributed', async () => {
-    hasRedeemedMock.mockReturnValue(true);
-    getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
+    setupGoldReferral();
     hasAttributedMock.mockReturnValue(true);
     purchasePackage.mockResolvedValue({});
     refreshTier.mockResolvedValue('safety_plus');
     renderPage();
-    await waitFor(() => expect(screen.getAllByText('$34.99').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('$44.99').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
     await waitFor(() => expect(purchasePackage).toHaveBeenCalled());
     expect(recordAttribution).not.toHaveBeenCalled();
   });
 
-  it('falls back to default prices when referral offering is unavailable', async () => {
+  it('falls back to default prices when referrer tier lookup fails', async () => {
     hasRedeemedMock.mockReturnValue(true);
-    getReferralOffering.mockResolvedValue(null);
+    getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
+    fetchReferrerTier.mockResolvedValue(null);
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    expect(screen.queryByText(/referral discount applied/i)).toBeNull();
+  });
+
+  it('falls back to default prices when tier offering is unavailable', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
+    fetchReferrerTier.mockResolvedValue({ count: 5000 });
+    getTierMock.mockReturnValue('gold');
+    getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: null });
+    getOfferingIdForTierMock.mockReturnValue('referral-gold');
+    getTierOffering.mockResolvedValue(null);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
     expect(screen.queryByText(/referral discount applied/i)).toBeNull();

@@ -108,10 +108,26 @@ export function hasAttributed() {
   return !!getLocalState().attributed;
 }
 
-export const PLAN_REVENUE_CENTS = { monthly: 599, annual: 4999 };
+export const PLAN_FULL_PRICE_CENTS = { monthly: 599, annual: 4999 };
+export const PLAN_REVENUE_CENTS = PLAN_FULL_PRICE_CENTS;
 
-export function calculateEarnings(attributions, commissionRate) {
-  const totalRevenueCents = attributions.reduce((sum, a) => sum + a.revenue_cents, 0);
-  const commissionCents = Math.round(totalRevenueCents * commissionRate / 100);
-  return { totalRevenueCents, commissionCents, count: attributions.length };
+export const TIER_OFFERING_ID = {
+  bronze:   'referral-bronze',
+  silver:   'referral-silver',
+  gold:     'referral-gold',
+  platinum: 'referral-platinum',
+};
+
+export function getOfferingIdForTier(tierKey) {
+  return TIER_OFFERING_ID[tierKey] ?? null;
+}
+
+export function calculateDiscountCents(fullPriceCents, tierCommission) {
+  return Math.round(fullPriceCents * tierCommission / 100);
+}
+
+export function calculateEarnings(attributions) {
+  const totalDiscountCents = attributions.reduce((sum, a) => sum + (a.discount_cents || 0), 0);
+  const totalRevenueCents = attributions.reduce((sum, a) => sum + (a.revenue_cents || 0), 0);
+  return { totalRevenueCents, totalDiscountCents, count: attributions.length };
 }
