@@ -214,47 +214,78 @@ describe('attribution tracking', () => {
   });
 });
 
-describe('PLAN_REVENUE_CENTS', () => {
+describe('PLAN_FULL_PRICE_CENTS', () => {
   it('has monthly at 599', async () => {
-    const { PLAN_REVENUE_CENTS } = await import('../referral.js');
-    expect(PLAN_REVENUE_CENTS.monthly).toBe(599);
+    const { PLAN_FULL_PRICE_CENTS } = await import('../referral.js');
+    expect(PLAN_FULL_PRICE_CENTS.monthly).toBe(599);
   });
   it('has annual at 4999', async () => {
-    const { PLAN_REVENUE_CENTS } = await import('../referral.js');
-    expect(PLAN_REVENUE_CENTS.annual).toBe(4999);
+    const { PLAN_FULL_PRICE_CENTS } = await import('../referral.js');
+    expect(PLAN_FULL_PRICE_CENTS.annual).toBe(4999);
+  });
+  it('PLAN_REVENUE_CENTS is the same reference', async () => {
+    const { PLAN_REVENUE_CENTS, PLAN_FULL_PRICE_CENTS } = await import('../referral.js');
+    expect(PLAN_REVENUE_CENTS).toBe(PLAN_FULL_PRICE_CENTS);
   });
 });
 
-describe('calculateEarnings', () => {
+describe('calculateDiscountCents', () => {
+  it('calculates 2.5% discount on annual', async () => {
+    const { calculateDiscountCents } = await import('../referral.js');
+    expect(calculateDiscountCents(4999, 2.5)).toBe(125);
+  });
+  it('calculates 15% discount on annual', async () => {
+    const { calculateDiscountCents } = await import('../referral.js');
+    expect(calculateDiscountCents(4999, 15)).toBe(750);
+  });
+  it('calculates 10% discount on monthly', async () => {
+    const { calculateDiscountCents } = await import('../referral.js');
+    expect(calculateDiscountCents(599, 10)).toBe(60);
+  });
+  it('returns 0 for 0% commission', async () => {
+    const { calculateDiscountCents } = await import('../referral.js');
+    expect(calculateDiscountCents(4999, 0)).toBe(0);
+  });
+});
+
+describe('TIER_OFFERING_ID / getOfferingIdForTier', () => {
+  it('maps bronze to referral-bronze', async () => {
+    const { getOfferingIdForTier } = await import('../referral.js');
+    expect(getOfferingIdForTier('bronze')).toBe('referral-bronze');
+  });
+  it('maps platinum to referral-platinum', async () => {
+    const { getOfferingIdForTier } = await import('../referral.js');
+    expect(getOfferingIdForTier('platinum')).toBe('referral-platinum');
+  });
+  it('returns null for unknown tier', async () => {
+    const { getOfferingIdForTier } = await import('../referral.js');
+    expect(getOfferingIdForTier('none')).toBeNull();
+  });
+});
+
+describe('calculateEarnings (discount-based)', () => {
   it('returns zero for empty attributions', async () => {
     const { calculateEarnings } = await import('../referral.js');
-    const result = calculateEarnings([], 5);
-    expect(result).toEqual({ totalRevenueCents: 0, commissionCents: 0, count: 0 });
+    const result = calculateEarnings([]);
+    expect(result).toEqual({ totalRevenueCents: 0, totalDiscountCents: 0, count: 0 });
   });
 
-  it('calculates 2.5% commission on a single monthly', async () => {
-    const { calculateEarnings } = await import('../referral.js');
-    const result = calculateEarnings([{ revenue_cents: 599 }], 2.5);
-    expect(result.totalRevenueCents).toBe(599);
-    expect(result.commissionCents).toBe(15);
-    expect(result.count).toBe(1);
-  });
-
-  it('calculates 10% commission on mixed plans', async () => {
+  it('sums discount_cents from attributions', async () => {
     const { calculateEarnings } = await import('../referral.js');
     const result = calculateEarnings([
-      { revenue_cents: 599 },
-      { revenue_cents: 4999 },
-      { revenue_cents: 599 },
-    ], 10);
-    expect(result.totalRevenueCents).toBe(6197);
-    expect(result.commissionCents).toBe(620);
-    expect(result.count).toBe(3);
+      { revenue_cents: 4999, discount_cents: 750 },
+      { revenue_cents: 599, discount_cents: 90 },
+    ]);
+    expect(result.totalDiscountCents).toBe(840);
+    expect(result.totalRevenueCents).toBe(5598);
+    expect(result.count).toBe(2);
   });
 
-  it('calculates 15% platinum commission on annual', async () => {
+  it('handles attributions without discount_cents (legacy)', async () => {
     const { calculateEarnings } = await import('../referral.js');
-    const result = calculateEarnings([{ revenue_cents: 4999 }], 15);
-    expect(result.commissionCents).toBe(750);
+    const result = calculateEarnings([{ revenue_cents: 4999 }]);
+    expect(result.totalDiscountCents).toBe(0);
+    expect(result.totalRevenueCents).toBe(4999);
+    expect(result.count).toBe(1);
   });
 });
