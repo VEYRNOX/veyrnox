@@ -26,7 +26,7 @@ export function Skeleton({ className = '', rounded = 'rounded-md' }) {
     >
       {!reduce && (
         <motion.span
-          className="absolute inset-y-0 -inset-x-1/2 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent"
+          className="absolute inset-y-0 -inset-x-1/2 bg-gradient-to-r from-transparent via-foreground/5 to-transparent"
           initial={{ x: '-40%' }}
           animate={{ x: '140%' }}
           transition={{ duration: 1.6, ease: 'linear', repeat: Infinity }}
