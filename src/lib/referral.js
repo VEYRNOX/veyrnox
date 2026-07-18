@@ -8,7 +8,7 @@ export const EXTERNAL_REWARD_URL =
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function randomCode() {
-  const arr = new Uint8Array(4);
+  const arr = new Uint8Array(6);
   crypto.getRandomValues(arr);
   return 'VYX-' + Array.from(arr, (b) => CHARS[b % CHARS.length]).join('');
 }

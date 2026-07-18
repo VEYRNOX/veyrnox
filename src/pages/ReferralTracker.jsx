@@ -298,8 +298,8 @@ export default function ReferralTracker() {
             <Input
               value={redeemInput}
               onChange={(e) => { setRedeemInput(e.target.value.toUpperCase()); setRedeemError(''); }}
-              placeholder="VYX-XXXX"
-              maxLength={8}
+              placeholder="VYX-XXXXXX"
+              maxLength={10}
               autoCapitalize="characters"
               autoCorrect="off"
               className="mono-value tracking-widest"

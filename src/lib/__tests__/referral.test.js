@@ -18,7 +18,7 @@ beforeEach(() => {
 describe('generateCode', () => {
   it('returns a VYX-XXXX formatted code', async () => {
     const { generateCode } = await import('../referral.js');
-    expect(generateCode()).toMatch(/^VYX-[A-Z0-9]{4}$/);
+    expect(generateCode()).toMatch(/^VYX-[A-Z0-9]{6}$/);
   });
 
   it('returns the same code on repeated calls', async () => {
@@ -32,7 +32,7 @@ describe('generateCode', () => {
     const { generateCode } = await import('../referral.js');
     const code = generateCode();
     expect(typeof code).toBe('string');
-    expect(code.length).toBe(8);
+    expect(code.length).toBe(10);
   });
 });
 
