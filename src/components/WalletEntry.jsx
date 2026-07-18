@@ -113,6 +113,7 @@ import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
+import FirstRunTour from "@/components/FirstRunTour";
 import { errorHaptic } from "@/lib/haptics";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
@@ -1133,16 +1134,20 @@ export default function WalletEntry() {
   // ---- View: Welcome (fresh-device landing, AHEAD of the PIN) ----
   // No vault exists; show the branded hero. "Get Started" advances to PIN-create,
   // resetting the PIN sub-state exactly as the cold-mount path used to.
+  // The FirstRunTour overlays on this screen (once per device).
   if (view === "welcome") {
     return (
-      <WelcomeHero
-        onGetStarted={() => {
-          setError("");
-          setRealPin(""); setRealPinConfirm(""); setPinStep("real");
-          setView("pin-create");
-        }}
-        onRestore={() => { setError(""); setView("restore-file"); }}
-      />
+      <>
+        <WelcomeHero
+          onGetStarted={() => {
+            setError("");
+            setRealPin(""); setRealPinConfirm(""); setPinStep("real");
+            setView("pin-create");
+          }}
+          onRestore={() => { setError(""); setView("restore-file"); }}
+        />
+        <FirstRunTour />
+      </>
     );
   }
 

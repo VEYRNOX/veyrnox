@@ -28,7 +28,6 @@ import NotificationToast from "./NotificationToast";
 import NotificationBell from "./NotificationBell";
 import { useReceiveDetector } from "@/notify/useReceiveDetector";
 import LockSealingOverlay from "./LockSealingOverlay";
-import FirstRunTour from "./FirstRunTour";
 import Spinner from "./Spinner";
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
@@ -581,7 +580,6 @@ export default function Layout() {
         </div>
       )}
       <AnimatePresence>{sealing && <LockSealingOverlay />}</AnimatePresence>
-      <FirstRunTour />
     </div>
     </AccessibilityWrapper>
   );
