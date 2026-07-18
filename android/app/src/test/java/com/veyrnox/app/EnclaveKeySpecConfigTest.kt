@@ -16,8 +16,7 @@ import org.junit.Test
  * pin the values here — the same pattern PlayIntegrityJwsVerifier uses to keep
  * the JVM test rig lean.
  *
- * M2d-1b lands the real service call site behind M2D_ENABLED=false (still false
- * — no production runtime behaviour change from this branch). This test pins:
+ * Ungated after device verification (PR #1152, 2026-07-18). This test pins:
  *   - AES-GCM 256 single-key (fallback branch of docs/M2cd.native-acl-plan.md §5)
  *   - versioned alias `.v1` — ANY future ACL/cipher change MUST bump the suffix
  *   - REQUIRES_USER_AUTH is a `const val`, so no code path can flip it to false

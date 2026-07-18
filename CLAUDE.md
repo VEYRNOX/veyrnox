@@ -1880,6 +1880,28 @@ NOT device-verified.
 non-existent constant. Fixed to compare against the string `'Escape'`
 directly. CI-unblocking fix on main.
 
+## 2026-07-18 M2c/M2d ungate — PR #1152 (commit f518ba57)
+
+**M2c (iOS Secure Enclave) and M2d (Android StrongBox/TEE) hardware key-wrap
+features UNGATED** after device verification on both platforms (iPhone + Pixel
+10 Pro XL). Quad-flag coordinate flip:
+- `src/plugins/veyrnoxEnclave.js`: `M2C_ENABLED = true`
+- `src/wallet-core/keystore/native.js`: `M2C_HARDWARE_WRAP_ENABLED = true`
+- `VeyrnoxEnclavePlugin.swift`: `m2cEnabled = true`
+- `VeyrnoxEnclavePlugin.kt`: `M2D_ENABLED = true`
+
+Phase 1 (device verification) PASSED on both platforms: fresh enrollment,
+biometric-gated unlock, H-2 re-enrollment invalidation, down-migration,
+cold restart persistence. Phase 2 (M-6 design decision): bridge H exposure
+accepted as documented residual. **Issue #1073 CLOSED.**
+
+**Status:** BUILT / DEVICE-VERIFIED (INTERNAL). Independent third-party
+security audit still outstanding. Stale "dormant"/"M2D_ENABLED=false" comments
+across JS, Kotlin, and Swift updated to reflect the ungated state. Test
+`veyrnoxEnclave.m2c-gate.test.js` rewritten to assert `M2C_ENABLED === true`
+and verify functions reach native (previously asserted `false` + `M2C_DISABLED`
+throws).
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode

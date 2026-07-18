@@ -3,39 +3,22 @@ package com.veyrnox.app
 // VeyrnoxEnclavePlugin.kt — Android bridge for the M2d OS-ACL vault-blob wrap.
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐
-// │ PROVISIONAL — NOT AUDITED-SECURE, NOT DEVICE-VERIFIED.                  │
-// │ M2d-1b — real createWrappingKey landed BEHIND the M2D_ENABLED=false     │
-// │ flag. Code lands, does not run in production.                          │
-// │                                                                        │
-// │   TRUE today:                                                          │
-// │     - plugin registration, capability probe (isHardwareKeyAvailable). │
-// │     - deleteWrappingKey({ intent }) intent-allowlist gate at the      │
-// │       native bridge (Android-only on this branch pre-#1098).          │
-// │     - createWrappingKey real path via EnclaveKeyService — AES-GCM 256 │
-// │       AndroidKeyStore key, per-use BIOMETRIC_STRONG auth,             │
-// │       invalidate-on-biometric-enrollment, StrongBox-preferred with    │
-// │       TEE fall-through. Idempotent — refuses to silently re-key.      │
-// │     - M2D_ENABLED=false fail-closed on createWrappingKey, wrap,       │
-// │       unwrap — none of these run in production yet. Runtime for KEY  │
-// │       MATERIAL is byte-identical to "plugin not registered" until    │
-// │       the flag is flipped in lockstep with the JS-side gates AFTER   │
-// │       docs/audit-triage/m2d-strongbox-device-test.md is executed and │
-// │       the independent audit signs off.                                │
-// │                                                                        │
-// │     - wrap()   — M2d-1c: real Cipher AES/GCM encrypt behind a         │
-// │       BiometricPrompt(CryptoObject(cipher)), gated by M2D_ENABLED.    │
-// │     - unwrap() — M2d-1d: real Cipher AES/GCM decrypt behind the same  │
-// │       BiometricPrompt shape; returns `{ blob: '<base64>' }` matching  │
-// │       the shared JS wrapper and iOS bridge. Fail-closed on            │
-// │       AEADBadTagException → M2D_CIPHERTEXT_TAMPERED (distinct from    │
-// │       M2D_UNWRAP_FAILED); malformed base64/short-bundle input →       │
-// │       M2D_MALFORMED_BUNDLE. All still behind M2D_ENABLED=false.      │
-// │                                                                        │
-// │   NOT YET (pending future increments):                                 │
-// │     - JS wrapper opt-in flip (M2C_ENABLED / M2C_HARDWARE_WRAP_ENABLED)│
-// │                                                                        │
-// │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2,     │
-// │ docs/audit-triage/m2d-strongbox-device-test.md (STATUS: NOT RUN).     │
+// │ DEVICE-VERIFIED (INTERNAL) — ungated after device verification           │
+// │ (PR #1152 / commit f518ba57, 2026-07-18). All four flags flipped in     │
+// │ lockstep: M2C_ENABLED (JS), M2C_HARDWARE_WRAP_ENABLED (JS),             │
+// │ m2cEnabled (Swift), M2D_ENABLED (Kotlin — this file).                    │
+// │                                                                          │
+// │   Implemented:                                                           │
+// │     - plugin registration, capability probe (isHardwareKeyAvailable).    │
+// │     - deleteWrappingKey({ intent }) intent-allowlist gate.               │
+// │     - createWrappingKey — AES-GCM 256 AndroidKeyStore key, per-use      │
+// │       BIOMETRIC_STRONG auth, invalidate-on-biometric-enrollment,         │
+// │       StrongBox-preferred with TEE fall-through.                         │
+// │     - wrap()  — Cipher AES/GCM encrypt behind BiometricPrompt.          │
+// │     - unwrap() — Cipher AES/GCM decrypt behind BiometricPrompt.         │
+// │                                                                          │
+// │ Independent third-party security audit still outstanding.                │
+// │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2.      │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
 // Intended parity with iOS VeyrnoxEnclavePlugin.swift — current state on
@@ -130,7 +113,7 @@ class VeyrnoxEnclavePlugin : Plugin() {
         call.resolve(response)
     }
 
-    // ── Gated: mints key material. Fail-closed while M2D_ENABLED is false ──
+    // ── Gated: mints key material. Fail-closed when M2D_ENABLED is false ──
     // NOTE (Codex second-pass 2026-07-17 P2-A): Android PluginCall.reject takes
     // (message, code) — OPPOSITE of the iOS bridge's (code, message). Passing
     // args in the wrong order silently mislabels err.code at the JS layer, so
@@ -171,13 +154,9 @@ class VeyrnoxEnclavePlugin : Plugin() {
         }
     }
 
-    // ── Gated: wraps a vault blob. Fail-closed while M2D_ENABLED is false ──
+    // ── Gated: wraps a vault blob. Fail-closed when M2D_ENABLED is false ──
     //
-    // M2d-1c: real AES-GCM encrypt behind BiometricPrompt(CryptoObject(cipher)).
-    // The M2D_ENABLED gate STAYS at the top of this method — code lands INSIDE
-    // the guard; production runtime is byte-identical to the M2d-1b scaffold
-    // (immediate M2C_DISABLED reject) until the flag flips in lockstep with
-    // the JS-side gates AFTER the device runbook + independent audit sign-off.
+    // Real AES-GCM encrypt behind BiometricPrompt(CryptoObject(cipher)).
     //
     // Asynchronous: BiometricPrompt callbacks fire on the main thread. We
     // MUST NOT resolve/reject synchronously — the plugin call is kept alive

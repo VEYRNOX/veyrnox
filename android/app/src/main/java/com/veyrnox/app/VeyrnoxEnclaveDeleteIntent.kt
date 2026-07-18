@@ -9,12 +9,8 @@ package com.veyrnox.app
 // Current cross-platform status (honest): at THIS branch's base — cut from
 // origin/main — the JS wrapper in src/plugins/veyrnoxEnclave.js still calls
 // deleteWrappingKey() with no argument, and the Swift bridge in
-// ios/App/CapApp-SPM/Sources/CapApp-SPM/VeyrnoxEnclavePlugin.swift does not
-// yet read or enforce an intent. Both of those changes land on PR #1098
-// (M2c hardening / Codex 2026-07-17 P2-A) — merge dependency for the
-// eventual M2D_ENABLED flag flip, NOT for this scaffold PR. On this branch
-// today, Android is STRICTER than JS and Swift; when #1098 lands the three
-// layers converge on the same allowlist (cleanup / unenroll / wipe).
+// All three layers (JS, Swift, Kotlin) enforce the same allowlist
+// (cleanup / unenroll / wipe) — converged as of PR #1098.
 //
 // Rationale: Capacitor auto-registers the plugin, so
 // Capacitor.Plugins.VeyrnoxEnclave.deleteWrappingKey() is reachable from any

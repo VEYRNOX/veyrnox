@@ -81,13 +81,10 @@ async function enclavePlugin() {
   if (!_enclavePlugin) _enclavePlugin = await import('../../plugins/veyrnoxEnclave.js');
   return _enclavePlugin;
 }
-// PROVISIONAL — NOT AUDITED-SECURE, NOT DEVICE-VERIFIED. The hardware-wrap path
-// is capability-detected AND gated behind M2C_HARDWARE_WRAP_ENABLED, which stays
-// FALSE until M2c-2 verifies the Enclave path on a physical iPhone (key-gen,
-// Face/Touch prompt on unwrap, biometryCurrentSet invalidation) and the product
-// decision on mandatory-biometric-on-Enclave devices is signed off. While false,
-// native behaviour is byte-identical to M2b (fallback path only), so the iOS
-// Simulator and the test suite are unaffected. See docs/M2cd.native-acl-plan.md.
+// Hardware-wrap path. Capability-detected AND gated behind M2C_HARDWARE_WRAP_ENABLED.
+// Ungated after device verification (PR #1152 / commit f518ba57, 2026-07-18) —
+// all four flags (JS×2, Swift, Kotlin) flipped in lockstep. Independent audit
+// still outstanding. See docs/M2cd.native-acl-plan.md.
 const M2C_HARDWARE_WRAP_ENABLED = true;
 
 // Stored-record marker. An Enclave-wrapped record is { wrap:'enclave-v1', hw }.
@@ -462,8 +459,7 @@ export { withLockSuppressed };
 //   3. otherwise                    → log "unknown error"
 // e.message is NEVER logged. This handler logs NEVER the error object, the vault
 // blob, the ciphertext, or any key material (LOG-1). Extracted as a pure helper
-// because the M2c branch itself is dormant (M2C_HARDWARE_WRAP_ENABLED=false), so
-// the handler's contract is pinned by a direct unit test.
+// The handler's contract is pinned by a direct unit test.
 const ALLOWED_M2C_CODES = new Set([
   // From native.js safeWriteVault():
   'VAULT_WRITE_VERIFY_FAILED',
@@ -832,7 +828,7 @@ export const nativeKeyStore = {
       const secret = await _unlockInner(password, opts);
       // M2c-2 opt-in up-migration: transparently re-wrap the M2b blob under the
       // Enclave key after a successful biometric-enabled unlock. Best-effort +
-      // atomic-safe (safeWriteVault). Dormant while M2C_HARDWARE_WRAP_ENABLED=false.
+      // atomic-safe (safeWriteVault).
       if (opts.requireBiometric && (await useHardwareWrap())) {
         try {
           const raw2 = await SecureStorage.get(VAULT_KEY, false);

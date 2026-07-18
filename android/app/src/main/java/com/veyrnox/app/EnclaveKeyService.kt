@@ -3,26 +3,18 @@ package com.veyrnox.app
 // EnclaveKeyService.kt — AndroidKeyStore key-wrap helper for VeyrnoxEnclavePlugin (M2d).
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐
-// │ PROVISIONAL — NOT AUDITED-SECURE, NOT DEVICE-VERIFIED.                  │
-// │ M2d-1b: real createWrappingKey() lands here — AES-GCM 256 in           │
-// │ AndroidKeyStore with per-use BIOMETRIC_STRONG auth and                  │
-// │ invalidate-on-biometric-enrollment. Still fail-closed at the plugin's   │
-// │ M2D_ENABLED=false JS gate — this code does not execute in production    │
-// │ until the physical-device runbook AND the independent audit sign off.   │
-// │                                                                        │
-// │ M2d-1c/1d landed:                                                      │
-// │   - wrap()   Cipher AES/GCM encrypt behind a BiometricPrompt (M2d-1c)  │
-// │   - unwrap() Cipher AES/GCM decrypt behind a BiometricPrompt (M2d-1d)  │
-// │              — maps AEADBadTagException→CIPHERTEXT_TAMPERED,           │
-// │              malformed input→MALFORMED_BUNDLE (both distinct from     │
-// │              UNWRAP_FAILED), and never logs the plaintext output.     │
-// │                                                                        │
-// │ Still fail-closed at the plugin's M2D_ENABLED=false JS gate — none    │
-// │ of the above executes in production until the physical-device runbook │
-// │ AND the independent audit sign off.                                    │
-// │                                                                        │
-// │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2,      │
-// │ docs/audit-triage/m2d-strongbox-device-test.md (STATUS: NOT RUN).      │
+// │ DEVICE-VERIFIED (INTERNAL) — ungated after device verification           │
+// │ (PR #1152 / commit f518ba57, 2026-07-18).                                │
+// │                                                                          │
+// │   - createWrappingKey() — AES-GCM 256 in AndroidKeyStore with per-use   │
+// │     BIOMETRIC_STRONG auth and invalidate-on-biometric-enrollment.        │
+// │   - wrap()   — Cipher AES/GCM encrypt behind BiometricPrompt.           │
+// │   - unwrap() — Cipher AES/GCM decrypt behind BiometricPrompt;           │
+// │     AEADBadTagException → CIPHERTEXT_TAMPERED, malformed input →        │
+// │     MALFORMED_BUNDLE. Never logs plaintext output.                       │
+// │                                                                          │
+// │ Independent third-party security audit still outstanding.                │
+// │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2.      │
 // └─────────────────────────────────────────────────────────────────────────┘
 //
 // Cipher choice — AES-GCM 256 single-key (documented tradeoff):

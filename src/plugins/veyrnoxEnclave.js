@@ -22,15 +22,13 @@ const VeyrnoxEnclave = registerPlugin('VeyrnoxEnclave', {
 
 // #729 (M-5): the native plugin is auto-registered by Capacitor, so
 // Capacitor.Plugins.VeyrnoxEnclave — and therefore these exported wrappers — are
-// reachable from ANY in-page JS (e.g. an injected script), even though the M2c
-// hardware-wrap path is gated OFF (M2C_HARDWARE_WRAP_ENABLED=false in native.js).
-// Without a guard here, such a call could mint an orphaned Secure Enclave key or
-// invoke wrap/unwrap. Fail closed at this layer too: while M2C_ENABLED is false, the
-// key-minting / key-touching functions throw M2C_DISABLED and never reach native.
+// reachable from ANY in-page JS (e.g. an injected script). The M2C_ENABLED gate
+// allows the key-minting / key-touching functions to reach native; when false,
+// they throw M2C_DISABLED instead.
 //
-// MUST be flipped to true TOGETHER WITH native.js's M2C_HARDWARE_WRAP_ENABLED (and
-// the Swift-side m2cEnabled) when the M2c Enclave path is enabled after device
-// verification — keep all three in lockstep.
+// Ungated after device verification (PR #1152 / commit f518ba57, 2026-07-18).
+// All four flags flipped in lockstep: M2C_ENABLED (here), M2C_HARDWARE_WRAP_ENABLED
+// (native.js), m2cEnabled (Swift), M2D_ENABLED (Kotlin).
 export const M2C_ENABLED = true;
 
 function m2cDisabledError() {
