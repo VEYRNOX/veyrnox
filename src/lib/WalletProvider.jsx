@@ -120,8 +120,8 @@ import {
 } from '@/lib/biometric';
 import { ensureKekPinNoticeOnNative } from '@/lib/kekPinNotice';
 import { setLivePricesEnabled } from '@/lib/priceFeed';
-import { initCode } from '@/lib/referral';
-import { generateServerCode } from '@/api/referralApi';
+import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRedeemed, applyRedemption, getLocalState as getReferralState } from '@/lib/referral';
+import { generateServerCode, redeemCode } from '@/api/referralApi';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
 // let Face ID open the DECOY (via enableDecoyBiometricUnlock). removeDuressPin reads
 // it to retract the shared veyrnox-biometric-unlock pref, so removing the duress PIN
@@ -1740,6 +1740,17 @@ export function WalletProvider({ children }) {
     void ensureStealthPool().catch(() => {});
     void ensureBiometric2faOnNative().catch(() => {});
     void ensureKekPinNoticeOnNative().catch(() => {}); // M-9: one-time offline-exhaustion notice for unenrolled native users
+    void (async () => {
+      const pending = getPendingReferral();
+      if (!pending) return;
+      clearPendingReferral();
+      if (hasRedeemed() || pending === getReferralState()?.code) return;
+      try {
+        const { newCount } = await redeemCode(pending);
+        markRedeemed(pending);
+        applyRedemption(newCount);
+      } catch { /* best-effort — never blocks unlock */ }
+    })();
     touch();
     deriveActiveAndAll();
     // STEP-UP capture: a per-session verifier for the credential that opened THIS
