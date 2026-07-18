@@ -1558,6 +1558,109 @@ react-query v5 `refetch()` buttons hidden (not just disabled) in deniability ses
 **Remaining open:** #1073 (M2c ungate checklist — owner-decision item, intentionally
 open).
 
+## 2026-07-17/18 M2c hardening + Android M2d-1a/1b/1c scaffold — PRs #1098, #1116, #1131, #1141
+
+Six PRs landed in this window. Two (#1123, #1138) are TypeScript/JSDoc-only CI unblocks
+with zero runtime or security effect — noted for completeness, not part of the M2c/M2d
+security surface. The other four are the M2c/M2d batch. **All are BUILT / unit-tested
+only — NOT device-verified, NOT independently audited, no on-chain txid (M2c/M2d are
+key-wrap gates, not send paths). `M2C_ENABLED` (JS + Swift `m2cEnabled`) and
+`M2D_ENABLED` (Kotlin) both remain `false`; all three lockstep flags
+(`M2C_HARDWARE_WRAP_ENABLED` in `native.js`, `M2C_ENABLED` in `veyrnoxEnclave.js`,
+`M2D_ENABLED` in `VeyrnoxEnclavePlugin.kt`) stay off. F-2 is NOT closed — M2c/M2d close
+it together only after their device runbooks pass AND the independent audit signs off.**
+
+- **PR #1098 — chore(m2c): iOS Swift-side hardening from Codex ad-hoc review (P2-#1/#2/#3)
+  + Codex second-pass follow-ups (P2-A/P2-B).** Single-collaborator-repo work — the
+  Codex passes are a second-model reviewer, never presented as independent. Three P2
+  findings, then two more from a Codex re-review of the fix:
+  - **P2-#1** — `deleteWrappingKey()` now requires an allowlisted `intent`
+    (`'cleanup' | 'unenroll' | 'wipe'`); throws `M2C_DELETE_INTENT_REQUIRED` otherwise —
+    defence-in-depth against an injected-JS availability hazard once M2c is live.
+  - **P2-#2** — `EnclaveKeyService.createWrappingKey()` no longer trusts a bare
+    `loadPrivateKey() != nil` check to mean "reuse this key"; a new
+    `loadPrivateKeyAttributes()` peer asserts `kSecAttrTokenID ==
+    kSecAttrTokenIDSecureEnclave` before reuse, throwing `EnclaveError.staleWrappingKey`
+    on a non-Enclave-backed stale item instead of silently deleting and recreating.
+  - **P2-#3** — `logM2cMigrationFailure` no longer falls back to `e.message` (a future
+    error class could carry a secret-bearing message); now allowlisted `e.code`, else
+    `e.constructor.name`, else `"unknown error"` — `e.message` is never logged.
+  - **Codex second pass, same PR** — found P2-#1/#2 were incompletely wired: (a) the JS
+    intent allowlist ran but the native call fired WITHOUT the intent (in-page JS calling
+    `Capacitor.Plugins.VeyrnoxEnclave.deleteWrappingKey()` directly bypasses the JS layer
+    entirely), and (b) asserting `kSecAttrTokenID == kSecAttrTokenIDSecureEnclave` proves
+    the key lives in the Enclave but not that its ACL flags are the expected
+    `[.privateKeyUsage, .biometryCurrentSet]`. Fixed in a follow-up commit on the same PR:
+    - **P2-A** — `deleteWrappingKey` JS wrapper now forwards `{ intent }` through the
+      Capacitor bridge; `VeyrnoxEnclavePlugin.swift` re-enforces the same
+      `["cleanup", "unenroll", "wipe"]` allowlist at the native selector.
+    - **P2-B** — Enclave key application tag bumped to a versioned
+      `"com.veyrnox.app.enclaveWrappingKey.v2"` — the `.vN` suffix IS the ACL-policy
+      stamp; a key found under the current versioned tag is guaranteed to have been
+      minted by this codepath with this ACL, since there is no other producer.
+  - JS: unit-tested (11/11 delete-intent, 6/6 m2c-gate, 8/8 migration-log; 25 total
+    across the three suites). Swift: code-only, no iOS build/test rig on this Windows
+    dev box — the P2-#2 change is explicitly flagged as requiring a physical-iPhone
+    re-test before the M2c flag flip.
+
+- **PR #1116 — feat(m2d): Android AndroidKeyStore/StrongBox plugin scaffold (M2d-1a).**
+  New `VeyrnoxEnclavePlugin.kt` (Capacitor plugin) + `EnclaveKeyService.kt` (capability
+  probe only — no keystore write yet) + `VeyrnoxEnclaveDeleteIntent.kt` (JVM-testable
+  intent allowlist, mirrors the JS/Swift allowlist from PR #1098). Registered in
+  `MainActivity.java`. `M2D_ENABLED = false`; `createWrappingKey`/`wrap`/`unwrap` fail
+  closed. New device runbook `docs/audit-triage/m2d-strongbox-device-test.md` — STATUS:
+  NOT RUN. 12-case JVM `VeyrnoxEnclaveDeleteIntentTest`.
+
+- **PR #1131 — feat(m2d): real AndroidKeyStore `createWrappingKey` behind `M2D_ENABLED`
+  (M2d-1b).** Real AES-GCM 256 key generation with `setUserAuthenticationRequired(true)`
+  + `setInvalidatedByBiometricEnrollment(true)` + `setUserAuthenticationParameters(0,
+  AUTH_BIOMETRIC_STRONG)` (H16 discipline — no device-credential fallback) +
+  StrongBox-preferred with `StrongBoxUnavailableException` TEE fall-through. API 30+
+  gate (`M2D_REQUIRES_ANDROID_11`). Idempotent versioned alias
+  `com.veyrnox.app.enclaveWrappingKey.v1` (same P2-B versioning pattern as iOS). Honest
+  tier reporting via `KeyInfo.securityLevel` → `strongBox`/`tee`/`software`/`unknown`
+  (I4: never labels a software-backed key as `tee`). The M2d-1a-reserved `wrapAlias` was
+  dropped — two AES-GCM aliases can't decrypt each other's output, so M2d uses one
+  AES-GCM key for both wrap and unwrap. New pure-Kotlin `EnclaveKeySpecConfig` config
+  object + 12-case JVM `EnclaveKeySpecConfigTest`. Codex found and fixed a P1 in a
+  follow-up commit: duplicate `when` branches in `backingFromLevel` — a Kotlin
+  compile-fail on `SECURITY_LEVEL_TRUSTED_ENVIRONMENT` (value 1) alongside a literal
+  `1 ->` branch.
+
+- **PR #1141 — feat(m2d): real `BiometricPrompt`-gated `wrap()` behind `M2D_ENABLED`
+  (M2d-1c).** Real AES-GCM encrypt behind `BiometricPrompt(CryptoObject(cipher))`,
+  `BIOMETRIC_STRONG` only. Wire format: `IV (12 bytes) ‖ Cipher.doFinal(plaintext)
+  [ciphertext ‖ 16-byte GCM tag]`, base64. Response field `{ ciphertext: '<base64>' }` —
+  matches the JS wrapper destructure + iOS parity. Async: `call.setKeepAlive(true)` at
+  dispatch, released before every terminal resolve/reject. Plaintext buffer wiped in
+  `finally`. Typed error codes mirror iOS: `USER_CANCEL`, `BIOMETRY_LOCKOUT`,
+  `BIOMETRY_NOT_ENROLLED`, `AUTH_FAILED`, `KEY_NOT_FOUND`, `KEY_INVALIDATED`,
+  `WRAP_FAILED`, `M2D_MISSING_BLOB`. `onAuthenticationFailed` (an individual bad
+  face/finger) does not call back — the OS keeps the sheet open for retry, matching
+  platform convention. New pure-Kotlin `EnclaveWireFormat` helper + 14-case JVM
+  `EnclaveWireFormatTest` (roundtrip, empty-ciphertext boundary at 28B, four bad-IV
+  rejects, short-bundle rejects, no-byte-data-in-error-messages). **Codex went four
+  passes on this PR:** (a) P2 keep-alive not released on one error path, (b) P2 response
+  field renamed `bundle` → `ciphertext` to match the JS wrapper, (c) P2 the device-test
+  runbook still said `bundle` in one spot — synced to `ciphertext`, (d) fourth pass
+  clean. Kotlin main sources DID compile locally this session via a one-time `npx cap
+  sync android` (73/73 JVM tests green: 12 DeleteIntent + 12 KeySpecConfig +
+  14 WireFormat + 34 PlayIntegrity + 1 example); the `capacitor.settings.gradle` drift
+  from that sync was reverted before commit.
+
+**Honest scope carried across all four PRs:** BUILT / unit-tested (JS + Swift + Kotlin
+JVM helpers only) — NOT device-verified on real hardware, NOT independently audited, no
+on-chain txid applies (M2c/M2d are key-wrap gates, not send paths). Both device runbooks
+(`docs/audit-triage/m2c-enclave-device-test.md` for iOS, `docs/audit-triage/
+m2d-strongbox-device-test.md` for Android) remain STATUS: NOT RUN. On the AES-GCM
+single-key UX tradeoff: honestly, BOTH wrap and unwrap will prompt biometric in
+production once `M2D_ENABLED` flips — an RSA-OAEP asymmetric design (iOS-SE-like "wrap
+without prompt") was considered but deferred because StrongBox RSA/EC support is spotty
+across Android OEMs; revisit if the M2d-1c/-1d device runbook surfaces real UX pain.
+F-2 is not closed by any of this work — see `docs/Feature-Status.md` §F-01/F-02 and
+`docs/M2cd.native-acl-plan.md` for the full per-item detail and the M2d-1d (unwrap)
+scope still ahead.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
