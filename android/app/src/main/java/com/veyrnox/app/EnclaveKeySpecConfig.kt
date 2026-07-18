@@ -39,9 +39,8 @@ package com.veyrnox.app
 // size, invalidation policy) MUST bump the suffix — a `.v2` alias is a new
 // key and does not touch the `.v1` key material.
 //
-// M2D_ENABLED stays false in VeyrnoxEnclavePlugin — this config is dead code
-// in production until all three gates flip in lockstep after the physical
-// device runbook + independent audit (see docs/audit-triage/m2d-strongbox-device-test.md).
+// Ungated after device verification (PR #1152, 2026-07-18).
+// Independent audit still outstanding.
 
 object EnclaveKeySpecConfig {
 

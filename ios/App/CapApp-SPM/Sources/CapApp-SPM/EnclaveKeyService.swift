@@ -44,12 +44,8 @@ final class EnclaveKeyService {
     // by some other codepath under the same tag.
     //
     // Legacy-tag sweep: any keychain item under the UNVERSIONED
-    // "com.veyrnox.app.enclaveWrappingKey" tag (pre-P2-B dev builds) becomes
-    // orphan when M2c is ever enabled. Acceptable today because M2C_ENABLED =
-    // false means no real user has ever had one; the runbook item for the M2c
-    // flag flip must include "sweep and delete any legacy-tag keys during the
-    // migration." deleteWrappingKey below intentionally targets the CURRENT
-    // versioned tag only — legacy sweep is a runbook step, not runtime.
+    // "com.veyrnox.app.enclaveWrappingKey" tag (pre-P2-B dev builds) is orphaned.
+    // deleteWrappingKey below targets the CURRENT versioned tag only.
     private let tag = "com.veyrnox.app.enclaveWrappingKey.v2".data(using: .utf8)!
     // ECIES: ephemeral-static ECDH (cofactor) + X9.63 SHA-256 KDF + AES-GCM.
     private let algorithm: SecKeyAlgorithm = .eciesEncryptionCofactorX963SHA256AESGCM
