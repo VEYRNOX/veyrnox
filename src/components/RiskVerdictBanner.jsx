@@ -45,7 +45,7 @@ export default function RiskVerdictBanner({ verdict, acknowledged = false, onAck
         aria-atomic="true"
         className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/30"
       >
-        <Spinner size="sm" className="shrink-0 mt-0.5" label="Running pre-sign risk checks…" />
+        <Spinner size="sm" className="shrink-0 mt-0.5" decorative />
         <p className="text-xs text-muted-foreground">Running pre-sign risk checks…</p>
       </div>
     );
