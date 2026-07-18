@@ -2,7 +2,7 @@
 import BackButton from "@/components/BackButton";
 import SuccessBeacon from "@/components/SuccessBeacon";
 import RiskShield from "@/components/RiskShield";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';
 // Issue #961 (SEND H-1): the Trezor EVM branch now goes through the audited

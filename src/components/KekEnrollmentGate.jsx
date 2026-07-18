@@ -35,7 +35,7 @@
 //   origin?:  'fresh' | 'restored'  (default: 'restored' — matches historical copy)
 
 import { useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from "motion/react";
 import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PinPad from '@/components/security/PinPad';

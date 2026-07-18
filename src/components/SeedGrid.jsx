@@ -22,7 +22,7 @@
 // Isolation: presentation only. No wallet-core imports.
 
 import { useState } from 'react';
-import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
+import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import { toast } from 'sonner';
 import { Eye, EyeOff, Copy, Check } from 'lucide-react';
 import { copySecret } from '@/lib/copySecret';
