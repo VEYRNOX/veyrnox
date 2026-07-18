@@ -35,7 +35,7 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
     // src/wallet-core/keystore/native.js (and M2C_ENABLED in
     // src/plugins/veyrnoxEnclave.js) once the Enclave path is device-verified —
     // keep all three in lockstep.
-    private static let m2cEnabled = false
+    private static let m2cEnabled = true
 
     // Codex second-pass 2026-07-17 P2-A: intent gate at native bridge closes the
     // auto-registered plugin's M-5 attack surface. The JS wrapper

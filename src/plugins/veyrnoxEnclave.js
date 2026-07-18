@@ -31,7 +31,7 @@ const VeyrnoxEnclave = registerPlugin('VeyrnoxEnclave', {
 // MUST be flipped to true TOGETHER WITH native.js's M2C_HARDWARE_WRAP_ENABLED (and
 // the Swift-side m2cEnabled) when the M2c Enclave path is enabled after device
 // verification — keep all three in lockstep.
-export const M2C_ENABLED = false;
+export const M2C_ENABLED = true;
 
 function m2cDisabledError() {
   return Object.assign(new Error('M2c hardware wrap is disabled'), { code: 'M2C_DISABLED' });
