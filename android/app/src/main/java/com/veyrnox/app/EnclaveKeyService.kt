@@ -10,9 +10,16 @@ package com.veyrnox.app
 // │ M2D_ENABLED=false JS gate — this code does not execute in production    │
 // │ until the physical-device runbook AND the independent audit sign off.   │
 // │                                                                        │
-// │ Not yet landed:                                                        │
-// │   - wrap()   (M2d-1c: Cipher AES/GCM encrypt of vault DEK)             │
-// │   - unwrap() (M2d-1d: BiometricPrompt(CryptoObject(cipher)) + decrypt) │
+// │ M2d-1c/1d landed:                                                      │
+// │   - wrap()   Cipher AES/GCM encrypt behind a BiometricPrompt (M2d-1c)  │
+// │   - unwrap() Cipher AES/GCM decrypt behind a BiometricPrompt (M2d-1d)  │
+// │              — maps AEADBadTagException→CIPHERTEXT_TAMPERED,           │
+// │              malformed input→MALFORMED_BUNDLE (both distinct from     │
+// │              UNWRAP_FAILED), and never logs the plaintext output.     │
+// │                                                                        │
+// │ Still fail-closed at the plugin's M2D_ENABLED=false JS gate — none    │
+// │ of the above executes in production until the physical-device runbook │
+// │ AND the independent audit sign off.                                    │
 // │                                                                        │
 // │ See docs/M2cd.native-acl-plan.md §5, docs/Feature-Status.md §F-2,      │
 // │ docs/audit-triage/m2d-strongbox-device-test.md (STATUS: NOT RUN).      │
@@ -164,20 +171,34 @@ class EnclaveKeyService {
     }
 
     /**
-     * Typed error codes for wrap() (mirrors iOS bridge shape). Callers at the
-     * plugin layer translate `.code` into `PluginCall.reject(message, code)`.
-     * I4: never fabricate a success — every terminal error surfaces here.
+     * Typed error codes for wrap()/unwrap() — extracted to the top-level
+     * `EnclaveErrors` object in M2d-1d so unwrap-specific codes
+     * (CIPHERTEXT_TAMPERED, MALFORMED_BUNDLE, UNWRAP_FAILED) live alongside
+     * the existing wrap codes and both operations reference the same source
+     * of truth. `WrapErrors` is retained as a source-compatible alias for
+     * pre-1d code paths (`EnclaveKeyService.WrapErrors.WRAP_FAILED` still
+     * resolves) — the fields ARE the constants in `EnclaveErrors`.
+     *
+     * Callers at the plugin layer translate `.code` into
+     * `PluginCall.reject(message, code)`. I4: never fabricate a success —
+     * every terminal error surfaces here.
      */
     object WrapErrors {
-        const val KEY_NOT_FOUND = "M2D_KEY_NOT_FOUND"
-        const val KEY_INVALIDATED = "M2D_KEY_INVALIDATED"
-        const val USER_CANCEL = "M2D_USER_CANCEL"
-        const val BIOMETRY_LOCKOUT = "M2D_BIOMETRY_LOCKOUT"
-        const val BIOMETRY_NOT_ENROLLED = "M2D_BIOMETRY_NOT_ENROLLED"
-        const val AUTH_FAILED = "M2D_AUTH_FAILED"
-        const val WRAP_FAILED = "M2D_WRAP_FAILED"
+        const val KEY_NOT_FOUND: String = EnclaveErrors.KEY_NOT_FOUND
+        const val KEY_INVALIDATED: String = EnclaveErrors.KEY_INVALIDATED
+        const val USER_CANCEL: String = EnclaveErrors.USER_CANCEL
+        const val BIOMETRY_LOCKOUT: String = EnclaveErrors.BIOMETRY_LOCKOUT
+        const val BIOMETRY_NOT_ENROLLED: String = EnclaveErrors.BIOMETRY_NOT_ENROLLED
+        const val AUTH_FAILED: String = EnclaveErrors.AUTH_FAILED
+        const val WRAP_FAILED: String = EnclaveErrors.WRAP_FAILED
     }
 
+    /**
+     * Thrown by wrap()/unwrap() to carry a typed error code back to the
+     * plugin layer. `code` is one of `EnclaveErrors.*`; `message` is
+     * safe-for-log (never contains plaintext, ciphertext, or key material).
+     * Kept named `WrapException` for source compatibility with M2d-1c.
+     */
     class WrapException(val code: String, message: String) : Exception(message)
 
     /**
@@ -349,6 +370,246 @@ class EnclaveKeyService {
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Confirm to save vault")
             .setSubtitle("Unlock the wallet key with your biometric to encrypt this vault.")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .setNegativeButtonText("Cancel")
+            .build()
+
+        activity.runOnUiThread {
+            prompt.authenticate(promptInfo, cryptoObject)
+        }
+    }
+
+    /**
+     * unwrap() — Present BiometricPrompt(CryptoObject(cipher)), then decrypt
+     * the base64-encoded `IV || ct+tag` bundle under the stored AES-GCM 256
+     * wrapping key and return the base64-encoded plaintext.
+     *
+     * Mirrors wrap()'s structure. Async by construction — BiometricPrompt
+     * fires callbacks on the main thread; the caller MUST NOT resolve/reject
+     * its PluginCall synchronously.
+     *
+     * Terminal callback outcomes:
+     *   - Result.success(base64Plaintext)      → happy path
+     *   - Result.failure(WrapException):
+     *       KEY_NOT_FOUND         alias not present
+     *       KEY_INVALIDATED       KeyPermanentlyInvalidatedException (F-2)
+     *       MALFORMED_BUNDLE      base64 decode threw, or EnclaveWireFormat.unpack
+     *                             threw (bundle shorter than IV+TAG). Pre-cipher
+     *                             shape error — the biometric prompt was never
+     *                             even shown, because we could not construct a
+     *                             CryptoObject without a valid IV.
+     *       USER_CANCEL           BiometricPrompt ERROR_USER_CANCELED /
+     *                             ERROR_NEGATIVE_BUTTON
+     *       BIOMETRY_LOCKOUT      ERROR_LOCKOUT / ERROR_LOCKOUT_PERMANENT
+     *       BIOMETRY_NOT_ENROLLED ERROR_NO_BIOMETRICS
+     *       AUTH_FAILED           other BiometricPrompt errors
+     *       CIPHERTEXT_TAMPERED   javax.crypto.AEADBadTagException from
+     *                             cipher.doFinal on a valid-shape bundle.
+     *                             Distinct from UNWRAP_FAILED — this signal
+     *                             is byte-flip / wrong-key / IV-tamper.
+     *       UNWRAP_FAILED         generic (cipher init/doFinal exception
+     *                             that is not one of the above)
+     *
+     * I3 note: the plugin knows nothing about deniability sessions. Any I3
+     * gating is the CALLER's responsibility (JS-side native.js). Prompt
+     * strings are session-blind — matches wrap's I3 discipline.
+     *
+     * I4: onAuthenticationFailed (individual bad-finger/face) does NOT
+     * produce a callback — BiometricPrompt keeps the sheet open for the OS's
+     * standard retry UX; only terminal events (succeeded / error) surface.
+     *
+     * NEVER logs the plaintext output — the plaintext IS the secret (it's
+     * the decrypted vault blob). Not even in debug builds. See LOG-1.
+     *
+     * @param activity        FragmentActivity for BiometricPrompt attachment
+     * @param ciphertextB64   base64-encoded `IV (12) || ct+tag` bundle produced by wrap()
+     * @param reason          caller-supplied subtitle string (falls back to a generic message)
+     * @param callback        fires on the main thread with the terminal result
+     */
+    fun unwrap(
+        activity: FragmentActivity,
+        ciphertextB64: String,
+        reason: String,
+        callback: (Result<String>) -> Unit,
+    ) {
+        // ── Pre-cipher: base64 decode + unpack. If either throws, the
+        // prompt has NOT been shown yet — MALFORMED_BUNDLE is the pre-cipher
+        // shape error, distinct from CIPHERTEXT_TAMPERED which requires a
+        // valid-shape input and only fires at cipher.doFinal time.
+        val iv: ByteArray
+        val ctWithTag: ByteArray
+        try {
+            val bundle = Base64.decode(ciphertextB64, Base64.NO_WRAP)
+            val (parsedIv, parsedCt) = EnclaveWireFormat.unpack(bundle)
+            iv = parsedIv
+            ctWithTag = parsedCt
+        } catch (e: IllegalArgumentException) {
+            // Base64.decode throws IllegalArgumentException (Android's
+            // Base64 uses this for bad input in NO_WRAP mode); unpack also
+            // throws IllegalArgumentException on wrong-shape input.
+            return callback(
+                Result.failure(
+                    WrapException(
+                        EnclaveErrors.MALFORMED_BUNDLE,
+                        "unwrap input malformed: ${e.javaClass.simpleName}",
+                    )
+                )
+            )
+        } catch (e: Exception) {
+            return callback(
+                Result.failure(
+                    WrapException(
+                        EnclaveErrors.MALFORMED_BUNDLE,
+                        "unwrap input malformed: ${e.javaClass.simpleName}",
+                    )
+                )
+            )
+        }
+
+        // ── Cipher init. KeyPermanentlyInvalidatedException here is the
+        // F-2 guarantee kicked in (biometric enrollment changed since the
+        // key was created). Any other exception during init is UNWRAP_FAILED.
+        val cipher: Cipher
+        try {
+            val ks = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+            val key = ks.getKey(EnclaveKeySpecConfig.KEY_ALIAS, null) as? SecretKey
+                ?: return callback(
+                    Result.failure(
+                        WrapException(
+                            EnclaveErrors.KEY_NOT_FOUND,
+                            "Wrapping key not found; call createWrappingKey first",
+                        )
+                    )
+                )
+            cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            try {
+                // 128-bit tag = 16 bytes (matches EnclaveWireFormat.TAG_SIZE_BYTES).
+                cipher.init(
+                    Cipher.DECRYPT_MODE,
+                    key,
+                    javax.crypto.spec.GCMParameterSpec(128, iv),
+                )
+            } catch (e: KeyPermanentlyInvalidatedException) {
+                return callback(
+                    Result.failure(
+                        WrapException(
+                            EnclaveErrors.KEY_INVALIDATED,
+                            "Wrapping key invalidated — biometric enrollment changed",
+                        )
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            return callback(
+                Result.failure(
+                    WrapException(
+                        EnclaveErrors.UNWRAP_FAILED,
+                        "unwrap init failed: ${e.javaClass.simpleName}",
+                    )
+                )
+            )
+        }
+
+        val cryptoObject = BiometricPrompt.CryptoObject(cipher)
+        val executor = ContextCompat.getMainExecutor(activity)
+
+        val prompt = BiometricPrompt(
+            activity,
+            executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    result: BiometricPrompt.AuthenticationResult,
+                ) {
+                    var plaintext: ByteArray? = null
+                    try {
+                        val authedCipher = result.cryptoObject?.cipher
+                            ?: return callback(
+                                Result.failure(
+                                    WrapException(
+                                        EnclaveErrors.UNWRAP_FAILED,
+                                        "BiometricPrompt returned no Cipher",
+                                    )
+                                )
+                            )
+                        plaintext = try {
+                            authedCipher.doFinal(ctWithTag)
+                        } catch (e: javax.crypto.AEADBadTagException) {
+                            // Security-critical signal: byte-flip / wrong-key /
+                            // IV-tamper on a valid-shape bundle. Distinct from
+                            // UNWRAP_FAILED so callers can surface loudly.
+                            return callback(
+                                Result.failure(
+                                    WrapException(
+                                        EnclaveErrors.CIPHERTEXT_TAMPERED,
+                                        // Never leak any bytes.
+                                        "unwrap authentication failed (AEADBadTagException)",
+                                    )
+                                )
+                            )
+                        }
+                        val b64 = Base64.encodeToString(plaintext, Base64.NO_WRAP)
+                        // NEVER log b64 or plaintext — the plaintext IS the secret
+                        // (LOG-1 discipline; the decrypted vault blob).
+                        callback(Result.success(b64))
+                    } catch (e: Exception) {
+                        callback(
+                            Result.failure(
+                                WrapException(
+                                    EnclaveErrors.UNWRAP_FAILED,
+                                    // No plaintext or ciphertext in message.
+                                    "unwrap finalise failed: ${e.javaClass.simpleName}",
+                                )
+                            )
+                        )
+                    } finally {
+                        // Best-effort scrub of the decrypted plaintext buffer.
+                        // The Base64.encodeToString above produced a separate
+                        // String — we can only wipe the intermediate byte[].
+                        if (plaintext != null) {
+                            java.util.Arrays.fill(plaintext, 0.toByte())
+                        }
+                    }
+                }
+
+                override fun onAuthenticationError(
+                    errorCode: Int,
+                    errString: CharSequence,
+                ) {
+                    val code = when (errorCode) {
+                        BiometricPrompt.ERROR_USER_CANCELED,
+                        BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+                        BiometricPrompt.ERROR_CANCELED,
+                        -> EnclaveErrors.USER_CANCEL
+                        BiometricPrompt.ERROR_LOCKOUT,
+                        BiometricPrompt.ERROR_LOCKOUT_PERMANENT,
+                        -> EnclaveErrors.BIOMETRY_LOCKOUT
+                        BiometricPrompt.ERROR_NO_BIOMETRICS,
+                        -> EnclaveErrors.BIOMETRY_NOT_ENROLLED
+                        else -> EnclaveErrors.AUTH_FAILED
+                    }
+                    callback(
+                        Result.failure(
+                            WrapException(code, "BiometricPrompt error $errorCode"),
+                        )
+                    )
+                }
+
+                override fun onAuthenticationFailed() {
+                    // I4: individual bad-finger / bad-face attempts leave the
+                    // prompt open (OS-standard retry UX). Only terminal events
+                    // (succeeded / error) surface a result. Do NOT callback.
+                }
+            },
+        )
+
+        // Prompt strings: caller-supplied `reason` fills the subtitle; empty
+        // reason falls back to a generic message. Title and negative-button
+        // text are fixed. No session/wallet identifier appears anywhere — I3
+        // defence-in-depth (gating still lives at the JS caller).
+        val subtitle = if (reason.isNotEmpty()) reason else "Confirm to unlock."
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Unlock your VEYRNOX wallet")
+            .setSubtitle(subtitle)
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .setNegativeButtonText("Cancel")
             .build()

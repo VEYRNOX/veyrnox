@@ -80,8 +80,8 @@ export default function SecurityScanner() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-          <ScanSearch className="h-5 w-5 text-violet-500" />
+        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <ScanSearch className="h-5 w-5 text-primary" />
         </div>
         <div>
           <h1 className="text-xl font-bold">Transaction Scanner</h1>
@@ -90,7 +90,7 @@ export default function SecurityScanner() {
       </div>
 
       {/* How it works — honest about what this does and does NOT do. */}
-      <Card className="border-violet-500/20 bg-violet-500/5">
+      <Card className="border-primary/20 bg-primary/5">
         <CardContent className="pt-4 space-y-2 text-xs text-muted-foreground">
           <p className="font-semibold text-foreground">What this does</p>
           <p>

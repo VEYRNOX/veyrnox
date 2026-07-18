@@ -100,7 +100,7 @@ export default function AdvancedAnalytics() {
     { label: "Portfolio Risk", value: riskLevel.label, color: riskLevel.color, bg: riskLevel.bg, icon: Shield },
     { label: "Sharpe Ratio", value: portfolioSharpe.toFixed(2), icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
     { label: "Diversification", value: `${diversificationScore}%`, icon: Target, color: "text-info", bg: "bg-info/10" },
-    { label: "Stable Ratio", value: `${stableRatio}%`, icon: Activity, color: "text-purple-400", bg: "bg-purple-500/10" },
+    { label: "Stable Ratio", value: `${stableRatio}%`, icon: Activity, color: "text-info", bg: "bg-info/10" },
   ];
 
   const chartStyle = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" };

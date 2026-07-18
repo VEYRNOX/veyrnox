@@ -13,6 +13,7 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "typecheck:core": "tsc -p ./jsconfig.wallet-core.json",
     "preview": "vite preview",
+    "icons:ios": "node scripts/generate-ios-icons.mjs",
     "check:rng": "node scripts/check-crypto-rng.mjs",
     "check:strays": "node scripts/check-stray-files.mjs",
     "check:deniability-strings": "node scripts/check-deniability-strings.mjs",
