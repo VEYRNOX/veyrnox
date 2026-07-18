@@ -69,7 +69,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { useInfiniteAnimation } from "@/lib/useInfiniteAnimation";
 import { toast } from "sonner";
 import {

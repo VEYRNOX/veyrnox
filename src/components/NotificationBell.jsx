@@ -14,7 +14,7 @@
 // and decoy modes; nothing here reveals another set exists or how many there are.
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, useAnimation, useReducedMotion } from 'framer-motion';
+import { motion, useAnimation, useReducedMotion } from "motion/react";
 import { springs } from '@/lib/motion-tokens';
 import { Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';

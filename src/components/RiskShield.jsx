@@ -18,7 +18,7 @@
 // horizontal banner layout.
 
 import { memo } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from "motion/react";
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useInfiniteAnimation } from '@/lib/useInfiniteAnimation';
 import { easing } from '@/lib/motion-tokens';

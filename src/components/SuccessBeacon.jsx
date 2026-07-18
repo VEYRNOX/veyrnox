@@ -19,7 +19,7 @@
 // Isolation: memoized; no external dependencies beyond framer-motion + lucide.
 
 import { memo } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from "motion/react";
 import { Check } from 'lucide-react';
 import { useInfiniteAnimation } from '@/lib/useInfiniteAnimation';
 

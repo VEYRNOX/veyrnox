@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Copy, CheckCircle2, Lock, Clock, AlertTriangle, ArrowRight } from "lucide-react";
 import QRCodeDisplay from "../components/QRCodeDisplay";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import CoinLogo from "@/components/CoinLogo";
 import { toast } from "sonner";
 

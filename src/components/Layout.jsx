@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, useCallback } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { duration as motionDuration, easing as motionEasing } from "@/lib/motion-tokens";
 import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";
 import AccessibilityWrapper from "./AccessibilityWrapper";

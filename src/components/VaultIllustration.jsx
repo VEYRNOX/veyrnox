@@ -25,7 +25,7 @@
 //   - No wallet-core imports. No side effects. No refs to global state.
 
 import { memo } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from "motion/react";
 import { useInfiniteAnimation } from '@/lib/useInfiniteAnimation';
 
 // 8 safe-door "bolts" arranged evenly around the medallion. Pre-computed so we
