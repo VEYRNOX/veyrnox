@@ -518,15 +518,18 @@ export default function Layout() {
             <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-secondary"><X className="h-5 w-5" /></button>
           </div>
           <div className="flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-3 pt-3 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {/* Pinned quick-access + recents */}
-            {recents.length > 0 && (
+            {/* Pinned quick-access + recents (deduplicated against permanent groups) */}
+            {(() => {
+              const groupPaths = new Set(navGroups.flatMap(g => g.items.map(i => i.path)));
+              const dedupedRecents = recents.filter(p => !groupPaths.has(p));
+              return dedupedRecents.length > 0 && (
               <div className="rounded-2xl p-2.5 border border-primary/20 bg-primary/5">
                 <div className="flex items-center gap-2 px-1 pb-2">
                   <span className="h-2 w-2 rounded-full shrink-0 bg-primary" />
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Recent</p>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {recents.map(path => {
+                  {dedupedRecents.map(path => {
                     const item = navGroups.flatMap(g => g.items).find(i => i.path === path);
                     if (!item) return null;
                     const active = location.pathname === path;
@@ -543,7 +546,7 @@ export default function Layout() {
                   })}
                 </div>
               </div>
-            )}
+            );})()}
             {navGroups.map(group => {
               const color = groupColor(group.label);
               return (
