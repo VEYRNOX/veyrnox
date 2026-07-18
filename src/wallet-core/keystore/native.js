@@ -88,7 +88,7 @@ async function enclavePlugin() {
 // decision on mandatory-biometric-on-Enclave devices is signed off. While false,
 // native behaviour is byte-identical to M2b (fallback path only), so the iOS
 // Simulator and the test suite are unaffected. See docs/M2cd.native-acl-plan.md.
-const M2C_HARDWARE_WRAP_ENABLED = false;
+const M2C_HARDWARE_WRAP_ENABLED = true;
 
 // Stored-record marker. An Enclave-wrapped record is { wrap:'enclave-v1', hw }.
 const WRAP_VERSION_ENCLAVE = 'enclave-v1';

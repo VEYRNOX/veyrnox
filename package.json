@@ -140,7 +140,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.5.2",
     "ethers": "^6.17.0",
-    "gstack": "github:garrytan/gstack",
+    "framer-motion": "11.16.4",
     "hash-wasm": "^4.12.0",
     "input-otp": "^1.4.2",
     "jspdf": "^4.2.1",

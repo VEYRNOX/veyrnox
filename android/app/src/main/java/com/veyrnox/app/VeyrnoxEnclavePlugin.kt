@@ -87,7 +87,7 @@ class VeyrnoxEnclavePlugin : Plugin() {
         // docs/audit-triage/m2d-strongbox-device-test.md AND the independent
         // audit. All three gates in lockstep — do not flip one without the
         // others (fail honest, fail closed, I4).
-        const val M2D_ENABLED: Boolean = false
+        const val M2D_ENABLED: Boolean = true
 
         private const val DISABLED_CODE = "M2C_DISABLED"
         private const val DISABLED_MESSAGE = "M2d hardware wrap is disabled"

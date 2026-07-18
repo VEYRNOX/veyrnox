@@ -1,0 +1,74 @@
+{
+  "name": "@veyrnox/capacitor-rasp-integrity",
+  "version": "1.0.0",
+  "description": "Capacitor RASP (Runtime Application Self-Protection) plugin — device integrity, root/jailbreak, hook, tamper, emulator detection with JS presign gate",
+  "main": "dist/plugin.cjs.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "unpkg": "dist/plugin.js",
+  "files": [
+    "android/src/main/",
+    "dist/",
+    "ios/Sources/",
+    "RaspIntegrity.podspec",
+    "Package.swift"
+  ],
+  "author": "Veyrnox",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VEYRNOX/veyrnox"
+  },
+  "bugs": {
+    "url": "https://github.com/VEYRNOX/veyrnox/issues"
+  },
+  "keywords": [
+    "capacitor",
+    "plugin",
+    "rasp",
+    "integrity",
+    "security",
+    "android",
+    "ios"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run docgen && tsc && rollup -c rollup.config.js",
+    "clean": "rimraf ./dist",
+    "docgen": "docgen --api RaspIntegrityPlugin --output-readme README.md --output-json dist/docs.json",
+    "lint": "eslint . --ext ts",
+    "fmt": "prettier --write --parser typescript 'src/**/*.ts'",
+    "verify": "npm run verify:android && npm run verify:ios",
+    "verify:android": "cd android && ./gradlew clean build test && cd ..",
+    "verify:ios": "cd ios && pod install && xcodebuild -workspace Plugin.xcworkspace -scheme Plugin -destination generic/platform=iOS build && cd .."
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/docgen": "^0.2.2",
+    "@capacitor/ios": "^8.0.0",
+    "@ionic/eslint-config": "^0.4.0",
+    "@ionic/prettier-config": "^4.0.0",
+    "@ionic/swiftlint-config": "^1.1.2",
+    "eslint": "^8.57.0",
+    "prettier": "~3.3.3",
+    "rimraf": "^5.0.10",
+    "rollup": "^4.21.3",
+    "typescript": "~5.6.3"
+  },
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    },
+    "android": {
+      "src": "android"
+    }
+  },
+  "swiftlint": "@ionic/swiftlint-config",
+  "prettier": "@ionic/prettier-config",
+  "eslintConfig": {
+    "extends": "@ionic/eslint-config/recommended"
+  }
+}
