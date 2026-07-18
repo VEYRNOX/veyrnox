@@ -1137,17 +1137,14 @@ export default function WalletEntry() {
   // The FirstRunTour overlays on this screen (once per device).
   if (view === "welcome") {
     return (
-      <>
-        <WelcomeHero
-          onGetStarted={() => {
-            setError("");
-            setRealPin(""); setRealPinConfirm(""); setPinStep("real");
-            setView("pin-create");
-          }}
-          onRestore={() => { setError(""); setView("restore-file"); }}
-        />
-        <FirstRunTour />
-      </>
+      <WelcomeHero
+        onGetStarted={() => {
+          setError("");
+          setRealPin(""); setRealPinConfirm(""); setPinStep("real");
+          setView("pin-create");
+        }}
+        onRestore={() => { setError(""); setView("restore-file"); }}
+      />
     );
   }
 
@@ -1429,6 +1426,7 @@ export default function WalletEntry() {
     if (hasPendingPin) {
       return (
         <EntryShell error={error}>
+          <FirstRunTour />
           <div className="p-6 rounded-xl border border-dashed border-border bg-card space-y-4">
             {!choosePinImport ? (
               <>
