@@ -47,7 +47,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
   if (loading) {
     return (
       <div className="p-3 rounded-lg bg-secondary/30 border border-border flex items-center gap-2 text-xs text-muted-foreground">
-        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+        <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin shrink-0" />
         Simulating against your RPC…
       </div>
     );

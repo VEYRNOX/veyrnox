@@ -16,20 +16,23 @@
 //   <SkeletonList rows={5} />
 
 import { motion, useReducedMotion } from 'framer-motion';
+import { useInfiniteAnimation } from '@/lib/useInfiniteAnimation';
+import { easing } from '@/lib/motion-tokens';
 
 export function Skeleton({ className = '', rounded = 'rounded-md' }) {
   const reduce = useReducedMotion();
+  const visible = useInfiniteAnimation();
   return (
     <span
       aria-hidden
       className={`relative inline-block overflow-hidden bg-secondary ${rounded} ${className}`}
     >
-      {!reduce && (
+      {!reduce && visible && (
         <motion.span
           className="absolute inset-y-0 -inset-x-1/2 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent"
           initial={{ x: '-40%' }}
           animate={{ x: '140%' }}
-          transition={{ duration: 1.6, ease: 'linear', repeat: Infinity }}
+          transition={{ duration: 1.8, ease: easing.smooth, repeat: Infinity }}
         />
       )}
     </span>

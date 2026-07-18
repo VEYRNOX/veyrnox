@@ -226,7 +226,7 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
         disabled={!canExport || busy}
         className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 transition-opacity"
       >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        {busy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Download className="h-4 w-4" />}
         {busy ? "Creating & verifying…" : isIos ? "Save backup" : "Save backup to Downloads"}
       </button>
 

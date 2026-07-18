@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, useCallback } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { duration as motionDuration, easing as motionEasing } from "@/lib/motion-tokens";
 import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";
 import AccessibilityWrapper from "./AccessibilityWrapper";
 import SafeSuspense from "./SafeSuspense";
@@ -31,7 +32,7 @@ const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
 const ReceiveCryptoPage = lazy(() => import('../pages/ReceiveCrypto'));
 const TabSpinner = () => (
   <div className="flex justify-center items-center p-8" role="status" aria-label="Loading">
-    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" />
     <span className="sr-only">Loading tab content...</span>
   </div>
 );
@@ -70,6 +71,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { lock } = useWallet();
+  const prefersReducedMotion = useReducedMotion();
   // Sign out / Exit (base44 removal, Phase 2). In the local build there is no
   // hosted account to log out of — exiting means locking the on-device vault,
   // which the WalletGate then enforces (the unlock front door reappears). We
@@ -368,10 +370,10 @@ export default function Layout() {
       <AnimatePresence mode="wait" initial={false}>
         <motion.main
           key={location.pathname}
-          initial={{ opacity: 0, x: 8 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -8 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
+          initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 8 }}
+          animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+          exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -8 }}
+          transition={{ duration: prefersReducedMotion ? 0.15 : motionDuration.normal, ease: motionEasing.out }}
           className="hidden md:flex md:flex-1 flex-col p-8 overflow-auto"
         >
           {/* Desktop back affordance (item: back nav on every page). The desktop
@@ -410,10 +412,10 @@ export default function Layout() {
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 20 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
+              transition={{ duration: prefersReducedMotion ? 0.15 : motionDuration.normal, ease: motionEasing.out }}
               className="p-4"
             >
               <PullToRefreshContainer onRefresh={handleRefresh} className="min-h-full">

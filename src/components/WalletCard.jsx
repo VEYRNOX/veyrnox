@@ -27,7 +27,7 @@ export default function WalletCard({ wallet, onClick }) {
         <div className="flex items-center justify-between mb-4">
           <span className="text-2xl">{currencyIcons[wallet.currency] || "●"}</span>
           {wallet.passkey_registered ? (
-            <ShieldCheck className="h-4 w-4 text-primary animate-pulse" />
+            <ShieldCheck className="h-4 w-4 text-primary motion-safe:animate-pulse" />
           ) : (
             <Shield className="h-4 w-4 text-muted-foreground" />
           )}

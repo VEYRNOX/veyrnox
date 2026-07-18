@@ -47,7 +47,7 @@ export default function PasskeyPrompt({ label = 'Passkey', onResult }) {
         </div>
 
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
-          <KeyRound className={`h-11 w-11 text-primary ${verifying ? 'animate-pulse' : ''}`} />
+          <KeyRound className={`h-11 w-11 text-primary ${verifying ? 'motion-safe:animate-pulse' : ''}`} />
         </div>
 
         <h2 className="mt-4 text-lg font-semibold">{label}</h2>

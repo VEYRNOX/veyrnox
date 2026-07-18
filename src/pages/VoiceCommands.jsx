@@ -46,7 +46,7 @@ export default function VoiceCommands() {
               onClick={toggle}
               aria-label={listening ? "Stop voice commands" : "Start voice commands"}
               className={`h-24 w-24 rounded-full flex items-center justify-center transition-all shadow-lg ${
-                listening ? "bg-destructive animate-pulse scale-110" : "bg-primary hover:scale-105"
+                listening ? "bg-destructive motion-safe:animate-pulse scale-110" : "bg-primary hover:scale-105"
               }`}
             >
               {listening ? <MicOff className="h-10 w-10 text-white" /> : <Mic className="h-10 w-10 text-white" />}

@@ -97,7 +97,7 @@ export default function AnomalyDetection() {
             <ReferenceRateNote />
           </div>
           <Button onClick={scan} disabled={scanning || isLoading || isError} className="gap-2 ml-auto">
-            <RefreshCw className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${scanning ? "motion-safe:animate-spin" : ""}`} />
             {scanning ? "Scanning…" : scanResult ? "Re-scan" : "Run Scan"}
           </Button>
         </div>

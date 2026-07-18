@@ -126,7 +126,7 @@ export default function Calculator() {
             onClick={() => refetch()}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "motion-safe:animate-spin" : ""}`} />
             {lastUpdated ? `Updated ${lastUpdated}` : "Refresh"}
           </button>
         )}
@@ -261,7 +261,7 @@ export default function Calculator() {
         </div>
         {isLoading ? (
           <div className="flex justify-center py-6">
-            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">

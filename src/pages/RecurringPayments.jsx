@@ -178,7 +178,7 @@ export default function RecurringPayments() {
         </div>
       )}
 
-      {isLoading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+      {isLoading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" /></div>
         : payments.length === 0 ? (
           <div className="text-center py-14 text-muted-foreground">
             <Repeat className="h-10 w-10 mx-auto mb-3 opacity-30" />

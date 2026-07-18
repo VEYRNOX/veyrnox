@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useAnimation, useReducedMotion } from 'framer-motion';
+import { springs } from '@/lib/motion-tokens';
 import { Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,8 +37,8 @@ export default function NotificationBell({ unseenCount = 0, onOpen, className })
     // decrement or count-change while already unseen.
     if (prev.current === 0 && unseenCount > 0 && !reduce) {
       controls.start({
-        rotate: [0, -12, 12, -8, 8, -4, 4, 0],
-        transition: { duration: 0.6, ease: 'easeInOut' },
+        rotate: [0, -12, 0],
+        transition: springs.bouncy,
       });
       setBadgeKey((k) => k + 1);
     }

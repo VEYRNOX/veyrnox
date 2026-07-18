@@ -85,7 +85,7 @@ export default function SolanaTokens() {
                 : <p className="text-sm text-muted-foreground">{loading ? "Loading…" : "—"}</p>
               }
               <Button variant="ghost" size="icon" className="mb-1 h-7 w-7" aria-label="Refresh balance" onClick={fetchBalance} disabled={loading}>
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "motion-safe:animate-spin" : ""}`} />
               </Button>
             </div>
           </div>
