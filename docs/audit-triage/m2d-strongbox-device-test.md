@@ -71,12 +71,13 @@ Run the whole matrix twice, once per device, at minimum:
       to encrypt this vault."` — no wallet or session identifier (I3
       defence-in-depth; any real I3 gating is the JS-side caller's job).
 - [ ] (M2d-1c) On the successful prompt, `wrap()` resolves with
-      `{ bundle: '<base64>' }`. Decode → first 12 bytes are the IV
+      `{ ciphertext: '<base64>' }` (matches JS wrapper + iOS parity —
+      Codex 2026-07-18 P2). Decode → first 12 bytes are the IV
       (`EnclaveWireFormat.IV_SIZE_BYTES`), remaining bytes are
       `ciphertext ‖ 16-byte GCM tag`. Each wrap call yields a DIFFERENT IV
       (AndroidKeyStore's KeyGenerator picks it — reused IV under GCM is
       catastrophic; verify by running wrap twice on the same plaintext and
-      confirming the first 12 bytes differ across the two bundles).
+      confirming the first 12 bytes differ across the two ciphertexts).
 - [ ] (M2d-1c) Cancel the biometric prompt (negative button) → `wrap()`
       rejects with `M2D_USER_CANCEL` — no ciphertext, no partial write.
 - [ ] (M2d-1c) Force biometric lockout (5 failed attempts) during wrap →
@@ -91,15 +92,15 @@ Run the whole matrix twice, once per device, at minimum:
       rejects with `M2D_KEY_INVALIDATED`; PIN recovery path fires.
 - [ ] (M2d-1c) Inspect the stored record: it is
       `{ wrap: 'androidkey-v1', hw: '<base64>' }` — NOT a raw `{v,kdf,salt,iv,ct}` blob.
-- [ ] (M2d-1c) Roundtrip: unwrap the bundle produced by wrap → get back the
-      original base64 plaintext byte-identical (Cipher.doFinal auth-tag verify
-      passes on the correct bundle; a single-byte flip in the IV or ciphertext
-      → auth-tag verify fails → `M2D_WRAP_FAILED`-equivalent on the unwrap
-      side. Note: unwrap is M2d-1d — this bullet is a M2d-1c/1d integration
-      check to run once 1d lands).
+- [ ] (M2d-1c) Roundtrip: unwrap the ciphertext produced by wrap → get back
+      the original base64 plaintext byte-identical (Cipher.doFinal auth-tag
+      verify passes on the correct ciphertext; a single-byte flip in the IV
+      or the AES-GCM output → auth-tag verify fails → `M2D_WRAP_FAILED`-
+      equivalent on the unwrap side. Note: unwrap is M2d-1d — this bullet
+      is a M2d-1c/1d integration check to run once 1d lands).
 - [ ] The mnemonic / decrypted blob NEVER appears in logcat during create or
       wrap (both debug and release builds). Includes the base64 plaintext
-      argument, the raw ciphertext, and the returned bundle.
+      argument, the raw AES-GCM output, and the returned base64 ciphertext.
 
 ## Unlock (M2d-1d — unwrap → BiometricPrompt with CryptoObject)
 
