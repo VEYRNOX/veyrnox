@@ -1470,41 +1470,59 @@ export default function SendCrypto() {
         )}
         <div>
           <Label htmlFor="send-amount">Amount</Label>
-          <Input id="send-amount" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="mt-1.5 mono-value" />
-          {amountUsd != null && (
-            <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> being sent</p>
-          )}
-          {selectedWallet && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {demoActive
-                ? <>Balance: <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-[10px]">(demo)</span></>
-                : flowSendEnabled
-                  ? <>Balance: {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : "reading from network…"} <span className="text-[10px]">(live)</span></>
-                  : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
-              {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
-            </p>
-          )}
-          {(amount || showErrors) && Number.isFinite(amountNum) && amountNum <= 0 && (
-            <p className="text-xs text-destructive mt-1">
-              {amount ? "Amount must be greater than zero" : "Amount is required"}
-            </p>
-          )}
-          {balanceKnown && amount && Number.isFinite(amountNum) && amountNum > 0 && amountNum > effectiveBalance && (
-            <p className="text-xs text-destructive mt-1">Insufficient balance</p>
-          )}
+          {(() => {
+            const amountBadValue = (amount || showErrors) && Number.isFinite(amountNum) && amountNum <= 0;
+            const amountOverBalance = balanceKnown && amount && Number.isFinite(amountNum) && amountNum > 0 && amountNum > effectiveBalance;
+            const amountInvalid = amountBadValue || amountOverBalance;
+            return (
+              <>
+                <Input
+                  id="send-amount"
+                  type="number"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="mt-1.5 mono-value"
+                  aria-invalid={amountInvalid || undefined}
+                  aria-describedby={amountInvalid ? "send-amount-error" : undefined}
+                />
+                {amountUsd != null && (
+                  <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> being sent</p>
+                )}
+                {selectedWallet && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {demoActive
+                      ? <>Balance: <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-[10px]">(demo)</span></>
+                      : flowSendEnabled
+                        ? <>Balance: {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : "reading from network…"} <span className="text-[10px]">(live)</span></>
+                        : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
+                    {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
+                  </p>
+                )}
+                {amountBadValue && (
+                  <p id="send-amount-error" role="alert" className="text-xs text-destructive mt-1">
+                    {amount ? "Amount must be greater than zero" : "Amount is required"}
+                  </p>
+                )}
+                {!amountBadValue && amountOverBalance && (
+                  <p id="send-amount-error" role="alert" className="text-xs text-destructive mt-1">Insufficient balance</p>
+                )}
+              </>
+            );
+          })()}
           {(amountUsd != null || balanceUsd != null) && (
             <p className="text-[10px] text-muted-foreground/70 mt-0.5">{USD_REFERENCE_NOTE}</p>
           )}
         </div>
 
         {selectedWallet && !sendEnabled && !devUngated && (
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
+          <div role="status" className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
             <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. This asset is receive-only until its crypto path is verified.</p>
           </div>
         )}
         {selectedWallet && !sendEnabled && devUngated && (
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/40">
+          <div role="status" className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/40">
             <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">
               <strong>DEV UNGATE ACTIVE</strong> — the send gate is bypassed for {selectedWallet.currency} via VITE_DEV_UNGATE_SEND (dev build only). This asset's status is unchanged (still <strong>not</strong> live); mainnet remains gated. Testnet verification only — never ship this build.
@@ -1512,7 +1530,7 @@ export default function SendCrypto() {
           </div>
         )}
         {selectedWallet && flowSendEnabled && !isUnlocked && !demoActive && (
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30">
+          <div role="status" className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30">
             <Lock className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">Your wallet is locked. Unlock it in Wallet Settings to sign and send.</p>
           </div>
