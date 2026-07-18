@@ -31,6 +31,7 @@ import CoinLogo from "@/components/CoinLogo";
 import TransactionPreview from "@/components/TransactionPreview";
 import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
 import { toast } from "sonner";
+import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -1138,9 +1139,11 @@ export default function SendCrypto() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       setTxResult(result);
       setStep("done");
+      successHaptic();
       recordAudit("send_completed"); // opt-in audit log; no-op unless enabled + primary session
     },
     onError: (err) => {
+      errorHaptic();
       // When the network send fails AFTER 2FA was consumed, the gate throws
       // TWO_FACTOR (twoFactorVerifiedRef was already cleared — one-shot, secure).
       // Instead of a dead-end toast, re-show the TwoFactorGate so the user can
@@ -1822,7 +1825,7 @@ export default function SendCrypto() {
                     sendError={sendTx.isError ? /** @type {Error} */ (sendTx.error) : null}
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
-                    onSuccess={() => { twoFactorVerifiedRef.current = true; sendTx.mutate(); }}
+                    onSuccess={() => { twoFactorVerifiedRef.current = true; actionHaptic(); sendTx.mutate(); }}
                     verify={async ({ pin, password }) => {
                       if (send2faMethod === SEND_2FA.BIOMETRIC) {
                         // BIOMETRIC mode: the user is already unlocked (vault open = PIN proved).
@@ -1869,6 +1872,7 @@ export default function SendCrypto() {
                       // current). If the window lapsed while idle on this screen, force a re-render so
                       // the block below switches to the step-up prompt instead of sending.
                       if (!DEMO && isSendReauthRequired()) { setReauthTick((t) => t + 1); return; }
+                      actionHaptic();
                       sendTx.mutate();
                     }}
                   >

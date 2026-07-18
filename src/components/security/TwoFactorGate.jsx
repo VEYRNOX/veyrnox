@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, ShieldCheck, Fingerprint } from 'lucide-react';
 import PinPad from '@/components/security/PinPad';
 import { getAuthModel } from '@/lib/authModel';
+import { errorHaptic } from '@/lib/haptics';
 
 const ATTEMPT_CAP = 5;
 
@@ -110,6 +111,7 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
     setAttempts(n);
     setPin('');
     setPassword('');
+    errorHaptic();
     if (n >= ATTEMPT_CAP) {
       onLock?.();
       return;
