@@ -20,8 +20,13 @@
 // DuressPin / StealthWallets / PanicWipe screens — it does not replace them;
 // decision-point honesty stays where the user acts.
 
-import { Scale, FileText, AlertTriangle, EyeOff } from "lucide-react";
+import { Scale, FileText, AlertTriangle, EyeOff, ShieldCheck, ExternalLink } from "lucide-react";
 import BackButton from "@/components/BackButton";
+
+// Public, authoritative privacy policy URL. Referenced from this screen (in-app,
+// reachable from Settings on every platform) and from the Play/App Store listing
+// forms. Kept as a single constant so a change on one side is a one-line edit.
+const PRIVACY_POLICY_URL = "https://veyrnox.com/privacy";
 
 // A normal content section: prose in the default (Schibsted Grotesk) face,
 // sentence case, calm near-black card surface, one teal accent on the icon.
@@ -83,6 +88,27 @@ export default function TermsLegal() {
       </div>
 
       <div className="space-y-3">
+        {/* §0 — Privacy policy (LIVE, publicly hosted). Not a placeholder — this is
+            the authoritative privacy policy, hosted at PRIVACY_POLICY_URL. Also the
+            URL submitted on the Play / App Store listing forms. */}
+        <Section icon={ShieldCheck} title="Privacy policy">
+          <p>
+            The <b>privacy policy</b> for <strong>VEYRNOX</strong> is published at
+            {" "}
+            <a
+              href={PRIVACY_POLICY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm inline-flex items-center gap-1"
+            >
+              {PRIVACY_POLICY_URL}
+              <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            </a>
+            . It is the same URL published on the Google Play and App Store listings — a single
+            authoritative source, updated in one place.
+          </p>
+        </Section>
+
         {/* §A — Terms of use (placeholder, owner/counsel-supplied) */}
         <PlaceholderSection icon={FileText} title="Terms of use">
           <p>

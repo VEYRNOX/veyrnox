@@ -316,8 +316,8 @@ export default function LandingPage() {
             <div>
               <p className="font-semibold mb-4">Legal</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Terms of Service</a></li>
+                <li><a href="https://veyrnox.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Privacy Policy</a></li>
+                <li><a href="/terms" className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Terms of Service</a></li>
               </ul>
             </div>
           </div>
