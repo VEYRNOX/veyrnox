@@ -1902,6 +1902,26 @@ across JS, Kotlin, and Swift updated to reflect the ungated state. Test
 and verify functions reach native (previously asserted `false` + `M2C_DISABLED`
 throws).
 
+## 2026-07-18 test suite fixes — PRs #1179, #1180, #1181, #1182
+
+Four PRs fixing test failures on main after the ECC audit batch and haptics PRs landed:
+
+- **PR #1179** — `Spinner` component gained a `decorative` prop (renders a plain `<span>`
+  without `role="status"`) to avoid nested ARIA live regions and invalid `<div>` inside
+  `<p>` HTML nesting. Applied to 7 Spinner instances in `HardwareKekSettings`,
+  `RiskVerdictBanner`, and `SecurityDashboard`.
+- **PR #1180** — `RestoreFromFile.test.jsx` toast assertion aligned with `@/lib/toast`
+  wrapper (which passes `{ duration }` as a second arg to sonner). Added
+  `expect.anything()` to the `toHaveBeenCalledWith` assertion.
+- **PR #1181** — `/spam-filter` removed from `ALL_ROUTE_PATHS` and `CLASSIFICATION`
+  (the route became a `<Navigate>` redirect in PR #1148; the audit arrays were stale).
+- **PR #1182** — remaining test fixes: `vi.mock('@capacitor/haptics')` added to
+  `wallet-entry-pin-wipe.test.jsx` and `RestoreFromFile.test.jsx` (PinPad transitively
+  imports haptics.js); `RestoreFromFile.test.jsx` toast mock retargeted to `@/lib/toast`.
+  Resolves 4 test files / 2 test failures that were red on main.
+
+All BUILT / unit-tested only, CI-hygiene — no security or feature change.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
