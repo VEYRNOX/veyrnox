@@ -1,3 +1,5 @@
+import { registerCode } from '@/api/referralApi';
+
 const STORAGE_KEY = 'veyrnox-referral';
 const PENDING_KEY = 'veyrnox-referral-pending';
 
@@ -30,6 +32,7 @@ export function generateCode() {
   if (state.code) return state.code;
   const code = randomCode();
   saveState({ ...state, code });
+  void registerCode(code);
   return code;
 }
 
@@ -45,6 +48,7 @@ export async function initCode(generateServerCode) {
   }
   const code = randomCode();
   saveState({ ...state, code });
+  void registerCode(code);
   return code;
 }
 
