@@ -1309,6 +1309,190 @@ plus 17/17 downstream (`entitlement.i3guard`, `TierProvider`, `TierProvider.i3gu
 requires a real device; `@capacitor/app.openUrl` is a no-op stub in web mode). Not
 independently audited, no on-chain txid.
 
+## 2026-07-17 EEC security review — PR #1118 (8 P1 fixes)
+
+Multi-agent EEC-review batch on `origin/main`: 6 parallel specialist reviewers (wallet-core,
+RASP+attestation, hardware KEK, WalletConnect+Send, deniability+panic, recent-PR sweep) +
+3 sequential Codex second-model passes + adversarial refute round. Every finding
+dual-signal confirmed before landing. 17 P2s + 8 P1s filed as issues #1090–#1097 (P1s)
+and #1099–#1115 (P2s); #1112 was already fixed pre-batch in PR #1094 (bonus).
+
+**PR #1118 (fixes #1090–#1097):** BUILT / unit-tested, INTERNAL — NOT device-verified,
+NO on-chain txid, NOT independently audited. 86/86 targeted tests, eslint clean, both
+review passes LAND-READY (0 CRITICAL / 0 HIGH).
+
+- **#1090** — WC `eth_sendTransaction` bypasses Action Password 2FA + spend-limit gate.
+  `handleSendTransaction` / `_handleSendTransaction` now wire `evaluateTwoFactor` +
+  `evaluateSendAgainstLimits`, reject with `WC_TWO_FACTOR_REQUIRED` /
+  `WC_SEND_LIMIT_EXCEEDED` codes when not verified. Prior behaviour let a connected
+  dApp drain funds within the step-up re-auth window without the second factor.
+- **#1091** — WC `eth_sendTransaction` didn't bind `txParams.from` to the active EVM
+  address. Pre-modal binding in `session_request` event handler (mirroring H8 pattern
+  for `personal_sign`) verifies match case-insensitive; reject with
+  `SEND_ADDRESS_MISMATCH` before approval modal. Runtime backstop inside
+  `_handleSendTransaction`. Prior behaviour signed with the active wallet's key
+  regardless of the dApp's `from` claim.
+- **#1092** — WC `eth_signTypedData_v4` didn't bind `params[0]` to the active EVM
+  address (H7 covered chain-ID only). `_handleSignTypedData` now receives
+  `evmAddress`; pre-modal binding + handler-time backstop reject with
+  `TYPED_DATA_ADDRESS_MISMATCH`. Permit / meta-tx typed-data signatures issued under a
+  foreign "owner" claim would previously still be valid signatures from the active
+  wallet's key.
+- **#1093** — WC `presignGate` hardcoded `txLevel=LEVEL.OK` (no tx-risk scoring on
+  dApp-supplied transactions). Now composes real tx-risk via S2 (unlimited-approval,
+  pure calldata) + S4 (address-poisoning, wired but currently inert — no address book
+  at WC handler time). Poison-address / unlimited-approval / drain calldata coming from
+  a hostile dApp now trigger CONFIRM/BLOCK on the tx plane, not just the RASP env plane.
+- **#1094** — `kekPinNotice` fired + persisted `veyrnox-kek-pin-notice` localStorage
+  marker in decoy/hidden sessions (I3 deniability leak; marker survived panic wipe).
+  `ensureKekPinNoticeOnNative()` now gates both the toast and the marker write on
+  `isDeniabilityOrDemoActive()`; both `veyrnox-kek-pin-notice` and
+  `veyrnox-2fa-biometric-auto` (PR #1033) added to `panic.js` `ALL_RESIDUE_KEYS`.
+  Bonus: closed P2 #1112 in the same commit.
+- **#1095** — `GasTracker` Refresh button `onClick={() => refetch()}` bypassed
+  react-query v5 `enabled: egressAllowed` gate in decoy/hidden/DEMO sessions. Third
+  instance of this bug class (PRs #614, #925 were the prior two). Button hidden
+  entirely (not disabled — hidden) via `{egressAllowed && (...)}`. Also added
+  `scripts/check-deniability-strings.mjs` rule 3 (`D-refetch-egress-bypass`) with a
+  `runSelfTest()` invocation at the top of `main()` to catch a fourth instance at CI
+  time. Two pre-existing instances in `FeeAnalytics.jsx` and `TransactionHistory.jsx`
+  grandfathered in `RULE3_LEGACY_EXEMPT_PATHS` — filed as #1120 + #1121, closed via
+  main's PR #1130 (which used the LIVE `isDeniabilityOrDemoActive` helper — stronger
+  than my `isDeniabilitySessionActive` version).
+- **#1096** — `NewsSentimentPage` LLM refresh POSTed to `openrouter.ai` with Bearer key
+  + `HTTP-Referer: veyrnox.com` from decoy/hidden sessions (I2/I3 violation). Two-layer
+  fix (belt + suspenders per PR #783 / #858 / #921 chokepoint pattern): primitive-layer
+  `invokeLLM` throws coded `I3_DENIABILITY_ACTIVE` before `fetch`; UI-layer Refresh
+  button hidden.
+- **#1097** — Play Integrity JWS trust bypass. Two coupled defects: (a) pinned root set
+  contained only GTS Root R1 (real tokens chain via R2/R3/R4 — pin missed for
+  virtually every real token), (b) trust check was OR of pin ∨ `issuer.contains("Google")`
+  substring fallback (a self-signed cert with `CN=Google...` in the subject satisfied
+  it). Attacker on a rooted device with a hostile CA / self-signed cert could forge an
+  INTEGRITY-passing payload; the RASP + WC/Send gate would report attested-clean.
+  Fix: dropped the issuer-string fallback (pin is now the sole trust decision), expanded
+  `GOOGLE_ROOT_CA_SHA256` to include GTS R1–R4 (source: pki.goog root bundle,
+  2026-07-17), rejected `x5c` chains of length <2 (real Play Integrity tokens always
+  have leaf + intermediate). Deleted 2 false-positive tests (`ES256 happy path`,
+  `RS256 happy path`) that generated self-signed `CN=Google` fixtures and expected
+  them to verify — the tests themselves proved the bypass was live. Replaced with
+  legitimate 2-cert fixture using an `ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING` seam +
+  RED-1 (self-signed `CN=Google` MUST NOT verify) + RED-2 (chain of length 1 MUST NOT
+  verify) + two defence-in-depth pin-miss negatives. G2-ROOTCERT-PIN residual escalated
+  from "theoretical" to "the test suite proves it" in the review — closed.
+
+**Refuted after adversarial verify:** 1 finding. My reviewer flagged
+`HARDWARE_FACTOR_DEGENERATE` as not in the wrong-PIN-counter exemption set (would
+miscount towards 10-strike panic wipe). Codex Pass 2 refuted: the code IS in
+`KEK_UI_ERR` (not `KEK_ERR`) and IS explicitly exempted at `WalletEntry.jsx:784`.
+Reviewer looked at the wrong enum. Withdrawn without landing.
+
+**Deferred by design:** 1 finding. Codex Pass 3 flagged software-Send in deniability
+sessions as unguarded. Verified in code: the ONLY deniability throw in `sendTx.mutationFn`
+is Trezor-scoped; the in-code comment at `SendCrypto.jsx:919-921` reads explicitly
+"software-key sends are UNAFFECTED (decoy has its own decoy vault, that path is
+legitimate)". `evaluateSendGate` documented "SET-BLIND (I3)". Codex was factually right
+but missed the design-invariant context — decoy signs with its own decoy key, not a
+real-wallet leak. Owner-decision item if the design should change; not a bug.
+
+**Adversarial verify round on Codex-only P1 findings** (3 skeptics, defaulting to
+REFUTED on uncertainty): all 3 CONFIRMED, including the 2 novel Codex catches
+(`eth_sendTransaction` `from`-binding and `signTypedData_v4` signer-address binding)
+that neither my parallel reviewers nor CLAUDE.md's documented WC controls had flagged.
+The two-developer protocol earned its keep on those two alone.
+
+## 2026-07-18 Vault AAD v:3 migration plan iterations — PRs #1139, #1140 (docs-only)
+
+Plan-first pattern for the deferred #1111 (fold `hardwareKekVersion` + `kekSalt` +
+`kekWrap` into kek-dek AAD so a down-stamp attack fails closed at the cipher layer).
+BOTH my P2 batch agent and main's PR #1129 independently deferred #1111 with the same
+conclusion — this requires a coordinated v:2→v:3 migration across the whole KEK stack
+(`_unlockInner`, `changePassword`, `upgradeKekToV3`, `enrollKek`, `saveVaultContents`).
+PR #1076 shipped a similar-shaped change and produced two P1 regressions on merge day
+(fixed same-day in PR #1079); landing this blind would repeat that class of failure.
+Plan-first was the honest response.
+
+**PR #1139 — plan r1.** Initial planning document at
+`docs/superpowers/plans/2026-07-18-vault-aad-v3-migration.md`. Docs-only, no code.
+Design sketch: single `VAULT_VERSION` bump 2→3; `vaultAad(blob)` gates on `blob.v` (not
+constant); migration runs on `changePassword` / `upgradeKekToV3` (never on unlock hot
+path, honouring PR #662).
+
+**Codex r1 second-pass — verdict: REQUIRES_PLAN_REVISION.** 4 P1s + 3 P2s
+([#1111 comment](https://github.com/VEYRNOX/veyrnox/issues/1111#issuecomment-5008592301)):
+- **P1a** — `encryptVaultWithDek(secret, dek)` seals AAD from an internal
+  `{v, kdf, iv}` stub; `native.js` knows `hardwareKekVersion`/`kekSalt`/`kekWrap` only
+  AFTER seal. r1 implicitly assumed seal-time knowledge → immediate lockout on first
+  v:3 seal.
+- **P1b** — `changePassword` / `upgradeKekToV3` rotate `{kekWrap, kekSalt,
+  hardwareKekVersion}` while preserving `blob.iv` / `blob.ct` — seed ciphertext sealed
+  under v:2 AAD would fail v:3 AAD verification on next unlock.
+- **P1c** — Plan said "native-only" but `VAULT_VERSION` is a shared global. Bumping to
+  3 breaks argon2id `decryptVault` (`v ∈ {1, 2}` only), plus `duress.js` / `stealth.js`
+  / `vaultBackup.js` which reuse the shared encrypt/decrypt.
+- **P1d** — `vaultBackup.js` `isValidBlob()` / `isValidBackup()` accept only v:1 or v:2
+  — v:3 seals fail backup verify.
+- P2a: `saveVaultContents` "preserve v" contract inexpressible with current
+  `encryptVaultWithDek` helper.
+- P2b: `withLockSuppressed` is NOT a write lock (it's a lock-suppression counter) — r1's
+  concurrency claim was false.
+- P2c: Rollback scope too narrow — mixed-version storage would strand v:3 non-KEK blobs
+  even if the primary KEK vault wasn't migrated.
+
+**PR #1140 — plan r2.** Full rewrite closing all 4 P1s structurally:
+- **P1a fix** — new `encryptVaultWithDek(secret, dek, aadShape?)` signature; caller
+  composes the FINAL blob shape and the AAD is built from the same shape decrypt will
+  read. No stub.
+- **P1b fix** — migration explicitly re-seals the seed ciphertext (decrypt inner →
+  fresh IV → re-encrypt) in a single atomic transaction, not a wrap-rewrite.
+- **P1c fix** — per-kdf version constants: `VAULT_VERSION_ARGON2ID = 2` (pinned) +
+  `KEK_BLOB_VERSION = 3` (new). `vaultNeedsRekey` gates per-kdf. Argon2id path touches
+  zero downstream code.
+- **P1d fix** — `isValidBlob` per-kdf gate + older-client "backup requires app update"
+  disclosure.
+- **P2 fixes** — real in-memory Promise-chained Mutex; `withLockSuppressed` renamed to
+  `suppressLockTimer` (its actual job); staged-write transaction so pre-migration v:2
+  blob deleted only after v:3 verified readable; three-file atomic revert scope
+  (`vault.js` + `native.js` + `vaultBackup.js`).
+
+**Codex r2 second-pass — verdict: REQUIRES_PLAN_REVISION again.** r1 P1a + P1c fully
+closed; the other 5 became "new-variants" (structural direction right, integration
+details fell short). 2 new P1s + 4 new P2s
+([#1111 comment](https://github.com/VEYRNOX/veyrnox/issues/1111#issuecomment-5008662300)):
+- **P1 (new)** — Installed-base migration reach gap. Post-PR #568 vaults on disk today
+  are `{v:2, kdf:'kek-dek', hardwareKekVersion:3, kekSalt, kekWrap}`. r2's
+  `upgradeKekToV3` idempotence check short-circuits on `blob.hardwareKekVersion === 3`;
+  `HardwareKekSettings` hides the Upgrade card. **These vaults never migrate to
+  AAD-bound v:3** unless the user later changes password/PIN. r2 conflated the
+  pre-existing `hardwareKekVersion` protocol marker with the new AAD blob-`v`.
+- **P1 (new)** — Mutex omits `clearVault` / panic wipe. A long biometric migration
+  awaits after reading the v:2 blob; user triggers panic wipe; wipe clears storage and
+  hardware credential; migration resumes and writes a v:3 blob from the stale pre-wipe
+  read → **vault resurrected on disk after the user attempted to clear it.**
+  Vault-resurrection-after-panic-wipe is a serious deniability failure.
+- Four P2s on storage-abstraction rename semantics, backup path alignment,
+  `aadShape` callback API consistency, and a contradiction between two
+  `saveVaultContents` sketch sections.
+
+**r2 was merged as-is (`cd6dc567`) + handoff to owner.** Codex confirmed r2 is
+materially stronger than r1; the remaining gaps are integration-reality issues that
+require a live implementer + owner engagement (staging semantics, real backup path
+integration, installed-base migration reach, `clearVault` lifecycle interaction). One
+more Claude+Codex cycle would keep uncovering the same class of gap; the honest signal
+is that plan-alone iteration has hit diminishing returns and the next progress step is
+human.
+
+**#1111 remains open.** Implementation blocked on:
+1. Owner sign-off on r2's open decisions (per-kdf constants, `downgradeKekToV2` escape
+   hatch, backup path scope).
+2. Implementer + owner decision session on the 2 new P1s + 4 P2s from Codex r2.
+3. Assignment of an implementer (currently unassigned).
+
+**Independent third-party security audit — still the ultimate gate per CLAUDE.md.**
+None of this plan-iteration substitutes for it. Codex is an INTERNAL second-model
+review, tier-equivalent to an internal AI review pass, not the outstanding independent
+third-party audit.
+
 ## 2026-07-17/18 P2 issue sweep — PRs #1128–#1135
 
 Batch closure of 18 open P2 issues across 7 PRs (all squash-merged via `--admin`). All
