@@ -18,10 +18,12 @@ const restorePurchasesMock = vi.fn();
 const getCustomerInfoMock = vi.fn();
 const addCustomerInfoUpdateListenerMock = vi.fn();
 const removeCustomerInfoUpdateListenerMock = vi.fn();
+const setAttributesMock = vi.fn();
 vi.mock('@revenuecat/purchases-capacitor', () => ({
   Purchases: {
     configure,
     setLogLevel: setLogLevelMock,
+    setAttributes: setAttributesMock,
     getOfferings: getOfferingsMock,
     purchasePackage: purchasePackageMock,
     restorePurchases: restorePurchasesMock,
@@ -50,6 +52,7 @@ const {
   getCustomerInfo,
   addCustomerInfoUpdateListener,
   manageSubscription,
+  setReferralAttribute,
 } = await import('../purchases');
 
 beforeEach(() => {
@@ -199,5 +202,43 @@ describe('purchases.js — setLogLevel hardening (LOG-1)', () => {
     const fresh = await import('../purchases');
     setLogLevelMock.mockRejectedValue(new Error('plugin failure'));
     await expect(fresh.configurePurchases()).resolves.toBeUndefined();
+  });
+});
+
+describe('purchases.js — setReferralAttribute', () => {
+  it('no-ops on web', async () => {
+    isNativePlatform.mockReturnValue(false);
+    await setReferralAttribute('VYX-1234');
+    expect(setAttributesMock).not.toHaveBeenCalled();
+  });
+
+  it('no-ops when code is null/empty', async () => {
+    isNativePlatform.mockReturnValue(true);
+    await setReferralAttribute(null);
+    await setReferralAttribute('');
+    expect(setAttributesMock).not.toHaveBeenCalled();
+  });
+
+  it('calls Purchases.setAttributes with the referral code on native after configure', async () => {
+    isNativePlatform.mockReturnValue(true);
+    getPlatform.mockReturnValue('android');
+    vi.stubEnv('VITE_REVENUECAT_GOOGLE_API_KEY', 'goog-key');
+    vi.resetModules();
+    const fresh = await import('../purchases');
+    await fresh.configurePurchases();
+    setAttributesMock.mockResolvedValue(undefined);
+    await fresh.setReferralAttribute('VYX-DEMO');
+    expect(setAttributesMock).toHaveBeenCalledWith({ referralCode: 'VYX-DEMO' });
+  });
+
+  it('swallows setAttributes rejection (best-effort)', async () => {
+    isNativePlatform.mockReturnValue(true);
+    getPlatform.mockReturnValue('ios');
+    vi.stubEnv('VITE_REVENUECAT_APPLE_API_KEY', 'ios-key');
+    vi.resetModules();
+    const fresh = await import('../purchases');
+    await fresh.configurePurchases();
+    setAttributesMock.mockRejectedValue(new Error('network failure'));
+    await expect(fresh.setReferralAttribute('VYX-FAIL')).resolves.toBeUndefined();
   });
 });

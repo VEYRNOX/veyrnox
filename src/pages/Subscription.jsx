@@ -22,6 +22,7 @@ import {
   purchasePackage,
   restorePurchases,
   manageSubscription,
+  setReferralAttribute,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
 } from "@/lib/purchases";
@@ -105,6 +106,7 @@ export default function Subscription() {
       if (refCode && !hasAttributed()) {
         const rev = PLAN_REVENUE_CENTS[effectiveBilling] || PLAN_REVENUE_CENTS.monthly;
         recordAttribution(refCode, effectiveBilling, rev).catch(() => {});
+        setReferralAttribute(refCode).catch(() => {});
         markAttributed();
       }
       toast.success("Safety Plus unlocked");

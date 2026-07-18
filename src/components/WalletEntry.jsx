@@ -1445,8 +1445,8 @@ export default function WalletEntry() {
                   <Input
                     value={referralInput}
                     onChange={e => setReferralInput(e.target.value.toUpperCase())}
-                    placeholder="VYX-XXXX"
-                    maxLength={8}
+                    placeholder="VYX-XXXXXX"
+                    maxLength={10}
                     autoCapitalize="characters"
                     autoCorrect="off"
                     className="mono-value tracking-widest text-sm"

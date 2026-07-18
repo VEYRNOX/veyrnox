@@ -79,6 +79,21 @@ export async function addCustomerInfoUpdateListener(callback) {
   return () => Purchases.removeCustomerInfoUpdateListener({ listenerToRemove: listenerId });
 }
 
+// Tag the RC customer with a referral code so attribution is visible in the
+// RevenueCat dashboard alongside revenue data. Best-effort — a failure here
+// must never block the purchase flow or surface an error to the user.
+// Owner override 2026-07-18: setAttributes was previously on the "do not add"
+// list (identity leak concern); unlocked for referral-code-only attribution.
+// The referral code identifies the REFERRER, not the purchaser — no wallet
+// address, seed, or balance is ever sent. I3-gated at the call site
+// (Subscription.jsx only calls this after a successful real-session purchase).
+export async function setReferralAttribute(code) {
+  if (!isNative() || !configured || !code) return;
+  try {
+    await Purchases.setAttributes({ referralCode: code });
+  } catch { /* best-effort */ }
+}
+
 // Deep-link to the platform's own subscription management page (Apple: App Store
 // Subscriptions; Google: Play Store Subscriptions). The Capacitor RC plugin does
 // not expose the native SDK's `showManageSubscriptions`, so this uses the
