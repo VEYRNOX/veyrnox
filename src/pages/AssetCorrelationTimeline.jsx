@@ -63,13 +63,10 @@ function fmtDate(ts) {
   return new Date(ts * 1000).toLocaleDateString("en-GB", { month: "short", day: "numeric" });
 }
 
-// ---------------------------------------------------------------------------
-// Pair colours — teal, purple, orange — no new accent colours introduced.
-// ---------------------------------------------------------------------------
 const PAIRS = [
-  { key: "btc-eth", label: "BTC–ETH", color: "#4ADAC2" },
-  { key: "btc-sol", label: "BTC–SOL", color: "#A78BFA" },
-  { key: "eth-sol", label: "ETH–SOL", color: "#FB923C" },
+  { key: "btc-eth", label: "BTC–ETH", color: "hsl(var(--primary))" },
+  { key: "btc-sol", label: "BTC–SOL", color: "hsl(var(--chart-5))" },
+  { key: "eth-sol", label: "ETH–SOL", color: "hsl(var(--chart-2))" },
 ];
 
 const WINDOW = 7; // rolling window in days

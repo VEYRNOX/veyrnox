@@ -54,7 +54,7 @@ export default function CryptoDetailPage() {
               ${asset.usd.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </span>
             {isUp != null && (
-              <span className={`text-xs font-mono ${isUp ? "text-[#4ADAC2]" : "text-destructive"}`}>
+              <span className={`text-xs font-mono ${isUp ? "text-success" : "text-destructive"}`}>
                 {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(2)}%
               </span>
             )}
