@@ -2075,6 +2075,48 @@ owner-decision on whether to Internal-Test / Closed-Test / Production-launch
 before it lands. Not a Play requirement; is a Veyrnox honest-scope requirement
 under I4.
 
+## 2026-07-18 Referral system — PRs #1194, #1195
+
+Two PRs building the full referral/affiliate system. All BUILT / unit-tested only,
+INTERNAL — NOT device-verified, NOT independently audited, no on-chain txid (referral
+system is app-layer, not on-chain).
+
+**PR #1194 (`d9c5e710`) — tier-based discount-payback model.** Core referral logic in
+`src/lib/referral.js`: 4-tier commission structure (Bronze 0–100 referrals / 2.5%,
+Silver 100–1K / 5%, Gold 1K–10K / 10%, Platinum 10K–100K / 15%). Discount-based model:
+influencer's tier determines their followers' discount percentage on Safety Plus
+subscriptions; the influencer earns an equivalent commission. RevenueCat offerings:
+4 tier-specific offerings (`referral-bronze` through `referral-platinum`), each with
+monthly + annual packages containing discounted products. `calculateDiscountCents()` and
+`calculateEarnings()` helpers. Supabase schema: `sql/add-discount-cents.sql` migration
+adds `discount_cents` column to `referral_attributions`. `ReferralTracker.jsx` dashboard
+with progress bar, tier cards showing $/yr per sub, and earnings card.
+`scripts/setup-referral-offerings.mjs` creates all 8 RC products/packages via v2 API.
+`scripts/preflight-iap-config.mjs` extended with referral tier offering checks (step 5).
+46/46 tests. I3 invariant preserved: all Supabase/RC calls gated on
+`isDeniabilityOrDemoActive()`.
+
+**PR #1195 (`a4c98f2b`) — Supabase server-side code generation + rewards dashboard.**
+Server-side referral code generation via Supabase RPC `generate_referral_code()` in
+`sql/generate-referral-code.sql` — uses `gen_random_bytes(6)` with collision retry
+(up to 10 attempts). Character set excludes ambiguous glyphs (no 0/O/1/I). Function
+deployed to Supabase project `jwstkrtslotnjyerzzsi` and executed successfully.
+`src/api/referralApi.js` `generateServerCode()` export (I3-gated — returns null in
+deniability/demo sessions). `src/lib/referral.js` `initCode(generateServerCode)` async
+function: server-first with local `randomCode()` fallback; stamps `serverGenerated: true`
+on server-generated codes. `WalletProvider.jsx` wires `initCode(generateServerCode)` into
+both `createWallet` and `importWallet` as best-effort fire-and-forget (same pattern as
+`ensureStealthPool`). `ReferralTracker.jsx` gains "Rewards & payouts" section with
+`rewards@veyrnox.com` mailto link. `EXTERNAL_REWARD_URL` fixed from `rewards@veyrnox.app`
+to `rewards@veyrnox.com`. `serverGenerated` guard on `registerCode` call (server-generated
+codes don't need re-registration). 50/50 tests (4 new `initCode` tests).
+
+**Outstanding:**
+- App Store Connect: 8 iOS auto-renewing subscription products for referral tiers
+  (scheduled for Apple day).
+- Sandbox purchase test with referral code on Android device.
+- Independent audit: still outstanding.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
