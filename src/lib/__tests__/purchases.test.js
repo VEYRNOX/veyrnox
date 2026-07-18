@@ -45,8 +45,10 @@ const {
   SAFETY_PLUS_ENTITLEMENT,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
+  REFERRAL_OFFERING_ID,
   configurePurchases,
   getOfferings,
+  getReferralOffering,
   purchasePackage,
   restorePurchases,
   getCustomerInfo,
@@ -202,6 +204,37 @@ describe('purchases.js — setLogLevel hardening (LOG-1)', () => {
     const fresh = await import('../purchases');
     setLogLevelMock.mockRejectedValue(new Error('plugin failure'));
     await expect(fresh.configurePurchases()).resolves.toBeUndefined();
+  });
+});
+
+describe('purchases.js — getReferralOffering', () => {
+  it('returns null on web without calling the plugin', async () => {
+    isNativePlatform.mockReturnValue(false);
+    expect(await getReferralOffering()).toBeNull();
+    expect(getOfferingsMock).not.toHaveBeenCalled();
+  });
+
+  it('returns the referral offering from the all dict on native', async () => {
+    isNativePlatform.mockReturnValue(true);
+    const referralOffering = { identifier: 'referral', availablePackages: [] };
+    getOfferingsMock.mockResolvedValue({ current: null, all: { referral: referralOffering } });
+    expect(await getReferralOffering()).toEqual(referralOffering);
+  });
+
+  it('returns null when no referral offering exists', async () => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferingsMock.mockResolvedValue({ current: null, all: {} });
+    expect(await getReferralOffering()).toBeNull();
+  });
+
+  it('returns null on plugin error (best-effort)', async () => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferingsMock.mockRejectedValue(new Error('network'));
+    expect(await getReferralOffering()).toBeNull();
+  });
+
+  it('exports the referral offering ID constant', () => {
+    expect(REFERRAL_OFFERING_ID).toBe('referral');
   });
 });
 
