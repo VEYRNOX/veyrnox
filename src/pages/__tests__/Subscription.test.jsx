@@ -14,16 +14,37 @@ vi.mock('@capacitor/core', () => ({
 }));
 
 const getOfferings = vi.fn();
+const getReferralOffering = vi.fn();
 const purchasePackage = vi.fn();
 const restorePurchases = vi.fn();
 const manageSubscription = vi.fn();
+const setReferralAttribute = vi.fn();
 vi.mock('@/lib/purchases', () => ({
   getOfferings: (...a) => getOfferings(...a),
+  getReferralOffering: (...a) => getReferralOffering(...a),
   purchasePackage: (...a) => purchasePackage(...a),
   restorePurchases: (...a) => restorePurchases(...a),
   manageSubscription: (...a) => manageSubscription(...a),
+  setReferralAttribute: (...a) => setReferralAttribute(...a),
   SAFETY_PLUS_MONTHLY_PACKAGE: '$rc_monthly',
   SAFETY_PLUS_ANNUAL_PACKAGE: '$rc_annual',
+}));
+
+const hasRedeemedMock = vi.fn(() => false);
+const getRedeemedCodeMock = vi.fn(() => null);
+const hasAttributedMock = vi.fn(() => false);
+const markAttributedMock = vi.fn();
+vi.mock('@/lib/referral', () => ({
+  hasRedeemed: () => hasRedeemedMock(),
+  getRedeemedCode: () => getRedeemedCodeMock(),
+  hasAttributed: () => hasAttributedMock(),
+  markAttributed: () => markAttributedMock(),
+  PLAN_REVENUE_CENTS: { monthly: 599, annual: 4999 },
+}));
+
+const recordAttribution = vi.fn();
+vi.mock('@/api/referralApi', () => ({
+  recordAttribution: (...a) => recordAttribution(...a),
 }));
 
 const refreshTier = vi.fn();
@@ -213,5 +234,97 @@ describe('Subscription page — Manage subscription hidden when it should be', (
     // Wait long enough for any offering effect (there is none on web) to run.
     await waitFor(() => expect(screen.getByText(/Plans/i)).toBeTruthy());
     expect(screen.queryByRole('button', { name: /manage subscription/i })).toBeNull();
+  });
+});
+
+describe('Subscription page — referral discount', () => {
+  const defaultPackages = [
+    { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
+    { identifier: '$rc_annual', product: { priceString: '$49.99' } },
+  ];
+  const referralPackages = [
+    { identifier: '$rc_monthly', product: { priceString: '$3.99' } },
+    { identifier: '$rc_annual', product: { priceString: '$34.99' } },
+  ];
+
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferings.mockResolvedValue({ availablePackages: defaultPackages });
+    getReferralOffering.mockResolvedValue({ availablePackages: referralPackages });
+  });
+
+  it('shows the discount banner when user has a redeemed referral code', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/referral discount applied/i)).toBeTruthy());
+  });
+
+  it('does not show the discount banner when no code has been redeemed', async () => {
+    hasRedeemedMock.mockReturnValue(false);
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    expect(screen.queryByText(/referral discount applied/i)).toBeNull();
+  });
+
+  it('does not show the discount banner when user is already on safety_plus', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    useTierMock.mockReturnValue({ currentTier: 'safety_plus', tiers: [], refreshTier });
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/Plans/i)).toBeTruthy());
+    expect(screen.queryByText(/referral discount applied/i)).toBeNull();
+  });
+
+  it('shows referral prices instead of default prices', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$34.99').length).toBeGreaterThan(0));
+  });
+
+  it('shows strikethrough regular price next to the discounted price', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$34.99').length).toBeGreaterThan(0));
+    const regularPriceEls = screen.getAllByText('$49.99');
+    const hasStrikethrough = regularPriceEls.some(
+      (el) => el.classList.contains('line-through') || el.closest('.line-through')
+    );
+    expect(hasStrikethrough).toBe(true);
+  });
+
+  it('purchasing with discount records attribution', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
+    hasAttributedMock.mockReturnValue(false);
+    purchasePackage.mockResolvedValue({});
+    refreshTier.mockResolvedValue('safety_plus');
+    recordAttribution.mockResolvedValue({});
+    setReferralAttribute.mockResolvedValue(undefined);
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$34.99').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-ABC123', 'annual', 4999));
+    expect(setReferralAttribute).toHaveBeenCalledWith('VYX-ABC123');
+    expect(markAttributedMock).toHaveBeenCalled();
+  });
+
+  it('does not record attribution when already attributed', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
+    hasAttributedMock.mockReturnValue(true);
+    purchasePackage.mockResolvedValue({});
+    refreshTier.mockResolvedValue('safety_plus');
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$34.99').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    await waitFor(() => expect(purchasePackage).toHaveBeenCalled());
+    expect(recordAttribution).not.toHaveBeenCalled();
+  });
+
+  it('falls back to default prices when referral offering is unavailable', async () => {
+    hasRedeemedMock.mockReturnValue(true);
+    getReferralOffering.mockResolvedValue(null);
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    expect(screen.queryByText(/referral discount applied/i)).toBeNull();
   });
 });
