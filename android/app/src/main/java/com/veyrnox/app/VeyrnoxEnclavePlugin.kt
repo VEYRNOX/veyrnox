@@ -63,6 +63,7 @@ package com.veyrnox.app
 //     is the M2d-1c/-1d device runbook surfacing UX pain.
 
 import android.os.Build
+import androidx.fragment.app.FragmentActivity
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -164,14 +165,100 @@ class VeyrnoxEnclavePlugin : Plugin() {
     }
 
     // ── Gated: wraps a vault blob. Fail-closed while M2D_ENABLED is false ──
+    //
+    // M2d-1c: real AES-GCM encrypt behind BiometricPrompt(CryptoObject(cipher)).
+    // The M2D_ENABLED gate STAYS at the top of this method — code lands INSIDE
+    // the guard; production runtime is byte-identical to the M2d-1b scaffold
+    // (immediate M2C_DISABLED reject) until the flag flips in lockstep with
+    // the JS-side gates AFTER the device runbook + independent audit sign-off.
+    //
+    // Asynchronous: BiometricPrompt callbacks fire on the main thread. We
+    // MUST NOT resolve/reject synchronously — the plugin call is kept alive
+    // via setKeepAlive(true), and the callback surfaces the terminal result.
+    //
+    // I3 note: this plugin does NOT know about deniability sessions. Any I3
+    // gating is the CALLER's responsibility (JS-side native.js). This is an
+    // OS-primitive wrapper — future readers, do NOT add session-type logic
+    // here (it would leak into the biometric prompt UX and defeat I3).
+    //
+    // Documented UX tradeoff (M2d-1b decision, see EnclaveKeyService header):
+    // AES-GCM single-key with setUserAuthenticationRequired(true) binds BOTH
+    // wrap AND unwrap to a biometric prompt. Users are present at vault
+    // creation / add-wallet, so a prompt on wrap is acceptable. The
+    // "wrap without prompt" alternative would require RSA-OAEP asymmetric,
+    // whose StrongBox support is spotty across OEMs (plan §5 fallback branch).
     @PluginMethod
     fun wrap(call: PluginCall) {
         if (!M2D_ENABLED) {
             call.reject(DISABLED_MESSAGE, DISABLED_CODE)
             return
         }
-        // M2d-1c lands the wrap-key AES-GCM encrypt here.
-        call.reject(NOT_IMPLEMENTED_MESSAGE, NOT_IMPLEMENTED_CODE)
+        // API gate — mirrors createWrappingKey. wrap() uses the same key with
+        // the same API-30+ auth params, so refuse on older APIs symmetrically.
+        if (Build.VERSION.SDK_INT < EnclaveKeySpecConfig.MIN_API) {
+            call.reject(REQUIRES_ANDROID_11_MESSAGE, REQUIRES_ANDROID_11_CODE)
+            return
+        }
+        val blobB64 = call.getString("blob")
+        if (blobB64.isNullOrEmpty()) {
+            call.reject("wrap requires a non-empty base64 'blob' argument", "M2D_MISSING_BLOB")
+            return
+        }
+        // BiometricPrompt requires a FragmentActivity. Capacitor's activity
+        // (Bridge.getActivity → BridgeActivity → AppCompatActivity extends
+        // FragmentActivity) satisfies this at runtime, but stay honest with
+        // an explicit null/type check — I4.
+        val fragmentActivity = activity as? FragmentActivity ?: run {
+            call.reject("Activity is not a FragmentActivity", "NO_CONTEXT")
+            return
+        }
+        // Async — the biometric callback is what resolves/rejects. Without
+        // setKeepAlive(true), the bridge releases the PluginCall as soon as
+        // this method returns, and the eventual resolve/reject no-ops.
+        //
+        // Codex 2026-07-18 P2 follow-up: Capacitor retains keep-alive calls so
+        // they can emit MULTIPLE results — without an explicit setKeepAlive(false)
+        // before the terminal resolve/reject, each completed wrap would leave a
+        // retained PluginCall behind, leaking bridge slots over time. Reset the
+        // keep-alive on EVERY terminal path before surfacing the result.
+        call.setKeepAlive(true)
+        try {
+            service.wrap(fragmentActivity, blobB64) { result ->
+                result.fold(
+                    onSuccess = { b64 ->
+                        // Codex 2026-07-18 P2 follow-up: shape MUST match the
+                        // shared JS wrapper (src/plugins/veyrnoxEnclave.js:
+                        // `const { ciphertext } = await VeyrnoxEnclave.wrap(...)`)
+                        // and the iOS bridge, both of which use "ciphertext" —
+                        // NOT "bundle". Returning "bundle" would make Android
+                        // hwWrap() destructure `undefined`.
+                        val response = JSObject().apply { put("ciphertext", b64) }
+                        call.setKeepAlive(false)
+                        call.resolve(response)
+                    },
+                    onFailure = { err ->
+                        // Android PluginCall.reject signature is (message, code)
+                        // — see the createWrappingKey note above (Codex 2026-07-17 P2-A).
+                        call.setKeepAlive(false)
+                        if (err is EnclaveKeyService.WrapException) {
+                            call.reject(err.message ?: err.code, err.code)
+                        } else {
+                            // Never leak plaintext or ciphertext in error text.
+                            call.reject(
+                                "wrap failed: ${err.javaClass.simpleName}",
+                                EnclaveKeyService.WrapErrors.WRAP_FAILED,
+                            )
+                        }
+                    },
+                )
+            }
+        } catch (e: Exception) {
+            // Guard against a synchronous throw from the setup path (shouldn't
+            // happen — service.wrap catches its own init errors — but I4
+            // defence-in-depth). Release the keep-alive on this terminal path too.
+            call.setKeepAlive(false)
+            call.reject("wrap failed: ${e.javaClass.simpleName}", EnclaveKeyService.WrapErrors.WRAP_FAILED)
+        }
     }
 
     // ── Gated: unwraps under a biometric prompt. Fail-closed while off. ────
