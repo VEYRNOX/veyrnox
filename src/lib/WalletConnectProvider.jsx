@@ -20,7 +20,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { ethers } from 'ethers';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Capacitor } from '@capacitor/core';
 import {
   initWalletConnect,

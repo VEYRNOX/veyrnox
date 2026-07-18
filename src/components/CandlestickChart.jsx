@@ -8,6 +8,7 @@ import { fetchOHLCV } from "@/lib/ohlcv";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import { PERIOD_PARAMS, formatCandleTime } from "@/lib/chartPeriods";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import Spinner from "@/components/Spinner";
 
 const CandlestickBar = (props) => {
   const { x, width, open, close, high, low, chartHeight, yMin, yRange } = props;
@@ -106,10 +107,7 @@ export default function CandlestickChart({ symbol, period }) {
       )}
       {livePricesOn && isLoading && (
         <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-          <svg className="motion-safe:animate-spin h-5 w-5 mr-2 text-primary" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-          </svg>
+          <Spinner size="sm" className="mr-2" label="Loading chart…" />
           Loading chart…
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Copy, Cpu, Usb, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useTrezor } from '@/context/TrezorContext';
 import { TrezorConnectModal } from '@/components/hw/TrezorConnectModal';
 

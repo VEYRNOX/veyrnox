@@ -21,7 +21,8 @@
 // evidence (e.g. S8 emits formatted amounts, not raw wei).
 
 import { useId } from 'react';
-import { AlertTriangle, ShieldAlert, Info, Loader2 } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, Info } from 'lucide-react';
+import Spinner from '@/components/Spinner';
 
 // Map a composite level to its design-system token + icon. OK renders nothing.
 const STYLES = {
@@ -44,7 +45,7 @@ export default function RiskVerdictBanner({ verdict, acknowledged = false, onAck
         aria-atomic="true"
         className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/30"
       >
-        <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5 motion-safe:animate-spin text-muted-foreground" />
+        <Spinner size="sm" className="shrink-0 mt-0.5" label="Running pre-sign risk checks…" />
         <p className="text-xs text-muted-foreground">Running pre-sign risk checks…</p>
       </div>
     );

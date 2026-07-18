@@ -9,9 +9,9 @@
 // copy confirmations, error messages…), with no test catching it.
 //
 // This guard pins the invariant: the toast system the app CALLS must be the one
-// the app MOUNTS. Concretely — components import `toast` from "sonner", so App
-// must mount sonner's Toaster (components/ui/sonner), and must NOT mount the
-// dead Radix host.
+// the app MOUNTS. Concretely — components import `toast` from "@/lib/toast"
+// (a thin duration wrapper that re-exports sonner), so App must mount sonner's
+// Toaster (components/ui/sonner), and must NOT mount the dead Radix host.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -42,7 +42,13 @@ describe('the mounted Toaster matches the toast system the app uses (guards PR #
 
   it('app code does use sonner toasts (so the host is load-bearing)', () => {
     // Spot-check a known caller so this guard stays meaningful if usage changes.
+    // Callers import from @/lib/toast (duration wrapper) which re-exports sonner.
     const personalBackup = read('pages/PersonalBackup.jsx');
-    expect(/import\s*\{\s*toast\s*\}\s*from\s*["']sonner["']/.test(personalBackup)).toBe(true);
+    expect(/import\s*\{\s*toast\s*\}\s*from\s*["']@\/lib\/toast["']/.test(personalBackup)).toBe(true);
+  });
+
+  it('@/lib/toast wrapper re-exports from sonner (the mounted host)', () => {
+    const toastWrapper = read('lib/toast.js');
+    expect(/from\s*["']sonner["']/.test(toastWrapper)).toBe(true);
   });
 });

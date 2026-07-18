@@ -71,7 +71,8 @@ import { useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
 import { useInfiniteAnimation } from "@/lib/useInfiniteAnimation";
-import { toast } from "sonner";
+import { isLowEndDevice } from "@/hooks/useLowEndDevice";
+import { toast } from "@/lib/toast";
 import {
   Shield, Wallet, Lock, KeyRound, Download, RefreshCw,
   Eye, Check, AlertTriangle, AlertOctagon, ArrowLeft, Fingerprint, ScanFace, Zap,
@@ -82,6 +83,7 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
 import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
 import VaultIllustration from "@/components/VaultIllustration";
+import Spinner from "@/components/Spinner";
 import SeedGrid from "@/components/SeedGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
 import { useWallet } from "@/lib/WalletProvider";
@@ -270,16 +272,24 @@ function WelcomeHero({ onGetStarted, onRestore }) {
           Fixed, pointer-events off, behind everything. Pure decoration; uses
           only the design-system --primary token at low opacity, no rainbow. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <motion.div
-          className="absolute -top-24 -left-16 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
-          animate={reduce || !visible ? undefined : { x: [0, 24, 0], y: [0, 18, 0] }}
-          transition={reduce ? undefined : { duration: 14, ease: 'easeInOut', repeat: Infinity }}
-        />
-        <motion.div
-          className="absolute -bottom-24 -right-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl"
-          animate={reduce || !visible ? undefined : { x: [0, -20, 0], y: [0, -14, 0] }}
-          transition={reduce ? undefined : { duration: 18, ease: 'easeInOut', repeat: Infinity }}
-        />
+        {/* Skipped entirely on low-end devices (<=4GB RAM or <=4 cores) — two
+            long-running (14s/18s) Framer Motion loops are needless GPU/CPU
+            cost on constrained hardware; useInfiniteAnimation above already
+            pauses them when off-screen, this adds a device-capability gate. */}
+        {!isLowEndDevice && (
+          <>
+            <motion.div
+              className="absolute -top-24 -left-16 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
+              animate={reduce || !visible ? undefined : { x: [0, 24, 0], y: [0, 18, 0] }}
+              transition={reduce ? undefined : { duration: 14, ease: 'easeInOut', repeat: Infinity }}
+            />
+            <motion.div
+              className="absolute -bottom-24 -right-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl"
+              animate={reduce || !visible ? undefined : { x: [0, -20, 0], y: [0, -14, 0] }}
+              transition={reduce ? undefined : { duration: 18, ease: 'easeInOut', repeat: Infinity }}
+            />
+          </>
+        )}
       </div>
       <motion.div
         variants={container}
@@ -1089,7 +1099,7 @@ export default function WalletEntry() {
   if (vaultExists === null) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full motion-safe:animate-spin" />
+        <Spinner size="lg" />
       </div>
     );
   }

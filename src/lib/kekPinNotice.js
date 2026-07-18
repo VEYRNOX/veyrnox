@@ -9,7 +9,7 @@
 // throws, fire-and-forget from WalletProvider.unlock().
 
 import { Capacitor } from '@capacitor/core';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { getKeyStore } from '@/wallet-core/keystore';
 // Issue #1094 (I3, GAP-6-adjacent): the short-PIN disclosure toast AND its
 // persisted localStorage marker are both deniability tells — the toast is a

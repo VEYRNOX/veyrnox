@@ -13,7 +13,7 @@ import { FileText, Search, Download, Sparkles } from "lucide-react";
 import { exportCataloguePdf } from "@/lib/pdfExport";
 import { FEATURE_CATEGORIES, STATUS, resolveStatus, verifiedFeatureNames } from "@/lib/featureCatalogue";
 import { useTier } from "@/lib/TierProvider";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 // Three honest states, derived (not re-typed): see src/lib/featureCatalogue.js.
 //   verified — real on-chain testnet txid (docs/verified-evidence.json); teal.

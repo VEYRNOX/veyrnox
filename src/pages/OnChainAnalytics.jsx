@@ -6,8 +6,9 @@ import { Activity, Hash, ArrowUpRight, ArrowDownLeft, RefreshCw } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/lib/recharts";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { safeFormat } from "@/lib/safeDate";
+import Spinner from "@/components/Spinner";
 
 // Derive on-chain stats from internal transaction history
 export default function OnChainAnalytics() {
@@ -162,7 +163,7 @@ export default function OnChainAnalytics() {
       {/* Recent Transactions */}
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground uppercase tracking-widest">Recent Transactions</p>
-        {isLoading ? <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" /></div>
+        {isLoading ? <Spinner className="py-6" />
           : transactions.slice(0, 15).map(tx => (
           <div key={tx.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
             <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${tx.type === "send" ? "bg-destructive/10" : "bg-success/10"}`}>
