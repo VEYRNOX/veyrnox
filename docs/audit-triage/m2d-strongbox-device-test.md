@@ -92,24 +92,72 @@ Run the whole matrix twice, once per device, at minimum:
       rejects with `M2D_KEY_INVALIDATED`; PIN recovery path fires.
 - [ ] (M2d-1c) Inspect the stored record: it is
       `{ wrap: 'androidkey-v1', hw: '<base64>' }` — NOT a raw `{v,kdf,salt,iv,ct}` blob.
-- [ ] (M2d-1c) Roundtrip: unwrap the ciphertext produced by wrap → get back
-      the original base64 plaintext byte-identical (Cipher.doFinal auth-tag
-      verify passes on the correct ciphertext; a single-byte flip in the IV
-      or the AES-GCM output → auth-tag verify fails → `M2D_WRAP_FAILED`-
-      equivalent on the unwrap side. Note: unwrap is M2d-1d — this bullet
-      is a M2d-1c/1d integration check to run once 1d lands).
+- [ ] (M2d-1c/1d integration) Roundtrip: unwrap the ciphertext produced by
+      wrap → get back the original base64 plaintext byte-identical
+      (`Cipher.doFinal` auth-tag verify passes). A single-byte flip in the
+      IV or in the AES-GCM output → auth-tag verify fails →
+      `M2D_CIPHERTEXT_TAMPERED` on the unwrap side (distinct from
+      `M2D_UNWRAP_FAILED`; see the M2d-1d Unlock section below). This box
+      is now runnable end-to-end since M2d-1d landed the real unwrap.
 - [ ] The mnemonic / decrypted blob NEVER appears in logcat during create or
       wrap (both debug and release builds). Includes the base64 plaintext
       argument, the raw AES-GCM output, and the returned base64 ciphertext.
 
 ## Unlock (M2d-1d — unwrap → BiometricPrompt with CryptoObject)
 
+> M2d-1d landed the real `unwrap` (2026-07-18): base64 `IV||ct+tag` bundle
+> in → `EnclaveWireFormat.unpack` → `Cipher.getInstance("AES/GCM/NoPadding")`
+> in `DECRYPT_MODE` → `BiometricPrompt(CryptoObject(cipher))` gated on
+> `BIOMETRIC_STRONG` only → `cipher.doFinal` → base64 plaintext out. Response
+> shape is `{ blob: '<base64>' }` matching the shared JS wrapper
+> (`src/plugins/veyrnoxEnclave.js:hwUnwrap` — `const { blob } = await
+> VeyrnoxEnclave.unwrap(...)`) and the iOS bridge. Every box below is now
+> runnable on-device; still fail-closed at the `M2D_ENABLED=false` gate.
+
 - [ ] Unlock prompts the OS `BiometricPrompt` UI (fingerprint sheet).
 - [ ] The prompt shows the wallet-specific reason string ("Unlock your VEYRNOX wallet").
-- [ ] Correct fingerprint → unlock succeeds; wrong fingerprint or cancel → fail-closed.
-- [ ] Force biometric lockout (5 failed attempts) → `ERROR_LOCKOUT`; record the
-      exact fallback UX and confirm PIN recovery works.
-- [ ] Repeated failures beyond lockout → `ERROR_LOCKOUT_PERMANENT`; PIN recovery still works.
+- [ ] Correct fingerprint → unlock succeeds; response is `{ blob: '<base64>' }`
+      (NOT `{ plaintext }` or `{ ciphertext }` — pinned by the shared JS wrapper).
+- [ ] Roundtrip against a known-good wrap output: pass the `ciphertext` returned
+      by `wrap({blob: X})` back into `unwrap({ciphertext})` → resolved `blob`
+      equals the original `X` byte-for-byte (base64-identical).
+- [ ] Cancel the biometric prompt (negative button) → `unwrap()` rejects with
+      `M2D_USER_CANCEL`; no plaintext ever surfaces.
+- [ ] Wrong fingerprint (individual attempt): prompt stays open (OS retry UX);
+      NO callback fires. Only terminal events surface.
+- [ ] Force biometric lockout (5 failed attempts) → `M2D_BIOMETRY_LOCKOUT`
+      (BiometricPrompt `ERROR_LOCKOUT`); record the exact fallback UX and
+      confirm PIN recovery works.
+- [ ] Repeated failures beyond lockout → `M2D_BIOMETRY_LOCKOUT`
+      (BiometricPrompt `ERROR_LOCKOUT_PERMANENT`); PIN recovery still works.
+- [ ] Tamper the stored ciphertext (flip one byte in the base64-decoded body)
+      → `M2D_CIPHERTEXT_TAMPERED` (javax.crypto.AEADBadTagException). MUST
+      be distinct from `M2D_UNWRAP_FAILED` at the JS bridge — pinned by
+      `EnclaveErrorsTest`.
+- [ ] Tamper the IV (flip one byte in the first 12 bytes) → also
+      `M2D_CIPHERTEXT_TAMPERED` (same AEAD auth-tag failure signal).
+- [ ] Feed a bundle shorter than 28 bytes (IV+TAG minimum) → the plugin
+      rejects with `M2D_MALFORMED_BUNDLE` BEFORE the biometric sheet is
+      shown. Rejection is a pre-cipher shape check — MUST be distinct from
+      `M2D_CIPHERTEXT_TAMPERED` (which requires a valid-shape input).
+- [ ] Feed a base64 string that fails to decode (e.g. contains `!`) → same
+      `M2D_MALFORMED_BUNDLE`, prompt not shown.
+- [ ] Delete the AndroidKeyStore alias (via `deleteWrappingKey({intent:'cleanup'})`
+      or by disabling biometric unlock) then call `unwrap` → `M2D_KEY_NOT_FOUND`.
+- [ ] After enrolling a NEW biometric on the device (the F-2 test): call
+      `unwrap` on a previously-wrapped bundle → the OS throws
+      `KeyPermanentlyInvalidatedException` at `Cipher.init(DECRYPT_MODE)` →
+      `M2D_KEY_INVALIDATED`; PIN recovery required. This is the same
+      guarantee exercised on the wrap path — running BOTH pins F-2 across
+      both key operations.
+- [ ] logcat at DEBUG contains NO decrypted plaintext (no base64 `blob`
+      value in ANY plugin result echo). The plaintext IS the secret
+      (decrypted vault blob) — the LOG-1 discipline is absolute here.
+- [ ] logcat at INFO release build: silent bridge on the unwrap response too.
+- [ ] Concurrent-call hygiene: call `unwrap` twice in quick succession → the
+      second call is queued or fails cleanly, no retained-slot leak (verify
+      via successive wrap/unwrap pairs; `setKeepAlive(false)` is called on
+      every terminal path — Codex 2026-07-18 P2 lesson from M2d-1c).
 
 ## Non-exportability & invalidation (the F-2 guarantees)
 
