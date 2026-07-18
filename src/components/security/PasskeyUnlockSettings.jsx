@@ -24,6 +24,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { KeyRound, ShieldCheck, ShieldAlert, Loader2, CheckCircle2, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import Spinner from '@/components/Spinner';
 import { useWallet } from '@/lib/WalletProvider';
 import {
   isPasskeyUnlockEnabled,
