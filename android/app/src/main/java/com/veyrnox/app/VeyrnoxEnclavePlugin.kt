@@ -226,7 +226,13 @@ class VeyrnoxEnclavePlugin : Plugin() {
             service.wrap(fragmentActivity, blobB64) { result ->
                 result.fold(
                     onSuccess = { b64 ->
-                        val response = JSObject().apply { put("bundle", b64) }
+                        // Codex 2026-07-18 P2 follow-up: shape MUST match the
+                        // shared JS wrapper (src/plugins/veyrnoxEnclave.js:
+                        // `const { ciphertext } = await VeyrnoxEnclave.wrap(...)`)
+                        // and the iOS bridge, both of which use "ciphertext" —
+                        // NOT "bundle". Returning "bundle" would make Android
+                        // hwWrap() destructure `undefined`.
+                        val response = JSObject().apply { put("ciphertext", b64) }
                         call.setKeepAlive(false)
                         call.resolve(response)
                     },
