@@ -1,11 +1,10 @@
 // components/FirstRunTour.jsx
 //
-// A lightweight first-run tour that highlights key security features after the
-// user's first unlock. Triggered once per device — uses a localStorage marker
-// so it never re-fires. Fixes: #1160 (ECC F-P3-3 first-run tour).
+// A lightweight first-run tour that highlights key security features during
+// onboarding, before the wallet is created. Triggered once per device — uses a
+// localStorage marker so it never re-fires. Fixes: #1160 (ECC F-P3-3).
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Lock, Ghost, CloudUpload, Fingerprint, X } from 'lucide-react';
 
@@ -16,54 +15,47 @@ const STEPS = [
     icon: ShieldCheck,
     title: 'Security Dashboard',
     description: 'Monitor your wallet\'s security posture, RASP integrity, and audit status in one place.',
-    path: '/security-dashboard',
   },
   {
     icon: Lock,
     title: 'Duress PIN',
     description: 'Set a decoy PIN that opens a separate empty wallet under coercion — your real funds stay hidden.',
-    path: '/duress-pin',
   },
   {
     icon: Ghost,
     title: 'Stealth Wallets',
     description: 'Hide wallets behind an extra passphrase layer. Even with device access, they\'re invisible.',
-    path: '/stealth-wallets',
   },
   {
     icon: CloudUpload,
     title: 'Personal Backup',
     description: 'Export an encrypted seed backup to a file. Restore on any device with your password.',
-    path: '/personal-backup',
   },
   {
     icon: Fingerprint,
     title: 'Hardware Protection',
     description: 'Bind your PIN to Face ID or fingerprint — PIN exhaustion attacks require your biometric per attempt.',
-    path: '/settings',
   },
 ];
 
-export default function FirstRunTour() {
+export function shouldShowTour() {
+  return !localStorage.getItem(TOUR_SEEN_KEY);
+}
+
+export default function FirstRunTour({ onDone }) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    if (localStorage.getItem(TOUR_SEEN_KEY)) return;
-    const timer = setTimeout(() => setVisible(true), 1200);
+    if (!shouldShowTour()) { onDone?.(); return; }
+    const timer = setTimeout(() => setVisible(true), 600);
     return () => clearTimeout(timer);
   }, []);
 
   const dismiss = () => {
     setVisible(false);
     localStorage.setItem(TOUR_SEEN_KEY, '1');
-  };
-
-  const goToFeature = () => {
-    const { path } = STEPS[step];
-    dismiss();
-    navigate(path);
+    onDone?.();
   };
 
   const next = () => {
@@ -114,16 +106,16 @@ export default function FirstRunTour() {
 
               <div className="flex items-center gap-2 pt-2">
                 <button
-                  onClick={goToFeature}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 active:scale-95 transition-all"
+                  onClick={dismiss}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-secondary text-foreground text-sm font-medium hover:bg-secondary/80 active:scale-95 transition-all"
                 >
-                  Open
+                  Skip
                 </button>
                 <button
                   onClick={next}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-secondary text-foreground text-sm font-medium hover:bg-secondary/80 active:scale-95 transition-all"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 active:scale-95 transition-all"
                 >
-                  {step < STEPS.length - 1 ? 'Next' : 'Done'}
+                  {step < STEPS.length - 1 ? 'Next' : 'Get Started'}
                 </button>
               </div>
 
