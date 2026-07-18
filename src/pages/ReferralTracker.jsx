@@ -10,8 +10,6 @@ import {
   applyRedemption,
   markRedeemed,
   hasRedeemed,
-  getPendingReferral,
-  clearPendingReferral,
   getTierInfo,
   calculateEarnings,
   calculateDiscountCents,
@@ -137,23 +135,6 @@ export default function ReferralTracker() {
   useEffect(() => {
     if (!getLocalState().serverGenerated) {
       registerCode(code);
-    }
-    const pending = getPendingReferral();
-    if (pending) {
-      clearPendingReferral();
-      if (!hasRedeemed() && pending !== code) {
-        redeemCode(pending)
-          .then(({ newCount }) => {
-            markRedeemed(pending);
-            const result = applyRedemption(newCount);
-            setInviteCount(newCount);
-            setTier(result.tier);
-            setCommission(result.commission);
-            setExternalEligible(result.externalEligible);
-            setAlreadyRedeemed(true);
-          })
-          .catch(() => {});
-      }
     }
     syncCount();
   }, [code, syncCount]);
