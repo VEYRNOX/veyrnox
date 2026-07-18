@@ -2111,10 +2111,33 @@ both `createWallet` and `importWallet` as best-effort fire-and-forget (same patt
 to `rewards@veyrnox.com`. `serverGenerated` guard on `registerCode` call (server-generated
 codes don't need re-registration). 50/50 tests (4 new `initCode` tests).
 
+**Referral-to-subscription integration (already wired in PR #1194):**
+`Subscription.jsx` imports referral functions and fully integrates the discount flow:
+on mount, if `hasRedeemed()`, fetches the referrer's tier via `fetchReferrerTier(code)` →
+`getTier(count)` → `getOfferingIdForTier(tierKey)` → `getTierOffering(offeringId)` to
+fetch the tier-specific RC offering with discounted products. The effective package
+selection (`effectiveMonthly`, `effectiveAnnual`) falls through to the regular offering
+when the tier-specific one is unavailable. Discount banner renders
+"Referral discount applied — X% off" with strikethrough on the regular price. On
+successful purchase, `handleUpgrade()` records `recordAttribution(refCode, plan,
+fullPrice, discountCents)` to Supabase + `setReferralAttribute(refCode)` to tag the RC
+customer + `markAttributed()` to prevent double-attribution. Both monthly and annual
+billing periods are covered. I3 invariant preserved: all Supabase/RC calls gated on
+`isDeniabilityOrDemoActive()` at the API layer.
+
+**Copy edits (2026-07-18, uncommitted on `claude/referral-follower-discount`):**
+`ReferralTracker.jsx:208` "Share Veyrnox" → "Share VEYRNOX" (brand capitalisation);
+`:328` "claim external rewards" → "claim compensation" (clearer CTA copy). Gold tier
+threshold preserved in rewards payout copy.
+
 **Outstanding:**
 - App Store Connect: 8 iOS auto-renewing subscription products for referral tiers
   (scheduled for Apple day).
-- Sandbox purchase test with referral code on Android device.
+- Google Play Console: 8 corresponding subscription products for referral tiers.
+- RevenueCat dashboard: 4 tier-specific offerings (`referral-bronze` through
+  `referral-platinum`), each with monthly + annual packages attached to the discounted
+  store products.
+- Sandbox purchase test with referral code on iOS + Android device.
 - Independent audit: still outstanding.
 
 ## Security invariants
