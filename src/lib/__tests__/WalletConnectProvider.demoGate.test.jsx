@@ -22,6 +22,9 @@ import { render } from '@testing-library/react';
 
 // --- DEMO is the seam under test. Forced true for this whole suite. ---
 vi.mock('@/api/demoClient', () => ({ DEMO: true }));
+vi.mock('@/wallet-core/deniabilitySession.js', () => ({
+  isDeniabilityOrDemoActive: () => true,
+}));
 
 // Collaborators mocked to the same shapes the other WC provider tests use.
 const presignGate = vi.fn(() => ({ proceedAllowed: true, signerReachable: true }));

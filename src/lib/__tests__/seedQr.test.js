@@ -32,7 +32,7 @@ function flipFirstChar(s) {
 describe('seedQr artifact seam', () => {
   it('produces a versioned, self-describing artifact (B7)', () => {
     expect(art12).toMatchObject({ fmt: 'veyrnox-seed-backup', v: 1 });
-    expect(art12.blob).toMatchObject({ v: 1, kdf: { name: 'argon2id' } });
+    expect(art12.blob).toMatchObject({ v: 2, kdf: { name: 'argon2id' } });
   });
 
   it('B1: round-trips a 12-word mnemonic (encrypt -> QR -> decode -> decrypt)', async () => {
