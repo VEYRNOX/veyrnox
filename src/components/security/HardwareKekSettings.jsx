@@ -407,7 +407,7 @@ export default function HardwareKekSettings() {
       {/* Loading */}
       {enrolled === null && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Spinner size="sm" label="Checking status…" /> Checking status…
+          <Spinner size="sm" decorative /> Checking status…
         </p>
       )}
 
@@ -467,7 +467,7 @@ export default function HardwareKekSettings() {
                   {busy
                     ? (
                       <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                        <Spinner size="sm" label="Upgrading — approve both prompts…" /> Upgrading — approve both prompts…
+                        <Spinner size="sm" decorative /> Upgrading — approve both prompts…
                       </p>
                     ) : (
                       <>
@@ -517,7 +517,7 @@ export default function HardwareKekSettings() {
               {busy
                 ? (
                   <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                    <Spinner size="sm" label="Removing — approve the prompt…" /> Removing — approve the prompt…
+                    <Spinner size="sm" decorative /> Removing — approve the prompt…
                   </p>
                 ) : (
                   <>
@@ -556,7 +556,7 @@ export default function HardwareKekSettings() {
           {busy
             ? (
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                <Spinner size="sm" label="Enrolling — approve the biometric prompt…" /> Enrolling — approve the biometric prompt…
+                <Spinner size="sm" decorative /> Enrolling — approve the biometric prompt…
               </p>
             ) : (
               <PinPad
@@ -591,7 +591,7 @@ export default function HardwareKekSettings() {
           {busy
             ? (
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                <Spinner size="sm" label="Enrolling — approve the passkey prompt…" /> Enrolling — approve the passkey prompt…
+                <Spinner size="sm" decorative /> Enrolling — approve the passkey prompt…
               </p>
             ) : (
               <PinPad
