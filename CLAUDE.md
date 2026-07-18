@@ -2125,18 +2125,37 @@ customer + `markAttributed()` to prevent double-attribution. Both monthly and an
 billing periods are covered. I3 invariant preserved: all Supabase/RC calls gated on
 `isDeniabilityOrDemoActive()` at the API layer.
 
-**Copy edits (2026-07-18, uncommitted on `claude/referral-follower-discount`):**
+**Copy edits (2026-07-18, merged to main via PR #1197):**
 `ReferralTracker.jsx:208` "Share Veyrnox" → "Share VEYRNOX" (brand capitalisation);
 `:328` "claim external rewards" → "claim compensation" (clearer CTA copy). Gold tier
 threshold preserved in rewards payout copy.
 
+**RevenueCat referral tier setup (2026-07-18, completed for Google Play):**
+- **Google Play Console:** 8 subscription products created with active base plans:
+  `safety_plus_monthly_bronze` (`:monthly`), `safety_plus_annual_bronze` (`:annual-1`),
+  `safety_plus_monthly_silver` (`:monthly`), `safety_plus_annual_silver` (`:annual-1`),
+  `safety_plus_monthly_gold` (`:monthly`), `safety_plus_annual_gold` (`:annual`),
+  `safety_plus_monthly_platinum` (`:monthly`), `safety_plus_annual_platinum` (`:annual`).
+  Bronze/Silver annuals use `:annual-1` suffix (base plan recreated after initial
+  mis-click). Gold/Platinum annuals use `:annual` (correct on first try).
+- **RevenueCat dashboard:** All 8 products imported and synced via Google Play service
+  account (`revenuecat@veyrnox-wallet.iam.gserviceaccount.com`). 4 offerings created
+  (`referral-bronze` ofrngb11e2df1a0, `referral-silver` ofrngbd954702a5, `referral-gold`
+  ofrng85261ba333, `referral-platinum` ofrng91ab9256f5), each with `$rc_monthly` +
+  `$rc_annual` packages. Products attached to packages. All 8 tier products attached to
+  `safety_plus` entitlement (10 total: 2 base + 8 tier). `default` offering unchanged
+  (stays Current). RC project ID: `82381f44`.
+- **Supabase migration:** `discount_cents` column confirmed present on
+  `referral_attributions` table (run in a prior session).
+- **Preflight check (full remote):** `npm run check:iap-preflight` with RC v2 secret key —
+  23 passed, 0 failed, 2 warnings (pre-existing: capacitor appId format, `.storekit`
+  annual not wired for local testing). All RC dashboard state verified: entitlement
+  `safety_plus` (entlf563332478), base products, 4 referral offerings, `default` offering
+  current, package↔product bindings correct.
+
 **Outstanding:**
 - App Store Connect: 8 iOS auto-renewing subscription products for referral tiers
-  (scheduled for Apple day).
-- Google Play Console: 8 corresponding subscription products for referral tiers.
-- RevenueCat dashboard: 4 tier-specific offerings (`referral-bronze` through
-  `referral-platinum`), each with monthly + annual packages attached to the discounted
-  store products.
+  (scheduled for Apple day). Same product IDs and prices as Google Play.
 - Sandbox purchase test with referral code on iOS + Android device.
 - Independent audit: still outstanding.
 
