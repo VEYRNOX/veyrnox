@@ -236,7 +236,7 @@ export default function TransactionHistory() {
               disabled={isFetching}
               className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
             >
-              {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <History className="h-3.5 w-3.5" />}
+              {isFetching ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> : <History className="h-3.5 w-3.5" />}
               Refresh
             </button>
           )}

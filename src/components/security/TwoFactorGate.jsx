@@ -211,7 +211,7 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
           disabled={!canSubmit}
           aria-describedby={isExternalFactor ? 'tfg-external-help' : undefined}
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : (isExternalFactor ? <Fingerprint className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />)} {isBio ? 'Verify with biometrics' : isPasskey ? 'Verify with passkey' : 'Verify & continue'}
+          {busy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : (isExternalFactor ? <Fingerprint className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />)} {isBio ? 'Verify with biometrics' : isPasskey ? 'Verify with passkey' : 'Verify & continue'}
         </Button>
       </div>
     </div>

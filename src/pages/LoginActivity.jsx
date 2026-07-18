@@ -157,7 +157,7 @@ export default function LoginActivity() {
 
         {isLoading && (
           <div className="flex justify-center py-8">
-            <div className="h-6 w-6 rounded-full border-2 border-border border-t-primary animate-spin" />
+            <div className="h-6 w-6 rounded-full border-2 border-border border-t-primary motion-safe:animate-spin" />
           </div>
         )}
 

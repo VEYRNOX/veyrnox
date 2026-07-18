@@ -142,7 +142,7 @@ export default function LandingPage() {
               {/* Central Shield with glow */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="relative w-64 h-64">
-                  <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary/10 rounded-full blur-3xl animate-pulse"></div>
+                  <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary/10 rounded-full blur-3xl motion-safe:animate-pulse"></div>
                   <div className="relative w-full h-full rounded-full border border-primary/30 flex items-center justify-center">
                     <Shield className="w-32 h-32 text-primary" />
                   </div>

@@ -1312,14 +1312,14 @@ export default function SendCrypto() {
               placeholder="Paste an address or enter a name (e.g. vitalik.eth)"
               className={`mono-value text-sm ${!addressFormatValid ? 'border-destructive' : ''}`}
             />
-            {ensResolving && <Loader2 className="h-4 w-4 animate-spin self-center shrink-0 text-muted-foreground" />}
+            {ensResolving && <Loader2 className="h-4 w-4 motion-safe:animate-spin self-center shrink-0 text-muted-foreground" />}
             <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label="Scan QR code" title="Scan QR code" onClick={() => setShowScanner(true)}>
               <ScanLine className="h-4 w-4" />
             </Button>
           </div>
           {ensResolving && (
             <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
-              <Loader2 className="h-3 w-3 animate-spin shrink-0" /> Resolving name…
+              <Loader2 className="h-3 w-3 motion-safe:animate-spin shrink-0" /> Resolving name…
             </p>
           )}
           {!ensResolving && ensName && !ensResolved && !toAddress && (
@@ -1854,7 +1854,7 @@ export default function SendCrypto() {
                       sendTx.mutate();
                     }}
                   >
-                    {sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
+                    {sendTx.isPending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
                     Confirm &amp; Send
                   </Button>
                 );
@@ -1889,7 +1889,7 @@ export default function SendCrypto() {
                         disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                         onClick={() => submitReauth(reauthValue)}
                       >
-                        {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                        {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Lock className="h-4 w-4" />}
                         Authorise &amp; Send
                       </Button>
                     </>

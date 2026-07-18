@@ -187,7 +187,7 @@ function NativeBiometricSection() {
       <div className="p-4 rounded-xl border border-border bg-card">
         <p className="text-sm font-semibold mb-3 flex items-center gap-2"><Smartphone className="h-4 w-4" /> Test Authentication</p>
         <Button variant="outline" className="w-full gap-2" onClick={runTest} disabled={testing || !available}>
-          {testing ? <><Loader2 className="h-4 w-4 animate-spin" /> Awaiting {label}…</> : <><Fingerprint className="h-4 w-4" /> Test Biometric Now</>}
+          {testing ? <><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Awaiting {label}…</> : <><Fingerprint className="h-4 w-4" /> Test Biometric Now</>}
         </Button>
         {testResult === "ok" && <p className="text-xs text-success mt-2 flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5" /> {simulated ? "Simulated " : ""}authentication successful</p>}
         {testResult === "cancel" && <p className="text-xs text-muted-foreground mt-2">Biometric prompt cancelled or could not be used</p>}
@@ -347,7 +347,7 @@ function WebPasskeySection() {
         {!registered && supported && (
           <>
             <Button className="w-full mt-3 gap-2" onClick={handleRegister} disabled={busy || (!simulated && !available)}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
+              {busy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Fingerprint className="h-4 w-4" />}
               {busy ? "Registering…" : "Register Biometric / Passkey"}
             </Button>
             {!simulated && !available && (
@@ -379,7 +379,7 @@ function WebPasskeySection() {
       <div className="p-4 rounded-xl border border-border bg-card">
         <p className="text-sm font-semibold mb-3 flex items-center gap-2"><Smartphone className="h-4 w-4" /> Test Authentication</p>
         <Button variant="outline" className="w-full gap-2" onClick={runTest} disabled={testing || !registered || (!simulated && !available)}>
-          {testing ? <><Loader2 className="h-4 w-4 animate-spin" /> Awaiting passkey…</> : <><Fingerprint className="h-4 w-4" /> Test Biometric Now</>}
+          {testing ? <><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Awaiting passkey…</> : <><Fingerprint className="h-4 w-4" /> Test Biometric Now</>}
         </Button>
         {testResult === "ok" && <p className="text-xs text-success mt-2 flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5" /> {simulated ? "Simulated " : ""}authentication successful</p>}
         {testResult === "cancel" && <p className="text-xs text-muted-foreground mt-2">Passkey prompt cancelled or could not be used</p>}

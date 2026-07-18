@@ -37,7 +37,7 @@ export default function RiskVerdictBanner({ verdict, acknowledged = false, onAck
   if (pending) {
     return (
       <div className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/30">
-        <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5 animate-spin text-muted-foreground" />
+        <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5 motion-safe:animate-spin text-muted-foreground" />
         <p className="text-xs text-muted-foreground">Running pre-sign risk checks…</p>
       </div>
     );

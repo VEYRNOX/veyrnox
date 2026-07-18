@@ -201,7 +201,7 @@ export default function TokenApprovals() {
                       disabled={pending}
                       onClick={() => revoke.mutate(a)}
                     >
-                      {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldAlert className="h-3.5 w-3.5" />}
+                      {pending ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> : <ShieldAlert className="h-3.5 w-3.5" />}
                       Revoke
                     </Button>
                   ) : (

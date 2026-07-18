@@ -26,6 +26,7 @@
 
 import { memo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { useInfiniteAnimation } from '@/lib/useInfiniteAnimation';
 
 // 8 safe-door "bolts" arranged evenly around the medallion. Pre-computed so we
 // don't recalculate trig on every re-render.
@@ -45,21 +46,23 @@ const TICKS = Array.from({ length: 60 }, (_, i) => {
 
 function VaultIllustrationImpl({ size = 200, className = '', label = 'Encrypted vault' }) {
   const reduce = useReducedMotion();
+  const visible = useInfiniteAnimation();
+  const animate = !reduce && visible;
 
-  const rotate = reduce
-    ? {}
-    : { animate: { rotate: 360 }, transition: { duration: 24, ease: 'linear', repeat: Infinity } };
+  const rotate = animate
+    ? { animate: { rotate: 360 }, transition: { duration: 24, ease: 'linear', repeat: Infinity } }
+    : {};
 
-  const rotateReverse = reduce
-    ? {}
-    : { animate: { rotate: -360 }, transition: { duration: 18, ease: 'linear', repeat: Infinity } };
+  const rotateReverse = animate
+    ? { animate: { rotate: -360 }, transition: { duration: 18, ease: 'linear', repeat: Infinity } }
+    : {};
 
-  const pulse = reduce
-    ? {}
-    : {
+  const pulse = animate
+    ? {
         animate: { opacity: [0.35, 0.7, 0.35], scale: [1, 1.04, 1] },
         transition: { duration: 3.6, ease: 'easeInOut', repeat: Infinity },
-      };
+      }
+    : {};
 
   return (
     <div

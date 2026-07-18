@@ -107,7 +107,7 @@ const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 const AuthenticatedApp = () => {
   // Render the main app
   return (
-    <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-border border-t-primary rounded-full motion-safe:animate-spin" /></div>}>
     <Routes>
       <Route path="/landing" element={<LandingGuard />} />
       {/* Hosted-account auth routes are gone (base44 removal complete, Phase 4).

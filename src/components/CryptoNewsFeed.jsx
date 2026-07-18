@@ -140,7 +140,7 @@ export default function CryptoNewsFeed() {
             disabled={isFetching}
             aria-label="Refresh market news"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "motion-safe:animate-spin" : ""}`} />
           </Button>
         )}
       </div>
@@ -156,7 +156,7 @@ export default function CryptoNewsFeed() {
       ) : isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex gap-3 p-3 animate-pulse">
+            <div key={i} className="flex gap-3 p-3 motion-safe:animate-pulse">
               <div className="h-14 w-14 rounded-lg bg-secondary shrink-0" />
               <div className="flex-1 space-y-2">
                 <div className="h-3 bg-secondary rounded w-full" />

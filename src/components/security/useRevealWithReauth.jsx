@@ -172,7 +172,7 @@ export function useRevealWithReauth(onRevealed) {
             onClick={() => submitReauth(reauthValue)}
             disabled={!reauthValue || reauthPending}
           >
-            {reauthPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} Unlock
+            {reauthPending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Lock className="h-4 w-4" />} Unlock
           </Button>
         )}
       </div>

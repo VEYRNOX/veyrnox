@@ -326,7 +326,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
             disabled={busy}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {busy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : null}
             {busy ? 'Saving…' : 'Save & restore'}
           </button>
         )}
@@ -392,7 +392,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
           disabled={!credOk || busy}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {busy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Upload className="h-4 w-4" />}
           {busy ? 'Restoring…' : 'Restore wallet'}
         </button>
 
@@ -433,14 +433,14 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
             aria-label="Refresh list"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${listBusy ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${listBusy ? 'motion-safe:animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
 
         {listBusy ? (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Reading Downloads…
+            <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Reading Downloads…
           </div>
         ) : backups.length === 0 ? (
           <div className="p-4 rounded-xl border border-border bg-card/50 text-xs text-muted-foreground space-y-1">

@@ -210,7 +210,7 @@ export default function BiometricUnlockSettings() {
       <div className="flex items-start gap-2 text-xs">
         {status == null ? (
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking availability…
+            <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> Checking availability…
           </span>
         ) : available ? (
           <span className="flex items-start gap-1.5 text-muted-foreground">
@@ -232,7 +232,7 @@ export default function BiometricUnlockSettings() {
         <div>
           <Button variant="outline" className="w-full gap-2" onClick={runTest} disabled={testing}>
             {testing
-              ? <><Loader2 className="h-4 w-4 animate-spin" /> Awaiting prompt…</>
+              ? <><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Awaiting prompt…</>
               : <><ScanFace className="h-4 w-4" /> Preview prompt</>}
           </Button>
           {testResult === 'ok' && (

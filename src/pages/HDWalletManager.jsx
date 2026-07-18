@@ -268,7 +268,7 @@ export default function HDWalletManager() {
                   <Label htmlFor="hd-unlock-password">Vault Password</Label>
                   <PasswordInput id="hd-unlock-password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} placeholder="Enter your vault password" onKeyDown={e => { if (e.key === "Enter") handleUnlock(); }} />
                   <Button className="w-full gap-2" disabled={!unlockPassword || busy} onClick={handleUnlock}>
-                    {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
+                    {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Unlock className="h-4 w-4" />} Unlock
                   </Button>
                 </>
               )}

@@ -84,7 +84,7 @@ export default function PullToRefreshContainer({ onRefresh, children, className 
             />
             <svg
               viewBox="0 0 40 40"
-              className={refreshing ? "h-6 w-6 animate-spin" : "h-6 w-6"}
+              className={refreshing ? "h-6 w-6 motion-safe:animate-spin" : "h-6 w-6"}
               style={refreshing ? { animationDuration: "1.4s" } : undefined}
               aria-hidden
             >

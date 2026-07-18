@@ -48,7 +48,7 @@ export default function BiometricPrompt({ label = 'Face ID', onResult }) {
 
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
           <ScanFace
-            className={`h-11 w-11 text-primary ${scanning ? 'animate-pulse' : ''}`}
+            className={`h-11 w-11 text-primary ${scanning ? 'motion-safe:animate-pulse' : ''}`}
           />
         </div>
 

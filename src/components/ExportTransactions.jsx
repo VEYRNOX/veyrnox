@@ -139,7 +139,7 @@ export default function ExportTransactions({ transactions: propTransactions }) {
           <div className="space-y-3 pt-1">
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <Loader2 className="h-5 w-5 motion-safe:animate-spin text-muted-foreground" />
               </div>
             ) : (
               <>
@@ -192,7 +192,7 @@ export default function ExportTransactions({ transactions: propTransactions }) {
                     disabled={!!exporting || rows.length === 0}
                   >
                     {exporting === "csv"
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
                       : <Table2 className="h-4 w-4" />}
                     CSV
                   </Button>
@@ -202,7 +202,7 @@ export default function ExportTransactions({ transactions: propTransactions }) {
                     disabled={!!exporting || rows.length === 0}
                   >
                     {exporting === "pdf"
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
                       : <FileText className="h-4 w-4" />}
                     PDF Report
                   </Button>

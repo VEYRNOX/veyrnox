@@ -186,7 +186,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
 
       {isLoading && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading live fees from the network…
+          <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> Reading live fees from the network…
         </div>
       )}
 

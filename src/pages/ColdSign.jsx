@@ -218,7 +218,7 @@ export default function ColdSign() {
 
       {phase === "building" && (
         <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" /> Building unsigned transaction…
+          <Loader2 className="h-5 w-5 motion-safe:animate-spin" /> Building unsigned transaction…
         </div>
       )}
 
@@ -268,7 +268,7 @@ export default function ColdSign() {
             disabled={!scanned.trim() || !riskAck || phase === "broadcasting"}
             onClick={handleBroadcast}
           >
-            {phase === "broadcasting" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+            {phase === "broadcasting" ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
             Step 3 — broadcast
           </Button>
         </div>

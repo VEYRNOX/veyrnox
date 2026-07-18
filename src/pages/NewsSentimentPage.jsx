@@ -77,7 +77,7 @@ export default function NewsSentimentPage() {
         </div>
         {LLM_AVAILABLE && !isDeniabilityOrDemoActive() && (
           <Button onClick={() => refresh.mutate()} disabled={refresh.isPending}>
-            <RefreshCw className={`h-4 w-4 mr-1.5 ${refresh.isPending ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${refresh.isPending ? "motion-safe:animate-spin" : ""}`} />
             {refresh.isPending ? "Refreshing…" : "Refresh"}
           </Button>
         )}

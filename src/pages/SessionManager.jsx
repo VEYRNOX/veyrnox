@@ -51,7 +51,7 @@ export default function SessionManager() {
   const activeSessions = sessions.filter(s => s.status !== "revoked");
   const revokedSessions = sessions.filter(s => s.status === "revoked");
 
-  if (isLoading) return <div className="flex justify-center py-20"><div className="h-8 w-8 rounded-full border-4 border-border border-t-primary animate-spin" /></div>;
+  if (isLoading) return <div className="flex justify-center py-20"><div className="h-8 w-8 rounded-full border-4 border-border border-t-primary motion-safe:animate-spin" /></div>;
 
   if (isError) return <div className="max-w-2xl mx-auto py-20 text-center text-sm text-destructive">Couldn't load sessions. Please try again.</div>;
 

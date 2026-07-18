@@ -282,7 +282,7 @@ export default function Subscription() {
             className="w-full max-w-md"
             onClick={handleUpgrade}
           >
-            {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+            {busy ? <Loader2 className="h-4 w-4 mr-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
             {isNative ? `Upgrade to Safety Plus — ${selectedPriceString}` : "Upgrade to Safety Plus — mobile only"}
           </Button>
           {isNative ? (

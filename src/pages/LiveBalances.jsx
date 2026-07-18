@@ -120,7 +120,7 @@ export default function LiveBalances() {
       <div className="flex gap-2 flex-wrap">
         {["Public RPC (read-only)", "Testnet only", "Verified tokens only"].map(s => (
           <span key={s} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border border-success/30 bg-success/5 text-success font-semibold">
-            <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" /> {s}
+            <div className="h-1.5 w-1.5 rounded-full bg-success motion-safe:animate-pulse" /> {s}
           </span>
         ))}
       </div>
@@ -133,7 +133,7 @@ export default function LiveBalances() {
           <SelectContent>{NETWORKS.map(n => <SelectItem key={n.id} value={n.id}>{n.label}</SelectItem>)}</SelectContent>
         </Select>
         <Button onClick={fetchAll} disabled={loading} className="shrink-0 gap-1" aria-label="Look up balances">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          {loading ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Search className="h-4 w-4" />}
         </Button>
       </div>
 
