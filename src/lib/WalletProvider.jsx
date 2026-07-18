@@ -120,6 +120,8 @@ import {
 } from '@/lib/biometric';
 import { ensureKekPinNoticeOnNative } from '@/lib/kekPinNotice';
 import { setLivePricesEnabled } from '@/lib/priceFeed';
+import { initCode } from '@/lib/referral';
+import { generateServerCode } from '@/api/referralApi';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
 // let Face ID open the DECOY (via enableDecoyBiometricUnlock). removeDuressPin reads
 // it to retract the shared veyrnox-biometric-unlock pref, so removing the duress PIN
@@ -893,6 +895,7 @@ export function WalletProvider({ children }) {
     // hiccup must never break wallet creation). The PIN cohort already provisions
     // chaff via provisionPinWallet; this brings the password cohort to parity.
     void provisionDeniabilityChaff().catch(() => {});
+    void initCode(generateServerCode).catch(() => {});
     refreshWalletsState();
     refreshPortfoliosState();
     touch();
@@ -936,6 +939,7 @@ export function WalletProvider({ children }) {
     void clearUnlockSecret().catch(() => {});
     void ensureStealthPool().catch(() => {}); // seed chaff pool (see createWallet)
     void provisionDeniabilityChaff().catch(() => {}); // M-5: duress/panic chaff parity (see createWallet)
+    void initCode(generateServerCode).catch(() => {});
     refreshWalletsState();
     refreshPortfoliosState();
     touch();

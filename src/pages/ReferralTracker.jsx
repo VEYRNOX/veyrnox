@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
-import { Gift, Copy, CheckCircle2, ExternalLink, ChevronRight, TrendingUp, DollarSign } from 'lucide-react';
+import { Gift, Copy, CheckCircle2, ExternalLink, ChevronRight, TrendingUp, DollarSign, Mail } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -135,7 +135,9 @@ export default function ReferralTracker() {
   }, [code]);
 
   useEffect(() => {
-    registerCode(code);
+    if (!getLocalState().serverGenerated) {
+      registerCode(code);
+    }
     const pending = getPendingReferral();
     if (pending) {
       clearPendingReferral();
@@ -318,6 +320,21 @@ export default function ReferralTracker() {
           {redeemError && <p className="text-xs text-destructive">{redeemError}</p>}
         </div>
       )}
+
+      {/* Rewards & payouts */}
+      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest">Rewards &amp; payouts</p>
+        <p className="text-sm text-muted-foreground">
+          Earned commissions are paid out monthly. Reach Gold tier or above to claim external rewards.
+        </p>
+        <a
+          href="mailto:rewards@veyrnox.com?subject=Referral%20Reward%20Claim"
+          className="flex items-center gap-2 text-sm text-primary hover:underline"
+        >
+          <Mail className="h-4 w-4" />
+          rewards@veyrnox.com
+        </a>
+      </div>
     </div>
   );
 }

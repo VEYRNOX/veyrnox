@@ -289,3 +289,38 @@ describe('calculateEarnings (discount-based)', () => {
     expect(result.count).toBe(1);
   });
 });
+
+describe('initCode', () => {
+  it('uses server code when generateServerCode succeeds', async () => {
+    const { initCode, getLocalState } = await import('../referral.js');
+    const serverFn = vi.fn().mockResolvedValue('VYX-SRVR01');
+    const code = await initCode(serverFn);
+    expect(code).toBe('VYX-SRVR01');
+    expect(getLocalState().code).toBe('VYX-SRVR01');
+    expect(getLocalState().serverGenerated).toBe(true);
+    expect(serverFn).toHaveBeenCalledOnce();
+  });
+
+  it('falls back to local code when server returns null', async () => {
+    const { initCode } = await import('../referral.js');
+    const serverFn = vi.fn().mockResolvedValue(null);
+    const code = await initCode(serverFn);
+    expect(code).toMatch(/^VYX-[A-Z0-9]{6}$/);
+    expect(serverFn).toHaveBeenCalledOnce();
+  });
+
+  it('falls back to local code when no server function provided', async () => {
+    const { initCode } = await import('../referral.js');
+    const code = await initCode(null);
+    expect(code).toMatch(/^VYX-[A-Z0-9]{6}$/);
+  });
+
+  it('returns cached code if one already exists', async () => {
+    const { generateCode, initCode } = await import('../referral.js');
+    const first = generateCode();
+    const serverFn = vi.fn().mockResolvedValue('VYX-NEW001');
+    const code = await initCode(serverFn);
+    expect(code).toBe(first);
+    expect(serverFn).not.toHaveBeenCalled();
+  });
+});

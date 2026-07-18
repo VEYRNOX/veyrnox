@@ -8,6 +8,17 @@
 import { supabase } from '@/lib/supabaseClient';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
+export async function generateServerCode() {
+  if (!supabase || isDeniabilityOrDemoActive()) return null;
+  try {
+    const { data, error } = await supabase.rpc('generate_referral_code');
+    if (error || !data) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function registerCode(code) {
   if (!supabase || isDeniabilityOrDemoActive()) return;
   try {
@@ -87,7 +98,7 @@ export async function fetchEarnings(code) {
   try {
     const { data, error } = await supabase
       .from('referral_attributions')
-      .select('plan, revenue_cents, created_at')
+      .select('plan, revenue_cents, discount_cents, created_at')
       .eq('referral_code', code);
     if (error || !data) return null;
     return data;

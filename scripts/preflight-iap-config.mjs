@@ -256,7 +256,29 @@ async function remoteChecks(secret, projectId) {
     fail('rc: offering exists', e.message);
   }
 
-  // 5. Package `$rc_monthly` is on the offering, pointing at `safety_plus_monthly`.
+  // 5. Referral tier offerings exist (referral-bronze, -silver, -gold, -platinum).
+  //    These are NON-current offerings fetched via Purchases.getOfferings().all[id].
+  const REFERRAL_TIERS = [
+    { key: 'bronze',   offeringId: 'referral-bronze',   monthlyProduct: 'safety_plus_monthly_bronze',   annualProduct: 'safety_plus_annual_bronze' },
+    { key: 'silver',   offeringId: 'referral-silver',   monthlyProduct: 'safety_plus_monthly_silver',   annualProduct: 'safety_plus_annual_silver' },
+    { key: 'gold',     offeringId: 'referral-gold',     monthlyProduct: 'safety_plus_monthly_gold',     annualProduct: 'safety_plus_annual_gold' },
+    { key: 'platinum', offeringId: 'referral-platinum', monthlyProduct: 'safety_plus_monthly_platinum', annualProduct: 'safety_plus_annual_platinum' },
+  ];
+  try {
+    const offerings = await rcList(secret, `${base}/offerings?limit=50`);
+    for (const tier of REFERRAL_TIERS) {
+      const tierOff = offerings.find((o) => o.lookup_key === tier.offeringId) ?? null;
+      if (!tierOff) {
+        warn(`rc: referral offering (${tier.key})`, `offering '${tier.offeringId}' not found — run scripts/setup-referral-offerings.mjs`);
+      } else {
+        pass(`rc: referral offering (${tier.key})`, `'${tier.offeringId}' exists`);
+      }
+    }
+  } catch (e) {
+    warn('rc: referral offerings', `could not check referral offerings (${e.message})`);
+  }
+
+  // 6. Package `$rc_monthly` is on the offering, pointing at `safety_plus_monthly`.
   //    v2 has NO /offerings/{id}/packages/{id}/products sub-resource (it 404s). Instead we
   //    request the packages list with ?expand=items.product, which inlines each package's
   //    attached products as `package.products.items[].product.store_identifier` — one call,
