@@ -3,7 +3,7 @@ const PENDING_KEY = 'veyrnox-referral-pending';
 
 export const EXTERNAL_REWARD_URL =
   import.meta.env.VITE_REFERRAL_REWARD_URL ||
-  'mailto:rewards@veyrnox.app?subject=Referral%20Reward%20Claim';
+  'mailto:rewards@veyrnox.com?subject=Referral%20Reward%20Claim';
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -28,6 +28,21 @@ function saveState(state) {
 export function generateCode() {
   const state = getLocalState();
   if (state.code) return state.code;
+  const code = randomCode();
+  saveState({ ...state, code });
+  return code;
+}
+
+export async function initCode(generateServerCode) {
+  const state = getLocalState();
+  if (state.code) return state.code;
+  if (generateServerCode) {
+    const serverCode = await generateServerCode();
+    if (serverCode) {
+      saveState({ ...state, code: serverCode, serverGenerated: true });
+      return serverCode;
+    }
+  }
   const code = randomCode();
   saveState({ ...state, code });
   return code;
