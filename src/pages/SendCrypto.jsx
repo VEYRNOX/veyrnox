@@ -30,7 +30,7 @@ import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
 import TransactionPreview from "@/components/TransactionPreview";
 import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";

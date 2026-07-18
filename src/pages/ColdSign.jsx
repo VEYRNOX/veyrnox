@@ -31,6 +31,7 @@ import { base64 } from "@scure/base";
 import { Transaction as BtcTx } from "@scure/btc-signer";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, ShieldCheck, ScanLine, Loader2, ExternalLink, AlertTriangle, ArrowLeft } from "lucide-react";
+import Spinner from "@/components/Spinner";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 
 import { useWallet } from "@/lib/WalletProvider";
@@ -218,7 +219,7 @@ export default function ColdSign() {
 
       {phase === "building" && (
         <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
-          <Loader2 className="h-5 w-5 motion-safe:animate-spin" /> Building unsigned transaction…
+          <Spinner label="Building unsigned transaction…" /> Building unsigned transaction…
         </div>
       )}
 

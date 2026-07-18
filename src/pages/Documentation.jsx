@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState } from "react";
 import { exportCataloguePdf } from "@/lib/pdfExport";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

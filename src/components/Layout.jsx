@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, useCallback } from "react";
-import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { duration as motionDuration, easing as motionEasing } from "@/lib/motion-tokens";
 import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";
@@ -20,22 +20,21 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import FeatureGate from './FeatureGate';
 import VeyrnoxLogo, { VeyrnoxWordmark } from "./VeyrnoxLogo";
 import { navGroups, groupColor } from "@/lib/navigation";
+import { getParentRoute, isFromMoreDrawer } from "@/lib/parentRoute";
+import useRecentPages from "@/hooks/useRecentPages";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNotifications } from "@/notify/useNotifications";
 import NotificationToast from "./NotificationToast";
 import NotificationBell from "./NotificationBell";
 import { useReceiveDetector } from "@/notify/useReceiveDetector";
 import LockSealingOverlay from "./LockSealingOverlay";
+import FirstRunTour from "./FirstRunTour";
+import Spinner from "./Spinner";
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
 const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
 const ReceiveCryptoPage = lazy(() => import('../pages/ReceiveCrypto'));
-const TabSpinner = () => (
-  <div className="flex justify-center items-center p-8" role="status" aria-label="Loading">
-    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" />
-    <span className="sr-only">Loading tab content...</span>
-  </div>
-);
+const TabSpinner = () => <Spinner className="p-8" label="Loading tab content..." />;
 
 // navGroups + groupColor now live in lib/navigation.js — the single source of
 // truth shared with the command palette / search so the two can't drift.
@@ -72,6 +71,8 @@ export default function Layout() {
   const navigate = useNavigate();
   const { lock } = useWallet();
   const prefersReducedMotion = useReducedMotion();
+  const navType = useNavigationType();
+  const isBack = navType === 'POP';
   // Sign out / Exit (base44 removal, Phase 2). In the local build there is no
   // hosted account to log out of — exiting means locking the on-device vault,
   // which the WalletGate then enforces (the unlock front door reappears). We
@@ -156,6 +157,7 @@ export default function Layout() {
     markAllSeen();
     navigate("/notifications");
   }, [markAllSeen, navigate]);
+  const { recents } = useRecentPages();
   const queryClient = useQueryClient();
   const handleRefresh = async () => {
     await Promise.all([
@@ -268,23 +270,6 @@ export default function Layout() {
             </div>
           ))}
 
-          {/* Settings */}
-          <div className="mb-1">
-            {!collapsed && <p className="px-3 pt-3 pb-1 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Preferences</p>}
-            {collapsed && <div className="mt-2" />}
-            <Link
-              to="/settings"
-              title={collapsed ? "Settings" : undefined}
-              className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] transition-all duration-150 group ${collapsed ? 'justify-center' : ''} ${
-                location.pathname === "/settings"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              }`}
-            >
-              <Settings className="h-3.5 w-3.5 shrink-0" />
-              {!collapsed && <span>Settings</span>}
-            </Link>
-          </div>
         </nav>
 
         {/* Sign Out */}
@@ -328,16 +313,15 @@ export default function Layout() {
           ) : (
             <button
               onClick={() => {
-                // A page reached by tapping a tile in the mobile "More" drawer
-                // carries { fromMore: true } in its route state. Back from such a
-                // page returns to the underlying tab AND reopens the More drawer,
-                // so the user lands back on the menu they launched from instead of
-                // being dropped onto Home. Any other page does a plain history back.
-                if (location.state?.fromMore) {
-                  navigate(-1);
+                const hasHistory = window.history.length > 1 && document.referrer;
+                if (location.state?.fromMore || (!hasHistory && isFromMoreDrawer(location.pathname))) {
+                  const parent = getParentRoute(location.pathname);
+                  navigate(parent, { replace: true });
                   setMoreOpen(true);
-                } else {
+                } else if (hasHistory) {
                   navigate(-1);
+                } else {
+                  navigate(getParentRoute(location.pathname), { replace: true });
                 }
               }}
               className="flex items-center gap-1 -ml-1 pr-3 min-h-[44px] text-foreground active:opacity-60 transition-opacity select-none"
@@ -420,12 +404,12 @@ export default function Layout() {
             animates (key follows the path; AnimatePresence stays mounted while both
             are sub-pages). */}
         {!MOBILE_TABS.includes(location.pathname) && (
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={location.pathname}
-              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 20 }}
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: isBack ? -20 : 20 }}
               animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
-              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: isBack ? 20 : -20 }}
               transition={{ duration: prefersReducedMotion ? 0.15 : motionDuration.normal, ease: motionEasing.out }}
               className="p-4"
             >
@@ -443,6 +427,15 @@ export default function Layout() {
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/'}
           className="p-4"
         >
+          {/* F-P2-7: Mobile search pill — surfaces the command palette on Home since
+              ⌘K is desktop-only and the header icon is easy to miss. */}
+          <button
+            onClick={() => setCmdOpen(true)}
+            className="w-full flex items-center gap-2 px-3 py-2 mb-3 rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground text-sm transition-colors"
+          >
+            <Search className="h-4 w-4 shrink-0" />
+            <span className="flex-1 text-left">Search features, pages…</span>
+          </button>
           <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/"><DashboardPage /></FeatureGate></SafeSuspense>
         </div>
         <div
@@ -525,6 +518,32 @@ export default function Layout() {
             <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-secondary"><X className="h-5 w-5" /></button>
           </div>
           <div className="flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-3 pt-3 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            {/* Pinned quick-access + recents */}
+            {recents.length > 0 && (
+              <div className="rounded-2xl p-2.5 border border-primary/20 bg-primary/5">
+                <div className="flex items-center gap-2 px-1 pb-2">
+                  <span className="h-2 w-2 rounded-full shrink-0 bg-primary" />
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Recent</p>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {recents.map(path => {
+                    const item = navGroups.flatMap(g => g.items).find(i => i.path === path);
+                    if (!item) return null;
+                    const active = location.pathname === path;
+                    return (
+                      <Link key={path} to={path} state={{ fromMore: true }} onClick={() => setMoreOpen(false)}
+                        aria-current={active ? "page" : undefined}
+                        className="more-tile flex flex-col items-center justify-center gap-1.5 p-3 min-h-[72px] rounded-xl border cursor-pointer select-none transition-[transform,background-color,border-color,box-shadow] duration-150 text-foreground/90 hover:text-foreground"
+                        style={{ "--mt-bg": "#4ADAC21c", "--mt-bd": "#4ADAC240", "--mt-hbg": "#4ADAC259", "--mt-hbd": "#4ADAC2ee", "--mt-glow": "#4ADAC2b3", "--mt-abg": "#4ADAC23a", "--mt-abd": "#4ADAC299" }}
+                      >
+                        <item.icon className="h-6 w-6" style={active ? { color: '#4ADAC2' } : undefined} />
+                        <span className="text-[11px] font-medium text-center leading-tight line-clamp-2">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {navGroups.map(group => {
               const color = groupColor(group.label);
               return (
@@ -559,6 +578,7 @@ export default function Layout() {
         </div>
       )}
       <AnimatePresence>{sealing && <LockSealingOverlay />}</AnimatePresence>
+      <FirstRunTour />
     </div>
     </AccessibilityWrapper>
   );

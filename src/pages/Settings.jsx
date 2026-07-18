@@ -21,6 +21,7 @@ import TwoFactorSettings from "../components/security/TwoFactorSettings";
 import HardwareKekSettings from "../components/security/HardwareKekSettings";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
+import Spinner from "@/components/Spinner";
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -75,12 +76,7 @@ export default function Settings() {
   });
 
   if (isLoading) {
-    return (
-      <div role="status" aria-live="polite" className="flex items-center justify-center h-64">
-        <span className="sr-only">Loading settings…</span>
-        <div aria-hidden="true" className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" />
-      </div>
-    );
+    return <Spinner className="h-64" label="Loading settings…" />;
   }
 
   return (

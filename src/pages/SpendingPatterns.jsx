@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "@/lib/recharts";
 import CoinLogo from "@/components/CoinLogo";
 import { summarizeSpending } from "@/lib/spendingPatterns";
+import Spinner from "@/components/Spinner";
 
 // Native-unit amount formatter (no fiat — see lib/spendingPatterns for why).
 const fmtAmount = (n) =>
@@ -17,7 +18,7 @@ export default function SpendingPatterns() {
   const { counts, byAsset, monthly, byDow } = summarizeSpending(transactions);
   const dowData = byDow.map((d) => ({ day: d.day, count: d.sent + d.received }));
 
-  if (isLoading) return <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" /></div>;
+  if (isLoading) return <Spinner className="py-16" />;
 
   if (isError) return <div className="max-w-2xl mx-auto py-16 text-center text-sm text-destructive">Couldn't load transaction activity. Please try again.</div>;
 

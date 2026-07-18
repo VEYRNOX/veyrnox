@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { FileDown, FileText, Table2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { USD_RATES } from "@/lib/cryptos";
+import Spinner from "@/components/Spinner";
 
 function buildRows(transactions) {
   return transactions.map(tx => ({
@@ -138,9 +139,7 @@ export default function ExportTransactions({ transactions: propTransactions }) {
 
           <div className="space-y-3 pt-1">
             {isLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-5 w-5 motion-safe:animate-spin text-muted-foreground" />
-              </div>
+              <Spinner className="py-6" />
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">

@@ -142,6 +142,14 @@ const RAW_NAV_GROUPS = [
       { path: "/connect", label: "Connect Wallet", icon: Plug },
     ],
   },
+  {
+    label: "Preferences",
+    items: [
+      { path: "/settings", label: "Settings", icon: Settings },
+      { path: "/docs", label: "Documentation", icon: BookOpen },
+      { path: "/features", label: "Features", icon: LayoutGrid },
+    ],
+  },
 ];
 
 // Cut features (feature registry) are removed from nav + search entirely; the
@@ -151,23 +159,9 @@ export const navGroups = RAW_NAV_GROUPS
   .map((group) => ({ ...group, items: group.items.filter((item) => !isCut(item.path)) }))
   .filter((group) => group.items.length > 0);
 
-// Top-level destinations that live OUTSIDE the sidebar feature groups — the
-// sidebar renders Settings on its own, and Documentation hangs off the Help
-// menu — but they should still be findable from search. Kept separate from
-// navGroups so the sidebar/More drawer render exactly the 7 feature groups while
-// search covers these too.
-const EXTRA_ROUTES = [
-  { path: "/settings", label: "Settings", icon: Settings, group: "Preferences" },
-  { path: "/docs", label: "Documentation", icon: BookOpen, group: "Preferences" },
-  { path: "/features", label: "Features", icon: LayoutGrid, group: "Preferences" },
-];
-
 // Flattened { path, label, group, icon } list for the command palette / search.
-// Derived from navGroups (+ the top-level extras) so search ALWAYS covers the
-// full current feature set rather than a stale hand-maintained subset.
-export const searchableRoutes = [
-  ...navGroups.flatMap((group) =>
-    group.items.map((item) => ({ ...item, group: group.label })),
-  ),
-  ...EXTRA_ROUTES.filter((item) => !isCut(item.path)),
-];
+// Derived from navGroups so search ALWAYS covers the full current feature set
+// rather than a stale hand-maintained subset.
+export const searchableRoutes = navGroups.flatMap((group) =>
+  group.items.map((item) => ({ ...item, group: group.label })),
+);

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, Search, Star, Trash2, Copy, Check, Shield, AlertTriangle } from "lucide-react";
+import { Plus, Search, Star, Trash2, Copy, Check, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { isValidAddressForCurrency, addressKindLabel } from "@/lib/addressValidation";
+import PageState from "@/components/PageState";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const EMOJIS = ["👤", "🏢", "💼", "🏦", "👨‍👩‍👧", "🤝", "🌍", "⚡"];
@@ -21,7 +22,7 @@ export default function AddressBook() {
   const [copied, setCopied] = useState(null);
   const [form, setForm] = useState({ name: "", address: "", currency: "ETH", network: "Ethereum", emoji: "👤", note: "", is_trusted: false });
 
-  const { data: contacts = [], isError } = useQuery({
+  const { data: contacts = [], isLoading, isError } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list("-created_date"),
   });
@@ -76,20 +77,20 @@ export default function AddressBook() {
         <Input placeholder="Search contacts..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {isError && (
-        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex items-start gap-2 text-sm text-destructive">
-          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>Couldn’t load contacts — they may not all be shown.</span>
-        </div>
-      )}
-
-      {filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p className="text-4xl mb-3">📭</p>
-          <p className="font-medium">{search ? "No contacts found" : "No contacts yet"}</p>
-          <p className="text-sm mt-1">Save wallet addresses for quick access when sending</p>
-        </div>
-      ) : (
+      <PageState
+        loading={isLoading}
+        loadingLabel="Loading contacts…"
+        error={isError}
+        errorLabel="Couldn’t load contacts — they may not all be shown."
+        empty={filtered.length === 0}
+        renderEmpty={() => (
+          <div className="text-center py-16 text-muted-foreground">
+            <p className="text-4xl mb-3">📭</p>
+            <p className="font-medium">{search ? "No contacts found" : "No contacts yet"}</p>
+            <p className="text-sm mt-1">Save wallet addresses for quick access when sending</p>
+          </div>
+        )}
+      >
         <div className="space-y-2">
           {filtered.map(c => (
             <div key={c.id} className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors">
@@ -119,7 +120,7 @@ export default function AddressBook() {
             </div>
           ))}
         </div>
-      )}
+      </PageState>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">

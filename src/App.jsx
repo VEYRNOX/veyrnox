@@ -20,6 +20,7 @@ import Layout from './components/Layout';
 import EnvBadge from '@/components/EnvBadge';
 import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
+import Spinner from '@/components/Spinner';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -107,7 +108,7 @@ const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 const AuthenticatedApp = () => {
   // Render the main app
   return (
-    <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-border border-t-primary rounded-full motion-safe:animate-spin" /></div>}>
+    <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><Spinner size="lg" /></div>}>
     <Routes>
       <Route path="/landing" element={<LandingGuard />} />
       {/* Hosted-account auth routes are gone (base44 removal complete, Phase 4).

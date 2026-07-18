@@ -13,12 +13,13 @@ import {
   buildReviewItems,
 } from "@/lib/securityPosture";
 import { useRaspArtifact, TIER } from "@/rasp";
+import Spinner from "@/components/Spinner";
 import { isBiometricUnlockEnabled } from "@/lib/biometric";
 import { isPasskeyUnlockEnabled, isPasskeyRegistered } from "@/lib/passkey";
 import { loadAutoLockValue, AUTO_LOCK_OPTIONS } from "@/lib/session";
 import { formatUnlockTime } from "@/lib/formatUnlockTime";
 import {
-  Shield, ShieldAlert, ShieldCheck, AlertTriangle, ChevronRight, Loader2,
+  Shield, ShieldAlert, ShieldCheck, AlertTriangle, ChevronRight,
   Fingerprint, KeyRound, Lock, Ghost, ScanSearch, ShieldOff, FilterX, ShieldQuestion, History,
 } from "lucide-react";
 
@@ -195,7 +196,7 @@ export default function SecurityDashboard() {
               : <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />}
           <div className="flex-1 min-w-0">
             {loading ? (
-              <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Checking signals on this device…</p>
+              <p className="text-sm text-muted-foreground flex items-center gap-2"><Spinner size="sm" label="Checking signals on this device…" /> Checking signals on this device…</p>
             ) : review.length > 0 ? (
               <>
                 <p className="text-sm font-semibold">

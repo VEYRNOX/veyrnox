@@ -8,7 +8,7 @@ import {
   downloadBackupFilePicker,
   verifyBackupEnvelope,
 } from "@/wallet-core/vaultBackup";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import BackButton from "@/components/BackButton";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";

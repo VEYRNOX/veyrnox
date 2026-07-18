@@ -15,6 +15,7 @@ import { ScanFace, ShieldCheck, ShieldAlert, Loader2, CheckCircle2 } from 'lucid
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { useWallet } from '@/lib/WalletProvider';
+import Spinner from '@/components/Spinner';
 import {
   isBiometricUnlockEnabled,
   setBiometricUnlockEnabled,
@@ -210,7 +211,7 @@ export default function BiometricUnlockSettings() {
       <div className="flex items-start gap-2 text-xs">
         {status == null ? (
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> Checking availability…
+            <Spinner size="sm" label="Checking availability…" /> Checking availability…
           </span>
         ) : available ? (
           <span className="flex items-start gap-1.5 text-muted-foreground">

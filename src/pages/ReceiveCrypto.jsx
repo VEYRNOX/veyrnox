@@ -14,7 +14,7 @@ import { Copy, CheckCircle2, Lock, Clock, AlertTriangle, ArrowRight } from "luci
 import QRCodeDisplay from "../components/QRCodeDisplay";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import CoinLogo from "@/components/CoinLogo";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 // RECEIVE FLOW
 //

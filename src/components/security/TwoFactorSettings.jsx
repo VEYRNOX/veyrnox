@@ -31,7 +31,7 @@ import { Button } from '@/components/ui/button';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { ShieldCheck, KeyRound, Lock, Trash2, Fingerprint, Send, Eye, UserX, EyeOff } from 'lucide-react';
 import PinPad from '@/components/security/PinPad';
 import { getAuthModel } from '@/lib/authModel';

@@ -23,7 +23,7 @@
 
 import { useState } from 'react';
 import { motion, useReducedMotion, AnimatePresence } from "motion/react";
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Eye, EyeOff, Copy, Check } from 'lucide-react';
 import { copySecret } from '@/lib/copySecret';
 import { useRaspArtifact, sensitiveGate } from '@/rasp';

@@ -22,7 +22,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useWallet } from '@/lib/WalletProvider';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import {
   getSessionToken,
   clearSessionToken,

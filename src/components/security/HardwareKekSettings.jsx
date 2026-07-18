@@ -20,13 +20,14 @@
 
 import { useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { HardDrive, ShieldCheck, ShieldAlert, Loader2, ArrowUpCircle, Info } from 'lucide-react';
-import { toast } from 'sonner';
+import { HardDrive, ShieldCheck, ShieldAlert, ArrowUpCircle, Info } from 'lucide-react';
+import { toast } from '@/lib/toast';
 import { useWallet } from '@/lib/WalletProvider';
 import { getKeyStore } from '@/wallet-core/keystore';
 import { KEK_ERR } from '@/wallet-core/keystore/kek.js';
 import PinPad from '@/components/security/PinPad';
 import { tierToBadge } from '@/wallet-core/keystore/tierBadge.js';
+import Spinner from '@/components/Spinner';
 
 // Classify a thrown error by its STABLE machine CODE (not prose — copy is not a
 // contract and a raw message can leak internals). Returns the plain-language string
@@ -406,7 +407,7 @@ export default function HardwareKekSettings() {
       {/* Loading */}
       {enrolled === null && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> Checking status…
+          <Spinner size="sm" label="Checking status…" /> Checking status…
         </p>
       )}
 
@@ -466,7 +467,7 @@ export default function HardwareKekSettings() {
                   {busy
                     ? (
                       <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                        <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Upgrading — approve both prompts…
+                        <Spinner size="sm" label="Upgrading — approve both prompts…" /> Upgrading — approve both prompts…
                       </p>
                     ) : (
                       <>
@@ -516,7 +517,7 @@ export default function HardwareKekSettings() {
               {busy
                 ? (
                   <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                    <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Removing — approve the prompt…
+                    <Spinner size="sm" label="Removing — approve the prompt…" /> Removing — approve the prompt…
                   </p>
                 ) : (
                   <>
@@ -555,7 +556,7 @@ export default function HardwareKekSettings() {
           {busy
             ? (
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Enrolling — approve the biometric prompt…
+                <Spinner size="sm" label="Enrolling — approve the biometric prompt…" /> Enrolling — approve the biometric prompt…
               </p>
             ) : (
               <PinPad
@@ -590,7 +591,7 @@ export default function HardwareKekSettings() {
           {busy
             ? (
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Enrolling — approve the passkey prompt…
+                <Spinner size="sm" label="Enrolling — approve the passkey prompt…" /> Enrolling — approve the passkey prompt…
               </p>
             ) : (
               <PinPad

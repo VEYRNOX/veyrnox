@@ -27,6 +27,7 @@ import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
 import { computeFeeAnalytics } from "@/analytics/feeAnalytics";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import Spinner from "@/components/Spinner";
 
 // Fee analytics mirrors the wallet's receivable assets (an asset needs a derived
 // address to have history). ETH is first/default — and is also the canonical
@@ -174,7 +175,7 @@ export default function FeeAnalytics() {
 
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Reading {asset.symbol} history…
+          <Spinner size="sm" label={`Reading ${asset.symbol} history…`} /> Reading {asset.symbol} history…
         </div>
       )}
 

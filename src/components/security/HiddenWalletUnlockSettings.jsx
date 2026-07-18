@@ -24,7 +24,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { EyeOff, Lock, Fingerprint, Key } from 'lucide-react';
 
 const MODES = [

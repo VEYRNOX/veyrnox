@@ -42,7 +42,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 // Constant-time-ish PIN equality (mirrors WalletEntry.pinsEqual): compares every
 // character so a mismatch's position is not leaked by early return timing.

@@ -27,6 +27,7 @@ import { fetchAssetHistory } from "@/lib/txHistory";
 import { spendByPeriod } from "@/analytics/spendByPeriod";
 import { spendingQueryConfig } from "@/components/spendingQueryConfig";
 import SpendingPatternsTile from "@/components/SpendingPatternsTile";
+import Spinner from "@/components/Spinner";
 
 // Assets whose history can be listed in-app. EVM has no JSON-RPC list method and
 // we add no third-party indexer, so its tile would always be indeterminate — the
@@ -125,7 +126,7 @@ export default function SpendingPatternsCard() {
       {/* On-demand fetch states. A read error is honest (not a zero chart). */}
       {isLoading ? (
         <div className="rounded-2xl border border-border bg-card p-4 flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Reading {asset.symbol} history…
+          <Spinner size="sm" label={`Reading ${asset.symbol} history…`} /> Reading {asset.symbol} history…
         </div>
       ) : isError ? (
         // A failed read is indeterminate — never a fabricated zero (I4 fail-closed).

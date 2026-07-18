@@ -9,6 +9,7 @@ import { estimateEvmFeeTiers, buildEvmCustomFee } from "@/wallet-core/evm/fees";
 import { estimateBtcFeeTiers } from "@/wallet-core/btc/fees";
 import { estimateSolFeeTiers } from "@/wallet-core/sol/fees";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import Spinner from "@/components/Spinner";
 
 // Per-chain transaction-fee picker. These are GENUINELY different fee models and
 // are rendered each in their own native units — never one chain's format forced
@@ -186,7 +187,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
 
       {isLoading && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-          <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> Reading live fees from the network…
+          <Spinner size="sm" label="Reading live fees from the network…" /> Reading live fees from the network…
         </div>
       )}
 

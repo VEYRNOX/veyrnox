@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { addDays, isBefore, formatDistanceToNow } from "date-fns";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
+import Spinner from "@/components/Spinner";
 
 const FREQ_LABELS = { daily: "Daily", weekly: "Weekly", biweekly: "Every 2 Weeks", monthly: "Monthly" };
 const FREQ_DAYS = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
@@ -178,7 +179,7 @@ export default function RecurringPayments() {
         </div>
       )}
 
-      {isLoading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" /></div>
+      {isLoading ? <Spinner className="py-8" />
         : payments.length === 0 ? (
           <div className="text-center py-14 text-muted-foreground">
             <Repeat className="h-10 w-10 mx-auto mb-3 opacity-30" />

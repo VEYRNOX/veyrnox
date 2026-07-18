@@ -33,7 +33,7 @@
 // attempt-capped identically to the send step-up (5 wrong attempts -> lock()).
 
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Loader2, Lock, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PasswordInput } from '@/components/ui/PasswordInput';

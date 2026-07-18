@@ -5,7 +5,7 @@ import { base44, LLM_AVAILABLE } from "@/api/base44Client";
 import { Newspaper, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CryptoNewsFeed from "@/components/CryptoNewsFeed";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { safeFormat } from "@/lib/safeDate";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";

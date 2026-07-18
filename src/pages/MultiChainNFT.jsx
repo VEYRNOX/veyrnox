@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 const CHAINS = [
   { id: "ethereum", label: "Ethereum", icon: "Ξ", color: "bg-secondary text-muted-foreground", marketplace: "https://opensea.io/assets/ethereum" },

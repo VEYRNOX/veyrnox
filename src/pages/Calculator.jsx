@@ -10,6 +10,7 @@ import { CURRENCY_SYMBOLS, CURRENCY_COLORS } from "@/lib/cryptos.js";
 import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
+import Spinner from "@/components/Spinner";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
@@ -260,9 +261,7 @@ export default function Calculator() {
           <p className="text-sm font-semibold">All {fromCrypto} Rates</p>
         </div>
         {isLoading ? (
-          <div className="flex justify-center py-6">
-            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" />
-          </div>
+          <Spinner className="py-6" />
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {FIATS.map(f => {
