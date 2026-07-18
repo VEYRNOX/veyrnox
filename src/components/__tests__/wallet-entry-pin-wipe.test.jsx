@@ -17,6 +17,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
+vi.mock('@capacitor/haptics', () => ({
+  Haptics: { impact: vi.fn(), notification: vi.fn() },
+  ImpactStyle: { Light: 'LIGHT', Medium: 'MEDIUM', Heavy: 'HEAVY' },
+  NotificationType: { Success: 'SUCCESS', Warning: 'WARNING', Error: 'ERROR' },
+}));
 vi.mock('@/lib/WalletProvider', () => ({ useWallet: vi.fn() }));
 vi.mock('@/lib/authModel', () => ({ getAuthModel: vi.fn(() => 'pin'), setAuthModel: vi.fn() }));
 vi.mock('@/lib/biometric', () => ({
