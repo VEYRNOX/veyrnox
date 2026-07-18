@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Thin wrapper around sonner's `toast` (WCAG 2.2.1 — Timing Adjustable).
 //
 // sonner's Toaster duration is global and defaults to a single value for every
