@@ -34,6 +34,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, Monitor, Smartphone, Globe, Clock, Info } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
+import Spinner from "@/components/Spinner";
 
 function getDeviceIcon(ua) {
   if (!ua) return <Globe className="h-4 w-4" />;
@@ -155,11 +156,7 @@ export default function LoginActivity() {
       <div className="space-y-3">
         <p className="text-sm font-semibold">Registered devices</p>
 
-        {isLoading && (
-          <div className="flex justify-center py-8">
-            <div className="h-6 w-6 rounded-full border-2 border-border border-t-primary motion-safe:animate-spin" />
-          </div>
-        )}
+        {isLoading && <Spinner className="py-8" />}
 
         {!isLoading && isError && (
           <div className="text-center py-12 text-muted-foreground">

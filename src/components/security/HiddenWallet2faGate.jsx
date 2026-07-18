@@ -18,7 +18,7 @@ import { useWallet } from '@/lib/WalletProvider';
 import { evaluateTwoFactor } from '@/lib/twoFactorGate';
 import { verifyPasskeyAssertion } from '@/lib/passkey';
 import { verifyBiometric2fa } from '@/lib/biometric';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import TwoFactorGate from '@/components/security/TwoFactorGate';
 import { EyeOff } from 'lucide-react';
 

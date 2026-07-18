@@ -18,15 +18,11 @@
 // F-P2-8 (ecc-multi-lens-2026-07-18.md). This primitive is intentionally minimal;
 // per-page customisation is via the optional labels / renderEmpty / renderError props.
 
-import { Loader2, AlertTriangle, Inbox } from "lucide-react";
+import { AlertTriangle, Inbox } from "lucide-react";
+import Spinner from "./Spinner";
 
 function DefaultLoading({ label }) {
-  return (
-    <div role="status" aria-live="polite" className="flex items-center justify-center py-16">
-      <span className="sr-only">{label}</span>
-      <Loader2 aria-hidden="true" className="h-6 w-6 text-primary motion-safe:animate-spin" />
-    </div>
-  );
+  return <Spinner size="lg" className="py-16" label={label} />;
 }
 
 function DefaultError({ error, label }) {

@@ -6,7 +6,7 @@ import { getBalanceSol } from "@/wallet-core/sol/provider";
 import { ALLOW_SOL_MAINNET, solExplorerUrl } from "@/wallet-core/sol/networks";
 import { Copy, RefreshCw, ExternalLink, ShieldCheck, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 const NETWORK_KEY = ALLOW_SOL_MAINNET ? "mainnet" : "devnet";
 const NETWORK_LABEL = ALLOW_SOL_MAINNET ? "Mainnet" : "Devnet";

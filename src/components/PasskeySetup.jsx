@@ -2,10 +2,11 @@
 import { useState, useEffect } from "react";
 import { Shield, ShieldCheck, Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { isWebAuthnSupported } from "@/lib/passkey";
 import { useWallet } from "@/lib/WalletProvider";
 import { Capacitor } from "@capacitor/core";
+import Spinner from "@/components/Spinner";
 
 function generateChallenge() {
   const arr = new Uint8Array(32);
@@ -135,7 +136,7 @@ export default function PasskeySetup({ wallet, onRegistered }) {
     return (
       <div className="p-4 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-3">
-          <Loader2 className="h-5 w-5 motion-safe:animate-spin text-muted-foreground" />
+          <Spinner label="Checking biometric availability…" />
           <p className="text-sm text-muted-foreground">Checking biometric availability…</p>
         </div>
       </div>

@@ -48,13 +48,14 @@ import {
   decryptPinSeal,
   finalisePinRestore,
 } from '@/lib/restoreBackupFile';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useRaspArtifact, sensitiveGate } from '@/rasp';
 import {
   Upload, Lock, CheckCircle2, Loader2,
   FileText, RefreshCw, ChevronLeft, FolderOpen,
 } from 'lucide-react';
 import RestoreProgress from './RestoreProgress';
+import Spinner from '@/components/Spinner';
 import PinPad from '@/components/security/PinPad';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 
@@ -440,7 +441,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
 
         {listBusy ? (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Reading Downloads…
+            <Spinner size="sm" label="Reading Downloads…" /> Reading Downloads…
           </div>
         ) : backups.length === 0 ? (
           <div className="p-4 rounded-xl border border-border bg-card/50 text-xs text-muted-foreground space-y-1">

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Wallet, Plus, Copy, Check, RefreshCw, ChevronDown, ChevronRight, Key, KeyRound, Lock, Unlock, AlertTriangle, ArrowDownLeft, ArrowUpRight } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import CoinLogo from "@/components/CoinLogo";

@@ -12,7 +12,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   Wallet, Plus, Send, Download, ShieldAlert, Check,
   RefreshCw, MoreVertical, Pencil, Trash2, SlidersHorizontal, Star, FolderPlus,
