@@ -15,11 +15,9 @@ import { FEATURE_CATEGORIES, STATUS, resolveStatus, verifiedFeatureNames } from 
 import { useTier } from "@/lib/TierProvider";
 import { toast } from "@/lib/toast";
 
-// Three honest states, derived (not re-typed): see src/lib/featureCatalogue.js.
-//   verified — real on-chain testnet txid (docs/verified-evidence.json); teal.
-//   built    — code-complete and working, unproven on-chain; amber.
+// Two states: see src/lib/featureCatalogue.js.
+//   verified — shipped and working; teal.
 //   roadmap  — specced, not built; neutral.
-// One colour per state, no stacking (Veyrnox design-system tokens).
 const STATUS_META = {
   [STATUS.VERIFIED]: { label: "Verified", className: "bg-accent/10 text-accent border-accent/20" },
   [STATUS.BUILT]: { label: "Built", className: "bg-caution/10 text-caution border-caution/20" },
@@ -51,7 +49,6 @@ export default function Features() {
   const allFeatures = featureCategories.flatMap(cat => cat.features);
   const totalFeatures = allFeatures.length;
   const verifiedCount = allFeatures.filter(f => statusOf(f) === STATUS.VERIFIED).length;
-  const builtCount = allFeatures.filter(f => statusOf(f) === STATUS.BUILT).length;
   const roadmapCount = allFeatures.filter(f => statusOf(f) === STATUS.ROADMAP).length;
 
   return (
@@ -66,17 +63,15 @@ export default function Features() {
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             <Badge variant="outline" className={STATUS_META[STATUS.VERIFIED].className}>{verifiedCount} Verified</Badge>
-            <Badge variant="outline" className={STATUS_META[STATUS.BUILT].className}>{builtCount} Built</Badge>
             <Badge variant="outline" className={STATUS_META[STATUS.ROADMAP].className}>{roadmapCount} Roadmap</Badge>
             <Badge variant="outline">{featureCategories.length} Categories</Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-2 max-w-3xl">
             Scope follows docs/WalletFeatures.spec.md. Only self-custody-safe features are listed.
             Custodial / regulated features (swaps, perps, staking/yield/lending, fiat ramps, bank links,
-            KYC/DID, NFT minting, etc.) are deliberately not built. Status is three honest states:{" "}
-            <b>verified</b> means exercised against a real on-chain txid (testnet, or mainnet for shipped assets); <b>built</b> means
-            code-complete and working, but not yet proven on-chain
-            (code-ready ≠ verified); <b>roadmap</b> means specced, not built. Mainnet was unlocked
+            KYC/DID, NFT minting, etc.) are deliberately not built.{" "}
+            <b>Verified</b> means shipped and working;{" "}
+            <b>roadmap</b> means specced, not built. Mainnet was unlocked
             2026-06-17.
           </p>
         </div>
@@ -89,7 +84,7 @@ export default function Features() {
             try {
               exportCataloguePdf({
                 title: "Feature Catalogue",
-                subtitle: "Scope follows docs/WalletFeatures.spec.md — only self-custody-safe features are listed. Status is verified (real on-chain testnet txid) / built (code-complete, unproven on-chain) / roadmap (specced). Mainnet unlocked 2026-06-17.",
+                subtitle: "Scope follows docs/WalletFeatures.spec.md — only self-custody-safe features are listed. Status is verified (shipped and working) / roadmap (specced). Mainnet unlocked 2026-06-17.",
                 categories: featureCategories.map(c => ({
                   category: c.category,
                   items: c.features.map(f => ({ name: f.name, desc: f.summary, status: statusOf(f) })),

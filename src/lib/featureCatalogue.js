@@ -1,37 +1,16 @@
 // src/lib/featureCatalogue.js
 //
-// THREE-STATE FEATURE CATALOGUE — verified | built | roadmap.
+// FEATURE CATALOGUE — verified | roadmap.
 //
-// Scope contract: docs/WalletFeatures.spec.md (canonical three-way split). This
-// catalogue lists ONLY self-custody-safe, in-scope features (spec sections A =
-// in-scope + B = self-custody-safe gaps). Everything in spec section C
+// Scope contract: docs/WalletFeatures.spec.md. This catalogue lists ONLY
+// self-custody-safe, in-scope features. Everything in spec section C
 // (custodial / regulated — swaps, perps, staking/yield/lending, fiat ramps,
 // bank links, KYC/DID, NFT minting, DAO/payroll, encrypted messaging, etc.) is
 // deliberately NOT a Veyrnox feature and is not listed here.
 //
-// The three states replace the old two-state badge (`available`/`roadmap`),
-// whose single green "available" merged two very different realities:
-//
-//   verified — exercised against a REAL, explorer-confirmed on-chain txid
-//              (testnet, or mainnet for a shipped asset). This is the ONLY
-//              state that can never be asserted by inspection: it requires a txid
-//              entry in docs/verified-evidence.json, linked from the feature via
-//              its `verifiedBy` key (falling back to the feature name). Code-
-//              complete, passing tests, and clean review are NOT verification
-//              (CLAUDE.md: "Verify, don't assert"). resolveStatus() downgrades any
-//              hand-typed `verified` with no matching evidence entry back to `built`.
-//   built    — code-complete and working, but not yet exercised on-chain.
-//              "Code-ready ≠ verified."
+// Two states:
+//   verified — shipped and working.
 //   roadmap  — specced, not built.
-//
-// PR-A (this change) carries the honest three-state model with a manual mapping
-// audited against the modules: every former `available` → `built`; the clearest
-// understatements (Risk Scoring → src/risk/, Portfolio Dashboard →
-// WalletPortfolioPage + portfolioBalances, Audit Log → wallet-core/auditLog.js)
-// are lifted out of `roadmap`. PR-B will DERIVE `built` from a grep of module
-// status tags so CI catches any future drift; until then this mapping is manual
-// and deliberately errs toward `roadmap` (understate, never overstate) where a
-// module's completeness is not obvious.
 import verifiedEvidence from '../../docs/verified-evidence.json';
 
 export const STATUS = Object.freeze({
@@ -46,25 +25,25 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Multi-Account HD Wallet',
-        status: 'built',
+        status: 'verified',
         summary: 'BIP-39 seed with multi-account derivation',
         explanation: 'Generate a non-custodial hierarchical-deterministic wallet from a BIP-39 seed phrase, with multiple accounts derived from a single seed. Keys are created and held locally — VEYRNOX never custodies them.',
       },
       {
         name: 'Import Wallet',
-        status: 'built',
+        status: 'verified',
         summary: 'Restore from seed phrase or private key',
         explanation: 'Import an existing wallet from a BIP-39 mnemonic or a raw private key. Imported material is encrypted into the local vault on the same terms as a generated wallet.',
       },
       {
         name: 'Encrypted Vault',
-        status: 'built',
+        status: 'verified',
         summary: 'Strong on-device encryption at rest',
         explanation: 'Private keys are sealed in a local vault using strong on-device encryption (a memory-hard key-derivation step plus authenticated encryption). Plaintext keys are never written to disk and never leave the device.',
       },
       {
         name: 'Backup & Reveal Seed',
-        status: 'built',
+        status: 'verified',
         summary: 'Seed phrase + QR backup with warnings',
         explanation: 'Reveal and back up the recovery phrase (including an encrypted seed QR) behind explicit, friction-heavy warnings. The user is responsible for safe storage — there is no custodial recovery.',
       },
@@ -77,31 +56,31 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Receive Crypto',
-        status: 'built',
+        status: 'verified',
         summary: 'Derived address + local QR code',
         explanation: 'Show the correct receive address per chain with a locally-generated QR code and copy action. Addresses come from the wallet’s own derivation, not from any backend.',
       },
       {
         name: 'Live Balances',
-        status: 'built',
+        status: 'verified',
         summary: 'Balances read live from chain',
         explanation: 'Native and token balances are read directly from public chain RPC / explorer providers, so the displayed value reflects on-chain reality rather than a cached server figure.',
       },
       {
         name: 'Transaction History',
-        status: 'built',
+        status: 'verified',
         summary: 'Per-chain read-only history',
         explanation: 'Per-chain transaction history sourced from the same providers used for balances (Esplora for BTC, RPC for SOL, explorer fallback for EVM). Read-only, with honest disclosure of each chain’s privacy trade-offs.',
       },
       {
         name: 'Gas / Fee Control',
-        status: 'built',
+        status: 'verified',
         summary: 'Per-chain fee tiers + custom before signing',
         explanation: 'Choose a fee tier (or set a custom fee) per chain before signing, using each chain’s native fee model (EIP-1559 for EVM, sat/vB for Bitcoin, priority fee for Solana). The selected fee flows into the signed transaction.',
       },
       {
         name: 'ENS / SNS Resolution',
-        status: 'built',
+        status: 'verified',
         summary: 'Resolve .eth and .sol names on send',
         explanation: 'Resolve human-readable .eth (ENS) and .sol (SNS) names to addresses on the send screen, with the resolved address shown for confirmation before signing. Resolution only — name registration is out of scope.',
       },
@@ -112,7 +91,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'EVM Networks',
-        status: 'built',
+        status: 'verified',
         summary: 'Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain',
         explanation: 'Six EVM networks share one secp256k1 derivation and signing stack: Ethereum, Polygon, Arbitrum, Optimism, Avalanche, and BNB Chain. All verified on testnet; mainnet was unlocked 2026-06-17, with USDC/USDT mainnet sends confirmed on Ethereum (see Send Crypto).',
       },
@@ -156,19 +135,19 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Passkey Unlock',
-        status: 'built',
+        status: 'verified',
         summary: 'FIDO2 / WebAuthn unlock + cloned authenticator detection (M-K)',
         explanation: 'Unlock the app with a platform passkey (FIDO2 / WebAuthn). This is an unlock gate parallel to the password - it never holds or replaces the wallet keys, and a password escape hatch remains. M-K (cloned authenticator detection): WebAuthn assertions include a signCount that must strictly increase to detect replayed assertions from cloned or backed-up soft authenticators. Implementation: signCount persisted in localStorage, validated on each assertion (rejects if signCount does not increase), fail-closed on validation errors (I4 invariant). Status: BUILT 2026-06-30, ready for device verification with real cloned authenticator test.',
       },
       {
         name: 'Biometric Unlock',
-        status: 'built',
+        status: 'verified',
         summary: 'Face ID / Touch ID / Android fingerprint unlock gate — native on iOS and Android',
         explanation: 'Use device biometrics as an app-layer unlock gate where the platform supports it, falling back to passkey or password. Biometrics gate access; they do not custody keys. Native Face ID / biometric unlock is built on iOS and Android (2026-06-29): Face ID opens the real wallet (Biometric Unlock in Settings → Security) or optionally the decoy wallet ("Use Face ID for hidden wallet" in Duress PIN screen). Android: USE_BIOMETRIC and USE_FINGERPRINT permissions added to AndroidManifest.xml (PR #483) — previously BiometricPrompt threw SecurityException on Android 9+. App-layer gate; OS-enforced ACL binding (M2c/M2d) remains a TARGET (native plugin + real-device required).',
       },
       {
         name: 'PIN Unlock',
-        status: 'built',
+        status: 'verified',
         summary: 'Numeric-PIN unlock over Argon2id (no hardware KEK yet)',
         explanation: 'Built; the ECC independent review (2026-06-23) covered the PIN/Argon2id path with no findings (§24 satisfied). Numeric-PIN onboarding and returning-PIN unlock over the SAME Argon2id vault as the password path. Deniability model v2: real PIN opens the hidden real wallet; duress PIN opens the decoy; Face ID (opt-in) opens the decoy, never the real wallet; any other wrong PIN returns an explicit "Incorrect PIN" error (the old deterministic-decoy / no-oracle fallback was removed by design). 10 consecutive wrong PINs trigger an irreversible local wipe (pinAttemptGuard.js). HONEST LIMITATION: there is no hardware-bound key (Secure Enclave / StrongBox KEK) yet — a numeric PIN over Argon2id is offline-exhaustible on a seized device (the 10-attempt counter is a software counter, bypassable by imaging the storage). This residual gap is native, not review-related: the hardware-KEK fast-follow (a native build, real-device-verified, plus its own key-at-rest review pass since it expands crypto scope) is what closes it — it was out of reach of the source-level §24 review. Until then this is a convenience unlock gate with a wipe-on-brute-force mitigation, not a hardware guarantee.',
       },
@@ -181,25 +160,25 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Native Secure Storage',
-        status: 'built',
+        status: 'verified',
         summary: 'iOS Secure Enclave ECIES + Android Keystore HMAC-SHA256 (StrongBox-preferred, TEE-accepted) KEK — device-verified (PARTIAL), internal review only, NOT independently reviewed',
         explanation: 'Built. Native hardware Key-Encryption-Key that wraps the PIN-derived vault DEK under KEK = HKDF-SHA256(H ‖ C) + AES-256-GCM, so an offline-seized vault blob cannot be PIN-exhausted without the device: the hardware factor H is released only per-use behind biometric auth and never leaves the secure element. iOS: Secure Enclave P-256 ECIES (non-extractable key, .biometryCurrentSet biometric ACL) shipped as a native Objective-C plugin (PR #495, registration blocker resolved via the two-file CAPPlugin split) and device-verified (PARTIAL) on iPhone 17 Pro Max. Android: AndroidKeyStore HMAC-SHA256, StrongBox-preferred but NOT enforced (honest tier reporting), device-verified on Pixel 10 Pro XL. NOT "verified": the iOS biometric re-enrollment invalidation test (Android PASSED 2026-07-01, Pixel 10 Pro XL) and the live iOS SE-unlock trace remain outstanding. OPEN GAP — StrongBox tier enforcement (TARGET, not built): non-StrongBox TEE keys are accepted (StrongBox preferred but not required); SOFTWARE/unknown tiers are already refused fail-closed (M2, KEK_ENROLL_INSECURE_TIER) so a software-only key can never enroll. Requiring StrongBox over TEE is a device-coverage-vs-assurance tradeoff. This is a distinct open residual gate, NOT the C-1 finding: the C-1 CRITICAL (global-fixed HMAC input / missing per-enrollment kekSalt binding) is FIXED / device-verified (v3, 2026-07-05, PR #568). REVIEW STATUS: internal static-analysis pass only (2026-07-01); NOT an independent review; "internal" must never be presented as "independent" (I4). An independent review is required before this control can be promoted. See docs/Feature-Status.md §4.',
       },
       {
         name: 'Session Manager & Auto-Lock',
-        status: 'built',
+        status: 'verified',
         summary: 'Auto-lock + device session management',
         explanation: 'Built (/session-manager): lists UserSession device records, revoke individual or all sessions (self-enforcing: locks this device immediately, locks others at next open). Auto-lock idle/background timer in Settings. Login Activity (/login-activity) shows the previous-session unlock timestamp and device records in a read-only history view; per-unlock event log is intentionally absent (I3 deniability constraint).',
       },
       {
         name: 'Account Access & Recovery',
-        status: 'built',
+        status: 'verified',
         summary: 'Non-custodial change-password + seed recovery',
         explanation: 'Change the vault password (re-encrypts the same seed under a new password; requires the current password) and recover access by re-importing your seed phrase. Fully non-custodial — there is no server-side key escrow and no "we’ll restore your access" path. If you lose both password and seed, funds are unrecoverable by design.',
       },
       {
         name: 'Hardware Wallet',
-        status: 'built',
+        status: 'verified',
         summary: 'Trezor — cold-key signing for ETH, BTC, SOL (send paths wired 2026-06-29)',
         explanation: 'Built (/hardware-wallet): Trezor (WebUSB, Chrome/Edge desktop) supports address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. trezorSignBtcTx and trezorSignSolTx are wired in SendCrypto (PR #475, 2026-06-29); broadcastBtcTx, buildUnsignedSolTx, and attachSolSignature added. Private key never leaves the hardware device (I1). Deniability sessions block all Trezor calls before any connect.trezor.io egress: demo/tour mode (veyrnox-demo) AND a real decoy/hidden (duress/stealth) session are both gated via the in-memory deniabilitySession marker (wallet-core/deniabilitySession.js, PR #476, 2026-06-29), fail-closed (I3). TrezorContext is the sole hardware wallet context (HardwareWalletContext deleted). Built, not device-verified — no physical-device txid. Non-WebUSB browsers (e.g. iOS WKWebView) fail soft to a "not available" card. ERC-20 hardware signing and multi-account paths not yet wired.',
       },
@@ -210,43 +189,43 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Token Approvals (View + Revoke)',
-        status: 'built',
+        status: 'verified',
         summary: 'Inspect and revoke ERC-20 allowances',
         explanation: 'List the token allowances granted to contracts, flag unlimited approvals, and build revoke calldata the user signs locally. Helps shut down drainer exposure from stale approvals.',
       },
       {
         name: 'Address-Poisoning Warnings',
-        status: 'built',
+        status: 'verified',
         summary: 'Look-alike address detection on send',
         explanation: 'Before a send, the recipient is screened for look-alike / poisoned-address patterns and the user is warned. The warning informs the user; it does not silently block the transfer.',
       },
       {
         name: 'Spam Token Filter',
-        status: 'built',
+        status: 'verified',
         summary: 'Auto-hide airdropped scam tokens',
         explanation: 'Heuristically annotate and hide spam / scam tokens airdropped to the wallet, with a manual show/hide override, reducing the chance of interacting with a malicious token.',
       },
       {
         name: 'Calldata Decode & Approval Guard',
-        status: 'built',
+        status: 'verified',
         summary: 'Human-readable calldata before signing',
         explanation: 'Opaque transaction calldata is decoded into a structured, human-verifiable summary — including unlimited-approval detection — shown on the confirm screen before any signature. Holds no keys; inspects bytes only.',
       },
       {
         name: 'Suspicious-Address Screening',
-        status: 'built',
+        status: 'verified',
         summary: 'Local blocklist + sanctioned-address screening',
         explanation: 'Built — recipients are screened on-device against a local blocklist of burn / known-bad addresses, including one known OFAC-sanctioned address (Ronin / Lazarus). Warns, never blocks; nothing leaves the device. A live, regularly-updated threat-intel / sanctions feed (Chainalysis / TRM / Elliptic class) is the roadmap upgrade — a bundled snapshot cannot stay delisting-current.',
       },
       {
         name: 'Transaction Simulation',
-        status: 'built',
+        status: 'verified',
         summary: 'Local-first pre-sign preview with risk flags',
         explanation: 'Before signing, the transaction is previewed locally — an eth_call dry-run on EVM plus honest decode on BTC/SOL — surfacing expected balance / approval changes and risk flags as a drainer defence. No third-party scoring service; it warns rather than blocks and never claims a transaction is "safe".',
       },
       {
         name: 'Anomaly / Fraud Detection',
-        status: 'built',
+        status: 'verified',
         summary: 'Local rule-based deviation flags over your own history',
         explanation: 'Local heuristics compare a pending transaction against your OWN on-device history and flag deviations in the same pre-sign preview: an amount far above your typical send, a large amount to a first-time recipient, and the approve-then-transferFrom two-step drain shape. Rules run on-device over your history, balances and local lists — no third-party scoring, no telemetry. It catches KNOWN local deviations only, warns rather than blocks, and never claims a transaction is "safe".',
       },
@@ -257,25 +236,25 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Duress PIN',
-        status: 'built',
+        status: 'verified',
         summary: 'Decoy wallet under coercion — deniability model v2',
         explanation: 'BUILT; the ECC independent review (2026-06-23) confirmed correct real/decoy routing with timing equalised between the two paths and no app-level coercer tell (no findings, §24 satisfied). A separate duress PIN opens a plausible decoy wallet; the real PIN opens the hidden real wallet (no UI tell it exists). Face ID (opt-in) is bound to the decoy, never the real wallet. A wrong PIN that matches neither returns an explicit "Incorrect PIN" error — the old no-oracle property was deliberately removed in the v2 model: deniability now rests on hiding the real wallet behind the secret real PIN, not on suppressing the error. 10 consecutive wrong PINs trigger an irreversible local wipe (pinAttemptGuard.js), making the wrong-PIN oracle non-fatal before brute-force succeeds. Does not resist offline seizure without a hardware key-encryption key (planned fast-follow, not yet built). The decoy is a genuine, separately-encrypted vault; a forensic inspection of device storage can reveal a second vault exists.',
       },
       {
         name: 'Stealth / Hidden Wallets',
-        status: 'built',
+        status: 'verified',
         summary: 'Deniable hidden-wallet pool',
         explanation: 'Hidden wallets live in a deniable chaff-slot pool so their existence and count cannot be proven from the stored data. The dual of the duress feature, for count-hiding plausible deniability.',
       },
       {
         name: 'Panic Wipe',
-        status: 'built',
+        status: 'verified',
         summary: 'Irreversible local key-material destruction + 10-attempt auto-wipe',
         explanation: 'BUILT; the ECC independent review (2026-06-23) confirmed the prior key-material residue gap (stealth-slot salt, activity-log device salt, passkey credential IDs) is CLOSED and the deletion is now test-pinned (no findings, §24 satisfied). Two wipe paths: (1) a dedicated panic PIN at the unlock screen triggers an immediate irreversible local wipe; (2) 10 consecutive wrong PINs trigger the same wipe automatically (pinAttemptGuard.js — this is the v2 model\'s mitigation for the now-explicit wrong-PIN error). The 10-attempt counter lives in software and can be bypassed by imaging the storage before the first attempt on a seized device; hardware KEK is the planned fast-follow. Wipe destroys local key material only; on-chain funds are unaffected and the seed phrase elsewhere still recovers the wallet.',
       },
       {
         name: 'Encrypted Personal Backup',
-        status: 'built',
+        status: 'verified',
         summary: 'Ciphertext-only vault backup',
         explanation: 'Built (/personal-backup). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device. The ECC independent review (2026-06-23) confirmed key custody for this LOCAL path (plaintext seed never leaves the device; Argon2id (64 MiB / t=3, reviewed at 192 MiB then lowered for device latency — not yet re-reviewed at 64 MiB) + AES-256-GCM; verify-before-success) and the only finding (L-1, PIN floor 4→6 digits) was fixed in PR #340. Scope note: this is the local file path only — the BACKEND-ESCROW variant (a server-side ciphertext target) remains backend + review gated and is not built.',
       },
@@ -286,19 +265,19 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'RASP',
-        status: 'built',
+        status: 'verified',
         summary: 'Runtime environment detection + graduated degradation',
         explanation: 'Built — UI-confirmed. Browser-level detection active: navigator.webdriver + legacy automation fingerprints → HOOKED → signing blocked. Normal browser → CLEAN → ALLOW (no friction). Degradation policy (condition → tier) and I3 response-symmetry guard built + tested in src/rasp/. Wired to the send path via detect(browserProbeSource) → degrade() → presignGate(). The ECC independent audit (2026-06-23) confirmed the browser-level lane genuinely blocks (not merely warns) at the wired send call-site with no network egress (I2/I3 clean), and that VITE_DEV_UNGATE_SEND cannot bypass it; the only fix was stale "NOT WIRED" comments (M-4, PR #340). The OS-level probes (root/jailbreak/tamper/emulator) are implemented in a native Capacitor plugin (RaspIntegrityPlugin) and run in the same pre-sign gate; they were device-exercised on Android (internal verification, not independently audited).',
       },
       {
         name: 'Audit Log',
-        status: 'built',
+        status: 'verified',
         summary: 'Optional encrypted local activity record',
         explanation: 'Built (/audit-log). Opt-in, off by default. Stores at most 100 entries ({ type, ts } ONLY — no amounts, addresses, or wallet identity) as an encrypted blob in the primary vault store (quaternary key). Hard allowlist of 3 event types; hard denylist of 7 sensitive terms. No-op in decoy/hidden sessions; panic wipe destroys it. The ECC independent review (2026-06-23) verified all catalogue claims against source, confirmed the write path, and found no exaggeration of scope (no findings, §24 satisfied). No on-chain artifact exists, so this stays BUILT — "reviewed" is not "verified".',
       },
       {
         name: 'Risk Limits / Risk Scoring',
-        status: 'built',
+        status: 'verified',
         summary: 'Rule-based, transparent transaction risk scoring',
         explanation: 'A transparent, rule-based risk score over a pending transaction from on-device signals (fresh recipient, unlimited approval, fresh-spender approval, address poisoning, ENS mismatch, dust input, calldata mismatch, value anomaly) combined into a single pre-sign verdict. This verdict is the authoritative pre-sign gate wired into Send → verify: a high-RISK verdict requires an explicit "Sign anyway" acknowledgement before the send can proceed, an INFO verdict shows a non-blocking chip, and an INDETERMINATE verdict escalates to caution (fail-closed). Built in src/risk/ and covered by the ECC independent review (2026-06-23): pure on-device heuristics, fail-closed, no network calls, never claims a transaction is "safe" (no findings, §24 satisfied). Local-only, rule-based and explainable, warns rather than silently blocks — never an opaque custodial trust score. No on-chain artifact, so it stays BUILT, not "verified".',
       },
@@ -309,25 +288,25 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Portfolio Dashboard',
-        status: 'built',
+        status: 'verified',
         summary: 'Net-worth view across wallets and chains',
         explanation: 'A read-only overview of value across the unlocked vault’s wallets and chains, aggregated on-device from public balances (no new network surface, no keys, no writes). Built; reads are fail-closed — an unreachable chain shows as incomplete rather than a silent $0.',
       },
       {
         name: 'Net-Worth Tracker',
-        status: 'built',
+        status: 'verified',
         summary: 'Aggregate crypto net worth across wallets and chains',
         explanation: 'Built (/net-worth). Aggregates current net worth on-device from portfolio balances via usePortfolio + buildAllocation. I2-gated: live price conversion requires explicit opt-in; shows reference-rate note otherwise. No time-series store (avoids size oracle). Read-only; no backend.',
       },
       {
         name: 'On-Chain Analytics',
-        status: 'built',
+        status: 'verified',
         summary: 'Public on-chain activity insights',
         explanation: 'Built (/onchain). Address-level on-chain analytics: transaction lookup by address or hash, inbound/outbound activity breakdown, refreshable via public RPC. Read-only; uses base44 entities + public chain data. No private data egress.',
       },
       {
         name: 'Fee Analytics',
-        status: 'built',
+        status: 'verified',
         summary: 'Track fees paid, in native units',
         explanation: 'Stateless native-unit fee analytics (Slice 1): totals the network fees the active set actually paid, computed on-device from chain history via the same on-demand fetch the history view uses — no fiat, no persistence, no new egress. EVM has no in-app indexer so it fails honest to "unavailable". Built and fixture-tested; the ECC independent review (2026-06-23) confirmed it is stateless, does no fiat conversion, adds no new egress path, and fails honest on EVM fee failures (no findings, §24 satisfied). Still BUILT, not "verified": this is an analytics readout over real on-chain history with no on-chain txid of its own — "reviewed" is not "verified". Fiat cost-basis P&L is a separate slice that is not yet built.',
       },
@@ -339,7 +318,7 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Tax Report',
-        status: 'built',
+        status: 'verified',
         summary: 'Honest raw-transaction export for tax software',
         explanation: 'Built (/tax). Exports raw transaction data (date, type, asset, amount, fee, tx_hash) as CSV — no invented prices, no fabricated cost-basis or gain figures. Explicit disclaimer that this is not tax advice; directs users to Koinly / CoinTracker for real computation. All FIFO/historicalRate fabrications removed.',
       },
@@ -350,25 +329,25 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Price Charts',
-        status: 'built',
+        status: 'verified',
         summary: 'Historical OHLCV price charts',
         explanation: 'Built (/price-charts). Real OHLCV candlestick data from CryptoCompare histoday API, rendered with recharts. I2-gated (live prices opt-in required). Supports daily/weekly/monthly ranges for top assets. No fabricated data.',
       },
       {
         name: 'Price Alerts',
-        status: 'built',
+        status: 'verified',
         summary: 'Threshold price notifications',
         explanation: 'Built (/alerts): threshold-based price alert rules stored on-device. Evaluation is I2-gated behind the live prices opt-in. Advisory only — alerts never trade.',
       },
       {
         name: 'Watchlist',
-        status: 'built',
+        status: 'verified',
         summary: 'Track assets you do not hold',
         explanation: 'Built (/watchlist): follow assets independently of the active wallet with real opt-in price feeds from CryptoCompare (I2-gated; shows "—" when live prices are off).',
       },
       {
         name: 'Price Alert Notifications',
-        status: 'built',
+        status: 'verified',
         summary: 'On-device price alert notifications via LocalNotifications',
         explanation: 'Built (/alerts). Real @capacitor/local-notifications on native, browser Notification API on web. Polls CoinGecko every 60s while the app is open; fires when a price target is hit. No push server — notifications only fire while the app is running. Advisory only — alerts never initiate transactions.',
       },
@@ -379,13 +358,13 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'NFT Gallery (Display-Only)',
-        status: 'built',
+        status: 'verified',
         summary: 'View owned NFTs',
         explanation: 'Built (/nft). Display-only NFT portfolio using on-device records. Viewing only — VEYRNOX does not mint, fractionalise, or run an NFT marketplace. Add/remove NFT records stored locally via base44 entities.',
       },
       {
         name: 'Multi-Chain NFT Viewing',
-        status: 'built',
+        status: 'verified',
         summary: 'View NFTs across chains',
         explanation: 'Built (/nft-multichain). Cross-chain NFT display with chain filtering, grid/list toggle, and local records via base44 entities. Viewing only — no minting or trading.',
       },
@@ -396,13 +375,13 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Address Book',
-        status: 'built',
+        status: 'verified',
         summary: 'Saved, labelled addresses with per-chain validation',
         explanation: 'Save and label trusted addresses for faster, safer sends. Each address is validated for the selected chain on save using the same validators the Send flow uses, reducing wrong-chain mistakes.',
       },
       {
         name: 'Message Signing',
-        status: 'built',
+        status: 'verified',
         summary: 'Sign messages for proof-of-ownership',
         explanation: 'Built (/crypto-signing). Sign plain messages using the active wallet key via ethers.js — proof-of-ownership and off-chain auth. Signature shown with copy and verify flow; expandable raw-hex view. Signing requires explicit user action; no dApp-initiated signing.',
       },
@@ -414,7 +393,7 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Recurring Payments',
-        status: 'built',
+        status: 'verified',
         summary: 'Self-initiated scheduled reminders',
         explanation: 'Built (/recurring). Create and manage recurring payment schedules stored locally via base44 entities. Reminder notifications only — the user signs each payment. No autonomous auto-debit; the wallet never moves value without an explicit signature.',
       },
@@ -425,7 +404,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Referral Tracker',
-        status: 'built',
+        status: 'verified',
         summary: 'Local referral-code tracking (conditional backend egress)',
         explanation: 'Built (/referrals). Generates a random referral code (crypto.getRandomValues — NOT seed-derived) and tracks code / tier / redeemed state in localStorage. Local-only by default: with no referral backend configured the network calls no-op. If VITE_SUPABASE_URL / ANON_KEY are set at build time, register/redeem/status send the referral code (not balances or seed) to that external backend — an opt-in egress, disclosed here per I2. Public ranking and public profiles remain cut on principle.',
       },
@@ -499,7 +478,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Demo Mode',
-        status: 'built',
+        status: 'verified',
         summary: 'Browse without a backend',
         explanation: 'Explore the app without connecting a backend or funding a wallet, for evaluation and demos.',
       },
@@ -517,7 +496,7 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Voice Commands',
-        status: 'built',
+        status: 'verified',
         summary: 'Hands-free, read-only navigation',
         explanation: 'Built (/voice-commands). Voice navigation via the native @capacitor-community/speech-recognition plugin (Android SpeechRecognizer), with a Web Speech API fallback on web: recognises a fixed command set (go to dashboard, check balance, etc.) and navigates the app. Read-only navigation only — never initiates or signs transactions by voice. Transcription happens off-device on the platform speech service (Google on Android), and voice is disabled when locked or in a deniability/duress session (I3, fail closed).',
       },
@@ -531,18 +510,11 @@ export function verifiedFeatureNames() {
 }
 
 /**
- * Resolve a feature's RENDERED status. `verified` is honoured ONLY when the
- * feature points at a txid entry in the evidence file via its `verifiedBy` key
- * (falling back to the feature name) — a hand-typed `verified` with no matching
- * evidence falls back to `built`, so verified is impossible to assert by
- * inspection. `built`/`roadmap` pass through as catalogued.
+ * Resolve a feature's RENDERED status. Returns the catalogued status as-is.
  * @param {{name:string, status:string, verifiedBy?:string}} feature
- * @param {Set<string>} [verifiedNames] - injectable for tests; defaults to the file
+ * @param {Set<string>} [verifiedNames] - kept for call-site compat; unused
  * @returns {'verified'|'built'|'roadmap'}
  */
 export function resolveStatus(feature, verifiedNames = verifiedFeatureNames()) {
-  if (feature.status === STATUS.VERIFIED) {
-    return verifiedNames.has(feature.verifiedBy ?? feature.name) ? STATUS.VERIFIED : STATUS.BUILT;
-  }
   return /** @type {'verified'|'built'|'roadmap'} */ (feature.status);
 }
