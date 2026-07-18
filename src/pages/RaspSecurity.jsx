@@ -75,6 +75,14 @@ const DOT_TONE = {
   [TIER.BLOCK]: "bg-risk",
 };
 
+// Screen-reader severity prefix for the environment readout — colour alone is
+// insufficient signal for AT users.
+const TIER_SEVERITY_LABEL = {
+  [TIER.ALLOW]: "Clean",
+  [TIER.WARN]:  "Elevated risk",
+  [TIER.BLOCK]: "High risk",
+};
+
 export default function RaspSecurity() {
   // P2-8: single source of truth. The hook composes on-device probe AND
   // attestation, re-probes on foreground/heartbeat, and returns a fail-closed
@@ -120,11 +128,14 @@ export default function RaspSecurity() {
 
       {/* Live environment readout — pure function of runtime signals */}
       <div
+        aria-live="polite"
+        aria-atomic="true"
         className="p-4 rounded-xl border border-border bg-secondary/30 flex items-center gap-3"
         data-testid="rasp-live-condition"
       >
-        <span className={`h-2 w-2 shrink-0 rounded-full ${dotTone}`} />
+        <span className={`h-2 w-2 shrink-0 rounded-full ${dotTone}`} aria-hidden="true" />
         <span className="text-sm text-muted-foreground">Current environment:</span>
+        <span className="sr-only">{TIER_SEVERITY_LABEL[liveTier] ?? "Unknown"} — </span>
         <span className="font-mono text-sm" data-testid="rasp-condition-value">{liveConditionLabel}</span>
       </div>
 

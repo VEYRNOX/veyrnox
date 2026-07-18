@@ -220,10 +220,13 @@ function ProvisioningView() {
         </div>
       </div>
       <div
-        aria-hidden
+        role="progressbar"
+        aria-label="Setting up wallet"
+        aria-valuetext={PROVISIONING_STEPS[step]}
         className="mx-auto h-[3px] w-40 overflow-hidden rounded-full bg-secondary"
       >
         <motion.div
+          aria-hidden
           className="h-full w-1/3 rounded-full bg-primary/80"
           animate={reduce || !shimmerVisible ? undefined : { x: ['-100%', '400%'] }}
           transition={reduce ? undefined : { duration: 1.8, ease: 'easeInOut', repeat: Infinity }}
@@ -1339,6 +1342,7 @@ export default function WalletEntry() {
               <PasswordInput
                 className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 placeholder="Vault password"
+                aria-label="Vault password"
                 value={unlockPassword}
                 onChange={e => { setUnlockPassword(e.target.value); setError(""); }}
                 onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(); }}
@@ -1606,7 +1610,7 @@ export default function WalletEntry() {
             )}
             <div>
               <Label>Vault Password</Label>
-              <PasswordInput className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
+              <PasswordInput className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" aria-label="New vault password" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
               <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed. This is your real key — required, never skipped.</p>
             </div>
             <Button className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
@@ -1665,7 +1669,7 @@ export default function WalletEntry() {
         </div>
         <div>
           <Label>{recovering ? "New Vault Password" : "Vault Password"}</Label>
-          <PasswordInput className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
+          <PasswordInput className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" aria-label="Vault password for imported seed" />
           <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed.</p>
         </div>
 

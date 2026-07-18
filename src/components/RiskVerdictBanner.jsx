@@ -20,6 +20,7 @@
 // nibbles the verdict tells the user to compare. Signals own human-readable
 // evidence (e.g. S8 emits formatted amounts, not raw wei).
 
+import { useId } from 'react';
 import { AlertTriangle, ShieldAlert, Info, Loader2 } from 'lucide-react';
 
 // Map a composite level to its design-system token + icon. OK renders nothing.
@@ -30,13 +31,19 @@ const STYLES = {
 };
 
 export default function RiskVerdictBanner({ verdict, acknowledged = false, onAcknowledge, pending = false }) {
+  const sentenceId = useId();
   // While the pre-sign checks are still running (e.g. the simulation's
   // eth_getCode is in flight), say so explicitly. The caller keeps the verify
   // buttons disabled until this resolves, so the user never proceeds against an
   // unknown verdict and then hits a bare fail-closed error at signing time.
   if (pending) {
     return (
-      <div className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/30">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/30"
+      >
         <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 mt-0.5 motion-safe:animate-spin text-muted-foreground" />
         <p className="text-xs text-muted-foreground">Running pre-sign risk checks…</p>
       </div>
@@ -54,10 +61,13 @@ export default function RiskVerdictBanner({ verdict, acknowledged = false, onAck
   const monoEntries = Object.entries(values).filter(([, v]) => typeof v === 'string');
 
   return (
-    <div className={`flex items-start gap-2 p-3 rounded-lg border ${style.box}`}>
+    <div
+      role="alert"
+      className={`flex items-start gap-2 p-3 rounded-lg border ${style.box}`}
+    >
       <Icon aria-hidden="true" className={`h-4 w-4 shrink-0 mt-0.5 ${style.text}`} />
       <div className={`text-xs space-y-1.5 min-w-0 ${style.text}`}>
-        <p className="font-medium">{verdict.sentence}</p>
+        <p id={sentenceId} className="font-medium">{verdict.sentence}</p>
         {monoEntries.length > 0 && (
           <div className="space-y-0.5">
             {monoEntries.map(([k, v]) => (
@@ -76,6 +86,7 @@ export default function RiskVerdictBanner({ verdict, acknowledged = false, onAck
               className="mt-0.5"
               checked={acknowledged}
               onChange={(e) => onAcknowledge?.(e.target.checked)}
+              aria-describedby={sentenceId}
             />
             <span>I understand the risk and want to sign anyway.</span>
           </label>
