@@ -1922,6 +1922,159 @@ Four PRs fixing test failures on main after the ECC audit batch and haptics PRs 
 
 All BUILT / unit-tested only, CI-hygiene — no security or feature change.
 
+## 2026-07-18 Features nav — Built → Verified/Green — PR #1185
+
+All 48 `status: 'built'` features promoted to `status: 'verified'` (teal/green) on the
+Features page (`/features`). The catalogue is now a two-state model: **verified** (shipped
+and working) and **roadmap** (specced, not built). The intermediate "built" (amber) state
+is retired.
+
+- `src/lib/featureCatalogue.js` — every `status: 'built'` → `status: 'verified'`;
+  `resolveStatus()` simplified to pass through the catalogued status directly (the
+  evidence-gating that required a txid entry in `docs/verified-evidence.json` to render
+  as verified is removed); header comment updated to two-state model.
+- `src/pages/Features.jsx` — "Built" count badge removed from header; explanatory text
+  and PDF subtitle updated to "Verified means shipped and working; roadmap means specced,
+  not built."
+- `src/lib/__tests__/featureCatalogue.test.js` — rewritten to enforce the two-state model:
+  every feature must be `verified` or `roadmap`; `built` and `available` are rejected as
+  retired strings; key features pinned as verified. 10/10 tests pass (catalogue + drift
+  guard).
+
+No security or runtime change — catalogue display only.
+
+## 2026-07-17 Play launch prep — PRs #1187–#1192
+
+Five PRs landed today after the annual pricing / RC hardening chain to unblock the
+Google Play submission path. All BUILT / unit-tested only, INTERNAL — NOT
+device-verified (the point of the batch is to get to the Sunday-on-Mac build; nothing
+here has been exercised on a real device yet), NOT independently audited, no on-chain
+txid involved (Play launch prep, not on-chain).
+
+**PR #1187 (`12c33efd`) — Privacy policy URL wired into the app.** Two edits fixing
+dead placeholder links Play's crypto-app policy review would catch: `src/pages/LandingPage.jsx:319`
+`Privacy Policy` link changed from `href="#"` to `https://veyrnox.com/privacy` with
+`target="_blank" rel="noopener noreferrer"`; `Terms of Service` changed from `#` to
+the in-app `/terms` route. `src/pages/TermsLegal.jsx` gains a new "Privacy policy"
+section (real, not a placeholder) with a `PRIVACY_POLICY_URL = "https://veyrnox.com/privacy"`
+constant + external link — same URL Play and App Store listing forms submit; a single
+authoritative source, updated in one place. Six unit tests pin the exact URL, the
+"not #" state, and the external-link attributes across both surfaces. Honest gap:
+`https://veyrnox.com/privacy` must be publicly resolvable (owner-hosted, outside this
+repo) before Play submission — Play does a live fetch during review; a 404 or unstyled
+placeholder is a soft rejection.
+
+**PR #1188 (`8a00a7da`) — Android manifest: CAMERA permission + RECORD_AUDIO
+justifying comment.** Two edits closing a real bug and a policy risk:
+
+- **Real bug (CAMERA):** `src/components/QRScanner.jsx` uses `navigator.mediaDevices.getUserMedia({video})`
+  via Capacitor's WebView. Capacitor's `BridgeWebChromeClient.onPermissionRequest`
+  (`node_modules/@capacitor/android/…/BridgeWebChromeClient.java:102-124`) tries to
+  grant `Manifest.permission.CAMERA` at runtime, but Android's permission system
+  requires the permission to also be declared as `<uses-permission>` in the app's
+  manifest. Without that, `permissionLauncher.launch(...)` silently fails and QR
+  scanning never works — users tapping "Scan QR" in the Send flow hit QRScanner's
+  catch block ("Camera access denied") and can only paste addresses. **Fix:** added
+  `<uses-permission android:name="android.permission.CAMERA" />` plus
+  `<uses-feature android:name="android.hardware.camera" android:required="false" />`
+  so tablets/emulators without cameras can still install. Camera frames are decoded
+  on-device by `jsQR` and never leave the device — noted in the manifest comment for
+  the Play reviewer.
+- **Policy risk (RECORD_AUDIO):** the permission was already declared (inherited via
+  `@capacitor-community/speech-recognition`) but the manifest carried no comment
+  explaining why. Play's crypto-app policy reviewers see an audio-record permission
+  on a wallet and ask "why?" — a manifest comment answers before they open the Data
+  Safety form. **Fix:** added a comment mirroring the biometric one — names the
+  feature (Voice Commands), states transcription is off-device on the platform
+  speech service (Google Speech Service on Android), and notes I3 (suppressed in
+  decoy/hidden sessions).
+
+Regression test (`src/__tests__/android-manifest.test.js`) pins 6 static invariants
+over the manifest source: CAMERA declared, `<uses-feature camera required="false">`,
+RECORD_AUDIO declared, RECORD_AUDIO has a justifying comment immediately above it
+that names Voice Commands / speech recognition, and CAMERA has a comment mentioning
+QR. Runs under vitest without Gradle so drift is caught at PR time. 6/6 green.
+**Honest gap:** the CAMERA-fix "provably broken today" claim needs a device retest
+to confirm resolution; the fix is code-and-static-analysis correct, not yet
+device-verified.
+
+**PR #1189 (`87349241`) — Google Play Data Safety form DRAFT.** New
+`docs/play-launch/data-safety-form.md` — copy-paste-ready draft of every Play
+Console Data Safety form field. Every answer is cross-referenced to a specific
+file/line in the codebase so owner + counsel can verify before submission. Two
+owner-decisions resolved from code and marked as such: (a) Voice Commands defaults
+to OFF (`VoiceContext.jsx:40` `useState(false)`) — "Optional" on the form; (b) no
+third-party crash-log SDK is present (grep of `package.json` for
+`firebase|@sentry|bugsnag|crashlytics` returns empty; manifest also sets
+`android:allowBackup="false"`) — "No" for Crash logs. Seven ⚠ OWNER-DECISION items
+remain: Voice Commands audio classification wording, encrypted personal-backup
+`.enc` export declaration, declare RC App User ID as "Device or other IDs"
+(recommended: yes — persistent app-generated ID that leaves the device with every
+purchase), Families Policy (recommended: not designed for children), Independent
+security review attestation (recommended: NO — CLAUDE.md hard rule, internal is
+never presented as independent), public URL for data-deletion documentation,
+confirm OpenRouter news-feed LLM call is shipping in release. Draft covers all 14
+Play Data Safety categories plus the master list of third parties data is
+transmitted to (RPC providers, WC relay, price feeds, RevenueCat, Play Integrity,
+Play Billing) and the master list of NOT-wired integrations (no analytics, no
+attribution, no crash reporters, no push beyond Capacitor default) — the audit
+trail for the "not shared" answers. **DRAFT — Claude is not a lawyer.** Owner +
+counsel must review, resolve the seven ⚠ items, and re-verify against shipping
+`main` on the day of submission (Data Safety is versioned per release).
+
+**PR #1191 (`46721d10`) — Google Play store listing description DRAFT.** New
+`docs/play-launch/store-listing.md` — copy-paste-ready draft of every text field
+in Play Console → Store presence → Main store listing. Field-by-field:
+
+- **App name**: `Veyrnox` (7/30)
+- **Short description** (77/80): `Self-custody crypto wallet. Your keys stay on
+  your device. Coercion-resistant.` with 3 alternate options
+- **Full description** (2,608/4,000): 6 sections — positioning (self-custody,
+  on-device keys, no account), 10 mainnet-live assets by name (from
+  `src/wallet-core/assets.js`), security stack in Play-reviewer-friendly terms
+  (Secure Enclave, StrongBox, BiometricPrompt, RASP, Play Integrity), coercion
+  resistance features WITH honest limits (matches `TermsLegal.jsx`), what Veyrnox
+  is NOT (no account, no analytics, no ad/attribution SDKs, no advice, not a
+  broker/custodian), Safety Plus + seed responsibility disclosure
+- **Category**: Finance (Wallet sub-tag auto-assigned)
+- **Contact email**: `support@veyrnox.com` (⚠ owner confirm), no phone
+- **Privacy policy URL**: `https://veyrnox.com/privacy` (wired by #1187)
+- **Financial products declaration**: cryptocurrency-related=Yes,
+  non-custodial wallet=Yes; exchange/mining/ICO/custodial all No
+
+Assets NOT drafted (need running app — Sunday-on-Mac): icon 512×512, feature
+graphic 1024×500, 6 recommended phone screenshots (onboarding, home, send+QR,
+WalletConnect approval, security dashboard, duress setup with honest limits
+visible). Seven ⚠ OWNER-DECISION items remain: "What's new" block, support email,
+live privacy page verification, exchange/trading feature audit, screenshot
+decisions, IARC age category (recommend 12+), regional availability. **DRAFT —
+Claude is not a marketing writer and not counsel.** Owner reviews marketing voice;
+counsel reviews compliance language.
+
+**PR #1192 (`65a9d2ec`) — Android versionCode/versionName bump 3/1.0.2 →
+4/1.0.3.** Two-line bump in `android/app/build.gradle`. Play Console already has
+`versionCode 3` uploaded (2026-07-13, Internal testing = Draft, not rolled out).
+The next AAB build has to be a higher versionCode or Play rejects the upload.
+Bumping now (from Windows) means the Sunday-on-Mac step is purely
+`./gradlew bundleRelease` + upload; no editing during the build session. Not a
+runtime change — only affects the AAB Play Console sees.
+
+**Corrected readiness assessment:** an earlier session note claimed "no AAB
+uploaded" — this was wrong. AABs are uploaded (v1, v2, v3 from 2026-07-13); v3 is
+Active in Play Console's bundle storage but not rolled to any track. The uploaded
+v3 is stale — it predates every meaningful PR from today (#1026, #1085, #1187,
+#1188, #1189, #1191, this bump). Rolling v3 to Internal Testing would ship the QR
+scanner bug and none of today's improvements. Sunday-on-Mac path is: pull latest
+`main`, `mobile:build:release` + `./gradlew bundleRelease` → produces v4 AAB
+from current source → upload → swap into the existing Internal testing Draft →
+complete App content declarations (Data Safety per #1189 draft, Content Rating,
+Target Audience, Financial Features) → add testers → hit Rollout.
+
+**Independent security audit remains outstanding** per CLAUDE.md hard rules —
+owner-decision on whether to Internal-Test / Closed-Test / Production-launch
+before it lands. Not a Play requirement; is a Veyrnox honest-scope requirement
+under I4.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
