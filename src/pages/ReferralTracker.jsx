@@ -14,8 +14,10 @@ import {
   clearPendingReferral,
   getTierInfo,
   calculateEarnings,
+  calculateDiscountCents,
   TIERS,
   EXTERNAL_REWARD_URL,
+  PLAN_FULL_PRICE_CENTS,
 } from '@/lib/referral';
 import { registerCode, redeemCode, fetchStatus, fetchEarnings } from '@/api/referralApi';
 
@@ -95,7 +97,9 @@ function TierCard({ tier, isActive, isFuture }) {
         <span className={`text-lg font-bold ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
           {tier.commission}%
         </span>
-        <p className="text-[10px] text-muted-foreground">commission</p>
+        <p className="text-[10px] text-muted-foreground">
+          ${(calculateDiscountCents(PLAN_FULL_PRICE_CENTS.annual, tier.commission) / 100).toFixed(2)}/yr per sub
+        </p>
       </div>
     </div>
   );
@@ -126,7 +130,7 @@ export default function ReferralTracker() {
     setSyncedAt(new Date());
     const earningsData = await fetchEarnings(code);
     if (earningsData && earningsData.length > 0) {
-      setEarnings(calculateEarnings(earningsData, result.commission));
+      setEarnings(calculateEarnings(earningsData));
     }
   }, [code]);
 
@@ -235,7 +239,10 @@ export default function ReferralTracker() {
         {commission > 0 && (
           <div className="flex items-center gap-2 text-sm">
             <TrendingUp className="h-4 w-4 text-primary" />
-            <span>Earning <span className="font-semibold text-foreground">{commission}%</span> commission on revenue</span>
+            <span>
+              Your followers get <span className="font-semibold text-foreground">{commission}% off</span>
+              {' — '}you earn <span className="font-semibold text-foreground">${(calculateDiscountCents(PLAN_FULL_PRICE_CENTS.annual, commission) / 100).toFixed(2)}</span>/yr subscriber
+            </span>
           </div>
         )}
         {syncedAt && (
@@ -251,15 +258,15 @@ export default function ReferralTracker() {
       {/* Earnings */}
       {earnings && earnings.count > 0 && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-3">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Commission earned</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Earnings from referrals</p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold">${(earnings.commissionCents / 100).toFixed(2)}</span>
+              <span className="text-2xl font-bold">${(earnings.totalDiscountCents / 100).toFixed(2)}</span>
             </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">{earnings.count} paid {earnings.count === 1 ? 'subscriber' : 'subscribers'}</p>
-              <p className="text-[10px] text-muted-foreground">${(earnings.totalRevenueCents / 100).toFixed(2)} total revenue</p>
+              <p className="text-[10px] text-muted-foreground">${(earnings.totalRevenueCents / 100).toFixed(2)} total revenue generated</p>
             </div>
           </div>
         </div>

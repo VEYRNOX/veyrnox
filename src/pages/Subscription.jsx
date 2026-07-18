@@ -19,7 +19,7 @@ import { useTier } from "@/lib/TierProvider";
 import { FREE_FEATURES, SAFETY_PLUS_FEATURES } from "@/lib/tier";
 import {
   getOfferings,
-  getReferralOffering,
+  getTierOffering,
   purchasePackage,
   restorePurchases,
   manageSubscription,
@@ -27,8 +27,18 @@ import {
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
 } from "@/lib/purchases";
-import { getRedeemedCode, hasRedeemed, hasAttributed, markAttributed, PLAN_REVENUE_CENTS } from "@/lib/referral";
-import { recordAttribution } from "@/api/referralApi";
+import {
+  getRedeemedCode,
+  hasRedeemed,
+  hasAttributed,
+  markAttributed,
+  getTier,
+  getTierInfo,
+  getOfferingIdForTier,
+  calculateDiscountCents,
+  PLAN_FULL_PRICE_CENTS,
+} from "@/lib/referral";
+import { recordAttribution, fetchReferrerTier } from "@/api/referralApi";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
 
@@ -54,6 +64,7 @@ export default function Subscription() {
   const [annualPackage, setAnnualPackage] = useState(null);
   const [referralMonthly, setReferralMonthly] = useState(null);
   const [referralAnnual, setReferralAnnual] = useState(null);
+  const [referrerTierInfo, setReferrerTierInfo] = useState(null);
   const [billing, setBilling] = useState("annual");
   const [busy, setBusy] = useState(false);
   const isNative = Capacitor.isNativePlatform();
@@ -83,14 +94,26 @@ export default function Subscription() {
       });
 
     if (hasReferral) {
-      getReferralOffering()
-        .then((offering) => {
-          if (cancelled) return;
-          const { monthly, annual } = extractPackages(offering);
-          setReferralMonthly(monthly);
-          setReferralAnnual(annual);
-        })
-        .catch(() => {});
+      const refCode = getRedeemedCode();
+      if (refCode) {
+        fetchReferrerTier(refCode)
+          .then((status) => {
+            if (cancelled || !status) return;
+            const tierKey = getTier(status.count);
+            const info = getTierInfo(status.count);
+            setReferrerTierInfo(info);
+            const offeringId = getOfferingIdForTier(tierKey);
+            if (!offeringId) return;
+            return getTierOffering(offeringId);
+          })
+          .then((offering) => {
+            if (cancelled || !offering) return;
+            const { monthly, annual } = extractPackages(offering);
+            setReferralMonthly(monthly);
+            setReferralAnnual(annual);
+          })
+          .catch(() => {});
+      }
     }
 
     return () => { cancelled = true; };
@@ -118,8 +141,10 @@ export default function Subscription() {
       await refreshTier();
       const refCode = getRedeemedCode();
       if (refCode && !hasAttributed()) {
-        const rev = PLAN_REVENUE_CENTS[effectiveBilling] || PLAN_REVENUE_CENTS.monthly;
-        recordAttribution(refCode, effectiveBilling, rev).catch(() => {});
+        const fullPrice = PLAN_FULL_PRICE_CENTS[effectiveBilling] || PLAN_FULL_PRICE_CENTS.monthly;
+        const commission = referrerTierInfo?.commission || 0;
+        const discountCents = calculateDiscountCents(fullPrice, commission);
+        recordAttribution(refCode, effectiveBilling, fullPrice, discountCents).catch(() => {});
         setReferralAttribute(refCode).catch(() => {});
         markAttributed();
       }
@@ -195,7 +220,9 @@ export default function Subscription() {
         <div className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/5 p-4">
           <Sparkles className="h-5 w-5 text-success shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-success">Referral discount applied</p>
+            <p className="text-sm font-semibold text-success">
+              Referral discount applied{referrerTierInfo ? ` — ${referrerTierInfo.commission}% off` : ""}
+            </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               You used a friend's referral code — enjoy a discounted rate on Safety Plus.
             </p>

@@ -45,10 +45,9 @@ const {
   SAFETY_PLUS_ENTITLEMENT,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
-  REFERRAL_OFFERING_ID,
   configurePurchases,
   getOfferings,
-  getReferralOffering,
+  getTierOffering,
   purchasePackage,
   restorePurchases,
   getCustomerInfo,
@@ -207,34 +206,37 @@ describe('purchases.js — setLogLevel hardening (LOG-1)', () => {
   });
 });
 
-describe('purchases.js — getReferralOffering', () => {
+describe('purchases.js — getTierOffering', () => {
   it('returns null on web without calling the plugin', async () => {
     isNativePlatform.mockReturnValue(false);
-    expect(await getReferralOffering()).toBeNull();
+    expect(await getTierOffering('referral-gold')).toBeNull();
     expect(getOfferingsMock).not.toHaveBeenCalled();
   });
 
-  it('returns the referral offering from the all dict on native', async () => {
+  it('returns null when offeringId is null/falsy', async () => {
     isNativePlatform.mockReturnValue(true);
-    const referralOffering = { identifier: 'referral', availablePackages: [] };
-    getOfferingsMock.mockResolvedValue({ current: null, all: { referral: referralOffering } });
-    expect(await getReferralOffering()).toEqual(referralOffering);
+    expect(await getTierOffering(null)).toBeNull();
+    expect(await getTierOffering('')).toBeNull();
+    expect(getOfferingsMock).not.toHaveBeenCalled();
   });
 
-  it('returns null when no referral offering exists', async () => {
+  it('returns the tier offering from the all dict on native', async () => {
+    isNativePlatform.mockReturnValue(true);
+    const goldOffering = { identifier: 'referral-gold', availablePackages: [] };
+    getOfferingsMock.mockResolvedValue({ current: null, all: { 'referral-gold': goldOffering } });
+    expect(await getTierOffering('referral-gold')).toEqual(goldOffering);
+  });
+
+  it('returns null when the tier offering does not exist', async () => {
     isNativePlatform.mockReturnValue(true);
     getOfferingsMock.mockResolvedValue({ current: null, all: {} });
-    expect(await getReferralOffering()).toBeNull();
+    expect(await getTierOffering('referral-platinum')).toBeNull();
   });
 
   it('returns null on plugin error (best-effort)', async () => {
     isNativePlatform.mockReturnValue(true);
     getOfferingsMock.mockRejectedValue(new Error('network'));
-    expect(await getReferralOffering()).toBeNull();
-  });
-
-  it('exports the referral offering ID constant', () => {
-    expect(REFERRAL_OFFERING_ID).toBe('referral');
+    expect(await getTierOffering('referral-bronze')).toBeNull();
   });
 });
 
