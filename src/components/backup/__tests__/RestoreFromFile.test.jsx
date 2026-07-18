@@ -138,7 +138,9 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
 
     await waitFor(() => expect(decryptPasswordSeal).toHaveBeenCalled());
     // Generic message — must NOT distinguish "wrong password" from "corrupt file".
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Wrong credential or corrupted backup.'));
+    // Post PR #1174: toast now routes through @/lib/toast which adds a
+    // { duration } option, so accept any second arg here.
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Wrong credential or corrupted backup.', expect.anything()));
     // Still on the unlock phase so the user can retry (fail closed, not advanced).
     expect(screen.getByRole('button', { name: /restore wallet/i })).toBeTruthy();
   });
