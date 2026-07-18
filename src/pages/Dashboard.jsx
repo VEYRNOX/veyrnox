@@ -4,7 +4,7 @@ import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySele
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import AnimatedFiat from "@/components/AnimatedFiat";
 import EmptyState from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,7 @@ export default function Dashboard() {
 function DemoDashboard() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
   const [isLocked, setIsLocked] = useState(!DEMO);
   const [fiatCurrency, setFiatCurrency] = useState("USD");
   const [selectedWalletId, setSelectedWalletId] = useState(null);
@@ -173,7 +174,7 @@ function DemoDashboard() {
 
   if (isLoading) {
     return (
-      <div className="max-w-lg mx-auto space-y-4 p-1 animate-pulse">
+      <div className="max-w-lg mx-auto space-y-4 p-1 motion-safe:animate-pulse">
         <div className="h-5 bg-secondary rounded w-32 mx-auto" />
         <div className="h-10 bg-secondary rounded w-48 mx-auto" />
         <div className="h-20 bg-secondary rounded-2xl" />
@@ -217,9 +218,9 @@ function DemoDashboard() {
         <ReferenceRateNote />
         {!isLocked && wallets.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 6, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.15 }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.92 }}
+            animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+            transition={reduceMotion ? { duration: 0.15 } : { type: 'spring', stiffness: 260, damping: 22, delay: 0.15 }}
             className="flex items-center justify-center gap-3 mt-1"
           >
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 px-2 py-0.5 rounded-full mono-value">

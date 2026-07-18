@@ -136,7 +136,7 @@ export default function OnChainAnalytics() {
         <div className="flex gap-2">
           <Input value={searchAddress} onChange={e => setSearchAddress(e.target.value)} placeholder="0x... or bc1q..." className="font-mono text-sm" onKeyDown={e => e.key === "Enter" && lookupAddress()} />
           <Button onClick={lookupAddress} disabled={searching} variant="outline" aria-label="Look up address">
-            {searching ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
+            {searching ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Hash className="h-4 w-4" />}
           </Button>
         </div>
         {addressData && (
@@ -162,7 +162,7 @@ export default function OnChainAnalytics() {
       {/* Recent Transactions */}
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground uppercase tracking-widest">Recent Transactions</p>
-        {isLoading ? <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        {isLoading ? <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" /></div>
           : transactions.slice(0, 15).map(tx => (
           <div key={tx.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
             <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${tx.type === "send" ? "bg-destructive/10" : "bg-success/10"}`}>

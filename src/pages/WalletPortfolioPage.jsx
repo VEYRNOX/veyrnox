@@ -239,7 +239,7 @@ export function AddWalletDialog({ onClose }) {
             <DialogFooter className="flex-col gap-2 sm:flex-col">
               {!isPin && (
                 <Button className="w-full gap-2" disabled={busy || !password || (mode === "import" && !phrase.trim())} onClick={mode === "create" ? doCreate : doImport}>
-                  {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Plus className="h-4 w-4" />}
                   {mode === "create" ? "Create & back up" : "Import wallet"}
                 </Button>
               )}
@@ -328,7 +328,7 @@ export function RemoveDialog({ wallet, canRemove, onClose }) {
         {canRemove && !isPin && (
           <DialogFooter>
             <Button variant="destructive" className="w-full gap-2" disabled={busy || !password} onClick={doRemove}>
-              {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Remove wallet
+              {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Trash2 className="h-4 w-4" />} Remove wallet
             </Button>
           </DialogFooter>
         )}

@@ -177,7 +177,7 @@ export default function ConnectWallet() {
             disabled={importMutation.isPending}
             onClick={() => importMutation.mutate(preview)}
           >
-            {importMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {importMutation.isPending && <Loader2 className="h-4 w-4 motion-safe:animate-spin mr-2" />}
             Import Wallet
           </Button>
         </div>
@@ -221,7 +221,7 @@ export default function ConnectWallet() {
               </div>
               <div className="shrink-0">
                 {connecting === provider.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <Loader2 className="h-4 w-4 motion-safe:animate-spin text-primary" />
                 ) : detected ? (
                   <Plug className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 ) : (

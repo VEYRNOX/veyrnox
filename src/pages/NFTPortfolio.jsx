@@ -72,7 +72,7 @@ export default function NFTPortfolio() {
 
       {/* NFT Grid */}
       {isLoading ? (
-        <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" /></div>
       ) : isError ? (
         <div className="text-center py-16 text-muted-foreground">
           <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />

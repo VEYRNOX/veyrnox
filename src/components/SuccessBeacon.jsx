@@ -21,11 +21,14 @@
 import { memo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check } from 'lucide-react';
+import { useInfiniteAnimation } from '@/lib/useInfiniteAnimation';
 
-const RING_TRANSITION = { duration: 1.4, ease: [0.16, 1, 0.3, 1], repeat: Infinity, repeatDelay: 0.6 };
+// Bounded (not Infinity) so a lingering success screen quiets down after ~5s.
+const RING_TRANSITION = { duration: 1.4, ease: [0.16, 1, 0.3, 1], repeat: 3, repeatDelay: 0.6 };
 
 function SuccessBeaconImpl({ size = 96, label = 'Success' }) {
   const reduce = useReducedMotion();
+  const visible = useInfiniteAnimation();
 
   return (
     <div
@@ -36,7 +39,7 @@ function SuccessBeaconImpl({ size = 96, label = 'Success' }) {
     >
       {/* Radiating ring pulses — two, offset in phase, expand from 0.6 → 1.6
           and fade to 0. Kept CSS-cheap: only transform + opacity. */}
-      {!reduce && (
+      {!reduce && visible && (
         <>
           <motion.span
             aria-hidden
@@ -67,7 +70,7 @@ function SuccessBeaconImpl({ size = 96, label = 'Success' }) {
       {/* Slow breathing pulse on the inner glow after landing. Quiet — this
           screen may be viewed for many seconds while the user reads the tx
           hash. */}
-      {!reduce && (
+      {!reduce && visible && (
         <motion.span
           aria-hidden
           className="absolute inset-4 rounded-full bg-primary/25 blur-md"

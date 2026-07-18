@@ -20,6 +20,8 @@
 import { memo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import { useInfiniteAnimation } from '@/lib/useInfiniteAnimation';
+import { easing } from '@/lib/motion-tokens';
 
 const CONFIG = {
   block: {
@@ -44,9 +46,10 @@ const CONFIG = {
 
 function RiskShieldImpl({ severity = 'warn', size = 28 }) {
   const reduce = useReducedMotion();
+  const visible = useInfiniteAnimation();
   const cfg = CONFIG[severity] || CONFIG.warn;
   const { Icon } = cfg;
-  const animate = !reduce && cfg.duration > 0;
+  const animate = !reduce && cfg.duration > 0 && visible;
   return (
     <span
       className="relative inline-flex items-center justify-center shrink-0"
@@ -65,7 +68,7 @@ function RiskShieldImpl({ severity = 'warn', size = 28 }) {
             className={`absolute inset-0 rounded-full border ${cfg.ring}/40`}
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: [0.7, 1.85], opacity: [0.55, 0] }}
-            transition={{ duration: cfg.duration, ease: [0.16, 1, 0.3, 1], repeat: Infinity, delay: cfg.duration * 0.35 }}
+            transition={{ duration: cfg.duration, ease: easing.smooth, repeat: Infinity, delay: cfg.duration * 0.35 }}
           />
         </>
       )}

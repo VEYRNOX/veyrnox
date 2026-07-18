@@ -174,7 +174,7 @@ export default function FeeAnalytics() {
 
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Reading {asset.symbol} history…
+          <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Reading {asset.symbol} history…
         </div>
       )}
 
@@ -268,7 +268,7 @@ export default function FeeAnalytics() {
                 disabled={isFetching}
                 className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
               >
-                {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Fuel className="h-3.5 w-3.5" />}
+                {isFetching ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> : <Fuel className="h-3.5 w-3.5" />}
                 Refresh
               </button>
             )}

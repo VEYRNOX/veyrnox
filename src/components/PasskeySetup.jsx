@@ -121,7 +121,7 @@ export default function PasskeySetup({ wallet, onRegistered }) {
   if (wallet.passkey_registered || verified) {
     return (
       <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
-        <ShieldCheck className="h-5 w-5 text-primary animate-pulse" />
+        <ShieldCheck className="h-5 w-5 text-primary motion-safe:animate-pulse" />
         <div>
           <p className="text-sm font-medium text-primary">Passkey Active</p>
           <p className="text-xs text-muted-foreground">FIDO2 / WebAuthn secured</p>
@@ -135,7 +135,7 @@ export default function PasskeySetup({ wallet, onRegistered }) {
     return (
       <div className="p-4 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-3">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <Loader2 className="h-5 w-5 motion-safe:animate-spin text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Checking biometric availability…</p>
         </div>
       </div>
@@ -195,7 +195,7 @@ export default function PasskeySetup({ wallet, onRegistered }) {
         className="w-full"
         size="sm"
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+        {loading ? <Loader2 className="h-4 w-4 motion-safe:animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
         Register Passkey
       </Button>
     </div>
