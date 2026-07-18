@@ -33,26 +33,47 @@ export function generateCode() {
   return code;
 }
 
+export const TIERS = [
+  { key: 'platinum', label: 'Platinum', min: 10000, max: 100000, commission: 15 },
+  { key: 'gold',     label: 'Gold',     min: 1000,  max: 10000,  commission: 10 },
+  { key: 'silver',   label: 'Silver',   min: 100,   max: 1000,   commission: 5 },
+  { key: 'bronze',   label: 'Bronze',   min: 0,     max: 100,    commission: 2.5 },
+];
+
 export function getTier(count) {
-  if (count >= 10) return 'gold';
-  if (count >= 5) return 'silver';
-  if (count >= 1) return 'bronze';
-  return 'none';
+  if (count <= 0) return 'none';
+  for (const t of TIERS) {
+    if (count >= t.min) return t.key;
+  }
+  return 'bronze';
+}
+
+export function getTierInfo(count) {
+  if (count <= 0) return { key: 'none', label: 'No referrals yet', commission: 0, next: TIERS[TIERS.length - 1] };
+  for (const t of TIERS) {
+    if (count >= t.min) {
+      const idx = TIERS.indexOf(t);
+      return { ...t, next: idx > 0 ? TIERS[idx - 1] : null };
+    }
+  }
+  const bronze = TIERS[TIERS.length - 1];
+  return { ...bronze, next: TIERS[TIERS.length - 2] };
 }
 
 export function applyRedemption(newCount) {
   const state = getLocalState();
   const tier = getTier(newCount);
+  const info = getTierInfo(newCount);
   const unlockedFeatures = [...(state.unlockedFeatures || [])];
-  if (tier === 'silver' || tier === 'gold') {
+  if (tier === 'silver' || tier === 'gold' || tier === 'platinum') {
     if (!unlockedFeatures.includes('portfolio-snapshots')) {
       unlockedFeatures.push('portfolio-snapshots');
     }
   }
-  const referralCredit = tier === 'gold';
-  const externalEligible = tier === 'gold';
-  saveState({ ...state, inviteCount: newCount, tier, unlockedFeatures, referralCredit, externalEligible });
-  return { tier, unlockedFeatures, referralCredit, externalEligible };
+  const commission = info.commission;
+  const externalEligible = tier === 'gold' || tier === 'platinum';
+  saveState({ ...state, inviteCount: newCount, tier, commission, unlockedFeatures, externalEligible });
+  return { tier, commission, unlockedFeatures, externalEligible };
 }
 
 export function markRedeemed(code) {
@@ -73,4 +94,24 @@ export function getPendingReferral() {
 
 export function clearPendingReferral() {
   localStorage.removeItem(PENDING_KEY);
+}
+
+export function getRedeemedCode() {
+  return getLocalState().redeemedCode || null;
+}
+
+export function markAttributed() {
+  saveState({ ...getLocalState(), attributed: true });
+}
+
+export function hasAttributed() {
+  return !!getLocalState().attributed;
+}
+
+export const PLAN_REVENUE_CENTS = { monthly: 599, annual: 4999 };
+
+export function calculateEarnings(attributions, commissionRate) {
+  const totalRevenueCents = attributions.reduce((sum, a) => sum + a.revenue_cents, 0);
+  const commissionCents = Math.round(totalRevenueCents * commissionRate / 100);
+  return { totalRevenueCents, commissionCents, count: attributions.length };
 }

@@ -32,7 +32,7 @@ describe('generateCode', () => {
     const { generateCode } = await import('../referral.js');
     const code = generateCode();
     expect(typeof code).toBe('string');
-    expect(code.length).toBe(8); // VYX-XXXX
+    expect(code.length).toBe(8);
   });
 });
 
@@ -45,59 +45,113 @@ describe('getTier', () => {
     const { getTier } = await import('../referral.js');
     expect(getTier(1)).toBe('bronze');
   });
-  it('returns bronze for 4', async () => {
+  it('returns bronze for 99', async () => {
     const { getTier } = await import('../referral.js');
-    expect(getTier(4)).toBe('bronze');
+    expect(getTier(99)).toBe('bronze');
   });
-  it('returns silver for 5', async () => {
+  it('returns silver for 100', async () => {
     const { getTier } = await import('../referral.js');
-    expect(getTier(5)).toBe('silver');
+    expect(getTier(100)).toBe('silver');
   });
-  it('returns silver for 9', async () => {
+  it('returns silver for 999', async () => {
     const { getTier } = await import('../referral.js');
-    expect(getTier(9)).toBe('silver');
+    expect(getTier(999)).toBe('silver');
   });
-  it('returns gold for 10', async () => {
+  it('returns gold for 1000', async () => {
     const { getTier } = await import('../referral.js');
-    expect(getTier(10)).toBe('gold');
+    expect(getTier(1000)).toBe('gold');
   });
-  it('returns gold for counts above 10', async () => {
+  it('returns gold for 9999', async () => {
     const { getTier } = await import('../referral.js');
-    expect(getTier(15)).toBe('gold');
+    expect(getTier(9999)).toBe('gold');
+  });
+  it('returns platinum for 10000', async () => {
+    const { getTier } = await import('../referral.js');
+    expect(getTier(10000)).toBe('platinum');
+  });
+  it('returns platinum for 50000', async () => {
+    const { getTier } = await import('../referral.js');
+    expect(getTier(50000)).toBe('platinum');
+  });
+});
+
+describe('getTierInfo', () => {
+  it('returns commission 0 for count 0', async () => {
+    const { getTierInfo } = await import('../referral.js');
+    expect(getTierInfo(0).commission).toBe(0);
+  });
+  it('returns 2.5% commission for bronze', async () => {
+    const { getTierInfo } = await import('../referral.js');
+    expect(getTierInfo(50).commission).toBe(2.5);
+    expect(getTierInfo(50).key).toBe('bronze');
+  });
+  it('returns 5% commission for silver', async () => {
+    const { getTierInfo } = await import('../referral.js');
+    expect(getTierInfo(500).commission).toBe(5);
+    expect(getTierInfo(500).key).toBe('silver');
+  });
+  it('returns 10% commission for gold', async () => {
+    const { getTierInfo } = await import('../referral.js');
+    expect(getTierInfo(5000).commission).toBe(10);
+    expect(getTierInfo(5000).key).toBe('gold');
+  });
+  it('returns 15% commission for platinum', async () => {
+    const { getTierInfo } = await import('../referral.js');
+    expect(getTierInfo(50000).commission).toBe(15);
+    expect(getTierInfo(50000).key).toBe('platinum');
+  });
+  it('returns next tier for bronze', async () => {
+    const { getTierInfo } = await import('../referral.js');
+    const info = getTierInfo(50);
+    expect(info.next.key).toBe('silver');
+  });
+  it('returns null next for platinum', async () => {
+    const { getTierInfo } = await import('../referral.js');
+    const info = getTierInfo(50000);
+    expect(info.next).toBeNull();
   });
 });
 
 describe('applyRedemption', () => {
-  it('writes bronze tier and no unlockedFeatures at count 1', async () => {
+  it('writes bronze tier and 2.5% commission at count 1', async () => {
     const { applyRedemption, getLocalState } = await import('../referral.js');
     applyRedemption(1);
     const state = getLocalState();
     expect(state.tier).toBe('bronze');
-    expect(state.unlockedFeatures).toEqual([]);
-    expect(state.referralCredit).toBe(false);
+    expect(state.commission).toBe(2.5);
   });
 
-  it('unlocks portfolio-snapshots at count 5', async () => {
+  it('unlocks portfolio-snapshots at silver (100)', async () => {
     const { applyRedemption, getLocalState } = await import('../referral.js');
-    applyRedemption(5);
+    applyRedemption(100);
     const state = getLocalState();
     expect(state.tier).toBe('silver');
+    expect(state.commission).toBe(5);
     expect(state.unlockedFeatures).toContain('portfolio-snapshots');
   });
 
-  it('sets referralCredit and externalEligible at count 10', async () => {
+  it('sets 10% commission and externalEligible at gold (1000)', async () => {
     const { applyRedemption, getLocalState } = await import('../referral.js');
-    applyRedemption(10);
+    applyRedemption(1000);
     const state = getLocalState();
     expect(state.tier).toBe('gold');
-    expect(state.referralCredit).toBe(true);
+    expect(state.commission).toBe(10);
+    expect(state.externalEligible).toBe(true);
+  });
+
+  it('sets 15% commission at platinum (10000)', async () => {
+    const { applyRedemption, getLocalState } = await import('../referral.js');
+    applyRedemption(10000);
+    const state = getLocalState();
+    expect(state.tier).toBe('platinum');
+    expect(state.commission).toBe(15);
     expect(state.externalEligible).toBe(true);
   });
 
   it('is idempotent — calling twice with the same count does not duplicate unlockedFeatures', async () => {
     const { applyRedemption, getLocalState } = await import('../referral.js');
-    applyRedemption(5);
-    applyRedemption(5);
+    applyRedemption(500);
+    applyRedemption(500);
     const state = getLocalState();
     expect(state.unlockedFeatures.filter(f => f === 'portfolio-snapshots').length).toBe(1);
   });
@@ -126,5 +180,81 @@ describe('own-code and already-redeemed guards', () => {
     setPendingReferral('VYX-AB12');
     clearPendingReferral();
     expect(getPendingReferral()).toBeNull();
+  });
+});
+
+describe('attribution tracking', () => {
+  it('getRedeemedCode returns null when no code redeemed', async () => {
+    const { getRedeemedCode } = await import('../referral.js');
+    expect(getRedeemedCode()).toBeNull();
+  });
+
+  it('getRedeemedCode returns the redeemed code after markRedeemed', async () => {
+    const { markRedeemed, getRedeemedCode } = await import('../referral.js');
+    markRedeemed('VYX-AB12');
+    expect(getRedeemedCode()).toBe('VYX-AB12');
+  });
+
+  it('hasAttributed returns false initially', async () => {
+    const { hasAttributed } = await import('../referral.js');
+    expect(hasAttributed()).toBe(false);
+  });
+
+  it('hasAttributed returns true after markAttributed', async () => {
+    const { markAttributed, hasAttributed } = await import('../referral.js');
+    markAttributed();
+    expect(hasAttributed()).toBe(true);
+  });
+
+  it('markAttributed is idempotent', async () => {
+    const { markAttributed, hasAttributed } = await import('../referral.js');
+    markAttributed();
+    markAttributed();
+    expect(hasAttributed()).toBe(true);
+  });
+});
+
+describe('PLAN_REVENUE_CENTS', () => {
+  it('has monthly at 599', async () => {
+    const { PLAN_REVENUE_CENTS } = await import('../referral.js');
+    expect(PLAN_REVENUE_CENTS.monthly).toBe(599);
+  });
+  it('has annual at 4999', async () => {
+    const { PLAN_REVENUE_CENTS } = await import('../referral.js');
+    expect(PLAN_REVENUE_CENTS.annual).toBe(4999);
+  });
+});
+
+describe('calculateEarnings', () => {
+  it('returns zero for empty attributions', async () => {
+    const { calculateEarnings } = await import('../referral.js');
+    const result = calculateEarnings([], 5);
+    expect(result).toEqual({ totalRevenueCents: 0, commissionCents: 0, count: 0 });
+  });
+
+  it('calculates 2.5% commission on a single monthly', async () => {
+    const { calculateEarnings } = await import('../referral.js');
+    const result = calculateEarnings([{ revenue_cents: 599 }], 2.5);
+    expect(result.totalRevenueCents).toBe(599);
+    expect(result.commissionCents).toBe(15);
+    expect(result.count).toBe(1);
+  });
+
+  it('calculates 10% commission on mixed plans', async () => {
+    const { calculateEarnings } = await import('../referral.js');
+    const result = calculateEarnings([
+      { revenue_cents: 599 },
+      { revenue_cents: 4999 },
+      { revenue_cents: 599 },
+    ], 10);
+    expect(result.totalRevenueCents).toBe(6197);
+    expect(result.commissionCents).toBe(620);
+    expect(result.count).toBe(3);
+  });
+
+  it('calculates 15% platinum commission on annual', async () => {
+    const { calculateEarnings } = await import('../referral.js');
+    const result = calculateEarnings([{ revenue_cents: 4999 }], 15);
+    expect(result.commissionCents).toBe(750);
   });
 });

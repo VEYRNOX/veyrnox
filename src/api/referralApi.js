@@ -6,9 +6,10 @@
 // throws { status: 503 } — callers handle this gracefully.
 
 import { supabase } from '@/lib/supabaseClient';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 export async function registerCode(code) {
-  if (!supabase) return;
+  if (!supabase || isDeniabilityOrDemoActive()) return;
   try {
     await supabase
       .from('referrals')
@@ -19,6 +20,7 @@ export async function registerCode(code) {
 }
 
 export async function redeemCode(code) {
+  if (isDeniabilityOrDemoActive()) throw Object.assign(new Error('Unavailable'), { status: 503 });
   if (!supabase) throw Object.assign(new Error('No referral backend configured'), { status: 503 });
 
   const { data, error } = await supabase.rpc('increment_referral', { ref_code: code });
@@ -35,7 +37,7 @@ export async function redeemCode(code) {
 }
 
 export async function fetchStatus(code) {
-  if (!supabase) return null;
+  if (!supabase || isDeniabilityOrDemoActive()) return null;
   try {
     const { data, error } = await supabase
       .from('referrals')
@@ -44,6 +46,31 @@ export async function fetchStatus(code) {
       .single();
     if (error || !data) return null;
     return { count: data.count };
+  } catch {
+    return null;
+  }
+}
+
+export async function recordAttribution(referralCode, plan, revenueCents) {
+  if (!supabase || isDeniabilityOrDemoActive()) return;
+  try {
+    await supabase
+      .from('referral_attributions')
+      .insert({ referral_code: referralCode, plan, revenue_cents: revenueCents });
+  } catch {
+    // Best-effort: don't block the purchase flow on attribution failure.
+  }
+}
+
+export async function fetchEarnings(code) {
+  if (!supabase || isDeniabilityOrDemoActive()) return null;
+  try {
+    const { data, error } = await supabase
+      .from('referral_attributions')
+      .select('plan, revenue_cents, created_at')
+      .eq('referral_code', code);
+    if (error || !data) return null;
+    return data;
   } catch {
     return null;
   }
