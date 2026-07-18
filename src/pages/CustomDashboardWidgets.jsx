@@ -16,7 +16,6 @@ const DEFAULT_WIDGETS = [
   { id: "health_score", label: "Portfolio Health Score", description: "Risk and diversification score", emoji: "🏥", enabled: true },
   { id: "quick_actions", label: "Quick Actions", description: "Send, Receive, Schedule buttons", emoji: "⚡", enabled: true },
   { id: "price_alerts", label: "Active Price Alerts", description: "Triggered alert banner", emoji: "🔔", enabled: true },
-  { id: "kyc_banner", label: "KYC Status Banner", description: "Verification reminder", emoji: "🪪", enabled: false },
 ];
 
 const STORAGE_KEY = "dashboard-widget-config";

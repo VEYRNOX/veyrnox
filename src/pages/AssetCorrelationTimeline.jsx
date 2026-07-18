@@ -63,13 +63,10 @@ function fmtDate(ts) {
   return new Date(ts * 1000).toLocaleDateString("en-GB", { month: "short", day: "numeric" });
 }
 
-// ---------------------------------------------------------------------------
-// Pair colours — teal, purple, orange — no new accent colours introduced.
-// ---------------------------------------------------------------------------
 const PAIRS = [
-  { key: "btc-eth", label: "BTC–ETH", color: "#4ADAC2" },
-  { key: "btc-sol", label: "BTC–SOL", color: "#A78BFA" },
-  { key: "eth-sol", label: "ETH–SOL", color: "#FB923C" },
+  { key: "btc-eth", label: "BTC–ETH", color: "hsl(var(--primary))" },
+  { key: "btc-sol", label: "BTC–SOL", color: "hsl(var(--chart-5))" },
+  { key: "eth-sol", label: "ETH–SOL", color: "hsl(var(--chart-2))" },
 ];
 
 const WINDOW = 7; // rolling window in days
@@ -183,7 +180,7 @@ export default function AssetCorrelationTimeline() {
       {/* Loading spinner */}
       {livePricesOn && isLoading && (
         <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
-          <svg className="animate-spin h-5 w-5 mr-2 text-primary" viewBox="0 0 24 24" fill="none">
+          <svg className="motion-safe:animate-spin h-5 w-5 mr-2 text-primary" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
           </svg>

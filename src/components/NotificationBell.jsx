@@ -14,9 +14,11 @@
 // and decoy modes; nothing here reveals another set exists or how many there are.
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, useAnimation, useReducedMotion } from 'framer-motion';
+import { motion, useAnimation, useReducedMotion } from "motion/react";
+import { springs } from '@/lib/motion-tokens';
 import { Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 // Attention pulse: when unseenCount rises from 0 → positive, the bell does a
 // single 600ms wiggle (skill §7 — motion carries meaning; not perpetual, which
@@ -25,6 +27,9 @@ import { cn } from '@/lib/utils';
 // Reduced-motion pins both static.
 export default function NotificationBell({ unseenCount = 0, onOpen, className }) {
   const hasUnseen = unseenCount > 0;
+  // I3: in decoy/hidden/demo, never render the numeric count — a cardinality tell.
+  // Render a plain dot instead so the chrome is structurally identical across sessions.
+  const dotOnly = isDeniabilityOrDemoActive();
   const label = unseenCount > 9 ? '9+' : String(unseenCount);
   const reduce = useReducedMotion();
   const controls = useAnimation();
@@ -36,8 +41,8 @@ export default function NotificationBell({ unseenCount = 0, onOpen, className })
     // decrement or count-change while already unseen.
     if (prev.current === 0 && unseenCount > 0 && !reduce) {
       controls.start({
-        rotate: [0, -12, 12, -8, 8, -4, 4, 0],
-        transition: { duration: 0.6, ease: 'easeInOut' },
+        rotate: [0, -12, 0],
+        transition: springs.bouncy,
       });
       setBadgeKey((k) => k + 1);
     }
@@ -48,7 +53,7 @@ export default function NotificationBell({ unseenCount = 0, onOpen, className })
     <button
       type="button"
       onClick={() => onOpen?.()}
-      aria-label={hasUnseen ? `Notifications, ${unseenCount} unseen` : 'Notifications'}
+      aria-label={hasUnseen ? (dotOnly ? 'Notifications, unseen' : `Notifications, ${unseenCount} unseen`) : 'Notifications'}
       className={cn(
         'relative inline-flex h-9 w-9 items-center justify-center rounded-full',
         'text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors',
@@ -65,13 +70,14 @@ export default function NotificationBell({ unseenCount = 0, onOpen, className })
           animate={{ scale: 1, opacity: 1 }}
           transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 20 }}
           className={cn(
-            'absolute -top-0.5 -right-0.5 min-w-[1.05rem] h-[1.05rem] px-1',
-            'inline-flex items-center justify-center rounded-full',
-            'bg-accent text-accent-foreground text-[0.625rem] font-semibold leading-none',
-            'mono-value'
+            'absolute inline-flex items-center justify-center rounded-full',
+            'bg-accent text-accent-foreground leading-none mono-value',
+            dotOnly
+              ? '-top-0.5 -right-0.5 h-2 w-2'
+              : '-top-0.5 -right-0.5 min-w-[1.05rem] h-[1.05rem] px-1 text-[0.625rem] font-semibold'
           )}
         >
-          {label}
+          {dotOnly ? null : label}
         </motion.span>
       )}
     </button>

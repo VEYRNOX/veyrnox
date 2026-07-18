@@ -18,15 +18,23 @@ vi.mock('sonner', () => ({
 }));
 
 // Keystore module — control hasVaultKekWrap per test
+const mockKeyStore = { hasVaultKekWrap: vi.fn(async () => false) };
 vi.mock('@/wallet-core/keystore', () => ({
-  keyStore: { hasVaultKekWrap: vi.fn(async () => false) },
+  getKeyStore: () => mockKeyStore,
 }));
+
+// I3 LIVE deniability/demo check (issue #1094): kekPinNotice must not fire and
+// must not persist its localStorage marker inside a decoy/hidden/demo session.
+vi.mock('@/wallet-core/deniabilitySession.js', () => ({
+  isDeniabilityOrDemoActive: vi.fn(() => false),
+}));
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 // --- helpers -----------------------------------------------------------------
 
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
-import { keyStore } from '@/wallet-core/keystore';
+const keyStore = mockKeyStore;
 
 const LS_KEY = 'veyrnox-kek-pin-notice';
 
@@ -48,6 +56,23 @@ describe('ensureKekPinNoticeOnNative — M-9 short-PIN disclosure', () => {
     resetLocalStorage();
     vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
     vi.mocked(keyStore.hasVaultKekWrap).mockResolvedValue(false);
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(false);
+  });
+
+  // --- I3 guard (issue #1094 — GAP-6-adjacent) ------------------------------
+
+  it('I3: does NOT show toast.warning in a decoy/hidden/demo session', async () => {
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
+    const { ensureKekPinNoticeOnNative } = await getModule();
+    await ensureKekPinNoticeOnNative();
+    expect(toast.warning).not.toHaveBeenCalled();
+  });
+
+  it('I3: does NOT write the localStorage marker in a decoy/hidden/demo session', async () => {
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
+    const { ensureKekPinNoticeOnNative } = await getModule();
+    await ensureKekPinNoticeOnNative();
+    expect(localStorage.getItem(LS_KEY)).toBeNull();
   });
 
   it('shows toast.warning on first launch for an unenrolled native user', async () => {

@@ -441,7 +441,7 @@ export default function WalletAccessReset() {
               disabled={!curPw || !newPw || !confirmPw || cpBusy}
               onClick={handleChangePassword}
             >
-              {cpBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+              {cpBusy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <KeyRound className="h-4 w-4" />}
               Change password
             </Button>
             <p className="text-[11px] text-muted-foreground">
@@ -532,7 +532,7 @@ export default function WalletAccessReset() {
           disabled={!recPhrase.trim() || !recPw || recBusy}
           onClick={handleRecover}
         >
-          {recBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          {recBusy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Download className="h-4 w-4" />}
           Recover &amp; set new password
         </Button>
         </>

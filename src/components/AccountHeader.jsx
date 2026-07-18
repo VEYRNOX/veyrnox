@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState } from "react";
-import { Copy, CheckCircle2, ChevronDown, ShieldCheck, Pencil } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Copy, CheckCircle2, ChevronDown, ShieldCheck, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -10,6 +11,12 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
   const [copied, setCopied] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+
+  const goAddWallet = () => {
+    setShowPicker(false);
+    navigate("/hd-wallet");
+  };
 
   const copyAddress = () => {
     if (!wallet?.address) return;
@@ -53,6 +60,15 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
           )}
         </div>
       ))}
+      <button
+        onClick={goAddWallet}
+        className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-secondary transition-colors text-left"
+      >
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
+          <Plus className="h-4 w-4" />
+        </span>
+        <span className="text-sm font-medium">Add wallet</span>
+      </button>
     </div>
   );
 
@@ -116,6 +132,15 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
                   )}
                 </div>
               ))}
+              <button
+                onClick={goAddWallet}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors text-left border-t border-border"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
+                  <Plus className="h-4 w-4" />
+                </span>
+                <span className="text-sm font-medium">Add wallet</span>
+              </button>
             </div>
           )}
         </>

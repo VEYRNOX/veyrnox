@@ -39,10 +39,44 @@ describe('#725 M-3: logM2cMigrationFailure (M2c up-migration is non-fatal but lo
     expect(args).toContain('VAULT_WRITE_VERIFY_FAILED');
   });
 
-  it('falls back to the message when no code is present', () => {
+  // Codex 2026-07-17 P2-#3 (allowlist tightening): logM2cMigrationFailure no longer
+  // falls back to e.message (a future error class throwing a secret-bearing message
+  // would leak into the log). Instead: allowlisted code → log code; else known
+  // constructor → log "<Name> (unknown code)"; else → "unknown error". e.message is
+  // NEVER logged.
+  it('logs the constructor name (not e.message) when code is absent', () => {
     logM2cMigrationFailure(new Error('boom without code'));
     expect(errSpy).toHaveBeenCalledTimes(1);
-    expect(errSpy.mock.calls[0]).toContain('boom without code');
+    const serialized = JSON.stringify(errSpy.mock.calls);
+    expect(serialized).not.toContain('boom without code');
+    expect(serialized).toContain('Error');
+    expect(serialized).toContain('unknown code');
+  });
+
+  it('logs "unknown code" (and constructor name) for an unknown code — NEVER e.message', () => {
+    const e = Object.assign(new Error('secret-shaped message that must not leak'), {
+      code: 'SOME_UNRECOGNISED_CODE',
+    });
+    logM2cMigrationFailure(e);
+    const serialized = JSON.stringify(errSpy.mock.calls);
+    expect(serialized).not.toContain('SOME_UNRECOGNISED_CODE');
+    expect(serialized).not.toContain('secret-shaped message that must not leak');
+    expect(serialized).toContain('unknown code');
+  });
+
+  it('does NOT leak a secret-shaped message when code is absent', () => {
+    const e = new Error('seed=abandon abandon abandon abandon abandon abandon');
+    logM2cMigrationFailure(e);
+    const serialized = JSON.stringify(errSpy.mock.calls);
+    expect(serialized).not.toContain('abandon');
+    expect(serialized).not.toContain('seed=');
+  });
+
+  it('logs "unknown error" for a primitive string throw', () => {
+    logM2cMigrationFailure('a bare string with a possible secret');
+    const serialized = JSON.stringify(errSpy.mock.calls);
+    expect(serialized).not.toContain('a bare string with a possible secret');
+    expect(serialized).toContain('unknown error');
   });
 
   it('never logs vault-blob / key material (only code or message)', () => {
@@ -67,5 +101,12 @@ describe('#725 M-3: logM2cMigrationFailure (M2c up-migration is non-fatal but lo
   it('does not throw on a null/undefined error (stays non-fatal)', () => {
     expect(() => logM2cMigrationFailure(undefined)).not.toThrow();
     expect(() => logM2cMigrationFailure(null)).not.toThrow();
+  });
+
+  it('logs "unknown error" for null / undefined (no constructor to name)', () => {
+    logM2cMigrationFailure(null);
+    logM2cMigrationFailure(undefined);
+    const serialized = JSON.stringify(errSpy.mock.calls);
+    expect(serialized).toContain('unknown error');
   });
 });

@@ -8,7 +8,10 @@
 > exercises ONLY the M2b fallback path and can confirm none of this.
 >
 > Related: `docs/M2cd.native-acl-plan.md` (plan), the M2c-1/M2c-2 code in
-> `src/wallet-core/keystore/native.js` + `ios/App/CapApp-SPM/Sources/CapApp-SPM/`.
+> `src/wallet-core/keystore/native.js` + `ios/App/CapApp-SPM/Sources/CapApp-SPM/`
+> (hardened by PR #1098, 2026-07-17 — delete-intent gate + stale-key check + versioned
+> key tag, see the two new sections below), and the Android mirror doc
+> `docs/audit-triage/m2d-strongbox-device-test.md` (also STATUS: NOT RUN).
 
 ## Preconditions
 - [ ] Physical iPhone with Face ID or Touch ID, device passcode set, ≥1 biometric enrolled.
@@ -34,6 +37,44 @@
 ## Non-exportability & invalidation (the F-2 guarantees)
 - [ ] Confirm the private key is non-exportable (`SecKeyCopyExternalRepresentation` on the private key returns nil / the item cannot be dumped).
 - [ ] `biometryCurrentSet` invalidation: add or remove a Face ID / Touch ID enrolment, then attempt unlock → the Enclave key is invalidated (unwrap fails with `KEY_NOT_FOUND` / `UNWRAP_FAILED`), and the documented recovery (seed re-import) is required. Record exact behaviour.
+
+## Delete-intent gate (PR #1098, P2-#1/P2-A — already ships)
+
+> PR #1098 hardened `deleteWrappingKey()` to require an allowlisted `intent`
+> (`'cleanup' | 'unenroll' | 'wipe'`), enforced BOTH at the JS wrapper (`veyrnoxEnclave.js`)
+> and re-enforced at the Swift native selector (`VeyrnoxEnclavePlugin.swift`) so an
+> in-page script calling `Capacitor.Plugins.VeyrnoxEnclave.deleteWrappingKey()` directly
+> cannot bypass the JS layer. Mirrors the Android M2d-1a delete-intent gate — see
+> `docs/audit-triage/m2d-strongbox-device-test.md`.
+
+- [ ] Call `Capacitor.Plugins.VeyrnoxEnclave.deleteWrappingKey()` from Safari Web
+      Inspector with no argument → rejects with `M2C_DELETE_INTENT_REQUIRED`, no
+      Keychain write.
+- [ ] Call with `{ intent: 'CLEANUP' }` (wrong case) → rejects.
+- [ ] Call with `{ intent: 'cleanup' }` → resolves; Enclave key removed.
+- [ ] Call with `{ intent: 'unenroll' }` → resolves; Enclave key removed.
+- [ ] Call with `{ intent: 'wipe' }` → resolves; Enclave key removed.
+
+## Stale-key detection (PR #1098, P2-#2 — already ships, NOT device-verified from the Windows dev box that authored it — this is the physical-iPhone re-test the PR itself flagged as required)
+
+> `EnclaveKeyService.createWrappingKey()` no longer trusts a bare
+> `loadPrivateKey() != nil` check before reusing a key; a new
+> `loadPrivateKeyAttributes()` peer asserts `kSecAttrTokenID ==
+> kSecAttrTokenIDSecureEnclave` before reuse. A non-Enclave-backed stale item (e.g.
+> a leftover key from an older/weaker-ACL dev build) now throws
+> `EnclaveError.staleWrappingKey` / `STALE_WRAPPING_KEY` instead of silently deleting
+> and recreating. The Enclave key application tag is also now versioned
+> (`...enclaveWrappingKey.v2`, P2-B) — a key found under the current versioned tag is
+> guaranteed to have been minted by this codepath with this ACL.
+
+- [ ] `createWrappingKey()` on a fresh device (no prior key) succeeds and mints a key
+      under the versioned tag `com.veyrnox.app.enclaveWrappingKey.v2`.
+- [ ] Calling `createWrappingKey()` again reuses the same key (idempotent) — confirm
+      via the Keychain item's creation-date attribute not changing.
+- [ ] (Requires a way to plant a non-Enclave key under the legacy unversioned tag —
+      e.g. an intentionally-old test build or a manual Keychain item insert) confirm
+      `createWrappingKey()` throws `STALE_WRAPPING_KEY` rather than silently
+      deleting/recreating the stale item.
 
 ## Migration (legacy M2b → Enclave) — OPT-IN
 > Policy: up-migration fires ONLY when biometric unlock is enabled

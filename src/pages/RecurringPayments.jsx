@@ -178,7 +178,7 @@ export default function RecurringPayments() {
         </div>
       )}
 
-      {isLoading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+      {isLoading ? <div className="flex justify-center py-8"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" /></div>
         : payments.length === 0 ? (
           <div className="text-center py-14 text-muted-foreground">
             <Repeat className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -265,7 +265,7 @@ export default function RecurringPayments() {
             <div><Label>Note (optional)</Label><Input value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} className="mt-1.5" /></div>
             <div className="flex gap-3 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button className="flex-1 bg-[#4ADAC2] text-[#050608] hover:bg-[#4ADAC2]/90" onClick={() => addPayment.mutate()} disabled={!form.label || !form.wallet_id || !form.to_address || !form.amount || showToAddrError || addPayment.isPending}>Create Payment</Button>
+              <Button className="flex-1" onClick={() => addPayment.mutate()} disabled={!form.label || !form.wallet_id || !form.to_address || !form.amount || showToAddrError || addPayment.isPending}>Create Payment</Button>
             </div>
           </div>
         </DialogContent>

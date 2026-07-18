@@ -43,6 +43,58 @@ import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
+
+// #1093 — WC pre-sign tx-risk plane. Risk-signal modules (`@/risk/signals` and
+// `@/risk/calldata`) instantiate an ethers Interface at MODULE INIT time, so a
+// static top-level import would crash sibling test files that fully-mock ethers
+// without `Interface`. `scoreWcTxLevel` therefore lazy-imports the risk stack
+// only when the SEND handler actually runs; a load or scoring failure falls
+// back to LEVEL.CAUTION (I4 fail-closed).
+//
+// Signal subset (MINIMUM VIABLE for the WC surface): the WC handler has no
+// recipientCode (S7), ENS (S5), UTXO (S6), send-history (S1/S8), or whitelist
+// (S3) inputs — feeding empty/undefined would fail-closed CAUTION on every
+// plain send. So we run only the two signals the audit brief called out:
+//   S2 unlimited-approval — pure calldata; catches approve(_, MAX_UINT256).
+//   S4 address-poisoning  — needs `counterparties`; empty today so always OK,
+//                           but wired for a future address-book pass.
+// A non-approve, non-lookalike send composes txLevel=LEVEL.OK, and the RASP
+// env plane is the sole determinant (previous behaviour preserved).
+export async function scoreWcTxLevel(txParams, caip2ChainId) {
+  try {
+    const [
+      { score },
+      { s2UnlimitedApproval },
+      { s4AddressPoisoning },
+      { buildRiskInputsFromWcRequest },
+    ] = await Promise.all([
+      import('@/risk/score'),
+      import('@/risk/signals/s2-unlimited-approval'),
+      import('@/risk/signals/s4-address-poisoning'),
+      import('@/risk/fromWalletConnect'),
+    ]);
+    const WC_TX_RISK_SIGNALS = [
+      { id: 'S2', fn: s2UnlimitedApproval },
+      { id: 'S4', fn: s4AddressPoisoning },
+    ];
+    const parsedChainId = typeof caip2ChainId === 'string'
+      ? parseInt(caip2ChainId.replace(/^eip155:/, ''), 10)
+      : undefined;
+    const riskInputs = buildRiskInputsFromWcRequest({
+      txParam: txParams,
+      chainId: Number.isFinite(parsedChainId) ? parsedChainId : undefined,
+    });
+    const verdict = score(
+      riskInputs.unsignedTx,
+      riskInputs.activeSetLocalState,
+      riskInputs.chainData,
+      WC_TX_RISK_SIGNALS,
+    );
+    return verdict?.level ?? LEVEL.CAUTION;
+  } catch {
+    return LEVEL.CAUTION;
+  }
+}
 import {
   detect,
   degrade,
@@ -57,6 +109,9 @@ import {
   FRESH_PROBE_TIMEOUT_MS,
 } from '@/rasp';
 import { DEMO } from '@/api/demoClient';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
+import { evaluateSendAgainstLimits } from '@/lib/txLimits';
+import { USD_RATES } from '@/lib/cryptos';
 
 // L-1 (PR #962): use the shared constant from getFreshRaspArtifact so the
 // Send-path and WC-path stay in sync with a single source of truth.
@@ -145,6 +200,11 @@ export function resolveMaxFeePerGas(rawMaxFee, networkKey) {
 // or unparseable value becomes 0n (the EIP-1559 default), never larger than the cap.
 // Pure; exported for unit tests.
 export function resolveMaxPriorityFeePerGas(rawPriorityFee, resolvedMaxFee) {
+  // #1115: when both feeData.maxFeePerGas and feeData.gasPrice are nullish,
+  // cappedMaxFeePerGas is undefined. The BigInt comparison `parsed > undefined`
+  // throws "Cannot mix BigInt and other types". Return null so the caller can
+  // let ethers/RPC populate fees rather than crash with an opaque error.
+  if (resolvedMaxFee == null) return null;
   let parsed;
   try {
     parsed = BigInt(rawPriorityFee ?? 0);
@@ -268,7 +328,7 @@ export function resolveSessionCaip2(session, requestCaip2) {
 // leg's CLEAN on native (C-01), and detectAttestation fails closed to
 // INTEGRITY_UNAVAILABLE on unavailable / thrown / timed-out verdicts. On web
 // the browser leg is used exactly as before.
-async function presignGateOrReject() {
+async function presignGateOrReject(txLevel = LEVEL.OK) {
   let tier;
   try {
     const isNative = Capacitor.isNativePlatform();
@@ -303,20 +363,25 @@ async function presignGateOrReject() {
     // Total failure in the detection chain → strongest BLOCK, signer unreachable.
     tier = TIER.BLOCK;
   }
-  // txLevel = LEVEL.OK: the WalletConnect signing path has NO in-app tx-risk score
-  // feeding this gate (its tx-safety controls — H7 chain binding, H8 address
-  // binding, M9 gas cap — are enforced separately in the handlers). Passing OK is
-  // honest (the tx plane genuinely has no signal here), so RASP's environment tier
-  // is the sole determinant.
+  // #1093 — txLevel is now composed from a real WC-scoped tx-risk score (see
+  // WC_TX_RISK_SIGNALS and _handleSendTransaction). Passing LEVEL.OK is still
+  // honest for the signing paths that have no tx plane at all (personal_sign,
+  // eth_signTypedData_v4): those callers omit txLevel and get the default.
   //
   // acknowledged=false: the WC path has no interactive surface to obtain a real
   // "sign anyway" tap, so it must never present one. Only a clean ALLOW passes;
   // WARN/CONFIRM/BLOCK do not (fail closed, I4).
-  const gate = presignGate(tier, LEVEL.OK, false);
+  const gate = presignGate(tier, txLevel, false);
   if (gate.proceedAllowed) return { proceedAllowed: true, rejectCode: null };
-  // A hard BLOCK (signer unreachable) reports RASP_BLOCK; a WARN/CONFIRM that could
-  // only proceed with an (unavailable) acknowledgement reports RASP_WARN_REJECTED.
-  const rejectCode = gate.signerReachable ? 'RASP_WARN_REJECTED' : 'RASP_BLOCK';
+  // Attribute the reject to the owning plane so the reject code is truthful:
+  //   owner==='tx' → the tx-risk plane blocked (S2 unlimited approval, S4 poison,
+  //     …): TX_RISK_REJECTED — the WC surface cannot obtain "sign anyway".
+  //   hard BLOCK (signer unreachable) → RASP_BLOCK.
+  //   otherwise WARN/CONFIRM owned by the RASP plane → RASP_WARN_REJECTED.
+  let rejectCode;
+  if (!gate.signerReachable) rejectCode = 'RASP_BLOCK';
+  else if (gate.owner === 'tx') rejectCode = 'TX_RISK_REJECTED';
+  else rejectCode = 'RASP_WARN_REJECTED';
   return { proceedAllowed: false, rejectCode };
 }
 
@@ -366,12 +431,28 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
   await respondToRequest(topic, id, sig);
 }
 
-export async function _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2) {
+export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic, id, params, sessionCaip2) {
   const gate = await presignGateOrReject();
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
   }
+
+  // #1092 — bind params[0] (the signer address per eth_signTypedData_v4) to
+  // the active EVM address. A dApp naming a foreign address would otherwise
+  // receive a signature attributed to our active key. Fail closed (I4): an
+  // absent evmAddress or params[0] cannot be bound, so both reject.
+  const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
+  const signerParam = typeof params?.[0] === 'string' ? params[0].toLowerCase() : null;
+  if (!ownAddr || !signerParam || ownAddr !== signerParam) {
+    await rejectRequest(topic, id, 'TYPED_DATA_ADDRESS_MISMATCH').catch(() => {});
+    throw new Error(
+      `Rejected typed-data signature [TYPED_DATA_ADDRESS_MISMATCH]: request ` +
+      `targets ${params?.[0] ?? '(none)'} but active address is ${evmAddress ?? '(none)'}. ` +
+      `Veyrnox will not sign typed data bound to a different address.`,
+    );
+  }
+
   const typedDataJson = params[1] ?? params[0];
   const parsed = parseTypedData(typedDataJson);
   if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
@@ -411,15 +492,92 @@ export async function _handleSignTypedData({ withPrivateKey }, topic, id, params
   await respondToRequest(topic, id, sig);
 }
 
-export async function _handleSendTransaction({ withPrivateKey }, topic, id, params, caip2ChainId) {
-  const gate = await presignGateOrReject();
+export async function _handleSendTransaction(
+  { withPrivateKey, evmAddress, actionPasswordConfigured = false, txLimits = [], history = [], usdRates = USD_RATES },
+  topic, id, params, caip2ChainId,
+) {
+  const txParams = params[0] ?? {};
+
+  // #1093 — compose a real tx-risk txLevel BEFORE calling the pre-sign gate,
+  // so unlimited approvals (and future poison-address hits) drive presignGate
+  // → CONFIRM/BLOCK. Pure: no network, no signer, no seed. Failures fall back
+  // to CAUTION (I4 fail-closed) — the WC surface has no "sign anyway" ack.
+  const txLevel = await scoreWcTxLevel(txParams, caip2ChainId);
+
+  // RASP + tx compose gate. Kept BEFORE the from-binding so a WARN/BLOCK-tier
+  // environment (or a tx-owned RISK) is reported by the appropriate code even
+  // when the request also happens to have a foreign / missing `from`.
+  const gate = await presignGateOrReject(txLevel);
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
   }
-  const txParams = params[0];
+
+  // #1091 — bind txParams.from to the active EVM address. A dApp requesting a
+  // send FROM a foreign address, or omitting `from` entirely, MUST reject
+  // before the key is touched. Mirrors H8 for personal_sign. Fail closed (I4):
+  // an absent evmAddress cannot be bound to anything, so it also rejects.
+  const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
+  const fromAddr = typeof txParams.from === 'string' ? txParams.from.toLowerCase() : null;
+  if (!ownAddr || !fromAddr || ownAddr !== fromAddr) {
+    await rejectRequest(topic, id, 'SEND_ADDRESS_MISMATCH').catch(() => {});
+    throw new Error(
+      `Rejected transaction [SEND_ADDRESS_MISMATCH]: request targets ` +
+      `${txParams.from ?? '(none)'} but active address is ${evmAddress ?? '(none)'}. ` +
+      `Veyrnox will not broadcast from a foreign address.`,
+    );
+  }
+
   const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
   const net = getNetworkByChainId(chainId);
+
+  // #1090 — Action Password 2FA gate. The in-app Send flow requires the second
+  // factor at the sign chokepoint (see sendGate.js §6b). The WC surface has NO
+  // in-band affordance to collect the Action Password mid-flow; the honest
+  // fail-closed path (I4) is to REJECT so the user routes through the in-app
+  // Send screen where the full 2FA dance runs. Never bypass.
+  if (actionPasswordConfigured === true) {
+    await rejectRequest(topic, id, 'WC_TWO_FACTOR_REQUIRED').catch(() => {});
+    throw new Error(
+      `Rejected transaction [WC_TWO_FACTOR_REQUIRED]: an Action Password ` +
+      `is configured for this wallet. Complete the send from the in-app ` +
+      `Send screen so the second factor can be entered.`,
+    );
+  }
+
+  // #1090 — spend limit gate. Mirrors the in-app Send flow's evaluation. WC has
+  // no acknowledgement affordance, so a breach REJECTS (fail closed, I4). Only
+  // the native `value` field is scored — ERC-20 amount is inside calldata and
+  // is not decoded here (honest scope: unlimited ERC-20 spend still hits the
+  // approval-warning code path via risk scoring, see #1093).
+  try {
+    let amount = 0;
+    if (txParams.value != null && txParams.value !== '0x' && txParams.value !== '0x0') {
+      // wei → native units, safe for values up to ~9e6 ETH.
+      amount = Number(BigInt(txParams.value)) / 1e18;
+    }
+    const limitGate = evaluateSendAgainstLimits({
+      amount,
+      currency: net?.symbol,
+      usdRates,
+      history,
+      limits: txLimits,
+    });
+    if (limitGate.blocked) {
+      await rejectRequest(topic, id, 'WC_SEND_LIMIT_EXCEEDED').catch(() => {});
+      throw new Error(
+        `Rejected transaction [WC_SEND_LIMIT_EXCEEDED]: this send would exceed ` +
+        `a configured spending cap. Complete the send from the in-app Send ` +
+        `screen so the limit can be reviewed and acknowledged.`,
+      );
+    }
+  } catch (err) {
+    if (err && typeof err.message === 'string' && err.message.includes('WC_SEND_LIMIT_EXCEEDED')) throw err;
+    // Any other failure computing the limit gate is fail-open on the LIMIT
+    // axis specifically (matches the in-app Send flow where an empty
+    // limits/history yields no breach). We do NOT auto-reject on compute
+    // errors — the RASP + risk-score gates still bite.
+  }
 
   const hash = await withPrivateKey(0, async (pk) => {
     const provider = getProvider(net.key);
@@ -478,7 +636,7 @@ export function WalletConnectProvider({ children }) {
   // NOTE: lastAuthAt is NOT in the WalletProvider context value (it lives in a
   // private ref: lastAuthAtRef). isSendReauthRequired() is the context-exposed gate
   // that reads it. We expose isSendReauthRequired to the modal instead.
-  const { accounts, isUnlocked, isDecoy, isHidden, withPrivateKey, isSendReauthRequired } = useWallet();
+  const { accounts, isUnlocked, isDecoy, isHidden, withPrivateKey, isSendReauthRequired, actionPasswordConfigured } = useWallet();
   const evmAddress = accounts?.[0]?.address ?? null;
 
   const [initialized, setInitialized] = useState(false);
@@ -503,7 +661,7 @@ export function WalletConnectProvider({ children }) {
     // simulates sends elsewhere, so the WC relay must NOT open here — otherwise a
     // demo facade would front a live relay socket and real dApp signing/broadcast
     // (I2/I3 violation). Fail closed (I4): treat demo like a deniability session.
-    if (DEMO || !isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return;
+    if (isDeniabilityOrDemoActive() || !isUnlocked || isDecoy || isHidden || !isWalletConnectConfigured()) return;
     let cancelled = false;
     // I2-WC-RELAY: WC relay opens at unlock time, not pairing. Lazy-init is a TODO (see audit-2026-07-04-internal.md).
     initWalletConnect()
@@ -535,12 +693,35 @@ export function WalletConnectProvider({ children }) {
           } else {
             setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
           }
+        } else if (method === 'eth_sendTransaction') {
+          // #1091 pre-modal: reject before showing the approval modal if the
+          // requested `from` doesn't match the active wallet address. Fail
+          // closed (I4) — the user must never be asked to approve a send from
+          // a foreign address. Mirrors H8's pre-modal pattern.
+          const reqParams = data.params?.request?.params ?? [];
+          const txParam = reqParams[0] ?? {};
+          const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
+          const fromAddr = typeof txParam.from === 'string' ? txParam.from.toLowerCase() : null;
+          if (!ownAddr || !fromAddr || ownAddr !== fromAddr) {
+            rejectRequest(data.topic, data.id, 'SEND_ADDRESS_MISMATCH').catch(() => {});
+          } else {
+            setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
+          }
         } else if (method === 'eth_signTypedData_v4') {
           // H7 pre-modal: reject before showing the modal if domain.chainId mismatches
           // the session chain. Mirrors _handleSignTypedData's chain-binding check.
+          // #1092 pre-modal: also reject if params[0] (signer address) doesn't
+          // match our active EVM address (mirror H8's address-binding pattern).
           let rejected = false;
+          const reqParams = data.params?.request?.params ?? [];
+          const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
+          const signerParam = typeof reqParams?.[0] === 'string' ? reqParams[0].toLowerCase() : null;
+          if (!ownAddr || !signerParam || ownAddr !== signerParam) {
+            rejectRequest(data.topic, data.id, 'TYPED_DATA_ADDRESS_MISMATCH').catch(() => {});
+            rejected = true;
+          }
           try {
-            const reqParams = data.params?.request?.params ?? [];
+            if (rejected) throw new Error('__skip_h7_check');
             const typedDataJson = reqParams[1] ?? reqParams[0];
             const parsed = JSON.parse(typedDataJson);
             const domainChainId = parsed?.domain?.chainId != null
@@ -570,14 +751,14 @@ export function WalletConnectProvider({ children }) {
       cancelled = true;
       unsub();
     };
-  }, [isUnlocked, isDecoy, isHidden, refreshSessions]);
+  }, [isUnlocked, isDecoy, isHidden, refreshSessions, evmAddress]);
 
   // Destroy client when wallet locks or transitions into a deniability session (I3).
   // DEMO is treated exactly like a deniability transition: if a live client somehow
   // survives into a demo session (e.g. demo flag flipped after unlock), tear it down
   // so no relay socket or real dApp signing lingers behind the demo facade (I4).
   useEffect(() => {
-    if (DEMO || !isUnlocked || isDecoy || isHidden) {
+    if (isDeniabilityOrDemoActive() || !isUnlocked || isDecoy || isHidden) {
       destroyWalletConnect();
       setInitialized(false);
       setPendingProposals([]);
@@ -587,6 +768,8 @@ export function WalletConnectProvider({ children }) {
   }, [isUnlocked, isDecoy, isHidden]);
 
   const handleApproveSession = useCallback(async (proposalId) => {
+    const gate = await presignGateOrReject();
+    if (gate && gate.blocked) throw new Error(gate.sentence || 'RASP integrity check failed — session refused');
     if (!evmAddress) throw new Error('No wallet address — unlock first');
     const proposal = pendingProposals.find((p) => p.id === proposalId);
     if (!proposal) throw new Error('Proposal not found');
@@ -664,9 +847,9 @@ export function WalletConnectProvider({ children }) {
     // rejects with SESSION_CHAINID_INVALID (fail closed, I4).
     const session = getActiveSessions().find((s) => s.topic === topic);
     const sessionCaip2 = resolveSessionCaip2(session, requestCaip2);
-    await _handleSignTypedData({ withPrivateKey }, topic, id, params, sessionCaip2);
+    await _handleSignTypedData({ withPrivateKey, evmAddress }, topic, id, params, sessionCaip2);
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, assertSessionLive, isSendReauthRequired]);
+  }, [withPrivateKey, evmAddress, assertSessionLive, isSendReauthRequired]);
 
   // Sign and broadcast an eth_sendTransaction request.
   // caip2ChainId: "eip155:11155111" format from the WC session namespace.
@@ -694,9 +877,33 @@ export function WalletConnectProvider({ children }) {
         `Veyrnox will not broadcast a transaction on an unapproved chain.`,
       );
     }
-    await _handleSendTransaction({ withPrivateKey }, topic, id, params, boundCaip2);
+    // #1090 — fetch the same limits + history sources the in-app Send screen
+    // reads so the WC send path enforces the SAME gates. Fail-open on read
+    // error (matches the in-app "no limits configured → allow" default);
+    // fail-closed happens inside _handleSendTransaction if a limit is breached.
+    // Dynamic-import base44 so unrelated WC tests (e.g. demoGate) that mock
+    // demoClient without the full base44 surface don't break on module load;
+    // the entities are only needed at sign-time, not at provider mount.
+    let txLimits = [];
+    let history = [];
+    try {
+      const { base44 } = await import('@/api/base44Client');
+      try { txLimits = await base44.entities.TransactionLimit.list(); } catch { txLimits = []; }
+      try { history = await base44.entities.Transaction.list('-created_date', 100); } catch { history = []; }
+    } catch { /* base44 unavailable in this test surface — fail open on limit axis */ }
+    await _handleSendTransaction(
+      {
+        withPrivateKey,
+        evmAddress,
+        actionPasswordConfigured,
+        txLimits,
+        history,
+        usdRates: USD_RATES,
+      },
+      topic, id, params, boundCaip2,
+    );
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, assertSessionLive, isSendReauthRequired]);
+  }, [withPrivateKey, evmAddress, actionPasswordConfigured, assertSessionLive, isSendReauthRequired]);
 
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);

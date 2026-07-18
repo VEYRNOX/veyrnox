@@ -76,8 +76,9 @@ export default function Settings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div role="status" aria-live="polite" className="flex items-center justify-center h-64">
+        <span className="sr-only">Loading settings…</span>
+        <div aria-hidden="true" className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" />
       </div>
     );
   }
@@ -320,8 +321,8 @@ export default function Settings() {
         {!showDelete ? (
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium">Delete Account</p>
-              <p className="text-xs text-muted-foreground">Clears data, locks wallet. Recovery phrase still works. Use Panic Wipe to erase keys.</p>
+              <p className="text-sm font-medium">Clear local cache</p>
+              <p className="text-xs text-muted-foreground">Clears saved data on this device and locks the wallet. Your recovery phrase still works. To erase keys, use Panic Wipe.</p>
             </div>
             <button
               onClick={() => setShowDelete(true)}
@@ -339,6 +340,7 @@ export default function Settings() {
             <input
               className="w-full rounded-lg border border-destructive/40 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive min-h-[44px]"
               placeholder="Type DELETE to confirm"
+              aria-label="Type DELETE to confirm account reset"
               value={deleteConfirm}
               onChange={e => setDeleteConfirm(e.target.value)}
             />

@@ -35,7 +35,7 @@
 //   origin?:  'fresh' | 'restored'  (default: 'restored' — matches historical copy)
 
 import { useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from "motion/react";
 import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PinPad from '@/components/security/PinPad';
@@ -163,7 +163,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
                 aria-live="polite"
                 className="text-sm text-muted-foreground flex items-center gap-2 justify-center py-6"
               >
-                <Loader2 className="h-4 w-4 animate-spin" /> Enabling — approve the prompt…
+                <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Enabling — approve the prompt…
               </p>
             ) : (
               <>

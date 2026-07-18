@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-const CHAIN_COLORS = { ethereum: "bg-blue-500/10 text-blue-400", solana: "bg-purple-500/10 text-purple-400", polygon: "bg-violet-500/10 text-violet-400", base: "bg-sky-500/10 text-sky-400" };
+const CHAIN_COLORS = { ethereum: "bg-secondary text-muted-foreground", solana: "bg-secondary text-muted-foreground", polygon: "bg-secondary text-muted-foreground", base: "bg-secondary text-muted-foreground" };
 const STATUS_COLORS = { holding: "bg-success/10 text-success", listed: "bg-caution/10 text-caution", sold: "bg-muted text-muted-foreground" };
 
 export default function NFTPortfolio() {
@@ -72,7 +72,7 @@ export default function NFTPortfolio() {
 
       {/* NFT Grid */}
       {isLoading ? (
-        <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" /></div>
       ) : isError ? (
         <div className="text-center py-16 text-muted-foreground">
           <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />

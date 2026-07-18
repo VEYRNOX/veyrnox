@@ -27,8 +27,25 @@ import {
 import { planSolTransfer, solComputeBudgetIxns } from './send.js';
 import { assertSolRecipient } from './poison.js';
 import { solPriorityLamports } from './fees.js';
+import { isDeniabilityOrDemoActive } from '../deniabilitySession.js';
 
 const SOL_PATH = "44'/501'/0'/0'";
+
+/**
+ * I3 gate (this-session I-4, parity with evm/hw-send.js post-#963/#978). The
+ * shared sendSolHw core invokes getPubkeyFn() — a physical Trezor/Ledger prompt
+ * — BEFORE the guarded RPC read in provider.js. In a decoy/hidden session or
+ * under the persisted demo flag, that device prompt is itself a visible
+ * coercion tell and must NEVER fire. Guard at each exported entrypoint (parity
+ * with the EVM path, which chose per-export placement over the shared helper);
+ * fail-closed (I4) with the SAME error string EVM uses so downstream UI
+ * catches remain identical. The helper reads BOTH the in-memory decoy/hidden
+ * marker AND the persisted `veyrnox-demo` flag LIVE on every call, catching a
+ * post-import flip that a load-time DEMO snapshot would miss.
+ */
+function assertNotDeniabilitySession() {
+  if (isDeniabilityOrDemoActive()) throw new Error('TREZOR_DENIABILITY_BLOCKED');
+}
 
 const MAX_BLOCKHASH_RETRIES = 3;
 
@@ -160,6 +177,7 @@ export async function signAndBroadcastSolLedger({
   priorityMicroLamports = 0,
   computeUnitLimit = 0,
 }) {
+  assertNotDeniabilitySession();
   const solApp = new AppSolana(transport);
 
   return sendSolHw({
@@ -193,6 +211,7 @@ export async function signAndBroadcastSolTrezor({
   priorityMicroLamports = 0,
   computeUnitLimit = 0,
 }) {
+  assertNotDeniabilitySession();
   return sendSolHw({
     networkKey, fromAddress, toAddress, amountLamports, sendMax,
     priorityMicroLamports, computeUnitLimit,

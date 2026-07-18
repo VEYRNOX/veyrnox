@@ -157,7 +157,7 @@ export default function PasskeyUnlockSettings() {
             onClick={handleRegister}
             disabled={busy || (!simulated && !available)}
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+            {busy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <KeyRound className="h-4 w-4" />}
             {nativeBio ? 'Enroll biometric unlock' : 'Register a passkey'}
           </Button>
           {!simulated && !supported && (
@@ -223,7 +223,7 @@ export default function PasskeyUnlockSettings() {
       <div className="flex items-start gap-2 text-xs">
         {status == null ? (
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking availability…
+            <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> Checking availability…
           </span>
         ) : available ? (
           <span className="flex items-start gap-1.5 text-muted-foreground">
@@ -243,7 +243,7 @@ export default function PasskeyUnlockSettings() {
         <div>
           <Button variant="outline" className="w-full gap-2" onClick={runTest} disabled={testing}>
             {testing
-              ? <><Loader2 className="h-4 w-4 animate-spin" /> {nativeBio ? 'Awaiting biometric…' : 'Awaiting passkey…'}</>
+              ? <><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> {nativeBio ? 'Awaiting biometric…' : 'Awaiting passkey…'}</>
               : <><KeyRound className="h-4 w-4" /> {nativeBio ? 'Preview biometric prompt' : 'Preview passkey prompt'}</>}
           </Button>
           {testResult === 'ok' && (

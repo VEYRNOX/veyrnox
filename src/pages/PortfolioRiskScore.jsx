@@ -112,7 +112,8 @@ export default function PortfolioRiskScore() {
           <RadarChart data={radarData}>
             <PolarGrid stroke="hsl(var(--border))" />
             <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-            <Radar dataKey="score" stroke="#f97316" fill="#f97316" fillOpacity={0.25} />
+            {/* @ts-ignore — recharts Radar's TS types demand SVG-shape props (points, onMouseEnter…) that the runtime derives internally; the JSX usage is correct per recharts docs. */}
+            <Radar dataKey="score" stroke="hsl(var(--caution))" fill="hsl(var(--caution))" fillOpacity={0.25} />
             <Tooltip />
           </RadarChart>
         </ResponsiveContainer>

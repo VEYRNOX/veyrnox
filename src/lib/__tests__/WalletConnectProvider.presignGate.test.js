@@ -250,7 +250,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
         error: null,
       });
       const { _handleSignTypedData } = await import('../WalletConnectProvider.jsx');
-      await _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', typedDataJson], 'eip155:11155111');
+      await _handleSignTypedData({ withPrivateKey, evmAddress: '0xabc' }, 'topic2', 2, ['0xabc', typedDataJson], 'eip155:11155111');
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).toHaveBeenCalled();
       expect(respondToRequest).toHaveBeenCalled();
@@ -259,7 +259,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
     it('B — calls rejectRequest with RASP_BLOCK and does NOT call withPrivateKey when gate blocks', async () => {
       presignGate.mockReturnValue({ proceedAllowed: false, signerReachable: false, decision: 'block', owner: 'rasp' });
       const { _handleSignTypedData } = await import('../WalletConnectProvider.jsx');
-      await _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', typedDataJson]);
+      await _handleSignTypedData({ withPrivateKey, evmAddress: '0xabc' }, 'topic2', 2, ['0xabc', typedDataJson]);
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
       expect(rejectRequest).toHaveBeenCalledWith('topic2', 2, 'RASP_BLOCK');
@@ -277,7 +277,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
       });
       const { _handleSignTypedData } = await import('../WalletConnectProvider.jsx');
       await expect(
-        _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', 'irrelevant'], 'eip155:11155111')
+        _handleSignTypedData({ withPrivateKey, evmAddress: '0xabc' }, 'topic2', 2, ['0xabc', 'irrelevant'], 'eip155:11155111')
       ).rejects.toThrow(/domain.chainId.*does not match/);
       expect(rejectRequest).toHaveBeenCalledWith('topic2', 2, 'CHAIN_ID_MISMATCH');
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
@@ -293,7 +293,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
         error: null,
       });
       const { _handleSignTypedData } = await import('../WalletConnectProvider.jsx');
-      await _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', 'irrelevant'], 'eip155:11155111');
+      await _handleSignTypedData({ withPrivateKey, evmAddress: '0xabc' }, 'topic2', 2, ['0xabc', 'irrelevant'], 'eip155:11155111');
       expect(withPrivateKeySpy).toHaveBeenCalled();
       expect(respondToRequest).toHaveBeenCalled();
     });
@@ -305,7 +305,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
       // "backwards compatible / skip the check" behaviour.
       const { _handleSignTypedData } = await import('../WalletConnectProvider.jsx');
       await expect(
-        _handleSignTypedData({ withPrivateKey }, 'topic2', 2, ['0xabc', typedDataJson], 'eip155:11155111')
+        _handleSignTypedData({ withPrivateKey, evmAddress: '0xabc' }, 'topic2', 2, ['0xabc', typedDataJson], 'eip155:11155111')
       ).rejects.toThrow(/CHAIN_ID_MISMATCH/);
       expect(rejectRequest).toHaveBeenCalledWith('topic2', 2, 'CHAIN_ID_MISMATCH');
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
@@ -315,11 +315,14 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
   // ---- handleSendTransaction ------------------------------------------------
 
   describe('handleSendTransaction', () => {
-    const txParams = [{ to: '0xrecipient', value: '0x0', data: '0x' }];
+    // #1091: eth_sendTransaction now requires `from` to match evmAddress
+    // (default useWallet mock returns 0xabc). Fail closed (I4) if absent/mismatch.
+    const WALLET_ADDR = '0xabc0000000000000000000000000000000000000';
+    const txParams = [{ from: WALLET_ADDR, to: '0xrecipient', value: '0x0', data: '0x' }];
 
     it('A — calls presignGate before withPrivateKey when gate allows', async () => {
       const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
-      await _handleSendTransaction({ withPrivateKey }, 'topic3', 3, txParams, 'eip155:11155111');
+      await _handleSendTransaction({ withPrivateKey, evmAddress: WALLET_ADDR }, 'topic3', 3, txParams, 'eip155:11155111');
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).toHaveBeenCalled();
       expect(respondToRequest).toHaveBeenCalled();
@@ -328,7 +331,7 @@ describe('C3 — presignGate in WalletConnect signing handlers', () => {
     it('B — calls rejectRequest with RASP_BLOCK and does NOT call withPrivateKey when gate blocks', async () => {
       presignGate.mockReturnValue({ proceedAllowed: false, signerReachable: false, decision: 'block', owner: 'rasp' });
       const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
-      await _handleSendTransaction({ withPrivateKey }, 'topic3', 3, txParams, 'eip155:11155111');
+      await _handleSendTransaction({ withPrivateKey, evmAddress: WALLET_ADDR }, 'topic3', 3, txParams, 'eip155:11155111');
       expect(presignGate).toHaveBeenCalled();
       expect(withPrivateKeySpy).not.toHaveBeenCalled();
       expect(rejectRequest).toHaveBeenCalledWith('topic3', 3, 'RASP_BLOCK');

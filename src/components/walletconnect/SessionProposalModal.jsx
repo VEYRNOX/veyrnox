@@ -1,10 +1,11 @@
 // @ts-nocheck
 import styles from './SessionProposalModal.module.css';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { checkDappDomain, LOCAL_KNOWN_BAD } from '@/risk/knownBadDapps.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { SUPPORTED_CHAIN_IDS } from '@/wallet-core/evm/walletconnect/router.js';
+import { useModalA11y } from '@/lib/useModalA11y.js';
 
 // Render a CAIP-2 chain string ("eip155:11155111") as a friendly network name,
 // falling back to the raw string for unsupported / unknown chains.
@@ -36,6 +37,12 @@ export function SessionProposalModal({ proposal, onClose }) {
 
   const [ackKnownBad, setAckKnownBad] = useState(false);
   const dapp = checkDappDomain(meta.url);
+  const titleId = useId();
+
+  const dialogRef = useModalA11y({
+    active: true,
+    onEscape: () => { if (!busy) handleReject(); },
+  });
 
   async function handleApprove() {
     setBusy(true);
@@ -62,8 +69,14 @@ export function SessionProposalModal({ proposal, onClose }) {
 
   return (
     <div className={styles.overlay}>
-      <div className={styles.modal}>
-        <h2 className={styles.title}>Connect to dApp?</h2>
+      <div
+        ref={dialogRef}
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <h2 id={titleId} className={styles.title}>Connect to dApp?</h2>
 
         {dapp.flagged && (
           <div className={styles.riskAlert}>

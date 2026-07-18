@@ -13,7 +13,7 @@ export default function VoiceFab() {
     <button
       onClick={stop}
       aria-label="Stop voice commands"
-      className="fixed bottom-24 right-4 z-50 h-12 w-12 rounded-full bg-primary shadow-lg flex items-center justify-center animate-pulse"
+      className="fixed bottom-24 right-4 z-50 h-12 w-12 rounded-full bg-primary shadow-lg flex items-center justify-center motion-safe:animate-pulse"
     >
       <Mic className="h-5 w-5 text-white" />
     </button>

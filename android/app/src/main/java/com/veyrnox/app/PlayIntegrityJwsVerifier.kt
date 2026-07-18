@@ -9,6 +9,14 @@ package com.veyrnox.app
 // org.json.*.  Production code passes android.util.Base64 as the decoder;
 // JVM unit tests pass java.util.Base64 so no Robolectric is needed.
 //
+// SECURITY (issue #1097): the root cert trust check is a strict SHA-256 pin.
+// The prior "|| issuer.contains(\"Google\")" fallback was a full trust bypass —
+// any self-signed cert whose subject DN contained "Google" satisfied the OR
+// and was accepted as a trusted root. That fallback is removed; pin-miss now
+// fail-closes (I4). Additionally, x5c chains of length 1 are rejected
+// unconditionally: real Play Integrity tokens always chain leaf → intermediate
+// → root, so a length-1 chain is a forged-chain signal.
+//
 // BUILT / unit-tested (PlayIntegrityJwsVerifierTest). NOT device-verified
 // against a real Play Integrity token — see PlayIntegrityPlugin file header.
 
@@ -21,11 +29,26 @@ import org.json.JSONObject
 internal object PlayIntegrityJwsVerifier {
 
     // Known Google root CA SHA-256 fingerprints (DER bytes of the cert).
-    // GTS Root R1 confirmed from https://pki.goog/repository/ (2026-07-14).
-    // Additional roots (R2, R3, R4) added once confirmed from a live token.
+    // Source: Google Trust Services published root CA bundle (https://pki.goog/repository/,
+    // captured 2026-07-17). All four roots are currently in Play Integrity signing rotation;
+    // real tokens observed in the wild have chained via any of R1/R2/R3/R4.
     private val GOOGLE_ROOT_CA_SHA256 = setOf(
+        // GTS Root R1
         "2a575471e31340bc21581cbd2cf13e158463203ece94bcf9d3cc196bf09a5472",
+        // GTS Root R2
+        "c45d7bb08e6d67e62e4235110b564e5f78fd92ef058c840aea4e6455d7585c60",
+        // GTS Root R3
+        "15d5b8774619ea7d54ce1ca6d0b0c403e037a917f131e8a04e1e6b7a71babce5",
+        // GTS Root R4
+        "71cca5391f9e794b04802530b363e121da8a3043bb26662fea4dca7fc951a4bd",
     )
+
+    // Test seam: same-module JVM tests may inject a test-generated root's SHA-256
+    // fingerprint here so a legitimate 2-cert fixture chain can exercise the full
+    // crypto/trust path without requiring a real Google-issued cert. NEVER read
+    // outside `internal` scope; NEVER populated by production code. If a production
+    // path ever tries to write here, treat it as a supply-chain compromise.
+    internal val ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING: MutableSet<String> = mutableSetOf()
 
     /**
      * Verify the JWS token's signature and cert chain.
@@ -34,7 +57,7 @@ internal object PlayIntegrityJwsVerifier {
      * @param b64Decode  Platform-appropriate base64url decoder. Production callers
      *                   supply android.util.Base64; tests supply java.util.Base64 so
      *                   this object stays free of android.* imports (issue #957).
-     * @return true iff the chain walks, root is trusted, and signature verifies.
+     * @return true iff the chain walks, root is pin-trusted, and signature verifies.
      *         Returns false on any parse/crypto failure (fail-closed, I4).
      */
     fun verify(token: String, b64Decode: (String) -> ByteArray): Boolean {
@@ -51,10 +74,13 @@ internal object PlayIntegrityJwsVerifier {
                 else -> return false
             }
 
-            // 2. Build cert chain from x5c array.
+            // 2. Build cert chain from x5c array. Reject length < 2 unconditionally:
+            //    real Play Integrity tokens always carry leaf + intermediate (+ root);
+            //    a single-element chain is either a forged/self-signed root claim or a
+            //    malformed token, and either way must not be trusted (issue #1097).
             val x5c = header.optJSONArray("x5c") ?: return false
             val chainLen = x5c.length()
-            if (chainLen == 0) return false
+            if (chainLen < 2) return false
             val certFactory = CertificateFactory.getInstance("X.509")
             val chain: List<X509Certificate> = (0 until chainLen).map { i ->
                 val der = b64Decode(x5c.getString(i))
@@ -70,11 +96,11 @@ internal object PlayIntegrityJwsVerifier {
                 }
             }
 
-            // 4. Root cert trust: fingerprint pin OR "Google" in issuer (belt-and-suspenders).
+            // 4. Root cert trust: SHA-256 pin ONLY. No issuer-string fallback.
+            //    (issue #1097 — the prior OR fallback was a full trust bypass; any
+            //    self-signed cert with "Google" in the subject DN passed.)
             val rootCert = chain[chainLen - 1]
-            val rootIssuer = rootCert.subjectX500Principal.name
-            if (!verifyRootCertFingerprint(rootCert) &&
-                !rootIssuer.contains("Google", ignoreCase = true)) return false
+            if (!verifyRootCertFingerprint(rootCert)) return false
 
             // 5. JWS signature over "header.payload" — ES256 raw R‖S 64 bytes transcoded to
             //    ASN.1 DER before JCA verify(); RS256 PKCS#1 bytes used as-is.
@@ -99,9 +125,8 @@ internal object PlayIntegrityJwsVerifier {
     }
 
     private fun verifyRootCertFingerprint(cert: X509Certificate): Boolean = runCatching {
-        if (GOOGLE_ROOT_CA_SHA256.isEmpty()) return@runCatching true
         val digest = MessageDigest.getInstance("SHA-256")
         val fingerprint = digest.digest(cert.encoded).joinToString("") { "%02x".format(it) }
-        GOOGLE_ROOT_CA_SHA256.any { pin -> pin == fingerprint }
+        fingerprint in GOOGLE_ROOT_CA_SHA256 || fingerprint in ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING
     }.getOrDefault(false)
 }

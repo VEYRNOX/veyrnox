@@ -22,7 +22,7 @@ import {
   MapPin, QrCode, History, ShieldQuestion, Lock, Grid2X2,
   Gift, Key, LayoutGrid, Fuel,
   RotateCcw, Mic,
-  ShieldOff, Gauge, FilterX, KeyRound, ScanLine, Frame, Wifi, Pen,
+  ShieldOff, Gauge, KeyRound, ScanLine, Frame, Wifi, Pen,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb, Scissors,
 } from "lucide-react";
 import { isCut } from './featureRegistry';
@@ -64,13 +64,13 @@ const RAW_NAV_GROUPS = [
   {
     label: "Wallet",
     items: [
+      { path: "/hd-wallet", label: "Wallets", icon: KeyRound, keywords: "hd wallet manager add new create account seed" },
       { path: "/send", label: "Send", icon: Send, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol transfer crypto" },
       { path: "/receive", label: "Receive", icon: Download, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol deposit crypto" },
       { path: "/tx-history", label: "Transaction History", icon: History, keywords: "bitcoin btc ethereum eth transactions history activity" },
       { path: "/split-bill", label: "Split Bill", icon: Scissors },
       { path: "/receipt", label: "TX Receipts", icon: Receipt },
       { path: "/fee-analytics", label: "Fee Analytics", icon: Fuel },
-      { path: "/hd-wallet", label: "HD Wallet Manager", icon: KeyRound },
       { path: "/crypto-signing", label: "Crypto Signing", icon: Pen },
       { path: "/recurring", label: "Recurring Payments", icon: Repeat },
       { path: "/calculator", label: "Convert", icon: Calculator },
@@ -125,7 +125,6 @@ const RAW_NAV_GROUPS = [
       { path: "/rasp-security", label: "RASP Security", icon: Cpu },
       { path: "/voice-commands", label: "Voice Commands", icon: Mic },
       { path: "/token-approvals", label: "Token Approvals", icon: ShieldOff },
-      { path: "/spam-filter", label: "Spam Filter", icon: FilterX },
       { path: "/trust-score", label: "Token Spam Screening", icon: ScanLine },
       { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert },
     ],

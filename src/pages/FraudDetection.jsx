@@ -134,7 +134,7 @@ const SEVERITY_CONFIG = {
     label: "Critical",
   },
   high: {
-    cls: "bg-orange-500/10 text-orange-500 border-orange-500/30",
+    cls: "bg-caution/10 text-caution border-caution/30",
     label: "High",
   },
   medium: {
@@ -340,7 +340,7 @@ export default function FraudDetection() {
               count: [...liveFindings, ...dbAlerts].filter(
                 (a) => a.severity === "high"
               ).length,
-              color: "text-orange-500",
+              color: "text-caution",
             },
             {
               label: "Medium / Low",

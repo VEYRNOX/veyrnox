@@ -142,7 +142,7 @@ export default function LandingPage() {
               {/* Central Shield with glow */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="relative w-64 h-64">
-                  <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary/10 rounded-full blur-3xl animate-pulse"></div>
+                  <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary/10 rounded-full blur-3xl motion-safe:animate-pulse"></div>
                   <div className="relative w-full h-full rounded-full border border-primary/30 flex items-center justify-center">
                     <Shield className="w-32 h-32 text-primary" />
                   </div>
@@ -150,10 +150,10 @@ export default function LandingPage() {
               </div>
 
               {/* Coin artwork — decorative illustrative currency tokens, not UI chrome */}
-              <div aria-hidden="true" className="absolute top-4 left-0 w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold animate-pulse" style={{animationDelay: '0s'}}>₿</div>
-              <div aria-hidden="true" className="absolute top-8 right-8 w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold animate-pulse" style={{animationDelay: '0.2s'}}>Ξ</div>
-              <div aria-hidden="true" className="absolute bottom-20 left-4 w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold animate-pulse" style={{animationDelay: '0.4s'}}>◎</div>
-              <div aria-hidden="true" className="absolute bottom-4 right-0 w-12 h-12 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold animate-pulse" style={{animationDelay: '0.6s'}}>∞</div>
+              <div aria-hidden="true" className="absolute top-4 left-0 w-12 h-12 bg-secondary border border-border rounded-full flex items-center justify-center text-muted-foreground font-bold">₿</div>
+              <div aria-hidden="true" className="absolute top-8 right-8 w-12 h-12 bg-secondary border border-border rounded-full flex items-center justify-center text-muted-foreground font-bold">Ξ</div>
+              <div aria-hidden="true" className="absolute bottom-20 left-4 w-12 h-12 bg-secondary border border-border rounded-full flex items-center justify-center text-muted-foreground font-bold">◎</div>
+              <div aria-hidden="true" className="absolute bottom-4 right-0 w-12 h-12 bg-primary/10 border border-primary/30 rounded-full flex items-center justify-center text-primary font-bold">∞</div>
             </div>
           </div>
         </div>

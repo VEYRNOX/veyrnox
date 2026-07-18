@@ -69,7 +69,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
+import { useInfiniteAnimation } from "@/lib/useInfiniteAnimation";
 import { toast } from "sonner";
 import {
   Shield, Wallet, Lock, KeyRound, Download, RefreshCw,
@@ -200,6 +201,7 @@ const PROVISIONING_STEPS = [
 ];
 function ProvisioningView() {
   const reduce = useReducedMotion();
+  const shimmerVisible = useInfiniteAnimation();
   const [step, setStep] = useState(0);
   useEffect(() => {
     if (reduce) return;
@@ -218,12 +220,15 @@ function ProvisioningView() {
         </div>
       </div>
       <div
-        aria-hidden
+        role="progressbar"
+        aria-label="Setting up wallet"
+        aria-valuetext={PROVISIONING_STEPS[step]}
         className="mx-auto h-[3px] w-40 overflow-hidden rounded-full bg-secondary"
       >
         <motion.div
+          aria-hidden
           className="h-full w-1/3 rounded-full bg-primary/80"
-          animate={reduce ? undefined : { x: ['-100%', '400%'] }}
+          animate={reduce || !shimmerVisible ? undefined : { x: ['-100%', '400%'] }}
           transition={reduce ? undefined : { duration: 1.8, ease: 'easeInOut', repeat: Infinity }}
         />
       </div>
@@ -241,6 +246,7 @@ function ProvisioningView() {
 // degrade to an instant, static render under prefers-reduced-motion.
 function WelcomeHero({ onGetStarted, onRestore }) {
   const reduce = useReducedMotion();
+  const visible = useInfiniteAnimation();
   const container = {
     hidden: {},
     show: { transition: reduce ? {} : { staggerChildren: 0.09, delayChildren: 0.05 } },
@@ -265,12 +271,12 @@ function WelcomeHero({ onGetStarted, onRestore }) {
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <motion.div
           className="absolute -top-24 -left-16 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
-          animate={reduce ? undefined : { x: [0, 24, 0], y: [0, 18, 0] }}
+          animate={reduce || !visible ? undefined : { x: [0, 24, 0], y: [0, 18, 0] }}
           transition={reduce ? undefined : { duration: 14, ease: 'easeInOut', repeat: Infinity }}
         />
         <motion.div
           className="absolute -bottom-24 -right-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl"
-          animate={reduce ? undefined : { x: [0, -20, 0], y: [0, -14, 0] }}
+          animate={reduce || !visible ? undefined : { x: [0, -20, 0], y: [0, -14, 0] }}
           transition={reduce ? undefined : { duration: 18, ease: 'easeInOut', repeat: Infinity }}
         />
       </div>
@@ -1081,7 +1087,7 @@ export default function WalletEntry() {
   if (vaultExists === null) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full motion-safe:animate-spin" />
       </div>
     );
   }
@@ -1232,7 +1238,7 @@ export default function WalletEntry() {
                   disabled={desyncWipeInput.trim() !== "WIPE" || desyncWiping}
                   onClick={doDesyncWipe}
                 >
-                  {desyncWiping ? <RefreshCw className="h-4 w-4 animate-spin" /> : <AlertOctagon className="h-4 w-4" />} Permanently wipe
+                  {desyncWiping ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <AlertOctagon className="h-4 w-4" />} Permanently wipe
                 </Button>
                 <Button
                   variant="ghost"
@@ -1259,7 +1265,7 @@ export default function WalletEntry() {
           {biometricEnabled && !biometricFailed && (
             <>
               <Button className="w-full gap-2 h-12 text-base" disabled={busy} onClick={handleBiometricUnlock}>
-                {busy ? <RefreshCw className="h-5 w-5 animate-spin" /> : <ScanFace className="h-5 w-5" />} Unlock with {bioLabel}
+                {busy ? <RefreshCw className="h-5 w-5 motion-safe:animate-spin" /> : <ScanFace className="h-5 w-5" />} Unlock with {bioLabel}
               </Button>
               <div className="flex items-center gap-2 py-1">
                 <div className="h-px flex-1 bg-border" />
@@ -1314,7 +1320,7 @@ export default function WalletEntry() {
                 <ScanFace className="h-4 w-4 text-primary" /> Welcome back
               </div>
               <Button className="w-full gap-2 h-12 text-base" disabled={busy} onClick={handleBiometricUnlock}>
-                {busy ? <RefreshCw className="h-5 w-5 animate-spin" /> : <ScanFace className="h-5 w-5" />} Unlock with {bioLabel}
+                {busy ? <RefreshCw className="h-5 w-5 motion-safe:animate-spin" /> : <ScanFace className="h-5 w-5" />} Unlock with {bioLabel}
               </Button>
               <div className="flex items-center gap-2 py-1">
                 <div className="h-px flex-1 bg-border" />
@@ -1336,13 +1342,14 @@ export default function WalletEntry() {
               <PasswordInput
                 className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                 placeholder="Vault password"
+                aria-label="Vault password"
                 value={unlockPassword}
                 onChange={e => { setUnlockPassword(e.target.value); setError(""); }}
                 onKeyDown={e => { if (e.key === "Enter" && unlockPassword && !busy) runUnlock(); }}
                 disabled={busy}
               />
               <Button className="w-full" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
-                {busy ? <RefreshCw className="h-4 w-4 animate-spin mr-1.5" /> : null} Unlock
+                {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin mr-1.5" /> : null} Unlock
               </Button>
             </div>
           ) : (
@@ -1449,7 +1456,7 @@ export default function WalletEntry() {
                   <textarea value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
                 </div>
                 <Button className="w-full gap-2" disabled={!importPhrasePin.trim() || busy} onClick={() => { if (referralInput.trim()) setPendingReferral(referralInput.trim().toUpperCase()); doImportWallet(); }}>
-                  {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Restore / Import
+                  {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Download className="h-4 w-4" />} Restore / Import
                 </Button>
               </>
             )}
@@ -1603,11 +1610,11 @@ export default function WalletEntry() {
             )}
             <div>
               <Label>Vault Password</Label>
-              <PasswordInput className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
+              <PasswordInput className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" aria-label="New vault password" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
               <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed. This is your real key — required, never skipped.</p>
             </div>
             <Button className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
-              {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Set Password & Generate Seed
+              {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <RefreshCw className="h-4 w-4" />} Set Password & Generate Seed
             </Button>
           </div>
         ) : (
@@ -1634,7 +1641,7 @@ export default function WalletEntry() {
             <BiometricOffer status={bioStatus} enabled={bioEnabled} onToggle={setBioEnabled} />
 
             <Button className="w-full gap-2" disabled={busy} onClick={finishCreate}>
-              {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} I've backed it up — Enter Wallet
+              {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Check className="h-4 w-4" />} I've backed it up — Enter Wallet
             </Button>
           </div>
         )}
@@ -1662,7 +1669,7 @@ export default function WalletEntry() {
         </div>
         <div>
           <Label>{recovering ? "New Vault Password" : "Vault Password"}</Label>
-          <PasswordInput className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" />
+          <PasswordInput className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" aria-label="Vault password for imported seed" />
           <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed.</p>
         </div>
 
@@ -1670,7 +1677,7 @@ export default function WalletEntry() {
         <BiometricOffer status={bioStatus} enabled={bioEnabled} onToggle={setBioEnabled} />
 
         <Button className="w-full gap-2" disabled={!importPhrase.trim() || !importPassword || busy} onClick={handleImport}>
-          {busy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} {recovering ? "Restore Wallet" : "Validate & Import"}
+          {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Download className="h-4 w-4" />} {recovering ? "Restore Wallet" : "Validate & Import"}
         </Button>
       </div>
     </EntryShell>

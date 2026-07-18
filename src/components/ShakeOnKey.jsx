@@ -19,7 +19,7 @@
 //   </ShakeOnKey>
 
 import { useEffect, useRef } from 'react';
-import { motion, useAnimation, useReducedMotion } from 'framer-motion';
+import { motion, useAnimation, useReducedMotion } from "motion/react";
 
 export default function ShakeOnKey({ shakeKey = 0, children, className = '' }) {
   const controls = useAnimation();

@@ -359,7 +359,7 @@ export default function HardwareKekSettings() {
     <div className="p-5 rounded-xl border border-border bg-card space-y-4">
       <div className="flex items-center gap-2">
         <HardDrive className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">Hardware Protection</h2>
+        <h2 className="font-semibold">On-device hardware protection</h2>
         {enrolled && (() => {
           // On web (PRF), kekTier is null — show "WebAuthn Protected".
           // On native, show the real tier label from the vault blob (H-1 honesty fix).
@@ -406,7 +406,7 @@ export default function HardwareKekSettings() {
       {/* Loading */}
       {enrolled === null && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking status…
+          <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> Checking status…
         </p>
       )}
 
@@ -466,7 +466,7 @@ export default function HardwareKekSettings() {
                   {busy
                     ? (
                       <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Upgrading — approve both prompts…
+                        <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Upgrading — approve both prompts…
                       </p>
                     ) : (
                       <>
@@ -516,7 +516,7 @@ export default function HardwareKekSettings() {
               {busy
                 ? (
                   <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Removing — approve the prompt…
+                    <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Removing — approve the prompt…
                   </p>
                 ) : (
                   <>
@@ -555,7 +555,7 @@ export default function HardwareKekSettings() {
           {busy
             ? (
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin" /> Enrolling — approve the biometric prompt…
+                <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Enrolling — approve the biometric prompt…
               </p>
             ) : (
               <PinPad
@@ -590,7 +590,7 @@ export default function HardwareKekSettings() {
           {busy
             ? (
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin" /> Enrolling — approve the passkey prompt…
+                <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Enrolling — approve the passkey prompt…
               </p>
             ) : (
               <PinPad

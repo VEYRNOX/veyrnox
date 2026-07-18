@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, useCallback } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { duration as motionDuration, easing as motionEasing } from "@/lib/motion-tokens";
 import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";
 import AccessibilityWrapper from "./AccessibilityWrapper";
 import SafeSuspense from "./SafeSuspense";
@@ -31,7 +32,7 @@ const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
 const ReceiveCryptoPage = lazy(() => import('../pages/ReceiveCrypto'));
 const TabSpinner = () => (
   <div className="flex justify-center items-center p-8" role="status" aria-label="Loading">
-    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full motion-safe:animate-spin" />
     <span className="sr-only">Loading tab content...</span>
   </div>
 );
@@ -70,6 +71,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { lock } = useWallet();
+  const prefersReducedMotion = useReducedMotion();
   // Sign out / Exit (base44 removal, Phase 2). In the local build there is no
   // hosted account to log out of — exiting means locking the on-device vault,
   // which the WalletGate then enforces (the unlock front door reappears). We
@@ -289,11 +291,11 @@ export default function Layout() {
         <div className="px-2 pb-4 border-t border-border pt-2">
           <button
             onClick={signOut}
-            title={collapsed ? "Sign Out" : undefined}
+            title={collapsed ? "Lock" : undefined}
             className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all w-full ${collapsed ? 'justify-center' : ''}`}
           >
             <LogOut className="h-3.5 w-3.5" />
-            {!collapsed && "Sign Out"}
+            {!collapsed && "Lock"}
           </button>
         </div>
       </aside>
@@ -354,7 +356,18 @@ export default function Layout() {
           <Link to="/settings" aria-label="Settings" title="Settings" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
             <Settings className="h-4 w-4" aria-hidden="true" />
           </Link>
-          <button onClick={signOut} aria-label="Exit — lock wallet" title="Exit — lock wallet" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
+          {/* F-P2-6: mobile Lock button sits next to Settings gear; a mis-tap
+              mid-Send would clear session state and force re-auth. Confirm before
+              actually locking to prevent that class of mis-tap. */}
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.confirm && !window.confirm('Lock this wallet now?')) return;
+              signOut();
+            }}
+            aria-label="Lock"
+            title="Lock"
+            className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]"
+          >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
@@ -368,10 +381,10 @@ export default function Layout() {
       <AnimatePresence mode="wait" initial={false}>
         <motion.main
           key={location.pathname}
-          initial={{ opacity: 0, x: 8 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -8 }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
+          initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 8 }}
+          animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+          exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -8 }}
+          transition={{ duration: prefersReducedMotion ? 0.15 : motionDuration.normal, ease: motionEasing.out }}
           className="hidden md:flex md:flex-1 flex-col p-8 overflow-auto"
         >
           {/* Desktop back affordance (item: back nav on every page). The desktop
@@ -410,10 +423,10 @@ export default function Layout() {
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 20 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, x: 0 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20 }}
+              transition={{ duration: prefersReducedMotion ? 0.15 : motionDuration.normal, ease: motionEasing.out }}
               className="p-4"
             >
               <PullToRefreshContainer onRefresh={handleRefresh} className="min-h-full">

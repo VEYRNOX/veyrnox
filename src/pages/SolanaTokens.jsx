@@ -57,7 +57,7 @@ export default function SolanaTokens() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-purple-500/10 flex items-center justify-center text-lg font-bold text-purple-400">◎</div>
+        <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-lg font-bold text-muted-foreground">◎</div>
         <div>
           <h1 className="text-xl font-bold">Solana Wallet</h1>
           <p className="text-sm text-muted-foreground">{NETWORK_LABEL} · ed25519 / SLIP-0010</p>
@@ -85,7 +85,7 @@ export default function SolanaTokens() {
                 : <p className="text-sm text-muted-foreground">{loading ? "Loading…" : "—"}</p>
               }
               <Button variant="ghost" size="icon" className="mb-1 h-7 w-7" aria-label="Refresh balance" onClick={fetchBalance} disabled={loading}>
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "motion-safe:animate-spin" : ""}`} />
               </Button>
             </div>
           </div>
