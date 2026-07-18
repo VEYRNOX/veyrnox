@@ -28,7 +28,7 @@ export const ALL_ROUTE_PATHS = [
   '/dashboard-widgets', '/wallet-seed-qr',
   '/hardware-wallet', '/personal-backup', '/rasp-security', '/audit-log', '/login-activity', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
   '/voice-commands', '/token-approvals', '/network-manager',
-  '/watch-wallets', '/price-charts', '/gas-fees', '/spam-filter', '/hd-wallet',
+  '/watch-wallets', '/price-charts', '/gas-fees', '/hd-wallet',
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
   '/security-scanner', '/docs', '/features',
   '/plans',
@@ -251,10 +251,9 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Imports summarizeAllowance, buildRevokeCalldata, sendRevoke from @/wallet-core/evm/approvals and getNetworkInfo from @/wallet-core/evm/networks. Risk badge derived from real calldata-decoded allowance (not a stored label). In DEMO mode revoke is simulated but exercises the real calldata builder and is clearly badged "Demo · simulated". In native/testnet mode a real approve(spender,0) is signed locally and broadcast.',
   },
-  '/spam-filter': {
-    verdict: 'live', dataSource: 'wallet-core',
-    note: 'Imports annotateTokens from @/wallet-core/evm/spam and getNetworkInfo from @/wallet-core/evm/networks. Runs the real wallet-core classifier over base44.entities.WalletToken records. User overrides persisted in localStorage. Explicitly discloses filtering is display-only and heuristic-based. Clearly badged "Demo · seeded" vs "Mainnet"/"Testnet" based on ALLOW_MAINNET.',
-  },
+  // /spam-filter removed 2026-07-18 (PR #1148, F-P2-2): now a compat
+  // <Navigate to="/trust-score" replace /> — a redirect alias, not a live
+  // page. Redirect routes have no page classification of their own.
   '/trust-score': {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Imports classifyToken from @/wallet-core/evm/spam. Runs the real on-device heuristic classifier over user-supplied or preset token metadata. Extensive in-file honesty contract: never claims on-chain analysis, never asserts safety, explicitly labels results as local-heuristic only. No external call.',
