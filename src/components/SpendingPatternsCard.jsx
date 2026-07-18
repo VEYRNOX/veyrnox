@@ -19,7 +19,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, Loader2, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { TrendingUp, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { DEMO } from "@/api/demoClient";
 import { useWallet } from "@/lib/WalletProvider";
 import { getAsset } from "@/wallet-core/assets";

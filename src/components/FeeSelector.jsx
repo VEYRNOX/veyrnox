@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatUnits } from "ethers";
-import { Clock, Zap, Flame, SlidersHorizontal, Fuel, AlertTriangle, Loader2 } from "lucide-react";
+import { Clock, Zap, Flame, SlidersHorizontal, Fuel, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { estimateEvmFeeTiers, buildEvmCustomFee } from "@/wallet-core/evm/fees";
