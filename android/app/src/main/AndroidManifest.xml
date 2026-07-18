@@ -41,6 +41,20 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required for the QR-code scanner in the Send flow and for WalletConnect
+         pairing (src/components/QRScanner.jsx uses navigator.mediaDevices.getUserMedia
+         via Capacitor's WebView; the WebView's onPermissionRequest requires this
+         manifest declaration or the runtime prompt silently fails and QR scanning
+         breaks). Camera is used to scan; frames are decoded on-device by jsQR and
+         never leave the device. Declared as an optional hardware feature so tablets
+         or emulators without a camera can still install. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Required for the Voice Commands feature (src/context/VoiceContext.jsx via
+         @capacitor-community/speech-recognition). Read-only navigation only —
+         never initiates or signs a transaction by voice. Transcription happens
+         off-device on the platform speech service (Google Speech Service on
+         Android). Suppressed entirely in decoy/hidden sessions (I3, fail closed). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Required for BiometricPrompt (fingerprint / face unlock + 2FA at Send).
          USE_BIOMETRIC covers API 28+; USE_FINGERPRINT covers API 23–27. -->
