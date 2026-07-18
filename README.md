@@ -1,5 +1,12 @@
 # Veyrnox Wallet
 
+[![mainnet](https://img.shields.io/badge/mainnet-unlocked%202026--06--17-4ADAC2?style=flat-square&labelColor=1D222B)](./docs/Feature-Status.md)
+[![platforms](https://img.shields.io/badge/platforms-iOS%20%C2%B7%20Android-4ADAC2?style=flat-square&labelColor=1D222B)](./docs/Feature-Status.md)
+[![assets](https://img.shields.io/badge/assets-10%20live-4ADAC2?style=flat-square&labelColor=1D222B)](./src/wallet-core/assets.js)
+[![core audit](https://img.shields.io/badge/core%20audit-ECC%20%C2%B7%20Jun%202026-4ADAC2?style=flat-square&labelColor=1D222B)](./docs/audit-triage/)
+[![KEK & RASP audit](https://img.shields.io/badge/KEK%20%26%20RASP%20audit-INTERNAL%20%C2%B7%20independent%20outstanding-8A94A3?style=flat-square&labelColor=1D222B)](./docs/Feature-Status.md)
+[![deniability](https://img.shields.io/badge/deniability-BUILT-4ADAC2?style=flat-square&labelColor=1D222B)](./src/wallet-core/deniabilitySession.js)
+
 A self-custody cryptocurrency wallet built for coercion resistance and plausible deniability. Your seed is your identity — keys never touch a server.
 
 **Stack:** Vite · React · Capacitor (iOS & Android) · ethers v6 · @noble/@scure cryptography
