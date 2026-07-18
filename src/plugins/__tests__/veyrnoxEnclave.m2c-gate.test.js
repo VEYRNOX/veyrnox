@@ -1,20 +1,18 @@
 // Issue #729 (M-5): VeyrnoxEnclavePlugin is auto-registered by Capacitor, so
-// Capacitor.Plugins.VeyrnoxEnclave is callable from any injected JS even though the
-// M2c hardware-wrap path is gated OFF (M2C_HARDWARE_WRAP_ENABLED=false in native.js).
-// An injected script could call createWrappingKey() and mint an orphaned Secure
-// Enclave key. The JS bridge must fail closed at this layer too: the mutating /
-// key-touching functions (createWrappingKey, hwWrap, hwUnwrap) must throw
-// M2C_DISABLED while the flag is false, WITHOUT reaching the native plugin.
+// Capacitor.Plugins.VeyrnoxEnclave is callable from any injected JS. The JS
+// bridge enforces two layers of protection:
+//   1. M2C_ENABLED gate — when false, mutating functions throw M2C_DISABLED
+//      before reaching native. NOW TRUE (ungated after device verification,
+//      PR #1152 / commit f518ba57).
+//   2. deleteWrappingKey intent allowlist — injected JS must supply an
+//      allowlisted intent string to reach the native delete path.
 //
 // isHardwareKeyAvailable (read-only capability probe) and deleteWrappingKey
-// (cleanup — deleting a key cannot leak material, and clearVault relies on it) stay
-// callable.
+// (cleanup — deleting a key cannot leak material, and clearVault relies on it)
+// stay callable regardless of the M2C_ENABLED flag.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock the registered plugin so we can observe whether the native surface is reached.
-// registerPlugin runs at import time, so build the fake in vi.hoisted to avoid the
-// temporal-dead-zone the mock factory would otherwise hit.
 const { nativeCalls, fakePlugin } = vi.hoisted(() => {
   const nativeCalls = { createWrappingKey: 0, wrap: 0, unwrap: 0, isHardwareKeyAvailable: 0, deleteWrappingKey: 0 };
   const fakePlugin = {
@@ -44,24 +42,26 @@ beforeEach(() => {
   for (const k of Object.keys(nativeCalls)) nativeCalls[k] = 0;
 });
 
-describe('#729 M-5: veyrnoxEnclave M2c JS fail-closed gate', () => {
-  it('M2C_ENABLED is false (must be flipped together with native.js M2C_HARDWARE_WRAP_ENABLED)', () => {
-    expect(M2C_ENABLED).toBe(false);
+describe('#729 M-5: veyrnoxEnclave M2c JS bridge layer', () => {
+  it('M2C_ENABLED is true (ungated after device verification)', () => {
+    expect(M2C_ENABLED).toBe(true);
   });
 
-  it('createWrappingKey throws M2C_DISABLED and never reaches native', async () => {
-    await expect(createWrappingKey()).rejects.toMatchObject({ code: 'M2C_DISABLED' });
-    expect(nativeCalls.createWrappingKey).toBe(0);
+  it('createWrappingKey reaches native when M2C_ENABLED is true', async () => {
+    await createWrappingKey();
+    expect(nativeCalls.createWrappingKey).toBe(1);
   });
 
-  it('hwWrap throws M2C_DISABLED and never reaches native', async () => {
-    await expect(hwWrap('AAAA')).rejects.toMatchObject({ code: 'M2C_DISABLED' });
-    expect(nativeCalls.wrap).toBe(0);
+  it('hwWrap reaches native when M2C_ENABLED is true', async () => {
+    const result = await hwWrap('AAAA');
+    expect(result).toBe('CT');
+    expect(nativeCalls.wrap).toBe(1);
   });
 
-  it('hwUnwrap throws M2C_DISABLED and never reaches native', async () => {
-    await expect(hwUnwrap('AAAA')).rejects.toMatchObject({ code: 'M2C_DISABLED' });
-    expect(nativeCalls.unwrap).toBe(0);
+  it('hwUnwrap reaches native when M2C_ENABLED is true', async () => {
+    const result = await hwUnwrap('AAAA');
+    expect(result).toBe('BLOB');
+    expect(nativeCalls.unwrap).toBe(1);
   });
 
   it('isHardwareKeyAvailable stays callable (read-only probe)', async () => {
@@ -69,11 +69,14 @@ describe('#729 M-5: veyrnoxEnclave M2c JS fail-closed gate', () => {
     expect(nativeCalls.isHardwareKeyAvailable).toBe(1);
   });
 
-  it('deleteWrappingKey stays callable (cleanup path used by clearVault) — with explicit intent (P2-#1)', async () => {
-    // P2-#1: deleteWrappingKey now requires an allowlisted intent string. The M-5
-    // guarantee is unchanged (cleanup path stays ungated w.r.t. M2C_ENABLED); the
-    // intent is a separate injected-JS availability guard.
+  it('deleteWrappingKey stays callable (cleanup path) — with explicit intent (P2-#1)', async () => {
     await expect(deleteWrappingKey({ intent: 'cleanup' })).resolves.toBeUndefined();
     expect(nativeCalls.deleteWrappingKey).toBe(1);
+  });
+
+  it('deleteWrappingKey rejects without a valid intent string', async () => {
+    await expect(deleteWrappingKey()).rejects.toMatchObject({ code: 'M2C_DELETE_INTENT_REQUIRED' });
+    await expect(deleteWrappingKey({ intent: 'hack' })).rejects.toMatchObject({ code: 'M2C_DELETE_INTENT_REQUIRED' });
+    expect(nativeCalls.deleteWrappingKey).toBe(0);
   });
 });

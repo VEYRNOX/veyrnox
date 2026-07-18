@@ -4,8 +4,7 @@
 // VAULT_WRITE_VERIFY_FAILED is visible. It must log ONLY code/message, NEVER the
 // vault blob or any key material (LOG-1).
 //
-// The M2c branch is dormant (M2C_HARDWARE_WRAP_ENABLED = false, module-private),
-// so the catch-handler is extracted into a small pure helper we can exercise
+// The catch-handler is extracted into a small pure helper we can exercise
 // directly. This pins the contract of that handler.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

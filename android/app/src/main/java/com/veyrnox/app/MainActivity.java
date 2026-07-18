@@ -30,9 +30,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(HardwareKekPlugin.class);
         registerPlugin(RaspIntegrityPlugin.class);
         registerPlugin(PlayIntegrityPlugin.class);
-        // M2d-1a scaffold — capability probe + intent-gated deleteWrappingKey.
-        // wrap/unwrap/createWrappingKey fail-closed on M2D_ENABLED=false.
-        // See docs/M2cd.native-acl-plan.md §5.
+        // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         super.onCreate(savedInstanceState);
 
