@@ -25,6 +25,8 @@ import {
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
 } from "@/lib/purchases";
+import { getRedeemedCode, hasAttributed, markAttributed, PLAN_REVENUE_CENTS } from "@/lib/referral";
+import { recordAttribution } from "@/api/referralApi";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
 
@@ -99,6 +101,12 @@ export default function Subscription() {
     try {
       await purchasePackage(selectedPackage);
       await refreshTier();
+      const refCode = getRedeemedCode();
+      if (refCode && !hasAttributed()) {
+        const rev = PLAN_REVENUE_CENTS[effectiveBilling] || PLAN_REVENUE_CENTS.monthly;
+        recordAttribution(refCode, effectiveBilling, rev).catch(() => {});
+        markAttributed();
+      }
       toast.success("Safety Plus unlocked");
     } catch (err) {
       if (!err?.userCancelled) toast.error("Purchase failed — please try again");
