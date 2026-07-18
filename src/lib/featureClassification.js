@@ -28,7 +28,7 @@ export const ALL_ROUTE_PATHS = [
   '/dashboard-widgets', '/wallet-seed-qr',
   '/hardware-wallet', '/personal-backup', '/rasp-security', '/audit-log', '/login-activity', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
   '/voice-commands', '/token-approvals', '/network-manager',
-  '/watch-wallets', '/price-charts', '/gas-fees', '/spam-filter', '/hd-wallet',
+  '/watch-wallets', '/price-charts', '/gas-fees', '/hd-wallet',
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
   '/security-scanner', '/docs', '/features',
   '/plans',
@@ -252,8 +252,8 @@ export const CLASSIFICATION = {
     note: 'Imports summarizeAllowance, buildRevokeCalldata, sendRevoke from @/wallet-core/evm/approvals and getNetworkInfo from @/wallet-core/evm/networks. Risk badge derived from real calldata-decoded allowance (not a stored label). In DEMO mode revoke is simulated but exercises the real calldata builder and is clearly badged "Demo · simulated". In native/testnet mode a real approve(spender,0) is signed locally and broadcast.',
   },
   '/spam-filter': {
-    verdict: 'live', dataSource: 'wallet-core',
-    note: 'Imports annotateTokens from @/wallet-core/evm/spam and getNetworkInfo from @/wallet-core/evm/networks. Runs the real wallet-core classifier over base44.entities.WalletToken records. User overrides persisted in localStorage. Explicitly discloses filtering is display-only and heuristic-based. Clearly badged "Demo · seeded" vs "Mainnet"/"Testnet" based on ALLOW_MAINNET.',
+    verdict: 'cut', dataSource: 'wallet-core',
+    note: 'Redirects to /trust-score (PR #1148). Route removed from App.jsx Layout; kept as cut entry so the registry gate and cutPaths() work.',
   },
   '/trust-score': {
     verdict: 'live', dataSource: 'wallet-core',
