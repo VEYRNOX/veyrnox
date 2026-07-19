@@ -16,7 +16,7 @@ import {
   LayoutDashboard, Send, Download, Settings, ShieldCheck, Plug, Calculator, BarChart2, Zap,
   Receipt, Repeat, ShieldAlert, Image,
   BarChart3, Camera, TrendingUp, Network, PieChart, BellRing, Link2, Users,
-  Activity, Layers, Fingerprint, Cpu,
+  Activity, Layers, WalletCards, Fingerprint, Cpu,
   Leaf, ScrollText, Newspaper,
   Target, Eye, BookOpen,
   MapPin, QrCode, History, ShieldQuestion, Lock, Grid2X2,
@@ -65,7 +65,11 @@ const RAW_NAV_GROUPS = [
   {
     label: "Wallet",
     items: [
-      { path: "/hd-wallet", label: "Wallet Manager", icon: Layers, keywords: "hd wallet manager add new create account seed" },
+      // WalletCards, not Layers: Layers already marks /nft-multichain and
+      // /solana, and KeyRound (the previous icon here) already marks
+      // /wallet-access. A shared glyph stops being a distinguishing signal in
+      // the sidebar and the command palette. See navigation-icons.test.js.
+      { path: "/hd-wallet", label: "Wallet Manager", icon: WalletCards, keywords: "hd wallet manager add new create account seed" },
       { path: "/send", label: "Send", icon: Send, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol transfer crypto" },
       { path: "/receive", label: "Receive", icon: Download, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol deposit crypto" },
       { path: "/tx-history", label: "Transaction History", icon: History, keywords: "bitcoin btc ethereum eth transactions history activity" },
