@@ -51,10 +51,10 @@ vi.mock('@/lib/referral', () => ({
 }));
 
 const recordAttribution = vi.fn();
-const fetchReferrerTier = vi.fn();
+const fetchPaidCount = vi.fn();
 vi.mock('@/api/referralApi', () => ({
   recordAttribution: (...a) => recordAttribution(...a),
-  fetchReferrerTier: (...a) => fetchReferrerTier(...a),
+  fetchPaidCount: (...a) => fetchPaidCount(...a),
 }));
 
 const refreshTier = vi.fn();
@@ -304,7 +304,7 @@ describe('Subscription page — tier-based referral discount', () => {
   function setupGoldReferral() {
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
-    fetchReferrerTier.mockResolvedValue({ count: 5000 });
+    fetchPaidCount.mockResolvedValue(5000);
     getTierMock.mockReturnValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: { key: 'platinum', min: 10000 } });
     getOfferingIdForTierMock.mockReturnValue('referral-gold');
@@ -384,7 +384,7 @@ describe('Subscription page — tier-based referral discount', () => {
   it('falls back to default prices when referrer tier lookup fails', async () => {
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
-    fetchReferrerTier.mockResolvedValue(null);
+    fetchPaidCount.mockResolvedValue(null);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
     expect(screen.queryByText(/referral discount applied/i)).toBeNull();
@@ -393,7 +393,7 @@ describe('Subscription page — tier-based referral discount', () => {
   it('falls back to default prices when tier offering is unavailable', async () => {
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
-    fetchReferrerTier.mockResolvedValue({ count: 5000 });
+    fetchPaidCount.mockResolvedValue(5000);
     getTierMock.mockReturnValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: null });
     getOfferingIdForTierMock.mockReturnValue('referral-gold');
