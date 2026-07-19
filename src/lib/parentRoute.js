@@ -64,7 +64,6 @@ const PARENT_MAP = {
   '/budget': '/',
   '/net-worth': '/',
   '/docs': '/settings',
-  '/features': '/settings',
   '/fee-analytics': '/',
   '/crypto-signing': '/',
   '/recurring': '/',

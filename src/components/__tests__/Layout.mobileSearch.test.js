@@ -30,7 +30,7 @@ const src = readFileSync(join(dir, '../Layout.jsx'), 'utf8');
 // Routes that host the mobile tab shell.
 const MOBILE_TABS = ['/', '/send', '/receive'];
 // Representative non-tab routes (sub-pages / More-drawer destinations).
-const SUB_PAGES = ['/settings', '/hd-wallet', '/tx-history', '/wallet-access', '/features'];
+const SUB_PAGES = ['/settings', '/hd-wallet', '/tx-history', '/wallet-access', '/docs'];
 
 describe('isHomeSearchPillVisible — mirrors the tab-panel-0 hidden gate', () => {
   it('is visible only when on a mobile tab route AND the Home tab is selected', () => {

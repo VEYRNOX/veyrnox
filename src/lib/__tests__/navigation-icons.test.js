@@ -48,7 +48,6 @@ const LEGACY_ICON_COLLISIONS = {
   Cpu: ['/hardware-wallet', '/rasp-security'],
   Eye: ['/watchlist', '/watch-wallets'],
   Layers: ['/nft-multichain', '/solana'],
-  LayoutGrid: ['/dashboard-widgets', '/features'],
   Network: ['/onchain', '/network-manager'],
   Newspaper: ['/correlation-timeline', '/news-sentiment'],
   PieChart: ['/spending', '/budget'],

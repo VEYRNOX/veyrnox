@@ -153,7 +153,6 @@ const RAW_NAV_GROUPS = [
       { path: "/settings", label: "Settings", icon: Settings },
       { path: "/plans", label: "Subscriptions", icon: CreditCard },
       { path: "/docs", label: "Documentation", icon: BookOpen },
-      { path: "/features", label: "Features", icon: LayoutGrid },
     ],
   },
 ];
