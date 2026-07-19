@@ -1,0 +1,42 @@
+#!/bin/sh
+# Veyrnox pre-commit hook — block accidental shell-redirection artifacts.
+#
+# WHY: zero-byte files with shell-fragment names (`v.name)`, `false))`,
+# `!(r.topic`, `hasRedeemedMock()`) are created when unquoted JS containing `=>`
+# reaches a shell — `=` binds to the preceding word, `>` becomes a redirect, and
+# the next token becomes an empty file. They then ride along in a broad
+# `git add -A`. This has reached main at least four times (392f9d30, ec459a6e,
+# f518ba57/7ffe7d37). CI caught it only after the push; this catches it before
+# the commit exists.
+#
+# Enabled via `core.hooksPath=.githooks` (see scripts/setup-hooks.mjs, or run
+# `npm run hooks:install`). Lives in the repo so it is version-controlled and
+# shared, unlike .git/hooks.
+#
+# Bypass for a genuine emergency: `git commit --no-verify`.
+
+# Not a security control on user funds — it is dev tooling. If the toolchain is
+# missing, warn and allow rather than bricking every commit; the same check runs
+# in CI (`npm run check:strays`) as the real backstop.
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node not found — skipping stray-artifact check." >&2
+  echo "pre-commit: CI (npm run check:strays) still enforces this." >&2
+  exit 0
+fi
+
+if [ ! -f scripts/check-stray-files.mjs ]; then
+  echo "pre-commit: scripts/check-stray-files.mjs not found — skipping." >&2
+  exit 0
+fi
+
+node scripts/check-stray-files.mjs
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo "" >&2
+  echo "pre-commit: BLOCKED — stray artifact in the staged tree." >&2
+  echo "Remove it (\`git rm --cached <file>\` then delete), or bypass with" >&2
+  echo "\`git commit --no-verify\` if you are certain it is intentional." >&2
+fi
+
+exit $status
