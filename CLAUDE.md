@@ -2243,7 +2243,6 @@ information from the Documentation page that was being exposed to public users.
 `src/pages/Features.jsx` still exists on disk but is unreachable (no nav link, no route,
 redirect in place). 26/26 targeted tests green. Browser-verified: redirect works,
 Documentation page renders clean user-facing descriptions only.
-
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
