@@ -117,6 +117,22 @@ function shortPath(index) {
   return `m/44'/60'/0'/0/${index ?? 0}`;
 }
 
+// Resolve the derivation path to DISPLAY for a given asset. Each family derives
+// on its own path, so a single hardcoded string is wrong for anything non-EVM:
+//   EVM/ERC-20  m/44'/60'/0'/0/{index}   (one secp256k1 account backs them all)
+//   BTC         m/84'/{coin}'/0'/0/0     (BIP-84, from btcAccount.path)
+//   SOL         m/44'/501'/0'/0'         (SLIP-0010 ed25519, from solAccount.path)
+// Returns null when the real path isn't known — callers must render NOTHING
+// rather than a fabricated-but-plausible path (I4: fail honest). Showing the
+// EVM path next to a BTC/SOL address would send an advanced user re-deriving in
+// another wallet to an empty account.
+export function resolveAssetPath(asset, { evmIndex, btcPath, solPath } = {}) {
+  if (isEvmFamily(asset)) return shortPath(evmIndex);
+  if (asset?.family === 'btc') return btcPath || null;
+  if (asset?.family === 'solana') return solPath || null;
+  return null;
+}
+
 export default function HDWalletManager() {
   const qc = useQueryClient();
   const isPin = getAuthModel() === "pin";
@@ -422,6 +438,11 @@ export default function HDWalletManager() {
               : asset.family === 'btc' ? btcAccount?.address || null
               : asset.family === 'solana' ? solAccount?.address || null
               : null;
+            const assetPath = resolveAssetPath(asset, {
+              evmIndex: accounts[0]?.index,
+              btcPath: btcAccount?.path,
+              solPath: solAccount?.path,
+            });
             const badge = STATUS_BADGE[asset.status];
             const exp = expandedSymbol === asset.symbol;
             const dim = /** @type {any} */ (asset.status) === ASSET_STATUS.COMING_SOON;
@@ -457,7 +478,9 @@ export default function HDWalletManager() {
                       )}
                       {address && (
                         <>
-                          <div className="col-span-2"><p className="text-muted-foreground">Technical path (for advanced users)</p><p className="font-semibold font-mono">{shortPath(accounts[0]?.index)}</p></div>
+                          {assetPath && (
+                            <div className="col-span-2"><p className="text-muted-foreground">Technical path (for advanced users)</p><p className="font-semibold font-mono">{assetPath}</p></div>
+                          )}
                           <div className="col-span-2">
                             <p className="text-muted-foreground mb-0.5">Address (public)</p>
                             <div className="flex items-center gap-2">
