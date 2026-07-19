@@ -16,6 +16,7 @@
     "icons:ios": "node scripts/generate-ios-icons.mjs",
     "check:rng": "node scripts/check-crypto-rng.mjs",
     "check:strays": "node scripts/check-stray-files.mjs",
+    "hooks:install": "node scripts/setup-hooks.mjs",
     "check:deniability-strings": "node scripts/check-deniability-strings.mjs",
     "check:log-redaction": "node scripts/check-log-redaction-patch.mjs",
     "check:release-hygiene": "node scripts/check-release-hygiene.mjs",
