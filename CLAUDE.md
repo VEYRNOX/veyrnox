@@ -2244,6 +2244,35 @@ information from the Documentation page that was being exposed to public users.
 redirect in place). 26/26 targeted tests green. Browser-verified: redirect works,
 Documentation page renders clean user-facing descriptions only.
 
+## 2026-07-19 Terms & Legal update — PR #1244
+
+Replaced the two placeholder sections in the in-app Terms & Legal page
+(`src/pages/TermsLegal.jsx`, route `/terms-legal`) with the real legal content from the
+public website at `https://veyrnox.com/terms`:
+
+- **§A Terms of Service** — all 15 sections from veyrnox.com/terms (Agreement to Terms,
+  Non-Custodial Wallet, Key Responsibility, Eligibility, Permitted Use, Blockchain Risks,
+  Privacy, Intellectual Property, Updates, Disclaimer of Warranties, Limitation of Liability
+  (£100 cap), Indemnification, Termination, Governing Law (England & Wales), General
+  Provisions). Rendered as collapsible accordions (`TermsSection` component with
+  `aria-expanded`). Links to the public URL + "Last updated: 28 June 2026".
+- **§B Not financial advice** — replaced placeholder with the real disclaimer text from
+  the website terms (§1 + §6): "Veyrnox does not provide financial, investment, tax, or
+  legal advice" + volatility/irreversibility warnings.
+- Removed the `PlaceholderSection` component (no longer needed — no placeholders remain).
+- Privacy policy section and §D honest coercion-limit reference copy unchanged.
+- File header comment updated to reflect that §A/§B are now live content from the website,
+  not counsel-gated placeholders.
+
+**I3 invariant preserved:** the page remains a static reference screen with zero storage
+writes — no `localStorage`, `sessionStorage`, `indexedDB`, `setItem`, or acceptance
+flags. Renders identically in real and decoy sessions. Not an acceptance gate.
+
+Tests: 28/28 green (`src/__tests__/terms-legal.test.js` rewritten to assert real content —
+all 15 section titles, last-updated date, jurisdiction, liability cap, no placeholder
+markers; `src/pages/__tests__/TermsLegal.privacy-url.test.jsx` unchanged). Dev-server
+verified: page renders, accordions expand/collapse, no console errors.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
