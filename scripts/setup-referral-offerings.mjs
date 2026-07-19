@@ -41,8 +41,8 @@ const C = { reset: '\x1b[0m', red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[
 
 // ── Tier definitions ────────────────────────────────────────────────────────
 // Product IDs must match what exists in RevenueCat (including the Google Play
-// base plan suffix after the colon). Offering IDs must match TIER_OFFERING_ID
-// in src/lib/referral.js.
+// base plan suffix after the colon). Apple products use bare IDs (no suffix).
+// Offering IDs must match TIER_OFFERING_ID in src/lib/referral.js.
 //
 // NOTE: Bronze and Silver annuals use `:annual-1` because the first base plan
 // was created with the wrong billing period (Monthly) and the corrected plan
@@ -52,29 +52,29 @@ const TIERS = [
     key: 'bronze',
     offeringId: 'referral-bronze',
     displayName: 'Referral Bronze (2.5% off)',
-    monthlyProduct: 'safety_plus_monthly_bronze:monthly',
-    annualProduct: 'safety_plus_annual_bronze:annual-1',
+    monthlyProducts: ['safety_plus_monthly_bronze:monthly', 'safety_plus_monthly_bronze'],
+    annualProducts: ['safety_plus_annual_bronze:annual-1', 'safety_plus_annual_bronze'],
   },
   {
     key: 'silver',
     offeringId: 'referral-silver',
     displayName: 'Referral Silver (5% off)',
-    monthlyProduct: 'safety_plus_monthly_silver:monthly',
-    annualProduct: 'safety_plus_annual_silver:annual-1',
+    monthlyProducts: ['safety_plus_monthly_silver:monthly', 'safety_plus_monthly_silver'],
+    annualProducts: ['safety_plus_annual_silver:annual-1', 'safety_plus_annual_silver'],
   },
   {
     key: 'gold',
     offeringId: 'referral-gold',
     displayName: 'Referral Gold (10% off)',
-    monthlyProduct: 'safety_plus_monthly_gold:monthly',
-    annualProduct: 'safety_plus_annual_gold:annual',
+    monthlyProducts: ['safety_plus_monthly_gold:monthly', 'safety_plus_monthly_gold'],
+    annualProducts: ['safety_plus_annual_gold:annual', 'safety_plus_annual_gold'],
   },
   {
     key: 'platinum',
     offeringId: 'referral-platinum',
     displayName: 'Referral Platinum (15% off)',
-    monthlyProduct: 'safety_plus_monthly_platinum:monthly',
-    annualProduct: 'safety_plus_annual_platinum:annual',
+    monthlyProducts: ['safety_plus_monthly_platinum:monthly', 'safety_plus_monthly_platinum'],
+    annualProducts: ['safety_plus_annual_platinum:annual', 'safety_plus_annual_platinum'],
   },
 ];
 
@@ -97,7 +97,8 @@ async function rc(method, path, body) {
 }
 
 async function listAll(path) {
-  const { ok, data } = await rc('GET', path);
+  const sep = path.includes('?') ? '&' : '?';
+  const { ok, data } = await rc('GET', `${path}${sep}limit=50`);
   if (!ok) return [];
   return data?.items ?? data ?? [];
 }
@@ -114,17 +115,16 @@ async function verifyProducts() {
     productMap.set(storeId, p.id);
   }
 
-  const needed = TIERS.flatMap(t => [t.monthlyProduct, t.annualProduct]);
+  const needed = TIERS.flatMap(t => [...t.monthlyProducts, ...t.annualProducts]);
   const missing = needed.filter(id => !productMap.has(id));
 
   if (missing.length > 0) {
-    console.log(`  ${C.red}✗ Missing products in RevenueCat (create in stores first, then sync):${C.reset}`);
+    console.log(`  ${C.yellow}⚠ Missing ${missing.length}/${needed.length} products (will skip during attach):${C.reset}`);
     missing.forEach(id => console.log(`    - ${id}`));
-    console.log(`\n  ${C.yellow}Products found:${C.reset} ${[...productMap.keys()].join(', ') || '(none)'}`);
-    return null;
   }
 
-  console.log(`  ${C.green}✓ All ${needed.length} tier products found in RevenueCat${C.reset}`);
+  const found = needed.length - missing.length;
+  console.log(`  ${C.green}✓ ${found}/${needed.length} tier products found in RevenueCat${C.reset}`);
   return productMap;
 }
 
@@ -253,11 +253,20 @@ async function main() {
     const monthlyPkgId = await ensurePackage(offeringId, '$rc_monthly', `${tier.displayName} — Monthly`);
     const annualPkgId = await ensurePackage(offeringId, '$rc_annual', `${tier.displayName} — Annual`);
 
-    const monthlyRcId = productMap.get(tier.monthlyProduct) ?? tier.monthlyProduct;
-    const annualRcId = productMap.get(tier.annualProduct) ?? tier.annualProduct;
-
-    if (monthlyPkgId) await attachProduct(offeringId, monthlyPkgId, tier.monthlyProduct, monthlyRcId);
-    if (annualPkgId) await attachProduct(offeringId, annualPkgId, tier.annualProduct, annualRcId);
+    if (monthlyPkgId) {
+      for (const pid of tier.monthlyProducts) {
+        const rcId = productMap.get(pid) ?? pid;
+        if (productMap.has(pid)) await attachProduct(offeringId, monthlyPkgId, pid, rcId);
+        else console.log(`      ${C.yellow}⚠ Skipping ${pid} (not found in RC)${C.reset}`);
+      }
+    }
+    if (annualPkgId) {
+      for (const pid of tier.annualProducts) {
+        const rcId = productMap.get(pid) ?? pid;
+        if (productMap.has(pid)) await attachProduct(offeringId, annualPkgId, pid, rcId);
+        else console.log(`      ${C.yellow}⚠ Skipping ${pid} (not found in RC)${C.reset}`);
+      }
+    }
   }
 
   // Step 5: check entitlement

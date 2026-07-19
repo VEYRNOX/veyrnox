@@ -23,8 +23,8 @@ export const LOG_LEVEL = {
 };
 
 export const Purchases = {
-  configure: () => Promise.resolve(),
   setLogLevel: () => Promise.resolve(),
+  configure: () => Promise.resolve(),
   getOfferings: () => Promise.resolve({ current: null }),
   purchasePackage: () => Promise.reject(new Error('PURCHASES_NATIVE_ONLY')),
   restorePurchases: () => Promise.reject(new Error('PURCHASES_NATIVE_ONLY')),

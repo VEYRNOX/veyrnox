@@ -123,9 +123,9 @@ export default function Subscription() {
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
   const effectiveAnnual = (hasDiscount && referralAnnual) ? referralAnnual : annualPackage;
 
-  const effectiveBilling = billing === "annual" && !effectiveAnnual ? "monthly" : billing;
+  const hasAnnualToggle = Boolean(effectiveAnnual);
+  const effectiveBilling = hasAnnualToggle ? billing : "monthly";
   const selectedPackage = effectiveBilling === "annual" ? effectiveAnnual : effectiveMonthly;
-  const hasAnnualToggle = Boolean(effectiveAnnual && effectiveMonthly);
 
   const monthlyPriceString = effectiveMonthly?.product?.priceString ?? "$5.99/mo";
   const annualPriceString = effectiveAnnual?.product?.priceString ?? "$49.99/yr";
@@ -144,9 +144,11 @@ export default function Subscription() {
         const fullPrice = PLAN_FULL_PRICE_CENTS[effectiveBilling] || PLAN_FULL_PRICE_CENTS.monthly;
         const commission = referrerTierInfo?.commission || 0;
         const discountCents = calculateDiscountCents(fullPrice, commission);
-        recordAttribution(refCode, effectiveBilling, fullPrice, discountCents).catch(() => {});
+        try {
+          await recordAttribution(refCode, effectiveBilling, fullPrice, discountCents);
+          markAttributed();
+        } catch { /* best-effort — retry on next purchase if Supabase failed */ }
         setReferralAttribute(refCode).catch(() => {});
-        markAttributed();
       }
       toast.success("Safety Plus unlocked");
     } catch (err) {
