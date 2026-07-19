@@ -8,7 +8,7 @@ import { searchableRoutes as ALL_ROUTES } from "@/lib/navigation";
 export default function CommandPalette({ open, onClose }) {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
-  const inputRef = useRef(null);
+  const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const [selected, setSelected] = useState(0);
 
   const results = query.trim()

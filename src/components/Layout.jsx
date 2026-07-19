@@ -115,7 +115,7 @@ export default function Layout() {
     if (sealing) return; // debounce double-taps
     setSealing(true);
     setTimeout(() => {
-      lock();
+      /** @type {any} */ (lock)(); // ctx is createContext(null) -> `never`; see PR notes
       if (WALLET_GATE) {
         navigate("/", { replace: true });
       } else {
@@ -563,7 +563,7 @@ export default function Layout() {
                       <Link key={path} to={path} state={{ fromMore: true }} onClick={() => setMoreOpen(false)}
                         aria-current={active ? "page" : undefined}
                         className="more-tile flex flex-col items-center justify-center gap-1.5 p-3 min-h-[72px] rounded-xl border cursor-pointer select-none transition-[transform,background-color,border-color,box-shadow] duration-150 text-foreground/90 hover:text-foreground"
-                        style={{ "--mt-bg": "#4ADAC21c", "--mt-bd": "#4ADAC240", "--mt-hbg": "#4ADAC259", "--mt-hbd": "#4ADAC2ee", "--mt-glow": "#4ADAC2b3", "--mt-abg": "#4ADAC23a", "--mt-abd": "#4ADAC299" }}
+                        style={/** @type {React.CSSProperties} */ ({ "--mt-bg": "#4ADAC21c", "--mt-bd": "#4ADAC240", "--mt-hbg": "#4ADAC259", "--mt-hbd": "#4ADAC2ee", "--mt-glow": "#4ADAC2b3", "--mt-abg": "#4ADAC23a", "--mt-abd": "#4ADAC299" })}
                       >
                         <item.icon className="h-6 w-6" style={active ? { color: '#4ADAC2' } : undefined} />
                         <span className="text-[11px] font-medium text-center leading-tight line-clamp-2">{item.label}</span>
@@ -589,11 +589,11 @@ export default function Layout() {
                         aria-current={active ? "page" : undefined}
                         data-active={active ? "" : undefined}
                         className="more-tile flex flex-col items-center justify-center gap-1.5 p-3 min-h-[72px] rounded-xl border cursor-pointer select-none transition-[transform,background-color,border-color,box-shadow] duration-150 text-foreground/90 hover:text-foreground"
-                        style={{
+                        style={/** @type {React.CSSProperties} */ ({
                           "--mt-bg": color + "1c", "--mt-bd": color + "40",
                           "--mt-hbg": color + "59", "--mt-hbd": color + "ee", "--mt-glow": color + "b3",
                           "--mt-abg": color + "3a", "--mt-abd": color + "99",
-                        }}
+                        })}
                       >
                         <item.icon className="h-6 w-6" style={active ? { color } : undefined} />
                         <span className="text-[11px] font-medium text-center leading-tight line-clamp-2">{item.label}</span>

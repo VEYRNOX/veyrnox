@@ -13,7 +13,7 @@ export default function PullToRefreshContainer({ onRefresh, children, className 
   const [refreshing, setRefreshing] = useState(false);
   const startY = useRef(0);
   const pulling = useRef(false);
-  const containerRef = useRef(null);
+  const containerRef = useRef(/** @type {HTMLDivElement | null} */ (null));
 
   const handleTouchStart = (e) => {
     if ((containerRef.current?.scrollTop ?? 0) > 0) return;

@@ -25,7 +25,7 @@ import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 // would violate `excessive-motion`). The badge itself uses a spring scale-in
 // so a fresh notification lands with weight instead of a silent number swap.
 // Reduced-motion pins both static.
-export default function NotificationBell({ unseenCount = 0, onOpen, className }) {
+export default function NotificationBell({ unseenCount = 0, onOpen, className = "" }) {
   const hasUnseen = unseenCount > 0;
   // I3: in decoy/hidden/demo, never render the numeric count — a cardinality tell.
   // Render a plain dot instead so the chrome is structurally identical across sessions.
