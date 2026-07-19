@@ -123,9 +123,9 @@ export default function Subscription() {
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
   const effectiveAnnual = (hasDiscount && referralAnnual) ? referralAnnual : annualPackage;
 
-  const effectiveBilling = billing;
+  const hasAnnualToggle = Boolean(effectiveAnnual);
+  const effectiveBilling = hasAnnualToggle ? billing : "monthly";
   const selectedPackage = effectiveBilling === "annual" ? effectiveAnnual : effectiveMonthly;
-  const hasAnnualToggle = true;
 
   const monthlyPriceString = effectiveMonthly?.product?.priceString ?? "$5.99/mo";
   const annualPriceString = effectiveAnnual?.product?.priceString ?? "$49.99/yr";
