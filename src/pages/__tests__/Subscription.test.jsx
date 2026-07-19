@@ -51,10 +51,10 @@ vi.mock('@/lib/referral', () => ({
 }));
 
 const recordAttribution = vi.fn();
-const fetchReferrerTier = vi.fn();
+const fetchPaidCount = vi.fn();
 vi.mock('@/api/referralApi', () => ({
   recordAttribution: (...a) => recordAttribution(...a),
-  fetchReferrerTier: (...a) => fetchReferrerTier(...a),
+  fetchPaidCount: (...a) => fetchPaidCount(...a),
 }));
 
 const refreshTier = vi.fn();
@@ -109,10 +109,10 @@ describe('Subscription page — native, monthly-only offering', () => {
     await waitFor(() => expect(screen.getByText('$5.99')).toBeTruthy());
   });
 
-  it('does not render the billing-period toggle when only monthly is available', async () => {
+  it('renders the billing-period toggle even when only monthly is available', async () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('$5.99')).toBeTruthy());
-    expect(screen.queryByRole('radiogroup', { name: /billing period/i })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: /billing period/i })).toBeTruthy();
   });
 
   it('purchasing calls purchasePackage then refreshes the tier', async () => {
@@ -120,6 +120,7 @@ describe('Subscription page — native, monthly-only offering', () => {
     refreshTier.mockResolvedValue('safety_plus');
     renderPage();
     await waitFor(() => expect(screen.getByText('$5.99')).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: /monthly/i }));
     fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
       identifier: '$rc_monthly',
@@ -156,10 +157,10 @@ describe('Subscription page — native, annual-only offering', () => {
     });
   });
 
-  it('does not render the billing-period toggle when only annual is available', async () => {
+  it('renders the billing-period toggle even when only annual is available', async () => {
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
-    expect(screen.queryByRole('radiogroup', { name: /billing period/i })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: /billing period/i })).toBeTruthy();
   });
 
   it('purchasing uses the annual package — never a dead Upgrade button', async () => {
@@ -304,7 +305,7 @@ describe('Subscription page — tier-based referral discount', () => {
   function setupGoldReferral() {
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
-    fetchReferrerTier.mockResolvedValue({ count: 5000 });
+    fetchPaidCount.mockResolvedValue(5000);
     getTierMock.mockReturnValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: { key: 'platinum', min: 10000 } });
     getOfferingIdForTierMock.mockReturnValue('referral-gold');
@@ -384,7 +385,7 @@ describe('Subscription page — tier-based referral discount', () => {
   it('falls back to default prices when referrer tier lookup fails', async () => {
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
-    fetchReferrerTier.mockResolvedValue(null);
+    fetchPaidCount.mockResolvedValue(null);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
     expect(screen.queryByText(/referral discount applied/i)).toBeNull();
@@ -393,7 +394,7 @@ describe('Subscription page — tier-based referral discount', () => {
   it('falls back to default prices when tier offering is unavailable', async () => {
     hasRedeemedMock.mockReturnValue(true);
     getRedeemedCodeMock.mockReturnValue('VYX-ABC123');
-    fetchReferrerTier.mockResolvedValue({ count: 5000 });
+    fetchPaidCount.mockResolvedValue(5000);
     getTierMock.mockReturnValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: null });
     getOfferingIdForTierMock.mockReturnValue('referral-gold');
