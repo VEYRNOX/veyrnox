@@ -19,7 +19,7 @@ import PullToRefreshContainer from "./PullToRefreshContainer";
 import { ErrorBoundary } from "./ErrorBoundary";
 import FeatureGate from './FeatureGate';
 import VeyrnoxLogo, { VeyrnoxWordmark } from "./VeyrnoxLogo";
-import { navGroups, groupColor } from "@/lib/navigation";
+import { navGroups, groupColor, searchableRoutes } from "@/lib/navigation";
 import { getParentRoute, isFromMoreDrawer } from "@/lib/parentRoute";
 import useRecentPages from "@/hooks/useRecentPages";
 import { useQueryClient } from "@tanstack/react-query";
@@ -544,19 +544,17 @@ export default function Layout() {
             <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-secondary"><X className="h-5 w-5" /></button>
           </div>
           <div className="flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-3 pt-3 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {/* Pinned quick-access + recents (deduplicated against permanent groups) */}
+            {/* Pinned quick-access + recents */}
             {(() => {
-              const groupPaths = new Set(navGroups.flatMap(g => g.items.map(i => i.path)));
-              const dedupedRecents = recents.filter(p => !groupPaths.has(p));
-              return dedupedRecents.length > 0 && (
+              return recents.length > 0 && (
               <div className="rounded-2xl p-2.5 border border-primary/20 bg-primary/5">
                 <div className="flex items-center gap-2 px-1 pb-2">
                   <span className="h-2 w-2 rounded-full shrink-0 bg-primary" />
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Recent</p>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {dedupedRecents.map(path => {
-                    const item = navGroups.flatMap(g => g.items).find(i => i.path === path);
+                  {recents.map(path => {
+                    const item = searchableRoutes.find(i => i.path === path);
                     if (!item) return null;
                     const active = location.pathname === path;
                     return (
