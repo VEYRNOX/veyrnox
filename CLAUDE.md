@@ -2212,6 +2212,38 @@ RevenueCat ✓, Supabase ✓, Code ✓.
 BUILT / unit-tested only, INTERNAL — NOT device-verified, NOT independently audited,
 no on-chain txid (referral system is app-layer, not on-chain).
 
+## 2026-07-19 Preferences docs cleanup — PR #1243
+
+Removed the duplicate Features page from Preferences nav and scrubbed internal audit
+information from the Documentation page that was being exposed to public users.
+
+**Changes (8 files, PR #1243):**
+- `src/lib/navigation.js` — removed `/features` entry from the Preferences nav group.
+- `src/App.jsx` — removed `Features` lazy import; `/features` route now renders
+  `<Navigate replace to="/docs" />`.
+- `src/pages/Documentation.jsx` — rewrote ~15 feature descriptions to remove all
+  internal audit info: PR numbers, Sepolia txids, device names (Pixel 10 Pro XL),
+  internal codenames (I2, I3, I4, M2c/M2d, RASP, KEK), spec doc references, and
+  bug-fix implementation details. Status labels changed from developer-speak
+  (BUILT/TARGET/PLANNED) to user-facing (Available/Coming Soon/Roadmap). PDF subtitle
+  cleaned. "Hardware KEK (Android Keystore…)" renamed to "Hardware Key Protection".
+  "RASP (Browser-Level)" / "RASP (OS-Level Probes)" renamed to "Runtime Protection
+  (Browser)" / "Runtime Protection (OS-Level)". OS-Level status corrected from
+  `target` to `built`.
+- `src/pages/LandingPage.jsx` — CTA button and footer links changed from `/features`
+  to `/docs`; duplicate "Features" footer link removed.
+- `src/lib/parentRoute.js` — removed `/features` entry.
+- `src/lib/featureClassification.js` — removed `/features` from `ALL_ROUTE_PATHS` and
+  `CLASSIFICATION`.
+- `src/components/__tests__/Layout.mobileSearch.test.js` — `/features` → `/docs` in
+  test data.
+- `src/lib/__tests__/navigation-icons.test.js` — removed stale `LayoutGrid` entry from
+  legacy collision map (no longer a collision after `/features` removal).
+
+`src/pages/Features.jsx` still exists on disk but is unreachable (no nav link, no route,
+redirect in place). 26/26 targeted tests green. Browser-verified: redirect works,
+Documentation page renders clean user-facing descriptions only.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
