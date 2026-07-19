@@ -331,9 +331,6 @@ export default function Layout() {
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
-            <Search className="h-4 w-4" aria-hidden="true" />
-          </button>
           <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} />
           <HelpMenu triggerClassName="p-2 rounded-lg hover:bg-secondary hover:text-foreground active:bg-secondary inline-flex items-center justify-center min-h-[40px] min-w-[40px]" />
           <Link to="/settings" aria-label="Settings" title="Settings" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
