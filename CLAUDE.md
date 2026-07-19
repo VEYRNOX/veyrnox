@@ -2133,19 +2133,19 @@ both `createWallet` and `importWallet` as best-effort fire-and-forget (same patt
 to `rewards@veyrnox.com`. `serverGenerated` guard on `registerCode` call (server-generated
 codes don't need re-registration). 50/50 tests (4 new `initCode` tests).
 
-**Referral-to-subscription integration (already wired in PR #1194):**
+**Referral-to-subscription integration (already wired in PR #1194, updated PR #1235):**
 `Subscription.jsx` imports referral functions and fully integrates the discount flow:
-on mount, if `hasRedeemed()`, fetches the referrer's tier via `fetchReferrerTier(code)` →
-`getTier(count)` → `getOfferingIdForTier(tierKey)` → `getTierOffering(offeringId)` to
-fetch the tier-specific RC offering with discounted products. The effective package
-selection (`effectiveMonthly`, `effectiveAnnual`) falls through to the regular offering
-when the tier-specific one is unavailable. Discount banner renders
-"Referral discount applied — X% off" with strikethrough on the regular price. On
-successful purchase, `handleUpgrade()` records `recordAttribution(refCode, plan,
-fullPrice, discountCents)` to Supabase + `setReferralAttribute(refCode)` to tag the RC
-customer + `markAttributed()` to prevent double-attribution. Both monthly and annual
-billing periods are covered. I3 invariant preserved: all Supabase/RC calls gated on
-`isDeniabilityOrDemoActive()` at the API layer.
+on mount, if `hasRedeemed()`, fetches the referrer's paid subscriber count via
+`fetchPaidCount(code)` → `getTier(paid)` → `getOfferingIdForTier(tierKey)` →
+`getTierOffering(offeringId)` to fetch the tier-specific RC offering with discounted
+products. The effective package selection (`effectiveMonthly`, `effectiveAnnual`) falls
+through to the regular offering when the tier-specific one is unavailable. Discount
+banner renders "Referral discount applied — X% off" with strikethrough on the regular
+price. On successful purchase, `handleUpgrade()` records `recordAttribution(refCode,
+plan, fullPrice, discountCents)` to Supabase + `setReferralAttribute(refCode)` to tag
+the RC customer + `markAttributed()` to prevent double-attribution. Both monthly and
+annual billing periods are covered. I3 invariant preserved: all Supabase/RC calls gated
+on `isDeniabilityOrDemoActive()` at the API layer.
 
 **Copy edits (2026-07-18, merged to main via PR #1197):**
 `ReferralTracker.jsx:208` "Share Veyrnox" → "Share VEYRNOX" (brand capitalisation);
@@ -2176,10 +2176,41 @@ threshold preserved in rewards payout copy.
   current, package↔product bindings correct.
 
 **Outstanding:**
-- App Store Connect: 8 iOS auto-renewing subscription products for referral tiers
-  (scheduled for Apple day). Same product IDs and prices as Google Play.
 - Sandbox purchase test with referral code on iOS + Android device.
 - Independent audit: still outstanding.
+
+## 2026-07-19 Referral paid-subscriber tier model — PR #1235
+
+**PR #1235 (`ed742f3c`) — tier progression based on paid subscribers, not raw count.**
+Tiers now advance based on actual Safety Plus purchases (`referral_attributions` table
+count via new `fetchPaidCount(code)` API) rather than raw referral code entries
+(`referrals.count`). A "referral" is anyone who enters the code; a "paid subscriber" is
+someone who actually purchased Safety Plus using it. Only paid conversions drive tier
+progression and commission earnings.
+
+**Code changes (4 files):**
+- `src/api/referralApi.js` — new `fetchPaidCount(code)` export: queries
+  `referral_attributions` with `count: 'exact', head: true` filter by `referral_code`.
+  I3-gated (returns null in deniability/demo).
+- `src/lib/referral.js` — `applyRedemption(rawCount, paidCount)` signature (was
+  `applyRedemption(newCount)`); `paidCount` drives `getTier()`/`getTierInfo()`;
+  `rawCount` stored for display only. Local state now persists `paidCount` alongside
+  `inviteCount`.
+- `src/pages/ReferralTracker.jsx` — `syncCount()` fetches status + paidCount +
+  earnings in parallel; progress bar, tier cards, and stats all display "paid
+  subscribers" not "referrals"; new "How tiers work" explainer section; pre-filled
+  claim email includes crypto address (ETH/BTC/SOL) payment option; Gold tier gate
+  on compensation claims removed (any tier can now claim).
+- `src/pages/Subscription.jsx` — imports `fetchPaidCount` instead of
+  `fetchReferrerTier`; discount tier lookup uses paid count directly.
+
+**Store-side setup:** App Store Connect and Google Play both already have all 8 referral
+tier products configured and attached to the `safety_plus` entitlement on RevenueCat
+(completed in prior sessions). Full pipeline confirmed: Google Play ✓, App Store ✓,
+RevenueCat ✓, Supabase ✓, Code ✓.
+
+BUILT / unit-tested only, INTERNAL — NOT device-verified, NOT independently audited,
+no on-chain txid (referral system is app-layer, not on-chain).
 
 ## Security invariants
 
