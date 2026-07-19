@@ -1,0 +1,19 @@
+CORRECTION (2026-07-19, daily security-diff scan): the subject line of this
+commit is wrong. GitHub squashed 4 commits and took the 3rd one's subject.
+
+Accurate subject would be:
+  feat(m2c/m2d): ungate Secure Enclave + StrongBox hardware KEK after device
+  verification (#1152)
+
+Security-relevant content (fully described in the commit body below the subject):
+  - M2C_ENABLED            false -> true  (src/plugins/veyrnoxEnclave.js)
+  - M2C_HARDWARE_WRAP_ENABLED false -> true  (src/wallet-core/keystore/native.js)
+  - m2cEnabled             false -> true  (VeyrnoxEnclavePlugin.swift)
+  - M2D_ENABLED            false -> true  (VeyrnoxEnclavePlugin.kt)
+  - vendors packages/capacitor-rasp-integrity (RASP integrity, Play Integrity
+    JWS verifier, ECDSA DER transcoder, App Attest)
+  - removes the unused gstack production dependency (the stated subject)
+
+AUDITOR NOTE: this commit is NOT discoverable by `git log --oneline` triage for
+security-relevant changes. Its body IS accurate and complete. Independent
+third-party audit of the hardware-KEK path remains outstanding.
