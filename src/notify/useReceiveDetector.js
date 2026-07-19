@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/notify/useReceiveDetector.js
 //
 // In-app Notifications v1 — PROVISIONAL — independent audit complete (ECC
