@@ -30,7 +30,7 @@ export const ALL_ROUTE_PATHS = [
   '/voice-commands', '/token-approvals', '/network-manager',
   '/watch-wallets', '/price-charts', '/gas-fees', '/hd-wallet',
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
-  '/security-scanner', '/docs', '/features',
+  '/security-scanner', '/docs',
   '/plans',
   '/safety-plus',
   '/referrals',
@@ -320,10 +320,6 @@ export const CLASSIFICATION = {
   '/docs': {
     verdict: 'live', dataSource: 'static',
     note: 'Purely static informational copy. Feature statuses (available/roadmap) are honest and cross-checked against actual implementation per the in-file scope contract comment. Workflows describe real implemented flows. No fabricated availability claims — unbuilt features are clearly labelled "roadmap". PDF export is functional via lib/pdfExport.',
-  },
-  '/features': {
-    verdict: 'live', dataSource: 'static',
-    note: 'Purely static feature catalogue with honest available/roadmap two-status model. The file\'s own comment explicitly states status is "cross-checked against actual implementation (wallet-core modules + real routes), not aspiration." No unbuilt feature is presented as working. Custodial/regulated features are listed as explicitly excluded, not as roadmap. Consistent with Documentation.jsx.',
   },
   '/plans': {
     verdict: 'live', dataSource: 'static',

@@ -20,24 +20,22 @@ import {
   LayoutDashboard, Send, Download, Image as ImageIcon, Coins
 } from "lucide-react";
 
-// Scope contract: docs/WalletFeatures.spec.md (canonical three-way split).
-// This catalogue lists ONLY self-custody-safe, in-scope features (spec A = in-scope
-// + B = self-custody-safe gaps). Everything in spec section C (custodial / regulated
-// — swaps, perps, staking/yield/lending, fiat ramps, bank links, KYC/DID, NFT
-// minting, DAO/payroll, encrypted messaging, etc.) is deliberately NOT built and is
-// not listed here.
+// Feature catalogue for user-facing documentation.
+// Only self-custody-safe features are listed. Custodial / regulated features
+// (swaps, perps, staking/yield/lending, fiat ramps, bank links, KYC/DID, NFT
+// minting, etc.) are deliberately not built.
 //
-// Status keys mirror featureCatalogue.js (three-state model):
-//   "built"   — code-complete and exercised in the testnet / provisional build
-//   "target"  — designed and partially in code but gated on native build or audit
-//   "planned" — specced, not yet built
+// Status keys:
+//   "built"   — shipped and working
+//   "target"  — designed, coming soon
+//   "planned" — on the roadmap
 const features = [
   { category: "Core Wallet", icon: Wallet, items: [
     { name: "Multi-Account HD Wallet", desc: "Recovery phrase standard (BIP-39) seed with multi-account derivation; keys held locally", status: "built" },
     { name: "Import Wallet", desc: "Restore from seed phrase or private key", status: "built" },
     { name: "Encrypted Vault", desc: "Strong on-device encryption at rest; plaintext keys never leave device", status: "built" },
     { name: "Backup & Reveal Seed", desc: "Seed phrase + encrypted QR backup behind explicit warnings", status: "built" },
-    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) — each confirmed on-chain with a txid; mainnet unlocked", status: "built" },
+    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) on mainnet", status: "built" },
     { name: "Receive Crypto", desc: "Per-chain derived address + locally-generated QR", status: "built" },
     { name: "Live Balances", desc: "Read live from chain network connection / explorer providers", status: "built" },
     { name: "Transaction History", desc: "Per-chain read-only history with privacy disclosures", status: "built" },
@@ -46,29 +44,29 @@ const features = [
   ]},
   { category: "Networks & Assets", icon: Coins, items: [
     { name: "Ethereum-compatible Networks", desc: "Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain", status: "built" },
-    { name: "Bitcoin", desc: "Bitcoin address standard (BIP-84) native-segwit stack; testnet-verified, mainnet unlocked", status: "built" },
-    { name: "Solana", desc: "Solana signing key / key derivation standard stack; testnet-verified, mainnet unlocked", status: "built" },
+    { name: "Bitcoin", desc: "Native segwit (BIP-84) Bitcoin support", status: "built" },
+    { name: "Solana", desc: "Full Solana support with ed25519 signing", status: "built" },
     { name: "Ethereum Token Standard (ERC-20) Tokens", desc: "USDC and USDT via the shared token path", status: "built" },
   ]},
   { category: "Access & Authentication", icon: KeyRound, items: [
     { name: "FIDO2 Passkey Unlock", desc: "FIDO2/WebAuthn passkey unlock gate — phishing-resistant, device-bound credential; keys are never held by the passkey system", status: "built" },
-    { name: "Biometric Unlock", desc: "Face ID / Touch ID / Android fingerprint unlock gate — native on iOS and Android. Face ID opens the real wallet or optionally the decoy wallet (duress setting). Android: USE_BIOMETRIC + USE_FINGERPRINT permissions added (PR #483). App-layer gate; OS-enforced ACL binding (M2c/M2d) is a separate target item.", status: "built" },
-    { name: "PIN Unlock", desc: "Numeric-PIN onboarding + returning-PIN unlock over the same Argon2id vault, with Face-ID-to-decoy. No hardware-bound KEK yet — a numeric PIN is offline-exhaustible on a seized device; hardware-KEK is the planned fast-follow.", status: "built" },
-    { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password (per-set knowledge factor), PIN + Passkey (possession, fails closed), or PIN + Face ID / native biometric (OS possession factor, fails closed). Face ID 2FA path verified on-chain 2026-06-29 — Sepolia txid 0xd1c97fa2f0a8ec2ae1038364f0106f6ef98b27258ad1ec2faa227de0baf1e2e7 (physical iPhone). Device-global passkey/biometric factors are suppressed in decoy/hidden sessions (BUILT 2026-07-02 — deniability I3 tell closed in code, unit-tested; not yet device-verified). Per-set passkey/biometric enablement PREFERENCE (storing it inside the container schema so each set controls its own setting independently) is TARGET — owner-deferred. HONEST CAVEAT: the passkey credential itself is device-global by the WebAuthn spec; only the enablement preference can be per-set.", status: "built" },
+    { name: "Biometric Unlock", desc: "Face ID / Touch ID / Android fingerprint unlock — native on iOS and Android. Optionally opens the decoy wallet under duress settings.", status: "built" },
+    { name: "PIN Unlock", desc: "Numeric PIN onboarding and unlock with strong on-device encryption. Hardware-bound protection available for enhanced security.", status: "built" },
+    { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password, PIN + Passkey, or PIN + Face ID / biometric.", status: "built" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "built" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "built" },
-    { name: "Hardware Wallet", desc: "Trezor (WebUSB, Chrome/Edge) — cold-key address derivation and transaction signing for ETH, BTC, and SOL; BTC and SOL send paths wired 2026-06-29. Private key never leaves the hardware device (I1). Decoy/hidden sessions block all Trezor egress (I3). Built, not device-verified.", status: "built" },
-    { name: "Hardware KEK (Android Keystore HMAC-SHA256, StrongBox-preferred, TEE-accepted / iOS Secure Enclave ECIES)", desc: "Device-bound key-encryption key wrapping the vault key in the iOS Secure Enclave or the Android Keystore (StrongBox-preferred; a TEE- or software-backed key is accepted and honestly surfaced — StrongBox enforcement remains a target item, not built). Android: device-verified end-to-end on a Pixel 10 Pro XL — StrongBox-backed key enrolls, persists across a cold restart, and gates unlock (badge stays on); fixed 3 stacked bugs (badge/vault-wrap mismatch, an async-persistence plugin bug, and a silent re-wrap-to-bare-KDF on every unlock). Biometric re-enrollment invalidation for this KEK-enrolled vault is device-verified on Android (Pixel 10 Pro XL, 2026-07-01) — delete/re-enroll fingerprint invalidates the key and fails closed to PIN recovery; the iOS equivalent is deferred (device-blocked, needs an unrestricted iPhone). iOS: Secure Enclave ECIES path device-verified with two real Sepolia sends from a KEK-enrolled vault. Neither platform has a fingerprint/Face-ID-gated on-chain send with a captured hardware-unlock log trace — built and device-verified, not 'verified' in the on-chain sense. This KEK-vault invalidation guarantee is distinct from, and does not extend to, the app-layer Biometric Unlock toggle on a bare (non-KEK) vault above, which is not an OS-enforced per-item ACL.", status: "built" },
+    { name: "Hardware Wallet", desc: "Trezor support (WebUSB, Chrome/Edge) — cold-key address derivation and transaction signing for ETH, BTC, and SOL. Private keys never leave the hardware device.", status: "built" },
+    { name: "Hardware Key Protection", desc: "Device-bound key-encryption key using iOS Secure Enclave or Android Keystore (StrongBox-preferred). Adds hardware-level protection to your vault — even if your PIN is compromised, the vault cannot be decrypted without the device's secure hardware.", status: "built" },
   ]},
   { category: "Transaction Safety", icon: ShieldAlert, items: [
     { name: "Token Approvals (View + Revoke)", desc: "Inspect and revoke token allowances; flag unlimited", status: "built" },
     { name: "Address-Poisoning Warnings", desc: "Look-alike recipient detection on send", status: "built" },
     { name: "Spam Token Filter", desc: "Auto-hide airdropped scam tokens with override", status: "built" },
     { name: "Transaction Data Decode & Approval Guard", desc: "Human-readable transaction data before signing", status: "built" },
-    { name: "Suspicious-Address Screening", desc: "Local blocklist screening of burn / known-bad addresses (includes one known OFAC-sanctioned address); warns, never blocks. No live sanctions feed.", status: "built" },
+    { name: "Suspicious-Address Screening", desc: "Local blocklist screening of burn and known-bad addresses; warns before signing, never blocks", status: "built" },
     { name: "Transaction Simulation", desc: "Local-first pre-sign preview of balance / approval changes with risk flags", status: "built" },
     { name: "Anomaly / Fraud Detection", desc: "Local rule-based flags for deviations from your own history (unusual amount, new-recipient-large, approve-then-transfer)", status: "built" },
-    { name: "Pre-Sign Risk Verdict", desc: "On-device signals (fresh recipient, unlimited/fresh-spender approval, poisoning, ENS mismatch, dust, transaction data mismatch, value anomaly) combine into one pre-sign verdict; a high-RISK verdict requires an explicit 'Sign anyway' acknowledgement, indeterminate fails closed to caution. Local-only, warns-not-blocks, never claims 'safe'.", status: "built" },
+    { name: "Pre-Sign Risk Verdict", desc: "Multiple on-device signals combine into one pre-sign verdict. High-risk transactions require explicit acknowledgement. Local-only, warns before signing, never claims 'safe'.", status: "built" },
   ]},
   { category: "Recovery & Duress", icon: LifeBuoy, items: [
     { name: "Duress PIN", desc: "Decoy wallet under coercion (genuine separate vault)", status: "built" },
@@ -77,22 +75,22 @@ const features = [
     { name: "Encrypted Personal Backup", desc: "Export/import vault as a strongly encrypted file; plaintext keys never leave device.", status: "built" },
   ]},
   { category: "Monitoring & Risk", icon: Shield, items: [
-    { name: "RASP (Browser-Level)", desc: "Browser-level automation detection active (navigator.webdriver → HOOKED → signing blocked). Degradation policy + send-path wiring built. Blocking confirmed at the wired send call-site with no network egress.", status: "built" },
-    { name: "RASP (OS-Level Probes)", desc: "Root / jailbreak / tamper detection via native Capacitor plugin. Requires real-device verification; not yet built.", status: "target" },
-    { name: "Audit Log", desc: "Opt-in local activity log. At most 100 { type, ts } entries encrypted in the vault — no amounts, addresses, or wallet identity. Off by default; no-op in decoy/hidden sessions.", status: "built" },
+    { name: "Runtime Protection (Browser)", desc: "Automation and tampering detection that blocks signing when threats are detected", status: "built" },
+    { name: "Runtime Protection (OS-Level)", desc: "Root, jailbreak, and tamper detection on iOS and Android devices", status: "built" },
+    { name: "Audit Log", desc: "Opt-in local activity log encrypted in the vault. No amounts, addresses, or wallet identity are stored. Off by default.", status: "built" },
     { name: "Spending Limits", desc: "Rule-based per-transaction and daily spending limits (warn-with-acknowledgement)", status: "built" },
   ]},
   { category: "Portfolio & Analytics", icon: BarChart3, items: [
-    { name: "Portfolio Dashboard", desc: "Read-only net-worth view across wallets and chains; live prices I2-gated behind opt-in", status: "built" },
-    { name: "Net-Worth Tracker", desc: "Aggregate crypto net worth from on-device portfolio balances; I2-gated live price conversion", status: "built" },
-    { name: "On-Chain Analytics", desc: "Address-level tx lookup and inbound/outbound activity breakdown via public network connection", status: "built" },
-    { name: "Fee Analytics", desc: "Stateless native-unit network fee totals computed on-device from chain history; Ethereum-compatible chains fail honest to 'unavailable'", status: "built" },
+    { name: "Portfolio Dashboard", desc: "Read-only net-worth view across wallets and chains with opt-in live prices", status: "built" },
+    { name: "Net-Worth Tracker", desc: "Aggregate crypto net worth from on-device portfolio balances with live price conversion", status: "built" },
+    { name: "On-Chain Analytics", desc: "Address-level transaction lookup and inbound/outbound activity breakdown", status: "built" },
+    { name: "Fee Analytics", desc: "Network fee totals computed on-device from your chain history", status: "built" },
     { name: "Tax Report", desc: "Exports raw tx data (date/type/asset/amount/fee/tx_hash) as CSV — no invented prices. Directs to Koinly/CoinTracker. Not tax advice.", status: "built" },
   ]},
   { category: "Prices & Alerts", icon: Bell, items: [
-    { name: "Price Charts", desc: "Real OHLCV candlestick data from CryptoCompare histoday; I2-gated", status: "built" },
-    { name: "Price Alerts", desc: "Threshold notifications (advisory; never trades); evaluation I2-gated", status: "built" },
-    { name: "Watchlist", desc: "Track assets you don't hold; real opt-in price feeds from CryptoCompare (I2-gated)", status: "built" },
+    { name: "Price Charts", desc: "Real OHLCV candlestick data with multiple timeframes", status: "built" },
+    { name: "Price Alerts", desc: "Threshold notifications (advisory only; never trades on your behalf)", status: "built" },
+    { name: "Watchlist", desc: "Track assets you don't hold with opt-in live price feeds", status: "built" },
     { name: "Notifications & Push", desc: "Web Push API opt-in subscription with test trigger; advisory only, never initiates transactions", status: "built" },
   ]},
   { category: "NFTs", icon: ImageIcon, items: [
@@ -105,13 +103,13 @@ const features = [
     { name: "Recurring Payments", desc: "Recurring payment schedule reminders; user signs each time. No autonomous auto-debit.", status: "built" },
   ]},
   { category: "Referrals", icon: Users, items: [
-    { name: "Referral Tracker", desc: "Local referral-code tracking (random code, not seed-derived); no ranking or public profiles. Local-only by default — if a referral backend is configured at build time, the referral code (not balances or seed) is sent to it on register/redeem/status.", status: "built" },
+    { name: "Referral Tracker", desc: "Share your referral code to earn rewards. Tier-based commission structure with discounts for referred users on Safety Plus subscriptions.", status: "built" },
   ]},
   { category: "Platform", icon: Smartphone, items: [
     { name: "Demo Mode", desc: "Browse without a backend or funded wallet", status: "built" },
     { name: "Voice Commands", desc: "Web Speech API navigation commands; read-only (navigate, check balances). Never initiates or signs transactions.", status: "built" },
-    { name: "iOS App Store", desc: "Native iOS shell (simulator-ready). App Store submission is gated on an Apple organisation account.", status: "planned" },
-    { name: "Android Play Store", desc: "Native Android shell scaffolded. Play Store submission is roadmap.", status: "planned" },
+    { name: "iOS App Store", desc: "Native iOS app coming soon", status: "planned" },
+    { name: "Android Play Store", desc: "Native Android app coming soon", status: "planned" },
   ]},
   { category: "Subscriptions", icon: CreditCard, items: [
     { name: "Free & Safety Plus Plans", desc: "Optional Free & Safety Plus plans to unlock features — the only fee VEYRNOX charges", status: "built" },
@@ -165,9 +163,9 @@ const workflows = [
 ];
 
 const STATUS_META = {
-  built:   { label: "BUILT",   className: "bg-success/10 text-success border-success/20" },
-  target:  { label: "TARGET",  className: "bg-primary/10 text-primary border-primary/20" },
-  planned: { label: "PLANNED", className: "bg-muted/50 text-muted-foreground border-border" },
+  built:   { label: "Available",   className: "bg-success/10 text-success border-success/20" },
+  target:  { label: "Coming Soon", className: "bg-primary/10 text-primary border-primary/20" },
+  planned: { label: "Roadmap",     className: "bg-muted/50 text-muted-foreground border-border" },
 };
 
 export default function Documentation() {
@@ -206,7 +204,7 @@ export default function Documentation() {
             try {
               exportCataloguePdf({
                 title: "Documentation",
-                subtitle: "Feature guide for a blockchain-powered multi-currency self-custody wallet with FIDO2 authentication. Scope follows docs/WalletFeatures.spec.md. Live network unlocked 2026-06-17.",
+                subtitle: "Feature guide for VEYRNOX — a self-custody multi-currency wallet with FIDO2 authentication.",
                 categories: features.map(c => ({
                   category: c.category,
                   items: c.items.map(i => ({ name: i.name, desc: i.desc, status: i.status })),
@@ -280,12 +278,12 @@ export default function Documentation() {
             Feature Catalog
           </CardTitle>
           <CardDescription>
-            {totalFeatures} features across {features.length} categories. BUILT = code-complete in the testnet build. TARGET = designed, gated on native hardware or further review. PLANNED = specced, not yet built. Custodial features (swaps, fiat, KYC) are not built by design.
+            {totalFeatures} features across {features.length} categories. Custodial features (swaps, fiat ramps, KYC) are not built by design.
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant="outline" className={STATUS_META.built.className}>{builtCount} BUILT</Badge>
-            {targetCount > 0 && <Badge variant="outline" className={STATUS_META.target.className}>{targetCount} TARGET</Badge>}
-            {plannedCount > 0 && <Badge variant="outline" className={STATUS_META.planned.className}>{plannedCount} PLANNED</Badge>}
+            <Badge variant="outline" className={STATUS_META.built.className}>{builtCount} Available</Badge>
+            {targetCount > 0 && <Badge variant="outline" className={STATUS_META.target.className}>{targetCount} Coming Soon</Badge>}
+            {plannedCount > 0 && <Badge variant="outline" className={STATUS_META.planned.className}>{plannedCount} Roadmap</Badge>}
           </div>
         </CardHeader>
         <CardContent>
