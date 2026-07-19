@@ -88,7 +88,7 @@
     "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/share": "^8.0.1",
     "@hello-pangea/dnd": "^17.0.0",
-    "@hookform/resolvers": "^4.1.2",
+    "@hookform/resolvers": "^5.4.0",
     "@ledgerhq/hw-app-btc": "^11.2.1",
     "@ledgerhq/hw-app-eth": "^7.8.9",
     "@ledgerhq/hw-app-solana": "^7.10.5",
