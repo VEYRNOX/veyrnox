@@ -30,19 +30,19 @@ vi.mock('@/lib/purchases', () => ({
   SAFETY_PLUS_ANNUAL_PACKAGE: '$rc_annual',
 }));
 
-const hasRedeemedMock = vi.fn(() => false);
-const getRedeemedCodeMock = vi.fn(() => null);
-const hasAttributedMock = vi.fn(() => false);
+const hasRedeemedMock = vi.fn();
+const getRedeemedCodeMock = vi.fn();
+const hasAttributedMock = vi.fn();
 const markAttributedMock = vi.fn();
-const getTierMock = vi.fn(() => 'none');
-const getTierInfoMock = vi.fn(() => ({ key: 'none', commission: 0, next: null }));
-const getOfferingIdForTierMock = vi.fn(() => null);
-const calculateDiscountCentsMock = vi.fn((full, comm) => Math.round(full * comm / 100));
+const getTierMock = vi.fn();
+const getTierInfoMock = vi.fn();
+const getOfferingIdForTierMock = vi.fn();
+const calculateDiscountCentsMock = vi.fn();
 vi.mock('@/lib/referral', () => ({
-  hasRedeemed: () => hasRedeemedMock(),
-  getRedeemedCode: () => getRedeemedCodeMock(),
-  hasAttributed: () => hasAttributedMock(),
-  markAttributed: () => markAttributedMock(),
+  hasRedeemed: (...a) => hasRedeemedMock(...a),
+  getRedeemedCode: (...a) => getRedeemedCodeMock(...a),
+  hasAttributed: (...a) => hasAttributedMock(...a),
+  markAttributed: (...a) => markAttributedMock(...a),
   getTier: (...a) => getTierMock(...a),
   getTierInfo: (...a) => getTierInfoMock(...a),
   getOfferingIdForTier: (...a) => getOfferingIdForTierMock(...a),
@@ -75,6 +75,13 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  hasRedeemedMock.mockReturnValue(false);
+  getRedeemedCodeMock.mockReturnValue(null);
+  hasAttributedMock.mockReturnValue(false);
+  getTierMock.mockReturnValue('none');
+  getTierInfoMock.mockReturnValue({ key: 'none', commission: 0, next: null });
+  getOfferingIdForTierMock.mockReturnValue(null);
+  calculateDiscountCentsMock.mockImplementation((full, comm) => Math.round(full * comm / 100));
   useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
 });
 
