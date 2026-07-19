@@ -123,9 +123,15 @@ export default function Subscription() {
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
   const effectiveAnnual = (hasDiscount && referralAnnual) ? referralAnnual : annualPackage;
 
-  const effectiveBilling = billing;
+  // Fail-honest (I4, PR #1026): when the offering has no annual package — a
+  // staged store rollout, or the RevenueCat dashboard not yet configured — the
+  // billing toggle hides entirely and the page falls back to the monthly-only
+  // UI. Never a dead button: without these guards, annual stays selected (it is
+  // the default), selectedPackage resolves to undefined, and handleUpgrade's
+  // `if (!selectedPackage) return` turns Upgrade into a silent no-op.
+  const effectiveBilling = billing === "annual" && !effectiveAnnual ? "monthly" : billing;
   const selectedPackage = effectiveBilling === "annual" ? effectiveAnnual : effectiveMonthly;
-  const hasAnnualToggle = true;
+  const hasAnnualToggle = Boolean(effectiveAnnual && effectiveMonthly);
 
   const monthlyPriceString = effectiveMonthly?.product?.priceString ?? "$5.99/mo";
   const annualPriceString = effectiveAnnual?.product?.priceString ?? "$49.99/yr";

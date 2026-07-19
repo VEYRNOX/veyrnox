@@ -30,13 +30,24 @@ vi.mock('@/lib/purchases', () => ({
   SAFETY_PLUS_ANNUAL_PACKAGE: '$rc_annual',
 }));
 
+// The five mocks below are annotated as the permissive `Mock` signature
+// ((...args: any[]) => any). Without it, checkJs infers an over-narrow type from
+// each default implementation: `vi.fn(() => null)` infers a return type of
+// literal `null`, so a later `.mockReturnValue('VYX-ABC123')` is a type error,
+// and a zero-parameter impl rejects the `(...a) => mock(...a)` spread in the
+// vi.mock factory below. Annotation only — no runtime behaviour change.
 const hasRedeemedMock = vi.fn(() => false);
+/** @type {import('vitest').Mock} */
 const getRedeemedCodeMock = vi.fn(() => null);
 const hasAttributedMock = vi.fn(() => false);
 const markAttributedMock = vi.fn();
+/** @type {import('vitest').Mock} */
 const getTierMock = vi.fn(() => 'none');
+/** @type {import('vitest').Mock} */
 const getTierInfoMock = vi.fn(() => ({ key: 'none', commission: 0, next: null }));
+/** @type {import('vitest').Mock} */
 const getOfferingIdForTierMock = vi.fn(() => null);
+/** @type {import('vitest').Mock} */
 const calculateDiscountCentsMock = vi.fn((full, comm) => Math.round(full * comm / 100));
 vi.mock('@/lib/referral', () => ({
   hasRedeemed: () => hasRedeemedMock(),
