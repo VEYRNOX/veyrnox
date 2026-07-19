@@ -33,7 +33,16 @@ describe('usePriceAlertNotifier — I3 deniability structural guards (source sca
   it('the guard precedes the PriceAlert subscribe (no real-set subscription in deniability mode)', () => {
     const firstGuard = code.search(/if\s*\(\s*!isUnlocked\s*\|\|\s*isDecoy/);
     expect(firstGuard).toBeGreaterThan(-1);
-    expect(firstGuard).toBeLessThan(code.indexOf('PriceAlert.subscribe'));
+
+    // Tolerate optional chaining: the source is `PriceAlert?.subscribe?.(` since
+    // the 2026-07-19 typecheck fix. A bare indexOf('PriceAlert.subscribe') no
+    // longer matches and returns -1, which made this assertion fail with the
+    // baffling "expected 1331 to be less than -1" rather than pointing at the
+    // renamed call. Assert the subscribe site is FOUND before comparing
+    // positions, so a future rename fails loudly instead of comparing against -1.
+    const subscribeAt = code.search(/PriceAlert\??\.subscribe/);
+    expect(subscribeAt).toBeGreaterThan(-1);
+    expect(firstGuard).toBeLessThan(subscribeAt);
     // the poll effect's egress (fetchMarketPricesUsd usage) is likewise gated —
     // covered by the "short-circuits BOTH effects" count assertion above.
   });
