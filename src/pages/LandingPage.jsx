@@ -285,7 +285,7 @@ export default function LandingPage() {
             <Button size="lg" onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90 text-lg px-8">
               Start Now
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/features")} className="border-primary text-primary hover:bg-primary/10 text-lg px-8">
+            <Button size="lg" variant="outline" onClick={() => navigate("/docs")} className="border-primary text-primary hover:bg-primary/10 text-lg px-8">
               View All Features
             </Button>
           </div>
@@ -303,7 +303,6 @@ export default function LandingPage() {
             <div>
               <p className="font-semibold mb-4">Product</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><button type="button" onClick={() => navigate("/features")} className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Features</button></li>
                 <li><button type="button" onClick={() => navigate("/docs")} className="hover:text-primary transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Documentation</button></li>
               </ul>
             </div>

@@ -95,7 +95,6 @@ const WalletConnect = lazy(() => import('@/pages/WalletConnect.jsx'));
 // so keeping the guard lazy preserves the page's code-split chunk.
 const LandingGuard = lazy(() => import('./components/LandingGuard'));
 const Documentation = lazy(() => import('./pages/Documentation'));
-const Features = lazy(() => import('./pages/Features'));
 const DAppSecurityAlerts = lazy(() => import('./pages/DAppSecurityAlerts'));
 const SecurityScanner = lazy(() => import('./pages/SecurityScanner'));
 const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'));
@@ -209,7 +208,7 @@ const AuthenticatedApp = () => {
           <Route path="/dapp-alerts" element={<DAppSecurityAlerts />} />
           <Route path="/security-scanner" element={<SecurityScanner />} />
           <Route path="/docs" element={<Documentation />} />
-          <Route path="/features" element={<Features />} />
+          <Route path="/features" element={<Navigate replace to="/docs" />} />
           <Route path="/plans" element={<Subscription />} />
           <Route path="/safety-plus" element={<SafetyPlus />} />
           <Route path="/referrals" element={<ReferralTracker />} />
