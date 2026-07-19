@@ -77,6 +77,11 @@ function veyrnoxObfuscatorPlugin() {
       if (process.env.VITE_RELEASE !== '1') return;
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== 'chunk') continue;
+        // Skip Vite internals — preload-helper resolves dynamic CSS/JS
+        // chunk filenames at runtime; rolldown-runtime is the module linker.
+        // Obfuscating either breaks code-split asset loading.
+        if (chunk.fileName.includes('preload-helper')) continue;
+        if (chunk.fileName.includes('rolldown-runtime')) continue;
         const result = JavaScriptObfuscator.obfuscate(chunk.code, {
           stringArray: true,
           stringArrayEncoding: ['base64'],
@@ -95,6 +100,7 @@ function veyrnoxObfuscatorPlugin() {
           disableConsoleOutput: false,
           compact: true,
           identifierNamesGenerator: 'hexadecimal',
+          reservedStrings: ['\\.css$', '\\.js$'],
           seed: 0,
         });
         chunk.code = result.getObfuscatedCode();
