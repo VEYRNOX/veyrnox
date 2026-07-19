@@ -17,7 +17,7 @@ import {
   EXTERNAL_REWARD_URL,
   PLAN_FULL_PRICE_CENTS,
 } from '@/lib/referral';
-import { registerCode, redeemCode, fetchStatus, fetchEarnings } from '@/api/referralApi';
+import { registerCode, redeemCode, fetchStatus, fetchPaidCount, fetchEarnings } from '@/api/referralApi';
 
 const TIER_COLOR = {
   none:     'text-muted-foreground',
@@ -45,8 +45,8 @@ function TierBadge({ tier, commission }) {
   );
 }
 
-function ProgressBar({ count, currentTier }) {
-  const info = getTierInfo(count);
+function ProgressBar({ paidCount }) {
+  const info = getTierInfo(paidCount);
   if (!info.next) {
     return (
       <div className="space-y-1">
@@ -59,14 +59,14 @@ function ProgressBar({ count, currentTier }) {
   }
   const rangeStart = info.key === 'none' ? 0 : info.min;
   const rangeEnd = info.next.min;
-  const progress = Math.min(((count - rangeStart) / (rangeEnd - rangeStart)) * 100, 100);
+  const progress = Math.min(((paidCount - rangeStart) / (rangeEnd - rangeStart)) * 100, 100);
   return (
     <div className="space-y-1">
       <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
         <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
       </div>
       <div className="flex justify-between text-[10px] text-muted-foreground">
-        <span>{count.toLocaleString()} referrals</span>
+        <span>{paidCount.toLocaleString()} paid subscribers</span>
         <span>{rangeEnd.toLocaleString()} for {info.next.label}</span>
       </div>
     </div>
@@ -87,7 +87,7 @@ function TierCard({ tier, isActive, isFuture }) {
         <div>
           <span className={`text-sm font-medium ${isActive ? TIER_COLOR[tier.key] : ''}`}>{tier.label}</span>
           <p className="text-[10px] text-muted-foreground">
-            {tier.min.toLocaleString()}–{tier.max.toLocaleString()} referrals
+            {tier.min.toLocaleString()}–{tier.max.toLocaleString()} paid subscribers
           </p>
         </div>
       </div>
@@ -106,6 +106,7 @@ function TierCard({ tier, isActive, isFuture }) {
 export default function ReferralTracker() {
   const code = getLocalState().code || generateCode();
   const [inviteCount, setInviteCount] = useState(() => getLocalState().inviteCount || 0);
+  const [paidCount, setPaidCount] = useState(() => getLocalState().paidCount || 0);
   const [tier, setTier] = useState(() => getLocalState().tier || 'none');
   const [commission, setCommission] = useState(() => getLocalState().commission || 0);
   const [externalEligible, setExternalEligible] = useState(() => !!getLocalState().externalEligible);
@@ -118,15 +119,20 @@ export default function ReferralTracker() {
   const [earnings, setEarnings] = useState(null);
 
   const syncCount = useCallback(async () => {
-    const data = await fetchStatus(code);
-    if (!data) return;
-    const result = applyRedemption(data.count);
-    setInviteCount(data.count);
+    const [statusData, paid, earningsData] = await Promise.all([
+      fetchStatus(code),
+      fetchPaidCount(code),
+      fetchEarnings(code),
+    ]);
+    const rawCount = statusData?.count ?? 0;
+    const paidSubs = paid ?? 0;
+    const result = applyRedemption(rawCount, paidSubs);
+    setInviteCount(rawCount);
+    setPaidCount(result.paidCount);
     setTier(result.tier);
     setCommission(result.commission);
     setExternalEligible(result.externalEligible);
     setSyncedAt(new Date());
-    const earningsData = await fetchEarnings(code);
     if (earningsData && earningsData.length > 0) {
       setEarnings(calculateEarnings(earningsData));
     }
@@ -159,7 +165,7 @@ export default function ReferralTracker() {
     try {
       const { newCount } = await redeemCode(input);
       markRedeemed(input);
-      const result = applyRedemption(newCount);
+      const result = applyRedemption(newCount, paidCount);
       setInviteCount(newCount);
       setTier(result.tier);
       setCommission(result.commission);
@@ -175,7 +181,7 @@ export default function ReferralTracker() {
     }
   };
 
-  const tierInfo = getTierInfo(inviteCount);
+  const tierInfo = getTierInfo(paidCount);
   const displayTiers = [...TIERS].reverse();
 
   return (
@@ -186,7 +192,7 @@ export default function ReferralTracker() {
             <Gift className="h-6 w-6 text-primary" /> Referral Program
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Share VEYRNOX and earn commission on every referral.
+            Share VEYRNOX and earn commission on every paid subscriber.
           </p>
         </div>
       </div>
@@ -205,7 +211,7 @@ export default function ReferralTracker() {
           </button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Share this code with your audience. When they set up their wallet and enter it, your referral count grows.
+          Share this code with your audience. When they subscribe to Safety Plus using it, your paid subscriber count grows and your tier goes up.
         </p>
       </div>
 
@@ -213,12 +219,17 @@ export default function ReferralTracker() {
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-2xl font-bold">{inviteCount.toLocaleString()}</span>
-            <span className="text-sm text-muted-foreground ml-1.5">referrals</span>
+            <span className="text-2xl font-bold">{paidCount.toLocaleString()}</span>
+            <span className="text-sm text-muted-foreground ml-1.5">paid subscribers</span>
           </div>
           <TierBadge tier={tier} commission={commission} />
         </div>
-        <ProgressBar count={inviteCount} currentTier={tier} />
+        {inviteCount > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {inviteCount.toLocaleString()} total referrals · {paidCount.toLocaleString()} converted to paid
+          </p>
+        )}
+        <ProgressBar paidCount={paidCount} />
         {commission > 0 && (
           <div className="flex items-center gap-2 text-sm">
             <TrendingUp className="h-4 w-4 text-primary" />
@@ -302,19 +313,54 @@ export default function ReferralTracker() {
         </div>
       )}
 
+      {/* How tiers work */}
+      <div className="rounded-xl border border-border bg-muted/30 p-5 space-y-2">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest">How tiers work</p>
+        <p className="text-sm text-muted-foreground">
+          Your tier is determined by the number of people who <span className="font-semibold text-foreground">actually paid</span> for
+          Safety Plus using your code — not the total number of people who entered it.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          For example, if 11,500 people enter your code but only 1,480 subscribe, your tier is based on the 1,480 paid subscribers (Gold), not the 11,500 total referrals.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Commission is earned only on confirmed paid subscriptions verified by our payment provider.
+        </p>
+      </div>
+
       {/* Rewards & payouts */}
       <div className="rounded-xl border border-border bg-card p-5 space-y-3">
         <p className="text-xs text-muted-foreground uppercase tracking-widest">Rewards &amp; payouts</p>
         <p className="text-sm text-muted-foreground">
-          Earned commissions are paid out monthly. Reach Gold tier or above to claim compensation.
+          Earned commissions are paid out monthly.
         </p>
         <a
-          href="mailto:rewards@veyrnox.com?subject=Referral%20Reward%20Claim"
+          href={`mailto:rewards@veyrnox.com?subject=${encodeURIComponent(`Referral Reward Claim — ${code}`)}&body=${encodeURIComponent(
+            `REFERRAL REWARD CLAIM\n` +
+            `${'─'.repeat(30)}\n\n` +
+            `Referral Code: ${code}\n` +
+            `Current Tier: ${(tier || 'none').charAt(0).toUpperCase() + (tier || 'none').slice(1)}\n` +
+            `Commission Rate: ${commission}%\n\n` +
+            `Total Referrals (code entries): ${inviteCount.toLocaleString()}\n` +
+            `Paid Subscribers (verified): ${paidCount.toLocaleString()}\n` +
+            (earnings ? `Total Earnings: $${(earnings.totalDiscountCents / 100).toFixed(2)}\n` : '') +
+            (earnings ? `Revenue Generated: $${(earnings.totalRevenueCents / 100).toFixed(2)}\n` : '') +
+            `\n${'─'.repeat(30)}\n\n` +
+            `Payment details:\n` +
+            `Name: \n` +
+            `Payment method (PayPal / bank transfer / crypto): \n` +
+            `PayPal email or bank details: \n` +
+            `Crypto address (ETH/BTC/SOL): \n\n` +
+            `Notes: \n`
+          )}`}
           className="flex items-center gap-2 text-sm text-primary hover:underline"
         >
           <Mail className="h-4 w-4" />
-          rewards@veyrnox.com
+          Claim compensation
         </a>
+        <p className="text-[10px] text-muted-foreground">
+          Opens your email client with your dashboard stats pre-filled for verification.
+        </p>
       </div>
     </div>
   );

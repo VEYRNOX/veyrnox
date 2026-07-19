@@ -52,6 +52,10 @@ export async function initCode(generateServerCode) {
   return code;
 }
 
+// Tiers are determined by PAID SUBSCRIBER count (not raw referral count).
+// A "referral" is anyone who enters the code; a "paid subscriber" is someone
+// who actually purchased Safety Plus using the code. Only paid conversions
+// drive tier progression and commission earnings.
 export const TIERS = [
   { key: 'platinum', label: 'Platinum', min: 10000, max: 100000, commission: 15 },
   { key: 'gold',     label: 'Gold',     min: 1000,  max: 10000,  commission: 10 },
@@ -79,10 +83,13 @@ export function getTierInfo(count) {
   return { ...bronze, next: TIERS[TIERS.length - 2] };
 }
 
-export function applyRedemption(newCount) {
+// paidCount drives tier progression. rawCount is the total referral count
+// (anyone who entered the code) — stored for display but NOT used for tier.
+export function applyRedemption(rawCount, paidCount) {
   const state = getLocalState();
-  const tier = getTier(newCount);
-  const info = getTierInfo(newCount);
+  const effectivePaid = typeof paidCount === 'number' ? paidCount : rawCount;
+  const tier = getTier(effectivePaid);
+  const info = getTierInfo(effectivePaid);
   const unlockedFeatures = [...(state.unlockedFeatures || [])];
   if (tier === 'silver' || tier === 'gold' || tier === 'platinum') {
     if (!unlockedFeatures.includes('portfolio-snapshots')) {
@@ -91,8 +98,8 @@ export function applyRedemption(newCount) {
   }
   const commission = info.commission;
   const externalEligible = tier === 'gold' || tier === 'platinum';
-  saveState({ ...state, inviteCount: newCount, tier, commission, unlockedFeatures, externalEligible });
-  return { tier, commission, unlockedFeatures, externalEligible };
+  saveState({ ...state, inviteCount: rawCount, paidCount: effectivePaid, tier, commission, unlockedFeatures, externalEligible });
+  return { tier, commission, unlockedFeatures, externalEligible, paidCount: effectivePaid };
 }
 
 export function markRedeemed(code) {
