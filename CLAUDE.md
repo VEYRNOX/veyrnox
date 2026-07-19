@@ -2273,6 +2273,26 @@ all 15 section titles, last-updated date, jurisdiction, liability cap, no placeh
 markers; `src/pages/__tests__/TermsLegal.privacy-url.test.jsx` unchanged). Dev-server
 verified: page renders, accordions expand/collapse, no console errors.
 
+## 2026-07-19 Obfuscator CSS-loading fix — PR #1249
+
+The JS obfuscator (`javascript-obfuscator` in `vite.config.js`) was breaking code-split
+CSS loading on release APKs. Root cause: `splitStrings: true` + `splitStringsChunkLength: 10`
++ `stringArrayEncoding: ['base64']` corrupted the CSS filename reference
+(`"WalletConnect-DHDWo-zi.css"`) inside Vite's `preload-helper` chunk — the runtime
+couldn't resolve the dynamic `<link>` injection path, so the WalletConnect page rendered
+with zero styling (no card grid, text concatenation, chain pills running together).
+
+**Fix (PR #1249, commit `9fbe2ece`):**
+- `vite.config.js`: skip `preload-helper` and `rolldown-runtime` chunks from obfuscation
+  (Vite internals that resolve dynamic asset paths at runtime)
+- Added `reservedStrings: ['\\.css$', '\\.js$']` as belt-and-suspenders to protect
+  filename literals in all other chunks
+
+**Scope:** only `/walletconnect` was affected — it's the only route using CSS modules
+(code-split into a separate `.css` file). All other pages use Tailwind utility classes
+inlined in the main CSS bundle. Device-verified on Pixel 10 Pro XL (debug APK installed,
+dApp Connector page renders correctly). BUILT / device-verified, INTERNAL.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
