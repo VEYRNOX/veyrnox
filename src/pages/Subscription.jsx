@@ -123,8 +123,19 @@ export default function Subscription() {
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
   const effectiveAnnual = (hasDiscount && referralAnnual) ? referralAnnual : annualPackage;
 
-  const hasAnnualToggle = Boolean(effectiveAnnual);
-  const effectiveBilling = hasAnnualToggle ? billing : "monthly";
+  // Fail-honest (I4, PR #1026): the billing toggle renders only when BOTH
+  // periods are purchasable, and when only one is, billing is forced to that
+  // one. Never a dead button — `handleUpgrade` early-returns on a falsy
+  // selectedPackage, so any state where effectiveBilling names an absent
+  // package turns Upgrade into a silent no-op.
+  //   both      -> toggle, user's choice
+  //   monthly   -> no toggle, "monthly"
+  //   annual    -> no toggle, "annual"   (the case #1216's guard missed)
+  //   neither   -> no toggle, nothing to sell; early-return is correct
+  const hasAnnualToggle = Boolean(effectiveAnnual && effectiveMonthly);
+  const effectiveBilling = hasAnnualToggle
+    ? billing
+    : (effectiveAnnual ? "annual" : "monthly");
   const selectedPackage = effectiveBilling === "annual" ? effectiveAnnual : effectiveMonthly;
 
   const monthlyPriceString = effectiveMonthly?.product?.priceString ?? "$5.99/mo";

@@ -139,6 +139,43 @@ describe('Subscription page — native, monthly-only offering', () => {
   });
 });
 
+// Mirror of the monthly-only block. #1207 removed both halves of the
+// availability guard; #1216 restored only the annual half
+// (`Boolean(effectiveAnnual)`), leaving this direction uncovered: with annual
+// present but monthly absent, the toggle rendered, selecting Monthly resolved
+// selectedPackage to undefined, and handleUpgrade's `if (!selectedPackage)
+// return` made Upgrade a silent no-op — the same I4 dead-button failure on the
+// other branch of the toggle.
+describe('Subscription page — native, annual-only offering', () => {
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferings.mockResolvedValue({
+      availablePackages: [
+        { identifier: '$rc_annual', product: { priceString: '$49.99' } },
+      ],
+    });
+  });
+
+  it('does not render the billing-period toggle when only annual is available', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    expect(screen.queryByRole('radiogroup', { name: /billing period/i })).toBeNull();
+  });
+
+  it('purchasing uses the annual package — never a dead Upgrade button', async () => {
+    purchasePackage.mockResolvedValue({});
+    refreshTier.mockResolvedValue('safety_plus');
+    renderPage();
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
+      identifier: '$rc_annual',
+      product: { priceString: '$49.99' },
+    }));
+    await waitFor(() => expect(refreshTier).toHaveBeenCalled());
+  });
+});
+
 describe('Subscription page — native, monthly + annual offering', () => {
   beforeEach(() => {
     isNativePlatform.mockReturnValue(true);
