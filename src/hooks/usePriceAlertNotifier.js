@@ -44,7 +44,7 @@ export function usePriceAlertNotifier() {
   // ── 1. Real-time subscription: fire notification when alert status → "triggered" ──
   useEffect(() => {
     if (!isUnlocked || isDecoy || isHidden || DEMO) return; // I3: no real-set alerts in deniability mode / when locked / in demo
-    const unsub = base44.entities.PriceAlert.subscribe((event) => {
+    const unsub = base44.entities.PriceAlert?.subscribe?.((event) => {
       if (event.type === "update" && event.data?.status === "triggered") {
         const alert = event.data;
         if (notifiedRef.current.has(alert.id)) return;
