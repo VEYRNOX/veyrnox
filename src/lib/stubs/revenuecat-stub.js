@@ -5,7 +5,12 @@
 // All methods in purchases.js guard with isNative() === true before use, so
 // this stub is never exercised at runtime on web dev either — it exists so the
 // dev server resolves the import.
+export const LOG_LEVEL = {
+  VERBOSE: 'VERBOSE', DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR',
+};
+
 export const Purchases = {
+  setLogLevel: () => Promise.resolve(),
   configure: () => Promise.resolve(),
   getOfferings: () => Promise.resolve({ current: null }),
   purchasePackage: () => Promise.reject(new Error('PURCHASES_NATIVE_ONLY')),
@@ -13,4 +18,5 @@ export const Purchases = {
   getCustomerInfo: () => Promise.resolve({ customerInfo: null }),
   addCustomerInfoUpdateListener: () => Promise.resolve(''),
   removeCustomerInfoUpdateListener: () => Promise.resolve(),
+  setAttributes: () => Promise.resolve(),
 };

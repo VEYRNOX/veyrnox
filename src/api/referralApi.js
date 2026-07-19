@@ -62,20 +62,7 @@ export async function fetchStatus(code) {
   }
 }
 
-export async function fetchReferrerTier(code) {
-  if (!supabase || isDeniabilityOrDemoActive()) return null;
-  try {
-    const { data, error } = await supabase
-      .from('referrals')
-      .select('count')
-      .eq('code', code)
-      .single();
-    if (error || !data) return null;
-    return { count: data.count };
-  } catch {
-    return null;
-  }
-}
+export const fetchReferrerTier = fetchStatus;
 
 export async function recordAttribution(referralCode, plan, revenueCents, discountCents) {
   if (!supabase || isDeniabilityOrDemoActive()) return;

@@ -12,53 +12,46 @@ function isNative() {
   try { return Capacitor.isNativePlatform(); } catch { return false; }
 }
 
-// Tap feedback — key press, dot fill, small confirmations. Light impact.
+function webVibrate(ms) {
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate(ms);
+    }
+  } catch { /* silent */ }
+}
+
+// Tap feedback — key press, dot fill, small confirmations.
 export function tapHaptic() {
   if (isNative()) {
     Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     return;
   }
-  try {
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate(10);
-    }
-  } catch { /* silent */ }
+  webVibrate(5);
 }
 
-// Medium impact for a completed action (Submit, Continue).
+// Completed action (Submit, Continue) — one step above a tap.
 export function actionHaptic() {
   if (isNative()) {
-    Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
+    Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     return;
   }
-  try {
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate(20);
-    }
-  } catch { /* silent */ }
+  webVibrate(10);
 }
 
-// Notification patterns for success / warning / error toasts and gates.
+// Success confirmation — subtle double-tap feel.
 export function successHaptic() {
   if (isNative()) {
     Haptics.notification({ type: NotificationType.Success }).catch(() => {});
     return;
   }
-  try {
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate([15, 30, 15]);
-    }
-  } catch { /* silent */ }
+  webVibrate([8, 20, 8]);
 }
 
+// Error / wrong PIN — slightly stronger than success.
 export function errorHaptic() {
   if (isNative()) {
-    Haptics.notification({ type: NotificationType.Error }).catch(() => {});
+    Haptics.notification({ type: NotificationType.Warning }).catch(() => {});
     return;
   }
-  try {
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate([30, 40, 30]);
-    }
-  } catch { /* silent */ }
+  webVibrate([15, 30, 15]);
 }
