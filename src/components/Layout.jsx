@@ -65,6 +65,29 @@ const mobileBottomNav = [
   { path: "/receive", label: "Receive", icon: Download },
 ];
 
+// Routes that host the mobile tab shell (bottom-nav tabs rendered as tab-panels).
+const MOBILE_TABS = ['/', '/send', '/receive'];
+
+// Mirrors the `hidden` gate on tab-panel-0: the full-width search pill (F-P2-7)
+// lives inside the Home tab panel, so it only exists on a tab route while the
+// Home tab is the selected one.
+export function isHomeSearchPillVisible(pathname, mobileTab) {
+  return MOBILE_TABS.includes(pathname) && mobileTab === '/';
+}
+
+// The mobile header search icon is the ONLY other route to the command palette
+// on a phone — the sidebar triggers are inside `hidden md:flex` (desktop only)
+// and ⌘K needs a hardware keyboard. Deleting it outright (the original "remove
+// duplicate search" change) left Send, Receive, every sub-page and the More
+// drawer with no search entry point at all.
+//
+// De-duplicating on Home was the right instinct, so keep that: show the icon
+// exactly where the Home pill is NOT rendered. Invariant — for any mobile
+// route, exactly one of {header icon, Home pill} is present.
+export function shouldShowHeaderSearch(pathname, mobileTab) {
+  return !isHomeSearchPillVisible(pathname, mobileTab);
+}
+
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -108,7 +131,6 @@ export default function Layout() {
   // mounts exactly once (see useIsDesktop). The nav chrome (sidebar / top bar /
   // bottom nav) stays CSS-toggled; only the heavy page-hosting regions are gated.
   const isDesktop = useIsDesktop();
-  const MOBILE_TABS = ['/', '/send', '/receive'];
   const [mobileTab, setMobileTab] = useState(
     MOBILE_TABS.includes(location.pathname) ? location.pathname : '/'
   );
@@ -331,6 +353,14 @@ export default function Layout() {
           )}
         </div>
         <div className="flex items-center gap-1">
+          {/* Search is reachable on every mobile route: the Home tab shows the
+              full-width pill, everywhere else shows this icon. See
+              shouldShowHeaderSearch — exactly one of the two renders. */}
+          {shouldShowHeaderSearch(location.pathname, mobileTab) && (
+            <button onClick={() => setCmdOpen(true)} aria-label="Search" title="Search" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
+              <Search className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
           <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} />
           <HelpMenu triggerClassName="p-2 rounded-lg hover:bg-secondary hover:text-foreground active:bg-secondary inline-flex items-center justify-center min-h-[40px] min-w-[40px]" />
           <Link to="/settings" aria-label="Settings" title="Settings" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
