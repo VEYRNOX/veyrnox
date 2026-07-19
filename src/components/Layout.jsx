@@ -115,7 +115,7 @@ export default function Layout() {
     if (sealing) return; // debounce double-taps
     setSealing(true);
     setTimeout(() => {
-      /** @type {any} */ (lock)(); // ctx is createContext(null) -> `never`; see PR notes
+      lock();
       if (WALLET_GATE) {
         navigate("/", { replace: true });
       } else {

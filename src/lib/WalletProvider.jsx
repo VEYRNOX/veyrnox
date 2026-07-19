@@ -2361,8 +2361,29 @@ export function WalletProvider({ children }) {
   );
 }
 
+// TYPE NOTE (no runtime effect — the cast below is erased at build).
+//
+// WalletCtx is `createContext(null)`, so its inferred type is `null`. After the
+// null-guard on the next line TS narrows `ctx` to `never`, and EVERY destructured
+// member at every call site becomes an error like "This expression is not
+// callable. Type 'never' has no call signatures." That is not a real finding —
+// the guard has just proved the context exists — but it forced per-call-site
+// `/** @type {any} */` casts (SessionRevocationGuard, Layout) that were spreading.
+//
+// The cast makes consumers `any` rather than `never`. That is honestly NOT type
+// safety: it does not check member names or signatures. It is chosen over
+// enumerating the context in a typedef because the value object has 88 members
+// across ~180 lines (see `const value` above) and would drift on every change to
+// this provider — and because 50 of the 88 files that call useWallet() already
+// carry @ts-nocheck, so no meaningful checking exists on this surface today.
+// Net: removes a false error class and the cast litter, adds no false assurance.
+//
+// The REAL fix, if this surface is ever worth typing: extract the `value` object
+// into a named function so `@typedef {ReturnType<typeof …>}` can derive the type
+// automatically and stay in sync. That is a refactor of a security-sensitive file
+// and is deliberately out of scope here.
 export function useWallet() {
   const ctx = useContext(WalletCtx);
   if (!ctx) throw new Error('useWallet must be used within WalletProvider');
-  return ctx;
+  return /** @type {any} */ (ctx);
 }
