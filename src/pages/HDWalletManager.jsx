@@ -45,6 +45,35 @@ export function makeCopy(setCopied, raspArtifact = null) {
   };
 }
 
+// Transient balance states, shared by the EVM/BTC/SOL readers below so the
+// accessibility attributes cannot drift between the three paths.
+//
+// The meaning lives in real (screen-reader-only) text, not in a `title`: on a
+// non-focusable, non-interactive span `title` is not reliably announced and a
+// keyboard user can never surface it, so the glyph alone said nothing. The
+// glyphs are decorative once the label carries the meaning.
+//
+// `role="status"` (implicit aria-live="polite") is scoped to these transient
+// states ONLY — never to the resolved amount. These balances refetch every
+// 20-30s, so a live region around the value would re-announce it on every poll.
+export function BalancePending() {
+  return (
+    <span role="status" className="text-xs text-muted-foreground">
+      <span className="sr-only">Loading balance</span>
+      <span aria-hidden="true">…</span>
+    </span>
+  );
+}
+
+export function BalanceUnavailable() {
+  return (
+    <span role="status" className="text-xs text-muted-foreground" title="Could not read balance from chain">
+      <span className="sr-only">Balance unavailable</span>
+      <span aria-hidden="true">—</span>
+    </span>
+  );
+}
+
 // Live on-chain balance for a receivable EVM-family asset, read from the asset's
 // OWN chain (Phase C: each asset carries its testnet network key, e.g. MATIC ->
 // polygonAmoy). Native coins read via getBalanceEth; ERC-20 tokens via the token
@@ -66,9 +95,9 @@ function AssetLiveBalance({ asset, address }) {
     retry: 1,
   });
   if (!address) return null;
-  if (isLoading) return <span className="text-xs text-muted-foreground">…</span>;
-  if (isError) return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">—</span>;
-  return <span className="text-xs font-semibold">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} {unit}</span>;
+  if (isLoading) return <BalancePending />;
+  if (isError) return <BalanceUnavailable />;
+  return <span className="text-xs font-semibold font-mono">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} {unit}</span>;
 }
 
 function BtcLiveBalance({ address, networkKey }) {
@@ -80,10 +109,10 @@ function BtcLiveBalance({ address, networkKey }) {
     retry: 1,
   });
   if (!address) return null;
-  if (isLoading) return <span className="text-xs text-muted-foreground">…</span>;
-  if (isError) return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">—</span>;
+  if (isLoading) return <BalancePending />;
+  if (isError) return <BalanceUnavailable />;
   const btcVal = Number(data) / 1e8;
-  return <span className="text-xs font-semibold">{btcVal.toLocaleString(undefined, { maximumFractionDigits: 8 })} BTC</span>;
+  return <span className="text-xs font-semibold font-mono">{btcVal.toLocaleString(undefined, { maximumFractionDigits: 8 })} BTC</span>;
 }
 
 function SolLiveBalance({ address, networkKey }) {
@@ -95,9 +124,9 @@ function SolLiveBalance({ address, networkKey }) {
     retry: 1,
   });
   if (!address) return null;
-  if (isLoading) return <span className="text-xs text-muted-foreground">…</span>;
-  if (isError) return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">—</span>;
-  return <span className="text-xs font-semibold">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL</span>;
+  if (isLoading) return <BalancePending />;
+  if (isError) return <BalanceUnavailable />;
+  return <span className="text-xs font-semibold font-mono">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL</span>;
 }
 
 const HD_WALLET_ID = "evm-hd";
@@ -427,7 +456,10 @@ export default function HDWalletManager() {
             const dim = /** @type {any} */ (asset.status) === ASSET_STATUS.COMING_SOON;
             return (
               <div key={asset.symbol} className={`rounded-xl border border-border bg-card overflow-hidden ${dim ? "opacity-60" : ""}`}>
-                <button onClick={() => setExpandedSymbol(exp ? null : asset.symbol)} className="w-full p-4 flex items-center gap-3 text-left" title={dim ? "Not yet available." : undefined}>
+                {/* Disclosure control: state was previously carried only by the
+                    chevron glyph, so assistive tech could not tell the row was
+                    expandable, let alone whether it was open. */}
+                <button onClick={() => setExpandedSymbol(exp ? null : asset.symbol)} aria-expanded={exp} aria-controls={`asset-panel-${asset.symbol}`} className="w-full p-4 flex items-center gap-3 text-left" title={dim ? "Not yet available." : undefined}>
                   <CoinLogo symbol={asset.symbol} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -444,11 +476,11 @@ export default function HDWalletManager() {
                       : address && asset.family === 'solana'
                       ? <SolLiveBalance address={address} networkKey={asset.chain} />
                       : <span className="text-xs font-semibold text-muted-foreground">{asset.symbol}</span>}
-                    {exp ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                    {exp ? <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
                   </div>
                 </button>
                 {exp && (
-                  <div className="border-t border-border px-4 py-3 bg-secondary/20 space-y-3 text-xs">
+                  <div id={`asset-panel-${asset.symbol}`} role="region" aria-label={`${asset.name} details`} className="border-t border-border px-4 py-3 bg-secondary/20 space-y-3 text-xs">
                     <div className="grid grid-cols-2 gap-2">
                       <div><p className="text-muted-foreground">Chain</p><p className="font-semibold">{getNetworkInfo(asset.chain)?.name || asset.chain}</p></div>
                       <div><p className="text-muted-foreground">Family</p><p className="font-semibold uppercase">{asset.family}</p></div>
