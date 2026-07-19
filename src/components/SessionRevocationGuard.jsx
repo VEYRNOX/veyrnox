@@ -52,7 +52,7 @@ export default function SessionRevocationGuard() {
     if (!token || handledRef.current) return;
     if (isCurrentSessionRevoked(mine, token)) {
       handledRef.current = true;
-      /** @type {any} */ (lock)(); // real access control — drop the in-memory secret
+      lock(); // real access control — drop the in-memory secret
       clearSessionToken(); // sign this device out; re-auth makes a new session
       toast.error(
         'This session was revoked. The wallet has been locked — unlock again with your password to continue.',
