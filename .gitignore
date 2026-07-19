@@ -31,6 +31,12 @@ vitest.worktree.local.mjs
 *.key
 *.pem
 *.keystore
+# Signing keystores. Globs, NOT exact filenames — a named-file rule
+# (e.g. `veyrnox-release.jks`) silently misses any other name, which is how
+# veyrnox-upload-new.jks sat unignored. Note `*.keystore` does NOT match `.jks`.
+*.jks
+*.p12
+*.jceks
 secrets.json
 # ...except the committed template of var NAMES (no values). The negation must
 # come AFTER the .env.* rule above or git keeps ignoring it.
