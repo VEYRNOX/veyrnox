@@ -1,6 +1,6 @@
 // hooks/useRecentPages.js
 //
-// Tracks the 6 most recently visited feature pages for the More drawer.
+// Tracks the 5 most recently visited feature pages for the More drawer.
 // Persisted in sessionStorage (not localStorage — deniability: no residual
 // across sessions, cleared on lock/reload). Fixes #1154.
 
@@ -8,13 +8,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const KEY = 'veyrnox-recent-pages';
-const MAX = 6;
+const MAX = 5;
 const EXCLUDED = ['/', '/send', '/receive', '/settings'];
 
 function readRecents() {
   try {
     const raw = sessionStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : [];
+    return raw ? JSON.parse(raw).slice(0, MAX) : [];
   } catch { return []; }
 }
 

@@ -24,6 +24,7 @@ import {
   RotateCcw, Mic,
   ShieldOff, Gauge, KeyRound, ScanLine, Frame, Wifi, Pen,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb, Scissors,
+  CreditCard,
 } from "lucide-react";
 import { isCut } from './featureRegistry';
 
@@ -146,6 +147,7 @@ const RAW_NAV_GROUPS = [
     label: "Preferences",
     items: [
       { path: "/settings", label: "Settings", icon: Settings },
+      { path: "/plans", label: "Subscriptions", icon: CreditCard },
       { path: "/docs", label: "Documentation", icon: BookOpen },
       { path: "/features", label: "Features", icon: LayoutGrid },
     ],

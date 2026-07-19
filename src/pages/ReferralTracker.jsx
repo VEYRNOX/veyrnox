@@ -104,7 +104,7 @@ function TierCard({ tier, isActive, isFuture }) {
 }
 
 export default function ReferralTracker() {
-  const code = generateCode();
+  const code = getLocalState().code || generateCode();
   const [inviteCount, setInviteCount] = useState(() => getLocalState().inviteCount || 0);
   const [tier, setTier] = useState(() => getLocalState().tier || 'none');
   const [commission, setCommission] = useState(() => getLocalState().commission || 0);
