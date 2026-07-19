@@ -64,7 +64,7 @@ const RAW_NAV_GROUPS = [
   {
     label: "Wallet",
     items: [
-      { path: "/hd-wallet", label: "Wallets", icon: KeyRound, keywords: "hd wallet manager add new create account seed" },
+      { path: "/hd-wallet", label: "Wallet Manager", icon: Layers, keywords: "hd wallet manager add new create account seed" },
       { path: "/send", label: "Send", icon: Send, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol transfer crypto" },
       { path: "/receive", label: "Receive", icon: Download, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol deposit crypto" },
       { path: "/tx-history", label: "Transaction History", icon: History, keywords: "bitcoin btc ethereum eth transactions history activity" },

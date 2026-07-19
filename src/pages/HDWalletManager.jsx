@@ -19,6 +19,8 @@ import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import { getTokenBalance } from "@/wallet-core/evm/token-send";
+import { getBalanceSats } from "@/wallet-core/btc/provider";
+import { getBalanceSol } from "@/wallet-core/sol/provider";
 import { copySecret } from "@/lib/copySecret";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 
@@ -69,9 +71,35 @@ function AssetLiveBalance({ asset, address }) {
   return <span className="text-xs font-semibold">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} {unit}</span>;
 }
 
-// All EVM-family assets share one secp256k1 derivation (m/44'/60'/0'/0/0), so a
-// single derived account backs ETH and every EVM token/chain. Non-EVM assets
-// (BTC/SOL) are roadmap-only here and intentionally show NO fabricated address.
+function BtcLiveBalance({ address, networkKey }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["hd-btc-balance", networkKey, address],
+    queryFn: () => getBalanceSats(networkKey, address),
+    enabled: !!address,
+    refetchInterval: 30000,
+    retry: 1,
+  });
+  if (!address) return null;
+  if (isLoading) return <span className="text-xs text-muted-foreground">…</span>;
+  if (isError) return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">—</span>;
+  const btcVal = Number(data) / 1e8;
+  return <span className="text-xs font-semibold">{btcVal.toLocaleString(undefined, { maximumFractionDigits: 8 })} BTC</span>;
+}
+
+function SolLiveBalance({ address, networkKey }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["hd-sol-balance", networkKey, address],
+    queryFn: () => getBalanceSol(networkKey, address),
+    enabled: !!address,
+    refetchInterval: 20000,
+    retry: 1,
+  });
+  if (!address) return null;
+  if (isLoading) return <span className="text-xs text-muted-foreground">…</span>;
+  if (isError) return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">—</span>;
+  return <span className="text-xs font-semibold">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL</span>;
+}
+
 const HD_WALLET_ID = "evm-hd";
 
 const ASSET_COLORS = {
@@ -92,7 +120,7 @@ function shortPath(index) {
 export default function HDWalletManager() {
   const qc = useQueryClient();
   const isPin = getAuthModel() === "pin";
-  const { isUnlocked, accounts, unlock, lock, hasVault, deriveAccounts } = useWallet();
+  const { isUnlocked, accounts, unlock, lock, hasVault, deriveAccounts, btcAccount, solAccount } = useWallet();
 
   const [unlockPassword, setUnlockPassword] = useState("");
   // SAST M-3 ESCAPE HATCH: null until the passkey gate has actually FAILED on an
@@ -389,7 +417,11 @@ export default function HDWalletManager() {
           {isUnlocked && ASSETS.map(asset => {
             const receivable = canReceive(asset);
             const sendable = canSend(asset);
-            const address = receivable && isEvmFamily(asset) ? evmAddress : null;
+            const address = receivable && isEvmFamily(asset)
+              ? evmAddress
+              : asset.family === 'btc' ? btcAccount?.address || null
+              : asset.family === 'solana' ? solAccount?.address || null
+              : null;
             const badge = STATUS_BADGE[asset.status];
             const exp = expandedSymbol === asset.symbol;
             const dim = /** @type {any} */ (asset.status) === ASSET_STATUS.COMING_SOON;
@@ -405,8 +437,12 @@ export default function HDWalletManager() {
                     <p className="text-xs text-muted-foreground font-mono truncate">{address || (dim ? "Address available once live" : "—")}</p>
                   </div>
                   <div className="text-right shrink-0 flex items-center gap-2">
-                    {address
+                    {address && isEvmFamily(asset)
                       ? <AssetLiveBalance asset={asset} address={address} />
+                      : address && asset.family === 'btc'
+                      ? <BtcLiveBalance address={address} networkKey={asset.chain} />
+                      : address && asset.family === 'solana'
+                      ? <SolLiveBalance address={address} networkKey={asset.chain} />
                       : <span className="text-xs font-semibold text-muted-foreground">{asset.symbol}</span>}
                     {exp ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                   </div>
