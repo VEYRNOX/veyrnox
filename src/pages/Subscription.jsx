@@ -123,19 +123,13 @@ export default function Subscription() {
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
   const effectiveAnnual = (hasDiscount && referralAnnual) ? referralAnnual : annualPackage;
 
-  // Fail-honest (I4, PR #1026): the billing toggle renders only when BOTH
-  // periods are purchasable, and when only one is, billing is forced to that
-  // one. Never a dead button — `handleUpgrade` early-returns on a falsy
-  // selectedPackage, so any state where effectiveBilling names an absent
-  // package turns Upgrade into a silent no-op.
-  //   both      -> toggle, user's choice
-  //   monthly   -> no toggle, "monthly"
-  //   annual    -> no toggle, "annual"   (the case #1216's guard missed)
-  //   neither   -> no toggle, nothing to sell; early-return is correct
-  const hasAnnualToggle = Boolean(effectiveAnnual && effectiveMonthly);
-  const effectiveBilling = hasAnnualToggle
-    ? billing
-    : (effectiveAnnual ? "annual" : "monthly");
+  // Both monthly and annual plans always exist as product offerings, so the
+  // toggle always renders. On sideloaded builds where Play Billing is
+  // unavailable, `effectiveMonthly`/`effectiveAnnual` are null — the toggle
+  // still shows both plans with fallback price strings, and `handleUpgrade`
+  // early-returns on a falsy `selectedPackage` (I4, fail-honest).
+  const hasAnnualToggle = true;
+  const effectiveBilling = billing;
   const selectedPackage = effectiveBilling === "annual" ? effectiveAnnual : effectiveMonthly;
 
   const monthlyPriceString = effectiveMonthly?.product?.priceString ?? "$5.99/mo";
@@ -281,7 +275,7 @@ export default function Subscription() {
                 </p>
               )}
             </div>
-            {effectiveBilling === "annual" && annualPackage && (
+            {effectiveBilling === "annual" && (
               <p className="text-xs text-muted-foreground mt-0.5">
                 Billed annually — 4 months free vs. monthly
               </p>
