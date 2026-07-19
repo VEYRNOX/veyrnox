@@ -38,7 +38,7 @@ import {
   calculateDiscountCents,
   PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
-import { recordAttribution, fetchReferrerTier } from "@/api/referralApi";
+import { recordAttribution, fetchPaidCount } from "@/api/referralApi";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
 
@@ -96,11 +96,11 @@ export default function Subscription() {
     if (hasReferral) {
       const refCode = getRedeemedCode();
       if (refCode) {
-        fetchReferrerTier(refCode)
-          .then((status) => {
-            if (cancelled || !status) return;
-            const tierKey = getTier(status.count);
-            const info = getTierInfo(status.count);
+        fetchPaidCount(refCode)
+          .then((paid) => {
+            if (cancelled || paid == null) return;
+            const tierKey = getTier(paid);
+            const info = getTierInfo(paid);
             setReferrerTierInfo(info);
             const offeringId = getOfferingIdForTier(tierKey);
             if (!offeringId) return;

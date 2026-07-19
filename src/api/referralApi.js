@@ -64,6 +64,20 @@ export async function fetchStatus(code) {
 
 export const fetchReferrerTier = fetchStatus;
 
+export async function fetchPaidCount(code) {
+  if (!supabase || isDeniabilityOrDemoActive()) return null;
+  try {
+    const { count, error } = await supabase
+      .from('referral_attributions')
+      .select('*', { count: 'exact', head: true })
+      .eq('referral_code', code);
+    if (error || count == null) return null;
+    return count;
+  } catch {
+    return null;
+  }
+}
+
 export async function recordAttribution(referralCode, plan, revenueCents, discountCents) {
   if (!supabase || isDeniabilityOrDemoActive()) return;
   try {
