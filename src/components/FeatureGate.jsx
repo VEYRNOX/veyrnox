@@ -18,6 +18,12 @@ import PageNotFound from '@/lib/PageNotFound';
 // `path` overrides the router location, for callers that render a specific page
 // outside the routed <Outlet/> — notably the always-mounted mobile root-tab
 // panels in Layout, which would otherwise bypass the gate entirely.
+/**
+ * @param {{ children: any, path?: string }} props — `path` is optional by design
+ *   (`path ?? pathname` below). Typed explicitly because a bare destructure makes
+ *   TS infer it as required, and a `= undefined` default makes TS infer its type
+ *   AS `undefined`, which then rejects the real `path="/send"` call sites.
+ */
 export default function FeatureGate({ children, path }) {
   const { pathname } = useLocation();
   const { currentTier, loading } = useTier();

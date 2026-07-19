@@ -16,7 +16,7 @@ export default function AccessibilityWrapper({ children }) {
       </a>
 
       {/* Main content wrapper with proper ARIA */}
-      <main id="main-content" role="main" tabIndex="-1">
+      <main id="main-content" role="main" tabIndex={-1}>
         {children}
       </main>
 
