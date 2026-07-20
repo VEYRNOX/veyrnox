@@ -37,18 +37,6 @@ const PROVIDERS = [
     detect: () => typeof window.ethereum !== "undefined" && window.ethereum.isCoinbaseWallet,
     installUrl: "https://www.coinbase.com/wallet",
   },
-  {
-    id: "trust",
-    name: "Trust Wallet",
-    description: "Connect via WalletConnect",
-    emoji: "🛡️",
-    currencies: ["ETH", "BNB"],
-    // Trust Wallet exposes no desktop injected provider — it pairs over
-    // WalletConnect. Route to the WC connector rather than faking detection.
-    via: "walletconnect",
-    detect: () => false,
-    installUrl: "https://trustwallet.com/download",
-  },
 ];
 
 async function connectMetaMask() {
@@ -117,12 +105,6 @@ export default function ConnectWallet() {
   });
 
   const handleConnect = async (provider) => {
-    // WalletConnect-only wallets (e.g. Trust Wallet) expose no injected provider
-    // to detect — hand off to the WalletConnect connector for the paste-URI flow.
-    if (provider.via === "walletconnect") {
-      navigate("/walletconnect");
-      return;
-    }
     if (!provider.detect()) {
       window.open(provider.installUrl, "_blank");
       return;
@@ -229,9 +211,6 @@ export default function ConnectWallet() {
                   {detected && (
                     <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">Detected</span>
                   )}
-                  {provider.via === "walletconnect" && (
-                    <span className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">WalletConnect</span>
-                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">{provider.description}</p>
                 <div className="flex gap-1 mt-1">
@@ -243,7 +222,7 @@ export default function ConnectWallet() {
               <div className="shrink-0">
                 {connecting === provider.id ? (
                   <Loader2 className="h-4 w-4 motion-safe:animate-spin text-primary" />
-                ) : detected || provider.via === "walletconnect" ? (
+                ) : detected ? (
                   <Plug className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 ) : (
                   <ExternalLink className="h-4 w-4 text-muted-foreground" />
