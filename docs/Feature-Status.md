@@ -151,7 +151,10 @@
 > **2026-07-06 addendum — PR #638, #683, #685, #686 all MERGED:** PR #638 added 6 new Appium
 > Android E2E specs + hardened 2 existing ones (96 tests / 13 suites total) — BUILT
 > test-coverage only, no new device-verification/"verified" claim, no new on-chain txid;
-> honest gaps (WalletConnect live-pairing, single-device KDF perf, LOG-1 canary-not-fix,
+> honest gaps (WalletConnect live-pairing [NOTE 2026-07-20: manual URI-paste pairing
+> confirmed; signing + on-chain still unproven; AND Veyrnox is not Explorer-listed / has no
+> deep-link so it does NOT appear in dApp wallet pickers — store-publish-gated; see §12],
+> single-device KDF perf, LOG-1 canary-not-fix,
 > web-only passkey clone proof) preserved. PR #683 landed a 2026-07-06 INTERNAL (NOT
 > independent, despite its filename) code-and-artifact review of the Android hardware-KEK
 > suite (`docs/audit-triage/independent-audit-2026-07-06-android-kek-suite.md`) — headline
@@ -716,6 +719,31 @@ WalletConnect / dApp connector — ✅ BUILT (post-audit, 2026-06-27) — **SHIP
 - **H-NEW-C personal_sign display/sign parity** (PR #443, 2026-06-28 internal pass) — MetaMask-legacy param order `[message, address]` consistent between display and signing paths; no display/sign divergence.
 - **Pre-modal H8/H7 rejection** (PR #931, 2026-07-13, BUILT / INTERNAL) — `WalletConnectProvider.jsx` `session_request` handler now calls `resolvePersonalSignMessage()` (H8) and checks `domain.chainId` vs CAIP-2 chain (H7) at request-arrival time; mismatches call `rejectRequest` before the approval modal is enqueued. Previously both checks only fired at Approve-click. No on-chain txid; not independently audited.
 - **Supervised WC e2e specs** (`e2e/walletconnect-live-pairing.spec.js`, PR #931, 2026-07-13) — 4 Playwright tests against real relay.walletconnect.com, gated `RUN_SUPERVISED_E2E=1`: H8 happy path (personal_sign own address → valid 65-byte sig), H8 mismatch (foreign address → pre-modal reject), M11 (request on disconnected session → SDK-level reject), H7 (domain.chainId=1 on Sepolia session → pre-modal reject). BUILT / INTERNAL — no on-chain txid, not CI-automated, not independently audited.
+- **Live pairing — MANUALLY CONFIRMED 2026-07-20, via manual URI paste.** Owner completed
+  real WalletConnect v2 pairings over the live relay — the leg the CI `verify` gate cannot
+  exercise (no browser, no external relay). **Scope, stated honestly:** confirms the
+  *pairing/session-establishment handshake* works against real external peers; manual/UI
+  observation, NOT an automated test, NOT an on-chain txid, and does NOT exercise the
+  signing surface (RASP gate / 2FA / spend-limit / H7/H8 binding) or a completed tx. Do
+  not upgrade to "WalletConnect verified" without a signing round-trip + on-chain txid.
+- **⚠ DISCOVERABILITY GAP — Veyrnox is paste-only, NOT a listed/launchable wallet
+  (2026-07-20).** The pairing that works is the *manual* flow: in the dApp choose
+  WalletConnect → "Copy to clipboard" → paste the `wc:` URI into the connector's box.
+  **Veyrnox does NOT appear in dApps' "select your wallet" modals**, because two things are
+  missing (both verified 2026-07-20):
+  1. **No WalletConnect Explorer / Cloud registry listing** — so no logo/button in Web3Modal
+     / AppKit wallet pickers.
+  2. **No deep-link / universal-link to launch the app** — iOS `CFBundleURLTypes` empty, no
+     associated-domains; Android manifest has no `wc:`/custom-scheme intent-filter. Even if
+     listed, a tapped "Veyrnox" button could not open the app.
+  The Project ID is present (`f9d8b6cc…`, baked into the AAB) — that is why manual paste
+  pairing FUNCTIONS; the gap is purely discovery/launch UX. **This is store-publish-gated:**
+  the Explorer submission expects a published app whose deep-links resolve, so it is
+  downstream of the Play upload-key reset and the Apple org conversion. Coinbase Wallet
+  specifically may fail even the manual path because its connection flow leans on the
+  Coinbase Wallet SDK rather than exposing a standard copyable `wc:` URI. **Doc-honesty
+  note:** the §12 "SHIPPING-APPROVED" header describes the signing surface; it does NOT mean
+  Veyrnox is a discoverable WalletConnect wallet — it is not, yet.
 
 Web Bridge page ❌ removed (PR #48 — the swap/relay gateway, not the WC pairing surface).
 
