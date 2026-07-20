@@ -25,6 +25,28 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Custom scheme: veyrnox://wc?uri=<wc-uri> — a dApp/WalletConnect can
+                 launch Veyrnox with no domain verification (works on an installed app).
+                 singleTask (above) keeps it a single instance so appUrlOpen fires into
+                 the running app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="veyrnox" />
+            </intent-filter>
+
+            <!-- Verified App Links: https://veyrnox.com/wc?uri=... — autoVerify checks
+                 https://veyrnox.com/.well-known/assetlinks.json (see public/.well-known/).
+                 Only opens Veyrnox directly once verification passes AND the app is
+                 installed; falls back to the browser otherwise. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="veyrnox.com" android:pathPrefix="/wc" />
+            </intent-filter>
+
         </activity>
 
         <provider
