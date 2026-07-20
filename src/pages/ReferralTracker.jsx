@@ -4,6 +4,7 @@ import { Gift, Copy, CheckCircle2, ExternalLink, ChevronRight, TrendingUp, Dolla
 import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import {
   generateCode,
@@ -47,12 +48,31 @@ function TierBadge({ tier, commission }) {
   );
 }
 
+// F-progressbar (2026-07-20 branch review): this was a plain <div> pair (an
+// outer track + an inner width-percentage bar) with no progressbar semantics
+// — no role, no aria-valuenow/min/max, no accessible name. Adjacent prose
+// already carries the numbers so the impact was limited, but the graphical
+// affordance itself said nothing to AT.
+//
+// Every value fed to the new ARIA attributes comes from `paidCount`, the SAME
+// argument the visible prose already renders — it is the caller's already
+// I3-gated `dPaid` display variable (never the raw, ungated state), so a
+// decoy/demo session (paidCount === 0) exposes nothing beyond what the
+// existing on-screen text already shows.
 function ProgressBar({ paidCount }) {
   const info = getTierInfo(paidCount);
   if (!info.next) {
     return (
       <div className="space-y-1">
-        <div className="h-2 w-full rounded-full bg-primary/20 overflow-hidden">
+        <div
+          role="progressbar"
+          aria-label="Referral tier progress"
+          aria-valuenow={100}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuetext="Maximum tier reached"
+          className="h-2 w-full rounded-full bg-primary/20 overflow-hidden"
+        >
           <div className="h-full rounded-full bg-primary" style={{ width: '100%' }} />
         </div>
         <p className="text-[10px] text-primary font-medium">Maximum tier reached</p>
@@ -62,9 +82,23 @@ function ProgressBar({ paidCount }) {
   const rangeStart = info.key === 'none' ? 0 : info.min;
   const rangeEnd = info.next.min;
   const progress = Math.min(((paidCount - rangeStart) / (rangeEnd - rangeStart)) * 100, 100);
+  // Defensive only: `rangeEnd === rangeStart` (the 'none' tier's next is
+  // bronze, whose own min is 0) is a pre-existing 0/0 edge case in the width
+  // calculation above, left untouched here (out of scope for an a11y pass —
+  // see the PR notes). This guard exists solely so the NEW aria-valuenow
+  // itself is never NaN, which would be an invalid ARIA value.
+  const ariaNow = Number.isFinite(progress) ? Math.round(Math.max(0, Math.min(100, progress))) : 0;
   return (
     <div className="space-y-1">
-      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+      <div
+        role="progressbar"
+        aria-label="Referral tier progress"
+        aria-valuenow={ariaNow}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuetext={`${paidCount.toLocaleString()} of ${rangeEnd.toLocaleString()} paid subscribers toward ${info.next.label}`}
+        className="h-2 w-full rounded-full bg-secondary overflow-hidden"
+      >
         <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
       </div>
       <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -408,22 +442,36 @@ export default function ReferralTracker() {
       {/* Enter a code */}
       {!dRedeemed && (
         <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+          {/* F-redeem-label (2026-07-20 branch review): the input had only a
+              placeholder as its "label" — fails WCAG 3.3.2, and the name
+              vanishes the moment the user types over it. The visible "Got a
+              referral code?" line stays byte-identical (design system: no
+              restyle); a separate sr-only Label supplies the real
+              programmatic association without touching visible styling. */}
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Got a referral code?</p>
+          <Label htmlFor="referral-redeem-code" className="sr-only">Referral code</Label>
           <div className="flex gap-2">
             <Input
+              id="referral-redeem-code"
               value={redeemInput}
               onChange={(e) => { setRedeemInput(e.target.value.toUpperCase()); setRedeemError(''); }}
               placeholder="VYX-XXXXXX"
               maxLength={10}
               autoCapitalize="characters"
               autoCorrect="off"
+              aria-invalid={!!redeemError}
+              aria-describedby={redeemError ? 'referral-redeem-error' : undefined}
               className="mono-value tracking-widest"
             />
             <Button onClick={handleRedeem} disabled={!redeemInput.trim() || redeemBusy} variant="outline" aria-label="Apply referral code">
               {redeemBusy ? '…' : <ChevronRight className="h-4 w-4" />}
             </Button>
           </div>
-          {redeemError && <p className="text-xs text-destructive">{redeemError}</p>}
+          {redeemError && (
+            <p id="referral-redeem-error" role="alert" className="text-xs text-destructive">
+              {redeemError}
+            </p>
+          )}
         </div>
       )}
 

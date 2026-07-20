@@ -56,22 +56,59 @@ export function makeCopy(setCopied, raspArtifact = null) {
 // `role="status"` (implicit aria-live="polite") is scoped to these transient
 // states ONLY — never to the resolved amount. These balances refetch every
 // 20-30s, so a live region around the value would re-announce it on every poll.
-export function BalancePending() {
+function PendingGlyph() {
   return (
-    <span role="status" className="text-xs text-muted-foreground">
+    <>
       <span className="sr-only">Loading balance</span>
       <span aria-hidden="true">…</span>
+    </>
+  );
+}
+
+function UnavailableGlyph() {
+  return (
+    <>
+      <span className="sr-only">Balance unavailable</span>
+      <span aria-hidden="true">—</span>
+    </>
+  );
+}
+
+// F7 FIX (2026-07-20 branch review): the three readers below used to return
+// THREE DIFFERENT top-level components (BalancePending / BalanceUnavailable /
+// a plain value <span>) at the same tree position depending on query state.
+// React unmounts+remounts a subtree whenever the element TYPE at a position
+// changes, so the role="status" node itself was destroyed and recreated on
+// every loading -> error / loading -> resolved transition — most AT only
+// announces a MUTATION to a live region it is already watching, so both the
+// initial pending message and the resolved-or-failed transition were
+// typically silent.
+//
+// BalanceStatus is now the ONE node the readers render at that position on
+// every state — only its CHILDREN change with `state`, so the DOM node
+// persists across the whole transition and AT sees a genuine content mutation
+// instead of a silent node swap. It renders empty (idle) once resolved: the
+// resolved amount is intentionally kept OUTSIDE this region (see the readers
+// below) so a 20-30s background poll never re-announces the value.
+export function BalanceStatus({ state }) {
+  return (
+    <span
+      role="status"
+      className="text-xs text-muted-foreground"
+      title={state === "error" ? "Could not read balance from chain" : undefined}
+    >
+      {state === "pending" && <PendingGlyph />}
+      {state === "error" && <UnavailableGlyph />}
     </span>
   );
 }
 
+export function BalancePending() {
+  return <BalanceStatus state="pending" />;
+}
+
 export function BalanceUnavailable() {
-  return (
-    <span role="status" className="text-xs text-muted-foreground" title="Could not read balance from chain">
-      <span className="sr-only">Balance unavailable</span>
-      <span aria-hidden="true">—</span>
-    </span>
-  );
+  return <BalanceStatus state="error" />;
 }
 
 // Live on-chain balance for a receivable EVM-family asset, read from the asset's
@@ -80,7 +117,7 @@ export function BalanceUnavailable() {
 // contract's balanceOf. Chain is the source of truth — never a stored DB value.
 // The balance is labelled with the chain's NATIVE gas symbol (POL/AVAX/tBNB, and
 // ETH on Arbitrum/Optimism), never a hardcoded "ETH".
-function AssetLiveBalance({ asset, address }) {
+export function AssetLiveBalance({ asset, address }) {
   const networkKey = asset.chain;
   const isErc20 = asset.family === "erc20";
   // Native coins display the chain's native symbol; tokens display their own.
@@ -95,9 +132,15 @@ function AssetLiveBalance({ asset, address }) {
     retry: 1,
   });
   if (!address) return null;
-  if (isLoading) return <BalancePending />;
-  if (isError) return <BalanceUnavailable />;
-  return <span className="text-xs font-semibold font-mono">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} {unit}</span>;
+  const state = isLoading ? "pending" : isError ? "error" : null;
+  return (
+    <>
+      <BalanceStatus state={state} />
+      {state === null && (
+        <span className="text-xs font-semibold font-mono">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} {unit}</span>
+      )}
+    </>
+  );
 }
 
 function BtcLiveBalance({ address, networkKey }) {
@@ -109,10 +152,16 @@ function BtcLiveBalance({ address, networkKey }) {
     retry: 1,
   });
   if (!address) return null;
-  if (isLoading) return <BalancePending />;
-  if (isError) return <BalanceUnavailable />;
-  const btcVal = Number(data) / 1e8;
-  return <span className="text-xs font-semibold font-mono">{btcVal.toLocaleString(undefined, { maximumFractionDigits: 8 })} BTC</span>;
+  const state = isLoading ? "pending" : isError ? "error" : null;
+  const btcVal = state === null ? Number(data) / 1e8 : null;
+  return (
+    <>
+      <BalanceStatus state={state} />
+      {state === null && (
+        <span className="text-xs font-semibold font-mono">{btcVal.toLocaleString(undefined, { maximumFractionDigits: 8 })} BTC</span>
+      )}
+    </>
+  );
 }
 
 function SolLiveBalance({ address, networkKey }) {
@@ -124,9 +173,15 @@ function SolLiveBalance({ address, networkKey }) {
     retry: 1,
   });
   if (!address) return null;
-  if (isLoading) return <BalancePending />;
-  if (isError) return <BalanceUnavailable />;
-  return <span className="text-xs font-semibold font-mono">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL</span>;
+  const state = isLoading ? "pending" : isError ? "error" : null;
+  return (
+    <>
+      <BalanceStatus state={state} />
+      {state === null && (
+        <span className="text-xs font-semibold font-mono">{Number(data).toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL</span>
+      )}
+    </>
+  );
 }
 
 const HD_WALLET_ID = "evm-hd";
@@ -480,7 +535,16 @@ export default function HDWalletManager() {
                 {/* Disclosure control: state was previously carried only by the
                     chevron glyph, so assistive tech could not tell the row was
                     expandable, let alone whether it was open. */}
-                <button onClick={() => setExpandedSymbol(exp ? null : asset.symbol)} aria-expanded={exp} aria-controls={`asset-panel-${asset.symbol}`} className="w-full p-4 flex items-center gap-3 text-left" title={dim ? "Not yet available." : undefined}>
+                {/* F5 FIX (2026-07-20 branch review): aria-controls used to be
+                    set unconditionally, but the panel it names only exists in
+                    the DOM while `exp` is true — a dangling IDREF for every
+                    row's default (collapsed) state. aria-expanded already
+                    carries the open/closed state correctly, so rather than
+                    always mounting the (fairly heavy, per-asset) panel behind
+                    `hidden` we take the smaller-blast-radius fix: only point
+                    aria-controls at the id when the target actually exists.
+                    Mirrored in TermsLegal's TermsSection for the same reason. */}
+                <button onClick={() => setExpandedSymbol(exp ? null : asset.symbol)} aria-expanded={exp} aria-controls={exp ? `asset-panel-${asset.symbol}` : undefined} className="w-full p-4 flex items-center gap-3 text-left" title={dim ? "Not yet available." : undefined}>
                   <CoinLogo symbol={asset.symbol} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">

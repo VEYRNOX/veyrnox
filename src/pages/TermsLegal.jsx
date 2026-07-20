@@ -39,6 +39,15 @@ function Section({ icon: Icon, title, children }) {
 
 function TermsSection({ number, title, children }) {
   const [open, setOpen] = useState(false);
+  // F5-mirror (2026-07-20 branch review): the trigger had aria-expanded but
+  // no programmatic link to the body it discloses — expanding, say, §11
+  // (Limitation of Liability) gave a screen-reader user no way to jump to or
+  // confirm the text that just appeared. Same fix as HDWalletManager's asset
+  // disclosure: aria-controls is only set once the panel it names actually
+  // exists (the body here is likewise only rendered while `open`), so there
+  // is never a dangling reference; the panel carries a matching id + a real
+  // region role/name once present.
+  const panelId = `terms-section-${number}`;
   return (
     <div className="border-b border-border last:border-b-0">
       <button
@@ -46,6 +55,7 @@ function TermsSection({ number, title, children }) {
         className="w-full flex items-center justify-between py-3 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
       >
         <span className="text-xs font-medium">
           <span className="text-muted-foreground mr-1.5">{number}.</span>
@@ -57,7 +67,7 @@ function TermsSection({ number, title, children }) {
         />
       </button>
       {open && (
-        <div className="text-xs text-muted-foreground leading-relaxed space-y-2 pb-4">
+        <div id={panelId} role="region" aria-label={title} className="text-xs text-muted-foreground leading-relaxed space-y-2 pb-4">
           {children}
         </div>
       )}

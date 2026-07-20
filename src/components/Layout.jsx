@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, useCallback } from "react";
+import { useState, useEffect, lazy, useCallback, useRef } from "react";
 import { Outlet, Link, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { duration as motionDuration, easing as motionEasing } from "@/lib/motion-tokens";
@@ -208,6 +208,29 @@ export default function Layout() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // More-drawer: Escape closes it (A-2). A window-level listener (rather than
+  // relying on bubbling from a focused descendant) so it closes on Escape even
+  // if focus is somewhere the drawer doesn't fully occlude — there is no focus
+  // trap here (see Layout.moreDrawer.a11y.test.jsx for why), so that's the more
+  // robust of the two. Only registered while the drawer is actually open.
+  useEffect(() => {
+    if (!moreOpen || typeof window === "undefined") return undefined;
+    const handleEscape = (e) => {
+      if (e.key === "Escape") setMoreOpen(false);
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [moreOpen]);
+
+  // Move focus onto the drawer's close control when it opens, per the dialog
+  // pattern (APG "dialog (modal)" — initial focus lands inside the dialog).
+  // One-shot imperative focus() only; NOT a focus trap (Tab can still leave the
+  // drawer into the page behind it — see the honest gap noted in A-2).
+  const moreCloseBtnRef = useRef(null);
+  useEffect(() => {
+    if (moreOpen) moreCloseBtnRef.current?.focus();
+  }, [moreOpen]);
 
   return (
     <AccessibilityWrapper>
@@ -457,8 +480,6 @@ export default function Layout() {
         {/* Root tab pages — always mounted, toggled via hidden to preserve state */}
         <div
           id="tab-panel-0"
-          role="tabpanel"
-          aria-labelledby="tab-0"
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/'}
           className="p-4"
         >
@@ -475,8 +496,6 @@ export default function Layout() {
         </div>
         <div
           id="tab-panel-1"
-          role="tabpanel"
-          aria-labelledby="tab-1"
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/send'}
           className="p-4"
         >
@@ -484,8 +503,6 @@ export default function Layout() {
         </div>
         <div
           id="tab-panel-2"
-          role="tabpanel"
-          aria-labelledby="tab-2"
           hidden={!MOBILE_TABS.includes(location.pathname) || mobileTab !== '/receive'}
           className="p-4"
         >
@@ -501,16 +518,13 @@ export default function Layout() {
         role="navigation"
         aria-label="Bottom navigation"
       >
-        {mobileBottomNav.map((item, index) => {
+        {mobileBottomNav.map((item) => {
           const active = mobileTab === item.path;
           return (
             <button
               key={item.path}
               type="button"
-              role="tab"
-              aria-selected={active}
-              aria-controls={`tab-panel-${index}`}
-              tabIndex={active ? 0 : -1}
+              aria-current={active ? "page" : undefined}
               onClick={() => handleMobileTabClick(item.path)}
               className={`relative flex flex-col items-center justify-center gap-1 py-3 flex-1 transition-colors hover:bg-secondary/60 active:bg-secondary select-none focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset ${
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -547,10 +561,23 @@ export default function Layout() {
 
       {/* ── Mobile More Drawer ── */}
       {moreOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex flex-col bg-background">
+        <div
+          className="md:hidden fixed inset-0 z-50 flex flex-col bg-background"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="more-drawer-title"
+        >
           <div className="flex items-center justify-between px-4 border-b border-border shrink-0" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
-            <span className="font-semibold">All Features</span>
-            <button onClick={() => setMoreOpen(false)} className="p-2 rounded-lg hover:bg-secondary"><X className="h-5 w-5" /></button>
+            <span id="more-drawer-title" className="font-semibold">All Features</span>
+            <button
+              ref={moreCloseBtnRef}
+              type="button"
+              onClick={() => setMoreOpen(false)}
+              aria-label="Close"
+              className="p-2 rounded-lg hover:bg-secondary"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
           </div>
           <div className="flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-3 pt-3 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {/* Pinned quick-access + recents */}
