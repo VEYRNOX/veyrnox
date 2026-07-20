@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, Sparkles, Info, ArrowRight, Loader2, ExternalLink } from "lucide-react";
@@ -42,19 +42,29 @@ import { recordAttribution, fetchPaidCount } from "@/api/referralApi";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
 
-function FeatureList({ features }) {
+// Compact, scannable feature summary — names only, capped, with a "+N more" pill.
+// The full detailed lists live on /safety-plus (grouped by SECURITY · FINANCE ·
+// CONNECT), linked from the summary, so /plans stays short and pricing-focused.
+function HighlightChips({ features, max = 6 }) {
+  const shown = features.slice(0, max);
+  const rest = features.length - shown.length;
   return (
-    <ul className="space-y-2">
-      {features.map((f) => (
-        <li key={f.name} className="flex items-start gap-2 text-sm">
-          <Check className="h-4 w-4 text-success shrink-0 mt-0.5" />
-          <span>
-            <span className="font-medium">{f.name}</span>
-            <span className="block text-xs text-muted-foreground">{f.summary}</span>
-          </span>
-        </li>
+    <div className="flex flex-wrap gap-1.5">
+      {shown.map((f) => (
+        <span
+          key={f.name}
+          className="inline-flex items-center gap-1 text-xs rounded-full border border-border bg-muted/40 px-2.5 py-1 text-foreground/80"
+        >
+          <Check className="h-3 w-3 text-success shrink-0" />
+          {f.name}
+        </span>
       ))}
-    </ul>
+      {rest > 0 && (
+        <span className="inline-flex items-center text-xs rounded-full px-2.5 py-1 text-muted-foreground">
+          +{rest} more
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -207,7 +217,7 @@ export default function Subscription() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
+    <div className="max-w-xl mx-auto p-6 space-y-6">
       <BackButton />
 
       <div>
@@ -251,181 +261,168 @@ export default function Subscription() {
               Referral discount applied{referrerTierInfo ? ` — ${referrerTierInfo.commission}% off` : ""}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              You used a friend's referral code — enjoy a discounted rate on Safety Plus.
+              You used a friend&rsquo;s referral code — enjoy a discounted rate on Safety Plus.
             </p>
           </div>
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className={currentTier === "free" ? "border-primary/50" : undefined}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Free</CardTitle>
-              {currentTier === "free" && (
-                <Badge variant="outline" className={CURRENT_BADGE}>Current plan</Badge>
-              )}
-            </div>
-            <p className="text-2xl font-bold mt-1">$0</p>
-            <CardDescription>
-              Everything you need to hold, send and secure your crypto — free forever. No account required.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FeatureList features={FREE_FEATURES} />
-          </CardContent>
-        </Card>
+      {/* ── Quick feature summary (names only; full detail on /safety-plus) ── */}
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Free</h2>
+            <span className="text-sm font-bold">$0</span>
+            {currentTier === "free" && (
+              <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">Everything to hold, send and secure your crypto — no account required.</p>
+          <HighlightChips features={FREE_FEATURES} max={6} />
+        </div>
 
-        <Card className={currentTier === "safety_plus" ? "border-primary/50" : "border-primary/20"}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                Safety Plus
-                <Sparkles className="h-4 w-4 text-primary" />
-              </CardTitle>
-              {currentTier === "safety_plus" && (
-                <Badge variant="outline" className={CURRENT_BADGE}>Current plan</Badge>
-              )}
-            </div>
-            <div className="flex items-baseline gap-2 mt-1">
-              <p className="text-2xl font-bold">{selectedPriceString}</p>
-              {hasDiscount && (
-                <p className="text-base text-muted-foreground line-through">
-                  {effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice}
-                </p>
-              )}
-            </div>
-            {effectiveBilling === "annual" && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Billed annually — 4 months free vs. monthly
-              </p>
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" /> Safety Plus adds
+            {currentTier === "safety_plus" && (
+              <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
             )}
-            <CardDescription className="mt-2">
-              Everything in Free, plus pre-sign intelligence and advanced analytics.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {hasAnnualToggle && currentTier !== "safety_plus" && (
-              <div
-                role="radiogroup"
-                aria-label="Billing period"
-                onKeyDown={handleBillingKeyDown}
-                className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
-              >
-                <button
-                  ref={monthlyRadioRef}
-                  type="button"
-                  role="radio"
-                  aria-checked={effectiveBilling === "monthly"}
-                  tabIndex={effectiveBilling === "monthly" ? 0 : -1}
-                  onClick={() => setBilling("monthly")}
-                  className={
-                    "text-sm rounded-md px-3 py-2 transition-colors " +
-                    (effectiveBilling === "monthly"
-                      ? "bg-background border border-border font-medium"
-                      : "text-muted-foreground hover:text-foreground")
-                  }
-                >
-                  Monthly
-                  <span className="block text-xs text-muted-foreground font-normal">
-                    {monthlyPriceString}
-                    {hasDiscount && regularMonthlyPrice && regularMonthlyPrice !== monthlyPriceString && (
-                      <span className="ml-1 line-through opacity-60">{regularMonthlyPrice}</span>
-                    )}
-                  </span>
-                </button>
-                <button
-                  ref={annualRadioRef}
-                  type="button"
-                  role="radio"
-                  aria-checked={effectiveBilling === "annual"}
-                  tabIndex={effectiveBilling === "annual" ? 0 : -1}
-                  onClick={() => setBilling("annual")}
-                  className={
-                    "text-sm rounded-md px-3 py-2 transition-colors relative " +
-                    (effectiveBilling === "annual"
-                      ? "bg-background border border-primary/40 font-medium"
-                      : "text-muted-foreground hover:text-foreground")
-                  }
-                >
-                  <span className="inline-flex items-center gap-1.5">
-                    Annual
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">
-                      Save 30%
-                    </Badge>
-                  </span>
-                  <span className="block text-xs text-muted-foreground font-normal">
-                    {annualPriceString}
-                    {hasDiscount && regularAnnualPrice && regularAnnualPrice !== annualPriceString && (
-                      <span className="ml-1 line-through opacity-60">{regularAnnualPrice}</span>
-                    )}
-                  </span>
-                </button>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Everything in Free, plus:</p>
-            <FeatureList features={SAFETY_PLUS_FEATURES} />
-          </CardContent>
-        </Card>
+          </h2>
+          <p className="text-xs text-muted-foreground">Coercion resistance, pre-sign intelligence and advanced analytics.</p>
+          <HighlightChips features={SAFETY_PLUS_FEATURES} max={6} />
+          <Link to="/safety-plus" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+            See all Safety Plus features <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
       </div>
 
-      <Link
-        to="/safety-plus"
-        className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary/20 bg-primary/5 hover:border-primary/50 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <Sparkles className="h-5 w-5 text-primary shrink-0" />
-          <div>
-            <p className="text-sm font-semibold">Explore Safety Plus features</p>
-            <p className="text-xs text-muted-foreground">See every feature grouped by SECURITY · FINANCE · CONNECT</p>
-          </div>
-        </div>
-        <ArrowRight className="h-4 w-4 text-primary shrink-0" />
-      </Link>
-
-      {currentTier !== "safety_plus" && (
-        <div className="flex flex-col items-center gap-2 pt-2">
-          <Button
-            disabled={!isNative || !selectedPackage || busy}
-            className="w-full max-w-md"
-            onClick={handleUpgrade}
-          >
-            {busy ? <Loader2 className="h-4 w-4 mr-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            {isNative ? `Upgrade to Safety Plus — ${selectedPriceString}` : "Upgrade to Safety Plus — mobile only"}
-          </Button>
-          {isNative ? (
-            <button
-              type="button"
-              onClick={handleRestore}
-              disabled={busy}
-              className="text-xs text-muted-foreground underline"
-            >
-              Restore purchases
-            </button>
+      {/* ── Pricing (Month / Year) ── */}
+      <Card className="border-primary/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            Safety Plus
+            <Sparkles className="h-4 w-4 text-primary" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {currentTier === "safety_plus" ? (
+            <>
+              <p className="text-sm text-muted-foreground">You&rsquo;re on Safety Plus — all features unlocked.</p>
+              {isNative && (
+                <>
+                  <Button variant="outline" className="w-full" onClick={handleManage}>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Manage subscription
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Opens the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"} settings —
+                    cancel, change plan or update payment there.
+                  </p>
+                </>
+              )}
+            </>
           ) : (
-            <p className="text-xs text-muted-foreground text-center max-w-md">
-              No payment can be made on this screen. Your plan stays Free on web.
-            </p>
-          )}
-        </div>
-      )}
+            <>
+              {/* Month / Year selector */}
+              {hasAnnualToggle && (
+                <div
+                  role="radiogroup"
+                  aria-label="Billing period"
+                  onKeyDown={handleBillingKeyDown}
+                  className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
+                >
+                  <button
+                    ref={monthlyRadioRef}
+                    type="button"
+                    role="radio"
+                    aria-checked={effectiveBilling === "monthly"}
+                    tabIndex={effectiveBilling === "monthly" ? 0 : -1}
+                    onClick={() => setBilling("monthly")}
+                    className={
+                      "text-sm rounded-md px-3 py-2 transition-colors text-center " +
+                      (effectiveBilling === "monthly"
+                        ? "bg-background border border-border font-medium"
+                        : "text-muted-foreground hover:text-foreground")
+                    }
+                  >
+                    Monthly
+                    <span className="block text-xs text-muted-foreground font-normal">
+                      {monthlyPriceString}
+                      {hasDiscount && regularMonthlyPrice && regularMonthlyPrice !== monthlyPriceString && (
+                        <span className="ml-1 line-through opacity-60">{regularMonthlyPrice}</span>
+                      )}
+                    </span>
+                  </button>
+                  <button
+                    ref={annualRadioRef}
+                    type="button"
+                    role="radio"
+                    aria-checked={effectiveBilling === "annual"}
+                    tabIndex={effectiveBilling === "annual" ? 0 : -1}
+                    onClick={() => setBilling("annual")}
+                    className={
+                      "text-sm rounded-md px-3 py-2 transition-colors text-center relative " +
+                      (effectiveBilling === "annual"
+                        ? "bg-background border border-primary/40 font-medium"
+                        : "text-muted-foreground hover:text-foreground")
+                    }
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      Annual
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">
+                        Save 30%
+                      </Badge>
+                    </span>
+                    <span className="block text-xs text-muted-foreground font-normal">
+                      {annualPriceString}
+                      {hasDiscount && regularAnnualPrice && regularAnnualPrice !== annualPriceString && (
+                        <span className="ml-1 line-through opacity-60">{regularAnnualPrice}</span>
+                      )}
+                    </span>
+                  </button>
+                </div>
+              )}
 
-      {currentTier === "safety_plus" && isNative && (
-        <div className="flex flex-col items-center gap-2 pt-2">
-          <Button
-            variant="outline"
-            className="w-full max-w-md"
-            onClick={handleManage}
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Manage subscription
-          </Button>
-          <p className="text-xs text-muted-foreground text-center max-w-md">
-            Opens the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"} subscription
-            settings — cancel, change plan or update your payment method there.
-          </p>
-        </div>
-      )}
+              {/* Selected price */}
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold">{selectedPriceString}</span>
+                {hasDiscount && (
+                  <span className="text-base text-muted-foreground line-through">
+                    {effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice}
+                  </span>
+                )}
+              </div>
+              {effectiveBilling === "annual" && (
+                <p className="text-xs text-muted-foreground -mt-2">Billed annually — 4 months free vs. monthly.</p>
+              )}
+
+              {/* CTA */}
+              <Button
+                disabled={!isNative || !selectedPackage || busy}
+                className="w-full"
+                onClick={handleUpgrade}
+              >
+                {busy ? <Loader2 className="h-4 w-4 mr-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                {isNative ? `Upgrade — ${selectedPriceString}` : "Upgrade — mobile only"}
+              </Button>
+              {isNative ? (
+                <button
+                  type="button"
+                  onClick={handleRestore}
+                  disabled={busy}
+                  className="text-xs text-muted-foreground underline w-full text-center"
+                >
+                  Restore purchases
+                </button>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center">
+                  No payment can be made on this screen. Your plan stays Free on web.
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
