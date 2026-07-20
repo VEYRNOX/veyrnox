@@ -61,26 +61,33 @@ export async function fetchAssetAmount(asset, addr) {
   if (asset && asset.family === 'erc20' && isDeniabilitySessionActive()) {
     throw new Error('I3: no egress in deniability session');
   }
+  // FLAG IND-1 fix: a read that RESOLVES to a non-finite value (a provider returning
+  // undefined/NaN without throwing) must be treated as indeterminate — NOT folded to a
+  // confident 0. `Number(undefined) || 0` was silently showing $0 for an unknown
+  // balance, which for a wallet reads as "your funds are gone". `finite()` returns the
+  // number when it is genuinely finite, else null, so the read joins the same
+  // indeterminate path as a thrown error (callers key off `amount === null`).
+  const finite = (n) => (Number.isFinite(n) ? n : null);
   try {
     if (!asset || !addr) return 0;
     if (asset.family === 'evm') {
       if (!addr.evm) return 0;
-      return Number(await getBalanceEth(asset.chain, addr.evm)) || 0;
+      return finite(Number(await getBalanceEth(asset.chain, addr.evm)));
     }
     if (asset.family === 'erc20') {
       if (!addr.evm) return 0;
       const token = getToken(asset.chain, asset.symbol);
       const c = new Contract(token.address, ERC20_ABI, getProvider(asset.chain));
       const raw = await c.balanceOf(addr.evm);
-      return Number(formatUnits(raw, token.decimals)) || 0;
+      return finite(Number(formatUnits(raw, token.decimals)));
     }
     if (asset.family === 'btc') {
       if (!addr.btc) return 0;
-      return Number(await getBalanceSats(asset.chain, addr.btc)) / 1e8 || 0;
+      return finite(Number(await getBalanceSats(asset.chain, addr.btc)) / 1e8);
     }
     if (asset.family === 'solana') {
       if (!addr.sol) return 0;
-      return Number(await getBalanceSol(asset.chain, addr.sol)) || 0;
+      return finite(Number(await getBalanceSol(asset.chain, addr.sol)));
     }
     return 0;
   } catch (err) {

@@ -6,7 +6,7 @@
 // NEVER summed as 0. These green tests LOCK that good behavior so it can't regress
 // into a silent understatement. One narrow fail-open edge is flagged (FLAG IND-1).
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { sumPortfolioTotal } from '@/lib/portfolioBalances';
@@ -43,13 +43,36 @@ describe('fetchAssetAmount — source contract: catch → null (not 0)', () => {
     expect(src).toContain('return null; // read FAILED → indeterminate');
   });
 
-  // FLAG IND-1 (low) — a read that RESOLVES to a non-finite value (e.g. a provider
-  // returns undefined/NaN without throwing) is folded to 0 by `Number(x) || 0`,
-  // rather than being treated as indeterminate. The catch only covers THROWN errors.
-  it.fails('IDEAL: a resolved-but-non-finite balance is treated as indeterminate, not 0', () => {
-    // Ideal guard would be `Number.isFinite(n) ? n : null`; today the EVM/erc20/btc/
-    // sol branches end in `|| 0`, so NaN → 0.
+  // FLAG IND-1 (FIXED) — a read that RESOLVES to a non-finite value (a provider
+  // returning undefined/NaN without throwing) must be treated as indeterminate, not
+  // folded to a confident 0. Previously `Number(undefined) || 0` → 0, so an unknown
+  // balance rendered as $0 — which for a wallet reads as "your funds are gone".
+  // Now guarded by `finite(n) = Number.isFinite(n) ? n : null`.
+  it('source: the fetch branches guard non-finite reads via Number.isFinite, not `|| 0`', () => {
     expect(src).toMatch(/Number\.isFinite/);
-    expect(src).not.toMatch(/\)\s*\|\|\s*0;/);
+    // The four provider reads must no longer end in `|| 0` (which folds NaN to 0).
+    // (The aggregation `entry.total || 0` in sumPortfolioTotal is a separate, correct
+    // guard on already-classified data and is intentionally not matched here.)
+    expect(src).not.toMatch(/await getBalance\w+\([^)]*\)\)\s*\|\|\s*0/);
+    expect(src).not.toMatch(/formatUnits\([^)]*\)\)\s*\|\|\s*0/);
+  });
+
+  it('behaviour: a provider that resolves to a non-finite value yields null (indeterminate)', async () => {
+    // Prove the actual return contract, not just the source shape. A provider that
+    // resolves undefined/NaN without throwing must produce null so callers
+    // (byWallet[...].indeterminate = amount === null) mark the total incomplete.
+    // Mock ONLY getBalanceEth; every other import stays real (importOriginal).
+    vi.resetModules();
+    vi.doMock('@/wallet-core/evm/provider.js', async (importOriginal) => ({
+      ...(await importOriginal()),
+      getBalanceEth: async () => undefined,   // resolves, does NOT throw
+    }));
+    const mod = await import('@/lib/portfolioBalances');
+    const amount = await mod.fetchAssetAmount(
+      { family: 'evm', chain: 'ethereum', symbol: 'ETH' },
+      { evm: '0x0000000000000000000000000000000000000001' },
+    );
+    vi.doUnmock('@/wallet-core/evm/provider.js');
+    expect(amount).toBeNull(); // indeterminate — NOT 0
   });
 });
