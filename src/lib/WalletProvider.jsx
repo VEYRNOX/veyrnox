@@ -1993,6 +1993,47 @@ export function WalletProvider({ children }) {
   // validates) — if they matched, the primary unlock would win and the decoy
   // would never open. These never touch networks/signing: testnet-safe.
   const setDuressPin = useCallback(async (duressPassword, strength = 128) => {
+    // ── H-3 (HIGH): a pre-existing REAL-PIN biometric cache MUST NOT survive
+    // duress setup. ────────────────────────────────────────────────────────────
+    // On native, WalletEntry defaults the onboarding biometric offer to ON
+    // (WalletEntry.jsx: `if (s?.available && Capacitor.isNativePlatform())
+    // setBioEnabled(true)`), so the REAL PIN is cached behind Face ID for every
+    // native device by default. Before this clear, configuring a Duress PIN
+    // provisioned the decoy vault and left that cache untouched — so a coercer
+    // saying "just use Face ID" opened the REAL wallet, the exact inverse of what
+    // this feature promises (I3 real-vs-decoy failure at the coercion boundary;
+    // I4 because the duress screen's copy stated the opposite).
+    //
+    // We therefore force the device back to PIN-ONLY here. If the user opted into
+    // "Face ID opens the Emergency wallet", the caller re-provisions the cache
+    // IMMEDIATELY afterwards via enableDecoyBiometricUnlock(duressPin), which
+    // re-stores the DURESS secret and flips the preference back on. Net effect:
+    // after setting a duress PIN, one-tap biometric unlock either opens the DECOY
+    // or does not work at all — it can never open the real wallet.
+    //
+    // FAIL CLOSED (I4): this runs BEFORE setDuressVault and deliberately does NOT
+    // swallow errors. If the secure store refuses to drop the cached secret we
+    // must not provision a decoy, because that would leave the user believing a
+    // duress PIN protects them while the real PIN is still released by Face ID.
+    // No decoy vault is written, so the failure leaves no half-configured state.
+    // The preference is dropped BEFORE the store clear (a localStorage write that
+    // cannot realistically fail) so that even on a secure-store failure the entry
+    // screen stops offering one-tap unlock. HONEST RESIDUAL: a hard secure-store
+    // failure leaves the cached secret itself at rest — JS cannot force its
+    // removal — so we abort loudly rather than pretend the clear succeeded.
+    //
+    // DENIABILITY: this is not a new tell. It runs only inside an unlocked REAL
+    // session (the duress-setup screen), touches nothing on the unlock path, and
+    // its observable end state — "no cached secret, biometric pref off" — is
+    // byte-for-byte the state of a device that simply never enabled Face ID. The
+    // ambiguous-looking state is the one we are removing, not creating.
+    setBiometricUnlockEnabled(false);
+    await clearUnlockSecret();
+    // Any lingering "the biometric pref was flipped on for the decoy" marker is
+    // now stale — the cache it described is gone. enableDecoyBiometricUnlock
+    // re-sets it if the user re-arms Face-ID-for-decoy on this pass.
+    try { localStorage.removeItem(DECOY_BIOMETRIC_MARKER_KEY); } catch { /* best-effort */ }
+
     const decoyMnemonic = generateMnemonic(/** @type {128|256} */ (strength));
     // H2: the decoy is wrapped in a FIXED-LENGTH container that CAN carry its own
     // Action-Password record. We provision it WITHOUT one (null) — the decoy's second

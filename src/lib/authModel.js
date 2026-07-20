@@ -59,10 +59,16 @@ export function shouldCacheUnlockSecret({ authModel, biometricEnabled }) {
  * That was broken since the PIN-cohort chaff-provisioning design: every PIN device
  * provisions a chaff blob into the `secondary` (duress) IndexedDB slot at onboarding
  * (provisionChaff.js) so that all devices are structurally identical — meaning
- * `hasDuressVault()` ALWAYS returns true and the auto-cache NEVER fired. The
- * `alreadyCached` guard is sufficient: chaff never writes a biometric cache, so
- * `alreadyCached` is false on a fresh device (auto-cache fires correctly); once the
- * user opts into Face-ID→decoy, `alreadyCached` is true (auto-cache blocked correctly).
+ * `hasDuressVault()` ALWAYS returns true and the auto-cache NEVER fired.
+ *
+ * H-3 CORRECTION: `alreadyCached` alone is NOT sufficient, and an earlier version of
+ * this comment wrongly said it was. It only covers the decoy-cached-FIRST ordering.
+ * In the reverse (and default) ordering — biometric armed at onboarding, so the REAL
+ * PIN is cached, THEN a Duress PIN is configured — `alreadyCached` blocks nothing that
+ * matters, and Face ID kept opening the REAL wallet under coercion. That ordering is
+ * closed in WalletProvider.setDuressPin, which force-clears the cache and turns the
+ * biometric preference off; `biometricEnabled` is then false here. The two guards are
+ * complementary and BOTH are load-bearing — do not remove either.
  *
  * @param {{biometricEnabled: boolean, alreadyCached: boolean}} ctx
  * @returns {boolean}

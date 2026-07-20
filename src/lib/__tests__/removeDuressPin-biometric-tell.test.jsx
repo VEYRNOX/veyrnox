@@ -75,12 +75,27 @@ describe('removeDuressPin clears the decoy-only biometric pref (D-05)', () => {
     expect(isBiometricUnlockEnabled()).toBe(false);
   });
 
-  it('leaves veyrnox-biometric-unlock ON when the PRIMARY wallet uses biometric unlock', async () => {
+  // H-3 CORRECTION. This case previously armed the primary's biometric unlock and
+  // THEN set the duress PIN, asserting the pref survived. That ordering is exactly
+  // the coercion bypass H-3 fixed: it left the REAL PIN cached behind Face ID after
+  // a duress PIN was configured. setDuressPin now always disarms, so the pref can
+  // only be ON afterwards if the user consciously re-armed it — which is what this
+  // case now models. D-05's actual property (no lingering decoy-only tell) is
+  // unchanged and still pinned by the case above.
+  it('leaves veyrnox-biometric-unlock ON when the PRIMARY re-arms biometric unlock after duress setup', async () => {
     await renderProvider();
     await act(async () => { await ctx.createWallet(REAL_PIN); });
-    // Primary opts into biometric unlock (real pin cached) — independent of any decoy.
     await act(async () => { await ctx.enableBiometricUnlock(REAL_PIN); });
+
     await act(async () => { await ctx.setDuressPin(DURESS_PIN); });
+    // H-3: duress setup disarms one-tap unlock and drops the cached REAL pin.
+    expect(isBiometricUnlockEnabled()).toBe(false);
+    expect(_cache).toBeNull();
+
+    // The user then consciously re-arms biometric unlock for the real wallet in
+    // Settings. No decoy marker is written, so this is the "primary independently
+    // configured biometric" state D-05 cares about.
+    await act(async () => { await ctx.enableBiometricUnlock(REAL_PIN); });
     expect(isBiometricUnlockEnabled()).toBe(true);
 
     await act(async () => { await ctx.removeDuressPin(); });

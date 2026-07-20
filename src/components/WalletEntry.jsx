@@ -754,13 +754,26 @@ export default function WalletEntry() {
       // CRITICAL (I3/I4): the convenience cache write happens ONLY AFTER a successful
       // unlock (a MIS-TYPED PIN is never cached — the old pre-unlock write cached
       // garbage and popped a spurious OS enroll sheet on a wrong PIN), and ONLY when
-      // shouldAutoCacheTypedPin allows it. With NO duress vault this caches the typed
-      // (real) PIN — the sanctioned primary Face-ID flow (see removeDuressPin's
-      // re-enable path). Once a DURESS vault exists it never caches: the decoy cache
-      // is provisioned explicitly in the Duress PIN screen (enableDecoyBiometricUnlock),
-      // never here — auto-caching the typed REAL PIN would make one-tap Face ID open
-      // the REAL wallet, defeating Face-ID-to-decoy. We never overwrite an existing
-      // cache, and duress-presence-unknown FAILS CLOSED (treated as duress present).
+      // shouldAutoCacheTypedPin allows it — which today means: biometric unlock is ON
+      // and NOTHING is cached yet. This is the sanctioned primary Face-ID flow (see
+      // removeDuressPin's re-enable path).
+      //
+      // WHAT ACTUALLY GUARDS THE DECOY (corrected — the old wording here described a
+      // guard that no longer exists). shouldAutoCacheTypedPin has NOT checked
+      // duress-presence since 88c921c7 (PR #714): PIN-cohort chaff provisioning writes
+      // a blob into the duress slot on every device, so hasDuressVault() is always true
+      // and a duress-presence check would have disabled auto-caching universally. There
+      // is no "fails closed to duress-present" behaviour left. Two guards do the work
+      // instead:
+      //   1. `alreadyCached` (here) — once the Duress PIN screen has cached the DECOY
+      //      secret via enableDecoyBiometricUnlock, this never overwrites it with the
+      //      typed REAL PIN.
+      //   2. WalletProvider.setDuressPin (H-3) — configuring a Duress PIN force-clears
+      //      any pre-existing cache AND turns the biometric preference OFF, so the
+      //      `isBiometricUnlockEnabled()` test below is false on the next real-PIN
+      //      unlock and this block does not run at all. Guard 1 alone did NOT cover
+      //      that ordering (real PIN cached first, duress configured later), which is
+      //      exactly the coercion bypass H-3 fixed.
       if (isBiometricUnlockEnabled()) {
         const alreadyCached = await hasStoredUnlockSecret().catch(() => false);
         if (shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached })) {

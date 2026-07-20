@@ -52,12 +52,14 @@ vi.mock('@/api/demoClient', () => ({ DEMO: false }));
 
 // Default: biometrics AVAILABLE so the opt-in renders. Overridden per-test.
 // vi.hoisted so the spy exists when the (hoisted) vi.mock factory runs.
-const { getBiometricStatus } = vi.hoisted(() => ({
+const { getBiometricStatus, isBiometricUnlockEnabled } = vi.hoisted(() => ({
   getBiometricStatus: vi.fn(async () => ({
     mode: 'native', available: true, label: 'Face ID', simulated: false, detail: '',
   })),
+  // Default: biometric UNLOCK was not previously armed. H-3 tests flip this on.
+  isBiometricUnlockEnabled: vi.fn(() => false),
 }));
-vi.mock('@/lib/biometric', () => ({ getBiometricStatus }));
+vi.mock('@/lib/biometric', () => ({ getBiometricStatus, isBiometricUnlockEnabled }));
 
 vi.mock('@/lib/authModel', () => ({ getAuthModel: () => 'pin', isPinModel: () => true }));
 
@@ -84,6 +86,7 @@ async function enterBothPins(pin = '24681357') {
 beforeEach(() => {
   mockSetDuressPin.mockClear();
   mockEnableDecoyBiometricUnlock.mockClear();
+  isBiometricUnlockEnabled.mockReturnValue(false);
   getBiometricStatus.mockResolvedValue({
     mode: 'native', available: true, label: 'Face ID', simulated: false, detail: '',
   });
@@ -134,5 +137,43 @@ describe('DuressPin — Face-ID-opens-the-decoy opt-in', () => {
 
     await waitFor(() => expect(mockSetDuressPin).toHaveBeenCalledWith('24681357'));
     expect(mockEnableDecoyBiometricUnlock).not.toHaveBeenCalled();
+  });
+});
+
+// H-3: setDuressPin now force-clears any pre-existing biometric unlock cache, so a
+// user who previously had one-tap unlock armed for the REAL wallet loses it here.
+// The screen must SAY SO (I4) rather than leave copy implying Face ID now opens the
+// decoy — which would be false when the user did not opt in.
+describe('DuressPin — H-3 honest notice when biometric unlock was turned off', () => {
+  it('tells the user Face ID was turned off when it WAS armed and they did NOT opt in', async () => {
+    isBiometricUnlockEnabled.mockReturnValue(true);
+    await renderSettled();
+    await screen.findByTestId('decoy-biometric-optin');
+    await enterBothPins('24681357');
+
+    const notice = await screen.findByTestId('bio-turned-off-notice');
+    const text = notice.textContent.toLowerCase();
+    expect(text).toMatch(/turned off|switched off/);
+    expect(text).toMatch(/face id/);
+  });
+
+  it('does NOT show the notice when the user opted into biometric for the hidden wallet', async () => {
+    isBiometricUnlockEnabled.mockReturnValue(true);
+    await renderSettled();
+    fireEvent.click(await screen.findByTestId('decoy-biometric-optin'));
+    await enterBothPins('24681357');
+
+    await waitFor(() => expect(mockEnableDecoyBiometricUnlock).toHaveBeenCalled());
+    expect(screen.queryByTestId('bio-turned-off-notice')).toBeNull();
+  });
+
+  it('does NOT show the notice when biometric unlock was never armed', async () => {
+    isBiometricUnlockEnabled.mockReturnValue(false);
+    await renderSettled();
+    await screen.findByTestId('decoy-biometric-optin');
+    await enterBothPins('24681357');
+
+    await waitFor(() => expect(mockSetDuressPin).toHaveBeenCalled());
+    expect(screen.queryByTestId('bio-turned-off-notice')).toBeNull();
   });
 });
