@@ -146,7 +146,11 @@ jobs:
 
   web-e2e-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Must exceed setup (~4 min: npm install + playwright install) + the test step's own
+    # 30-min cap + artifact upload. If the JOB budget binds first the runner kills the
+    # job outright, the step timeout never fires, and the `if: always()` upload never
+    # runs — losing the Playwright report, which is the only diagnostic that matters.
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code
@@ -170,7 +174,11 @@ jobs:
       # until the job timeout (run 28734031084). The step timeout is containment only.
       - name: Run Web Deniability E2E Tests
         run: npm run test:e2e
-        timeout-minutes: 20
+        # Raised 20 -> 30 to match the job budget while the suite is brought back under
+        # control (73 tests; workers raised 1 -> 3 in playwright.config.ts). Containment
+        # only — if the suite needs this much wall-clock once it is green, split it
+        # rather than raising the ceiling again.
+        timeout-minutes: 30
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:5173
           VITE_TEST_THROWAWAY_SEED: ${{ secrets.VITE_TEST_THROWAWAY_SEED }}
