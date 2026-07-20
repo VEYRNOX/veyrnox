@@ -42,7 +42,9 @@ const VAULT_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejec
 // Sourced from the git-ignored .env.test (VITE_TEST_THROWAWAY_SEED), loaded via
 // dotenv in playwright.config.ts.
 const THROWAWAY_SEED = process.env.VITE_TEST_THROWAWAY_SEED;
-if (!THROWAWAY_SEED) throw new Error('VITE_TEST_THROWAWAY_SEED not set — see .env.test (loaded via dotenv in playwright.config.ts).');
+// Deliberately NO module-scope throw here — see the note in onboarding.spec.js. A throw
+// at import time aborts Playwright COLLECTION for the entire run, not just this file.
+// The `test.skip(!THROWAWAY_SEED, …)` guard below is the correct mechanism.
 
 async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);

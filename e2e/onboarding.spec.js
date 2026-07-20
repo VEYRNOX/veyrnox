@@ -96,7 +96,10 @@ async function createWalletThroughBackup(page) {
 // (VITE_TEST_THROWAWAY_SEED), loaded via dotenv in playwright.config.ts. Used here
 // purely to exercise the import branch; no funds, no chain interaction.
 const IMPORT_SEED = process.env.VITE_TEST_THROWAWAY_SEED;
-if (!IMPORT_SEED) throw new Error('VITE_TEST_THROWAWAY_SEED not set — see .env.test (loaded via dotenv in playwright.config.ts).');
+// Deliberately NO module-scope throw here. Throwing at import time fails Playwright's
+// COLLECTION step, which aborts the whole run — two specs needing this seed took down
+// all ten and reported "0 tests in 0 files". The `test.skip(!IMPORT_SEED, …)` guard
+// below handles the unset case correctly: those tests skip, everything else still runs.
 
 // Phase 2 (import variant): choose view → "Import an existing seed" → paste phrase →
 // Restore / Import. No seed-backup screen (the user supplied the seed) — imports
