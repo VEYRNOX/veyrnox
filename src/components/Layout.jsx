@@ -22,6 +22,7 @@ import VeyrnoxLogo, { VeyrnoxWordmark } from "./VeyrnoxLogo";
 import { navGroups, groupColor, searchableRoutes } from "@/lib/navigation";
 import { getParentRoute, isFromMoreDrawer } from "@/lib/parentRoute";
 import useRecentPages from "@/hooks/useRecentPages";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNotifications } from "@/notify/useNotifications";
 import NotificationToast from "./NotificationToast";
@@ -179,6 +180,14 @@ export default function Layout() {
     navigate("/notifications");
   }, [markAllSeen, navigate]);
   const { recents } = useRecentPages();
+  // C-1 (I3): the More-drawer "Recent" tiles NAME pages ("Duress PIN", "Stealth
+  // Wallets", "Panic Wipe"), so they must never render in a decoy/hidden/demo
+  // session. useRecentPages already resolves recents to [] there; this is the
+  // belt-and-braces render gate on the coercion-visible surface itself. Live
+  // check (session marker OR persisted demo flag), evaluated each render, and
+  // fail-CLOSED (I4): a throwing check suppresses the block.
+  let recentsAllowed;
+  try { recentsAllowed = !isDeniabilityOrDemoActive(); } catch { recentsAllowed = false; }
   const queryClient = useQueryClient();
   const handleRefresh = async () => {
     await Promise.all([
@@ -546,7 +555,7 @@ export default function Layout() {
           <div className="flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] px-3 pt-3 space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {/* Pinned quick-access + recents */}
             {(() => {
-              return recents.length > 0 && (
+              return recentsAllowed && recents.length > 0 && (
               <div className="rounded-2xl p-2.5 border border-primary/20 bg-primary/5">
                 <div className="flex items-center gap-2 px-1 pb-2">
                   <span className="h-2 w-2 rounded-full shrink-0 bg-primary" />
