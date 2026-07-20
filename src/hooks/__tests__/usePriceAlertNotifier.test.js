@@ -32,8 +32,14 @@ describe('usePriceAlertNotifier — I3 deniability structural guards (source sca
 
   it('the guard precedes the PriceAlert subscribe (no real-set subscription in deniability mode)', () => {
     const firstGuard = code.search(/if\s*\(\s*!isUnlocked\s*\|\|\s*isDecoy/);
+    // Match optional chaining too — the call site is `PriceAlert?.subscribe?.(`.
+    // A literal indexOf('PriceAlert.subscribe') silently returns -1 against that,
+    // which made this assertion fail with the useless message "expected N to be
+    // less than -1" instead of saying the call could not be found at all.
+    const subscribeIdx = code.search(/PriceAlert\??\.subscribe/);
     expect(firstGuard).toBeGreaterThan(-1);
-    expect(firstGuard).toBeLessThan(code.indexOf('PriceAlert.subscribe'));
+    expect(subscribeIdx).toBeGreaterThan(-1); // fail loudly if the call is renamed/removed
+    expect(firstGuard).toBeLessThan(subscribeIdx);
     // the poll effect's egress (fetchMarketPricesUsd usage) is likewise gated —
     // covered by the "short-circuits BOTH effects" count assertion above.
   });
@@ -73,7 +79,9 @@ describe('usePriceAlertNotifier — explicit DEMO gate (source scan)', () => {
 
   it('the DEMO guard precedes the PriceAlert subscribe (no real-set subscription in demo)', () => {
     const demoIdx = code.search(/isHidden\s*\|\|\s*DEMO/);
+    const subscribeIdx = code.search(/PriceAlert\??\.subscribe/); // tolerate `?.`
     expect(demoIdx).toBeGreaterThan(-1);
-    expect(demoIdx).toBeLessThan(code.indexOf('PriceAlert.subscribe'));
+    expect(subscribeIdx).toBeGreaterThan(-1); // fail loudly if the call is renamed/removed
+    expect(demoIdx).toBeLessThan(subscribeIdx);
   });
 });
