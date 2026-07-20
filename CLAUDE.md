@@ -51,9 +51,37 @@ device-verified. Referral system BUILT (4-tier discount model, Supabase server-s
 
 **All 10 assets LIVE** — ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT.
 
+**Play Store: BLOCKED on upload key reset (2026-07-20).** Play has an upload certificate
+registered for `com.veyrnox.app` (`0F:3F:FC:05…:42:C5:26`) that matches **no usable
+keystore**. Three ruled out by fingerprint: the Windows `veyrnox-release.keystore`
+(`6D:F9:D0:DB…`), the newly generated `android/veyrnox-upload.jks` (`CC:3F:16:36…`), and
+CI `KEYSTORE_BASE64` (`5F:5E:B6:E1…`). Two more are **PKCS#12 and unopenable** (certs are
+encrypted in that format, so they cannot even be identified without the password, and
+`S0cR4Te…` fails on both): `android/veyrnox-release.jks` (2730 B) and
+`OneDrive-Personal/Windows Downlad PC/Veyrnox Wallet market/veyrnox-release.keystore`
+(2714 B — a *different* file from the Windows copy above). Either could be the missing
+key, but without its password neither is usable, so the outcome is unchanged. A **reset was
+requested 2026-07-20 and is confirmed pending** (~1–2 business days); on approval
+`veyrnox-upload.jks` becomes the valid upload key. Do NOT generate further keystores.
+Traps for whoever picks this up:
+- The Play **app record already exists** (draft, internal testing, release `3 (1.0.2)`
+  live since Jul 13) — do not create a duplicate.
+- `RELEASE_CERT_SHA256` must be **Google's app signing cert**
+  (`D8:99:69:D5…:44:6C:B9`), NOT either upload key — Play App Signing re-signs the
+  upload, so a Play-installed build otherwise fails RASP `detectTamper` (`tampered:true`).
+- versionCodes are **permanently consumed** per upload (1–3 gone, now 4); deleting a
+  release does not free them. `versionName` is the only customer-visible field — set to
+  **`1.0`** for launch.
+- **Personal** developer account: Google's 12-tester/14-day rule gates **production
+  only**, not internal testing — real Play Billing IS verifiable on the internal track.
+- Data Safety: all 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
+- `veyrnox.com` is a client-rendered SPA — `curl` gives **false negatives** when checking
+  page content; verify by rendering the page.
+
 **Open residuals:** M-1 (EVM key unzeroable, ethers v6), M-6 (iOS bridge H copy),
 #1111 (vault AAD v:3 migration — plan r2 done, implementation blocked on owner decisions),
-LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
+LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding,
+Play upload key reset pending (above).
 
 ## Security invariants
 
