@@ -1,9 +1,20 @@
 # Apple Developer Program — Individual → Organization conversion request
 
-**Status:** DRAFT for owner review. Not yet sent (as of 2026-07-20).
-**Send via:** <https://developer.apple.com/contact/> → Membership & Account → *Change
-account type / Organization enrollment*. (There is no self-serve conversion in the
-account portal — it must go through Developer Program Support.)
+**Status: SENT to Apple Developer Program Support on 2026-07-20**, with the signed
+letter of authority from the director. Awaiting Apple's response — typically 1–3
+business days for a first reply, longer if routed to the enrollment team for entity
+verification.
+
+**Sent via:** <https://developer.apple.com/contact/> → Membership & Account. (There is
+no self-serve conversion in the account portal — it must go through Developer Program
+Support.)
+
+**Apple case/reference number:** _______________ (record it here when Apple replies —
+it makes follow-ups far quicker.)
+
+_Kept as the record of exactly what was claimed to Apple. If Apple asks a follow-up
+question, answer consistently with what is stated below — in particular, Al Jobson is
+CTO and NOT a director; the sole director is Andreea Flavia Cotolan._
 
 > **Before sending, confirm:**
 > 1. ~~D-U-N-S record matches Companies House~~ — **CONFIRMED by owner 2026-07-20.**
