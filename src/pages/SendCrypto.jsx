@@ -1482,6 +1482,16 @@ export default function SendCrypto() {
                 <Input
                   id="send-amount"
                   type="number"
+                  // inputMode="decimal" gives mobile the numeric-with-separator keypad
+                  // (a bare type="number" offers the wrong pad on some Android browsers).
+                  // min="0" + step="any" hint non-negative decimals to the UA; they are a
+                  // UX/keypad layer only — the authoritative rejection of <=0 lives in
+                  // `amountBadValue` above and the base-unit conversion in toBaseUnits,
+                  // so these attributes never become the sole guard (a spoofed DOM can
+                  // still not bypass the JS validation).
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                   placeholder="0.00"
