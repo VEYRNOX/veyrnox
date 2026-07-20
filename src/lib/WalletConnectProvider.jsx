@@ -769,7 +769,15 @@ export function WalletConnectProvider({ children }) {
 
   const handleApproveSession = useCallback(async (proposalId) => {
     const gate = await presignGateOrReject();
-    if (gate && gate.blocked) throw new Error(gate.sentence || 'RASP integrity check failed — session refused');
+    // H-1 (audit 2026-07-20): this read USED to be `gate.blocked` / `gate.sentence`
+    // — properties presignGateOrReject has never returned. It returns
+    // `{ proceedAllowed, rejectCode }` (see :375/:386), so both were permanently
+    // undefined and the check was a no-op: EVERY session approval proceeded
+    // regardless of RASP tier, including a hard BLOCK on a rooted/hooked device.
+    // Read the same shape the three signing handlers read (fail closed, I4).
+    if (!gate.proceedAllowed) {
+      throw new Error(`RASP integrity check failed — session refused (${gate.rejectCode})`);
+    }
     if (!evmAddress) throw new Error('No wallet address — unlock first');
     const proposal = pendingProposals.find((p) => p.id === proposalId);
     if (!proposal) throw new Error('Proposal not found');
