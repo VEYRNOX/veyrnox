@@ -59,7 +59,9 @@ const { getBiometricStatus, isBiometricUnlockEnabled } = vi.hoisted(() => ({
   // Default: biometric UNLOCK was not previously armed. H-3 tests flip this on.
   isBiometricUnlockEnabled: vi.fn(() => false),
 }));
-vi.mock('@/lib/biometric', () => ({ getBiometricStatus, isBiometricUnlockEnabled }));
+vi.mock('@/lib/biometric', () => ({
+  getBiometricStatus, isBiometricUnlockEnabled, setBiometricUnlockEnabled: vi.fn(),
+}));
 
 vi.mock('@/lib/authModel', () => ({ getAuthModel: () => 'pin', isPinModel: () => true }));
 
@@ -175,5 +177,46 @@ describe('DuressPin — H-3 honest notice when biometric unlock was turned off',
 
     await waitFor(() => expect(mockSetDuressPin).toHaveBeenCalled());
     expect(screen.queryByTestId('bio-turned-off-notice')).toBeNull();
+  });
+});
+
+// P2 (I4 fail-honest). enableDecoyBiometricUnlock returns FALSE outside the PIN cohort,
+// when no sensor is available, or when the secure store refuses the write — and it can
+// throw. The screen previously continued silently: the decoy was reported saved, and if
+// biometric unlock had NOT been armed beforehand, NO notice rendered at all, leaving the
+// user believing one-tap opens the Emergency wallet when nothing is bound to it.
+describe('DuressPin — honest notice when the biometric opt-in does not take', () => {
+  it('tells the user when the opt-in returned false and biometric was never armed', async () => {
+    isBiometricUnlockEnabled.mockReturnValue(false);
+    mockEnableDecoyBiometricUnlock.mockResolvedValueOnce(false);
+    await renderSettled();
+    fireEvent.click(await screen.findByTestId('decoy-biometric-optin'));
+    await enterBothPins('24681357');
+
+    const notice = await screen.findByTestId('bio-optin-failed-notice');
+    expect(notice.textContent.toLowerCase()).toMatch(/face id/);
+  });
+
+  it('tells the user when the opt-in THREW (store failure) — decoy still saved', async () => {
+    isBiometricUnlockEnabled.mockReturnValue(false);
+    mockEnableDecoyBiometricUnlock.mockRejectedValueOnce(new Error('secure store unavailable'));
+    await renderSettled();
+    fireEvent.click(await screen.findByTestId('decoy-biometric-optin'));
+    await enterBothPins('24681357');
+
+    await screen.findByTestId('bio-optin-failed-notice');
+    // The decoy itself is still reported saved — the failure is the biometric binding,
+    // not the Emergency PIN, and we must not throw away a provisioned decoy vault.
+    expect(document.body.textContent).toMatch(/Emergency wallet created/);
+  });
+
+  it('shows NO failure notice when the opt-in succeeded', async () => {
+    isBiometricUnlockEnabled.mockReturnValue(false);
+    await renderSettled();
+    fireEvent.click(await screen.findByTestId('decoy-biometric-optin'));
+    await enterBothPins('24681357');
+
+    await waitFor(() => expect(mockEnableDecoyBiometricUnlock).toHaveBeenCalled());
+    expect(screen.queryByTestId('bio-optin-failed-notice')).toBeNull();
   });
 });

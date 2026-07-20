@@ -128,7 +128,9 @@ import { generateServerCode, redeemCode } from '@/api/referralApi';
 // leaves no lingering biometric-unlock tell that a decoy ever existed. It is NOT set
 // when the primary wallet had biometric unlock on independently — that pref is left
 // untouched. Best-effort (a preference, never key material).
-const DECOY_BIOMETRIC_MARKER_KEY = 'veyrnox-decoy-biometric';
+// Single source of truth lives in lib/duressBiometricGuard.js, which also reads it as
+// positive evidence that the biometric cache holds the DECOY secret (H-3 / P1-A).
+import { DECOY_BIOMETRIC_MARKER_KEY } from '@/lib/duressBiometricGuard';
 // BIOMETRIC ONE-TAP UNLOCK CACHE (convenience over the existing vault). Stores
 // the vault password behind the biometric gate so a returning user can unlock
 // with Face ID instead of re-typing it. The password remains THE secret and the

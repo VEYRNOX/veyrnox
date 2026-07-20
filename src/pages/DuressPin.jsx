@@ -44,6 +44,10 @@ import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
 } from "@/lib/decoyBalance";
 import { getBiometricStatus, isBiometricUnlockEnabled } from "@/lib/biometric";
+// H-3: `veyrnox-duress-configured` is the DELIBERATE-configuration signal (chaff-proof,
+// unlike hasDuressVault()). This screen is its only writer; the guard module owns the
+// key and reads it to keep the real PIN out of the biometric unlock cache.
+import { DURESS_CONFIGURED_KEY } from "@/lib/duressBiometricGuard";
 import { getNetworkInfo } from "@/wallet-core/evm/networks";
 import {
   Shield, AlertTriangle, Lock, Unlock, FlaskConical,
@@ -129,6 +133,11 @@ export default function DuressPin() {
   // When the user did NOT opt into biometric-for-the-hidden-wallet, that leaves the
   // device on PIN-only — and the screen must say so instead of implying the opposite.
   const [bioTurnedOff, setBioTurnedOff] = useState(false);
+  // I4 (P2): set when the user ticked "use {bioLabel} for the Emergency wallet" but the
+  // re-arm did not take. Without this the decoy was reported saved and, if biometric
+  // unlock had not been armed before, NO notice rendered at all — the user would think
+  // one-tap opens the Emergency wallet when nothing is bound.
+  const [bioOptInFailed, setBioOptInFailed] = useState(false);
   const bioLabel = bioStatus?.label || "Face ID";
   useEffect(() => {
     let active = true;
@@ -147,7 +156,6 @@ export default function DuressPin() {
 
   const [removingDuress, setRemovingDuress] = useState(false);
 
-  const DURESS_CONFIGURED_KEY = 'veyrnox-duress-configured';
   const [duressEnabled, setDuressEnabled] = useState(
     () => { try { return localStorage.getItem(DURESS_CONFIGURED_KEY) === '1'; } catch { return false; } }
   );
@@ -193,7 +201,8 @@ export default function DuressPin() {
 
   // ----- setup handlers -----
   const handleSave = async () => {
-    setError(""); setSavedPhrase(""); setSavedAddr(""); setBioTurnedOff(false);
+    setError(""); setSavedPhrase(""); setSavedAddr("");
+    setBioTurnedOff(false); setBioOptInFailed(false);
     if (pin.length < 8) { setError("Emergency PIN must be exactly 8 digits"); return; }
     if (pin !== confirmPin) { setError("PINs do not match"); return; }
     // CRITICAL: configuring the decoy/duress system is gated behind the second
@@ -218,12 +227,21 @@ export default function DuressPin() {
         // by the user's checkbox. The real wallet still needs the typed real PIN.
         let rearmed = false;
         if (useBioForDecoy && enableDecoyBiometricUnlock) {
-          rearmed = await enableDecoyBiometricUnlock(pin);
+          // Best-effort: a failure here must not lose the decoy the user just made.
+          // It MUST, however, be reported — see setBioOptInFailed below (I4).
+          try { rearmed = await enableDecoyBiometricUnlock(pin); }
+          catch { rearmed = false; }
         }
         // H-3 honesty: biometric unlock was armed, and nothing re-armed it → the
         // device is now PIN-only. Say so plainly rather than leaving the user to
         // discover the one-tap button is gone.
         setBioTurnedOff(bioWasArmed && !rearmed);
+        // I4 (P2): the user ASKED for "{bioLabel} opens the Emergency wallet" and it
+        // did not happen (unsupported cohort, no sensor, or a store failure). Silently
+        // marking the decoy saved would leave them believing a protection is in place
+        // that is not — and when biometric unlock was not previously armed, the notice
+        // above would not render at all, so nothing would be said.
+        setBioOptInFailed(useBioForDecoy && !rearmed);
         try { localStorage.setItem(DURESS_CONFIGURED_KEY, '1'); } catch { /* best-effort */ }
         setDuressEnabled(true);
         setSavedPhrase(mnemonic);
@@ -464,7 +482,25 @@ export default function DuressPin() {
                 is rendered inside the already-visible "PIN saved" panel, so it
                 adds no information a coercer could not already read off this
                 screen. See WalletProvider.setDuressPin for the security rationale. */}
-            {bioTurnedOff && (
+            {/* I4 (P2). The user asked for one-tap → Emergency wallet and it did not
+                take. Never report the decoy as fully configured when part of what they
+                chose silently failed. Same wording discipline as the notice below: it
+                names only the sign-in method, on a screen that is already fully
+                revealing, so it adds no information a coercer could not already read. */}
+            {bioOptInFailed && (
+              <div
+                data-testid="bio-optin-failed-notice"
+                className="flex gap-2 rounded-lg border border-caution/30 bg-caution/10 p-2.5"
+              >
+                <Fingerprint className="h-3.5 w-3.5 shrink-0 text-caution mt-0.5" />
+                <p className="text-caution">
+                  {bioLabel} could not be set up for this wallet. Sign in with your PIN — the
+                  Emergency PIN still works. You can try {bioLabel} again in Security settings.
+                </p>
+              </div>
+            )}
+
+            {bioTurnedOff && !bioOptInFailed && (
               <div
                 data-testid="bio-turned-off-notice"
                 className="flex gap-2 rounded-lg border border-caution/30 bg-caution/10 p-2.5"

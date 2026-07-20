@@ -56,6 +56,9 @@ vi.mock('@/lib/biometric', async (orig) => {
 import { WalletProvider, useWallet } from '@/lib/WalletProvider';
 import { setAuthModel, clearAuthModel } from '@/lib/authModel';
 import { isBiometricUnlockEnabled, setBiometricUnlockEnabled } from '@/lib/biometric';
+import {
+  DURESS_CONFIGURED_KEY, enforceDuressBiometricInvariant,
+} from '@/lib/duressBiometricGuard';
 
 // 12-char minimum enforced by H-A (validateWebVaultPassword) on web mainnet builds.
 const REAL_PIN = '135724680000';
@@ -241,5 +244,82 @@ describe('H-3: setDuressPin clears a pre-existing REAL-PIN biometric cache', () 
     // Aborting loudly is the honest response; this assertion documents the limit
     // rather than pretending the clear succeeded.
     expect(_cache).toBe(REAL_PIN);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// H-3 / P1-A — the INSTALLED BASE. setDuressPin's clear only protects users who
+// configure duress AFTER the fix ships. A user who already had an Emergency PIN
+// still has the REAL pin cached behind Face ID, so a coerced "just use Face ID"
+// still opens the REAL wallet. enforceDuressBiometricInvariant() is the mount/start
+// re-check that closes it. These cases are BEHAVIOURAL: they run the real unlock
+// routing and assert what a coercer actually gets.
+// ---------------------------------------------------------------------------
+describe('H-3 (P1-A): installed-base guard disarms a REAL-pin cache', () => {
+  it('(j) pre-existing duress + armed biometric + REAL pin cached → guard disarms; Face ID opens nothing', async () => {
+    await renderProvider();
+    await act(async () => { await ctx.createWallet(REAL_PIN); });
+    await act(async () => { await ctx.setDuressPin(DURESS_PIN); });
+    // Re-create the SHIPPED pre-fix state: the real PIN cached behind an armed
+    // biometric gate while a duress PIN is configured. (Pre-fix, setDuressPin left
+    // exactly this behind; here we rebuild it explicitly.)
+    await act(async () => { await ctx.enableBiometricUnlock(REAL_PIN); });
+    localStorage.setItem(DURESS_CONFIGURED_KEY, '1');
+    expect(_cache).toBe(REAL_PIN);
+    expect(isBiometricUnlockEnabled()).toBe(true);
+
+    await act(async () => { await enforceDuressBiometricInvariant(); });
+
+    expect(isBiometricUnlockEnabled()).toBe(false);
+    expect(_cache).toBeNull();
+
+    // The operative assertion: a coerced Face-ID tap opens nothing at all.
+    await act(async () => { ctx.lock(); });
+    let threw = null;
+    await act(async () => {
+      try { await ctx.unlockWithBiometric(); } catch (e) { threw = e; }
+    });
+    expect(threw).toBeTruthy();
+    expect(ctx.isUnlocked).toBe(false);
+
+    // …and the REAL pin still opens the real wallet (no lockout, I4).
+    await act(async () => { await ctx.unlock(REAL_PIN); });
+    expect(ctx.isUnlocked).toBe(true);
+    expect(ctx.isDecoy).toBe(false);
+  });
+
+  it('(k) duress + biometric legitimately bound to the DECOY → guard leaves it; Face ID still opens the decoy', async () => {
+    await renderProvider();
+    await act(async () => { await ctx.createWallet(REAL_PIN); });
+    await act(async () => { await ctx.setDuressPin(DURESS_PIN); });
+    await act(async () => { await ctx.enableDecoyBiometricUnlock(DURESS_PIN); });
+    localStorage.setItem(DURESS_CONFIGURED_KEY, '1');
+    expect(_cache).toBe(DURESS_PIN);
+
+    await act(async () => { await enforceDuressBiometricInvariant(); });
+
+    expect(isBiometricUnlockEnabled()).toBe(true);
+    expect(_cache).toBe(DURESS_PIN);
+
+    await act(async () => { ctx.lock(); });
+    await act(async () => { await ctx.unlockWithBiometric(); });
+    expect(ctx.isUnlocked).toBe(true);
+    expect(ctx.isDecoy).toBe(true);
+  });
+
+  it('(l) no duress configured → guard is a no-op; primary Face ID keeps working', async () => {
+    await renderProvider();
+    await act(async () => { await ctx.createWallet(REAL_PIN); });
+    await act(async () => { await ctx.enableBiometricUnlock(REAL_PIN); });
+
+    await act(async () => { await enforceDuressBiometricInvariant(); });
+
+    expect(isBiometricUnlockEnabled()).toBe(true);
+    expect(_cache).toBe(REAL_PIN);
+
+    await act(async () => { ctx.lock(); });
+    await act(async () => { await ctx.unlockWithBiometric(); });
+    expect(ctx.isUnlocked).toBe(true);
+    expect(ctx.isDecoy).toBe(false);
   });
 });

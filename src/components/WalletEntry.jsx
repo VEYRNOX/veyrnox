@@ -95,6 +95,7 @@ import {
   getBiometricStatus,
 } from "@/lib/biometric";
 import { hasStoredUnlockSecret, clearUnlockSecret } from "@/lib/biometricUnlock";
+import { enforceDuressBiometricInvariant, isDuressConfigured } from "@/lib/duressBiometricGuard";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel, shouldAutoCacheTypedPin } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
@@ -612,6 +613,17 @@ export default function WalletEntry() {
         const entry = resolveOnboardingEntry({ hasVault: v });
         setView(entry);
         if (entry === "pin-create") { setRealPin(""); setRealPinConfirm(""); setPinStep("real"); }
+        // H-3 / P1-A — INSTALLED-BASE UPGRADE GUARD. setDuressPin's clear only
+        // protects users who configure duress AFTER that fix shipped. A user who
+        // already had an Emergency PIN still has the REAL PIN cached behind an armed
+        // biometric gate, so a coerced "just use Face ID" still opens the REAL wallet.
+        // This cold lock-screen mount is the natural re-check point: it runs before we
+        // decide whether to OFFER one-tap unlock, so a disarmed device never shows the
+        // button. Idempotent, never throws, and a ZERO-WRITE no-op for any device with
+        // no duress PIN deliberately configured — see lib/duressBiometricGuard.js for
+        // the full deniability reasoning and the honest residual gaps.
+        try { await enforceDuressBiometricInvariant(); } catch { /* never block the lock screen */ }
+        if (!active) return;
         if (v && isBiometricUnlockEnabled()) {
           try { setBioReady(await hasStoredUnlockSecret()); }
           catch { setBioReady(false); }
@@ -774,9 +786,18 @@ export default function WalletEntry() {
       //      unlock and this block does not run at all. Guard 1 alone did NOT cover
       //      that ordering (real PIN cached first, duress configured later), which is
       //      exactly the coercion bypass H-3 fixed.
+      //   3. `duressConfigured` (H-3 / P1-B) — guard 2 is a one-shot at duress-setup
+      //      time. If the pref is ever ON again while a duress PIN is configured (the
+      //      pre-fix installed base, or a user re-enabling biometric unlock in
+      //      Settings), guards 1+2 would let this block silently re-cache the REAL PIN
+      //      and re-create the coercion bypass. So the duress guard is restored here —
+      //      keyed on `veyrnox-duress-configured` (deliberate configuration), NOT on
+      //      hasDuressVault(), which chaff makes permanently true (the PR #714 bug).
       if (isBiometricUnlockEnabled()) {
         const alreadyCached = await hasStoredUnlockSecret().catch(() => false);
-        if (shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached })) {
+        if (shouldAutoCacheTypedPin({
+          biometricEnabled: true, alreadyCached, duressConfigured: isDuressConfigured(),
+        })) {
           try { await enableBiometricUnlock(pin); } catch { /* best-effort; non-fatal */ }
         }
       }
