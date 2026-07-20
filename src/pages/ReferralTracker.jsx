@@ -116,22 +116,45 @@ export default function ReferralTracker() {
   const [redeemError, setRedeemError] = useState('');
   const [redeemBusy, setRedeemBusy] = useState(false);
   const [syncedAt, setSyncedAt] = useState(null);
+  const [syncFailed, setSyncFailed] = useState(false);
   const [earnings, setEarnings] = useState(null);
 
+  // K-2: fetchStatus / fetchPaidCount / fetchEarnings each return `null` on THREE
+  // distinct conditions — supabase unconfigured, isDeniabilityOrDemoActive() true
+  // (the I3 guard), and any thrown error. `null` is therefore NOT distinguishable
+  // from a genuine zero, and must never be coerced to 0: applyRedemption() writes
+  // unconditionally into the shared `veyrnox-referral` localStorage key, so a
+  // transient outage — or merely opening this page in a decoy/demo session —
+  // would permanently wipe the user's real cached tier/count and present the wipe
+  // as a successful sync.
+  //
+  // Fail-closed on the PARTIAL case too (one read ok, the other null): the two
+  // counts are written together as one state object, so applying a fresh
+  // rawCount alongside a stale/absent paidCount (or vice versa) would persist a
+  // mismatched pair and derive the wrong tier from it. Bailing leaves the last
+  // known-good state intact, which is the honest fallback (I4).
+  //
+  // The on-screen message is deliberately identical for every cause. A
+  // decoy/demo session hits the same bail; a message that distinguished
+  // "deniability session" from "service unreachable" would be a deniability tell.
   const syncCount = useCallback(async () => {
     const [statusData, paid, earningsData] = await Promise.all([
       fetchStatus(code),
       fetchPaidCount(code),
       fetchEarnings(code),
     ]);
-    const rawCount = statusData?.count ?? 0;
-    const paidSubs = paid ?? 0;
-    const result = applyRedemption(rawCount, paidSubs);
+    const rawCount = statusData?.count;
+    if (typeof rawCount !== 'number' || typeof paid !== 'number') {
+      setSyncFailed(true);
+      return;
+    }
+    const result = applyRedemption(rawCount, paid);
     setInviteCount(rawCount);
     setPaidCount(result.paidCount);
     setTier(result.tier);
     setCommission(result.commission);
     setExternalEligible(result.externalEligible);
+    setSyncFailed(false);
     setSyncedAt(new Date());
     if (earningsData && earningsData.length > 0) {
       setEarnings(calculateEarnings(earningsData));
@@ -239,12 +262,17 @@ export default function ReferralTracker() {
             </span>
           </div>
         )}
-        {syncedAt && (
+        {syncFailed && (
+          <p className="text-[10px] text-caution" role="status">
+            Couldn&rsquo;t reach the referral service. Showing your last known figures.
+          </p>
+        )}
+        {!syncFailed && syncedAt && (
           <p className="text-[10px] text-muted-foreground">
             Last synced {syncedAt.toLocaleTimeString()}
           </p>
         )}
-        {!syncedAt && (
+        {!syncFailed && !syncedAt && (
           <p className="text-[10px] text-muted-foreground">Syncing…</p>
         )}
       </div>
