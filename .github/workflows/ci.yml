@@ -154,6 +154,32 @@ jobs:
       # that disables the entire RASP pre-sign integrity gate.
       - run: npm run check:rasp-bypass
       - run: npm run build
+
+  # Unit tests run in their OWN job, deliberately NOT inside `verify`.
+  #
+  # WHY: steps in a job are fail-fast, so when `verify` ran the suite as its last
+  # step, ANY earlier gate failing (lint, typecheck, a policy check) aborted the job
+  # before `npm test` executed — and the entire 3.7k-test result silently vanished.
+  # A red `verify` could not be distinguished from "tests never ran".
+  #
+  # That is exactly how #1236 landed: it failed `npm run typecheck`, so the two unit
+  # tests it broke never reported, it was merged with `verify` red, and main stayed
+  # red on unit tests undetected until #1267 fixed them a day later.
+  #
+  # Keeping this separate means lint/typecheck and the test suite give INDEPENDENT
+  # signal, neither can mask the other, and they run in parallel. Require BOTH in
+  # branch protection.
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      # Lockfile is authored with npm 11; Node 22 ships npm 10, which rejects it.
+      - run: npm install -g npm@11
+      - run: npm install --legacy-peer-deps
       - run: npm test
 
   android-unit-tests:
