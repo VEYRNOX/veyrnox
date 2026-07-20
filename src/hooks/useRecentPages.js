@@ -12,7 +12,10 @@
 //      including entries a prior REAL session had already written. The read gate is
 //      evaluated on every render, so a mid-session flip to decoy suppresses an
 //      already-loaded list immediately. Fail CLOSED (I4): if the check throws we
-//      treat the session as deniability-active and suppress.
+//      treat the session as deniability-active and suppress. The gate also
+//      ERASES the key outright (P2-1) — masking alone left a real session's
+//      entries readable in tab storage on the `veyrnox-demo=1` path, where no
+//      APP_LOCK_EVENT ever fires.
 //   2. clear() is wired to APP_LOCK_EVENT (lib/copySecret.js), which
 //      WalletProvider.lock() dispatches — so recents are dropped on lock rather
 //      than surviving into the next unlock of the same tab.
@@ -52,9 +55,34 @@ function readRecents() {
   } catch { return []; }
 }
 
+/**
+ * P2-1: masking is not erasing. The gate below hides recents and blocks new
+ * writes, but an entry a prior REAL session already wrote stayed in
+ * sessionStorage — and nothing removes it unless APP_LOCK_EVENT fires. The
+ * persisted `veyrnox-demo=1` / `?demo=1` path never fires a lock, so the
+ * incriminating key ('/duress-pin', '/stealth-wallets', '/panic-wipe') remained
+ * observable to anything with tab-storage access for the life of the tab.
+ * Idempotent and non-throwing: a storage that refuses the removal leaves the
+ * masking gate as the (weaker) remaining defence rather than crashing the shell.
+ */
+function eraseRecents() {
+  try { sessionStorage.removeItem(KEY); } catch { /* masking gate still applies */ }
+}
+
 export default function useRecentPages() {
   const location = useLocation();
   const [recents, setRecents] = useState(() => (deniabilityActive() ? [] : readRecents()));
+
+  // P2-1: ERASE on every render while the session is deniability/demo — not just
+  // on APP_LOCK_EVENT, which never fires on the persisted `veyrnox-demo=1` path.
+  // Deliberately dependency-free so a mid-mount flip to a decoy session is caught
+  // on the very next render. setRecents returns the SAME array reference when it
+  // is already empty, so this cannot loop.
+  useEffect(() => {
+    if (!deniabilityActive()) return;
+    eraseRecents();
+    setRecents((prev) => (prev.length === 0 ? prev : []));
+  });
 
   useEffect(() => {
     // I3: a decoy/hidden/demo session must leave no navigation trace.
@@ -70,7 +98,7 @@ export default function useRecentPages() {
 
   const clear = useCallback(() => {
     setRecents([]);
-    try { sessionStorage.removeItem(KEY); } catch {}
+    eraseRecents();
   }, []);
 
   // Drop recents the instant the wallet locks (panic, duress, idle, manual).

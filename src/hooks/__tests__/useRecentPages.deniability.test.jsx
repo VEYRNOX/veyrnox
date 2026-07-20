@@ -89,6 +89,69 @@ describe('useRecentPages — I3 deniability gate (C-1)', () => {
   });
 });
 
+// P2-1: masking is not erasing. Without an APP_LOCK_EVENT (notably the persisted
+// `veyrnox-demo=1` / `?demo=1` path, where no lock ever fires) the incriminating
+// sessionStorage key stayed on disk-for-the-tab and was readable by anything with
+// tab-storage access. The gate must ERASE it, not merely hide it.
+describe('useRecentPages — erases (not just masks) recents in a deniability session', () => {
+  it('removes a pre-existing real-session key on mount in a deniability session', () => {
+    window.sessionStorage.setItem(
+      KEY,
+      JSON.stringify(['/duress-pin', '/stealth-wallets', '/panic-wipe']),
+    );
+    deniability.active = true;
+
+    const { result } = renderHook(() => useRecentPages());
+
+    expect(result.current.recents).toEqual([]);
+    expect(window.sessionStorage.getItem(KEY)).toBeNull();
+  });
+
+  it('removes the key when the session flips to deniability mid-mount', () => {
+    const { result, rerender } = renderHook(() => useRecentPages());
+    expect(window.sessionStorage.getItem(KEY)).not.toBeNull();
+
+    deniability.active = true;
+    rerender();
+
+    expect(result.current.recents).toEqual([]);
+    expect(window.sessionStorage.getItem(KEY)).toBeNull();
+  });
+
+  it('removes the key when the deniability check THROWS (fail closed)', () => {
+    window.sessionStorage.setItem(KEY, JSON.stringify(['/panic-wipe']));
+    deniability.throws = true;
+
+    renderHook(() => useRecentPages());
+
+    expect(window.sessionStorage.getItem(KEY)).toBeNull();
+  });
+
+  it('is idempotent and non-throwing when sessionStorage.removeItem fails', () => {
+    // jsdom's Storage is a Proxy — vi.spyOn() on the instance writes a stored item
+    // rather than overriding the method, so swap the whole accessor.
+    const real = window.sessionStorage;
+    real.setItem(KEY, JSON.stringify(['/duress-pin']));
+    deniability.active = true;
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      get: () => ({
+        getItem: (k) => real.getItem(k),
+        setItem: (k, v) => real.setItem(k, v),
+        removeItem() { throw new Error('SecurityError'); },
+      }),
+    });
+
+    try {
+      const { result } = renderHook(() => useRecentPages());
+      // Still masked even though the erase could not complete (fail closed).
+      expect(result.current.recents).toEqual([]);
+    } finally {
+      Object.defineProperty(window, 'sessionStorage', { configurable: true, get: () => real });
+    }
+  });
+});
+
 describe('useRecentPages — clear() on APP_LOCK_EVENT', () => {
   it('drops recents and removes the sessionStorage key when the wallet locks', () => {
     const { result } = renderHook(() => useRecentPages());

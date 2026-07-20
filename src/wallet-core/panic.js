@@ -270,22 +270,53 @@ const SESSION_RESIDUE_KEYS = Object.freeze([
 ]);
 
 // Clear every sessionStorage residue key. Guarded for non-browser/test envs.
+// Per-key try so ONE failing key cannot abort the removal of the rest. Returns
+// whether every removal was attempted without error — but note the authoritative
+// evidence of destruction is readSessionResidue() below, not this return value:
+// a removal that "succeeded" but did not take effect is still caught by the read.
 function clearSessionResidue() {
+  let ok = true;
   try {
-    if (typeof sessionStorage === 'undefined') return;
-    for (const k of SESSION_RESIDUE_KEYS) sessionStorage.removeItem(k);
-  } catch { /* storage may be unavailable; not key material */ }
+    if (typeof sessionStorage === 'undefined') return true;
+  } catch { return false; }
+  for (const k of SESSION_RESIDUE_KEYS) {
+    try { sessionStorage.removeItem(k); } catch { ok = false; }
+  }
+  return ok;
 }
 
-// Which sessionStorage residue keys still exist (for the report). A non-empty
-// result means the wipe was incomplete.
+// Which sessionStorage residue keys still exist (for the report).
+//
+// P2-2 (fail CLOSED, I4). This previously returned `[]` when sessionStorage access
+// threw — indistinguishable from "verified empty", so inspectKeyMaterial().clean
+// could report TRUE while residue was never verifiably removed. A claim of
+// destruction we cannot substantiate is exactly the kind of fake assurance I4
+// forbids. The read now reports its own trustworthiness: `verified:false` means
+// "unknown, do NOT call this clean".
+//
+// A truly absent sessionStorage (Node/test/non-browser) IS verified — there is no
+// per-tab store for residue to live in.
+//
+// @returns {{ keys: string[], verified: boolean }}
 function readSessionResidue() {
+  let store;
   try {
-    if (typeof sessionStorage === 'undefined') return [];
-    return SESSION_RESIDUE_KEYS.filter((k) => sessionStorage.getItem(k) != null);
+    if (typeof sessionStorage === 'undefined') return { keys: [], verified: true };
+    store = sessionStorage;
   } catch {
-    return [];
+    // Accessing the accessor itself threw (e.g. SecurityError on a partitioned
+    // or disabled store): we cannot see whether residue survives.
+    return { keys: [], verified: false };
   }
+  const keys = [];
+  for (const k of SESSION_RESIDUE_KEYS) {
+    try {
+      if (store.getItem(k) != null) keys.push(k);
+    } catch {
+      return { keys, verified: false };
+    }
+  }
+  return { keys, verified: true };
 }
 
 // GAP-3: wildcard-prefix keys whose exact names are not known at build time.
@@ -599,9 +630,11 @@ function deleteAppDataDatabase() {
  * remains). Re-opens the store (recreating an empty one if the DB was deleted)
  * and enumerates its keys, plus the DEMO residue maps and the sessionStorage
  * residue keys. `clean` is true when no vault blob, no localStorage residue and
- * no sessionStorage residue remain.
+ * no sessionStorage residue remain AND the sessionStorage read was verifiable
+ * (P2-2: an unreadable store is reported `sessionStorageVerified:false` and is
+ * NEVER called clean — we do not claim a destruction we cannot substantiate).
  *
- * @returns {Promise<{ indexedDbKeys: string[], vaultBlobCount: number, localStorageResidue: string[], sessionStorageResidue: string[], clean: boolean }>}
+ * @returns {Promise<{ indexedDbKeys: string[], vaultBlobCount: number, localStorageResidue: string[], sessionStorageResidue: string[], sessionStorageVerified: boolean, clean: boolean }>}
  */
 export async function inspectKeyMaterial() {
   const db = await openDb();
@@ -616,13 +649,18 @@ export async function inspectKeyMaterial() {
     db.close();
   }
   const residue = readLocalAddressResidue();
-  const sessionResidue = readSessionResidue(); // C-1
+  const sessionResidue = readSessionResidue(); // C-1 / P2-2
   return {
     indexedDbKeys: keys,
     vaultBlobCount: keys.length,
     localStorageResidue: residue,
-    sessionStorageResidue: sessionResidue,
-    clean: keys.length === 0 && residue.length === 0 && sessionResidue.length === 0,
+    sessionStorageResidue: sessionResidue.keys,
+    sessionStorageVerified: sessionResidue.verified,
+    clean:
+      keys.length === 0 &&
+      residue.length === 0 &&
+      sessionResidue.keys.length === 0 &&
+      sessionResidue.verified === true,
   };
 }
 

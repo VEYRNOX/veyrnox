@@ -108,13 +108,19 @@ describe('K-2 — ReferralTracker sync must not treat null as zero', () => {
     expect(localStorage.getItem(STORAGE_KEY)).toBe(before);
   });
 
-  it('failure wording is identical for network-down and deniability (no I3 tell)', async () => {
+  it('failure wording is identical for a REJECTED read and a null read (no I3 tell)', async () => {
+    // A genuinely REJECTED promise (not a null resolve). syncCount has no
+    // try/catch, so without one this rejection escapes the effect and the
+    // component is stuck on "Syncing…" forever.
     seedRealState();
-    api.fetchStatus.mockRejectedValue(new Error('network')); // caught upstream -> null
-    api.fetchStatus.mockResolvedValue(null);
+    api.fetchStatus.mockRejectedValue(new Error('network'));
     api.fetchPaidCount.mockResolvedValue(null);
+    api.fetchEarnings.mockResolvedValue(null);
     await renderPage();
-    const networkText = (await screen.findByText(FAILURE_RE)).textContent;
+    const rejectedText = (await screen.findByText(FAILURE_RE)).textContent;
+    expect(screen.queryByText(/syncing/i)).toBeNull();
+    // A rejection must not clobber the cached state either.
+    expect(readState()).toMatchObject({ inviteCount: 11500, paidCount: 1480, tier: 'gold' });
     cleanup();
 
     localStorage.clear();
@@ -122,11 +128,28 @@ describe('K-2 — ReferralTracker sync must not treat null as zero', () => {
     api.fetchStatus.mockResolvedValue(null);
     api.fetchPaidCount.mockResolvedValue(null);
     await renderPage();
-    const deniabilityText = (await screen.findByText(FAILURE_RE)).textContent;
+    const nullText = (await screen.findByText(FAILURE_RE)).textContent;
 
-    expect(deniabilityText).toBe(networkText);
+    expect(nullText).toBe(rejectedText);
     // And it must not name the cause.
-    expect(deniabilityText).not.toMatch(/decoy|demo|hidden|deniab|offline|network|supabase/i);
+    expect(nullText).not.toMatch(/decoy|demo|hidden|deniab|offline|network|supabase/i);
+  });
+
+  it('a rejection from ANY of the three reads lands in the same fail-closed state', async () => {
+    for (const failing of ['fetchStatus', 'fetchPaidCount', 'fetchEarnings']) {
+      localStorage.clear();
+      seedRealState();
+      api.fetchStatus.mockResolvedValue({ count: 12000 });
+      api.fetchPaidCount.mockResolvedValue(1500);
+      api.fetchEarnings.mockResolvedValue([]);
+      api[failing].mockRejectedValue(new Error('boom'));
+
+      await renderPage();
+      await screen.findByText(FAILURE_RE);
+      expect(screen.queryByText(/last synced/i)).toBeNull();
+      expect(readState()).toMatchObject({ inviteCount: 11500, paidCount: 1480, tier: 'gold' });
+      cleanup();
+    }
   });
 
   it('partial null (status ok, paid null) fails closed: no mutation, failure shown', async () => {

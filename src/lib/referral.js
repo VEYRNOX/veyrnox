@@ -15,6 +15,23 @@ function randomCode() {
   return 'VYX-' + Array.from(arr, (b) => CHARS[b % CHARS.length]).join('');
 }
 
+// P1 (I3) — EPHEMERAL DISPLAY CODE for a deniability (decoy/hidden) or demo
+// session. ReferralTracker must not read the real code out of `veyrnox-referral`
+// under coercion, and must not CREATE one either (generateCode() writes the shared
+// key, so merely opening the page in a decoy session mutated real state).
+//
+// The honest substitute is a code that (a) looks exactly like a genuine new
+// user's, (b) is never persisted anywhere — module scope only, so it leaves no
+// forensic artifact and dies with the tab, and (c) is STABLE for the life of the
+// tab: regenerating per mount would let a coercer notice the code changing
+// between visits, which is itself a tell.
+let _ephemeralCode = null;
+
+export function getEphemeralCode() {
+  if (!_ephemeralCode) _ephemeralCode = randomCode();
+  return _ephemeralCode;
+}
+
 export function getLocalState() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');

@@ -4,8 +4,10 @@ import { Gift, Copy, CheckCircle2, ExternalLink, ChevronRight, TrendingUp, Dolla
 import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import {
   generateCode,
+  getEphemeralCode,
   getLocalState,
   applyRedemption,
   markRedeemed,
@@ -103,14 +105,42 @@ function TierCard({ tier, isActive, isFuture }) {
   );
 }
 
+/**
+ * P1 (I3) — live, FAIL-CLOSED deniability check. Any throw is treated as
+ * "deniability active": show nothing real, write nothing.
+ */
+function deniabilityActive() {
+  try {
+    return isDeniabilityOrDemoActive() === true;
+  } catch {
+    return true;
+  }
+}
+
 export default function ReferralTracker() {
-  const code = getLocalState().code || generateCode();
-  const [inviteCount, setInviteCount] = useState(() => getLocalState().inviteCount || 0);
-  const [paidCount, setPaidCount] = useState(() => getLocalState().paidCount || 0);
-  const [tier, setTier] = useState(() => getLocalState().tier || 'none');
-  const [commission, setCommission] = useState(() => getLocalState().commission || 0);
-  const [externalEligible, setExternalEligible] = useState(() => !!getLocalState().externalEligible);
-  const [alreadyRedeemed, setAlreadyRedeemed] = useState(() => hasRedeemed());
+  // P1: evaluated on EVERY render (not just mount) so a decoy/hidden session that
+  // opens while this page stays mounted is suppressed immediately.
+  const deniable = deniabilityActive();
+
+  // The real code is resolved once, and ONLY for a genuine session. Two harms it
+  // avoids in a deniability session: getLocalState().code would render the real
+  // influencer's code on screen, and generateCode() WRITES the shared
+  // `veyrnox-referral` key — so merely opening this page under coercion mutated
+  // real persisted state. The decoy substitute is an ephemeral, never-persisted
+  // code that is stable for the life of the tab (see lib/referral.js).
+  const [realCode] = useState(() =>
+    deniabilityActive() ? null : (getLocalState().code || generateCode()),
+  );
+  const code = deniable || !realCode ? getEphemeralCode() : realCode;
+
+  // Every stat is seeded from the SHARED localStorage key, so each initialiser is
+  // gated too — real figures must never enter component state in a decoy session.
+  const [inviteCount, setInviteCount] = useState(() => (deniabilityActive() ? 0 : getLocalState().inviteCount || 0));
+  const [paidCount, setPaidCount] = useState(() => (deniabilityActive() ? 0 : getLocalState().paidCount || 0));
+  const [tier, setTier] = useState(() => (deniabilityActive() ? 'none' : getLocalState().tier || 'none'));
+  const [commission, setCommission] = useState(() => (deniabilityActive() ? 0 : getLocalState().commission || 0));
+  const [externalEligible, setExternalEligible] = useState(() => (deniabilityActive() ? false : !!getLocalState().externalEligible));
+  const [alreadyRedeemed, setAlreadyRedeemed] = useState(() => (deniabilityActive() ? false : hasRedeemed()));
   const [copied, setCopied] = useState(false);
   const [redeemInput, setRedeemInput] = useState('');
   const [redeemError, setRedeemError] = useState('');
@@ -137,34 +167,60 @@ export default function ReferralTracker() {
   // The on-screen message is deliberately identical for every cause. A
   // decoy/demo session hits the same bail; a message that distinguished
   // "deniability session" from "service unreachable" would be a deniability tell.
+  // It also must not imply that figures are being WITHHELD — the earlier wording
+  // ("showing your last known figures") told a coercer looking at an empty decoy
+  // screen that real data existed behind it. See the render below.
+  //
+  // P2-3: a REJECTED read must land in the SAME generic fail-closed state as a
+  // null read. Without this catch the rejection escaped the effect entirely and
+  // the card sat on "Syncing…" forever — a permanent, mute dead end (I4), and one
+  // more state a coercer could distinguish. syncCount never rejects.
   const syncCount = useCallback(async () => {
-    const [statusData, paid, earningsData] = await Promise.all([
-      fetchStatus(code),
-      fetchPaidCount(code),
-      fetchEarnings(code),
-    ]);
-    const rawCount = statusData?.count;
-    if (typeof rawCount !== 'number' || typeof paid !== 'number') {
+    try {
+      const [statusData, paid, earningsData] = await Promise.all([
+        fetchStatus(code),
+        fetchPaidCount(code),
+        fetchEarnings(code),
+      ]);
+      const rawCount = statusData?.count;
+      if (typeof rawCount !== 'number' || typeof paid !== 'number') {
+        setSyncFailed(true);
+        return;
+      }
+      // P1 belt-and-braces: applyRedemption() writes the shared localStorage key.
+      // The API guards already return null in a deniability session so this is
+      // unreachable there, but re-check LIVE before any persistence.
+      if (deniabilityActive()) {
+        setSyncFailed(true);
+        return;
+      }
+      const result = applyRedemption(rawCount, paid);
+      setInviteCount(rawCount);
+      setPaidCount(result.paidCount);
+      setTier(result.tier);
+      setCommission(result.commission);
+      setExternalEligible(result.externalEligible);
+      setSyncFailed(false);
+      setSyncedAt(new Date());
+      if (earningsData && earningsData.length > 0) {
+        setEarnings(calculateEarnings(earningsData));
+      }
+    } catch {
       setSyncFailed(true);
-      return;
-    }
-    const result = applyRedemption(rawCount, paid);
-    setInviteCount(rawCount);
-    setPaidCount(result.paidCount);
-    setTier(result.tier);
-    setCommission(result.commission);
-    setExternalEligible(result.externalEligible);
-    setSyncFailed(false);
-    setSyncedAt(new Date());
-    if (earningsData && earningsData.length > 0) {
-      setEarnings(calculateEarnings(earningsData));
     }
   }, [code]);
 
   useEffect(() => {
-    if (!getLocalState().serverGenerated) {
+    // registerCode() is itself I3-gated, but a deniability session has no real
+    // code to register and must not touch the shared key at all.
+    if (!deniabilityActive() && !getLocalState().serverGenerated) {
       registerCode(code);
     }
+    // Deliberately NOT skipped in a deniability session: the reads are gated at
+    // the API layer (zero egress) and running the same code path keeps the
+    // "Syncing… → couldn't reach the service" sequence and its timing identical
+    // to a genuine session whose backend is unreachable. Skipping it would show
+    // the failure line instantly — an observable timing tell.
     syncCount();
   }, [code, syncCount]);
 
@@ -183,10 +239,19 @@ export default function ReferralTracker() {
     setRedeemError('');
     if (!input) return;
     if (input === code) { setRedeemError("That's your own code."); return; }
-    if (hasRedeemed()) { setRedeemError("You've already used a referral code."); return; }
+    // P1: hasRedeemed() reads the real key — surfacing "you've already used a
+    // referral code" in a decoy session would betray real prior activity.
+    if (!deniable && hasRedeemed()) { setRedeemError("You've already used a referral code."); return; }
     setRedeemBusy(true);
     try {
       const { newCount } = await redeemCode(input);
+      // P1 belt-and-braces: markRedeemed()/applyRedemption() both WRITE the shared
+      // key. redeemCode() throws 503 in a deniability session so this is
+      // unreachable there; re-check LIVE and fail closed anyway.
+      if (deniabilityActive()) {
+        setRedeemError('Could not apply code right now. Try again later.');
+        return;
+      }
       markRedeemed(input);
       const result = applyRedemption(newCount, paidCount);
       setInviteCount(newCount);
@@ -204,7 +269,24 @@ export default function ReferralTracker() {
     }
   };
 
-  const tierInfo = getTierInfo(paidCount);
+  // P1: display-time gate. The state initialisers already cover the mount case;
+  // this covers a decoy/hidden session opening while the page stays mounted, and
+  // is the single place the rendered figures are decided.
+  //
+  // The decoy presentation is a neutral EMPTY state — ephemeral code, zero
+  // counts, tier 'none', no commission line, no earnings card, no reward link,
+  // redeem card visible — i.e. byte-for-byte what a genuine brand-new user sees.
+  // There is deliberately NO message hinting that anything is being withheld.
+  const dInvite = deniable ? 0 : inviteCount;
+  const dPaid = deniable ? 0 : paidCount;
+  const dTier = deniable ? 'none' : tier;
+  const dCommission = deniable ? 0 : commission;
+  const dExternalEligible = deniable ? false : externalEligible;
+  const dEarnings = deniable ? null : earnings;
+  const dRedeemed = deniable ? false : alreadyRedeemed;
+  const dSyncedAt = deniable ? null : syncedAt;
+
+  const tierInfo = getTierInfo(dPaid);
   const displayTiers = [...TIERS].reverse();
 
   return (
@@ -242,53 +324,57 @@ export default function ReferralTracker() {
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-2xl font-bold">{paidCount.toLocaleString()}</span>
+            <span className="text-2xl font-bold">{dPaid.toLocaleString()}</span>
             <span className="text-sm text-muted-foreground ml-1.5">paid subscribers</span>
           </div>
-          <TierBadge tier={tier} commission={commission} />
+          <TierBadge tier={dTier} commission={dCommission} />
         </div>
-        {inviteCount > 0 && (
+        {dInvite > 0 && (
           <p className="text-xs text-muted-foreground">
-            {inviteCount.toLocaleString()} total referrals · {paidCount.toLocaleString()} converted to paid
+            {dInvite.toLocaleString()} total referrals · {dPaid.toLocaleString()} converted to paid
           </p>
         )}
-        <ProgressBar paidCount={paidCount} />
-        {commission > 0 && (
+        <ProgressBar paidCount={dPaid} />
+        {dCommission > 0 && (
           <div className="flex items-center gap-2 text-sm">
             <TrendingUp className="h-4 w-4 text-primary" />
             <span>
-              Your followers get <span className="font-semibold text-foreground">{commission}% off</span>
-              {' — '}you earn <span className="font-semibold text-foreground">${(calculateDiscountCents(PLAN_FULL_PRICE_CENTS.annual, commission) / 100).toFixed(2)}</span>/yr subscriber
+              Your followers get <span className="font-semibold text-foreground">{dCommission}% off</span>
+              {' — '}you earn <span className="font-semibold text-foreground">${(calculateDiscountCents(PLAN_FULL_PRICE_CENTS.annual, dCommission) / 100).toFixed(2)}</span>/yr subscriber
             </span>
           </div>
         )}
+        {/* P1: one generic sentence for EVERY cause — service down, backend
+            unconfigured, or a deniability session. It must not imply that
+            figures are being withheld ("showing your last known figures" told a
+            coercer real data existed behind the empty screen). */}
         {syncFailed && (
           <p className="text-[10px] text-caution" role="status">
-            Couldn&rsquo;t reach the referral service. Showing your last known figures.
+            Couldn&rsquo;t reach the referral service. Figures may be out of date.
           </p>
         )}
-        {!syncFailed && syncedAt && (
+        {!syncFailed && dSyncedAt && (
           <p className="text-[10px] text-muted-foreground">
-            Last synced {syncedAt.toLocaleTimeString()}
+            Last synced {dSyncedAt.toLocaleTimeString()}
           </p>
         )}
-        {!syncFailed && !syncedAt && (
+        {!syncFailed && !dSyncedAt && (
           <p className="text-[10px] text-muted-foreground">Syncing…</p>
         )}
       </div>
 
       {/* Earnings */}
-      {earnings && earnings.count > 0 && (
+      {dEarnings && dEarnings.count > 0 && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-3">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Earnings from referrals</p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold">${(earnings.totalDiscountCents / 100).toFixed(2)}</span>
+              <span className="text-2xl font-bold">${(dEarnings.totalDiscountCents / 100).toFixed(2)}</span>
             </div>
             <div className="text-right">
-              <p className="text-sm text-muted-foreground">{earnings.count} paid {earnings.count === 1 ? 'subscriber' : 'subscribers'}</p>
-              <p className="text-[10px] text-muted-foreground">${(earnings.totalRevenueCents / 100).toFixed(2)} total revenue generated</p>
+              <p className="text-sm text-muted-foreground">{dEarnings.count} paid {dEarnings.count === 1 ? 'subscriber' : 'subscribers'}</p>
+              <p className="text-[10px] text-muted-foreground">${(dEarnings.totalRevenueCents / 100).toFixed(2)} total revenue generated</p>
             </div>
           </div>
         </div>
@@ -302,12 +388,12 @@ export default function ReferralTracker() {
             <TierCard
               key={t.key}
               tier={t}
-              isActive={tier === t.key}
-              isFuture={tierInfo.key === 'none' || TIERS.indexOf(TIERS.find(x => x.key === tier)) < TIERS.indexOf(t)}
+              isActive={dTier === t.key}
+              isFuture={tierInfo.key === 'none' || TIERS.indexOf(TIERS.find(x => x.key === dTier)) < TIERS.indexOf(t)}
             />
           ))}
         </div>
-        {externalEligible && (
+        {dExternalEligible && (
           <a
             href={EXTERNAL_REWARD_URL}
             target="_blank"
@@ -320,7 +406,7 @@ export default function ReferralTracker() {
       </div>
 
       {/* Enter a code */}
-      {!alreadyRedeemed && (
+      {!dRedeemed && (
         <div className="rounded-xl border border-border bg-card p-5 space-y-3">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Got a referral code?</p>
           <div className="flex gap-2">
@@ -367,12 +453,12 @@ export default function ReferralTracker() {
             `REFERRAL REWARD CLAIM\n` +
             `${'─'.repeat(30)}\n\n` +
             `Referral Code: ${code}\n` +
-            `Current Tier: ${(tier || 'none').charAt(0).toUpperCase() + (tier || 'none').slice(1)}\n` +
-            `Commission Rate: ${commission}%\n\n` +
-            `Total Referrals (code entries): ${inviteCount.toLocaleString()}\n` +
-            `Paid Subscribers (verified): ${paidCount.toLocaleString()}\n` +
-            (earnings ? `Total Earnings: $${(earnings.totalDiscountCents / 100).toFixed(2)}\n` : '') +
-            (earnings ? `Revenue Generated: $${(earnings.totalRevenueCents / 100).toFixed(2)}\n` : '') +
+            `Current Tier: ${(dTier || 'none').charAt(0).toUpperCase() + (dTier || 'none').slice(1)}\n` +
+            `Commission Rate: ${dCommission}%\n\n` +
+            `Total Referrals (code entries): ${dInvite.toLocaleString()}\n` +
+            `Paid Subscribers (verified): ${dPaid.toLocaleString()}\n` +
+            (dEarnings ? `Total Earnings: $${(dEarnings.totalDiscountCents / 100).toFixed(2)}\n` : '') +
+            (dEarnings ? `Revenue Generated: $${(dEarnings.totalRevenueCents / 100).toFixed(2)}\n` : '') +
             `\n${'─'.repeat(30)}\n\n` +
             `Payment details:\n` +
             `Name: \n` +
