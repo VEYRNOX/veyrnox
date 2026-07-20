@@ -53,5 +53,19 @@
 	<string>Veyrnox uses speech recognition so you can navigate the app hands-free. Your speech is sent to Apple's speech service for transcription; it is never used to unlock your wallet or access keys.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Veyrnox needs the microphone only while Voice Commands are switched on, to hear navigation commands.</string>
+	<!-- Custom URL scheme so dApps / WalletConnect can launch Veyrnox via
+	     veyrnox://wc?uri=<wc-uri>. Works on an installed app with no hosting or
+	     domain verification (unlike the universal link below). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.veyrnox.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>veyrnox</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

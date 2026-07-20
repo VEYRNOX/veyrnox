@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { takePendingWcUri } from '@/lib/deepLinkPairing';
 import styles from './WalletConnect.module.css';
 import { WalletConnectProvider, useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { SessionProposalModal } from '@/components/walletconnect/SessionProposalModal.jsx';
@@ -115,6 +116,21 @@ function WalletConnectInner() {
   const [pairing, setPairing] = useState(false);
   const [activeProposal, setActiveProposal] = useState(null);
   const [activeRequest, setActiveRequest] = useState(null);
+  const [fromDeepLink, setFromDeepLink] = useState(false);
+
+  // A deep link (veyrnox://wc?uri=… / https://veyrnox.com/wc?uri=…) routed here with
+  // a pending pairing URI. Pre-fill it for the user to review and tap Pair — never
+  // auto-pair (an unsolicited external link is untrusted; see deepLinkPairing.js).
+  const deepLinkConsumed = useRef(false);
+  useEffect(() => {
+    if (deepLinkConsumed.current) return;
+    const pending = takePendingWcUri();
+    if (pending) {
+      deepLinkConsumed.current = true;
+      setUri(pending);
+      setFromDeepLink(true);
+    }
+  }, []);
 
   // Auto-surface the first pending proposal/request
   useEffect(() => {
@@ -210,10 +226,17 @@ function WalletConnectInner() {
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Pair with dApp</h2>
-        <p className={styles.hint}>
-          In the dApp, choose &ldquo;WalletConnect&rdquo; and copy the URI or scan the QR code.
-          Paste the URI below.
-        </p>
+        {fromDeepLink ? (
+          <p className={styles.hint} role="status">
+            A dApp sent a pairing request to Veyrnox. Review the URI below and tap
+            &ldquo;Pair&rdquo; to connect — nothing is connected until you confirm.
+          </p>
+        ) : (
+          <p className={styles.hint}>
+            In the dApp, choose &ldquo;WalletConnect&rdquo; and copy the URI or scan the QR code.
+            Paste the URI below.
+          </p>
+        )}
         <div className={styles.pairRow}>
           <input
             className={styles.uriInput}

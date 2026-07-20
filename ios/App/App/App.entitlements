@@ -4,5 +4,14 @@
 <dict>
 	<key>com.apple.developer.devicecheck.appattest-environment</key>
 	<string>development</string>
+	<!-- Universal links: https://veyrnox.com/wc?uri=... opens Veyrnox directly.
+	     Requires the apple-app-site-association file hosted at
+	     https://veyrnox.com/.well-known/apple-app-site-association (see
+	     public/.well-known/), and the app installed. The custom veyrnox:// scheme
+	     in Info.plist is the no-hosting fallback. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:veyrnox.com</string>
+	</array>
 </dict>
 </plist>

@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["R54268MWFV.com.veyrnox.app"],
+        "components": [
+          { "/": "/wc*", "comment": "WalletConnect pairing deep link (https://veyrnox.com/wc?uri=...)" }
+        ]
+      }
+    ]
+  }
+}

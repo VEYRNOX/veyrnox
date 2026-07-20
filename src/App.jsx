@@ -18,6 +18,7 @@ import { NotificationsProvider } from '@/notify/useNotifications';
 import { Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import EnvBadge from '@/components/EnvBadge';
+import DeepLinkHandler from '@/components/DeepLinkHandler';
 import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
 import Spinner from '@/components/Spinner';
@@ -234,6 +235,7 @@ function App() {
         <TierProvider>
           <QueryClientProvider client={queryClientInstance}>
             <Router>
+              <DeepLinkHandler />
               <VoiceProvider>
                 <EnvBadge />
                 <AuthenticatedApp />
