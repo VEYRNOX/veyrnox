@@ -1,6 +1,9 @@
 # Audit Findings Tracker
-Last updated: 2026-07-19
-Analysed against: origin/main @ `0e55c514310d13af76067c0c42e2c9442d070c52`
+Last updated: 2026-07-20
+Analysed against: origin/main @ `0e55c514310d13af76067c0c42e2c9442d070c52` (2026-07-19
+baseline); 2026-07-20 landings below (PRs #1261, #1262, #1268) folded in against the
+`claude/docs-2026-07-20-audit-sync` doc-sync snapshot (cut from origin/main `e22930c7`) —
+not a fresh full re-grep of the whole tracker, see the dated Movement table below.
 
 > Automated weekly synthesis of every finding across `docs/audit-*.md`, checked against a
 > **pinned snapshot of `origin/main`** (throwaway worktree, not the live checkout).
@@ -16,13 +19,24 @@ Analysed against: origin/main @ `0e55c514310d13af76067c0c42e2c9442d070c52`
 - `audit-2026-07-01-kek-internal.md` — C-1, F-01…F-08, H-1…H-4, iOS-F3/F5/F6/F9/F11
 - `audit-2026-07-04-internal.md` — F-04 (CRIT), F-01…F-10, RASP-3, I3-WC, I3-1
 - `audit-2026-07-05-deniability-internal.md` — D-02/04/05/06, SW-01/02, PW-01/02/04/05, AL-02/06, BIO-01…07, RASP-A1…A4
-- **`audit-2026-07-14-weekly.md`** — C-1, H-1, M-1…M-8, L-1…L-8 *(new this run)*
-- **`audit-2026-07-15-rasp-multi-tool-cycle.md`** — 2×P1, 10×P2, 5×P3 + 4-audit chain *(new this run)*
+- **`audit-2026-07-14-weekly.md`** — C-1, H-1, M-1…M-8, L-1…L-8
+- **`audit-2026-07-15-rasp-multi-tool-cycle.md`** — 2×P1, 10×P2, 5×P3 + 4-audit chain
+- **`audit-2026-07-20-weekly.md`** — H-1, H-2, H-3, M-1…M-8, L-1…L-3 *(new this run —
+  own H-1/H-2/H-3/C-1 labels are DISTINCT from the identically-named rows above from
+  earlier docs; always qualified below as "2026-07-20 weekly …")*
+- **PR #1262** ("branch-review", `claude/fix-c1-k2-deniability`) — C-1 (CRITICAL) and K-2,
+  its own labels, not from a numbered `audit-*.md` doc *(new this run — qualified below as
+  "2026-07-20 branch-review …")*
 
 ## Summary
-- Total findings catalogued: **~126** (dedup across 8 docs; MEDIUM/LOW grouped below)
-- Fixed (code-confirmed): **~80** (24 re-verified by grep this run)
-- Still open / accepted-residual: **~34**
+- Total findings catalogued: **~126** (dedup across 8 docs; MEDIUM/LOW grouped below) —
+  counts below are as of the 2026-07-19 run and are **not** recomputed for the 2026-07-20
+  landings; see the dated Movement table immediately below for what actually moved today.
+- Fixed (code-confirmed): **~80** (24 re-verified by grep this run) — **+4 today**
+  (2026-07-20 weekly H-3, 2026-07-20 branch-review C-1 and K-2, and the 2026-07-19 PR
+  #1243 regression S-1), not yet folded into this tilde-total.
+- Still open / accepted-residual: **~34** — **+1 today** (2026-07-20 weekly H-1, new;
+  2026-07-20 weekly H-2 deliberately NOT added — see its row below), not yet folded in.
 - Regressed: **0**
 - Needs on-device / on-chain verification: **19**
 
@@ -35,6 +49,25 @@ Analysed against: origin/main @ `0e55c514310d13af76067c0c42e2c9442d070c52`
 | multi-tool P1-1/P1-2, 9×P2, 5×P3 | new | ✅ FIXED (PRs #1009–#1014) (doc) |
 
 **No finding regressed.** `main` moved from `280b9f43` → `0e55c514` since the weekly audit's own reconciliation, and both of that audit's headline findings (its only CRITICAL and only HIGH) closed in that window.
+
+### Movement since last run (2026-07-19 → 2026-07-20)
+
+> ⚠️ **Label collision warning.** The IDs in this table (H-1, H-2, H-3, C-1, K-2) are
+> **DISTINCT** from the identically-numbered rows in the 2026-07-14 table above (that
+> table's "weekly H-1" is the primary-unlock timing oracle, already FIXED; the tracker's
+> older "C-1 (KEK)" — see Fixed § below — is the Android KEK global-salt issue). Every row
+> here is qualified by source doc/PR so it cannot be merged with those older rows.
+
+| Finding | Was | Now | Evidence |
+|---|---|---|---|
+| **2026-07-20 weekly H-3** — Configuring a Duress PIN did not clear a pre-existing real-PIN biometric cache; Face ID could still open the REAL wallet under coercion (I3+I4) | OPEN (found this pass, pre-existing since `alreadyCached` guard weakening) | ✅ **FIXED** (PR #1261, `f3358c2c`) | `setDuressPin()` now clears the cache + drops the pref before provisioning the decoy; new `src/lib/duressBiometricGuard.js` (`shouldDisarmBiometricUnlock` / `enforceDuressBiometricInvariant`) wired at lock-screen mount as an installed-base guard; `shouldAutoCacheTypedPin` restored to key on the `veyrnox-duress-configured` marker (grep + PR description) |
+| **2026-07-20 branch-review C-1** (CRITICAL, I3) — More-drawer "Recent" tiles named `/duress-pin`, `/stealth-wallets`, `/panic-wipe`; rendered in decoy sessions, survived lock, survived panic wipe | OPEN (unlanded working-tree state noted, not assessed, by `audit-2026-07-20-weekly.md`'s own "Uncommitted working-tree state" section) | ✅ **FIXED** (PR #1262, `d7f00751`) | write+read gated on `isDeniabilityOrDemoActive()` (fail-closed); `clear()` on `APP_LOCK_EVENT`; `sessionStorage` sweep added to `panic.js` (PR description) |
+| **2026-07-20 branch-review K-2** (I4+I3) — `ReferralTracker.syncCount` coerced a null/failed API read to `0` and wrote `{tier:'none',paidCount:0}` to shared localStorage, rendering "Last synced &lt;now&gt;" — a failure shown as success, and a decoy session mutating real state; also (Codex second pass, same PR) the tracker page read/wrote real referral state before any deniability gate | new | ✅ **FIXED** (PR #1262, `d7f00751`) | failure no longer coerced to a fake synced state; page renders a neutral empty state indistinguishable from a new user in decoy/demo sessions (PR description) |
+| **S-1** (I4) — a prior PR (#1243, 2026-07-19) scrubbing internal jargon from `src/pages/Documentation.jsx` also deleted user-facing security caveats (PIN offline-exhaustion, Hardware Key Protection opt-in, Hardware Wallet not device-tested, referral egress disclosure) while items stayed marked "Available" | OPEN (regression from PR #1243) | ✅ **FIXED** (PR #1268, `e8cf2775`) | plain-language caveats + a status legend restored; regression test added that pins them in place (PR description) |
+| **2026-07-20 weekly H-1** — WalletConnect session-approval RASP gate is dead code: `handleApproveSession` (`WalletConnectProvider.jsx:771-772`) reads `gate.blocked`/`gate.sentence`, which `presignGateOrReject()` never returns (its two `return` statements only set `proceedAllowed`/`rejectCode`) — every WC session **approval** proceeds regardless of RASP tier, including a hard `TIER.BLOCK`. Shipped broken in the commit that introduced it; no test exercises the branch | new | ⚠️ **OPEN — fix not yet merged** | Verified by hand per `audit-2026-07-20-weekly.md`. Fix (`!gate.proceedAllowed`, mirroring the three signing chokepoints which are correctly gated on `proceedAllowed` and unaffected) is in **PR #1276** (branch `claude/fix-h1-wc-session-gate`) — code-complete, tested, CI running, **NOT merged**. Do not mark fixed until merge. |
+| **2026-07-20 weekly H-2** — Cold-sign broadcast omits the WARN-tier biometric step-up (`ColdSign.jsx`) that `SendCrypto.jsx` enforces | new (in the weekly doc) | ➖ **No action — correct as-is** | `src/pages/ColdSign.jsx` is unreachable dead code: no route, no import, nothing sets `location.state.coldSend`. Not opened as a new tracker row. The underlying WARN-tier acknowledge-only gap is already tracked as **weekly M-5** (2026-07-14, below) — do not duplicate. |
+
+**No finding regressed today.** 4 findings closed (H-3, C-1, K-2, S-1, all BUILT + unit-tested + merged, INTERNAL — none device-verified, none independently audited, no on-chain txid). 1 new HIGH is open with a fix pending merge (H-1 → PR #1276). 1 finding correctly generated no new tracker row (H-2, dead code, already covered by existing weekly M-5).
 
 ---
 
@@ -92,12 +125,24 @@ Both are **improvements**, not regressions — but the checklist must follow the
 | M-6/M-7 (07-08) | MEDIUM | Hidden-balance I3 guard; live-prices panic residue | PR #757 |
 | I2-LIVEPRICE | MEDIUM | Live-price opt-OUT default violated I2 | now opt-in (`=== '1'`) |
 
+### 2026-07-20 landings (grep-confirmed this run)
+
+| ID | Severity | Finding | Fixed in |
+|---|---|---|---|
+| 2026-07-20 weekly H-3 | HIGH | Duress PIN setup didn't clear a pre-existing real-PIN biometric cache — Face ID could open the REAL wallet under coercion (I3+I4) | PR #1261 (`f3358c2c`). Grep-confirmed: `WalletProvider.jsx:1997-2020` `setDuressPin()` now force-clears the cache before provisioning the decoy (inline comment block cites "H-3 (HIGH)" by name); `src/lib/duressBiometricGuard.js` (`shouldDisarmBiometricUnlock`, `enforceDuressBiometricInvariant`) exists and is imported by the lock-screen mount path. |
+| 2026-07-20 branch-review C-1 | CRITICAL | More-drawer "Recent" tiles named `/duress-pin`, `/stealth-wallets`, `/panic-wipe`; rendered in decoy sessions, survived lock, survived panic wipe (I3) | PR #1262 (`d7f00751`). Grep-confirmed: `src/hooks/useRecentPages.js` gates both write and read on `isDeniabilityOrDemoActive()`; `src/wallet-core/panic.js` `SESSION_RESIDUE_KEYS` + `clearSessionResidue()` (comment explicitly labelled "C-1: sessionStorage tells (More-drawer recents)") called from the panic-wipe sequence. |
+| 2026-07-20 branch-review K-2 | MEDIUM-HIGH | `ReferralTracker.syncCount` coerced a failed API read into a fake "synced" success state written to shared localStorage; page also read/wrote real referral state before any deniability gate (I4+I3) | PR #1262 (`d7f00751`). Grep-confirmed: `src/pages/ReferralTracker.jsx` imports `isDeniabilityOrDemoActive` and branches `syncCount()` on it before touching real state. |
+| S-1 | MEDIUM | PR #1243 (2026-07-19) scrubbing internal jargon from `Documentation.jsx` also deleted user-facing security caveats (PIN offline-exhaustion, Hardware Key Protection opt-in, Hardware Wallet not device-tested, referral egress disclosure) while items stayed "Available" (I4) | PR #1268 (`e8cf2775`). Grep-confirmed: `src/pages/Documentation.jsx` PIN entry now reads "...turning on Hardware Key Protection (off by default) closes that gap"; Hardware Key Protection entry states "Optional, off-by-default protection...". |
+
+**Honesty note:** all four are BUILT / unit-tested / merged to `main`, INTERNAL. None is device-verified, none has an on-chain txid, none is independently audited — do not upgrade past BUILT.
+
 ---
 
 ## Still Open ⚠️
 
 | ID | Severity | Finding | File:Line | First reported |
 |---|---|---|---|---|
+| **2026-07-20 weekly H-1** ⚠️ do not confuse with 2026-07-14's "weekly H-1" (timing oracle, FIXED, above) | HIGH | WalletConnect session-approval RASP gate reads `gate.blocked`/`gate.sentence`, which `presignGateOrReject()` never returns — every WC session **approval** proceeds regardless of RASP tier (signing chokepoints unaffected, still fail-closed on `proceedAllowed`). Grep-confirmed live on `main` this run. Fix open in **PR #1276**, not yet merged. | `WalletConnectProvider.jsx:771-772` | 2026-07-20 |
 | C1 / weekly M-8 | CRITICAL | PIN attempt counter in clearable `localStorage` — wipe defeatable (disclosed; hardware-KEK is tracked fix) | `pinAttemptGuard.js:11-17` | 2026-06-26 |
 | C2 | CRITICAL | 8-digit PIN offline-exhaustible on non-KEK vaults | `vault.js`, `keystore/native.js` | 2026-06-26 |
 | H10 | HIGH | Cert pinning — **16** SPKI entries still `PLACEHOLDER_*_REPLACE_ON_DEVICE` (grep) | `rpc/pinning.js` | 2026-06-26 |
@@ -105,7 +150,7 @@ Both are **improvements**, not regressions — but the checklist must follow the
 | weekly M-2 | MEDIUM | iOS **enroll** path uses immutable `NSData dataWithBytes` — unzeroable; fix exists only on decrypt path (`:333/:349`) (grep) | `HardwareKekPlugin.m:174` | 2026-07-14 |
 | weekly M-3 | MEDIUM | `approveBlocked` excludes `dapp.flagged`/`sessionUnresolved` — known-bad dApp banner is display-only at signing (grep: `:162-167`) | `RequestApprovalModal.jsx:162` | 2026-07-14 |
 | weekly M-4 | MEDIUM | RASP-blocked WC request fails silently in UI (fail-closed on wire, not fail-*honest*) | `WalletConnectProvider.jsx:324-328` | 2026-07-14 |
-| weekly M-5 | MEDIUM | WARN-tier `requiresBiometric` still acknowledge-only on WC/ColdSign/CryptoSigning paths | `degrade.js`, `presign.js` | 2026-07-14 |
+| weekly M-5 | MEDIUM | WARN-tier `requiresBiometric` still acknowledge-only on WC/ColdSign/CryptoSigning paths. **2026-07-20 note:** re-confirmed by `audit-2026-07-20-weekly.md`, which identified this as the reason `ColdSign.jsx` skips the WARN-tier step-up (that pass's own "H-2") — no new tracker row opened; `ColdSign.jsx` is unreachable dead code (no route/import), so the finding stays scoped to this existing MEDIUM row, not promoted. | `degrade.js`, `presign.js` | 2026-07-14 |
 | weekly M-6 | MEDIUM | RaspSecurity/catalogue *under-claim* RASP status (stale "pending") | `RaspSecurity.jsx:45` | 2026-07-14 |
 | H1 / H2 / BIO-01 / H-NEW-5 | HIGH | Biometric unlock cache not OS-ACL bound to enrollment set | `biometricUnlock.js:84-104` | 2026-06-26 |
 | BIO-02 | HIGH | App-layer biometric gate Frida-bypassable (fundamental; disclosed) | `biometricUnlock.js:18-36` | 2026-07-05 |
