@@ -142,8 +142,18 @@ describe('direct Face ID → KEK unlock: both H and C are required (I6/I4)', () 
 // hasDuressVault) was removed because chaff provisioning makes hasDuressVault() always
 // true on PIN-cohort devices, permanently blocking the auto-cache.
 describe('shouldAutoCacheTypedPin — auto-cache guard (alreadyCached is the operative check)', () => {
-  it('caches the typed pin when biometric is ON and nothing cached yet', () => {
-    expect(shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached: false })).toBe(true);
+  it('caches the typed pin when biometric is ON, nothing cached, and NO duress configured', () => {
+    expect(shouldAutoCacheTypedPin({
+      biometricEnabled: true, alreadyCached: false, duressConfigured: false,
+    })).toBe(true);
+  });
+
+  // H-3: the duress state must be stated. An OMITTED signal is "unknown", and
+  // caching the real PIN on an unknown duress state is the exact coercion bypass
+  // H-3 fixed — so it fails closed. The only production caller
+  // (WalletEntry.jsx:798) always passes it.
+  it('fails CLOSED when duressConfigured is omitted (unknown duress state)', () => {
+    expect(shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached: false })).toBe(false);
   });
 
   it('does NOT re-cache when a secret is already cached (never clobber the decoy cache)', () => {
@@ -154,10 +164,19 @@ describe('shouldAutoCacheTypedPin — auto-cache guard (alreadyCached is the ope
     expect(shouldAutoCacheTypedPin({ biometricEnabled: false, alreadyCached: false })).toBe(false);
   });
 
-  it('ignores duressConfigured if passed (backward compat, chaff-safe)', () => {
-    // Even with duressConfigured: true, the cache fires if nothing is cached.
-    // This is correct: chaff always makes hasDuressVault() true, and the alreadyCached
-    // guard is the real coercion-resistance control.
-    expect(shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached: false, duressConfigured: true })).toBe(true);
+  // H-3 CORRECTION. This case previously asserted the OPPOSITE — that the real PIN
+  // is cached even when duressConfigured is true — on the rationale that the signal
+  // was hasDuressVault(), which chaff makes permanently true (the PR #714 bug). That
+  // rationale no longer holds: the caller now passes the `veyrnox-duress-configured`
+  // marker, written ONLY when the user deliberately configures duress and removed on
+  // removal. It is not chaff-saturated, so it can be trusted.
+  //
+  // As written before, this test asserted the H-3 vulnerability itself: cache the
+  // REAL pin behind Face ID while a duress PIN is configured, so a coercer saying
+  // "just use Face ID" opens the real wallet. The PR #714 property it was protecting
+  // — chaff must never disable auto-caching — is still pinned, by the no-duress case
+  // above and by shouldAutoCacheTypedPin.duress-guard.test.js.
+  it('does NOT cache the real pin while a duress PIN is configured (H-3)', () => {
+    expect(shouldAutoCacheTypedPin({ biometricEnabled: true, alreadyCached: false, duressConfigured: true })).toBe(false);
   });
 });
