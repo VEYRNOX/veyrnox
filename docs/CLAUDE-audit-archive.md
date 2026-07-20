@@ -2307,6 +2307,124 @@ with zero styling (no card grid, text concatenation, chain pills running togethe
 inlined in the main CSS bundle. Device-verified on Pixel 10 Pro XL (debug APK installed,
 dApp Connector page renders correctly). BUILT / device-verified, INTERNAL.
 
+## 2026-07-20 duress biometric cache fix (H-3) — PR #1261
+
+Internal audit (`docs/audit-2026-07-20-weekly.md`) found that configuring a Duress PIN did
+not clear a pre-existing real-PIN biometric cache: `setDuressPin()` provisioned the decoy
+vault and returned without calling `clearUnlockSecret()`. The remaining guard
+(`shouldAutoCacheTypedPin` in `src/lib/authModel.js`) only protects the order
+decoy-first-then-unlock; it does nothing for the reverse order — real-PIN biometric unlock
+enabled first, Duress PIN configured second (the vulnerable state is the DEFAULT on
+native, since onboarding offers biometric ON by default). Net effect: on the exact
+coercion path the duress feature exists to protect, Face ID could still open the REAL
+wallet (I3 + I4).
+
+**Fix (PR #1261, commit `f3358c2c`):**
+- `WalletProvider.jsx` `setDuressPin()` now force-clears the biometric cache and drops the
+  cache preference BEFORE provisioning the decoy vault. Fails closed: if the secure store
+  refuses to clear the cached secret, no decoy vault is written (a half-configured state
+  where the user believes they're protected but aren't is worse than an explicit setup
+  failure). If the user opts into "Use Face ID for the Emergency wallet", the caller
+  immediately re-provisions the cache to the DECOY secret via `enableDecoyBiometricUnlock`.
+- New `src/lib/duressBiometricGuard.js` (`shouldDisarmBiometricUnlock` /
+  `enforceDuressBiometricInvariant`), wired at lock-screen mount — an installed-base guard
+  that catches devices which configured a duress PIN before this fix shipped.
+- `shouldAutoCacheTypedPin` restored to key on the `veyrnox-duress-configured` marker.
+- Stale inline comments at `WalletEntry.jsx:761-763` (claiming the old, already-removed
+  `duressConfigured` guard behaviour) corrected to match current behaviour.
+
+BUILT / unit-tested, INTERNAL — NOT device-verified, NOT independently audited, no
+on-chain txid. See `docs/Feature-Status.md` §6 for the full write-up.
+
+## 2026-07-20 deniability residue + referral state fixes (C-1, K-2) — PR #1262
+
+Two findings, one PR. **C-1 (CRITICAL, I3):** the More-drawer "Recent" tiles were named
+after the routes visited — `/duress-pin`, `/stealth-wallets`, `/panic-wipe` — and this
+list rendered in decoy sessions, survived lock, and survived panic wipe: a plain-language
+tell that a duress/stealth/panic feature had been visited, readable by anyone who later
+gets the (possibly coerced) device unlocked. **K-2 (I4 + I3):** `ReferralTracker.syncCount`
+coerced a null/failed API read to `0` and wrote a fake `{tier:'none',paidCount:0}` "synced"
+state to shared localStorage, rendering "Last synced &lt;now&gt;" — a failure displayed as
+success — and doing so from a decoy session mutated real referral state. A Codex second
+pass on the same PR additionally found the `ReferralTracker` page read/wrote real referral
+state before any deniability gate at all.
+
+**Fix (PR #1262, commit `d7f00751`):**
+- `src/hooks/useRecentPages.js` — both the write and the read are now gated on the LIVE
+  `isDeniabilityOrDemoActive()` check (fail-closed); the recent-pages list also clears on
+  `APP_LOCK_EVENT`.
+- `src/wallet-core/panic.js` — new `SESSION_RESIDUE_KEYS` list + `clearSessionResidue()` /
+  `readSessionResidue()`; the panic-wipe sequence now sweeps `sessionStorage` (per-tab,
+  not per-navigation — previously untouched by panic wipe at all) in addition to the
+  existing IndexedDB/localStorage clearing.
+- `src/pages/ReferralTracker.jsx` — imports `isDeniabilityOrDemoActive` and branches
+  `syncCount()` on it before touching real state; a failed sync is no longer written as a
+  fake success; the page renders a neutral empty state, indistinguishable from a new user,
+  in decoy/demo sessions.
+
+BUILT / unit-tested, INTERNAL — NOT device-verified, NOT independently audited, no
+on-chain txid.
+
+## 2026-07-20 Documentation security-caveat restoration (S-1) — PR #1268
+
+PR #1243 (2026-07-19, "Preferences docs cleanup") scrubbed internal jargon (PR numbers,
+txids, device names, codenames) from `src/pages/Documentation.jsx` — a legitimate goal —
+but in the same pass also deleted several user-facing security caveats while leaving the
+affected items marked "Available": the PIN entry no longer disclosed offline-exhaustion
+risk, the Hardware Key Protection entry no longer disclosed it is opt-in/off-by-default,
+the Hardware Wallet entry no longer disclosed it is not device-tested, and the referral
+entry no longer disclosed its network-egress behaviour. Net effect: users read an
+"Available" feature list with the honesty caveats silently removed (I4).
+
+**Fix (PR #1268, commit `e8cf2775`):** restored the plain-language caveats to their
+respective entries (e.g. the PIN entry now reads "...turning on Hardware Key Protection
+(off by default) closes that gap"; the Hardware Key Protection entry states "Optional,
+off-by-default protection..."), added a status legend, and added a regression test that
+pins the caveats in place so a future jargon-scrub pass cannot silently drop them again.
+
+BUILT / unit-tested, INTERNAL — NOT independently audited. Not applicable to on-chain
+verification (documentation-only change).
+
+## 2026-07-20 Accessibility pass — PR #1274
+
+Mobile bottom-nav was keyboard-unreachable (roving `tabindex` with no arrow-key handler);
+fixed by dropping tab semantics for plain nav buttons using `aria-current` instead. The
+More-drawer close button was unlabelled and the drawer gained `role="dialog"` (deliberately
+WITHOUT `aria-modal`, since it does not trap focus) plus Escape-to-close. `HDWalletManager`
+balance live regions made persistent (previously removed from the DOM before screen
+readers could announce them). Dangling `aria-controls` references fixed on
+`HDWalletManager` and `TermsLegal`. `ReferralTracker` progressbar now has correct ARIA
+semantics and its redeem input is labelled. Subscription billing radiogroup gains
+arrow-key navigation. BUILT / unit-tested, INTERNAL — not device-verified, no security or
+signing-path changes, no on-chain txid applicable.
+
+## 2026-07-20 WalletConnect session-approval gate finding (H-1) — OPEN, PR #1276 not yet merged
+
+Internal weekly audit (`docs/audit-2026-07-20-weekly.md`) found `WalletConnectProvider.jsx`
+`handleApproveSession` (`:771-772`) reads `gate.blocked` / `gate.sentence` from
+`presignGateOrReject()` — a function whose only two `return` statements set
+`proceedAllowed` / `rejectCode` and never set either of the properties being read. Both are
+therefore permanently `undefined`, the condition is always false, and every WalletConnect
+session **approval** proceeds regardless of RASP tier, including a hard `TIER.BLOCK` from a
+rooted/hooked/emulated/attestation-failed device. Verified by hand against `origin/main`
+(the bug is present in the commit that introduced the check, `7cdeee64`, and has not been
+touched since). **Scoped to session approval only** — the three signing chokepoints
+(`_handlePersonalSign`, `_handleSignTypedData`, `_handleSendTransaction`) all correctly
+read `proceedAllowed` and remain fail-closed, so this bug alone gives a hostile dApp a live
+connection + address disclosure on a compromised device, not a signature or a broadcast.
+
+**Fix (open in PR #1276, branch `claude/fix-h1-wc-session-gate`):**
+`if (!gate.proceedAllowed) throw new Error(...)`, mirroring the three signing chokepoints,
+plus a regression test stubbing a non-ALLOW tier and asserting `approveSession()` is never
+called. Reported by the PR author as code-complete, tested, CI running — **NOT merged to
+main as of 2026-07-20.** Do not mark this fixed until the merge lands.
+
+**Related, no action taken (correctly):** the same weekly audit's H-2 (ColdSign broadcast
+omits the WARN-tier biometric step-up that `SendCrypto.jsx` enforces) was not opened as a
+new finding, because `src/pages/ColdSign.jsx` is unreachable dead code (no route, no
+import, nothing sets `location.state.coldSend`) — the underlying WARN-tier
+acknowledge-only gap is already tracked as weekly M-5 (2026-07-14).
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode
