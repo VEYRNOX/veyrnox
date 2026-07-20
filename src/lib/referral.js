@@ -25,6 +25,7 @@ function randomCode() {
 // forensic artifact and dies with the tab, and (c) is STABLE for the life of the
 // tab: regenerating per mount would let a coercer notice the code changing
 // between visits, which is itself a tell.
+/** @type {string | null} */
 let _ephemeralCode = null;
 
 export function getEphemeralCode() {
