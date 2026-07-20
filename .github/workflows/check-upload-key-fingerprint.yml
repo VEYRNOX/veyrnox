@@ -1,0 +1,59 @@
+# Temporary diagnostic — identify which signing key is stored in KEYSTORE_BASE64.
+#
+# WHY THIS EXISTS
+# Google Play has an upload certificate registered for com.veyrnox.app whose
+# SHA-256 is 0F:3F:FC:05:D7:2E:1A:D2:0C:FA:6D:1D:EA:D3:D3:AB:51:F8:E1:34:AF:89:26:
+# 04:00:12:BF:A2:7F:42:C5:26. None of the keystores available locally match it, so
+# uploads are currently rejected. KEYSTORE_BASE64 (set 2026-06-28, before the
+# Jul 13 upload) is the last candidate.
+#
+# WHAT IT PRINTS
+# ONLY the certificate fingerprint — which is public information (Play Console
+# displays it openly). It does NOT print, upload, or persist the keystore or any
+# password. The decoded keystore is removed in an always() step.
+#
+# DELETE THIS WORKFLOW once the signing key question is resolved.
+name: check-upload-key-fingerprint
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fingerprint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Decode keystore and print ONLY the certificate fingerprint
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ]; then
+            echo "KEYSTORE_BASE64 is empty or unset — nothing to check."
+            exit 1
+          fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/ks.bin" 2>/dev/null || {
+            echo "base64 decode failed — the secret may not be valid base64."
+            exit 1
+          }
+          echo "keystore bytes: $(wc -c < "$RUNNER_TEMP/ks.bin")"
+
+          # Fingerprints only. Never print the store contents or the password.
+          keytool -list -v -keystore "$RUNNER_TEMP/ks.bin" -storepass "$KS_PASS" 2>/dev/null \
+            | grep -iE "^Alias name|SHA256:" \
+            || { echo "Could not open the keystore with KEYSTORE_PASSWORD."; exit 1; }
+
+          echo "---"
+          echo "Play expects: 0F:3F:FC:05:D7:2E:1A:D2:0C:FA:6D:1D:EA:D3:D3:AB:51:F8:E1:34:AF:89:26:04:00:12:BF:A2:7F:42:C5:26"
+
+      - name: Remove decoded keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/ks.bin"
