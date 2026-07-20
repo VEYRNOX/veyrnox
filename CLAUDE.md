@@ -1292,7 +1292,7 @@ hidden in deniability sessions, matching every other paid-tier UI element. The
 handler.
 
 **Explicitly NOT added** (all cataloged during the RC SDK audit as invariant-violating):
-`logIn`/`logOut` (identity linking → deniability leak), `setAttributes`/`setEmail`/
+`logIn`/`logOut` (identity linking → deniability leak), `setEmail`/
 `setPushToken`/`setDisplayName` (identity leak), `collectDeviceIdentifiers` (IDFV/GAID
 fingerprint), `enableAdServicesAttributionTokenCollection` (ad-attribution exfil),
 `presentCodeRedemptionSheet` (promo codes — not needed today),
@@ -1301,6 +1301,20 @@ fingerprint), `enableAdServicesAttributionTokenCollection` (ad-attribution exfil
 integrations (Facebook / Adjust / AppsFlyer / Amplitude / Mixpanel / Segment / Braze /
 Iterable / PostHog / Attribution APIs) — those need to stay UNCONFIGURED on the RC
 dashboard side; not enforceable from code.
+
+**CORRECTION (2026-07-20) — `setAttributes` IS now used; removed from the NOT-added list
+above.** The referral system (PRs #1194/#1195, 2026-07-18) added
+`setReferralAttribute(code)` at `src/lib/purchases.js:100-105`, which calls
+`Purchases.setAttributes({ referralCode })` to tag the RevenueCat customer for referral
+attribution. The original audit line predates that work and was stale. **Honest scope of
+what this transmits:** a referral *code* (identifies the referrer, not the purchaser)
+attached to RevenueCat's anonymous app-generated user ID — **no wallet address, seed,
+balance, or personal identifier**, and it is best-effort/guarded (`if (!isNative() ||
+!configured || !code) return;` + try/catch). It is nonetheless a **persistent attribution
+association**, so it must be declared in the Play Data Safety form under "Device or other
+IDs" — see `docs/play-launch/data-safety-form.md` ⚠ OWNER-DECISION 5. The I3 invariant is
+unaffected: all RC calls remain gated behind `isDeniabilityOrDemoActive()` at the API
+layer, so nothing is sent in a decoy/hidden session.
 
 Tests: 35/35 targeted green for PR #1085 (11 new: setLogLevel PROD/dev/rejection paths,
 `manageSubscription` on iOS/Android/web, UI button visibility + click + per-platform copy)
