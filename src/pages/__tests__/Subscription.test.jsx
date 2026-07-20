@@ -121,7 +121,7 @@ describe('Subscription page — native, monthly-only offering', () => {
     renderPage();
     await waitFor(() => expect(screen.getByText('$5.99')).toBeTruthy());
     fireEvent.click(screen.getByRole('radio', { name: /monthly/i }));
-    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade/i }));
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
       identifier: '$rc_monthly',
       product: { priceString: '$5.99' },
@@ -168,7 +168,7 @@ describe('Subscription page — native, annual-only offering', () => {
     refreshTier.mockResolvedValue('safety_plus');
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade/i }));
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
       identifier: '$rc_annual',
       product: { priceString: '$49.99' },
@@ -194,7 +194,7 @@ describe('Subscription page — native, monthly + annual offering', () => {
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
     // The CTA reflects the selected billing period.
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /upgrade to safety plus.*\$49\.99/i })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /upgrade.*\$49\.99/i })).toBeTruthy()
     );
   });
 
@@ -213,7 +213,7 @@ describe('Subscription page — native, monthly + annual offering', () => {
     refreshTier.mockResolvedValue('safety_plus');
     renderPage();
     await waitFor(() => expect(screen.getByRole('radiogroup', { name: /billing period/i })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade/i }));
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
       identifier: '$rc_annual',
       product: { priceString: '$49.99' },
@@ -227,7 +227,7 @@ describe('Subscription page — native, monthly + annual offering', () => {
     renderPage();
     await waitFor(() => expect(screen.getByRole('radio', { name: /monthly/i })).toBeTruthy());
     fireEvent.click(screen.getByRole('radio', { name: /monthly/i }));
-    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade/i }));
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
       identifier: '$rc_monthly',
       product: { priceString: '$5.99' },
@@ -310,7 +310,7 @@ describe('Subscription page — billing radiogroup arrow-key navigation', () => 
     fireEvent.keyDown(annual, { key: 'ArrowLeft' });
     await waitFor(() => expect(monthly.getAttribute('aria-checked')).toBe('true'));
 
-    expect(screen.getByRole('button', { name: /upgrade to safety plus.*\$5\.99/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /upgrade.*\$5\.99/i })).toBeTruthy();
   });
 });
 
@@ -340,13 +340,13 @@ describe('Subscription page — Manage subscription (paid tier, native)', () => 
   it('helper copy names the App Store on iOS', async () => {
     getPlatform.mockReturnValue('ios');
     renderPage();
-    await waitFor(() => expect(screen.getByText(/App Store subscription settings/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/App Store settings/i)).toBeTruthy());
   });
 
   it('helper copy names the Play Store on Android', async () => {
     getPlatform.mockReturnValue('android');
     renderPage();
-    await waitFor(() => expect(screen.getByText(/Play Store subscription settings/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Play Store settings/i)).toBeTruthy());
   });
 });
 
@@ -357,7 +357,7 @@ describe('Subscription page — Manage subscription hidden when it should be', (
     useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
     getOfferings.mockResolvedValue({ availablePackages: [] });
     renderPage();
-    await waitFor(() => expect(screen.getByRole('button', { name: /upgrade to safety plus/i })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('button', { name: /upgrade/i })).toBeTruthy());
     expect(screen.queryByRole('button', { name: /manage subscription/i })).toBeNull();
   });
 
@@ -443,7 +443,7 @@ describe('Subscription page — tier-based referral discount', () => {
     setReferralAttribute.mockResolvedValue(undefined);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$44.99').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade/i }));
     await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-ABC123', 'annual', 4999, 500));
     expect(setReferralAttribute).toHaveBeenCalledWith('VYX-ABC123');
     expect(markAttributedMock).toHaveBeenCalled();
@@ -456,7 +456,7 @@ describe('Subscription page — tier-based referral discount', () => {
     refreshTier.mockResolvedValue('safety_plus');
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$44.99').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole('button', { name: /upgrade to safety plus/i }));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade/i }));
     await waitFor(() => expect(purchasePackage).toHaveBeenCalled());
     expect(recordAttribution).not.toHaveBeenCalled();
   });
