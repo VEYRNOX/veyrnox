@@ -59,16 +59,36 @@ export function shouldCacheUnlockSecret({ authModel, biometricEnabled }) {
  * That was broken since the PIN-cohort chaff-provisioning design: every PIN device
  * provisions a chaff blob into the `secondary` (duress) IndexedDB slot at onboarding
  * (provisionChaff.js) so that all devices are structurally identical — meaning
- * `hasDuressVault()` ALWAYS returns true and the auto-cache NEVER fired. The
- * `alreadyCached` guard is sufficient: chaff never writes a biometric cache, so
- * `alreadyCached` is false on a fresh device (auto-cache fires correctly); once the
- * user opts into Face-ID→decoy, `alreadyCached` is true (auto-cache blocked correctly).
+ * `hasDuressVault()` ALWAYS returns true and the auto-cache NEVER fired.
  *
- * @param {{biometricEnabled: boolean, alreadyCached: boolean}} ctx
+ * H-3 CORRECTION: `alreadyCached` alone is NOT sufficient, and an earlier version of
+ * this comment wrongly said it was. It only covers the decoy-cached-FIRST ordering.
+ * In the reverse (and default) ordering — biometric armed at onboarding, so the REAL
+ * PIN is cached, THEN a Duress PIN is configured — `alreadyCached` blocks nothing that
+ * matters, and Face ID kept opening the REAL wallet under coercion.
+ *
+ * H-3 / P1-B: the duress guard is RESTORED here, keyed on a signal chaff does not
+ * forge. `duressConfigured` comes from `veyrnox-duress-configured`
+ * (lib/duressBiometricGuard.js) — written ONLY when the user deliberately saves an
+ * Emergency PIN and removed when they remove it — NOT from `hasDuressVault()`, which
+ * chaff makes permanently true. Without it, a device that setDuressPin correctly
+ * disarmed re-arms itself: the user re-enables biometric unlock (or was never
+ * disarmed, as in the pre-fix installed base), the next successful real-PIN unlock
+ * caches the REAL pin again, and Face ID opens the real wallet under coercion.
+ * The invariant is: WHILE A DURESS PIN IS CONFIGURED, THE REAL PIN IS NEVER CACHED.
+ *
+ * FAIL CLOSED (I4): `duressConfigured` must be EXPLICITLY false to permit caching. An
+ * absent/unknown signal is treated as "duress may be configured" → no cache. Losing a
+ * convenience cache is safe; re-arming Face-ID-opens-the-real-wallet is not.
+ *
+ * All three guards are load-bearing — do not remove any of them.
+ *
+ * @param {{biometricEnabled: boolean, alreadyCached: boolean, duressConfigured?: boolean}} ctx
  * @returns {boolean}
  */
-export function shouldAutoCacheTypedPin({ biometricEnabled, alreadyCached }) {
+export function shouldAutoCacheTypedPin({ biometricEnabled, alreadyCached, duressConfigured }) {
   if (!biometricEnabled) return false;
   if (alreadyCached) return false;
+  if (duressConfigured !== false) return false;
   return true;
 }

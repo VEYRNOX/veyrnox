@@ -52,6 +52,7 @@ vi.mock('@/lib/biometric', () => ({
   getBiometricStatus: vi.fn(async () => ({
     mode: 'web', available: false, label: 'Biometrics', simulated: false, detail: '',
   })),
+  isBiometricUnlockEnabled: () => false,
 }));
 
 vi.mock('@/lib/authModel', () => ({ getAuthModel: () => 'pin', isPinModel: () => true }));

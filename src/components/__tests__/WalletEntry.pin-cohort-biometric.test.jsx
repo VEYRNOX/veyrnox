@@ -34,6 +34,7 @@ vi.mock('@/lib/authModel', async (orig) => {
 vi.mock('@/lib/biometric', () => ({
   isBiometricGateError: vi.fn(() => false),
   isBiometricUnlockEnabled: vi.fn(() => true),
+  setBiometricUnlockEnabled: vi.fn(() => {}),
   getBiometricStatus: vi.fn(async () => ({ available: true, label: 'Face ID', mode: 'native' })),
 }));
 // Cache is EMPTY (no stored secret yet) — the condition the auto-cache fires on.
@@ -46,7 +47,9 @@ vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
 vi.mock('@/wallet-core/duress', () => ({ hasDuressVault: vi.fn(async () => true) }));
 
 import { useWallet } from '@/lib/WalletProvider';
-import { hasStoredUnlockSecret } from '@/lib/biometricUnlock';
+import { hasStoredUnlockSecret, clearUnlockSecret } from '@/lib/biometricUnlock';
+import { setBiometricUnlockEnabled } from '@/lib/biometric';
+import { DURESS_CONFIGURED_KEY, DECOY_BIOMETRIC_MARKER_KEY } from '@/lib/duressBiometricGuard';
 import WalletEntry from '@/components/WalletEntry';
 
 function makeCtx(overrides = {}) {
@@ -77,6 +80,8 @@ async function waitForPinPad() {
 
 beforeEach(() => {
   vi.mocked(hasStoredUnlockSecret).mockReset().mockResolvedValue(false);
+  vi.mocked(clearUnlockSecret).mockClear();
+  vi.mocked(setBiometricUnlockEnabled).mockClear();
   try { localStorage.clear(); } catch { /* shimmed */ }
 });
 afterEach(() => { cleanup(); });
@@ -115,6 +120,68 @@ describe('WalletEntry — typed-PIN auto-cache guard (ordering + chaff compat)',
     await waitFor(() => expect(ctx.unlock).toHaveBeenCalledWith('13572468', { pinModel: true, skipBiometric: true }));
     // The typed (real) PIN must NEVER be auto-cached when a secret already exists.
     expect(ctx.enableBiometricUnlock).not.toHaveBeenCalled();
+  });
+
+  // ---- H-3 / P1-B: while a duress PIN is configured, the REAL pin is never cached ----
+  it('does NOT auto-cache the typed REAL pin while a duress PIN is CONFIGURED', async () => {
+    // Pre-state: the user deliberately configured an Emergency PIN (the marker the
+    // Emergency-PIN screen writes), biometric pref is on, cache is empty. Without the
+    // duress guard, this successful real-PIN unlock re-arms "Face ID opens the REAL
+    // wallet" and re-creates H-3.
+    localStorage.setItem(DURESS_CONFIGURED_KEY, '1');
+    // The cache is decoy-bound, so the mount guard leaves the arming alone; the ONLY
+    // thing that must stop the re-cache here is the shouldAutoCacheTypedPin guard.
+    localStorage.setItem(DECOY_BIOMETRIC_MARKER_KEY, '1');
+    const ctx = makeCtx();
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+    await waitForPinPad();
+    await enterPin();
+
+    await waitFor(() => expect(ctx.unlock).toHaveBeenCalled());
+    expect(ctx.enableBiometricUnlock).not.toHaveBeenCalled();
+  });
+
+  it('still auto-caches when NO duress PIN is configured (no PR #714 regression)', async () => {
+    // Chaff writes a duress BLOB on every PIN device, but no configuration marker —
+    // the guard must key on the marker, never on blob presence.
+    const ctx = makeCtx();
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+    await waitForPinPad();
+    await enterPin();
+
+    await waitFor(() => expect(ctx.enableBiometricUnlock).toHaveBeenCalledWith('13572468'));
+  });
+
+  // ---- H-3 / P1-A: the installed-base guard runs on cold lock-screen mount ----
+  it('disarms a pre-existing duress + armed-biometric device on mount (installed base)', async () => {
+    localStorage.setItem(DURESS_CONFIGURED_KEY, '1'); // configured BEFORE the H-3 fix
+    vi.mocked(hasStoredUnlockSecret).mockResolvedValue(true); // holds the REAL pin
+    const ctx = makeCtx();
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+    await waitForPinPad();
+
+    await waitFor(() => expect(setBiometricUnlockEnabled).toHaveBeenCalledWith(false));
+    expect(clearUnlockSecret).toHaveBeenCalled();
+  });
+
+  it('leaves a decoy-bound biometric cache armed on mount', async () => {
+    localStorage.setItem(DURESS_CONFIGURED_KEY, '1');
+    localStorage.setItem(DECOY_BIOMETRIC_MARKER_KEY, '1');
+    vi.mocked(hasStoredUnlockSecret).mockResolvedValue(true);
+    const ctx = makeCtx();
+    vi.mocked(useWallet).mockReturnValue(ctx);
+
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+    await waitForPinPad();
+
+    expect(setBiometricUnlockEnabled).not.toHaveBeenCalled();
+    expect(clearUnlockSecret).not.toHaveBeenCalled();
   });
 
   it('does NOT cache a WRONG PIN (unlock throws → no cache write)', async () => {
