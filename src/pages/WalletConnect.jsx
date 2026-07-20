@@ -47,9 +47,6 @@ const DAPP_LOGOS = {
   'GMX': (
     <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#2D42FC"/><path d="M8 16l4-6h3l-4 6 4 6h-3l-4-6zm8 0l4-6h3l-4 6 4 6h-3l-4-6z" fill="#fff"/></svg>
   ),
-  'Raydium': (
-    <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#2C2D52"/><circle cx="16" cy="16" r="7" fill="none" stroke="#4F46E5" strokeWidth="2"/><path d="M16 9v7l5 3.5" stroke="#C084FC" strokeWidth="2" strokeLinecap="round"/><circle cx="16" cy="16" r="2" fill="#C084FC"/></svg>
-  ),
   'Trader Joe': (
     <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#E53547"/><ellipse cx="16" cy="19" rx="5" ry="4.5" fill="#fff"/><circle cx="14.5" cy="18.5" r=".8" fill="#E53547"/><circle cx="17.5" cy="18.5" r=".8" fill="#E53547"/><path d="M14 21c.5.8 1.2 1 2 1s1.5-.2 2-1" stroke="#E53547" strokeWidth=".8" strokeLinecap="round" fill="none"/><path d="M10 14.5c0-1 1-2.5 6-2.5s6 1.5 6 2.5c0 1.5-2 2-6 2s-6-.5-6-2z" fill="#E53547"/><path d="M10 14.5c0-1 1-2.5 6-2.5s6 1.5 6 2.5" stroke="#fff" strokeWidth=".5" fill="none"/></svg>
   ),
@@ -66,7 +63,9 @@ const POPULAR_DAPPS = [
   { name: 'Blur', url: 'https://blur.io', category: 'NFT', chains: ['ETH'] },
   { name: 'dYdX', url: 'https://dydx.exchange', category: 'Perps', chains: ['ETH', 'ARB'] },
   { name: 'GMX', url: 'https://app.gmx.io', category: 'Perps', chains: ['ARB', 'AVAX'] },
-  { name: 'Raydium', url: 'https://raydium.io', category: 'DEX', chains: ['ETH'] },
+  // Raydium removed: it is a Solana-only DEX, but Veyrnox's WalletConnect approves
+  // ONLY eip155 (EVM) namespaces (session.js), so a Raydium pairing would fail with
+  // "No supported chains in proposal". It was also mislabelled chains:['ETH'].
   { name: 'Trader Joe', url: 'https://traderjoexyz.com', category: 'DEX', chains: ['AVAX', 'ARB', 'BNB'] },
 ];
 
