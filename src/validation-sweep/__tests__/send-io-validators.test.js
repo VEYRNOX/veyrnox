@@ -106,17 +106,18 @@ describe('FLAG S3 — self-send is now guarded (#179)', () => {
   });
 });
 
-describe('FLAG S4 — amount field has no inputMode / step / min hardening', () => {
+describe('FLAG S4 (FIXED) — amount field keypad / min / step hardening', () => {
   const send = read('../../pages/SendCrypto.jsx');
-  // The amount <Input type="number"> (placeholder "0.00") has no inputMode="decimal",
-  // no min="0", no step — so on mobile it offers the wrong keypad and accepts the
-  // browser's permissive number parsing (e.g. "1e3", "-0"). Documented; gated later
-  // by toBaseUnits, but the field itself is unhardened.
-  it('CONFIRMED: the amount input is a bare type="number" with placeholder "0.00"', () => {
+  // The amount <Input type="number"> now declares inputMode="decimal" (correct mobile
+  // keypad), min="0" and step="any" (non-negative decimals). These are a UX/keypad
+  // layer only — the authoritative <=0 rejection is `amountBadValue` and the base-unit
+  // conversion is toBaseUnits, so the attributes are never the sole guard.
+  it('the amount input keeps its "0.00" placeholder', () => {
     expect(send).toContain('placeholder="0.00"');
   });
-  it.fails('IDEAL: the amount input declares inputMode="decimal" and min="0"', () => {
+  it('FIXED: the amount input declares inputMode="decimal", min="0" and step="any"', () => {
     expect(send).toMatch(/inputMode=["']decimal["']/);
     expect(send).toMatch(/min=["']0["']/);
+    expect(send).toMatch(/step=["']any["']/);
   });
 });
