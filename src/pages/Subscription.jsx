@@ -242,15 +242,9 @@ export default function Subscription() {
       )}
 
       {isNative && (
-        <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
-          <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-sm text-muted-foreground">
-            Checking or purchasing a subscription contacts our in-app-purchase provider
-            (RevenueCat) and the App Store / Google Play over the network to verify your
-            entitlement. No wallet address, balance, or key material is ever sent, and this
-            check is suppressed entirely in decoy/hidden sessions.
-          </p>
-        </div>
+        <p className="text-xs text-muted-foreground text-center px-4">
+          Purchases are verified securely through the App Store or Google Play. Your wallet stays private.
+        </p>
       )}
 
       {hasDiscount && currentTier !== "safety_plus" && (
@@ -302,6 +296,12 @@ export default function Subscription() {
           <CardTitle className="flex items-center gap-2 text-lg">
             Safety Plus
             <Sparkles className="h-4 w-4 text-primary" />
+            <Badge
+              variant="outline"
+              className="ml-auto text-[10px] px-2 py-0.5 border-primary/40 text-primary whitespace-nowrap"
+            >
+              Limited time offer
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -367,12 +367,13 @@ export default function Subscription() {
                         : "text-muted-foreground hover:text-foreground")
                     }
                   >
-                    <span className="inline-flex items-center gap-1.5">
-                      Annual
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">
-                        Save 30%
-                      </Badge>
-                    </span>
+                    Annual
+                    <Badge
+                      variant="outline"
+                      className="absolute -top-2 right-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-primary/40 bg-background text-primary whitespace-nowrap"
+                    >
+                      Save 30%
+                    </Badge>
                     <span className="block text-xs text-muted-foreground font-normal">
                       {annualPriceString}
                       {hasDiscount && regularAnnualPrice && regularAnnualPrice !== annualPriceString && (
