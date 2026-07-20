@@ -51,12 +51,12 @@ const features = [
   { category: "Access & Authentication", icon: KeyRound, items: [
     { name: "FIDO2 Passkey Unlock", desc: "FIDO2/WebAuthn passkey unlock gate — phishing-resistant, device-bound credential; keys are never held by the passkey system", status: "built" },
     { name: "Biometric Unlock", desc: "Face ID / Touch ID / Android fingerprint unlock — native on iOS and Android. Optionally opens the decoy wallet under duress settings.", status: "built" },
-    { name: "PIN Unlock", desc: "Numeric PIN onboarding and unlock with strong on-device encryption. Hardware-bound protection available for enhanced security.", status: "built" },
+    { name: "PIN Unlock", desc: "Numeric PIN onboarding and unlock with strong on-device encryption. On its own, a PIN can be repeatedly tried if someone extracts your device's storage; turning on Hardware Key Protection (off by default) closes that gap.", status: "built" },
     { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password, PIN + Passkey, or PIN + Face ID / biometric.", status: "built" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "built" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "built" },
-    { name: "Hardware Wallet", desc: "Trezor support (WebUSB, Chrome/Edge) — cold-key address derivation and transaction signing for ETH, BTC, and SOL. Private keys never leave the hardware device.", status: "built" },
-    { name: "Hardware Key Protection", desc: "Device-bound key-encryption key using iOS Secure Enclave or Android Keystore (StrongBox-preferred). Adds hardware-level protection to your vault — even if your PIN is compromised, the vault cannot be decrypted without the device's secure hardware.", status: "built" },
+    { name: "Hardware Wallet", desc: "Trezor support (WebUSB, Chrome/Edge) — cold-key address derivation and transaction signing for ETH, BTC, and SOL. Private keys never leave the hardware device. Built and code-reviewed; not yet tested against a physical Trezor device.", status: "built" },
+    { name: "Hardware Key Protection", desc: "Optional, off-by-default protection that ties your vault's encryption key to your device's secure hardware (iOS Secure Enclave or Android's secure hardware, using the strongest option your device supports). Once turned on, your PIN alone is no longer enough — the vault also needs your device's secure hardware to unlock.", status: "built" },
   ]},
   { category: "Transaction Safety", icon: ShieldAlert, items: [
     { name: "Token Approvals (View + Revoke)", desc: "Inspect and revoke token allowances; flag unlimited", status: "built" },
@@ -103,7 +103,7 @@ const features = [
     { name: "Recurring Payments", desc: "Recurring payment schedule reminders; user signs each time. No autonomous auto-debit.", status: "built" },
   ]},
   { category: "Referrals", icon: Users, items: [
-    { name: "Referral Tracker", desc: "Share your referral code to earn rewards. Tier-based commission structure with discounts for referred users on Safety Plus subscriptions.", status: "built" },
+    { name: "Referral Tracker", desc: "Share your referral code to earn rewards; tier-based commissions and discounts apply to Safety Plus subscriptions. Using this feature sends your referral code, chosen plan, and purchase/discount amounts to VEYRNOX's servers so earnings can be tracked — the referral service never receives your balances, your wallet addresses, or your seed phrase. Claiming a payout is separate and opens an email you write yourself, so you choose what payment details to include.", status: "built" },
   ]},
   { category: "Platform", icon: Smartphone, items: [
     { name: "Demo Mode", desc: "Browse without a backend or funded wallet", status: "built" },
@@ -285,6 +285,11 @@ export default function Documentation() {
             {targetCount > 0 && <Badge variant="outline" className={STATUS_META.target.className}>{targetCount} Coming Soon</Badge>}
             {plannedCount > 0 && <Badge variant="outline" className={STATUS_META.planned.className}>{plannedCount} Roadmap</Badge>}
           </div>
+          <p className="text-xs text-muted-foreground pt-2 max-w-3xl">
+            <b>Available</b> means shipped and working today. <b>Coming Soon</b> means designed but not yet
+            released. <b>Roadmap</b> means planned for later. These labels describe what's built, not an
+            independent security review.
+          </p>
         </CardHeader>
         <CardContent>
           <Accordion type="multiple" defaultValue={["cat-0", "cat-1", "cat-2"]} className="w-full">
