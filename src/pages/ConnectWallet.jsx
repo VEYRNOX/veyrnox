@@ -26,7 +26,7 @@ const PROVIDERS = [
     emoji: "👻",
     currencies: ["SOL"],
     detect: () => typeof window.solana !== "undefined" && window.solana.isPhantom,
-    installUrl: "https://phantom.app/",
+    installUrl: "https://phantom.com/",
   },
   {
     id: "coinbase",

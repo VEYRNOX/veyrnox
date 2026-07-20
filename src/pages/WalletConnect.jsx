@@ -17,9 +17,6 @@ import { DEMO } from '@/api/demoClient';
 const CONFIGURED = Boolean(WALLETCONNECT_PROJECT_ID);
 
 const DAPP_LOGOS = {
-  'Binance Web3 Wallet': (
-    <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#F0B90B"/><path d="M16 7l3.5 3.5-2.1 2.1L16 11.2l-1.4 1.4-2.1-2.1L16 7zm-5.5 5.5L14 16l-3.5 3.5-2.1-2.1 1.4-1.4-1.4-1.4 2.1-2.1zm11 0l2.1 2.1-1.4 1.4 1.4 1.4-2.1 2.1L18 16l3.5-3.5zM16 13.9l2.1 2.1-2.1 2.1-2.1-2.1 2.1-2.1zM16 21.2l1.4-1.4 2.1 2.1L16 25l-3.5-3.5 2.1-2.1L16 21.2z" fill="#fff"/></svg>
-  ),
   'Uniswap': (
     <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#FF007A"/><path d="M12.5 8c1.2 0 2 .3 2 .3s-.3 1.2.5 1.8c.8.6 2.2.4 3.2 1.2 1.5 1.2 1 3.5.8 4.5-.2 1-.8 2.3-.2 3.5.4.8 1.2 1.2 1.2 1.2s-1 .5-1.8 1.8c-.6 1-.5 2.2-.5 2.2H14s.1-1-.5-2c-.5-.8-1.5-1.2-2-2.5-.5-1.5 0-3 .5-4s1-2 .5-3.2C12 11.6 11 11 11 11s.5-1.5.8-2c.2-.5.7-1 .7-1zm6 1.5c0 .5.4.8.8.8s.8-.3.8-.8-.4-.8-.8-.8-.8.3-.8.8z" fill="#fff"/></svg>
   ),
@@ -41,32 +38,49 @@ const DAPP_LOGOS = {
   'Blur': (
     <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#FF6F00"/><path d="M15.5 18.5c0-.55.45-1 1-1s1 .45 1 1-.45 1-1 1-1-.45-1-1zm1-6c.55 0 1 .45 1 1v2.5c0 .55-.45 1-1 1s-1-.45-1-1v-2.5c0-.55.45-1 1-1zm0 8c.55 0 1 .45 1 1v1c0 .55-.45 1-1 1s-1-.45-1-1v-1c0-.55.45-1 1-1z"/><circle cx="16" cy="20" r="1" fill="#fff"/></svg>
   ),
-  'dYdX': (
-    <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#6966FF"/><path d="M10 9h3l5 7-5 7h-3l5-7-5-7z" fill="#fff"/><path d="M22 9h-3l-5 7 5 7h3l-5-7 5-7z" fill="#fff" opacity=".5"/></svg>
-  ),
   'GMX': (
     <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#2D42FC"/><path d="M8 16l4-6h3l-4 6 4 6h-3l-4-6zm8 0l4-6h3l-4 6 4 6h-3l-4-6z" fill="#fff"/></svg>
   ),
-  'Trader Joe': (
+  'LFJ': (
     <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#E53547"/><ellipse cx="16" cy="19" rx="5" ry="4.5" fill="#fff"/><circle cx="14.5" cy="18.5" r=".8" fill="#E53547"/><circle cx="17.5" cy="18.5" r=".8" fill="#E53547"/><path d="M14 21c.5.8 1.2 1 2 1s1.5-.2 2-1" stroke="#E53547" strokeWidth=".8" strokeLinecap="round" fill="none"/><path d="M10 14.5c0-1 1-2.5 6-2.5s6 1.5 6 2.5c0 1.5-2 2-6 2s-6-.5-6-2z" fill="#E53547"/><path d="M10 14.5c0-1 1-2.5 6-2.5s6 1.5 6 2.5" stroke="#fff" strokeWidth=".5" fill="none"/></svg>
+  ),
+  'SushiSwap': (
+    <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#1E1E3F"/><ellipse cx="16" cy="16" rx="9" ry="4.5" transform="rotate(-25 16 16)" fill="#03B8FF"/><ellipse cx="16" cy="16" rx="3.2" ry="4" transform="rotate(-25 16 16)" fill="#fff"/><circle cx="16" cy="16" r="1.4" fill="#FA52A0"/></svg>
+  ),
+  'Balancer': (
+    <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#111"/><circle cx="16" cy="11" r="2.6" fill="#fff"/><circle cx="12.5" cy="17" r="2" fill="#fff"/><circle cx="19.5" cy="17" r="2" fill="#fff"/><circle cx="13" cy="22" r="1.4" fill="#fff"/><circle cx="19" cy="22" r="1.4" fill="#fff"/></svg>
+  ),
+  'Compound': (
+    <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#070A0E"/><path d="M16 7a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 3a6 6 0 1 1 0 12 6 6 0 0 1 0-12z" fill="#00D395"/><circle cx="16" cy="16" r="2.4" fill="#00D395"/></svg>
+  ),
+  'Lido': (
+    <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#00A3FF"/><path d="M16 7l4.5 7-4.5 2.6L11.5 14 16 7z" fill="#fff"/><path d="M16 17.4l4.8-2.8c1 1.9.8 4.3-.8 5.9a5.6 5.6 0 0 1-8 0c-1.6-1.6-1.8-4-.8-5.9L16 17.4z" fill="#fff" opacity=".7"/></svg>
+  ),
+  'Pendle': (
+    <svg viewBox="0 0 32 32" fill="none" width="36" height="36" preserveAspectRatio="xMidYMid meet"><rect width="32" height="32" rx="8" fill="#1B1E2B"/><path d="M9 22V10h5a4 4 0 0 1 0 8h-2" stroke="#28E0AE" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
   ),
 };
 
+// EVM dApp shortcuts. Every entry is an eip155 (EVM) dApp because Veyrnox's
+// WalletConnect approves ONLY eip155 namespaces (wallet-core/evm/walletconnect/
+// session.js). URLs verified live 2026-07-20 (redirect = stale). Solana-only dApps
+// (Raydium) and non-EVM/migrated ones (dYdX v4 → Cosmos appchain) are excluded —
+// a pairing there would fail with "No supported chains in proposal".
 const POPULAR_DAPPS = [
-  { name: 'Binance Web3 Wallet', url: 'https://www.binance.com/en/web3wallet', category: 'Exchange', chains: ['ETH', 'BNB', 'MATIC'] },
   { name: 'Uniswap', url: 'https://app.uniswap.org', category: 'DEX', chains: ['ETH', 'MATIC', 'ARB', 'OP'] },
-  { name: '1inch', url: 'https://app.1inch.io', category: 'DEX Aggregator', chains: ['ETH', 'BNB', 'MATIC', 'ARB', 'OP', 'AVAX'] },
   { name: 'PancakeSwap', url: 'https://pancakeswap.finance', category: 'DEX', chains: ['BNB', 'ETH', 'MATIC', 'ARB', 'OP'] },
+  { name: 'SushiSwap', url: 'https://www.sushi.com/swap', category: 'DEX', chains: ['ETH', 'ARB', 'OP', 'MATIC', 'AVAX', 'BNB'] },
+  { name: 'Curve', url: 'https://curve.finance', category: 'DEX', chains: ['ETH', 'MATIC', 'ARB', 'OP', 'AVAX'] },
+  { name: 'Balancer', url: 'https://balancer.fi', category: 'DEX', chains: ['ETH', 'ARB', 'OP', 'MATIC', 'AVAX'] },
+  { name: '1inch', url: 'https://app.1inch.io', category: 'DEX Aggregator', chains: ['ETH', 'BNB', 'MATIC', 'ARB', 'OP', 'AVAX'] },
+  { name: 'LFJ', url: 'https://lfj.gg', category: 'DEX', chains: ['AVAX', 'ARB', 'BNB'] },
   { name: 'Aave', url: 'https://app.aave.com', category: 'Lending', chains: ['ETH', 'MATIC', 'ARB', 'OP', 'AVAX'] },
-  { name: 'Curve', url: 'https://curve.fi', category: 'DEX', chains: ['ETH', 'MATIC', 'ARB', 'OP', 'AVAX'] },
+  { name: 'Compound', url: 'https://app.compound.finance', category: 'Lending', chains: ['ETH', 'ARB', 'OP', 'MATIC'] },
+  { name: 'Lido', url: 'https://stake.lido.fi', category: 'Staking', chains: ['ETH'] },
+  { name: 'Pendle', url: 'https://app.pendle.finance', category: 'Yield', chains: ['ETH', 'ARB', 'OP', 'BNB'] },
+  { name: 'GMX', url: 'https://app.gmx.io', category: 'Perps', chains: ['ARB', 'AVAX'] },
   { name: 'OpenSea', url: 'https://opensea.io', category: 'NFT', chains: ['ETH', 'MATIC', 'ARB', 'OP'] },
   { name: 'Blur', url: 'https://blur.io', category: 'NFT', chains: ['ETH'] },
-  { name: 'dYdX', url: 'https://dydx.exchange', category: 'Perps', chains: ['ETH', 'ARB'] },
-  { name: 'GMX', url: 'https://app.gmx.io', category: 'Perps', chains: ['ARB', 'AVAX'] },
-  // Raydium removed: it is a Solana-only DEX, but Veyrnox's WalletConnect approves
-  // ONLY eip155 (EVM) namespaces (session.js), so a Raydium pairing would fail with
-  // "No supported chains in proposal". It was also mislabelled chains:['ETH'].
-  { name: 'Trader Joe', url: 'https://traderjoexyz.com', category: 'DEX', chains: ['AVAX', 'ARB', 'BNB'] },
 ];
 
 function PopularDapps() {
