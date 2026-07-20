@@ -122,3 +122,7 @@ playwright/.auth/
 .claude/scheduled_tasks.lock
 .impeccable/
 .github/hooks/impeccable.json
+
+# Local Android signing credentials (NEVER commit)
+keystore.properties
+android/keystore.properties

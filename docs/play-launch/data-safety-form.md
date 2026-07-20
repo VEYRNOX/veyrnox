@@ -313,23 +313,28 @@ is enforced at every egress choke point in the code."*
 
 Owner tasks to complete before entering the answers on the Play Console form:
 
-- [ ] **⚠ OWNER-DECISION 1** — Voice Commands audio classification wording (§2.6)
+- [x] **⚠ OWNER-DECISION 1** — RESOLVED FROM CODE (2026-07-20): **Audio = collected, ephemeral, App functionality; processed by the OS speech service, never by Veyrnox.** iOS requests on-device recognition when the device/locale supports it — `VeyrnoxSpeechRecognitionPlugin.swift:150-151` sets `requiresOnDeviceRecognition = true` guarded by `recognizer.supportsOnDeviceRecognition` (falls back to Apple's own service otherwise). Android uses the platform `RecognizerIntent.ACTION_RECOGNIZE_SPEECH` dialog (no `EXTRA_PREFER_OFFLINE`), which on stock devices routes via Google's speech service — that is Google's processing, not Veyrnox's. **Veyrnox itself never persists or transmits audio:** `VoiceContext.jsx:56-80` receives only a transcript string and does local string-matching against `COMMANDS`; no network call, no storage beyond transient `lastCommand` state. `partialResults` defaults `false` (one-shot, not streaming). Feature defaults OFF (⚠2).
 - [x] **⚠ OWNER-DECISION 2** — RESOLVED FROM CODE: Voice Commands defaults to OFF (`useState(false)`)
-- [ ] **⚠ OWNER-DECISION 3** — encrypted personal backup declaration (§2.7)
+- [x] **⚠ OWNER-DECISION 3** — RESOLVED FROM CODE (2026-07-20): **No declaration needed — the `.enc` backup never leaves the device via app code.** `vaultBackup.js:297-333 downloadBackupFile`: Android writes locally via `FileSaver.saveToDownloads` (`:303-306`); iOS writes to `Directory.Cache` then invokes the OS **share sheet** (`Share.share`, `:311-324`) and deletes the temp file in `finally` (`:331`). Zero network primitives in the file (grep-confirmed). If a user chooses AirDrop/Cloud/Email from the share sheet, that is a **user-initiated OS action**, not transmission by Veyrnox, and does not require declaring a third-party recipient.
 - [x] **⚠ OWNER-DECISION 4** — RESOLVED FROM CODE: no crash-log SDK; answer "No" for crash logs
-- [ ] **⚠ OWNER-DECISION 5** — declare RC App User ID as "Device or other IDs" (recommended: yes)
-- [ ] **⚠ OWNER-DECISION 6** — Families Policy declaration (recommended: not designed for children)
-- [ ] **⚠ OWNER-DECISION 7** — independent security review attestation (recommended: NO — per CLAUDE.md I4 hard rule)
-- [ ] **⚠ OWNER-DECISION 8** — public URL for data deletion documentation
-- [ ] **⚠ OWNER-DECISION 9** — OpenRouter news-feed LLM call — is it wired in the shipping build?
+- [x] **⚠ OWNER-DECISION 5** — RESOLVED FROM CODE (2026-07-20): **Declare "Device or other IDs" = YES (collected + shared).** `purchases.js:37 Purchases.configure()` causes the RevenueCat SDK to generate and persist an **anonymous app-generated user ID** that is transmitted with every purchase/customer-info call. No `logIn`/`logOut`/`setEmail`/`collectDeviceIdentifiers` are called. **⚠ NEW FINDING — reconcile with CLAUDE.md:** `setAttributes` **IS** now used — `purchases.js:100-105 setReferralAttribute()` sends a `referralCode` custom attribute to RevenueCat. CLAUDE.md's 2026-07-17 RC-audit list still records `setAttributes` under "explicitly NOT added" and is therefore **stale on this point**. No wallet address, seed, or balance is sent, but a referral code is a persistent attribution association and must be reflected here. Purpose: App functionality + Analytics (purchase attribution).
+- [ ] **⚠ OWNER-DECISION 6** — Families Policy declaration (recommended: not designed for children) — **owner/counsel call, not code-resolvable**
+- [x] **⚠ OWNER-DECISION 7** — **RESOLVED (2026-07-20): answer NO.** Play's optional "independent security review" attestation must be answered **No**. Per CLAUDE.md hard rules the independent third-party security audit remains **outstanding**; every audit to date is INTERNAL (Claude/Codex passes, internal static analysis), and "Internal is never to be presented as independent" (I4 honesty). Answering Yes would be a false attestation.
+- [ ] **⚠ OWNER-DECISION 8** — public URL for data deletion documentation — **owner action** (needs a hosted page, e.g. `veyrnox.com/data-deletion`)
+- [ ] **⚠ OWNER-DECISION 9** — PARTIALLY RESOLVED FROM CODE (2026-07-20): **depends on one build-config fact.** The OpenRouter call is gated on `VITE_OPENROUTER_API_KEY` being baked in at build time — `openrouterClient.js:16-20` (`OPENROUTER_AVAILABLE = !!API_KEY`) and `base44Client.js:65` (`LLM_AVAILABLE = BACKEND !== 'local' || !!import.meta.env.VITE_OPENROUTER_API_KEY`). **Confirm whether the Play release build sets that key.** If SET → declare `openrouter.ai` as a third party, category **App activity**, purpose App functionality. If UNSET → feature ships disabled, no declaration needed. **Prompt content is safe either way:** `NewsSentimentPage.jsx:55` sends a static generic market-sentiment prompt with **no interpolated user data** — no wallet address, balance, tx data, or identifiers (`openrouterClient.js:31-42`); headers carry only `HTTP-Referer: veyrnox.com` / `X-Title`. I3 fail-closed guard present (`openrouterClient.js:24-28`).
 - [ ] Counsel review of §§2.1–2.14 answers before pasting into Play Console
 - [ ] Re-verify this file matches shipping `main` on the day of submission (Data Safety is versioned per release)
+- [ ] **Follow-up (docs honesty):** update CLAUDE.md's RC-audit "explicitly NOT added" list — `setAttributes` is now used by `setReferralAttribute` (see ⚠5)
 
 ---
 
 ## Version and provenance
 
 - **Drafted:** 2026-07-17
+- **Updated:** 2026-07-20 — resolved ⚠1, ⚠3, ⚠5, ⚠7 from code/hard-rules and partially ⚠9
+  (5 of 9 owner-decisions now code-grounded, up from 2). Surfaced a CLAUDE.md staleness:
+  `setAttributes` IS now used (`setReferralAttribute`) contrary to the RC-audit
+  "explicitly NOT added" list — affects the Device-IDs declaration (⚠5).
 - **Draft author:** Claude (grounded in code, not a lawyer)
 - **Reviewer required:** owner + counsel
 - **Superseded by:** the next update to this file if the app adds a new egress
