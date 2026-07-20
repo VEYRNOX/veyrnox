@@ -77,6 +77,12 @@ describe('shouldDisarmBiometricUnlock (pure decision)', () => {
   });
 });
 
+// NOTE: these spy on `localStorage` (the instance the code actually calls), NOT on
+// `Storage.prototype`. Node >= 22 ships an experimental global `localStorage` that
+// shadows jsdom's; vitest.setup.js replaces it with a plain in-memory object whose
+// methods are OWN properties, so a `Storage.prototype` spy never fires there and the
+// fail-closed branches below silently went unexercised — green on CI (node 22), red
+// locally (node 26). Spying the instance is environment-independent.
 describe('signal readers', () => {
   it('isDuressConfigured reads the deliberate-configuration marker', () => {
     expect(isDuressConfigured()).toBe(false);
@@ -85,7 +91,7 @@ describe('signal readers', () => {
   });
 
   it('isDuressConfigured FAILS CLOSED (assumes configured) when the signal cannot be read', () => {
-    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    const spy = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new Error('storage unavailable');
     });
     try { expect(isDuressConfigured()).toBe(true); } finally { spy.mockRestore(); }
@@ -96,7 +102,7 @@ describe('signal readers', () => {
     localStorage.setItem(DECOY_BIOMETRIC_MARKER_KEY, '1');
     expect(isDecoyBiometricCache()).toBe(true);
 
-    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    const spy = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new Error('storage unavailable');
     });
     // Fail CLOSED here means "no proof the cache is the decoy's" → disarm.
@@ -142,8 +148,8 @@ describe('enforceDuressBiometricInvariant (installed-base upgrade guard)', () =>
 
   it('is a ZERO-WRITE no-op for a user who never configured duress (no new tell)', async () => {
     setBiometricUnlockEnabled(true);
-    const setItem = vi.spyOn(Storage.prototype, 'setItem');
-    const removeItem = vi.spyOn(Storage.prototype, 'removeItem');
+    const setItem = vi.spyOn(localStorage, 'setItem');
+    const removeItem = vi.spyOn(localStorage, 'removeItem');
 
     const disarmed = await enforceDuressBiometricInvariant();
 

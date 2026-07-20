@@ -127,7 +127,7 @@ describe('SpendingPatternsTile — deniability parity (D2/D3)', () => {
 
 describe('SpendingPatternsTile — option-1 boundary guard (no disk write)', () => {
   it('writes nothing to localStorage or IndexedDB across a full aggregate + render', () => {
-    const lsSet = vi.spyOn(Storage.prototype, 'setItem');
+    const lsSet = vi.spyOn(localStorage, 'setItem');
     const idbOpen = vi.spyOn(indexedDB, 'open');
     const res = spendByPeriod({ supported: true, transactions: [row({ amount: '0.5' })] }, 'month');
     const out = SpendingPatternsTile({
