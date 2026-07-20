@@ -254,6 +254,71 @@ const ALL_RESIDUE_KEYS = Object.freeze([
   ...METADATA_RESIDUE_KEYS,
 ]);
 
+// SESSION-STORAGE residue (C-1). Everything above lives in localStorage; these
+// keys live in sessionStorage, which panic.js previously did not touch at all.
+// sessionStorage is per-TAB, not per-navigation, so a key written before the wipe
+// SURVIVES the post-wipe reload by spec — i.e. it outlives the destruction of the
+// key material it describes. Same single-list discipline as ALL_RESIDUE_KEYS: this
+// list drives BOTH the erase (clearSessionResidue) AND the inspection
+// (readSessionResidue → inspectKeyMaterial().sessionStorageResidue / .clean), so
+// adding a key here fixes both at once. Source modules in comments:
+//   veyrnox-recent-pages — hooks/useRecentPages.js KEY (More-drawer recents; NAMES
+//                          '/duress-pin', '/stealth-wallets', '/panic-wipe' — a
+//                          direct deniability tell that the coercion stack existed)
+const SESSION_RESIDUE_KEYS = Object.freeze([
+  'veyrnox-recent-pages',
+]);
+
+// Clear every sessionStorage residue key. Guarded for non-browser/test envs.
+// Per-key try so ONE failing key cannot abort the removal of the rest. Returns
+// whether every removal was attempted without error — but note the authoritative
+// evidence of destruction is readSessionResidue() below, not this return value:
+// a removal that "succeeded" but did not take effect is still caught by the read.
+function clearSessionResidue() {
+  let ok = true;
+  try {
+    if (typeof sessionStorage === 'undefined') return true;
+  } catch { return false; }
+  for (const k of SESSION_RESIDUE_KEYS) {
+    try { sessionStorage.removeItem(k); } catch { ok = false; }
+  }
+  return ok;
+}
+
+// Which sessionStorage residue keys still exist (for the report).
+//
+// P2-2 (fail CLOSED, I4). This previously returned `[]` when sessionStorage access
+// threw — indistinguishable from "verified empty", so inspectKeyMaterial().clean
+// could report TRUE while residue was never verifiably removed. A claim of
+// destruction we cannot substantiate is exactly the kind of fake assurance I4
+// forbids. The read now reports its own trustworthiness: `verified:false` means
+// "unknown, do NOT call this clean".
+//
+// A truly absent sessionStorage (Node/test/non-browser) IS verified — there is no
+// per-tab store for residue to live in.
+//
+// @returns {{ keys: string[], verified: boolean }}
+function readSessionResidue() {
+  let store;
+  try {
+    if (typeof sessionStorage === 'undefined') return { keys: [], verified: true };
+    store = sessionStorage;
+  } catch {
+    // Accessing the accessor itself threw (e.g. SecurityError on a partitioned
+    // or disabled store): we cannot see whether residue survives.
+    return { keys: [], verified: false };
+  }
+  const keys = [];
+  for (const k of SESSION_RESIDUE_KEYS) {
+    try {
+      if (store.getItem(k) != null) keys.push(k);
+    } catch {
+      return { keys, verified: false };
+    }
+  }
+  return { keys, verified: true };
+}
+
 // GAP-3: wildcard-prefix keys whose exact names are not known at build time.
 // lib/snapshotStore.js writes 'veyrnox-snapshots-<fingerprint>'; the fingerprint
 // is derived at runtime so we can't list the exact key — we scan by prefix.
@@ -563,10 +628,13 @@ function deleteAppDataDatabase() {
  * NON-DESTRUCTIVE inspection of what local key material currently exists. Used
  * BEFORE a wipe (to show what is there) and AFTER (to prove nothing recoverable
  * remains). Re-opens the store (recreating an empty one if the DB was deleted)
- * and enumerates its keys, plus the DEMO residue maps. `clean` is true when no
- * vault blob and no residue map remain.
+ * and enumerates its keys, plus the DEMO residue maps and the sessionStorage
+ * residue keys. `clean` is true when no vault blob, no localStorage residue and
+ * no sessionStorage residue remain AND the sessionStorage read was verifiable
+ * (P2-2: an unreadable store is reported `sessionStorageVerified:false` and is
+ * NEVER called clean — we do not claim a destruction we cannot substantiate).
  *
- * @returns {Promise<{ indexedDbKeys: string[], vaultBlobCount: number, localStorageResidue: string[], clean: boolean }>}
+ * @returns {Promise<{ indexedDbKeys: string[], vaultBlobCount: number, localStorageResidue: string[], sessionStorageResidue: string[], sessionStorageVerified: boolean, clean: boolean }>}
  */
 export async function inspectKeyMaterial() {
   const db = await openDb();
@@ -581,11 +649,18 @@ export async function inspectKeyMaterial() {
     db.close();
   }
   const residue = readLocalAddressResidue();
+  const sessionResidue = readSessionResidue(); // C-1 / P2-2
   return {
     indexedDbKeys: keys,
     vaultBlobCount: keys.length,
     localStorageResidue: residue,
-    clean: keys.length === 0 && residue.length === 0,
+    sessionStorageResidue: sessionResidue.keys,
+    sessionStorageVerified: sessionResidue.verified,
+    clean:
+      keys.length === 0 &&
+      residue.length === 0 &&
+      sessionResidue.keys.length === 0 &&
+      sessionResidue.verified === true,
   };
 }
 
@@ -597,7 +672,9 @@ export async function inspectKeyMaterial() {
  *   3. best-effort delete the SEPARATE app-data database (veyrnox-appdata) — no key
  *      material, but forensic residue (addresses, tx history, names, alerts);
  *   4. clear the DEMO-only address-residue maps + the deniability/metadata tells;
- *   5. return a post-wipe inspection report proving nothing recoverable remains.
+ *   5. clear the sessionStorage residue keys (C-1 — sessionStorage is per-tab and
+ *      otherwise survives the post-wipe reload);
+ *   6. return a post-wipe inspection report proving nothing recoverable remains.
  *
  * On NATIVE (M2b) the primary vault is hardware-backed and lives outside this
  * IndexedDB; WalletProvider.panicWipe ALSO calls keyStore.clearVault() to destroy
@@ -611,6 +688,7 @@ export async function panicWipeLocal() {
   await deleteVaultDatabase();
   await deleteAppDataDatabase();
   clearLocalAddressResidue();
+  clearSessionResidue();  // C-1: sessionStorage tells (More-drawer recents)
   clearBrowserCookies(); // PW-02: expire known browser cookies (sidebar_state)
   // Write the next-open wipe marker AFTER the residue sweep (clearLocalAddressResidue
   // only touches ALL_RESIDUE_KEYS, which deliberately excludes WIPE_MARKER_KEY) so it
