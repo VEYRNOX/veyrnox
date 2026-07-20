@@ -44,8 +44,14 @@ const SECRET =
   'test test test test test test test test test test test junk';
 const CRED_KEY = 'veyrnox-prf-cred-id';
 
-// Argon2id at production params runs several times per test; CI runners are slow.
-test.setTimeout(300_000);
+// Argon2id at production params runs several times per test; CI runners are slow — so
+// this budget stays generous. It is NOT a substitute for bounded waits, though: a stale
+// locator used to consume the whole 300s, and `retries: 2` turned one broken test into
+// 15 of the 20 minutes the CI step had, so everything after it never ran. Individual
+// waits are now explicitly bounded (see gotoSettingsInApp), which is what makes a
+// structural failure surface in seconds. 180s is ample for the Argon2id work while
+// halving the blast radius if something does hang.
+test.setTimeout(180_000);
 
 // ── CDP virtual authenticator ────────────────────────────────────────────────
 async function addAuthenticator(page, { hasPrf = true } = {}) {
@@ -399,7 +405,22 @@ test.describe('Web KEK PRF — UI unlock path', () => {
   // the vault — unlock state is in-memory in WalletProvider — so the KEK card
   // would never mount). The Layout header has a Link aria-labelled "Settings".
   async function gotoSettingsInApp(page) {
-    await page.getByRole('link', { name: 'Settings' }).first().click();
+    // Settings is NOT in the Layout header — it lives in the "Preferences" nav group,
+    // which is COLLAPSED by default: Layout.jsx:140 opens only { Overview, Wallet },
+    // and a collapsed group renders none of its items (Layout.jsx:268). So the link is
+    // absent from the DOM until the group is expanded. Expanding first is what this
+    // test was missing — it waited the full 300s test budget for a link that could
+    // never appear, three times over with retries, and took the whole suite down with
+    // it. Every wait here is explicitly bounded so a future nav change fails in
+    // seconds with a clear locator error instead of burning the budget.
+    const settings = page.getByRole('link', { name: 'Settings' }).first();
+    if (!(await settings.isVisible().catch(() => false))) {
+      const preferences = page.getByRole('button', { name: 'Preferences' });
+      await expect(preferences).toBeVisible({ timeout: 15000 });
+      await preferences.click(); // toggle: only clicked when the group is shut
+    }
+    await expect(settings).toBeVisible({ timeout: 15000 });
+    await settings.click();
     await expect(page.getByRole('heading', { name: 'Hardware Protection' })).toBeVisible({ timeout: 15000 });
   }
 
