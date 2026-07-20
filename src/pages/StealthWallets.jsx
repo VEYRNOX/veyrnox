@@ -182,7 +182,7 @@ const DEMO_MOVE_LABEL = "Spare ETH (movable demo)";
 // that before proceeding, then (only after the wallet is safely hidden + verified)
 // purges its visible record so no leftover label/address/balance remains in-app.
 function MoveExistingWallet() {
-  const { moveWalletToHidden, peekHiddenWallet } = /** @type {any} */(useWallet());
+  const { moveWalletToHidden, peekHiddenWallet } = useWallet();
   const { requireTwoFactor, gateModal } = useActionGuard();
   const qc = useQueryClient();
   const { data: wallets = [] } = useQuery({
@@ -394,7 +394,7 @@ function MoveExistingWallet() {
 }
 
 export default function StealthWallets() {
-  const wallet = /** @type {any} */(useWallet());
+  const wallet = useWallet();
   const {
     isUnlocked, isHidden, isDecoy, accounts, btcAccount, solAccount,
     hasVault, addHiddenWallet, initStealthPool, removeAllHiddenWallets,
