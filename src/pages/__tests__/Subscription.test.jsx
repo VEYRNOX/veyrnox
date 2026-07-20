@@ -235,6 +235,85 @@ describe('Subscription page — native, monthly + annual offering', () => {
   });
 });
 
+// F-radiogroup (2026-07-20 branch review): the billing-period radios had no
+// arrow-key navigation and no roving tabindex — an APG pattern deviation.
+// These tests exercise real keydown events against the rendered radiogroup,
+// not a source scan.
+describe('Subscription page — billing radiogroup arrow-key navigation', () => {
+  beforeEach(() => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferings.mockResolvedValue({
+      availablePackages: [
+        { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
+        { identifier: '$rc_annual', product: { priceString: '$49.99' } },
+      ],
+    });
+  });
+
+  it('only the selected radio is in the tab order (roving tabindex)', async () => {
+    renderPage();
+    const monthly = await screen.findByRole('radio', { name: /monthly/i });
+    const annual = screen.getByRole('radio', { name: /annual/i });
+    // Annual is selected by default.
+    expect(annual.getAttribute('tabindex')).toBe('0');
+    expect(monthly.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('ArrowLeft from Annual moves focus to and selects Monthly', async () => {
+    renderPage();
+    const monthly = await screen.findByRole('radio', { name: /monthly/i });
+    const annual = screen.getByRole('radio', { name: /annual/i });
+    annual.focus();
+    expect(document.activeElement).toBe(annual);
+
+    fireEvent.keyDown(annual, { key: 'ArrowLeft' });
+
+    await waitFor(() => expect(document.activeElement).toBe(monthly));
+    expect(monthly.getAttribute('aria-checked')).toBe('true');
+    expect(annual.getAttribute('aria-checked')).toBe('false');
+    // Roving tabindex follows selection.
+    expect(monthly.getAttribute('tabindex')).toBe('0');
+    expect(annual.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('ArrowRight from Monthly moves focus to and selects Annual (wraps both ways with only two options)', async () => {
+    renderPage();
+    const monthly = await screen.findByRole('radio', { name: /monthly/i });
+    const annual = screen.getByRole('radio', { name: /annual/i });
+    fireEvent.click(monthly); // select Monthly first via mouse
+    monthly.focus();
+
+    fireEvent.keyDown(monthly, { key: 'ArrowRight' });
+
+    await waitFor(() => expect(document.activeElement).toBe(annual));
+    expect(annual.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('ArrowDown/ArrowUp behave the same as ArrowRight/ArrowLeft', async () => {
+    renderPage();
+    const monthly = await screen.findByRole('radio', { name: /monthly/i });
+    const annual = screen.getByRole('radio', { name: /annual/i });
+    annual.focus();
+
+    fireEvent.keyDown(annual, { key: 'ArrowUp' });
+    await waitFor(() => expect(document.activeElement).toBe(monthly));
+
+    fireEvent.keyDown(monthly, { key: 'ArrowDown' });
+    await waitFor(() => expect(document.activeElement).toBe(annual));
+  });
+
+  it('the selected price reflects the arrow-key selection, not just the click path', async () => {
+    renderPage();
+    const monthly = await screen.findByRole('radio', { name: /monthly/i });
+    const annual = screen.getByRole('radio', { name: /annual/i });
+    annual.focus();
+    fireEvent.keyDown(annual, { key: 'ArrowLeft' });
+    await waitFor(() => expect(monthly.getAttribute('aria-checked')).toBe('true'));
+
+    expect(screen.getByRole('button', { name: /upgrade to safety plus.*\$5\.99/i })).toBeTruthy();
+  });
+});
+
 describe('Subscription page — Manage subscription (paid tier, native)', () => {
   beforeEach(() => {
     isNativePlatform.mockReturnValue(true);

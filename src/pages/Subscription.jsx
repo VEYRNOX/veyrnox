@@ -6,7 +6,7 @@
 // tier context on success. Web has no App Store/Play Store (web stays
 // testing-only; see CLAUDE.md), so it keeps a disabled, honest preview.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +67,26 @@ export default function Subscription() {
   const [referrerTierInfo, setReferrerTierInfo] = useState(null);
   const [billing, setBilling] = useState("annual");
   const [busy, setBusy] = useState(false);
+  // F-radiogroup (2026-07-20 branch review): the two billing buttons were
+  // role="radio" inside a role="radiogroup" but relied on plain Tab-order +
+  // click, with no arrow-key movement and no roving tabindex. Both buttons
+  // were already natively focusable and Enter/Space-operable, so this was an
+  // APG pattern deviation rather than a keyboard block — but a real
+  // radiogroup should move (and select) with the arrow keys, matching native
+  // <input type="radio"> group behaviour.
+  const monthlyRadioRef = useRef(null);
+  const annualRadioRef = useRef(null);
+  const BILLING_ORDER = ["monthly", "annual"];
+  const billingRadioRefs = { monthly: monthlyRadioRef, annual: annualRadioRef };
+  function handleBillingKeyDown(e) {
+    if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(e.key)) return;
+    e.preventDefault();
+    const dir = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
+    const idx = BILLING_ORDER.indexOf(billing);
+    const next = BILLING_ORDER[(idx + dir + BILLING_ORDER.length) % BILLING_ORDER.length];
+    setBilling(next);
+    billingRadioRefs[next].current?.focus();
+  }
   const isNative = Capacitor.isNativePlatform();
   const hasReferral = hasRedeemed();
 
@@ -289,12 +309,15 @@ export default function Subscription() {
               <div
                 role="radiogroup"
                 aria-label="Billing period"
+                onKeyDown={handleBillingKeyDown}
                 className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
               >
                 <button
+                  ref={monthlyRadioRef}
                   type="button"
                   role="radio"
                   aria-checked={effectiveBilling === "monthly"}
+                  tabIndex={effectiveBilling === "monthly" ? 0 : -1}
                   onClick={() => setBilling("monthly")}
                   className={
                     "text-sm rounded-md px-3 py-2 transition-colors " +
@@ -312,9 +335,11 @@ export default function Subscription() {
                   </span>
                 </button>
                 <button
+                  ref={annualRadioRef}
                   type="button"
                   role="radio"
                   aria-checked={effectiveBilling === "annual"}
+                  tabIndex={effectiveBilling === "annual" ? 0 : -1}
                   onClick={() => setBilling("annual")}
                   className={
                     "text-sm rounded-md px-3 py-2 transition-colors relative " +
