@@ -8,10 +8,14 @@ account portal — it must go through Developer Program Support.)
 > **Before sending, confirm:**
 > 1. ~~D-U-N-S record matches Companies House~~ — **CONFIRMED by owner 2026-07-20.**
 >    D-U-N-S `234941876` matches VEYRNOX LTD. No D&B correction needed.
-> 2. ⚠ **STILL OPEN:** you are a **director/officer** of Veyrnox LTD with authority to
->    bind it. The body below states *"Director, with authority to bind the entity"* — if
->    you are not listed as an officer on the Companies House record, **change that line
->    before sending**. It is an authority claim made to Apple.
+> 2. ~~Directorship~~ — **RESOLVED 2026-07-20.** Al Jobson is **CTO, not a director**;
+>    the sole director is **Andreea Flavia Cotolan**. An earlier draft wrongly stated "Director,
+>    with authority to bind the entity" — corrected. **Route B** chosen: Al Jobson stays
+>    Account Holder (keeping Team R54268MWFV, its apps, certificates and IAP setup
+>    intact) and supplies a signed letter of authority from the director. Do not
+>    overstate the CTO's authority in any follow-up correspondence.
+> 2a. **Attach the signed letter of authority** (template at the end of this file) before
+>    sending, or state that it is available on request.
 > 3. Send from the **Account Holder Apple ID** (`al.jobson@21stclick.co.uk`), not the
 >    Gmail address used for the Google Play account.
 
@@ -48,7 +52,9 @@ Individual account to an Organization account. All required details are below.
 | Entity type | Private limited company |
 | Incorporated | 24 June 2026 |
 | Website | https://veyrnox.com |
-| My role | Director, with authority to bind the entity |
+| My role | Chief Technology Officer |
+| Director / person with authority to bind | Andreea Flavia Cotolan (sole director, Veyrnox LTD) |
+| Company contact | support@veyrnox.com |
 
 **Reason for the request**
 
@@ -61,11 +67,24 @@ submitted compliantly under the correct entity.
 The app is already set up in App Store Connect under this team and is otherwise ready
 for submission.
 
+**Authority to bind the organization**
+
+To be clear about my role: I am the Chief Technology Officer of Veyrnox LTD, not a
+registered director. The company's sole director, **Andreea Flavia Cotolan**, has authorized
+this enrollment and this conversion request. A signed letter of authority from her is
+attached / available on request, and she can confirm directly by email or telephone if
+you would prefer.
+
+If Apple requires the Account Holder for an Organization account to be a registered
+director, please advise and we will arrange for Andreea Flavia Cotolan to take that role
+instead.
+
 **Additional information**
 
 Please let me know if you need any supporting documentation — for example the
-certificate of incorporation, proof of my directorship, or verification of the
-registered address. I can provide these promptly.
+certificate of incorporation, the Companies House officer listing confirming Andreea Flavia
+Cotolan's directorship, or verification of the registered address. I can provide these
+promptly.
 
 Note that the address currently on the membership record (76 Melling Drive, Enfield,
 EN1 4UZ) is my personal address from the original Individual enrolment. It should be
@@ -74,9 +93,49 @@ updated to the company's registered office shown above as part of this conversio
 Thank you,
 
 Al Jobson
-Director, Veyrnox LTD
+Chief Technology Officer, Veyrnox LTD
 al.jobson@21stclick.co.uk
 +44 7949 467271
+
+---
+
+## Letter of authority — for the director to sign
+
+Print on Veyrnox LTD letterhead if available, sign, scan/photograph, and attach to the
+support request. Apple accepts a scan; a wet signature is not required, but the
+director's own signature is.
+
+> **VEYRNOX LTD**
+> Company number 17299951
+> 24 Lankers Drive, Harrow, England, HA2 7NT, United Kingdom
+>
+> [Date]
+>
+> **To: Apple Developer Program Support**
+>
+> **Re: Authorization for Apple Developer Program enrollment — Team ID R54268MWFV**
+>
+> I, **Andreea Flavia Cotolan**, am the sole director of **Veyrnox LTD** (company number
+> 17299951, registered in England and Wales), and I have the legal authority to bind the
+> company.
+>
+> I hereby authorize **Al Jobson**, Chief Technology Officer of Veyrnox LTD, to:
+>
+> 1. Enroll Veyrnox LTD in the Apple Developer Program and act as Account Holder for
+>    Apple Developer Program Team ID **R54268MWFV**;
+> 2. Request and complete the conversion of that membership from an Individual account
+>    to an Organization account in the name of Veyrnox LTD; and
+> 3. Accept the Apple Developer Program License Agreement and related agreements on
+>    behalf of Veyrnox LTD.
+>
+> This authorization remains in effect until revoked by me in writing.
+>
+> Signed,
+>
+> ______________________________
+> **Andreea Flavia Cotolan**
+> Director, Veyrnox LTD
+> support@veyrnox.com
 
 ---
 
