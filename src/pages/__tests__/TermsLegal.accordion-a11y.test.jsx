@@ -38,9 +38,9 @@ describe('TermsLegal — accordion trigger<->panel association', () => {
     const controlsId = trigger.getAttribute('aria-controls');
     expect(controlsId).toBeTruthy();
 
-    const panel = document.getElementById(controlsId);
+    const panel = document.getElementById(/** @type {string} */ (controlsId));
     expect(panel, 'aria-controls points at an id that does not exist in the DOM').toBeTruthy();
-    expect(panel.getAttribute('role')).toBe('region');
+    expect(panel?.getAttribute('role')).toBe('region');
 
     // The programmatically-linked region is discoverable by its accessible
     // name via the standard role+name query — not just "some div appeared".
@@ -61,7 +61,7 @@ describe('TermsLegal — accordion trigger<->panel association', () => {
     fireEvent.click(trigger); // collapse
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
     expect(trigger.hasAttribute('aria-controls')).toBe(false);
-    expect(document.getElementById(controlsId)).toBeNull();
+    expect(document.getElementById(/** @type {string} */ (controlsId))).toBeNull();
   });
 
   it('each of the 15 sections gets its own distinct panel id (no collisions)', () => {

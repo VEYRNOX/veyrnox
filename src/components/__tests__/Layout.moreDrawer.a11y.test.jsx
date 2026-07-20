@@ -113,12 +113,24 @@ describe('Layout — More-drawer close button has an accessible name (A-2)', () 
 });
 
 describe('Layout — More-drawer is exposed as a modal dialog (A-2)', () => {
-  it('carries role="dialog" and aria-modal="true"', async () => {
+  it('carries role="dialog"', async () => {
     renderLayout('/');
     await screen.findByRole('button', { name: 'More features' });
     openDrawer();
-    const dialog = screen.getByRole('dialog');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  // Codex review (P2): aria-modal="true" without focus containment is ACTIVELY
+  // MISLEADING — it tells assistive tech the rest of the app is inert while Tab
+  // can still walk into the page behind the drawer. This drawer deliberately has
+  // no focus trap, so it must not claim modality (I4: never assert a property we
+  // do not have). This pins the absence so the attribute cannot be reinstated
+  // without real focus containment landing first.
+  it('does NOT claim aria-modal, because it does not trap focus', async () => {
+    renderLayout('/');
+    await screen.findByRole('button', { name: 'More features' });
+    openDrawer();
+    expect(screen.getByRole('dialog').hasAttribute('aria-modal')).toBe(false);
   });
 
   it('is labelled by the visible "All Features" heading (aria-labelledby, not a duplicate string)', async () => {

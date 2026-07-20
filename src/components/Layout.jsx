@@ -227,7 +227,7 @@ export default function Layout() {
   // pattern (APG "dialog (modal)" — initial focus lands inside the dialog).
   // One-shot imperative focus() only; NOT a focus trap (Tab can still leave the
   // drawer into the page behind it — see the honest gap noted in A-2).
-  const moreCloseBtnRef = useRef(null);
+  const moreCloseBtnRef = useRef(/** @type {HTMLButtonElement | null} */ (null));
   useEffect(() => {
     if (moreOpen) moreCloseBtnRef.current?.focus();
   }, [moreOpen]);
@@ -564,7 +564,16 @@ export default function Layout() {
         <div
           className="md:hidden fixed inset-0 z-50 flex flex-col bg-background"
           role="dialog"
-          aria-modal="true"
+          // NO aria-modal. It is deliberately omitted, not forgotten: this drawer
+          // does not trap focus, so Tab can still reach the page behind it.
+          // aria-modal="true" tells assistive tech the rest of the app is inert —
+          // a promise this surface does not keep, which is worse for an AT user
+          // than claiming nothing (I4: do not assert a property we do not have).
+          // A non-modal dialog is exactly what this is. To make it truly modal,
+          // give it real focus containment FIRST, then add the attribute.
+          // (src/components/FocusTrap.jsx exists but is currently unused, untested,
+          // and renders its own unstyled role="dialog" wrapper that would conflict
+          // with this element's layout — adopting it needs its own change.)
           aria-labelledby="more-drawer-title"
         >
           <div className="flex items-center justify-between px-4 border-b border-border shrink-0" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>

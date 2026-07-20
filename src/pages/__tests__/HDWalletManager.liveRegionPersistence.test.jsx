@@ -55,17 +55,17 @@ describe('BalanceStatus — one persistent node, content changes with state', ()
     const { container, rerender } = render(<BalanceStatus state="pending" />);
     const node1 = container.querySelector('[role="status"]');
     expect(node1).toBeTruthy();
-    expect(node1.textContent).toContain('Loading balance');
+    expect(node1?.textContent).toContain('Loading balance');
 
     rerender(<BalanceStatus state={null} />);
     const node2 = container.querySelector('[role="status"]');
     expect(node2).toBe(node1); // same underlying DOM node — content mutated, not replaced
-    expect(node2.textContent).toBe('');
+    expect(node2?.textContent).toBe('');
 
     rerender(<BalanceStatus state="error" />);
     const node3 = container.querySelector('[role="status"]');
     expect(node3).toBe(node1);
-    expect(node3.textContent).toContain('Balance unavailable');
+    expect(node3?.textContent).toContain('Balance unavailable');
   });
 });
 
@@ -81,7 +81,7 @@ describe('AssetLiveBalance — persistent live region across the real query life
 
     const statusBefore = container.querySelector('[role="status"]');
     expect(statusBefore, 'no persistent status node on the loading render').toBeTruthy();
-    expect(statusBefore.textContent).toContain('Loading balance');
+    expect(statusBefore?.textContent).toContain('Loading balance');
     // Resolved amount must not exist yet.
     expect(container.textContent).not.toContain('ETH');
 
@@ -95,7 +95,7 @@ describe('AssetLiveBalance — persistent live region across the real query life
     // a 20-30s background poll does not re-announce it (pre-existing,
     // deliberately preserved design constraint; see HDWalletManager.a11yMono
     // test "does NOT put a live region on the resolved amount").
-    expect(statusAfter.textContent).toBe('');
+    expect(statusAfter?.textContent).toBe('');
   });
 
   it('keeps the SAME role="status" DOM node from loading through to an error', async () => {
@@ -106,7 +106,7 @@ describe('AssetLiveBalance — persistent live region across the real query life
     );
 
     const statusBefore = container.querySelector('[role="status"]');
-    expect(statusBefore.textContent).toContain('Loading balance');
+    expect(statusBefore?.textContent).toContain('Loading balance');
 
     await waitFor(() => expect(container.textContent).toContain('Balance unavailable'), { timeout: 3000 });
     const statusAfter = container.querySelector('[role="status"]');

@@ -81,13 +81,17 @@ function ProgressBar({ paidCount }) {
   }
   const rangeStart = info.key === 'none' ? 0 : info.min;
   const rangeEnd = info.next.min;
-  const progress = Math.min(((paidCount - rangeStart) / (rangeEnd - rangeStart)) * 100, 100);
-  // Defensive only: `rangeEnd === rangeStart` (the 'none' tier's next is
-  // bronze, whose own min is 0) is a pre-existing 0/0 edge case in the width
-  // calculation above, left untouched here (out of scope for an a11y pass —
-  // see the PR notes). This guard exists solely so the NEW aria-valuenow
-  // itself is never NaN, which would be an invalid ARIA value.
-  const ariaNow = Number.isFinite(progress) ? Math.round(Math.max(0, Math.min(100, progress))) : 0;
+  // `rangeEnd === rangeStart` when the next tier's minimum is 0 (the 'none'
+  // tier's next is bronze), making this 0/0 -> NaN. That NaN reached BOTH the
+  // rendered `width: NaN%` and, before the clamp below, the ARIA value. The
+  // zero-paid case is the neutral new-user state — and the state a decoy
+  // session shows — so it is the one users are most likely to see, not an
+  // exotic edge case. Clamp once, use the SAME finite value for both.
+  const rawProgress = ((paidCount - rangeStart) / (rangeEnd - rangeStart)) * 100;
+  const progress = Number.isFinite(rawProgress)
+    ? Math.max(0, Math.min(100, rawProgress))
+    : 0;
+  const ariaNow = Math.round(progress);
   return (
     <div className="space-y-1">
       <div
@@ -96,7 +100,13 @@ function ProgressBar({ paidCount }) {
         aria-valuenow={ariaNow}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuetext={`${paidCount.toLocaleString()} of ${rangeEnd.toLocaleString()} paid subscribers toward ${info.next.label}`}
+        aria-valuetext={
+          // "0 of 0 paid subscribers toward Bronze" is nonsense, and it is what
+          // the neutral new-user / decoy state would have announced.
+          rangeEnd > rangeStart
+            ? `${paidCount.toLocaleString()} of ${rangeEnd.toLocaleString()} paid subscribers toward ${info.next.label}`
+            : `No paid subscribers yet — ${info.next.label} is the next tier`
+        }
         className="h-2 w-full rounded-full bg-secondary overflow-hidden"
       >
         <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />

@@ -101,9 +101,9 @@ describe('HDWalletManager — asset disclosure aria-controls (F5)', () => {
     const controlsId = ethButton.getAttribute('aria-controls');
     expect(controlsId).toBeTruthy();
 
-    const panel = document.getElementById(controlsId);
+    const panel = document.getElementById(/** @type {string} */ (controlsId));
     expect(panel, 'aria-controls points at an id that does not exist in the DOM').toBeTruthy();
-    expect(panel.getAttribute('role')).toBe('region');
+    expect(panel?.getAttribute('role')).toBe('region');
   });
 
   it('drops aria-controls again on collapse (never left dangling on re-collapse)', async () => {
@@ -118,6 +118,6 @@ describe('HDWalletManager — asset disclosure aria-controls (F5)', () => {
     await waitFor(() => expect(ethButton.getAttribute('aria-expanded')).toBe('false'));
 
     expect(ethButton.hasAttribute('aria-controls')).toBe(false);
-    expect(document.getElementById(controlsId)).toBeNull();
+    expect(document.getElementById(/** @type {string} */ (controlsId))).toBeNull();
   });
 });
