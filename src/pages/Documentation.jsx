@@ -103,7 +103,7 @@ const features = [
     { name: "Recurring Payments", desc: "Recurring payment schedule reminders; user signs each time. No autonomous auto-debit.", status: "built" },
   ]},
   { category: "Referrals", icon: Users, items: [
-    { name: "Referral Tracker", desc: "Share your referral code to earn rewards; tier-based commissions and discounts apply to Safety Plus subscriptions. Using this feature sends your referral code, chosen plan, and purchase/discount amounts to VEYRNOX's servers so earnings can be tracked — your balances, addresses, and seed phrase are never sent.", status: "built" },
+    { name: "Referral Tracker", desc: "Share your referral code to earn rewards; tier-based commissions and discounts apply to Safety Plus subscriptions. Using this feature sends your referral code, chosen plan, and purchase/discount amounts to VEYRNOX's servers so earnings can be tracked — the referral service never receives your balances, your wallet addresses, or your seed phrase. Claiming a payout is separate and opens an email you write yourself, so you choose what payment details to include.", status: "built" },
   ]},
   { category: "Platform", icon: Smartphone, items: [
     { name: "Demo Mode", desc: "Browse without a backend or funded wallet", status: "built" },

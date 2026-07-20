@@ -75,8 +75,19 @@ describe('Documentation page — restored honesty caveats (S-1)', () => {
 
   it('Referral Tracker explicitly excludes balances, addresses, and seed phrase from what is sent', () => {
     expect(page).toContain(
-      'your balances, addresses, and seed phrase are never sent'
+      'the referral service never receives your balances, your wallet addresses, or your seed phrase'
     );
+  });
+
+  // The exclusion above is scoped to the referral BACKEND on purpose. The payout
+  // claim on /referrals opens a pre-filled mailto that asks for a crypto address
+  // (ReferralTracker.jsx: 'Crypto address (ETH/BTC/SOL)'), so a blanket "addresses
+  // are never sent" would itself be an overclaim — the exact failure this file
+  // exists to catch. Pin the scoping so it cannot be quietly re-broadened.
+  it('Referral Tracker scopes the exclusion to the backend and discloses the payout email is user-written', () => {
+    expect(page).toContain('the referral service never receives');
+    expect(page).toContain('you choose what payment details to include');
+    expect(page).not.toContain('your balances, addresses, and seed phrase are never sent');
   });
 
   it('status legend explains what "Available" means and disclaims independent review', () => {
