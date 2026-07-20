@@ -121,16 +121,20 @@ director's own signature is.
 >
 > I hereby authorize **Al Jobson**, Chief Technology Officer of Veyrnox LTD, to:
 >
-> 1. Enroll Veyrnox LTD in the Apple Developer Program and act as Account Holder for
+> 1. Enroll Veyrnox LTD in the Apple Developer Program, and act as Account Holder for
 >    Apple Developer Program Team ID **R54268MWFV**;
 > 2. Request and complete the conversion of that membership from an Individual account
->    to an Organization account in the name of Veyrnox LTD; and
+>    to an Organization account in the name of Veyrnox LTD;
 > 3. Accept the Apple Developer Program License Agreement and related agreements on
->    behalf of Veyrnox LTD.
+>    behalf of Veyrnox LTD; and
+> 4. Submit applications to the App Store on behalf of Veyrnox LTD.
 >
 > This authorization remains in effect until revoked by me in writing.
 >
-> Signed,
+> Should you require any further confirmation, I can be contacted directly at
+> support@veyrnox.com.
+>
+> Yours faithfully,
 >
 > ______________________________
 > **Andreea Flavia Cotolan**
