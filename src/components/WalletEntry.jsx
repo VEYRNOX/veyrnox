@@ -67,7 +67,7 @@
 // binding (the KEK layer) is the planned fast-follow that closes the offline gap.
 // NONE of this is "verified" — it needs the internal audit + real-device proof.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
 import { useInfiniteAnimation } from "@/lib/useInfiniteAnimation";
@@ -1048,6 +1048,7 @@ export default function WalletEntry() {
       }
     } finally {
       createdPasswordRef.current = null; // wipe the transient password
+      freshCreatePinRef.current = null;  // belt-and-suspenders: zeroize before KEK gate
       setGeneratedSeed("");              // release the hold → WalletGate renders the app
       setShowSeed(false);
       setBusy(false);
@@ -1107,6 +1108,22 @@ export default function WalletEntry() {
     );
   }
 
+  // Stable callbacks for KekEnrollmentGate — avoids re-firing the auto-enroll
+  // useEffect on every parent render (P2-1).
+  const handleKekEnroll = useCallback(async (pin) => {
+    const result = await kekEnroll(pin);
+    if (result.ok) {
+      freshCreatePinRef.current = null;
+      kekDismiss();
+    }
+    return result;
+  }, [kekEnroll, kekDismiss]);
+
+  const handleKekSkip = useCallback(() => {
+    freshCreatePinRef.current = null;
+    kekDismiss();
+  }, [kekDismiss]);
+
   // MANDATORY hardware-KEK enrollment hold. When a restored/created vault on a
   // hardware-capable device is not yet KEK-wrapped, intercept BEFORE the app renders and
   // require the user to enroll (or explicitly skip with a labelled security tradeoff).
@@ -1116,15 +1133,8 @@ export default function WalletEntry() {
       <KekEnrollmentGate
         origin={kekOrigin}
         autoEnrollPin={kekOrigin === 'fresh' ? freshCreatePinRef.current : null}
-        onEnroll={async (pin) => {
-          const result = await kekEnroll(pin);
-          if (result.ok) {
-            freshCreatePinRef.current = null;
-            kekDismiss();
-          }
-          return result;
-        }}
-        onSkip={() => { freshCreatePinRef.current = null; kekDismiss(); }}
+        onEnroll={handleKekEnroll}
+        onSkip={handleKekSkip}
       />
     );
   }

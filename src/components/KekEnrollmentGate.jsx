@@ -78,7 +78,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
   // Tracks whether auto-enroll was attempted so we only try once.
   const autoEnrollAttempted = useRef(false);
   // True while auto-enrollment is running (show progress, not the PIN pad).
-  const [autoEnrolling, setAutoEnrolling] = useState(!!autoEnrollPin);
+  const [autoEnrolling, setAutoEnrolling] = useState(!!autoEnrollPin?.trim());
 
   const copy = COPY[origin] || COPY.restored;
 
@@ -113,7 +113,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
   // the redundant re-entry and enroll silently. Falls back to the manual gate
   // on any failure (wrong PIN shouldn't happen, but hardware/tier errors can).
   useEffect(() => {
-    if (!autoEnrollPin || autoEnrollAttempted.current) return;
+    if (!autoEnrollPin?.trim() || autoEnrollAttempted.current) return;
     autoEnrollAttempted.current = true;
     let live = true;
     (async () => {

@@ -189,4 +189,32 @@ describe('KekEnrollmentGate — auto-enrollment', () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(onEnroll).toHaveBeenCalledTimes(1);
   });
+
+  it('7. unmount during auto-enroll → no state update on unmounted component', async () => {
+    let resolveEnroll;
+    const onEnroll = vi.fn(() => new Promise((r) => { resolveEnroll = r; }));
+
+    const { unmount } = render(
+      <KekEnrollmentGate
+        origin="fresh"
+        autoEnrollPin="12345678"
+        onEnroll={onEnroll}
+        onSkip={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId(AUTO_ENROLL_TESTID)).toBeTruthy();
+
+    // Unmount while onEnroll is still pending.
+    unmount();
+
+    // Resolve the pending enroll — the live flag should prevent state updates.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    resolveEnroll({ ok: false, msg: 'Too late', isInsecureTier: false, isWrongPin: false });
+    await new Promise((r) => setTimeout(r, 50));
+
+    // No React "Can't perform a state update on an unmounted component" warning.
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
 });
