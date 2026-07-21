@@ -34,7 +34,7 @@
 //   onSkip:   () => void
 //   origin?:  'fresh' | 'restored'  (default: 'restored' — matches historical copy)
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, useReducedMotion } from "motion/react";
 import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -66,7 +66,7 @@ const COPY = {
   },
 };
 
-export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored' }) {
+export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored', autoEnrollPin = null }) {
   const reduce = useReducedMotion();
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
@@ -75,6 +75,10 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
   // When the device reports an insecure tier, hide the enroll form and offer Skip only —
   // hardware protection genuinely can't be enabled here (I4 honest-disable).
   const [insecureDevice, setInsecureDevice] = useState(false);
+  // Tracks whether auto-enroll was attempted so we only try once.
+  const autoEnrollAttempted = useRef(false);
+  // True while auto-enrollment is running (show progress, not the PIN pad).
+  const [autoEnrolling, setAutoEnrolling] = useState(!!autoEnrollPin);
 
   const copy = COPY[origin] || COPY.restored;
 
@@ -105,6 +109,29 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
     }
   };
 
+  // Auto-enroll on fresh creates: the PIN was just typed moments ago, so skip
+  // the redundant re-entry and enroll silently. Falls back to the manual gate
+  // on any failure (wrong PIN shouldn't happen, but hardware/tier errors can).
+  useEffect(() => {
+    if (!autoEnrollPin || autoEnrollAttempted.current) return;
+    autoEnrollAttempted.current = true;
+    let live = true;
+    (async () => {
+      const result = await onEnroll(autoEnrollPin);
+      if (!live) return;
+      if (result.ok) return; // caller clears the gate
+      // Auto-enroll failed — fall back to manual gate.
+      setAutoEnrolling(false);
+      if (result.isInsecureTier) {
+        setInsecureDevice(true);
+        setError(result.msg);
+      } else {
+        setError(result.msg);
+      }
+    })();
+    return () => { live = false; };
+  }, [autoEnrollPin, onEnroll]);
+
   const container = {
     hidden: {},
     show: { transition: reduce ? {} : { staggerChildren: 0.09, delayChildren: 0.04 } },
@@ -115,6 +142,27 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
         hidden: { opacity: 0, y: 12 },
         show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
       };
+
+  // Auto-enrollment progress view — shown while enrolling silently with the
+  // stashed PIN. No PIN pad, no skip; just a compact progress indicator. On
+  // failure the component falls back to the full manual gate below.
+  if (autoEnrolling) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-background overflow-hidden" data-testid="kek-auto-enroll">
+        <div className="w-full max-w-sm flex flex-col items-center text-center space-y-5">
+          <VaultIllustration size={200} label="Hardware-protected vault" />
+          <h1 className="text-2xl font-semibold tracking-tight">Sealing into hardware</h1>
+          <p
+            role="status"
+            aria-live="polite"
+            className="text-sm text-muted-foreground flex items-center gap-2 justify-center"
+          >
+            <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Approve the prompt on your device…
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-background overflow-hidden">
