@@ -282,7 +282,9 @@ export default function Subscription() {
               <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
             )}
           </h2>
-          <p className="text-xs text-muted-foreground">Coercion resistance, pre-sign intelligence and advanced analytics.</p>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Everything in Free</span>, plus coercion resistance, pre-sign intelligence and advanced analytics.
+          </p>
           <HighlightChips features={SAFETY_PLUS_FEATURES} max={6} />
           <Link to="/safety-plus" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
             See all Safety Plus features <ArrowRight className="h-3 w-3" />
