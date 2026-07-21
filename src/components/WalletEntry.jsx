@@ -67,7 +67,7 @@
 // binding (the KEK layer) is the planned fast-follow that closes the offline gap.
 // NONE of this is "verified" — it needs the internal audit + real-device proof.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
 import { useInfiniteAnimation } from "@/lib/useInfiniteAnimation";
@@ -498,6 +498,12 @@ export default function WalletEntry() {
   // ref (not state) so it is never copied into a render snapshot.
   const createdPasswordRef = useRef(null);
 
+  // Stashed PIN for KEK auto-enrollment on fresh wallet creation. The pending PIN
+  // is consumed by createWalletFromPendingPin, so by the time the KEK gate fires
+  // it's gone. We stash it here (ref, never state) so the gate can auto-enroll
+  // without asking the user to re-type it. Zeroized immediately after use.
+  const freshCreatePinRef = useRef(null);
+
   // v1 PIN cohort. authModel is read once the vault-existence probe resolves.
   const [authModel, setAuthModelState] = useState("password");
   // PIN onboarding sub-steps: 'real' -> 'real-confirm' -> Dashboard. Returning PIN
@@ -634,6 +640,22 @@ export default function WalletEntry() {
       .catch(() => { if (active) { setVaultExists(false); setView("pin-create"); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setBioReady(false); } });
     return () => { active = false; };
   }, [hasVault, isUnlocked]);
+
+  // Stable callbacks for KekEnrollmentGate — avoids re-firing the auto-enroll
+  // useEffect on every parent render (P2-1).
+  const handleKekEnroll = useCallback(async (pin) => {
+    const result = await kekEnroll(pin);
+    if (result.ok) {
+      freshCreatePinRef.current = null;
+      kekDismiss();
+    }
+    return result;
+  }, [kekEnroll, kekDismiss]);
+
+  const handleKekSkip = useCallback(() => {
+    freshCreatePinRef.current = null;
+    kekDismiss();
+  }, [kekDismiss]);
 
   const copySeed = async () => {
     const gate = sensitiveGate(raspArtifact, 'seed-reveal');
@@ -889,6 +911,7 @@ export default function WalletEntry() {
   // numeric-only PinPad, which cannot accept it). Web is a testing-only surface —
   // never production — so full parity with native's PIN cohort is correct here.
   const finishPinSetup = () => {
+    freshCreatePinRef.current = realPin;
     setupPin(realPin);               // authModel='pin' + salt + pendingPin + enter explore
     setAuthModelState("pin");
     setRealPin(""); setRealPinConfirm(""); setError(""); setPinStep("real");
@@ -903,6 +926,7 @@ export default function WalletEntry() {
     setBusy(true); setProvisioning(true); setError("");
     try { setKekOrigin('fresh'); await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
+      freshCreatePinRef.current = null;
       setProvisioning(false);
       if (e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT) {
         // Recoverable input constraint: the pending PIN is still valid — don't wipe it.
@@ -1040,6 +1064,7 @@ export default function WalletEntry() {
       }
     } finally {
       createdPasswordRef.current = null; // wipe the transient password
+      freshCreatePinRef.current = null;  // belt-and-suspenders: zeroize before KEK gate
       setGeneratedSeed("");              // release the hold → WalletGate renders the app
       setShowSeed(false);
       setBusy(false);
@@ -1107,17 +1132,17 @@ export default function WalletEntry() {
     return (
       <KekEnrollmentGate
         origin={kekOrigin}
-        onEnroll={async (pin) => {
-          const result = await kekEnroll(pin);
-          if (result.ok) kekDismiss();
-          return result;
-        }}
-        onSkip={kekDismiss}
+        autoEnrollPin={kekOrigin === 'fresh' ? freshCreatePinRef.current : null}
+        onEnroll={handleKekEnroll}
+        onSkip={handleKekSkip}
       />
     );
   }
 
-  if (isUnlocked && !generatedSeed && !kekGatePending) return <Outlet />;
+  if (isUnlocked && !generatedSeed && !kekGatePending) {
+    freshCreatePinRef.current = null;
+    return <Outlet />;
+  }
 
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
   // Render the real app behind a persistent create/import CTA. Tapping it (or any
@@ -1550,7 +1575,7 @@ export default function WalletEntry() {
           {/* PIN-FIRST: Back returns to the branded welcome hero (the fresh-device
               landing ahead of the PIN), NOT a dashboard — the empty dashboard is
               only reachable AFTER the PIN is set. */}
-          <button type="button" onClick={() => { setError(""); clearPendingPin(); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+          <button type="button" onClick={() => { setError(""); clearPendingPin(); freshCreatePinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
 
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
