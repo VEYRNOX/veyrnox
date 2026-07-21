@@ -106,6 +106,35 @@ describe('classifyEnrollError — biometric lockout', () => {
   });
 });
 
+describe('classifyEnrollError — native plugin not registered (Capacitor UNIMPLEMENTED)', () => {
+  // Root cause of the iOS "Something went wrong" dead-end: when the local
+  // HardwareKek plugin is missing from the iOS build's packageClassList,
+  // Capacitor rejects HardwareKek.enroll with code 'UNIMPLEMENTED'
+  // ('"HardwareKek" plugin is not implemented on ios'). That code matched no
+  // branch → GENERIC_MSG → the gate re-fired every unlock (stuck loop).
+  // FIX: treat it as "hardware unavailable" and FAIL OPEN (skippable), so the
+  // user can continue without hardware protection instead of a dead-end.
+  it('UNIMPLEMENTED code → skippable (continue without HW), not generic', async () => {
+    const r = await enrollAndGetResult(
+      makeError('"HardwareKek" plugin is not implemented on ios', 'UNIMPLEMENTED'),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.isInsecureTier).toBe(true);
+    expect(r.isWrongPin).toBe(false);
+    expect(r.msg).not.toMatch(/something went wrong/i);
+    expect(r.msg).toMatch(/without hardware protection/i);
+  });
+
+  it('"not implemented" in message only (no code) → skippable', async () => {
+    const r = await enrollAndGetResult(
+      makeError('HardwareKek plugin is not implemented on ios'),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.isInsecureTier).toBe(true);
+    expect(r.msg).toMatch(/without hardware protection/i);
+  });
+});
+
 describe('classifyEnrollError — existing classifications still work', () => {
   it('KEK_ENROLL_INSECURE_TIER → insecure tier', async () => {
     const r = await enrollAndGetResult(makeError('SOFTWARE tier refused', 'KEK_ENROLL_INSECURE_TIER'));
