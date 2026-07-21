@@ -1,7 +1,12 @@
 # Apple Developer Program — Individual → Organization conversion request
 
-**Status: SENT to Apple Developer Program Support on 2026-07-20**, with the signed
-letter of authority from the director. Awaiting Apple's response — typically 1–3
+> **✅ RESOLVED 2026-07-21 — conversion COMPLETE.** Verified on the Membership details page:
+> the account is now **Enrolled as: Organization**, entity **Veyrnox LTD**, Team
+> `R54268MWFV`, Account Holder Al Jobson. Guideline 3.1.5(b) satisfied. The remainder of
+> this doc is the historical request record, kept for reference.
+
+**Status (historical): SENT to Apple Developer Program Support on 2026-07-20**, with the
+signed letter of authority from the director. Awaiting Apple's response — typically 1–3
 business days for a first reply, longer if routed to the enrollment team for entity
 verification.
 

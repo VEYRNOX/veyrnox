@@ -108,8 +108,9 @@ Sequence from here:
   matters for a crypto product AND for clean build-to-sell). THE KEYSTONE: it
   unlocks the items below.
 - **D-U-N-S number** (free, slow) → required for Apple org enrollment.
-- **Apple Developer ORGANIZATION account** (convert from individual). Apple
-  permits crypto wallets ONLY from org devs → gates iOS submission.
+- **Apple Developer ORGANIZATION account** — ✅ **DONE (verified 2026-07-21):** account is
+  now an Organization (Veyrnox LTD, Team R54268MWFV). Apple permits crypto wallets ONLY
+  from org devs; Guideline 3.1.5(b) now satisfied. iOS submission no longer org-gated.
 - **Google Play** (individual works; non-custodial = exempt from Google crypto
   licensing — org still tidier).
 - **Lawyer confirmation** the non-custodial design stays outside MSB/MiCA/MTL
