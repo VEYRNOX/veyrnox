@@ -602,7 +602,10 @@ All BUILT / device-verified on the test iPhone — NOT independently audited.
 ## 11. Platform / app shell
 - Desktop web app — ✅
 - Demo mode (browse without backend) — ✅
-- iOS native (Capacitor) — 🟡 runs on simulator; submission gated on Apple org acct
+- iOS native (Capacitor) — 🟡 runs on simulator; **Apple Developer account is now an
+  Organization (Veyrnox LTD, Team R54268MWFV) — verified 2026-07-21, Guideline 3.1.5(b)
+  satisfied**, so the org gate is cleared. Remaining: real-device build/signing + on-chain
+  device-verification (Mac+Xcode+iPhone) and the first App Store / IAP submission.
 - Android native (Capacitor) — 🟡 runs on real devices (StrongBox KEK unlock and in-app
   Sepolia sends device-verified on Pixel 10 Pro XL, 2026-07-01/02 — see §4); Play Store
   submission not started
