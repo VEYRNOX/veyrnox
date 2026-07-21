@@ -1129,7 +1129,10 @@ export default function WalletEntry() {
     );
   }
 
-  if (isUnlocked && !generatedSeed && !kekGatePending) return <Outlet />;
+  if (isUnlocked && !generatedSeed && !kekGatePending) {
+    freshCreatePinRef.current = null;
+    return <Outlet />;
+  }
 
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
   // Render the real app behind a persistent create/import CTA. Tapping it (or any
