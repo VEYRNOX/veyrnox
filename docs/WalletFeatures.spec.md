@@ -122,7 +122,8 @@
 50. Custom token add / hide — 💡
 
 ## 9. Platform / app shell
-51. iOS native app — 🟡 (running on simulator; submission gated on Apple ORG acct)
+51. iOS native app — 🟡 (running on simulator; Apple ORG account ✅ resolved 2026-07-21 —
+    Veyrnox LTD Organization, 3.1.5(b) satisfied; remaining: real-device build + first submission)
 52. Android native app — 🟡 (scaffolded; non-custodial = store-exempt)
 53. Desktop web app — ✅
 54. Demo mode (browse without backend) — ✅

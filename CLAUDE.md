@@ -53,7 +53,10 @@ treat as fixed on main.
 
 **Safety Plus IAP:** Monthly $5.99 + Annual $49.99 (same `safety_plus` entitlement).
 Store-side setup complete (Apple + Google + RevenueCat). iOS sandbox-purchase
-device-verified. Referral system BUILT (4-tier discount model, Supabase server-side codes);
+device-verified. **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV) —
+verified 2026-07-21; Guideline 3.1.5(b) satisfied**, unblocking the iOS real-device build
+and the first App Store / IAP submission (both still to be done). Play launch still gated
+on the upload-key reset (pending). Referral system BUILT (4-tier discount model, Supabase server-side codes);
 deniability-hardened 2026-07-20 (PR #1262, K-2): `syncCount` no longer coerces a failed API
 read into a fake "synced" success state written to shared localStorage, and the tracker
 page now renders a neutral empty state (gated on `isDeniabilityOrDemoActive()`) instead of
