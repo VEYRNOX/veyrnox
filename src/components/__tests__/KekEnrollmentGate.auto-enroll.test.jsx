@@ -12,10 +12,7 @@ vi.mock('motion/react', () => ({
   motion: new Proxy({}, {
     get: (_, tag) => {
       const C = ({ children, ...props }) => {
-        const { variants, initial, animate, ...rest } = props;
-        const filtered = Object.fromEntries(
-          Object.entries(rest).filter(([k]) => !k.startsWith('data-') && k !== 'className' && k !== 'role' && k !== 'aria-live' && k !== 'aria-describedby')
-        );
+        const { variants: _v, initial: _i, animate: _a, ...rest } = props;
         return <div {...{ className: rest.className, role: rest.role, 'aria-live': rest['aria-live'], 'aria-describedby': rest['aria-describedby'], 'data-testid': rest['data-testid'] }}>{children}</div>;
       };
       C.displayName = `motion.${String(tag)}`;
