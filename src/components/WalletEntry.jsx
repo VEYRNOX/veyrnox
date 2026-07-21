@@ -641,6 +641,22 @@ export default function WalletEntry() {
     return () => { active = false; };
   }, [hasVault, isUnlocked]);
 
+  // Stable callbacks for KekEnrollmentGate — avoids re-firing the auto-enroll
+  // useEffect on every parent render (P2-1).
+  const handleKekEnroll = useCallback(async (pin) => {
+    const result = await kekEnroll(pin);
+    if (result.ok) {
+      freshCreatePinRef.current = null;
+      kekDismiss();
+    }
+    return result;
+  }, [kekEnroll, kekDismiss]);
+
+  const handleKekSkip = useCallback(() => {
+    freshCreatePinRef.current = null;
+    kekDismiss();
+  }, [kekDismiss]);
+
   const copySeed = async () => {
     const gate = sensitiveGate(raspArtifact, 'seed-reveal');
     if (gate.blocked) {
@@ -1107,22 +1123,6 @@ export default function WalletEntry() {
       </EntryShell>
     );
   }
-
-  // Stable callbacks for KekEnrollmentGate — avoids re-firing the auto-enroll
-  // useEffect on every parent render (P2-1).
-  const handleKekEnroll = useCallback(async (pin) => {
-    const result = await kekEnroll(pin);
-    if (result.ok) {
-      freshCreatePinRef.current = null;
-      kekDismiss();
-    }
-    return result;
-  }, [kekEnroll, kekDismiss]);
-
-  const handleKekSkip = useCallback(() => {
-    freshCreatePinRef.current = null;
-    kekDismiss();
-  }, [kekDismiss]);
 
   // MANDATORY hardware-KEK enrollment hold. When a restored/created vault on a
   // hardware-capable device is not yet KEK-wrapped, intercept BEFORE the app renders and
