@@ -76,6 +76,7 @@ import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
+import { trackEvent, EVENT } from "@/api/trackEvent";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -1141,6 +1142,7 @@ export default function SendCrypto() {
       setStep("done");
       successHaptic();
       recordAudit("send_completed"); // opt-in audit log; no-op unless enabled + primary session
+      void trackEvent(EVENT.SEND_COMPLETED, { currency: selectedWallet?.currency }).catch(() => {});
     },
     onError: (err) => {
       errorHaptic();
