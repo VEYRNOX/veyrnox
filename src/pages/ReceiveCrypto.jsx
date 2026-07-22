@@ -15,6 +15,7 @@ import QRCodeDisplay from "../components/QRCodeDisplay";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import CoinLogo from "@/components/CoinLogo";
 import { toast } from "@/lib/toast";
+import { trackEvent, EVENT } from "@/api/trackEvent";
 
 // RECEIVE FLOW
 //
@@ -39,6 +40,11 @@ export default function ReceiveCrypto() {
   useEffect(() => {
     setSymbol(urlAsset);
     setCopied(false);
+  }, [urlAsset]);
+
+  useEffect(() => {
+    const known = ASSETS.some(a => a.symbol === urlAsset);
+    void trackEvent(EVENT.RECEIVE_VIEWED, known ? { asset: urlAsset } : {}).catch(() => {});
   }, [urlAsset]);
 
   // DEMO address source. A backend-less walkthrough has no unlocked vault, so the
