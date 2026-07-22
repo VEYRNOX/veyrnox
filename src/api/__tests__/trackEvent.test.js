@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 let mockSupabase;
 let mockIsDeniabilityOrDemoActive;
+let mockDEMO;
 
 vi.mock('@/lib/supabaseClient', () => ({
   get supabase() { return mockSupabase; },
@@ -11,7 +12,9 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilityOrDemoActive: (...args) => mockIsDeniabilityOrDemoActive(...args),
 }));
 
-vi.mock('@/api/demoClient', () => ({ DEMO: false }));
+vi.mock('@/api/demoClient', () => ({
+  get DEMO() { return mockDEMO; },
+}));
 
 const { trackEvent, EVENT } = await import('../trackEvent');
 
@@ -19,6 +22,7 @@ describe('trackEvent', () => {
   beforeEach(() => {
     mockSupabase = { from: vi.fn(() => ({ insert: vi.fn(() => Promise.resolve({ error: null })) })) };
     mockIsDeniabilityOrDemoActive = vi.fn(() => false);
+    mockDEMO = false;
     localStorage.clear();
   });
 
@@ -44,6 +48,17 @@ describe('trackEvent', () => {
   it('no-ops when supabase is null', async () => {
     mockSupabase = null;
     await expect(trackEvent('test_event')).resolves.toBeUndefined();
+  });
+
+  it('no-ops when DEMO is true (load-time gate)', async () => {
+    mockDEMO = true;
+    const insertFn = vi.fn();
+    mockSupabase.from = vi.fn(() => ({ insert: insertFn }));
+
+    await trackEvent('test_event');
+
+    expect(insertFn).not.toHaveBeenCalled();
+    expect(localStorage.getItem('veyrnox-device-id')).toBeNull();
   });
 
   it('no-ops when deniability/demo is active (I2/I3)', async () => {
