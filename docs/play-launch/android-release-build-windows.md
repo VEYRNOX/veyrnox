@@ -53,7 +53,7 @@ All four must be non-empty before continuing.
 `.env.local` is **git-ignored**, so it does NOT arrive with the checkout. It must be copied
 to the Windows machine separately. Without it the AAB ships with referrals dead
 (`supabase = null` → every referralApi call silently no-ops), IAP dead (no RevenueCat key)
-and WalletConnect dead — and versionCode 4 is consumed regardless.
+and WalletConnect dead — and versionCode 5 is consumed regardless.
 
 Required vars:
 
@@ -91,11 +91,12 @@ npm run mobile:build:release      # VITE_RELEASE=1 vite build + cap sync
 
 `RELEASE_CERT_SHA256` must be **Google's app-signing certificate**, NOT the upload key.
 
-> **Provenance:** this value was read on 2026-07-22 from the Digital Asset Links JSON on
-> Play Console -> Setup -> App integrity -> App signing. An earlier revision of this file
-> carried a DIFFERENT value (`D8:99:69:D5:6D:CF:E3:B4...`) which does not match the console.
-> If in doubt, re-copy it from the console rather than trusting any checked-in copy -- a
+> **Provenance:** this value was read on 2026-07-22 from Play Console → App signing →
+> App signing key certificate → SHA-256. An earlier revision of this file carried a
+> DIFFERENT value (`D8:99:69:D5:6D:CF:E3:B4...`) which does not match the console.
+> If in doubt, re-copy it from the console rather than trusting any checked-in copy — a
 > wrong fingerprint makes every Play-installed build report `tampered: true`.
+
 Play re-signs your upload, so pinning the upload key makes a Play-installed build fail RASP
 `detectTamper` (`tampered: true`). The plugin strips colons and lowercases before comparing,
 so this format is fine.
@@ -111,8 +112,9 @@ cd android
 
 Output: `android/app/build/outputs/bundle/release/app-release.aab`
 
-> If `RELEASE_CERT_SHA256` is omitted, `BuildConfig.RELEASE_CERT_SHA256` is empty and
-> `detectTamper()` returns **true** fail-closed (I4) — the app will treat itself as tampered.
+> If `RELEASE_CERT_SHA256` is omitted, the build now **fails** with a clear error
+> (build-time validation added in PR #1313). Previously it would silently produce
+> an AAB that reported `tampered: true` on every device.
 
 ---
 
@@ -141,7 +143,7 @@ The printed **SHA1** must equal:
 Play Console → **Veyrnox** → **Test and release** → **Testing → Internal testing** →
 **Create new release** → upload `app-release.aab`.
 
-- **versionCode 4** (already set in `android/app/build.gradle`) — permanently consumed by
+- **versionCode 5** (set in `android/app/build.gradle`) — permanently consumed by
   this upload; deleting a release does NOT free it.
 - **versionName "1.0"** — the only customer-visible value.
 - App record already exists (Draft / Internal testing) — **do not create a second app**.

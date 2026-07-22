@@ -17,19 +17,14 @@ android {
         applicationId "com.veyrnox.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
+        versionCode 5
         // Customer-facing version for the public Play launch. versionCode is internal
         // bookkeeping (monotonic, permanently consumed per upload, never shown to users);
         // versionName is what appears on the store listing. Launching as a clean "1.0".
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        // RELEASE_CERT_SHA256: SHA-256 fingerprint of the release signing certificate for
-        // RASP APK tamper detection (RaspIntegrityPlugin.detectTamper).
-        // Inject via CI: -PRELEASE_CERT_SHA256=<real-hash>
-        // If the property is absent, BuildConfig.RELEASE_CERT_SHA256 is an empty string.
-        // RaspIntegrityPlugin.detectTamper() treats a blank value as tampered (fail-closed,
-        // I4) — a misconfigured or unkeyed build must not be trusted.
-        // Do NOT commit a real release fingerprint here.
+        // RASP APK tamper detection — inject via -PRELEASE_CERT_SHA256=<hash>.
+        // Blank = fail-closed (I4). Release builds validate format at task start.
         buildConfigField "String", "RELEASE_CERT_SHA256", "\"${project.findProperty('RELEASE_CERT_SHA256') ?: ''}\""
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -120,6 +115,22 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.configureEach {
+    doFirst {
+        def cert = project.findProperty('RELEASE_CERT_SHA256') ?: ''
+        if (cert.trim().isEmpty()) {
+            throw new GradleException(
+                'RELEASE_CERT_SHA256 is blank — the build would fail-closed (I4) on every device.\n' +
+                'Pass -PRELEASE_CERT_SHA256="<Google app signing SHA-256>" on the command line.')
+        }
+        if (!cert.matches(/^([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$/)) {
+            throw new GradleException(
+                "RELEASE_CERT_SHA256 has an invalid format: ${cert}\n" +
+                'Expected 32 colon-separated hex pairs (e.g. AA:BB:CC:...).')
+        }
+    }
+}
+
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
@@ -129,47 +140,3 @@ try {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
 
-// ── Release signing-fingerprint guard ────────────────────────────────────────
-// gradle.properties ships the DEBUG keystore fingerprint as the default value of
-// RELEASE_CERT_SHA256 so that local debug builds don't trip
-// RaspIntegrityPlugin.detectTamper(). That default must never reach a release
-// artifact: Play re-signs uploads with Google's app-signing key, so a release AAB
-// carrying the debug fingerprint reports tampered=true on EVERY launch of the
-// Play-installed build — silently, and only discoverable after the versionCode has
-// been permanently consumed by the upload.
-//
-// A blank value is equally fatal: detectTamper() treats it as tampered (fail-closed,
-// I4). Both cases previously failed *quietly at runtime*; this fails *loudly at build
-// time* instead.
-//
-// Release builds must pass Google's app-signing certificate explicitly:
-//   ./gradlew bundleRelease -PRELEASE_CERT_SHA256=<Google app-signing cert SHA-256>
-def DEBUG_CERT_FINGERPRINT = '8290314d958770771c797704397eedb4bd83fa3db3f41a8af992f788dc01820f'
-
-gradle.taskGraph.whenReady { graph ->
-    def buildsRelease = graph.allTasks.any { t ->
-        t.project == project && t.name ==~ /(?i)(assemble|bundle)Release.*/
-    }
-    if (!buildsRelease) return
-
-    def fp = (project.findProperty('RELEASE_CERT_SHA256') ?: '')
-        .toString().replace(':', '').toLowerCase()
-
-    if (fp.isEmpty()) {
-        throw new GradleException(
-            "RELEASE_CERT_SHA256 is empty — the release build would report tampered=true " +
-            "at runtime (fail-closed, I4).\n" +
-            "Pass Google's app-signing certificate:\n" +
-            "  ./gradlew bundleRelease -PRELEASE_CERT_SHA256=<Google app-signing cert SHA-256>")
-    }
-
-    if (fp == DEBUG_CERT_FINGERPRINT) {
-        throw new GradleException(
-            "RELEASE_CERT_SHA256 is still the DEBUG keystore fingerprint (the " +
-            "gradle.properties default).\n" +
-            "Play re-signs uploads with Google's app-signing key, so this build would " +
-            "report tampered=true on every launch once installed from Play.\n" +
-            "Pass Google's app-signing certificate explicitly:\n" +
-            "  ./gradlew bundleRelease -PRELEASE_CERT_SHA256=<Google app-signing cert SHA-256>")
-    }
-}
