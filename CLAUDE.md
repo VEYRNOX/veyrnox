@@ -46,13 +46,11 @@ KEK-DEK AAD salt exclusion P1 fixed (PR #1079).
 **WalletConnect:** C3 RASP gate, H7 chain binding (pre-modal), H8 address binding
 (pre-modal), M9 gas cap, M11 session expiry, H-NEW-B step-up re-auth. 2FA + spend-limit
 gate on `eth_sendTransaction` (PR #1118). `from`/signer address binding on
-`eth_sendTransaction` and `eth_signTypedData_v4` (PR #1118). **Open finding (2026-07-20
-weekly H-1, `WalletConnectProvider.jsx:771-772`):** `handleApproveSession` reads
-`gate.blocked`/`gate.sentence`, which `presignGateOrReject()` never returns — every WC
-session *approval* proceeds regardless of RASP tier (the three signing chokepoints are
-unaffected; they correctly read `proceedAllowed` and stay fail-closed). Fix
-(`!gate.proceedAllowed`) is open in **PR #1276**, CI running, **NOT merged** — do not
-treat as fixed on main.
+`eth_sendTransaction` and `eth_signTypedData_v4` (PR #1118). **H-1 session-approval RASP gate FIXED (PR #1276, merged 2026-07-20):**
+`handleApproveSession` was reading `gate.blocked`/`gate.sentence`, which
+`presignGateOrReject()` never returned — every WC session approval proceeded regardless
+of RASP tier. Fixed to read `!gate.proceedAllowed` (same shape the three signing
+chokepoints already use). Regression-tested, BUILT, INTERNAL — not device-verified.
 
 **Safety Plus IAP:** Monthly $5.99 + Annual $49.99 (same `safety_plus` entitlement).
 Store-side setup complete (Apple + Google + RevenueCat). iOS sandbox-purchase
@@ -100,14 +98,14 @@ decoy sessions/lock/panic-wipe), K-2 (referral sync fail-as-success + pre-gate r
 read/write), S-1 (user-facing security caveats stripped from Documentation by PR #1243),
 and H-3 (duress setup didn't clear a pre-existing real-PIN biometric cache) are all BUILT
 + merged (C-1 + K-2 both in PR #1262; S-1 in #1268; H-3 in #1261). H-1 (WC session-approval gate
-fail-open) fix is open in PR #1276, not yet merged. H-2 (ColdSign WARN-tier biometric
+fail-open) fix merged in PR #1276. H-2 (ColdSign WARN-tier biometric
 step-up gap) — **no action taken, correctly**: `ColdSign.jsx` is unreachable dead code (no
 route/import), and the underlying gap is already tracked as weekly M-5 (2026-07-14).
 
 **Open residuals:** M-1 (EVM key unzeroable, ethers v6), M-6 (iOS bridge H copy),
 #1111 (vault AAD v:3 migration — plan r2 done, implementation blocked on owner decisions),
-LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding, H-1
-WC session-approval gate fix open in PR #1276, Play upload key reset pending (above).
+LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding,
+Play upload key reset pending (above).
 
 ## Security invariants
 
