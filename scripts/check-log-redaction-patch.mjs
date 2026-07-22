@@ -9,7 +9,7 @@
 // HardwareKek / SecureStorage payloads inside node_modules' native-bridge.js.
 //
 // THE RISK THIS GUARDS: a patch-package patch is silently DROPPED when its target dependency
-// is bumped past the pinned version (here @capacitor/{android,ios}+8.4.1) — patch-package logs
+// is bumped past the pinned version (currently @capacitor/{android,ios}+8.4.2) — patch-package logs
 // a warning but `npm install` still succeeds, so the leak re-opens with no error and no failing
 // build. This guard reads the INSTALLED files and FAILS CI if the redaction markers are absent.
 //
@@ -17,7 +17,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 
-// Patch targets — must match patches/@capacitor+{android,ios}+8.4.1.patch.
+// Patch targets — must match patches/@capacitor+{android,ios}+<version>.patch.
 const TARGETS = [
   'node_modules/@capacitor/android/capacitor/src/main/assets/native-bridge.js',
   'node_modules/@capacitor/ios/Capacitor/Capacitor/assets/native-bridge.js',
@@ -45,7 +45,8 @@ for (const file of TARGETS) {
       `[check-log-redaction] NOT REDACTED: ${file}\n` +
       `  → missing markers: ${missing.join(', ')}\n` +
       '  → the LOG-1 redaction patch did not apply (most likely a @capacitor version bump ' +
-      'past 8.4.1). Re-create it with `npx patch-package @capacitor/android @capacitor/ios` ' +
+      'past the version pinned in the patches/ filenames). Re-create it with ' +
+      '`npx patch-package @capacitor/android @capacitor/ios` ' +
       'after re-applying the redaction, then re-verify no H / vault payload reaches logcat.',
     );
     failed = true;
