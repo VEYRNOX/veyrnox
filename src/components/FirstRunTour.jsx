@@ -1,8 +1,15 @@
 // components/FirstRunTour.jsx
 //
-// A lightweight first-run tour that highlights key security features during
-// onboarding, before the wallet is created. Triggered once per device — uses a
-// localStorage marker so it never re-fires. Fixes: #1160 (ECC F-P3-3).
+// A lightweight first-run tour that highlights key security features on the
+// unlocked wallet, AFTER the wallet has been created. Triggered once per device
+// — uses a localStorage marker so it never re-fires. Fixes: #1160 (ECC F-P3-3).
+//
+// Placement (WalletEntry.jsx, the `isUnlocked` branch) is deliberate: every step
+// describes something you do with a wallet you already have — set a duress PIN,
+// hide a wallet, export a backup, bind the PIN to biometrics. Shown on the
+// pre-creation choose screen it advertised features the user could not act on
+// yet, interrupting the create/import decision. Do not move it back ahead of
+// wallet creation without revisiting the step copy.
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';

@@ -1144,7 +1144,18 @@ export default function WalletEntry() {
 
   if (isUnlocked && !generatedSeed && !kekGatePending) {
     autoEnrollPinRef.current = null;
-    return <Outlet />;
+    // FirstRunTour sits HERE — on the unlocked wallet — not on the pre-creation
+    // choose screen. The tour describes what to do with a wallet you have
+    // (duress PIN, stealth wallets, backup, hardware binding); shown before the
+    // wallet exists it was advertising features the user could not yet act on,
+    // in front of the create/import decision. It is still once-per-device via
+    // its own localStorage marker, so moving it does not make it re-fire.
+    return (
+      <>
+        <FirstRunTour />
+        <Outlet />
+      </>
+    );
   }
 
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
@@ -1196,7 +1207,6 @@ export default function WalletEntry() {
   // ---- View: Welcome (fresh-device landing, AHEAD of the PIN) ----
   // No vault exists; show the branded hero. "Get Started" advances to PIN-create,
   // resetting the PIN sub-state exactly as the cold-mount path used to.
-  // The FirstRunTour overlays on this screen (once per device).
   if (view === "welcome") {
     return (
       <WelcomeHero
@@ -1488,7 +1498,6 @@ export default function WalletEntry() {
     if (hasPendingPin) {
       return (
         <EntryShell error={error}>
-          <FirstRunTour />
           <div className="p-6 rounded-xl border border-dashed border-border bg-card space-y-4">
             {!choosePinImport ? (
               <>
