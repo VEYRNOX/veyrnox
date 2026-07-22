@@ -30,6 +30,9 @@ on:
       - 'ios/**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ios-compile-check-${{ github.ref }}
   cancel-in-progress: true
