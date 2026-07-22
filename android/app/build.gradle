@@ -17,7 +17,7 @@ android {
         applicationId "com.veyrnox.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
+        versionCode 6
         // Customer-facing version for the public Play launch. versionCode is internal
         // bookkeeping (monotonic, permanently consumed per upload, never shown to users);
         // versionName is what appears on the store listing. Launching as a clean "1.0".
