@@ -34,22 +34,34 @@ android {
     }
     signingConfigs {
         release {
+            // Resolution order: keystore.properties (local dev / release box), then
+            // env vars (CI). The property NAMES must match the file that is actually
+            // in use — android/keystore.properties ships KEYSTORE_PATH /
+            // KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD, so those are read first,
+            // with the camelCase spellings accepted as a fallback.
+            //
+            // storeFile is resolved against rootProject (android/), NOT android/app/,
+            // because KEYSTORE_PATH is written relative to the android/ directory.
             def propsFile = rootProject.file("keystore.properties")
+            def ksPath = System.getenv("KEYSTORE_PATH")
+            def ksPass = System.getenv("KEYSTORE_PASSWORD")
+            def ksAlias = System.getenv("KEY_ALIAS")
+            def ksKeyPass = System.getenv("KEY_PASSWORD")
+
             if (propsFile.exists()) {
                 def props = new Properties()
-                props.load(new FileInputStream(propsFile))
-                storeFile     file(props['storeFile'])
-                storePassword props['storePassword']
-                keyAlias      props['keyAlias']
-                keyPassword   props['keyPassword']
-            } else {
-                def ksPath = System.getenv("KEYSTORE_PATH")
-                if (ksPath) {
-                    storeFile     file(ksPath)
-                    storePassword System.getenv("KEYSTORE_PASSWORD")
-                    keyAlias      System.getenv("KEY_ALIAS")
-                    keyPassword   System.getenv("KEY_PASSWORD")
-                }
+                propsFile.withInputStream { props.load(it) }
+                ksPath    = props['KEYSTORE_PATH']     ?: props['storeFile']     ?: ksPath
+                ksPass    = props['KEYSTORE_PASSWORD'] ?: props['storePassword'] ?: ksPass
+                ksAlias   = props['KEY_ALIAS']         ?: props['keyAlias']      ?: ksAlias
+                ksKeyPass = props['KEY_PASSWORD']      ?: props['keyPassword']   ?: ksKeyPass
+            }
+
+            if (ksPath) {
+                storeFile     rootProject.file(ksPath)
+                storePassword ksPass
+                keyAlias      ksAlias
+                keyPassword   ksKeyPass
             }
         }
     }
@@ -127,6 +139,24 @@ tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.co
             throw new GradleException(
                 "RELEASE_CERT_SHA256 has an invalid format: ${cert}\n" +
                 'Expected 32 colon-separated hex pairs (e.g. AA:BB:CC:...).')
+        }
+
+        // Signing must actually have resolved. buildTypes.release selects
+        // signingConfigs.release as soon as keystore.properties EXISTS — so a file
+        // present but with unreadable keys would otherwise reach the packaging step
+        // with no storeFile and fail obscurely (or, historically, silently debug-sign).
+        def sc = android.signingConfigs.release
+        if (sc.storeFile == null) {
+            throw new GradleException(
+                'Release signing is not configured.\n' +
+                'Expected android/keystore.properties with KEYSTORE_PATH / ' +
+                'KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD, or the equivalent ' +
+                'environment variables.')
+        }
+        if (!sc.storeFile.exists()) {
+            throw new GradleException(
+                "Keystore not found at: ${sc.storeFile}\n" +
+                'KEYSTORE_PATH is resolved relative to the android/ directory.')
         }
     }
 }
