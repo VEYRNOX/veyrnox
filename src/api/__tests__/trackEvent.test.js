@@ -11,6 +11,8 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilityOrDemoActive: (...args) => mockIsDeniabilityOrDemoActive(...args),
 }));
 
+vi.mock('@/api/demoClient', () => ({ DEMO: false }));
+
 const { trackEvent, EVENT } = await import('../trackEvent');
 
 describe('trackEvent', () => {

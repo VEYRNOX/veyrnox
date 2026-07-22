@@ -12,6 +12,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+import { DEMO } from '@/api/demoClient';
 
 const DEVICE_ID_KEY = 'veyrnox-device-id';
 
@@ -28,7 +29,7 @@ function getOrCreateDeviceId() {
 }
 
 export async function trackEvent(event, metadata = {}) {
-  if (!supabase || isDeniabilityOrDemoActive()) return;
+  if (!supabase || DEMO || isDeniabilityOrDemoActive()) return;
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) return;
   try {
@@ -50,6 +51,5 @@ export const EVENT = {
   SEND_COMPLETED: 'send_completed',
   RECEIVE_VIEWED: 'receive_viewed',
   WC_SESSION_APPROVED: 'wc_session_approved',
-  WC_TX_SIGNED: 'wc_tx_signed',
   BACKUP_CONFIRMED: 'backup_confirmed',
 };

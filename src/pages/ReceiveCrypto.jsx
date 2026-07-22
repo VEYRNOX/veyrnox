@@ -42,7 +42,7 @@ export default function ReceiveCrypto() {
     setCopied(false);
   }, [urlAsset]);
 
-  useEffect(() => { void trackEvent(EVENT.RECEIVE_VIEWED, { asset: urlAsset }).catch(() => {}); }, []);
+  useEffect(() => { void trackEvent(EVENT.RECEIVE_VIEWED, { asset: urlAsset }).catch(() => {}); }, [urlAsset]);
 
   // DEMO address source. A backend-less walkthrough has no unlocked vault, so the
   // derived accounts are empty and EVERY asset would render the locked "unlock to
