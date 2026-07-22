@@ -124,3 +124,48 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+// ── Release signing-fingerprint guard ────────────────────────────────────────
+// gradle.properties ships the DEBUG keystore fingerprint as the default value of
+// RELEASE_CERT_SHA256 so that local debug builds don't trip
+// RaspIntegrityPlugin.detectTamper(). That default must never reach a release
+// artifact: Play re-signs uploads with Google's app-signing key, so a release AAB
+// carrying the debug fingerprint reports tampered=true on EVERY launch of the
+// Play-installed build — silently, and only discoverable after the versionCode has
+// been permanently consumed by the upload.
+//
+// A blank value is equally fatal: detectTamper() treats it as tampered (fail-closed,
+// I4). Both cases previously failed *quietly at runtime*; this fails *loudly at build
+// time* instead.
+//
+// Release builds must pass Google's app-signing certificate explicitly:
+//   ./gradlew bundleRelease -PRELEASE_CERT_SHA256=<Google app-signing cert SHA-256>
+def DEBUG_CERT_FINGERPRINT = '8290314d958770771c797704397eedb4bd83fa3db3f41a8af992f788dc01820f'
+
+gradle.taskGraph.whenReady { graph ->
+    def buildsRelease = graph.allTasks.any { t ->
+        t.project == project && t.name ==~ /(?i)(assemble|bundle)Release.*/
+    }
+    if (!buildsRelease) return
+
+    def fp = (project.findProperty('RELEASE_CERT_SHA256') ?: '')
+        .toString().replace(':', '').toLowerCase()
+
+    if (fp.isEmpty()) {
+        throw new GradleException(
+            "RELEASE_CERT_SHA256 is empty — the release build would report tampered=true " +
+            "at runtime (fail-closed, I4).\n" +
+            "Pass Google's app-signing certificate:\n" +
+            "  ./gradlew bundleRelease -PRELEASE_CERT_SHA256=<Google app-signing cert SHA-256>")
+    }
+
+    if (fp == DEBUG_CERT_FINGERPRINT) {
+        throw new GradleException(
+            "RELEASE_CERT_SHA256 is still the DEBUG keystore fingerprint (the " +
+            "gradle.properties default).\n" +
+            "Play re-signs uploads with Google's app-signing key, so this build would " +
+            "report tampered=true on every launch once installed from Play.\n" +
+            "Pass Google's app-signing certificate explicitly:\n" +
+            "  ./gradlew bundleRelease -PRELEASE_CERT_SHA256=<Google app-signing cert SHA-256>")
+    }
+}
