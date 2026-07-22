@@ -11,15 +11,20 @@
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
 
-const env = Object.fromEntries(
-  readFileSync('.env.local', 'utf8')
-    .split('\n')
-    .filter(l => l && !l.startsWith('#') && l.includes('='))
-    .map(l => {
-      const idx = l.indexOf('=');
-      return [l.slice(0, idx).trim(), l.slice(idx + 1).trim().replace(/^["']|["']$/g, '')];
-    })
-);
+let env = {};
+try {
+  env = Object.fromEntries(
+    readFileSync('.env.local', 'utf8')
+      .split('\n')
+      .filter(l => l && !l.startsWith('#') && l.includes('='))
+      .map(l => {
+        const idx = l.indexOf('=');
+        return [l.slice(0, idx).trim(), l.slice(idx + 1).trim().replace(/^["']|["']$/g, '')];
+      })
+  );
+} catch {
+  // .env.local missing — fall through to the validation checks below.
+}
 
 const url = env.VITE_SUPABASE_URL;
 const anonKey = env.VITE_SUPABASE_ANON_KEY;
