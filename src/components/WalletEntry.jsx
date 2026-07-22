@@ -498,11 +498,10 @@ export default function WalletEntry() {
   // ref (not state) so it is never copied into a render snapshot.
   const createdPasswordRef = useRef(null);
 
-  // Stashed PIN for KEK auto-enrollment on fresh wallet creation. The pending PIN
-  // is consumed by createWalletFromPendingPin, so by the time the KEK gate fires
-  // it's gone. We stash it here (ref, never state) so the gate can auto-enroll
-  // without asking the user to re-type it. Zeroized immediately after use.
-  const freshCreatePinRef = useRef(null);
+  // Stashed PIN for KEK auto-enrollment (fresh create + restore paths). The PIN
+  // is consumed before the KEK gate fires, so we stash it here (ref, never state)
+  // so the gate can auto-enroll without redundant re-entry. Zeroized after use.
+  const autoEnrollPinRef = useRef(null);
 
   // v1 PIN cohort. authModel is read once the vault-existence probe resolves.
   const [authModel, setAuthModelState] = useState("password");
@@ -646,14 +645,14 @@ export default function WalletEntry() {
   const handleKekEnroll = useCallback(async (pin) => {
     const result = await kekEnroll(pin);
     if (result.ok) {
-      freshCreatePinRef.current = null;
+      autoEnrollPinRef.current = null;
       kekDismiss();
     }
     return result;
   }, [kekEnroll, kekDismiss]);
 
   const handleKekSkip = useCallback(() => {
-    freshCreatePinRef.current = null;
+    autoEnrollPinRef.current = null;
     kekDismiss();
   }, [kekDismiss]);
 
@@ -785,6 +784,7 @@ export default function WalletEntry() {
       // Success (real / duress unlocks return without throwing; the panic PIN throws
       // the isPanicWipe sentinel and never reaches here) — reset the streak.
       clearPinAttempts();
+      if (kekOrigin === 'restored') autoEnrollPinRef.current = pin;
       // CRITICAL (I3/I4): the convenience cache write happens ONLY AFTER a successful
       // unlock (a MIS-TYPED PIN is never cached — the old pre-unlock write cached
       // garbage and popped a spurious OS enroll sheet on a wrong PIN), and ONLY when
@@ -911,7 +911,7 @@ export default function WalletEntry() {
   // numeric-only PinPad, which cannot accept it). Web is a testing-only surface —
   // never production — so full parity with native's PIN cohort is correct here.
   const finishPinSetup = () => {
-    freshCreatePinRef.current = realPin;
+    autoEnrollPinRef.current = realPin;
     setupPin(realPin);               // authModel='pin' + salt + pendingPin + enter explore
     setAuthModelState("pin");
     setRealPin(""); setRealPinConfirm(""); setError(""); setPinStep("real");
@@ -926,7 +926,7 @@ export default function WalletEntry() {
     setBusy(true); setProvisioning(true); setError("");
     try { setKekOrigin('fresh'); await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
-      freshCreatePinRef.current = null;
+      autoEnrollPinRef.current = null;
       setProvisioning(false);
       if (e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT) {
         // Recoverable input constraint: the pending PIN is still valid — don't wipe it.
@@ -973,6 +973,7 @@ export default function WalletEntry() {
       // Genuine provisioning/teardown failure: fail closed. Clear the pending PIN;
       // the message must reflect that the user has to set their PIN again.
       if (import.meta.env.DEV) console.error('[WalletEntry] import failed:', e?.name || e);
+      autoEnrollPinRef.current = null;
       clearPendingPin();
       const msg = "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again.";
       setError(msg);
@@ -995,6 +996,7 @@ export default function WalletEntry() {
     setBusy(true); setProvisioning(true); setError("");
     try {
       setKekOrigin('restored');
+      autoEnrollPinRef.current = realPin;
       setupPin(realPin);               // bridge the new PIN as pendingPin (markers + salt)
       await importWalletForPendingPin(recoverySeed);
       setAuthModelState("pin");
@@ -1006,6 +1008,7 @@ export default function WalletEntry() {
       // recovery must not leave the session stuck in explore. Inert today (the
       // recover view stays mounted), but keeps the failure state coherent.
       leaveExplore();
+      autoEnrollPinRef.current = null;
       clearPendingPin(); setProvisioning(false);
       setError(e?.message || "Couldn't restore from that seed phrase");
     } finally { setBusy(false); }
@@ -1064,7 +1067,7 @@ export default function WalletEntry() {
       }
     } finally {
       createdPasswordRef.current = null; // wipe the transient password
-      freshCreatePinRef.current = null;  // belt-and-suspenders: zeroize before KEK gate
+      autoEnrollPinRef.current = null;  // belt-and-suspenders: zeroize before KEK gate
       setGeneratedSeed("");              // release the hold → WalletGate renders the app
       setShowSeed(false);
       setBusy(false);
@@ -1132,7 +1135,7 @@ export default function WalletEntry() {
     return (
       <KekEnrollmentGate
         origin={kekOrigin}
-        autoEnrollPin={kekOrigin === 'fresh' ? freshCreatePinRef.current : null}
+        autoEnrollPin={autoEnrollPinRef.current}
         onEnroll={handleKekEnroll}
         onSkip={handleKekSkip}
       />
@@ -1140,7 +1143,7 @@ export default function WalletEntry() {
   }
 
   if (isUnlocked && !generatedSeed && !kekGatePending) {
-    freshCreatePinRef.current = null;
+    autoEnrollPinRef.current = null;
     return <Outlet />;
   }
 
@@ -1575,7 +1578,7 @@ export default function WalletEntry() {
           {/* PIN-FIRST: Back returns to the branded welcome hero (the fresh-device
               landing ahead of the PIN), NOT a dashboard — the empty dashboard is
               only reachable AFTER the PIN is set. */}
-          <button type="button" onClick={() => { setError(""); clearPendingPin(); freshCreatePinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+          <button type="button" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
 
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
