@@ -153,6 +153,13 @@ jobs:
       # #1107: fail CI if any .env.production* file sets VITE_BYPASS_RASP=1 --
       # that disables the entire RASP pre-sign integrity gate.
       - run: npm run check:rasp-bypass
+      # iOS SPM manifest gate: `npx cap sync` run on Windows rewrites
+      # ios/App/CapApp-SPM/Package.swift with backslash paths. Backslash is
+      # Swift's escape character, so the manifest stops parsing — but ONLY on
+      # macOS, and no CI job compiles it. This repo is developed on Windows
+      # while the iOS build needs a Mac, so without this gate the breakage is
+      # invisible until someone opens the project there (observed 2026-07-22).
+      - run: npm run check:spm-paths
       - run: npm run build
 
   # Unit tests run in their OWN job, deliberately NOT inside `verify`.
