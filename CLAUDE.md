@@ -26,7 +26,7 @@ identity; the app never holds keys server-side.
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
 
-## Current state summary (2026-07-20)
+## Current state summary (2026-07-22)
 
 **Hardware KEK:** Both platforms BUILT + device-verified (INTERNAL). M2c (iOS SE) and M2d
 (Android StrongBox/TEE) UNGATED (PR #1152). Android C-1 v3 salt-binding FIXED +
