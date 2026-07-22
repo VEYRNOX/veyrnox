@@ -3,10 +3,11 @@
 // back via the service role key to confirm the table + RLS are working.
 //
 // Usage:
-//   SUPABASE_SERVICE_ROLE_KEY=... node scripts/verify-events.mjs
-//   (or add SUPABASE_SERVICE_ROLE_KEY to .env.local)
+//   Add SUPABASE_SERVICE_ROLE_KEY to .env.local, then:
+//   node scripts/verify-events.mjs
 //
-// Requires: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local
+// Requires VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and
+// SUPABASE_SERVICE_ROLE_KEY in .env.local
 
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
