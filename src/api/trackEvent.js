@@ -51,7 +51,7 @@ export async function trackEvent(event, metadata = {}) {
     const { error } = await supabase.from('events').insert({
       device_id: deviceId,
       event,
-      metadata,
+      metadata: metadata && typeof metadata === 'object' ? metadata : {},
     });
     if (error) return;
   } catch {

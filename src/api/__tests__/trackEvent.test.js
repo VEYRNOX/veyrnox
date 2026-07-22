@@ -54,6 +54,7 @@ describe('trackEvent', () => {
     await trackEvent('test_event');
 
     expect(insertFn).not.toHaveBeenCalled();
+    expect(localStorage.getItem('veyrnox-device-id')).toBeNull();
   });
 
   it('reuses the same device_id across calls', async () => {
