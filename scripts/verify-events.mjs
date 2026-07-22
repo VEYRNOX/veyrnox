@@ -3,7 +3,8 @@
 // back via the service role key to confirm the table + RLS are working.
 //
 // Usage:
-//   node scripts/verify-events.mjs <service-role-key>
+//   SUPABASE_SERVICE_ROLE_KEY=... node scripts/verify-events.mjs
+//   (or add SUPABASE_SERVICE_ROLE_KEY to .env.local)
 //
 // Requires: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local
 
@@ -22,14 +23,14 @@ const env = Object.fromEntries(
 
 const url = env.VITE_SUPABASE_URL;
 const anonKey = env.VITE_SUPABASE_ANON_KEY;
-const serviceKey = process.argv[2];
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY || process.argv[2];
 
 if (!url || !anonKey) {
   console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local');
   process.exit(1);
 }
 if (!serviceKey) {
-  console.error('Usage: node scripts/verify-events.mjs <service-role-key>');
+  console.error('Set SUPABASE_SERVICE_ROLE_KEY in env or .env.local, or pass as argument.');
   process.exit(1);
 }
 
