@@ -30,7 +30,10 @@ identity; the app never holds keys server-side.
 
 **Hardware KEK:** Both platforms BUILT + device-verified (INTERNAL). M2c (iOS SE) and M2d
 (Android StrongBox/TEE) UNGATED (PR #1152). Android C-1 v3 salt-binding FIXED +
-device-verified. iOS device-verified FULL (2026-07-08). Independent audit outstanding.
+device-verified. iOS device-verified FULL (2026-07-08). KEK auto-enroll on all wallet
+entry paths — fresh create (PR #1298) + phrase import, PIN recovery, file restore
+(PR #1301) — eliminates redundant PIN re-entry at enrollment. Independent audit
+outstanding.
 
 **RASP:** F-09 DEVICE-VERIFIED (FULL, INTERNAL) on Android (Magisk, 2026-07-12) and iOS
 (palera1n, 2026-07-14). G3 Frida Gadget detection device-verified on both platforms.
