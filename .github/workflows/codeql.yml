@@ -66,13 +66,17 @@ jobs:
             build-mode: none
             runner: ubuntu-latest
 
-          # Compiled — autobuild drives Gradle (also compiles the NDK C for
-          # c-cpp: android/app/src/main/cpp/rasp_early.c).
+          # Compiled — analysed BUILDLESS. autobuild cannot configure this Gradle
+          # project: android/app/build.gradle does `apply from: capacitor.build.gradle`,
+          # which only exists after `npm run build && npx cap sync android`. Rather than
+          # run a full Capacitor+Gradle build twice (once per language) just to extract
+          # sources, use build-mode: none — CodeQL extracts Java/Kotlin and C/C++ directly
+          # from source. This is what Default setup was doing for these two languages.
           - language: java-kotlin
-            build-mode: autobuild
+            build-mode: none
             runner: ubuntu-latest
           - language: c-cpp
-            build-mode: autobuild
+            build-mode: none
             runner: ubuntu-latest
 
           # Compiled — needs a macOS runner and the Capacitor web build first.
