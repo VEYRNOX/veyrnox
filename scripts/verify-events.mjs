@@ -13,8 +13,11 @@ import { readFileSync } from 'fs';
 const env = Object.fromEntries(
   readFileSync('.env.local', 'utf8')
     .split('\n')
-    .filter(l => l && !l.startsWith('#'))
-    .map(l => l.split('=').map(s => s.trim()))
+    .filter(l => l && !l.startsWith('#') && l.includes('='))
+    .map(l => {
+      const idx = l.indexOf('=');
+      return [l.slice(0, idx).trim(), l.slice(idx + 1).trim().replace(/^["']|["']$/g, '')];
+    })
 );
 
 const url = env.VITE_SUPABASE_URL;
@@ -47,15 +50,15 @@ if (insertErr) {
 console.log('   OK — inserted.');
 
 console.log('2. Verifying anon client CANNOT read back (RLS)...');
-const { data: anonRead, error: anonReadErr } = await anon
+const { data: anonRead } = await anon
   .from('events')
   .select('*')
   .eq('device_id', testDeviceId)
   .limit(1);
-if (anonReadErr || (anonRead && anonRead.length > 0)) {
+if (anonRead && anonRead.length > 0) {
   console.warn('   WARNING: anon client CAN read events — RLS may be misconfigured.');
 } else {
-  console.log('   OK — anon read returned empty (RLS working).');
+  console.log('   OK — anon read blocked or empty (RLS working).');
 }
 
 console.log('3. Reading back via service role key...');

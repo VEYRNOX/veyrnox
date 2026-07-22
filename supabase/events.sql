@@ -26,6 +26,10 @@ create index if not exists idx_events_device_created
 -- 4. RLS: enable row-level security. Anon clients may INSERT only.
 --    No SELECT/UPDATE/DELETE — the app never reads its own events back;
 --    only the Supabase dashboard / server-side queries can.
+--    RESIDUAL: the anon key is public, so anyone with it can spam INSERTs.
+--    This is tamper-resistant, not abuse-proof (mirrors referrals.sql).
+--    Hardening (rate limit / proof-of-work) is out of scope for anonymous
+--    analytics that expose no sensitive data.
 alter table events enable row level security;
 
 drop policy if exists "anon insert" on events;

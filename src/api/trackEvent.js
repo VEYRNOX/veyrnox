@@ -2,7 +2,8 @@
 //
 // Privacy-respecting anonymous event tracking via Supabase.
 // Follows the referralApi.js pattern: null-guard on supabase,
-// gate on isDeniabilityOrDemoActive(), best-effort fire-and-forget.
+// gate on DEMO (load-time) + isDeniabilityOrDemoActive() (live),
+// best-effort fire-and-forget.
 //
 // I2 compliance: no silent egress in deniability/demo sessions.
 // I3 compliance: device_id is only written in real primary sessions
