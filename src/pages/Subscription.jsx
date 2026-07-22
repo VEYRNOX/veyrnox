@@ -26,6 +26,7 @@ import {
   setReferralAttribute,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
+  RETENTION_OFFERING_ID,
 } from "@/lib/purchases";
 import {
   getRedeemedCode,
@@ -39,6 +40,8 @@ import {
   PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
 import { recordAttribution, fetchPaidCount } from "@/api/referralApi";
+import OutcomeSteps, { OUTCOME_STEPS } from "@/components/subscription/OutcomeSteps";
+import CancelOfferDialog from "@/components/subscription/CancelOfferDialog";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
 
@@ -100,6 +103,16 @@ export default function Subscription() {
   const isNative = Capacitor.isNativePlatform();
   const hasReferral = hasRedeemed();
 
+  // Outcome-first preamble. Only non-subscribers see it, and only until they
+  // reach pricing — existing subscribers land straight on the manage view.
+  // `null` means "past the preamble" (or never in it).
+  const [outcomeStep, setOutcomeStep] = useState(
+    currentTier === "safety_plus" ? null : 0
+  );
+  const [cancelOfferOpen, setCancelOfferOpen] = useState(false);
+  const [retentionMonthly, setRetentionMonthly] = useState(null);
+  const [retentionAnnual, setRetentionAnnual] = useState(null);
+
   useEffect(() => {
     if (!isNative) return;
     let cancelled = false;
@@ -146,8 +159,22 @@ export default function Subscription() {
       }
     }
 
+    // Retention offering — only meaningful to someone who already subscribes.
+    // Absent unless a promotional offer is configured store-side, in which case
+    // getTierOffering resolves to null and the dialog shows no price.
+    if (currentTier === "safety_plus") {
+      getTierOffering(RETENTION_OFFERING_ID)
+        .then((offering) => {
+          if (cancelled || !offering) return;
+          const { monthly, annual } = extractPackages(offering);
+          setRetentionMonthly(monthly);
+          setRetentionAnnual(annual);
+        })
+        .catch(() => {});
+    }
+
     return () => { cancelled = true; };
-  }, [isNative, hasReferral]);
+  }, [isNative, hasReferral, currentTier]);
 
   const hasDiscount = hasReferral && Boolean(referralMonthly || referralAnnual);
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
@@ -208,7 +235,16 @@ export default function Subscription() {
     }
   }
 
-  async function handleManage() {
+  // Cancel INTENT, not cancellation. Tapping "Manage subscription" is the last
+  // moment we own — the deep-link below hands off to Apple/Google, and there is
+  // no event, callback or hook available to us on the far side of it. So the
+  // retention offer is shown here or not at all.
+  function handleManage() {
+    setCancelOfferOpen(true);
+  }
+
+  async function openStoreSubscriptions() {
+    setCancelOfferOpen(false);
     try {
       await manageSubscription();
     } catch {
@@ -216,9 +252,43 @@ export default function Subscription() {
     }
   }
 
+  // Outcome-first preamble: sell the result before showing a price. Skippable,
+  // and never shown to someone who already subscribes.
+  if (outcomeStep !== null) {
+    return (
+      <div className="max-w-xl mx-auto p-6 space-y-6">
+        <BackButton />
+        <OutcomeSteps
+          step={outcomeStep}
+          onNext={() =>
+            setOutcomeStep((s) =>
+              s + 1 >= OUTCOME_STEPS.length ? null : s + 1
+            )
+          }
+          onBack={() => setOutcomeStep((s) => Math.max(0, s - 1))}
+          onSkip={() => setOutcomeStep(null)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-xl mx-auto p-6 space-y-6">
       <BackButton />
+
+      <CancelOfferDialog
+        open={cancelOfferOpen}
+        onOpenChange={setCancelOfferOpen}
+        onKeep={() => setCancelOfferOpen(false)}
+        onContinue={openStoreSubscriptions}
+        // Only ever a package that genuinely exists in the current offering —
+        // never a client-side computed "discount". With no promotional offer
+        // configured in App Store Connect / Play Console this is null and the
+        // dialog shows no price, which is correct.
+        offerPackage={effectiveBilling === "annual" ? retentionAnnual : retentionMonthly}
+        currentPackage={effectiveBilling === "annual" ? annualPackage : monthlyPackage}
+        currentPriceString={effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice}
+      />
 
       <div>
         <h1 className="text-3xl font-bold">Plans</h1>
@@ -408,6 +478,16 @@ export default function Subscription() {
                 {busy ? <Loader2 className="h-4 w-4 mr-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
                 {isNative ? `Upgrade — ${selectedPriceString}` : "Upgrade — mobile only"}
               </Button>
+
+              {/* Renewal terms. Both stores require this disclosure at the
+                  point of purchase, so it sits with the CTA rather than in
+                  small print further down. */}
+              <p className="text-xs text-muted-foreground text-center">
+                <span className="font-semibold text-foreground">Cancel anytime.</span>{" "}
+                Renews {effectiveBilling === "annual" ? "yearly" : "monthly"} at{" "}
+                {selectedPriceString} until cancelled — manage or cancel in your{" "}
+                {Capacitor.getPlatform() === "ios" ? "App Store" : "Google Play"} account settings.
+              </p>
               {isNative ? (
                 <button
                   type="button"
