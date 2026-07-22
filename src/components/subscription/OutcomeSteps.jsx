@@ -17,6 +17,19 @@
 
 import { ShieldOff, KeyRound, ScanEye, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+
+// Shown once per device. A returning non-subscriber who already read this and
+// came back to pay should land on the price, not re-page through three screens.
+export const OUTCOME_SEEN_KEY = "veyrnox-paywall-outcome-seen";
+
+export function markOutcomeSeen() {
+  try {
+    // I3: a decoy/demo session must leave no trace that the paywall was visited.
+    if (isDeniabilityOrDemoActive()) return;
+    localStorage.setItem(OUTCOME_SEEN_KEY, "1");
+  } catch { /* storage unavailable — preamble simply shows again */ }
+}
 
 export const OUTCOME_STEPS = [
   {

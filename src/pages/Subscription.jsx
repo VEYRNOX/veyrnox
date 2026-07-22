@@ -40,7 +40,11 @@ import {
   PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
 import { recordAttribution, fetchPaidCount } from "@/api/referralApi";
-import OutcomeSteps, { OUTCOME_STEPS } from "@/components/subscription/OutcomeSteps";
+import OutcomeSteps, {
+  OUTCOME_STEPS,
+  OUTCOME_SEEN_KEY,
+  markOutcomeSeen,
+} from "@/components/subscription/OutcomeSteps";
 import CancelOfferDialog from "@/components/subscription/CancelOfferDialog";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
@@ -103,12 +107,21 @@ export default function Subscription() {
   const isNative = Capacitor.isNativePlatform();
   const hasReferral = hasRedeemed();
 
-  // Outcome-first preamble. Only non-subscribers see it, and only until they
-  // reach pricing — existing subscribers land straight on the manage view.
-  // `null` means "past the preamble" (or never in it).
-  const [outcomeStep, setOutcomeStep] = useState(
-    currentTier === "safety_plus" ? null : 0
-  );
+  // Outcome-first preamble. Only non-subscribers see it, ONCE per device, and
+  // only until they reach pricing — existing subscribers land straight on the
+  // manage view. `null` means "past the preamble" (or never in it).
+  //
+  // Once-per-device matters: someone who read the story, left, and came back to
+  // subscribe is already sold. Re-paging them through three screens to reach the
+  // price is friction on exactly the user who decided to pay. Deniability/demo
+  // sessions skip the marker write, so they simply see it each time (I3 — a
+  // decoy session leaves no trace that the real user visited the paywall).
+  const [outcomeStep, setOutcomeStep] = useState(() => {
+    if (currentTier === "safety_plus") return null;
+    try {
+      return localStorage.getItem(OUTCOME_SEEN_KEY) ? null : 0;
+    } catch { return 0; }
+  });
   const [cancelOfferOpen, setCancelOfferOpen] = useState(false);
   const [retentionMonthly, setRetentionMonthly] = useState(null);
   const [retentionAnnual, setRetentionAnnual] = useState(null);
@@ -261,12 +274,14 @@ export default function Subscription() {
         <OutcomeSteps
           step={outcomeStep}
           onNext={() =>
-            setOutcomeStep((s) =>
-              s + 1 >= OUTCOME_STEPS.length ? null : s + 1
-            )
+            setOutcomeStep((s) => {
+              if (s + 1 < OUTCOME_STEPS.length) return s + 1;
+              markOutcomeSeen();
+              return null;
+            })
           }
           onBack={() => setOutcomeStep((s) => Math.max(0, s - 1))}
-          onSkip={() => setOutcomeStep(null)}
+          onSkip={() => { markOutcomeSeen(); setOutcomeStep(null); }}
         />
       </div>
     );

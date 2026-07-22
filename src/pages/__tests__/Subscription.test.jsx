@@ -28,6 +28,7 @@ vi.mock('@/lib/purchases', () => ({
   setReferralAttribute: (...a) => setReferralAttribute(...a),
   SAFETY_PLUS_MONTHLY_PACKAGE: '$rc_monthly',
   SAFETY_PLUS_ANNUAL_PACKAGE: '$rc_annual',
+  RETENTION_OFFERING_ID: 'retention',
 }));
 
 const hasRedeemedMock = vi.fn();
@@ -75,6 +76,12 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Land straight on pricing. The outcome-first preamble renders BEFORE the plan
+  // UI for a first-time non-subscriber; this suite covers pricing, purchase and
+  // the manage view, not onboarding. The preamble has its own tests
+  // (components/subscription/__tests__/OutcomeSteps.test.jsx), and the fact that
+  // it precedes pricing at all is asserted in this file's own preamble block.
+  localStorage.setItem('veyrnox-paywall-outcome-seen', '1');
   hasRedeemedMock.mockReturnValue(false);
   getRedeemedCodeMock.mockReturnValue(null);
   hasAttributedMock.mockReturnValue(false);
@@ -481,5 +488,38 @@ describe('Subscription page — tier-based referral discount', () => {
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
     expect(screen.queryByText(/referral discount applied/i)).toBeNull();
+  });
+});
+
+// The global beforeEach marks the outcome preamble as already seen so the rest
+// of this suite can test pricing directly. That convenience would quietly hide a
+// regression in the preamble gating itself, so it is asserted here explicitly.
+describe('Subscription page — outcome-first preamble gating', () => {
+  beforeEach(() => {
+    localStorage.removeItem('veyrnox-paywall-outcome-seen');
+    useTierMock.mockReturnValue({ currentTier: 'none', refreshTier, loading: false });
+  });
+
+  it('shows the outcome preamble BEFORE pricing on a first visit', async () => {
+    renderPage();
+    expect(await screen.findByText(/they see a wallet that isn't yours/i)).toBeTruthy();
+    // and the price is not on screen yet
+    expect(screen.queryByText('$49.99')).toBeNull();
+  });
+
+  it('goes straight to pricing once the preamble has been seen', async () => {
+    localStorage.setItem('veyrnox-paywall-outcome-seen', '1');
+    renderPage();
+    await waitFor(() =>
+      expect(screen.queryByText(/they see a wallet that isn't yours/i)).toBeNull()
+    );
+  });
+
+  it('never shows the preamble to an existing subscriber', async () => {
+    useTierMock.mockReturnValue({ currentTier: 'safety_plus', refreshTier, loading: false });
+    renderPage();
+    await waitFor(() =>
+      expect(screen.queryByText(/they see a wallet that isn't yours/i)).toBeNull()
+    );
   });
 });
