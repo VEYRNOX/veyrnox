@@ -39,29 +39,33 @@ android {
     }
     signingConfigs {
         release {
-            // Populated from CI secrets (KEYSTORE_BASE64 decoded to keystore.jks).
-            // Local dev: omit these env vars and Gradle falls back to debug signing.
-            def ksPath = System.getenv("KEYSTORE_PATH")
-            if (ksPath) {
-                storeFile     file(ksPath)
-                storePassword System.getenv("KEYSTORE_PASSWORD")
-                keyAlias      System.getenv("KEY_ALIAS")
-                keyPassword   System.getenv("KEY_PASSWORD")
+            def propsFile = rootProject.file("keystore.properties")
+            if (propsFile.exists()) {
+                def props = new Properties()
+                props.load(new FileInputStream(propsFile))
+                storeFile     file(props['storeFile'])
+                storePassword props['storePassword']
+                keyAlias      props['keyAlias']
+                keyPassword   props['keyPassword']
+            } else {
+                def ksPath = System.getenv("KEYSTORE_PATH")
+                if (ksPath) {
+                    storeFile     file(ksPath)
+                    storePassword System.getenv("KEYSTORE_PASSWORD")
+                    keyAlias      System.getenv("KEY_ALIAS")
+                    keyPassword   System.getenv("KEY_PASSWORD")
+                }
             }
         }
     }
     buildTypes {
         debug {
-            // Local device-verification builds install side-by-side with a
-            // release-signed com.veyrnox.app (signatures differ, so in-place update
-            // is impossible). The suffix keeps the existing app's data intact.
-            // Only applicationId changes; `namespace` stays com.veyrnox.app so all
-            // code packages (HardwareKekPlugin, RaspIntegrityPlugin) are unaffected.
             applicationIdSuffix ".debug"
         }
         release {
-            def ksPath = System.getenv("KEYSTORE_PATH")
-            signingConfig ksPath ? signingConfigs.release : signingConfigs.debug
+            def propsFile = rootProject.file("keystore.properties")
+            def hasSigningConfig = propsFile.exists() || System.getenv("KEYSTORE_PATH")
+            signingConfig hasSigningConfig ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             // Remove unused resources (layouts, drawables, strings, etc.) from the
             // release APK. Reduces attack surface and APK size. Requires minifyEnabled
