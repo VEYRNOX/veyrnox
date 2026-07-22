@@ -21,32 +21,35 @@ the new upload key becomes valid.
 
 ---
 
-## 1. Set the signing env vars (Git Bash / MINGW64)
+## 1. Signing credentials
 
-**Gradle reads ENV VARS, not `keystore.properties`.** The properties file just records the
-values. If these are unset, `build.gradle` **silently falls back to DEBUG signing** and you
-get an AAB Play will reject:
+`android/keystore.properties` is read **first**; environment variables are the fallback
+(used by CI). Since PR #1313 the properties file takes precedence whenever it exists, so on
+the Windows box you normally only need to copy the file — no exports required.
 
-```groovy
-signingConfig ksPath ? signingConfigs.release : signingConfigs.debug
+The file must use these key names (PR #1314 made build.gradle read them; it previously
+expected `storeFile`/`storePassword`/`keyAlias`/`keyPassword` and silently resolved every
+lookup to null):
+
 ```
+KEYSTORE_PATH=veyrnox-upload.jks      # relative to the android/ directory
+KEYSTORE_PASSWORD=...
+KEY_ALIAS=veyrnox
+KEY_PASSWORD=...
+```
+
+If you would rather use environment variables, delete `android/keystore.properties` first —
+otherwise the file wins:
 
 ```bash
-cd /c/path/to/veyrnox-secure          # adjust to the Windows checkout path
-
 export KEYSTORE_PATH="$PWD/android/veyrnox-upload.jks"
 export KEY_ALIAS="veyrnox"
-# Pull the passwords from keystore.properties without echoing them:
-export KEYSTORE_PASSWORD="$(grep -E '^KEYSTORE_PASSWORD=' android/keystore.properties | cut -d= -f2- | tr -d ' \r')"
-export KEY_PASSWORD="$(grep -E '^KEY_PASSWORD='       android/keystore.properties | cut -d= -f2- | tr -d ' \r')"
-
-# Sanity check (prints lengths only, never the secrets):
-echo "path set: ${KEYSTORE_PATH:+yes} | alias: $KEY_ALIAS | storepw len: ${#KEYSTORE_PASSWORD} | keypw len: ${#KEY_PASSWORD}"
+export KEYSTORE_PASSWORD="..."
+export KEY_PASSWORD="..."
 ```
 
-All four must be non-empty before continuing.
-
----
+The release build now fails loudly if signing does not resolve (no storeFile, or a keystore
+path that does not exist), so a misconfiguration cannot silently produce a debug-signed AAB.
 
 ## 2. Check `.env.local` — Vite inlines these at BUILD time
 
