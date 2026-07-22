@@ -1,0 +1,149 @@
+name: CodeQL
+
+# Replaces GitHub's CodeQL "Default setup", which was failing on two languages:
+#
+#   - language:swift  — hard error ("Detected build command failed"). Autobuild
+#     cannot build a Capacitor iOS app: the web assets must be built and synced
+#     (npm run build + npx cap sync ios) before xcodebuild has anything to
+#     compile. Net effect: the Secure Enclave / hardware-KEK Swift sources
+#     (EnclaveKeyService.swift, VeyrnoxEnclavePlugin.swift) have never actually
+#     been scanned. This workflow gives Swift a manual build that mirrors
+#     .github/workflows/ios-compile-check.yml, which is known to compile clean.
+#
+#   - language:ruby   — hard error. There is no Ruby in this repository at all
+#     (no .rb, Gemfile, Podfile or Fastfile is tracked). It is simply dropped
+#     from the language list below rather than scanned.
+#
+# HONESTY SCOPE: this makes the scans RUN. It does not by itself prove the code
+# is free of findings — a green CodeQL run means "analysed, nothing matched the
+# queries", not "audited". The independent third-party security audit remains
+# outstanding regardless of what this reports.
+#
+# NOTE FOR WHOEVER MERGES THIS: CodeQL "Default setup" must be DISABLED in the
+# repo UI first (Settings → Code security → CodeQL analysis → Default setup →
+# Disable), otherwise GitHub refuses to run an advanced workflow alongside it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly re-scan so scheduled-only queries and new rules still land on main.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ matrix.runner }}
+    # Generous enough for the Swift job (full Capacitor + xcodebuild compile);
+    # the source-only languages finish well inside it.
+    timeout-minutes: 60
+
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # No build required — analysed directly from source.
+          - language: actions
+            build-mode: none
+            runner: ubuntu-latest
+          - language: javascript-typescript
+            build-mode: none
+            runner: ubuntu-latest
+          - language: python
+            build-mode: none
+            runner: ubuntu-latest
+
+          # Compiled — analysed BUILDLESS. autobuild cannot configure this Gradle
+          # project: android/app/build.gradle does `apply from: capacitor.build.gradle`,
+          # which only exists after `npm run build && npx cap sync android`. Rather than
+          # run a full Capacitor+Gradle build twice (once per language) just to extract
+          # sources, use build-mode: none — CodeQL extracts Java/Kotlin and C/C++ directly
+          # from source. This is what Default setup was doing for these two languages.
+          - language: java-kotlin
+            build-mode: none
+            runner: ubuntu-latest
+          - language: c-cpp
+            build-mode: none
+            runner: ubuntu-latest
+
+          # Compiled — needs a macOS runner and the Capacitor web build first.
+          - language: swift
+            build-mode: manual
+            runner: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- Swift-only prerequisites -------------------------------------------
+      # xcodebuild has nothing to compile until the web assets exist and
+      # Capacitor has synced them into ios/App/App/public. Mirrors the working
+      # recipe in ios-compile-check.yml.
+      - name: Setup Node.js (swift build prerequisites)
+        if: matrix.language == 'swift'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies (swift)
+        if: matrix.language == 'swift'
+        run: npm install --legacy-peer-deps
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      # --- Manual build for Swift ---------------------------------------------
+      - name: Build web assets + sync Capacitor iOS
+        if: matrix.language == 'swift'
+        run: |
+          npm run build
+          npx cap sync ios
+
+      - name: Resolve Swift Package dependencies
+        if: matrix.language == 'swift'
+        working-directory: ios/App
+        run: |
+          # SPM project (CapApp-SPM — no Podfile/CocoaPods).
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme App 2>&1 | tail -5
+
+      - name: Compile iOS app for CodeQL
+        if: matrix.language == 'swift'
+        working-directory: ios/App
+        run: |
+          set -o pipefail
+          # Unsigned compile — the runner has no certificates. ONLY_ACTIVE_ARCH=NO
+          # so the whole target is compiled and therefore extracted by CodeQL.
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            2>&1 | tail -30
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
