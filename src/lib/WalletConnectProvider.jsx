@@ -110,6 +110,7 @@ import {
 } from '@/rasp';
 import { DEMO } from '@/api/demoClient';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
+import { trackEvent, EVENT } from '@/api/trackEvent';
 import { evaluateSendAgainstLimits } from '@/lib/txLimits';
 import { USD_RATES } from '@/lib/cryptos';
 
@@ -790,6 +791,7 @@ export function WalletConnectProvider({ children }) {
       [...ns, ...optNs].map((c) => parseInt(c.replace(/^eip155:/, ''), 10)),
     )];
     await approveSession(proposalId, evmAddress, chainIds);
+    void trackEvent(EVENT.WC_SESSION_APPROVED).catch(() => {});
     setPendingProposals((prev) => prev.filter((p) => p.id !== proposalId));
     refreshSessions();
   }, [evmAddress, pendingProposals, refreshSessions]);

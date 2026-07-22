@@ -122,6 +122,7 @@ import { ensureKekPinNoticeOnNative } from '@/lib/kekPinNotice';
 import { setLivePricesEnabled } from '@/lib/priceFeed';
 import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRedeemed, applyRedemption, getLocalState as getReferralState } from '@/lib/referral';
 import { generateServerCode, redeemCode } from '@/api/referralApi';
+import { trackEvent, EVENT } from '@/api/trackEvent';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
 // let Face ID open the DECOY (via enableDecoyBiometricUnlock). removeDuressPin reads
 // it to retract the shared veyrnox-biometric-unlock pref, so removing the duress PIN
@@ -898,6 +899,7 @@ export function WalletProvider({ children }) {
     // chaff via provisionPinWallet; this brings the password cohort to parity.
     void provisionDeniabilityChaff().catch(() => {});
     void initCode(generateServerCode).catch(() => {});
+    void trackEvent(EVENT.WALLET_CREATED).catch(() => {});
     refreshWalletsState();
     refreshPortfoliosState();
     touch();
@@ -942,6 +944,7 @@ export function WalletProvider({ children }) {
     void ensureStealthPool().catch(() => {}); // seed chaff pool (see createWallet)
     void provisionDeniabilityChaff().catch(() => {}); // M-5: duress/panic chaff parity (see createWallet)
     void initCode(generateServerCode).catch(() => {});
+    void trackEvent(EVENT.WALLET_IMPORTED).catch(() => {});
     refreshWalletsState();
     refreshPortfoliosState();
     touch();
@@ -1253,6 +1256,7 @@ export function WalletProvider({ children }) {
     const id = walletId || activeIdRef.current;
     if (!id) return;
     setWalletBackedUp(id, true);
+    void trackEvent(EVENT.BACKUP_CONFIRMED).catch(() => {});
     refreshWalletsState();
   }, [refreshWalletsState]);
 
@@ -1737,6 +1741,7 @@ export function WalletProvider({ children }) {
     setLivePricesEnabled(true); // Enable live prices after unlock (I2: user restored a real wallet, expect live data)
     setExploreMode(false);
     setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
+    void trackEvent(EVENT.SESSION_START, { returning: true }).catch(() => {});
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
     // real hidden-wallet slot). Best-effort. See createWallet for the rationale.
     void ensureStealthPool().catch(() => {});
