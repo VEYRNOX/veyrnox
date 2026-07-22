@@ -114,7 +114,7 @@ import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
-import FirstRunTour from "@/components/FirstRunTour";
+import FirstRunTour, { armTour } from "@/components/FirstRunTour";
 import { errorHaptic } from "@/lib/haptics";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
@@ -924,7 +924,7 @@ export default function WalletEntry() {
   // fail-closed). The provisioning gate below holds the dashboard back until it commits.
   const doCreateWallet = async () => {
     setBusy(true); setProvisioning(true); setError("");
-    try { setKekOrigin('fresh'); await createWalletFromPendingPin(); setProvisioning(false); }
+    try { setKekOrigin('fresh'); await createWalletFromPendingPin(); armTour(); setProvisioning(false); }
     catch (e) {
       autoEnrollPinRef.current = null;
       setProvisioning(false);
@@ -1044,6 +1044,7 @@ export default function WalletEntry() {
       createdPasswordRef.current = genPassword;
       setKekOrigin('fresh');
       const seed = await createWallet(genPassword); // returns mnemonic ONCE for backup
+      armTour();
       setGeneratedSeed(seed);
       setShowSeed(false);
       setBioEnabled(false);

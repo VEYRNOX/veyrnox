@@ -369,13 +369,6 @@ test.describe('Web KEK PRF — UI unlock path', () => {
     const c = await ksCall(page, 'createVault', { secret: SECRET, password: PASSWORD });
     expect(c.ok, `createVault failed: ${c.message}`).toBe(true);
     await page.evaluate(() => localStorage.setItem('veyrnox-auth-model', 'pin'));
-    // Suppress the first-run tour. It renders on the UNLOCKED wallet (moved there
-    // from the pre-creation choose screen), behind a full-screen z-[60] backdrop
-    // that appears 600ms after unlock — which swallows the first click any test
-    // makes after unlocking. This vault is seeded through createVault() rather
-    // than the UI, so the tour is still armed. Onboarding is not what this spec
-    // covers; the tour's placement is guarded by FirstRunTour.placement.test.js.
-    await page.evaluate(() => localStorage.setItem('veyrnox-first-run-tour-seen', '1'));
     if (enroll) {
       const e = await ksCall(page, 'enrollKek', PASSWORD);
       expect(e.ok, `enrollKek failed: ${e.message}`).toBe(true);

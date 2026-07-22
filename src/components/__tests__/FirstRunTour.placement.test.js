@@ -46,6 +46,27 @@ describe('FirstRunTour placement — after wallet creation, not before', () => {
     expect(chooseBody).not.toContain('<FirstRunTour />');
   });
 
+  it('is armed by wallet creation, not by the absence of a seen-marker', () => {
+    // The trigger must be an explicit arm at creation. Falling back to
+    // "never seen it" would fire the tour over the wallet of an existing user
+    // who never created one on this device.
+    expect(SRC).toContain('armTour()');
+    const fresh = SRC.indexOf('createWalletFromPendingPin()');
+    expect(fresh).toBeGreaterThan(-1);
+    expect(SRC.slice(fresh, fresh + 120)).toContain('armTour()');
+  });
+
+  it('is NOT armed by the recovery paths — those restore an existing wallet', () => {
+    // PIN recovery and seed import re-provision a wallet the user already had.
+    for (const path of ['importWalletForPendingPin']) {
+      let i = SRC.indexOf(path);
+      while (i > -1) {
+        expect(SRC.slice(i, i + 120)).not.toContain('armTour()');
+        i = SRC.indexOf(path, i + 1);
+      }
+    }
+  });
+
   it('does NOT render on the welcome hero', () => {
     const welcome = SRC.indexOf('if (view === "welcome")');
     expect(welcome).toBeGreaterThan(-1);
