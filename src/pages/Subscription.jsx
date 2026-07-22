@@ -176,7 +176,13 @@ export default function Subscription() {
     // Absent unless a promotional offer is configured store-side, in which case
     // getTierOffering resolves to null and the dialog shows no price.
     if (currentTier === "safety_plus") {
-      getTierOffering(RETENTION_OFFERING_ID)
+      // Promise.resolve() wraps the call: this runs on the MANAGE view of a
+      // paying subscriber, and a retention offer is a nice-to-have. If the
+      // lookup throws synchronously or returns a non-thenable, the failure must
+      // degrade to "no offer" — never take down the page where someone manages
+      // a subscription they are already paying for.
+      Promise.resolve()
+        .then(() => getTierOffering(RETENTION_OFFERING_ID))
         .then((offering) => {
           if (cancelled || !offering) return;
           const { monthly, annual } = extractPackages(offering);

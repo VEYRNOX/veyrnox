@@ -336,11 +336,23 @@ describe('Subscription page — Manage subscription (paid tier, native)', () => 
     );
   });
 
-  it('clicking Manage subscription calls manageSubscription()', async () => {
+  // Manage subscription now opens the cancel-intent dialog first; the store
+  // deep-link fires from "Continue to cancel" inside it. The route out must stay
+  // one click away — an offer that is hard to escape is a dark pattern, and both
+  // stores treat it as one.
+  it('clicking Manage subscription opens the dialog, not the store directly', async () => {
     manageSubscription.mockResolvedValue(undefined);
     renderPage();
-    const btn = await screen.findByRole('button', { name: /manage subscription/i });
-    fireEvent.click(btn);
+    fireEvent.click(await screen.findByRole('button', { name: /manage subscription/i }));
+    expect(await screen.findByText(/continue to cancel/i)).toBeTruthy();
+    expect(manageSubscription).not.toHaveBeenCalled();
+  });
+
+  it('Continue to cancel deep-links to the store — cancellation is never trapped', async () => {
+    manageSubscription.mockResolvedValue(undefined);
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /manage subscription/i }));
+    fireEvent.click(await screen.findByText(/continue to cancel/i));
     await waitFor(() => expect(manageSubscription).toHaveBeenCalledTimes(1));
   });
 
