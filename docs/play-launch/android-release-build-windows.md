@@ -79,16 +79,33 @@ grep -E "^VITE_FORCE_TIER" .env.local     # must show `VITE_FORCE_TIER=` (empty)
 RevenueCat. A non-empty value ships a build that grants Safety Plus to everyone for free.
 There is no build-mode guard — the safety depends entirely on this value being empty.
 
-## 3. Build web assets + sync Capacitor (release mode)
+## 3. Build web assets + sync Capacitor — ANDROID ONLY
 
 `VITE_RELEASE=1` is the store-build guard — without it the demo-build throw is not armed.
 
 ```bash
 npm install --legacy-peer-deps
-npm run mobile:build:release      # VITE_RELEASE=1 vite build + cap sync
+npx cross-env VITE_RELEASE=1 npm run build
+npx cap sync android
 ```
 
----
+🔴 **Do NOT run `npm run mobile:build:release` on Windows.** That script runs bare
+`cap sync`, which syncs **both** platforms — and `cap sync` regenerates
+`ios/App/CapApp-SPM/Package.swift` using the *host* path separator. On Windows it emits:
+
+```swift
+.package(name: "CapacitorApp", path: "..\..\..\node_modules\@capacitor\app")
+```
+
+Backslash is Swift's string escape character, so this is not merely wrong-for-macOS, it is
+invalid Swift (`\n` is a newline) and the iOS build fails at manifest-parse time. Syncing
+only `android` leaves the iOS manifest untouched.
+
+If you ran the wrong command by accident, discard the iOS damage before committing:
+
+```bash
+git checkout -- ios/App/CapApp-SPM/Package.swift
+```
 
 ## 4. Build the AAB
 
