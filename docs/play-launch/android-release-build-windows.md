@@ -87,9 +87,15 @@ npm run mobile:build:release      # VITE_RELEASE=1 vite build + cap sync
 
 ---
 
-## 3. Build the AAB
+## 4. Build the AAB
 
 `RELEASE_CERT_SHA256` must be **Google's app-signing certificate**, NOT the upload key.
+
+> **Provenance:** this value was read on 2026-07-22 from the Digital Asset Links JSON on
+> Play Console -> Setup -> App integrity -> App signing. An earlier revision of this file
+> carried a DIFFERENT value (`D8:99:69:D5:6D:CF:E3:B4...`) which does not match the console.
+> If in doubt, re-copy it from the console rather than trusting any checked-in copy -- a
+> wrong fingerprint makes every Play-installed build report `tampered: true`.
 Play re-signs your upload, so pinning the upload key makes a Play-installed build fail RASP
 `detectTamper` (`tampered: true`). The plugin strips colons and lowercases before comparing,
 so this format is fine.
@@ -110,7 +116,7 @@ Output: `android/app/build/outputs/bundle/release/app-release.aab`
 
 ---
 
-## 4. VERIFY before uploading (do not skip)
+## 5. VERIFY before uploading (do not skip)
 
 Confirm the AAB is signed with the **upload key** and not the debug key:
 
@@ -130,7 +136,7 @@ The printed **SHA1** must equal:
 
 ---
 
-## 5. Upload
+## 6. Upload
 
 Play Console → **Veyrnox** → **Test and release** → **Testing → Internal testing** →
 **Create new release** → upload `app-release.aab`.
@@ -144,7 +150,7 @@ Play Console → **Veyrnox** → **Test and release** → **Testing → Internal
 
 ---
 
-## 6. After it installs from Play
+## 7. After it installs from Play
 
 - Confirm RASP does **not** report `tampered: true` (proves `RELEASE_CERT_SHA256` was the
   Google app-signing cert, not the upload key).
