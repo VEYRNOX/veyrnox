@@ -11,7 +11,7 @@ create table if not exists events (
   id          bigint generated always as identity primary key,
   device_id   uuid not null,
   event       text not null,
-  metadata    jsonb default '{}',
+  metadata    jsonb not null default '{}',
   created_at  timestamptz not null default now()
 );
 
@@ -29,4 +29,4 @@ create index if not exists idx_events_device_created
 alter table events enable row level security;
 
 drop policy if exists "anon insert" on events;
-create policy "anon insert" on events for insert with check (true);
+create policy "anon insert" on events for insert to anon with check (true);

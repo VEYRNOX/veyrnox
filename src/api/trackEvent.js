@@ -5,10 +5,10 @@
 // gate on isDeniabilityOrDemoActive(), best-effort fire-and-forget.
 //
 // I2 compliance: no silent egress in deniability/demo sessions.
-// I3 compliance: device_id is stored in localStorage under a key
-// that exists identically in real AND demo sessions (set once on
-// first real-session track, never written in deniability/demo).
-// No event content distinguishes real from decoy.
+// I3 compliance: device_id is only written in real primary sessions
+// (tracking is fully suppressed in demo/deniability, so the key is
+// never created on a demo-only install). No event content
+// distinguishes real from decoy.
 
 import { supabase } from '@/lib/supabaseClient';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
@@ -33,11 +33,12 @@ export async function trackEvent(event, metadata = {}) {
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) return;
   try {
-    await supabase.from('events').insert({
+    const { error } = await supabase.from('events').insert({
       device_id: deviceId,
       event,
       metadata,
     });
+    if (error) return;
   } catch {
     // Best-effort: never block the app on analytics failure.
   }
