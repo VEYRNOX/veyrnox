@@ -44,7 +44,7 @@ From the repo root:
 
 ```bash
 cd android
-./gradlew bundleRelease -PRELEASE_CERT_SHA256="D8:99:69:D5:6D:CF:E3:B4:A1:4C:DA:B0:E2:9A:69:50:B5:9D:B8:3E:95:3E:F6:F9:29:72:8B:EB:9D:44:6C:B9"
+./gradlew bundleRelease -PRELEASE_CERT_SHA256="D8:99:69:D5:C4:9F:39:50:A8:CA:20:03:13:C5:0E:B1:09:37:E3:9B:62:4B:38:64:3F:B3:A0:4F:63:44:6C:B9"
 ```
 
 The `RELEASE_CERT_SHA256` value is Google's **app signing** certificate

@@ -23,13 +23,8 @@ android {
         // versionName is what appears on the store listing. Launching as a clean "1.0".
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        // RELEASE_CERT_SHA256: SHA-256 fingerprint of the release signing certificate for
-        // RASP APK tamper detection (RaspIntegrityPlugin.detectTamper).
-        // Inject via CI: -PRELEASE_CERT_SHA256=<real-hash>
-        // If the property is absent, BuildConfig.RELEASE_CERT_SHA256 is an empty string.
-        // RaspIntegrityPlugin.detectTamper() treats a blank value as tampered (fail-closed,
-        // I4) — a misconfigured or unkeyed build must not be trusted.
-        // Do NOT commit a real release fingerprint here.
+        // RASP APK tamper detection — inject via -PRELEASE_CERT_SHA256=<hash>.
+        // Blank = fail-closed (I4). Release builds validate format at task start.
         buildConfigField "String", "RELEASE_CERT_SHA256", "\"${project.findProperty('RELEASE_CERT_SHA256') ?: ''}\""
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -119,6 +114,22 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.configureEach {
+    doFirst {
+        def cert = project.findProperty('RELEASE_CERT_SHA256') ?: ''
+        if (cert.trim().isEmpty()) {
+            throw new GradleException(
+                'RELEASE_CERT_SHA256 is blank — the build would fail-closed (I4) on every device.\n' +
+                'Pass -PRELEASE_CERT_SHA256="<Google app signing SHA-256>" on the command line.')
+        }
+        if (!cert.matches(/^([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$/)) {
+            throw new GradleException(
+                "RELEASE_CERT_SHA256 has an invalid format: ${cert}\n" +
+                'Expected 32 colon-separated hex pairs (e.g. AA:BB:CC:...).')
+        }
+    }
+}
 
 try {
     def servicesJSON = file('google-services.json')
