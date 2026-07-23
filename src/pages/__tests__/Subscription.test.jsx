@@ -132,7 +132,7 @@ describe('Subscription page — native, monthly-only offering', () => {
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
       identifier: '$rc_monthly',
       product: { priceString: '$5.99' },
-    }));
+    }, { offerTag: null }));
     await waitFor(() => expect(refreshTier).toHaveBeenCalled());
   });
 
@@ -179,7 +179,7 @@ describe('Subscription page — native, annual-only offering', () => {
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
       identifier: '$rc_annual',
       product: { priceString: '$49.99' },
-    }));
+    }, { offerTag: null }));
     await waitFor(() => expect(refreshTier).toHaveBeenCalled());
   });
 });
@@ -224,7 +224,7 @@ describe('Subscription page — native, monthly + annual offering', () => {
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
       identifier: '$rc_annual',
       product: { priceString: '$49.99' },
-    }));
+    }, { offerTag: null }));
     await waitFor(() => expect(refreshTier).toHaveBeenCalled());
   });
 
@@ -238,7 +238,7 @@ describe('Subscription page — native, monthly + annual offering', () => {
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith({
       identifier: '$rc_monthly',
       product: { priceString: '$5.99' },
-    }));
+    }, { offerTag: null }));
   });
 });
 

@@ -27,6 +27,25 @@ export const SAFETY_PLUS_ANNUAL_PACKAGE = '$rc_annual';
 // displayed figure must be whatever the store returns.
 export const RETENTION_OFFERING_ID = 'retention';
 
+// Google Play offers are NOT selected by RevenueCat for us. Every Veyrnox offer
+// carries the `rc-ignore-offer` tag, which stops the SDK auto-applying it to a
+// full-price subscriber — so the discount only ever exists if WE ask for it by
+// tag. That tag equals the offering id by construction: the Play offer tagged
+// `referral-gold` lives behind the offering `referral-gold`.
+//
+// Why this is not optional: all five offers (four referral tiers + retention)
+// sit on the SAME base plan. Purchasing the package without naming an option
+// lets the store decide which of them applies — the exact "looks configured,
+// charges wrong" failure this indirection exists to prevent.
+export function findOfferOption(pkg, offerTag) {
+  if (!offerTag) return null;
+  const options = pkg?.product?.subscriptionOptions;
+  if (!Array.isArray(options)) return null;
+  return options.find(
+    (o) => Array.isArray(o?.tags) && o.tags.includes(offerTag)
+  ) ?? null;
+}
+
 let configured = false;
 
 function isNative() {
@@ -74,8 +93,39 @@ export async function getTierOffering(offeringId) {
   }
 }
 
-export async function purchasePackage(pkg) {
+// `offerTag` names a Play offer that MUST be applied for this purchase to be
+// the price the user was shown (a referral tier, or the cancel-save offer).
+//
+// Fails closed (I4): if a tag was required and the store doesn't carry a
+// matching option, we throw rather than fall through to purchasePackage. That
+// path would charge FULL price after showing a discount — silently, and only
+// discoverable on the customer's statement. A failed purchase the user can
+// retry is strictly better than a wrong charge they can't see.
+export const OFFER_UNAVAILABLE = 'OFFER_UNAVAILABLE';
+
+/**
+ * @param {any} pkg
+ * @param {{ offerTag?: string | null }} [opts]
+ */
+export async function purchasePackage(pkg, opts = {}) {
   if (!isNative()) throw new Error('PURCHASES_NATIVE_ONLY');
+  const offerTag = opts?.offerTag;
+
+  if (offerTag) {
+    const subscriptionOption = findOfferOption(pkg, offerTag);
+    if (!subscriptionOption) {
+      const err = /** @type {Error & { code?: string }} */ (
+        new Error(`Offer "${offerTag}" is not available on this product`)
+      );
+      err.code = OFFER_UNAVAILABLE;
+      throw err;
+    }
+    const { customerInfo } = await Purchases.purchaseSubscriptionOption({
+      subscriptionOption,
+    });
+    return customerInfo;
+  }
+
   const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
   return customerInfo;
 }
