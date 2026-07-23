@@ -173,7 +173,7 @@ from a self-custody wallet."*
 | Sub-type | Collected? | Shared? | Required? | Ephemeral? | Purpose |
 |---|---|---|---|---|---|
 | Crash logs | **⚠ OWNER-DECISION** — see below | — | — | — | — |
-| Diagnostics | **No** — no analytics SDK is wired (per RC audit) | — | — | — | — |
+| Diagnostics | **No** — no diagnostics/crash SDK is wired. (Note: first-party PRODUCT analytics now exist — §2.14 — but they carry no performance or diagnostic data) | — | — | — | — |
 | Other app performance data | No | — | — | — | — |
 
 **⚠ OWNER-DECISION 4 — RESOLVED FROM CODE:** No third-party crash SDK is present.
@@ -202,14 +202,78 @@ IDs"** collection.
 
 | Sub-type | Collected? | Shared? | Required? | Ephemeral? | Purpose |
 |---|---|---|---|---|---|
-| Device or other IDs | **Yes** — RevenueCat App User ID (randomly generated per install, not tied to any personal identifier) | **Yes — with RevenueCat, Apple, Google (Play Billing side)** | Required (RC uses it to key purchase records) | Stored (RC keeps a customer record keyed by this ID) | **App functionality** (link a purchase to the install so restore-purchases works) |
+| Device or other IDs | **Yes** — TWO distinct IDs, see below | **Yes — with RevenueCat, Apple, Google (Play Billing side)**. The analytics ID is NOT shared. | Required | Stored | **App functionality** + **Analytics** |
+
+There are **two** separate random identifiers, and conflating them has already
+caused one wrong answer on this form:
+
+1. **RevenueCat App User ID** — auto-generated per install, transmitted with every
+   purchase/customer-info call. Shared with RevenueCat/Apple/Google. Purpose:
+   *App functionality* (link a purchase to the install so restore works).
+2. **`veyrnox-device-id`** (`api/trackEvent.js`) — a random UUID in localStorage,
+   sent with every usage event to **our own** Supabase. Not shared with anyone.
+   Purpose: **Analytics**. Suppressed entirely in deniability/demo sessions.
+
+Both are "Device or other IDs" to Play. The purpose list must therefore include
+**Analytics**, which it did not until 2026-07-23.
 
 **⚠ OWNER-DECISION 5:** confirm counsel is comfortable declaring the RC App User
 ID as a "Device or other ID." If counsel prefers to keep it out of that category
 (arguing the ID is app-generated not device-derived), that's a defensible position
 but Play reviewers sometimes push back. Safer to declare.
 
-### 2.14 Contact info (deprecated)
+### 2.14 First-party product analytics (added 2026-07-23)
+
+**Shipped in PR #1321. This section did not exist when the 9 owner-decisions were
+resolved on 2026-07-20, which is why several answers above understated collection.**
+
+`src/api/trackEvent.js` inserts a row into our own Supabase `events` table. Each row
+is `{device_id, event, metadata, created_at}` and nothing else.
+
+| Event | Metadata | Fired from |
+|---|---|---|
+| `wallet_created` | — | `WalletProvider.jsx:902` |
+| `wallet_imported` | — | `WalletProvider.jsx:947` |
+| `backup_confirmed` | — | `WalletProvider.jsx:1259` |
+| `session_start` | `{returning: true}` | `WalletProvider.jsx:1744` |
+| `receive_viewed` | **`{asset}`** | `ReceiveCrypto.jsx:47` |
+| `send_completed` | **`{currency}`** | `SendCrypto.jsx:1145` |
+| `wc_session_approved` | — | `WalletConnectProvider.jsx:794` |
+
+**Never sent:** wallet addresses, balances, amounts, transaction hashes, seed
+material, contacts, location.
+
+**I3/I2 gating:** `trackEvent` returns early on `DEMO` or
+`isDeniabilityOrDemoActive()`, so a decoy or demo session transmits nothing and
+never even creates the `device_id`. A decoy session that phoned home would be a
+deniability break, not merely a privacy one.
+
+**Note the two asset-bearing events.** `receive_viewed` and `send_completed` carry
+an asset symbol, which reveals *which chains an install uses*. That is the sharpest
+edge of this feature and the reason it is declared as Analytics rather than waved
+through as App functionality.
+
+**Declared on both stores 2026-07-23:**
+
+| Store | Data type | Purpose after |
+|---|---|---|
+| Play | Device or other IDs | App functionality + **Analytics** |
+| Play | App activity → App interactions | App functionality + **Analytics** |
+| Apple | Device ID | App Functionality + **Analytics** (published) |
+
+**⚠ OPEN — Apple "Product Interaction":** Apple declares 4 data types, none of them
+a *usage* type. The seven events map to Apple's **Usage Data → Product Interaction**,
+which is still undeclared. Play needed no equivalent because `App activity` was
+already declared for WalletConnect. Recommendation: declare it (Not Linked,
+Analytics, tracking = No). Owner decision pending.
+
+**⚠ OPEN — consent.** Tracking is on by default in every real session with no
+opt-out. Storing `veyrnox-device-id` for analytics is storage on the user's device
+that is not strictly necessary, which under ePrivacy/GDPR normally requires
+**consent**, not merely disclosure. Declaring it correctly on the stores does not
+resolve this. Counsel question; the clean fix is opt-in.
+
+### 2.15 Contact info (deprecated)
 
 Handled under 2.1.
 
@@ -279,7 +343,10 @@ production code:
 | OpenRouter (`openrouter.ai`) | News-summarisation prompts | News feed sentiment LLM call — **⚠ OWNER-DECISION 9:** confirm this is used in production or gated to dev; if gated, remove from list | `src/api/openrouterClient.js` |
 
 **Not third-party recipients (deliberately not wired):**
-- No analytics (no GA, Amplitude, Mixpanel, PostHog, Segment)
+- No **third-party** analytics SDK (no GA, Amplitude, Mixpanel, PostHog, Segment).
+  **⚠ This is no longer the same as "no analytics."** PR #1321 added FIRST-PARTY event
+  tracking to our own Supabase — see §2.14 below. It is not an SDK and shares nothing
+  with a third party, but it IS analytics and is declared as such on both stores.
 - No attribution SDKs (no Facebook, Adjust, AppsFlyer, Branch)
 - No crash reporters (no Crashlytics, Sentry, Bugsnag) — **subject to ⚠4**
 - No customer support SDKs (no Intercom, Zendesk, HubSpot)
