@@ -30,11 +30,11 @@ drop policy if exists "public select"  on referrals;
 --             increment_referral() function below, which is SECURITY DEFINER and
 --             therefore bypasses RLS to perform exactly a +1.
 --   This closes the prior gap where "public update using (true)" let any client
---   set any code's count to any value (or zero it). RESIDUAL (honest scope): the
---   RPC is still callable repeatedly, so a counter can be INFLATED by repeated
---   legitimate +1 calls — it is tamper-resistant, not abuse-proof. Hardening that
---   (per-IP rate limit / proof-of-work / auth) is out of scope for a vanity
---   counter that exposes no sensitive data.
+--   set any code's count to any value (or zero it). HARDENED (PR #1334):
+--   increment_referral() now enforces one-per-device-per-code via the
+--   referral_increments dedup table, and direct anon INSERT on referrals is
+--   dropped (registration goes through register_referral_code() RPC,
+--   3/device/hour). See sql/api-security-hardening.sql.
 create policy "public insert" on referrals for insert with check (true);
 create policy "public select" on referrals for select using (true);
 
