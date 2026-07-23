@@ -18,6 +18,15 @@ export const SAFETY_PLUS_ENTITLEMENT = 'safety_plus';
 export const SAFETY_PLUS_MONTHLY_PACKAGE = '$rc_monthly';
 export const SAFETY_PLUS_ANNUAL_PACKAGE = '$rc_annual';
 
+// Offering used for the cancel-intent retention offer (components/subscription/
+// CancelOfferDialog.jsx). Resolved via getTierOffering() and absent by default:
+// until a promotional offer is configured in App Store Connect AND Play Console
+// and attached to an offering with this identifier, this returns null and the
+// dialog shows no price — which is correct. Apple and Google sell only from
+// their own price points, so a discount cannot be produced client-side; the
+// displayed figure must be whatever the store returns.
+export const RETENTION_OFFERING_ID = 'retention';
+
 let configured = false;
 
 function isNative() {
