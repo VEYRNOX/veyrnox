@@ -97,7 +97,13 @@ Upload key: `veyrnox-upload.jks` (SHA-1 `97:5A:05:8E…:BA:B2:F3`). App signing 
 Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Secrets
 (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`,
 `RELEASE_CERT_SHA256`) updated 2026-07-22 for CI.
-- versionCodes 1–5 consumed. Next upload must use **6+**.
+- versionCodes 1–5 consumed. Next upload must use **6+** (`build.gradle` is at 6).
+- **Release build verified end-to-end 2026-07-23** (INTERNAL): signed `app-release.aab`,
+  `jarsigner` verified, `BuildConfig.RELEASE_CERT_SHA256` = Google's app-signing cert.
+  Fixed en route: `keystore.properties` `storeFile` resolved against the wrong directory
+  (release path was dead), and the debug-fingerprint guard PR #1310 added had been silently
+  dropped by PR #1313. CI now asserts the guard's rejections. See
+  `docs/audit-2026-07-23-branch-review.md`. RASP on a Play install still device-unverified.
 - **Personal** developer account: 12-tester/14-day rule gates **production only**.
 - Data Safety: all 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
 - **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV)** — Guideline

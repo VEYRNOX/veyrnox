@@ -27,16 +27,34 @@ the new upload key becomes valid.
 (used by CI). Since PR #1313 the properties file takes precedence whenever it exists, so on
 the Windows box you normally only need to copy the file — no exports required.
 
-The file must use these key names (PR #1314 made build.gradle read them; it previously
-expected `storeFile`/`storePassword`/`keyAlias`/`keyPassword` and silently resolved every
-lookup to null):
+Either spelling works, but **each resolves its path from a different directory** — that
+mismatch is what broke the first real `bundleRelease` on 2026-07-23. Pick one block and use
+it whole; don't mix the two.
+
+Preferred (matches the env vars CI sets):
 
 ```
-KEYSTORE_PATH=veyrnox-upload.jks      # relative to the android/ directory
+KEYSTORE_PATH=veyrnox-upload.jks      # relative to android/
 KEYSTORE_PASSWORD=...
 KEY_ALIAS=veyrnox
 KEY_PASSWORD=...
 ```
+
+Accepted (Android Studio generates this spelling; note the path is relative to
+`android/app/`, so reaching `android/veyrnox-upload.jks` needs the `../`):
+
+```
+storeFile=../veyrnox-upload.jks       # relative to android/app/
+storePassword=...
+keyAlias=veyrnox
+keyPassword=...
+```
+
+History, so nobody re-flattens this: PR #1313 read only the camelCase names, which the file
+in use didn't have, so every lookup resolved to null. PR #1314 fixed the names but resolved
+**both** spellings against `android/` — correct for `KEYSTORE_PATH`, wrong for `storeFile`,
+which then pointed one level above the repo. Neither PR was verified by a build. The
+per-spelling bases landed 2026-07-23 alongside the first `bundleRelease` that actually ran.
 
 If you would rather use environment variables, delete `android/keystore.properties` first —
 otherwise the file wins:
@@ -48,8 +66,23 @@ export KEYSTORE_PASSWORD="..."
 export KEY_PASSWORD="..."
 ```
 
-The release build now fails loudly if signing does not resolve (no storeFile, or a keystore
-path that does not exist), so a misconfiguration cannot silently produce a debug-signed AAB.
+The release build fails loudly if signing does not resolve (no storeFile, or a keystore path
+that does not exist), so a misconfiguration cannot silently produce a debug-signed AAB.
+
+`bundleRelease` / `assembleRelease` also refuse to start unless `RELEASE_CERT_SHA256` is
+plausible. Rejected values:
+
+| Rejected | Why it would ship broken |
+|---|---|
+| blank | `detectTamper()` fail-closed (I4) — Security Alert on every launch |
+| malformed | not 32 colon-separated hex pairs |
+| the **upload** cert `CC:3F:16:…` | Play re-signs the AAB, so installs never carry it |
+| the **debug** keystore cert | a local-debug value pasted into a release build |
+
+The last two are computed at build time from the keystores on disk — nothing hardcoded, so a
+key rotation cannot make them stale. CI re-asserts all three rejections on every
+`android-release` run (`.github/workflows/ci.yml`), because this guard has silently lost a
+check once already (see below).
 
 ## 2. Check `.env.local` — Vite inlines these at BUILD time
 
