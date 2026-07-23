@@ -63,6 +63,30 @@ read into a fake "synced" success state written to shared localStorage, and the 
 page now renders a neutral empty state (gated on `isDeniabilityOrDemoActive()`) instead of
 reading/writing real referral state in decoy/demo sessions.
 
+**Promotional offers (2026-07-23) — BUILT, INTERNAL, no purchase ever made.** All 10
+store-side offers exist on both platforms (4 referral tiers + retention 50%, × monthly and
+annual). The two stores are NOT symmetric and code must not treat them as one mechanism:
+- **Play** — offers on the base plan, matched by TAG (`referral-gold`), bought with
+  `purchaseSubscriptionOption`. Every offer carries `rc-ignore-offer`, so a discount only
+  applies if the app names it. Discounts are true percentages in every currency.
+- **Apple** — promotional offers matched by IDENTIFIER, signed by RevenueCat
+  (`getPromotionalOffer`, using the In-App Purchase key — already uploaded and valid; the
+  "StoreKit Subscription Offer key" slot is for local StoreKit-config testing only), bought
+  with `purchaseDiscountedPackage`. Identifiers are unique per subscription GROUP and
+  reject hyphens, hence `referral_gold_monthly` / `_annual` and the asymmetric
+  `retention_50` / `retention_50_annual`. Mapping table: `purchases.js APPLE_OFFER_IDS`.
+- **Apple cannot express small percentages.** 2.5% off is not a price point; Bronze uses
+  the nearest point at or BELOW target ($5.79 / $48.49), so a customer is never charged
+  more than advertised. FX rounding erases small discounts entirely in some territories
+  (Bronze is full price in Albania/Armenia) — so the paywall must render the
+  store-returned price, never a hardcoded tier percentage.
+- A package's `priceString` is always the BASE plan price on both stores; the offer price
+  comes from `purchases.js offerPriceInfo` (Apple `product.discounts[]`, Play the option's
+  `introPhase`). Unresolvable → render no price rather than the base price (I4).
+- All offer paths fail CLOSED: a missing or unsigned offer throws `OFFER_UNAVAILABLE`
+  rather than falling through to a full-price charge.
+Not verified: no real purchase has been completed on either platform.
+
 **All 10 assets LIVE** — ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT.
 
 **Play Store: LIVE on internal testing (2026-07-22).** Upload-key reset approved
