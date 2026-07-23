@@ -11,7 +11,7 @@
 //
 // The identifiers also differ by construction. App Store Connect scopes offer
 // identifiers to the whole SUBSCRIPTION GROUP and rejects hyphens, so the offer
-// behind the `referral-bronze` offering is `referral_bronze_monthly` on the
+// behind the `referral-bronze` offering is `referral_bronze_m2` on the
 // monthly product and `referral_bronze_annual` on the annual one. Mapping the
 // wrong way round would apply an annual discount to a monthly purchase.
 //
@@ -79,10 +79,10 @@ beforeEach(() => {
 describe('appleOfferIdFor — offering id + package → App Store offer identifier', () => {
   it('maps each referral tier to its monthly identifier', () => {
     const m = (id) => appleOfferIdFor(id, { identifier: '$rc_monthly' });
-    expect(m('referral-bronze')).toBe('referral_bronze_monthly');
-    expect(m('referral-silver')).toBe('referral_silver_monthly');
-    expect(m('referral-gold')).toBe('referral_gold_monthly');
-    expect(m('referral-platinum')).toBe('referral_platinum_monthly');
+    expect(m('referral-bronze')).toBe('referral_bronze_m2');
+    expect(m('referral-silver')).toBe('referral_silver_m2');
+    expect(m('referral-gold')).toBe('referral_gold_m2');
+    expect(m('referral-platinum')).toBe('referral_platinum_m2');
   });
 
   it('maps each referral tier to its annual identifier', () => {
@@ -97,7 +97,7 @@ describe('appleOfferIdFor — offering id + package → App Store offer identifi
     // The monthly retention offer was created first and took the unsuffixed
     // id; Apple then refused to reuse it group-wide, so annual is suffixed.
     // This asymmetry is real store state — not a naming slip to "tidy up".
-    expect(appleOfferIdFor('retention', { identifier: '$rc_monthly' })).toBe('retention_50');
+    expect(appleOfferIdFor('retention', { identifier: '$rc_monthly' })).toBe('retention_50_m2');
     expect(appleOfferIdFor('retention', { identifier: '$rc_annual' })).toBe('retention_50_annual');
   });
 
@@ -117,25 +117,33 @@ describe('appleOfferIdFor — offering id + package → App Store offer identifi
 
 describe('findAppleDiscount', () => {
   it('finds the discount whose identifier matches exactly', () => {
-    const pkg = iosPkg('$rc_monthly', ['referral_bronze_monthly', 'referral_gold_monthly']);
-    expect(findAppleDiscount(pkg, 'referral_gold_monthly').identifier).toBe('referral_gold_monthly');
+    const pkg = iosPkg('$rc_monthly', ['referral_bronze_m2', 'referral_gold_m2']);
+    expect(findAppleDiscount(pkg, 'referral_gold_m2').identifier).toBe('referral_gold_m2');
   });
 
   it('does not prefix- or substring-match a different offer', () => {
-    // `retention_50` is a strict prefix of `retention_50_annual`. A loose match
-    // would silently apply a 3-month monthly discount to an annual purchase.
+    // Asking for the monthly retention offer must not resolve to the annual
+    // one — that would apply a 3-month monthly discount to an annual purchase.
     const pkg = iosPkg('$rc_annual', ['retention_50_annual']);
-    expect(findAppleDiscount(pkg, 'retention_50')).toBeNull();
+    expect(findAppleDiscount(pkg, 'retention_50_m2')).toBeNull();
+
+    // The live ids no longer collide (`retention_50_m2` is not a prefix of
+    // `retention_50_annual`), but they DID until the 2026-07-23 monthly
+    // rebuild, and Apple's identifier rules make a future collision easy to
+    // reintroduce. The guarantee under test is exact comparison, so assert it
+    // against a genuinely colliding pair rather than relying on today's names.
+    const legacy = iosPkg('$rc_annual', ['retention_50_annual']);
+    expect(findAppleDiscount(legacy, 'retention_50')).toBeNull();
   });
 
   it('returns null when the product carries no discounts (Android, or none configured)', () => {
-    expect(findAppleDiscount({ product: { discounts: null } }, 'retention_50')).toBeNull();
-    expect(findAppleDiscount({ product: {} }, 'retention_50')).toBeNull();
-    expect(findAppleDiscount(null, 'retention_50')).toBeNull();
+    expect(findAppleDiscount({ product: { discounts: null } }, 'retention_50_m2')).toBeNull();
+    expect(findAppleDiscount({ product: {} }, 'retention_50_m2')).toBeNull();
+    expect(findAppleDiscount(null, 'retention_50_m2')).toBeNull();
   });
 
   it('returns null when no identifier is requested — full price is not an offer', () => {
-    const pkg = iosPkg('$rc_monthly', ['retention_50']);
+    const pkg = iosPkg('$rc_monthly', ['retention_50_m2']);
     expect(findAppleDiscount(pkg, null)).toBeNull();
   });
 });
@@ -145,7 +153,7 @@ describe('offerPriceInfo on iOS', () => {
     // The regression this locks: `product.priceString` is $5.99 for BOTH the
     // referral package and the full-price package — they wrap the same
     // product. Reading it produced "$5.99 struck through, $5.99" in the UI.
-    const pkg = iosPkg('$rc_monthly', ['referral_platinum_monthly']);
+    const pkg = iosPkg('$rc_monthly', ['referral_platinum_m2']);
     pkg.product.discounts[0].price = 5.09;
     pkg.product.discounts[0].priceString = '$5.09';
 
@@ -157,30 +165,30 @@ describe('offerPriceInfo on iOS', () => {
   });
 
   it('returns null when the offering has no offer on this product', () => {
-    const pkg = iosPkg('$rc_monthly', ['referral_bronze_monthly']);
+    const pkg = iosPkg('$rc_monthly', ['referral_bronze_m2']);
     expect(offerPriceInfo(pkg, 'referral-gold')).toBeNull();
   });
 
   it('returns null rather than falling back to the base price', () => {
-    const pkg = iosPkg('$rc_monthly', ['referral_gold_monthly']);
+    const pkg = iosPkg('$rc_monthly', ['referral_gold_m2']);
     pkg.product.discounts[0].priceString = null;
     expect(offerPriceInfo(pkg, 'referral-gold')).toBeNull();
   });
 
   it('returns null for missing arguments', () => {
     expect(offerPriceInfo(null, 'retention')).toBeNull();
-    expect(offerPriceInfo(iosPkg('$rc_monthly', ['retention_50']), null)).toBeNull();
+    expect(offerPriceInfo(iosPkg('$rc_monthly', ['retention_50_m2']), null)).toBeNull();
   });
 });
 
 describe('purchasePackage on iOS — promotional offers', () => {
   it('signs the discount and buys the discounted package', async () => {
-    const pkg = iosPkg('$rc_monthly', ['referral_gold_monthly']);
+    const pkg = iosPkg('$rc_monthly', ['referral_gold_m2']);
     await purchasePackage(pkg, { offerTag: 'referral-gold' });
 
     expect(getPromotionalOfferMock).toHaveBeenCalledWith({
       product: pkg.product,
-      discount: expect.objectContaining({ identifier: 'referral_gold_monthly' }),
+      discount: expect.objectContaining({ identifier: 'referral_gold_m2' }),
     });
     expect(purchaseDiscountedPackageMock).toHaveBeenCalledWith({
       aPackage: pkg,
@@ -200,13 +208,13 @@ describe('purchasePackage on iOS — promotional offers', () => {
   });
 
   it('never uses the Android tag path on iOS', async () => {
-    const pkg = iosPkg('$rc_monthly', ['retention_50']);
+    const pkg = iosPkg('$rc_monthly', ['retention_50_m2']);
     await purchasePackage(pkg, { offerTag: 'retention' });
     expect(purchaseSubscriptionOptionMock).not.toHaveBeenCalled();
   });
 
   it('FAILS CLOSED when the promised offer is not on the product', async () => {
-    const pkg = iosPkg('$rc_monthly', ['referral_bronze_monthly']);
+    const pkg = iosPkg('$rc_monthly', ['referral_bronze_m2']);
     await expect(
       purchasePackage(pkg, { offerTag: 'referral-platinum' })
     ).rejects.toMatchObject({ code: OFFER_UNAVAILABLE });
@@ -222,7 +230,7 @@ describe('purchasePackage on iOS — promotional offers', () => {
     // through to purchasePackage here would charge the FULL price after the
     // paywall showed a discount.
     getPromotionalOfferMock.mockResolvedValue(undefined);
-    const pkg = iosPkg('$rc_monthly', ['referral_gold_monthly']);
+    const pkg = iosPkg('$rc_monthly', ['referral_gold_m2']);
 
     await expect(
       purchasePackage(pkg, { offerTag: 'referral-gold' })
@@ -233,7 +241,7 @@ describe('purchasePackage on iOS — promotional offers', () => {
 
   it('FAILS CLOSED when signing rejects', async () => {
     getPromotionalOfferMock.mockRejectedValue(new Error('network'));
-    const pkg = iosPkg('$rc_monthly', ['referral_gold_monthly']);
+    const pkg = iosPkg('$rc_monthly', ['referral_gold_m2']);
 
     await expect(
       purchasePackage(pkg, { offerTag: 'referral-gold' })
@@ -242,7 +250,7 @@ describe('purchasePackage on iOS — promotional offers', () => {
   });
 
   it('FAILS CLOSED for an offering with no App Store mapping', async () => {
-    const pkg = iosPkg('$rc_monthly', ['referral_gold_monthly']);
+    const pkg = iosPkg('$rc_monthly', ['referral_gold_m2']);
     await expect(
       purchasePackage(pkg, { offerTag: 'referral-diamond' })
     ).rejects.toMatchObject({ code: OFFER_UNAVAILABLE });
@@ -250,7 +258,7 @@ describe('purchasePackage on iOS — promotional offers', () => {
   });
 
   it('buys the plain package at full price when no offer is requested', async () => {
-    const pkg = iosPkg('$rc_monthly', ['retention_50', 'referral_gold_monthly']);
+    const pkg = iosPkg('$rc_monthly', ['retention_50_m2', 'referral_gold_m2']);
     await purchasePackage(pkg);
 
     expect(purchasePackageMock).toHaveBeenCalledWith({ aPackage: pkg });

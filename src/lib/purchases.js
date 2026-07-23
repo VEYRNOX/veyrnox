@@ -67,12 +67,24 @@ export function findOfferOption(pkg, offerTag) {
 // derived-by-guessing identifier is the one outcome worth avoiding here: it
 // would either be rejected at purchase or, worse, apply the wrong duration's
 // price.
+//
+// The `_m2` monthly suffix is that burn, made concrete. On 2026-07-23 the
+// monthly subscription product `safety_plus_monthly` was deleted from App
+// Store Connect by mistake and had to be recreated as
+// `safety_plus_monthly_v2`. Apple refuses to reissue a deleted product's ID
+// ("The Product ID you entered is already being used by another
+// subscription"), and the same goes for the promotional offer identifiers
+// that hung off it — `referral_bronze_monthly`, `retention_50` and the rest
+// are gone for good. The offers were rebuilt on the new product under `_m2`
+// identifiers with identical prices and durations. The ANNUAL product was
+// never touched, so its identifiers are unchanged; the asymmetry below is a
+// scar, not a naming scheme.
 export const APPLE_OFFER_IDS = {
-  'referral-bronze':   { monthly: 'referral_bronze_monthly',   annual: 'referral_bronze_annual' },
-  'referral-silver':   { monthly: 'referral_silver_monthly',   annual: 'referral_silver_annual' },
-  'referral-gold':     { monthly: 'referral_gold_monthly',     annual: 'referral_gold_annual' },
-  'referral-platinum': { monthly: 'referral_platinum_monthly', annual: 'referral_platinum_annual' },
-  'retention':         { monthly: 'retention_50',              annual: 'retention_50_annual' },
+  'referral-bronze':   { monthly: 'referral_bronze_m2',   annual: 'referral_bronze_annual' },
+  'referral-silver':   { monthly: 'referral_silver_m2',   annual: 'referral_silver_annual' },
+  'referral-gold':     { monthly: 'referral_gold_m2',     annual: 'referral_gold_annual' },
+  'referral-platinum': { monthly: 'referral_platinum_m2', annual: 'referral_platinum_annual' },
+  'retention':         { monthly: 'retention_50_m2',      annual: 'retention_50_annual' },
 };
 
 export function appleOfferIdFor(offeringId, pkg) {
@@ -85,9 +97,12 @@ export function appleOfferIdFor(offeringId, pkg) {
   return null;
 }
 
-// Exact identifier match only. `retention_50` is a strict prefix of
-// `retention_50_annual`, so any prefix/substring matching would apply the
-// 3-month monthly offer to an annual purchase.
+// Exact identifier match only. Before the 2026-07-23 monthly-product rebuild
+// the retention pair was `retention_50` / `retention_50_annual` — a strict
+// prefix — so any prefix/substring matching would have applied the 3-month
+// monthly offer to an annual purchase. The current `_m2` monthly ids happen
+// not to collide, but the match stays exact on purpose: the safety here is
+// the comparison, not the naming.
 export function findAppleDiscount(pkg, appleOfferId) {
   if (!appleOfferId) return null;
   const discounts = pkg?.product?.discounts;
@@ -99,7 +114,8 @@ export function findAppleDiscount(pkg, appleOfferId) {
 //
 // `pkg.product.priceString` is the BASE plan price on both stores — never the
 // offer price. A referral package and the full-price package wrap the SAME
-// product (`safety_plus_monthly`), so reading priceString off the "discounted"
+// product (Apple `safety_plus_monthly_v2`, Play `safety_plus_monthly`), so
+// reading priceString off the "discounted"
 // package yields $5.99 either way. That is what put a struck-through "$5.99
 // $5.99" under a "Stay for less" headline in the cancel dialog.
 //
