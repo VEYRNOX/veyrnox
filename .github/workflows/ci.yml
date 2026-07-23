@@ -252,6 +252,53 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
+      # Regression gate for the release-cert guard in android/app/build.gradle.
+      # PR #1310 added a debug-fingerprint check; PR #1313 rewrote the guard and
+      # silently dropped it, and nothing caught that for ten days because no test
+      # ever asserted the guard REJECTS anything. This asserts the rejections.
+      # Runs after the real build, so Gradle is warm — each case costs seconds.
+      - name: Release-cert guard must reject wrong fingerprints
+        run: |
+          set -u
+          # No keystore secret (forks) means the build above was debug-signed and
+          # there is no upload cert to test against — skip rather than fail.
+          if [ ! -f keystore.jks ]; then
+            echo "no release keystore — guard regression test skipped"
+            exit 0
+          fi
+          expect_rejected() {
+            label="$1"; shift
+            if ./gradlew assembleRelease "$@" >/tmp/guard.log 2>&1; then
+              echo "::error::release guard did NOT reject $label — a broken AAB could ship"
+              exit 1
+            fi
+            if ! grep -q 'RELEASE_CERT_SHA256' /tmp/guard.log; then
+              echo "::error::build failed for an unrelated reason while testing $label"
+              tail -30 /tmp/guard.log
+              exit 1
+            fi
+            echo "OK — rejected $label"
+          }
+          expect_rejected "a blank fingerprint"     -PRELEASE_CERT_SHA256=
+          expect_rejected "a malformed fingerprint" -PRELEASE_CERT_SHA256=deadbeef
+          # The upload cert is the likeliest wrong value: it IS the key that just
+          # signed the artifact, so it looks correct. Derived here rather than
+          # hardcoded, so a key rotation cannot make this test stale.
+          UPLOAD_SHA=$(keytool -list -v -keystore keystore.jks \
+            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" \
+            | grep 'SHA256:' | head -1 | awk '{print $2}')
+          if [ -n "$UPLOAD_SHA" ]; then
+            expect_rejected "the upload cert" -PRELEASE_CERT_SHA256="$UPLOAD_SHA"
+          else
+            echo "::warning::could not read the upload cert fingerprint — upload-cert case skipped"
+          fi
+          # Restore the good artifact the next step uploads.
+          ./gradlew assembleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
