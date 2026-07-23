@@ -38,9 +38,27 @@ export default defineConfig({
     // forcing a tier locally would silently bypass the real entitlement/RASP
     // code paths under test. Force both to empty strings here so tests always
     // exercise the genuine logic regardless of the developer's .env.local.
+    //
+    // The Supabase credentials are here for a sharper reason: they caused REAL
+    // WRITES TO THE PRODUCTION BACKEND from the test suite. `supabaseClient.js`
+    // returns a live client whenever both vars are set, and dozens of tests
+    // render WalletProvider, which fires trackEvent(WALLET_CREATED) and
+    // SESSION_START. Only trackEvent's own test mocked the client, so every
+    // other test inserted a row into the production `events` table — each jsdom
+    // test getting fresh localStorage and therefore a brand-new device_id.
+    // One local full-suite run produced 126 events across 114 phantom
+    // "installs" (2026-07-23), which is analytics corruption and unintended
+    // network egress from a test run (I2).
+    //
+    // Blanking them makes `supabase` null, which every caller already guards on
+    // — that is the module's documented contract, not a special test path. CI
+    // was never affected (no .env.local there), so this only ever hit
+    // developers running tests locally, silently.
     env: {
       VITE_FORCE_TIER: '',
       VITE_BYPASS_RASP: '',
+      VITE_SUPABASE_URL: '',
+      VITE_SUPABASE_ANON_KEY: '',
     },
     setupFiles: ['fake-indexeddb/auto', './vitest.setup.js'],
     include: ['src/**/*.test.{js,jsx}'],
