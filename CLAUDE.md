@@ -87,6 +87,25 @@ annual). The two stores are NOT symmetric and code must not treat them as one me
   rather than falling through to a full-price charge.
 Not verified: no real purchase has been completed on either platform.
 
+**Anonymous event tracking (PR #1321) — LIVE, and it changed the privacy story.**
+`api/trackEvent.js` writes 7 event types to our own Supabase with a random
+`veyrnox-device-id`; `receive_viewed` and `send_completed` carry an asset symbol.
+Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-07-23:
+- The pipeline is PROVEN to work end-to-end, but has **zero real-user data** — the
+  only rows ever written were 126 from local test runs (see below).
+- **Test suite was writing to PRODUCTION Supabase.** `.env.local` credentials leak
+  into Vitest, so any test rendering WalletProvider inserted real rows — 126 events
+  across 114 phantom device_ids from one run. Fixed in PR #1328 by blanking the
+  Supabase env in `vitest.config.js` (same mechanism already used for
+  VITE_FORCE_TIER/VITE_BYPASS_RASP). CI was never affected (no `.env.local` there),
+  which is why a green pipeline never caught it.
+- **Store declarations were understated.** Play Data Safety and Apple App Privacy
+  both claimed App-functionality-only; **Analytics** purpose added to both
+  2026-07-23. Still open: Apple's **Usage Data → Product Interaction** is undeclared,
+  and there is **no consent/opt-out** (ePrivacy question — counsel).
+- **veyrnox.com/privacy is still WRONG** — dated 16 June, says "No analytics or
+  tracking" in two places. In-app policy fixed (PR #1329); the site is not.
+
 **All 10 assets LIVE** — ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT.
 
 **Play Store: LIVE on internal testing (2026-07-22).** Upload-key reset approved
@@ -107,7 +126,25 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
 - **Personal** developer account: 12-tester/14-day rule gates **production only**.
 - Data Safety: all 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
 - **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV)** — Guideline
-  3.1.5(b) satisfied. iOS real-device build and first App Store submission still to do.
+  3.1.5(b) satisfied. First App Store submission still to do.
+- **iOS build 1.0 (2) uploaded 2026-07-23** (source: PR #1329). Contains the iOS
+  promotional-offer path, the offer-price fix, and the inlined privacy policy.
+- **CLI upload works — Xcode GUI is NOT required.** Earlier notes said the
+  `xcodebuild` CLI failed on signing auth; that applied to device *runs*. With an
+  App Store Connect **API key** the whole chain runs unattended:
+  `archive` → `-exportArchive` (`destination: upload`) → delivered. Key lives at
+  `~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`, Issuer ID
+  `2d4c5bd7-1de3-4953-b203-a92e788c2d7c`. Team Key, App Manager role is sufficient.
+- **The export-compliance "blocker" was stale.** The locked French declaration was
+  NOT blocking submission — uploads and submission were fine. The real gap was
+  **Model Reporting Rules for Digital Platforms (MRDP)** sitting at "Missing Info"
+  on the Veyrnox LTD business entity; answered 2026-07-23 (personal services = No)
+  and now Active. Banking/Paid Apps/tax forms were Active throughout.
+  Always check App Store Connect directly before treating a note as current.
+- `ITSAppUsesNonExemptEncryption` is **not set** in Info.plist, so Apple still asks
+  the encryption questions at submission — the path that produced the France
+  declaration requirement. Counsel decision, see
+  `docs/play-launch/export-compliance-counsel-note.md`.
 - `veyrnox.com` is a client-rendered SPA — `curl` gives **false negatives** when checking
   page content; verify by rendering the page.
 
