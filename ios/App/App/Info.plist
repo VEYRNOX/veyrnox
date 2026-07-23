@@ -22,6 +22,23 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Export compliance. Declares that the app uses only encryption that is
+	     exempt from US export documentation requirements: standard, published
+	     algorithms (AES-256-GCM, TLS, secp256k1/ed25519, Argon2id) used for
+	     authentication and for protecting the user's own data on their own
+	     device. Nothing proprietary, and no cryptanalytic functionality.
+
+	     Setting this suppresses the per-build encryption questionnaire in App
+	     Store Connect. Without it, every upload is asked again — and answering
+	     "available in France = Yes" demands an ANSSI declaration document, which
+	     is what left build 1.0 (2) stuck at "Missing Compliance" (a draft
+	     worksheet uploaded 2026-07-14 sat In Review with no Key Value issued).
+
+	     This is a legal declaration, not a build flag. If the app ever adds
+	     proprietary crypto, or any feature that could be read as cryptanalytic,
+	     this must be revisited with counsel before the next submission. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
