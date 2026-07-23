@@ -40,10 +40,14 @@ android {
             // KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD, so those are read first,
             // with the camelCase spellings accepted as a fallback.
             //
-            // storeFile is resolved against rootProject (android/), NOT android/app/,
-            // because KEYSTORE_PATH is written relative to the android/ directory.
+            // The two spellings carry DIFFERENT path conventions, so each needs its own
+            // resolution base — resolving both against rootProject silently pointed
+            // `storeFile=../veyrnox-upload.jks` at the repo root instead of android/:
+            //   KEYSTORE_PATH (ours, and the env var CI sets) -> relative to android/
+            //   storeFile     (Android Studio's generated spelling) -> relative to android/app/
             def propsFile = rootProject.file("keystore.properties")
             def ksPath = System.getenv("KEYSTORE_PATH")
+            def ksBase = rootProject
             def ksPass = System.getenv("KEYSTORE_PASSWORD")
             def ksAlias = System.getenv("KEY_ALIAS")
             def ksKeyPass = System.getenv("KEY_PASSWORD")
@@ -51,14 +55,19 @@ android {
             if (propsFile.exists()) {
                 def props = new Properties()
                 propsFile.withInputStream { props.load(it) }
-                ksPath    = props['KEYSTORE_PATH']     ?: props['storeFile']     ?: ksPath
+                if (props['KEYSTORE_PATH']) {
+                    ksPath = props['KEYSTORE_PATH']
+                } else if (props['storeFile']) {
+                    ksPath = props['storeFile']
+                    ksBase = project
+                }
                 ksPass    = props['KEYSTORE_PASSWORD'] ?: props['storePassword'] ?: ksPass
                 ksAlias   = props['KEY_ALIAS']         ?: props['keyAlias']      ?: ksAlias
                 ksKeyPass = props['KEY_PASSWORD']      ?: props['keyPassword']   ?: ksKeyPass
             }
 
             if (ksPath) {
-                storeFile     rootProject.file(ksPath)
+                storeFile     ksBase.file(ksPath)
                 storePassword ksPass
                 keyAlias      ksAlias
                 keyPassword   ksKeyPass
@@ -141,6 +150,52 @@ tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.co
                 'Expected 32 colon-separated hex pairs (e.g. AA:BB:CC:...).')
         }
 
+        // A well-formed fingerprint can still be the WRONG one. The two mistakes that
+        // actually happen are passing the debug keystore's fingerprint (copied from a
+        // local debug invocation) or the upload cert's (it's the key you just used to
+        // sign, so it looks right). Either ships an AAB whose RASP check compares
+        // against a cert Play-installed builds were never signed with — tampered:true
+        // on every launch, fail-closed but dead. Both fingerprints are derivable from
+        // keystores already on disk, so this is machine-independent — no hardcoding.
+        def sha256Of = { java.io.File ksFile, String storePass, String alias ->
+            if (ksFile == null || !ksFile.exists() || alias == null) return null
+            try {
+                // "JKS" (not getDefaultType()) — the JDK's JKS provider runs in
+                // compatibility mode and reads PKCS12 stores too; the reverse is not true.
+                def ks = java.security.KeyStore.getInstance('JKS')
+                ksFile.withInputStream { ks.load(it, storePass == null ? null : storePass.toCharArray()) }
+                def c = ks.getCertificate(alias)
+                if (c == null) return null
+                return java.security.MessageDigest.getInstance('SHA-256')
+                    .digest(c.encoded)
+                    .collect { String.format('%02X', it) }
+                    .join(':')
+            } catch (Exception ignored) {
+                // Unreadable keystore is not this guard's business — the signing-config
+                // checks below fail on that. Skip rather than block the build.
+                return null
+            }
+        }
+        def rel = android.signingConfigs.release
+        def dbg = android.signingConfigs.debug
+        def uploadSha = sha256Of(rel?.storeFile, rel?.storePassword, rel?.keyAlias)
+        def debugSha = sha256Of(dbg?.storeFile, dbg?.storePassword, dbg?.keyAlias)
+        if (uploadSha != null && cert.equalsIgnoreCase(uploadSha)) {
+            throw new GradleException(
+                "RELEASE_CERT_SHA256 is the UPLOAD cert (${uploadSha}).\n" +
+                'With Play App Signing enabled, Play re-signs the AAB with Google\'s app ' +
+                'signing key, so the installed APK never carries the upload cert. Use the ' +
+                'SHA-256 from Play Console -> Setup -> App integrity -> App signing key.\n' +
+                'If this app is NOT enrolled in Play App Signing, the upload key IS the ' +
+                'signing key — remove this check deliberately rather than working around it.')
+        }
+        if (debugSha != null && cert.equalsIgnoreCase(debugSha)) {
+            throw new GradleException(
+                "RELEASE_CERT_SHA256 is the DEBUG keystore cert (${debugSha}).\n" +
+                'That value is for local debug builds only. Release builds need the ' +
+                'SHA-256 from Play Console -> Setup -> App integrity -> App signing key.')
+        }
+
         // Signing must actually have resolved. buildTypes.release selects
         // signingConfigs.release as soon as keystore.properties EXISTS — so a file
         // present but with unreadable keys would otherwise reach the packaging step
@@ -156,7 +211,8 @@ tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.co
         if (!sc.storeFile.exists()) {
             throw new GradleException(
                 "Keystore not found at: ${sc.storeFile}\n" +
-                'KEYSTORE_PATH is resolved relative to the android/ directory.')
+                'KEYSTORE_PATH is resolved relative to android/; the Android Studio ' +
+                'spelling `storeFile` is resolved relative to android/app/.')
         }
     }
 }
