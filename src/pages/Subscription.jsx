@@ -40,6 +40,7 @@ import {
   PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
 import { recordAttribution, fetchPaidCount } from "@/api/referralApi";
+import { OFFER_UNAVAILABLE } from "@/lib/purchases";
 import OutcomeSteps, {
   OUTCOME_STEPS,
   OUTCOME_SEEN_KEY,
@@ -80,6 +81,7 @@ export default function Subscription() {
   const [monthlyPackage, setMonthlyPackage] = useState(null);
   const [annualPackage, setAnnualPackage] = useState(null);
   const [referralMonthly, setReferralMonthly] = useState(null);
+  const [referralOfferTag, setReferralOfferTag] = useState(null);
   const [referralAnnual, setReferralAnnual] = useState(null);
   const [referrerTierInfo, setReferrerTierInfo] = useState(null);
   const [billing, setBilling] = useState("annual");
@@ -160,6 +162,10 @@ export default function Subscription() {
             setReferrerTierInfo(info);
             const offeringId = getOfferingIdForTier(tierKey);
             if (!offeringId) return;
+            // The offering id doubles as the Play offer tag (referral-gold →
+            // the offer tagged `referral-gold`). Held so handleUpgrade can name
+            // the option explicitly — see purchases.js findOfferOption.
+            setReferralOfferTag(offeringId);
             return getTierOffering(offeringId);
           })
           .then((offering) => {
@@ -208,6 +214,17 @@ export default function Subscription() {
   const effectiveBilling = billing;
   const selectedPackage = effectiveBilling === "annual" ? effectiveAnnual : effectiveMonthly;
 
+  // Name the offer ONLY when the package actually being bought is the
+  // discounted one. If a tier resolved for monthly but not annual, the annual
+  // package is the full-price one and must be purchased without a tag —
+  // otherwise the fail-closed guard in purchasePackage rejects a legitimate
+  // full-price sale.
+  const usingReferralPackage =
+    hasDiscount &&
+    selectedPackage != null &&
+    selectedPackage === (effectiveBilling === "annual" ? referralAnnual : referralMonthly);
+  const activeOfferTag = usingReferralPackage ? referralOfferTag : null;
+
   const monthlyPriceString = effectiveMonthly?.product?.priceString ?? "$5.99/mo";
   const annualPriceString = effectiveAnnual?.product?.priceString ?? "$49.99/yr";
   const regularMonthlyPrice = monthlyPackage?.product?.priceString;
@@ -218,7 +235,7 @@ export default function Subscription() {
     if (!selectedPackage) return;
     setBusy(true);
     try {
-      await purchasePackage(selectedPackage);
+      await purchasePackage(selectedPackage, { offerTag: activeOfferTag });
       await refreshTier();
       const refCode = getRedeemedCode();
       if (refCode && !hasAttributed()) {
@@ -233,7 +250,14 @@ export default function Subscription() {
       }
       toast.success("Safety Plus unlocked");
     } catch (err) {
-      if (!err?.userCancelled) toast.error("Purchase failed — please try again");
+      if (err?.code === OFFER_UNAVAILABLE) {
+        // The referral discount could not be applied. Say so plainly rather
+        // than "try again" — retrying will not help, and the alternative
+        // (charging full price after showing a discount) is worse than failing.
+        toast.error("Your referral discount isn't available right now — nothing was charged");
+      } else if (!err?.userCancelled) {
+        toast.error("Purchase failed — please try again");
+      }
     } finally {
       setBusy(false);
     }
