@@ -252,6 +252,21 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
+      # Play uploads take an AAB, never an APK. Without this step the pipeline
+      # produced only a sideloadable APK, so every Play upload had to be built
+      # by hand on a developer machine with the keystore — the exact manual
+      # signing path that cost this project its upload key once already.
+      #
+      # A sideloaded APK also cannot verify Play Billing: Play only serves
+      # billing to a build installed FROM a track. So the APK proves the app
+      # runs; only this AAB can prove a purchase works.
+      - name: Build release AAB (Play upload artifact)
+        run: ./gradlew bundleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
       # Regression gate for the release-cert guard in android/app/build.gradle.
       # PR #1310 added a debug-fingerprint check; PR #1313 rewrote the guard and
       # silently dropped it, and nothing caught that for ten days because no test
@@ -305,3 +320,25 @@ jobs:
           name: veyrnox-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
+      # The Play upload artifact. Download this, upload to the internal track,
+      # then install FROM Play — that is the only path on which Play Billing
+      # (and therefore the referral / retention offers) can be exercised.
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: veyrnox-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+      # Surfaces the versionCode actually built, so it can be checked against
+      # what Play has already consumed BEFORE attempting an upload. Play rejects
+      # a duplicate versionCode outright, and that is a slow thing to discover
+      # at the end of an upload.
+      - name: Report built versionCode
+        run: |
+          VC=$(grep -m1 'versionCode' app/build.gradle | tr -dc '0-9')
+          echo "Built versionCode: ${VC}"
+          echo "### Android release artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo "- versionCode: \`${VC}\` — must exceed every versionCode already uploaded to Play" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`veyrnox-release-aab\` → Play internal track (required for Play Billing)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`veyrnox-release-apk\` → sideload smoke test only (Play Billing will NOT work)" >> "$GITHUB_STEP_SUMMARY"
+        working-directory: android
