@@ -19,7 +19,7 @@ A single character of drift here means "the purchase succeeds but nothing unlock
 | Thing | Value (exact) | Where the code reads it |
 |---|---|---|
 | Entitlement identifier | `safety_plus` | `src/lib/purchases.js` `SAFETY_PLUS_ENTITLEMENT`; checked in `src/lib/entitlement.js` (`entitlements.active['safety_plus']`) |
-| Monthly product identifier (both stores) | `safety_plus_monthly` | attached to the entitlement + the current offering |
+| Monthly product identifier | Apple `safety_plus_monthly_v2`, Play `safety_plus_monthly` | attached to the entitlement + the current offering. The stores DIVERGED on 2026-07-23: the Apple product was deleted by mistake and recreated as `_v2` (Apple never reissues a deleted id). Play was untouched. |
 | Annual product identifier (both stores) | `safety_plus_annual` | attached to the SAME `safety_plus` entitlement + the current offering |
 | Offering | `default`, marked **current** | `getOfferings().current` (`src/lib/purchases.js`) |
 | Monthly package | `$rc_monthly` | RevenueCat standard monthly package; `SAFETY_PLUS_MONTHLY_PACKAGE` in `purchases.js` |
@@ -52,8 +52,8 @@ Do them in order — Task 3 (RevenueCat) needs artifacts produced by Tasks 1 and
 - [ ] Open the Veyrnox app record in [App Store Connect](https://appstoreconnect.apple.com) (create it with bundle id `com.veyrnox.app` if it doesn't exist).
 - [ ] **Features → In-App Purchases and Subscriptions** → create a **Subscription Group** named `Safety Plus`.
 - [ ] Inside the group, create the **monthly auto-renewable subscription**:
-  - Product ID: **`safety_plus_monthly`** (exact — hard-coded).
-  - Reference name: `Safety Plus Monthly`.
+  - Product ID: **`safety_plus_monthly_v2`** (the original `safety_plus_monthly` was deleted 2026-07-23 and its id is permanently burned).
+  - Reference name: `Safety Plus Monthly v2`.
   - Duration: 1 month.
   - Price: $5.99 USD (Apple auto-generates localized tiers).
   - Add ≥1 localization (English): display name `Safety Plus`, description *"Advanced analytics and premium insights — go deeper on your portfolio."*
@@ -71,7 +71,7 @@ Do them in order — Task 3 (RevenueCat) needs artifacts produced by Tasks 1 and
 
 - [ ] Open the Veyrnox app in [Google Play Console](https://play.google.com/console) (package `com.veyrnox.app`; create the listing if needed).
 - [ ] **Monetize → Products → Subscriptions** → create the **monthly** subscription:
-  - Product ID: **`safety_plus_monthly`** (exact — same as Apple).
+  - Product ID: **`safety_plus_monthly`** (Play only — Apple's is `safety_plus_monthly_v2`).
   - Name: `Safety Plus Monthly`.
   - Add a **Base plan**: auto-renewing, 1-month billing period, $5.99 USD.
   - Activate the base plan (may stay on an internal/closed testing track during dev).
@@ -92,11 +92,11 @@ Do them in order — Task 3 (RevenueCat) needs artifacts produced by Tasks 1 and
   - iOS: bundle `com.veyrnox.app`, upload the App Store Connect API key (RC's wizard walks through App Store Connect → Users and Access → Integrations → App Store Connect API).
   - Android: package `com.veyrnox.app`, upload the Google Play service-account JSON (from Task 2).
 - [ ] Create one **Entitlement**: identifier **`safety_plus`** (exact — hard-coded). Attach BOTH products to it (both stores):
-  - `safety_plus_monthly`
+  - `safety_plus_monthly_v2` (Apple) / `safety_plus_monthly` (Play)
   - `safety_plus_annual`
   - The entitlement is deliberately shared across both products — annual and monthly grant the same feature set; a user on either resolves to `safety_plus` in `entitlement.js`.
 - [ ] Create one **Offering**: identifier `default`, marked **current**, containing TWO packages:
-  - `$rc_monthly` → `safety_plus_monthly` on both stores.
+  - `$rc_monthly` → `safety_plus_monthly_v2` on Apple, `safety_plus_monthly` on Play.
   - `$rc_annual` → `safety_plus_annual` on both stores.
   - `Subscription.jsx` reads both from the offering's `availablePackages`; the annual/monthly toggle in the UI is driven by which packages are present. If `$rc_annual` is missing (staged rollout), the toggle hides and the page shows monthly-only — fail-honest, never a broken button (I4).
 - [ ] **Project Settings → API keys** → copy the two **Public** app-specific keys (iOS + Android — NOT the secret/server key). Put them in `.env.local` (copy `.env.example` first if needed):
