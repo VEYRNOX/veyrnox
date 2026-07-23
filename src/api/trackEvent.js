@@ -14,46 +14,18 @@
 import { supabase } from '@/lib/supabaseClient';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { DEMO } from '@/api/demoClient';
-
-const DEVICE_ID_KEY = 'veyrnox-device-id';
-
-function getOrCreateDeviceId() {
-  try {
-    let id = localStorage.getItem(DEVICE_ID_KEY);
-    if (id) return id;
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      id = crypto.randomUUID();
-    } else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      const buf = new Uint8Array(16);
-      crypto.getRandomValues(buf);
-      buf[6] = (buf[6] & 0x0f) | 0x40;
-      buf[8] = (buf[8] & 0x3f) | 0x80;
-      const h = [...buf].map(b => b.toString(16).padStart(2, '0')).join('');
-      id = `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
-    } else {
-      id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-        const r = (Math.random() * 16) | 0;
-        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-      });
-    }
-    localStorage.setItem(DEVICE_ID_KEY, id);
-    return id;
-  } catch {
-    return null;
-  }
-}
+import { getOrCreateDeviceId } from '@/lib/deviceId';
 
 export async function trackEvent(event, metadata = {}) {
   if (!supabase || DEMO || isDeniabilityOrDemoActive()) return;
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) return;
   try {
-    const { error } = await supabase.from('events').insert({
-      device_id: deviceId,
-      event,
-      metadata: metadata && typeof metadata === 'object' ? metadata : {},
+    await supabase.rpc('track_event', {
+      p_device_id: deviceId,
+      p_event: event,
+      p_metadata: metadata && typeof metadata === 'object' ? metadata : {},
     });
-    if (error) return;
   } catch {
     // Best-effort: never block the app on analytics failure.
   }
