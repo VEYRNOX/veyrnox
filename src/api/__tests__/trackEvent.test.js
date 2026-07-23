@@ -16,33 +16,43 @@ vi.mock('@/api/demoClient', () => ({
   get DEMO() { return mockDEMO; },
 }));
 
+vi.mock('@/lib/deviceId', () => {
+  let _id = null;
+  return {
+    getOrCreateDeviceId: () => {
+      if (_id) return _id;
+      _id = 'aaaaaaaa-bbbb-4ccc-9ddd-eeeeeeeeeeee';
+      try { localStorage.setItem('veyrnox-device-id', _id); } catch {}
+      return _id;
+    },
+    __resetForTest: () => { _id = null; },
+  };
+});
+
 const { trackEvent, EVENT } = await import('../trackEvent');
+const deviceIdMod = await import('@/lib/deviceId');
 
 describe('trackEvent', () => {
   beforeEach(() => {
-    mockSupabase = { from: vi.fn(() => ({ insert: vi.fn(() => Promise.resolve({ error: null })) })) };
+    mockSupabase = { rpc: vi.fn(() => Promise.resolve({ error: null })) };
     mockIsDeniabilityOrDemoActive = vi.fn(() => false);
     mockDEMO = false;
     localStorage.clear();
+    deviceIdMod.__resetForTest?.();
   });
 
   afterEach(() => {
     localStorage.clear();
   });
 
-  it('inserts an event row into Supabase', async () => {
-    const insertFn = vi.fn(() => Promise.resolve({ error: null }));
-    mockSupabase.from = vi.fn(() => ({ insert: insertFn }));
-
+  it('calls track_event RPC with correct params', async () => {
     await trackEvent(EVENT.WALLET_CREATED, { foo: 'bar' });
 
-    expect(mockSupabase.from).toHaveBeenCalledWith('events');
-    expect(insertFn).toHaveBeenCalledWith(expect.objectContaining({
-      event: 'wallet_created',
-      metadata: { foo: 'bar' },
-    }));
-    const arg = insertFn.mock.calls[0][0];
-    expect(arg.device_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('track_event', {
+      p_device_id: 'aaaaaaaa-bbbb-4ccc-9ddd-eeeeeeeeeeee',
+      p_event: 'wallet_created',
+      p_metadata: { foo: 'bar' },
+    });
   });
 
   it('no-ops when supabase is null', async () => {
@@ -52,40 +62,34 @@ describe('trackEvent', () => {
 
   it('no-ops when DEMO is true (load-time gate)', async () => {
     mockDEMO = true;
-    const insertFn = vi.fn();
-    mockSupabase.from = vi.fn(() => ({ insert: insertFn }));
 
     await trackEvent('test_event');
 
-    expect(insertFn).not.toHaveBeenCalled();
+    expect(mockSupabase.rpc).not.toHaveBeenCalled();
     expect(localStorage.getItem('veyrnox-device-id')).toBeNull();
   });
 
   it('no-ops when deniability/demo is active (I2/I3)', async () => {
     mockIsDeniabilityOrDemoActive.mockReturnValue(true);
-    const insertFn = vi.fn();
-    mockSupabase.from = vi.fn(() => ({ insert: insertFn }));
 
     await trackEvent('test_event');
 
-    expect(insertFn).not.toHaveBeenCalled();
+    expect(mockSupabase.rpc).not.toHaveBeenCalled();
     expect(localStorage.getItem('veyrnox-device-id')).toBeNull();
   });
 
   it('reuses the same device_id across calls', async () => {
-    const ids = [];
-    const insertFn = vi.fn((row) => { ids.push(row.device_id); return Promise.resolve({ error: null }); });
-    mockSupabase.from = vi.fn(() => ({ insert: insertFn }));
-
     await trackEvent('a');
     await trackEvent('b');
 
-    expect(ids[0]).toBe(ids[1]);
-    expect(ids[0]).toBeTruthy();
+    const calls = mockSupabase.rpc.mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][1].p_device_id).toBe(calls[1][1].p_device_id);
+    expect(calls[0][1].p_device_id).toBeTruthy();
   });
 
-  it('swallows insert errors silently', async () => {
-    mockSupabase.from = vi.fn(() => ({ insert: vi.fn(() => Promise.reject(new Error('network'))) }));
+  it('swallows RPC errors silently', async () => {
+    mockSupabase.rpc = vi.fn(() => Promise.reject(new Error('network')));
     await expect(trackEvent('test_event')).resolves.toBeUndefined();
   });
 
