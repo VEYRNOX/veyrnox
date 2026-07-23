@@ -19,6 +19,7 @@ const purchasePackage = vi.fn();
 const restorePurchases = vi.fn();
 const manageSubscription = vi.fn();
 const setReferralAttribute = vi.fn();
+const offerPriceInfo = vi.fn();
 vi.mock('@/lib/purchases', () => ({
   getOfferings: (...a) => getOfferings(...a),
   getTierOffering: (...a) => getTierOffering(...a),
@@ -26,6 +27,12 @@ vi.mock('@/lib/purchases', () => ({
   restorePurchases: (...a) => restorePurchases(...a),
   manageSubscription: (...a) => manageSubscription(...a),
   setReferralAttribute: (...a) => setReferralAttribute(...a),
+  // Resolves an offer's REAL price from the store payload. Defaults to null
+  // (unresolvable) so the page falls back to the base price and — critically —
+  // suppresses the strikethrough. Tests that exercise a real discount override
+  // it per-case. Covered directly in lib/__tests__/purchases*.offers.test.js.
+  offerPriceInfo: (...a) => offerPriceInfo(...a),
+  OFFER_UNAVAILABLE: 'OFFER_UNAVAILABLE',
   SAFETY_PLUS_MONTHLY_PACKAGE: '$rc_monthly',
   SAFETY_PLUS_ANNUAL_PACKAGE: '$rc_annual',
   RETENTION_OFFERING_ID: 'retention',
@@ -88,6 +95,7 @@ beforeEach(() => {
   getTierMock.mockReturnValue('none');
   getTierInfoMock.mockReturnValue({ key: 'none', commission: 0, next: null });
   getOfferingIdForTierMock.mockReturnValue(null);
+  offerPriceInfo.mockReturnValue(null);
   calculateDiscountCentsMock.mockImplementation((full, comm) => Math.round(full * comm / 100));
   useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
 });
@@ -395,9 +403,14 @@ describe('Subscription page — tier-based referral discount', () => {
     { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
     { identifier: '$rc_annual', product: { priceString: '$49.99' } },
   ];
+  // A referral package wraps the SAME store product as the full-price one, so
+  // its priceString is the BASE price on both stores — $5.99 / $49.99, not the
+  // discounted figure. The discount lives in the offer (Apple: product
+  // .discounts[]; Play: the option's introPhase) and is read by offerPriceInfo.
+  // Fixtures that put $44.99 here would test a payload no store ever sends.
   const goldReferralPackages = [
-    { identifier: '$rc_monthly', product: { priceString: '$5.39' } },
-    { identifier: '$rc_annual', product: { priceString: '$44.99' } },
+    { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
+    { identifier: '$rc_annual', product: { priceString: '$49.99' } },
   ];
 
   function setupGoldReferral() {
@@ -408,6 +421,13 @@ describe('Subscription page — tier-based referral discount', () => {
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: { key: 'platinum', min: 10000 } });
     getOfferingIdForTierMock.mockReturnValue('referral-gold');
     getTierOffering.mockResolvedValue({ availablePackages: goldReferralPackages });
+    // The 10% Gold offer as the store reports it, per package.
+    offerPriceInfo.mockImplementation((pkg, offeringId) => {
+      if (offeringId !== 'referral-gold' || !pkg) return null;
+      if (pkg.identifier === '$rc_annual') return { priceString: '$44.99', price: 44.99 };
+      if (pkg.identifier === '$rc_monthly') return { priceString: '$5.39', price: 5.39 };
+      return null;
+    });
   }
 
   beforeEach(() => {
@@ -451,6 +471,22 @@ describe('Subscription page — tier-based referral discount', () => {
       (el) => el.classList.contains('line-through') || el.closest('.line-through')
     );
     expect(hasStrikethrough).toBe(true);
+  });
+
+  it('shows NO strikethrough when the offer price cannot be read', async () => {
+    // Regression guard. A referral offering resolves (so hasDiscount is true)
+    // but its offer price is unreadable, so the page falls back to the base
+    // price. Striking through the identical base price would advertise a
+    // saving of 0% as if it were a discount — the "$49.99 $49.99" bug.
+    setupGoldReferral();
+    offerPriceInfo.mockReturnValue(null);
+    renderPage();
+
+    await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
+    const struck = screen
+      .getAllByText('$49.99')
+      .some((el) => el.classList.contains('line-through') || el.closest('.line-through'));
+    expect(struck).toBe(false);
   });
 
   it('purchasing with tier discount records attribution with discount_cents', async () => {

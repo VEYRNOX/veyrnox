@@ -46,6 +46,90 @@ export function findOfferOption(pkg, offerTag) {
   ) ?? null;
 }
 
+// ---------------------------------------------------------------------------
+// App Store promotional offers
+//
+// iOS is a DIFFERENT mechanism from Play, not a different spelling of one.
+// Play exposes `product.subscriptionOptions[]` matched by tag; Apple exposes
+// `product.discounts[]` matched by identifier, which RevenueCat must SIGN
+// (getPromotionalOffer) before purchaseDiscountedPackage will accept it. The
+// plugin types say so explicitly: `discounts` is "Null for Android", and
+// subscriptionOptions/tags do not exist on an App Store product.
+//
+// The identifiers cannot match Play's either. App Store Connect scopes offer
+// identifiers to the whole SUBSCRIPTION GROUP (so monthly and annual cannot
+// share one) and rejects hyphens. Hence this explicit table rather than a
+// string transform: `retention` is asymmetric because the monthly offer was
+// created first and took the unsuffixed id, and Apple burns identifiers
+// permanently — they cannot be renamed to be tidy.
+//
+// Unknown offering or unknown package → null → the caller fails closed. A
+// derived-by-guessing identifier is the one outcome worth avoiding here: it
+// would either be rejected at purchase or, worse, apply the wrong duration's
+// price.
+export const APPLE_OFFER_IDS = {
+  'referral-bronze':   { monthly: 'referral_bronze_monthly',   annual: 'referral_bronze_annual' },
+  'referral-silver':   { monthly: 'referral_silver_monthly',   annual: 'referral_silver_annual' },
+  'referral-gold':     { monthly: 'referral_gold_monthly',     annual: 'referral_gold_annual' },
+  'referral-platinum': { monthly: 'referral_platinum_monthly', annual: 'referral_platinum_annual' },
+  'retention':         { monthly: 'retention_50',              annual: 'retention_50_annual' },
+};
+
+export function appleOfferIdFor(offeringId, pkg) {
+  if (!offeringId) return null;
+  const entry = APPLE_OFFER_IDS[offeringId];
+  if (!entry) return null;
+  const packageId = pkg?.identifier;
+  if (packageId === SAFETY_PLUS_MONTHLY_PACKAGE) return entry.monthly;
+  if (packageId === SAFETY_PLUS_ANNUAL_PACKAGE) return entry.annual;
+  return null;
+}
+
+// Exact identifier match only. `retention_50` is a strict prefix of
+// `retention_50_annual`, so any prefix/substring matching would apply the
+// 3-month monthly offer to an annual purchase.
+export function findAppleDiscount(pkg, appleOfferId) {
+  if (!appleOfferId) return null;
+  const discounts = pkg?.product?.discounts;
+  if (!Array.isArray(discounts)) return null;
+  return discounts.find((d) => d?.identifier === appleOfferId) ?? null;
+}
+
+// The PRICE the customer will actually be charged for a given offer.
+//
+// `pkg.product.priceString` is the BASE plan price on both stores — never the
+// offer price. A referral package and the full-price package wrap the SAME
+// product (`safety_plus_monthly`), so reading priceString off the "discounted"
+// package yields $5.99 either way. That is what put a struck-through "$5.99
+// $5.99" under a "Stay for less" headline in the cancel dialog.
+//
+// The real figure lives in different places per store:
+//   iOS     — the matching entry in `product.discounts[]`
+//   Android — the `introPhase` of the matching subscription option (the
+//             discounted recurring phase; `fullPricePhase` is what follows)
+//
+// Returns null when no offer applies or the price cannot be read. Callers must
+// render nothing rather than fall back to the base price (I4): showing a
+// crossed-out price beside an identical one is a false claim of a saving.
+export function offerPriceInfo(pkg, offeringId) {
+  if (!pkg || !offeringId) return null;
+
+  if (Capacitor.getPlatform() === 'ios') {
+    const discount = findAppleDiscount(pkg, appleOfferIdFor(offeringId, pkg));
+    if (!discount) return null;
+    const price = Number(discount.price);
+    if (!discount.priceString || !Number.isFinite(price)) return null;
+    return { priceString: discount.priceString, price };
+  }
+
+  const option = findOfferOption(pkg, offeringId);
+  const phasePrice = option?.introPhase?.price;
+  if (!phasePrice) return null;
+  const micros = Number(phasePrice.amountMicros);
+  if (!phasePrice.formatted || !Number.isFinite(micros)) return null;
+  return { priceString: phasePrice.formatted, price: micros / 1_000_000 };
+}
+
 let configured = false;
 
 function isNative() {
@@ -103,6 +187,14 @@ export async function getTierOffering(offeringId) {
 // retry is strictly better than a wrong charge they can't see.
 export const OFFER_UNAVAILABLE = 'OFFER_UNAVAILABLE';
 
+function offerUnavailable(offerTag) {
+  const err = /** @type {Error & { code?: string }} */ (
+    new Error(`Offer "${offerTag}" is not available on this product`)
+  );
+  err.code = OFFER_UNAVAILABLE;
+  return err;
+}
+
 /**
  * @param {any} pkg
  * @param {{ offerTag?: string | null }} [opts]
@@ -112,14 +204,34 @@ export async function purchasePackage(pkg, opts = {}) {
   const offerTag = opts?.offerTag;
 
   if (offerTag) {
-    const subscriptionOption = findOfferOption(pkg, offerTag);
-    if (!subscriptionOption) {
-      const err = /** @type {Error & { code?: string }} */ (
-        new Error(`Offer "${offerTag}" is not available on this product`)
-      );
-      err.code = OFFER_UNAVAILABLE;
-      throw err;
+    if (Capacitor.getPlatform() === 'ios') {
+      const discount = findAppleDiscount(pkg, appleOfferIdFor(offerTag, pkg));
+      if (!discount) throw offerUnavailable(offerTag);
+
+      // RevenueCat signs the offer server-side from the In-App Purchase key.
+      // Anything other than a signed offer coming back — undefined, or a
+      // rejection — must abort. Falling through to purchasePackage would
+      // charge FULL price after the paywall promised a discount.
+      let signedOffer;
+      try {
+        signedOffer = await Purchases.getPromotionalOffer({
+          product: pkg.product,
+          discount,
+        });
+      } catch {
+        throw offerUnavailable(offerTag);
+      }
+      if (!signedOffer) throw offerUnavailable(offerTag);
+
+      const { customerInfo } = await Purchases.purchaseDiscountedPackage({
+        aPackage: pkg,
+        discount: signedOffer,
+      });
+      return customerInfo;
     }
+
+    const subscriptionOption = findOfferOption(pkg, offerTag);
+    if (!subscriptionOption) throw offerUnavailable(offerTag);
     const { customerInfo } = await Purchases.purchaseSubscriptionOption({
       subscriptionOption,
     });

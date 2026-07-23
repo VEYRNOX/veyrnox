@@ -24,6 +24,7 @@ import {
   restorePurchases,
   manageSubscription,
   setReferralAttribute,
+  offerPriceInfo,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
   RETENTION_OFFERING_ID,
@@ -219,17 +220,37 @@ export default function Subscription() {
   // package is the full-price one and must be purchased without a tag —
   // otherwise the fail-closed guard in purchasePackage rejects a legitimate
   // full-price sale.
+  // Per-plan, because a tier can resolve for one billing period and not the
+  // other — the toggle must be able to show a discounted monthly price beside
+  // a full-price annual one without either being mislabelled.
+  const usingReferralMonthly =
+    hasDiscount && effectiveMonthly != null && effectiveMonthly === referralMonthly;
+  const usingReferralAnnual =
+    hasDiscount && effectiveAnnual != null && effectiveAnnual === referralAnnual;
+
   const usingReferralPackage =
-    hasDiscount &&
-    selectedPackage != null &&
-    selectedPackage === (effectiveBilling === "annual" ? referralAnnual : referralMonthly);
+    effectiveBilling === "annual" ? usingReferralAnnual : usingReferralMonthly;
   const activeOfferTag = usingReferralPackage ? referralOfferTag : null;
 
-  const monthlyPriceString = effectiveMonthly?.product?.priceString ?? "$5.99/mo";
-  const annualPriceString = effectiveAnnual?.product?.priceString ?? "$49.99/yr";
+  // A discounted package still reports the BASE price in product.priceString —
+  // it wraps the same store product as the full-price package. The offer price
+  // has to come from the offer itself (see purchases.js offerPriceInfo), or the
+  // paywall quotes $5.99 to a referred user and then charges $5.39.
+  const referralMonthlyPrice = usingReferralMonthly
+    ? offerPriceInfo(referralMonthly, referralOfferTag)?.priceString
+    : null;
+  const referralAnnualPrice = usingReferralAnnual
+    ? offerPriceInfo(referralAnnual, referralOfferTag)?.priceString
+    : null;
+
+  const monthlyPriceString =
+    referralMonthlyPrice ?? effectiveMonthly?.product?.priceString ?? "$5.99/mo";
+  const annualPriceString =
+    referralAnnualPrice ?? effectiveAnnual?.product?.priceString ?? "$49.99/yr";
   const regularMonthlyPrice = monthlyPackage?.product?.priceString;
   const regularAnnualPrice = annualPackage?.product?.priceString;
   const selectedPriceString = effectiveBilling === "annual" ? annualPriceString : monthlyPriceString;
+  const selectedRegularPrice = effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice;
 
   async function handleUpgrade() {
     if (!selectedPackage) return;
@@ -331,6 +352,14 @@ export default function Subscription() {
         // configured in App Store Connect / Play Console this is null and the
         // dialog shows no price, which is correct.
         offerPackage={effectiveBilling === "annual" ? retentionAnnual : retentionMonthly}
+        // The retention package wraps the same product as the current one, so
+        // its priceString is the FULL price. Without the real offer price the
+        // dialog rendered "$5.99 struck through, $5.99" under "Stay for less".
+        // Null here means the dialog shows no price at all, which is correct.
+        offerPrice={offerPriceInfo(
+          effectiveBilling === "annual" ? retentionAnnual : retentionMonthly,
+          RETENTION_OFFERING_ID
+        )}
         currentPackage={effectiveBilling === "annual" ? annualPackage : monthlyPackage}
         currentPriceString={effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice}
       />
@@ -504,11 +533,18 @@ export default function Subscription() {
               {/* Selected price */}
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold">{selectedPriceString}</span>
-                {hasDiscount && (
-                  <span className="text-base text-muted-foreground line-through">
-                    {effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice}
-                  </span>
-                )}
+                {/* Strike the regular price only when it DIFFERS from what is
+                    shown. If the offer price could not be read we fall back to
+                    the base price, and "$5.99 struck-through $5.99" would
+                    claim a saving that isn't there. Same guard as the toggle
+                    rows above. */}
+                {hasDiscount &&
+                  selectedRegularPrice &&
+                  selectedRegularPrice !== selectedPriceString && (
+                    <span className="text-base text-muted-foreground line-through">
+                      {selectedRegularPrice}
+                    </span>
+                  )}
               </div>
               {effectiveBilling === "annual" && (
                 <p className="text-xs text-muted-foreground -mt-2">Billed annually — 4 months free vs. monthly.</p>

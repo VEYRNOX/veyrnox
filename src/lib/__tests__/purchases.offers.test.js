@@ -32,7 +32,7 @@ vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => true, getPlatform: () => 'android' },
 }));
 
-const { findOfferOption, purchasePackage, OFFER_UNAVAILABLE } =
+const { findOfferOption, offerPriceInfo, purchasePackage, OFFER_UNAVAILABLE } =
   await import('../purchases');
 
 function pkgWithOptions(...optionTags) {
@@ -78,6 +78,47 @@ describe('findOfferOption', () => {
     // Real offers carry BOTH their identity tag and rc-ignore-offer.
     const pkg = pkgWithOptions(['referral-silver', 'rc-ignore-offer']);
     expect(findOfferOption(pkg, 'referral-silver')).toBeTruthy();
+  });
+});
+
+describe('offerPriceInfo on Android', () => {
+  function pkgWithPhases(tags, introPhase) {
+    return {
+      identifier: '$rc_monthly',
+      product: {
+        priceString: '$5.99',
+        subscriptionOptions: [{ id: 'monthly:promo', tags, introPhase }],
+      },
+    };
+  }
+
+  it('reads the discounted intro phase, not the base plan price', () => {
+    // Same regression as iOS: the package wraps the base product, so its
+    // priceString is $5.99 whether or not an offer applies.
+    const pkg = pkgWithPhases(
+      ['referral-gold', 'rc-ignore-offer'],
+      { price: { formatted: '$5.39', amountMicros: 5390000, currencyCode: 'USD' } }
+    );
+
+    expect(offerPriceInfo(pkg, 'referral-gold')).toEqual({
+      priceString: '$5.39',
+      price: 5.39,
+    });
+    expect(pkg.product.priceString).toBe('$5.99');
+  });
+
+  it('returns null when the tag matches no option', () => {
+    const pkg = pkgWithPhases(['referral-bronze'], {
+      price: { formatted: '$5.79', amountMicros: 5790000 },
+    });
+    expect(offerPriceInfo(pkg, 'retention')).toBeNull();
+  });
+
+  it('returns null when the matched option has no intro phase', () => {
+    // A base-plan-only option has no discounted phase — there is no offer
+    // price to show, and the base price must NOT be substituted.
+    const pkg = pkgWithPhases(['retention'], null);
+    expect(offerPriceInfo(pkg, 'retention')).toBeNull();
   });
 });
 

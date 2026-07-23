@@ -12,14 +12,20 @@
 // what happens. The only moment we legitimately own is this tap.
 //
 // HONESTY RULE (do not relax):
-// A price is rendered ONLY when a genuinely cheaper package exists in the
-// current RevenueCat offering. Apple and Google sell exclusively from their own
-// price points via store-configured promotional offers; a discount invented
-// client-side is a number neither store can charge. With no such package
-// configured this dialog shows retention value and no price at all — which is
-// the correct behaviour, not a degraded one. Mirrors the referral-discount
-// pattern in pages/Subscription.jsx, which likewise only uses
-// referralMonthly/referralAnnual when the package is actually present.
+// A price is rendered ONLY when a real store-configured promotional offer
+// resolved, AND its own price could be read. Apple and Google sell exclusively
+// from their own price points; a discount invented client-side is a number
+// neither store can charge. With no offer configured this dialog shows
+// retention value and no price at all — which is the correct behaviour, not a
+// degraded one. Mirrors the referral-discount pattern in pages/Subscription.jsx.
+//
+// The offer price arrives as the `offerPrice` prop and must NOT be read off
+// `offerPackage`: the retention package wraps the SAME store product as the
+// current subscription, so its priceString is the full price. Reading it
+// rendered a struck-through "$5.99" beside an identical "$5.99" under a "Stay
+// for less" headline — a claimed saving of nothing. `offerPackage` answers
+// only "is there an offer at all"; purchases.js offerPriceInfo answers "at
+// what price", and yields null rather than substituting the base price.
 
 import {
   Dialog,
@@ -46,7 +52,10 @@ const LOSES = [
  * @param {Function} props.onOpenChange
  * @param {Function} props.onKeep      - dismiss, stay subscribed
  * @param {Function} props.onContinue  - proceed to the store's subscription settings
- * @param {object|null} props.offerPackage - a genuinely cheaper RevenueCat package, or null
+ * @param {object|null} props.offerPackage - the package carrying a promotional offer, or null
+ * @param {{priceString: string, price: number}|null} props.offerPrice - the offer's real
+ *   price, from purchases.js offerPriceInfo. NOT readable off offerPackage: a package
+ *   reports its base plan price whether or not an offer applies.
  * @param {object|null} props.currentPackage - what they pay now, for deriving the saving
  * @param {string|null} props.currentPriceString - what they pay now, for comparison
  */
@@ -56,10 +65,17 @@ export default function CancelOfferDialog({
   onKeep,
   onContinue,
   offerPackage = null,
+  offerPrice: offerPriceData = null,
   currentPackage = null,
   currentPriceString = null,
 }) {
-  const offerPrice = offerPackage?.product?.priceString ?? null;
+  // The offer price comes from the OFFER, not the package: a package's
+  // priceString is always its base plan's, so `retentionMonthly` and
+  // `monthlyPackage` both report $5.99. Reading it here rendered a
+  // struck-through $5.99 beside an identical $5.99 under "Stay for less".
+  // No resolvable offer price => no price block (I4), never a base-price
+  // stand-in dressed up as a discount.
+  const offerPrice = offerPriceData?.priceString ?? null;
   const hasRealOffer = Boolean(offerPackage && offerPrice);
 
   // The "50% off" style headline is DERIVED from the two real store prices,
@@ -68,7 +84,7 @@ export default function CancelOfferDialog({
   // can claim a saving the store will not actually apply — and if either
   // numeric price is missing the badge is simply omitted rather than guessed.
   const regularAmount = Number(currentPackage?.product?.price);
-  const offerAmount = Number(offerPackage?.product?.price);
+  const offerAmount = Number(offerPriceData?.price);
   const percentOff =
     Number.isFinite(regularAmount) &&
     Number.isFinite(offerAmount) &&
