@@ -80,3 +80,52 @@ Ordered by dependency. Boxes are the actual actions; do them in order within eac
 - Do NOT mark IAP or any asset "verified" without real production evidence (txid / real purchase).
 - "Internal" audits are never presented as the outstanding independent audit.
 - Independent third-party security audit of the full stack remains OUTSTANDING.
+
+---
+
+## STATE AS OF 2026-07-22 EOD (supersedes the checkboxes above where they conflict)
+
+### Apple App Store — one blocker
+- Build **1.0 (1)** uploaded, processed, **Ready to Submit**. Metadata, description, keywords,
+  pricing ($5.99 / $49.99), App Privacy (published, Play-consistent), category Finance/Business
+  all COMPLETE.
+- **BLOCKED:** a DRAFT French encryption declaration worksheet is attached as export-compliance
+  evidence and locked "In Review" — it cannot be deleted. Apple Support case **102948042496**
+  (filed 2026-07-21 ~17:00, no reply as of EOD 07-22). Do NOT submit while it stands: it
+  represents a placeholder as an official regulatory document.
+- **UNVERIFIED RISK:** the 10 iOS screenshots are probably the duplicated set (the source folder
+  `veyrnox-appstore-screenshots/` has 14 of 16 files byte-identical, and is sized exactly to
+  Apple's 6.5" spec). Check the thumbnails in App Store Connect before submitting.
+- **UNRESOLVED:** DSA trader status declared "non-trader". For a limited company selling
+  subscriptions in the EU that is likely wrong, and can cause EU removal.
+- Distance to submit: Apple clears the doc -> exclude France -> re-answer compliance -> submit.
+
+### Google Play — weeks away, gated by Google
+- Internal testing: build **5 (1.0)** live. **Real Play Billing purchase VERIFIED.**
+- App content checklist: all 9 items complete. Store listing saved with assets.
+- Category set to **Finance**; contact details **published** (support@veyrnox.com,
+  https://veyrnox.com; phone deliberately blank).
+- versionCode bumped to **6** (5 consumed by the internal-testing upload).
+- **BLOCKED — production access:** dashboard shows *0 of 12 testers opted in*, and requires a
+  closed test run for **at least 14 days** before "Apply for production" unlocks. Clock NOT
+  started. Internal testing does NOT count toward it.
+- **Org conversion STARTED, NOT FINISHED.** Website verified; D-U-N-S 234941876 confirmed and
+  the payments profile matched (both Google and D&B hold the OLD address,
+  **24 Lankers Drive, Harrow, HA2 7NT** — which is why the old address was used, and the
+  certificate of incorporation showing it is the right supporting document). Remaining:
+  organization phone, verification codes, document upload, Google review.
+- **OPEN QUESTION that decides the Play timeline:** does an ORGANIZATION account skip the
+  closed-testing/12-tester requirement? Google's dashboard wording ("You must run a closed test
+  before you can apply to publish your app to everyone in production") reads as universal.
+  UNVERIFIED. Resolve this before investing further in the conversion for speed reasons.
+- **CONSTRAINT:** organization accounts must publish a phone number on the developer profile.
+  The owner does not want a personal mobile published — a business/VoIP number is needed, or
+  the account stays personal.
+- Screenshots currently live are the duplicated set. Replacements ready:
+  `~/Downloads/veyrnox-play-screenshots-v2/` (13 genuinely distinct, 1311x2622, ratio 2.000).
+  iOS-spec versions: `~/Downloads/veyrnox-ios-screenshots-v2/` (1284x2778).
+
+### Honest bottom line
+iOS is one support reply from submittable. Play is >= 2 weeks from production and the
+assumption that converting to a company shortcuts that is UNVERIFIED. Nothing has been
+submitted to either store.
