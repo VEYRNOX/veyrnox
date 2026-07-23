@@ -1,14 +1,40 @@
 // components/FirstRunTour.jsx
 //
-// A lightweight first-run tour that highlights key security features during
-// onboarding, before the wallet is created. Triggered once per device — uses a
-// localStorage marker so it never re-fires. Fixes: #1160 (ECC F-P3-3).
+// A lightweight first-run tour that highlights key security features on the
+// unlocked wallet, AFTER the wallet has been created. Fires at most once per
+// device: wallet CREATION arms it (armTour), the unlocked wallet shows it, and
+// dismissal consumes it. Fixes: #1160 (ECC F-P3-3).
+//
+// Placement (WalletEntry.jsx, the `isUnlocked` branch) is deliberate: every step
+// describes something you do with a wallet you already have — set a duress PIN,
+// hide a wallet, export a backup, bind the PIN to biometrics. Shown on the
+// pre-creation choose screen it advertised features the user could not act on
+// yet, interrupting the create/import decision. Do not move it back ahead of
+// wallet creation without revisiting the step copy.
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Lock, Ghost, CloudUpload, Fingerprint, X } from 'lucide-react';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 const TOUR_SEEN_KEY = 'veyrnox-first-run-tour-seen';
+const TOUR_ARMED_KEY = 'veyrnox-first-run-tour-armed';
+
+// The tour fires ONLY after a wallet is created on this device — never on a
+// plain unlock. Absence-of-seen is not the trigger: that would also fire for an
+// existing user who never happened to see the old pre-creation tour, putting a
+// full-screen modal over the wallet of someone who never created one here.
+// Creation arms it explicitly; the unlocked wallet consumes it.
+//
+// Deliberately NOT armed by the recovery paths (PIN recovery, file restore) or
+// by seed import — those restore a wallet that already existed, so the user is
+// not new. Only fresh creation counts.
+export function armTour() {
+  try {
+    if (isDeniabilityOrDemoActive()) return; // I3: no decoy/demo session writes real state
+    localStorage.setItem(TOUR_ARMED_KEY, '1');
+  } catch { /* storage unavailable — tour simply never fires */ }
+}
 
 const STEPS = [
   {
@@ -39,7 +65,9 @@ const STEPS = [
 ];
 
 export function shouldShowTour() {
-  return !localStorage.getItem(TOUR_SEEN_KEY);
+  try {
+    return !!localStorage.getItem(TOUR_ARMED_KEY) && !localStorage.getItem(TOUR_SEEN_KEY);
+  } catch { return false; }
 }
 
 export default function FirstRunTour({ onDone }) {
@@ -54,7 +82,10 @@ export default function FirstRunTour({ onDone }) {
 
   const dismiss = () => {
     setVisible(false);
-    localStorage.setItem(TOUR_SEEN_KEY, '1');
+    try {
+      localStorage.setItem(TOUR_SEEN_KEY, '1');
+      localStorage.removeItem(TOUR_ARMED_KEY); // consumed — don't leave it primed
+    } catch { /* storage unavailable */ }
     onDone?.();
   };
 
