@@ -64,10 +64,15 @@ describe('TermsLegal — accordion trigger<->panel association', () => {
     expect(document.getElementById(/** @type {string} */ (controlsId))).toBeNull();
   });
 
-  it('each of the 15 sections gets its own distinct panel id (no collisions)', () => {
+  // 26 = 15 terms sections + 11 privacy-policy sections. The privacy policy was
+  // inlined on 2026-07-23 (previously the page only linked out to it), and both
+  // sets number from 1 — so §1 of each would have emitted the SAME DOM id had
+  // TermsSection not been given a `group` namespace. This test caught exactly
+  // that collision when the policy was added, which is what it is for.
+  it('each of the 26 sections gets its own distinct panel id (no collisions)', () => {
     renderPage();
     const triggers = screen.getAllByRole('button').filter((b) => /^\d{1,2}\./.test(b.textContent));
-    expect(triggers.length).toBe(15);
+    expect(triggers.length).toBe(26);
     const ids = new Set();
     for (const t of triggers) {
       fireEvent.click(t);
@@ -77,6 +82,6 @@ describe('TermsLegal — accordion trigger<->panel association', () => {
       ids.add(id);
       fireEvent.click(t); // collapse again to keep the DOM small
     }
-    expect(ids.size).toBe(15);
+    expect(ids.size).toBe(26);
   });
 });

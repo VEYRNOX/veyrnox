@@ -37,7 +37,11 @@ function Section({ icon: Icon, title, children }) {
   );
 }
 
-function TermsSection({ number, title, children }) {
+// `group` namespaces the panel id. The privacy policy and the terms are both
+// numbered from 1, so without it §1 of each would emit the SAME DOM id — two
+// elements sharing an id, and every aria-controls on the page resolving to
+// whichever rendered first. The accordion a11y test pins this.
+function TermsSection({ number, title, group = "terms", children }) {
   const [open, setOpen] = useState(false);
   // F5-mirror (2026-07-20 branch review): the trigger had aria-expanded but
   // no programmatic link to the body it discloses — expanding, say, §11
@@ -47,7 +51,7 @@ function TermsSection({ number, title, children }) {
   // exists (the body here is likewise only rendered while `open`), so there
   // is never a dangling reference; the panel carries a matching id + a real
   // region role/name once present.
-  const panelId = `terms-section-${number}`;
+  const panelId = `${group}-section-${number}`;
   return (
     <div className="border-b border-border last:border-b-0">
       <button
@@ -93,11 +97,188 @@ export default function TermsLegal() {
       </div>
 
       <div className="space-y-3">
-        {/* §0 — Privacy policy */}
+        {/* §0 — Privacy policy (mirrors veyrnox.com/privacy) */}
         <Section icon={ShieldCheck} title="Privacy policy">
-          <p>
-            The <b>privacy policy</b> for <strong>VEYRNOX</strong> is published at
-            {" "}
+          <p className="font-medium">
+            Last updated: 23 July 2026.{" "}
+            <a
+              href={PRIVACY_POLICY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm inline-flex items-center gap-1"
+            >
+              View on veyrnox.com
+              <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            </a>
+          </p>
+          <p className="font-semibold text-foreground">
+            There is no account, no user database, and no server-side copy of your wallet, keys,
+            or activity. Your wallet lives on your device, encrypted. The one thing we do record
+            is a short list of anonymous usage events — set out in full in section 9.
+          </p>
+
+          <div className="mt-2 rounded-lg border border-border bg-secondary/30 px-4 py-1">
+            <TermsSection number={1} title="Our Privacy Model" group="privacy">
+              <p>
+                Veyrnox is a self-custody wallet built so there is as close to nothing to collect as
+                a working app allows. We do not run user accounts, we do not operate a database of
+                users or wallets, and our backend never stores your balances, addresses, or
+                transaction history.
+              </p>
+              <p>
+                Everything that could identify you or your holdings is generated and kept on your
+                device. The wallet itself holds nothing about you that we can see.
+              </p>
+              <p>
+                One exception — the launch waitlist. If you choose to join it, we store the email
+                address you submit so we can tell you when the app launches. That email is never
+                required to use the wallet, and you can ask us to delete it at any time at
+                privacy@veyrnox.com.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={2} title="What We Don't Collect" group="privacy">
+              <ul className="list-disc pl-4 space-y-1">
+                <li><b>No account or sign-up.</b> You don&rsquo;t register, and we never ask for a name or password.</li>
+                <li><b>No private keys or seed phrases.</b> These are generated and encrypted on your device and never leave it.</li>
+                <li><b>No wallet database.</b> Balances, labels, addresses, and transaction history are stored on your device, not on our servers.</li>
+                <li><b>No behavioural profiling or ad tracking.</b> No advertising IDs, no third-party trackers, no cross-app tracking, and no profiling of you or your holdings. We do record a small set of anonymous usage events — see section 9.</li>
+                <li><b>No identity data.</b> No KYC, identity documents, or biometric data.</li>
+              </ul>
+            </TermsSection>
+
+            <TermsSection number={3} title="What Stays On Your Device" group="privacy">
+              <p>
+                Your seed phrase, private keys, wallet labels, address book, transaction history, and
+                app preferences are stored locally and encrypted on your device. Veyrnox cannot read
+                them, copy them, or recover them.
+              </p>
+              <p>
+                If you choose to email our support team, we receive only what you put in that
+                message. That is the only information you ever share with us, and only because you
+                sent it.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={4} title="Retention & Deletion" group="privacy">
+              <p>
+                Apart from the anonymous events in section 9, we hold no personal data, so there is
+                nothing for us to retain and nothing for us to delete on our side.
+              </p>
+              <p>
+                Those anonymous events are kept for up to 12 months and then deleted. Because they
+                carry no identifier that points to a person, we cannot look up, export, or delete
+                the events belonging to any individual — there is no link between them and you to
+                follow.
+              </p>
+              <p>
+                To erase your Veyrnox data completely, delete the app or clear its on-device
+                storage. That removes the encrypted wallet from your device. Back up your seed
+                phrase first if you still need access to your funds.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={5} title="Security" group="privacy">
+              <p>
+                Private keys are generated and stored exclusively on your device and encrypted
+                locally, with hardware-backed key storage where your device supports it. The backend
+                is untrusted by design and never receives your key material. Veyrnox has zero access
+                to your keys or funds.
+              </p>
+              <p>
+                Sensitive in-app actions are protected by passkeys and on-device authentication.
+                Connections to public blockchain nodes use TLS in transit. No method of transmission
+                over the internet is ever 100% secure, which is one more reason we keep your data off
+                our servers entirely.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={6} title="Your Rights" group="privacy">
+              <p>
+                Privacy laws such as the GDPR give you rights to access, correct, port, and erase the
+                personal data a company holds about you. Because Veyrnox holds no personal data about
+                you, there is generally nothing on our side to access, correct, export, or erase —
+                you already hold and control all of it on your own device.
+              </p>
+              <p>
+                The one exception is the anonymous usage events in section 9. These are pseudonymous
+                and are not linked to your identity, so we are unable to connect them to a specific
+                person, including you. Deleting the app removes the install identifier from your
+                device, after which no further events can be associated with that install.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={7} title="Children's Privacy" group="privacy">
+              <p>
+                Veyrnox is not directed at children under the age of 18, and we hold no information
+                identifying anyone, including minors.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={8} title="Third-Party Networks" group="privacy">
+              <p>
+                To show balances and broadcast transactions, the app connects to public blockchain RPC
+                nodes and price feeds. These requests are necessary to use a blockchain. They are not
+                used to build a profile of you, and we do not attach your identity to them. Those
+                providers operate under their own policies.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={9} title="Cookies & Anonymous Usage Events" group="privacy">
+              <p>
+                The Veyrnox app uses no cookies, no third-party analytics SDKs, and no tracking
+                pixels. Our website uses no advertising or third-party tracking cookies.
+              </p>
+              <p>
+                The app does record a small number of anonymous usage events on our own
+                infrastructure, so we can tell how many people set up a wallet and which features are
+                actually used.
+              </p>
+              <p>
+                Each event contains only three things: the name of the action, the time it happened,
+                and a randomly generated install identifier. That identifier is created on your
+                device the first time it is needed. It is not your advertising ID, not your Apple or
+                Google ID, and not derived from any hardware identifier. It is never linked to your
+                name, email, wallet, or addresses, and it disappears when you delete the app or clear
+                its storage.
+              </p>
+              <p>The events we record are:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>a wallet was created</li>
+                <li>a wallet was imported</li>
+                <li>a backup was confirmed</li>
+                <li>a session was started</li>
+                <li>the receive screen was opened, and for which asset</li>
+                <li>a send completed, and for which asset</li>
+                <li>a WalletConnect session was approved</li>
+              </ul>
+              <p>
+                <b>Never included:</b> wallet addresses, balances, amounts, transaction hashes, seed
+                phrases, recovery data, contacts, or location.
+              </p>
+              <p className="font-semibold text-foreground">
+                Never sent at all: nothing is recorded in decoy (duress) sessions or in demo mode.
+                Those sessions make no calls of this kind whatsoever, by design — a decoy session
+                must leave no trace that a real one ever existed.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={10} title="Changes to This Policy" group="privacy">
+              <p>
+                We may update this Privacy Policy from time to time. Any changes will be posted on the
+                published policy with a new &ldquo;last updated&rdquo; date.
+              </p>
+            </TermsSection>
+
+            <TermsSection number={11} title="Contact Us" group="privacy">
+              <p>
+                Questions about this Privacy Policy or our data practices: privacy@veyrnox.com
+              </p>
+            </TermsSection>
+          </div>
+
+          <p className="pt-1">
+            The authoritative copy is published at{" "}
             <a
               href={PRIVACY_POLICY_URL}
               target="_blank"
@@ -107,8 +288,7 @@ export default function TermsLegal() {
               {PRIVACY_POLICY_URL}
               <ExternalLink className="h-3 w-3" aria-hidden="true" />
             </a>
-            . It is the same URL published on the Google Play and App Store listings — a single
-            authoritative source, updated in one place.
+            {" "}— the same URL published on the Google Play and App Store listings.
           </p>
         </Section>
 
