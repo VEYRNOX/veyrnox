@@ -80,9 +80,10 @@ plausible. Rejected values:
 | the **debug** keystore cert | a local-debug value pasted into a release build |
 
 The last two are computed at build time from the keystores on disk — nothing hardcoded, so a
-key rotation cannot make them stale. CI re-asserts all three rejections on every
-`android-release` run (`.github/workflows/ci.yml`), because this guard has silently lost a
-check once already (see below).
+key rotation cannot make them stale. CI re-asserts all four rejections on every
+`android-release` run (`.github/workflows/ci.yml`) — including the debug-cert case, by
+generating AGP's default debug keystore and feeding the guard its own fingerprint — because
+this guard has silently lost a check once already (see below).
 
 ## 2. Check `.env.local` — Vite inlines these at BUILD time
 

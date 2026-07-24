@@ -287,11 +287,36 @@ jobs:
           UPLOAD_SHA=$(keytool -list -v -keystore keystore.jks \
             -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" \
             | grep 'SHA256:' | head -1 | awk '{print $2}')
-          if [ -n "$UPLOAD_SHA" ]; then
-            expect_rejected "the upload cert" -PRELEASE_CERT_SHA256="$UPLOAD_SHA"
-          else
-            echo "::warning::could not read the upload cert fingerprint — upload-cert case skipped"
+          # This is the case the guard most needs to cover — the upload cert "looks
+          # correct". keystore.jks exists (checked above), so an empty read is a real
+          # failure, not a skip condition: fail loudly rather than let a keytool
+          # output-format change silently retire this case the way PR #1313 dropped one.
+          if [ -z "$UPLOAD_SHA" ]; then
+            echo "::error::could not derive the upload cert fingerprint from keystore.jks — refusing to skip the upload-cert case"
+            exit 1
           fi
+          expect_rejected "the upload cert" -PRELEASE_CERT_SHA256="$UPLOAD_SHA"
+          # The debug keystore cert — the exact check PR #1310 added and PR #1313
+          # silently dropped, so it is the one that most needs a standing test.
+          # android.signingConfigs.debug reads AGP's default debug keystore
+          # (~/.android/debug.keystore); assembleRelease never creates it, so generate
+          # it with AGP's standard debug credentials, then feed the guard its own debug
+          # fingerprint. Same file+alias the guard reads -> the match is guaranteed.
+          DEBUG_KS="$HOME/.android/debug.keystore"
+          if [ ! -f "$DEBUG_KS" ]; then
+            mkdir -p "$HOME/.android"
+            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          DEBUG_SHA=$(keytool -list -v -keystore "$DEBUG_KS" \
+            -storepass android -alias androiddebugkey \
+            | grep 'SHA256:' | head -1 | awk '{print $2}')
+          if [ -z "$DEBUG_SHA" ]; then
+            echo "::error::could not derive the debug keystore fingerprint — refusing to skip the debug-cert case"
+            exit 1
+          fi
+          expect_rejected "the debug keystore cert" -PRELEASE_CERT_SHA256="$DEBUG_SHA"
           # Restore the good artifact the next step uploads.
           ./gradlew assembleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
         working-directory: android
