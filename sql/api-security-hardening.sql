@@ -45,7 +45,9 @@ BEGIN
   IF p_event NOT IN (
     'wallet_created', 'wallet_imported', 'session_start',
     'send_completed', 'receive_viewed', 'wc_session_approved',
-    'backup_confirmed'
+    'backup_confirmed',
+    'referral_code_applied', 'paywall_shown',
+    'paywall_dismissed', 'paywall_converted'
   ) THEN
     RAISE EXCEPTION 'Unknown event' USING errcode = 'P0003';
   END IF;

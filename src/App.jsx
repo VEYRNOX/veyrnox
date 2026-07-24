@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from 'next-themes'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useParams } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
 import { TrezorProvider } from '@/context/TrezorContext';
@@ -105,6 +105,14 @@ const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const Subscription = lazy(() => import('./pages/Subscription'));
 const SafetyPlus = lazy(() => import('./pages/SafetyPlus'));
 const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
+
+function ReferralRedirect() {
+  const { code } = useParams();
+  useEffect(() => {
+    captureReferralFromUrl(new URL(`http://localhost/?ref=${code}`));
+  }, [code]);
+  return <Navigate to="/" replace />;
+}
 
 const AuthenticatedApp = () => {
   // Render the main app
@@ -220,6 +228,7 @@ const AuthenticatedApp = () => {
       {import.meta.env.DEV && PrfSpike && (
         <Route path="/dev/prf-spike" element={<PrfSpike />} />
       )}
+      <Route path="/r/:code" element={<ReferralRedirect />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
     </Suspense>
