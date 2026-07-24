@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 // App-wide toast host. MUST be the sonner Toaster: every toast call in the app
 // (31 files) imports `toast` from "sonner", so the Radix `ui/toaster` that used
 // to be mounted here rendered nothing — its useToast() store had zero writers,
@@ -22,6 +22,7 @@ import DeepLinkHandler from '@/components/DeepLinkHandler';
 import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
 import Spinner from '@/components/Spinner';
+import { captureReferralFromUrl } from '@/lib/referralAttribution';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -227,6 +228,7 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  useEffect(() => { captureReferralFromUrl(); }, []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
