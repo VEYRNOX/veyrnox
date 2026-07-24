@@ -67,16 +67,24 @@ rule was being applied to on-chain status but not to build configuration.
 ## Prevention (the actual deliverable)
 
 Documentation alone would not have caught #1313, because nothing ever asserted the guard
-**rejects** anything. `.github/workflows/ci.yml` (`android-release`) now runs three negative
+**rejects** anything. `.github/workflows/ci.yml` (`android-release`) now runs four negative
 cases after the real build, while Gradle is warm:
 
 1. blank → must fail
 2. malformed → must fail
 3. **the upload cert, derived at runtime via `keytool`** → must fail
+4. **the debug keystore cert** → must fail — the exact check #1310 added and #1313 dropped,
+   so it gets a standing test rather than only the manual verification below. The
+   `android-release` job never creates AGP's default debug keystore
+   (`~/.android/debug.keystore`), so the case generates it with AGP's standard debug
+   credentials and feeds the guard its own fingerprint.
 
 Each asserts the failure mentions `RELEASE_CERT_SHA256`, so an unrelated build break cannot
-masquerade as a passing test. Deriving the upload fingerprint instead of hardcoding it means
-the next key rotation cannot quietly retire the test — the mistake #1310 made.
+masquerade as a passing test. Deriving both wrong-cert fingerprints at runtime instead of
+hardcoding them means the next key rotation cannot quietly retire the test — the mistake
+#1310 made. Cases 3 and 4 also fail the job (rather than warn-and-skip) if their fingerprint
+cannot be read while the keystore exists, so the guard's key cases cannot silently stop
+running.
 
 ## Verification evidence (INTERNAL)
 
