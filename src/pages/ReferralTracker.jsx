@@ -114,7 +114,13 @@ function ProgressBar({ paidCount }) {
       </div>
       <div className="flex justify-between text-[10px] text-muted-foreground">
         <span>{paidCount.toLocaleString()} paid subscribers</span>
-        <span>{rangeEnd.toLocaleString()} for {info.next.label}</span>
+        {info.next ? (
+          <span className="font-medium text-primary">
+            {(info.next.min - paidCount).toLocaleString()} more to {info.next.label} ({info.next.commission}%)
+          </span>
+        ) : (
+          <span>Maximum tier reached</span>
+        )}
       </div>
     </div>
   );
