@@ -50,6 +50,12 @@ export async function redeemCode(code) {
   // compatible DB-first-then-client migration — Postgres can't rename a function
   // param in place, and mobile version skew would break redemption mid-rollout — so
   // it is deliberately left as `ref_code`. Do not "fix" this to `p_code` in isolation.
+  //
+  // WINDOW (pre-first-publish): the skew hazard only exists once there are installed
+  // clients. While both store submissions are unpublished (0 clients), the rename can
+  // be done cleanly — fold it into the Transak SDK build so DB + shipped client change
+  // together with no rollout to skew. See CLAUDE.md "Open residuals". After first
+  // publish this window closes and the migration reverts to DB-first-then-client.
   const { data, error } = await supabase.rpc('increment_referral', {
     ref_code: code,
     p_device_id: deviceId,
