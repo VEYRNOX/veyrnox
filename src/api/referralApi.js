@@ -7,14 +7,17 @@
 import { supabase } from '@/lib/supabaseClient';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
+import { getAppUserId } from '@/lib/purchases';
 
 export async function generateServerCode() {
   if (!supabase || isDeniabilityOrDemoActive()) return null;
   try {
     const deviceId = getOrCreateDeviceId();
     if (!deviceId) return null;
+    const rcUserId = await getAppUserId();
     const { data, error } = await supabase.rpc('generate_referral_code', {
       p_device_id: deviceId,
+      p_rc_user_id: rcUserId,
     });
     if (error || !data) return null;
     return data;
@@ -27,9 +30,11 @@ export async function registerCode(code) {
   if (!supabase || isDeniabilityOrDemoActive()) return;
   try {
     const deviceId = getOrCreateDeviceId();
+    const rcUserId = await getAppUserId();
     await supabase.rpc('register_referral_code', {
       p_code: code,
       p_device_id: deviceId,
+      p_rc_user_id: rcUserId,
     });
   } catch {
     // Best-effort: silently ignore network/db failures on register.
@@ -43,21 +48,8 @@ export async function redeemCode(code) {
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) throw Object.assign(new Error('No device ID'), { status: 500 });
 
-  // NOTE: `ref_code` (not `p_code`) is intentional and must stay. Supabase binds
-  // RPC args by name, so this key must match the Postgres parameter name exactly.
-  // `increment_referral` predates the `p_`-prefix convention used by the other RPCs
-  // (see sql/api-security-hardening.sql). Renaming it is a coordinated, backward-
-  // compatible DB-first-then-client migration — Postgres can't rename a function
-  // param in place, and mobile version skew would break redemption mid-rollout — so
-  // it is deliberately left as `ref_code`. Do not "fix" this to `p_code` in isolation.
-  //
-  // WINDOW (pre-first-publish): the skew hazard only exists once there are installed
-  // clients. While both store submissions are unpublished (0 clients), the rename can
-  // be done cleanly — fold it into the Transak SDK build so DB + shipped client change
-  // together with no rollout to skew. See CLAUDE.md "Open residuals". After first
-  // publish this window closes and the migration reverts to DB-first-then-client.
   const { data, error } = await supabase.rpc('increment_referral', {
-    ref_code: code,
+    p_code: code,
     p_device_id: deviceId,
   });
 
@@ -123,6 +115,31 @@ export async function fetchEarnings(code) {
     });
     if (error || !data) return null;
     return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function claimFirstReferralBonus(referralCode) {
+  if (!supabase || isDeniabilityOrDemoActive()) return null;
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return null;
+
+    const res = await fetch(
+      `${supabaseUrl}/functions/v1/first-referral-bonus`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ referral_code: referralCode }),
+      },
+    );
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
     return null;
   }

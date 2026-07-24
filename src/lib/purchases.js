@@ -270,6 +270,16 @@ export async function getCustomerInfo() {
   return customerInfo;
 }
 
+export async function getAppUserId() {
+  if (!isNative()) return null;
+  try {
+    const info = await getCustomerInfo();
+    return info?.originalAppUserId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function addCustomerInfoUpdateListener(callback) {
   if (!isNative()) return () => {};
   const listenerId = await Purchases.addCustomerInfoUpdateListener(callback);

@@ -41,7 +41,7 @@ create policy "public select" on referrals for select using (true);
 -- 3. Atomic increment function: increments the count for a known code
 --    and returns the new value. Raises an exception if the code doesn't
 --    exist so the app can distinguish 404 from 500.
-create or replace function increment_referral(ref_code text)
+create or replace function increment_referral(p_code text)
 returns integer
 language plpgsql
 security definer
@@ -51,11 +51,11 @@ declare
 begin
   update referrals
      set count = count + 1
-   where code = ref_code
+   where code = p_code
   returning count into new_count;
 
   if new_count is null then
-    raise exception 'Code not found: %', ref_code using errcode = 'P0001';
+    raise exception 'Code not found: %', p_code using errcode = 'P0001';
   end if;
 
   return new_count;

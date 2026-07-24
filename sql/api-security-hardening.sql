@@ -88,19 +88,14 @@ ALTER TABLE referral_increments ENABLE ROW LEVEL SECURITY;
 -- Replace increment_referral: requires device_id, allows max 1 increment
 -- per device per code. Idempotent — second call returns current count.
 --
--- The first arg is `ref_code`, NOT `p_code` like the other RPCs here. This is
--- intentional legacy naming inherited from supabase/referrals.sql and MUST stay:
--- the client (src/api/referralApi.js) binds this RPC's args by name. Renaming to
--- `p_code` would require DROPping the function (Postgres can't rename a param in
--- place) and shipping a matching client in lockstep — mobile version skew would
--- break live redemptions mid-rollout. Do not rename in isolation.
---
--- WINDOW (pre-first-publish): the skew hazard only exists once clients are installed.
--- While both app-store submissions are unpublished (0 clients), the rename is safe —
--- do the DROP+recreate here and ship the matching client in the same Transak SDK
--- build, so there is no live rollout to skew. See CLAUDE.md "Open residuals". Once
--- published, this window closes.
-CREATE OR REPLACE FUNCTION increment_referral(ref_code text, p_device_id uuid DEFAULT NULL)
+-- Pre-first-publish rename: `ref_code` → `p_code` to match the naming
+-- convention used by all sibling RPCs. This is a DROP+CREATE (Postgres can't
+-- rename a param in place). Safe while 0 published clients exist — no version
+-- skew. See CLAUDE.md "Open residuals".
+DROP FUNCTION IF EXISTS increment_referral(text, uuid);
+DROP FUNCTION IF EXISTS increment_referral(text);
+
+CREATE OR REPLACE FUNCTION increment_referral(p_code text, p_device_id uuid DEFAULT NULL)
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -115,29 +110,29 @@ BEGIN
   -- Already incremented by this device? Return current count (idempotent).
   IF EXISTS (
     SELECT 1 FROM referral_increments
-     WHERE code = ref_code AND device_id = p_device_id
+     WHERE code = p_code AND device_id = p_device_id
   ) THEN
-    SELECT count INTO new_count FROM referrals WHERE code = ref_code;
+    SELECT count INTO new_count FROM referrals WHERE code = p_code;
     IF new_count IS NULL THEN
-      RAISE EXCEPTION 'Code not found: %', ref_code USING errcode = 'P0001';
+      RAISE EXCEPTION 'Code not found: %', p_code USING errcode = 'P0001';
     END IF;
     RETURN new_count;
   END IF;
 
   -- Record the device so it can't increment again.
   INSERT INTO referral_increments (code, device_id)
-  VALUES (ref_code, p_device_id);
+  VALUES (p_code, p_device_id);
 
   UPDATE referrals
      SET count = count + 1
-   WHERE code = ref_code
+   WHERE code = p_code
   RETURNING count INTO new_count;
 
   IF new_count IS NULL THEN
     -- Rollback the increment record if the code doesn't exist.
     DELETE FROM referral_increments
-     WHERE code = ref_code AND device_id = p_device_id;
-    RAISE EXCEPTION 'Code not found: %', ref_code USING errcode = 'P0001';
+     WHERE code = p_code AND device_id = p_device_id;
+    RAISE EXCEPTION 'Code not found: %', p_code USING errcode = 'P0001';
   END IF;
 
   RETURN new_count;

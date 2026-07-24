@@ -40,7 +40,7 @@ import {
   calculateDiscountCents,
   PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
-import { recordAttribution, fetchPaidCount } from "@/api/referralApi";
+import { recordAttribution, fetchPaidCount, claimFirstReferralBonus } from "@/api/referralApi";
 import { OFFER_UNAVAILABLE } from "@/lib/purchases";
 import OutcomeSteps, {
   OUTCOME_STEPS,
@@ -266,6 +266,7 @@ export default function Subscription() {
         try {
           await recordAttribution(refCode, effectiveBilling, fullPrice, discountCents);
           markAttributed();
+          claimFirstReferralBonus(refCode).catch(() => {});
         } catch { /* best-effort — retry on next purchase if Supabase failed */ }
         setReferralAttribute(refCode, referrerTierInfo?.key).catch(() => {});
       }
