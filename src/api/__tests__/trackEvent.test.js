@@ -102,4 +102,11 @@ describe('trackEvent', () => {
     expect(EVENT.WC_SESSION_APPROVED).toBe('wc_session_approved');
     expect(EVENT.BACKUP_CONFIRMED).toBe('backup_confirmed');
   });
+
+  it('includes growth analytics events', () => {
+    expect(EVENT.REFERRAL_CODE_APPLIED).toBe('referral_code_applied');
+    expect(EVENT.PAYWALL_SHOWN).toBe('paywall_shown');
+    expect(EVENT.PAYWALL_DISMISSED).toBe('paywall_dismissed');
+    expect(EVENT.PAYWALL_CONVERTED).toBe('paywall_converted');
+  });
 });
