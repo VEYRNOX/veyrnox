@@ -109,7 +109,7 @@ const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 function ReferralRedirect() {
   const { code } = useParams();
   useEffect(() => {
-    captureReferralFromUrl(new URL(`http://localhost/?ref=${code}`));
+    try { captureReferralFromUrl(new URL(`http://localhost/?ref=${code}`)); } catch {}
   }, [code]);
   return <Navigate to="/" replace />;
 }

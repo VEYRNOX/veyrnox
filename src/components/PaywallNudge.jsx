@@ -11,7 +11,7 @@
 // first time it runs on a given calendar day, so multiple unlocks in the
 // same day count as one "session day".
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,8 +60,11 @@ export default function PaywallNudge() {
   const [visible, setVisible] = useState(false);
   const { containerRef } = useModalA11y({ active: visible, onEscape: () => handleDismiss() });
 
+  const trackedRef = useRef(false);
   useEffect(() => {
+    if (trackedRef.current) return;
     if (shouldShowPaywallNudge(currentTier)) {
+      trackedRef.current = true;
       setVisible(true);
       void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: 'day_3' }).catch(() => {});
     }

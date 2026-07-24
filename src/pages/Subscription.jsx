@@ -267,7 +267,7 @@ export default function Subscription() {
           await recordAttribution(refCode, effectiveBilling, fullPrice, discountCents);
           markAttributed();
         } catch { /* best-effort — retry on next purchase if Supabase failed */ }
-        setReferralAttribute(refCode).catch(() => {});
+        setReferralAttribute(refCode, referrerTierInfo?.key).catch(() => {});
       }
       toast.success("Safety Plus unlocked");
     } catch (err) {

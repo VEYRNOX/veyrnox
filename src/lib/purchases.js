@@ -284,12 +284,16 @@ export async function addCustomerInfoUpdateListener(callback) {
 // The referral code identifies the REFERRER, not the purchaser — no wallet
 // address, seed, or balance is ever sent. I3-gated at the call site
 // (Subscription.jsx only calls this after a successful real-session purchase).
-export async function setReferralAttribute(code) {
+export async function setReferralAttributes(code, tierKey, isFoundingReferrer) {
   if (!isNative() || !configured || !code) return;
+  const attrs = { referralCode: code };
+  if (tierKey) attrs.referralTier = tierKey;
+  if (isFoundingReferrer != null) attrs.isFoundingReferrer = String(isFoundingReferrer);
   try {
-    await Purchases.setAttributes({ referralCode: code });
+    await Purchases.setAttributes(attrs);
   } catch { /* best-effort */ }
 }
+export const setReferralAttribute = setReferralAttributes;
 
 // Deep-link to the platform's own subscription management page (Apple: App Store
 // Subscriptions; Google: Play Store Subscriptions). The Capacitor RC plugin does
