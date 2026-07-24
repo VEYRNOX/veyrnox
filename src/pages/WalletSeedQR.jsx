@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
+import BackupPaywallNudge from "@/components/BackupPaywallNudge";
+import { useTier } from "@/lib/TierProvider";
 
 // Escape HTML metacharacters before interpolating into the print document.
 function escapeHtml(s) {
@@ -24,6 +26,7 @@ function escapeHtml(s) {
 
 export default function WalletSeedQR() {
   const { wallets, confirmWalletBackup } = useWallet();
+  const { currentTier } = useTier();
 
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [mnemonic, setMnemonic] = useState(null);
@@ -310,7 +313,12 @@ export default function WalletSeedQR() {
           <Button onClick={handlePrint} className="gap-2 w-full" variant="outline">
             <Printer className="h-4 w-4" /> Print Secure Backup
           </Button>
-          {printed && <p className="text-xs text-success">✓ Printed — backup confirmed.</p>}
+          {printed && (
+            <>
+              <p className="text-xs text-success">✓ Printed — backup confirmed.</p>
+              <BackupPaywallNudge currentTier={currentTier} />
+            </>
+          )}
 
           <Button
             size="sm"
