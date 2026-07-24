@@ -1402,6 +1402,18 @@ and `syncCount()` no longer converts a failed sync into a fake success state. IN
 unit-tested, NOT device-verified, NOT independently audited, no on-chain txid (not
 applicable — this is a Supabase-backed discount-code feature, not a signing path).
 
+**API security hardening (PR #1334, merged 2026-07-23):** all Supabase client writes
+(events, referral increment/generate/register, attribution) migrated from direct anon
+INSERT to rate-limited SECURITY DEFINER Postgres functions. Key controls: `track_event()`
+60/device/hour + event allowlist + 4KB metadata cap; `increment_referral()` 1 per device
+per code via `referral_increments` dedup table (closes the count-inflation attack that
+could have granted Gold-tier pricing); `generate_referral_code()` 1 per device (idempotent);
+`register_referral_code()` 3/device/hour; `record_attribution()` validated + 2/code/hour;
+public SELECT on `referral_attributions` dropped (revenue disclosure closed). Shared
+`lib/deviceId.js` extracted. SQL migration: `sql/api-security-hardening.sql` — LIVE on
+production Supabase. Client code: `trackEvent.js` + `referralApi.js` rewritten to use RPCs.
+BUILT, INTERNAL — not independently audited.
+
 All four merged PRs: BUILT / unit-tested only, INTERNAL — not device-verified, not
 independently audited, no on-chain txid. PR #1276 is additionally NOT YET MERGED — do not
 report H-1 as fixed until it lands on `main`.

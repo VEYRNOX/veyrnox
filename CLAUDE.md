@@ -26,7 +26,7 @@ identity; the app never holds keys server-side.
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
 
-## Current state summary (2026-07-22)
+## Current state summary (2026-07-23)
 
 **Hardware KEK:** Both platforms BUILT + device-verified (INTERNAL). M2c (iOS SE) and M2d
 (Android StrongBox/TEE) UNGATED (PR #1152). Android C-1 v3 salt-binding FIXED +
@@ -57,7 +57,8 @@ Store-side setup complete (Apple + Google + RevenueCat). iOS sandbox-purchase
 device-verified. **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV) —
 verified 2026-07-21; Guideline 3.1.5(b) satisfied**, unblocking the iOS real-device build
 and the first App Store / IAP submission (both still to be done). Play launch still gated
-on the upload-key reset (pending). Referral system BUILT (4-tier discount model, Supabase server-side codes);
+on the upload-key reset (pending). Referral system BUILT (4-tier discount model, Supabase server-side codes,
+API-hardened PR #1334 — dedup + rate-limited RPCs, see tracking section below);
 deniability-hardened 2026-07-20 (PR #1262, K-2): `syncCount` no longer coerces a failed API
 read into a fake "synced" success state written to shared localStorage, and the tracker
 page now renders a neutral empty state (gated on `isDeniabilityOrDemoActive()`) instead of
@@ -105,6 +106,15 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
   and there is **no consent/opt-out** (ePrivacy question — counsel).
 - **veyrnox.com/privacy is still WRONG** — dated 16 June, says "No analytics or
   tracking" in two places. In-app policy fixed (PR #1329); the site is not.
+- **API security hardening (PR #1334, merged 2026-07-23).** All Supabase writes
+  now go through rate-limited SECURITY DEFINER functions — no direct table INSERT
+  via the anon key. Controls: `track_event()` 60/device/hour + event allowlist +
+  4KB metadata cap; `increment_referral()` 1 per device per code (dedup table
+  prevents count-inflation attack); `generate_referral_code()` 1 per device;
+  `register_referral_code()` 3/device/hour; `record_attribution()` validated +
+  2/code/hour; `referral_attributions` public SELECT removed (revenue data no
+  longer disclosed). Shared `lib/deviceId.js` extracted. SQL migration:
+  `sql/api-security-hardening.sql`. BUILT, INTERNAL — not independently audited.
 
 **All 10 assets LIVE** — ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT.
 
