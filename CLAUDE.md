@@ -161,6 +161,15 @@ route/import), and the underlying gap is already tracked as weekly M-5 (2026-07-
 **Open residuals:** M-1 (EVM key unzeroable, ethers v6), M-6 (iOS bridge H copy),
 #1111 (vault AAD v:3 migration — plan r2 done, implementation blocked on owner decisions),
 LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
+- **Referral RPC arg rename — do during the Transak SDK build (pre-publish window).**
+  `increment_referral` uses the legacy `ref_code` arg while sibling RPCs use `p_code`
+  (flagged 2026-07-24 security diff; intentional, commented in `referralApi.js` +
+  `sql/api-security-hardening.sql`, PR #1337). Renaming is normally a DB-first-then-client
+  migration blocked by mobile version skew — BUT we currently have **0 published clients**
+  (both App Store + Play submissions awaiting review). While unpublished there is no skew
+  hazard, so fold the `ref_code`→`p_code` rename into the Transak SDK build: DROP+recreate
+  the function and ship the matching client together. After first publish this window
+  closes and it reverts to the coordinated migration. Not started.
 
 ## Security invariants
 

@@ -92,6 +92,12 @@ ALTER TABLE referral_increments ENABLE ROW LEVEL SECURITY;
 -- `p_code` would require DROPping the function (Postgres can't rename a param in
 -- place) and shipping a matching client in lockstep — mobile version skew would
 -- break live redemptions mid-rollout. Do not rename in isolation.
+--
+-- WINDOW (pre-first-publish): the skew hazard only exists once clients are installed.
+-- While both app-store submissions are unpublished (0 clients), the rename is safe —
+-- do the DROP+recreate here and ship the matching client in the same Transak SDK
+-- build, so there is no live rollout to skew. See CLAUDE.md "Open residuals". Once
+-- published, this window closes.
 CREATE OR REPLACE FUNCTION increment_referral(ref_code text, p_device_id uuid DEFAULT NULL)
 RETURNS integer
 LANGUAGE plpgsql
