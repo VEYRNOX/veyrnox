@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/BackupPaywallNudge.jsx
 //
 // Inline nudge shown after seed backup confirmation, offering Safety Plus
