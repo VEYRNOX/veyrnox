@@ -123,6 +123,7 @@ import { setLivePricesEnabled } from '@/lib/priceFeed';
 import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRedeemed, applyRedemption, getLocalState as getReferralState } from '@/lib/referral';
 import { generateServerCode, redeemCode } from '@/api/referralApi';
 import { trackEvent, EVENT } from '@/api/trackEvent';
+import { incrementSessionDayCount } from '@/components/PaywallNudge';
 // D-05: localStorage marker recording that biometric unlock was enabled SOLELY to
 // let Face ID open the DECOY (via enableDecoyBiometricUnlock). removeDuressPin reads
 // it to retract the shared veyrnox-biometric-unlock pref, so removing the duress PIN
@@ -1742,6 +1743,7 @@ export function WalletProvider({ children }) {
     setExploreMode(false);
     setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
     void trackEvent(EVENT.SESSION_START, { returning: true }).catch(() => {});
+    incrementSessionDayCount();
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
     // real hidden-wallet slot). Best-effort. See createWallet for the rationale.
     void ensureStealthPool().catch(() => {});

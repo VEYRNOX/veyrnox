@@ -30,6 +30,7 @@ import NotificationBell from "./NotificationBell";
 import { useReceiveDetector } from "@/notify/useReceiveDetector";
 import LockSealingOverlay from "./LockSealingOverlay";
 import Spinner from "./Spinner";
+import PaywallNudge from "./PaywallNudge";
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
 const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
@@ -351,6 +352,10 @@ export default function Layout() {
           <NotificationToast notification={latest} onDismiss={dismiss} />
         </div>
       </div>
+
+      {/* Day-3 soft paywall nudge (Task 6). Renders nothing until
+          shouldShowPaywallNudge() is true; I3-gated internally. */}
+      <PaywallNudge />
 
       {/* ── Mobile Top Bar ── */}
       <header
