@@ -12,7 +12,7 @@ import { setPendingReferral, getPendingReferral } from '@/lib/referral';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { trackEvent, EVENT } from '@/api/trackEvent';
 
-const CODE_RE = /^VYX-[A-Z2-9]{6}$/;
+const CODE_RE = /^VYX-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/;
 
 export function captureReferralFromUrl(url = new URL(window.location.href)) {
   if (isDeniabilityOrDemoActive()) return;

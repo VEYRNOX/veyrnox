@@ -2,7 +2,7 @@
 //
 // Inline nudge shown after seed backup confirmation, offering Safety Plus
 // (hardware binding) as the next step. I3: suppressed in deniability/demo.
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,14 @@ export function shouldShowBackupNudge(currentTier) {
 export default function BackupPaywallNudge({ currentTier }) {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(() => shouldShowBackupNudge(currentTier));
+  const trackedRef = useRef(false);
+
+  useEffect(() => {
+    if (visible && !trackedRef.current) {
+      trackedRef.current = true;
+      void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: 'post_backup' }).catch(() => {});
+    }
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -34,7 +42,7 @@ export default function BackupPaywallNudge({ currentTier }) {
   };
 
   const handleUpgrade = () => {
-    void trackEvent(EVENT.PAYWALL_SHOWN, { trigger: 'post_backup' }).catch(() => {});
+    void trackEvent(EVENT.PAYWALL_CONVERTED, { trigger: 'post_backup' }).catch(() => {});
     navigate('/plans');
   };
 
