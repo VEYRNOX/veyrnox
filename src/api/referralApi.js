@@ -43,6 +43,13 @@ export async function redeemCode(code) {
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) throw Object.assign(new Error('No device ID'), { status: 500 });
 
+  // NOTE: `ref_code` (not `p_code`) is intentional and must stay. Supabase binds
+  // RPC args by name, so this key must match the Postgres parameter name exactly.
+  // `increment_referral` predates the `p_`-prefix convention used by the other RPCs
+  // (see sql/api-security-hardening.sql). Renaming it is a coordinated, backward-
+  // compatible DB-first-then-client migration — Postgres can't rename a function
+  // param in place, and mobile version skew would break redemption mid-rollout — so
+  // it is deliberately left as `ref_code`. Do not "fix" this to `p_code` in isolation.
   const { data, error } = await supabase.rpc('increment_referral', {
     ref_code: code,
     p_device_id: deviceId,

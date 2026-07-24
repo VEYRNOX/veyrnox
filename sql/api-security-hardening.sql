@@ -85,6 +85,13 @@ ALTER TABLE referral_increments ENABLE ROW LEVEL SECURITY;
 
 -- Replace increment_referral: requires device_id, allows max 1 increment
 -- per device per code. Idempotent — second call returns current count.
+--
+-- The first arg is `ref_code`, NOT `p_code` like the other RPCs here. This is
+-- intentional legacy naming inherited from supabase/referrals.sql and MUST stay:
+-- the client (src/api/referralApi.js) binds this RPC's args by name. Renaming to
+-- `p_code` would require DROPping the function (Postgres can't rename a param in
+-- place) and shipping a matching client in lockstep — mobile version skew would
+-- break live redemptions mid-rollout. Do not rename in isolation.
 CREATE OR REPLACE FUNCTION increment_referral(ref_code text, p_device_id uuid DEFAULT NULL)
 RETURNS integer
 LANGUAGE plpgsql
