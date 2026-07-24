@@ -15,6 +15,7 @@ import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wa
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
 import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
+import ReferralPrompt from "@/components/ReferralPrompt";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -173,6 +174,9 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
         <Button variant="outline" onClick={onSendAnother}>
           Send Another
         </Button>
+      </motion.div>
+      <motion.div variants={item}>
+        <ReferralPrompt />
       </motion.div>
     </motion.div>
   );
