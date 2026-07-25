@@ -78,6 +78,8 @@ import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
 import { trackEvent, EVENT } from "@/api/trackEvent";
+import { requiresVerification } from "@/lib/seedVerifyGate";
+import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -207,6 +209,16 @@ export default function SendCrypto() {
     isDecoy,
     isHidden,
   });
+
+  // Telemetry (Task 9): funnel tracking for the send flow. safeEmit()-backed —
+  // never blocks/throws (I4) and is suppressed under deniability/demo by emit()'s
+  // own guards (I3), so these are safe to fire unconditionally on this screen.
+  const sendTracking = useSendFlowTracking();
+  const markFirstSend = useFirstSend();
+  useEffect(() => {
+    sendTracking.start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Cold-load / deep-link guard: if the vault is confirmed absent (new install),
   // redirect home rather than hanging on an empty form.
@@ -799,6 +811,16 @@ export default function SendCrypto() {
 
   const sendTx = useMutation({
     mutationFn: async () => {
+      // SEED-VERIFICATION GATE (Task 9, UI-level — distinct from evaluateSendGate()
+      // in lib/sendGate.js, which stays untouched). If this wallet deferred its
+      // seed-backup verification quiz and this send is at/above the safety
+      // threshold, block BEFORE any signing/broadcast work and send the user to
+      // finish verification. Checked first (cheap, local, no RPC) so a deferred
+      // wallet never even reaches the RASP/risk/limits machinery below.
+      if (requiresVerification(activeWalletId, amountUsd)) {
+        throw Object.assign(new Error('VERIFY_REQUIRED'), { code: 'VERIFY_REQUIRED' });
+      }
+
       // DEFENSE-IN-DEPTH: re-assert EVERY UI gate at signing time, as one ordered
       // decision, so no stale UI state can broadcast past a tripped gate. The order
       // and the user-facing messages live in the pure evaluateSendGate()
@@ -1147,8 +1169,16 @@ export default function SendCrypto() {
       successHaptic();
       recordAudit("send_completed"); // opt-in audit log; no-op unless enabled + primary session
       void trackEvent(EVENT.SEND_COMPLETED, { currency: selectedWallet?.currency }).catch(() => {});
+      markFirstSend();
     },
     onError: (err) => {
+      // Seed-verification gate (Task 9): redirect to /verify rather than showing
+      // an error toast — this isn't a failure, it's a required detour. Fires
+      // before the haptic buzz used for real send failures below.
+      if (/** @type {Error & {code?: string}} */ (err)?.code === 'VERIFY_REQUIRED') {
+        navigate('/verify', { state: { returnTo: '/send' } });
+        return;
+      }
       errorHaptic();
       // When the network send fails AFTER 2FA was consumed, the gate throws
       // TWO_FACTOR (twoFactorVerifiedRef was already cleared — one-shot, secure).

@@ -62,7 +62,7 @@ test.describe('Passkey clone/replay detection (M-K) — CDP dual-authenticator, 
     // Real (non-demo) build: registerPasskeyCredential/verifyPasskeyAssertion take
     // the real WebAuthn branch only outside demo mode (passkey.js:422 DEMO check).
     await page.goto(`${BASE}/?demo=0`);
-    await page.evaluate(() => { try { localStorage.clear(); } catch { /* noop */ } });
+    await page.evaluate(() => { try { localStorage.clear(); localStorage.setItem('veyrnox-telemetry-consent', 'granted'); } catch { /* noop */ } });
     await page.goto(`${BASE}/?demo=0`);
 
     const client = await page.context().newCDPSession(page);

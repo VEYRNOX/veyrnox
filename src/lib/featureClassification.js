@@ -36,6 +36,7 @@ export const ALL_ROUTE_PATHS = [
   '/referrals',
   '/walletconnect',
   '/asset/:symbol',
+  '/verify',
 ];
 
 export const CLASSIFICATION = {
@@ -355,6 +356,7 @@ export const CLASSIFICATION = {
   // artifact; the surviving entry below was the one winning at runtime.)
   '/walletconnect':     { verdict: 'live', dataSource: 'on-device', note: 'WalletConnect v2 transport + signing (D1+D2). Pairing + session management via WC relay; signing via on-device key derivation (withPrivateKey). CORRECTION (factual): eth_sendTransaction is NOT display-only — WalletConnectProvider.handleSendTransaction builds new ethers.Wallet(pk, provider) and calls wallet.sendTransaction(tx), a REAL on-chain sign + broadcast (the UI warns "Approving sends a real on-chain transaction"). It is mainnet-capable: the target chain comes from the WC session namespace (getNetworkByChainId on the CAIP-2 chainId), not restricted to testnet. STATUS: BUILT, UNVERIFIED — no on-chain testnet txid has been supplied/confirmed on an explorer, so this is not "verified". Guards present: gas capped at 1M and an eth_chainId match check (VULN-19) before broadcast.' },
   '/asset/:symbol':     { verdict: 'live', dataSource: 'on-device', note: 'CryptoDetailPage — candlestick chart + period selector for a single asset. Price data from useBasketPrices (live market feed, same source as portfolio). Balance strip shows real on-device balance via usePortfolio. Send/Receive deep-links pre-select the asset via ?asset= query param. BUILT, UI-complete.' },
+  '/verify':            { verdict: 'live', dataSource: 'on-device', note: 'SeedVerificationPage — route target for deferred seed backup verification. Calls cancelVerificationReminders on mount. Reauth-gated quiz not yet wired (placeholder). BUILT.' },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts
