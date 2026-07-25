@@ -41,6 +41,13 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'staging',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env.STAGING_URL || 'http://localhost:5173',
+      },
+    },
   ],
 
   webServer: {
