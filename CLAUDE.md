@@ -151,10 +151,10 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   on the Veyrnox LTD business entity; answered 2026-07-23 (personal services = No)
   and now Active. Banking/Paid Apps/tax forms were Active throughout.
   Always check App Store Connect directly before treating a note as current.
-- `ITSAppUsesNonExemptEncryption` is **not set** in Info.plist, so Apple still asks
-  the encryption questions at submission — the path that produced the France
-  declaration requirement. Counsel decision, see
-  `docs/play-launch/export-compliance-counsel-note.md`.
+- `ITSAppUsesNonExemptEncryption` set to `false` in Info.plist (PR #1332) — Apple
+  no longer asks the encryption questions at submission. The France declaration
+  requirement is resolved. See `docs/play-launch/export-compliance-counsel-note.md`
+  for the counsel rationale.
 - `veyrnox.com` is a client-rendered SPA — `curl` gives **false negatives** when checking
   page content; verify by rendering the page.
 
