@@ -52,12 +52,16 @@ jobs:
             npm run build:staging
           fi
 
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
       - name: Deploy to Cloudflare Pages
         id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: ''
           command: pages deploy dist --project-name=veyrnox-staging --branch=${{ github.head_ref || github.ref_name }}
 
       - name: Comment preview URL on PR
