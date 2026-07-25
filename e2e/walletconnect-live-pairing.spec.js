@@ -104,7 +104,7 @@ function walletAddressFromSession(session) {
 
 async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);
-  await page.evaluate(() => { try { localStorage.clear(); } catch {} });
+  await page.evaluate(() => { try { localStorage.clear(); localStorage.setItem('veyrnox-telemetry-consent', 'granted'); } catch {} });
   await page.evaluate(async () => {
     try { for (const db of (await indexedDB.databases?.()) || []) indexedDB.deleteDatabase(db.name); } catch {}
   });

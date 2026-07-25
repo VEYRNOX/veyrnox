@@ -98,7 +98,7 @@ async function verifyTxidOnChain(txid) {
 async function freshState(page) {
   await page.goto(`${BASE}/?demo=0`);
   await page.evaluate(() => {
-    try { localStorage.clear(); indexedDB.deleteDatabase('veyrnox'); } catch {}
+    try { localStorage.clear(); localStorage.setItem('veyrnox-telemetry-consent', 'granted'); indexedDB.deleteDatabase('veyrnox'); } catch {}
   });
   await page.goto(`${BASE}/?demo=0`);
 }

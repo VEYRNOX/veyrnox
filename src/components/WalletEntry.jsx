@@ -86,6 +86,8 @@ import VaultIllustration from "@/components/VaultIllustration";
 import Spinner from "@/components/Spinner";
 import SeedGrid from "@/components/SeedGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
+import TelemetryConsent from "@/components/TelemetryConsent";
+import { getConsentState } from "@/lib/analytics";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
@@ -462,6 +464,10 @@ export default function WalletEntry() {
   const [generatedSeed, setGeneratedSeed] = useState("");
   const [showSeed, setShowSeed] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Telemetry consent gate: only shown when consent has never been answered on
+  // this device. Evaluated once at mount (getConsentState is a synchronous
+  // localStorage read) so the screen renders at most once per onboarding pass.
+  const [consentDone, setConsentDone] = useState(() => getConsentState() !== null);
   // SAST M-3 escape hatch: null until the passkey gate has actually FAILED on an
   // unlock attempt; then { reason } so we can offer a signposted password-only
   // unlock for a broken/deleted passkey. Never a default-visible "skip" button.
@@ -1140,6 +1146,19 @@ export default function WalletEntry() {
         onEnroll={handleKekEnroll}
         onSkip={handleKekSkip}
       />
+    );
+  }
+
+  // One-time telemetry consent screen: after backup confirmation (create path)
+  // and hardware-KEK enrollment/skip, but before the app renders. Runs for
+  // BOTH create and import (both land here once unlocked + past the KEK gate).
+  // consentDone is seeded from getConsentState() at mount, so this only ever
+  // shows when the device has never answered before.
+  if (isUnlocked && !generatedSeed && !kekGatePending && !consentDone) {
+    return (
+      <EntryShell error={error}>
+        <TelemetryConsent onChoice={() => setConsentDone(true)} />
+      </EntryShell>
     );
   }
 

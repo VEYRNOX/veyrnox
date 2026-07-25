@@ -43,7 +43,7 @@ const VAULT_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejec
 // REAL local build (the onboarding gate), not the pre-seeded demo pass-through.
 async function freshLocalBuild(page) {
   await page.goto(`${BASE}/?demo=0`);
-  await page.evaluate(() => { try { localStorage.clear(); } catch {} });
+  await page.evaluate(() => { try { localStorage.clear(); localStorage.setItem('veyrnox-telemetry-consent', 'granted'); } catch {} });
   // Best-effort: clear any existing vault so we land on first-run welcome.
   await page.evaluate(async () => {
     try { for (const db of await indexedDB.databases?.() || []) indexedDB.deleteDatabase(db.name); } catch {}

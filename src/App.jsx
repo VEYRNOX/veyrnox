@@ -23,6 +23,7 @@ import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
 import Spinner from '@/components/Spinner';
 import { captureReferralFromUrl } from '@/lib/referralAttribution';
+import { useCryptoDiagnostics } from '@/lib/tracking-integration';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -105,6 +106,7 @@ const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const Subscription = lazy(() => import('./pages/Subscription'));
 const SafetyPlus = lazy(() => import('./pages/SafetyPlus'));
 const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
+const SeedVerificationPage = lazy(() => import('./pages/SeedVerificationPage'));
 
 function ReferralRedirect() {
   const { code } = useParams();
@@ -115,6 +117,9 @@ function ReferralRedirect() {
 }
 
 const AuthenticatedApp = () => {
+  // Fires CRYPTO_DIAGNOSTICS on mount if window.isSecureContext or crypto.subtle
+  // is unavailable — must run before any vault operation.
+  useCryptoDiagnostics();
   // Render the main app
   return (
     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><Spinner size="lg" /></div>}>
@@ -222,6 +227,7 @@ const AuthenticatedApp = () => {
           <Route path="/plans" element={<Subscription />} />
           <Route path="/safety-plus" element={<SafetyPlus />} />
           <Route path="/referrals" element={<ReferralTracker />} />
+          <Route path="/verify" element={<SeedVerificationPage />} />
         </Route>
         </Route>
       </Route>

@@ -36,7 +36,7 @@ test.setTimeout(60_000);
 
 async function loadApp(page) {
   await page.goto(`${BASE}/?demo=0`);
-  await page.evaluate(() => { try { localStorage.clear(); } catch {} });
+  await page.evaluate(() => { try { localStorage.clear(); localStorage.setItem('veyrnox-telemetry-consent', 'granted'); } catch {} });
   await page.goto(`${BASE}/?demo=0`);
   await page.waitForLoadState('networkidle');
 }
