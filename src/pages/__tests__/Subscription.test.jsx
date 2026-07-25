@@ -500,7 +500,7 @@ describe('Subscription page — tier-based referral discount', () => {
     await waitFor(() => expect(screen.getAllByText('$44.99').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', { name: /upgrade/i }));
     await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-ABC123', 'annual', 4999, 500));
-    expect(setReferralAttribute).toHaveBeenCalledWith('VYX-ABC123');
+    expect(setReferralAttribute).toHaveBeenCalledWith('VYX-ABC123', 'gold');
     expect(markAttributedMock).toHaveBeenCalled();
   });
 

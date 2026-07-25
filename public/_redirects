@@ -1,0 +1,18 @@
+# Cloudflare Pages / Netlify redirect rules for veyrnox.com
+#
+# /r/:code share links — redirect to /?ref=:code at the edge so cold visitors
+# (no JS, no SPA loaded yet) land on the right page. The React route in App.jsx
+# handles the same path client-side, but this catches the case where the SPA
+# hasn't booted (first-paint, crawler, link previewer, JS-blocked browser).
+#
+# /.well-known/* is served as static files — no SPA rewrite, so apple-app-site-
+# association and assetlinks.json are delivered with the correct Content-Type.
+#
+# Rules are processed top-down, first match wins. The SPA fallback MUST be last.
+
+/r/:code  /?ref=:code  302
+
+# SPA fallback — serve index.html for all unmatched routes.
+# /.well-known files exist as static files in public/ and are served before this
+# rule fires (Cloudflare Pages / Netlify serve static files first).
+/*  /index.html  200

@@ -1,11 +1,12 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
-import { Gift, Copy, CheckCircle2, ExternalLink, ChevronRight, TrendingUp, DollarSign, Mail } from 'lucide-react';
+import { Gift, Copy, CheckCircle2, ExternalLink, ChevronRight, TrendingUp, DollarSign, Mail, Share2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+import { trackEvent, EVENT } from '@/api/trackEvent';
 import {
   generateCode,
   getEphemeralCode,
@@ -113,7 +114,13 @@ function ProgressBar({ paidCount }) {
       </div>
       <div className="flex justify-between text-[10px] text-muted-foreground">
         <span>{paidCount.toLocaleString()} paid subscribers</span>
-        <span>{rangeEnd.toLocaleString()} for {info.next.label}</span>
+        {info.next ? (
+          <span className="font-medium text-primary">
+            {(info.next.min - paidCount).toLocaleString()} more to {info.next.label} ({info.next.commission}%)
+          </span>
+        ) : (
+          <span>Maximum tier reached</span>
+        )}
       </div>
     </div>
   );
@@ -268,8 +275,22 @@ export default function ReferralTracker() {
     syncCount();
   }, [code, syncCount]);
 
-  const copyCode = async () => {
-    await navigator.clipboard.writeText(code).catch(() => {
+  const shareOrCopy = async () => {
+    const shareText = `I use Veyrnox — a crypto wallet with a panic button. Get a discount on Safety Plus with my code: ${code}`;
+    const shareUrl = `https://veyrnox.com/r/${code}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Veyrnox Referral', text: shareText, url: shareUrl });
+        toast.success('Shared!');
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        // Share API failed — fall through to clipboard
+      }
+    }
+
+    await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`).catch(() => {
       toast.error('Copy failed — select the code manually.');
       return;
     });
@@ -305,6 +326,7 @@ export default function ReferralTracker() {
       setAlreadyRedeemed(true);
       setRedeemInput('');
       toast.success('Referral code applied!');
+      void trackEvent(EVENT.REFERRAL_CODE_APPLIED, { code: input, source: 'manual_entry' }).catch(() => {});
     } catch (err) {
       if (err.status === 404) setRedeemError('Code not found. Check it and try again.');
       else setRedeemError('Could not apply code right now. Try again later.');
@@ -352,11 +374,11 @@ export default function ReferralTracker() {
         <div className="flex items-center gap-3">
           <span className="mono-value text-2xl font-bold tracking-widest text-foreground">{code}</span>
           <button
-            onClick={copyCode}
+            onClick={shareOrCopy}
             className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            {copied ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied' : 'Copy'}
+            {copied ? <CheckCircle2 className="h-4 w-4 text-primary" /> : navigator.share ? <Share2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? 'Copied' : navigator.share ? 'Share' : 'Copy'}
           </button>
         </div>
         <p className="text-xs text-muted-foreground">

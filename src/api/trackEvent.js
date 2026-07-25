@@ -40,4 +40,8 @@ export const EVENT = {
   RECEIVE_VIEWED: 'receive_viewed',
   WC_SESSION_APPROVED: 'wc_session_approved',
   BACKUP_CONFIRMED: 'backup_confirmed',
+  REFERRAL_CODE_APPLIED: 'referral_code_applied',
+  PAYWALL_SHOWN: 'paywall_shown',
+  PAYWALL_DISMISSED: 'paywall_dismissed',
+  PAYWALL_CONVERTED: 'paywall_converted',
 };
