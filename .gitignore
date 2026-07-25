@@ -126,3 +126,6 @@ playwright/.auth/
 # Local Android signing credentials (NEVER commit)
 keystore.properties
 android/keystore.properties
+
+# Wrangler (Cloudflare Pages CLI)
+.wrangler/
