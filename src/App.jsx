@@ -23,6 +23,7 @@ import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
 import Spinner from '@/components/Spinner';
 import { captureReferralFromUrl } from '@/lib/referralAttribution';
+import { useCryptoDiagnostics } from '@/lib/tracking-integration';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -116,6 +117,9 @@ function ReferralRedirect() {
 }
 
 const AuthenticatedApp = () => {
+  // Fires CRYPTO_DIAGNOSTICS on mount if window.isSecureContext or crypto.subtle
+  // is unavailable — must run before any vault operation.
+  useCryptoDiagnostics();
   // Render the main app
   return (
     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><Spinner size="lg" /></div>}>
