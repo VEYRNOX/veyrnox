@@ -58,6 +58,8 @@ import CryptoNewsFeed from "@/components/CryptoNewsFeed";
 import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
 import { DEMO } from "@/api/demoClient";
 import { fetchAssetHistory } from "@/lib/txHistory";
+import { isDeferred } from "@/lib/seedVerifyState";
+import { useWalletReady, useFirstInbound } from "@/lib/tracking-integration";
 
 const fmtAmount = (n) =>
   n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
@@ -577,6 +579,22 @@ export default function WalletPortfolioPage() {
     staleTime: 60_000,
   });
 
+  // Active-portfolio wallets + total, computed here (ahead of the early
+  // explore-mode return below) so the tracking hooks — which must run
+  // unconditionally on every render, like all hooks — can consume pfTotal.
+  // When !isUnlocked, wallets is empty, so this is a harmless {total:0}.
+  const inActive = (w) => (walletPortfolioMap[w.id] || MAIN_PORTFOLIO_ID) === activePortfolioId;
+  const pfWallets = wallets.filter(inActive);
+  const { total: pfTotal, indeterminate: pfIncomplete } = sumPortfolioTotal(pfWallets, byWallet);
+
+  // Telemetry (Task 9): funnel tracking for the wallet-ready + first-inbound
+  // milestones. safeEmit()-backed (never blocks/throws, I4) and suppressed
+  // under deniability/demo by emit()'s own guards (I3) — safe to mount here
+  // unconditionally, including in explore mode (no vault → balance stays 0,
+  // so useFirstInbound simply never fires).
+  useWalletReady();
+  useFirstInbound(pfTotal);
+
   // ── Explore / no-wallet empty state ──
   if (!isUnlocked) {
     return (
@@ -600,13 +618,11 @@ export default function WalletPortfolioPage() {
     );
   }
 
-  // Wallets in the ACTIVE portfolio, and that portfolio's USD total.
-  const inActive = (w) => (walletPortfolioMap[w.id] || MAIN_PORTFOLIO_ID) === activePortfolioId;
-  const pfWallets = wallets.filter(inActive);
-  // pfIncomplete = at least one constituent balance read FAILED, so pfTotal sums
-  // only what was readable and is understated. We surface that rather than fold
-  // failure into a confident number (I4 fail-closed). Identical in decoy/real.
-  const { total: pfTotal, indeterminate: pfIncomplete } = sumPortfolioTotal(pfWallets, byWallet);
+  // pfWallets/pfTotal/pfIncomplete were computed above (ahead of the
+  // useWalletReady/useFirstInbound hooks) — pfIncomplete = at least one
+  // constituent balance read FAILED, so pfTotal sums only what was readable
+  // and is understated. We surface that rather than fold failure into a
+  // confident number (I4 fail-closed). Identical in decoy/real.
   const activePortfolioName = portfolios.find((p) => p.id === activePortfolioId)?.name || "Main";
   const activeWallet = wallets.find((w) => w.id === activeWalletId);
   const activeInThisPortfolio = activeWallet && inActive(activeWallet);
@@ -768,6 +784,23 @@ export default function WalletPortfolioPage() {
             internal flags that gate mutations (add/remove wallet), never a visible
             badge or count. */}
       </div>
+
+      {/* Deferred seed-verification reminder (Task 9) — non-blocking. The user
+          skipped the backup-verification quiz earlier; sends above the safety
+          threshold are still gated (lib/seedVerifyGate.js, enforced in
+          SendCrypto.jsx), but nothing here blocks browsing the portfolio. */}
+      {activeWalletId && isDeferred(activeWalletId) && (
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+          <ShieldAlert className="h-5 w-5 text-yellow-500 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Finish verifying your backup</p>
+            <p className="text-xs text-muted-foreground">Required for sending above the safety threshold.</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => navigate('/verify')}>
+            Verify
+          </Button>
+        </div>
+      )}
 
       {/* Global unbacked-wallet warning (fund-loss risk spans all portfolios) */}
       {/* DENIABILITY (CLAUDE.md "never show wallet count/list" · I3): the banner copy
