@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 // App-wide toast host. MUST be the sonner Toaster: every toast call in the app
 // (31 files) imports `toast` from "sonner", so the Radix `ui/toaster` that used
 // to be mounted here rendered nothing — its useToast() store had zero writers,
@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from 'next-themes'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useParams } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
 import { TrezorProvider } from '@/context/TrezorContext';
@@ -22,6 +22,7 @@ import DeepLinkHandler from '@/components/DeepLinkHandler';
 import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
 import Spinner from '@/components/Spinner';
+import { captureReferralFromUrl } from '@/lib/referralAttribution';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -104,6 +105,14 @@ const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const Subscription = lazy(() => import('./pages/Subscription'));
 const SafetyPlus = lazy(() => import('./pages/SafetyPlus'));
 const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
+
+function ReferralRedirect() {
+  const { code } = useParams();
+  useEffect(() => {
+    try { captureReferralFromUrl(new URL(`http://localhost/?ref=${code}`)); } catch {}
+  }, [code]);
+  return <Navigate to="/" replace />;
+}
 
 const AuthenticatedApp = () => {
   // Render the main app
@@ -219,6 +228,7 @@ const AuthenticatedApp = () => {
       {import.meta.env.DEV && PrfSpike && (
         <Route path="/dev/prf-spike" element={<PrfSpike />} />
       )}
+      <Route path="/r/:code" element={<ReferralRedirect />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
     </Suspense>
@@ -227,6 +237,7 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  useEffect(() => { captureReferralFromUrl(); }, []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
