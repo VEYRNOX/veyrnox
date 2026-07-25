@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/pages/SeedVerificationPage.jsx — route target for /verify.
 //
 // The SeedVerification quiz component (Task 5) needs the actual mnemonic

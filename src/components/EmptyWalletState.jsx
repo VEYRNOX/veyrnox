@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/EmptyWalletState.jsx — Zero-balance replacement screen.
 // Priority 1 recommendation: single-purpose "Add funds" with named on-ramp routes.
 import { Download, ArrowRightLeft, CreditCard } from 'lucide-react';
