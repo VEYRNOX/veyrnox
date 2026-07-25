@@ -200,7 +200,7 @@ describe('tracking-integration', () => {
     expect(emit).toHaveBeenCalledWith('send_flow_started');
     expect(emit).toHaveBeenCalledWith('send_step_reached', { step: 'amount' });
     expect(emit).toHaveBeenCalledWith('send_abandoned', { step: 'amount' });
-    expect(emit).toHaveBeenCalledWith('first_send');
+    expect(emit).toHaveBeenCalledWith('send_flow_started', { step: 'confirmed' });
   });
 
   it('useUnlockTracking returns attempt/result', async () => {
