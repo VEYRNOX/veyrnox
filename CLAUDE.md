@@ -191,6 +191,158 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
 - I6 — Hardware Binding: KEK = HKDF(H ‖ C) — ordered concat, NOT XOR
   (`kek.js: combineKek`, domain `veyrnox/kek/v1/combine(H||C)`)
 
+## OWASP security coding rules
+
+These rules apply to all code written or reviewed in this project. They complement the
+security invariants above and are aligned with OWASP Top 10 (2025), ASVS 5.0, and the
+OWASP Top 10 for LLM Applications.
+
+### Input validation (A05 Injection)
+- All user input validated before use — length, type, range, allowlist.
+- Supabase RPCs use parameterised queries only; never interpolate user values into SQL.
+- Shell/CLI: never pass user input to `child_process.exec` or template strings that reach
+  a shell. Use `execFile` / array-form `spawn` with `shell: false`.
+- DOM: never use `dangerouslySetInnerHTML`, `innerHTML`, or `eval` with user-controlled
+  data. React's JSX escaping is the default; breaking out of it requires justification.
+- URL/deep-link params: validate against an allowlist of expected keys and value shapes
+  before acting on them (WalletConnect URIs, `?demo=`, Capacitor deep links).
+
+### Cryptographic standards (A04)
+- TLS 1.2+ for all network traffic; certificate pinning on native builds (Capacitor).
+- Vault: AES-256-GCM only; Argon2id KDF (192 MiB, already in place).
+- Key derivation: @noble/@scure only — never Web Crypto for seed/key derivation.
+- No custom crypto primitives. If a new algorithm is needed, it comes from an audited
+  library (@noble, @scure, or ethers built-ins).
+- RNG: `crypto.getRandomValues` / `@noble` CSPRNG only; never `Math.random` for anything
+  security-relevant (tokens, nonces, IVs, key material).
+
+### Secrets management (A02 Security Misconfiguration)
+- Secrets go in `.env.local` (git-ignored) or platform secure storage (Keychain/Keystore).
+  Never commit secrets, API keys, signing keys, or credentials to the repository.
+- Supabase anon key is the only key allowed in client code — and only because RLS + RPC
+  SECURITY DEFINER functions gate all writes (PR #1334).
+- Keystore passwords, App Store Connect keys, and GitHub Secrets are CI-only; never
+  reference their values in source.
+- Log output must never contain seeds, private keys, mnemonics, PINs, passwords, or KEK
+  material. Sanitise before logging.
+
+### Access control (A01 Broken Access Control)
+- Deny by default: new features are gated (ALLOW_MAINNET pattern) until explicitly
+  ungated after audit/verification.
+- Supabase RLS enforced on every table; no table allows raw INSERT/UPDATE/DELETE via the
+  anon key — all writes go through SECURITY DEFINER RPCs with rate limits.
+- WalletConnect: every signing request goes through `presignGateOrReject` — no bypass
+  path. Session approval goes through the same gate shape (PR #1276).
+- RASP tier gates (BLOCK/WARN/ALLOW) are checked at every security chokepoint; a missing
+  or errored gate result = BLOCK (fail-closed, I4).
+
+### Error handling (A10 Mishandling of Exceptional Conditions)
+- Fail closed: any error in a security check (RASP, KEK, gate, auth) must deny the
+  action, never allow it. This is I4 codified.
+- Never expose stack traces, internal paths, or Supabase error details to the user. Show
+  a generic error message; log the real error with a correlation ID.
+- `try/catch` around crypto operations must re-throw or deny — never silently swallow a
+  decryption or signature failure.
+- Offer paths fail CLOSED: a missing/unsigned promotional offer throws
+  `OFFER_UNAVAILABLE` rather than falling through to full-price (already in place).
+
+### Dependency & supply chain (A03)
+- Pin exact versions in `package-lock.json`; no floating ranges (`^`, `~`) in
+  `dependencies` for crypto or security-critical packages.
+- Run `npm audit` before merging any PR that touches `package.json`. Flag and resolve
+  high/critical advisories before merge.
+- New dependencies require justification: what it does, why it's needed, how many
+  transitive deps it pulls. Prefer well-audited, single-purpose packages over large
+  frameworks.
+- Native dependencies (Capacitor plugins, Gradle/CocoaPods): review the plugin's
+  permissions and native code surface before adding.
+
+### Authentication & session security (A07)
+- PINs/passwords: minimum 12 characters enforced (H-A on mainnet builds).
+- Biometric auth: always backed by a hardware-bound key (Keychain/Keystore); never a
+  simple boolean "is biometric enrolled" check.
+- Session tokens (WalletConnect, RevenueCat): minimum 128-bit entropy, expiry enforced
+  (M11), invalidated on lock/panic-wipe.
+- Step-up re-auth required for high-risk operations: signing, spend-limit changes,
+  WalletConnect session approval (H-NEW-B).
+
+### Logging & monitoring (A09)
+- Log security events: RASP triggers, gate decisions (allow/block), signing attempts,
+  failed auth, rate-limit hits.
+- Never log sensitive data (seeds, keys, PINs, full addresses). Truncate or hash
+  identifiers in logs.
+- Anonymous event tracking (PR #1321) is suppressed in deniability/demo mode (I3);
+  verify this holds for any new event type.
+- Test suites must not write to production backends (vitest.config.js env blanking,
+  PR #1328).
+
+### Client-side security (XSS / DOM)
+- CSP: enforce a strict Content-Security-Policy that blocks inline scripts and
+  `unsafe-eval`. Capacitor's webview CSP must match.
+- No `eval`, `Function()`, `setTimeout(string)`, or `document.write`.
+- Sanitise any value rendered from chain data (token names, ENS names, WalletConnect
+  metadata) — treat on-chain/external data as untrusted input.
+- Deep links and universal links: validate scheme, host, and path against an allowlist
+  before routing.
+
+### Database security (Supabase / PostgreSQL)
+- **RLS on every table.** No table may have RLS disabled. New tables must define
+  row-level security policies before the migration is merged.
+- **SECURITY DEFINER RPCs for all writes.** The anon key must never INSERT, UPDATE, or
+  DELETE directly. All mutations go through SECURITY DEFINER functions that validate
+  input, enforce rate limits, and run with a narrow `search_path` (PR #1334 pattern).
+- **Parameterised queries only.** Never concatenate or interpolate values into SQL — not
+  in migrations, not in RPCs, not in edge functions. Use `$1`-style placeholders.
+- **Principle of least privilege.** The `anon` role gets SELECT on the minimum columns
+  needed; never grant `anon` write access to raw tables. Service-role key is server-only
+  (edge functions / CI), never in client code.
+- **Schema migrations are code-reviewed.** Every `.sql` migration file is reviewed for:
+  privilege escalation (GRANT), RLS policy gaps, missing indexes on lookup columns used
+  in rate-limit checks, and accidental data exposure (public SELECT on sensitive columns
+  like `referral_attributions` — removed in PR #1334).
+- **Rate-limit state in the DB.** Rate limits use server-side timestamps
+  (`clock_timestamp()`) and dedup tables — never trust client-supplied timestamps.
+- **No `SELECT *` in RPCs.** Return only the columns the caller needs to prevent
+  accidental data leakage when columns are added later.
+- **Backups & retention.** Supabase point-in-time recovery is enabled. Destructive
+  migrations (DROP, TRUNCATE, column removal) require explicit owner approval and a
+  backup verification step before execution.
+
+### API security (comprehensive)
+- **Rate limiting on every RPC.** All Supabase RPCs are rate-limited per device (already:
+  60/hr tracking, 1/device referral dedup, 3/hr registration). New RPCs must define and
+  enforce a rate limit before merge — no unthrottled write endpoints.
+- **Input validation at the API boundary.** Every RPC validates argument types, lengths,
+  and ranges server-side. Use allowlists for enumerated values (event types, asset
+  symbols). Reject unexpected fields rather than ignoring them.
+- **Payload size caps.** All endpoints enforce a maximum payload size (4 KB metadata on
+  `track_event`). New endpoints must define and enforce a cap proportional to the data
+  they accept.
+- **No sensitive data in URLs.** Use POST bodies or headers — never query strings. Device
+  IDs, referral codes, and asset identifiers go in the request body.
+- **CORS.** Restrict `Access-Control-Allow-Origin` to the app's own domains. No wildcard
+  (`*`) on authenticated or write endpoints.
+- **Idempotency.** Write RPCs must be idempotent or use dedup keys to prevent replay.
+  `increment_referral` uses a dedup table; new RPCs must follow the same pattern.
+- **Response hygiene.** API responses must not leak internal IDs, table names, constraint
+  names, or PostgreSQL error codes to the client. Wrap errors in a generic envelope with
+  a client-safe message.
+- **Versioning.** Breaking RPC signature changes require a migration window (see the
+  `ref_code → p_code` rename note). After first publish, old and new signatures must
+  coexist until all clients have updated.
+- **Authentication boundaries.** The anon key authenticates the app, not the user. Any
+  endpoint that returns user-specific data must additionally validate a user-scoped token
+  or device attestation.
+- **Edge function security.** Supabase edge functions must: validate the `Authorization`
+  header, enforce the same rate limits as direct RPCs, never import the service-role key
+  from client-reachable code, and set `Content-Type` explicitly on responses.
+
+### SSRF & network (A10 / network hardening)
+- Never fetch arbitrary user-supplied URLs from server-side code. WalletConnect relay
+  and RPC endpoints use a hardcoded allowlist.
+- Block private/internal IP ranges in any URL-fetching code (Capacitor HTTP plugin,
+  Supabase edge functions).
+
 ## Demo mode (known trap)
 
 Demo mode triggers on `?demo=1`, `VITE_DEMO_MODE=1`, native dev, OR a persisted
