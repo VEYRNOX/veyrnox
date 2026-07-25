@@ -42,11 +42,15 @@ jobs:
             echo "environment=production" >> "$GITHUB_OUTPUT"
           else
             echo "environment=preview" >> "$GITHUB_OUTPUT"
-            echo "VITE_ENV_LABEL=Staging" >> "$GITHUB_ENV"
           fi
 
       - name: Build
-        run: npm run build
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            npm run build
+          else
+            npm run build:staging
+          fi
 
       - name: Deploy to Cloudflare Pages
         id: deploy
@@ -59,9 +63,11 @@ jobs:
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v9
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
         with:
           script: |
-            const url = '${{ steps.deploy.outputs.deployment-url }}';
+            const url = process.env.DEPLOY_URL;
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
             const sha = context.sha.substring(0, 7);
