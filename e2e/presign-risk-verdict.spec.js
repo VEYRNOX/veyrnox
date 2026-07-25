@@ -53,7 +53,7 @@ test.setTimeout(120_000);
 async function loadApp(page) {
   await page.goto(`${BASE}/?demo=0`);
   await page.evaluate(async () => {
-    try { localStorage.clear(); } catch {}
+    try { localStorage.clear(); localStorage.setItem('veyrnox-telemetry-consent', 'granted'); } catch {}
   });
   await page.goto(`${BASE}/?demo=0`);
   // Wait for the app shell to mount (any visible element)

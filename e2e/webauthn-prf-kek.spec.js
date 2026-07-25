@@ -75,7 +75,7 @@ async function addAuthenticator(page, { hasPrf = true } = {}) {
 async function freshState(page) {
   await page.goto(`${BASE}/?demo=0`);
   await page.evaluate(async () => {
-    try { localStorage.clear(); } catch {}
+    try { localStorage.clear(); localStorage.setItem('veyrnox-telemetry-consent', 'granted'); } catch {}
     try {
       for (const db of (await indexedDB.databases?.()) || []) {
         indexedDB.deleteDatabase(db.name);

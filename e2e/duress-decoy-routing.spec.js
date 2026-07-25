@@ -42,7 +42,7 @@ const BASE = process.env.BASE_URL || 'http://localhost:5173';
 async function freshDemoState(page) {
   await page.goto(`${BASE}/duress-pin?demo=1`);
   await page.evaluate(() => {
-    try { localStorage.clear(); indexedDB.deleteDatabase('veyrnox'); } catch { /* best-effort */ }
+    try { localStorage.clear(); localStorage.setItem('veyrnox-telemetry-consent', 'granted'); indexedDB.deleteDatabase('veyrnox'); } catch { /* best-effort */ }
   });
   await page.goto(`${BASE}/duress-pin?demo=1`);
 }
