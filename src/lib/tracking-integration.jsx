@@ -156,7 +156,7 @@ export function useSendFlowTracking() {
     start: () => safeEmit(FunnelEvent.SEND_FLOW_STARTED),
     stepReached: (step) => safeEmit(FunnelEvent.SEND_STEP_REACHED, { step }),
     abandon: (step) => safeEmit(FunnelEvent.SEND_ABANDONED, { step }),
-    confirm: () => safeEmit(FunnelEvent.FIRST_SEND),
+    confirm: () => safeEmit(FunnelEvent.SEND_FLOW_STARTED, { step: 'confirmed' }),
   };
 }
 

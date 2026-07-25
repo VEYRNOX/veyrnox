@@ -1165,7 +1165,6 @@ export default function SendCrypto() {
       successHaptic();
       recordAudit("send_completed"); // opt-in audit log; no-op unless enabled + primary session
       void trackEvent(EVENT.SEND_COMPLETED, { currency: selectedWallet?.currency }).catch(() => {});
-      sendTracking.confirm();
       markFirstSend();
     },
     onError: (err) => {
