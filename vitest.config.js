@@ -29,6 +29,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@revenuecat/purchases-capacitor': fileURLToPath(new URL('./src/lib/stubs/revenuecat-stub.js', import.meta.url)),
     },
   },
   test: {
