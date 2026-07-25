@@ -104,6 +104,7 @@ const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const Subscription = lazy(() => import('./pages/Subscription'));
 const SafetyPlus = lazy(() => import('./pages/SafetyPlus'));
 const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
+const SeedVerificationPage = lazy(() => import('./pages/SeedVerificationPage'));
 
 const AuthenticatedApp = () => {
   // Render the main app
@@ -213,6 +214,7 @@ const AuthenticatedApp = () => {
           <Route path="/plans" element={<Subscription />} />
           <Route path="/safety-plus" element={<SafetyPlus />} />
           <Route path="/referrals" element={<ReferralTracker />} />
+          <Route path="/verify" element={<SeedVerificationPage />} />
         </Route>
         </Route>
       </Route>
