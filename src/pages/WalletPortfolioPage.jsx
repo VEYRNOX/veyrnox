@@ -22,6 +22,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
+import EmptyWalletState from "@/components/EmptyWalletState";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
@@ -838,20 +839,11 @@ export default function WalletPortfolioPage() {
                   The claim below is precise: keys never leave the device (I1). The
                   address itself IS shared with public RPC/explorer nodes to read
                   balances, so we deliberately do NOT claim the address is device-only. */}
-              <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-4">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <Download className="h-6 w-6 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-base font-semibold">Your wallet is ready</p>
-                  <p className="text-sm text-muted-foreground">
-                    This portfolio has no balance yet. Receive crypto to fund it — your keys never leave this device.
-                  </p>
-                </div>
-                <Button className="w-full gap-2" onClick={() => navigate("/receive")}>
-                  <Download className="h-4 w-4" /> Receive
-                </Button>
-              </div>
+              <EmptyWalletState
+                receiveAddress={activeWallet?.address}
+                onReceive={() => navigate("/receive")}
+                transakReady={false}
+              />
               {/* Asset-scoped disclosure (no count → cannot be misread as a wallet
                   count). Reveals the real, all-zero rows on demand. */}
               <button
