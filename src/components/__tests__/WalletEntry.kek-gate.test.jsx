@@ -32,6 +32,9 @@ vi.mock('@/lib/biometricUnlock', () => ({
 }));
 vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
 
+// Consent gate: return 'granted' so the telemetry consent screen doesn't block <Outlet>.
+vi.mock('@/lib/analytics', () => ({ getConsentState: vi.fn(() => 'granted') }));
+
 // Native by default; individual tests flip this for the web case.
 const isNativePlatform = vi.fn(() => true);
 vi.mock('@capacitor/core', () => ({

@@ -35,7 +35,10 @@ BEGIN
     'crypto_diagnostics', 'tamper_signal', 'security_modal_shown',
     'kek_unwrap_failed',
     -- dApp
-    'dapp_connect_start', 'dapp_connect_result'
+    'dapp_connect_start', 'dapp_connect_result',
+    -- Growth / paywall (PR #1340)
+    'referral_code_applied', 'paywall_shown',
+    'paywall_dismissed', 'paywall_converted'
   ) THEN
     RAISE EXCEPTION 'Unknown event' USING errcode = 'P0003';
   END IF;
