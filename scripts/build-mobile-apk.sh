@@ -83,7 +83,7 @@ echo "================="
 # Install dependencies
 echo "Installing dependencies..."
 cd "$PROJECT_ROOT"
-npm install
+npm ci
 
 # Build web assets
 echo "Building web assets..."
