@@ -41,9 +41,8 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ${{ matrix.runner }}
-    # Generous enough for the Swift job (full Capacitor + xcodebuild compile);
-    # the source-only languages finish well inside it.
-    timeout-minutes: 60
+    # All five languages here are build-mode: none and finish in ~1-3 min.
+    timeout-minutes: 20
 
     permissions:
       security-events: write
@@ -79,29 +78,13 @@ jobs:
             build-mode: none
             runner: ubuntu-latest
 
-          # Compiled — needs a macOS runner and the Capacitor web build first.
-          - language: swift
-            build-mode: manual
-            runner: macos-latest
+          # Swift is NOT in this matrix — it needs a macOS runner and a full
+          # Capacitor + xcodebuild compile, so it lives in `analyze-swift` below
+          # where it can be scheduled independently. See that job for why.
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      # --- Swift-only prerequisites -------------------------------------------
-      # xcodebuild has nothing to compile until the web assets exist and
-      # Capacitor has synced them into ios/App/App/public. Mirrors the working
-      # recipe in ios-compile-check.yml.
-      - name: Setup Node.js (swift build prerequisites)
-        if: matrix.language == 'swift'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'npm'
-
-      - name: Install dependencies (swift)
-        if: matrix.language == 'swift'
-        run: npm install --legacy-peer-deps
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -109,15 +92,126 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
-      # --- Manual build for Swift ---------------------------------------------
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
+
+  # --------------------------------------------------------------------------
+  # Does this change need the (expensive) Swift scan?
+  #
+  # Swift is the only language that needs a macOS runner and a real compile.
+  # Measured on 2026-07-26: 20-50 min QUEUED waiting for a scarce macOS slot,
+  # then ~38 min running — 60-90 min end to end, against ~1-3 min for the five
+  # source-only languages. The repo's code_scanning ruleset gates on the CodeQL
+  # TOOL, so that tail held every PR at mergeStateStatus=BLOCKED for over an
+  # hour. Four PRs on 2026-07-26 were merged with --admin to get past it, which
+  # is how a security gate quietly becomes decorative.
+  #
+  # But only 54 of the last 1634 commits on main (3.3%) touched iOS/Swift at
+  # all. So the fix is not to drop Swift coverage — it is to stop making the
+  # other ~97% of PRs wait for it. Swift still runs:
+  #   - on every push to main (so nothing lands unscanned for long)
+  #   - weekly on the existing schedule
+  #   - on any PR that actually touches iOS or Swift sources
+  #
+  # HONEST LIMIT (I4): a PR that does NOT touch iOS gets no pre-merge Swift
+  # scan. If someone changes Swift behaviour purely from the JS side, that is
+  # caught on main rather than in review. Accepted deliberately: the previous
+  # behaviour was an hour-long block that was being --admin'd past anyway,
+  # which is worse coverage than this, not better.
+  # --------------------------------------------------------------------------
+  swift-scope:
+    name: Swift scan needed?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      needed: ${{ steps.decide.outputs.needed }}
+    steps:
+      - name: Decide
+        id: decide
+        env:
+          # Values reach the script via env, never interpolated into the command
+          # string — same rule the deploy-preview workflow follows.
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Anything that is not a PR (push to main, weekly schedule, manual
+          # dispatch) always scans — that is the safety net.
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "Not a pull_request ($EVENT_NAME) — Swift scan runs."
+            exit 0
+          fi
+
+          # Fail CLOSED: if the file list cannot be read, scan rather than skip.
+          if ! files="$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/files" --jq '.[].filename')"; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Could not list PR files — running the Swift scan anyway (fail-closed)."
+            exit 0
+          fi
+
+          # ios/ covers the app target, the .xcodeproj and the entitlements;
+          # *.swift catches plugin sources outside it (e.g. android-plugins/
+          # webauthn-native/ios/WebAuthnNativePlugin.swift). Podfile/Package.swift
+          # changes alter what gets compiled, so they count too.
+          if printf '%s\n' "$files" | grep -qE '(^ios/|\.swift$|/ios/|Podfile|Package\.resolved)'; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "iOS/Swift sources touched — Swift scan runs."
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "No iOS/Swift sources touched — skipping the Swift scan on this PR."
+          fi
+
+  analyze-swift:
+    name: Analyze (swift)
+    needs: swift-scope
+    if: needs.swift-scope.outputs.needed == 'true'
+    runs-on: macos-latest
+    # Generous: full Capacitor + xcodebuild compile, and the macOS queue is slow.
+    timeout-minutes: 60
+
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # xcodebuild has nothing to compile until the web assets exist and
+      # Capacitor has synced them into ios/App/App/public. Mirrors the working
+      # recipe in ios-compile-check.yml.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: swift
+          build-mode: manual
+
       - name: Build web assets + sync Capacitor iOS
-        if: matrix.language == 'swift'
         run: |
           npm run build
           npx cap sync ios
 
       - name: Resolve Swift Package dependencies
-        if: matrix.language == 'swift'
         working-directory: ios/App
         run: |
           # SPM project (CapApp-SPM — no Podfile/CocoaPods).
@@ -126,7 +220,6 @@ jobs:
             -scheme App 2>&1 | tail -5
 
       - name: Compile iOS app for CodeQL
-        if: matrix.language == 'swift'
         working-directory: ios/App
         run: |
           set -o pipefail
@@ -146,4 +239,4 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
-          category: /language:${{ matrix.language }}
+          category: /language:swift
