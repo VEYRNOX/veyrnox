@@ -1,5 +1,14 @@
 -- Expand track_event() allowlist with funnel/diagnostic events.
 -- Run AFTER api-security-hardening.sql.
+--
+-- Two hardening fixes land with this revision (both pre-dated the funnel work,
+-- neither was ever present in api-security-hardening.sql):
+--   1. SET search_path — a SECURITY DEFINER function without a pinned
+--      search_path resolves unqualified names (`events`) against the CALLER's
+--      search_path, the classic definer-rights escalation path.
+--   2. The 4 KB metadata cap that CLAUDE.md has been documenting as if it
+--      existed. It did not exist in any version of this function; p_metadata
+--      was accepted unbounded. It is enforced below for real now.
 CREATE OR REPLACE FUNCTION track_event(
   p_device_id uuid,
   p_event     text,
@@ -8,10 +17,16 @@ CREATE OR REPLACE FUNCTION track_event(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   recent_count int;
 BEGIN
+  -- Payload cap: reject oversized metadata rather than storing it.
+  IF p_metadata IS NOT NULL AND octet_length(p_metadata::text) > 4096 THEN
+    RAISE EXCEPTION 'Metadata too large' USING errcode = 'P0004';
+  END IF;
+
   IF p_event NOT IN (
     -- Original 7
     'wallet_created', 'wallet_imported', 'session_start',

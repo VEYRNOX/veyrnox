@@ -39,6 +39,9 @@ describe('trackEvent', () => {
     mockDEMO = false;
     localStorage.clear();
     deviceIdMod.__resetForTest?.();
+    // trackEvent is the consent chokepoint, so the happy-path cases below
+    // need an explicit grant. The consent gate itself is covered separately.
+    localStorage.setItem('veyrnox-telemetry-consent', 'granted');
   });
 
   afterEach(() => {
@@ -91,6 +94,60 @@ describe('trackEvent', () => {
   it('swallows RPC errors silently', async () => {
     mockSupabase.rpc = vi.fn(() => Promise.reject(new Error('network')));
     await expect(trackEvent('test_event')).resolves.toBeUndefined();
+  });
+
+  // REGRESSION: consent used to be enforced only in analytics.js emit(), so
+  // the 11 call sites that invoke trackEvent() directly (WalletProvider,
+  // SendCrypto, ReceiveCrypto, WalletConnectProvider, referral, paywall)
+  // uploaded events from users who had explicitly declined. The gate lives
+  // here now precisely so no call site can opt out of it.
+  describe('consent gate', () => {
+    it('no-ops when consent was explicitly denied', async () => {
+      localStorage.setItem('veyrnox-telemetry-consent', 'denied');
+
+      await trackEvent(EVENT.WALLET_CREATED);
+
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+    });
+
+    it('no-ops when consent was never answered (absent != consent)', async () => {
+      localStorage.removeItem('veyrnox-telemetry-consent');
+
+      await trackEvent(EVENT.WALLET_CREATED);
+
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+    });
+
+    it('does not mint a device id for a user who declined', async () => {
+      localStorage.setItem('veyrnox-telemetry-consent', 'denied');
+
+      await trackEvent(EVENT.SEND_COMPLETED);
+
+      expect(localStorage.getItem('veyrnox-device-id')).toBeNull();
+    });
+
+    it('gates the direct-call sites, not just emit()', async () => {
+      localStorage.setItem('veyrnox-telemetry-consent', 'denied');
+
+      for (const e of [
+        EVENT.WALLET_CREATED, EVENT.WALLET_IMPORTED, EVENT.SESSION_START,
+        EVENT.SEND_COMPLETED, EVENT.RECEIVE_VIEWED, EVENT.WC_SESSION_APPROVED,
+        EVENT.BACKUP_CONFIRMED, EVENT.REFERRAL_CODE_APPLIED,
+        EVENT.PAYWALL_SHOWN, EVENT.PAYWALL_DISMISSED, EVENT.PAYWALL_CONVERTED,
+      ]) {
+        await trackEvent(e);
+      }
+
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+    });
+
+    it('allows events once consent is granted', async () => {
+      localStorage.setItem('veyrnox-telemetry-consent', 'granted');
+
+      await trackEvent(EVENT.WALLET_CREATED);
+
+      expect(mockSupabase.rpc).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('exports expected event constants', () => {

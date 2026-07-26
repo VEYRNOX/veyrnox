@@ -1176,6 +1176,9 @@ export default function SendCrypto() {
       // an error toast — this isn't a failure, it's a required detour. Fires
       // before the haptic buzz used for real send failures below.
       if (/** @type {Error & {code?: string}} */ (err)?.code === 'VERIFY_REQUIRED') {
+        // Say why, like the TWO_FACTOR branch below does. Navigating with no
+        // message reads as the send silently vanishing.
+        toast.info("Finish verifying your backup before sending this amount.");
         navigate('/verify', { state: { returnTo: '/send' } });
         return;
       }

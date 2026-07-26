@@ -100,7 +100,7 @@ export default function TermsLegal() {
         {/* §0 — Privacy policy (mirrors veyrnox.com/privacy) */}
         <Section icon={ShieldCheck} title="Privacy policy">
           <p className="font-medium">
-            Last updated: 23 July 2026.{" "}
+            Last updated: 26 July 2026.{" "}
             <a
               href={PRIVACY_POLICY_URL}
               target="_blank"
@@ -113,8 +113,9 @@ export default function TermsLegal() {
           </p>
           <p className="font-semibold text-foreground">
             There is no account, no user database, and no server-side copy of your wallet, keys,
-            or activity. Your wallet lives on your device, encrypted. The one thing we do record
-            is a short list of anonymous usage events — set out in full in section 9.
+            or activity. Your wallet lives on your device, encrypted. The one thing we record is a
+            short list of anonymous usage events — and only if you opt in. Set out in full in
+            section 9.
           </p>
 
           <div className="mt-2 rounded-lg border border-border bg-secondary/30 px-4 py-1">
@@ -142,7 +143,7 @@ export default function TermsLegal() {
                 <li><b>No account or sign-up.</b> You don&rsquo;t register, and we never ask for a name or password.</li>
                 <li><b>No private keys or seed phrases.</b> These are generated and encrypted on your device and never leave it.</li>
                 <li><b>No wallet database.</b> Balances, labels, addresses, and transaction history are stored on your device, not on our servers.</li>
-                <li><b>No behavioural profiling or ad tracking.</b> No advertising IDs, no third-party trackers, no cross-app tracking, and no profiling of you or your holdings. We do record a small set of anonymous usage events — see section 9.</li>
+                <li><b>No behavioural profiling or ad tracking.</b> No advertising IDs, no third-party trackers, no cross-app tracking, and no profiling of you or your holdings. If you opt in, we record a small set of anonymous usage events — see section 9.</li>
                 <li><b>No identity data.</b> No KYC, identity documents, or biometric data.</li>
               </ul>
             </TermsSection>
@@ -162,8 +163,9 @@ export default function TermsLegal() {
 
             <TermsSection number={4} title="Retention & Deletion" group="privacy">
               <p>
-                Apart from the anonymous events in section 9, we hold no personal data, so there is
-                nothing for us to retain and nothing for us to delete on our side.
+                Apart from the anonymous events in section 9 — which exist only if you opted in — we
+                hold no personal data, so there is nothing for us to retain and nothing for us to
+                delete on our side.
               </p>
               <p>
                 Those anonymous events are kept for up to 12 months and then deleted. Because they
@@ -203,8 +205,10 @@ export default function TermsLegal() {
               <p>
                 The one exception is the anonymous usage events in section 9. These are pseudonymous
                 and are not linked to your identity, so we are unable to connect them to a specific
-                person, including you. Deleting the app removes the install identifier from your
-                device, after which no further events can be associated with that install.
+                person, including you. Turning the setting off in Settings &rarr; Privacy stops any
+                further events immediately. Deleting the app, clearing its storage, or running a
+                panic wipe removes the install identifier from your device, after which no further
+                events can be associated with that install.
               </p>
             </TermsSection>
 
@@ -229,32 +233,45 @@ export default function TermsLegal() {
                 The Veyrnox app uses no cookies, no third-party analytics SDKs, and no tracking
                 pixels. Our website uses no advertising or third-party tracking cookies.
               </p>
-              <p>
-                The app does record a small number of anonymous usage events on our own
-                infrastructure, so we can tell how many people set up a wallet and which features are
-                actually used.
+              <p className="font-semibold text-foreground">
+                These events are opt-in. We ask once, when you first set up or unlock a wallet, and
+                nothing is sent unless you choose &ldquo;Help improve Veyrnox&rdquo;. If you decline,
+                no event is sent and no install identifier is even created. You can change your mind
+                at any time in <b>Settings &rarr; Privacy</b>; switching it off stops all of it
+                immediately.
               </p>
               <p>
-                Each event contains only three things: the name of the action, the time it happened,
-                and a randomly generated install identifier. That identifier is created on your
-                device the first time it is needed. It is not your advertising ID, not your Apple or
-                Google ID, and not derived from any hardware identifier. It is never linked to your
-                name, email, wallet, or addresses, and it disappears when you delete the app or clear
-                its storage.
+                If you opt in, the app records a small number of anonymous usage events on our own
+                infrastructure, so we can tell how many people finish setting up a wallet and which
+                features are actually used.
+              </p>
+              <p>
+                Each event contains the name of the action, the time it happened, a randomly
+                generated install identifier, and — for some events — a small piece of context, such
+                as which asset a screen was opened for or which step of a flow was reached. That
+                identifier is created on your device the first time it is needed. It is not your
+                advertising ID, not your Apple or Google ID, and not derived from any hardware
+                identifier. It is never linked to your name, email, wallet, or addresses, and it is
+                removed when you delete the app, clear its storage, or run a panic wipe.
               </p>
               <p>The events we record are:</p>
               <ul className="list-disc pl-4 space-y-1">
-                <li>a wallet was created</li>
-                <li>a wallet was imported</li>
+                <li>a wallet was created, imported, or finished setting up</li>
                 <li>a backup was confirmed</li>
                 <li>a session was started</li>
                 <li>the receive screen was opened, and for which asset</li>
-                <li>a send completed, and for which asset</li>
+                <li>funds arrived for the first time — the fact of it, never the amount</li>
+                <li>a send was started, reached a given step, was abandoned, or completed, and for which asset</li>
                 <li>a WalletConnect session was approved</li>
+                <li>a subscription prompt was shown, dismissed, or accepted</li>
+                <li>a referral code was applied, and the code itself</li>
+                <li>your browser is missing the secure-context or cryptography features the app needs</li>
+                <li>that you granted these permissions</li>
               </ul>
               <p>
                 <b>Never included:</b> wallet addresses, balances, amounts, transaction hashes, seed
-                phrases, recovery data, contacts, or location.
+                phrases, recovery data, contacts, or location. Balances and amounts are excluded with
+                no exception — not bucketed, not rounded, not sent at all.
               </p>
               <p className="font-semibold text-foreground">
                 Never sent at all: nothing is recorded in decoy (duress) sessions or in demo mode.

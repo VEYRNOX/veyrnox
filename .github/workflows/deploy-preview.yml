@@ -24,6 +24,7 @@ jobs:
     outputs:
       deployment_url: ${{ steps.deploy.outputs.deployment-url }}
       environment: ${{ steps.set-env.outputs.environment }}
+      slug: ${{ steps.slug.outputs.slug }}
     steps:
       - uses: actions/checkout@v5
 
@@ -55,6 +56,19 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler
 
+      # Branch names reach us from PR heads and can contain shell metacharacters,
+      # so they must never be interpolated straight into a command string.
+      # Sanitise to the Cloudflare-safe charset here, then pass the result via
+      # env so the deploy step interpolates a value we control.
+      - name: Compute deploy branch slug
+        id: slug
+        env:
+          RAW_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          SLUG="$(printf '%s' "$RAW_BRANCH" | tr -c 'a-zA-Z0-9-' '-' | cut -c1-28)"
+          SLUG="${SLUG%-}"
+          echo "slug=${SLUG:-preview}" >> "$GITHUB_OUTPUT"
+
       - name: Deploy to Cloudflare Pages
         id: deploy
         uses: cloudflare/wrangler-action@v3
@@ -62,7 +76,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: ''
-          command: pages deploy dist --project-name=veyrnox-staging --branch=${{ github.head_ref || github.ref_name }}
+          command: pages deploy dist --project-name=veyrnox-staging --branch=${{ steps.slug.outputs.slug }}
 
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
@@ -105,3 +119,76 @@ jobs:
       - name: Set deployment status
         if: always()
         run: echo "Deployed to ${{ steps.deploy.outputs.deployment-url }}"
+
+  # E2E runs HERE, in the same PR-triggered workflow, rather than in a separate
+  # `workflow_run` workflow. A workflow_run job executes in the BASE repo's
+  # privileged context (write-scoped token, secrets) while checking out the PR
+  # head — so `npm install` alone would run an attacker's postinstall script
+  # with those privileges. Running in-workflow keeps untrusted code in the
+  # untrusted context, and lets us take the deployment URL straight from the
+  # deploy job instead of reconstructing it from the branch name.
+  e2e:
+    needs: deploy
+    runs-on: ubuntu-latest
+    # Least privilege: this job only needs to read the repo and talk to the
+    # preview URL. It must not inherit the workflow-level pull-requests/
+    # deployments write scopes.
+    permissions:
+      contents: read
+    # Only when a real preview URL exists (fork PRs get no Cloudflare secrets,
+    # so deploy produces nothing to test against).
+    if: ${{ needs.deploy.outputs.deployment_url != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm install -g npm@11
+      - run: npm install --legacy-peer-deps
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for preview to be reachable
+        env:
+          URL: ${{ needs.deploy.outputs.deployment_url }}
+        run: |
+          echo "Waiting for $URL to respond..."
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null "$URL"; then
+              echo "Preview is up"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Preview at $URL did not become reachable within 5 minutes"
+          exit 1
+
+      # ONLY the smoke spec runs against a deployed build. Seven specs
+      # (webauthn-prf-kek, presign-risk-verdict, revenuecat-entitlement-
+      # failclosed, i3-deniability-egress, passkey-clone-replay,
+      # rasp-automation-detection, send-broadcast.harness-b) do
+      # `page.evaluate(() => import('/src/...'))`, which only resolves while
+      # Vite is serving source in dev. Against a built, hashed deployment there
+      # is no /src/**, so they 404 — 26 failed that way, none of them because
+      # the deployment was actually broken. The full suite's harness is the
+      # local dev server, where `web-e2e-tests` already runs it.
+      #
+      # BASE_URL is the variable the specs actually read (see e2e/*.spec.js).
+      # It was previously STAGING_URL, which no spec consulted — so every test
+      # silently dialled localhost:5173 with no server running.
+      - name: Smoke-test the deployed preview
+        run: npx playwright test e2e/staging-smoke.spec.js --project=staging
+        env:
+          BASE_URL: ${{ needs.deploy.outputs.deployment_url }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: staging-e2e-report
+          path: playwright-report/
+          retention-days: 14

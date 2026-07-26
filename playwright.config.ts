@@ -41,16 +41,21 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // The specs navigate with ABSOLUTE urls built from their own BASE const
+    // (which reads process.env.BASE_URL), so Playwright's `baseURL` is never
+    // consulted. It is set here only for completeness — BASE_URL is what
+    // actually points the suite at a deployed preview.
     {
       name: 'staging',
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: process.env.STAGING_URL || 'http://localhost:5173',
+        baseURL: process.env.BASE_URL || 'http://localhost:5173',
       },
     },
   ],
 
-  webServer: process.env.STAGING_URL ? undefined : {
+  // Skip the local dev server only when tests target a remote deployment.
+  webServer: process.env.BASE_URL ? undefined : {
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
