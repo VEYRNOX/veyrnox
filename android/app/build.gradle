@@ -183,6 +183,36 @@ tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.co
         def dbg = android.signingConfigs.debug
         def uploadSha = sha256Of(rel?.storeFile, rel?.storePassword, rel?.keyAlias)
 
+        // FAIL CLOSED, symmetrically with the DEBUG branch below (#1386 closed that
+        // one and left this one open). A release keystore that EXISTS but cannot be
+        // read — wrong password, wrong alias, corrupt store — yields a null uploadSha,
+        // and `uploadSha != null && ...` then skips the upload-cert comparison in
+        // silence. The two checks further down only assert the storeFile is present
+        // and exists; neither notices that it could not be OPENED.
+        //
+        // That is the same shape as #1373: the check reports nothing and the build
+        // proceeds, so "could not verify" is indistinguishable from "verified fine".
+        // Absent keystore is still legitimately null (nothing to compare against);
+        // present-but-unreadable is not.
+        if (uploadSha == null && rel?.storeFile != null && rel.storeFile.exists()) {
+            def allowUnreadable =
+                (project.findProperty('ALLOW_UNREADABLE_UPLOAD_KEYSTORE') ?: 'false').toString()
+            if (allowUnreadable.equalsIgnoreCase('true')) {
+                logger.warn('release-cert guard: UPLOAD-cert check SKIPPED by ' +
+                    "-PALLOW_UNREADABLE_UPLOAD_KEYSTORE=true (${rel.storeFile} unreadable).")
+            } else {
+                throw new GradleException(
+                    "RELEASE_CERT_SHA256 could not be checked against the UPLOAD cert.\n" +
+                    "The release keystore exists at ${rel.storeFile} but could not be read " +
+                    "with the configured credentials (alias '${rel?.keyAlias}').\n" +
+                    'Check KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD. Skipping this check ' +
+                    'silently is how the debug-cert branch sat inert for days (issue #1373), ' +
+                    'so it now fails closed.\n' +
+                    'Pass -PALLOW_UNREADABLE_UPLOAD_KEYSTORE=true to accept an unverified ' +
+                    'fingerprint deliberately.')
+            }
+        }
+
         // Resolving the DEBUG keystore needs more than signingConfigs.debug.storeFile.
         //
         // Issue #1373: this check silently no-opped in CI for days while passing
