@@ -47,16 +47,31 @@ $$;
 
 -- ============================================================================
 -- BLOCK 3: Decrement referral RPC (clawback on refund within 72h)
+--
+-- !! SUPERSEDED — DO NOT RUN THIS BLOCK. See sql/decrement-referral-hardening.sql
+--
+-- As written below this function was anon-callable (Postgres grants EXECUTE to
+-- PUBLIC by default and there are no GRANT/REVOKE statements in this file), with
+-- no rate limit, no device binding and no dedup. Since referral codes are shared
+-- publicly by their owners, anyone holding a code could loop this call and zero
+-- that referrer's count — the same capability the "public update" RLS policy was
+-- removed to prevent (see supabase/referrals.sql).
+--
+-- The block is left here rather than deleted so this file still reads as the
+-- history of what was actually run. If you are provisioning a database from
+-- scratch, skip it and run sql/decrement-referral-hardening.sql instead; that
+-- file DROPs this signature before creating the hardened one, so running both
+-- in order is also safe.
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION decrement_referral(p_code text)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-  UPDATE public.referrals
-  SET count = GREATEST(count - 1, 0)
-  WHERE code = p_code;
-END;
-$$;
+-- CREATE OR REPLACE FUNCTION decrement_referral(p_code text)
+-- RETURNS void
+-- LANGUAGE plpgsql
+-- SECURITY DEFINER
+-- AS $$
+-- BEGIN
+--   UPDATE public.referrals
+--   SET count = GREATEST(count - 1, 0)
+--   WHERE code = p_code;
+-- END;
+-- $$;
