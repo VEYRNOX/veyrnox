@@ -257,6 +257,45 @@ jobs:
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/keystore.jks
             echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> $GITHUB_ENV
           fi
+      # #1386 made the release-cert guard FAIL CLOSED when it cannot read a debug
+      # keystore to compare against — correct, and the point of #1373. But it
+      # created that keystore inside the guard regression test step, which runs
+      # AFTER the builds below, so the first `assembleRelease` died outright:
+      #
+      #   RELEASE_CERT_SHA256 could not be checked against the DEBUG keystore cert.
+      #   No readable debug keystore was found. Tried:
+      #   /home/runner/.config/.android/debug.keystore (missing),
+      #   /home/runner/.android/debug.keystore (missing)
+      #
+      # Net effect was worse than the bug: android-release was already red at the
+      # guard TEST step, but both artifacts still built. After #1386 the build
+      # itself failed and no APK or AAB was produced at all.
+      #
+      # Create it here, before anything calls assembleRelease. The path is derived
+      # with AGP's real precedence — ANDROID_USER_HOME, else ANDROID_SDK_HOME/.android,
+      # else ~/.android. GitHub runners set ANDROID_USER_HOME=/home/runner/.config/.android,
+      # which is NOT $HOME/.android; assuming they were the same is the mismatch
+      # behind #1373. DEBUG_KS is exported so later steps reuse this one derivation
+      # instead of computing their own.
+      - name: Ensure a debug keystore exists for the release-cert guard
+        run: |
+          set -euo pipefail
+          if [ -n "${ANDROID_USER_HOME:-}" ]; then
+            ANDROID_DIR="$ANDROID_USER_HOME"
+          elif [ -n "${ANDROID_SDK_HOME:-}" ]; then
+            ANDROID_DIR="$ANDROID_SDK_HOME/.android"
+          else
+            ANDROID_DIR="$HOME/.android"
+          fi
+          echo "DEBUG_KS=$ANDROID_DIR/debug.keystore" >> "$GITHUB_ENV"
+          if [ ! -f "$ANDROID_DIR/debug.keystore" ]; then
+            mkdir -p "$ANDROID_DIR"
+            keytool -genkeypair -keystore "$ANDROID_DIR/debug.keystore" \
+              -storepass android -keypass android -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          echo "debug keystore ready at $ANDROID_DIR/debug.keystore"
       - name: Build release APK
         run: |
           chmod +x gradlew
@@ -304,14 +343,18 @@ jobs:
           # three would fail for the wrong reason and the grep below would report
           # "an unrelated reason".
           #
-          # AGP's default debug keystore lives at ~/.android/debug.keystore and
-          # assembleRelease never creates it. Same file + alias the guard reads.
-          DEBUG_KS="$HOME/.android/debug.keystore"
-          if [ ! -f "$DEBUG_KS" ]; then
-            mkdir -p "$HOME/.android"
-            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
-              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
+          # DEBUG_KS comes from the "Ensure a debug keystore exists" step via
+          # GITHUB_ENV. Do NOT re-derive it here.
+          #
+          # Re-deriving is the #1373 bug itself: this step computed $HOME/.android
+          # while the Gradle JVM resolved ANDROID_USER_HOME
+          # (/home/runner/.config/.android on GitHub runners). The test created a
+          # keystore the guard never looked at, the guard found nothing, and the
+          # fail-open helper turned that into a silent pass. One derivation, one
+          # path, shared through the environment.
+          if [ -z "${DEBUG_KS:-}" ] || [ ! -f "$DEBUG_KS" ]; then
+            echo "::error::DEBUG_KS unset or missing ($DEBUG_KS) — the earlier keystore step did not run"
+            exit 1
           fi
           expect_rejected() {
             label="$1"; shift
