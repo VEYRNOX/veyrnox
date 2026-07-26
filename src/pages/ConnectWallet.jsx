@@ -151,7 +151,7 @@ export default function ConnectWallet() {
         <div className="space-y-2">
           {preview.assets.map((asset, i) => (
             <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
+              <div aria-hidden="true" className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
                 {preview.provider.emoji}
               </div>
               <div className="flex-1 min-w-0">
@@ -202,7 +202,7 @@ export default function ConnectWallet() {
               disabled={connecting === provider.id}
               className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-all disabled:opacity-50 text-left group"
             >
-              <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center text-2xl shrink-0">
+              <div aria-hidden="true" className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center text-2xl shrink-0">
                 {provider.emoji}
               </div>
               <div className="flex-1 min-w-0">

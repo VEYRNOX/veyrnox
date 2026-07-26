@@ -411,7 +411,7 @@ export default function Subscription() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Free</h2>
-            <span className="text-sm font-bold">$0</span>
+            <span className="text-sm font-bold font-mono tabular-nums">$0</span>
             {currentTier === "free" && (
               <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
             )}
@@ -443,12 +443,6 @@ export default function Subscription() {
           <CardTitle className="flex items-center gap-2 text-lg">
             Safety Plus
             <Sparkles className="h-4 w-4 text-primary" />
-            <Badge
-              variant="outline"
-              className="ml-auto text-[10px] px-2 py-0.5 border-primary/40 text-primary whitespace-nowrap"
-            >
-              Limited time offer
-            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -486,14 +480,14 @@ export default function Subscription() {
                     tabIndex={effectiveBilling === "monthly" ? 0 : -1}
                     onClick={() => setBilling("monthly")}
                     className={
-                      "text-sm rounded-md px-3 py-2 transition-colors text-center " +
+                      "text-sm rounded-md px-3 py-2 transition-colors text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
                       (effectiveBilling === "monthly"
                         ? "bg-background border border-border font-medium"
                         : "text-muted-foreground hover:text-foreground")
                     }
                   >
                     Monthly
-                    <span className="block text-xs text-muted-foreground font-normal">
+                    <span className="block text-xs text-muted-foreground font-normal font-mono tabular-nums">
                       {monthlyPriceString}
                       {hasDiscount && regularMonthlyPrice && regularMonthlyPrice !== monthlyPriceString && (
                         <span className="ml-1 line-through opacity-60">{regularMonthlyPrice}</span>
@@ -508,7 +502,7 @@ export default function Subscription() {
                     tabIndex={effectiveBilling === "annual" ? 0 : -1}
                     onClick={() => setBilling("annual")}
                     className={
-                      "text-sm rounded-md px-3 py-2 transition-colors text-center relative " +
+                      "text-sm rounded-md px-3 py-2 transition-colors text-center relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
                       (effectiveBilling === "annual"
                         ? "bg-background border border-primary/40 font-medium"
                         : "text-muted-foreground hover:text-foreground")
@@ -521,7 +515,7 @@ export default function Subscription() {
                     >
                       Save 30%
                     </Badge>
-                    <span className="block text-xs text-muted-foreground font-normal">
+                    <span className="block text-xs text-muted-foreground font-normal font-mono tabular-nums">
                       {annualPriceString}
                       {hasDiscount && regularAnnualPrice && regularAnnualPrice !== annualPriceString && (
                         <span className="ml-1 line-through opacity-60">{regularAnnualPrice}</span>
@@ -533,7 +527,7 @@ export default function Subscription() {
 
               {/* Selected price */}
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold">{selectedPriceString}</span>
+                <span className="text-3xl font-bold font-mono tabular-nums">{selectedPriceString}</span>
                 {/* Strike the regular price only when it DIFFERS from what is
                     shown. If the offer price could not be read we fall back to
                     the base price, and "$5.99 struck-through $5.99" would
@@ -542,7 +536,7 @@ export default function Subscription() {
                 {hasDiscount &&
                   selectedRegularPrice &&
                   selectedRegularPrice !== selectedPriceString && (
-                    <span className="text-base text-muted-foreground line-through">
+                    <span className="text-base text-muted-foreground line-through font-mono tabular-nums">
                       {selectedRegularPrice}
                     </span>
                   )}
