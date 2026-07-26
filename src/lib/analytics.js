@@ -1,32 +1,20 @@
-// src/lib/analytics.js — Consent-gated analytics wrapper.
-// All events flow through trackEvent() (I2/I3 gates baked in — see
-// src/api/trackEvent.js for the demo/deniability/no-supabase guards).
-// Consent is a localStorage flag, not a server round-trip.
+// src/lib/analytics.js — Named-event wrapper over the tracking egress path.
 //
-// CONSENT_GRANTED / CONSENT_DENIED are the one exception: those two events
-// describe the consent decision itself, so they must fire via trackEvent()
-// directly (see FunnelEvent below) rather than through emit(), which would
-// otherwise suppress CONSENT_DENIED (no consent yet) and race
-// CONSENT_GRANTED against the localStorage write.
+// Consent is NOT enforced here any more. It is enforced inside
+// src/api/trackEvent.js, which is the single egress chokepoint every event
+// must pass through — including the 11 pre-existing call sites that invoke
+// trackEvent() directly and never went through emit(). Gating in one place
+// is what makes "No thanks" actually mean no thanks.
+//
+// The consent accessors are re-exported here so existing importers keep
+// working; their implementation lives in src/lib/consent.js (a leaf module,
+// so trackEvent.js can import it without a cycle).
 
 import { trackEvent } from '@/api/trackEvent';
 
-const CONSENT_KEY = 'veyrnox-telemetry-consent';
-
-export function setConsent(granted) {
-  try { localStorage.setItem(CONSENT_KEY, granted ? 'granted' : 'denied'); } catch {}
-}
-
-export function hasConsent() {
-  return getConsentState() === 'granted';
-}
-
-export function getConsentState() {
-  try { return localStorage.getItem(CONSENT_KEY); } catch { return null; }
-}
+export { setConsent, hasConsent, getConsentState, clearConsent, CONSENT_KEY } from '@/lib/consent';
 
 export async function emit(event, metadata = {}) {
-  if (!hasConsent()) return;
   return trackEvent(event, metadata);
 }
 

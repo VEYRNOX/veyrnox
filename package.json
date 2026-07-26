@@ -72,7 +72,7 @@
     "android:run": "npm run build && cap run android",
     "build:sit": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=SIT npm run build",
     "build:uat": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=UAT npm run build",
-    "build:staging": "cross-env VITE_ENV_LABEL=Staging VITE_ENV=staging npm run build",
+    "build:staging": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build --mode staging",
     "mobile:build:sit": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=SIT npm run build && npm run cap:sync",
     "mobile:build:uat": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=UAT npm run build && npm run cap:sync",
     "postinstall": "patch-package"

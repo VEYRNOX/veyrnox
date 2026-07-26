@@ -8,8 +8,29 @@
 // rejection / crashing a render.
 //
 // I3 (deniability): this module does not itself gate on deniability/demo —
-// emit() already suppresses egress via trackEvent()'s guards, and hasConsent()
-// gates every emit(). Hooks here are safe to mount unconditionally.
+// trackEvent() suppresses egress on the demo/deniability guards AND on the
+// consent check, which now lives at that single chokepoint. Hooks here are
+// safe to mount unconditionally.
+//
+// ── WIRING STATUS (keep this list honest) ────────────────────────────────
+// WIRED (have real call sites):
+//   useCryptoDiagnostics  → App.jsx
+//   useWalletReady        → WalletPortfolioPage.jsx
+//   useFirstInbound       → WalletPortfolioPage.jsx
+//   useSendFlowTracking   → SendCrypto.jsx
+//   useFirstSend          → SendCrypto.jsx
+//   cancelVerificationReminders → SeedVerificationPage.jsx
+//
+// NOT WIRED — exported but no call site anywhere in src/. These do not
+// produce funnel coverage today and must not be counted as if they did:
+//   useFirstOpen, useOnboardingStart, useCustodyPathChosen, useSeedGenerated,
+//   useSeedRevealed, useSeedBackupAcknowledged, useSeedVerification,
+//   useLockMethodSet, useUnlockTracking, useDappConnectTracking,
+//   emitTamperSignal, emitSecurityModal, emitKekUnwrapFailed,
+//   scheduleFundingReminders, cancelFundingReminders,
+//   scheduleVerificationReminders
+// Before wiring useDappConnectTracking, note that it sends the dApp `origin`
+// — browsing-shaped data the consent copy does not currently cover.
 
 import { useEffect, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
@@ -46,15 +67,27 @@ export function useFirstOpen() {
   }, []);
 }
 
-export function useWalletReady() {
+// `ready` MUST be passed. WalletPortfolioPage calls this above its
+// `if (!isUnlocked)` early return (hooks must run unconditionally), so without
+// a guard the milestone fired in explore mode with no wallet — and fireOnce()
+// burned `veyrnox-wallet-ready-fired` permanently, meaning the REAL
+// wallet-ready moment could never be recorded and the holdout bucket was
+// assigned to a device that had no wallet.
+export function useWalletReady(ready) {
   useEffect(() => {
+    if (!ready) return;
     fireOnce("veyrnox-wallet-ready-fired", () => {
       assignHoldout();
       safeEmit(FunnelEvent.WALLET_READY);
     });
-  }, []);
+  }, [ready]);
 }
 
+// NEVER send the balance itself. This previously emitted `{ balance }` — the
+// user's real portfolio USD total — against a persistent device ID, while the
+// consent screen promised "no wallet data". The milestone (funding happened)
+// is the whole signal we need; the amount is the user's financial position and
+// has no business leaving the device.
 export function useFirstInbound(balance) {
   const firedRef = useRef(false);
   useEffect(() => {
@@ -68,7 +101,7 @@ export function useFirstInbound(balance) {
       localStorage.setItem("veyrnox-first-inbound-fired", "1");
     } catch {}
     firedRef.current = true;
-    safeEmit(FunnelEvent.FIRST_INBOUND_DETECTED, { balance });
+    safeEmit(FunnelEvent.FIRST_INBOUND_DETECTED);
   }, [balance]);
 }
 
@@ -156,7 +189,9 @@ export function useSendFlowTracking() {
     start: () => safeEmit(FunnelEvent.SEND_FLOW_STARTED),
     stepReached: (step) => safeEmit(FunnelEvent.SEND_STEP_REACHED, { step }),
     abandon: (step) => safeEmit(FunnelEvent.SEND_ABANDONED, { step }),
-    confirm: () => safeEmit(FunnelEvent.SEND_FLOW_STARTED, { step: 'confirmed' }),
+    // Was emitting SEND_FLOW_STARTED — a copy-paste that double-counted every
+    // confirm as a new funnel start and left confirms unmeasurable.
+    confirm: () => safeEmit(FunnelEvent.SEND_STEP_REACHED, { step: 'confirmed' }),
   };
 }
 

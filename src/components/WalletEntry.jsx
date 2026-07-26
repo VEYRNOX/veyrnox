@@ -87,7 +87,8 @@ import Spinner from "@/components/Spinner";
 import SeedGrid from "@/components/SeedGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
 import TelemetryConsent from "@/components/TelemetryConsent";
-import { getConsentState } from "@/lib/analytics";
+import { getConsentState } from "@/lib/consent";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
@@ -1154,7 +1155,13 @@ export default function WalletEntry() {
   // BOTH create and import (both land here once unlocked + past the KEK gate).
   // consentDone is seeded from getConsentState() at mount, so this only ever
   // shows when the device has never answered before.
-  if (isUnlocked && !generatedSeed && !kekGatePending && !consentDone) {
+  //
+  // NEVER in a decoy/demo session (I3, and the K-2 pattern from PR #1262).
+  // A duress unlock must not surface a consent prompt, and — more importantly
+  // — must not let a coerced tap write veyrnox-telemetry-consent into the
+  // SHARED localStorage that the real session reads. The real session asks on
+  // its own next entry.
+  if (isUnlocked && !generatedSeed && !kekGatePending && !consentDone && !isDeniabilityOrDemoActive()) {
     return (
       <EntryShell error={error}>
         <TelemetryConsent onChoice={() => setConsentDone(true)} />

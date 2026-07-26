@@ -9,8 +9,9 @@ import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { useTier } from "@/lib/TierProvider";
 import { getAuthModel } from "@/lib/authModel";
-import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature } from "lucide-react";
+import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature, BarChart3 } from "lucide-react";
 import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
+import { hasConsent, setConsent } from "@/lib/consent";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -34,6 +35,7 @@ export default function Settings() {
   const [auditLog, setAuditLog] = useState(() => getAuditLogEnabled());
   const [auditEntries, setAuditEntries] = useState(null);
   const [messageSigning, setMessageSigning] = useState(() => isMessageSigningEnabled());
+  const [telemetry, setTelemetry] = useState(() => hasConsent());
 
   useEffect(() => {
     if (!auditLog) { setAuditEntries(null); return; }
@@ -181,6 +183,39 @@ export default function Settings() {
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           Off by default. Lets you sign arbitrary text messages with your wallet key. Only enable if a dApp or service asks you to sign a message.
+        </p>
+      </div>
+
+      {/* Privacy — anonymous usage data. The onboarding consent screen tells the
+          user "You can change this anytime in Settings → Privacy", so this
+          control has to actually exist: a promise in the UI that no surface
+          delivers is exactly the kind of claim the honesty bar forbids.
+          Turning it off stops all egress immediately — trackEvent() re-reads
+          consent on every call, so there is nothing to flush or restart. */}
+      <div className="p-5 rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <BarChart3 className="h-5 w-5 text-primary" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Anonymous usage data</p>
+              <p className="text-xs text-muted-foreground">Opt-in · never includes balances or addresses</p>
+            </div>
+          </div>
+          <Switch
+            checked={telemetry}
+            aria-label={telemetry ? 'Turn off anonymous usage data' : 'Turn on anonymous usage data'}
+            onCheckedChange={(checked) => {
+              setConsent(checked);
+              setTelemetry(checked);
+              recordAudit('settings_changed');
+            }}
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Helps us find bugs and improve the app. A random device ID is used — never linked to your
+          wallet, keys, or identity. Turning this off stops all usage data leaving this device.
         </p>
       </div>
 

@@ -13,7 +13,10 @@ const routes = [
 
 const transakRoute = { key: 'card', icon: CreditCard, label: 'Buy with card', desc: 'Purchase crypto directly with a debit or credit card.' };
 
-export default function EmptyWalletState({ receiveAddress, onReceive, transakReady = false }) {
+// `receiveAddress` was accepted and never used — the screen shows no address
+// or QR of its own, it routes to Receive. Dropped rather than left as a prop
+// that implies this component renders something it does not.
+export default function EmptyWalletState({ onReceive, transakReady = false }) {
   useEffect(() => {
     Promise.resolve(emit(FunnelEvent.RECEIVE_ADDRESS_VIEWED, { source: 'empty_state' })).catch(() => {});
   }, []);
