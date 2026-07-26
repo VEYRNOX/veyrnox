@@ -98,82 +98,54 @@ jobs:
           category: /language:${{ matrix.language }}
 
   # --------------------------------------------------------------------------
-  # Does this change need the (expensive) Swift scan?
+  # Swift runs on EVERY pull request. This is deliberate, and it is a reversal.
   #
-  # Swift is the only language that needs a macOS runner and a real compile.
-  # Measured on 2026-07-26: 20-50 min QUEUED waiting for a scarce macOS slot,
-  # then ~38 min running — 60-90 min end to end, against ~1-3 min for the five
-  # source-only languages. The repo's code_scanning ruleset gates on the CodeQL
-  # TOOL, so that tail held every PR at mergeStateStatus=BLOCKED for over an
-  # hour. Four PRs on 2026-07-26 were merged with --admin to get past it, which
-  # is how a security gate quietly becomes decorative.
+  # Swift is the only language needing a macOS runner and a real compile.
+  # Measured 2026-07-26: 20-50 min QUEUED for a scarce macOS slot, then ~38 min
+  # running — 60-90 min end to end, against ~1-3 min for the five source-only
+  # languages. PR #1368 responded by skipping it on PRs that touch no iOS or
+  # Swift files (only 3.3% of recent commits do), so the other ~97% would not
+  # wait.
   #
-  # But only 54 of the last 1634 commits on main (3.3%) touched iOS/Swift at
-  # all. So the fix is not to drop Swift coverage — it is to stop making the
-  # other ~97% of PRs wait for it. Swift still runs:
-  #   - on every push to main (so nothing lands unscanned for long)
-  #   - weekly on the existing schedule
-  #   - on any PR that actually touches iOS or Swift sources
+  # That made things worse, for a reason the ruleset made unavoidable. The
+  # repo's code_scanning rule gates on the CodeQL TOOL and has NO per-language
+  # granularity — verified against the live ruleset: the rule's only parameter
+  # is a list of {tool, alerts_threshold, security_alerts_threshold}, with no
+  # language or category field. A PR that uploads five of six languages leaves
+  # the tool's result set incomplete, so the gate is never satisfied and the PR
+  # is blocked FOREVER rather than for an hour. That is issue #1375.
   #
-  # HONEST LIMIT (I4): a PR that does NOT touch iOS gets no pre-merge Swift
-  # scan. If someone changes Swift behaviour purely from the JS side, that is
-  # caught on main rather than in review. Accepted deliberately: the previous
-  # behaviour was an hour-long block that was being --admin'd past anyway,
-  # which is worse coverage than this, not better.
+  # PR #1377 tried to close the hole by uploading a SARIF for /language:swift
+  # on the skip path, marked honestly as `executionSuccessful: false`. GitHub
+  # rejects it outright:
+  #
+  #   Analysis upload status is failed.
+  #   Code Scanning could not process the submitted SARIF file:
+  #   unsuccessful execution, exit code: 0
+  #
+  # Code Scanning will not record a non-run as an analysis. The only SARIF it
+  # would accept is one claiming `executionSuccessful: true` with no results —
+  # i.e. asserting "CodeQL analysed Swift and found nothing" about code nobody
+  # scanned. That is precisely the "never mock a security control to look real"
+  # prohibition, so it is not an option.
+  #
+  # With per-language gating impossible and a truthful skip-record impossible,
+  # the remaining choices were: always scan, or drop the code_scanning rule and
+  # make CodeQL advisory. Always-scan keeps the gate real.
+  #
+  # THE COST IS REAL AND ACCEPTED: every PR now waits 60-90 min for a macOS
+  # runner before it can merge. That is worse for latency than #1368 and better
+  # than the status quo, where PRs never became mergeable at all and four were
+  # pushed through with --admin on 2026-07-26 — which is how a security gate
+  # quietly becomes decorative.
+  #
+  # If the latency proves unacceptable, the honest lever is to drop the
+  # code_scanning rule from the ruleset deliberately and record it as an
+  # accepted residual — NOT to reintroduce conditional scanning, which produces
+  # unmergeable PRs, nor to fake the SARIF. See #1375 before changing this.
   # --------------------------------------------------------------------------
-  swift-scope:
-    name: Swift scan needed?
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      needed: ${{ steps.decide.outputs.needed }}
-    steps:
-      - name: Decide
-        id: decide
-        env:
-          # Values reach the script via env, never interpolated into the command
-          # string — same rule the deploy-preview workflow follows.
-          GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-
-          # Anything that is not a PR (push to main, weekly schedule, manual
-          # dispatch) always scans — that is the safety net.
-          if [ "$EVENT_NAME" != "pull_request" ]; then
-            echo "needed=true" >> "$GITHUB_OUTPUT"
-            echo "Not a pull_request ($EVENT_NAME) — Swift scan runs."
-            exit 0
-          fi
-
-          # Fail CLOSED: if the file list cannot be read, scan rather than skip.
-          if ! files="$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/files" --jq '.[].filename')"; then
-            echo "needed=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::Could not list PR files — running the Swift scan anyway (fail-closed)."
-            exit 0
-          fi
-
-          # ios/ covers the app target, the .xcodeproj and the entitlements;
-          # *.swift catches plugin sources outside it (e.g. android-plugins/
-          # webauthn-native/ios/WebAuthnNativePlugin.swift). Podfile/Package.swift
-          # changes alter what gets compiled, so they count too.
-          if printf '%s\n' "$files" | grep -qE '(^ios/|\.swift$|/ios/|Podfile|Package\.resolved)'; then
-            echo "needed=true" >> "$GITHUB_OUTPUT"
-            echo "iOS/Swift sources touched — Swift scan runs."
-          else
-            echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "No iOS/Swift sources touched — skipping the Swift scan on this PR."
-          fi
-
   analyze-swift:
     name: Analyze (swift)
-    needs: swift-scope
-    if: needs.swift-scope.outputs.needed == 'true'
     runs-on: macos-latest
     # Generous: full Capacitor + xcodebuild compile, and the macOS queue is slow.
     timeout-minutes: 60
