@@ -67,7 +67,7 @@ Tested via `/?demo=1` using Playwright (Chromium, headless).
 | Test | Result | Notes |
 |---|---|---|
 | `demo mode does not show real derived address` | PASS | `EXPECTED_EVM` absent from `/?demo=1` page content |
-| `send form rejects invalid address` | PASS (INCONCLUSIVE) | No address input found at `/send?demo=1` — send form requires onboarding state (see F-004) |
+| `send form surfaces a validation error for a malformed address` | PASS | Conclusive since F-004 was fixed (2026-07-26). Renamed from `send form rejects invalid address`: it asserts the error is surfaced, not that the submit gate rejects |
 | `landing page renders without errors` | PASS | CSP `frame-ancestors` warning filtered (see F-003) |
 | `demo mode page body is visible (no blank screen)` | PASS | Body visible, non-empty text confirmed |
 
@@ -80,7 +80,7 @@ Tested via `/?demo=1` using Playwright (Chromium, headless).
 | F-001 | CRITICAL | P0 | `@revenuecat/purchases-capacitor` not installed. Vite dev server fails to resolve the import in `src/lib/purchases.js`, causing a module transform error that prevents the app from rendering. 18 of 19 E2E failures were caused by this single missing dependency. | `src/lib/purchases.js:8`, `vite.config.js` | YES — added alias to `src/lib/stubs/revenuecat-stub.js` in `vite.config.js`; stub is a no-op safe for web (all methods guard with `isNative()`) |
 | F-002 | ~~HIGH~~ → **LOW** | ~~P1~~ → **P2** | Duress PIN decoy E2E fails intermittently: the assertion `getByText('HIDDEN WALLET', exact)` (spec line 75, 10s timeout) is not satisfied. **DIAGNOSED via live trace 2026-07-11 — root cause = (C-i) test-infra/timing, NOT a regression.** The Emergency-PIN unlock takes **8.7–10.0 s** (measured: run 1 = 9996 ms pass, run 2 = >10000 ms FAIL, run 3 = 8712 ms pass) because the Emergency PIN takes the failure→deniability path = 4–5 Argon2id KDFs at 192 MiB/t=3 (~1.7 s each in WASM) + the 2000 ms equalizer, landing right on the 10 s assertion ceiling and flaking at the margin. Decoy routing is **correct** on every run: `isDecoy` flips (`WalletProvider.jsx:1543-1545`), `HIDDEN WALLET` renders, decoy address differs each run. **(C-ii) swallowed-error and (B) real-regression both ruled out** — no error banner, panel never falls back to `REAL WALLET`. `HIDDEN WALLET` selector confirmed correct at `DuressPin.jsx:581`. | `e2e/duress-decoy-routing.spec.js:75`; `src/lib/WalletProvider.jsx:211,1486-1531,1543-1545` | YES (test-only) — assertion timeout bumped 10 s → 30 s (3× headroom over measured worst case), verified 3/3 stable. Ships in PR #822 (`qa/2026-07-11-veyrnox-audit` → `main`); the standalone PR #823 with the identical change was closed as superseded. Selector and all wallet-core/duress logic untouched. |
 | F-003 | MEDIUM | P2 | `frame-ancestors` CSP directive placed in a `<meta>` element. Browsers silently ignore `frame-ancestors` when delivered via `<meta>` (per spec). Clickjacking protection is not enforced. The directive must be delivered as an HTTP response header (`Content-Security-Policy: frame-ancestors 'none'`). | App HTML `<meta>` CSP, detected via console error in browser | NO — requires server/hosting config change |
-| F-004 | LOW | P2 | Send form address input not reachable at `/send?demo=1` without completing onboarding. No `input[placeholder*="0x"]`, `getByLabel(/address|recipient/i)`, or `input[type="text"]` found. The send route likely redirects or renders an onboarding gate before exposing the form. | `e2e/qa-demo-isolation-e2e.spec.ts:send form test`, `src/` send routing | NO — test uses `test.skip`; send form E2E requires pre-seeded vault state |
+| F-004 | LOW | P2 | Send form address input not reachable at `/send?demo=1` without completing onboarding. No `input[placeholder*="0x"]`, `getByLabel(/address|recipient/i)`, or `input[type="text"]` found. The send route likely redirects or renders an onboarding gate before exposing the form. | `e2e/qa-demo-isolation-e2e.spec.ts:send form test`, `src/` send routing | YES (2026-07-26) — root cause was the redirect this finding suspected: SendCrypto's cold-load guard navigated home on `vaultExists === false` with no demo exemption, so the form rendered and vanished ~481 ms later. The guard now exempts `demoActive`. No vault pre-seed fixture needed; the `test.skip` remains only as a safety net |
 
 ---
 
@@ -89,13 +89,14 @@ Tested via `/?demo=1` using Playwright (Chromium, headless).
 - Total findings: 4
 - CRITICAL: 1 | HIGH: 1 | MEDIUM: 1 | LOW: 1
 - Fixed inline: 1 (F-001)
-- Remaining open: 3 (F-002, F-003, F-004)
+- Fixed subsequently: 1 (F-004, 2026-07-26)
+- Remaining open: 2 (F-002, F-003)
 
 ### Key actions required
 
 1. **F-002 (HIGH/P1)**: Investigate `src/` decoy routing logic — `HIDDEN WALLET` label / Emergency PIN unlock path likely has a UI selector mismatch or the feature was removed/renamed.
 2. **F-003 (MEDIUM/P2)**: Move `frame-ancestors` to HTTP response header in the hosting layer (Vite dev proxy headers or deployment platform headers).
-3. **F-004 (LOW/P2)**: Add a vault pre-seed fixture to the send form E2E test so the form is reachable without manual onboarding.
+3. ~~**F-004 (LOW/P2)**: Add a vault pre-seed fixture to the send form E2E test so the form is reachable without manual onboarding.~~ **Done 2026-07-26** — fixed at the source instead: the cold-load redirect guard now exempts demo, so the form stays mounted at `/send?demo=1` and no fixture is required.
 
 ### Inline fix applied
 
