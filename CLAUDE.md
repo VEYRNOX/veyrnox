@@ -149,21 +149,37 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   (release path was dead), and the debug-fingerprint guard PR #1310 added had been silently
   dropped by PR #1313. See `docs/audit-2026-07-23-branch-review.md`. RASP on a Play
   install still device-unverified.
-- **The debug-cert guard is INERT and `main` is RED — issue #1373 (open, 2026-07-26).**
-  An earlier version of this line said "CI now asserts the guard's rejections". The
-  assertion exists (`ci.yml:275`, added by #1338) but it has **failed on every push since
-  it was introduced** — it has never once passed. `android-release` has been red since
-  2026-07-24 20:23 (last green run `30121669319`, first red `30123897462`/`6586cdd5`),
-  through ~15 unrelated merges, so each red run looks caused by whatever just landed.
-  The step feeds the guard four wrong fingerprints; blank, malformed and upload-cert are
-  rejected, the **debug keystore cert is not**. Root cause: `sha256Of`
-  (`android/app/build.gradle:160`) returns `null` on a missing storeFile **and** swallows
-  every exception (`catch (Exception ignored)`, `:173`), and the check is
-  `debugSha != null && …` (`:192`) — so an unresolvable debug keystore silently turns the
-  branch into a no-op. **Both paths fail OPEN, which is backwards from I4 for a check whose
-  job is to stop a mis-signed release.** This is the third regression of this same guard
-  (#1310 added → #1313 dropped → #1325 restored → #1338 caught it). Not fixed; signing is
-  security-gated and wants a deliberate owner decision.
+- **The debug-cert guard — FIXED 2026-07-26 (#1386 + #1391), issue #1373 CLOSED.**
+  Two earlier versions of this line were wrong in opposite directions: first it claimed
+  "CI now asserts the guard's rejections" while the assertion had never once passed, then
+  it said the guard was inert and unfixed after #1386 had already landed. Current state,
+  read from merged code rather than assumed:
+  - **The guard fails closed** (`android/app/build.gradle`). #1386 replaced the
+    fail-open `sha256Of` — which returned `null` on a missing storeFile and swallowed
+    every exception — with a candidate sweep (`debugCandidates` × alias variants) that
+    **throws** if nothing resolves, listing what it tried. #1391 closed the matching
+    fail-open on the UPLOAD branch: a release keystore that exists but cannot be opened
+    (wrong password/alias) no longer skips the comparison in silence. Both have explicit,
+    typed-on-purpose escape hatches — `-PALLOW_MISSING_DEBUG_KEYSTORE=true` and
+    `-PALLOW_UNREADABLE_UPLOAD_KEYSTORE=true`.
+  - **The regression test now runs on PRs** (`release-guard-scope` + `release-cert-guard`
+    in `ci.yml`). This is the half that mattered most: the test used to live inside
+    `android-release`, gated on `github.ref == 'refs/heads/main' && event != pull_request`,
+    so **no PR could ever catch a regression**. That is why an inert guard survived ~15
+    merges over two days — every red run on main looked caused by whatever had just
+    landed. The job also asserts the CORRECT fingerprint still builds, because a guard
+    that rejected *everything* would otherwise pass all four rejection cases.
+  - **Fail-closed guards need their preconditions built first.** #1386 alone made
+    `android-release` worse, not better: it hard-failed on a missing debug keystore while
+    the keystore was only created inside the test step that ran *after* the build. A
+    revert was opened (#1389) and closed in favour of #1391, which creates the debug
+    keystore before the build steps instead.
+  - Fourth regression of this same guard: #1310 added → #1313 silently dropped → #1325
+    restored → #1338 caught it → inert until #1386/#1391. If you touch it, the standing
+    test is the thing keeping it honest — do not weaken it to make a build pass.
+  - **Verified:** `android-release` succeeded on `main` at `ffe795ed` (run `30219992941`)
+    — the first green run of that job since 2026-07-24. INTERNAL/CI evidence only; RASP
+    on a Play install remains device-unverified, and no release has been shipped from it.
 - **Personal** developer account: 12-tester/14-day rule gates **production only**.
 - Data Safety: all 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
 - **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV)** — Guideline
