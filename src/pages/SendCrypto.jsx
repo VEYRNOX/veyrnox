@@ -220,15 +220,28 @@ export default function SendCrypto() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Demo is a backend-less walkthrough with NO unlocked vault (see the DEMO FALLBACK
+  // note on the wallet source below, which consumes this too). Defined up here because
+  // the cold-load guard needs it — one definition, so the guard and the data source can
+  // never disagree about whether this is a demo session.
+  const demoActive = DEMO && wallets.length === 0;
+
   // Cold-load / deep-link guard: if the vault is confirmed absent (new install),
   // redirect home rather than hanging on an empty form.
+  //
+  // DEMO EXEMPTION: demo deliberately has no vault, so `vaultExists === false` is its
+  // NORMAL state, not a broken deep link. Without this the screen rendered and then
+  // redirected home the moment the async vault check resolved — measured at ~481 ms —
+  // which made the send screen unreachable in demo and left the e2e spec that targets
+  // it racing the redirect. The exemption is strictly `demoActive`, so a real new
+  // install is still sent home exactly as before.
   const redirected = useRef(false);
   useEffect(() => {
-    if (!redirected.current && !vaultChecking && vaultExists === false) {
+    if (!redirected.current && !demoActive && !vaultChecking && vaultExists === false) {
       redirected.current = true;
       navigate('/', { replace: true });
     }
-  }, [vaultChecking, vaultExists, navigate]);
+  }, [demoActive, vaultChecking, vaultExists, navigate]);
   // When navigated from CryptoDetailPage (?asset=ETH), wallet + asset are already
   // known — hide those pickers and show a simplified address+amount form.
   const fromDetail = !!searchParams.get("asset");
@@ -318,7 +331,7 @@ export default function SendCrypto() {
   // demo-only: in a real session `demoActive` is false and every value below is the
   // live one, so the real send path — and its deniability guarantees (I3) — is
   // byte-identical (a real session never reads the demo source).
-  const demoActive = DEMO && wallets.length === 0;
+  // `demoActive` is defined above (the cold-load guard needs it first).
   const demoSrc = useMemo(() => (demoActive ? demoSendSource() : null), [demoActive]);
   const srcWallets    = demoSrc ? demoSrc.wallets    : wallets;
   const srcAccounts   = demoSrc ? demoSrc.accounts   : accounts;
@@ -544,6 +557,12 @@ export default function SendCrypto() {
   const addressFormatValid = !toAddress || !selectedWallet
     ? true
     : isValidAddressForCurrency(toAddress, selectedWallet.currency);
+
+  // The address error's visibility condition, hoisted so the input's aria-invalid /
+  // aria-describedby and the message itself cannot drift apart — they describe one
+  // control, and a field that reads "invalid" while no message renders (or vice
+  // versa) is worse for a screen-reader user than neither. Mirrors `amountInvalid`.
+  const addressInvalid = (toAddress || showErrors) && !addressFormatValid;
 
   // SELF-SEND guard (#179 S3). Compares the recipient against the active wallet's
   // OWN address for this asset, with per-currency normalization (EVM case-
@@ -1353,6 +1372,8 @@ export default function SendCrypto() {
               onBlur={e => resolveENS(e.target.value)}
               placeholder="Paste an address or enter a name (e.g. vitalik.eth)"
               className={`mono-value text-sm ${!addressFormatValid ? 'border-destructive' : ''}`}
+              aria-invalid={addressInvalid || undefined}
+              aria-describedby={addressInvalid ? "send-address-error" : undefined}
             />
             {ensResolving && <Loader2 className="h-4 w-4 motion-safe:animate-spin self-center shrink-0 text-muted-foreground" />}
             <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label="Scan QR code" title="Scan QR code" onClick={() => setShowScanner(true)}>
@@ -1395,12 +1416,15 @@ export default function SendCrypto() {
           )}
         </div>
 
-        {/* role="alert" matches the amount error below (id="send-amount-error").
-            Without it this message was invisible to assistive tech and to any
-            role-based query — the one validation error a user is most likely to
-            hit, announced to nobody. */}
-        {(toAddress || showErrors) && !addressFormatValid && (
-          <p role="alert" className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
+        {/* Mirrors the amount field's error pattern below in full: id + role="alert"
+            on the message, and #send-recipient pointing at it via aria-invalid +
+            aria-describedby. Before this the message rendered but was never
+            ANNOUNCED — a plain <p> is still reachable in browse mode, so it was not
+            invisible; what was missing is that nothing told a screen reader the
+            field had gone invalid, and no role-based query could find it. This is
+            the validation error a user is most likely to hit. */}
+        {addressInvalid && (
+          <p id="send-address-error" role="alert" className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
             <AlertTriangle className="h-3 w-3" aria-hidden="true" />
             {toAddress ? `Invalid ${selectedWallet?.currency} address format` : "Recipient address is required"}
           </p>
