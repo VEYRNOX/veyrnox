@@ -1,43 +1,74 @@
 -- Server-side referral code generation.
--- Creates a unique VYX-XXXXXX code in Postgres and inserts it into the
--- referrals table in one atomic step. Called from the app on first load.
 --
--- Run via Supabase dashboard SQL editor.
+-- !! SUPERSEDED — THIS FILE NOW REMOVES THE FUNCTION IT USED TO CREATE.
+--
+-- The zero-argument generate_referral_code() below was replaced twice:
+--   sql/api-security-hardening.sql  -> generate_referral_code(p_device_id uuid)
+--   sql/first-referral-bonus.sql    -> generate_referral_code(uuid, text)
+--
+-- Neither replacement DROPped this one. first-referral-bonus.sql drops
+-- generate_referral_code(uuid) — a different signature — so the zero-arg
+-- overload survived every hardening pass, still SECURITY DEFINER and still
+-- carrying the default PUBLIC EXECUTE grant.
+--
+-- What it does that the current version does not: inserts a row into referrals
+-- with NO device_id, so it is bound by none of the controls added in PR #1334 —
+-- no device requirement, no one-code-per-device idempotency, no rate limit. An
+-- unbounded, unauthenticated code-minting function left behind by a rename.
+--
+-- Whether it was reachable through PostgREST is unclear and untested: with
+-- generate_referral_code(uuid DEFAULT NULL, text DEFAULT NULL) also present, a
+-- no-argument call is ambiguous and may error rather than resolve. That is not
+-- a defence worth relying on — it is dead, unhardened, definer-privileged code,
+-- so it is dropped rather than reasoned about.
+--
+-- Run via Supabase dashboard SQL editor. Running it is now the repair.
 
-create or replace function generate_referral_code()
-returns text
-language plpgsql
-security definer
-as $$
-declare
-  chars   text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  result  text;
-  i       int;
-  byte_val int;
-  raw     bytea;
-  attempt int := 0;
-begin
-  loop
-    attempt := attempt + 1;
-    if attempt > 10 then
-      raise exception 'Could not generate unique code after 10 attempts'
-        using errcode = 'P0002';
-    end if;
+DROP FUNCTION IF EXISTS public.generate_referral_code();
 
-    raw := gen_random_bytes(6);
-    result := 'VYX-';
-    for i in 0..5 loop
-      byte_val := get_byte(raw, i);
-      result := result || substr(chars, (byte_val % length(chars)) + 1, 1);
-    end loop;
+-- Verify (expect exactly one row, the two-argument version):
+--   SELECT p.oid::regprocedure
+--     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--    WHERE n.nspname = 'public' AND p.proname = 'generate_referral_code';
 
-    begin
-      insert into referrals (code) values (result);
-      return result;
-    exception when unique_violation then
-      -- collision on the primary key — retry with new random bytes
-      continue;
-    end;
-  end loop;
-end;
-$$;
+-- ============================================================================
+-- ORIGINAL DEFINITION — kept commented so this file still reads as the history
+-- of what was once run. Do NOT uncomment.
+-- ============================================================================
+-- create or replace function generate_referral_code()
+-- returns text
+-- language plpgsql
+-- security definer
+-- as $$
+-- declare
+--   chars   text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+--   result  text;
+--   i       int;
+--   byte_val int;
+--   raw     bytea;
+--   attempt int := 0;
+-- begin
+--   loop
+--     attempt := attempt + 1;
+--     if attempt > 10 then
+--       raise exception 'Could not generate unique code after 10 attempts'
+--         using errcode = 'P0002';
+--     end if;
+--
+--     raw := gen_random_bytes(6);
+--     result := 'VYX-';
+--     for i in 0..5 loop
+--       byte_val := get_byte(raw, i);
+--       result := result || substr(chars, (byte_val % length(chars)) + 1, 1);
+--     end loop;
+--
+--     begin
+--       insert into referrals (code) values (result);
+--       return result;
+--     exception when unique_violation then
+--       -- collision on the primary key — retry with new random bytes
+--       continue;
+--     end;
+--   end loop;
+-- end;
+-- $$;
