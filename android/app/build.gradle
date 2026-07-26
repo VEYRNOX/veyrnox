@@ -170,16 +170,90 @@ tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.co
                     .digest(c.encoded)
                     .collect { String.format('%02X', it) }
                     .join(':')
-            } catch (Exception ignored) {
+            } catch (Exception e) {
                 // Unreadable keystore is not this guard's business — the signing-config
-                // checks below fail on that. Skip rather than block the build.
+                // checks below fail on that. Skip rather than block the build, but SAY
+                // so: a silent return here is what let the debug-cert check sit inert
+                // for days (issue #1373).
+                logger.warn("release-cert guard: could not read ${ksFile} (alias ${alias}): ${e.class.simpleName}: ${e.message}")
                 return null
             }
         }
         def rel = android.signingConfigs.release
         def dbg = android.signingConfigs.debug
         def uploadSha = sha256Of(rel?.storeFile, rel?.storePassword, rel?.keyAlias)
-        def debugSha = sha256Of(dbg?.storeFile, dbg?.storePassword, dbg?.keyAlias)
+
+        // Resolving the DEBUG keystore needs more than signingConfigs.debug.storeFile.
+        //
+        // Issue #1373: this check silently no-opped in CI for days while passing
+        // locally. The CI step creates ~/.android/debug.keystore, derives its
+        // fingerprint with keytool, feeds it in — and the guard did not reject it,
+        // with no output explaining why. The three other cases (blank, malformed,
+        // upload cert) all rejected correctly, so the guard itself was fine; only the
+        // debug branch was dead, because `debugSha` came back null and the check is
+        // `debugSha != null && ...` — a null turns it into a no-op. Fail OPEN, which
+        // is backwards from I4 for a check whose whole job is to stop a mis-signed
+        // release. That is the third regression of this guard (#1310 added -> #1313
+        // dropped -> #1325 restored -> #1338 caught it -> inert since).
+        //
+        // The Gradle daemon's user.home need not be the shell's $HOME, so a keystore
+        // the CI step just created can be invisible to signingConfigs.debug. Try every
+        // location the file plausibly lives in, and if none of them work, say which
+        // ones were tried instead of skipping in silence.
+        def debugCreds = [
+            (dbg?.storePassword ?: 'android'),
+            (dbg?.keyAlias ?: 'AndroidDebugKey')
+        ]
+        def debugCandidates = new LinkedHashSet()
+        if (dbg?.storeFile != null) debugCandidates << dbg.storeFile
+        debugCandidates << new java.io.File(System.getProperty('user.home'), '.android/debug.keystore')
+        def envHome = System.getenv('HOME')
+        if (envHome) debugCandidates << new java.io.File(envHome, '.android/debug.keystore')
+        def envUserProfile = System.getenv('USERPROFILE')
+        if (envUserProfile) debugCandidates << new java.io.File(envUserProfile, '.android/debug.keystore')
+
+        def debugSha = null
+        def debugSource = null
+        for (ks in debugCandidates) {
+            // Aliases differ by who created the store: Android Studio writes
+            // "AndroidDebugKey", `keytool -genkeypair` as used by CI writes
+            // "androiddebugkey". JKS-compat lookup is case-insensitive, but try both
+            // rather than depend on that.
+            for (alias in [debugCreds[1], 'androiddebugkey', 'AndroidDebugKey'].unique()) {
+                def sha = sha256Of(ks, debugCreds[0], alias)
+                if (sha != null) { debugSha = sha; debugSource = "${ks} (alias ${alias})"; break }
+            }
+            if (debugSha != null) break
+        }
+        if (debugSha == null) {
+            // FAIL CLOSED (I4). Previously this branch just skipped, so a release
+            // could be built with an UNVERIFIED fingerprint and nothing said a word.
+            // A check that cannot run is not a check that passed.
+            //
+            // The escape hatch is explicit and has to be typed on purpose, matching
+            // the "remove this check deliberately rather than working around it"
+            // wording the upload-cert branch already uses.
+            def allowMissing = (project.findProperty('ALLOW_MISSING_DEBUG_KEYSTORE') ?: 'false').toString()
+            def tried = debugCandidates.collect { "${it}${it.exists() ? '' : ' (missing)'}" }.join(', ')
+            if (allowMissing.equalsIgnoreCase('true')) {
+                logger.warn("release-cert guard: DEBUG-cert check SKIPPED by -PALLOW_MISSING_DEBUG_KEYSTORE=true. Tried: ${tried}")
+            } else {
+                throw new GradleException(
+                    "RELEASE_CERT_SHA256 could not be checked against the DEBUG keystore cert.\n" +
+                    "No readable debug keystore was found. Tried: ${tried}\n" +
+                    'This check exists because passing the debug fingerprint ships an AAB whose ' +
+                    'RASP check compares against a cert Play-installed builds never carried — ' +
+                    'tampered:true on every launch. Skipping it silently is how it sat inert ' +
+                    'for days (issue #1373), so it now fails closed.\n' +
+                    'Create one with:\n' +
+                    '  keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android \\\n' +
+                    '    -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 \\\n' +
+                    '    -validity 10000 -dname "CN=Android Debug,O=Android,C=US"\n' +
+                    'or pass -PALLOW_MISSING_DEBUG_KEYSTORE=true to accept an unverified fingerprint.')
+            }
+        } else {
+            logger.lifecycle("release-cert guard: debug cert resolved from ${debugSource}")
+        }
         if (uploadSha != null && cert.equalsIgnoreCase(uploadSha)) {
             throw new GradleException(
                 "RELEASE_CERT_SHA256 is the UPLOAD cert (${uploadSha}).\n" +

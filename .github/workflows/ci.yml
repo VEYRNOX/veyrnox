@@ -295,6 +295,24 @@ jobs:
             echo "no release keystore — guard regression test skipped"
             exit 0
           fi
+          # Create the debug keystore FIRST, before any case runs.
+          #
+          # It used to be created just before the debug case, which meant the other
+          # three cases ran with no debug keystore on disk. That was harmless while
+          # the guard skipped silently, but the guard now fails CLOSED when it cannot
+          # read one (issue #1373) — so every case needs it present, or the first
+          # three would fail for the wrong reason and the grep below would report
+          # "an unrelated reason".
+          #
+          # AGP's default debug keystore lives at ~/.android/debug.keystore and
+          # assembleRelease never creates it. Same file + alias the guard reads.
+          DEBUG_KS="$HOME/.android/debug.keystore"
+          if [ ! -f "$DEBUG_KS" ]; then
+            mkdir -p "$HOME/.android"
+            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
           expect_rejected() {
             label="$1"; shift
             if ./gradlew assembleRelease "$@" >/tmp/guard.log 2>&1; then
@@ -327,17 +345,9 @@ jobs:
           expect_rejected "the upload cert" -PRELEASE_CERT_SHA256="$UPLOAD_SHA"
           # The debug keystore cert — the exact check PR #1310 added and PR #1313
           # silently dropped, so it is the one that most needs a standing test.
-          # android.signingConfigs.debug reads AGP's default debug keystore
-          # (~/.android/debug.keystore); assembleRelease never creates it, so generate
-          # it with AGP's standard debug credentials, then feed the guard its own debug
-          # fingerprint. Same file+alias the guard reads -> the match is guaranteed.
-          DEBUG_KS="$HOME/.android/debug.keystore"
-          if [ ! -f "$DEBUG_KS" ]; then
-            mkdir -p "$HOME/.android"
-            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
-              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
-          fi
+          # The keystore itself was created at the top of this step; feed the guard
+          # its own debug fingerprint. Same file + alias the guard reads, so a match
+          # is guaranteed and a non-rejection means the guard is broken, not the data.
           DEBUG_SHA=$(keytool -list -v -keystore "$DEBUG_KS" \
             -storepass android -alias androiddebugkey \
             | grep 'SHA256:' | head -1 | awk '{print $2}')
