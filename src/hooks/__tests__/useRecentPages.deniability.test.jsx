@@ -19,7 +19,7 @@ import { renderHook, act } from '@testing-library/react';
 
 // Location is driven explicitly per-test via this mutable ref.
 const loc = { pathname: '/duress-pin' };
-vi.mock('react-router-dom', () => ({ useLocation: () => loc }));
+vi.mock('react-router', () => ({ useLocation: () => loc }));
 
 // The deniability helper is mocked so we can flip it (and make it throw) without
 // standing up a WalletProvider session.

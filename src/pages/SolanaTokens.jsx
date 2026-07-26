@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useWallet } from "@/lib/WalletProvider";
 import { getBalanceSol } from "@/wallet-core/sol/provider";
 import { ALLOW_SOL_MAINNET, solExplorerUrl } from "@/wallet-core/sol/networks";

@@ -22,7 +22,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 
 vi.mock('@/lib/WalletProvider', () => ({ useWallet: vi.fn() }));
 // PIN cohort; keep the REAL pure helpers (shouldAutoCacheTypedPin) exercised honestly.

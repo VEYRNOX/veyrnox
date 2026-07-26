@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, useCallback, useRef } from "react";
-import { Outlet, Link, useLocation, useNavigate, useNavigationType } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate, useNavigationType } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { duration as motionDuration, easing as motionEasing } from "@/lib/motion-tokens";
 import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";

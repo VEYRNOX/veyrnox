@@ -27,7 +27,7 @@
 // leaves no on-disk forensic residue after the browser/app is closed.
 
 import { useEffect, useState, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { APP_LOCK_EVENT } from '@/lib/copySecret';
 

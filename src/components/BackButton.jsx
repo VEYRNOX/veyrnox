@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { ChevronLeft } from "lucide-react";
 
 // Consistent in-page back affordance. The desktop layout has no back control of

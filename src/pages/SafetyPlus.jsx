@@ -10,7 +10,7 @@
 // unit-tested only, NOT device-verified. Route access is enforced by the tier
 // gate in components/FeatureGate, not by this display component.
 
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { ShieldCheck, TrendingUp, Link2, Lock, Sparkles, ArrowRight, Check } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";

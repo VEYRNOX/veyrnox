@@ -11,7 +11,7 @@
 // about any seed not yet confirmed backed up (multi-seed fund-loss risk).
 
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { toast } from "@/lib/toast";
 import {
   Wallet, Plus, Send, Download, ShieldAlert, Check,

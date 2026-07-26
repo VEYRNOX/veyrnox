@@ -2,7 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 
 vi.mock('@/lib/featureRegistry', () => ({
   featureRouteOutcome: (path) => (path === '/cut-route' ? 'notFound' : path === '/off-route' ? 'disabled' : 'render'),

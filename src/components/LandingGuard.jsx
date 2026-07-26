@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router';
 import { useWallet } from '@/lib/WalletProvider';
 import LandingPage from '@/pages/LandingPage';
 

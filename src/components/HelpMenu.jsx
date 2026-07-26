@@ -4,7 +4,7 @@
 // matches the existing repo pattern (203 files in src/ carry @ts-nocheck); the
 // real fix is typing card.jsx / button.jsx / dropdown-menu.jsx, which is a much
 // wider change than unblocking CI.
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { HelpCircle, BookOpen } from "lucide-react";
 import {
   DropdownMenu,

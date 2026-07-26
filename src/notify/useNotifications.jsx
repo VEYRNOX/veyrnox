@@ -29,7 +29,7 @@
 // consumer rendered outside the provider gets an inert shape (never crashes).
 
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router';
 import { subscribe } from './events.js';
 import { buildNotification } from './notify.js';
 import { queueReducer, initialQueue } from './queue.js';

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Copy, CheckCircle2, ChevronDown, ShieldCheck, Pencil, Plus } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";

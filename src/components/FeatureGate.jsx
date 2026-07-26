@@ -7,7 +7,7 @@
 // renders a paywall notice for free users, everything else renders normally.
 // Reads the current path from the router, unless an explicit `path` is
 // passed (see below).
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { featureRouteOutcome } from '@/lib/featureRegistry';
 import { isSafetyPlusRoute } from '@/lib/safetyPlusRoutes';
 import { useTier } from '@/lib/TierProvider';

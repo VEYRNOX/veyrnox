@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 // Single source of truth shared with the sidebar nav (components/Layout.jsx), so
 // search always covers the full current feature set instead of a stale hand-kept
 // subset. See lib/navigation.js.

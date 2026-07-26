@@ -12,7 +12,7 @@ import { getAuthModel } from "@/lib/authModel";
 import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature, BarChart3 } from "lucide-react";
 import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
 import { hasConsent, setConsent } from "@/lib/consent";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
 import PasskeySetup from "../components/PasskeySetup";

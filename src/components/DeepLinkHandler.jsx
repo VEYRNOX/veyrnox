@@ -4,7 +4,7 @@
 // connector pre-fills it for the user to review + pair (never auto-pairs — see
 // deepLinkPairing.js). Renders nothing.
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { extractWcUri, setPendingWcUri } from '@/lib/deepLinkPairing';

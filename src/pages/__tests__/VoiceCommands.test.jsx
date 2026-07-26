@@ -15,11 +15,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 
-// react-router-dom's useNavigate — intercept the navigate call.
+// react-router's useNavigate — intercept the navigate call.
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async (importOriginal) => {
+vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal();
   return { .../** @type {object} */(actual), useNavigate: () => mockNavigate };
 });
