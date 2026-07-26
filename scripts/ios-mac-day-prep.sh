@@ -60,7 +60,7 @@ echo "── Dependencies ──"
 
 if [ ! -d node_modules ]; then
   echo "Installing npm dependencies..."
-  npm install --legacy-peer-deps
+  npm install
 fi
 pass "node_modules present"
 
