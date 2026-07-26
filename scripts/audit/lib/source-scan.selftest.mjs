@@ -1,7 +1,25 @@
-// scripts/audit/lib/source-scan.test.mjs
+// scripts/audit/lib/source-scan.selftest.mjs
 //
-// Standalone self-test (run: `node scripts/audit/lib/source-scan.test.mjs`).
-// Vitest only collects src/**, so this guards the shared scanner directly.
+// Standalone self-test for the shared audit scanner. Run: `npm run check:source-scan`
+// (dedicated required CI step, and first in the `pretest` chain).
+//
+// NOT a vitest file, and deliberately not named *.test.mjs. It is a plain Node
+// script: assertions run at import time and it signals via process.exit(1). Vitest
+// cannot collect it — adding `scripts/**/*.test.mjs` to the vitest `include` makes
+// the run FAIL with "No test suite found in file" (0 tests), and a genuine assertion
+// failure would process.exit() the worker mid-run rather than report a test failure.
+// If you want these covered by vitest, port them to describe/it first.
+//
+// It was named *.test.mjs from 2026-06-17 to 2026-07-26 and run by nothing — the
+// header said "run it manually", which is not a guard. Wiring it to CI is the fix.
+//
+// Why it earns a required step: `stripCommentsAndStrings` is the shared scanner
+// behind `check:rng` and `scripts/audit/eth-wallet-audit.mjs`. When it breaks it
+// breaks OPEN — it blanks real code, so the greps find nothing and every dependent
+// gate reports green. Reverting the regex-literal state fix (the bug this file's
+// case 1 pins) leaves `check:rng` passing with "✓ no insecure randomness" while
+// silently scanning nothing. These assertions are the only thing that fails.
+//
 // Each case asserts that a BANNED token in real code survives stripping (so the
 // scanner would catch it) and that the same token in a comment/string is blanked.
 

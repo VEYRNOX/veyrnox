@@ -62,6 +62,17 @@ export default defineConfig({
       VITE_SUPABASE_ANON_KEY: '',
     },
     setupFiles: ['fake-indexeddb/auto', './vitest.setup.js'],
+    // Scoped to app source on purpose. The other suites in this repo have their
+    // own runners and are NOT orphaned by this glob: e2e/ is Playwright
+    // (playwright.config.ts, `npm run test:e2e`) and tests/{android,ios}/ is
+    // WebdriverIO (wdio.conf.js, `npm run android:test` / `ios:test`).
+    //
+    // Do NOT widen this to `scripts/**` to pick up the audit-tooling self-test.
+    // scripts/audit/lib/source-scan.selftest.mjs is a plain Node script, not a
+    // vitest suite — collecting it fails the run with "No test suite found in
+    // file". It runs as its own required CI step (`npm run check:source-scan`).
+    // Any NEW test added under scripts/ needs the same treatment, or a port to
+    // describe/it plus a deliberate widening of this glob.
     include: ['src/**/*.test.{js,jsx}'],
     globals: true, // Faster test execution
     // The at-rest Argon2id KDF was raised to 192 MiB / t=3 (SAST M3). The pure-JS
