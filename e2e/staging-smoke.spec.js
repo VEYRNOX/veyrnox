@@ -24,6 +24,21 @@ import { test, expect } from '@playwright/test';
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
 
 test.describe('staging preview smoke', () => {
+  // These assertions are only meaningful against a DEPLOYED build, and BASE_URL
+  // is what points them at one. Without it the suite falls back to the local
+  // dev server, where two of the three tests are vacuous — the bundle check
+  // greps unbundled /src modules that never carry the inlined Supabase URL, and
+  // the SPA-fallback check passes because Vite serves index.html for every path
+  // by default, proving nothing about Cloudflare's _redirects.
+  //
+  // Skipping is not just tidiness: `web-e2e-tests` runs the full local suite
+  // across two projects, so an unguarded describe here added six vacuous tests
+  // to a 152-test run on 3 workers. That is the change that landed in 0a806908,
+  // and the run on that sha was the first e2e failure this branch had had —
+  // an already-racy neighbouring spec (qa-demo-isolation "send form rejects
+  // invalid address", flaky by its own header comment) lost its race.
+  test.skip(!process.env.BASE_URL, 'deployed-preview smoke — set BASE_URL to run');
+
   test('the published build boots and renders the app shell', async ({ page }) => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
@@ -58,6 +73,11 @@ test.describe('staging preview smoke', () => {
   // Supabase — which is how test runs once wrote 126 rows to the live events
   // table. A unit test cannot catch this; only inspecting what shipped can.
   test('the published bundle carries no Supabase project URL', async ({ page, request }) => {
+    // Only meaningful against a real built deployment. Under the local dev
+    // server there is no bundle to inspect — Vite serves unbundled source and
+    // injects env at runtime — so this would assert nothing there.
+    test.skip(!process.env.BASE_URL, 'requires a deployed build (BASE_URL)');
+
     await page.goto(`${BASE}/?demo=0`, { waitUntil: 'domcontentloaded' });
 
     const scripts = await page.locator('script[src]').evaluateAll((els) =>
