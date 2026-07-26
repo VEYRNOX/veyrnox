@@ -108,8 +108,17 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
   at Settings → Privacy. The gate lives in `api/trackEvent.js` — the single egress
   chokepoint — NOT in `analytics.js emit()`, because the 11 original call sites
   bypass `emit()` entirely. Declining transmits nothing and mints no device id.
-- **veyrnox.com/privacy is still WRONG** — dated 16 June, says "No analytics or
-  tracking" in two places. In-app policy fixed (PR #1329); the site is not.
+- **veyrnox.com/privacy — the "dated 16 June / no analytics or tracking" note
+  here was WRONG and is deleted.** Verified by rendering the live page
+  2026-07-26: it says "Last updated: 23 July 2026" and already discloses the
+  usage events. What it actually needs is the CONSENT update (it mirrors the
+  pre-consent in-app §9): opt-in wording, Settings → Privacy, the fuller event
+  list, and the panic-wipe line. Paste-ready copy:
+  `docs/veyrnox-com-privacy-corrections-2026-07-26.md`.
+  The site source is NOT in this repo, not in `aljobson/veyrnox-marketing`
+  (content only) and not in `aljobson/Veyrnox.ai` — it is served by uvicorn on
+  Render behind Cloudflare and the body is client-rendered, so `curl` shows only
+  nav/SEO shell. Find the CMS before promising an edit.
 - **API security hardening (PR #1334, merged 2026-07-23).** All Supabase writes
   now go through rate-limited SECURITY DEFINER functions — no direct table INSERT
   via the anon key. Controls: `track_event()` 60/device/hour + event allowlist
