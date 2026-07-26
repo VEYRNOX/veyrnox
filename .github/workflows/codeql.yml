@@ -240,3 +240,70 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           category: /language:swift
+
+  # --------------------------------------------------------------------------
+  # When the Swift scan is skipped, say so IN THE SECURITY DATA.
+  #
+  # The repo's code_scanning ruleset gates on the CodeQL TOOL and has no
+  # per-language granularity (verified against the live ruleset: the rule's only
+  # parameter is a list of {tool, alerts_threshold, security_alerts_threshold}
+  # — there is no language or category field). So a PR that uploads five of six
+  # languages leaves the tool's result set incomplete, and the gate can never be
+  # satisfied. That is issue #1375: after PR #1368 made the Swift scan
+  # conditional, EVERY non-iOS PR was blocked indefinitely and --admin became
+  # the only way to merge.
+  #
+  # This job closes that hole by uploading a SARIF for /language:swift on the
+  # skip path — but it reports the skip HONESTLY rather than faking a clean run:
+  #
+  #   executionSuccessful: false   — "this analysis did not run"
+  #   toolExecutionNotifications   — why, and what is therefore unscanned
+  #   results: []                  — no findings claimed, because none were looked for
+  #
+  # The distinction is the whole point (I4, and CLAUDE.md's "never mock a
+  # security control to look real"). A SARIF with executionSuccessful:true and
+  # an empty results array would assert "CodeQL analysed Swift and found
+  # nothing" — a false statement that would make an unscanned PR
+  # indistinguishable from a clean one. This says "CodeQL did not analyse
+  # Swift", which is true, and leaves that visible.
+  #
+  # UNVERIFIED AT TIME OF WRITING: whether GitHub's code_scanning merge
+  # protection counts a failed-execution analysis as satisfying the gate. If it
+  # does not, the honest encoding cannot unblock PRs, and the answer is NOT to
+  # flip executionSuccessful to true — it is to run the real scan (drop the
+  # scoping from #1368) or to drop the code_scanning rule deliberately. See
+  # #1375 before changing this.
+  # --------------------------------------------------------------------------
+  swift-skip-notice:
+    name: Analyze (swift) — skipped
+    needs: swift-scope
+    if: needs.swift-scope.outputs.needed == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build "not analysed" SARIF
+        env:
+          # Via env, never interpolated into the script body — same rule the
+          # swift-scope job and deploy-preview workflow follow.
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REF_NAME: ${{ github.ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          node scripts/build-swift-skip-sarif.mjs > swift-skipped.sarif
+          echo "--- generated SARIF ---"
+          cat swift-skipped.sarif
+
+      - name: Upload "not analysed" record for /language:swift
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: swift-skipped.sarif
+          category: /language:swift
