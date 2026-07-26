@@ -30,7 +30,29 @@ ALTER TABLE public.referrals
   ADD COLUMN IF NOT EXISTS first_bonus_granted_at timestamptz;
 
 -- ============================================================================
--- BLOCK 3: Check + claim the first-referral bonus (atomic)
+-- BLOCK 3: Check + claim the first-referral bonus
+--
+-- !! SUPERSEDED — RUN sql/check-first-referral-bonus-hardening.sql AFTER THIS
+-- !! FILE, AND NEVER RE-RUN THIS BLOCK ON ITS OWN AFTERWARDS.
+--
+-- This block uses CREATE OR REPLACE with an unchanged signature, so re-running
+-- it silently reverts the hardened body and drops the pinned search_path. (The
+-- REVOKE/GRANT would survive, since REPLACE preserves privileges — so the
+-- damage would be quiet: still locked down, but racy again.)
+--
+-- Two defects, both fixed in the hardening migration:
+--
+--   1. Created with no GRANT/REVOKE, so the default PUBLIC grant made it
+--      anon-callable. A third party holding a shared code could trip the claim
+--      flag with no entitlement ever granted — burning the referrer's one-time
+--      bonus — and read back the referrer's RevenueCat app_user_id.
+--   2. The header below claimed "atomic" and "idempotent"; it was neither. The
+--      SELECT-then-UPDATE let two concurrent callers both pass the guard, and
+--      the return value did not depend on which one actually claimed, so both
+--      got the rc_user_id and the referrer could be granted two free months.
+--
+-- The block is left in place, not deleted, so this file still reads as the
+-- history of what was actually run.
 -- ============================================================================
 --
 -- Returns the referrer's rc_user_id if:
@@ -38,8 +60,10 @@ ALTER TABLE public.referrals
 --   2. The code has at least 1 paid attribution
 --   3. The bonus has not already been granted
 --
--- On success, atomically sets first_bonus_granted_at (idempotent — second call
--- returns NULL). Returns NULL if ineligible or already granted.
+-- On success, sets first_bonus_granted_at. Returns NULL if ineligible or
+-- already granted. (See the correction above: the original "atomically" and
+-- "idempotent — second call returns NULL" in this comment were not true of
+-- the code beneath it.)
 
 CREATE OR REPLACE FUNCTION check_first_referral_bonus(p_code text)
 RETURNS text
