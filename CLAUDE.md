@@ -26,7 +26,7 @@ identity; the app never holds keys server-side.
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
 
-## Current state summary (2026-07-23)
+## Current state summary (2026-07-26)
 
 **Hardware KEK:** Both platforms BUILT + device-verified (INTERNAL). M2c (iOS SE) and M2d
 (Android StrongBox/TEE) UNGATED (PR #1152). Android C-1 v3 salt-binding FIXED +
@@ -147,8 +147,23 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   `jarsigner` verified, `BuildConfig.RELEASE_CERT_SHA256` = Google's app-signing cert.
   Fixed en route: `keystore.properties` `storeFile` resolved against the wrong directory
   (release path was dead), and the debug-fingerprint guard PR #1310 added had been silently
-  dropped by PR #1313. CI now asserts the guard's rejections. See
-  `docs/audit-2026-07-23-branch-review.md`. RASP on a Play install still device-unverified.
+  dropped by PR #1313. See `docs/audit-2026-07-23-branch-review.md`. RASP on a Play
+  install still device-unverified.
+- **The debug-cert guard is INERT and `main` is RED — issue #1373 (open, 2026-07-26).**
+  An earlier version of this line said "CI now asserts the guard's rejections". The
+  assertion exists (`ci.yml:275`, added by #1338) but it has **failed on every push since
+  it was introduced** — it has never once passed. `android-release` has been red since
+  2026-07-24 20:23 (last green run `30121669319`, first red `30123897462`/`6586cdd5`),
+  through ~15 unrelated merges, so each red run looks caused by whatever just landed.
+  The step feeds the guard four wrong fingerprints; blank, malformed and upload-cert are
+  rejected, the **debug keystore cert is not**. Root cause: `sha256Of`
+  (`android/app/build.gradle:160`) returns `null` on a missing storeFile **and** swallows
+  every exception (`catch (Exception ignored)`, `:173`), and the check is
+  `debugSha != null && …` (`:192`) — so an unresolvable debug keystore silently turns the
+  branch into a no-op. **Both paths fail OPEN, which is backwards from I4 for a check whose
+  job is to stop a mis-signed release.** This is the third regression of this same guard
+  (#1310 added → #1313 dropped → #1325 restored → #1338 caught it). Not fixed; signing is
+  security-gated and wants a deliberate owner decision.
 - **Personal** developer account: 12-tester/14-day rule gates **production only**.
 - Data Safety: all 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
 - **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV)** — Guideline
@@ -173,6 +188,36 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   for the counsel rationale.
 - `veyrnox.com` is a client-rendered SPA — `curl` gives **false negatives** when checking
   page content; verify by rendering the page.
+
+**CI merge gating — there is NO code-scanning gate (decided 2026-07-26, issue #1375).**
+The `code_scanning` rule was **removed** from ruleset `Veyrnox Code Review` (`17946638`).
+CodeQL still scans all six languages on every PR and still files alerts to the Security
+tab; they no longer block merges. Swift stays covered by push-to-main and the weekly scan.
+Everything else on the ruleset is unchanged — `required_status_checks` (`verify`,
+`mainnet-flag-gate`, `unit-tests`), `pull_request` (0 required approvals),
+`copilot_code_review`, `deletion`, `non_fast_forward`. Exact rule JSON for restoring it is
+in issue #1375.
+- **Why.** #1368 scoped the Swift scan (60–90 min: scarce macOS runner + full
+  Capacitor/xcodebuild compile) to PRs touching iOS/Swift. But the rule gates on the CodeQL
+  **TOOL** with no per-language granularity, so a typical PR uploaded 5 of 6 languages, the
+  result set was permanently incomplete, and **every** non-iOS PR sat at BLOCKED with
+  `--admin` the only exit. Before #1368 the same gate was merely slow — four PRs on
+  2026-07-26 were `--admin`'d past it.
+- **Three fixes were tried and are all impossible — do not re-attempt:**
+  (a) scope the rule to exclude Swift — the rule's only parameter is a list of
+  `{tool, alerts_threshold, security_alerts_threshold}`; there is **no** language/category
+  field; (b) make Swift cheap — CodeQL has **no `build-mode: none` for Swift** (it is GA
+  for C#, available for the source-only languages), and the iOS sources cannot compile off
+  macOS; (c) upload a "not analysed" SARIF on the skip path — **GitHub rejects any SARIF
+  with `executionSuccessful: false`** (`Code Scanning could not process the submitted SARIF
+  file: unsuccessful execution`), proven in PR #1377 (closed). The only encoding GitHub
+  accepts is `executionSuccessful: true` + empty `results`, which asserts that CodeQL
+  analysed `EnclaveKeyService.swift` / `VeyrnoxEnclavePlugin.swift` and found nothing on
+  PRs that never looked at them — fake security, so it was not taken.
+- **Honest statement:** this is a real reduction against the ruleset's *intent*, though not
+  against its *actual* prior behaviour (a gate satisfied by `--admin` on every merge). The
+  remaining honest alternative is running the real Swift scan on every PR and accepting the
+  60–90 min block.
 
 **2026-07-20 branch-review + weekly audit (`docs/audit-2026-07-20-weekly.md`):** C-1
 (CRITICAL, More-drawer "Recent" tiles named duress/stealth/panic routes and survived
@@ -395,6 +440,13 @@ m/44'/60' address; BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their 
 
 - Windows (Git Bash / MINGW64). iOS native build needs a Mac.
 - Use `.env.local` for env flags, not inline shell vars.
+- **`npm ci` / `npm install` work plainly again (2026-07-26).** `--legacy-peer-deps` is no
+  longer needed and CI no longer passes it (#1372 bumped `@vitejs/plugin-react` to `^5.2.0`
+  so its peer range admits `vite@8`; #1376 dropped the flag from the workflows). Two traps
+  if you touch `package-lock.json` on an older branch: `--legacy-peer-deps` strips the whole
+  `appium` peer subtree (~3,700 lines) and a full `npm install` re-adds ~37 nested
+  `appium-uiautomator2-driver/node_modules/*` entries. Regenerate with
+  `npm install --package-lock-only` and check the diff contains only what you changed.
 
 ## Design system
 
