@@ -63,16 +63,23 @@ export async function redeemCode(code) {
   return { newCount: data };
 }
 
+// Reads the code's redemption count through an RPC rather than selecting from
+// `referrals` directly. This was the last direct table read in the client, and
+// it is what kept the `public select using (true)` policy alive — a policy that
+// is row-level, so it exposed EVERY column of that table to anon, including
+// device_id and rc_user_id, which were added long after the policy's "no
+// sensitive data" justification was written. See sql/referrals-select-lockdown.sql.
+//
+// `data` is now a bare integer, so the guard is `data == null` rather than
+// `!data`: a count of 0 is a real value the tracker renders, not a miss.
 export async function fetchStatus(code) {
   if (!supabase || isDeniabilityOrDemoActive()) return null;
   try {
-    const { data, error } = await supabase
-      .from('referrals')
-      .select('count')
-      .eq('code', code)
-      .single();
-    if (error || !data) return null;
-    return { count: data.count };
+    const { data, error } = await supabase.rpc('get_referral_count', {
+      p_code: code,
+    });
+    if (error || data == null) return null;
+    return { count: data };
   } catch {
     return null;
   }
