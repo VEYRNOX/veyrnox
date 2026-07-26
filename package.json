@@ -90,7 +90,7 @@
     "@capacitor/local-notifications": "^8.2.1",
     "@capacitor/share": "^8.0.1",
     "@hello-pangea/dnd": "^18.0.1",
-    "@hookform/resolvers": "^4.1.2",
+    "@hookform/resolvers": "^5.5.7",
     "@ledgerhq/hw-app-btc": "^11.3.0",
     "@ledgerhq/hw-app-eth": "^7.8.10",
     "@ledgerhq/hw-app-solana": "^7.10.6",
