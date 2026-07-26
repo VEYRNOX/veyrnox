@@ -102,14 +102,21 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
   which is why a green pipeline never caught it.
 - **Store declarations were understated.** Play Data Safety and Apple App Privacy
   both claimed App-functionality-only; **Analytics** purpose added to both
-  2026-07-23. Still open: Apple's **Usage Data → Product Interaction** is undeclared,
-  and there is **no consent/opt-out** (ePrivacy question — counsel).
+  2026-07-23. Still open: Apple's **Usage Data → Product Interaction** is undeclared.
+  **Consent/opt-out now exists (2026-07-26):** opt-in screen at first wallet entry
+  (`TelemetryConsent.jsx`, suppressed in deniability/demo) plus a permanent toggle
+  at Settings → Privacy. The gate lives in `api/trackEvent.js` — the single egress
+  chokepoint — NOT in `analytics.js emit()`, because the 11 original call sites
+  bypass `emit()` entirely. Declining transmits nothing and mints no device id.
 - **veyrnox.com/privacy is still WRONG** — dated 16 June, says "No analytics or
   tracking" in two places. In-app policy fixed (PR #1329); the site is not.
 - **API security hardening (PR #1334, merged 2026-07-23).** All Supabase writes
   now go through rate-limited SECURITY DEFINER functions — no direct table INSERT
-  via the anon key. Controls: `track_event()` 60/device/hour + event allowlist +
-  4KB metadata cap; `increment_referral()` 1 per device per code (dedup table
+  via the anon key. Controls: `track_event()` 60/device/hour + event allowlist
+  (the 4 KB metadata cap this line used to claim was NEVER implemented in
+  `api-security-hardening.sql`; it and a `SET search_path` pin were added for
+  real in `sql/telemetry-events-allowlist.sql`, 2026-07-26 — rerun that file);
+  `increment_referral()` 1 per device per code (dedup table
   prevents count-inflation attack); `generate_referral_code()` 1 per device;
   `register_referral_code()` 3/device/hour; `record_attribution()` validated +
   2/code/hour; `referral_attributions` public SELECT removed (revenue data no
@@ -316,8 +323,9 @@ OWASP Top 10 for LLM Applications.
   and ranges server-side. Use allowlists for enumerated values (event types, asset
   symbols). Reject unexpected fields rather than ignoring them.
 - **Payload size caps.** All endpoints enforce a maximum payload size (4 KB metadata on
-  `track_event`). New endpoints must define and enforce a cap proportional to the data
-  they accept.
+  `track_event` — implemented 2026-07-26; this rule described it for months before it
+  existed, so treat a documented cap as unverified until you have read the SQL). New
+  endpoints must define and enforce a cap proportional to the data they accept.
 - **No sensitive data in URLs.** Use POST bodies or headers — never query strings. Device
   IDs, referral codes, and asset identifiers go in the request body.
 - **CORS.** Restrict `Access-Control-Allow-Origin` to the app's own domains. No wildcard

@@ -592,7 +592,7 @@ export default function WalletPortfolioPage() {
   // under deniability/demo by emit()'s own guards (I3) — safe to mount here
   // unconditionally, including in explore mode (no vault → balance stays 0,
   // so useFirstInbound simply never fires).
-  useWalletReady();
+  useWalletReady(isUnlocked);
   useFirstInbound(pfTotal);
 
   // ── Explore / no-wallet empty state ──
@@ -785,18 +785,22 @@ export default function WalletPortfolioPage() {
             badge or count. */}
       </div>
 
-      {/* Deferred seed-verification reminder (Task 9) — non-blocking. The user
-          skipped the backup-verification quiz earlier; sends above the safety
-          threshold are still gated (lib/seedVerifyGate.js, enforced in
-          SendCrypto.jsx), but nothing here blocks browsing the portfolio. */}
+      {/* Deferred seed-verification reminder — non-blocking.
+          STATUS: this banner cannot appear yet. isDeferred() is only ever set
+          by the SeedVerification quiz, which is not wired to any route (see
+          SeedVerificationPage.jsx), so the deferral state is never written.
+          The send-side gate in lib/seedVerifyGate.js is inert for the same
+          reason. Both are kept in place, correct and fail-closed, ready for
+          the task that wires the reauth-gated quiz — but nothing here is
+          protecting a user today and this comment must not imply otherwise. */}
       {activeWalletId && isDeferred(activeWalletId) && (
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
-          <ShieldAlert className="h-5 w-5 text-yellow-500 shrink-0" />
+        <div role="status" className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+          <ShieldAlert className="h-5 w-5 text-caution shrink-0" aria-hidden="true" />
           <div className="flex-1">
             <p className="text-sm font-medium">Finish verifying your backup</p>
             <p className="text-xs text-muted-foreground">Required for sending above the safety threshold.</p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => navigate('/verify')}>
+          <Button size="sm" variant="outline" aria-label="Verify your wallet backup" onClick={() => navigate('/verify')}>
             Verify
           </Button>
         </div>
@@ -873,7 +877,6 @@ export default function WalletPortfolioPage() {
                   address itself IS shared with public RPC/explorer nodes to read
                   balances, so we deliberately do NOT claim the address is device-only. */}
               <EmptyWalletState
-                receiveAddress={activeWallet?.address}
                 onReceive={() => navigate("/receive")}
                 transakReady={false}
               />

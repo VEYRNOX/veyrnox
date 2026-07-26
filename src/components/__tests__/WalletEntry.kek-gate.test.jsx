@@ -32,8 +32,10 @@ vi.mock('@/lib/biometricUnlock', () => ({
 }));
 vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
 
-// Consent gate: return 'granted' so the telemetry consent screen doesn't block <Outlet>.
-vi.mock('@/lib/analytics', () => ({ getConsentState: vi.fn(() => 'granted') }));
+// Consent gate: return 'granted' so the telemetry consent screen doesn't block
+// <Outlet>. The accessors moved to the @/lib/consent leaf module so that
+// api/trackEvent.js can enforce consent without importing analytics.js.
+vi.mock('@/lib/consent', () => ({ getConsentState: vi.fn(() => 'granted') }));
 
 // Native by default; individual tests flip this for the web case.
 const isNativePlatform = vi.fn(() => true);

@@ -15,9 +15,22 @@ import { supabase } from '@/lib/supabaseClient';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { DEMO } from '@/api/demoClient';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
+import { hasConsent } from '@/lib/consent';
 
 export async function trackEvent(event, metadata = {}) {
   if (!supabase || DEMO || isDeniabilityOrDemoActive()) return;
+  // CONSENT IS CHECKED HERE, NOT AT THE CALL SITE. Previously only
+  // analytics.js emit() gated on consent, so the 11 pre-existing call sites
+  // that invoke trackEvent() directly (WalletProvider, SendCrypto,
+  // ReceiveCrypto, WalletConnectProvider, referral + paywall) uploaded events
+  // from users who had explicitly declined. Gating at the single egress
+  // chokepoint means a new call site cannot reintroduce that bypass.
+  //
+  // NOTE: nothing is exempt — not even the consent-decision events. A denial
+  // is recorded locally and never transmitted (see TelemetryConsent.jsx);
+  // CONSENT_GRANTED passes because setConsent() writes synchronously before
+  // the call, so hasConsent() is already true by the time we read it.
+  if (!hasConsent()) return;
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) return;
   try {

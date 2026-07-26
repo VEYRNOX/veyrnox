@@ -36,7 +36,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:5173';
+const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const VAULT_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejects patterns)
 // Designated throwaway BIP-39 testnet/faucet fixture seed (never holds real value).
 // Sourced from the git-ignored .env.test (VITE_TEST_THROWAWAY_SEED), loaded via

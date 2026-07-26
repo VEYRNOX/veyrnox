@@ -34,4 +34,38 @@ describe('SeedVerification', () => {
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
     expect(onDeferred).toHaveBeenCalled();
   });
+
+  // No option other than the correct answer may be a real word from the user's
+  // phrase. Distractors used to be drawn from seedWords itself, putting up to
+  // 4 genuine mnemonic words on screen per question.
+  it('never shows more than one real seed word at a time', () => {
+    render(<SeedVerification seedWords={WORDS} walletId="w1" onVerified={() => {}} onDeferred={() => {}} />);
+
+    const optionLabels = screen.getAllByRole('button')
+      .map((b) => b.textContent.trim())
+      .filter((t) => !/skip for now/i.test(t));
+
+    expect(optionLabels).toHaveLength(4);
+    const realWordsShown = optionLabels.filter((w) => WORDS.includes(w));
+    expect(realWordsShown).toHaveLength(1);
+  });
+
+  // Resuming must re-ask the SAME question, not reroll it.
+  it('resumes the question it was skipped on', () => {
+    const { unmount } = render(
+      <SeedVerification seedWords={WORDS} walletId="w1" onVerified={() => {}} onDeferred={() => {}} />,
+    );
+    const firstPrompt = screen.getByText(/word #/i).textContent;
+    fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+    unmount();
+
+    render(<SeedVerification seedWords={WORDS} walletId="w1" onVerified={() => {}} onDeferred={() => {}} />);
+    expect(screen.getByText(/word #/i).textContent).toBe(firstPrompt);
+  });
+
+  it('announces answer feedback to assistive tech', () => {
+    render(<SeedVerification seedWords={WORDS} walletId="w1" onVerified={() => {}} onDeferred={() => {}} />);
+    const live = document.querySelector('[role="status"][aria-live="polite"]');
+    expect(live).toBeTruthy();
+  });
 });

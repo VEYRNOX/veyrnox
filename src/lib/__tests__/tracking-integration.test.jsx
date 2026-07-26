@@ -77,16 +77,32 @@ describe('tracking-integration', () => {
 
   it('useWalletReady assigns holdout', async () => {
     const { useWalletReady } = await import('@/lib/tracking-integration');
-    renderHook(() => useWalletReady());
+    renderHook(() => useWalletReady(true));
     expect(assignHoldout).toHaveBeenCalled();
+    expect(emit).toHaveBeenCalledWith('wallet_ready');
+  });
+
+  // REGRESSION: the hook is mounted above WalletPortfolioPage's `if
+  // (!isUnlocked)` early return, so without the `ready` guard it fired in
+  // explore mode with no wallet — and fireOnce() burned the once-per-install
+  // marker, meaning the real wallet_ready could never be recorded.
+  it('useWalletReady does not fire (or burn its once-flag) when not ready', async () => {
+    const { useWalletReady } = await import('@/lib/tracking-integration');
+    const { rerender } = renderHook(({ r }) => useWalletReady(r), { initialProps: { r: false } });
+    expect(emit).not.toHaveBeenCalled();
+    expect(assignHoldout).not.toHaveBeenCalled();
+
+    rerender({ r: true });
     expect(emit).toHaveBeenCalledWith('wallet_ready');
   });
 
   it('useWalletReady only fires once per install', async () => {
     const { useWalletReady } = await import('@/lib/tracking-integration');
-    renderHook(() => useWalletReady());
+    renderHook(() => useWalletReady(true));
     vi.clearAllMocks();
-    renderHook(() => useWalletReady());
+    // ready=true again, so a second fire would be the once-flag failing —
+    // not the readiness guard short-circuiting.
+    renderHook(() => useWalletReady(true));
     expect(assignHoldout).not.toHaveBeenCalled();
     expect(emit).not.toHaveBeenCalled();
   });
@@ -96,7 +112,13 @@ describe('tracking-integration', () => {
     const { rerender } = renderHook(({ b }) => useFirstInbound(b), { initialProps: { b: 0 } });
     expect(emit).not.toHaveBeenCalledWith('first_inbound_detected', expect.anything());
     rerender({ b: 0.5 });
-    expect(emit).toHaveBeenCalledWith('first_inbound_detected', { balance: 0.5 });
+    // The balance itself is NEVER transmitted — it is the user's financial
+    // position, and the consent screen promises no wallet data. Only the
+    // milestone is reported.
+    expect(emit).toHaveBeenCalledWith('first_inbound_detected');
+    const inbound = emit.mock.calls.filter((c) => c[0] === 'first_inbound_detected');
+    expect(inbound).toHaveLength(1);
+    expect(inbound[0][1]).toBeUndefined();
   });
 
   it('useFirstInbound does not fire twice', async () => {
@@ -200,7 +222,10 @@ describe('tracking-integration', () => {
     expect(emit).toHaveBeenCalledWith('send_flow_started');
     expect(emit).toHaveBeenCalledWith('send_step_reached', { step: 'amount' });
     expect(emit).toHaveBeenCalledWith('send_abandoned', { step: 'amount' });
-    expect(emit).toHaveBeenCalledWith('send_flow_started', { step: 'confirmed' });
+    // confirm() used to emit SEND_FLOW_STARTED, double-counting every confirm
+    // as a new funnel start and leaving confirms unmeasurable.
+    expect(emit).toHaveBeenCalledWith('send_step_reached', { step: 'confirmed' });
+    expect(emit.mock.calls.filter((c) => c[0] === 'send_flow_started')).toHaveLength(1);
   });
 
   it('useUnlockTracking returns attempt/result', async () => {

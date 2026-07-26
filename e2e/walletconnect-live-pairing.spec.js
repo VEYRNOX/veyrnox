@@ -47,7 +47,7 @@ import { ethers } from 'ethers';
 // invariants (I1-I6, RASP) are enforced by code, not by the meta CSP tag.
 test.use({ bypassCSP: true });
 
-const BASE = 'http://localhost:5173';
+const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const PROJECT_ID = 'f9d8b6cc36e18684ac1d2a76cdf54bea'; // baked-in public id (projectId.js)
 const CHAIN_ID = 'eip155:11155111'; // Sepolia
 const VAULT_PIN = '48273951'; // 8-digit, non-sequential (matches onboarding.spec.js)

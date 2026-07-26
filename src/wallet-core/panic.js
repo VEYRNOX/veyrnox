@@ -245,6 +245,26 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'dashboard-widgets',              // pages/Dashboard.jsx widget layout
   'notification_prefs',             // legacy push notifications page (removed)
   'veyrnox-demo',                   // api/demoClient.js demo-mode persistence
+  // Telemetry/funnel tells (PR #1344). None is key material, but each proves a
+  // real Veyrnox install reached a given milestone on this device — the same
+  // class as veyrnox-live-prices and veyrnox-kek-pin-notice above. Without
+  // these, inspectKeyMaterial() reported clean:true while they sat in storage,
+  // so the post-wipe "nothing recoverable remains" claim was overstated.
+  // The strongest telemetry tell of all: the random device id is the primary
+  // key correlating this device against every row already written to the
+  // backend events table. Leaving it through a wipe means a reinstall
+  // re-adopts the pre-wipe identity. (Gap predates PR #1344 — added here with
+  // the rest of the telemetry residue.)
+  'veyrnox-device-id',              // lib/deviceId.js DEVICE_ID_KEY
+  'veyrnox-telemetry-consent',      // lib/consent.js CONSENT_KEY
+  'veyrnox-holdout',                // lib/holdout.js KEY (notification holdout bucket)
+  'veyrnox-first-open-fired',       // lib/tracking-integration.jsx fireOnce markers
+  'veyrnox-wallet-ready-fired',
+  'veyrnox-first-inbound-fired',
+  'veyrnox-first-send-fired',
+  // Seed-backup verification state (single blob; see lib/seedVerifyState.js).
+  // Presence proves a real wallet was created and its backup quiz started.
+  'veyrnox-seed-verify',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
@@ -322,7 +342,15 @@ function readSessionResidue() {
 // GAP-3: wildcard-prefix keys whose exact names are not known at build time.
 // lib/snapshotStore.js writes 'veyrnox-snapshots-<fingerprint>'; the fingerprint
 // is derived at runtime so we can't list the exact key — we scan by prefix.
-const RESIDUE_KEY_PREFIXES = Object.freeze(['veyrnox-snapshots-']);
+const RESIDUE_KEY_PREFIXES = Object.freeze([
+  'veyrnox-snapshots-',
+  // LEGACY seed-verification keys. seedVerifyState.js used to write one key
+  // PER WALLET ('veyrnox-seed-verify-verified-<walletId>'), which let a
+  // storage dump count wallets. It now writes a single 'veyrnox-seed-verify'
+  // blob (in METADATA_RESIDUE_KEYS above), but devices onboarded before that
+  // change still carry the old per-wallet keys — sweep them by prefix.
+  'veyrnox-seed-verify-',
+]);
 
 // Enumerate all localStorage keys matching RESIDUE_KEY_PREFIXES at runtime.
 function readPrefixedResidueKeys() {

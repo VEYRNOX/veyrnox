@@ -36,7 +36,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:5173';
+const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const VAULT_PIN = '48273951'; // 8-digit, non-sequential (checkPinStrength rejects patterns)
 
 // Clear the silently-persisting demo flag (CLAUDE.md known trap) so we exercise the
