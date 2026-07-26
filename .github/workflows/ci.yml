@@ -257,6 +257,20 @@ jobs:
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/keystore.jks
             echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> $GITHUB_ENV
           fi
+      - name: Create debug keystore for release-cert guard
+        run: |
+          DEBUG_KS="$HOME/.android/debug.keystore"
+          if [ ! -f "$DEBUG_KS" ]; then
+            mkdir -p "$HOME/.android"
+            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          JAVA_USER_HOME="$(java -XshowSettings:property -version 2>&1 | grep 'user.home' | awk -F= '{print $2}' | tr -d ' ')"
+          if [ -n "$JAVA_USER_HOME" ] && [ "$JAVA_USER_HOME/.android" != "$HOME/.android" ]; then
+            mkdir -p "$JAVA_USER_HOME/.android"
+            cp "$DEBUG_KS" "$JAVA_USER_HOME/.android/debug.keystore" 2>/dev/null || true
+          fi
       - name: Build release APK
         run: |
           chmod +x gradlew
@@ -276,88 +290,6 @@ jobs:
       # runs; only this AAB can prove a purchase works.
       - name: Build release AAB (Play upload artifact)
         run: ./gradlew bundleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
-        working-directory: android
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS:         ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD:      ${{ secrets.KEY_PASSWORD }}
-      # Regression gate for the release-cert guard in android/app/build.gradle.
-      # PR #1310 added a debug-fingerprint check; PR #1313 rewrote the guard and
-      # silently dropped it, and nothing caught that for ten days because no test
-      # ever asserted the guard REJECTS anything. This asserts the rejections.
-      # Runs after the real build, so Gradle is warm — each case costs seconds.
-      - name: Release-cert guard must reject wrong fingerprints
-        run: |
-          set -u
-          # No keystore secret (forks) means the build above was debug-signed and
-          # there is no upload cert to test against — skip rather than fail.
-          if [ ! -f keystore.jks ]; then
-            echo "no release keystore — guard regression test skipped"
-            exit 0
-          fi
-          # Create the debug keystore FIRST, before any case runs.
-          #
-          # It used to be created just before the debug case, which meant the other
-          # three cases ran with no debug keystore on disk. That was harmless while
-          # the guard skipped silently, but the guard now fails CLOSED when it cannot
-          # read one (issue #1373) — so every case needs it present, or the first
-          # three would fail for the wrong reason and the grep below would report
-          # "an unrelated reason".
-          #
-          # AGP's default debug keystore lives at ~/.android/debug.keystore and
-          # assembleRelease never creates it. Same file + alias the guard reads.
-          DEBUG_KS="$HOME/.android/debug.keystore"
-          if [ ! -f "$DEBUG_KS" ]; then
-            mkdir -p "$HOME/.android"
-            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
-              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
-          fi
-          expect_rejected() {
-            label="$1"; shift
-            if ./gradlew assembleRelease "$@" >/tmp/guard.log 2>&1; then
-              echo "::error::release guard did NOT reject $label — a broken AAB could ship"
-              exit 1
-            fi
-            if ! grep -q 'RELEASE_CERT_SHA256' /tmp/guard.log; then
-              echo "::error::build failed for an unrelated reason while testing $label"
-              tail -30 /tmp/guard.log
-              exit 1
-            fi
-            echo "OK — rejected $label"
-          }
-          expect_rejected "a blank fingerprint"     -PRELEASE_CERT_SHA256=
-          expect_rejected "a malformed fingerprint" -PRELEASE_CERT_SHA256=deadbeef
-          # The upload cert is the likeliest wrong value: it IS the key that just
-          # signed the artifact, so it looks correct. Derived here rather than
-          # hardcoded, so a key rotation cannot make this test stale.
-          UPLOAD_SHA=$(keytool -list -v -keystore keystore.jks \
-            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" \
-            | grep 'SHA256:' | head -1 | awk '{print $2}')
-          # This is the case the guard most needs to cover — the upload cert "looks
-          # correct". keystore.jks exists (checked above), so an empty read is a real
-          # failure, not a skip condition: fail loudly rather than let a keytool
-          # output-format change silently retire this case the way PR #1313 dropped one.
-          if [ -z "$UPLOAD_SHA" ]; then
-            echo "::error::could not derive the upload cert fingerprint from keystore.jks — refusing to skip the upload-cert case"
-            exit 1
-          fi
-          expect_rejected "the upload cert" -PRELEASE_CERT_SHA256="$UPLOAD_SHA"
-          # The debug keystore cert — the exact check PR #1310 added and PR #1313
-          # silently dropped, so it is the one that most needs a standing test.
-          # The keystore itself was created at the top of this step; feed the guard
-          # its own debug fingerprint. Same file + alias the guard reads, so a match
-          # is guaranteed and a non-rejection means the guard is broken, not the data.
-          DEBUG_SHA=$(keytool -list -v -keystore "$DEBUG_KS" \
-            -storepass android -alias androiddebugkey \
-            | grep 'SHA256:' | head -1 | awk '{print $2}')
-          if [ -z "$DEBUG_SHA" ]; then
-            echo "::error::could not derive the debug keystore fingerprint — refusing to skip the debug-cert case"
-            exit 1
-          fi
-          expect_rejected "the debug keystore cert" -PRELEASE_CERT_SHA256="$DEBUG_SHA"
-          # Restore the good artifact the next step uploads.
-          ./gradlew assembleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -391,3 +323,234 @@ jobs:
           echo "- \`veyrnox-release-aab\` → Play internal track (required for Play Billing)" >> "$GITHUB_STEP_SUMMARY"
           echo "- \`veyrnox-release-apk\` → sideload smoke test only (Play Billing will NOT work)" >> "$GITHUB_STEP_SUMMARY"
         working-directory: android
+
+  # --------------------------------------------------------------------------
+  # Does this change need the release-cert guard regression test?
+  #
+  # The test costs a full Capacitor + Gradle release build, so it is scoped the
+  # same way the CodeQL Swift scan is: always on non-PR events, and on PRs only
+  # when something that could affect the guard changed.
+  #
+  # Fails CLOSED: non-PR events always run, and an unreadable file list runs the
+  # test anyway. Skipping only ever happens on a positive "nothing relevant
+  # changed" answer.
+  # --------------------------------------------------------------------------
+  release-guard-scope:
+    name: Release-guard test needed?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      needed: ${{ steps.decide.outputs.needed }}
+    steps:
+      - name: Decide
+        id: decide
+        env:
+          # Values reach the script via env, never interpolated into the command
+          # string — same rule swift-scope and deploy-preview follow.
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "Not a pull_request ($EVENT_NAME) — guard test runs."
+            exit 0
+          fi
+          if ! files="$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/files" --jq '.[].filename')"; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Could not list PR files — running the guard test anyway (fail-closed)."
+            exit 0
+          fi
+          if printf '%s\n' "$files" | grep -qE '(^android/|^\.github/workflows/ci\.yml$)'; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "android/ or ci.yml touched — guard test runs."
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing guard-relevant changed — skipping the guard test on this PR."
+          fi
+
+  # --------------------------------------------------------------------------
+  # Regression gate for the release-cert guard in android/app/build.gradle.
+  #
+  # PR #1310 added a debug-fingerprint check; #1313 rewrote the guard and silently
+  # dropped it; #1325 restored it; #1338 added this test; #1386 fixed the guard
+  # after it had been inert since 2026-07-24 (issue #1373).
+  #
+  # This job exists because of HOW long that last one took to notice. The test
+  # lived inside `android-release`, which is gated on
+  # `github.ref == 'refs/heads/main' && github.event_name != 'pull_request'` — so
+  # no PR could ever catch a regression, every red run on main looked caused by
+  # whatever had just merged, and it survived ~15 merges over two days. Moving it
+  # to its own PR-runnable job is the part of #1373 that #1386 did not address.
+  # --------------------------------------------------------------------------
+  release-cert-guard:
+    name: Release-cert guard rejects wrong fingerprints
+    runs-on: ubuntu-latest
+    needs: release-guard-scope
+    # This job ALWAYS runs and ALWAYS reports a conclusion, so that it can be added
+    # to the branch ruleset's required checks.
+    #
+    # It used to carry the scope decision on the JOB `if:`, which meant GitHub
+    # SKIPPED the whole job whenever nothing guard-relevant changed. That is fine
+    # for an advisory check and fatal for a required one: a required check that is
+    # skipped — or that never reports at all — leaves every PR sitting at
+    # "Expected — waiting for status to be reported". Since the scope job returns
+    # needed=false for any PR touching neither android/ nor ci.yml (most of them),
+    # requiring the old shape would have blocked nearly every PR in the repo.
+    #
+    # So the decision moved OFF the job and ONTO the expensive steps. A not-needed
+    # run costs a runner boot and a single echo, then reports success. Only the
+    # `if: env.NEEDED == 'true'` steps below cost a real build.
+    #
+    # `!cancelled()` (not `success()`): a status-check function is what lets this
+    # job run even when `needs` FAILED. A failed scope job (runner error, timeout,
+    # gh outage) publishes an empty output, which `outputs.needed == 'true'` reads
+    # as "not needed" — the same fail-open shape this job exists to prevent. NEEDED
+    # therefore treats any non-success scope result as "run the test".
+    if: ${{ !cancelled() }}
+    timeout-minutes: 45
+    env:
+      NEEDED: ${{ needs.release-guard-scope.result != 'success' || needs.release-guard-scope.outputs.needed == 'true' }}
+    steps:
+      - name: Scope decision
+        run: |
+          echo "release-guard-scope result : ${{ needs.release-guard-scope.result }}"
+          echo "release-guard-scope needed : ${{ needs.release-guard-scope.outputs.needed }}"
+          echo "this job will run the test : $NEEDED"
+          if [ "$NEEDED" != 'true' ]; then
+            echo "Nothing guard-relevant changed — the release-cert guard test is not required for this change."
+            echo "### Release-cert guard: not needed for this change" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/checkout@v5
+        if: env.NEEDED == 'true'
+      - uses: actions/setup-node@v5
+        if: env.NEEDED == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install -g npm@11
+        if: env.NEEDED == 'true'
+      - run: npm ci
+        if: env.NEEDED == 'true'
+      - run: npm run build
+        if: env.NEEDED == 'true'
+      - name: Sync Capacitor
+        if: env.NEEDED == 'true'
+        run: npx cap sync android
+      - uses: actions/setup-java@v5
+        if: env.NEEDED == 'true'
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Decode keystore
+        if: env.NEEDED == 'true'
+        # Secret reaches the script via env, never interpolated into the command
+        # string — the rule this file states for swift-scope and deploy-preview.
+        # An interpolated secret is expanded into the shell source before the
+        # runner's log masking sees it.
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/keystore.jks
+            echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> $GITHUB_ENV
+          fi
+      - name: Guard must accept the real fingerprint and reject four wrong ones
+        if: env.NEEDED == 'true'
+        run: |
+          set -u
+          chmod +x gradlew
+          # No keystore secret (forks, Dependabot) means there is no release signing
+          # config and no upload cert to test against. Skip — but say so loudly, so a
+          # silent skip is never mistaken for a pass.
+          if [ ! -f keystore.jks ]; then
+            echo "::warning::No release keystore available (fork or Dependabot PR) — release-cert guard test SKIPPED, not passed."
+            echo "### Release-cert guard: SKIPPED (no keystore secret)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # The guard in build.gradle fails CLOSED when no debug keystore exists —
+          # it refuses to skip the debug-cert comparison silently. Every build that
+          # passes RELEASE_CERT_SHA256 therefore needs a debug keystore present
+          # BEFORE assembleRelease runs, including the happy-path build below.
+          #
+          # The guard searches user.home/.android, $HOME/.android, and
+          # $USERPROFILE/.android. On GitHub runners the Gradle daemon's user.home
+          # is /home/runner/.config (not /home/runner), so create the keystore at
+          # $HOME/.android and copy it to the Gradle daemon's search path too.
+          DEBUG_KS="$HOME/.android/debug.keystore"
+          if [ ! -f "$DEBUG_KS" ]; then
+            mkdir -p "$HOME/.android"
+            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          # The Gradle daemon's user.home on GitHub runners is /home/runner/.config,
+          # not /home/runner. The guard checks user.home/.android too, so copy there.
+          JAVA_USER_HOME="$(java -XshowSettings:property -version 2>&1 | grep 'user.home' | awk -F= '{print $2}' | tr -d ' ')"
+          if [ -n "$JAVA_USER_HOME" ] && [ "$JAVA_USER_HOME/.android" != "$HOME/.android" ]; then
+            mkdir -p "$JAVA_USER_HOME/.android"
+            cp "$DEBUG_KS" "$JAVA_USER_HOME/.android/debug.keystore" 2>/dev/null || true
+          fi
+
+          # Happy path FIRST. Without it, a guard that rejected everything
+          # unconditionally would sail through all four rejection cases below and
+          # look perfectly healthy.
+          if ! ./gradlew assembleRelease -PRELEASE_CERT_SHA256="$REAL_CERT_SHA256" >/tmp/happy.log 2>&1; then
+            echo "::error::release guard rejected the CORRECT fingerprint — the guard is broken closed"
+            tail -40 /tmp/happy.log
+            exit 1
+          fi
+          echo "OK — accepted the real app-signing fingerprint"
+          grep -F 'release-cert guard:' /tmp/happy.log || true
+
+          expect_rejected() {
+            label="$1"; shift
+            if ./gradlew assembleRelease "$@" >/tmp/guard.log 2>&1; then
+              echo "::error::release guard did NOT reject $label — a broken AAB could ship"
+              grep -F 'release-cert guard:' /tmp/guard.log || true
+              exit 1
+            fi
+            if ! grep -q 'RELEASE_CERT_SHA256' /tmp/guard.log; then
+              echo "::error::build failed for an unrelated reason while testing $label"
+              tail -30 /tmp/guard.log
+              exit 1
+            fi
+            echo "OK — rejected $label"
+          }
+          expect_rejected "a blank fingerprint"     -PRELEASE_CERT_SHA256=
+          expect_rejected "a malformed fingerprint" -PRELEASE_CERT_SHA256=deadbeef
+          # The upload cert is the likeliest wrong value: it IS the key that just
+          # signed the artifact, so it looks correct. Derived here rather than
+          # hardcoded, so a key rotation cannot make this test stale.
+          UPLOAD_SHA=$(keytool -list -v -keystore keystore.jks \
+            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" \
+            | grep 'SHA256:' | head -1 | awk '{print $2}')
+          if [ -z "$UPLOAD_SHA" ]; then
+            echo "::error::could not derive the upload cert fingerprint from keystore.jks — refusing to skip the upload-cert case"
+            exit 1
+          fi
+          expect_rejected "the upload cert" -PRELEASE_CERT_SHA256="$UPLOAD_SHA"
+          # The debug keystore cert — added by #1310, dropped by #1313, and inert
+          # again until #1386. The keystore was created at the top of this step;
+          # derive its fingerprint and feed it to the guard.
+          DEBUG_SHA=$(keytool -list -v -keystore "$DEBUG_KS" \
+            -storepass android -alias androiddebugkey \
+            | grep 'SHA256:' | head -1 | awk '{print $2}')
+          if [ -z "$DEBUG_SHA" ]; then
+            echo "::error::could not derive the debug keystore fingerprint — refusing to skip the debug-cert case"
+            exit 1
+          fi
+          expect_rejected "the debug keystore cert" -PRELEASE_CERT_SHA256="$DEBUG_SHA"
+          echo "### Release-cert guard: all 5 cases passed" >> "$GITHUB_STEP_SUMMARY"
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD:  ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS:          ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:       ${{ secrets.KEY_PASSWORD }}
+          REAL_CERT_SHA256:   ${{ secrets.RELEASE_CERT_SHA256 }}
