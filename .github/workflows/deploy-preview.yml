@@ -65,7 +65,7 @@ jobs:
           cache: npm
 
       - run: npm install -g npm@11
-      - run: npm install
+      - run: npm ci
 
       - name: Set environment label
         id: set-env
@@ -178,7 +178,7 @@ jobs:
           cache: npm
 
       - run: npm install -g npm@11
-      - run: npm install
+      - run: npm ci
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
