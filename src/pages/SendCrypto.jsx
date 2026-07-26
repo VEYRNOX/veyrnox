@@ -1395,9 +1395,13 @@ export default function SendCrypto() {
           )}
         </div>
 
+        {/* role="alert" matches the amount error below (id="send-amount-error").
+            Without it this message was invisible to assistive tech and to any
+            role-based query — the one validation error a user is most likely to
+            hit, announced to nobody. */}
         {(toAddress || showErrors) && !addressFormatValid && (
-          <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
-            <AlertTriangle className="h-3 w-3" />
+          <p role="alert" className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
+            <AlertTriangle className="h-3 w-3" aria-hidden="true" />
             {toAddress ? `Invalid ${selectedWallet?.currency} address format` : "Recipient address is required"}
           </p>
         )}

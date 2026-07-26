@@ -43,15 +43,29 @@ test.describe('QA: Demo Mode Isolation', () => {
 
     await addrInput.fill('not-a-valid-address');
 
-    const submitBtn = page.getByRole('button', { name: /next|continue|send|review/i }).first();
-    await expect(submitBtn, 'send form must expose a submit control once the address field is present').toBeVisible({ timeout: 10_000 });
-    await submitBtn.click();
-
-    // Auto-waiting assertion replaces waitForTimeout(1000) + count(): validation is
-    // allowed to be slower than a second without failing the test, and a genuinely
-    // missing error still fails within the bound instead of racing.
-    const errorSurface = page.getByRole('alert').or(page.locator('text=/invalid|error/i')).first();
-    await expect(errorSurface, 'an invalid address must surface a visible validation error').toBeVisible({ timeout: 10_000 });
+    // SECOND FLAKE FIX — the previous pass made the waits web-first but left the
+    // real cause in place: the submit locator.
+    //
+    // `getByRole('button', { name: /next|continue|send|review/i })` matched FOUR
+    // controls on this page — a hidden nav "Send", "ETH send (clean)", the form's
+    // "Continue", and the visible bottom-nav "Send" tab. `.first()` resolves by DOM
+    // order, not by visibility or relevance, so it could land on a nav tab. Clicking
+    // that navigates instead of validating, no error ever appears, and the assertion
+    // below times out — fail, fail, pass-on-retry, exactly as seen on #1346.
+    // "Continue" is also `disabled` until a wallet AND asset are selected, which
+    // /send?demo=1 does not do, so clicking it was never going to validate either.
+    //
+    // None of that is needed: the inline error is rendered from `toAddress` being
+    // malformed (SendCrypto.jsx — `(toAddress || showErrors) && !addressFormatValid`),
+    // so it appears on fill. Dropping the click removes the ambiguity entirely and
+    // tests the actual behaviour — a bad address is rejected — rather than the
+    // incidental question of which button happens to be first in the DOM.
+    const addressError = page
+      .getByRole('alert')
+      .filter({ hasText: /address (format|is required)/i })
+      .first();
+    await expect(addressError, 'a malformed address must surface a visible validation error')
+      .toBeVisible({ timeout: 10_000 });
   });
 
   test('landing page renders without errors', async ({ page }) => {
