@@ -118,7 +118,7 @@ There is no build-mode guard — the safety depends entirely on this value being
 `VITE_RELEASE=1` is the store-build guard — without it the demo-build throw is not armed.
 
 ```bash
-npm install --legacy-peer-deps
+npm install
 npx cross-env VITE_RELEASE=1 npm run build
 npx cap sync android
 ```

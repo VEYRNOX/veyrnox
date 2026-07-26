@@ -96,7 +96,7 @@ jobs:
       # The lockfile is authored with npm 11; Node 22 ships npm 10, which rejects
       # it (optional native dep resolution). Pin npm 11 to match the toolchain.
       - run: npm install -g npm@11
-      - run: npm install --legacy-peer-deps
+      - run: npm install
       # LOG-1 gate (independent-audit F4.1): assert the debug-bridge log-redaction
       # patch actually applied to node_modules. A patch-package patch is silently
       # dropped when @capacitor/{android,ios} is bumped past the pinned 8.4.1, which
@@ -186,7 +186,7 @@ jobs:
           cache: npm
       # Lockfile is authored with npm 11; Node 22 ships npm 10, which rejects it.
       - run: npm install -g npm@11
-      - run: npm install --legacy-peer-deps
+      - run: npm install
       - run: npm test
 
   android-unit-tests:
@@ -204,7 +204,7 @@ jobs:
       - name: Install JS deps and sync Capacitor Android
         run: |
           npm install -g npm@11
-          npm install --legacy-peer-deps
+          npm install
           mkdir -p dist && echo '<html></html>' > dist/index.html
           npx cap sync android
       - name: Run Android JVM unit tests (ES256 DER transcoder + RASP)
@@ -225,7 +225,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm install -g npm@11
-      - run: npm install --legacy-peer-deps
+      - run: npm install
       - run: npm run build
       - name: Sync Capacitor
         run: npx cap sync android

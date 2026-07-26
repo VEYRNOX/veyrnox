@@ -57,7 +57,7 @@ This script will:
 
 **Android:**
 ```bash
-npm install --legacy-peer-deps
+npm install
 npm run build
 npx cap sync android
 npx cap open android
@@ -66,7 +66,7 @@ npx cap open android
 
 **iOS:**
 ```bash
-npm install --legacy-peer-deps
+npm install
 npm run build
 npx cap sync ios
 npx cap open ios
@@ -141,7 +141,7 @@ rm -rf ~/Library/Developer/Xcode/DerivedData/*
 ```bash
 # Reinstall dependencies
 rm -rf node_modules package-lock.json
-npm install --legacy-peer-deps
+npm install
 ```
 
 ---
