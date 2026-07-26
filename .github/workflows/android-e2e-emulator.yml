@@ -65,7 +65,7 @@ jobs:
           cache: gradle
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install
 
       # Build the APK before booting the emulator so emulator uptime is spent
       # only on tests.
@@ -163,7 +163,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
