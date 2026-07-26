@@ -41,12 +41,22 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // Deployed-preview project. It matches ONLY the smoke spec: the rest of the
+    // suite cannot run against a built deployment (seven specs import
+    // '/src/**' at runtime, which exists only while Vite serves source in dev).
+    //
+    // testMatch also stops the whole suite running twice. `web-e2e-tests`
+    // invokes `playwright test` with no --project, so every project runs — and
+    // this one silently re-ran all 73 specs against localhost, doubling CI time
+    // and doubling the exposure to flaky tests. qa-demo-isolation failed here
+    // under [staging] while passing on retry under [chromium].
+    //
     // The specs navigate with ABSOLUTE urls built from their own BASE const
     // (which reads process.env.BASE_URL), so Playwright's `baseURL` is never
-    // consulted. It is set here only for completeness — BASE_URL is what
-    // actually points the suite at a deployed preview.
+    // consulted. It is set here only for completeness.
     {
       name: 'staging',
+      testMatch: /staging-smoke\.spec\.js$/,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: process.env.BASE_URL || 'http://localhost:5173',
