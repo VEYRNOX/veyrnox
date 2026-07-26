@@ -392,28 +392,63 @@ jobs:
     name: Release-cert guard rejects wrong fingerprints
     runs-on: ubuntu-latest
     needs: release-guard-scope
-    # NOT `needs...outputs.needed == 'true'` on its own: a FAILED scope job (runner
-    # error, timeout, gh outage) publishes an empty output, which that expression
-    # reads as "not needed" and silently skips the guard test — the same fail-open
-    # shape this whole job exists to prevent. Scope fails -> run anyway.
-    if: ${{ !cancelled() && (needs.release-guard-scope.result != 'success' || needs.release-guard-scope.outputs.needed == 'true') }}
+    # This job ALWAYS runs and ALWAYS reports a conclusion, so that it can be added
+    # to the branch ruleset's required checks.
+    #
+    # It used to carry the scope decision on the JOB `if:`, which meant GitHub
+    # SKIPPED the whole job whenever nothing guard-relevant changed. That is fine
+    # for an advisory check and fatal for a required one: a required check that is
+    # skipped — or that never reports at all — leaves every PR sitting at
+    # "Expected — waiting for status to be reported". Since the scope job returns
+    # needed=false for any PR touching neither android/ nor ci.yml (most of them),
+    # requiring the old shape would have blocked nearly every PR in the repo.
+    #
+    # So the decision moved OFF the job and ONTO the expensive steps. A not-needed
+    # run costs a runner boot and a single echo, then reports success. Only the
+    # `if: env.NEEDED == 'true'` steps below cost a real build.
+    #
+    # `!cancelled()` (not `success()`): a status-check function is what lets this
+    # job run even when `needs` FAILED. A failed scope job (runner error, timeout,
+    # gh outage) publishes an empty output, which `outputs.needed == 'true'` reads
+    # as "not needed" — the same fail-open shape this job exists to prevent. NEEDED
+    # therefore treats any non-success scope result as "run the test".
+    if: ${{ !cancelled() }}
     timeout-minutes: 45
+    env:
+      NEEDED: ${{ needs.release-guard-scope.result != 'success' || needs.release-guard-scope.outputs.needed == 'true' }}
     steps:
+      - name: Scope decision
+        run: |
+          echo "release-guard-scope result : ${{ needs.release-guard-scope.result }}"
+          echo "release-guard-scope needed : ${{ needs.release-guard-scope.outputs.needed }}"
+          echo "this job will run the test : $NEEDED"
+          if [ "$NEEDED" != 'true' ]; then
+            echo "Nothing guard-relevant changed — the release-cert guard test is not required for this change."
+            echo "### Release-cert guard: not needed for this change" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/checkout@v5
+        if: env.NEEDED == 'true'
       - uses: actions/setup-node@v5
+        if: env.NEEDED == 'true'
         with:
           node-version: 22
           cache: npm
       - run: npm install -g npm@11
+        if: env.NEEDED == 'true'
       - run: npm ci
+        if: env.NEEDED == 'true'
       - run: npm run build
+        if: env.NEEDED == 'true'
       - name: Sync Capacitor
+        if: env.NEEDED == 'true'
         run: npx cap sync android
       - uses: actions/setup-java@v5
+        if: env.NEEDED == 'true'
         with:
           distribution: temurin
           java-version: 21
       - name: Decode keystore
+        if: env.NEEDED == 'true'
         # Secret reaches the script via env, never interpolated into the command
         # string — the rule this file states for swift-scope and deploy-preview.
         # An interpolated secret is expanded into the shell source before the
@@ -426,6 +461,7 @@ jobs:
             echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> $GITHUB_ENV
           fi
       - name: Guard must accept the real fingerprint and reject four wrong ones
+        if: env.NEEDED == 'true'
         run: |
           set -u
           chmod +x gradlew
