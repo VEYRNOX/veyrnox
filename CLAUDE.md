@@ -184,9 +184,17 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
   updated SQL in Supabase before deploying the matching client build.
 - **First-referral bonus Edge Function — BUILT, NOT DEPLOYED.**
   `supabase/functions/first-referral-bonus/index.ts` + `sql/first-referral-bonus.sql`.
-  Requires: (a) run the SQL migration, (b) `supabase functions deploy first-referral-bonus
-  --no-verify-jwt`, (c) set `REVENUECAT_V1_SECRET_KEY` in Edge Function secrets.
+  Requires: (a) run the SQL migrations — `first-referral-bonus.sql`, then
+  `check-first-referral-bonus-hardening.sql`, then `bonus-claim-rate-limit.sql`,
+  then re-run `definer-search-path-pin.sql`; (b) `supabase functions deploy
+  first-referral-bonus` — **NOT `--no-verify-jwt`**, that flag told the platform to
+  skip JWT verification and accept anonymous requests, and dropping it is part of
+  the 2026-07-26 hardening; (c) set `REVENUECAT_V1_SECRET_KEY` in Edge Function
+  secrets, and optionally `ALLOWED_ORIGINS` for preview deployments.
   Client wired in Subscription.jsx (fires after `record_attribution`).
+  Auth note: the bearer check is possession of the PUBLIC anon key, not user
+  authentication — this app has no accounts. Containment comes from the atomic
+  single-grant claim, service_role-only RPCs, and the 5/hour/code rate limit.
 
 ## Security invariants
 
