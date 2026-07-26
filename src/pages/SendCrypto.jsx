@@ -253,6 +253,9 @@ export default function SendCrypto() {
   const [step, setStep] = useState("form"); // form | verify | done
   const [showScanner, setShowScanner] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  // Has the user finished with the address field at least once? Gates the error
+  // ANNOUNCEMENT (see `addressInvalid`) so we never interrupt mid-entry.
+  const [addressTouched, setAddressTouched] = useState(false);
   const [txResult, setTxResult] = useState(/** @type {any} */ (null)); // { hash, explorerUrl } from a real broadcast
   const [selectedFee, setSelectedFee] = useState(/** @type {any} */ (null)); // user-chosen EIP-1559 fee (FeeSelector)
 
@@ -562,7 +565,18 @@ export default function SendCrypto() {
   // aria-describedby and the message itself cannot drift apart — they describe one
   // control, and a field that reads "invalid" while no message renders (or vice
   // versa) is worse for a screen-reader user than neither. Mirrors `amountInvalid`.
-  const addressInvalid = (toAddress || showErrors) && !addressFormatValid;
+  //
+  // Gated on `addressTouched || showErrors` rather than firing as soon as the value
+  // is malformed. role="alert" is an ASSERTIVE live region: announcing it on the
+  // first character of an address the user is still typing interrupts them to say
+  // something they already know, and every address is malformed until it is
+  // complete. Waiting until they leave the field (or press Continue) announces once,
+  // at the point the answer is actually meaningful. The red border on the input is
+  // NOT gated — live visual feedback is unchanged.
+  //
+  // `!addressFormatValid` already implies a non-empty `toAddress` (it short-circuits
+  // to true when the field is empty), so no separate emptiness check is needed here.
+  const addressInvalid = (addressTouched || showErrors) && !addressFormatValid;
 
   // SELF-SEND guard (#179 S3). Compares the recipient against the active wallet's
   // OWN address for this asset, with per-currency normalization (EVM case-
@@ -1369,7 +1383,7 @@ export default function SendCrypto() {
               id="send-recipient"
               value={ensName || toAddress}
               onChange={e => { const v = e.target.value; if (v.endsWith(".eth") || v.endsWith(".sol")) { setEnsName(v); setToAddress(""); setEnsResolved(null); } else { setEnsName(""); setToAddress(v); setEnsResolved(null); } }}
-              onBlur={e => resolveENS(e.target.value)}
+              onBlur={e => { setAddressTouched(true); resolveENS(e.target.value); }}
               placeholder="Paste an address or enter a name (e.g. vitalik.eth)"
               className={`mono-value text-sm ${!addressFormatValid ? 'border-destructive' : ''}`}
               aria-invalid={addressInvalid || undefined}

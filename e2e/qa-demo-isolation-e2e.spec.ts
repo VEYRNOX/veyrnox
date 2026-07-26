@@ -14,7 +14,11 @@ test.describe('QA: Demo Mode Isolation', () => {
     expect(content).not.toContain(EXPECTED_EVM);
   });
 
-  test('send form rejects invalid address', async ({ page }) => {
+  // NAME: this asserts that a malformed address SURFACES A VALIDATION ERROR. It does
+  // not exercise the submit gate (SendCrypto.jsx — `if (invalid) { setShowErrors(true);
+  // return; }`), so it must not claim the form "rejects" the address; that gate is
+  // still uncovered end-to-end.
+  test('send form surfaces a validation error for a malformed address', async ({ page }) => {
     // FLAKE FIX: every wait here used to be a point-in-time `count()` or a fixed
     // `waitForTimeout`, neither of which auto-waits — so the outcome depended purely on
     // render timing. Locally the input never rendered in time and the test skipped on
@@ -44,6 +48,11 @@ test.describe('QA: Demo Mode Isolation', () => {
     test.skip(!formReachable, 'Send form address input not reachable at /send?demo=1 without vault state — see F-004');
 
     await addrInput.fill('not-a-valid-address');
+    // The error is announced on blur, not mid-entry — role="alert" is assertive and
+    // barking at someone on the first character of an address they are still typing
+    // is worse than saying nothing. fill() leaves focus on the field, so blur here to
+    // model a user who has finished with it. The red border does appear on input.
+    await addrInput.blur();
 
     // SECOND FLAKE FIX — the previous pass made the waits web-first but left an
     // ambiguous submit locator in place.
