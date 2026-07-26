@@ -127,6 +127,20 @@ jobs:
       # security-critical wallet-core slice); CI additionally holds the ENTIRE
       # tree at zero checkJs errors so UI-layer types can't silently drift.
       - run: npm run typecheck
+      # Guards the guard. `stripCommentsAndStrings` in scripts/audit/lib/source-scan.mjs
+      # is the shared scanner behind check:rng AND scripts/audit/eth-wallet-audit.mjs
+      # (key-egress, secret-logging, Math.random, eval). Its 10-case self-test was
+      # written with the PR #5bedc9d8 fail-open fix but was never wired to any runner
+      # — it was named *.test.mjs, which vitest does not collect (include is
+      # `src/**/*.test.{js,jsx}`), so for ~5 weeks it provided zero protection.
+      #
+      # This matters because a scanner regression is INVISIBLE downstream: reverting
+      # the regex-literal state fix makes the scanner blank real code, and check:rng
+      # still reports "✓ no insecure randomness" — verified green against a
+      # deliberately mutated scanner (2026-07-26). The self-test is the only thing
+      # that fails. It runs BEFORE check:rng so a broken scanner is reported as
+      # itself, not as a false green from the gate that depends on it.
+      - run: npm run check:source-scan
       # F5: run the CSPRNG guard as a dedicated required step, not only
       # transitively via the test `pretest` hook (so it can't silently drop if
       # the test script changes).
