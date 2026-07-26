@@ -68,7 +68,7 @@
 // NONE of this is "verified" — it needs the internal audit + real-device proof.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router";
 import { motion, useReducedMotion } from "motion/react";
 import { useInfiniteAnimation } from "@/lib/useInfiniteAnimation";
 import { isLowEndDevice } from "@/hooks/useLowEndDevice";

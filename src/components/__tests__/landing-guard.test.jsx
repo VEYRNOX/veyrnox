@@ -17,7 +17,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router';
 
 // The committed vitest.config.js has no @vitejs/plugin-react, so esbuild compiles
 // this file's (and the guard's) JSX with the CLASSIC runtime — `React.createElement`

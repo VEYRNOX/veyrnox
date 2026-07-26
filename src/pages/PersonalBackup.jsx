@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useId } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Capacitor } from "@capacitor/core";
 import { useWallet } from "@/lib/WalletProvider";
 import {

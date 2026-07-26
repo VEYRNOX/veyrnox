@@ -4,7 +4,7 @@
 // Inline nudge shown after seed backup confirmation, offering Safety Plus
 // (hardware binding) as the next step. I3: suppressed in deniability/demo.
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Shield, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';

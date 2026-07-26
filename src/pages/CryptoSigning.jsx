@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { ethers } from "ethers";
 import { Key, Copy, Check, FileSignature, AlertTriangle, Lock, Settings as SettingsIcon } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { copyPlain } from "@/lib/copySecret";

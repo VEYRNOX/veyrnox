@@ -11,7 +11,7 @@
 
 import { Lock, LockOpen, Clock, Monitor, Smartphone, Globe } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { base44 } from '@/api/base44Client';
 import { useWallet } from '@/lib/WalletProvider';
 import { AUTO_LOCK_OPTIONS } from '@/lib/session';

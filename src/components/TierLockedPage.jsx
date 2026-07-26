@@ -5,7 +5,7 @@
 // this feature IS live, just paywalled, so the notice points at /plans instead
 // of explaining an engineering limitation.
 import { Sparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 export default function TierLockedPage() {
   return (

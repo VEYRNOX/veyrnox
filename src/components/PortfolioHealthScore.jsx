@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Shield, TrendingUp, Layers, ChevronRight } from "lucide-react";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 import { calculatePortfolioHealth, calculateSecurityScore, calculateDiversificationScore, calculateGrowthScore } from "@/lib/portfolioHealthCalc";
