@@ -13,7 +13,7 @@
 // page — even before the reauth-gated quiz is wired up — stops nagging the
 // user with further reminders about verifying their backup.
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck } from "lucide-react";
 import { cancelVerificationReminders } from "@/lib/tracking-integration";

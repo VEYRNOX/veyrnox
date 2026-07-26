@@ -1,5 +1,5 @@
 import { Mic } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { useVoice } from "@/context/VoiceContext";
 
 export default function VoiceFab() {

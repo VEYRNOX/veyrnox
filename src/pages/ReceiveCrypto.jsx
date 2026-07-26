@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router";
 import BackButton from "@/components/BackButton";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";

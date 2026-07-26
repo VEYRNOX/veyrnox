@@ -11,7 +11,7 @@
 // those modes are unchanged (demo stays a no-login walkthrough; hosted keeps its
 // account layer via ProtectedRoute, which Phase 4 removes with the SDK).
 
-import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router";
 import { WALLET_GATE } from "@/api/base44Client";
 import WalletEntry from "@/components/WalletEntry";
 import WalletEntryErrorBoundary from "@/components/WalletEntryErrorBoundary";

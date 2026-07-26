@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, AlertCircle, ExternalLink, Plug } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 const PROVIDERS = [
   {

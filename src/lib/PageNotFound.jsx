@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 
 // Plain on-device 404. The former "Admin Note" block (and the base44.auth.me()
 // call that fed it) was hosted-platform residue from the base44 era: it surfaced

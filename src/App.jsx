@@ -8,14 +8,14 @@ import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from 'next-themes'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useParams } from 'react-router';
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
 import { TrezorProvider } from '@/context/TrezorContext';
 import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { NotificationsProvider } from '@/notify/useNotifications';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router';
 import Layout from './components/Layout';
 import EnvBadge from '@/components/EnvBadge';
 import DeepLinkHandler from '@/components/DeepLinkHandler';

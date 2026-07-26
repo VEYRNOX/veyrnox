@@ -26,7 +26,7 @@
 //     on a block explorer. The UI labels it pending until then.
 
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router";
 import { base64 } from "@scure/base";
 import { Transaction as BtcTx } from "@scure/btc-signer";
 import { Button } from "@/components/ui/button";

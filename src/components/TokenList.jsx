@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { USD_RATES } from "@/lib/cryptos";
 import CoinLogo from "@/components/CoinLogo";
 import { useBasketPrices } from "@/hooks/useBasketPrices";

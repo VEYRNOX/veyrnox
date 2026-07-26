@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table";
 
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { FileText, Search, Download, Sparkles } from "lucide-react";
 import { exportCataloguePdf } from "@/lib/pdfExport";
 import { FEATURE_CATEGORIES, STATUS, resolveStatus, verifiedFeatureNames } from "@/lib/featureCatalogue";

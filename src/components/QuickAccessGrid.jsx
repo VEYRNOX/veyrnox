@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { History, ShieldCheck, FileCheck, Search, Filter, BookUser, Fuel } from "lucide-react";
 
 // Colourful quick-access tiles for the live dashboard. EVERY tile links to a
