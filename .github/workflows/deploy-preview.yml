@@ -167,11 +167,21 @@ jobs:
           echo "::error::Preview at $URL did not become reachable within 5 minutes"
           exit 1
 
+      # ONLY the smoke spec runs against a deployed build. Seven specs
+      # (webauthn-prf-kek, presign-risk-verdict, revenuecat-entitlement-
+      # failclosed, i3-deniability-egress, passkey-clone-replay,
+      # rasp-automation-detection, send-broadcast.harness-b) do
+      # `page.evaluate(() => import('/src/...'))`, which only resolves while
+      # Vite is serving source in dev. Against a built, hashed deployment there
+      # is no /src/**, so they 404 — 26 failed that way, none of them because
+      # the deployment was actually broken. The full suite's harness is the
+      # local dev server, where `web-e2e-tests` already runs it.
+      #
       # BASE_URL is the variable the specs actually read (see e2e/*.spec.js).
-      # This was previously STAGING_URL, which no spec consulted — so every
-      # test silently dialled localhost:5173 with no server running.
-      - name: Run Playwright E2E against the preview
-        run: npx playwright test --project=staging
+      # It was previously STAGING_URL, which no spec consulted — so every test
+      # silently dialled localhost:5173 with no server running.
+      - name: Smoke-test the deployed preview
+        run: npx playwright test e2e/staging-smoke.spec.js --project=staging
         env:
           BASE_URL: ${{ needs.deploy.outputs.deployment_url }}
 
