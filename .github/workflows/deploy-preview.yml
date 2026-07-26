@@ -21,6 +21,24 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Dependabot PRs run with a restricted token and CANNOT read Actions
+    # secrets — GitHub withholds them from dependabot-triggered runs by design.
+    # So `secrets.CLOUDFLARE_API_TOKEN` arrives empty and wrangler exits 1 with
+    # "In a non-interactive environment, it's necessary to set a
+    # CLOUDFLARE_API_TOKEN". That made `deploy` a guaranteed red check on every
+    # dependency PR — noise that trains reviewers to ignore a failing pipeline,
+    # which is how the @hello-pangea/dnd bump (#1363) reached review with a red
+    # X that everyone correctly-but-dangerously waved through.
+    #
+    # Skipping is also the safer half of the trade: the alternative fix is to
+    # add the token to Dependabot secrets, which would hand a live deploy
+    # credential to a workflow whose whole job is running a third party's new
+    # code. We deliberately do not want a preview deployment badly enough to
+    # take that.
+    #
+    # `e2e` needs this job, so it skips with us — correct, since there is no
+    # preview URL to test against.
+    if: github.actor != 'dependabot[bot]'
     outputs:
       deployment_url: ${{ steps.deploy.outputs.deployment-url }}
       environment: ${{ steps.set-env.outputs.environment }}
