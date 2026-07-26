@@ -58,6 +58,7 @@ import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
+import { sendAddressErrorKind } from "@/lib/sendAddressError";
 import { isSelfSend, addressesEqualForCurrency } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { evaluateSendGate, SEND_GATE } from "@/lib/sendGate";
@@ -561,22 +562,21 @@ export default function SendCrypto() {
     ? true
     : isValidAddressForCurrency(toAddress, selectedWallet.currency);
 
-  // The address error's visibility condition, hoisted so the input's aria-invalid /
-  // aria-describedby and the message itself cannot drift apart — they describe one
-  // control, and a field that reads "invalid" while no message renders (or vice
-  // versa) is worse for a screen-reader user than neither. Mirrors `amountInvalid`.
-  //
-  // Gated on `addressTouched || showErrors` rather than firing as soon as the value
-  // is malformed. role="alert" is an ASSERTIVE live region: announcing it on the
-  // first character of an address the user is still typing interrupts them to say
-  // something they already know, and every address is malformed until it is
-  // complete. Waiting until they leave the field (or press Continue) announces once,
-  // at the point the answer is actually meaningful. The red border on the input is
-  // NOT gated — live visual feedback is unchanged.
-  //
-  // `!addressFormatValid` already implies a non-empty `toAddress` (it short-circuits
-  // to true when the field is empty), so no separate emptiness check is needed here.
-  const addressInvalid = (addressTouched || showErrors) && !addressFormatValid;
+  // Which address error applies — 'missing' | 'malformed' | null. The two cases have
+  // different triggers, so they are decided together in one pure, tested helper
+  // (lib/sendAddressError.js) rather than inferred from a single flag plus a ternary:
+  //   - missing   → only on a submit attempt (an empty recipient is the starting
+  //                 state, not a mistake). This case was previously UNREACHABLE, so
+  //                 Continue silently refused with no explanation.
+  //   - malformed → on blur or submit, never mid-entry: role="alert" is an ASSERTIVE
+  //                 live region, and every address is malformed until it is complete,
+  //                 so announcing per-character interrupts to state the obvious.
+  const addressErrorKind = sendAddressErrorKind({ toAddress, addressFormatValid, addressTouched, showErrors });
+
+  // Hoisted so the input's aria-invalid / aria-describedby and the message itself
+  // cannot drift apart — they describe one control, and a field that reads "invalid"
+  // while no message renders (or vice versa) is worse than neither.
+  const addressInvalid = addressErrorKind !== null;
 
   // SELF-SEND guard (#179 S3). Compares the recipient against the active wallet's
   // OWN address for this asset, with per-currency normalization (EVM case-
@@ -1385,7 +1385,10 @@ export default function SendCrypto() {
               onChange={e => { const v = e.target.value; if (v.endsWith(".eth") || v.endsWith(".sol")) { setEnsName(v); setToAddress(""); setEnsResolved(null); } else { setEnsName(""); setToAddress(v); setEnsResolved(null); } }}
               onBlur={e => { setAddressTouched(true); resolveENS(e.target.value); }}
               placeholder="Paste an address or enter a name (e.g. vitalik.eth)"
-              className={`mono-value text-sm ${!addressFormatValid ? 'border-destructive' : ''}`}
+              // Malformed shows the red border LIVE as you type (deliberately not
+              // gated on blur — visual feedback is not disruptive the way an
+              // assertive announcement is); missing only after a submit attempt.
+              className={`mono-value text-sm ${!addressFormatValid || addressErrorKind === 'missing' ? 'border-destructive' : ''}`}
               aria-invalid={addressInvalid || undefined}
               aria-describedby={addressInvalid ? "send-address-error" : undefined}
             />
@@ -1440,7 +1443,9 @@ export default function SendCrypto() {
         {addressInvalid && (
           <p id="send-address-error" role="alert" className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
             <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-            {toAddress ? `Invalid ${selectedWallet?.currency} address format` : "Recipient address is required"}
+            {addressErrorKind === 'missing'
+              ? "Recipient address is required"
+              : `Invalid ${selectedWallet?.currency} address format`}
           </p>
         )}
         {toAddress && addressFormatValid && !isAddressWhitelisted && (
