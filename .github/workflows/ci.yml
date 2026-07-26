@@ -257,6 +257,20 @@ jobs:
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/keystore.jks
             echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> $GITHUB_ENV
           fi
+      - name: Create debug keystore for release-cert guard
+        run: |
+          DEBUG_KS="$HOME/.android/debug.keystore"
+          if [ ! -f "$DEBUG_KS" ]; then
+            mkdir -p "$HOME/.android"
+            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          JAVA_USER_HOME="$(java -XshowSettings:property -version 2>&1 | grep 'user.home' | awk -F= '{print $2}' | tr -d ' ')"
+          if [ -n "$JAVA_USER_HOME" ] && [ "$JAVA_USER_HOME/.android" != "$HOME/.android" ]; then
+            mkdir -p "$JAVA_USER_HOME/.android"
+            cp "$DEBUG_KS" "$JAVA_USER_HOME/.android/debug.keystore" 2>/dev/null || true
+          fi
       - name: Build release APK
         run: |
           chmod +x gradlew
@@ -424,6 +438,30 @@ jobs:
             exit 0
           fi
 
+          # The guard in build.gradle fails CLOSED when no debug keystore exists —
+          # it refuses to skip the debug-cert comparison silently. Every build that
+          # passes RELEASE_CERT_SHA256 therefore needs a debug keystore present
+          # BEFORE assembleRelease runs, including the happy-path build below.
+          #
+          # The guard searches user.home/.android, $HOME/.android, and
+          # $USERPROFILE/.android. On GitHub runners the Gradle daemon's user.home
+          # is /home/runner/.config (not /home/runner), so create the keystore at
+          # $HOME/.android and copy it to the Gradle daemon's search path too.
+          DEBUG_KS="$HOME/.android/debug.keystore"
+          if [ ! -f "$DEBUG_KS" ]; then
+            mkdir -p "$HOME/.android"
+            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          # The Gradle daemon's user.home on GitHub runners is /home/runner/.config,
+          # not /home/runner. The guard checks user.home/.android too, so copy there.
+          JAVA_USER_HOME="$(java -XshowSettings:property -version 2>&1 | grep 'user.home' | awk -F= '{print $2}' | tr -d ' ')"
+          if [ -n "$JAVA_USER_HOME" ] && [ "$JAVA_USER_HOME/.android" != "$HOME/.android" ]; then
+            mkdir -p "$JAVA_USER_HOME/.android"
+            cp "$DEBUG_KS" "$JAVA_USER_HOME/.android/debug.keystore" 2>/dev/null || true
+          fi
+
           # Happy path FIRST. Without it, a guard that rejected everything
           # unconditionally would sail through all four rejection cases below and
           # look perfectly healthy.
@@ -463,18 +501,8 @@ jobs:
           fi
           expect_rejected "the upload cert" -PRELEASE_CERT_SHA256="$UPLOAD_SHA"
           # The debug keystore cert — added by #1310, dropped by #1313, and inert
-          # again until #1386. assembleRelease never creates the debug keystore, so
-          # make one with AGP's standard debug credentials; the guard searches
-          # user.home/.android, $HOME/.android and $USERPROFILE/.android, which is
-          # how it copes with the Gradle daemon's user.home differing from the
-          # shell's $HOME.
-          DEBUG_KS="$HOME/.android/debug.keystore"
-          if [ ! -f "$DEBUG_KS" ]; then
-            mkdir -p "$HOME/.android"
-            keytool -genkeypair -keystore "$DEBUG_KS" -storepass android -keypass android \
-              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
-          fi
+          # again until #1386. The keystore was created at the top of this step;
+          # derive its fingerprint and feed it to the guard.
           DEBUG_SHA=$(keytool -list -v -keystore "$DEBUG_KS" \
             -storepass android -alias androiddebugkey \
             | grep 'SHA256:' | head -1 | awk '{print $2}')
