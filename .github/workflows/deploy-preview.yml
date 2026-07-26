@@ -21,6 +21,37 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Dependabot PRs run with a restricted token and CANNOT read Actions
+    # secrets — GitHub withholds them from dependabot-triggered runs by design.
+    # So `secrets.CLOUDFLARE_API_TOKEN` arrives empty and wrangler exits 1 with
+    # "In a non-interactive environment, it's necessary to set a
+    # CLOUDFLARE_API_TOKEN". That made `deploy` a guaranteed red check on every
+    # dependency PR — noise that trains reviewers to ignore a failing pipeline,
+    # which is how the @hello-pangea/dnd bump (#1363) reached review with a red
+    # X that everyone correctly-but-dangerously waved through.
+    #
+    # Skipping is also the safer half of the trade: the alternative fix is to
+    # add the token to Dependabot secrets, which would hand a live deploy
+    # credential to a workflow whose whole job is running a third party's new
+    # code. We deliberately do not want a preview deployment badly enough to
+    # take that.
+    #
+    # Fork PRs fail identically and for the same root cause: GitHub does not
+    # expose secrets to workflows running from a fork either. The `e2e` job
+    # below already documented this ("fork PRs get no Cloudflare secrets") but
+    # nothing acted on it, so `deploy` still ran and still went red.
+    #
+    # `e2e` needs this job, so it skips with us — correct, since there is no
+    # preview URL to test against.
+    #
+    # NOTE for future editors: the fork test must be `fork != true`, NOT the
+    # common `head.repo.full_name == github.repository`. On the `push: [main]`
+    # trigger there is no pull_request payload, so that comparison is false and
+    # would silently stop deploying main. `fork != true` is null-safe: absent
+    # payload -> null -> null != true -> the job runs.
+    if: >-
+      github.actor != 'dependabot[bot]'
+      && github.event.pull_request.head.repo.fork != true
     outputs:
       deployment_url: ${{ steps.deploy.outputs.deployment-url }}
       environment: ${{ steps.set-env.outputs.environment }}
