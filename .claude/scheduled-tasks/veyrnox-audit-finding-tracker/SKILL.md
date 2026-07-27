@@ -25,16 +25,32 @@ Synthesise all audit findings across every audit document in `docs/`, compare th
    ```
    git rev-parse origin/main
    ```
-3. **Analyse a clean snapshot of `main`, not the live checkout.** Create a throwaway worktree:
+3. **Analyse a clean snapshot of `main`, not the live checkout** — and make that
+   snapshot the write target too, so the report never touches the shared tree.
+   Use a **branch** worktree, not `--detach`: the same checkout then serves as
+   both the analysis snapshot and the branch the PR is opened from.
+
+   ```powershell
+   $branch = "audit-tracker/<DATE>"
+   $wt     = "$env:TEMP\veyrnox-audit-snapshot"
+
+   git worktree prune
+   if (Test-Path $wt) { git worktree remove --force $wt }
+
+   # --no-track is REQUIRED. Without it git sets upstream to origin/main and a
+   # later `git push` from this branch would target MAIN.
+   if (-not (git show-ref --verify --quiet "refs/heads/$branch"; $?)) {
+     git branch --no-track $branch origin/main
+   }
+   if (git config --get "branch.$branch.merge") { git branch --unset-upstream $branch }
+
+   git worktree add $wt $branch
    ```
-   git worktree add --detach C:\Users\aljob\AppData\Local\Temp\veyrnox-audit-snapshot origin/main
-   ```
-   Run **all** Step 1 doc reads and Step 2 code greps inside that snapshot directory.
-4. When finished, remove it:
-   ```
-   git worktree remove C:\Users\aljob\AppData\Local\Temp\veyrnox-audit-snapshot --force
-   ```
-5. If the worktree cannot be created (e.g. path already exists from a crashed run — try `git worktree prune` first), fall back to reading individual files with `git show origin/main:<path>` and **state in the report that the fallback was used**.
+
+   Run **all** Step 1 doc reads and Step 2 code greps inside `$wt`. Because the
+   branch is cut from `origin/main`, its contents ARE the pinned snapshot.
+4. Remove it at the end of Step 4 — after the PR is open, not before.
+5. If the worktree cannot be created (e.g. path already exists from a crashed run — try `git worktree prune` first), fall back to reading individual files with `git show origin/main:<path>` and **state in the report that the fallback was used**. Do NOT fall back to `git checkout`.
 
 Never `git checkout main` in the primary working directory — that would disrupt concurrent worktrees and other running sessions.
 
@@ -80,7 +96,10 @@ For each check: FIXED / STILL OPEN / REGRESSED (was fixed, now broken) / UNVERIF
 ### Step 3 — Write the tracker
 Get today's date (PowerShell: `Get-Date -Format "yyyy-MM-dd"`).
 
-Write `docs/audit-findings-tracker.md` **into the primary working directory** (C:\Users\aljob\Downloads\Veyrnox), overwriting each week:
+Write `docs/audit-findings-tracker.md` **into the worktree** (`$wt` from Step 0),
+overwriting each week. Not into the primary working directory — that is the
+shared checkout other agents are using, and a stray uncommitted file there is
+exactly what this task must not create:
 
 ```markdown
 # Audit Findings Tracker
@@ -121,11 +140,17 @@ Analysed against: origin/main @ <SHA>
 
 ---
 
-## Step 4 — Commit, then VERIFY the result actually landed
+## Step 4 — Commit, push, open a PR, then VERIFY it actually landed
 
-**Do not trust a local commit or branch to survive in this repo.** On a previous run, a commit was made and a branch created; concurrent activity clobbered the branch pointer within minutes and the commit was left dangling. The work only survived because another process happened to sweep the file into an unrelated PR. Verify, don't assume.
+**Changed 2026-07-27** (was: commit locally, "do NOT push", "do NOT open a PR").
+That is the root cause of the dangling-commit incident this section was written
+around: the commit was never blocked — a ruleset gates the push, not the commit —
+so the tracker only ever existed in a local checkout, where a clobbered branch
+pointer could and did strand it. A PR makes the work durable on the remote the
+moment it is pushed, which is the actual fix. The verification below is kept
+because a pushed branch is still not `main`.
 
-1. Record the content hash of what you wrote:
+1. Record the content hash of what you wrote (inside `$wt`):
    ```
    git hash-object docs/audit-findings-tracker.md
    ```
@@ -133,26 +158,51 @@ Analysed against: origin/main @ <SHA>
    ```
    git rev-parse origin/main:docs/audit-findings-tracker.md
    ```
-   If that blob hash matches step 1, the tracker is already current on `main` — **report that and skip the commit entirely.** Do not create a redundant commit.
-3. Otherwise commit:
-   ```
+   If that blob hash matches step 1, the tracker is already current on `main` — **report that, skip the commit and the PR entirely, and remove the worktree.** Do not open a no-op PR.
+3. Otherwise commit and push:
+   ```powershell
+   cd $wt
    git add docs/audit-findings-tracker.md
-   git commit -m "docs(audit): update findings tracker <DATE>"
+   git commit -o docs/audit-findings-tracker.md `
+     -m "docs(audit): update findings tracker <DATE>"
+   git push -u origin $branch
+
+   gh pr create --base main --head $branch `
+     --title "docs(audit): update findings tracker <DATE>" `
+     --body "Automated weekly findings tracker, re-checked against origin/main @ <SHA>. Static analysis only — FIXED means the code change is present, NOT that the control is verified working. INTERNAL."
+
+   gh pr merge --squash --auto
    ```
-4. **Verify durability and report it honestly.** Determine which of these is true and say so explicitly in your output:
-   - `git symbolic-ref -q HEAD` — is HEAD on a branch, or detached?
-   - `git merge-base --is-ancestor <commit> origin/main` — is the commit reachable from main?
+   `git add` must come first (`git commit -o` errors on an untracked path). Keep
+   the `-o` pathspec — stray-artifact guard, `scripts/check-stray-files.mjs`.
+   Never `git add -A`, `git add .`, or `commit -a`.
 
+   **Use `--auto`, never `--admin`.** If `main` is red the PR waits — correct.
+4. **Verify where it actually is, and report it honestly.** Pushing makes the
+   work durable; it does not make it `main`.
+   ```powershell
+   git ls-remote --heads origin $branch          # pushed?
+   gh pr view <PR#> --json state,mergeCommit     # merged?
+   ```
    Report exactly one of:
-   - ✅ "Content is on origin/main" (blob verified identical)
-   - ⚠️ "Committed on branch `<name>` — NOT on main; needs merging to land"
-   - 🔴 "Committed on a DETACHED HEAD — not durable, may be garbage-collected"
+   - ✅ "Merged to `main` as `<sha>`" — only after `state` is `MERGED`
+   - ⚠️ "PR #<n> open, auto-merge armed — pushed and durable, NOT yet on `main`"
+   - 🔴 "PR #<n> blocked by a failing check: `<check>`"
+   - ⏭️ "Skipped — blob already identical on `main`"
 
-   If the state is ⚠️ or 🔴, say so plainly in the summary. **Never describe a local commit or a newly created branch as 'safe', 'anchored', or 'durable'** — branch pointers here have been clobbered by concurrent activity.
+   **Never describe an open PR as landed**, and never call a local-only commit
+   'safe', 'anchored', or 'durable'. Branch pointers in the local repo have been
+   clobbered by concurrent activity; a pushed remote branch has not.
+5. Remove the worktree — after the PR is open, and including when the run aborts:
+   ```powershell
+   cd "C:\Users\aljob\Downloads\Veyrnox"
+   git worktree remove "$env:TEMP\veyrnox-audit-snapshot" --force
+   ```
 
 ## Hard constraints
-- Do NOT push to remote (`git fetch` is allowed; `git push` is not)
-- Do NOT open a PR
+- Push ONLY the per-run `audit-tracker/<DATE>` branch. NEVER push to `main`.
+- NEVER merge with `--admin` or bypass a required check
+- Do NOT delete a branch whose PR has not merged — it is the only copy
 - Do NOT modify any source files — read-only analysis + docs only
 - Do NOT `git checkout` / `git switch` in the primary working directory (breaks concurrent worktrees)
 - Do NOT run `git gc --prune` or `git prune` — this repo carries 7,000+ unreachable commits belonging to other concurrent agents; pruning would destroy their recoverable work

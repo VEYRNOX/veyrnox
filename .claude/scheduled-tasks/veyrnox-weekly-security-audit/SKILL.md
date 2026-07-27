@@ -6,6 +6,42 @@ description: Weekly parallel security audit of Veyrnox across RASP, WalletConnec
 You are running the weekly internal security audit of the Veyrnox wallet codebase. Veyrnox is a self-custody, coercion-resistant crypto wallet (Vite + React + Capacitor; ethers v6; @noble/@scure). Mainnet is live as of 2026-06-17.
 
 Working directory: C:\Users\aljob\Downloads\Veyrnox
+Repo: `VEYRNOX/veyrnox`
+
+## Step 0 — Isolated worktree on a per-run branch (DO THIS FIRST)
+
+**This repo is racy.** ~13 branches are checked out across separate worktrees,
+several other scheduled tasks touch it concurrently, and the primary checkout is
+frequently on a detached HEAD or an unrelated feature branch. Never `git checkout`
+in the shared tree.
+
+Pinning to `origin/main` also makes the audit deterministic: the four agents
+below must read the same tree, not whatever branch the shared checkout happens
+to be on.
+
+```powershell
+git fetch origin main
+
+$branch = "security-audit/<DATE>"
+$wt     = "$env:TEMP\veyrnox-weekly-audit"
+
+git worktree prune
+if (Test-Path $wt) { git worktree remove --force $wt }
+
+# --no-track is REQUIRED, or `git push` from this branch would target MAIN.
+if (-not (git show-ref --verify --quiet "refs/heads/$branch"; $?)) {
+  git branch --no-track $branch origin/main
+}
+if (git config --get "branch.$branch.merge") { git branch --unset-upstream $branch }
+
+git worktree add $wt $branch
+```
+
+**Point all four subagents at `$wt`**, and record the audited commit
+(`git rev-parse origin/main`) in the report header. "Branch audited" was
+previously whatever the shared tree was on — which was frequently not `main`.
+
+If `git worktree add` fails, do NOT fall back to `git checkout`. Report and stop.
 
 ## Security invariants (never violate)
 - I1: keys never leave the device
@@ -69,16 +105,70 @@ Status: **Findings only — nothing fixed. Do not mark anything verified without
 <controls confirmed working>
 ```
 
-### Step 4 — Commit to main
-```
+### Step 4 — Commit, push, open a PR, then remove the worktree
+
+**Changed 2026-07-27** (was: "commit to main only — do NOT push or open a PR").
+Direct commits to `main` are not possible: the `Veyrnox Code Review` ruleset
+requires a pull request. The commit itself was never blocked — a ruleset gates
+the push — so the audit landed as a local commit in whatever checkout the task
+ran in and never reached `origin/main`. A weekly security audit nobody can read
+is not an audit.
+
+```powershell
+cd "$env:TEMP\veyrnox-weekly-audit"
 git add docs/audit-<DATE>-weekly.md
-git commit -m "docs(audit): weekly internal security audit <DATE>"
+git commit -o docs/audit-<DATE>-weekly.md `
+  -m "docs(audit): weekly internal security audit <DATE>"
+git push -u origin $branch
+
+gh pr create --base main --head $branch `
+  --title "docs(audit): weekly internal security audit <DATE>" `
+  --body "Automated weekly internal audit. Static code analysis by internal Claude specialist agents — no dynamic testing, no on-device verification, no on-chain confirmation. INTERNAL: this is NOT the outstanding independent third-party audit."
+
+gh pr merge --squash --auto
+
+cd "C:\Users\aljob\Downloads\Veyrnox"
+git worktree remove "$env:TEMP\veyrnox-weekly-audit"
 ```
+
+`git add` must come first — `git commit -o` errors on an untracked path and the
+report is new every run. Keep the `-o` pathspec (stray-artifact guard; see
+`scripts/check-stray-files.mjs`). Never `git add -A`, `git add .`, or `commit -a`.
+
+**Use `--auto`, never `--admin`.** If `main` is red the PR waits — correct.
+
+### Step 5 — Confirm it landed
+
+A findings report that stops at "committed" is the failure this task just had.
+Do not report success until the PR merges. Arm a watcher rather than polling
+(bash, via the Monitor or Bash tool):
+
+```bash
+for i in $(seq 1 80); do
+  s=$(gh pr view <PR#> --json state 2>/dev/null || true)
+  case "$s" in
+    *'"state":"MERGED"'*) echo "PR #<PR#> MERGED"; exit 0 ;;
+    *'"state":"CLOSED"'*) echo "PR #<PR#> CLOSED unmerged"; exit 0 ;;
+  esac
+  f=$(gh pr checks <PR#> 2>/dev/null | grep -E "fail" || true)
+  if [ -n "$f" ]; then echo "FAILING checks:"; echo "$f"; exit 0; fi
+  sleep 60
+done
+```
+
+Report exactly one of: ✅ merged to `main` (give the squash commit); ⚠️ PR open,
+awaiting checks; 🔴 PR blocked by a failing check (name it). **Never describe an
+unmerged PR as landed.**
+
+Always remove the worktree, including when the run aborts.
 
 ## Hard constraints
 - Do NOT mark anything "verified" without a real on-chain txid or on-device evidence
 - Do NOT flip any asset status or feature status
-- Do NOT push to remote or open a PR — commit to main only
+- Push ONLY the per-run `security-audit/<DATE>` branch. NEVER push to `main`.
+- NEVER merge with `--admin` or bypass a required check
+- Do NOT `git checkout`/`git switch` in the primary working directory
+- Do NOT delete a branch whose PR has not merged — it is the only copy
 - Do NOT mock or stub any security control
 - Status tags: BUILT (code present, tests green), TARGET (designed, not confirmed shipped), PLANNED (roadmap)
 - This is an INTERNAL audit — never describe it as "independent" in the report header

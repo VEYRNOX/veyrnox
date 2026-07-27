@@ -74,17 +74,28 @@ anything that runs.
   so the task works, but the reference is stale. It also watches
   `feat/wire-risk-score-send-flow` and references PRs #166/#167 — long since
   overtaken. This task is probably retirable.
-- **Three tasks commit locally and never push.** `veyrnox-dependency-audit`,
-  `veyrnox-weekly-security-audit` and `veyrnox-audit-finding-tracker` each run
-  `git add` + `git commit` and then forbid both `git push` and opening a PR. The
-  commit is not blocked — a ruleset only gates the push — but the result never
-  reaches `origin/main`, so the report exists only in whatever local checkout
-  the task happened to run in. In a repo with ~13 concurrent worktrees and a
-  frequently-detached primary checkout, that is how work gets lost;
-  `veyrnox-audit-finding-tracker` already documents a run whose commit was left
-  dangling. `veyrnox-daily-security-diff` was rewritten onto a per-day branch +
-  PR for exactly this reason on 2026-07-19. The other three still describe the
-  old flow and are the obvious candidates for the same treatment.
+- ~~**Three tasks commit locally and never push.**~~ **FIXED 2026-07-27.**
+  `veyrnox-dependency-audit`, `veyrnox-weekly-security-audit` and
+  `veyrnox-audit-finding-tracker` each ran `git add` + `git commit` and then
+  forbade both `git push` and opening a PR. The commit was never blocked — a
+  ruleset gates the push, not the commit — but the result never reached
+  `origin/main`, so each report existed only in whatever local checkout the task
+  happened to run in. `veyrnox-audit-finding-tracker` documents a run whose
+  commit was left dangling after a branch pointer was clobbered.
+
+  All three now follow the `veyrnox-daily-security-diff` pattern: isolated
+  worktree on a per-run branch cut from `origin/main` with `--no-track`, `git
+  add` + `git commit -o`, push, `gh pr create`, `--auto` merge, worktree removed.
+  None of them may push to `main` or bypass a required check.
+
+  Two deliberate departures from a straight copy:
+  - `veyrnox-dependency-audit`'s `npm audit fix` path gets its **own branch and
+    PR**, and is **not** auto-merged. A lockfile change and a docs report have
+    different review needs and must not share a merge decision.
+  - `veyrnox-audit-finding-tracker` keeps its blob-hash check and now skips the
+    commit *and* the PR when content is already identical on `main`, rather than
+    opening a no-op PR every week. Its durability reporting is retained, since a
+    pushed branch is still not `main`.
 
 ## Note on contents
 
