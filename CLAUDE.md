@@ -7,6 +7,14 @@ identity; the app never holds keys server-side.
 > **Full audit history:** `docs/CLAUDE-audit-archive.md` (moved 2026-07-20 to reduce
 > context-window pressure). Read on demand when you need PR-level detail.
 
+## Model cost rule
+
+Default to the cheapest capable model (Haiku or Sonnet) for subagents, research, and
+routine tasks. Only escalate to Opus for complex multi-file architectural changes,
+security-critical code (wallet-core, signing, KEK, RASP), or tasks that explicitly
+require deep reasoning. When spawning subagents, pass `model: "haiku"` or
+`model: "sonnet"` unless the task justifies Opus.
+
 ## Hard rules (do not violate)
 
 - **Mainnet unlocked 2026-06-17.** `ALLOW_MAINNET = true`, `ALLOW_BTC_MAINNET = true`,
