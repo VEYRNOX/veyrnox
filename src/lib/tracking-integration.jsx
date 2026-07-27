@@ -7,10 +7,42 @@
 // both, and .catch() keeps a rejected emit() from becoming an unhandled
 // rejection / crashing a render.
 //
-// I3 (deniability): this module does not itself gate on deniability/demo —
-// trackEvent() suppresses egress on the demo/deniability guards AND on the
-// consent check, which now lives at that single chokepoint. Hooks here are
-// safe to mount unconditionally.
+// ── I3 (deniability): TWO different gates, in two different places ───────
+//
+// EGRESS is gated downstream, at the single chokepoint in api/trackEvent.js
+// (demo/deniability guards + the consent check). Nothing here duplicates that;
+// one chokepoint is what stops a new call site reintroducing a bypass.
+//
+// LOCAL DEVICE STATE is gated HERE, because trackEvent() cannot see it. This
+// module writes three kinds of state that never reach the network and were
+// therefore never covered by "emit() suppresses egress":
+//
+//   1. once-per-install markers   (veyrnox-*-fired, via fireOnce)
+//   2. the A/B holdout bucket     (veyrnox-holdout, via assignHoldout)
+//   3. scheduled local notifications
+//
+// WalletPortfolioPage and SendCrypto both render in decoy/duress sessions by
+// design, and `isUnlocked` is true there — so before this gate existed, a
+// coerced session wrote all three into storage the REAL session shares. Two
+// distinct harms, and a fix has to close both:
+//
+//   RESIDUE — persistent artifacts proving a real Veyrnox install reached a
+//     given milestone, created by the one session that must leave none.
+//     `veyrnox-first-inbound-fired` is the sharp one: it asserts that funds
+//     were once received. (panic.js wipes these keys, which fixes the
+//     post-wipe honesty claim — not their existence during the decoy session.)
+//   FUNNEL THEFT — the decoy burns the once-per-install flag, so the real
+//     session's milestone can never fire afterwards. Analytics understates
+//     real activations with no signal that it happened (I4, fail honest).
+//
+// The guard mirrors api/trackEvent.js verbatim (`DEMO ||
+// isDeniabilityOrDemoActive()`) deliberately, so there is one predicate shape
+// to reason about. Neither half is redundant: isDeniabilityOrDemoActive() reads
+// `veyrnox-demo` LIVE (catching a flag set after module import, and covering
+// `?demo=1`, which persists it), while DEMO is a load-time snapshot that also
+// covers VITE_DEMO_MODE=1 and native dev builds, which never write that key.
+//
+// Cancelling notifications is deliberately NOT gated — see cancelReminders.
 //
 // ── WIRING STATUS (keep this list honest) ────────────────────────────────
 // WIRED (have real call sites):
@@ -37,6 +69,17 @@ import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { emit, FunnelEvent } from "@/lib/analytics";
 import { assignHoldout } from "@/lib/holdout";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { DEMO } from "@/api/demoClient";
+
+/**
+ * Must this session leave no local trace? Fails CLOSED — every read inside
+ * isDeniabilityOrDemoActive() returns true if it throws, so an unreadable
+ * localStorage suppresses rather than proceeds (I4).
+ */
+function suppressed() {
+  return DEMO || isDeniabilityOrDemoActive();
+}
 
 function safeEmit(event, metadata) {
   const result = metadata === undefined ? emit(event) : emit(event, metadata);
@@ -44,6 +87,11 @@ function safeEmit(event, metadata) {
 }
 
 function fireOnce(key, fn) {
+  // BEFORE the read, not just before the write. Returning early here is what
+  // makes the decoy session cost the real session nothing: the flag is neither
+  // written (no residue) nor consumed (no funnel theft). `false` is the honest
+  // return value — this did not fire.
+  if (suppressed()) return false;
   try {
     if (localStorage.getItem(key)) return false;
     localStorage.setItem(key, "1");
@@ -88,20 +136,26 @@ export function useWalletReady(ready) {
 // consent screen promised "no wallet data". The milestone (funding happened)
 // is the whole signal we need; the amount is the user's financial position and
 // has no business leaving the device.
+//
+// Routed through fireOnce() rather than hand-rolling the same localStorage
+// dance inline. It was the one marker written by a second, near-identical code
+// path — which is precisely why gating fireOnce() alone would have missed it.
+// One helper owns the marker protocol now, and one gate covers every marker.
 export function useFirstInbound(balance) {
   const firedRef = useRef(false);
   useEffect(() => {
     if (firedRef.current) return;
     if (!(balance > 0)) return;
-    try {
-      if (localStorage.getItem("veyrnox-first-inbound-fired")) {
-        firedRef.current = true;
-        return;
-      }
-      localStorage.setItem("veyrnox-first-inbound-fired", "1");
-    } catch {}
+    // Checked before firedRef is set so a suppressed session does not burn the
+    // in-memory memo either. fireOnce() would already refuse to write, but
+    // leaving the ref set would mean that if this component were still mounted
+    // when a real session began, the milestone could never fire. That relies on
+    // "a decoy session always remounts" being true forever; this does not.
+    if (suppressed()) return;
     firedRef.current = true;
-    safeEmit(FunnelEvent.FIRST_INBOUND_DETECTED);
+    fireOnce("veyrnox-first-inbound-fired", () => {
+      safeEmit(FunnelEvent.FIRST_INBOUND_DETECTED);
+    });
   }, [balance]);
 }
 
@@ -251,6 +305,11 @@ const VERIFICATION_REMINDER_BODY =
   "Your wallet setup isn't finished yet. Open Veyrnox to complete it.";
 
 async function scheduleReminders(ids, delaysHours, title, body) {
+  // A reminder that surfaces 24h later — "You haven't added funds yet. Open
+  // Veyrnox to get started." — is a Veyrnox-install tell on the lock screen,
+  // created by the one session that must leave none. It also outlives the
+  // session that scheduled it, which localStorage residue at least does not.
+  if (suppressed()) return;
   if (!Capacitor.isNativePlatform()) return;
   try {
     await LocalNotifications.schedule({
@@ -264,6 +323,12 @@ async function scheduleReminders(ids, delaysHours, title, body) {
   } catch {}
 }
 
+// NOT gated on suppressed(), unlike scheduleReminders — deliberately, and it
+// is the asymmetry that matters. Cancelling only ever REMOVES pending device
+// state, so it can never create a tell. Gating it would mean a decoy session
+// silently declines to cancel a reminder the real session scheduled, leaving
+// it to fire later: the gate would manufacture the exact leak it exists to
+// prevent. "Deny by default" applies to creating state, not to erasing it.
 async function cancelReminders(ids) {
   if (!Capacitor.isNativePlatform()) return;
   try {
