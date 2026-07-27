@@ -34,7 +34,7 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
 
-## Current state summary (2026-07-26)
+## Current state summary (2026-07-27)
 
 **Hardware KEK:** Both platforms BUILT + device-verified (INTERNAL). M2c (iOS SE) and M2d
 (Android StrongBox/TEE) UNGATED (PR #1152). Android C-1 v3 salt-binding FIXED +
@@ -116,6 +116,14 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
   at Settings → Privacy. The gate lives in `api/trackEvent.js` — the single egress
   chokepoint — NOT in `analytics.js emit()`, because the 11 original call sites
   bypass `emit()` entirely. Declining transmits nothing and mints no device id.
+  **Two chokepoints, not one (2026-07-27, PR #1410):** `trackEvent.js` gates
+  EGRESS; `lib/consent.js` gates WRITES to the shared
+  `veyrnox-telemetry-consent` key. Three writers existed — `TelemetryConsent
+  .choose()`, the Settings switch, `WalletEntry`'s fresh-create reset — and none
+  checked for a decoy/demo session, so a coerced tap could flip or wipe the real
+  user's answer. `setConsent()`/`clearConsent()` now no-op there (reads stay
+  ungated; reading leaves no trace). Do NOT re-guard at call sites — that
+  three-place duplication is exactly how the third writer shipped unguarded.
 - **veyrnox.com/privacy — the "dated 16 June / no analytics or tracking" note
   here was WRONG and is deleted.** Verified by rendering the live page
   2026-07-26: it says "Last updated: 23 July 2026" and already discloses the
@@ -252,6 +260,44 @@ and H-3 (duress setup didn't clear a pre-existing real-PIN biometric cache) are 
 fail-open) fix merged in PR #1276. H-2 (ColdSign WARN-tier biometric
 step-up gap) — **no action taken, correctly**: `ColdSign.jsx` is unreachable dead code (no
 route/import), and the underlying gap is already tracked as weekly M-5 (2026-07-14).
+
+**2026-07-27 branch-review — 10 findings, all fixed (PRs #1409 `fbb5b942`, #1410).**
+Two of them had already reached `main` via PR #1403, so the fixes were cut fresh off
+`main` rather than onto the review branch.
+- **I3 leak (was live on main):** `WalletEntry.jsx` logged `isDemo` — i.e. whether
+  the session is a DECOY — to the console on every render. Removed. The one
+  legitimate log in that file is `import.meta.env.DEV && console.error(...)`; copy
+  that pattern, never a bare `console.log`.
+- **Consent re-asked forever:** `setConsentDone(false)` in `handleKekEnroll`/
+  `handleKekSkip` re-showed the "one-time" screen on EVERY unlock for anyone who
+  skipped KEK (the gate re-fires each unlock; the skip is in-memory only), and
+  `TelemetryConsent.choose()` writes unconditionally — so each re-prompt
+  overwrote a stored "denied". Removed. `consentDone` is seeded from
+  `getConsentState()` at mount; a device with a stored answer must never re-ask.
+- **⚠️ The tests had been edited to assert the bug.** PR #1403 changed
+  `WalletEntry.kek-gate` tests 6/7 to click through a consent screen that should
+  never appear (`getConsentState` is mocked `'granted'` there), turning a
+  regression guard into a description of the defect — green pipeline, bug shipped.
+  Restored, plus a `queryByTestId('consent-dismiss')).toBeNull()` guard. **Treat
+  "align tests with the new flow" as a review smell**; the same pattern appeared as
+  `c2db16ae fix(tests): align tests with consent flow`.
+- **Send amount dead-ended silently:** Continue gates on `isFormAmountWellFormed`
+  (rejects `1e-8`, `1,5`, `1.2.3`, `1.`) but `sendAmountErrorKind` returned null
+  for all of them, so the button did nothing and said nothing. Added a `malformed`
+  kind fed the gate's OWN verdict (`wellFormed`), so message and gate cannot drift.
+  Also: `onSendAnother` now resets `amountTouched`/`addressTouched`/`showErrors`,
+  and the amount error is `role="status"`/polite (it carries the live
+  `over-balance` case; the address error stays `role="alert"` as it is blur-gated).
+- **Pricing honesty:** "Save 30%" and "4 months free" were hardcoded beside
+  offer-adjusted prices they weren't derived from — and monthly/annual resolve via
+  two INDEPENDENT `offerPriceInfo()` calls, so annual can be the WORSE deal while
+  the badge claims 30% off. "4 months" was wrong even at USD base (3.65). Both now
+  derive from `lib/annualSaving.js`, which returns null → render NO claim (I4).
+- **`.mono-value`, not `font-mono tabular-nums`** — the latter misses the slashed
+  zero and letter-spacing every other verifiable value gets.
+- **FirstRunTour is HONEST-DISABLED and ECC F-P3-3 (#1160) is REOPENED.** PR #1403
+  deleted the component undocumented; `docs/Feature-Status.md` now records it, the
+  orphaned `veyrnox-first-run-tour-*` keys, and the revert path (`de8cb829^`).
 
 **Open residuals:** M-1 (EVM key unzeroable, ethers v6), M-6 (iOS bridge H copy),
 #1111 (vault AAD v:3 migration — plan r2 done, implementation blocked on owner decisions),
