@@ -1852,6 +1852,9 @@ INTERNAL — NOT device-verified, NOT independently audited, no on-chain txid.
   label, motion-safe animation, sizes sm/md/lg (#1158).
 - `src/components/FirstRunTour.jsx` — 5-step security feature walkthrough
   triggered once per device via localStorage marker (#1160).
+  **DELETED 2026-07-27** by PR #1403 (`de8cb829`) — F-P3-3 is reopened. This
+  entry records what PR #1174 shipped; the component no longer exists. See the
+  2026-07-27 HONEST-DISABLED entry in `docs/Feature-Status.md`.
 
 **Layout.jsx changes (#1154, #1155, #1156, #1157, #1163):** Back button uses
 `getParentRoute()` fallback when no history; mobile sub-page transitions use
