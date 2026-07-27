@@ -1,4 +1,8 @@
-name: Rollback Production
+# Rolls back the veyrnox-staging Cloudflare Pages project — the only Pages
+# project this repo deploys to (see deploy-preview.yml). This workflow was
+# titled "Rollback Production" while both of its steps targeted staging, which
+# is a bad thing to discover mid-incident.
+name: Rollback Staging
 
 on:
   workflow_dispatch:
@@ -30,6 +34,46 @@ jobs:
         with:
           node-version: 22
 
+      # `deployment_id` is a free-text workflow_dispatch input. It must never be
+      # interpolated straight into a command string — same rule deploy-preview.yml
+      # applies to PR branch names, and the same reason: `${{ }}` is a textual
+      # substitution performed BEFORE the shell sees the script, so a value
+      # containing backticks or $( ) executes in the runner.
+      #
+      # deploy-preview.yml sanitises by substitution (`tr -c 'a-zA-Z0-9-' '-'`)
+      # because a branch name legitimately contains '/' and only has to survive
+      # as a label. That treatment would be WRONG here. A deployment ID is an
+      # exact identifier: silently rewriting a character yields a different
+      # well-formed ID, so a typo'd or hostile input would roll the environment
+      # back to the wrong deployment rather than failing. Validate and reject
+      # instead — fail closed (I4). Blank stays blank; that is the documented
+      # "roll back to the previous deployment" path, not an error.
+      #
+      # The structural half IS identical to deploy-preview.yml, and is the part
+      # that actually closes the injection: the raw value reaches the shell only
+      # through `env:`, never through `${{ }}`, and every step downstream reads
+      # the validated `steps.dep.outputs.id` — a value this workflow produced.
+      - name: Validate deployment id
+        id: dep
+        env:
+          RAW_DEPLOYMENT_ID: ${{ github.event.inputs.deployment_id }}
+        run: |
+          set -euo pipefail
+          RAW="$(printf '%s' "${RAW_DEPLOYMENT_ID:-}" | tr -d '[:space:]')"
+          if [ -z "$RAW" ]; then
+            echo "No deployment id supplied — will roll back to the previous deployment."
+            echo "id=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Cloudflare Pages deployment IDs are UUIDs. Anchored, fixed-length,
+          # hex-and-hyphens only — nothing in this character set is meaningful
+          # to a shell, so the validated value is inert wherever it is used.
+          if ! printf '%s' "$RAW" | grep -Eq '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'; then
+            echo "::error::deployment_id is not a valid UUID. Copy it from \`wrangler pages deployment list\` or the Cloudflare dashboard, or leave the field blank to roll back to the previous deployment."
+            exit 1
+          fi
+          echo "id=$RAW" >> "$GITHUB_OUTPUT"
+
       - name: List recent deployments
         uses: cloudflare/wrangler-action@v4
         with:
@@ -45,19 +89,22 @@ jobs:
           command: >-
             pages deployment rollback
             --project-name=veyrnox-staging
-            ${{ github.event.inputs.deployment_id && format('--deployment-id={0}', github.event.inputs.deployment_id) }}
+            ${{ steps.dep.outputs.id && format('--deployment-id={0}', steps.dep.outputs.id) }}
             --x-versions
 
       - name: Post summary
+        env:
+          DEPLOYMENT_ID: ${{ steps.dep.outputs.id }}
+          ACTOR: ${{ github.actor }}
         run: |
           echo "### Rollback complete" >> "$GITHUB_STEP_SUMMARY"
-          if [ -n "${{ github.event.inputs.deployment_id }}" ]; then
-            echo "Rolled back to deployment \`${{ github.event.inputs.deployment_id }}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$DEPLOYMENT_ID" ]; then
+            echo "Rolled back to deployment \`$DEPLOYMENT_ID\`" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Rolled back to the previous production deployment" >> "$GITHUB_STEP_SUMMARY"
+            echo "Rolled back to the previous staging deployment" >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Triggered by: @${{ github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Triggered by: @$ACTOR" >> "$GITHUB_STEP_SUMMARY"
 
   rejected:
     runs-on: ubuntu-latest
