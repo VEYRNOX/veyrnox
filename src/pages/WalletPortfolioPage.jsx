@@ -588,10 +588,19 @@ export default function WalletPortfolioPage() {
   const { total: pfTotal, indeterminate: pfIncomplete } = sumPortfolioTotal(pfWallets, byWallet);
 
   // Telemetry (Task 9): funnel tracking for the wallet-ready + first-inbound
-  // milestones. safeEmit()-backed (never blocks/throws, I4) and suppressed
-  // under deniability/demo by emit()'s own guards (I3) — safe to mount here
-  // unconditionally, including in explore mode (no vault → balance stays 0,
-  // so useFirstInbound simply never fires).
+  // milestones. safeEmit()-backed, so neither blocks nor throws (I4).
+  //
+  // Safe to mount unconditionally — but NOT for the reason this comment used
+  // to give. It credited "emit()'s own guards" for I3; those suppress EGRESS
+  // only, and this page renders in decoy/duress sessions where isUnlocked is
+  // true. The hooks also write local state emit() cannot see (once-per-install
+  // markers, the holdout bucket), and that was landing in storage the real
+  // session shares. tracking-integration.jsx now gates those writes itself —
+  // see its I3 header for the residue / funnel-theft split.
+  //
+  // Explore mode is handled by the arguments, not by that gate: no vault →
+  // isUnlocked false → useWalletReady no-ops, and balance stays 0 so
+  // useFirstInbound never fires.
   useWalletReady(isUnlocked);
   useFirstInbound(pfTotal);
 

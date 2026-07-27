@@ -39,6 +39,19 @@ vi.mock('@/lib/holdout', () => ({
   isInHoldout: vi.fn(() => false),
 }));
 
+// Deniability/demo state, controlled per-test. Defaults to "off" so the whole
+// pre-existing suite keeps describing normal-session behaviour.
+let deniabilityActive = false;
+let demoFlag = false;
+
+vi.mock('@/wallet-core/deniabilitySession', () => ({
+  isDeniabilityOrDemoActive: () => deniabilityActive,
+}));
+
+vi.mock('@/api/demoClient', () => ({
+  get DEMO() { return demoFlag; },
+}));
+
 const scheduleMock = vi.fn(() => Promise.resolve());
 const cancelMock = vi.fn(() => Promise.resolve());
 let isNative = true;
@@ -64,6 +77,8 @@ describe('tracking-integration', () => {
     vi.clearAllMocks();
     localStorage.clear();
     isNative = true;
+    deniabilityActive = false;
+    demoFlag = false;
   });
 
   it('useFirstOpen fires only once', async () => {
@@ -296,5 +311,100 @@ describe('tracking-integration', () => {
     await cancelFundingReminders();
     expect(scheduleMock).not.toHaveBeenCalled();
     expect(cancelMock).not.toHaveBeenCalled();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// I3 — a decoy/duress or demo session must leave NO trace in shared storage,
+// and must not consume the real session's once-per-install budget.
+//
+// These are two distinct failures and each needs its own assertion:
+//   RESIDUE      — the marker key must not appear in localStorage at all.
+//   FUNNEL THEFT — after the decoy session ends, the real session must still
+//                  be able to fire the milestone. Asserting only "no write"
+//                  would pass even if the flag were consumed some other way.
+// ─────────────────────────────────────────────────────────────────────────
+describe('tracking-integration — deniability (I3)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    isNative = true;
+    deniabilityActive = false;
+    demoFlag = false;
+  });
+
+  const MARKERS = [
+    ['useFirstOpen', 'veyrnox-first-open-fired'],
+    ['useWalletReady', 'veyrnox-wallet-ready-fired'],
+    ['useFirstInbound', 'veyrnox-first-inbound-fired'],
+    ['useFirstSend', 'veyrnox-first-send-fired'],
+  ];
+
+  // Drive each hook the way its real call site does.
+  async function run(name) {
+    const mod = await import('@/lib/tracking-integration');
+    if (name === 'useFirstOpen') renderHook(() => mod.useFirstOpen());
+    if (name === 'useWalletReady') renderHook(() => mod.useWalletReady(true));
+    if (name === 'useFirstInbound') renderHook(() => mod.useFirstInbound(1234.56));
+    if (name === 'useFirstSend') {
+      const { result } = renderHook(() => mod.useFirstSend());
+      act(() => result.current());
+    }
+  }
+
+  describe.each(MARKERS)('%s', (hook, key) => {
+    it('writes no localStorage marker in a deniability session', async () => {
+      deniabilityActive = true;
+      await run(hook);
+      expect(localStorage.getItem(key)).toBeNull();
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('writes no localStorage marker in demo mode', async () => {
+      demoFlag = true;
+      await run(hook);
+      expect(localStorage.getItem(key)).toBeNull();
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('does not consume the real session\'s once-per-install flag', async () => {
+      // Decoy session first...
+      deniabilityActive = true;
+      await run(hook);
+      // ...then the real session, on the same device/storage.
+      deniabilityActive = false;
+      vi.clearAllMocks();
+      await run(hook);
+      expect(emit).toHaveBeenCalled();
+      expect(localStorage.getItem(key)).toBe('1');
+    });
+  });
+
+  it('assigns no holdout bucket in a deniability session', async () => {
+    deniabilityActive = true;
+    const { useWalletReady } = await import('@/lib/tracking-integration');
+    renderHook(() => useWalletReady(true));
+    // A decoy session must not fix the real user's A/B bucket.
+    expect(assignHoldout).not.toHaveBeenCalled();
+  });
+
+  it('schedules no local notifications in a deniability session', async () => {
+    // A reminder surfacing 24h later ("You haven't added funds yet") is a
+    // Veyrnox-install tell created by a session that must leave none.
+    deniabilityActive = true;
+    const { scheduleFundingReminders, scheduleVerificationReminders } =
+      await import('@/lib/tracking-integration');
+    await scheduleFundingReminders();
+    await scheduleVerificationReminders();
+    expect(scheduleMock).not.toHaveBeenCalled();
+  });
+
+  it('still CANCELS notifications in a deniability session', async () => {
+    // Cancelling is the safe direction and must NOT be gated: a decoy session
+    // that refused to cancel would leave a real pending reminder in place.
+    deniabilityActive = true;
+    const { cancelFundingReminders } = await import('@/lib/tracking-integration');
+    await cancelFundingReminders();
+    expect(cancelMock).toHaveBeenCalledWith({ notifications: [{ id: 9001 }, { id: 9002 }] });
   });
 });
