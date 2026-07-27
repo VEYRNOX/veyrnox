@@ -35,7 +35,10 @@ vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
 // Consent gate: return 'granted' so the telemetry consent screen doesn't block
 // <Outlet>. The accessors moved to the @/lib/consent leaf module so that
 // api/trackEvent.js can enforce consent without importing analytics.js.
-vi.mock('@/lib/consent', () => ({ getConsentState: vi.fn(() => 'granted') }));
+vi.mock('@/lib/consent', () => ({ getConsentState: vi.fn(() => 'granted'), clearConsent: vi.fn() }));
+vi.mock('@/components/TelemetryConsent', () => ({
+  default: ({ onChoice }) => <button data-testid="consent-dismiss" onClick={() => onChoice(true)}>consent</button>,
+}));
 
 // Native by default; individual tests flip this for the web case.
 const isNativePlatform = vi.fn(() => true);
@@ -202,6 +205,10 @@ describe('WalletEntry — hardware-KEK enrollment gate after restore', () => {
     expect(keyStoreStub.enrollKek.mock.calls[0][0]).toBe('13572468');
     expect(typeof keyStoreStub.enrollKek.mock.calls[0][1].getHardwareFactor).toBe('function');
 
+    // After KEK enrollment, the telemetry consent screen appears before <Outlet>.
+    await waitFor(() => expect(screen.getByTestId('consent-dismiss')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('consent-dismiss'));
+
     await waitFor(() => expect(screen.getByText(APP_MARKER)).toBeTruthy());
     expect(screen.queryByTestId(GATE_TESTID)).toBeNull();
   });
@@ -213,6 +220,10 @@ describe('WalletEntry — hardware-KEK enrollment gate after restore', () => {
     await waitFor(() => expect(screen.getByTestId(GATE_TESTID)).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
+
+    // After KEK skip, the telemetry consent screen appears before <Outlet>.
+    await waitFor(() => expect(screen.getByTestId('consent-dismiss')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('consent-dismiss'));
 
     await waitFor(() => expect(screen.getByText(APP_MARKER)).toBeTruthy());
     expect(screen.queryByTestId(GATE_TESTID)).toBeNull();
