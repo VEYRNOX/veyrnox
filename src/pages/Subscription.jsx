@@ -40,6 +40,7 @@ import {
   calculateDiscountCents,
   PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
+import { annualSavingPercent } from "@/lib/annualSaving";
 import { recordAttribution, fetchPaidCount, claimFirstReferralBonus } from "@/api/referralApi";
 import { OFFER_UNAVAILABLE } from "@/lib/purchases";
 import OutcomeSteps, {
@@ -252,6 +253,20 @@ export default function Subscription() {
   const selectedPriceString = effectiveBilling === "annual" ? annualPriceString : monthlyPriceString;
   const selectedRegularPrice = effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice;
 
+  // The NUMBERS behind the two strings above, so the annual-saving claim is
+  // derived from exactly what is on screen rather than hardcoded. Same
+  // offer-then-base precedence as the strings; no literal fallback, because a
+  // guessed price must not become an advertised percentage.
+  const monthlyPriceNumber = usingReferralMonthly
+    ? offerPriceInfo(referralMonthly, referralOfferTag)?.price
+    : effectiveMonthly?.product?.price;
+  const annualPriceNumber = usingReferralAnnual
+    ? offerPriceInfo(referralAnnual, referralOfferTag)?.price
+    : effectiveAnnual?.product?.price;
+  // null whenever either side is unresolvable or annual is not actually cheaper —
+  // the badge and the billing note then render nothing at all (I4).
+  const savingPercent = annualSavingPercent(monthlyPriceNumber, annualPriceNumber);
+
   async function handleUpgrade() {
     if (!selectedPackage) return;
     setBusy(true);
@@ -413,7 +428,7 @@ export default function Subscription() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Free</h2>
-            <span className="text-sm font-bold font-mono tabular-nums">$0</span>
+            <span className="text-sm font-bold mono-value">$0</span>
             {currentTier === "free" && (
               <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
             )}
@@ -489,7 +504,7 @@ export default function Subscription() {
                     }
                   >
                     Monthly
-                    <span className="block text-xs text-muted-foreground font-normal font-mono tabular-nums">
+                    <span className="block text-xs text-muted-foreground font-normal mono-value">
                       {monthlyPriceString}
                       {hasDiscount && regularMonthlyPrice && regularMonthlyPrice !== monthlyPriceString && (
                         <span className="ml-1 line-through opacity-60">{regularMonthlyPrice}</span>
@@ -511,13 +526,20 @@ export default function Subscription() {
                     }
                   >
                     Annual
-                    <Badge
-                      variant="outline"
-                      className="absolute -top-2 right-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-primary/40 bg-background text-primary whitespace-nowrap"
-                    >
-                      Save 30%
-                    </Badge>
-                    <span className="block text-xs text-muted-foreground font-normal font-mono tabular-nums">
+                    {/* Derived from the two prices actually rendered, not a
+                        hardcoded "30%". Monthly and annual resolve through two
+                        independent offer lookups, so annual can end up the worse
+                        deal; when it does — or when either price is unresolvable —
+                        annualSavingPercent returns null and no badge is shown. */}
+                    {savingPercent != null && (
+                      <Badge
+                        variant="outline"
+                        className="absolute -top-2 right-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-primary/40 bg-background text-primary whitespace-nowrap"
+                      >
+                        Save {savingPercent}%
+                      </Badge>
+                    )}
+                    <span className="block text-xs text-muted-foreground font-normal mono-value">
                       {annualPriceString}
                       {hasDiscount && regularAnnualPrice && regularAnnualPrice !== annualPriceString && (
                         <span className="ml-1 line-through opacity-60">{regularAnnualPrice}</span>
@@ -529,7 +551,7 @@ export default function Subscription() {
 
               {/* Selected price */}
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold font-mono tabular-nums">{selectedPriceString}</span>
+                <span className="text-3xl font-bold mono-value">{selectedPriceString}</span>
                 {/* Strike the regular price only when it DIFFERS from what is
                     shown. If the offer price could not be read we fall back to
                     the base price, and "$5.99 struck-through $5.99" would
@@ -538,13 +560,18 @@ export default function Subscription() {
                 {hasDiscount &&
                   selectedRegularPrice &&
                   selectedRegularPrice !== selectedPriceString && (
-                    <span className="text-base text-muted-foreground line-through font-mono tabular-nums">
+                    <span className="text-base text-muted-foreground line-through mono-value">
                       {selectedRegularPrice}
                     </span>
                   )}
               </div>
               {effectiveBilling === "annual" && (
-                <p className="text-xs text-muted-foreground -mt-2">Billed annually — 4 months free vs. monthly.</p>
+                <p className="text-xs text-muted-foreground -mt-2">
+                  {/* Was "4 months free vs. monthly." — wrong even at USD base
+                      (12 - 49.99/5.99 = 3.65), and a second hand-maintained number
+                      saying what the badge already says. One derived claim now. */}
+                  Billed annually{savingPercent != null && <> — save {savingPercent}% vs. paying monthly</>}.
+                </p>
               )}
 
               {/* CTA */}
