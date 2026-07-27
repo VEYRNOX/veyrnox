@@ -317,9 +317,9 @@ export default function Subscription() {
     }
   }
 
-  // Outcome-first preamble: sell the result before showing a price. Skippable,
+  // Outcome-first preamble: DISABLED temporarily. Skippable,
   // and never shown to someone who already subscribes.
-  if (outcomeStep !== null) {
+  if (false && outcomeStep !== null) {
     return (
       <div className="max-w-xl mx-auto p-6 space-y-6">
         <BackButton />
