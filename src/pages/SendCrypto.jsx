@@ -59,6 +59,7 @@ import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { sendAddressErrorKind } from "@/lib/sendAddressError";
+import { sendAmountErrorKind } from "@/lib/sendAmountError";
 import { isSelfSend, addressesEqualForCurrency } from "@/lib/selfSend";
 import { evaluateSendAgainstLimits } from "@/lib/txLimits";
 import { evaluateSendGate, SEND_GATE } from "@/lib/sendGate";
@@ -257,6 +258,8 @@ export default function SendCrypto() {
   // Has the user finished with the address field at least once? Gates the error
   // ANNOUNCEMENT (see `addressInvalid`) so we never interrupt mid-entry.
   const [addressTouched, setAddressTouched] = useState(false);
+  // Same, for the amount field: "0" is a legitimate prefix of "0.5".
+  const [amountTouched, setAmountTouched] = useState(false);
   const [txResult, setTxResult] = useState(/** @type {any} */ (null)); // { hash, explorerUrl } from a real broadcast
   const [selectedFee, setSelectedFee] = useState(/** @type {any} */ (null)); // user-chosen EIP-1559 fee (FeeSelector)
 
@@ -1560,9 +1563,14 @@ export default function SendCrypto() {
         <div>
           <Label htmlFor="send-amount">Amount</Label>
           {(() => {
-            const amountBadValue = (amount || showErrors) && Number.isFinite(amountNum) && amountNum <= 0;
-            const amountOverBalance = balanceKnown && amount && Number.isFinite(amountNum) && amountNum > 0 && amountNum > effectiveBalance;
-            const amountInvalid = amountBadValue || amountOverBalance;
+            // Which amount error applies — decided in one pure, tested helper
+            // (lib/sendAmountError.js), the same shape as the address field. See that
+            // module for why 'missing' was previously unreachable and why
+            // 'not-positive' now waits for blur while 'over-balance' stays live.
+            const amountErrorKind = sendAmountErrorKind({
+              amount, amountNum, amountTouched, showErrors, balanceKnown, effectiveBalance,
+            });
+            const amountInvalid = amountErrorKind !== null;
             return (
               <>
                 <Input
@@ -1572,7 +1580,7 @@ export default function SendCrypto() {
                   // (a bare type="number" offers the wrong pad on some Android browsers).
                   // min="0" + step="any" hint non-negative decimals to the UA; they are a
                   // UX/keypad layer only — the authoritative rejection of <=0 lives in
-                  // `amountBadValue` above and the base-unit conversion in toBaseUnits,
+                  // `sendAmountErrorKind` above and the base-unit conversion in toBaseUnits,
                   // so these attributes never become the sole guard (a spoofed DOM can
                   // still not bypass the JS validation).
                   inputMode="decimal"
@@ -1580,6 +1588,7 @@ export default function SendCrypto() {
                   step="any"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
+                  onBlur={() => setAmountTouched(true)}
                   placeholder="0.00"
                   className="mt-1.5 mono-value"
                   aria-invalid={amountInvalid || undefined}
@@ -1598,13 +1607,14 @@ export default function SendCrypto() {
                     {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
                   </p>
                 )}
-                {amountBadValue && (
+                {/* One node, one id — the helper already decided precedence, so there
+                    is no second element to keep mutually exclusive by hand. */}
+                {amountInvalid && (
                   <p id="send-amount-error" role="alert" className="text-xs text-destructive mt-1">
-                    {amount ? "Amount must be greater than zero" : "Amount is required"}
+                    {amountErrorKind === 'missing' ? "Amount is required"
+                      : amountErrorKind === 'not-positive' ? "Amount must be greater than zero"
+                        : "Insufficient balance"}
                   </p>
-                )}
-                {!amountBadValue && amountOverBalance && (
-                  <p id="send-amount-error" role="alert" className="text-xs text-destructive mt-1">Insufficient balance</p>
                 )}
               </>
             );

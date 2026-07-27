@@ -548,11 +548,11 @@ describe('Subscription page — outcome-first preamble gating', () => {
     useTierMock.mockReturnValue({ currentTier: 'none', refreshTier, loading: false });
   });
 
-  it('shows the outcome preamble BEFORE pricing on a first visit', async () => {
+  it('does NOT show the outcome preamble while OUTCOME_PREAMBLE_ENABLED is false', async () => {
     renderPage();
-    expect(await screen.findByText(/they see a wallet that isn't yours/i)).toBeTruthy();
-    // and the price is not on screen yet
-    expect(screen.queryByText('$49.99')).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByText(/they see a wallet that isn't yours/i)).toBeNull()
+    );
   });
 
   it('goes straight to pricing once the preamble has been seen', async () => {
