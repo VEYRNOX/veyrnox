@@ -1074,8 +1074,12 @@ export default function WalletEntry() {
       // The user confirmed the mandatory backup — mark wallet 1 backed up so the
       // multi-wallet portfolio doesn't then warn about the wallet they just saved.
       confirmWalletBackup();
-      clearConsent(); // Reset consent for fresh wallet, show consent screen
-      setConsentDone(false); // Reset state so consent condition matches on re-render
+      // A new wallet identity gets a fresh consent decision (panic.js already
+      // wipes this key on a panic wipe, so that model is established).
+      // clearConsent() self-suppresses in a decoy/demo session — the I3 guard for
+      // this shared key lives in lib/consent.js, the single writer chokepoint.
+      clearConsent();
+      setConsentDone(false); // re-ask on the next render
       if (bioEnabled && bioStatus?.available && createdPasswordRef.current) {
         const ok = await enableBiometricUnlock(createdPasswordRef.current);
         if (!ok) toast.warning("Biometric unlock wasn't enabled — your vault password is always your way in. You can enable it later in Security settings.");
