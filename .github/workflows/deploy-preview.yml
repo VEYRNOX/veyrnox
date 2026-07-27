@@ -223,3 +223,35 @@ jobs:
           name: staging-e2e-report
           path: playwright-report/
           retention-days: 14
+
+  staging-gate:
+    needs: [deploy, e2e]
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - name: Evaluate staging result
+        run: |
+          DEPLOY_RESULT="${{ needs.deploy.result }}"
+          E2E_RESULT="${{ needs.e2e.result }}"
+
+          echo "deploy: $DEPLOY_RESULT"
+          echo "e2e:    $E2E_RESULT"
+
+          if [ "$DEPLOY_RESULT" = "skipped" ]; then
+            echo "Deploy skipped (dependabot/fork) — staging gate passes"
+            exit 0
+          fi
+
+          if [ "$DEPLOY_RESULT" != "success" ]; then
+            echo "::error::Deploy failed ($DEPLOY_RESULT) — staging gate blocked"
+            exit 1
+          fi
+
+          if [ "$E2E_RESULT" != "success" ]; then
+            echo "::error::Staging e2e $E2E_RESULT — staging gate blocked"
+            exit 1
+          fi
+
+          echo "Staging deployed and e2e passed — gate open"
