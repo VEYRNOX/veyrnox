@@ -19,7 +19,78 @@ env:
   VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
 
 jobs:
+  # Decides whether this change can skip the staging deploy + e2e.
+  #
+  # This is an ALLOWLIST, deliberately. Every changed file must match a pattern
+  # that provably cannot alter shipped behaviour, or we run the full pipeline.
+  # A denylist would fail open: the first file type nobody thought of would
+  # silently skip staging e2e, which is exactly the check this gate exists to
+  # enforce.
+  #
+  # NOT exempt, on purpose: package.json and package-lock.json (dependencies,
+  # `overrides`, and `scripts` all change what ships), everything under src/,
+  # scripts/, android/, ios/, and .github/ workflows themselves. A comment-only
+  # edit to package.json is indistinguishable here from a dependency bump, so
+  # package.json always runs the full pipeline.
+  #
+  # Markdown is exempt because nothing imports it: there is no markdown plugin
+  # in vite.config.js and no `.md` import anywhere in src/, verified 2026-07-27.
+  # If that ever changes, remove the `\.md$` pattern below — docs would then be
+  # part of the bundle.
+  #
+  # Every failure path sets docs_only=false (run everything). Never let an
+  # unreadable diff produce an exemption — I4, fail closed.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      docs_only: ${{ steps.detect.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Detect docs-only change
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -uo pipefail
+
+          run_everything() {
+            echo "$1"
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          # Only a pull_request carries a base/head pair we can trust. On the
+          # push:[main] and workflow_dispatch triggers there is no payload, so
+          # the exemption never applies there and main always gets full staging.
+          [ "$EVENT_NAME" = "pull_request" ] || run_everything "event is $EVENT_NAME, not pull_request — full pipeline"
+          [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ] || run_everything "::warning::missing base/head sha — full pipeline"
+
+          FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA") || run_everything "::warning::could not compute diff — full pipeline"
+          [ -n "$FILES" ] || run_everything "::warning::empty diff — full pipeline"
+
+          echo "changed files:"
+          echo "$FILES" | sed 's/^/  /'
+
+          ALLOW='^docs/|^\.github/ISSUE_TEMPLATE/|^\.github/PULL_REQUEST_TEMPLATE|\.md$|^LICENSE$'
+          NON_DOCS=$(echo "$FILES" | grep -vE "$ALLOW" || true)
+
+          if [ -n "$NON_DOCS" ]; then
+            echo "non-docs files present — full pipeline:"
+            echo "$NON_DOCS" | sed 's/^/  /'
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs-only change — staging deploy/e2e will be skipped"
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          fi
+
   deploy:
+    needs: changes
     runs-on: ubuntu-latest
     # Dependabot PRs run with a restricted token and CANNOT read Actions
     # secrets — GitHub withholds them from dependabot-triggered runs by design.
@@ -49,9 +120,15 @@ jobs:
     # trigger there is no pull_request payload, so that comparison is false and
     # would silently stop deploying main. `fork != true` is null-safe: absent
     # payload -> null -> null != true -> the job runs.
+    #
+    # The docs_only test is `!= 'true'` rather than `== 'false'` for the same
+    # null-safety reason as the fork test above: if the `changes` job ever fails
+    # to produce an output, the value is empty, and empty != 'true' keeps the
+    # deploy running. An exemption must be affirmatively earned.
     if: >-
       github.actor != 'dependabot[bot]'
       && github.event.pull_request.head.repo.fork != true
+      && needs.changes.outputs.docs_only != 'true'
     outputs:
       deployment_url: ${{ steps.deploy.outputs.deployment-url }}
       environment: ${{ steps.set-env.outputs.environment }}
@@ -224,8 +301,12 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
+  # MUST keep `if: always()` and MUST NOT gain a path filter of its own. This is
+  # a required status check: a required check that never runs is not "skipped",
+  # it is missing, and GitHub blocks the merge forever waiting for it. The
+  # skipping happens in `deploy`/`e2e`; this job always reports.
   staging-gate:
-    needs: [deploy, e2e]
+    needs: [changes, deploy, e2e]
     runs-on: ubuntu-latest
     if: always()
     permissions:
@@ -235,9 +316,19 @@ jobs:
         run: |
           DEPLOY_RESULT="${{ needs.deploy.result }}"
           E2E_RESULT="${{ needs.e2e.result }}"
+          DOCS_ONLY="${{ needs.changes.outputs.docs_only }}"
 
-          echo "deploy: $DEPLOY_RESULT"
-          echo "e2e:    $E2E_RESULT"
+          echo "deploy:    $DEPLOY_RESULT"
+          echo "e2e:       $E2E_RESULT"
+          echo "docs_only: $DOCS_ONLY"
+
+          # Checked before the blanket skip below so the logs name the reason.
+          # Both conditions are required: a docs-only verdict alone must not
+          # excuse a deploy that ran and failed.
+          if [ "$DOCS_ONLY" = "true" ] && [ "$DEPLOY_RESULT" = "skipped" ]; then
+            echo "Docs-only change — staging deploy/e2e intentionally skipped, gate passes"
+            exit 0
+          fi
 
           if [ "$DEPLOY_RESULT" = "skipped" ]; then
             echo "Deploy skipped (dependabot/fork) — staging gate passes"
