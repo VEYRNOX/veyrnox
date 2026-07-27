@@ -26,7 +26,7 @@ identity; the app never holds keys server-side.
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
 
-## Current state summary (2026-07-22)
+## Current state summary (2026-07-27)
 
 **Hardware KEK:** Both platforms BUILT + device-verified (INTERNAL). M2c (iOS SE) and M2d
 (Android StrongBox/TEE) UNGATED (PR #1152). Android C-1 v3 salt-binding FIXED +
@@ -108,8 +108,9 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
 
 **All 10 assets LIVE** — ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT.
 
-**Play Store: LIVE on internal testing (2026-07-22).** Upload-key reset approved
+**Play Store: internal testing IN REVIEW (2026-07-25).** Upload-key reset approved
 2026-07-22 09:29 UTC. Release 5 (1.0) uploaded and published to internal testing track.
+Google review of the internal testing release is in progress (submitted Jul 23).
 Upload key: `veyrnox-upload.jks` (SHA-1 `97:5A:05:8E…:BA:B2:F3`). App signing cert
 (Google's): `D8:99:69:D5:C4:9F:39:50:A8:CA:20:03:13:C5:0E:B1:09:37:E3:9B:62:4B:38:64:
 3F:B3:A0:4F:63:44:6C:B9`. RASP `detectTamper` verified clean on stock Pixel 10 (no
@@ -126,12 +127,24 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
 - **Personal** developer account: 12-tester/14-day rule gates **production only**.
 - Data Safety: all 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
 - **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV)** — Guideline
-  3.1.5(b) satisfied. First App Store submission still to do.
-- **iOS build 1.0 (2) uploaded 2026-07-23** (source: PR #1329). Contains the iOS
-  promotional-offer path, the offer-price fix, and the inlined privacy policy.
-- **CLI upload works — Xcode GUI is NOT required.** Earlier notes said the
-  `xcodebuild` CLI failed on signing auth; that applied to device *runs*. With an
-  App Store Connect **API key** the whole chain runs unattended:
+  3.1.5(b) satisfied.
+- **iOS App Store: RESUBMITTED WITH SUBSCRIPTIONS, WAITING FOR REVIEW (2026-07-27).**
+  Build 1.0 (4). Third submission attempt. Rejection history:
+  - **1st (2026-07-23):** auto-rejected for (1) missing EULA/Terms of Use link
+    (Guideline 3.1.2), (2) missing demo account info (Guideline 2.1.0 — false
+    positive, app has no login).
+  - **2nd (2026-07-25):** fixed EULA + review notes; subscriptions cascade-rejected
+    and resubmitted separately (separate submission couldn't include them — first
+    IAP must ship with an app version).
+  - **3rd (2026-07-27):** rejected again for same two guidelines: (1) Age Rating had
+    Parental Controls = YES (Guideline 2.3.6 — changed to NO), (2) reviewer couldn't
+    find IAP (Guideline 2.1(b) — review notes updated with correct path: More >
+    Preferences > Subscriptions). Pulled version from review, bundled app version +
+    subscription group + both subscriptions (Monthly + Annual) into a single
+    submission via ASC API, and resubmitted. All 4 items now "Waiting for Review."
+  Correction messages sent to Apple explaining the IAP navigation path.
+- **CLI upload works — Xcode GUI is NOT required.** With an App Store Connect
+  **API key** the whole chain runs unattended:
   `archive` → `-exportArchive` (`destination: upload`) → delivered. Key lives at
   `~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`, Issuer ID
   `2d4c5bd7-1de3-4953-b203-a92e788c2d7c`. Team Key, App Manager role is sufficient.
@@ -141,9 +154,10 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
   on the Veyrnox LTD business entity; answered 2026-07-23 (personal services = No)
   and now Active. Banking/Paid Apps/tax forms were Active throughout.
   Always check App Store Connect directly before treating a note as current.
-- `ITSAppUsesNonExemptEncryption` is **not set** in Info.plist, so Apple still asks
-  the encryption questions at submission — the path that produced the France
-  declaration requirement. Counsel decision, see
+- `ITSAppUsesNonExemptEncryption` is set to `<false/>` in Info.plist, declaring
+  exempt encryption (standard algorithms for auth + user data protection). This
+  suppresses the per-build encryption questionnaire. France excluded from initial
+  availability to avoid ANSSI declaration. Counsel decision, see
   `docs/play-launch/export-compliance-counsel-note.md`.
 - `veyrnox.com` is a client-rendered SPA — `curl` gives **false negatives** when checking
   page content; verify by rendering the page.
