@@ -1418,6 +1418,42 @@ All four merged PRs: BUILT / unit-tested only, INTERNAL — not device-verified,
 independently audited, no on-chain txid. PR #1276 is additionally NOT YET MERGED — do not
 report H-1 as fixed until it lands on `main`.
 
+## 2026-07-27 First-run tour REMOVED — ECC F-P3-3 reopened
+
+> ❌ HONEST-DISABLED — the feature is gone from the codebase, not merely switched off.
+> **ECC finding F-P3-3 (#1160) is REOPENED and is once again unremediated.**
+
+`src/components/FirstRunTour.jsx` — the 5-step security walkthrough (Duress PIN, stealth
+wallets, backup, hardware binding) that remediated ECC F-P3-3, shipped in PR #1174
+(`aca998a2`, 2026-07-18) — was deleted in PR #1403
+(`de8cb829`, merged to main 2026-07-27), together with its `armTour()` call sites in
+[WalletEntry.jsx](../src/components/WalletEntry.jsx) and its placement regression test
+(`src/components/__tests__/FirstRunTour.placement.test.js`, deleted in the same PR).
+
+**Why it was removed, and why that reason did not hold.** The stated justification was
+that the tour blocked the new telemetry-consent screen on first run. It did not: the
+consent branch in `WalletEntry.jsx` returns BEFORE the tour branch, so consent already
+won on a never-answered device. The consent screen was actually absent because
+`consentDone` is seeded from `getConsentState()` at mount, so a device carrying a prior
+stored answer — stale `localStorage`, or a cached APK — never re-asks by design.
+`setConsentDone(false)` was then added to `handleKekEnroll`/`handleKekSkip` as a
+workaround; it overcorrected, re-showing the "one-time" screen on EVERY unlock for anyone
+who skipped KEK enrollment and silently overwriting a stored "denied" (removed
+2026-07-27). The tour removal was collateral to that misdiagnosis and can be reverted from
+`de8cb829^` if the walkthrough is wanted back.
+
+**Consequences to track:**
+- Users again get 80+ features with no walkthrough — the original F-P3-3 complaint.
+  Duress, Stealth, Panic Wipe and KEK have no discovery path.
+- The `veyrnox-first-run-tour-armed` / `veyrnox-first-run-tour-seen` localStorage keys are
+  now orphaned. They were never in the panic-wipe list, and nothing reads or writes them
+  any more — no residual-state hazard, but any device that ran the tour still carries them.
+- No replacement onboarding is BUILT, TARGET or PLANNED. If discovery is to be solved
+  differently, that needs its own entry here.
+
+Status: HONEST-DISABLED (removed on principle of not shipping dead code, NOT because the
+feature was wrong). INTERNAL, no device verification, no on-chain txid — UI scope only.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split

@@ -648,11 +648,17 @@ export default function WalletEntry() {
 
   // Stable callbacks for KekEnrollmentGate — avoids re-firing the auto-enroll
   // useEffect on every parent render (P2-1).
+  // NOTE: neither handler touches `consentDone`. The KEK gate re-fires on every
+  // unlock (the skip is in-memory only — see useKekEnrollmentGate), so resetting
+  // consent here re-showed the "one-time" screen on every single unlock for anyone
+  // who skipped enrollment, and TelemetryConsent.choose() writes unconditionally —
+  // silently overwriting a stored "denied". A device that has already answered must
+  // never be re-asked. The fresh-create path resets consent on its own in
+  // finishCreate; consentDone is otherwise seeded from getConsentState() at mount.
   const handleKekEnroll = useCallback(async (pin) => {
     const result = await kekEnroll(pin);
     if (result.ok) {
       autoEnrollPinRef.current = null;
-      setConsentDone(false); // Reset consent to show after KEK
       kekDismiss();
     }
     return result;
@@ -660,7 +666,6 @@ export default function WalletEntry() {
 
   const handleKekSkip = useCallback(() => {
     autoEnrollPinRef.current = null;
-    setConsentDone(false); // Reset consent to show after KEK
     kekDismiss();
   }, [kekDismiss]);
 
@@ -1163,10 +1168,7 @@ export default function WalletEntry() {
   // — must not let a coerced tap write veyrnox-telemetry-consent into the
   // SHARED localStorage that the real session reads. The real session asks on
   // its own next entry.
-  const isDemo = isDeniabilityOrDemoActive();
-  console.log('[STATE] isUnlocked:', isUnlocked, '!generatedSeed:', !generatedSeed, '!consentDone:', !consentDone, '!isDemo:', !isDemo, 'kekGatePending:', kekGatePending);
-  if (isUnlocked && !generatedSeed && !consentDone && !isDemo) {
-    console.log('[CONSENT] Showing consent screen');
+  if (isUnlocked && !generatedSeed && !consentDone && !isDeniabilityOrDemoActive()) {
     return (
       <EntryShell error={error}>
         <TelemetryConsent onChoice={() => setConsentDone(true)} />

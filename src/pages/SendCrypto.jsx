@@ -1278,7 +1278,16 @@ export default function SendCrypto() {
       amount={amount}
       currency={selectedWallet?.currency}
       txResult={txResult}
-      onSendAnother={() => { setStep("form"); setAmount(""); setToAddress(""); setNote(""); setTxResult(null); setReauthAttempts(0); }}
+      // "Send another" hands back a genuinely pristine form. The touched/submitted
+      // flags MUST reset with the values: left set, the second send starts already
+      // "touched", so typing "0" as the first character of "0.5" fires the error on
+      // keystroke one — exactly the mid-entry interruption the blur-gating removes for
+      // the first send.
+      onSendAnother={() => {
+        setStep("form"); setAmount(""); setToAddress(""); setNote("");
+        setTxResult(null); setReauthAttempts(0);
+        setAmountTouched(false); setAddressTouched(false); setShowErrors(false);
+      }}
     />;
   }
 
@@ -1566,9 +1575,16 @@ export default function SendCrypto() {
             // Which amount error applies — decided in one pure, tested helper
             // (lib/sendAmountError.js), the same shape as the address field. See that
             // module for why 'missing' was previously unreachable and why
-            // 'not-positive' now waits for blur while 'over-balance' stays live.
+            // 'not-positive'/'malformed' wait for blur while 'over-balance' stays live.
+            //
+            // `wellFormed` is the SAME predicate the Continue button gates on below.
+            // Feeding one call into both is what stops the gate and the message from
+            // drifting apart — the drift that made Continue a silent dead end for
+            // "1e-8" and friends.
             const amountErrorKind = sendAmountErrorKind({
-              amount, amountNum, amountTouched, showErrors, balanceKnown, effectiveBalance,
+              amount, amountNum,
+              wellFormed: isFormAmountWellFormed(amount),
+              amountTouched, showErrors, balanceKnown, effectiveBalance,
             });
             const amountInvalid = amountErrorKind !== null;
             return (
@@ -1608,12 +1624,22 @@ export default function SendCrypto() {
                   </p>
                 )}
                 {/* One node, one id — the helper already decided precedence, so there
-                    is no second element to keep mutually exclusive by hand. */}
+                    is no second element to keep mutually exclusive by hand.
+
+                    POLITE, not role="alert", unlike the address field above. That field
+                    only ever renders after blur or submit, so an assertive announcement
+                    never lands mid-word. This node also carries 'over-balance', which is
+                    deliberately live — it appears the instant the typed value crosses the
+                    balance and re-appears on every re-crossing. Assertive there
+                    interrupts the user mid-number, which is the interruption class this
+                    whole helper exists to remove. aria-invalid + aria-describedby on the
+                    input still convey the error on focus. */}
                 {amountInvalid && (
-                  <p id="send-amount-error" role="alert" className="text-xs text-destructive mt-1">
+                  <p id="send-amount-error" role="status" aria-live="polite" className="text-xs text-destructive mt-1">
                     {amountErrorKind === 'missing' ? "Amount is required"
                       : amountErrorKind === 'not-positive' ? "Amount must be greater than zero"
-                        : "Insufficient balance"}
+                        : amountErrorKind === 'malformed' ? "Enter a plain decimal amount, like 0.5"
+                          : "Insufficient balance"}
                   </p>
                 )}
               </>
