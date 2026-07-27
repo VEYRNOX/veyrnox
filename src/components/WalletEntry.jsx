@@ -1163,7 +1163,10 @@ export default function WalletEntry() {
   // — must not let a coerced tap write veyrnox-telemetry-consent into the
   // SHARED localStorage that the real session reads. The real session asks on
   // its own next entry.
-  if (isUnlocked && !generatedSeed && !consentDone && !isDeniabilityOrDemoActive()) {
+  const isDemo = isDeniabilityOrDemoActive();
+  console.log('[STATE] isUnlocked:', isUnlocked, '!generatedSeed:', !generatedSeed, '!consentDone:', !consentDone, '!isDemo:', !isDemo, 'kekGatePending:', kekGatePending);
+  if (isUnlocked && !generatedSeed && !consentDone && !isDemo) {
+    console.log('[CONSENT] Showing consent screen');
     return (
       <EntryShell error={error}>
         <TelemetryConsent onChoice={() => setConsentDone(true)} />
