@@ -87,7 +87,7 @@ import Spinner from "@/components/Spinner";
 import SeedGrid from "@/components/SeedGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
 import TelemetryConsent from "@/components/TelemetryConsent";
-import { getConsentState } from "@/lib/consent";
+import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
@@ -117,7 +117,6 @@ import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
-import FirstRunTour, { armTour } from "@/components/FirstRunTour";
 import { errorHaptic } from "@/lib/haptics";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
@@ -653,6 +652,7 @@ export default function WalletEntry() {
     const result = await kekEnroll(pin);
     if (result.ok) {
       autoEnrollPinRef.current = null;
+      setConsentDone(false); // Reset consent to show after KEK
       kekDismiss();
     }
     return result;
@@ -660,6 +660,7 @@ export default function WalletEntry() {
 
   const handleKekSkip = useCallback(() => {
     autoEnrollPinRef.current = null;
+    setConsentDone(false); // Reset consent to show after KEK
     kekDismiss();
   }, [kekDismiss]);
 
@@ -931,7 +932,7 @@ export default function WalletEntry() {
   // fail-closed). The provisioning gate below holds the dashboard back until it commits.
   const doCreateWallet = async () => {
     setBusy(true); setProvisioning(true); setError("");
-    try { setKekOrigin('fresh'); await createWalletFromPendingPin(); armTour(); setProvisioning(false); }
+    try { setKekOrigin('fresh'); await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
       autoEnrollPinRef.current = null;
       setProvisioning(false);
@@ -1051,7 +1052,6 @@ export default function WalletEntry() {
       createdPasswordRef.current = genPassword;
       setKekOrigin('fresh');
       const seed = await createWallet(genPassword); // returns mnemonic ONCE for backup
-      armTour();
       setGeneratedSeed(seed);
       setShowSeed(false);
       setBioEnabled(false);
@@ -1069,6 +1069,8 @@ export default function WalletEntry() {
       // The user confirmed the mandatory backup — mark wallet 1 backed up so the
       // multi-wallet portfolio doesn't then warn about the wallet they just saved.
       confirmWalletBackup();
+      clearConsent(); // Reset consent for fresh wallet, show consent screen
+      setConsentDone(false); // Reset state so consent condition matches on re-render
       if (bioEnabled && bioStatus?.available && createdPasswordRef.current) {
         const ok = await enableBiometricUnlock(createdPasswordRef.current);
         if (!ok) toast.warning("Biometric unlock wasn't enabled — your vault password is always your way in. You can enable it later in Security settings.");
@@ -1161,7 +1163,7 @@ export default function WalletEntry() {
   // — must not let a coerced tap write veyrnox-telemetry-consent into the
   // SHARED localStorage that the real session reads. The real session asks on
   // its own next entry.
-  if (isUnlocked && !generatedSeed && !kekGatePending && !consentDone && !isDeniabilityOrDemoActive()) {
+  if (isUnlocked && !generatedSeed && !consentDone && !isDeniabilityOrDemoActive()) {
     return (
       <EntryShell error={error}>
         <TelemetryConsent onChoice={() => setConsentDone(true)} />
@@ -1171,18 +1173,7 @@ export default function WalletEntry() {
 
   if (isUnlocked && !generatedSeed && !kekGatePending) {
     autoEnrollPinRef.current = null;
-    // FirstRunTour sits HERE — on the unlocked wallet — not on the pre-creation
-    // choose screen. The tour describes what to do with a wallet you have
-    // (duress PIN, stealth wallets, backup, hardware binding); shown before the
-    // wallet exists it was advertising features the user could not yet act on,
-    // in front of the create/import decision. It is still once-per-device via
-    // its own localStorage marker, so moving it does not make it re-fire.
-    return (
-      <>
-        <FirstRunTour />
-        <Outlet />
-      </>
-    );
+    return <Outlet />;
   }
 
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
