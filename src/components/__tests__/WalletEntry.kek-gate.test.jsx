@@ -205,12 +205,15 @@ describe('WalletEntry — hardware-KEK enrollment gate after restore', () => {
     expect(keyStoreStub.enrollKek.mock.calls[0][0]).toBe('13572468');
     expect(typeof keyStoreStub.enrollKek.mock.calls[0][1].getHardwareFactor).toBe('function');
 
-    // After KEK enrollment, the telemetry consent screen appears before <Outlet>.
-    await waitFor(() => expect(screen.getByTestId('consent-dismiss')).toBeTruthy());
-    fireEvent.click(screen.getByTestId('consent-dismiss'));
-
     await waitFor(() => expect(screen.getByText(APP_MARKER)).toBeTruthy());
     expect(screen.queryByTestId(GATE_TESTID)).toBeNull();
+    // getConsentState is mocked 'granted' — this device has ALREADY answered, so
+    // enrolling must not re-ask. These two assertions previously clicked through a
+    // consent screen instead, which encoded the defect they should have caught:
+    // handleKekEnroll/handleKekSkip called setConsentDone(false) unconditionally, and
+    // the KEK gate re-fires on every unlock, so a KEK-skipping user was re-prompted
+    // forever and TelemetryConsent.choose() overwrote their stored answer each time.
+    expect(screen.queryByTestId('consent-dismiss')).toBeNull();
   });
 
   it('7. explicit skip → onSkip clears the gate → <Outlet> renders', async () => {
@@ -221,13 +224,11 @@ describe('WalletEntry — hardware-KEK enrollment gate after restore', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
-    // After KEK skip, the telemetry consent screen appears before <Outlet>.
-    await waitFor(() => expect(screen.getByTestId('consent-dismiss')).toBeTruthy());
-    fireEvent.click(screen.getByTestId('consent-dismiss'));
-
     await waitFor(() => expect(screen.getByText(APP_MARKER)).toBeTruthy());
     expect(screen.queryByTestId(GATE_TESTID)).toBeNull();
     // Skip must NOT silently enroll.
     expect(keyStoreStub.enrollKek).not.toHaveBeenCalled();
+    // Nor re-ask for consent this device has already given (see test 6).
+    expect(screen.queryByTestId('consent-dismiss')).toBeNull();
   });
 });
