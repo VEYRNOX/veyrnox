@@ -12,6 +12,7 @@ import { getAuthModel } from "@/lib/authModel";
 import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature, BarChart3 } from "lucide-react";
 import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
 import { hasConsent, setConsent } from "@/lib/consent";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { Link } from "react-router";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -35,7 +36,12 @@ export default function Settings() {
   const [auditLog, setAuditLog] = useState(() => getAuditLogEnabled());
   const [auditEntries, setAuditEntries] = useState(null);
   const [messageSigning, setMessageSigning] = useState(() => isMessageSigningEnabled());
-  const [telemetry, setTelemetry] = useState(() => hasConsent());
+  // Off in a decoy/demo session rather than reflecting the real device's answer:
+  // "off" is the honest resting state of an opt-in control, and it keeps a coerced
+  // session from disclosing a preference the primary wallet set (I3).
+  const [telemetry, setTelemetry] = useState(
+    () => !isDeniabilityOrDemoActive() && hasConsent(),
+  );
 
   useEffect(() => {
     if (!auditLog) { setAuditEntries(null); return; }
@@ -207,8 +213,12 @@ export default function Settings() {
             checked={telemetry}
             aria-label={telemetry ? 'Turn off anonymous usage data' : 'Turn on anonymous usage data'}
             onCheckedChange={(checked) => {
-              setConsent(checked);
+              // The switch always MOVES — a control that visibly refuses to flip
+              // would itself be a tell that this session is not the real one. The
+              // shared-key WRITE is what a decoy session must not do, and
+              // setConsent() self-suppresses there (I3 guard in lib/consent.js).
               setTelemetry(checked);
+              setConsent(checked);
               recordAudit('settings_changed');
             }}
           />

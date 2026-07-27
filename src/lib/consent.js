@@ -7,6 +7,23 @@
 //
 // Consent is opt-in: absent (never answered) is NOT consent. A missing or
 // unreadable localStorage is treated as "no consent" — fail closed (I4).
+//
+// I3 — WRITES ARE THE CHOKEPOINT. veyrnox-telemetry-consent is SHARED: the
+// primary wallet reads whatever any session wrote. So a decoy/duress/stealth or
+// demo session must never mutate it — a coerced tap must not turn the real
+// user's telemetry on, or off, or wipe their answer and leave them facing an
+// unexplained re-prompt. That guard lives HERE rather than at each call site,
+// for the same reason the egress guard lives in api/trackEvent.js: there were
+// three writers (TelemetryConsent.choose, Settings' Privacy switch, and
+// WalletEntry's fresh-create reset), one of them added without the check, and a
+// rule enforced in three places is a rule that will be missed in a fourth.
+// Reads stay ungated — reading cannot leave a trace, and trackEvent.js already
+// suppresses egress in these sessions independently.
+//
+// deniabilitySession is a true leaf (zero imports), so gating here keeps this
+// module acyclic and preserves the cycle-break described above.
+
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 const CONSENT_KEY = 'veyrnox-telemetry-consent';
 
@@ -22,11 +39,17 @@ export function hasConsent() {
   return getConsentState() === 'granted';
 }
 
+/** Record an explicit decision. NO-OP in a decoy/demo session (I3 — see above). */
 export function setConsent(granted) {
+  if (isDeniabilityOrDemoActive()) return;
   try { localStorage.setItem(CONSENT_KEY, granted ? 'granted' : 'denied'); } catch {}
 }
 
-/** Clear the stored decision (returns the device to "never answered"). */
+/**
+ * Clear the stored decision (returns the device to "never answered").
+ * NO-OP in a decoy/demo session (I3 — see above).
+ */
 export function clearConsent() {
+  if (isDeniabilityOrDemoActive()) return;
   try { localStorage.removeItem(CONSENT_KEY); } catch {}
 }
