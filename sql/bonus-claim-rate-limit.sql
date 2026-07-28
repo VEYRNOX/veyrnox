@@ -3,8 +3,19 @@
 -- Run in Supabase SQL Editor AFTER first-referral-bonus.sql and
 -- check-first-referral-bonus-hardening.sql, and BEFORE (or re-run)
 -- definer-search-path-pin.sql.
--- Date: 2026-07-26
+-- Date: 2026-07-26 (revised 2026-07-28 — L-10, per-IP second dimension)
 -- ============================================================================
+--
+-- 2026-07-28 REVISION (L-10)
+--
+-- Single-dimension per-code rate limiting stops one attacker hammering ONE
+-- referrer, but it does not stop one attacker fuzzing MANY codes at 5/hr each,
+-- and (more usefully for the abuser) it does not stop the same host from
+-- spending its budget on every code it knows about. A second dimension keyed
+-- on client IP is added: the Edge Function now passes p_ip alongside p_code
+-- and the request is denied if EITHER counter is exceeded. Per-code stays as
+-- the defence against a distributed multi-IP flood at one referrer; per-IP is
+-- the defence against one IP fanning out across codes.
 --
 -- WHY
 --
@@ -60,23 +71,59 @@ ALTER TABLE public.bonus_claim_attempts ENABLE ROW LEVEL SECURITY;
 -- No RLS policies, deliberately: anon has no path to this table.
 
 -- ----------------------------------------------------------------------------
--- record_bonus_claim_attempt(code) -> true = allowed, false = denied.
+-- Fixed-window counter, one row per IP (L-10 second dimension).
 --
--- One statement does the whole read-modify-write, so concurrent callers
--- serialise on the row lock and cannot both slip under the limit.
+-- Same shape as bonus_claim_attempts. `inet` PK bounds the row size and
+-- rejects garbage before it hits the table. No FK: the set of IPs is
+-- unbounded by design, so there is nothing to reference. Growth is bounded
+-- instead by the 1-hour reset — old windows are overwritten in place.
+--
+-- A NULL IP (no forwarding header on the request, or an unparseable value)
+-- must NOT collapse every anonymous caller into one row: that row would
+-- rate-limit legitimate traffic and give attackers a trivial bypass by
+-- stripping headers. The Edge Function must therefore pass a non-NULL p_ip
+-- OR accept that only the per-code counter defends the request. The wrapper
+-- below skips the per-IP check when p_ip is NULL (falls back to per-code
+-- only) rather than silently uniting every unknown caller into one bucket.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.bonus_claim_attempts_by_ip (
+  ip           inet        PRIMARY KEY,
+  window_start timestamptz NOT NULL DEFAULT clock_timestamp(),
+  attempts     int         NOT NULL DEFAULT 0
+);
+
+ALTER TABLE public.bonus_claim_attempts_by_ip ENABLE ROW LEVEL SECURITY;
+-- No RLS policies, deliberately: anon has no path to this table.
+
+-- ----------------------------------------------------------------------------
+-- record_bonus_claim_attempt(code, ip) -> true = allowed, false = denied.
+--
+-- Signature widened for L-10 (per-IP second dimension). p_ip is optional so
+-- an infrastructure change that drops the forwarding header does not brick
+-- the endpoint — the per-code counter still fires. Both counters are
+-- incremented on every call so the abuser cannot spend one budget without
+-- also spending the other; the request is denied if EITHER exceeds its
+-- limit.
+--
+-- One statement per counter does the whole read-modify-write, so concurrent
+-- callers serialise on the row lock and cannot both slip under the limit.
 -- Server-side clock only (clock_timestamp) -- no client-supplied timestamp is
 -- accepted anywhere, per the rate-limit rule.
 -- ----------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.record_bonus_claim_attempt(p_code text)
+CREATE OR REPLACE FUNCTION public.record_bonus_claim_attempt(
+  p_code text,
+  p_ip   inet DEFAULT NULL
+)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  -- Captured once so both CASE branches below see the same instant.
-  v_now      timestamptz := clock_timestamp();
-  v_attempts int;
+  -- Captured once so every CASE branch below sees the same instant.
+  v_now         timestamptz := clock_timestamp();
+  v_attempts    int;
+  v_ip_attempts int;
 BEGIN
   INSERT INTO public.bonus_claim_attempts AS b (code, window_start, attempts)
   VALUES (p_code, v_now, 1)
@@ -93,7 +140,38 @@ BEGIN
 
   -- 5/hour/code. A legitimate client calls this once, after record_attribution
   -- succeeds; the headroom is for transient retries, not for volume.
-  RETURN v_attempts <= 5;
+  IF v_attempts > 5 THEN
+    RETURN false;
+  END IF;
+
+  -- Per-IP dimension. Skipped if the Edge Function could not determine an
+  -- IP (see the NULL note above) — the per-code counter is then the only
+  -- brake, which is worse than both but better than uniting every unknown
+  -- caller into one shared row.
+  IF p_ip IS NOT NULL THEN
+    INSERT INTO public.bonus_claim_attempts_by_ip AS bi (ip, window_start, attempts)
+    VALUES (p_ip, v_now, 1)
+    ON CONFLICT (ip) DO UPDATE
+       SET window_start = CASE
+             WHEN bi.window_start < v_now - interval '1 hour' THEN v_now
+             ELSE bi.window_start
+           END,
+           attempts = CASE
+             WHEN bi.window_start < v_now - interval '1 hour' THEN 1
+             ELSE bi.attempts + 1
+           END
+    RETURNING bi.attempts INTO v_ip_attempts;
+
+    -- 20/hour/IP: allows a NAT'd household to make several attempts against
+    -- distinct codes, but caps a single host fanning out across the code
+    -- space. Higher than the per-code limit deliberately — this bound
+    -- exists to stop enumeration, not to duplicate the per-code brake.
+    IF v_ip_attempts > 20 THEN
+      RETURN false;
+    END IF;
+  END IF;
+
+  RETURN true;
 
 EXCEPTION
   -- Unknown code: the FK rejected it, so nothing was stored and nothing needs
@@ -108,35 +186,52 @@ $$;
 -- Only the Edge Function (service_role) may call this. CREATE OR REPLACE
 -- preserves privileges, so the REVOKE is required, and it must name PUBLIC --
 -- Postgres grants EXECUTE to PUBLIC on CREATE FUNCTION.
+--
+-- The single-argument variant is dropped so a caller cannot accidentally
+-- resolve to the old, IP-unaware overload after this migration runs.
 -- ----------------------------------------------------------------------------
-REVOKE ALL ON FUNCTION public.record_bonus_claim_attempt(text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.record_bonus_claim_attempt(text) FROM anon;
-REVOKE ALL ON FUNCTION public.record_bonus_claim_attempt(text) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.record_bonus_claim_attempt(text) TO service_role;
+DROP FUNCTION IF EXISTS public.record_bonus_claim_attempt(text);
+
+REVOKE ALL ON FUNCTION public.record_bonus_claim_attempt(text, inet) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.record_bonus_claim_attempt(text, inet) FROM anon;
+REVOKE ALL ON FUNCTION public.record_bonus_claim_attempt(text, inet) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.record_bonus_claim_attempt(text, inet) TO service_role;
 
 -- ----------------------------------------------------------------------------
 -- VERIFY (run after the migration)
 --
---   -- 1. anon must NOT be able to execute it, or read the table. Expect: f
+--   -- 1. anon must NOT be able to execute it, or read either table. Expect: f
 --   SELECT has_function_privilege('anon',
---     'public.record_bonus_claim_attempt(text)', 'EXECUTE');
+--     'public.record_bonus_claim_attempt(text, inet)', 'EXECUTE');
 --
 --   -- 2. service_role must. Expect: t
 --   SELECT has_function_privilege('service_role',
---     'public.record_bonus_claim_attempt(text)', 'EXECUTE');
+--     'public.record_bonus_claim_attempt(text, inet)', 'EXECUTE');
 --
---   -- 3. RLS on with no policies. Expect rowsecurity = t, and no rows from
---   --    pg_policies.
---   SELECT relrowsecurity FROM pg_class WHERE relname = 'bonus_claim_attempts';
---   SELECT * FROM pg_policies WHERE tablename = 'bonus_claim_attempts';
+--   -- 3. Old single-arg overload gone. Expect: 0.
+--   SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--    WHERE n.nspname = 'public' AND p.proname = 'record_bonus_claim_attempt'
+--      AND pg_get_function_identity_arguments(p.oid) = 'p_code text';
 --
---   -- 4. The limit actually bites. On a real code, calls 1-5 return t and the
---   --    6th returns f:
---   --    SELECT public.record_bonus_claim_attempt('VYX-TESTCD');  -- x6
+--   -- 4. RLS on with no policies on BOTH tables. Expect rowsecurity = t, and
+--   --    no rows from pg_policies.
+--   SELECT relname, relrowsecurity FROM pg_class
+--    WHERE relname IN ('bonus_claim_attempts', 'bonus_claim_attempts_by_ip');
+--   SELECT * FROM pg_policies
+--    WHERE tablename IN ('bonus_claim_attempts', 'bonus_claim_attempts_by_ip');
+--
+--   -- 5. Per-code limit bites. On a real code, calls 1-5 return t and the
+--   --    6th returns f (use a fresh IP each time to isolate the code counter):
+--   --    SELECT public.record_bonus_claim_attempt('VYX-TESTCD', NULL);  -- x6
 --   --    Reset with:
 --   --    DELETE FROM public.bonus_claim_attempts WHERE code = 'VYX-TESTCD';
 --
---   -- 5. An invented code is denied and stores nothing. Expect f, then 0.
---   SELECT public.record_bonus_claim_attempt('VYX-NOSUCH');
---   SELECT count(*) FROM public.bonus_claim_attempts WHERE code = 'VYX-NOSUCH';
+--   -- 6. Per-IP limit bites. From one IP, 20 attempts across DIFFERENT codes
+--   --    return t; the 21st returns f. Requires 21 real codes.
+--
+--   -- 7. An invented code is denied and stores nothing in EITHER table.
+--   --    Expect f, then 0, then 0.
+--   SELECT public.record_bonus_claim_attempt('VYX-NOSUCH', '203.0.113.1'::inet);
+--   SELECT count(*) FROM public.bonus_claim_attempts       WHERE code = 'VYX-NOSUCH';
+--   SELECT count(*) FROM public.bonus_claim_attempts_by_ip WHERE ip   = '203.0.113.1';
 -- ----------------------------------------------------------------------------
