@@ -12,3 +12,9 @@
 
 # CI, workflows, and Copilot bot instructions (supply-chain sensitive).
 /.github/                         @aljobson
+
+# H-4: package.json / package-lock.json — dependency changes are supply-chain
+# sensitive. Signing-path crypto packages (ethers, @noble/*, @scure/*,
+# @reown/walletkit) are pinned exact; any version change must be reviewed here.
+/package.json                     @aljobson
+/package-lock.json                @aljobson
