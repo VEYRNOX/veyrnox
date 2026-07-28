@@ -30,6 +30,19 @@ ALTER TABLE public.referrals
   ADD COLUMN IF NOT EXISTS first_bonus_granted_at timestamptz;
 
 -- ============================================================================
+-- BLOCK 2b: Source-IP column for M-6 per-IP rate limiting (see Block 4)
+-- ============================================================================
+--
+-- Populated best-effort from PostgREST's forwarded x-forwarded-for header at
+-- code-mint time. Nullable — direct-SQL callers and requests without the
+-- forwarded header degrade to the global ceiling only. Not indexed for the
+-- hourly lookup because the table stays small (unique per device) and
+-- created_at is already indexed; revisit if the row count outgrows a seq scan.
+
+ALTER TABLE public.referrals
+  ADD COLUMN IF NOT EXISTS client_ip text;
+
+-- ============================================================================
 -- BLOCK 3: Check + claim the first-referral bonus
 --
 -- !! SUPERSEDED — RUN sql/check-first-referral-bonus-hardening.sql AFTER THIS
@@ -126,6 +139,31 @@ $$;
 --
 -- Signatures below match sql/api-security-hardening.sql exactly, so running
 -- this file is now idempotent with respect to that one — no DROP required.
+-- (The old 3-arg overload cleanup remains a TODO at the bottom of the file,
+-- gated on webhook rollout.)
+--
+-- Rate limiting (M-6, 2026-07-28 internal audit) — TWO DIMENSIONS:
+--
+--   1. Per-device (pre-existing): if the caller's device_id already owns a
+--      code, return that code unchanged. This ISN'T a rate limit — it's
+--      idempotency, and a coerced/malicious caller can trivially defeat it
+--      by minting a fresh UUID on every call. The audit finding: without a
+--      second dimension the endpoint mints unlimited codes per hour, letting
+--      one caller enumerate the code namespace or exhaust the referrals
+--      table.
+--   2. NEW ceiling — hourly caps on ACTUAL insert throughput:
+--        (a) per source-IP  <= 10 new codes / hour, when x-forwarded-for is
+--            forwarded by PostgREST (Supabase does this by default).
+--        (b) global fallback <= 500 new codes / hour across the whole table,
+--            so a botnet that spreads across many IPs is still bounded.
+--      Both apply only on the "mint a NEW code" branch — the idempotent
+--      return of an existing code is never rate-limited.
+--
+--   Both limits RAISE (errcode P0007) rather than returning NULL, so the
+--   client sees a clear "too many requests" surface rather than a
+--   silently-swallowed miss. See register_referral_code for the return-void
+--   pattern used elsewhere; that one has to stay silent because void, but
+--   this function returns text and the caller relies on a non-null result.
 
 CREATE OR REPLACE FUNCTION generate_referral_code(p_device_id uuid DEFAULT NULL)
 RETURNS text
@@ -133,13 +171,16 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  chars    text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  result   text;
-  existing text;
-  i        int;
-  byte_val int;
-  raw      bytea;
-  attempt  int := 0;
+  chars           text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  result          text;
+  existing        text;
+  i               int;
+  byte_val        int;
+  raw             bytea;
+  attempt         int := 0;
+  v_client_ip     text;
+  v_ip_count      int;
+  v_global_count  int;
 BEGIN
   IF p_device_id IS NULL THEN
     RAISE EXCEPTION 'device_id required' USING errcode = 'P0006';
@@ -152,6 +193,44 @@ BEGIN
 
   IF existing IS NOT NULL THEN
     RETURN existing;
+  END IF;
+
+  -- Second-dimension rate limit (M-6): only when about to MINT a new code.
+  -- current_setting(..., true) returns NULL if the GUC isn't set (missing
+  -- true would raise), so this is safe to call outside of a PostgREST
+  -- request context (e.g. direct SQL Editor use).
+  BEGIN
+    v_client_ip := split_part(
+      coalesce(
+        current_setting('request.headers', true)::json->>'x-forwarded-for',
+        ''
+      ),
+      ',',
+      1
+    );
+    v_client_ip := nullif(btrim(v_client_ip), '');
+  EXCEPTION WHEN others THEN
+    -- Malformed headers GUC — treat as no IP, fall back to global bucket.
+    v_client_ip := NULL;
+  END;
+
+  IF v_client_ip IS NOT NULL THEN
+    SELECT count(*)::int INTO v_ip_count
+      FROM referrals
+     WHERE created_at > now() - interval '1 hour'
+       AND client_ip = v_client_ip;
+    IF v_ip_count >= 10 THEN
+      RAISE EXCEPTION 'rate limit: too many codes generated from this source'
+        USING errcode = 'P0007';
+    END IF;
+  END IF;
+
+  SELECT count(*)::int INTO v_global_count
+    FROM referrals
+   WHERE created_at > now() - interval '1 hour';
+  IF v_global_count >= 500 THEN
+    RAISE EXCEPTION 'rate limit: global generation ceiling reached, retry shortly'
+      USING errcode = 'P0007';
   END IF;
 
   LOOP
@@ -169,7 +248,8 @@ BEGIN
     END LOOP;
 
     BEGIN
-      INSERT INTO referrals (code, device_id) VALUES (result, p_device_id);
+      INSERT INTO referrals (code, device_id, client_ip)
+      VALUES (result, p_device_id, v_client_ip);
       RETURN result;
     EXCEPTION WHEN unique_violation THEN
       CONTINUE;
