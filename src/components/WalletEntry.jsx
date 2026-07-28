@@ -117,6 +117,7 @@ import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
+import FirstRunTour, { armTour } from "@/components/FirstRunTour";
 import { errorHaptic } from "@/lib/haptics";
 
 // Constant-time PIN equality for setup/recovery confirm (F-11).
@@ -937,7 +938,7 @@ export default function WalletEntry() {
   // fail-closed). The provisioning gate below holds the dashboard back until it commits.
   const doCreateWallet = async () => {
     setBusy(true); setProvisioning(true); setError("");
-    try { setKekOrigin('fresh'); await createWalletFromPendingPin(); setProvisioning(false); }
+    try { setKekOrigin('fresh'); await createWalletFromPendingPin(); armTour(); setProvisioning(false); }
     catch (e) {
       autoEnrollPinRef.current = null;
       setProvisioning(false);
@@ -1057,6 +1058,7 @@ export default function WalletEntry() {
       createdPasswordRef.current = genPassword;
       setKekOrigin('fresh');
       const seed = await createWallet(genPassword); // returns mnemonic ONCE for backup
+      armTour();
       setGeneratedSeed(seed);
       setShowSeed(false);
       setBioEnabled(false);
@@ -1180,9 +1182,31 @@ export default function WalletEntry() {
     );
   }
 
+  // FirstRunTour sits on the unlocked wallet — not on the pre-creation choose
+  // screen. The tour describes what to do with a wallet you have (duress PIN,
+  // stealth wallets, backup, hardware binding); shown before the wallet exists
+  // it advertised features the user could not yet act on, in front of the
+  // create/import decision. It is once-per-device via its own localStorage
+  // marker, so placing it here does not make it re-fire.
+  //
+  // It CANNOT pre-empt the telemetry-consent screen: the consent branch above
+  // returns first on a device that has never answered. PR #1403 deleted this
+  // component on the theory that it was blocking consent — it was not (consent
+  // was absent because `consentDone` is seeded from a stored answer at mount),
+  // and the deletion reopened ECC F-P3-3 (#1160). Do not remove it again
+  // without an owner decision recorded against that issue.
+  //
+  // Keep this comment ABOVE the branch: FirstRunTour.placement.test.js asserts
+  // the render appears within 900 chars of the `if`, which is what stops it
+  // drifting out of this branch into a later one.
   if (isUnlocked && !generatedSeed && !kekGatePending) {
     autoEnrollPinRef.current = null;
-    return <Outlet />;
+    return (
+      <>
+        <FirstRunTour />
+        <Outlet />
+      </>
+    );
   }
 
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
