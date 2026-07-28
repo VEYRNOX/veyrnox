@@ -295,55 +295,71 @@ Two of them had already reached `main` via PR #1403, so the fixes were cut fresh
   derive from `lib/annualSaving.js`, which returns null → render NO claim (I4).
 - **`.mono-value`, not `font-mono tabular-nums`** — the latter misses the slashed
   zero and letter-spacing every other verifiable value gets.
-- **FirstRunTour is HONEST-DISABLED and ECC F-P3-3 (#1160) is REOPENED.** PR #1403
-  deleted the component undocumented; `docs/Feature-Status.md` now records it, the
-  orphaned `veyrnox-first-run-tour-*` keys, and the revert path (`de8cb829^`).
-  The orphaned keys were then found to survive panic wipe — see the 2026-07-28
-  entry below. ECC F-P3-3 itself is still reopened; only the residue is closed.
+- **FirstRunTour was deleted undocumented by PR #1403, reopening ECC F-P3-3 (#1160).
+  RESTORED 2026-07-28 (PR #1417) — F-P3-3 is remediated again.** The component and its
+  placement test came back byte-identical from `de8cb829^`; the wiring was re-applied to
+  the CURRENT `WalletEntry.jsx` rather than reverted wholesale, because #1409/#1410 had
+  since rewritten that file's consent logic. **No consent change was reverted.**
+  Two lessons worth keeping: (a) the tour never blocked consent — the consent branch
+  returns FIRST, and consent was absent because `consentDone` is seeded from a stored
+  answer at mount; the deletion was collateral to that misdiagnosis. (b) The placement
+  test asserts the render sits within 900 chars of its `if`, so explanatory comments go
+  ABOVE the branch, not inside it. Still open: PR #1403's separate
+  `OUTCOME_PREAMBLE_ENABLED = false` in `Subscription.jsx` is off pending an owner
+  decision. **Corrected:** this bullet also listed the `veyrnox-first-run-tour-*` keys as
+  absent from the panic-wipe residue list. True when #1417 was written, false when it
+  merged — PR #1415 (`593c969b`) had added them ~50 min earlier. See the 07-28 entry.
 
-**2026-07-28 daily security diff — 2 findings, both fixed.** Scanned 14 commits
-(`34f5da31`→`758aeb95`). The window was strongly net-positive on its own (four controls
-ADDED: `rollback.yml` shell-injection validation, the `lib/consent.js` I3 write-gate, the
-`tracking-integration.jsx` I3 local-state gate, the Settings telemetry read-gate), plus a
-regression-test assertion restored. Two items needed work. **All three PRs below were
-still OPEN with auto-merge armed when this was written — not yet on `main`.**
-- **Orphaned residue keys survive panic wipe (PR #1415).** Deleting `FirstRunTour.jsx`
-  in #1403 orphaned `veyrnox-first-run-tour-armed` / `-seen`, which were never in the
-  panic-wipe list. `ALL_RESIDUE_KEYS` drives BOTH the erase AND
-  `inspectKeyMaterial().clean`, so they survived a wipe *and* it still reported clean.
-  Fixed in `METADATA_RESIDUE_KEYS` + regression test
-  (`panic-residue-first-run-tour.test.js`).
+**2026-07-28 daily security diff — 2 findings, both fixed and MERGED.** Scanned 14
+commits (`34f5da31`→`758aeb95`). The window was strongly net-positive on its own (four
+controls ADDED: `rollback.yml` shell-injection validation, the `lib/consent.js` I3
+write-gate, the `tracking-integration.jsx` I3 local-state gate, the Settings telemetry
+read-gate), plus a regression-test assertion restored. Two items needed work.
+- **Residue keys survived panic wipe (PR #1415, `593c969b`).**
+  `veyrnox-first-run-tour-armed` / `-seen` were never in the panic-wipe list.
+  `ALL_RESIDUE_KEYS` drives BOTH the erase AND `inspectKeyMaterial().clean`, so they
+  survived a wipe *and* it still reported clean. Fixed in `METADATA_RESIDUE_KEYS` +
+  regression test (`panic-residue-first-run-tour.test.js`), which is red before the fix
+  for the real reason (`localStorageResidue` empty while the key is present).
   **The lesson, and it is general: "nothing reads this key any more" is NOT an
-  exemption — that is the property EVERY key in that list has after a wipe. What makes
-  a key a tell is its PRESENCE.** `veyrnox-first-run-tour-seen` asserts a real install
+  exemption — that is the property EVERY key in that list has after a wipe. What makes a
+  key a tell is its PRESENCE.** `veyrnox-first-run-tour-seen` asserts a real install
   existed here AND walked the coercion stack. `docs/Feature-Status.md` had called it
-  "no residual-state hazard"; that line is corrected, and marked as having been wrong
+  "no residual-state hazard"; that line is corrected and marked as having been wrong
   rather than quietly reworded. Same class as DIFF-0723-DEVICEID (`veyrnox-device-id`)
   in the findings tracker — check that precedent before writing one of these off.
-  **Standing rule: deleting a component orphans its storage keys. Cross-check every key
-  a deleted file wrote against `ALL_RESIDUE_KEYS`.**
-- **A disabled flag made a whole test block pass vacuously (PR #1418).**
+  **The finding was found VIA the orphaned keys but never depended on them being
+  orphaned.** #1417 restored the writer ~50 min later, so the keys are live again and the
+  sweep is if anything more clearly right: the claim was never "dead keys linger", it was
+  "these keys are a tell and the wipe misses them" — true either way.
+  **Standing rule, unchanged: deleting a component orphans its storage keys. Cross-check
+  every key a deleted file wrote against `ALL_RESIDUE_KEYS`.**
+- **A disabled flag made a whole test block pass vacuously (PR #1418, `3f6773ab`).**
   `Subscription.jsx` carries `const OUTCOME_PREAMBLE_ENABLED = false`, so the preamble
   cannot render at all — which made all THREE tests in the gating block assert the same
   thing by accident. Two were hollow: their `localStorage` / `currentTier` setup was
   inert. All three also matched on the step's COPY, so a copy edit alone would have made
   them pass for a second wrong reason. Now keyed off the `outcome-step` testid; the two
-  conditional tests are `.skip`ped (NOT deleted — `outcomeStep`'s initialiser still
-  reads `OUTCOME_SEEN_KEY` and still returns null for `safety_plus`, so deleting would
-  bring that back unguarded), and the remaining test is bidirectional and **fails the
-  moment the flag flips to true** — verified by actually flipping it, not asserted. That
-  failure is the tripwire that sends a reader back to un-skip; do not relax it.
+  conditional tests are `.skip`ped (NOT deleted — `outcomeStep`'s initialiser still reads
+  `OUTCOME_SEEN_KEY` and still returns null for `safety_plus`, so deleting would bring
+  that back unguarded), and the remaining test is bidirectional and **fails the moment
+  the flag flips to true** — verified by actually flipping it, not asserted. That failure
+  is the tripwire that sends a reader back to un-skip; do not relax it.
   **This is the flag-disabled cousin of the "align tests with the new flow" smell:
-  a test asserting a behaviour that can no longer occur is coverage that READS as
-  present and is not.**
+  a test asserting a behaviour that can no longer occur is coverage that READS as present
+  and is not.**
 - **The scan's pattern list is a floor, not a ceiling — and it keeps lagging.** Two
   consecutive runs produced findings from files no pattern matched (07-27 the SQL/edge
   surface, 07-28 `src/components/FirstRunTour.jsx`). The 07-28 report records the pattern
   to add; the task file may only write its own report, so it has NOT been applied.
-- **Process:** the three-checkpoint staleness design earned its keep. #1412 merged 7
-  minutes after the pre-merge checkpoint and before the report's own PR landed — the
-  fourth staleness event on record and the first one caught, because only the
-  post-merge checkpoint can see the commit→merge gap. Amendment PR #1416.
+- **Process — `main` moves faster than a document can describe it.** Three separate
+  staleness events in one day, all the same shape: a statement true when written and
+  false when merged. (a) #1412 landed 7 min after the scan's pre-merge checkpoint —
+  caught only by the post-merge checkpoint, which is why that third checkpoint exists
+  (amendment PR #1416, `7f53ac94`). (b) #1417 shipped a "keys are not in the residue
+  list" line that #1415 had already falsified, corrected above. (c) this entry itself was
+  first written listing its PRs as still open. **Treat every claim about another PR's
+  state as perishable: cite a SHA, or re-read before merging.**
 
 **Open residuals:** M-1 (EVM key unzeroable, ethers v6), M-6 (iOS bridge H copy),
 #1111 (vault AAD v:3 migration — plan r2 done, implementation blocked on owner decisions),

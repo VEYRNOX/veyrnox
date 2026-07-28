@@ -1418,7 +1418,46 @@ All four merged PRs: BUILT / unit-tested only, INTERNAL — not device-verified,
 independently audited, no on-chain txid. PR #1276 is additionally NOT YET MERGED — do not
 report H-1 as fixed until it lands on `main`.
 
-## 2026-07-27 First-run tour REMOVED — ECC F-P3-3 reopened
+## 2026-07-28 First-run tour RESTORED — ECC F-P3-3 re-remediated
+
+> ✅ BUILT (INTERNAL, UI scope) — the deletion below was reverted on 2026-07-28 in
+> PR #1417. **ECC finding F-P3-3 (#1160) is remediated again.**
+
+`src/components/FirstRunTour.jsx` and `src/components/__tests__/FirstRunTour.placement.test.js`
+were restored byte-identical from `de8cb829^`, and the three wiring points removed by
+PR #1403 were re-applied to the CURRENT `WalletEntry.jsx` (not reverted wholesale — that
+file has since changed under PRs #1409/#1410): the `FirstRunTour, { armTour }` import, the
+`armTour()` call in `doCreateWallet`, the `armTour()` call after `createWallet(genPassword)`
+in the generate path, and the `<FirstRunTour />` render inside the unlocked-wallet branch.
+
+**Nothing in the consent flow was reverted.** PR #1403's consent changes — and the #1409 /
+#1410 corrections on top of them — are untouched. The restore is additive to that work.
+
+Verified: 194 tests pass across 33 component suites (including the restored placement
+guard and `WalletEntry.kek-gate`, which pins that consent still wins on a never-answered
+device); `eslint` 0 errors; `npm run build` exit 0. INTERNAL — no device verification.
+
+**What the restore changes about the record below.** The "Consequences to track" list in
+the preserved section is left exactly as written on 2026-07-27 — it is a record of what was
+true then, not a live checklist. Reading it after the restore:
+- The walkthrough is back, so the first bullet (no discovery path for Duress, Stealth,
+  Panic Wipe, KEK) no longer applies.
+- The residue keys are **no longer orphaned** — `armTour()` writes
+  `veyrnox-first-run-tour-armed` again, and the tour consumes it into
+  `veyrnox-first-run-tour-seen`. Their absence from the panic-wipe list was a real finding
+  regardless of whether the writer exists, and is fixed separately in PR #1415 (both keys
+  added to `METADATA_RESIDUE_KEYS` in `src/wallet-core/panic.js`, with a regression test).
+  That fix is **correct either way** — arguably more clearly so now the keys are live
+  again. PR #1414 was an independent duplicate of the same finding and was closed.
+- Replacement onboarding is moot: the original onboarding is back.
+
+One thing the restore deliberately did NOT bring back: PR #1403 also disabled the
+Subscription outcome-first preamble (`OUTCOME_PREAMBLE_ENABLED = false` in
+[Subscription.jsx](../src/pages/Subscription.jsx)) as "temporarily disabled while
+investigating". That is a different feature on the same misdiagnosis, and it is still off.
+It needs its own owner decision.
+
+### The original removal record (preserved)
 
 > ❌ HONEST-DISABLED — the feature is gone from the codebase, not merely switched off.
 > **ECC finding F-P3-3 (#1160) is REOPENED and is once again unremediated.**
@@ -1445,9 +1484,21 @@ who skipped KEK enrollment and silently overwriting a stored "denied" (removed
 **Consequences to track:**
 - Users again get 80+ features with no walkthrough — the original F-P3-3 complaint.
   Duress, Stealth, Panic Wipe and KEK have no discovery path.
-- The `veyrnox-first-run-tour-armed` / `veyrnox-first-run-tour-seen` localStorage keys are
-  now orphaned. They were never in the panic-wipe list, and nothing reads or writes them
-  any more — no residual-state hazard, but any device that ran the tour still carries them.
+- The `veyrnox-first-run-tour-armed` / `veyrnox-first-run-tour-seen` localStorage keys were
+  orphaned by the deletion — nothing reads or writes them any more, but any device that ran
+  the tour still carries them. **This entry previously called that "no residual-state
+  hazard". That was wrong, and it is fixed.** "Nothing reads them" is the property EVERY
+  key in the wipe list has after a wipe; what makes a key a tell is its PRESENCE.
+  `veyrnox-first-run-tour-seen` asserts that a real Veyrnox install existed on the device
+  AND completed a walkthrough of the coercion stack — the same class as
+  `veyrnox-kek-pin-notice` and `veyrnox-device-id`, both swept for exactly that reason.
+  Because `ALL_RESIDUE_KEYS` drives BOTH the erase and `inspectKeyMaterial()`, their
+  absence meant a panic wipe left them in place *and* still reported `clean: true`.
+  Both keys are now in `METADATA_RESIDUE_KEYS` (`src/wallet-core/panic.js`), with a
+  regression test at
+  `src/wallet-core/__tests__/panic-residue-first-run-tour.test.js`. Found by the
+  2026-07-28 daily security diff (`docs/security-diffs/diff-2026-07-28.md`); same finding
+  class as DIFF-0723-DEVICEID in the findings tracker.
 - No replacement onboarding is BUILT, TARGET or PLANNED. If discovery is to be solved
   differently, that needs its own entry here.
 
