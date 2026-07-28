@@ -1437,11 +1437,25 @@ Verified: 194 tests pass across 33 component suites (including the restored plac
 guard and `WalletEntry.kek-gate`, which pins that consent still wins on a never-answered
 device); `eslint` 0 errors; `npm run build` exit 0. INTERNAL — no device verification.
 
+**What the restore changes about the record below.** The "Consequences to track" list in
+the preserved section is left exactly as written on 2026-07-27 — it is a record of what was
+true then, not a live checklist. Reading it after the restore:
+- The walkthrough is back, so the first bullet (no discovery path for Duress, Stealth,
+  Panic Wipe, KEK) no longer applies.
+- The residue keys are **no longer orphaned** — `armTour()` writes
+  `veyrnox-first-run-tour-armed` again, and the tour consumes it into
+  `veyrnox-first-run-tour-seen`. Their absence from the panic-wipe list was a real finding
+  regardless of whether the writer exists, and is fixed separately in PR #1415 (both keys
+  added to `METADATA_RESIDUE_KEYS` in `src/wallet-core/panic.js`, with a regression test).
+  That fix is **correct either way** — arguably more clearly so now the keys are live
+  again. PR #1414 was an independent duplicate of the same finding and was closed.
+- Replacement onboarding is moot: the original onboarding is back.
+
 One thing the restore deliberately did NOT bring back: PR #1403 also disabled the
 Subscription outcome-first preamble (`OUTCOME_PREAMBLE_ENABLED = false` in
 [Subscription.jsx](../src/pages/Subscription.jsx)) as "temporarily disabled while
 investigating". That is a different feature on the same misdiagnosis, and it is still off.
-It needs its own owner decision — see the note at the end of this section.
+It needs its own owner decision.
 
 ### The original removal record (preserved)
 
@@ -1467,21 +1481,17 @@ who skipped KEK enrollment and silently overwriting a stored "denied" (removed
 2026-07-27). The tour removal was collateral to that misdiagnosis and can be reverted from
 `de8cb829^` if the walkthrough is wanted back.
 
-**Consequences that were tracked while it was removed** (all closed by the 2026-07-28
-restore, except the last two):
-- ~~Users again get 80+ features with no walkthrough — the original F-P3-3 complaint.~~
-  Closed: the walkthrough is back on the unlocked wallet.
+**Consequences to track:**
+- Users again get 80+ features with no walkthrough — the original F-P3-3 complaint.
+  Duress, Stealth, Panic Wipe and KEK have no discovery path.
 - The `veyrnox-first-run-tour-armed` / `veyrnox-first-run-tour-seen` localStorage keys are
-  live again, so they are no longer orphaned. **Still true and still worth fixing: neither
-  key is in the panic-wipe residue list** (`src/wallet-core/panic.js`). A device that ran
-  the tour carries `veyrnox-first-run-tour-seen` through a wipe — a weak install tell of
-  the same class the list already covers for `veyrnox-autolock-timeout` and friends. Not
-  introduced by the restore; it predates the removal. Tracked, not fixed here.
-- The Subscription outcome-first preamble remains disabled (see above) — a separate
-  owner decision.
+  now orphaned. They were never in the panic-wipe list, and nothing reads or writes them
+  any more — no residual-state hazard, but any device that ran the tour still carries them.
+- No replacement onboarding is BUILT, TARGET or PLANNED. If discovery is to be solved
+  differently, that needs its own entry here.
 
-Status: BUILT (restored 2026-07-28, PR #1417). INTERNAL, no device verification, no
-on-chain txid — UI scope only.
+Status: HONEST-DISABLED (removed on principle of not shipping dead code, NOT because the
+feature was wrong). INTERNAL, no device verification, no on-chain txid — UI scope only.
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
