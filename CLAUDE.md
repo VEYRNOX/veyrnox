@@ -510,6 +510,16 @@ m/44'/60' address; BTC (m/84'/UTXO/PSBT) and SOL (ed25519/SLIP-0010) have their 
 
 - Windows (Git Bash / MINGW64). iOS native build needs a Mac.
 - Use `.env.local` for env flags, not inline shell vars.
+- **Never use PowerShell here-strings in a Bash/Git Bash call.** `@'...'@` is PowerShell
+  syntax; in bash the `@` characters are literal, so
+  `git commit -m @'<newline>subject...'@` produces a commit whose subject is a bare `@`
+  with the real subject demoted to the body and a trailing `@` on the last line. Use a
+  heredoc instead — `git commit -F - <<'EOF' ... EOF` — quoting the delimiter so `$` and
+  backticks stay literal. Observed **twice on 2026-07-28** in two independent sessions
+  (see `git reflog`: `commit: @` at 11:43, then two amends to fix it), so this is a
+  recurring trap, not a one-off. Both shells are available here and each needs its own
+  syntax; check which tool you are in before writing a multi-line string. Amend before
+  pushing — a `@` subject in the history is permanent once it lands.
 - **`npm ci` / `npm install` work plainly again (2026-07-26).** `--legacy-peer-deps` is no
   longer needed and CI no longer passes it (#1372 bumped `@vitejs/plugin-react` to `^5.2.0`
   so its peer range admits `vite@8`; #1376 dropped the flag from the workflows). Two traps
