@@ -1446,8 +1446,15 @@ who skipped KEK enrollment and silently overwriting a stored "denied" (removed
 - Users again get 80+ features with no walkthrough — the original F-P3-3 complaint.
   Duress, Stealth, Panic Wipe and KEK have no discovery path.
 - The `veyrnox-first-run-tour-armed` / `veyrnox-first-run-tour-seen` localStorage keys are
-  now orphaned. They were never in the panic-wipe list, and nothing reads or writes them
-  any more — no residual-state hazard, but any device that ran the tour still carries them.
+  now orphaned — nothing reads or writes them any more, but any device that ran the tour
+  still carries them. This entry previously called that "no residual-state hazard"; that
+  was wrong by panic.js's own standard (`veyrnox-seed-verify` is swept precisely because
+  its presence proves a real wallet was created here), and the keys were in neither
+  `ALL_RESIDUE_KEYS` nor any `RESIDUE_KEY_PREFIXES` entry — so they survived a panic wipe
+  while `inspectKeyMaterial()` reported `clean: true` over the top of them. **FIXED:** both
+  are now in `METADATA_RESIDUE_KEYS` (`src/wallet-core/panic.js`), guarded by
+  `src/wallet-core/__tests__/panic-residue-first-run-tour-keys.test.js`. BUILT, INTERNAL —
+  unit-tested, not device-verified.
 - No replacement onboarding is BUILT, TARGET or PLANNED. If discovery is to be solved
   differently, that needs its own entry here.
 

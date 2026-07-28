@@ -265,6 +265,16 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // Seed-backup verification state (single blob; see lib/seedVerifyState.js).
   // Presence proves a real wallet was created and its backup quiz started.
   'veyrnox-seed-verify',
+  // ORPHANED first-run-tour markers. src/components/FirstRunTour.jsx was deleted
+  // by PR #1403 (see de8cb829^ for the source; ECC F-P3-3 reopened), but the keys
+  // it wrote outlive it — nothing reads, writes or removes them any more, so any
+  // device that ran the tour still carries them. Same class as the funnel markers
+  // above: not key material, but presence proves the real Veyrnox app ran here and
+  // how far onboarding got. Deleting a component does not retire its storage, and
+  // an unswept key would let inspectKeyMaterial() report clean:true over the top
+  // of it (I3/I4).
+  'veyrnox-first-run-tour-armed',   // TOUR_ARMED_KEY — set on first wallet entry
+  'veyrnox-first-run-tour-seen',    // TOUR_SEEN_KEY  — set once the tour completed
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
