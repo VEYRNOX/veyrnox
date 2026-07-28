@@ -107,6 +107,36 @@ function corsHeaders(origin: string | null): Record<string, string> {
   return base;
 }
 
+// Extract the caller's IP address from the platform's forwarding headers so it
+// can be passed as the second rate-limit dimension (L-10). The order matches
+// what Supabase's Edge Runtime and Cloudflare front them with; the first
+// well-formed entry wins.
+//
+// x-forwarded-for is a comma-separated list — the ORIGINAL client is the
+// left-most entry, downstream proxies are appended on the right. Anything
+// past the first entry is caller-controlled and cannot be trusted.
+//
+// A NULL return is deliberate on unknown/unparseable input: the RPC's per-IP
+// branch is skipped rather than collapsing every anonymous caller into one
+// shared bucket, which would rate-limit legitimate traffic and give an
+// attacker a trivial bypass by stripping headers.
+function clientIp(req: Request): string | null {
+  const raw =
+    req.headers.get('cf-connecting-ip') ??
+    req.headers.get('x-real-ip') ??
+    req.headers.get('x-forwarded-for');
+  if (!raw) return null;
+  const first = raw.split(',')[0]?.trim();
+  if (!first) return null;
+  // Reject anything that is not a plausible IPv4 or IPv6 literal before it
+  // reaches Postgres — inet parsing raises on garbage, and we want a plain
+  // "unknown, skip per-IP" outcome rather than a 500.
+  const ipv4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+  const ipv6 = /^[0-9a-fA-F:]+$/;
+  if (!ipv4.test(first) && !ipv6.test(first)) return null;
+  return first;
+}
+
 function json(body: unknown, status: number, origin: string | null): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -189,12 +219,15 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Rate limit BEFORE the claim: 5/hour/code, counted server-side. Also
-    // rejects codes that do not exist, so invented codes never reach the claim
-    // path and never create rate-limit rows.
+    // Rate limit BEFORE the claim, on TWO dimensions (L-10): 5/hour/code and
+    // 20/hour/IP. Either exceeded => denied. Per-code stops one attacker
+    // hammering one referrer; per-IP stops one host fanning out across many
+    // codes. Server-side counters throughout. Also rejects codes that do not
+    // exist, so invented codes never reach the claim path.
+    const ip = clientIp(req);
     const { data: allowed, error: rlError } = await supabase.rpc(
       'record_bonus_claim_attempt',
-      { p_code: referralCode },
+      { p_code: referralCode, p_ip: ip },
     );
 
     if (rlError) {
