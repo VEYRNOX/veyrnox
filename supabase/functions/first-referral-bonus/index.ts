@@ -122,7 +122,6 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://www.veyrnox.com',
   'capacitor://localhost',
   'https://localhost',
-  'http://localhost',
 ];
 
 function allowedOrigins(): Set<string> {
