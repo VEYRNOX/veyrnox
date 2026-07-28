@@ -22,6 +22,7 @@ import DeepLinkHandler from '@/components/DeepLinkHandler';
 import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
 import Spinner from '@/components/Spinner';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { captureReferralFromUrl } from '@/lib/referralAttribution';
 import { useCryptoDiagnostics } from '@/lib/tracking-integration';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -247,23 +248,25 @@ function App() {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
-      <WalletProvider>
-        <TrezorProvider>
-        <TierProvider>
-          <QueryClientProvider client={queryClientInstance}>
-            <Router>
-              <DeepLinkHandler />
-              <VoiceProvider>
-                <EnvBadge />
-                <AuthenticatedApp />
-                <VoiceFab />
-              </VoiceProvider>
-            </Router>
-            <Toaster />
-          </QueryClientProvider>
-        </TierProvider>
-        </TrezorProvider>
-      </WalletProvider>
+      <ErrorBoundary>
+        <WalletProvider>
+          <TrezorProvider>
+          <TierProvider>
+            <QueryClientProvider client={queryClientInstance}>
+              <Router>
+                <DeepLinkHandler />
+                <VoiceProvider>
+                  <EnvBadge />
+                  <AuthenticatedApp />
+                  <VoiceFab />
+                </VoiceProvider>
+              </Router>
+              <Toaster />
+            </QueryClientProvider>
+          </TierProvider>
+          </TrezorProvider>
+        </WalletProvider>
+      </ErrorBoundary>
     </ThemeProvider>
   )
 }
