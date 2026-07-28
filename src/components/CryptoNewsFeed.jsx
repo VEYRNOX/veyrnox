@@ -5,6 +5,7 @@ import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
+import { safeNewsThumbUrl } from "@/lib/newsThumbUrl";
 
 // RSS feeds proxied through rss2json.com (free, no API key, CORS-friendly).
 // Two sources merged and sorted by date for broader coverage.
@@ -61,12 +62,18 @@ function NewsCard({ article }) {
       rel="noopener noreferrer"
       className="flex gap-3 p-3 rounded-xl hover:bg-secondary transition-colors group"
     >
-      {/* Thumbnails are display-only images from publisher CDNs; no user data
-          is sent with the request (I2). img-src https: is already in CSP. */}
+      {/* M-10: rss2json is a third-party JSON proxy — the thumbnail URL is
+          attacker-influenced. `safeNewsThumbUrl` narrows the render to the
+          publisher CDNs in ALLOWED_NEWS_THUMB_HOSTS (or a data: placeholder);
+          anything else falls back to the neutral placeholder so no request
+          leaves the device. `no-referrer` + `crossOrigin=anonymous` also
+          strip URL/state from the fetch for the allowlisted case. */}
       {thumbnail && (
         <img
-          src={thumbnail}
+          src={safeNewsThumbUrl(thumbnail)}
           alt=""
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
           className="h-14 w-14 rounded-lg object-cover shrink-0 bg-secondary"
           onError={e => { (/** @type {any} */ (e.target)).style.display = "none"; }}
         />
