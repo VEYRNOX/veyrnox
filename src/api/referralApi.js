@@ -41,8 +41,14 @@ export async function generateServerCode() {
 export async function registerCode(code) {
   if (!isValidCode(code)) return;
   if (!supabase || isDeniabilityOrDemoActive()) return;
+  // Audit H-2: register_referral_code REQUIRES p_device_id. If deviceId
+  // is missing (no CSPRNG → deviceId is null), do not call the RPC — an
+  // undefined/null p_device_id used to bypass the 3/hour rate limit
+  // server-side and now raises. Fail closed here (I4) rather than making
+  // a doomed round-trip.
+  const deviceId = getOrCreateDeviceId();
+  if (!deviceId) return;
   try {
-    const deviceId = getOrCreateDeviceId();
     await supabase.rpc('register_referral_code', {
       p_code: code,
       p_device_id: deviceId,
