@@ -152,6 +152,12 @@ CREATE INDEX IF NOT EXISTS idx_referrals_device
 
 -- Replace generate_referral_code: requires device_id, returns existing code
 -- if one was already generated for this device.
+--
+-- H-1 (2026-07-28): rc_user_id is deliberately NOT a parameter. The referrer's
+-- RevenueCat identity is set server-side from a verified RC webhook (see
+-- sql/referral-rc-webhook.sql). Do not add a client-supplied variant; earlier
+-- revs of sql/first-referral-bonus.sql did, and it was a self-serve
+-- entitlement mint.
 CREATE OR REPLACE FUNCTION generate_referral_code(p_device_id uuid DEFAULT NULL)
 RETURNS text
 LANGUAGE plpgsql
@@ -295,6 +301,9 @@ $$;
 -- Supabase RPC fails). Keep INSERT but add a rate-limit wrapper.
 
 -- registerCode upsert wrapper — limits to 3 registrations per device per hour.
+--
+-- H-1 (2026-07-28): rc_user_id is deliberately NOT a parameter here either;
+-- see the note on generate_referral_code above.
 CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid DEFAULT NULL)
 RETURNS void
 LANGUAGE plpgsql
