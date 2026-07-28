@@ -63,23 +63,64 @@ export function solPath(account = 0) {
 export function deriveSolAccount(mnemonic, opts = {}) {
   const { account = 0, passphrase = '' } = opts;
 
-  const seed = mnemonicToSeed(mnemonic, passphrase); // 64-byte seed (validates checksum)
   const path = solPath(account);
-  const { key: privateKey } = deriveEd25519(seed, path);
+  const seed = mnemonicToSeed(mnemonic, passphrase); // 64-byte seed (validates checksum)
+  let node = null;
+  try {
+    node = deriveEd25519(seed, path);
+    const privateKey = node.key;
+    // ed25519 public key (32 bytes). @solana/web3.js's Keypair.fromSeed(privateKey)
+    // produces this same key — asserted in tests — so the two key paths agree.
+    const publicKey = ed25519.getPublicKey(privateKey);
+    const address = base58.encode(publicKey);
+    return { address, publicKey, privateKey, path };
+  } finally {
+    // Wipe intermediates that we did NOT return (M-2). The seed can regenerate
+    // every wallet on every chain; the chainCode plus a leaked parent key can
+    // derive siblings. The returned privateKey/publicKey are the caller's to
+    // wipe after signing — see hw-send.
+    seed.fill(0);
+    if (node && node.chainCode) node.chainCode.fill(0);
+  }
+}
 
-  // ed25519 public key (32 bytes). @solana/web3.js's Keypair.fromSeed(privateKey)
-  // produces this same key — asserted in tests — so the two key paths agree.
-  const publicKey = ed25519.getPublicKey(privateKey);
-  const address = base58.encode(publicKey);
+/**
+ * Derive the Solana public key + address for RECEIVE / display, without ever
+ * retaining the ed25519 scalar. This is the correct entry point for anything
+ * that only needs the address (portfolio, receive screen, stealth).
+ *
+ * The scalar is materialised internally (SLIP-0010 leaves us no choice — the
+ * public key comes from it), then wiped before return. Compared to calling
+ * deriveSolAccount and throwing away .privateKey, this guarantees the secret
+ * is gone at function exit rather than hoping the discarded reference is GC'd
+ * (M-2, 2026-07-28 internal audit).
+ * @returns {{ address: string, publicKey: Uint8Array, path: string }}
+ */
+export function deriveSolPublicKey(mnemonic, opts = {}) {
+  const { account = 0, passphrase = '' } = opts;
 
-  return { address, publicKey, privateKey, path };
+  const path = solPath(account);
+  const seed = mnemonicToSeed(mnemonic, passphrase);
+  let node = null;
+  try {
+    node = deriveEd25519(seed, path);
+    const publicKey = ed25519.getPublicKey(node.key);
+    const address = base58.encode(publicKey);
+    return { address, publicKey, path };
+  } finally {
+    seed.fill(0);
+    if (node) {
+      if (node.key) node.key.fill(0);
+      if (node.chainCode) node.chainCode.fill(0);
+    }
+  }
 }
 
 /**
  * Public address only (no secret material) — for display / receive.
  */
 export function deriveSolAddress(mnemonic, opts = {}) {
-  const { address, path } = deriveSolAccount(mnemonic, opts);
+  const { address, path } = deriveSolPublicKey(mnemonic, opts);
   return { address, path };
 }
 

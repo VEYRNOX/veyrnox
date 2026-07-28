@@ -30,7 +30,7 @@ export { estimateBtcFeeTiers, buildBtcTiers, clampMonotonic, BTC_TIERS } from '.
 // --- Solana (Phase SOL) — separate ed25519 / SLIP-0010 / account stack,
 // devnet-first, mainnet gated. Shares only the BIP-39 seed (different curve from
 // EVM/BTC entirely). See sol/. ---
-export { deriveSolAccount, deriveSolAddress, isValidSolAddress, solPath, SOL_COIN_TYPE } from './sol/derivation.js';
+export { deriveSolAccount, deriveSolAddress, deriveSolPublicKey, isValidSolAddress, solPath, SOL_COIN_TYPE } from './sol/derivation.js';
 export { getSolNetwork, getSolNetworkInfo, listEnabledSolNetworks, solExplorerUrl, ALLOW_SOL_MAINNET } from './sol/networks.js';
 export { getBalanceLamports, getBalanceSol, getLatestBlockhash, getRentExemptMinimum, getLamportsPerSignature, getRecentPrioritizationFee, broadcastRawTx, confirmTx, setSolRpcUrl, getConnection, LAMPORTS_PER_SOL } from './sol/provider.js';
 export { planSolTransfer, estimateSolSend, signAndBroadcastSol, buildAndSignSol, solComputeBudgetIxns } from './sol/send.js';
