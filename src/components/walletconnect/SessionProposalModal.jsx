@@ -7,6 +7,7 @@ import { checkDappDomain, LOCAL_KNOWN_BAD } from '@/risk/knownBadDapps.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { SUPPORTED_CHAIN_IDS } from '@/wallet-core/evm/walletconnect/router.js';
 import { useModalA11y } from '@/lib/useModalA11y.js';
+import { isSafeIconUrl, PLACEHOLDER_ICON } from '@/lib/wcIconUrl.js';
 
 // Render a CAIP-2 chain string ("eip155:11155111") as a friendly network name,
 // falling back to the raw string for unsupported / unknown chains.
@@ -103,9 +104,19 @@ export function SessionProposalModal({ proposal, onClose }) {
         </p>
 
         <div className={styles.dappInfo}>
-          {meta.icons?.[0] && (
-            <img src={meta.icons[0]} alt="" className={styles.icon} width={48} height={48} />
-          )}
+          {/* M-4: never fetch an attacker-controlled URL pre-consent. Icons go
+              through isSafeIconUrl (https allowlist + data:image) and fall back
+              to a neutral placeholder. no-referrer + anonymous CORS strip any
+              cookies / Referer even for allowlisted hosts. */}
+          <img
+            src={isSafeIconUrl(meta.icons?.[0]) ? meta.icons[0] : PLACEHOLDER_ICON}
+            alt=""
+            className={styles.icon}
+            width={48}
+            height={48}
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+          />
           <div>
             <p className={styles.dappName}>{meta.name ?? 'Unknown dApp'}</p>
             <p className={styles.dappUrl}>{meta.url ?? ''}</p>
