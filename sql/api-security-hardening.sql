@@ -258,6 +258,21 @@ BEGIN
 END;
 $$;
 
+-- L-8 (2026-07-28 internal audit): record_attribution had no idempotency key,
+-- so a retried purchase webhook (or a coerced retry) could book the same sale
+-- twice within the rate-limit window and inflate paid-count / earnings. Until
+-- a real client-supplied idempotency key (e.g. store transaction id) is
+-- threaded through the RPC signature, collapse duplicates at rest with a
+-- UNIQUE partial index on the natural key of an attribution within an hour
+-- bucket, and dedup at read time so historical duplicates cannot skew payouts.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_attributions_hour_dedup
+  ON referral_attributions (
+    referral_code,
+    plan,
+    revenue_cents,
+    date_trunc('hour', created_at)
+  );
+
 -- Read-only functions for referral owner to query their own data.
 CREATE OR REPLACE FUNCTION get_referral_earnings(p_code text)
 RETURNS TABLE(plan text, revenue_cents integer, discount_cents integer, created_at timestamptz)
@@ -266,11 +281,21 @@ SECURITY DEFINER
 STABLE
 AS $$
 BEGIN
+  -- L-8: dedup by (plan, revenue_cents, hour) so a duplicate attribution
+  -- that slipped in before uq_referral_attributions_hour_dedup existed
+  -- (or via a future signature change) cannot double-count earnings.
   RETURN QUERY
-    SELECT ra.plan, ra.revenue_cents, ra.discount_cents, ra.created_at
-      FROM referral_attributions ra
-     WHERE ra.referral_code = p_code
-     ORDER BY ra.created_at DESC
+    WITH deduped AS (
+      SELECT DISTINCT ON (ra.plan, ra.revenue_cents, date_trunc('hour', ra.created_at))
+             ra.plan, ra.revenue_cents, ra.discount_cents, ra.created_at
+        FROM referral_attributions ra
+       WHERE ra.referral_code = p_code
+       ORDER BY ra.plan, ra.revenue_cents, date_trunc('hour', ra.created_at),
+                ra.created_at ASC
+    )
+    SELECT d.plan, d.revenue_cents, d.discount_cents, d.created_at
+      FROM deduped d
+     ORDER BY d.created_at DESC
      LIMIT 1000;
 END;
 $$;
@@ -284,9 +309,14 @@ AS $$
 DECLARE
   c integer;
 BEGIN
+  -- L-8: count distinct (plan, revenue_cents, hour) tuples so a duplicate
+  -- attribution cannot inflate the paid count that drives tier upgrades.
   SELECT count(*)::integer INTO c
-    FROM referral_attributions
-   WHERE referral_code = p_code;
+    FROM (
+      SELECT DISTINCT plan, revenue_cents, date_trunc('hour', created_at) AS hr
+        FROM referral_attributions
+       WHERE referral_code = p_code
+    ) dedup;
   RETURN c;
 END;
 $$;
