@@ -1445,9 +1445,21 @@ who skipped KEK enrollment and silently overwriting a stored "denied" (removed
 **Consequences to track:**
 - Users again get 80+ features with no walkthrough — the original F-P3-3 complaint.
   Duress, Stealth, Panic Wipe and KEK have no discovery path.
-- The `veyrnox-first-run-tour-armed` / `veyrnox-first-run-tour-seen` localStorage keys are
-  now orphaned. They were never in the panic-wipe list, and nothing reads or writes them
-  any more — no residual-state hazard, but any device that ran the tour still carries them.
+- The `veyrnox-first-run-tour-armed` / `veyrnox-first-run-tour-seen` localStorage keys were
+  orphaned by the deletion — nothing reads or writes them any more, but any device that ran
+  the tour still carries them. **This entry previously called that "no residual-state
+  hazard". That was wrong, and it is fixed.** "Nothing reads them" is the property EVERY
+  key in the wipe list has after a wipe; what makes a key a tell is its PRESENCE.
+  `veyrnox-first-run-tour-seen` asserts that a real Veyrnox install existed on the device
+  AND completed a walkthrough of the coercion stack — the same class as
+  `veyrnox-kek-pin-notice` and `veyrnox-device-id`, both swept for exactly that reason.
+  Because `ALL_RESIDUE_KEYS` drives BOTH the erase and `inspectKeyMaterial()`, their
+  absence meant a panic wipe left them in place *and* still reported `clean: true`.
+  Both keys are now in `METADATA_RESIDUE_KEYS` (`src/wallet-core/panic.js`), with a
+  regression test at
+  `src/wallet-core/__tests__/panic-residue-first-run-tour.test.js`. Found by the
+  2026-07-28 daily security diff (`docs/security-diffs/diff-2026-07-28.md`); same finding
+  class as DIFF-0723-DEVICEID in the findings tracker.
 - No replacement onboarding is BUILT, TARGET or PLANNED. If discovery is to be solved
   differently, that needs its own entry here.
 
