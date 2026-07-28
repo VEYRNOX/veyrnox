@@ -1203,7 +1203,7 @@ export default function WalletEntry() {
     autoEnrollPinRef.current = null;
     return (
       <>
-        <FirstRunTour />
+        {!isDeniabilityOrDemoActive() && <FirstRunTour />}
         <Outlet />
       </>
     );

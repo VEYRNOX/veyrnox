@@ -66,6 +66,7 @@ const STEPS = [
 
 export function shouldShowTour() {
   try {
+    if (isDeniabilityOrDemoActive()) return false; // I3: decoy/demo never sees the tour
     return !!localStorage.getItem(TOUR_ARMED_KEY) && !localStorage.getItem(TOUR_SEEN_KEY);
   } catch { return false; }
 }
@@ -83,8 +84,13 @@ export default function FirstRunTour({ onDone }) {
   const dismiss = () => {
     setVisible(false);
     try {
-      localStorage.setItem(TOUR_SEEN_KEY, '1');
-      localStorage.removeItem(TOUR_ARMED_KEY); // consumed — don't leave it primed
+      // I3: a decoy/demo session must not mutate the shared localStorage the
+      // real session reads. Same two-chokepoint pattern as lib/consent.js
+      // (PR #1410) — gate WRITES here as well as at the render/arm sites.
+      if (!isDeniabilityOrDemoActive()) {
+        localStorage.setItem(TOUR_SEEN_KEY, '1');
+        localStorage.removeItem(TOUR_ARMED_KEY); // consumed — don't leave it primed
+      }
     } catch { /* storage unavailable */ }
     onDone?.();
   };
