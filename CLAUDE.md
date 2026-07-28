@@ -295,9 +295,18 @@ Two of them had already reached `main` via PR #1403, so the fixes were cut fresh
   derive from `lib/annualSaving.js`, which returns null → render NO claim (I4).
 - **`.mono-value`, not `font-mono tabular-nums`** — the latter misses the slashed
   zero and letter-spacing every other verifiable value gets.
-- **FirstRunTour is HONEST-DISABLED and ECC F-P3-3 (#1160) is REOPENED.** PR #1403
-  deleted the component undocumented; `docs/Feature-Status.md` now records it, the
-  orphaned `veyrnox-first-run-tour-*` keys, and the revert path (`de8cb829^`).
+- **FirstRunTour was deleted undocumented by PR #1403, reopening ECC F-P3-3 (#1160).
+  RESTORED 2026-07-28 (PR #1417) — F-P3-3 is remediated again.** The component and its
+  placement test came back byte-identical from `de8cb829^`; the wiring was re-applied to
+  the CURRENT `WalletEntry.jsx` rather than reverted wholesale, because #1409/#1410 had
+  since rewritten that file's consent logic. **No consent change was reverted.**
+  Two lessons worth keeping: (a) the tour never blocked consent — the consent branch
+  returns FIRST, and consent was absent because `consentDone` is seeded from a stored
+  answer at mount; the deletion was collateral to that misdiagnosis. (b) The placement
+  test asserts the render sits within 900 chars of its `if`, so explanatory comments go
+  ABOVE the branch, not inside it. Still open: `veyrnox-first-run-tour-*` keys are not in
+  the panic-wipe residue list, and PR #1403's separate `OUTCOME_PREAMBLE_ENABLED = false`
+  in `Subscription.jsx` is still off pending an owner decision.
 
 **Open residuals:** M-1 (EVM key unzeroable, ethers v6), M-6 (iOS bridge H copy),
 #1111 (vault AAD v:3 migration — plan r2 done, implementation blocked on owner decisions),
