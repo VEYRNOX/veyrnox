@@ -17,7 +17,26 @@ So: **a version number is not evidence. Only the resolved tree is evidence.** Ne
 
 ## The check
 
-1. Make a scratch dir (use the session scratchpad or `$TEMP`). Copy ONLY `package.json` and `package-lock.json` from `C:\Users\aljob\Downloads\Veyrnox` into it. Never copy or create `node_modules` in the repo.
+1. Make a scratch dir (use the session scratchpad or `$TEMP`). Get `package.json` and `package-lock.json` into it **from `origin/main`, not from the checkout's working tree**:
+
+   ```bash
+   export MSYS_NO_PATHCONV=1      # MSYS rewrites the ':' and the command fails SILENTLY
+   cd "C:/Users/aljob/Downloads/Veyrnox" && git fetch origin main
+   git show origin/main:package.json      > "$SCRATCH/package.json"
+   git show origin/main:package-lock.json > "$SCRATCH/package-lock.json"
+   ```
+
+   **Why the ref and not the files.** The primary checkout is shared by ~10 worktrees and
+   several other scheduled tasks, and is frequently on a detached HEAD or an unrelated
+   feature branch. Copying its working tree means auditing whatever dependency state that
+   branch happens to carry, then reporting it as `main` — the same class of error that had
+   a previous tracker run analyse a detached HEAD and report it as `main`. It also picks up
+   any uncommitted lockfile edit another session is mid-way through.
+
+   Sanity-check both files are non-empty before trusting them (`git cat-file -s
+   origin/main:package-lock.json`) — a silent MSYS failure yields a zero-byte file, which
+   resolves to an empty tree and looks like "the residual is gone". Never copy or create
+   `node_modules` in the repo.
 2. In the scratch dir run `npm install --package-lock-only`. Do NOT pass `--legacy-peer-deps` — PR #1372 fixed the peer conflict that used to require it, and that flag drops `appium` and ~30 packages, which would corrupt the result.
 3. Sanity-check the resolve before trusting it: confirm `node_modules/appium` is still present in the resulting lockfile. If it is missing, the resolve is corrupt — report that and stop, do not draw conclusions from it.
 4. Inspect the freshly resolved lockfile for these keys and their versions:
