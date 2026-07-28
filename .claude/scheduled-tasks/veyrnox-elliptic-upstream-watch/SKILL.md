@@ -5,6 +5,16 @@ description: Weekly watch for upstream resolution of the Veyrnox elliptic low-se
 
 Upstream watcher for the Veyrnox wallet's accepted `elliptic` security residual. Run entirely with read-only `npm view` registry queries — do NOT modify files, run `npm install`, or touch the repo at `C:\Users\aljob\Downloads\Veyrnox`. Use the Bash tool (Git Bash) for npm commands.
 
+> **Shared-checkout note (2026-07-28): this task needs no worktree, deliberately.** The
+> primary checkout is shared by ~10 worktrees and several other scheduled tasks, so
+> sibling watchers now read `package.json`/`package-lock.json` from `origin/main` rather
+> than its working tree. This task reads **no repo file at all** — every signal comes from
+> the npm registry — so it has no exposure to that state and nothing to pin. Do not add
+> worktree ceremony here to match the others; it would be noise, not safety. If a future
+> check ever needs the lockfile, pin it to the ref
+> (`git show origin/main:package-lock.json`, with `MSYS_NO_PATHCONV=1` set) rather than
+> reading the checkout.
+
 ## Background (why this task exists)
 The Veyrnox `npm audit` shows ~18 LOW findings all rooted in ONE advisory: `elliptic` GHSA-848j-6mx2-7j84 ("Uses a Cryptographic Primitive with a Risky Implementation", vulnerable `<= 6.6.1`). There is currently NO patched `elliptic` at any version — latest published is `6.6.1`, which is itself inside the vulnerable range. The project already pins `elliptic` to `^6.6.1` via a package.json override (the only available mitigation). `elliptic` is OFF the wallet's own signing path (wallet-core uses `@noble`/`@scure`); it reaches the tree solely through two hardware-wallet transport dependencies:
   - Ledger: `@ledgerhq/hw-app-eth` -> `@ethersproject/transactions` (v5) -> `signing-key` -> `elliptic`

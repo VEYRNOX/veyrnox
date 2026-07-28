@@ -618,6 +618,50 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
 - Pure helpers + unit tests where logic can be extracted.
 - One moving part at a time. Don't mark anything verified without the user's on-chain txid.
 
+## The primary checkout is SHARED — never work in it
+
+`C:\Users\aljob\Downloads\Veyrnox` is used concurrently by many sessions: scheduled tasks
+(daily security diff, branch review, weekly audit, dependency watchers) and any number of
+interactive ones. **10+ worktrees are typically checked out at once.** Treat the primary
+checkout as read-only shared state.
+
+**Never in the primary checkout:** `git checkout` / `git switch` / `git rebase` / `git
+stash`, editing files, or `npm install`. Switching its branch reaches into every other
+session at once, and an uncommitted edit there can be swept into an unrelated PR.
+
+**Do this instead** — cut a branch worktree from `origin/main` and work entirely inside it:
+
+```bash
+git fetch origin main
+git worktree prune
+git branch --no-track <branch> origin/main   # --no-track is REQUIRED, see below
+git worktree add "$TEMP/<name>" <branch>
+```
+
+- **`--no-track` is not optional.** Without it git sets the upstream to `origin/main`, and
+  a later bare `git push` from that branch targets **main**.
+- The worktree needs its own `node_modules` (`npm ci`) — it does not inherit the primary's.
+- Remove it when the PR is open, not before: `git worktree remove <path> --force`.
+- Never `git gc --prune` / `git prune` — the repo carries thousands of unreachable commits
+  belonging to other sessions' in-flight work.
+
+**Reading is exposed too, not just writing.** The primary checkout is frequently on a
+detached HEAD or an unrelated feature branch, so anything read from its working tree is of
+unknown provenance. A previous tracker run analysed a detached HEAD and reported the
+results as `main`. Read from the ref, not the tree: `git show origin/main:<path>`.
+
+**Two failures on 2026-07-28, both from this:**
+- **Duplicated work** — two sessions independently found the same panic-residue finding
+  and opened PRs #1414 and #1415 **92 seconds apart**. One had to be closed.
+- **Cross-contamination** — PR #1423's branch picked up an unrelated commit from another
+  session mid-flight. It could not be force-pushed (that would have destroyed work seconds
+  old), so the branch was abandoned and reopened as #1427.
+
+**Windows/Git-Bash trap:** MSYS rewrites the `:` in `git show origin/main:path`, so the
+command fails and prints nothing — which looks exactly like "no matches found" and will
+have you report a false all-clear. Export `MSYS_NO_PATHCONV=1` first, and sanity-check with
+`git cat-file -s origin/main:<path>` that you are reading a non-zero file.
+
 ## Multi-agent working pattern
 
 Subagents in `.claude/agents/`: `veyrnox-recon` (read-only), `veyrnox-ui` (design-system),
