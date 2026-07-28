@@ -23,6 +23,8 @@ import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
 import Spinner from '@/components/Spinner';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import OfflineBanner from '@/components/OfflineBanner';
+import { installGlobalErrorHandlers } from '@/lib/globalErrorHandlers';
 import { captureReferralFromUrl } from '@/lib/referralAttribution';
 import { useCryptoDiagnostics } from '@/lib/tracking-integration';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -245,6 +247,7 @@ const AuthenticatedApp = () => {
 
 function App() {
   useEffect(() => { captureReferralFromUrl(); }, []);
+  useEffect(() => installGlobalErrorHandlers(), []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
@@ -259,6 +262,7 @@ function App() {
                   <EnvBadge />
                   <AuthenticatedApp />
                   <VoiceFab />
+                  <OfflineBanner />
                 </VoiceProvider>
               </Router>
               <Toaster />
