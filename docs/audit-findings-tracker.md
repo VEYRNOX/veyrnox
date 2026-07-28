@@ -1,6 +1,6 @@
 # Audit Findings Tracker
-Last updated: 2026-07-28 (second pass — closures)
-Analysed against: origin/main @ `184d08a59afc7ca4a00fcf17718a602bbd651661`
+Last updated: 2026-07-28 (third pass — closures + one self-correction)
+Analysed against: origin/main @ `f1389c91d58ea95e61611b8b90f5c603ebfc295b`
 (clean branch worktree cut from `origin/main`, per Step 0 — not the live checkout,
 not a fallback `git show`). First pass the same day analysed `758aeb95`; `main` has
 since moved 13 commits and **closed the regression that pass opened**.
@@ -41,11 +41,72 @@ since moved 13 commits and **closed the regression that pass opened**.
   no finding IDs beyond those already catalogued.
 
 ## Summary
-- Total findings catalogued: **~141** (dedup across the docs above; MEDIUM/LOW grouped)
-- Fixed (code-confirmed): **~96** (11 closed in the first pass, **4 more in the second**)
+- Total findings catalogued: **~143** (dedup across the docs above; MEDIUM/LOW grouped)
+- Fixed (code-confirmed): **~99** (11 first pass, 4 second, **3 third** — including one
+  this tracker had wrongly marked fixed; see the third-pass correction)
 - Still open / accepted-residual: **~34**
 - **Regressed: 0** — ECC F-P3-3 was reopened and re-closed the same day; see below
 - Needs on-device / on-chain / live-backend verification: **21**
+
+---
+
+## Third pass — 2026-07-28 (`184d08a5` → `f1389c91`, 4 commits)
+
+Two source PRs landed after the second pass. One of them **contradicts a row the first
+pass marked FIXED**, which is the most useful thing in this section.
+
+### ⚠️ Correction — BR-0727-SEND was overstated by this tracker
+
+The first pass recorded BR-0727-SEND as FIXED on this evidence:
+
+> **grep**: `sendAmountError.js:67` returns `'malformed'`, fed the gate's OWN verdict
+> (`wellFormed`) so message and gate cannot drift
+
+Every word of that is true, **and the finding was still live.** The amount input was
+`type="number"`, and the HTML value-sanitisation algorithm blanks anything that is not a
+"valid floating-point number" **before React ever sees it**. Probed in the running app
+(PR #1430):
+
+| typed | reaches state |
+|---|---|
+| `1,5` | `''` |
+| `1.2.3` | `''` |
+| `1.` | `''` |
+| `abc` | `''` |
+| `1e-8` | `1e-8` |
+
+So **4 of the 7 fixtures could never reach the helper**. A user typing `1,5` got *"Amount
+is required"* over a visibly non-empty field — a different lie from the one that was fixed.
+Only exponent notation ever reached the new copy. Closed by **PR #1430** (`5e489838`):
+`type="text"` + `inputMode="decimal"` keeps the mobile decimal keypad while preserving the
+raw string. **grep-confirmed**: `SendCrypto.jsx:1626-1627`.
+
+**The lesson is about this tracker's own method.** The grep proved the helper *returns*
+`'malformed'`. It never proved the helper could be *reached*. That is precisely the
+distinction this tracker keeps flagging in other people's work — "is the check present?" is
+not "can the check fire?" — and the same shape as the cert guard whose test was gated to
+`main`-only, and the consent gate enforced in a layer nothing called. **A `(grep)` tag on a
+UI-behaviour finding is weaker evidence than it looks: it establishes the code path exists,
+not that input can traverse it.** For anything user-input-shaped, the honest tag is
+UNVERIFIED until something exercises it end to end.
+
+### Closed this pass
+
+| ID | Severity | Finding | Closed by | Confirmed by |
+|---|---|---|---|---|
+| **BR-0727-SEND** *(re-closed)* | MEDIUM | Malformed amounts blanked by `type="number"` before validation could see them | **PR #1430** (`5e489838`) | **grep**: `SendCrypto.jsx:1626-1627` `type="text"` + `inputMode="decimal"`; rationale comment at `:1610-1618` |
+| **SEC-0728-EB** | MEDIUM | `ErrorBoundary` rendered `error.toString()` in production — internal detail exposure (A09 / the project's own "never expose stack traces or internal paths" rule). Had been fixed once and **reverted by a linter** | **PR #1428** (`504861aa`) | **grep**: `ErrorBoundary.jsx:51` guards on `import.meta.env.DEV` |
+| **SEC-0728-VAL** | MEDIUM | No client-side validation at the API boundary: `trackEvent` sent arbitrary event names and unbounded metadata, `referralApi` sent malformed codes — all rejected only server-side, one round-trip later | **PR #1428** (`504861aa`) | **grep**: `trackEvent.js:27` allowlist guard + `:106` `ALLOWED_EVENTS`; 4 KB cap enforced client-side; `referralApi` validates `VYX-[A-Z0-9]{6}` at every entry point |
+
+**Note on SEC-0728-VAL:** this is defence-in-depth, not a new control — the authoritative
+enforcement remains the SECURITY DEFINER RPCs (PR #1334). It closes a round-trip and an
+error-shape leak, and it makes the client agree with the server's allowlist. Do not read it
+as "input validation was missing"; the server had it.
+
+**Note on SEC-0728-EB:** worth watching. The commit says the guard *"was reverted by a
+linter"* and had to be re-applied. That is the fifth instance in this repo of a security
+control removed by a mechanical process — the cert guard regressed four times the same way.
+No standing test asserts the ErrorBoundary guard; if it is reverted again, nothing fails.
 
 ---
 
@@ -210,7 +271,7 @@ The third is a genuine partial that the checklist's phrasing was concealing.
 | **BR-0727-I3LOG** | HIGH | Decoy state (`isDemo`) logged to console every render | **NEW this run** — `WalletEntry.jsx:988` only, DEV-gated `console.error` (grep) |
 | **BR-0727-CONSENT-REASK** | MEDIUM | "One-time" consent re-asked every unlock, overwriting a stored denial | **NEW this run** — `WalletEntry.jsx:470` mount-seeded (grep) |
 | **BR-0727-TESTS** | HIGH | Regression tests rewritten to assert the defect | **NEW this run** — `WalletEntry.kek-gate.test.jsx:216,232` (grep) |
-| **BR-0727-SEND** | MEDIUM | Malformed send amount dead-ended with no message | **NEW this run** — `sendAmountError.js:67` fed the gate's own verdict (grep) |
+| **BR-0727-SEND** | MEDIUM | Malformed send amount dead-ended with no message | ⚠️ **This row was OVERSTATED — see the third-pass correction below.** The helper was present but unreachable for 4 of its 7 inputs until PR #1430 (`5e489838`) |
 | **BR-0727-PRICING** | MEDIUM | Hardcoded discount claims beside independently-resolved prices (I4) | **NEW this run** — `annualSaving.js:38-47` null → no claim (grep) |
 | **BR-0723-F2 / #1373** | MAJOR | Debug/release cert guard fail-open and inert (4th regression) | **NEW this run** — guard throws; `ci.yml:338/391` run it **on PRs**; escape hatches unused (grep) |
 | 2026-07-20 weekly H-1 | HIGH | WC session-approval RASP gate was a no-op | `WalletConnectProvider.jsx:779` `if (!gate.proceedAllowed) throw` (grep) |
