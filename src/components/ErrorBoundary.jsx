@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component {
               <p className="text-sm text-muted-foreground">
                 An unexpected error occurred. This has been logged for debugging purposes.
               </p>
-              {this.state.error && (
+              {this.state.error && import.meta.env.DEV && (
                 <div className="p-3 bg-background rounded-lg border border-border">
                   <p className="text-xs font-mono text-destructive break-all">
                     {this.state.error.toString()}

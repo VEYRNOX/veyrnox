@@ -17,8 +17,25 @@ import { DEMO } from '@/api/demoClient';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
 import { hasConsent } from '@/lib/consent';
 
+// Mirrors the server-side allowlist in sql/telemetry-events-allowlist.sql.
+// Built lazily so it can reference EVENT defined below; populated on first call.
+let _allowedEvents = null;
+function allowedEvents() {
+  if (!_allowedEvents) _allowedEvents = new Set(Object.values(EVENT));
+  return _allowedEvents;
+}
+
+const METADATA_BYTE_LIMIT = 4096;
+
 export async function trackEvent(event, metadata = {}) {
   if (!supabase || DEMO || isDeniabilityOrDemoActive()) return;
+  // Client-side pre-flight: reject unknown event types and oversized metadata
+  // before they hit the network. The server enforces both of these too
+  // (sql/telemetry-events-allowlist.sql), but catching them here avoids
+  // unnecessary round-trips and surfaces typos at call sites in dev.
+  if (typeof event !== 'string' || !allowedEvents().has(event)) return;
+  const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
+  if (JSON.stringify(safeMetadata).length > METADATA_BYTE_LIMIT) return;
   // CONSENT IS CHECKED HERE, NOT AT THE CALL SITE. Previously only
   // analytics.js emit() gated on consent, so the 11 pre-existing call sites
   // that invoke trackEvent() directly (WalletProvider, SendCrypto,
@@ -37,7 +54,7 @@ export async function trackEvent(event, metadata = {}) {
     await supabase.rpc('track_event', {
       p_device_id: deviceId,
       p_event: event,
-      p_metadata: metadata && typeof metadata === 'object' ? metadata : {},
+      p_metadata: safeMetadata,
     });
   } catch {
     // Best-effort: never block the app on analytics failure.
