@@ -58,6 +58,14 @@ let _now = () => Date.now();
 
 function _storeProposal(proposal) {
   _pendingProposals.set(proposal.id, { proposal, insertedAt: _now() });
+  // audit-L6: arm the per-proposal expiry timer so a stale entry is evicted
+  // even if the user dismisses the modal without pressing Reject and no new
+  // proposal arrives to trigger the lazy cleanupExpiredProposals sweep.
+  _clearProposalTimer(proposal.id);
+  _proposalTimers.set(
+    proposal.id,
+    _scheduleProposalExpiry(proposal.id, proposal.params?.expiryTimestamp),
+  );
 }
 
 // Reject + evict every proposal older than PROPOSAL_TTL_MS. Safe to call on a
