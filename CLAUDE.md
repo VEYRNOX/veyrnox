@@ -147,6 +147,22 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
   2/code/hour; `referral_attributions` public SELECT removed (revenue data no
   longer disclosed). Shared `lib/deviceId.js` extracted. SQL migration:
   `sql/api-security-hardening.sql`. BUILT, INTERNAL — not independently audited.
+- **H-3 (2026-07-28) — `record_attribution` REVOKE appended to
+  `sql/api-security-hardening.sql`, SHIP-ONLY.** Every SECURITY DEFINER function
+  in that file was created with the default PUBLIC EXECUTE grant, leaving
+  `record_attribution` reachable by the anon key — a caller can forge revenue
+  rows against any published referral code (subject to the 2/hr rate limit and
+  the $0–$1000 range), inflating a referrer's earnings display. The primary
+  H-3 fix REVOKEs `record_attribution` from PUBLIC/anon/authenticated and
+  GRANTs EXECUTE to service_role only. The seven other functions listed in
+  `sql/check-first-referral-bonus-hardening.sql`'s STILL OPEN section receive
+  the same treatment in the same commit — but six of them (`track_event`,
+  `increment_referral`, `generate_referral_code`, `register_referral_code`,
+  `get_referral_earnings`, `get_referral_paid_count`) still have live anon
+  callers in `src/api/referralApi.js` and `src/api/trackEvent.js`. Running the
+  SQL without a matching client refactor will break referral + telemetry
+  writes at runtime. Owner must review before executing. Only
+  `record_attribution` and `get_referral_leaderboard` are safe-immediate.
 
 **All 10 assets LIVE** — ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT.
 

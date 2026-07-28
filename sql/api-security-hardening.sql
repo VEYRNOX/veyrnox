@@ -324,3 +324,94 @@ DROP POLICY IF EXISTS "public insert" ON referrals;
 
 -- Keep public SELECT on referrals (codes are shared by design, count is
 -- vanity-only — paid subscriber count drives tier, not raw referral count).
+
+
+-- ============================================================================
+-- 6. EXECUTE lockdown — H-3 (2026-07-28 internal audit)
+-- ============================================================================
+--
+-- Every SECURITY DEFINER function created above was shipped with the default
+-- PUBLIC EXECUTE grant. `anon` is a member of PUBLIC, so PostgREST exposes
+-- each one to the anon key baked into the client bundle. The primary H-3
+-- finding is `record_attribution`: with only anon access, a caller can forge
+-- revenue rows against any published referral code (subject to the 2/hr rate
+-- limit and the $0–$1000 range), inflating a referrer's earnings display and
+-- polluting the attribution table. Attribution recording belongs
+-- server-side (Edge Function or webhook), never client-driven — REVOKE and
+-- GRANT to service_role only, matching the pattern established by
+-- check-first-referral-bonus-hardening.sql and decrement-referral-hardening.sql.
+--
+-- REVOKE from PUBLIC is required in addition to REVOKE from anon: revoking
+-- the role alone leaves the PUBLIC grant intact and the function stays
+-- reachable.
+--
+-- SHIP FILES ONLY. This migration is NOT executed by this PR. Owner must run
+-- it manually after reviewing the client-impact notes below.
+--
+-- CLIENT IMPACT — the STILL OPEN batch below includes functions the client
+-- currently calls with the anon key (see src/api/referralApi.js and
+-- src/api/trackEvent.js). Running these REVOKEs without a matching client
+-- refactor will break the referral + telemetry flows at runtime. The four
+-- writes flagged (track_event, increment_referral, generate_referral_code,
+-- register_referral_code) each need a decision — leave anon-callable (accept
+-- current threat model, rely on rate limits), or move behind an Edge
+-- Function. record_attribution has no such tension: revenue attribution
+-- should not be client-authored, so this one is safe to REVOKE immediately.
+-- The two read helpers (get_referral_earnings, get_referral_paid_count) are
+-- called from the referral-owner UI on their own device; treat as decisions
+-- pending the same review.
+-- ============================================================================
+
+-- H-3 primary — record_attribution: never client-authored. Safe to revoke.
+REVOKE ALL ON FUNCTION public.record_attribution(text, text, int, int) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.record_attribution(text, text, int, int) FROM anon;
+REVOKE ALL ON FUNCTION public.record_attribution(text, text, int, int) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.record_attribution(text, text, int, int) TO service_role;
+
+-- STILL-OPEN batch from check-first-referral-bonus-hardening.sql.
+-- WARNING: each of the following (except get_referral_leaderboard) currently
+-- has a client caller with the anon key. Running these REVOKEs breaks the
+-- app until callers move to a service-role path. Kept in this file so the
+-- owner has one place to make the call.
+
+REVOKE ALL ON FUNCTION public.track_event(uuid, text, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.track_event(uuid, text, jsonb) FROM anon;
+REVOKE ALL ON FUNCTION public.track_event(uuid, text, jsonb) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.track_event(uuid, text, jsonb) TO service_role;
+
+REVOKE ALL ON FUNCTION public.increment_referral(text, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.increment_referral(text, uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.increment_referral(text, uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_referral(text, uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.generate_referral_code(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.generate_referral_code(uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.generate_referral_code(uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_referral_code(uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.register_referral_code(text, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.register_referral_code(text, uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.register_referral_code(text, uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.register_referral_code(text, uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.get_referral_earnings(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_earnings(text) FROM anon;
+REVOKE ALL ON FUNCTION public.get_referral_earnings(text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.get_referral_earnings(text) TO service_role;
+
+REVOKE ALL ON FUNCTION public.get_referral_paid_count(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_paid_count(text) FROM anon;
+REVOKE ALL ON FUNCTION public.get_referral_paid_count(text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.get_referral_paid_count(text) TO service_role;
+
+-- get_referral_leaderboard has no client caller — safe to revoke immediately.
+REVOKE ALL ON FUNCTION public.get_referral_leaderboard() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_leaderboard() FROM anon;
+REVOKE ALL ON FUNCTION public.get_referral_leaderboard() FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.get_referral_leaderboard() TO service_role;
+
+-- VERIFY (run after the migration; do not take the above on trust):
+--   SELECT has_function_privilege('anon',
+--     'public.record_attribution(text,text,int,int)', 'EXECUTE');   -- expect f
+--   SELECT has_function_privilege('service_role',
+--     'public.record_attribution(text,text,int,int)', 'EXECUTE');   -- expect t
