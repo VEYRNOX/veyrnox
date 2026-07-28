@@ -61,9 +61,9 @@ jobs:
       - name: Start preview server
         # `serve -s dist -l 4173` handles SPA fallback so /plans etc resolve.
         run: |
+          mkdir -p perf/results
           nohup npx serve -s dist -l 4173 > perf/results/serve.log 2>&1 &
           echo $! > perf/results/serve.pid
-          mkdir -p perf/results
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:4173 > /dev/null; then
               echo "preview up"
