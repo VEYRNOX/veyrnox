@@ -1421,7 +1421,7 @@ report H-1 as fixed until it lands on `main`.
 ## 2026-07-28 First-run tour RESTORED — ECC F-P3-3 re-remediated
 
 > ✅ BUILT (INTERNAL, UI scope) — the deletion below was reverted on 2026-07-28 in
-> PR #1414. **ECC finding F-P3-3 (#1160) is remediated again.**
+> PR #1417. **ECC finding F-P3-3 (#1160) is remediated again.**
 
 `src/components/FirstRunTour.jsx` and `src/components/__tests__/FirstRunTour.placement.test.js`
 were restored byte-identical from `de8cb829^`, and the three wiring points removed by
@@ -1480,7 +1480,7 @@ restore, except the last two):
 - The Subscription outcome-first preamble remains disabled (see above) — a separate
   owner decision.
 
-Status: BUILT (restored 2026-07-28, PR #1414). INTERNAL, no device verification, no
+Status: BUILT (restored 2026-07-28, PR #1417). INTERNAL, no device verification, no
 on-chain txid — UI scope only.
 
 ## Related docs

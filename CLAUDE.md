@@ -296,7 +296,7 @@ Two of them had already reached `main` via PR #1403, so the fixes were cut fresh
 - **`.mono-value`, not `font-mono tabular-nums`** — the latter misses the slashed
   zero and letter-spacing every other verifiable value gets.
 - **FirstRunTour was deleted undocumented by PR #1403, reopening ECC F-P3-3 (#1160).
-  RESTORED 2026-07-28 (PR #1414) — F-P3-3 is remediated again.** The component and its
+  RESTORED 2026-07-28 (PR #1417) — F-P3-3 is remediated again.** The component and its
   placement test came back byte-identical from `de8cb829^`; the wiring was re-applied to
   the CURRENT `WalletEntry.jsx` rather than reverted wholesale, because #1409/#1410 had
   since rewritten that file's consent logic. **No consent change was reverted.**
