@@ -27,7 +27,7 @@ export default function PortfolioSnapshots() {
 
   // Chart data (oldest first)
   const chartData = [...snapshots].reverse().map(s => ({
-    date: new Date(s.created_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+    date: new Date(s.created_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
     value: s.total_usd,
     label: s.label,
   }));
@@ -129,7 +129,7 @@ export default function PortfolioSnapshots() {
                     <p className="text-sm font-medium truncate">{s.label}</p>
                     {i === 0 && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">Latest</span>}
                   </div>
-                  <p className="text-xs text-muted-foreground">{new Date(s.created_date).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(s.created_date).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   {s.note && <p className="text-xs text-muted-foreground italic">{s.note}</p>}
                 </div>
                 <div className="text-right shrink-0">

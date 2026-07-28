@@ -1,23 +1,129 @@
-// locale.js — canonicalise a user-typed decimal amount for the ASCII-strict
-// wallet-core parsers.
+// lib/locale.js — resolver + I3 write-chokepoint + decimal-input normalization.
 //
-// WHY THIS EXISTS. `isFormAmountWellFormed` and `assertDecimalAmount` (M-3) only
-// accept plain ASCII decimals — "1.5", not "1,5". For a de-DE / fr-FR / es-ES
-// user who types the natural "1,5", the Continue button used to silently refuse
-// and the malformed-message could not distinguish "typed in the wrong locale"
-// from "typed nonsense". This helper takes the raw string plus the resolved UI
-// locale and returns the canonical ASCII form the validators expect, WITHOUT
-// weakening M-3 — bad input round-trips unchanged so the strict predicate still
-// rejects it downstream.
+// Two intents covered in one file (matches lib/locale.js's two responsibilities):
+//   - preferences (locale/timezone/fiat) with reads ungated, writes NO-OP in a
+//     decoy/demo session — same shape as lib/consent.js after PR #1410.
+//   - decimal canonicalisation for the send-amount path. The strict downstream
+//     predicate (assertDecimalAmount, M-3) is unchanged; this file's rule is
+//     "canonicalise unambiguously, otherwise round-trip unchanged".
 //
-// The unavoidable ambiguity: en-US "1,5" and de-DE "1,5" look identical but mean
-// different things. The rule below sides with SAFETY: strip a thousands
-// separator only if it sits at a valid every-3-digit grouping position from the
-// integer's right. "1,5" en-US fails that test → kept as-is → the strict
-// predicate still flags it, and the user sees the same 'malformed' message.
+// The two suites overlap only at the surface (`normalizeDecimalInput`); each
+// asserts a distinct aspect so removing either loses coverage.
 
-import { describe, it, expect } from 'vitest';
-import { normalizeDecimalInput, resolveLocale } from '../locale.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import {
+  LOCALE_KEY, TIMEZONE_KEY, FIAT_KEY, LOCALE_CHANGED_EVENT, SUPPORTED_FIAT,
+  resolveLocale, resolveTimeZone, resolveFiatCurrency,
+  setLocale, setTimeZone, setFiatCurrency, clearLocalePreferences,
+  normalizeDecimalInput,
+} from '../locale.js';
+import { setDeniabilitySession } from '@/wallet-core/deniabilitySession.js';
+
+function clearAllPrefs() {
+  try {
+    localStorage.removeItem(LOCALE_KEY);
+    localStorage.removeItem(TIMEZONE_KEY);
+    localStorage.removeItem(FIAT_KEY);
+    localStorage.removeItem('veyrnox-demo');
+  } catch {}
+  setDeniabilitySession(false);
+}
+
+describe('resolveLocale / resolveTimeZone / resolveFiatCurrency', () => {
+  beforeEach(clearAllPrefs);
+  afterEach(clearAllPrefs);
+
+  it('falls back to a safe default when nothing is stored', () => {
+    expect(typeof resolveLocale()).toBe('string');
+    expect(resolveLocale().length).toBeGreaterThan(0);
+    expect(typeof resolveTimeZone()).toBe('string');
+    expect(resolveFiatCurrency()).toBe('USD');
+  });
+
+  it('honours a stored preference over the browser default', () => {
+    localStorage.setItem(LOCALE_KEY, 'de-DE');
+    localStorage.setItem(TIMEZONE_KEY, 'Europe/Berlin');
+    localStorage.setItem(FIAT_KEY, 'EUR');
+    expect(resolveLocale()).toBe('de-DE');
+    expect(resolveTimeZone()).toBe('Europe/Berlin');
+    expect(resolveFiatCurrency()).toBe('EUR');
+  });
+
+  it('rejects a stored fiat code outside SUPPORTED_FIAT (fail-closed)', () => {
+    localStorage.setItem(FIAT_KEY, 'ZWL');
+    expect(resolveFiatCurrency()).toBe('USD');
+  });
+
+  it('accepts a synthetic navigator via opts (API preserved from PR #1471)', () => {
+    // Empty bag / empty navigator → fallback
+    expect(resolveLocale({ navigator: undefined })).toBe('en-US');
+    expect(resolveLocale({ navigator: {} })).toBe('en-US');
+    // Explicit language field
+    expect(resolveLocale({ navigator: { language: 'de-DE' } })).toBe('de-DE');
+    // Chrome's canonical order: navigator.languages[0] wins over navigator.language
+    expect(
+      resolveLocale({ navigator: { languages: ['fr-FR', 'en-US'], language: 'en-US' } })
+    ).toBe('fr-FR');
+  });
+});
+
+describe('setLocale / setTimeZone / setFiatCurrency', () => {
+  beforeEach(clearAllPrefs);
+  afterEach(clearAllPrefs);
+
+  it('persists a valid preference and dispatches LOCALE_CHANGED_EVENT', () => {
+    const handler = vi.fn();
+    window.addEventListener(LOCALE_CHANGED_EVENT, handler);
+    setLocale('fr-FR');
+    setTimeZone('Europe/Paris');
+    setFiatCurrency('EUR');
+    expect(localStorage.getItem(LOCALE_KEY)).toBe('fr-FR');
+    expect(localStorage.getItem(TIMEZONE_KEY)).toBe('Europe/Paris');
+    expect(localStorage.getItem(FIAT_KEY)).toBe('EUR');
+    expect(handler).toHaveBeenCalledTimes(3);
+    window.removeEventListener(LOCALE_CHANGED_EVENT, handler);
+  });
+
+  it('silently ignores an unsupported fiat code', () => {
+    setFiatCurrency('ZWL');
+    expect(localStorage.getItem(FIAT_KEY)).toBeNull();
+    for (const c of SUPPORTED_FIAT) {
+      setFiatCurrency(c);
+      expect(localStorage.getItem(FIAT_KEY)).toBe(c);
+    }
+  });
+
+  it('is a NO-OP in a decoy/demo session (I3) — write is dropped, event NOT fired', () => {
+    localStorage.setItem(LOCALE_KEY, 'en-US');
+    localStorage.setItem(FIAT_KEY, 'USD');
+    const handler = vi.fn();
+    window.addEventListener(LOCALE_CHANGED_EVENT, handler);
+
+    setDeniabilitySession(true);
+    setLocale('fr-FR');
+    setTimeZone('Europe/Paris');
+    setFiatCurrency('EUR');
+    clearLocalePreferences();
+
+    // Real user's stored preference is untouched.
+    expect(localStorage.getItem(LOCALE_KEY)).toBe('en-US');
+    expect(localStorage.getItem(FIAT_KEY)).toBe('USD');
+    expect(handler).not.toHaveBeenCalled();
+    window.removeEventListener(LOCALE_CHANGED_EVENT, handler);
+  });
+
+  it('demo session (veyrnox-demo=1) is also gated', () => {
+    localStorage.setItem('veyrnox-demo', '1');
+    setLocale('fr-FR');
+    setFiatCurrency('EUR');
+    expect(localStorage.getItem(LOCALE_KEY)).toBeNull();
+    expect(localStorage.getItem(FIAT_KEY)).toBeNull();
+  });
+});
+
+// ── The decimal-normalization suite ships as its own describe blocks so a
+// failure names the case precisely. Merged from PR #1471 (send-amount fix)
+// and preserved verbatim except for the top-level import statement above.
 
 describe('normalizeDecimalInput — comma-decimal locales (the whole reason this exists)', () => {
   it('rewrites de-DE "1,5" to canonical "1.5"', () => {
@@ -45,10 +151,11 @@ describe('normalizeDecimalInput — comma-decimal locales (the whole reason this
 
   it('strips fr-FR narrow no-break space groupings', () => {
     // Intl.NumberFormat('fr-FR') produces NBSP / narrow NBSP as the group char.
-    // Accept the regular space too — that's what a keyboard produces.
-    expect(normalizeDecimalInput('1 234,56', 'fr-FR')).toBe('1234.56');
-    expect(normalizeDecimalInput('1 234,56', 'fr-FR')).toBe('1234.56');
-    expect(normalizeDecimalInput('1 234,56', 'fr-FR')).toBe('1234.56');
+    // Accept the regular space too — that's what a keyboard produces. Kept as
+    // \u escapes to survive round-trips through tools that flatten NBSPs.
+    expect(normalizeDecimalInput('1 234,56', 'fr-FR')).toBe('1234.56'); // U+0020
+    expect(normalizeDecimalInput('1 234,56', 'fr-FR')).toBe('1234.56'); // NBSP
+    expect(normalizeDecimalInput('1 234,56', 'fr-FR')).toBe('1234.56'); // narrow NBSP
   });
 });
 
@@ -127,30 +234,5 @@ describe('normalizeDecimalInput — malformed input is passed through unchanged'
     ['1.', 'en-US'],
   ])('%s (%s) is returned unchanged', (input, locale) => {
     expect(normalizeDecimalInput(input, locale)).toBe(input);
-  });
-});
-
-describe('resolveLocale', () => {
-  it('returns a non-empty BCP-47 string', () => {
-    const loc = resolveLocale();
-    expect(typeof loc).toBe('string');
-    expect(loc.length).toBeGreaterThan(0);
-  });
-
-  it('falls back to en-US when nothing else is available', () => {
-    // Simulate an environment with no navigator: pass an empty options bag.
-    expect(resolveLocale({ navigator: undefined })).toBe('en-US');
-    expect(resolveLocale({ navigator: {} })).toBe('en-US');
-  });
-
-  it('prefers navigator.language when present', () => {
-    expect(resolveLocale({ navigator: { language: 'de-DE' } })).toBe('de-DE');
-  });
-
-  it('prefers navigator.languages[0] over navigator.language when both are set', () => {
-    // Chrome's canonical order.
-    expect(
-      resolveLocale({ navigator: { languages: ['fr-FR', 'en-US'], language: 'en-US' } })
-    ).toBe('fr-FR');
   });
 });

@@ -76,7 +76,7 @@ export default function Analytics() {
     const buckets = {};
     for (let i = range; i >= 0; i--) {
       const d = new Date(nowMs - i * 86400_000);
-      const key = d.toLocaleDateString('en-GB', range <= 30
+      const key = d.toLocaleDateString(undefined, range <= 30
         ? { day: 'numeric', month: 'short' }
         : { month: 'short', year: '2-digit' });
       if (!(key in buckets)) buckets[key] = totalUSD;
@@ -89,7 +89,7 @@ export default function Analytics() {
       const usd = parseFloat(tx.amount || '0') * rate;
       if (tx.type === 'send') running += usd;
       else if (tx.type === 'receive') running -= usd;
-      const key = new Date(tx.timestamp).toLocaleDateString('en-GB', range <= 30
+      const key = new Date(tx.timestamp).toLocaleDateString(undefined, range <= 30
         ? { day: 'numeric', month: 'short' }
         : { month: 'short', year: '2-digit' });
       if (key in buckets) buckets[key] = Math.max(0, Math.round(running));
@@ -103,13 +103,13 @@ export default function Analytics() {
     const months = {};
     for (let i = 5; i >= 0; i--) {
       const d = new Date(); d.setMonth(d.getMonth() - i);
-      const key = d.toLocaleString('en-GB', { month: 'short' });
+      const key = d.toLocaleString(undefined, { month: 'short' });
       if (!months[key]) months[key] = { month: key, gains: 0, losses: 0 };
     }
     if (pricesEnabled && prices) {
       for (const tx of history) {
         if (!tx.timestamp) continue;
-        const key = new Date(tx.timestamp).toLocaleString('en-GB', { month: 'short' });
+        const key = new Date(tx.timestamp).toLocaleString(undefined, { month: 'short' });
         if (!months[key]) continue;
         const rate = (prices[tx.assetSymbol] ?? USD_RATES[tx.assetSymbol]) || 0;
         const usd = parseFloat(tx.amount || '0') * rate;

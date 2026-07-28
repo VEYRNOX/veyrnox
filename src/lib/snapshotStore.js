@@ -34,9 +34,9 @@ function storageKey(fingerprint) {
 function defaultLabel() {
   const d = new Date();
   return (
-    d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
+    d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) +
     ' ' +
-    d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   );
 }
 

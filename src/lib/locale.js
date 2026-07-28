@@ -1,23 +1,73 @@
-// Locale-aware canonicalisation for the send-amount input.
+// src/lib/locale.js — single source of truth for locale, timezone, fiat, and
+// send-amount decimal canonicalisation.
 //
-// The downstream validators (`isFormAmountWellFormed`, `assertDecimalAmount` in
-// wallet-core/amount.js — M-3 security control) accept plain ASCII decimals
-// only. That's a security invariant, not a UX preference: the strict shape
-// rules out ambiguous scientific notation and mixed separators before anything
-// reaches the signer. This module is the one place that converts a locale-
-// formatted input into that ASCII shape, WITHOUT weakening the strict rules —
-// anything it cannot unambiguously canonicalise is returned unchanged so the
-// downstream predicate still flags it.
+// Two responsibilities in one leaf module:
 //
-// The unavoidable ambiguity: "1,5" reads as 1.5 in de-DE / fr-FR / es-ES and
-// as an invalid thousands grouping in en-US. Silently rewriting en-US "1,5" to
-// "15" would multiply the intended send by 10 — the exact class of silent
-// misinterpretation this pipeline exists to prevent. So the rule is: only
-// treat a separator as a thousands mark when it sits at a valid every-3-digit
-// grouping position from the integer's right. "1,5" in en-US fails that test →
-// returned unchanged → downstream flags it → the user sees 'malformed' and
-// retypes.
+// 1. USER PREFERENCES (locale / timezone / fiat) with an I3 WRITE-CHOKEPOINT.
+//    The three preference keys below (`veyrnox-*`) live in SHARED localStorage:
+//    whatever any session writes, the primary wallet reads. So a decoy /
+//    duress / stealth / demo session must NEVER mutate them — a coerced tap
+//    on the currency or language selector must not silently flip the real
+//    user's setting, and must not force the real user to face an unexplained
+//    UI change on next unlock. The guard lives HERE, not at each call site:
+//    the consent module was written with per-call-site guards, a third writer
+//    landed without one, and the coercion leak shipped (PR #1410). Reads
+//    stay ungated — reading leaves no trace.
+//
+// 2. SEND-AMOUNT DECIMAL NORMALISATION. `isFormAmountWellFormed` and
+//    `assertDecimalAmount` (wallet-core/amount.js — M-3) accept plain ASCII
+//    decimals only. For a de-DE / fr-FR / es-ES user who types the natural
+//    "1,5" the strict predicate would reject silently. `normalizeDecimalInput`
+//    converts locale-formatted input into that ASCII shape WITHOUT weakening
+//    the strict rules — anything it cannot unambiguously canonicalise is
+//    returned unchanged so the downstream predicate still flags it.
+//
+// The safety story on ambiguous "1,5": in en-US that means "1 thousand 5" or
+// a typo; silently rewriting to "15" would multiply the intended send by 10.
+// So we treat a separator as a thousands mark only when it sits at a valid
+// every-3-digit grouping position from the integer's right — "1,5" in en-US
+// fails that test, is returned unchanged, and the user sees the same
+// 'malformed' message they'd get for any other invalid input.
+//
+// deniabilitySession is a true leaf (zero imports), so gating here keeps this
+// module acyclic.
 
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+
+// ── Preference keys (shared localStorage) ─────────────────────────────────
+
+export const LOCALE_KEY = 'veyrnox-locale';
+export const TIMEZONE_KEY = 'veyrnox-timezone';
+export const FIAT_KEY = 'veyrnox-fiat-currency';
+
+/** Dispatched when any locale preference changes (locale, timezone, fiat).
+ * Same-tab in-document notify, mirrors DENIABILITY_SESSION_CHANGED_EVENT. */
+export const LOCALE_CHANGED_EVENT = 'veyrnox:locale-changed';
+
+const FALLBACK_LOCALE = 'en-US';
+const FALLBACK_TIMEZONE = 'UTC';
+const FALLBACK_FIAT = 'USD';
+
+// Supported fiat currencies (matches FiatCurrencySelector's set). Anything
+// outside this set is treated as unset and falls through to the fallback.
+export const SUPPORTED_FIAT = ['USD', 'GBP', 'EUR', 'JPY', 'AUD'];
+
+// Best-effort read; localStorage throws on some Safari private-mode paths.
+function safeGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function safeSet(key, value) {
+  try { localStorage.setItem(key, value); } catch {}
+}
+function safeRemove(key) {
+  try { localStorage.removeItem(key); } catch {}
+}
+
+// ── Decimal / grouping helpers (send-amount canonicalisation) ─────────────
+
+// U+0020 (space), U+00A0 (NBSP), U+202F (narrow NBSP), U+2009 (thin space).
+// fr-FR / ru-RU emit narrow NBSP as the group char via Intl.NumberFormat;
+// physical keyboards produce the regular ASCII space — accept both.
 const WHITESPACE_GROUP_CHARS = new Set([' ', ' ', ' ', ' ']);
 
 function partsForLocale(locale) {
@@ -52,14 +102,14 @@ function groupPattern(group) {
  * grouped or plain-decimal shape for `locale` is returned unchanged.
  *
  * @param {string|null|undefined} input
- * @param {string} locale BCP-47 tag (e.g. 'de-DE'). Falls back gracefully.
+ * @param {string} [locale] BCP-47 tag (e.g. 'de-DE'). Defaults to resolveLocale().
  * @returns {string} canonical ASCII decimal, or the trimmed input unchanged.
  */
 export function normalizeDecimalInput(input, locale) {
   const s = String(input ?? '').trim();
   if (!s) return '';
 
-  const { decimal, group } = partsForLocale(locale);
+  const { decimal, group } = partsForLocale(locale || resolveLocale());
   const D = reEscape(decimal);
   const G = groupPattern(group);
 
@@ -96,12 +146,37 @@ export function normalizeDecimalInput(input, locale) {
   return s;
 }
 
+// ── Detection ─────────────────────────────────────────────────────────────
+
+function detectBrowserLocale(nav) {
+  const n = nav !== undefined
+    ? nav
+    : (typeof navigator !== 'undefined' ? navigator : undefined);
+  if (!n) return null;
+  const first = Array.isArray(n.languages) ? n.languages[0] : undefined;
+  if (typeof first === 'string' && first.length > 0) return first;
+  if (typeof n.language === 'string' && n.language.length > 0) return n.language;
+  return null;
+}
+
+function detectBrowserTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Resolvers ─────────────────────────────────────────────────────────────
+
 /**
- * Resolve the UI's BCP-47 locale. Accepts an options bag so tests can pass a
- * synthetic navigator without touching the global.
+ * Resolve the UI's BCP-47 locale. Order: stored preference → navigator.languages[0]
+ * → navigator.language → 'en-US'. Never throws.
+ *
+ * Accepts an options bag so tests can pass a synthetic navigator without
+ * touching the global (retains the API PR #1471 shipped).
  *
  * @param {{ navigator?: { language?: string, languages?: readonly string[] } }} [opts]
- * @returns {string}
  */
 /**
  * Locale-format a USD figure for DISPLAY. Never fed back into a parser — this
@@ -146,13 +221,78 @@ export function formatUsd(usd, locale, opts) {
 }
 
 export function resolveLocale(opts) {
-  const nav = opts && 'navigator' in opts
-    ? opts.navigator
-    : (typeof navigator !== 'undefined' ? navigator : undefined);
-  if (nav) {
-    const first = Array.isArray(nav.languages) ? nav.languages[0] : undefined;
-    if (typeof first === 'string' && first.length > 0) return first;
-    if (typeof nav.language === 'string' && nav.language.length > 0) return nav.language;
-  }
-  return 'en-US';
+  const stored = safeGet(LOCALE_KEY);
+  if (stored) return stored;
+  const nav = opts && 'navigator' in opts ? opts.navigator : undefined;
+  return detectBrowserLocale(nav) || FALLBACK_LOCALE;
+}
+
+/**
+ * Resolve the user's timezone. Order: stored preference → Intl-detected zone
+ * → 'UTC'. Never throws; always returns a non-empty string.
+ */
+export function resolveTimeZone() {
+  return safeGet(TIMEZONE_KEY) || detectBrowserTimeZone() || FALLBACK_TIMEZONE;
+}
+
+/**
+ * Resolve the display fiat currency (ISO 4217). Order: stored preference (if
+ * in SUPPORTED_FIAT) → 'USD'. Returns one of SUPPORTED_FIAT.
+ *
+ * Kept conservative: we do NOT infer a fiat from the locale (e.g. `fr-FR` →
+ * EUR). Live FX is not wired (see cryptos.js USD_RATES / FiatCurrencySelector
+ * hardcoded rates) — silently switching a French user to EUR would mean
+ * quoting them a wrong number in a wrong currency. Explicit opt-in only.
+ */
+export function resolveFiatCurrency() {
+  const stored = safeGet(FIAT_KEY);
+  // tsc strict-null: safeGet returns string|null; narrow explicitly rather
+  // than relying on .includes(null) short-circuiting.
+  if (stored && SUPPORTED_FIAT.includes(stored)) return stored;
+  return FALLBACK_FIAT;
+}
+
+// ── Persistence (I3-gated) ────────────────────────────────────────────────
+
+function dispatchLocaleChanged() {
+  try {
+    if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent(LOCALE_CHANGED_EVENT));
+    }
+  } catch {}
+}
+
+/** Persist a locale preference. NO-OP in a decoy/demo session (I3). */
+export function setLocale(locale) {
+  if (isDeniabilityOrDemoActive()) return;
+  if (typeof locale !== 'string' || !locale) return;
+  safeSet(LOCALE_KEY, locale);
+  dispatchLocaleChanged();
+}
+
+/** Persist a timezone preference. NO-OP in a decoy/demo session (I3). */
+export function setTimeZone(timeZone) {
+  if (isDeniabilityOrDemoActive()) return;
+  if (typeof timeZone !== 'string' || !timeZone) return;
+  safeSet(TIMEZONE_KEY, timeZone);
+  dispatchLocaleChanged();
+}
+
+/** Persist a fiat currency preference. NO-OP in a decoy/demo session (I3).
+ * Silently ignores codes outside SUPPORTED_FIAT (fail-closed). */
+export function setFiatCurrency(code) {
+  if (isDeniabilityOrDemoActive()) return;
+  if (!SUPPORTED_FIAT.includes(code)) return;
+  safeSet(FIAT_KEY, code);
+  dispatchLocaleChanged();
+}
+
+/** Clear all stored preferences (returns the device to "never answered").
+ * NO-OP in a decoy/demo session (I3). Panic-wipe uses this. */
+export function clearLocalePreferences() {
+  if (isDeniabilityOrDemoActive()) return;
+  safeRemove(LOCALE_KEY);
+  safeRemove(TIMEZONE_KEY);
+  safeRemove(FIAT_KEY);
+  dispatchLocaleChanged();
 }
