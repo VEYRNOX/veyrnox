@@ -10,6 +10,33 @@
 //   3. If claimed, calls the RevenueCat REST API to grant a promotional
 //      entitlement for 1 month
 //
+// ─── H-1 (2026-07-28 internal audit): PREREQUISITE FOR DEPLOY ───────────────
+//
+// This function grants an entitlement to whichever RevenueCat app_user_id is
+// stored on the referral row. Previously the client set that value via
+// generate_referral_code(p_rc_user_id=...), which was a self-serve mint: any
+// caller with the public anon key could bind an arbitrary RC identity to a
+// code and receive a free month against it.
+//
+// Owner decision: rc_user_id is now server-only, populated by a verified
+// RevenueCat webhook that calls set_referral_rc_user() with the service_role
+// key (see sql/referral-rc-webhook.sql). The webhook handler MUST:
+//
+//   - verify the RC webhook signature (Authorization header + shared secret)
+//     using timingSafeEqual;
+//   - reject events without a resolvable referrer code;
+//   - be rate-limited independently of this function.
+//
+// TODO(H-1): implement the RC webhook Edge Function and REVIEW this file
+// again once it lands. If the webhook handler is co-located here in a future
+// change, add x-webhook-signature verification (HMAC over the raw body) BEFORE
+// the anon-key check below — the signature check is what actually gates the
+// setter; the anon-key check only proves possession of a public key.
+//
+// Until the webhook is deployed, rc_user_id stays NULL on every row and
+// check_first_referral_bonus() returns NULL, so this function short-circuits
+// on the `not_eligible` branch (I4: fail closed).
+//
 // ─── ON "AUTHENTICATION", HONESTLY ──────────────────────────────────────────
 //
 // Veyrnox is a self-custody wallet with NO user accounts and no server-side
@@ -58,6 +85,22 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 const ENTITLEMENT_ID = 'safety_plus';
 const BONUS_DURATION = 'P1M'; // ISO 8601: 1 month
 
+// M-8: RC calls can hang. AbortController + this timeout turn a hang into a
+// distinguishable outcome (rc_timeout_held) instead of a stuck Edge invocation.
+const RC_TIMEOUT_MS = 10_000;
+
+// Hex sha256 for the Idempotency-Key header. Stable per (code, granted_at_iso):
+// if a 5xx leaves the claim in place, the retry re-reads the same
+// first_bonus_granted_at from the DB and produces the same key, so RC dedupes
+// server-side rather than granting a second entitlement.
+async function sha256Hex(input: string): Promise<string> {
+  const bytes = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 // Same shape the client and the SQL generator produce: 'VYX-' + 6 chars from a
 // 32-char alphabet with I/O/0/1 removed. Rejecting anything else here keeps
 // invented input away from the database entirely.
@@ -79,7 +122,6 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://www.veyrnox.com',
   'capacitor://localhost',
   'https://localhost',
-  'http://localhost',
 ];
 
 function allowedOrigins(): Set<string> {
@@ -224,33 +266,127 @@ serve(async (req: Request) => {
       return json({ granted: false, reason: 'not_eligible' }, 200, origin);
     }
 
+    // M-8: read the claim timestamp for a stable idempotency key. The claim was
+    // just written inside check_first_referral_bonus, so this row exists. If
+    // this is a retry after a 5xx/timeout that left the claim in place, we get
+    // the SAME first_bonus_granted_at and therefore the SAME Idempotency-Key.
+    const { data: refRow, error: refErr } = await supabase
+      .from('referrals')
+      .select('first_bonus_granted_at')
+      .eq('code', referralCode)
+      .single();
+
+    if (refErr || !refRow?.first_bonus_granted_at) {
+      console.error('claim row read failed:', refErr?.message);
+      return json({ error: 'db_error' }, 500, origin);
+    }
+
+    const grantedAtIso: string = new Date(refRow.first_bonus_granted_at).toISOString();
+    const idemKey = await sha256Hex(`${referralCode}\n${grantedAtIso}`);
+
     // Grant 1-month promotional entitlement via RevenueCat REST API v1.
     // POST /v1/subscribers/{app_user_id}/entitlements/{entitlement_id}/promotional
     const rcUrl = `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(rcUserId)}/entitlements/${ENTITLEMENT_ID}/promotional`;
-    const rcResponse = await fetch(rcUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${rcSecretKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ duration: BONUS_DURATION }),
-    });
 
-    if (!rcResponse.ok) {
-      const rcBody = await rcResponse.text();
-      console.error('RevenueCat error:', rcResponse.status, rcBody);
+    // audit(outcome, status?, errorExcerpt?) — best-effort; if the insert
+    // itself fails we log and move on, because failing the response on an
+    // audit-write failure would defeat the whole purpose of the M-8 fix
+    // (which is: never lose track of a held claim).
+    const audit = async (
+      outcome:
+        | 'granted'
+        | 'rc_4xx_released'
+        | 'rc_5xx_held'
+        | 'rc_timeout_held'
+        | 'rc_network_held',
+      rcStatus: number | null,
+      errExcerpt: string | null,
+    ) => {
+      const { error } = await supabase
+        .from('first_referral_bonus_attempts')
+        .insert({
+          referral_code: referralCode,
+          idempotency_key: idemKey,
+          granted_at_iso: grantedAtIso,
+          outcome,
+          rc_status: rcStatus,
+          rc_error_excerpt: errExcerpt ? errExcerpt.slice(0, 500) : null,
+        });
+      if (error) {
+        console.error('audit_write_failed:', outcome, error.message);
+      }
+    };
 
-      // Release the claim so a retry can succeed. The rate limit above is what
-      // stops that retry path from being abused.
-      await supabase
-        .from('referrals')
-        .update({ first_bonus_granted_at: null })
-        .eq('code', referralCode);
-
-      return json({ error: 'revenuecat_error', status: rcResponse.status }, 502, origin);
+    let rcResponse: Response;
+    const controller = new AbortController();
+    const timeoutHandle = setTimeout(() => controller.abort(), RC_TIMEOUT_MS);
+    try {
+      rcResponse = await fetch(rcUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${rcSecretKey}`,
+          'Content-Type': 'application/json',
+          // M-8: server-side dedupe if RC honours the header, belt-and-braces
+          // against a double grant on our own retry.
+          'X-Idempotency-Key': idemKey,
+          'Idempotency-Key': idemKey,
+        },
+        body: JSON.stringify({ duration: BONUS_DURATION }),
+        signal: controller.signal,
+      });
+    } catch (netErr) {
+      const isAbort = (netErr as { name?: string })?.name === 'AbortError';
+      const outcome = isAbort ? 'rc_timeout_held' : 'rc_network_held';
+      const msg = (netErr as Error)?.message ?? String(netErr);
+      console.error(`RevenueCat ${outcome}:`, msg);
+      // HOLD the claim: RC may have accepted the write even though we never
+      // saw the response. Do NOT null first_bonus_granted_at here — that is
+      // exactly the double-grant path the M-8 fix closes.
+      await audit(outcome, null, msg);
+      return json(
+        { error: 'revenuecat_unreachable', held: true, retryable: true },
+        504,
+        origin,
+      );
+    } finally {
+      clearTimeout(timeoutHandle);
     }
 
-    return json({ granted: true }, 200, origin);
+    if (rcResponse.ok) {
+      await audit('granted', rcResponse.status, null);
+      return json({ granted: true }, 200, origin);
+    }
+
+    const rcBody = await rcResponse.text().catch(() => '');
+    console.error('RevenueCat error:', rcResponse.status, rcBody);
+
+    // M-8: split 4xx from 5xx. 429 and 408 are transient — treat as held so
+    // the claim is preserved and the client can retry after backoff.
+    const status = rcResponse.status;
+    const transient = status >= 500 || status === 408 || status === 429;
+
+    if (transient) {
+      await audit('rc_5xx_held', status, rcBody);
+      return json(
+        { error: 'revenuecat_error', status, held: true, retryable: true },
+        502,
+        origin,
+      );
+    }
+
+    // Genuine 4xx (400/401/403/404/…): RC rejected the request; no
+    // entitlement was granted. Safe to release the claim so a fixed retry
+    // (e.g. corrected rc_user_id) can succeed. The rate limit above bounds
+    // abuse of that retry path.
+    const { error: releaseErr } = await supabase
+      .from('referrals')
+      .update({ first_bonus_granted_at: null })
+      .eq('code', referralCode);
+    if (releaseErr) {
+      console.error('claim release failed:', releaseErr.message);
+    }
+    await audit('rc_4xx_released', status, rcBody);
+    return json({ error: 'revenuecat_error', status, released: true }, 502, origin);
   } catch (err) {
     console.error('Unhandled error:', err);
     return json({ error: 'internal' }, 500, origin);

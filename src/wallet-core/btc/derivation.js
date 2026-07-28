@@ -75,24 +75,36 @@ export function deriveBtcAccount(mnemonic, opts = {}) {
   const net = getBtcNetworkInfo(networkKey);
   if (!net) throw new Error(`Unknown Bitcoin network: ${networkKey}`);
 
+  // M-1 (audit 2026-07-28): the BIP-39 seed and the HD master private key can
+  // each re-derive every child key on every chain. They must be zeroed as soon
+  // as the leaf child has been derived, even if derivation or address encoding
+  // throws — mirrors the EVM equivalent in ../derivation.js (PR #1113). The
+  // returned child.privateKey/publicKey are the LIVE SECRET the caller signs
+  // with and cannot be wiped here; caller handles that (see send.js M-2).
   const seed = mnemonicToSeed(mnemonic, passphrase); // 64-byte seed (validates checksum)
-  const root = HDKey.fromMasterSeed(seed);
-  const path = btcPath(net.coinType, change, index);
-  const child = root.derive(path);
-  if (!child.privateKey) throw new Error(`No private key at path ${path}`);
+  let master = null;
+  try {
+    master = HDKey.fromMasterSeed(seed);
+    const path = btcPath(net.coinType, change, index);
+    const child = master.derive(path);
+    if (!child.privateKey) throw new Error(`No private key at path ${path}`);
 
-  // p2wpkh encodes the compressed pubkey hash as a bech32 address for THIS
-  // network's params (HRP tb/bc). publicKey from @scure/bip32 is the 33-byte
-  // compressed key BIP-84 mandates.
-  const { address } = p2wpkh(child.publicKey, net.params);
-  if (!address) throw new Error('Failed to derive P2WPKH address');
+    // p2wpkh encodes the compressed pubkey hash as a bech32 address for THIS
+    // network's params (HRP tb/bc). publicKey from @scure/bip32 is the 33-byte
+    // compressed key BIP-84 mandates.
+    const { address } = p2wpkh(child.publicKey, net.params);
+    if (!address) throw new Error('Failed to derive P2WPKH address');
 
-  return {
-    address,
-    publicKey: child.publicKey,
-    privateKey: child.privateKey,
-    path,
-  };
+    return {
+      address,
+      publicKey: child.publicKey,
+      privateKey: child.privateKey,
+      path,
+    };
+  } finally {
+    if (master && master.privateKey) master.privateKey.fill(0);
+    seed.fill(0);
+  }
 }
 
 /**
@@ -100,6 +112,13 @@ export function deriveBtcAccount(mnemonic, opts = {}) {
  * for deriving the change address inside the send path without exposing keys.
  */
 export function deriveBtcAddress(mnemonic, opts = {}) {
-  const { address, path } = deriveBtcAccount(mnemonic, opts);
-  return { address, path };
+  // M-1: the receive/display path never signs, so the leaf privateKey the
+  // account carries is pure attack surface here. Wipe it before returning so a
+  // caller that mishandles the object cannot recover a signing key.
+  const acct = deriveBtcAccount(mnemonic, opts);
+  try {
+    return { address: acct.address, path: acct.path };
+  } finally {
+    if (acct.privateKey) acct.privateKey.fill(0);
+  }
 }

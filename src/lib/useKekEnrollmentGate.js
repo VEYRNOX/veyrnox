@@ -107,7 +107,15 @@ export function useKekEnrollmentGate({ isUnlocked }) {
   //   - Deniability / demo     → skip (I3: no keystore access in these sessions).
   //   - isSecureHardwareAvailable() throws → skip (I4: fail OPEN, never block user).
   //   - No secure hardware     → skip.
-  //   - hasVaultKekWrap() throws → treat as NOT enrolled (safer to prompt).
+  //   - hasVaultKekWrap() throws → treat as ALREADY wrapped and skip the gate
+  //                                 (M-3, 2026-07-28): defaulting to "not wrapped"
+  //                                 activates the gate and routes into
+  //                                 enrollHardwareCredential, which used to coerce the
+  //                                 same probe failure into the DESTRUCTIVE re-enroll
+  //                                 path (clearCredential rotates H and invalidates
+  //                                 the existing kekWrap — funds lock-out). An
+  //                                 ambiguous probe is not evidence the vault is bare;
+  //                                 skip rather than risk destroying a real wrap.
   //   - Already wrapped        → skip.
   useEffect(() => {
     if (!isUnlocked) { checkedRef.current = false; return undefined; }
@@ -122,9 +130,9 @@ export function useKekEnrollmentGate({ isUnlocked }) {
         let secure;
         try { secure = await ks.isSecureHardwareAvailable(); } catch { return; }
         if (!secure) return;
-        let wrapped = false;
+        let wrapped = true;
         if (typeof ks.hasVaultKekWrap === 'function') {
-          try { wrapped = await ks.hasVaultKekWrap(); } catch { wrapped = false; }
+          try { wrapped = await ks.hasVaultKekWrap(); } catch { wrapped = true; }
         }
         if (wrapped) return;
         if (live) setGateActive(true);

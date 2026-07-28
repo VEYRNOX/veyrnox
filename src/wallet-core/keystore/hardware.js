@@ -150,11 +150,19 @@ export async function enrollHardwareCredential(opts) {
   // Block only when the caller confirms the vault is wrapped; otherwise the alias is
   // stale — clear it and proceed (native enroll() also pre-clears stale residue, L4).
   // Callers without a reconciler default to the conservative (block) behaviour.
+  //
+  // M-3 (2026-07-28): a throw from opts.isVaultWrapped() used to coerce vaultWrapped
+  // to FALSE — the destructive path (clearCredential + fresh enroll rotates H and
+  // permanently invalidates any existing kekWrap, funds lock-out). An ambiguous probe
+  // failure is NOT evidence the vault is bare; the only safe default is to treat it
+  // as wrapped and refuse to proceed (I4 fail-closed). Callers surface the
+  // HARDWARE_KEK_ALREADY_ENROLLED code and either retry the check or route the user
+  // through Skip → Security settings, rather than silently destroying the wrap.
   const alreadyEnrolled = await plugin.isEnrolled();
   if (alreadyEnrolled?.enrolled) {
     let vaultWrapped = true;
     if (opts && typeof opts.isVaultWrapped === 'function') {
-      try { vaultWrapped = await opts.isVaultWrapped(); } catch { vaultWrapped = false; }
+      try { vaultWrapped = await opts.isVaultWrapped(); } catch { vaultWrapped = true; }
     }
     if (vaultWrapped) {
       throw Object.assign(new Error('HARDWARE_KEK_ALREADY_ENROLLED'), {
