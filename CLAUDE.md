@@ -304,11 +304,16 @@ Two of them had already reached `main` via PR #1403, so the fixes were cut fresh
   returns FIRST, and consent was absent because `consentDone` is seeded from a stored
   answer at mount; the deletion was collateral to that misdiagnosis. (b) The placement
   test asserts the render sits within 900 chars of its `if`, so explanatory comments go
-  ABOVE the branch, not inside it. Still open: PR #1403's separate
-  `OUTCOME_PREAMBLE_ENABLED = false` in `Subscription.jsx` is off pending an owner
-  decision. **Corrected:** this bullet also listed the `veyrnox-first-run-tour-*` keys as
-  absent from the panic-wipe residue list. True when #1417 was written, false when it
-  merged — PR #1415 (`593c969b`) had added them ~50 min earlier. See the 07-28 entry.
+  ABOVE the branch, not inside it. **Corrected twice, and both corrections are now
+  closed.** (i) This bullet listed the `veyrnox-first-run-tour-*` keys as absent from the
+  panic-wipe residue list — true when #1417 was written, false when it merged, since
+  PR #1415 (`593c969b`) had added them ~50 min earlier (PR #1414 was an independent
+  duplicate of that same finding and was closed). See the 07-28 entry. (ii) It then listed
+  `OUTCOME_PREAMBLE_ENABLED = false` as off pending an owner decision; **PR #1422 removed
+  the flag.** The disable rested on a misidentification — `OutcomeSteps` is 3 steps, is
+  not a modal, and sits on `/plans` BEHIND the consent gate, so it never blocked consent;
+  the 5-step modal actually on screen was `FirstRunTour`, which #1403 had just deleted and
+  which was still rendering from the device-side cache that PR's own message identifies.
 
 **2026-07-28 daily security diff — 2 findings, both fixed and MERGED.** Scanned 14
 commits (`34f5da31`→`758aeb95`). The window was strongly net-positive on its own (four
@@ -345,6 +350,15 @@ read-gate), plus a regression-test assertion restored. Two items needed work.
   that back unguarded), and the remaining test is bidirectional and **fails the moment
   the flag flips to true** — verified by actually flipping it, not asserted. That failure
   is the tripwire that sends a reader back to un-skip; do not relax it.
+  **The tripwire fired and was honoured (PR #1422).** That PR removed the flag, so the
+  un-skip condition was met: the first case went red and was rewritten to assert the
+  preamble DOES render — not relaxed. Both `.skip`s are gone; the block is 3/3 active,
+  0 skipped, and each case is mutation-checked against the specific gate it names
+  (re-disable the render / ignore `OUTCOME_SEEN_KEY` / drop the `safety_plus` early
+  return each turn exactly one red). Worth recording as a process result, not just a
+  code one: #1418 and #1422 were written by different sessions that never spoke, and the
+  handoff worked **because #1418 wrote the un-skip condition into the file** rather than
+  leaving it in a PR description. Do that.
   **This is the flag-disabled cousin of the "align tests with the new flow" smell:
   a test asserting a behaviour that can no longer occur is coverage that READS as present
   and is not.**
