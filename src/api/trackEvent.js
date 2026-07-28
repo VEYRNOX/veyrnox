@@ -17,23 +17,14 @@ import { DEMO } from '@/api/demoClient';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
 import { hasConsent } from '@/lib/consent';
 
-// Mirrors the server-side allowlist in sql/telemetry-events-allowlist.sql.
-// Built lazily so it can reference EVENT defined below; populated on first call.
-let _allowedEvents = null;
-function allowedEvents() {
-  if (!_allowedEvents) _allowedEvents = new Set(Object.values(EVENT));
-  return _allowedEvents;
-}
-
 const METADATA_BYTE_LIMIT = 4096;
 
 export async function trackEvent(event, metadata = {}) {
   if (!supabase || DEMO || isDeniabilityOrDemoActive()) return;
-  // Client-side pre-flight: reject unknown event types and oversized metadata
-  // before they hit the network. The server enforces both of these too
-  // (sql/telemetry-events-allowlist.sql), but catching them here avoids
-  // unnecessary round-trips and surfaces typos at call sites in dev.
-  if (typeof event !== 'string' || !allowedEvents().has(event)) return;
+  // Client-side pre-flight: mirrors the server allowlist and 4 KB cap in
+  // sql/telemetry-events-allowlist.sql. Catches typos at call sites in dev
+  // and avoids unnecessary round-trips for invalid input.
+  if (typeof event !== 'string' || !ALLOWED_EVENTS.has(event)) return;
   const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
   if (JSON.stringify(safeMetadata).length > METADATA_BYTE_LIMIT) return;
   // CONSENT IS CHECKED HERE, NOT AT THE CALL SITE. Previously only
@@ -109,3 +100,7 @@ export const EVENT = {
   DAPP_CONNECT_START: 'dapp_connect_start',
   DAPP_CONNECT_RESULT: 'dapp_connect_result',
 };
+
+// Set built after EVENT so TypeScript infers Set<string> with no null union.
+// trackEvent() closes over this — by call time the module is fully initialised.
+const ALLOWED_EVENTS = new Set(Object.values(EVENT));
