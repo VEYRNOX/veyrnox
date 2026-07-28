@@ -559,7 +559,23 @@ export default function SendCrypto() {
   const balanceIndeterminate = !demoActive && flowSendEnabled && nativeLiveBalance == null;
   const balanceUsd = !balanceIndeterminate && sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
   const amountNum = parseFloat(amount);
-  const amountUsd = sendUsdRate != null && Number.isFinite(amountNum) && amountNum > 0 ? amountNum * sendUsdRate : null;
+  // Whether the typed amount is one we are willing to DERIVE FIGURES FROM. The
+  // amount field is type="text" (type="number" blanked "1,5" / "1." / "1.2.3"
+  // before React saw them, so the 'malformed' message could never fire for them —
+  // see SendCrypto.amountInputType.test.js). Now that those strings reach state,
+  // the raw parses mis-read them: parseFloat('1,5') is 1, Number('1.') is 1. Any
+  // display fed those would assert a figure the user never typed, and a half-typed
+  // "1." would pop a spend-limit warning mid-entry.
+  //
+  // NaN unless well-formed, using the SAME verdict the Continue button gates on, so
+  // what the form is willing to show and what it is willing to send cannot drift.
+  // Deliberately NOT used for `amountNum` above: sendAmountErrorKind needs the
+  // honest parseFloat, because isFormAmountWellFormed('0') is false and a gated
+  // value would turn "0" into 'malformed', losing the more specific
+  // "Amount must be greater than zero".
+  const amountWellFormed = isFormAmountWellFormed(amount);
+  const usableAmountNum = amountWellFormed ? amountNum : NaN;
+  const amountUsd = sendUsdRate != null && Number.isFinite(usableAmountNum) && usableAmountNum > 0 ? usableAmountNum * sendUsdRate : null;
 
   const addressFormatValid = !toAddress || !selectedWallet
     ? true
@@ -1591,17 +1607,24 @@ export default function SendCrypto() {
               <>
                 <Input
                   id="send-amount"
-                  type="number"
-                  // inputMode="decimal" gives mobile the numeric-with-separator keypad
-                  // (a bare type="number" offers the wrong pad on some Android browsers).
-                  // min="0" + step="any" hint non-negative decimals to the UA; they are a
-                  // UX/keypad layer only — the authoritative rejection of <=0 lives in
-                  // `sendAmountErrorKind` above and the base-unit conversion in toBaseUnits,
-                  // so these attributes never become the sole guard (a spoofed DOM can
-                  // still not bypass the JS validation).
+                  // type="text", NOT type="number". The HTML value-sanitisation
+                  // algorithm blanks anything that is not a "valid floating-point
+                  // number" before React sees it, so "1,5", "1.2.3", "1." and "abc"
+                  // arrived as "" and the form said "Amount is required" over a
+                  // visibly non-empty field — the 'malformed' message added in
+                  // PR #1409 could only ever fire for exponent notation. Text
+                  // preserves the raw string so the validators judge what was typed.
+                  //
+                  // inputMode="decimal" is why type="number" was here at all: it
+                  // gives mobile the decimal keypad, and it does that on a text
+                  // input too. min/step are gone with the number type — they are
+                  // inert on text, and keeping them would imply a UA constraint that
+                  // no longer applies. Nothing is lost by that: the authoritative
+                  // rejection has always been `isFormAmountWellFormed` +
+                  // `sendAmountErrorKind` here and `toBaseUnits` on the send path,
+                  // never the UA type (a spoofed DOM never bypassed the JS anyway).
+                  type="text"
                   inputMode="decimal"
-                  min="0"
-                  step="any"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                   onBlur={() => setAmountTouched(true)}
@@ -1678,7 +1701,7 @@ export default function SendCrypto() {
         {/* Spend-limit breach — explicit, specific message. Per-transaction AND
             daily caps from Security Center, both now enforced (see lib/txLimits.js).
             "Sent today" is summed from local tx history; nothing leaves the device. */}
-        {limitEval.blocked && parseFloat(amount) > 0 && (
+        {limitEval.blocked && usableAmountNum > 0 && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
             <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
             <div className="text-xs text-destructive space-y-1 min-w-0">
@@ -1703,7 +1726,7 @@ export default function SendCrypto() {
             `amount > effectiveBalance` condition already gates the button below;
             without this the button just greys out with no reason (audit: the
             over-balance case had no user feedback). */}
-        {balanceKnown && parseFloat(amount) > 0 && parseFloat(amount) > effectiveBalance && (
+        {balanceKnown && usableAmountNum > 0 && usableAmountNum > effectiveBalance && (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
             <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
             <p className="text-xs text-destructive min-w-0">
