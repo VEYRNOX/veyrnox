@@ -779,6 +779,14 @@ export function WalletConnectProvider({ children }) {
     if (!gate.proceedAllowed) {
       throw new Error(`RASP integrity check failed — session refused (${gate.rejectCode})`);
     }
+    // L-4 (audit 2026-07-28): session approval must obey the same step-up window
+    // as signing. Without this, a coerced/opportunistic attacker within the reauth
+    // window could approve a fresh dApp session that then requests signing — the
+    // per-request gate exists but the connection itself sidesteps H-NEW-B.
+    // Fail closed (I4).
+    if (isSendReauthRequired()) {
+      throw new Error('Step-up re-auth required — unlock again to approve this connection');
+    }
     if (!evmAddress) throw new Error('No wallet address — unlock first');
     const proposal = pendingProposals.find((p) => p.id === proposalId);
     if (!proposal) throw new Error('Proposal not found');
@@ -794,7 +802,7 @@ export function WalletConnectProvider({ children }) {
     void trackEvent(EVENT.WC_SESSION_APPROVED).catch(() => {});
     setPendingProposals((prev) => prev.filter((p) => p.id !== proposalId));
     refreshSessions();
-  }, [evmAddress, pendingProposals, refreshSessions]);
+  }, [evmAddress, pendingProposals, refreshSessions, isSendReauthRequired]);
 
   const handleRejectSession = useCallback(async (proposalId) => {
     await rejectSession(proposalId);
