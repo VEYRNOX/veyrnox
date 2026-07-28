@@ -17,8 +17,16 @@ import { DEMO } from '@/api/demoClient';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
 import { hasConsent } from '@/lib/consent';
 
+const METADATA_BYTE_LIMIT = 4096;
+
 export async function trackEvent(event, metadata = {}) {
   if (!supabase || DEMO || isDeniabilityOrDemoActive()) return;
+  // Client-side pre-flight: mirrors the server allowlist and 4 KB cap in
+  // sql/telemetry-events-allowlist.sql. Catches typos at call sites in dev
+  // and avoids unnecessary round-trips for invalid input.
+  if (typeof event !== 'string' || !ALLOWED_EVENTS.has(event)) return;
+  const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
+  if (JSON.stringify(safeMetadata).length > METADATA_BYTE_LIMIT) return;
   // CONSENT IS CHECKED HERE, NOT AT THE CALL SITE. Previously only
   // analytics.js emit() gated on consent, so the 11 pre-existing call sites
   // that invoke trackEvent() directly (WalletProvider, SendCrypto,
@@ -37,7 +45,7 @@ export async function trackEvent(event, metadata = {}) {
     await supabase.rpc('track_event', {
       p_device_id: deviceId,
       p_event: event,
-      p_metadata: metadata && typeof metadata === 'object' ? metadata : {},
+      p_metadata: safeMetadata,
     });
   } catch {
     // Best-effort: never block the app on analytics failure.
@@ -92,3 +100,7 @@ export const EVENT = {
   DAPP_CONNECT_START: 'dapp_connect_start',
   DAPP_CONNECT_RESULT: 'dapp_connect_result',
 };
+
+// Set built after EVENT so TypeScript infers Set<string> with no null union.
+// trackEvent() closes over this — by call time the module is fully initialised.
+const ALLOWED_EVENTS = new Set(Object.values(EVENT));
