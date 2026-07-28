@@ -206,37 +206,8 @@ class PlayIntegrityPlugin : Plugin() {
         }
     }
 
-    /**
-     * Verify the JWS RS256 signature using the certificate chain in the x5c header claim.
-     *
-     * Steps:
-     *  1. Decode the JWS header; assert alg == "RS256".
-     *  2. Build the cert chain from x5c (x5c[0]=leaf, x5c[last]=root).
-     *  3. Walk the chain: verify each cert[i] is signed by cert[i+1]. This ensures
-     *     the x5c array contains a valid PKI chain, not injected unrelated certs.
-     *  4. Assert the root cert issuer contains "Google" (weak — pending full pinning;
-     *     see G2-ROOTCERT-PIN below).
-     *  5. Verify SHA256withRSA over signedData using the leaf cert's public key.
-     *
-     * Returns false on ANY anomaly — caller maps false → unavailable() (fail-closed, I4).
-     *
-     * HONEST LIMITATION: the chain walk (step 3) closes the "injected random cert"
-     * attack by proving the x5c array is a cryptographically valid chain. However, the
-     * root cert is still only checked with issuer.contains("Google") — an attacker who
-     * can forge a Google-issuer self-signed root can still pass. In the Play Services
-     * IPC delivery channel this surface doesn't exist, but it should be closed with
-     * root-cert SHA-256 fingerprint pinning (G2-ROOTCERT-PIN: requires capturing a
-     * real production token on-device to extract the root DER, then replacing the
-     * issuer check with a fingerprint comparison).
-     *
-     * ALGORITHM: Google's Play Integrity documentation cites ES256; the predecessor
-     * SafetyNet API used RS256. Both are accepted (the `alg` field dispatches the
-     * correct Signature instance). Algorithm selection cannot be confirmed without a
-     * real production token. Any unknown alg returns false (fail-closed, I4).
-     */
-    // Delegated to PlayIntegrityJwsVerifier (extracted for JVM unit-testability — issue #957).
-    // The decoder lambda supplies android.util.Base64 so the verifier object stays free of
-    // android.* imports and is directly testable in desktop JVM unit tests.
+    // JWS signature verification is fully delegated to PlayIntegrityJwsVerifier —
+    // see that file for the current contract (SHA-256 root pin, no issuer-string fallback, #1097).
     private fun verifyJwsSignature(token: String): Boolean =
         PlayIntegrityJwsVerifier.verify(token, ::base64UrlDecode)
 
