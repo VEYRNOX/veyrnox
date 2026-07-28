@@ -10,6 +10,33 @@
 //   3. If claimed, calls the RevenueCat REST API to grant a promotional
 //      entitlement for 1 month
 //
+// ─── H-1 (2026-07-28 internal audit): PREREQUISITE FOR DEPLOY ───────────────
+//
+// This function grants an entitlement to whichever RevenueCat app_user_id is
+// stored on the referral row. Previously the client set that value via
+// generate_referral_code(p_rc_user_id=...), which was a self-serve mint: any
+// caller with the public anon key could bind an arbitrary RC identity to a
+// code and receive a free month against it.
+//
+// Owner decision: rc_user_id is now server-only, populated by a verified
+// RevenueCat webhook that calls set_referral_rc_user() with the service_role
+// key (see sql/referral-rc-webhook.sql). The webhook handler MUST:
+//
+//   - verify the RC webhook signature (Authorization header + shared secret)
+//     using timingSafeEqual;
+//   - reject events without a resolvable referrer code;
+//   - be rate-limited independently of this function.
+//
+// TODO(H-1): implement the RC webhook Edge Function and REVIEW this file
+// again once it lands. If the webhook handler is co-located here in a future
+// change, add x-webhook-signature verification (HMAC over the raw body) BEFORE
+// the anon-key check below — the signature check is what actually gates the
+// setter; the anon-key check only proves possession of a public key.
+//
+// Until the webhook is deployed, rc_user_id stays NULL on every row and
+// check_first_referral_bonus() returns NULL, so this function short-circuits
+// on the `not_eligible` branch (I4: fail closed).
+//
 // ─── ON "AUTHENTICATION", HONESTLY ──────────────────────────────────────────
 //
 // Veyrnox is a self-custody wallet with NO user accounts and no server-side
