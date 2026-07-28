@@ -399,9 +399,13 @@ describe('Subscription page — Manage subscription hidden when it should be', (
 });
 
 describe('Subscription page — tier-based referral discount', () => {
+  // Numeric `price` alongside `priceString`: RevenueCat returns both, and the
+  // banner's "% off" is now derived from the numbers. Fixtures that omit `price`
+  // silently make every derived claim null, so a percentage assertion would pass
+  // for the wrong reason.
   const defaultPackages = [
-    { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
-    { identifier: '$rc_annual', product: { priceString: '$49.99' } },
+    { identifier: '$rc_monthly', product: { priceString: '$5.99', price: 5.99 } },
+    { identifier: '$rc_annual', product: { priceString: '$49.99', price: 49.99 } },
   ];
   // A referral package wraps the SAME store product as the full-price one, so
   // its priceString is the BASE price on both stores — $5.99 / $49.99, not the
@@ -409,8 +413,8 @@ describe('Subscription page — tier-based referral discount', () => {
   // .discounts[]; Play: the option's introPhase) and is read by offerPriceInfo.
   // Fixtures that put $44.99 here would test a payload no store ever sends.
   const goldReferralPackages = [
-    { identifier: '$rc_monthly', product: { priceString: '$5.99' } },
-    { identifier: '$rc_annual', product: { priceString: '$49.99' } },
+    { identifier: '$rc_monthly', product: { priceString: '$5.99', price: 5.99 } },
+    { identifier: '$rc_annual', product: { priceString: '$49.99', price: 49.99 } },
   ];
 
   function setupGoldReferral() {
@@ -435,10 +439,65 @@ describe('Subscription page — tier-based referral discount', () => {
     getOfferings.mockResolvedValue({ availablePackages: defaultPackages });
   });
 
-  it('shows the discount banner with tier commission when referrer has a tier', async () => {
+  it('shows the discount banner with the discount derived from the store prices', async () => {
     setupGoldReferral();
     renderPage();
     await waitFor(() => expect(screen.getByText(/referral discount applied.*10% off/i)).toBeTruthy());
+  });
+
+  // The banner used to render referrerTierInfo.commission — the REFERRER's
+  // earnings rate off the static TIERS table, set before any offering resolved.
+  // These three guard that it now describes the price the buyer is charged.
+
+  it('claims NO percentage when the offer price cannot be read', async () => {
+    // A referral offering resolves (hasDiscount is true) but no offer price is
+    // readable, so the buyer pays the base price. The old banner still promised
+    // the tier percentage over the top of it.
+    setupGoldReferral();
+    offerPriceInfo.mockReturnValue(null);
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/referral discount applied/i)).toBeTruthy());
+    expect(screen.queryByText(/% off/i)).toBeNull();
+  });
+
+  it('claims NO percentage when FX rounding erased the discount', async () => {
+    // CLAUDE.md names this case: Bronze is full price in Albania/Armenia. The
+    // offer resolves and is honoured, but it lands on the base price.
+    setupGoldReferral();
+    offerPriceInfo.mockImplementation((pkg, offeringId) => {
+      if (offeringId !== 'referral-gold' || !pkg) return null;
+      if (pkg.identifier === '$rc_annual') return { priceString: '$49.99', price: 49.99 };
+      if (pkg.identifier === '$rc_monthly') return { priceString: '$5.99', price: 5.99 };
+      return null;
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/referral discount applied/i)).toBeTruthy());
+    expect(screen.queryByText(/% off/i)).toBeNull();
+  });
+
+  it('quotes the real delta, not the tier nominal rate, when the store cannot express it', async () => {
+    // Bronze is nominally 2.5%, which Apple cannot express — it charges $5.79
+    // against a $5.99 base, really 3.34% off. The banner must say 3%, and must
+    // not say 2.5%.
+    hasRedeemedMock.mockReturnValue(true);
+    getRedeemedCodeMock.mockReturnValue('VYX-BRONZE');
+    fetchPaidCount.mockResolvedValue(10);
+    getTierMock.mockReturnValue('bronze');
+    getTierInfoMock.mockReturnValue({ key: 'bronze', commission: 2.5, next: { key: 'silver', min: 100 } });
+    getOfferingIdForTierMock.mockReturnValue('referral-bronze');
+    getTierOffering.mockResolvedValue({ availablePackages: goldReferralPackages });
+    offerPriceInfo.mockImplementation((pkg, offeringId) => {
+      if (offeringId !== 'referral-bronze' || !pkg) return null;
+      if (pkg.identifier === '$rc_annual') return { priceString: '$48.49', price: 48.49 };
+      if (pkg.identifier === '$rc_monthly') return { priceString: '$5.79', price: 5.79 };
+      return null;
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText(/referral discount applied.*3% off/i)).toBeTruthy());
+    expect(screen.queryByText(/2\.5% off/i)).toBeNull();
   });
 
   it('does not show the discount banner when no code has been redeemed', async () => {
