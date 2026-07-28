@@ -339,6 +339,49 @@ class PlayIntegrityJwsVerifierTest {
     }
 
     @Test
+    fun `L-3 - chain with issuer CN Google but non-pinned root SHA-256 returns false`() {
+        // Doc-contract tripwire (L-3): PlayIntegrityPlugin.verifyJwsSignature's KDoc used
+        // to state "assert root issuer contains 'Google'" as the trust rule. #1097 replaced
+        // that with a SHA-256 pin, and the plugin's KDoc has been shortened to point here.
+        // This test converts the current contract into an executable check: an attacker
+        // who forges a chain whose root DN says "Google" but whose SHA-256 is not in the
+        // pinned set MUST be rejected. If someone reintroduces an issuer-string bypass,
+        // this test goes red.
+        val forgedRootKp = KeyPairGenerator.getInstance("EC", "BC").apply {
+            initialize(256, SecureRandom())
+        }.generateKeyPair()
+        val forgedLeafKp = KeyPairGenerator.getInstance("EC", "BC").apply {
+            initialize(256, SecureRandom())
+        }.generateKeyPair()
+        val forgedRoot = buildCert(
+            subjectDn = "CN=Google",
+            subjectPublicKey = forgedRootKp.public,
+            issuerDn = "CN=Google",
+            issuerPrivateKey = forgedRootKp.private,
+            sigAlg = "SHA256withECDSA",
+        )
+        // Sanity: the forged root's fingerprint must NOT be in the trusted-pin set.
+        val forgedFp = MessageDigest.getInstance("SHA-256").digest(forgedRoot.encoded)
+            .joinToString("") { "%02x".format(it) }
+        assertFalse(
+            "Precondition: forged root fingerprint must not be pinned",
+            PlayIntegrityJwsVerifier.ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING.contains(forgedFp),
+        )
+        val forgedLeaf = buildCert(
+            subjectDn = "CN=attest.google.com",
+            subjectPublicKey = forgedLeafKp.public,
+            issuerDn = "CN=Google",
+            issuerPrivateKey = forgedRootKp.private,
+            sigAlg = "SHA256withECDSA",
+        )
+        val token = buildJws("ES256", forgedLeafKp, listOf(forgedLeaf, forgedRoot))
+        assertFalse(
+            "Issuer CN 'Google' must not substitute for a SHA-256 pin match (L-3 doc contract)",
+            PlayIntegrityJwsVerifier.verify(token, b64Decode),
+        )
+    }
+
+    @Test
     fun `issue 1097 - pin miss on unknown self-signed root returns false`() {
         // Belt-and-suspenders: a length>=2 chain whose root fingerprint is not in
         // the trusted set must fail even without any "Google" wording present.
