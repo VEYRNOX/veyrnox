@@ -1,13 +1,20 @@
 // wallet-core/__tests__/panic-residue-first-run-tour.test.js
 //
-// I-3 residue-completeness for the two ORPHANED first-run-tour markers.
+// I-3 residue-completeness for the two first-run-tour markers.
 //
-// src/components/FirstRunTour.jsx was deleted in PR #1403 (de8cb829, 2026-07-27)
-// together with its armTour() call sites. Nothing reads or writes these keys any
-// more — but deleting the only reader does not delete the key from devices that
-// already have it. The tour shipped in PR #1174 (aca998a2, 2026-07-18), so every
-// device that ran a build from that ~9-day span still carries them, including
-// installs from the Play internal-testing track (live 2026-07-22).
+// src/components/FirstRunTour.jsx writes TOUR_ARMED_KEY via armTour() and
+// consumes it into TOUR_SEEN_KEY when the walkthrough finishes. The tour shipped
+// in PR #1174 (aca998a2, 2026-07-18), so devices have carried these keys since.
+//
+// HISTORY — this file was written while the component did not exist. PR #1403
+// (de8cb829) deleted FirstRunTour on 2026-07-27; the 2026-07-28 security diff
+// found the keys still surviving a panic wipe (PR #1415, this test); PR #1417
+// restored the component ~50 min after that fix merged. An earlier version of
+// this header therefore called the keys ORPHANED and argued they "cannot grow a
+// third variant — the writer is gone". Both are now false and are corrected.
+//
+// None of it changes what this test pins. The finding was "these keys are a tell
+// and the wipe misses them", which held whether or not a writer existed.
 //
 // Why they belong here rather than being written off as harmless: ALL_RESIDUE_KEYS
 // is an explicit allowlist that drives BOTH the erase (clearLocalAddressResidue)
@@ -29,7 +36,9 @@
 //
 // Exact keys, not a RESIDUE_KEY_PREFIXES entry: that mechanism exists for keys
 // "whose exact names are not known at build time" (runtime fingerprints). These
-// two are fixed, known, and can never grow a third variant — the writer is gone.
+// two are literal constants in FirstRunTour.jsx. A THIRD marker added there would
+// not be swept automatically — add it to METADATA_RESIDUE_KEYS and to TOUR_KEYS
+// below, and this suite will cover it.
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { panicWipeLocal, inspectKeyMaterial, clearWipeMarker } from '../panic.js';
@@ -39,14 +48,13 @@ import { clearVault } from '../evm/vaultStore.js';
 
 const REAL_PW = 'first-run-tour-residue-pw-1234';
 
-// The two markers written by the deleted FirstRunTour.jsx (TOUR_ARMED_KEY /
-// TOUR_SEEN_KEY). Verified against de8cb829^:src/components/FirstRunTour.jsx.
+// The two markers written by FirstRunTour.jsx (TOUR_ARMED_KEY / TOUR_SEEN_KEY).
 const TOUR_KEYS = [
   'veyrnox-first-run-tour-armed',
   'veyrnox-first-run-tour-seen',
 ];
 
-describe('panic wipe — orphaned first-run-tour residue (I-3)', () => {
+describe('panic wipe — first-run-tour residue (I-3)', () => {
   beforeEach(async () => {
     try { await clearVault(); } catch { /* noop */ }
     try { await panicWipeLocal(); } catch { /* noop */ }
