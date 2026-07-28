@@ -106,14 +106,28 @@ END;
 $$;
 
 -- ============================================================================
--- BLOCK 4: Store RC user ID during code generation / registration
+-- BLOCK 4: Code generation / registration — rc_user_id is NOT taken from client
 -- ============================================================================
 --
--- Update generate_referral_code to accept and store rc_user_id.
--- DROP the old signature first (Postgres requires exact param match).
-DROP FUNCTION IF EXISTS generate_referral_code(uuid);
+-- H-1 (2026-07-28 internal audit): the previous versions of these functions
+-- accepted p_rc_user_id from the CLIENT and wrote it directly onto the
+-- referrals row. That was a self-serve entitlement mint: anyone who could
+-- call the RPC (i.e. anyone with the app bundle's public anon key) could set
+-- rc_user_id to a RevenueCat user of their choosing, then trigger
+-- check_first_referral_bonus to have a promotional entitlement granted
+-- against that arbitrary account.
+--
+-- OWNER DECISION: rc_user_id is server-authoritative — set only from a
+-- verified RevenueCat webhook (see sql/referral-rc-webhook.sql, which adds
+-- set_referral_rc_user() restricted to service_role). Client input is
+-- REMOVED from this surface. Until the webhook is deployed, rc_user_id
+-- stays NULL and check_first_referral_bonus returns NULL — i.e. the bonus
+-- path is inert rather than exploitable (I4: fail closed).
+--
+-- Signatures below match sql/api-security-hardening.sql exactly, so running
+-- this file is now idempotent with respect to that one — no DROP required.
 
-CREATE OR REPLACE FUNCTION generate_referral_code(p_device_id uuid DEFAULT NULL, p_rc_user_id text DEFAULT NULL)
+CREATE OR REPLACE FUNCTION generate_referral_code(p_device_id uuid DEFAULT NULL)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -137,10 +151,6 @@ BEGIN
    LIMIT 1;
 
   IF existing IS NOT NULL THEN
-    IF p_rc_user_id IS NOT NULL THEN
-      UPDATE referrals SET rc_user_id = p_rc_user_id
-       WHERE code = existing AND rc_user_id IS NULL;
-    END IF;
     RETURN existing;
   END IF;
 
@@ -159,8 +169,7 @@ BEGIN
     END LOOP;
 
     BEGIN
-      INSERT INTO referrals (code, device_id, rc_user_id)
-      VALUES (result, p_device_id, p_rc_user_id);
+      INSERT INTO referrals (code, device_id) VALUES (result, p_device_id);
       RETURN result;
     EXCEPTION WHEN unique_violation THEN
       CONTINUE;
@@ -169,10 +178,7 @@ BEGIN
 END;
 $$;
 
--- Update register_referral_code to accept and store rc_user_id.
-DROP FUNCTION IF EXISTS register_referral_code(text, uuid);
-
-CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid DEFAULT NULL, p_rc_user_id text DEFAULT NULL)
+CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid DEFAULT NULL)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -190,9 +196,20 @@ BEGIN
     END IF;
   END IF;
 
-  INSERT INTO referrals (code, device_id, rc_user_id)
-  VALUES (p_code, p_device_id, p_rc_user_id)
-  ON CONFLICT (code) DO UPDATE
-    SET rc_user_id = COALESCE(referrals.rc_user_id, EXCLUDED.rc_user_id);
+  INSERT INTO referrals (code, device_id)
+  VALUES (p_code, p_device_id)
+  ON CONFLICT (code) DO NOTHING;
 END;
 $$;
+
+-- TODO(H-1): drop the old 3-arg signatures that shipped in earlier revs of
+-- this file on any environment that already ran the previous version. Do this
+-- ONLY after sql/referral-rc-webhook.sql is deployed, so no callers depend on
+-- the client-supplied variant:
+--
+--   DROP FUNCTION IF EXISTS generate_referral_code(uuid, text);
+--   DROP FUNCTION IF EXISTS register_referral_code(text, uuid, text);
+--
+-- Left as a comment rather than executed here because CREATE OR REPLACE above
+-- does not remove the old overloads — PostgreSQL treats different parameter
+-- lists as distinct functions. Owner runs this after webhook rollout.
