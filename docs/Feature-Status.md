@@ -1436,12 +1436,34 @@ outcome preamble while OUTCOME_PREAMBLE_ENABLED is false"* — a guard turned in
 description of the defect, so the suite stayed green with the feature off. That is the
 **third** instance of the pattern in PR #1403 (the two `WalletEntry.kek-gate` consent cases
 were the others, restored in PR #1409). Treat "align tests with the new flow" as a review
-smell. The original assertion is restored and was mutation-checked: re-disabling the
-preamble turns it red.
+smell.
 
-Verified: 50 tests pass across `Subscription.test.jsx` + `components/subscription/__tests__/`;
-`eslint` 0 errors (the `eslint-disable` is gone with the flag it was suppressing);
-`npm run build` exit 0. INTERNAL — not device-verified, no purchase made.
+**The other two cases in that block were passing vacuously, and PR #1418 caught it.** With
+the flag off, nothing could render, so *"goes straight to pricing once the preamble has been
+seen"* and *"never shows the preamble to an existing subscriber"* asserted a behaviour that
+could not occur — their `localStorage` and `currentTier` setup was inert. #1418 skipped both
+rather than deleting them (the gating logic in `outcomeStep`'s `useState` initialiser at
+`Subscription.jsx:123` was still live), re-anchored all three on the `outcome-step` testid
+instead of the step's copy, and left an explicit un-skip condition: *"flip
+OUTCOME_PREAMBLE_ENABLED to true, then remove the .skip from both… the first test below
+fails the moment the flag flips, which is what forces a reader back to this block. Do NOT
+'fix' that failure by relaxing it; it is the tripwire."*
+
+**That tripwire fired as designed and was honoured.** This PR removed the flag, the first
+case went red, and it was rewritten to assert the preamble DOES render — not relaxed. Both
+skips are removed, so the block is 3/3 active with 0 skipped. All three were
+mutation-checked against the specific gate each one names:
+
+| Mutation | Test that goes red |
+|---|---|
+| `if (outcomeStep !== null)` → `false && …` (re-disable) | shows the preamble BEFORE pricing |
+| ignore `OUTCOME_SEEN_KEY` (always return `0`) | goes straight to pricing once seen |
+| remove `currentTier === "safety_plus"` early return | never shows to an existing subscriber |
+
+Verified: 50 tests pass across `Subscription.test.jsx` + `components/subscription/__tests__/`,
+**0 skipped** (was 34 passed / 2 skipped); `eslint` 0 errors (the `eslint-disable` is gone
+with the flag it was suppressing); `npm run build` exit 0. INTERNAL — not device-verified,
+no purchase made.
 
 **API security hardening (PR #1334, merged 2026-07-23):** all Supabase client writes
 (events, referral increment/generate/register, attribution) migrated from direct anon
