@@ -332,11 +332,9 @@ export default function Subscription() {
     }
   }
 
-  // Outcome-first preamble: DISABLED temporarily. Skippable,
+  // Outcome-first preamble: sell the result before showing a price. Skippable,
   // and never shown to someone who already subscribes.
-  const OUTCOME_PREAMBLE_ENABLED = false;
-  // eslint-disable-next-line no-constant-condition, no-constant-binary-expression
-  if (OUTCOME_PREAMBLE_ENABLED && outcomeStep !== null) {
+  if (outcomeStep !== null) {
     return (
       <div className="max-w-xl mx-auto p-6 space-y-6">
         <BackButton />
