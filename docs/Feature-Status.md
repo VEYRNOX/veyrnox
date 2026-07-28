@@ -1402,6 +1402,69 @@ and `syncCount()` no longer converts a failed sync into a fake success state. IN
 unit-tested, NOT device-verified, NOT independently audited, no on-chain txid (not
 applicable — this is a Supabase-backed discount-code feature, not a signing path).
 
+## 2026-07-28 Paywall outcome-first preamble RE-ENABLED
+
+> ✅ BUILT (INTERNAL, UI scope). Restored in PR #1422 after PR #1403 disabled it.
+
+`src/pages/Subscription.jsx` renders a 3-step outcome-first preamble
+(`components/subscription/OutcomeSteps.jsx`) before the price on a first visit to `/plans`
+— skippable, once per device via `veyrnox-paywall-outcome-seen`, and never shown to an
+existing subscriber. PR #1403 (`de8cb829`) disabled it behind
+`const OUTCOME_PREAMBLE_ENABLED = false` with the comment "DISABLED temporarily" and an
+`eslint-disable` to silence the resulting constant-condition warning. The temporary
+disable had been live for a day and had no owner decision behind it.
+
+**The stated reason was a misidentification, and every element of it is checkable.** The
+commit says *"OutcomeSteps was appearing as a 5-step modal after wallet creation, blocking
+consent screen display."* Against the code at that commit:
+
+| Claim | Actual |
+|---|---|
+| 5 steps | **3** (`OUTCOME_STEPS`: coercion, custody, presign) |
+| a modal | **not a modal** — no overlay; it is page content on `/plans` |
+| after wallet creation | route `/plans` (`App.jsx:227`), inside the router — i.e. **behind** WalletEntry's consent gate, so it cannot render before consent |
+| blocking consent | consent returns from `WalletEntry` before `<Outlet />`; nothing routed can pre-empt it |
+
+The 5-step thing actually on screen was `FirstRunTour` (5 steps, a real full-screen modal),
+which the same PR had just deleted — and which was still appearing because of the
+device-side APK/localStorage caching that PR's own commit message identifies. The preamble
+was collateral to that misdiagnosis, exactly as the first-run tour was.
+
+**The regression test had been rewritten to assert the disable.** `Subscription.test.jsx`'s
+*"shows the outcome preamble BEFORE pricing on a first visit"* became *"does NOT show the
+outcome preamble while OUTCOME_PREAMBLE_ENABLED is false"* — a guard turned into a
+description of the defect, so the suite stayed green with the feature off. That is the
+**third** instance of the pattern in PR #1403 (the two `WalletEntry.kek-gate` consent cases
+were the others, restored in PR #1409). Treat "align tests with the new flow" as a review
+smell.
+
+**The other two cases in that block were passing vacuously, and PR #1418 caught it.** With
+the flag off, nothing could render, so *"goes straight to pricing once the preamble has been
+seen"* and *"never shows the preamble to an existing subscriber"* asserted a behaviour that
+could not occur — their `localStorage` and `currentTier` setup was inert. #1418 skipped both
+rather than deleting them (the gating logic in `outcomeStep`'s `useState` initialiser at
+`Subscription.jsx:123` was still live), re-anchored all three on the `outcome-step` testid
+instead of the step's copy, and left an explicit un-skip condition: *"flip
+OUTCOME_PREAMBLE_ENABLED to true, then remove the .skip from both… the first test below
+fails the moment the flag flips, which is what forces a reader back to this block. Do NOT
+'fix' that failure by relaxing it; it is the tripwire."*
+
+**That tripwire fired as designed and was honoured.** This PR removed the flag, the first
+case went red, and it was rewritten to assert the preamble DOES render — not relaxed. Both
+skips are removed, so the block is 3/3 active with 0 skipped. All three were
+mutation-checked against the specific gate each one names:
+
+| Mutation | Test that goes red |
+|---|---|
+| `if (outcomeStep !== null)` → `false && …` (re-disable) | shows the preamble BEFORE pricing |
+| ignore `OUTCOME_SEEN_KEY` (always return `0`) | goes straight to pricing once seen |
+| remove `currentTier === "safety_plus"` early return | never shows to an existing subscriber |
+
+Verified: 50 tests pass across `Subscription.test.jsx` + `components/subscription/__tests__/`,
+**0 skipped** (was 34 passed / 2 skipped); `eslint` 0 errors (the `eslint-disable` is gone
+with the flag it was suppressing); `npm run build` exit 0. INTERNAL — not device-verified,
+no purchase made.
+
 **API security hardening (PR #1334, merged 2026-07-23):** all Supabase client writes
 (events, referral increment/generate/register, attribution) migrated from direct anon
 INSERT to rate-limited SECURITY DEFINER Postgres functions. Key controls: `track_event()`
