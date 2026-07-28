@@ -73,15 +73,22 @@ describe('hardware.js stale-alias recovery', () => {
     expect(enrollFn).not.toHaveBeenCalled();
   });
 
-  it('treats isVaultWrapped() throw as bare vault (safe: allows enrollment)', async () => {
+  it('treats isVaultWrapped() throw as ALREADY wrapped and refuses destructive re-enroll (M-3)', async () => {
+    // M-3 (2026-07-28): an ambiguous probe failure was silently coerced to
+    // vaultWrapped=false, sending the caller down the clearCredential + enroll path
+    // which rotates H and permanently invalidates any existing kekWrap. Safe-closed
+    // default is TRUE: if we cannot confirm the vault is bare, refuse to destroy it.
     isEnrolledFn.mockResolvedValue({ enrolled: true });
     clearCredentialFn.mockResolvedValue({});
 
-    const tier = await enrollHardwareCredential({
-      isVaultWrapped: async () => { throw new Error('IndexedDB unavailable'); },
-    });
-    // Should NOT throw HARDWARE_KEK_ALREADY_ENROLLED — treats thrown check as "not wrapped"
-    expect(tier.securityLevelName).toBe('STRONGBOX');
+    await expect(
+      enrollHardwareCredential({
+        isVaultWrapped: async () => { throw new Error('IndexedDB unavailable'); },
+      }),
+    ).rejects.toMatchObject({ code: 'HARDWARE_KEK_ALREADY_ENROLLED' });
+
+    expect(clearCredentialFn).not.toHaveBeenCalled();
+    expect(enrollFn).not.toHaveBeenCalled();
   });
 
   it('blocks enrollment when no opts.isVaultWrapped provided (conservative default)', async () => {
