@@ -41,6 +41,7 @@ import {
   PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
 import { annualSavingPercent } from "@/lib/annualSaving";
+import { discountPercent } from "@/lib/discountPercent";
 import { recordAttribution, fetchPaidCount, claimFirstReferralBonus } from "@/api/referralApi";
 import { OFFER_UNAVAILABLE } from "@/lib/purchases";
 import OutcomeSteps, {
@@ -267,6 +268,23 @@ export default function Subscription() {
   // the badge and the billing note then render nothing at all (I4).
   const savingPercent = annualSavingPercent(monthlyPriceNumber, annualPriceNumber);
 
+  // The referral banner's "% off", derived from the BASE list price and the price
+  // the store will actually charge for the plan currently selected. It used to
+  // render referrerTierInfo.commission — which is the REFERRER's earnings rate
+  // from the static TIERS table, not the buyer's discount, and was set before any
+  // offering resolved. Two different numbers that only coincide at USD base
+  // prices: Apple cannot express Bronze's 2.5% so it charges $5.79 (really 3.34%
+  // off), and FX rounding erases the discount entirely in some territories
+  // (Bronze is full price in Albania/Armenia) where the banner still promised
+  // "2.5% off". Unresolvable or erased => null => no percentage is claimed (I4).
+  const selectedBasePrice = effectiveBilling === "annual"
+    ? annualPackage?.product?.price
+    : monthlyPackage?.product?.price;
+  const selectedOfferPrice = effectiveBilling === "annual"
+    ? annualPriceNumber
+    : monthlyPriceNumber;
+  const referralDiscount = discountPercent(selectedBasePrice, selectedOfferPrice);
+
   async function handleUpgrade() {
     if (!selectedPackage) return;
     setBusy(true);
@@ -414,7 +432,7 @@ export default function Subscription() {
           <Sparkles className="h-5 w-5 text-success shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-success">
-              Referral discount applied{referrerTierInfo ? ` — ${referrerTierInfo.commission}% off` : ""}
+              Referral discount applied{referralDiscount != null ? ` — ${referralDiscount}% off` : ""}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               You used a friend&rsquo;s referral code — enjoy a discounted rate on Safety Plus.
