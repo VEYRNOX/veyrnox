@@ -465,16 +465,16 @@ export async function decryptPasswordSeal(envelope, password) {
  * restore paths (backup-password seal via decryptPasswordSeal, backup-PIN seal via
  * decryptPinSeal) converge here, so the restored on-device vault is ALWAYS
  * PIN-cohort — unlock and the hardware-KEK gate both use the PIN (owner decision
- * 2026-07-16). Credential-agnostic: accepts any non-empty string (the UI enforces
- * the 8-digit PIN); it does not require a 12-char password.
+ * 2026-07-16). Mirrors createBackupEnvelope's PIN shape (/^\d{8,12}$/) so a
+ * caller cannot smuggle a non-digit or out-of-range string past this boundary.
  * @param {string} containerJson  result of decryptPinSeal() / decryptPasswordSeal()
  * @param {string} devicePin      the on-device 8-digit PIN chosen during restore
  */
 export async function finalisePinRestore(containerJson, devicePin) {
   if (typeof containerJson !== 'string' || containerJson.length === 0)
     throw new Error('No container to save');
-  if (typeof devicePin !== 'string' || devicePin.length === 0)
-    throw new Error('Device PIN required');
+  if (typeof devicePin !== 'string' || !/^\d{8,12}$/.test(devicePin))
+    throw new Error('Device PIN must be 8-12 digits');
   try {
     await getKeyStore().createVault(containerJson, devicePin);
   } catch (e) {
