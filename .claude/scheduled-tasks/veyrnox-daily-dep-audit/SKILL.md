@@ -10,7 +10,28 @@ Check the Veyrnox wallet project at `C:\Users\aljob\Downloads\Veyrnox` for npm d
 
 ## Steps
 
-1. Run `npm audit --json` in `C:\Users\aljob\Downloads\Veyrnox` (use PowerShell or Bash).
+1. Audit `origin/main`'s dependency state — **not the shared checkout's working tree**.
+
+   The primary checkout at `C:\Users\aljob\Downloads\Veyrnox` is used concurrently by ~10
+   worktrees and several other scheduled tasks, and is frequently on a detached HEAD or an
+   unrelated feature branch. Running `npm audit` there audits whatever that branch happens
+   to carry — and then reports it as the project's state. Resolve from the ref instead:
+
+   ```bash
+   export MSYS_NO_PATHCONV=1      # MSYS rewrites the ':' and the command fails SILENTLY
+   cd "C:/Users/aljob/Downloads/Veyrnox" && git fetch origin main
+   SCRATCH="$TEMP/veyrnox-dep-audit"; mkdir -p "$SCRATCH"
+   git show origin/main:package.json      > "$SCRATCH/package.json"
+   git show origin/main:package-lock.json > "$SCRATCH/package-lock.json"
+   git cat-file -s origin/main:package-lock.json   # must be non-zero; a silent MSYS
+                                                   # failure yields an empty file, which
+                                                   # audits as 0 vulnerabilities
+   cd "$SCRATCH" && npm audit --json
+   ```
+
+   Record the `origin/main` SHA you audited in the report, so a later reader can tell what
+   was actually measured. Never run `npm install` or `npm audit fix` in the primary
+   checkout — that mutates shared state other sessions are mid-way through using.
 
 2. Parse the JSON output to extract:
    - Count of vulnerabilities by severity: critical, high, moderate, low, info
