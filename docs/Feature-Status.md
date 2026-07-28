@@ -1404,7 +1404,7 @@ applicable — this is a Supabase-backed discount-code feature, not a signing pa
 
 ## 2026-07-28 Paywall outcome-first preamble RE-ENABLED
 
-> ✅ BUILT (INTERNAL, UI scope). Restored in PR #1418 after PR #1403 disabled it.
+> ✅ BUILT (INTERNAL, UI scope). Restored in PR #1422 after PR #1403 disabled it.
 
 `src/pages/Subscription.jsx` renders a 3-step outcome-first preamble
 (`components/subscription/OutcomeSteps.jsx`) before the price on a first visit to `/plans`
