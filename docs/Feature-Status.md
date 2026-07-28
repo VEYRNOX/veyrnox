@@ -1418,7 +1418,32 @@ All four merged PRs: BUILT / unit-tested only, INTERNAL — not device-verified,
 independently audited, no on-chain txid. PR #1276 is additionally NOT YET MERGED — do not
 report H-1 as fixed until it lands on `main`.
 
-## 2026-07-27 First-run tour REMOVED — ECC F-P3-3 reopened
+## 2026-07-28 First-run tour RESTORED — ECC F-P3-3 re-remediated
+
+> ✅ BUILT (INTERNAL, UI scope) — the deletion below was reverted on 2026-07-28 in
+> PR #1414. **ECC finding F-P3-3 (#1160) is remediated again.**
+
+`src/components/FirstRunTour.jsx` and `src/components/__tests__/FirstRunTour.placement.test.js`
+were restored byte-identical from `de8cb829^`, and the three wiring points removed by
+PR #1403 were re-applied to the CURRENT `WalletEntry.jsx` (not reverted wholesale — that
+file has since changed under PRs #1409/#1410): the `FirstRunTour, { armTour }` import, the
+`armTour()` call in `doCreateWallet`, the `armTour()` call after `createWallet(genPassword)`
+in the generate path, and the `<FirstRunTour />` render inside the unlocked-wallet branch.
+
+**Nothing in the consent flow was reverted.** PR #1403's consent changes — and the #1409 /
+#1410 corrections on top of them — are untouched. The restore is additive to that work.
+
+Verified: 194 tests pass across 33 component suites (including the restored placement
+guard and `WalletEntry.kek-gate`, which pins that consent still wins on a never-answered
+device); `eslint` 0 errors; `npm run build` exit 0. INTERNAL — no device verification.
+
+One thing the restore deliberately did NOT bring back: PR #1403 also disabled the
+Subscription outcome-first preamble (`OUTCOME_PREAMBLE_ENABLED = false` in
+[Subscription.jsx](../src/pages/Subscription.jsx)) as "temporarily disabled while
+investigating". That is a different feature on the same misdiagnosis, and it is still off.
+It needs its own owner decision — see the note at the end of this section.
+
+### The original removal record (preserved)
 
 > ❌ HONEST-DISABLED — the feature is gone from the codebase, not merely switched off.
 > **ECC finding F-P3-3 (#1160) is REOPENED and is once again unremediated.**
@@ -1442,17 +1467,21 @@ who skipped KEK enrollment and silently overwriting a stored "denied" (removed
 2026-07-27). The tour removal was collateral to that misdiagnosis and can be reverted from
 `de8cb829^` if the walkthrough is wanted back.
 
-**Consequences to track:**
-- Users again get 80+ features with no walkthrough — the original F-P3-3 complaint.
-  Duress, Stealth, Panic Wipe and KEK have no discovery path.
+**Consequences that were tracked while it was removed** (all closed by the 2026-07-28
+restore, except the last two):
+- ~~Users again get 80+ features with no walkthrough — the original F-P3-3 complaint.~~
+  Closed: the walkthrough is back on the unlocked wallet.
 - The `veyrnox-first-run-tour-armed` / `veyrnox-first-run-tour-seen` localStorage keys are
-  now orphaned. They were never in the panic-wipe list, and nothing reads or writes them
-  any more — no residual-state hazard, but any device that ran the tour still carries them.
-- No replacement onboarding is BUILT, TARGET or PLANNED. If discovery is to be solved
-  differently, that needs its own entry here.
+  live again, so they are no longer orphaned. **Still true and still worth fixing: neither
+  key is in the panic-wipe residue list** (`src/wallet-core/panic.js`). A device that ran
+  the tour carries `veyrnox-first-run-tour-seen` through a wipe — a weak install tell of
+  the same class the list already covers for `veyrnox-autolock-timeout` and friends. Not
+  introduced by the restore; it predates the removal. Tracked, not fixed here.
+- The Subscription outcome-first preamble remains disabled (see above) — a separate
+  owner decision.
 
-Status: HONEST-DISABLED (removed on principle of not shipping dead code, NOT because the
-feature was wrong). INTERNAL, no device verification, no on-chain txid — UI scope only.
+Status: BUILT (restored 2026-07-28, PR #1414). INTERNAL, no device verification, no
+on-chain txid — UI scope only.
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
