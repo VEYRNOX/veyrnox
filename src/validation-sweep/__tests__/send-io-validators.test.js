@@ -106,18 +106,17 @@ describe('FLAG S3 — self-send is now guarded (#179)', () => {
   });
 });
 
-describe('FLAG S4 (FIXED) — amount field keypad / min / step hardening', () => {
+describe('FLAG S4 (FIXED) — amount field keypad / type / inputMode hardening', () => {
   const send = read('../../pages/SendCrypto.jsx');
-  // The amount <Input type="number"> now declares inputMode="decimal" (correct mobile
-  // keypad), min="0" and step="any" (non-negative decimals). These are a UX/keypad
-  // layer only — the authoritative <=0 rejection is `amountBadValue` and the base-unit
-  // conversion is toBaseUnits, so the attributes are never the sole guard.
+  // The amount input is type="text" with inputMode="decimal" (correct mobile keypad
+  // without the HTML value-sanitisation algorithm that blanked "1,5" / "1." / "1.2.3"
+  // before React saw them). min/step are gone — they are inert on text inputs and the
+  // authoritative rejection has always been isFormAmountWellFormed + sendAmountErrorKind.
   it('the amount input keeps its "0.00" placeholder', () => {
     expect(send).toContain('placeholder="0.00"');
   });
-  it('FIXED: the amount input declares inputMode="decimal", min="0" and step="any"', () => {
+  it('FIXED: the amount input is type="text" with inputMode="decimal"', () => {
+    expect(send).toMatch(/type=["']text["']/);
     expect(send).toMatch(/inputMode=["']decimal["']/);
-    expect(send).toMatch(/min=["']0["']/);
-    expect(send).toMatch(/step=["']any["']/);
   });
 });
