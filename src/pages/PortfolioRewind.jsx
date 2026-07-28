@@ -44,7 +44,7 @@ export default function PortfolioRewind() {
       const d = new Date();
       d.setDate(d.getDate() - Math.round((period?.days ?? 90) * (1 - frac)));
       return {
-        date: d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }),
+        date: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         value: parseFloat(val.toFixed(2)),
       };
     });

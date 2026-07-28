@@ -27,6 +27,7 @@ import OfflineBanner from '@/components/OfflineBanner';
 import { installGlobalErrorHandlers } from '@/lib/globalErrorHandlers';
 import { captureReferralFromUrl } from '@/lib/referralAttribution';
 import { useCryptoDiagnostics } from '@/lib/tracking-integration';
+import { resolveLocale, LOCALE_CHANGED_EVENT } from '@/lib/locale';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -248,6 +249,25 @@ const AuthenticatedApp = () => {
 function App() {
   useEffect(() => { captureReferralFromUrl(); }, []);
   useEffect(() => installGlobalErrorHandlers(), []);
+
+  // Keep <html lang> in sync with the resolved user locale — index.html hardcodes
+  // "en" for the first paint (before JS runs), and screen readers / auto-translate
+  // heuristics rely on this attribute. Re-runs on LOCALE_CHANGED_EVENT so a
+  // Phase 2 language switcher will flip this without a reload.
+  useEffect(() => {
+    const apply = () => {
+      try {
+        const lang = resolveLocale();
+        if (typeof document !== 'undefined' && lang) {
+          document.documentElement.setAttribute('lang', lang);
+        }
+      } catch { /* fail closed: leave the existing attribute */ }
+    };
+    apply();
+    if (typeof window === 'undefined') return;
+    window.addEventListener(LOCALE_CHANGED_EVENT, apply);
+    return () => window.removeEventListener(LOCALE_CHANGED_EVENT, apply);
+  }, []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">

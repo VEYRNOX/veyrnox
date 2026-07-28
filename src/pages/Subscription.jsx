@@ -50,6 +50,7 @@ import OutcomeSteps, {
   markOutcomeSeen,
 } from "@/components/subscription/OutcomeSteps";
 import CancelOfferDialog from "@/components/subscription/CancelOfferDialog";
+import { useLocalePreferences } from "@/lib/useLocale";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
 
@@ -81,6 +82,17 @@ function HighlightChips({ features, max = 6 }) {
 
 export default function Subscription() {
   const { currentTier, refreshTier } = useTier();
+  const { locale, fiatCurrency } = useLocalePreferences();
+  // "$0" hardcoded here mis-labeled the Free tier price for non-USD users
+  // (the store never returns a Free package, so no priceString source exists).
+  // Rendering 0 in the user's chosen fiat via Intl keeps it honest: JP users
+  // see "¥0", GBP users see "£0.00", US users see "$0.00".
+  let freeTierPrice;
+  try {
+    freeTierPrice = new Intl.NumberFormat(locale, { style: 'currency', currency: fiatCurrency }).format(0);
+  } catch {
+    freeTierPrice = 'Free';
+  }
   const [monthlyPackage, setMonthlyPackage] = useState(null);
   const [annualPackage, setAnnualPackage] = useState(null);
   const [referralMonthly, setReferralMonthly] = useState(null);
@@ -245,10 +257,15 @@ export default function Subscription() {
     ? offerPriceInfo(referralAnnual, referralOfferTag)?.priceString
     : null;
 
+  // No hardcoded USD fallback: quoting "$5.99" to a JP/EU user whose store
+  // hasn't resolved yet would misidentify the currency AND lock in the wrong
+  // number. When unresolvable we render "—" (see below) so the paywall never
+  // advertises a price we can't stand behind (I4 fail-honest, matches the
+  // offerPriceInfo path in purchases.js).
   const monthlyPriceString =
-    referralMonthlyPrice ?? effectiveMonthly?.product?.priceString ?? "$5.99/mo";
+    referralMonthlyPrice ?? effectiveMonthly?.product?.priceString ?? null;
   const annualPriceString =
-    referralAnnualPrice ?? effectiveAnnual?.product?.priceString ?? "$49.99/yr";
+    referralAnnualPrice ?? effectiveAnnual?.product?.priceString ?? null;
   const regularMonthlyPrice = monthlyPackage?.product?.priceString;
   const regularAnnualPrice = annualPackage?.product?.priceString;
   const selectedPriceString = effectiveBilling === "annual" ? annualPriceString : monthlyPriceString;
@@ -444,7 +461,7 @@ export default function Subscription() {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Free</h2>
-            <span className="text-sm font-bold mono-value">$0</span>
+            <span className="text-sm font-bold mono-value">{freeTierPrice}</span>
             {currentTier === "free" && (
               <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
             )}
@@ -521,7 +538,7 @@ export default function Subscription() {
                   >
                     Monthly
                     <span className="block text-xs text-muted-foreground font-normal mono-value">
-                      {monthlyPriceString}
+                      {monthlyPriceString ?? "—"}
                       {hasDiscount && regularMonthlyPrice && regularMonthlyPrice !== monthlyPriceString && (
                         <span className="ml-1 line-through opacity-60">{regularMonthlyPrice}</span>
                       )}
@@ -556,7 +573,7 @@ export default function Subscription() {
                       </Badge>
                     )}
                     <span className="block text-xs text-muted-foreground font-normal mono-value">
-                      {annualPriceString}
+                      {annualPriceString ?? "—"}
                       {hasDiscount && regularAnnualPrice && regularAnnualPrice !== annualPriceString && (
                         <span className="ml-1 line-through opacity-60">{regularAnnualPrice}</span>
                       )}
@@ -567,7 +584,7 @@ export default function Subscription() {
 
               {/* Selected price */}
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold mono-value">{selectedPriceString}</span>
+                <span className="text-3xl font-bold mono-value">{selectedPriceString ?? "—"}</span>
                 {/* Strike the regular price only when it DIFFERS from what is
                     shown. If the offer price could not be read we fall back to
                     the base price, and "$5.99 struck-through $5.99" would
@@ -597,7 +614,7 @@ export default function Subscription() {
                 onClick={handleUpgrade}
               >
                 {busy ? <Loader2 className="h-4 w-4 mr-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                {isNative ? `Upgrade — ${selectedPriceString}` : "Upgrade — mobile only"}
+                {isNative ? (selectedPriceString ? `Upgrade — ${selectedPriceString}` : "Upgrade — loading pricing") : "Upgrade — mobile only"}
               </Button>
 
               {/* Renewal terms. Both stores require this disclosure at the
@@ -606,7 +623,7 @@ export default function Subscription() {
               <p className="text-xs text-muted-foreground text-center">
                 <span className="font-semibold text-foreground">Cancel anytime.</span>{" "}
                 Renews {effectiveBilling === "annual" ? "yearly" : "monthly"} at{" "}
-                {selectedPriceString} until cancelled — manage or cancel in your{" "}
+                {selectedPriceString ?? "the store price"} until cancelled — manage or cancel in your{" "}
                 {Capacitor.getPlatform() === "ios" ? "App Store" : "Google Play"} account settings.
               </p>
               {isNative ? (
