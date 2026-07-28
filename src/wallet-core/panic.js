@@ -265,25 +265,37 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // Seed-backup verification state (single blob; see lib/seedVerifyState.js).
   // Presence proves a real wallet was created and its backup quiz started.
   'veyrnox-seed-verify',
-  // ORPHANED first-run-tour markers. components/FirstRunTour.jsx was deleted in
-  // PR #1403 (de8cb829) along with its armTour() call sites, so nothing reads or
-  // writes these any more — but deleting the only reader does not delete the key
-  // from devices that already have it. The tour shipped in PR #1174 (aca998a2,
-  // 2026-07-18) and was removed 2026-07-27, so any device running a build from
-  // that span still carries them, Play internal-testing installs included.
+  // First-run-tour markers. components/FirstRunTour.jsx writes 'armed' via
+  // armTour() and consumes it into 'seen' when the walkthrough finishes.
   //
-  // "Nothing reads them" is not an exemption — it is the property every key in
-  // this list has after a wipe. What makes a key a tell is its PRESENCE, and
-  // 'veyrnox-first-run-tour-seen' asserts that a real Veyrnox install existed
-  // here AND completed a walkthrough of the coercion stack (duress PIN, stealth
-  // wallets, panic wipe, hardware binding). Same class as veyrnox-kek-pin-notice
-  // and veyrnox-device-id above, and swept for the same reason.
+  // What makes them a tell is their PRESENCE, not whether anything still reads
+  // them: 'veyrnox-first-run-tour-seen' asserts that a real Veyrnox install
+  // existed here AND completed a walkthrough of the coercion stack (duress PIN,
+  // stealth wallets, panic wipe, hardware binding). Same class as
+  // veyrnox-kek-pin-notice and veyrnox-device-id above, swept for the same
+  // reason. (A decoy/demo session does not create them: armTour() returns early
+  // on isDeniabilityOrDemoActive() — FirstRunTour.jsx:34, I3.)
+  //
+  // HISTORY, because it is the whole reason this entry needs a comment. These
+  // were added while the component did NOT exist: PR #1403 (de8cb829) deleted
+  // FirstRunTour on 2026-07-27, and the keys were found still surviving a panic
+  // wipe by the 2026-07-28 security diff (PR #1415). PR #1417 restored the
+  // component ~50 min after that fix merged. So an earlier version of this
+  // comment called them ORPHANED and justified the exact-key form with "the
+  // writer is gone" — both now false, corrected here.
+  //
+  // The FIX never depended on either claim. The finding was "these keys are a
+  // tell and the wipe misses them", which held whether or not a writer existed;
+  // ALL_RESIDUE_KEYS drives both the erase AND inspectKeyMaterial().clean, so
+  // their absence meant a wipe left them AND still reported clean. Devices that
+  // ran a build from PR #1174 (2026-07-18) onward carry them either way.
   //
   // Exact keys rather than a RESIDUE_KEY_PREFIXES entry: that mechanism is for
-  // names not known at build time (runtime fingerprints). These two are fixed
-  // and cannot grow a third variant — the writer is gone.
-  'veyrnox-first-run-tour-armed',   // FirstRunTour.jsx TOUR_ARMED_KEY (removed)
-  'veyrnox-first-run-tour-seen',    // FirstRunTour.jsx TOUR_SEEN_KEY  (removed)
+  // names not known at build time (runtime fingerprints). These two are literal
+  // constants in FirstRunTour.jsx. That does mean a THIRD marker added there
+  // would not be swept automatically — if you add one, add it here too.
+  'veyrnox-first-run-tour-armed',   // FirstRunTour.jsx TOUR_ARMED_KEY
+  'veyrnox-first-run-tour-seen',    // FirstRunTour.jsx TOUR_SEEN_KEY
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
