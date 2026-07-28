@@ -37,8 +37,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Match ci.yml — Node 22 + npm 11. The lockfile is authored with
+          # npm 11; npm 10 (Node 20 default, Node 22 default) rejects it.
+          node-version: 22
           cache: 'npm'
+
+      - name: Pin npm 11
+        run: npm install -g npm@11
 
       - name: Install deps
         run: npm ci
