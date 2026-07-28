@@ -304,7 +304,14 @@ $$;
 --
 -- H-1 (2026-07-28): rc_user_id is deliberately NOT a parameter here either;
 -- see the note on generate_referral_code above.
-CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid DEFAULT NULL)
+--
+-- INVARIANT (audit H-2, 2026-07-28): p_device_id is REQUIRED. A previous
+-- signature accepted NULL and only rate-limited when NOT NULL, so a client
+-- could bypass the 3/hour cap by omitting device_id and mint unlimited codes.
+-- The rate-limit block therefore runs BEFORE any nullable guard, and NULL is
+-- explicitly rejected. Do not add a DEFAULT back — every caller must pass a
+-- device id from lib/deviceId.js (which itself fails closed on no-CSPRNG).
+CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -312,14 +319,16 @@ AS $$
 DECLARE
   recent_count int;
 BEGIN
-  IF p_device_id IS NOT NULL THEN
-    SELECT count(*) INTO recent_count
-      FROM referrals
-     WHERE device_id = p_device_id
-       AND created_at > now() - interval '1 hour';
-    IF recent_count >= 3 THEN
-      RETURN;
-    END IF;
+  IF p_device_id IS NULL THEN
+    RAISE EXCEPTION 'device_id required' USING ERRCODE = '22004';
+  END IF;
+
+  SELECT count(*) INTO recent_count
+    FROM referrals
+   WHERE device_id = p_device_id
+     AND created_at > now() - interval '1 hour';
+  IF recent_count >= 3 THEN
+    RETURN;
   END IF;
 
   INSERT INTO referrals (code, device_id)
