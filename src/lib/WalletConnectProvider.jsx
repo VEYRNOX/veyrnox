@@ -43,6 +43,7 @@ import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
+import { scoreWcTypedDataLevel } from '@/lib/wcTypedLevel';
 
 // #1093 — WC pre-sign tx-risk plane. Risk-signal modules (`@/risk/signals` and
 // `@/risk/calldata`) instantiate an ethers Interface at MODULE INIT time, so a
@@ -433,7 +434,17 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
 }
 
 export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic, id, params, sessionCaip2) {
-  const gate = await presignGateOrReject();
+  // M-5 (2026-07-28 internal audit): score the typed-data body BEFORE the
+  // pre-sign gate so unlimited Permit / Permit2 payloads compose to
+  // CONFIRM/WARN (fail closed) instead of relying on the RASP env plane
+  // alone. Pure, no signer touched. See src/lib/wcTypedLevel.js. Parse once
+  // here and reuse for the H7 chain-id and address checks below — a second
+  // parseTypedData() would burn through single-shot test mocks AND cost a
+  // redundant JSON.parse on every real request.
+  const typedDataJson = params?.[1] ?? params?.[0];
+  const parsed = parseTypedData(typedDataJson);
+  const typedLevel = scoreWcTypedDataLevel(parsed);
+  const gate = await presignGateOrReject(typedLevel);
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
@@ -454,8 +465,8 @@ export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic
     );
   }
 
-  const typedDataJson = params[1] ?? params[0];
-  const parsed = parseTypedData(typedDataJson);
+  // `parsed` was produced above (M-5) so the risk score, chain-id bind, and
+  // signer all share ONE parseTypedData() call.
   if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
 
   // H7 — bind the EIP-712 domain.chainId to the WalletConnect SESSION chain.
