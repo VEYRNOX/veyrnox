@@ -1,0 +1,135 @@
+name: perf-web
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'vite.config.*'
+      - 'package-lock.json'
+      - 'perf/**'
+      - '.github/workflows/perf-web.yml'
+  schedule:
+    - cron: '15 3 * * 0'   # Sundays 03:15 UTC
+
+concurrency:
+  group: perf-web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web-perf:
+    name: Lighthouse + Playwright perf sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Perf builds run in demo mode via the ?demo=1 URLs the specs hit — so
+      # no Supabase writes escape. Blank the analytics env just in case.
+      VITE_SUPABASE_URL: ''
+      VITE_SUPABASE_ANON_KEY: ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install perf-only deps
+        # LHCI + serve are perf-rig-only; don't bloat the app's package.json.
+        run: npm install --no-save --no-package-lock @lhci/cli@0.14.x serve@14
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: Start preview server
+        # `serve -s dist -l 4173` handles SPA fallback so /plans etc resolve.
+        run: |
+          nohup npx serve -s dist -l 4173 > perf/results/serve.log 2>&1 &
+          echo $! > perf/results/serve.pid
+          mkdir -p perf/results
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:4173 > /dev/null; then
+              echo "preview up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::preview did not come up in 30s"
+          cat perf/results/serve.log || true
+          exit 1
+
+      - name: Lighthouse-CI
+        run: npx lhci autorun --config=perf/lighthouserc.json
+        continue-on-error: false
+
+      - name: Playwright perf sweep — cold demo routes
+        env:
+          BASE_URL: http://localhost:4173
+          PERF_REPEATS: '3'
+        run: npx playwright test --config=perf/playwright.perf.config.js web-perf.spec.js
+
+      - name: Playwright perf sweep — warm wallet
+        env:
+          BASE_URL: http://localhost:4173
+          PERF_REPEATS: '3'
+          # Fresh-created wallet by default. Flip to `import` and set
+          # VITE_TEST_THROWAWAY_SEED as a repo secret for a deterministic
+          # imported-wallet profile (adds a real balance-of-zero RPC call).
+          WARM_WALLET_MODE: ${{ vars.WARM_WALLET_MODE || 'create' }}
+          VITE_TEST_THROWAWAY_SEED: ${{ secrets.VITE_TEST_THROWAWAY_SEED }}
+        run: npx playwright test --config=perf/playwright.perf.config.js warm-wallet-perf.spec.js
+
+      - name: Stop preview server
+        if: always()
+        run: |
+          if [ -f perf/results/serve.pid ]; then
+            kill "$(cat perf/results/serve.pid)" 2>/dev/null || true
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-perf-${{ github.run_id }}
+          path: |
+            perf/results/
+            .lighthouseci/
+          retention-days: 30
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Web perf sweep"
+            echo
+            for report in perf/results/web-perf.json perf/results/warm-wallet-perf.json; do
+              if [ -f "$report" ]; then
+                label=$(basename "$report" .json)
+                echo "### $label"
+                node -e '
+                  const r = require("./" + process.argv[1]);
+                  console.log("| route | LCP | FCP | TTFB | transfer |");
+                  console.log("|---|---:|---:|---:|---:|");
+                  for (const s of r.results) {
+                    const kb = s.transferBytes ? (s.transferBytes / 1024).toFixed(1) + " KB" : "n/a";
+                    console.log(`| \`${s.path}\` | ${s.lcpMs} ms | ${s.fcpMs} ms | ${s.ttfbMs} ms | ${kb} |`);
+                  }
+                ' "$report"
+                echo
+              fi
+            done
+            echo
+            echo "Lighthouse reports uploaded as artifact (\`.lighthouseci/\`)."
+          } >> "$GITHUB_STEP_SUMMARY"
