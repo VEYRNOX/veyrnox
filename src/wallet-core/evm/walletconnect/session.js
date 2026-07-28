@@ -9,6 +9,7 @@ import { getSdkError, buildApprovedNamespaces } from '@walletconnect/utils';
 import { SUPPORTED_CHAIN_IDS } from './router.js';
 import { checkDappDomain } from '../../../risk/knownBadDapps.js';
 import { WALLETCONNECT_PROJECT_ID } from './projectId.js';
+import { emit } from '../../../lib/analytics.js';
 
 // The WalletConnect (Reown) project ID. A committed public default lives in
 // projectId.js so EVERY build (a git worktree, a fresh clone, CI) enables the
@@ -259,15 +260,41 @@ export async function respondToRequest(topic, id, result) {
   });
 }
 
-export async function rejectRequest(topic, id, _reason) {
+// L-5 — Build the JSON-RPC error envelope for a rejected session_request.
+// Preference order:
+//   1. A recognised WalletConnect SDK key (USER_REJECTED, UNSUPPORTED_METHODS…)
+//      → return the SDK's canonical {code, message}.
+//   2. A Veyrnox-internal policy code (e.g. PERSONAL_SIGN_ADDRESS_MISMATCH)
+//      → wrap in a JSON-RPC envelope with code 4001 (User Rejected Request,
+//      EIP-1193) so the dApp still sees a well-formed error, but the message
+//      names the specific gate that fired instead of a generic "User rejected".
+//   3. No reason supplied → fall back to USER_REJECTED (previous behaviour).
+export function _buildRejectError(reason) {
+  const fallback = getSdkError('USER_REJECTED');
+  if (typeof reason !== 'string' || !reason) return fallback;
+  try {
+    const sdkErr = getSdkError(reason);
+    if (sdkErr && typeof sdkErr.code === 'number') return sdkErr;
+  } catch { /* unknown key — treat as Veyrnox-internal code below */ }
+  return { code: 4001, message: reason };
+}
+
+export async function rejectRequest(topic, id, reason) {
   const client = await initWalletConnect();
   if (!client) throw new Error('WalletConnect is not configured on this build.');
+  // Audit trail: which policy caused a reject. I3 suppression is enforced
+  // inside the analytics egress path (api/trackEvent.js), so decoy/demo
+  // sessions do not surface these events. Fire-and-forget — the audit event
+  // must never block or crash the reject itself.
+  try {
+    void Promise.resolve(emit('dapp_request_rejected', { topic, id, reason: reason ?? 'USER_REJECTED' })).catch(() => {});
+  } catch { /* analytics is best-effort */ }
   await client.respondSessionRequest({
     topic,
     response: {
       id,
       jsonrpc: '2.0',
-      error: getSdkError('USER_REJECTED'),
+      error: _buildRejectError(reason),
     },
   });
 }
