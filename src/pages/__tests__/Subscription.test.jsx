@@ -542,32 +542,61 @@ describe('Subscription page — tier-based referral discount', () => {
 // The global beforeEach marks the outcome preamble as already seen so the rest
 // of this suite can test pricing directly. That convenience would quietly hide a
 // regression in the preamble gating itself, so it is asserted here explicitly.
+//
+// ── WHY TWO OF THESE ARE SKIPPED ─────────────────────────────────────────
+// Subscription.jsx carries `const OUTCOME_PREAMBLE_ENABLED = false`, so the
+// preamble cannot render under ANY condition. That made all three tests in this
+// block assert the same thing by accident: with the flag off, "seen" state and
+// subscriber tier are both irrelevant, so the two conditional tests passed
+// without exercising the gate they are named after. A test that asserts a
+// behaviour which can no longer occur is coverage that READS as present and is
+// not — it stays green if the path it names breaks.
+//
+// They are skipped rather than deleted because the gating logic they cover is
+// still live in the source: `outcomeStep`'s useState initialiser (Subscription
+// .jsx:123) still reads OUTCOME_SEEN_KEY and still returns null for
+// currentTier === 'safety_plus'. Only the render is short-circuited. When the
+// flag flips back, that logic must be correct, and deleting the tests would
+// bring it back unguarded.
+//
+// UN-SKIP CONDITION: flip OUTCOME_PREAMBLE_ENABLED to true, then remove the
+// .skip from both. The pairing is self-enforcing — the first test below fails
+// the moment the flag flips, which is what forces a reader back to this block.
+// Do NOT "fix" that failure by relaxing it; it is the tripwire.
+//
+// All three now key off the `outcome-step` testid rather than the step's COPY.
+// Matching on the sentence meant a copy edit alone would make every test in the
+// block pass for a second wrong reason.
 describe('Subscription page — outcome-first preamble gating', () => {
   beforeEach(() => {
     localStorage.removeItem('veyrnox-paywall-outcome-seen');
     useTierMock.mockReturnValue({ currentTier: 'none', refreshTier, loading: false });
   });
 
+  // The one assertion that is real while the flag is off. Bidirectional on
+  // purpose: the preamble is absent AND pricing is present. Absence alone would
+  // also pass if the page failed to render at all.
+  //
+  // Anchored on the Free tier's hardcoded '$0' rather than a store price. The
+  // '$5.99' used elsewhere in this file needs isNativePlatform + getOfferings
+  // mocks that live in another describe's beforeEach; '$0' is literal in
+  // Subscription.jsx and renders only after the preamble's early return.
   it('does NOT show the outcome preamble while OUTCOME_PREAMBLE_ENABLED is false', async () => {
     renderPage();
-    await waitFor(() =>
-      expect(screen.queryByText(/they see a wallet that isn't yours/i)).toBeNull()
-    );
+    await waitFor(() => expect(screen.getByText('$0')).toBeTruthy());
+    expect(screen.queryByTestId('outcome-step')).toBeNull();
   });
 
-  it('goes straight to pricing once the preamble has been seen', async () => {
+  it.skip('goes straight to pricing once the preamble has been seen', async () => {
     localStorage.setItem('veyrnox-paywall-outcome-seen', '1');
     renderPage();
-    await waitFor(() =>
-      expect(screen.queryByText(/they see a wallet that isn't yours/i)).toBeNull()
-    );
+    await waitFor(() => expect(screen.getByText('$0')).toBeTruthy());
+    expect(screen.queryByTestId('outcome-step')).toBeNull();
   });
 
-  it('never shows the preamble to an existing subscriber', async () => {
+  it.skip('never shows the preamble to an existing subscriber', async () => {
     useTierMock.mockReturnValue({ currentTier: 'safety_plus', refreshTier, loading: false });
     renderPage();
-    await waitFor(() =>
-      expect(screen.queryByText(/they see a wallet that isn't yours/i)).toBeNull()
-    );
+    await waitFor(() => expect(screen.queryByTestId('outcome-step')).toBeNull());
   });
 });
