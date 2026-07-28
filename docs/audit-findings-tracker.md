@@ -1,8 +1,9 @@
 # Audit Findings Tracker
-Last updated: 2026-07-28
-Analysed against: origin/main @ `758aeb958ae2077a27a49f6a47c54f26da13edb8`
+Last updated: 2026-07-28 (second pass — closures)
+Analysed against: origin/main @ `184d08a59afc7ca4a00fcf17718a602bbd651661`
 (clean branch worktree cut from `origin/main`, per Step 0 — not the live checkout,
-not a fallback `git show`).
+not a fallback `git show`). First pass the same day analysed `758aeb95`; `main` has
+since moved 13 commits and **closed the regression that pass opened**.
 
 > Automated weekly synthesis of every finding across the audit corpus, checked against a
 > **pinned snapshot of `origin/main`**. **Static analysis only.** "FIXED" means the code
@@ -25,11 +26,12 @@ not a fallback `git show`).
   labels are DISTINCT from the identically-named rows from earlier docs; always qualified
   below as "2026-07-20 weekly …")*
 - **`audit-2026-07-23-branch-review.md`** — F-1, F-2 *(NEW source since last run)*
-- **`docs/security-diffs/diff-2026-07-2*.md`** — daily scans 07-21 … 07-27
+- **`docs/security-diffs/diff-2026-07-2*.md`** — daily scans 07-21 … **07-28**
   *(**NEW source class this run.** Previous trackers cited only `audit-*.md` + triage +
   `security-audits/`. The daily scans carry real, distinctly-labelled findings — four of
   the eleven closures below originate there and none of them appears in any `audit-*.md`.
-  Folding them in is a scope correction, not new analysis.)*
+  Folding them in is a scope correction, not new analysis.)* `diff-2026-07-28.md` and its
+  amendment (#1416) are new in the second pass and supplied both of that pass's findings.
 - **2026-07-27 branch review** — 10 findings, recorded in `CLAUDE.md` and
   `docs/Feature-Status.md`; PRs #1409 (`fbb5b942`) / #1410 (`9b50268d`). **No
   `docs/audit-2026-07-27-*.md` file exists** — worth creating for parity with 07-20/07-23.
@@ -39,11 +41,72 @@ not a fallback `git show`).
   no finding IDs beyond those already catalogued.
 
 ## Summary
-- Total findings catalogued: **~138** (dedup across the docs above; MEDIUM/LOW grouped)
-- Fixed (code-confirmed): **~92** (11 closed this run)
-- Still open / accepted-residual: **~34** (1 new this run)
-- **Regressed: 1** (ECC F-P3-3 — first non-zero regression count since this tracker began)
+- Total findings catalogued: **~141** (dedup across the docs above; MEDIUM/LOW grouped)
+- Fixed (code-confirmed): **~96** (11 closed in the first pass, **4 more in the second**)
+- Still open / accepted-residual: **~34**
+- **Regressed: 0** — ECC F-P3-3 was reopened and re-closed the same day; see below
 - Needs on-device / on-chain / live-backend verification: **21**
+
+---
+
+## Second pass — 2026-07-28 closures (`758aeb95` → `184d08a5`, 13 commits)
+
+The first pass of this tracker opened a regression row (ECC F-P3-3) and listed two
+follow-ups as outstanding. **All of it closed the same afternoon.** Recorded as a separate
+pass rather than folded into the first, so the record shows the regression existed and for
+how long, rather than implying it was never there.
+
+| ID | Severity | Finding | Closed by | Confirmed by |
+|---|---|---|---|---|
+| **ECC F-P3-3 (#1160)** | HIGH | First-run security walkthrough deleted undocumented by PR #1403, reopening the ECC finding it remediated | **PR #1417** (`53361461`) | **grep**: `FirstRunTour.jsx` present; `WalletEntry.jsx` has **2** `armTour()` call sites and **1** `<FirstRunTour />` render; both `FirstRunTour.placement.test.js` and a **new** `FirstRunTour.behaviour.test.jsx` exist |
+| **DIFF-0728-1** | LOW-MED | `veyrnox-first-run-tour-armed` / `-seen` absent from the panic-wipe residue allowlist. `ALL_RESIDUE_KEYS` drives BOTH the erase and `inspectKeyMaterial().clean`, so a wipe left them **and still reported `clean: true`** | **PR #1415** (`593c969b`) | **grep**: both keys in `METADATA_RESIDUE_KEYS` (`panic.js:297-298`) |
+| **DIFF-0728-2** | LOW | Paywall outcome-first preamble disabled behind `OUTCOME_PREAMBLE_ENABLED = false`; its regression test inverted to assert the disable, and a neighbouring test left **passing vacuously** | **PRs #1418 + #1422** (`3f6773ab`, `184d08a5`) | **grep**: flag occurrences **0**; `it.skip` count **0** in the gating block |
+| **HON-0728** | MEDIUM | Paywall referral banner rendered `referrerTierInfo.commission % off` — the **referrer's earnings rate** from a static table, not the price the buyer would be charged. Coincides only at USD base prices; Apple's Bronze is really 3.34% off, and FX rounding erases the discount entirely in Albania/Armenia while the banner still promised "2.5% off" | **PR #1427** (`d1a9f38f`) | **grep**: new pure helper `lib/discountPercent.js` (returns `null` on non-finite / non-positive / sub-1% → render no claim, I4); `Subscription.jsx:286` derives from `selectedBasePrice`/`selectedOfferPrice` |
+
+### Why F-P3-3 is closed rather than left open with a note
+
+The restore was not a `git revert`. PRs #1409/#1410 had rewritten `WalletEntry.jsx`'s
+consent logic in the meantime, so reverting #1403 wholesale would have removed those fixes.
+The component and its placement test were restored **byte-identical** from `de8cb829^`
+(blob `1ae7031b…` verified against the pre-deletion tree) and the three wiring points were
+re-applied to the current file. **No consent change was reverted.**
+
+A `FirstRunTour.behaviour.test.jsx` was added because the component had only ever had a
+*source-level* placement guard, which never renders it — the gap that let both the deletion
+and the restore proceed with no executable evidence the tour worked. The new suite pins
+armed/unarmed/consumed and the I3 property (`armTour()` writes nothing in a decoy session),
+and the I3 guard plus arm-consumption were **mutation-checked**.
+
+### Two process findings from this pass, worth more than the code
+
+1. **The same disable hit two features, and both reasons were false.** #1403 disabled
+   FirstRunTour *and* the paywall preamble on one belief: *"OutcomeSteps was appearing as a
+   5-step modal after wallet creation, blocking consent screen display."* Checked against
+   that commit: `OUTCOME_STEPS` has **3** steps, is **not** a modal (no overlay), and sits
+   on `/plans` **inside the router — behind** the consent gate, so it cannot render before
+   consent. The 5-step modal actually on screen was `FirstRunTour`, still rendering from
+   the device-side cache that PR's own message identifies. **A claim of the form "X is
+   blocking Y" is checkable in minutes; neither disable was checked.**
+2. **`.skip` with an un-skip condition written INTO the file is what made a blind handoff
+   work.** #1418 (vacuous-test finding) and #1422 (flag removal) were authored by different
+   sessions that never communicated. #1418 skipped two tests, left *"flip
+   OUTCOME_PREAMBLE_ENABLED to true, then remove the .skip from both… the first test below
+   fails the moment the flag flips… Do NOT 'fix' that failure by relaxing it; it is the
+   tripwire"*, and #1422 hit exactly that and honoured it. Had that instruction lived in a
+   PR description it would have been invisible. **Write the un-skip condition next to the
+   skip.**
+
+### Doc-drift correction chain (four hops in ~90 minutes)
+
+Worth recording because the repo keeps being bitten by this: #1417's `CLAUDE.md` bullet
+listed two open follow-ups → #1415 closed one **50 minutes before #1417 merged**, making
+the bullet false on arrival → #1419 corrected that half → #1422 corrected the other →
+#1425 corrected `panic.js`'s own comments, which had justified the key sweep with "the
+writer is gone" (false once #1417 restored the writer). **The sweep never depended on that
+rationale** — the finding was "these keys are a tell and the wipe misses them", true either
+way. Every hop was marked as a correction rather than silently reworded. On a repo moving
+10+ commits/day, a note about in-flight work is stale within the hour; write the finding,
+not the current state of the fix.
 
 ---
 
@@ -69,11 +132,11 @@ a five-item SQL hardening set landed as unexecuted migration text.**
 | **BR-0727-SEND** — Continue gated on `isFormAmountWellFormed` (rejects `1e-8`, `1,5`, `1.2.3`, `1.`) but the error helper returned `null` for all of them: the button did nothing and said nothing | MEDIUM | `9b50268d` (#1410) | **grep**: `sendAmountError.js:67` returns `'malformed'`, fed **the gate's own verdict** (`wellFormed`) so message and gate cannot drift |
 | **BR-0727-PRICING** (I4) — "Save 30%" / "4 months free" hardcoded beside offer-adjusted prices they were not derived from; monthly and annual resolve via two *independent* `offerPriceInfo()` calls, so annual could be the **worse** deal under a 30% badge. "4 months" was wrong even at USD base (3.65) | MEDIUM | `9b50268d` (#1410) | **grep**: `src/lib/annualSaving.js:38-47` returns `null` on any non-finite/non-positive input → render no claim (I4); `Subscription.jsx` prices use `.mono-value` |
 
-#### Regressed this run 🔴
+#### Regressed this run 🔴 — *since RE-CLOSED, see the second-pass section above*
 
 | Finding | What broke |
 |---|---|
-| **ECC F-P3-3 (#1160)** — first-run security walkthrough | PR #1403 **deleted `src/components/FirstRunTour.jsx` and its placement test undocumented**. The tour was the remediation for ECC finding F-P3-3 (users get 80+ features with no walkthrough); removing it **reopens the finding**. **grep-confirmed**: no `FirstRunTour*` file under `src/`, zero `veyrnox-first-run-tour` references. Now recorded honestly in `docs/Feature-Status.md:1421` as HONEST-DISABLED with the orphaned localStorage keys and the revert path (`de8cb829^`) — the documentation is correct; **the remediation is gone**. |
+| **ECC F-P3-3 (#1160)** — first-run security walkthrough | PR #1403 **deleted `src/components/FirstRunTour.jsx` and its placement test undocumented**. The tour was the remediation for ECC finding F-P3-3 (users get 80+ features with no walkthrough); removing it **reopens the finding**. **grep-confirmed at `758aeb95`**: no `FirstRunTour*` file under `src/`, zero `veyrnox-first-run-tour` references. Now recorded honestly in `docs/Feature-Status.md:1421` as HONEST-DISABLED with the orphaned localStorage keys and the revert path (`de8cb829^`) — the documentation is correct; **the remediation is gone**. → **RE-CLOSED the same afternoon by PR #1417** (`53361461`). This row is left standing as a true record of what `main` held at `758aeb95`. |
 
 #### Opened this run
 
@@ -136,7 +199,11 @@ The third is a genuine partial that the checklist's phrasing was concealing.
 
 | ID | Severity | Finding | Confirmed by |
 |---|---|---|---|
-| **DIFF-0726-CONSENT** | HIGH | Consent bypassed by 13 direct `trackEvent()` call sites (I2+I4) | **NEW this run** — `trackEvent.js:33` `if (!hasConsent()) return;` at the single egress chokepoint (grep) |
+| **ECC F-P3-3 (#1160)** | HIGH | First-run security walkthrough deleted, reopening the ECC finding | **2nd pass** — `FirstRunTour.jsx` present; 2 `armTour()` sites, 1 render, placement **and** new behaviour test (grep). PR #1417 |
+| **DIFF-0728-1** | LOW-MED | Tour residue keys survived panic wipe *and* it reported `clean: true` | **2nd pass** — `panic.js:297-298` in `METADATA_RESIDUE_KEYS` (grep). PR #1415 |
+| **DIFF-0728-2** | LOW | Preamble disabled by flag; one test inverted to assert it, one left vacuous | **2nd pass** — flag occurrences **0**, `it.skip` count **0** (grep). PRs #1418 + #1422 |
+| **HON-0728** | MEDIUM | Paywall banner rendered the REFERRER's commission rate as the buyer's "% off" (I4) | **2nd pass** — `lib/discountPercent.js` (null → no claim); `Subscription.jsx:286` derives from store prices (grep). PR #1427 |
+| **DIFF-0726-CONSENT** | HIGH | Consent bypassed by 13 direct `trackEvent()` call sites (I2+I4) | **1st pass** — `trackEvent.js:33` `if (!hasConsent()) return;` at the single egress chokepoint (grep) |
 | **DIFF-0727-TRACKING** | MEDIUM | Decoy sessions wrote + consumed funnel flags in shared storage (I3) | **NEW this run** — `tracking-integration.jsx:80/94/154/312` `suppressed()` (grep) |
 | **DIFF-0723-DEVICEID** | MEDIUM | `veyrnox-device-id` survived panic wipe → install tell + cross-wipe backend linkage | **NEW this run** — `panic.js:258-260` (grep) |
 | **DIFF-0727-ROLLBACK** | MEDIUM | `rollback.yml` command injection via `deployment_id` | **NEW this run** — `env:` + validated `steps.dep.outputs.id` (grep) |
@@ -269,9 +336,14 @@ bridge integrity (architectural, disclosed); `HARDWARE_FACTOR_DEGENERATE` wipe-c
 
 ## Regressed 🔴
 
-| ID | Finding | What broke |
+*No finding is currently in a regressed state.*
+
+**ECC F-P3-3 was regressed and re-closed on 2026-07-28** — kept here rather than swept
+away, because "it was fixed within hours" and "it never happened" are different facts:
+
+| ID | Finding | What broke → resolution |
 |---|---|---|
-| **ECC F-P3-3 (#1160)** | First-run security walkthrough | **ACTIVE REGRESSION.** PR #1403 deleted `src/components/FirstRunTour.jsx` and its placement test with no note. The tour *was* the remediation for ECC F-P3-3; deleting it reopens the finding. grep-confirmed absent from `src/`. `docs/Feature-Status.md:1421` now records it honestly (HONEST-DISABLED, orphaned `veyrnox-first-run-tour-*` keys, revert path `de8cb829^`) — **the documentation is correct; the remediation is gone.** Owner decision needed: revert, rebuild, or accept and tell ECC. |
+| **ECC F-P3-3 (#1160)** | First-run security walkthrough | PR #1403 (`de8cb829`, 2026-07-27) deleted `src/components/FirstRunTour.jsx` and its placement test with no note. The tour *was* the remediation for ECC F-P3-3, so deleting it reopened the finding — caught by this tracker's first pass the next morning, ~21 h later. **RE-CLOSED same day by PR #1417** (`53361461`): component + placement test restored byte-identical from `de8cb829^`, wiring re-applied to the current `WalletEntry.jsx` (not a wholesale revert — #1409/#1410 had rewritten that file's consent logic), plus a new behaviour test the component never had. grep-confirmed present on `main`. |
 
 Historical regressions on record (re-fixed; preserved, not swept away):
 
