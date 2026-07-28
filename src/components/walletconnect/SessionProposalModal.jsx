@@ -24,7 +24,7 @@ function chainId(caip2) {
 }
 
 export function SessionProposalModal({ proposal, onClose }) {
-  const { approveSession, rejectSession, evmAddress } = useWalletConnect();
+  const { approveSession, rejectSession, evmAddress, isSendReauthRequired } = useWalletConnect();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -49,6 +49,12 @@ export function SessionProposalModal({ proposal, onClose }) {
     setBusy(true);
     setErr(null);
     try {
+      // L-4 (audit 2026-07-28): mirror the provider's step-up gate at the UI so
+      // the user sees a clear message rather than a generic thrown error. The
+      // provider's handleApproveSession enforces the same check authoritatively.
+      if (isSendReauthRequired?.()) {
+        throw new Error('Step-up re-auth required — unlock again to approve this connection');
+      }
       await approveSession(proposal.id);
       successHaptic();
       onClose();
