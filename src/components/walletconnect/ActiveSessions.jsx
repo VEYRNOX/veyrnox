@@ -2,6 +2,7 @@
 import styles from './ActiveSessions.module.css';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
+import { isSafeIconUrl } from '@/lib/wcIconUrl.js';
 import { useState } from 'react';
 
 // Show the bare host (drop scheme + trailing slash) so a long dApp URL stays
@@ -46,8 +47,19 @@ export function ActiveSessions() {
 
         return (
           <li key={s.topic} className={styles.item} data-expired={isExpired || undefined}>
-            {meta.icons?.[0]
-              ? <img src={meta.icons[0]} alt="" className={styles.icon} width={36} height={36} />
+            {/* M-4: same allowlist gate as the proposal modal. Post-approval
+                the peer is trusted enough to sign, but the icon URL is still
+                peer-controlled — no reason to fetch an arbitrary host. */}
+            {isSafeIconUrl(meta.icons?.[0])
+              ? <img
+                  src={meta.icons[0]}
+                  alt=""
+                  className={styles.icon}
+                  width={36}
+                  height={36}
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
+                />
               : <span className={styles.iconFallback} aria-hidden="true">{name.charAt(0)}</span>}
 
             <div className={styles.info}>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/lib/toast";
 import Spinner from "@/components/Spinner";
+import { safeNftImageUrl } from "@/lib/nftImageUrl";
 
 const CHAIN_COLORS = { ethereum: "bg-secondary text-muted-foreground", solana: "bg-secondary text-muted-foreground", polygon: "bg-secondary text-muted-foreground", base: "bg-secondary text-muted-foreground" };
 const STATUS_COLORS = { holding: "bg-success/10 text-success", listed: "bg-caution/10 text-caution", sold: "bg-muted text-muted-foreground" };
@@ -92,7 +93,8 @@ export default function NFTPortfolio() {
               <div key={nft.id} className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="aspect-square bg-secondary flex items-center justify-center relative">
                   {nft.image_url ? (
-                    <img src={nft.image_url} alt={nft.name} className="w-full h-full object-cover" />
+                    /* M-10: attacker-influenced field; safeNftImageUrl gates the fetch. */
+                    <img src={safeNftImageUrl(nft.image_url)} alt={nft.name} referrerPolicy="no-referrer" crossOrigin="anonymous" className="w-full h-full object-cover" />
                   ) : (
                     <Image className="h-8 w-8 text-muted-foreground opacity-40" />
                   )}

@@ -117,6 +117,42 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
       expect(d.get('default-src')).toEqual(["'self'"]);
     });
 
+    // M-10 (2026-07-28 audit): img-src used to carry a bare `https:` — any
+    // origin was a valid <img src>, which turns the tag into a data-exfil
+    // channel for injected code AND lets attacker-influenced strings on the
+    // NFT / news / WalletConnect surfaces fire pre-consent fetches. Pin the
+    // policy so a regression to `https:` fails CI. Every remote token must be
+    // an explicit host or a wildcard subdomain, and the union must include the
+    // hosts the three helper allowlists depend on.
+    it('img-src is an explicit host allowlist with no open wildcard (M-10)', () => {
+      const imgSrc = d.get('img-src') ?? d.get('default-src') ?? [];
+      expect(imgSrc.length, 'img-src missing').toBeGreaterThan(0);
+      for (const bad of ['*', 'https:', 'http:', 'blob:', "'unsafe-inline'"]) {
+        expect(imgSrc, `img-src must not contain ${bad}`).not.toContain(bad);
+      }
+      for (const tok of imgSrc) {
+        if (tok === "'self'" || tok === 'data:') continue;
+        expect(tok, `img-src token "${tok}" is not an explicit https origin`).toMatch(
+          /^https:\/\/(\*\.)?[a-z0-9.-]+$/i,
+        );
+      }
+      // Union must cover every host the three sink allowlists render from.
+      const requiredHosts = [
+        'https://explorer-api.walletconnect.com',
+        'https://registry.walletconnect.com',
+        'https://images.cointelegraph.com',
+        'https://cdn.decrypt.co',
+        'https://cloudflare-ipfs.com',
+        'https://gateway.pinata.cloud',
+        'https://*.mypinata.cloud',
+        'https://nft-cdn.alchemy.com',
+        'https://i.seadn.io',
+      ];
+      for (const h of requiredHosts) {
+        expect(imgSrc, `img-src must allowlist ${h} (required by sink helper)`).toContain(h);
+      }
+    });
+
     it('connect-src is an allowlist with no open wildcard (anti-exfiltration)', () => {
       const connectSrc = d.get('connect-src') ?? d.get('default-src') ?? [];
       expect(connectSrc.length, 'connect-src missing — falls back to default-src').toBeGreaterThan(0);
