@@ -265,25 +265,34 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // Seed-backup verification state (single blob; see lib/seedVerifyState.js).
   // Presence proves a real wallet was created and its backup quiz started.
   'veyrnox-seed-verify',
-  // ORPHANED first-run-tour markers. components/FirstRunTour.jsx was deleted in
-  // PR #1403 (de8cb829) along with its armTour() call sites, so nothing reads or
-  // writes these any more — but deleting the only reader does not delete the key
-  // from devices that already have it. The tour shipped in PR #1174 (aca998a2,
-  // 2026-07-18) and was removed 2026-07-27, so any device running a build from
-  // that span still carries them, Play internal-testing installs included.
+  // First-run-tour markers. components/FirstRunTour.jsx writes both: TOUR_ARMED
+  // on first wallet entry, TOUR_SEEN when the walkthrough completes.
   //
-  // "Nothing reads them" is not an exemption — it is the property every key in
-  // this list has after a wipe. What makes a key a tell is its PRESENCE, and
-  // 'veyrnox-first-run-tour-seen' asserts that a real Veyrnox install existed
-  // here AND completed a walkthrough of the coercion stack (duress PIN, stealth
-  // wallets, panic wipe, hardware binding). Same class as veyrnox-kek-pin-notice
-  // and veyrnox-device-id above, and swept for the same reason.
+  // These were added here while the component was DELETED, and the rationale
+  // written then ("orphaned", "nothing reads or writes these any more", "the
+  // writer is gone") is no longer true: PR #1417 restored the tour the same day,
+  // because deleting it reopened ECC F-P3-3 (#1160). The keys belong in this list
+  // either way — which is the point. A key earns its place here by what its
+  // PRESENCE proves, not by whether anything still reads it, so the sweep did not
+  // need revisiting when the writer came back. Only this comment did.
+  //
+  // What their presence proves: a real Veyrnox install existed on this device AND
+  // completed a walkthrough of the coercion stack (duress PIN, stealth wallets,
+  // panic wipe, hardware binding). Same class as veyrnox-kek-pin-notice and
+  // veyrnox-device-id above, and swept for the same reason.
+  //
+  // The tour shipped in PR #1174 (aca998a2, 2026-07-18), was removed 2026-07-27
+  // (PR #1403, de8cb829) and restored 2026-07-28 (PR #1417). Devices carrying the
+  // keys therefore include both current installs and any build from the earlier
+  // span — Play internal-testing installs included — since removing the writer
+  // never removed the key from a device that already had it.
   //
   // Exact keys rather than a RESIDUE_KEY_PREFIXES entry: that mechanism is for
   // names not known at build time (runtime fingerprints). These two are fixed
-  // and cannot grow a third variant — the writer is gone.
-  'veyrnox-first-run-tour-armed',   // FirstRunTour.jsx TOUR_ARMED_KEY (removed)
-  'veyrnox-first-run-tour-seen',    // FirstRunTour.jsx TOUR_SEEN_KEY  (removed)
+  // string constants in FirstRunTour.jsx. If a third is ever added there, it must
+  // be added here too — nothing enforces that link automatically.
+  'veyrnox-first-run-tour-armed',   // FirstRunTour.jsx TOUR_ARMED_KEY
+  'veyrnox-first-run-tour-seen',    // FirstRunTour.jsx TOUR_SEEN_KEY
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
