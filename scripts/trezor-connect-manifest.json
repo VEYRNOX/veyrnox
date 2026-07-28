@@ -1,0 +1,5 @@
+{
+  "_comment": "Pinned SHA-256 hashes of the @trezor/connect iframe bundle assets, keyed by major version. Update via `node scripts/bundle-trezor-connect.mjs --print-hashes` after a version bump and pin the values here. Missing manifest entries fail the build closed (audit finding M-9, 2026-07-28).",
+  "hosts": ["connect.trezor.io"],
+  "versions": {}
+}
