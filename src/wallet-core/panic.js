@@ -265,6 +265,25 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // Seed-backup verification state (single blob; see lib/seedVerifyState.js).
   // Presence proves a real wallet was created and its backup quiz started.
   'veyrnox-seed-verify',
+  // ORPHANED first-run-tour markers. components/FirstRunTour.jsx was deleted in
+  // PR #1403 (de8cb829) along with its armTour() call sites, so nothing reads or
+  // writes these any more — but deleting the only reader does not delete the key
+  // from devices that already have it. The tour shipped in PR #1174 (aca998a2,
+  // 2026-07-18) and was removed 2026-07-27, so any device running a build from
+  // that span still carries them, Play internal-testing installs included.
+  //
+  // "Nothing reads them" is not an exemption — it is the property every key in
+  // this list has after a wipe. What makes a key a tell is its PRESENCE, and
+  // 'veyrnox-first-run-tour-seen' asserts that a real Veyrnox install existed
+  // here AND completed a walkthrough of the coercion stack (duress PIN, stealth
+  // wallets, panic wipe, hardware binding). Same class as veyrnox-kek-pin-notice
+  // and veyrnox-device-id above, and swept for the same reason.
+  //
+  // Exact keys rather than a RESIDUE_KEY_PREFIXES entry: that mechanism is for
+  // names not known at build time (runtime fingerprints). These two are fixed
+  // and cannot grow a third variant — the writer is gone.
+  'veyrnox-first-run-tour-armed',   // FirstRunTour.jsx TOUR_ARMED_KEY (removed)
+  'veyrnox-first-run-tour-seen',    // FirstRunTour.jsx TOUR_SEEN_KEY  (removed)
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
