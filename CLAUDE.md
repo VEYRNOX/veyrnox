@@ -298,6 +298,52 @@ Two of them had already reached `main` via PR #1403, so the fixes were cut fresh
 - **FirstRunTour is HONEST-DISABLED and ECC F-P3-3 (#1160) is REOPENED.** PR #1403
   deleted the component undocumented; `docs/Feature-Status.md` now records it, the
   orphaned `veyrnox-first-run-tour-*` keys, and the revert path (`de8cb829^`).
+  The orphaned keys were then found to survive panic wipe — see the 2026-07-28
+  entry below. ECC F-P3-3 itself is still reopened; only the residue is closed.
+
+**2026-07-28 daily security diff — 2 findings, both fixed.** Scanned 14 commits
+(`34f5da31`→`758aeb95`). The window was strongly net-positive on its own (four controls
+ADDED: `rollback.yml` shell-injection validation, the `lib/consent.js` I3 write-gate, the
+`tracking-integration.jsx` I3 local-state gate, the Settings telemetry read-gate), plus a
+regression-test assertion restored. Two items needed work. **All three PRs below were
+still OPEN with auto-merge armed when this was written — not yet on `main`.**
+- **Orphaned residue keys survive panic wipe (PR #1415).** Deleting `FirstRunTour.jsx`
+  in #1403 orphaned `veyrnox-first-run-tour-armed` / `-seen`, which were never in the
+  panic-wipe list. `ALL_RESIDUE_KEYS` drives BOTH the erase AND
+  `inspectKeyMaterial().clean`, so they survived a wipe *and* it still reported clean.
+  Fixed in `METADATA_RESIDUE_KEYS` + regression test
+  (`panic-residue-first-run-tour.test.js`).
+  **The lesson, and it is general: "nothing reads this key any more" is NOT an
+  exemption — that is the property EVERY key in that list has after a wipe. What makes
+  a key a tell is its PRESENCE.** `veyrnox-first-run-tour-seen` asserts a real install
+  existed here AND walked the coercion stack. `docs/Feature-Status.md` had called it
+  "no residual-state hazard"; that line is corrected, and marked as having been wrong
+  rather than quietly reworded. Same class as DIFF-0723-DEVICEID (`veyrnox-device-id`)
+  in the findings tracker — check that precedent before writing one of these off.
+  **Standing rule: deleting a component orphans its storage keys. Cross-check every key
+  a deleted file wrote against `ALL_RESIDUE_KEYS`.**
+- **A disabled flag made a whole test block pass vacuously (PR #1418).**
+  `Subscription.jsx` carries `const OUTCOME_PREAMBLE_ENABLED = false`, so the preamble
+  cannot render at all — which made all THREE tests in the gating block assert the same
+  thing by accident. Two were hollow: their `localStorage` / `currentTier` setup was
+  inert. All three also matched on the step's COPY, so a copy edit alone would have made
+  them pass for a second wrong reason. Now keyed off the `outcome-step` testid; the two
+  conditional tests are `.skip`ped (NOT deleted — `outcomeStep`'s initialiser still
+  reads `OUTCOME_SEEN_KEY` and still returns null for `safety_plus`, so deleting would
+  bring that back unguarded), and the remaining test is bidirectional and **fails the
+  moment the flag flips to true** — verified by actually flipping it, not asserted. That
+  failure is the tripwire that sends a reader back to un-skip; do not relax it.
+  **This is the flag-disabled cousin of the "align tests with the new flow" smell:
+  a test asserting a behaviour that can no longer occur is coverage that READS as
+  present and is not.**
+- **The scan's pattern list is a floor, not a ceiling — and it keeps lagging.** Two
+  consecutive runs produced findings from files no pattern matched (07-27 the SQL/edge
+  surface, 07-28 `src/components/FirstRunTour.jsx`). The 07-28 report records the pattern
+  to add; the task file may only write its own report, so it has NOT been applied.
+- **Process:** the three-checkpoint staleness design earned its keep. #1412 merged 7
+  minutes after the pre-merge checkpoint and before the report's own PR landed — the
+  fourth staleness event on record and the first one caught, because only the
+  post-merge checkpoint can see the commit→merge gap. Amendment PR #1416.
 
 **Open residuals:** M-1 (EVM key unzeroable, ethers v6), M-6 (iOS bridge H copy),
 #1111 (vault AAD v:3 migration — plan r2 done, implementation blocked on owner decisions),
