@@ -383,13 +383,13 @@ async function _unlockInner(password, opts = {}) {
     // so authenticateOrThrow() is intentionally skipped here to avoid a double prompt.
     const getHF = opts && opts.getHardwareFactor;
     if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-    // Validate the blob's kekSalt BEFORE any biometric prompt / key derivation: a
-    // KEK-enrolled blob with a missing/empty/non-base64 kekSalt is malformed and must
-    // fail closed with the stable code (never a raw InvalidCharacterError).
-    const saltBytes = decodeKekSalt(blob.kekSalt);
-    // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed salt
-    // (v2 inert-binding / v1 legacy). See hfOptsForBlob.
-    const H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
+    // L-2: decodeKekSalt() and the awaited getHardwareFactorWithLockoutFallback()
+    // used to run OUTSIDE the try/finally, so a throw between the salt allocation and
+    // the try (e.g. biometric cancel from getHF) left saltBytes un-wiped in the heap.
+    // Move both inside try; the finally guards saltBytes/H with `if` so an early throw
+    // from decodeKekSalt (never allocates) is safe. malformed kekSalt → MALFORMED_VAULT.
+    let saltBytes;
+    let H;
     let C;
     let kek;
     let dek;
@@ -397,6 +397,10 @@ async function _unlockInner(password, opts = {}) {
     // and the recovered DEK are wiped on EVERY path, including when unwrapDek throws
     // (wrong PIN/device). None may linger in the JS heap until GC (I4), mirroring web.js.
     try {
+      saltBytes = decodeKekSalt(blob.kekSalt);
+      // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed salt
+      // (v2 inert-binding / v1 legacy). See hfOptsForBlob.
+      H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
       C = await deriveKekC(password, saltBytes);
       kek = await combineKek(H, C);
       // combineKek zeroes H/C internally; wipe again at the call site so the guarantee
@@ -421,7 +425,7 @@ async function _unlockInner(password, opts = {}) {
       if (C) C.fill(0);
       if (kek) kek.fill(0);
       if (dek) dek.fill(0);
-      saltBytes.fill(0);
+      if (saltBytes) saltBytes.fill(0);
     }
   }
 
@@ -653,9 +657,13 @@ export const nativeKeyStore = {
       // preserved as the lockout fallback inside getHardwareFactorWithLockoutFallback.
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-      const oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
-      const newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
-      const newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+      // L-2: decodeKekSalt / newSaltBytes / newKekSalt moved INSIDE try/finally.
+      // Previously a throw from crypto.getRandomValues or btoa (or the earlier
+      // decodeKekSalt) would leave oldSaltBytes/newSaltBytes un-wiped. Guarded with
+      // `if` in finally because a decodeKekSalt throw leaves both undefined.
+      let oldSaltBytes;
+      let newSaltBytes;
+      let newKekSalt;
       let H;
       let H2;
       let oldC;
@@ -666,6 +674,9 @@ export const nativeKeyStore = {
       // H-NEW-6b: wrap the WHOLE key-material lifetime in try/finally so H, H2, both
       // derived KEKs, and the recovered DEK are wiped on EVERY path (I4).
       try {
+        oldSaltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
+        newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+        newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
         // Old side: whatever the stored blob binds to (v2/v1 → fixed salt via hfOptsForBlob).
         H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, oldSaltBytes));
         // New side: the re-enrolled vault is always v3 — bind the new H to the new salt.
@@ -691,8 +702,8 @@ export const nativeKeyStore = {
         if (oldKek) oldKek.fill(0);
         if (newKek) newKek.fill(0);
         if (dek) dek.fill(0);
-        oldSaltBytes.fill(0);
-        newSaltBytes.fill(0);
+        if (oldSaltBytes) oldSaltBytes.fill(0);
+        if (newSaltBytes) newSaltBytes.fill(0);
       }
       return { upgraded: true, version: 3 };
     });
@@ -758,16 +769,22 @@ export const nativeKeyStore = {
       // KEK-enrolled: re-encrypt the new content under the EXISTING DEK, preserving wrap.
       const getHF = opts && opts.getHardwareFactor;
       if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-      const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
-      // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed
-      // salt for v2 (inert-bound, C-1 residual) / v1 (legacy). See hfOptsForBlob and
-      // upgradeKekToV3 for the v2→v3 migration path. 2026-07-14 audit LOW: stale
-      // "(v2)" wording corrected — v2 is the inert-binding branch, not salt-bound.
-      const H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
+      // L-2: decodeKekSalt + the awaited getHardwareFactorWithLockoutFallback moved
+      // INSIDE try/finally so a throw between salt allocation and the C/kek derivation
+      // (e.g. biometric cancel) still wipes saltBytes. Guarded with `if` because a
+      // decodeKekSalt throw leaves saltBytes undefined. malformed kekSalt → MALFORMED_VAULT.
+      let saltBytes;
+      let H;
       let C;
       let kek;
       let dek;
       try {
+        saltBytes = decodeKekSalt(blob.kekSalt);
+        // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed
+        // salt for v2 (inert-bound, C-1 residual) / v1 (legacy). See hfOptsForBlob and
+        // upgradeKekToV3 for the v2→v3 migration path. 2026-07-14 audit LOW: stale
+        // "(v2)" wording corrected — v2 is the inert-binding branch, not salt-bound.
+        H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
         C = await deriveKekC(password, saltBytes);
         kek = await combineKek(H, C);
         if (H && H.fill) H.fill(0);
@@ -781,7 +798,7 @@ export const nativeKeyStore = {
         if (C) C.fill(0);
         if (kek) kek.fill(0);
         if (dek) dek.fill(0);
-        saltBytes.fill(0);
+        if (saltBytes) saltBytes.fill(0);
       }
     });
   },
