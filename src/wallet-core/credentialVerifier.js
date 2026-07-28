@@ -20,15 +20,25 @@ function randomSalt() {
 }
 
 async function deriveRaw(credential, salt, params) {
-  const raw = await argon2id({
-    password: enc.encode(String(credential).normalize('NFKC')),
-    salt,
-    parallelism: params.parallelism,
-    iterations: params.iterations,
-    memorySize: params.memorySize,
-    hashLength: params.hashLength,
-    outputType: 'binary',
-  });
+  // L-1: hold the encoded PIN/password bytes in a local so we can zero them in
+  // finally — mirrors src/wallet-core/vault.js deriveKey(). Without this, the
+  // NFKC-encoded credential lingers on the heap until GC (or forever if the
+  // argon2id call throws), giving a memory-inspection attacker a wider window.
+  const pw = enc.encode(String(credential).normalize('NFKC'));
+  let raw;
+  try {
+    raw = await argon2id({
+      password: pw,
+      salt,
+      parallelism: params.parallelism,
+      iterations: params.iterations,
+      memorySize: params.memorySize,
+      hashLength: params.hashLength,
+      outputType: 'binary',
+    });
+  } finally {
+    pw.fill(0);
+  }
   // DEFECT-A memory management (mirrors wallet-core/vault.js deriveKey). At unlock the
   // vault decrypt KDF and THIS verifier KDF run back-to-back; both allocate
   // KDF_PARAMS.memorySize (currently 64 MiB) in
