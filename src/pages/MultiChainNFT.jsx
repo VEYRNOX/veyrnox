@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/lib/toast";
+import { safeNftImageUrl } from "@/lib/nftImageUrl";
 
 const CHAINS = [
   { id: "ethereum", label: "Ethereum", icon: "Ξ", color: "bg-secondary text-muted-foreground", marketplace: "https://opensea.io/assets/ethereum" },
@@ -65,7 +66,10 @@ export default function MultiChainNFT() {
       <div className="rounded-xl border border-border bg-card overflow-hidden group">
         <div className="relative aspect-square bg-secondary overflow-hidden flex items-center justify-center">
           {n.image_url ? (
-            <img src={n.image_url} alt={n.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            /* M-10: `image_url` is arbitrary user input; safeNftImageUrl
+               falls back to a neutral placeholder for any non-allowlisted
+               gateway so we don't pre-consent-fetch an attacker origin. */
+            <img src={safeNftImageUrl(n.image_url)} alt={n.name} referrerPolicy="no-referrer" crossOrigin="anonymous" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
           ) : (
             <Image className="h-10 w-10 text-muted-foreground opacity-40" aria-hidden="true" />
           )}
@@ -95,7 +99,7 @@ export default function MultiChainNFT() {
       <div className="p-3 rounded-xl border border-border bg-card flex items-center gap-3">
         <div className="h-12 w-12 rounded-lg bg-secondary flex items-center justify-center shrink-0 overflow-hidden">
           {n.image_url ? (
-            <img src={n.image_url} alt={n.name} className="h-full w-full object-cover" />
+            <img src={safeNftImageUrl(n.image_url)} alt={n.name} referrerPolicy="no-referrer" crossOrigin="anonymous" className="h-full w-full object-cover" />
           ) : (
             <Image className="h-5 w-5 text-muted-foreground opacity-40" aria-hidden="true" />
           )}
