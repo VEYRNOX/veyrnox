@@ -21,7 +21,10 @@ describe('SendCrypto — EVM 1-conf failure is surfaced, not swallowed', () => {
 
   it('surfaces the unconfirmed state to the user and refreshes the tx list', () => {
     // The user-facing toast copy from the new catch handler (unique marker).
-    expect(src).toContain('may still be pending');
+    // i18n (Phase 2 slice 3): the literal "may still be pending" copy now lives
+    // in src/i18n/locales/en/wallet.json (send.toasts.unconfirmed); the JSX
+    // renders it via tw("send.toasts.unconfirmed").
+    expect(src).toContain('tw("send.toasts.unconfirmed")');
     // The catch also refreshes the transaction list so the pending row is honest.
     expect(src).toMatch(/raw\.wait\(1\)/);
     expect(src).toContain('invalidateQueries');

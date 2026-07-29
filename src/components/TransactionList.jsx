@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import EmptyState from "@/components/EmptyState";
@@ -9,12 +10,13 @@ const statusIcons = {
 };
 
 export default function TransactionList({ transactions = [] }) {
+  const { t } = useTranslation("wallet");
   if (!transactions.length) {
     return (
       <EmptyState
         kind="transactions"
-        title="No transactions yet"
-        description="When you send or receive on this wallet, your on-chain activity will show up here."
+        title={t("tx.list.empty_title")}
+        description={t("tx.list.empty_description")}
       />
     );
   }
