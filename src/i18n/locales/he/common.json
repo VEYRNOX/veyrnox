@@ -1,7 +1,7 @@
 {
   "language": {
-    "switcher_label": "Idioma",
-    "mt_banner": "Esta traducción fue generada por una máquina y no ha sido revisada por un hablante nativo. Si algo parece incorrecto, vuelve al inglés hasta que sea revisado.",
+    "switcher_label": "שפה",
+    "mt_banner": "תרגום זה נוצר באמצעות מכונה וטרם נבדק על ידי דובר שפת אם. אם ניסוח כלשהו נראה שגוי, עברו בחזרה לאנגלית עד שהתרגום ייבדק.",
     "names": {
       "en": "English",
       "es": "Español",
@@ -40,9 +40,9 @@
     }
   },
   "actions": {
-    "cancel": "Cancelar",
-    "confirm": "Confirmar",
-    "close": "Cerrar",
-    "back": "Atrás"
+    "cancel": "ביטול",
+    "confirm": "אישור",
+    "close": "סגירה",
+    "back": "חזרה"
   }
 }

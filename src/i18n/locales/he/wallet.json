@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "היסטוריית עסקאות",
+      "subhead": "שליחות וקבלות לפי רשת נקראות ישירות מהבלוקצ'יין — לקריאה בלבד, עם קישורים לסייר בלוקים.",
+      "badge_demo": "הדגמה · נתוני דוגמה",
+      "badge_mainnet": "מיינט",
+      "badge_testnet": "רשת בדיקה",
+      "privacy_demo_note": "מצב הדגמה — לא נשלחת שאילתה כלשהי ברשת; השורות למטה הן נתוני דוגמה מקומיים.",
+      "loading_label": "טוען היסטוריית {{symbol}}",
+      "error_prefix": "לא ניתן היה לטעון היסטוריה: {{reason}}.",
+      "error_fetch_reason": "לא ניתן היה להגיע לצומת ה-RPC — בדקו את החיבור שלכם ונסו שוב.",
+      "error_generic_reason": "האינדקסר לא הגיב",
+      "retry": "ניסיון חוזר",
+      "no_indexer_title": "היסטוריה בתוך האפליקציה אינה זמינה עבור {{name}} דרך JSON-RPC",
+      "no_indexer_body": "צומת JSON-RPC פשוט אינו יכול לפרט את העסקאות של כתובת, ואנחנו במכוון לא מוסיפים API של סייר/אינדקסר צד שלישי (מקור נתונים חדש ומשטח חשיפה נוסף). ההיסטוריה המלאה שלכם נמצאת בסייר הבלוקים.",
+      "view_on_explorer": "צפייה ב-{{address}} בסייר {{network}}",
+      "view_explorer_title": "צפייה בסייר הבלוקים",
+      "unlock_for_explorer": "פתחו את הארנק שלכם כדי לקבל את קישור הסייר עבור כתובת {{symbol}} שלכם.",
+      "locked_title": "הארנק נעול",
+      "locked_body": "פתחו את הארנק שלכם כדי לגזור את כתובת {{symbol}} שלכם ולטעון את ההיסטוריה שלה.",
+      "empty": "עדיין אין עסקאות עבור {{symbol}} ברשת {{network}}.",
+      "count_one": "{{count}} עסקה",
+      "count_other": "{{count}} עסקאות",
+      "most_recent_suffix": " · העדכנית ביותר",
+      "refresh": "רענון",
+      "sample_badge": "דוגמה",
+      "to_prefix": "אל ",
+      "from_prefix": "מאת ",
+      "status_pending": "בהמתנה",
+      "status_confirmed": "אושרה",
+      "status_failed": "נכשלה",
+      "awaiting_confirmation": "ממתין לאישור"
+    },
+    "list": {
+      "empty_title": "עדיין אין עסקאות",
+      "empty_description": "כשתשלחו או תקבלו בארנק זה, הפעילות שלכם על הבלוקצ'יין תופיע כאן."
+    },
+    "receipt": {
+      "heading": "קבלות עסקאות",
+      "subhead": "צרו קבלות ניתנות להדפסה עבור כל עסקה",
+      "search_placeholder": "חיפוש לפי מזהה, כתובת או מטבע...",
+      "loading": "טוען...",
+      "error": "לא ניתן היה לטעון עסקאות. אנא נסו שוב.",
+      "empty": "לא נמצאו עסקאות",
+      "preview_title": "תצוגה מקדימה של הקבלה",
+      "print": "הדפסה",
+      "print_window_title": "קבלת עסקה",
+      "brand": "VEYRNOX",
+      "doc_title": "קבלת עסקה",
+      "field_receipt_id": "מזהה קבלה",
+      "field_date": "תאריך",
+      "field_type": "סוג",
+      "field_asset": "נכס",
+      "field_amount": "סכום",
+      "field_network_fee": "עמלת רשת",
+      "field_status": "סטטוס",
+      "field_to": "אל",
+      "default_type": "העברה",
+      "default_status": "הושלמה",
+      "thank_you": "תודה שהשתמשתם ב-{{brand}}",
+      "thank_you_prefix": "תודה שהשתמשתם ב",
+      "digital_record": "זהו רישום עסקה דיגיטלי"
+    }
+  },
+  "settings": {
+    "heading": "הגדרות אבטחה",
+    "subhead": "נעלו, פתחו והגנו על הארנק שלכם",
+    "theme": {
+      "dark": "מצב כהה",
+      "light": "מצב בהיר",
+      "saved_note": "נשמר במכשיר זה",
+      "switch_to_light": "מעבר למצב בהיר",
+      "switch_to_dark": "מעבר למצב כהה"
+    },
+    "activity_log": {
+      "label": "יומן פעילות",
+      "description": "כבוי כברירת מחדל · נשמר במכשיר זה בלבד",
+      "help": "יומן פרטי: מה שינית, שלחת, ביטלת. ללא סכומים או כתובות. מחיקת חירום מוחקת אותו.",
+      "enable_aria": "הפעלת יומן פעילות",
+      "disable_aria": "כיבוי יומן פעילות",
+      "no_events": "עדיין לא נרשמו אירועים."
+    },
+    "message_signing": {
+      "label": "חתימת הודעות",
+      "description": "כבוי כברירת מחדל · נשמר במכשיר זה בלבד",
+      "help": "כבוי כברירת מחדל. מאפשר לכם לחתום על הודעות טקסט שרירותיות עם מפתח הארנק שלכם. הפעילו רק אם dApp או שירות מבקש מכם לחתום על הודעה.",
+      "enable_aria": "הפעלת חתימת הודעות",
+      "disable_aria": "כיבוי חתימת הודעות"
+    },
+    "telemetry": {
+      "label": "נתוני שימוש אנונימיים",
+      "description": "בהצטרפות מרצון · לעולם לא כוללים יתרות או כתובות",
+      "help": "עוזר לנו למצוא באגים ולשפר את האפליקציה. נעשה שימוש במזהה מכשיר אקראי — הוא לעולם אינו מקושר לארנק שלכם, למפתחות שלכם או לזהותכם. כיבוי זה עוצר את כל יציאת נתוני השימוש מהמכשיר הזה.",
+      "enable_aria": "הפעלת נתוני שימוש אנונימיים",
+      "disable_aria": "כיבוי נתוני שימוש אנונימיים"
+    },
+    "delete_account": {
+      "title": "אזור סכנה",
+      "clear_cache_label": "ניקוי מטמון מקומי",
+      "clear_cache_description": "מנקה נתונים שמורים במכשיר זה ונועל את הארנק. ביטוי השחזור שלכם עדיין עובד. כדי למחוק מפתחות, השתמשו במחיקת חירום.",
+      "delete_button": "מחיקה",
+      "confirm_prompt_pre": "פעולה זו מנקה נתונים שמורים ונועלת את הארנק. ביטוי השחזור שלכם עדיין עובד. הקלידו",
+      "confirm_prompt_post": "כדי לאשר.",
+      "confirm_placeholder": "הקלידו DELETE כדי לאשר",
+      "confirm_aria": "הקלידו DELETE כדי לאשר איפוס חשבון",
+      "cancel": "ביטול",
+      "confirm_delete": "אישור מחיקה",
+      "deleting": "מוחק..."
+    },
+    "biometric_unlock": {
+      "heading": "פתיחת נעילה ביומטרית",
+      "worth_knowing_label": "כדאי לדעת.",
+      "kdf_disclosure": "פתיחה בנגיעה אחת שומרת את סיסמת הארנק שלכם במכשיר זה, מוגנת על ידי נעילת המסך והביומטריה שלכם. אם מישהו משיג עותק של גיבוי המכשיר שלכם בלי המכשיר הפיזי, הוא עלול לגשת לארנק שלכם. כבו זאת עבור ההגנה החזקה ביותר.",
+      "app_layer_disclosure_pre": "פתיחת נעילה ביומטרית שומרת את הסיסמה שלכם במכשיר זה, מוגנת על ידי טביעת האצבע או הפנים שלכם. זה פועל בתוך האפליקציה, לא ברמת מערכת ההפעלה.",
+      "app_layer_disclosure_mid": "להגנה חזקה יותר ברמת המכשיר, הפעילו",
+      "hardware_protection_label": "הגנת חומרה",
+      "app_layer_disclosure_post": "(זמין למטה).",
+      "toggle_label": "פתיחת נעילה ביומטרית (ארנק ראשי)",
+      "toggle_description": "הפעלת פתיחת נעילה בנגיעה אחת עבור הארנק הראשי שלכם באמצעות ביומטריה של המכשיר.",
+      "before_enable_label": "לפני שתפעילו זאת.",
+      "confirm_disclosure": "אם מישהו משיג עותק של גיבוי המכשיר שלכם בלי המכשיר הפיזי, הוא עלול לגשת לארנק שלכם. הפעילו זאת רק אם זה מקובל עליכם.",
+      "confirm_enable_button": "הפעלת פתיחה בנגיעה אחת",
+      "cancel_button": "ביטול",
+      "checking_availability": "בודק זמינות…",
+      "default_label": "ביומטריה",
+      "available": "{{label}} זמין.",
+      "available_simulated": "{{label}} זמין (מדומה בהדגמה).",
+      "status_check_failed": "לא ניתן היה לבדוק זמינות ביומטרית במכשיר זה.",
+      "awaiting_prompt": "ממתין לבקשה…",
+      "preview_prompt": "תצוגה מקדימה של הבקשה",
+      "test_success": "אימות מדומה הצליח",
+      "test_cancelled": "הבקשה בוטלה"
+    },
+    "passkey_unlock": {
+      "heading_native": "פתיחת נעילה ביומטרית",
+      "heading_web": "פתיחת נעילה עם מפתח גישה",
+      "scope_banner_native_pre": "טביעת האצבע או הפנים שלכם נבדקים לפני פתיחת הנעילה —",
+      "scope_banner_native_post": "לא תחליף לסיסמה שלכם. הסיסמה וביטוי השחזור שלכם עדיין פועלים בפני עצמם, כך שאיבוד הביומטריה לעולם לא ינעל אתכם בחוץ.",
+      "scope_banner_web_pre": "מפתח גישה מוסיף הקשה ביומטרית או מפתח אבטחה מהיר לפני פתיחת הנעילה —",
+      "scope_banner_web_post": "לא תחליף לסיסמה שלכם. הסיסמה וביטוי השחזור שלכם עדיין פועלים בפני עצמם, כך שאיבוד מפתח הגישה לעולם לא ינעל אתכם בחוץ.",
+      "extra_step_label": "שלב נוסף",
+      "enroll_button": "רישום פתיחת נעילה ביומטרית",
+      "register_button": "רישום מפתח גישה",
+      "not_setup_native": "ביומטריה של המכשיר אינה מוגדרת. הוסיפו טביעת אצבע או פנים בהגדרות המכשיר שלכם קודם — הסיסמה שלכם עדיין עובדת.",
+      "not_supported_web": "פתיחת נעילה עם מפתח גישה אינה זמינה בדפדפן זה. היא פועלת באפליקציית הנייד ובדפדפנים מודרניים. השתמשו בסיסמה שלכם כאן.",
+      "enroll_error": "לא ניתן היה לרשום פתיחת נעילה ביומטרית במכשיר זה.",
+      "register_error": "לא ניתן היה לרשום מפתח גישה במכשיר זה.",
+      "enrolled_native": "פתיחת נעילה ביומטרית נרשמה",
+      "registered_web": "מפתח הגישה נרשם",
+      "simulated_suffix": " (מדומה)",
+      "remove_button": "הסרה",
+      "require_toggle_native": "דרשו פתיחת נעילה ביומטרית",
+      "require_toggle_web": "דרשו {{label}} בפתיחת נעילה",
+      "require_toggle_aria_web": "דרשו פתיחת נעילה עם מפתח גישה",
+      "require_toggle_desc_native": "בקשו את הביומטריה של המכשיר שלכם לפני פתיחת נעילה (הסיסמה שלכם עדיין עובדת).",
+      "require_toggle_desc_web": "בקשו את מפתח הגישה שלכם לפני פתיחת נעילה (הסיסמה שלכם עדיין עובדת).",
+      "applies_all_sessions": "זה חל על כל פגישות הארנק במכשיר זה.",
+      "default_label": "מפתח גישה",
+      "checking_availability": "בודק זמינות…",
+      "simulated_in_demo": "{{label}} מדומה בהדגמה. ",
+      "awaiting_biometric": "ממתין לביומטריה…",
+      "awaiting_passkey": "ממתין למפתח גישה…",
+      "preview_biometric_prompt": "תצוגה מקדימה של בקשה ביומטרית",
+      "preview_passkey_prompt": "תצוגה מקדימה של בקשת מפתח גישה",
+      "simulated_prefix": "מדומה ",
+      "biometric_verified": "ביומטריה אומתה",
+      "passkey_verified": "מפתח הגישה אומת",
+      "biometric_prompt_cancelled": "בקשת הביומטריה בוטלה",
+      "passkey_prompt_cancelled": "בקשת מפתח הגישה בוטלה"
+    },
+    "hardware_kek": {
+      "heading": "הגנת חומרה במכשיר",
+      "badge_webauthn": "מוגן ב-WebAuthn",
+      "badge_off": "כבוי",
+      "description_pre": "נועל את הארנק שלכם למכשיר הפיזי הזה. לאחר ההפעלה, ניתן לפתוח את הארנק שלכם רק ב",
+      "description_device": "מכשיר זה",
+      "description_post": ". קובץ גיבוי גנוב חסר תועלת בלי המכשיר עצמו, אפילו עם ה-PIN שלכם.",
+      "description_web_suffix": "פועל ב-Chrome 99+ וב-Firefox 108+. Safari אינו נתמך.",
+      "device_binding_note": "כבילת המכשיר פעילה ונבדקה על חומרה אמיתית.",
+      "checking_status": "בודק סטטוס…",
+      "web_prf_unsupported": "הגנת חומרה אינה זמינה בדפדפן זה. השתמשו ב-Chrome 99+ או ב-Firefox 108+, או השתמשו באפליקציית iOS או Android.",
+      "errors": {
+        "wrong_pin": "PIN שגוי — הזינו את ה-PIN שבו אתם משתמשים לפתיחת הארנק שלכם.",
+        "no_hardware": "לא ניתן היה להגיע לאבטחת החומרה של מכשיר זה. נסו שוב, או השתמשו במכשיר אחר.",
+        "malformed_vault": "לא ניתן היה לקרוא את נתוני הארנק השמורים שלכם במכשיר זה.",
+        "not_enrolled": "הגנת חומרה אינה מופעלת בכספת זו, אז אין מה לשדרג.",
+        "generic": "משהו השתבש. אנא נסו שוב.",
+        "key_invalidated": "טביעות האצבע שלכם השתנו — הגנת החומרה בוטלה. כבו והפעילו מחדש את הגנת החומרה, או שחזרו מביטוי הזרע שלכם.",
+        "insecure_tier": "למכשיר זה אין רכיב אבטחת חומרה — לא ניתן להפעיל כאן הגנת חומרה.",
+        "enter_pin_first": "הזינו תחילה את ה-PIN של הכספת שלכם.",
+        "enter_pin_confirm_removal": "הזינו את ה-PIN של הכספת שלכם כדי לאשר הסרה.",
+        "enter_pin_upgrade": "הזינו את ה-PIN של הכספת שלכם כדי לשדרג."
+      },
+      "toast": {
+        "enabled": "הגנת החומרה הופעלה — הכספת שלכם דורשת כעת את המכשיר הזה כדי להיפתח.",
+        "removed": "הגנת החומרה הוסרה.",
+        "upgraded": "הגנת החומרה שודרגה — הכספת שלכם כעת כבולה עם מפתח ייחודי לכל מכשיר."
+      },
+      "pin_strength": {
+        "hardware_title": "מוגן בחומרה.",
+        "hardware_body": "ה-PIN שלכם בשילוב עם Face ID, טביעת אצבע או מפתח גישה הופך התקפות לא מקוונות לבלתי אפשריות — תוקף יזדקק גם ל-PIN שלכם וגם למכשיר הפיזי הזה.",
+        "no_hardware_title": "אין גורם חומרה זמין בדפדפן זה.",
+        "no_hardware_body": "ה-PIN בן 8 הספרות שלכם (כ-100 מיליון צירופים) מוגן רק על ידי Argon2id — תוקף מיומן יכול למצות אותו לא מקוון תוך ימים עד שבועות. השתמשו בסיסמה בת 12 תווים ומעלה, או עברו ל-Chrome/Firefox כדי להפעיל הגנת חומרה.",
+        "pre_enroll_title": "חוזק ה-PIN.",
+        "pre_enroll_body": "ל-PIN בן 8 ספרות יש כ-100 מיליון צירופים. Argon2id מאט התקפות לא מקוונות לכשנה עד שנתיים בהרצה חד-חוטית — אך אשכול GPU יכול לקצר זאת לימים. הפעלת Face ID, טביעת אצבע או מפתח גישה למעלה הופכת התקפות לא מקוונות לבלתי אפשריות על ידי דרישת מכשיר זה בכל פתיחת נעילה."
+      },
+      "enrolled": {
+        "active_title": "פעיל במכשיר זה",
+        "active_body_native": "הכספת שלכם דורשת את הביומטריה של מכשיר זה לפתיחת נעילה.",
+        "active_body_web": "הכספת שלכם דורשת את מפתח הגישה של מכשיר זה לפתיחת נעילה."
+      },
+      "upgrade": {
+        "available_title": "שדרוג זמין",
+        "available_body": "הארנק שלכם הוגן בגרסה ישנה יותר ששיתפה מפתח בין מכשירים. שדרגו כדי לנעול אותו למכשיר זה בלבד. זה קורה פעם אחת ומבקש מכם לאמת פעמיים.",
+        "cta": "שדרוג הגנת חומרה",
+        "busy": "משדרג — אשרו את שתי הבקשות…",
+        "prompt": "הזינו את ה-PIN של הכספת שלכם. תאמתו את זהותכם פעמיים כדי לאבטח מחדש את הכספת.",
+        "cancel": "ביטול"
+      },
+      "remove": {
+        "cta": "הסרת הגנת חומרה",
+        "prompt_native": "הזינו את ה-PIN שלכם כדי לאשר. תצטרכו לאמת עם טביעת האצבע או הפנים שלכם.",
+        "prompt_web": "הזינו את הסיסמה שלכם כדי לאשר. תצטרכו לאמת עם מפתח הגישה שלכם.",
+        "busy": "מסיר — אשרו את הבקשה…",
+        "cancel": "ביטול"
+      },
+      "enroll": {
+        "prompt_native": "הזינו את ה-PIN של הכספת שלכם כדי להפעיל הגנת חומרה.",
+        "prompt_web": "הזינו את ה-PIN בן 8 הספרות שלכם כדי להפעיל הגנת חומרה. הדפדפן שלכם ייצור מפתח גישה כדי לנעול את הארנק שלכם למכשיר זה.",
+        "cta": "הפעלת הגנת חומרה",
+        "busy_native": "רושם — אשרו את הבקשה הביומטרית…",
+        "busy_web": "רושם — אשרו את בקשת מפתח הגישה…",
+        "footnote_native": "תתבקשו לאמת עם הביומטריה או קוד הגישה של המכשיר שלכם.",
+        "footnote_web": "הדפדפן שלכם יבקש מכם לאמת עם ביומטריה או PIN של המכשיר כדי ליצור את מפתח הגישה."
+      },
+      "blocked": "הגדרות הגנת חומרה אינן זמינות בפגישה זו."
+    },
+    "two_factor": {
+      "heading": "אימות דו-שלבי בפעולות קריטיות",
+      "intro": "בדיקה נוספת מעבר ל-PIN שלכם עבור פעולות רגישות. גם אם מישהו רואה אתכם מקלידים את ה-PIN שלכם, הוא עדיין לא יכול לבצע פעולות אלה ללא השלב הנוסף.",
+      "actions_protects_label": "פעולות שהוא מגן עליהן",
+      "gated_actions": [
+        { "label": "שליחת כספים", "desc": "כל שליחה, לאחר בדיקות בטיחות" },
+        { "label": "חשיפת ביטוי השחזור שלכם", "desc": "צפייה או ייצוא הגיבוי שלכם" },
+        { "label": "הגדרת PIN חירום", "desc": "יצירת ארנק החירום" },
+        { "label": "יצירה או הסתרה של ארנק", "desc": "שינויים בארנק מוסתר" }
+      ],
+      "currently_enforcing": "אוכף כרגע:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + מפתח גישה",
+      "badge_password": "PIN + סיסמת פעולה",
+      "badge_off": "כבוי (PIN בלבד)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "אתם בפגישת פיתיון / מוסתרת. הגדירו אימות דו-שלבי מהפגישה האמיתית שלכם.",
+      "method_a_title": "PIN + סיסמת פעולה",
+      "on_suffix": "פעיל",
+      "method_a_desc": "סיסמה שנייה שנשמרת בתוך הארנק שלכם. חזקה, אך שתי הסיסמאות נמצאות על אותו מכשיר.",
+      "label_pin": "ה-PIN שלכם",
+      "label_wallet_password": "סיסמת הארנק",
+      "pin_confirm_placeholder": "אשרו שזה אתם",
+      "action_password_label_change": "סיסמת פעולה חדשה",
+      "action_password_label_set": "סיסמת פעולה",
+      "action_password_placeholder": "לפחות 8 תווים",
+      "action_password_hint": "לפחות 8 תווים · כל תו מותר",
+      "too_short": "השתמשו בלפחות {{min}} תווים.",
+      "confirm_label": "אישור",
+      "confirm_placeholder": "הזינו שוב את סיסמת הפעולה",
+      "confirm_hint": "חייב להתאים לסיסמת הפעולה שלכם",
+      "mismatch": "הסיסמאות אינן תואמות.",
+      "save_change": "שינוי סיסמת פעולה",
+      "save_set": "הגדרת סיסמת פעולה",
+      "remove": "הסרת סיסמת פעולה",
+      "toast_changed": "סיסמת הפעולה שונתה",
+      "toast_set": "סיסמת הפעולה הוגדרה",
+      "toast_set_error": "לא ניתן היה להגדיר את סיסמת הפעולה",
+      "toast_confirm_pin_required": "הזינו את ה-PIN / הסיסמה של הארנק שלכם כדי לאשר",
+      "toast_removed": "סיסמת הפעולה הוסרה",
+      "toast_remove_error": "לא ניתן היה להסיר את סיסמת הפעולה",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + מפתח גישה / FIDO2",
+      "method_b_desc_native": "ה-PIN שלכם בתוספת {{label}}. אם ביומטריה אינה זמינה, הפעולה נחסמת. איבוד המכשיר שלכם לעולם לא יאבד את הכספים שלכם.",
+      "method_b_desc_web": "ה-PIN שלכם בתוספת הקשת מפתח גישה. אם מפתח הגישה אינו זמין, הפעולה נחסמת. איבודו לעולם לא יאבד את הכספים שלכם.",
+      "switch_aria_native": "השתמשו בביומטריה של המכשיר שלי כגורם השני שלי",
+      "switch_aria_web": "השתמשו במפתח גישה כגורם השני שלי",
+      "confirm_native": "אישור פעולות קריטיות עם {{label}}.",
+      "unavailable_native": "{{label}} / קוד הגישה של המכשיר אינו מוגדר במכשיר זה — הפעילו זאת בהגדרות המכשיר שלכם כדי להשתמש בגורם זה.",
+      "unsupported_web": "דפדפן זה אינו תומך ב-WebAuthn / מפתחות גישה.",
+      "register_hint_web_pre": "עדיין לא נרשם מפתח גישה — הגדירו אחד ב",
+      "register_hint_web_strong": "מפתחות גישה של הארנק",
+      "register_hint_web_post": "למטה, ולאחר מכן הפעילו זאת.",
+      "toggle_biometric_needed": "{{label}} אינו מוגדר במכשיר זה.",
+      "toggle_passkey_needed": "רשמו מפתח גישה קודם (מפתחות גישה של הארנק, למטה).",
+      "toggle_biometric_on": "גורם שני {{label}} פעיל",
+      "toggle_biometric_off": "גורם שני {{label}} כבוי",
+      "toggle_passkey_on": "גורם שני מפתח גישה פעיל",
+      "toggle_passkey_off": "גורם שני מפתח גישה כבוי"
+    },
+    "session": {
+      "title": "פגישה ונעילה אוטומטית",
+      "description": "נועל את הארנק שלכם לאחר תקופת חוסר פעילות או כשאתם עוזבים את האפליקציה",
+      "status_unlocked": "פתוח",
+      "status_locked": "נעול",
+      "auto_lock_after": "נעילה אוטומטית לאחר",
+      "never_note": "אין נעילה אוטומטית בזמן חוסר פעילות, אך היא עדיין ננעלת לאחר כ-45 שניות ברקע ולאחר 8 שעות פתוח.",
+      "resets_note": "מתאפס בכל פעם שאתם מתקשרים עם האפליקציה. כמו כן נועל מיד כשעובר לרקע.",
+      "lock_now": "נעילה כעת",
+      "recent_activity": "פעילות אחרונה",
+      "view_all": "הצג הכל",
+      "this_device": "מכשיר זה",
+      "active_now": "פעיל כעת"
+    },
+    "rehearsal": {
+      "title": "תרגול הכחשה",
+      "description": "צפו בלוח הבקרה בדיוק כפי שמישהו שמחזיק בטלפון הפתוח שלכם היה רואה."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "ארנק",
+    "sidebar_expand": "הרחבת סרגל צד",
+    "sidebar_collapse": "כיווץ סרגל צד",
+    "search_placeholder": "חיפוש...",
+    "search_shortcut_title": "חיפוש (⌘K)",
+    "lock": "נעילה",
+    "lock_confirm_prompt": "לנעול את הארנק הזה עכשיו?",
+    "back": "חזרה",
+    "settings": "הגדרות",
+    "main_content_aria": "תוכן ראשי",
+    "bottom_nav_aria": "ניווט תחתון",
+    "more_features_aria": "עוד תכונות",
+    "more": "עוד",
+    "close": "סגירה",
+    "all_features_heading": "כל התכונות",
+    "recent_heading": "אחרונים",
+    "tab_home": "בית",
+    "tab_send": "שליחה",
+    "tab_receive": "קבלה"
+  },
+  "back": {
+    "default_label": "חזרה"
+  },
+  "send": {
+    "heading": "שליחת קריפטו",
+    "subheading": "העברת כספים בבטחה",
+    "wallet_fallback": "ארנק",
+    "wallet_picker": { "label": "מהארנק", "placeholder": "בחרו ארנק" },
+    "asset_picker": { "label": "נכס", "placeholder": "בחרו נכס" },
+    "recipient": {
+      "label": "שליחה אל (כתובת או שם)",
+      "placeholder": "הדביקו כתובת או הזינו שם (למשל vitalik.eth)",
+      "scan_qr": "סריקת קוד QR",
+      "resolving": "פותר שם…",
+      "name_not_found": "השם לא נמצא — בדקו את האיות או הדביקו את הכתובת ישירות.",
+      "ens_using_prefix": "משתמש ב-{{name}} ←",
+      "ens_confirm_intro": "נבדק באופן פרטי על הבלוקצ'יין ל:",
+      "ens_confirm_hint": "אשרו שכתובת זו נכונה לפני השליחה.",
+      "use_this_address": "השתמשו בכתובת זו",
+      "not_whitelisted": "כתובת זו אינה ברשימת הכתובות המהימנות שלכם. בדקו שוב לפני שממשיכים. תוכלו להוסיף כתובות מהימנות בהגדרות.",
+      "self_send_warning": "אתם שולחים לכתובת הארנק שלכם עצמכם. פעולה זו אינה מעבירה דבר בין ארנקים ועדיין עולה עמלת רשת. בדקו שוב את הנמען לפני שממשיכים."
+    },
+    "screening": {
+      "local_disclosure": "נמענים נבדקים במכשיר שלכם מול כתובות הונאה בהתאם להיסטוריה שלכם — שום דבר לא יוצא מהמכשיר שלכם.",
+      "remote_opt_in": "בדקו גם מול מאגר איומים מקוון (שולח כתובת זו לצד שלישי)",
+      "remote_unavailable": "בדיקה מקוונת מופעלת, אך לא הוגדר ספק בגרסה זו — הבדיקה נשארת מקומית, כך שלא הצלחנו לאמת זאת מול רשימה חיצונית.",
+      "demo_poison_button": "הדגמה: הדביקו כתובת דמוית"
+    },
+    "simulation": {
+      "title": "הדמיית עסקה",
+      "toggle_aria": "החלפת מצב הדמיית עסקה",
+      "description": "לפני שאתם חותמים, אנחנו מריצים בדיקת טרום-טיסה מקומית — ללא שירותי צד שלישי, שום נתון לא יוצא מהמכשיר שלכם.",
+      "checks": [
+        "סיכון כתובת (הרעלה / דמיון)",
+        "פענוח חוזה",
+        "דגל אישור בלתי מוגבל",
+        "חיזוי ביטול עסקה",
+        "חריגה ביחס להיסטוריה שלכם",
+        "אזהרת יציאה גדולה"
+      ],
+      "results_hint": "התוצאות יופיעו בשלב הבא לאחר שתזינו כתובת וסכום.",
+      "off_hint": "ההדמיה כבויה — לא תופעל בדיקת טרום-טיסה לפני החתימה.",
+      "taking_too_long": "לוקח יותר מדי זמן?",
+      "turn_off": "כיבוי הדמיה"
+    },
+    "amount": {
+      "label": "סכום",
+      "placeholder": "0.00",
+      "being_sent": "נשלח",
+      "balance_prefix": "יתרה:",
+      "demo_suffix": "(הדגמה)",
+      "live_suffix": "(חי)",
+      "reading_from_network": "קורא מהרשת…"
+    },
+    "errors": {
+      "amount_missing": "נדרש סכום",
+      "amount_not_positive": "הסכום חייב להיות גדול מאפס",
+      "amount_malformed": "הזינו סכום עשרוני פשוט, כמו 0.5",
+      "amount_over_balance": "יתרה לא מספיקה",
+      "insufficient_balance_title": "יתרה לא מספיקה.",
+      "insufficient_balance_body": "יש לכם {{balance}} {{currency}} זמינים לשליחה (לאחר עמלת הרשת). הקטינו את הסכום כדי להמשיך."
+    },
+    "status": {
+      "not_enabled": "שליחה עדיין אינה מופעלת עבור {{currency}}. נכס זה מיועד לקבלה בלבד עד שהמסלול הקריפטוגרפי שלו יאומת.",
+      "dev_ungate_title": "עקיפת פיתוח פעילה",
+      "dev_ungate_body": "— שער השליחה עקוף עבור {{currency}} דרך VITE_DEV_UNGATE_SEND (בגרסת פיתוח בלבד). הסטטוס של נכס זה לא השתנה (עדיין לא חי); המיינט נותר חסום. אימות ברשת בדיקה בלבד — לעולם אל תשחררו גרסה זו.",
+      "locked": "הארנק שלכם נעול. פתחו אותו בהגדרות הארנק כדי לחתום ולשלוח."
+    },
+    "note": { "label": "הערה (אופציונלי)", "placeholder": "למה זה מיועד?" },
+    "trezor": {
+      "toggle_label": "חתימה עם Trezor",
+      "connected": "המכשיר מחובר",
+      "connect_button": "חיבור מכשיר"
+    },
+    "buttons": {
+      "continue": "המשך",
+      "confirm_send": "אישור ושליחה",
+      "back": "חזרה"
+    },
+    "verify": { "summary_label": "אתם שולחים" },
+    "fee": {
+      "automatic": "עמלת הרשת מוגדרת אוטומטית עבור {{currency}} ({{network}}).",
+      "native_fee_note": "עמלת הרשת משולמת ב-{{symbol}} ({{network}}) — אתם זקוקים ל-{{symbol}} כדי לכסות את עמלת הרשת גם כששולחים {{token}}."
+    },
+    "decode": {
+      "heading": "מה עסקה זו עושה",
+      "action": "פעולה",
+      "send_tokens": "שליחת טוקנים",
+      "token": "טוקן",
+      "amount": "סכום",
+      "recipient": "נמען",
+      "grant_permission": "הענקת הרשאת הוצאה",
+      "permission": "הרשאה",
+      "unlimited_permission": "בלתי מוגבל (אפליקציה זו יכולה להוציא כל סכום)",
+      "spender": "מוציא"
+    },
+    "reauth": {
+      "prompt": "הזינו שוב את ה-{{credential}} שלכם כדי לאשר",
+      "credential_pin": "PIN",
+      "credential_password": "סיסמה",
+      "submit_pin": "אישור",
+      "submit_password": "אישור ושליחה",
+      "password_placeholder": "סיסמת הכספת",
+      "password_aria": "סיסמת הכספת לאישור שליחה",
+      "errors": {
+        "unavailable": "האימות אינו זמין — אנא נעלו ופתחו את הארנק מחדש.",
+        "incorrect": "שגוי — נסו שוב ({{remaining}} נותרו)"
+      }
+    },
+    "done": {
+      "beacon_label": "העסקה שודרה",
+      "heading": "העסקה שודרה",
+      "body_suffix": "נחתמה מקומית ונשלחה לרשת",
+      "tx_hash_label": "גיבוב עסקה",
+      "view_explorer": "צפייה בסייר הבלוקים",
+      "pending_note": "בהמתנה עד לאישור ברשת. היתרה מתעדכנת מהבלוקצ'יין, לא מערך שמור.",
+      "send_another": "שליחה נוספת"
+    },
+    "toasts": {
+      "ens_off_in_session": "פתרון שמות כבוי בפגישה זו — הדביקו את הכתובת ישירות.",
+      "ens_not_found": "שם ENS לא נמצא",
+      "sns_unavailable": "פתרון שמות Solana עדיין אינו זמין — הדביקו את הכתובת ישירות.",
+      "ens_resolution_failed": "פתרון השם נכשל",
+      "verify_required": "סיימו לאמת את הגיבוי שלכם לפני שליחת סכום זה.",
+      "two_factor_retry": "השליחה לא הושלמה — אנא אמתו שוב כדי לנסות שוב.",
+      "send_failed_fallback": "השליחה נכשלה",
+      "unconfirmed": "לא הצלחנו לאשר עסקה זו ברשת עדיין — היא עשויה להיות עדיין בהמתנה. בדקו בסייר הבלוקים."
+    }
+  },
+  "receive": {
+    "heading": "קבלת קריפטו",
+    "subheading": "הציגו כתובת ארנק כדי לקבל כספים",
+    "asset_label": "נכס",
+    "asset_placeholder": "בחרו נכס",
+    "not_available": "קבלת {{name}} ({{symbol}}) עדיין אינה זמינה. לא תוצג כתובת עד שנכס זה יופעל.",
+    "locked": {
+      "title": "הארנק נעול",
+      "body": "פתחו את הארנק שלכם כדי לחשוף את כתובת הקבלה שלכם ב-{{asset}} {{network}}.",
+      "open_hd_wallet": "פתיחת מנהל ארנק HD"
+    },
+    "your_address": "כתובת {{asset}} שלכם",
+    "testnet_badge": "רשת בדיקה",
+    "receive_address_label": "כתובת קבלה של {{symbol}}",
+    "copy": {
+      "copied_aria": "הכתובת הועתקה ללוח",
+      "copy_aria": "העתקת כתובת",
+      "copied_toast": "הכתובת הועתקה",
+      "copy_failed_toast": "לא ניתן היה להעתיק — בחרו והעתיקו את הכתובת ידנית"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} הוא טוקן ברשת תואמת Ethereum. זו כתובת הארנק שלכם — בקשו מהשולח לשלוח {{symbol}} רק ברשת {{network}}. שליחה ברשת אחרת עלולה לגרום לאובדן קבוע של הכספים.",
+      "evm": "זו כתובת הארנק המשותפת שלכם. שלחו {{name}} רק ברשת {{network}} לכתובת זו, וודאו שהשולח משתמש ב-{{network}}.",
+      "btc": "שלחו ביטקוין רק ברשת {{network}} לכתובת זו.",
+      "solana": "שלחו Solana רק ברשת {{network}} לכתובת זו."
+    },
+    "select_asset_prompt": "בחרו נכס לקבלה.",
+    "unlock_footer_note": "הכתובות מגיעות מהארנק במכשיר שלכם ומופיעות רק כשהוא פתוח."
+  },
+  "dashboard": {
+    "portfolioValue": "שווי תיק",
+    "priceAlertsTriggered_one": "{{count}} התראת מחיר הופעלה!",
+    "priceAlertsTriggered_other": "{{count}} התראות מחיר הופעלו!",
+    "lockAriaLabel": "נעילת יתרה מאחורי ביומטריה",
+    "lockBalance": "נעילת יתרה",
+    "synced": "סונכרן {{time}}",
+    "syncJustNow": "הרגע",
+    "syncSecondsAgo_one": "לפני {{count}} שנ'",
+    "syncSecondsAgo_other": "לפני {{count}} שנ'",
+    "syncMinutesAgo_one": "לפני {{count}} דק'",
+    "syncMinutesAgo_other": "לפני {{count}} דק'",
+    "actions": {
+      "send": "שליחה",
+      "receive": "קבלה",
+      "schedule": "תזמון",
+      "add": "הוספה"
+    },
+    "tabs": {
+      "tokens": "טוקנים",
+      "activity": "פעילות",
+      "analytics": "אנליטיקה"
+    },
+    "emptyWallets": {
+      "title": "עדיין אין ארנקים",
+      "description": "הוסיפו ארנק כדי להתחיל לקבל, לשלוח ולהחזיק נכסים על פני רשתות."
+    },
+    "addWallet": "הוספת ארנק",
+    "searchTransactionsPlaceholder": "חיפוש עסקאות...",
+    "emptySearch": {
+      "title": "אין עסקאות תואמות",
+      "description": "נסו לנקות מסננים או לחפש נכס או כתובת אחרים."
+    },
+    "emptyTransactions": {
+      "title": "עדיין אין עסקאות",
+      "description": "הפעילות שלכם על הבלוקצ'יין תופיע כאן ברגע שתשלחו או תקבלו."
+    },
+    "portfolioPerformance": "ביצועי תיק",
+    "assetDistribution": "התפלגות נכסים",
+    "quickAccess": "גישה מהירה",
+    "quickAccessItems": {
+      "receive": "קבלה",
+      "security": "אבטחה",
+      "approvals": "אישורים",
+      "addressCheck": "בדיקת כתובת",
+      "analytics": "אנליטיקה",
+      "sentiment": "סנטימנט",
+      "riskScore": "ציון סיכון"
+    },
+    "walletNameLabel": "שם הארנק",
+    "walletNamePlaceholder": "הארנק שלי ב-ETH",
+    "addWalletDialog": {
+      "title": "הוספת ארנק",
+      "currency": "מטבע",
+      "creating": "יוצר...",
+      "create": "יצירת ארנק"
+    },
+    "renameWalletDialog": {
+      "title": "שינוי שם ארנק",
+      "saving": "שומר...",
+      "save": "שמירת שם"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "כספת מוצפנת",
+    "backup": {
+      "title": "גיבוי \"{{name}}\"",
+      "reauthDescription": "אשרו שזה אתם, ואז נציג את ביטוי השחזור עבור ארנק זה.",
+      "description": "כתבו 12 מילים אלה על נייר, במצב לא מקוון. כל מי שברשותו אותן יכול להוציא את הכספים בארנק זה — והן הדרך היחידה לשחזר אותו.",
+      "warning": "לעולם אל תצלמו מסך. לעולם אל תקלידו אותו באפליקציה אחרת.",
+      "confirmButton": "כתבתי את זה — סימון כמגובה"
+    },
+    "addWallet": {
+      "defaultWalletName": "הארנק החדש שלכם",
+      "backupDescription": "לארנק זה יש ביטוי שחזור משלו — נפרד מכל ארנק אחר בכספת שלכם. כתבו אותו במצב לא מקוון לפני השימוש בו.",
+      "backedUpDone": "גיביתי אותו — סיום",
+      "title": "הוספת ארנק",
+      "createNew": "יצירת חדש",
+      "importSeed": "ייבוא זרע",
+      "createDescription": "יוצר זרע חדש שגוזר את כל הרשתות (ETH/EVM, BTC, SOL). תגבו אותו לפני שהוא יופעל.",
+      "importDescription": "הדביקו זרע קיים בן 12/24 מילים — כל הרשתות נגזרות אוטומטית (זרע אינו ספציפי לרשת).",
+      "recoveryPhraseLabel": "ביטוי שחזור",
+      "recoveryPhrasePlaceholder": "מילה1 מילה2 ... מילה12",
+      "walletNameLabel": "שם הארנק",
+      "walletNamePlaceholder": "לדוגמה חיסכון",
+      "assetsToShowLabel": "נכסים להצגה",
+      "assetsToShowHint": "בחירת תצוגה בלבד — הזרע מחזיק כל רשת ללא קשר.",
+      "confirmVaultPlaceholder": "אשרו שזה אתם כדי לשנות את הכספת שלכם",
+      "vaultReentryHint": "הוזן שוב כדי לאשר שינוי בכספת הזרע שלכם. לעולם לא נשמר בזיכרון.",
+      "createAndBackup": "יצירה וגיבוי",
+      "importWallet": "ייבוא ארנק"
+    },
+    "vaultPinLabel": "PIN הכספת",
+    "vaultPasswordLabel": "סיסמת הכספת",
+    "cancel": "ביטול",
+    "done": "סיום",
+    "manageAssets": {
+      "title": "נכסים עבור \"{{name}}\"",
+      "description": "בחרו אילו נכסים יוצגו עבור ארנק זה. נכסים מוסתרים נשארים מחוץ לדרך עד שיתווספו."
+    },
+    "rename": {
+      "title": "שינוי שם ארנק",
+      "save": "שמירת שם"
+    },
+    "remove": {
+      "title": "הסרת \"{{name}}\"?",
+      "onlyWallet": "זהו הארנק היחיד שלכם — לא ניתן להסירו. השתמשו במחיקת חירום באבטחה כדי למחוק הכל.",
+      "description": "מסיר את הזרע של ארנק זה מהמכשיר הזה.",
+      "backedUpNote": "תוכלו לשחזר אותו מביטוי השחזור שלו.",
+      "notBackedUpNote": "⚠️ לא מגובה — בלי הביטוי שלו הוא אבד לנצח.",
+      "button": "הסרת ארנק"
+    },
+    "move": {
+      "title": "העברת \"{{name}}\" אל…"
+    },
+    "managePortfolios": {
+      "title": "תיקים",
+      "defaultTag": "(ברירת מחדל)",
+      "saveAriaLabel": "שמירת שם תיק",
+      "renameAriaLabel": "שינוי שם {{name}}",
+      "deleteAriaLabel": "מחיקת {{name}}",
+      "newNamePlaceholder": "שם תיק חדש",
+      "addButton": "הוספה"
+    },
+    "activity": {
+      "unlockPrompt": "פתחו את הארנק שלכם כדי לצפות בפעילות.",
+      "loading": "טוען...",
+      "loadError": "לא ניתן היה לטעון פעילות.",
+      "noTransactions": "עדיין אין עסקאות.",
+      "viewFullHistory": "צפייה בהיסטוריה המלאה ←"
+    },
+    "portfolioValueLabel": "שווי תיק",
+    "explore": {
+      "subtitle": "אתם בסיור — תצוגה בלבד. עדיין אין ארנק.",
+      "description": "הביטו סביב בחופשיות. כשתהיו מוכנים, צרו ארנק עצמאי חדש או ייבאו זרע קיים — מפתחות נוצרים ומוצפנים במכשיר זה.",
+      "createOrImport": "יצירה או ייבוא ארנק"
+    },
+    "portfoliosButton": "תיקים",
+    "totalValueHeading": "{{name}} · שווי כולל",
+    "partialTotalNote": "לא ניתן היה לטעון חלק מהיתרות — סכום זה עשוי להיות חלקי.",
+    "refreshPricesTooltip": "רענון מחירים חיים",
+    "live": "חי",
+    "approximate": "משוער",
+    "seedVerify": {
+      "title": "סיימו לאמת את הגיבוי שלכם",
+      "description": "נדרש עבור שליחה מעל סף הבטיחות.",
+      "verifyAriaLabel": "אימות גיבוי הארנק שלכם",
+      "verifyButton": "אימות"
+    },
+    "unbacked": {
+      "titleBold": "גיבוי הארנק אינו שלם.",
+      "body": "לכל ארנק יש ביטוי שחזור משלו — בלעדיו, הכספים של אותו ארנק אינם ניתנים לשחזור. גבו כעת.",
+      "backUpButton": "גיבוי \"{{name}}\""
+    },
+    "actions": {
+      "send": "שליחה",
+      "receive": "קבלה",
+      "addWallet": "הוספת ארנק"
+    },
+    "activeWalletHint": {
+      "prefix": "שליחה/קבלה משתמשות ב-",
+      "otherPortfolio": " (בתיק אחר)",
+      "suffix": ". הקישו על ארנק למטה כדי להחליף."
+    },
+    "tabs": {
+      "tokens": "טוקנים",
+      "activity": "פעילות",
+      "analytics": "אנליטיקה"
+    },
+    "noWalletsInPortfolio": "אין ארנקים ב-\"{{name}}\". הוסיפו ארנק, או העבירו אחד לכאן מהתפריט שלו.",
+    "hideAssets": "הסתרת נכסים",
+    "showAllAssets": "הצגת כל הנכסים",
+    "walletCard": {
+      "active": "פעיל",
+      "backedUp": "מגובה",
+      "backUp": "גיבוי",
+      "partial": "חלקי",
+      "optionsAriaLabel": "אפשרויות עבור {{name}}",
+      "noAssetsShown": "לא מוצגים נכסים. השתמשו ב\"ניהול נכסים\"."
+    },
+    "menu": {
+      "manageAssets": "ניהול נכסים",
+      "rename": "שינוי שם",
+      "moveToPortfolio": "העברה לתיק",
+      "backUp": "גיבוי",
+      "remove": "הסרה"
+    },
+    "balanceLoadFailedTitle": "לא ניתן היה לטעון את היתרה",
+    "defaultWalletFallbackName": "ארנק",
+    "toast": {
+      "walletImported": "הארנק יובא — כל הרשתות נגזרו.",
+      "walletRemoved": "הארנק הוסר מהמכשיר הזה.",
+      "walletAddedBackedUp": "הארנק נוסף וגובה.",
+      "movedTo": "הועבר אל {{name}}.",
+      "markedBackedUp": "\"{{name}}\" סומן כמגובה."
+    },
+    "errors": {
+      "couldNotAddWallet": "לא ניתן היה להוסיף ארנק",
+      "couldNotImportWallet": "לא ניתן היה לייבא ארנק",
+      "couldNotRemoveWallet": "לא ניתן היה להסיר ארנק"
+    }
+  },
+  "networth": {
+    "title": "שווי נטו קריפטוגרפי",
+    "unlockPrompt": "פתחו את הארנק שלכם כדי לראות את ההחזקות שלכם על הבלוקצ'יין.",
+    "subtitle": "ההחזקות שלכם על הבלוקצ'יין — אינו כולל נכסים חיצוניים.",
+    "totalHoldings": "סך ההחזקות",
+    "partialNote": "חלקי — לא ניתן היה לקרוא חלק מהיתרות",
+    "refreshPricesTooltip": "רענון מחירים חיים",
+    "live": "חי",
+    "approximate": "משוער",
+    "allocation": "הקצאה",
+    "holdings": "החזקות",
+    "noHoldings": "עדיין אין החזקות."
+  }
+}

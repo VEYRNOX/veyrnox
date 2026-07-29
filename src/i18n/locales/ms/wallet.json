@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Sejarah Transaksi",
+      "subhead": "Hantaran & penerimaan setiap chain dibaca terus daripada chain — baca sahaja, dengan pautan explorer.",
+      "badge_demo": "Demo · data contoh",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Mod demo — tiada apa yang disoal melalui rangkaian; baris di bawah ialah data contoh tempatan.",
+      "loading_label": "Memuatkan sejarah {{symbol}}",
+      "error_prefix": "Tidak dapat memuatkan sejarah: {{reason}}.",
+      "error_fetch_reason": "Tidak dapat menghubungi nod RPC — semak sambungan anda dan cuba lagi.",
+      "error_generic_reason": "indeks tidak bertindak balas",
+      "retry": "Cuba lagi",
+      "no_indexer_title": "Sejarah dalam aplikasi tidak tersedia untuk {{name}} melalui JSON-RPC",
+      "no_indexer_body": "Nod JSON-RPC biasa tidak dapat menyenaraikan transaksi sesuatu alamat, dan kami sengaja tidak menambah API explorer/indeks pihak ketiga (sumber data baharu & permukaan phone-home). Sejarah penuh anda ada di block explorer.",
+      "view_on_explorer": "Lihat {{address}} di explorer {{network}}",
+      "view_explorer_title": "Lihat di block explorer",
+      "unlock_for_explorer": "Buka kunci dompet anda untuk mendapatkan pautan explorer bagi alamat {{symbol}} anda.",
+      "locked_title": "Dompet berkunci",
+      "locked_body": "Buka kunci dompet anda untuk menurunkan alamat {{symbol}} anda dan memuatkan sejarahnya.",
+      "empty": "Belum ada transaksi untuk {{symbol}} di {{network}}.",
+      "count_one": "{{count}} transaksi",
+      "count_other": "{{count}} transaksi",
+      "most_recent_suffix": " · terkini",
+      "refresh": "Segar semula",
+      "sample_badge": "Contoh",
+      "to_prefix": "Kepada ",
+      "from_prefix": "Daripada ",
+      "status_pending": "Belum selesai",
+      "status_confirmed": "Disahkan",
+      "status_failed": "Gagal",
+      "awaiting_confirmation": "menunggu pengesahan"
+    },
+    "list": {
+      "empty_title": "Belum ada transaksi",
+      "empty_description": "Apabila anda menghantar atau menerima pada dompet ini, aktiviti on-chain anda akan muncul di sini."
+    },
+    "receipt": {
+      "heading": "Resit Transaksi",
+      "subhead": "Jana resit boleh cetak untuk sebarang transaksi",
+      "search_placeholder": "Cari mengikut ID, alamat atau mata wang...",
+      "loading": "Memuatkan...",
+      "error": "Tidak dapat memuatkan transaksi. Sila cuba lagi.",
+      "empty": "Tiada transaksi ditemui",
+      "preview_title": "Pratonton Resit",
+      "print": "Cetak",
+      "print_window_title": "Resit Transaksi",
+      "brand": "VEYRNOX",
+      "doc_title": "RESIT TRANSAKSI",
+      "field_receipt_id": "ID Resit",
+      "field_date": "Tarikh",
+      "field_type": "Jenis",
+      "field_asset": "Aset",
+      "field_amount": "Jumlah",
+      "field_network_fee": "Yuran Rangkaian",
+      "field_status": "Status",
+      "field_to": "Kepada",
+      "default_type": "Pemindahan",
+      "default_status": "selesai",
+      "thank_you": "Terima kasih kerana menggunakan {{brand}}",
+      "thank_you_prefix": "Terima kasih kerana menggunakan",
+      "digital_record": "Ini ialah rekod transaksi digital"
+    }
+  },
+  "settings": {
+    "heading": "Tetapan Keselamatan",
+    "subhead": "Kunci, buka kunci, dan lindungi dompet anda",
+    "theme": {
+      "dark": "Mod Gelap",
+      "light": "Mod Terang",
+      "saved_note": "Disimpan pada peranti ini",
+      "switch_to_light": "Tukar ke mod terang",
+      "switch_to_dark": "Tukar ke mod gelap"
+    },
+    "activity_log": {
+      "label": "Log aktiviti",
+      "description": "Mati secara lalai · disimpan pada peranti ini sahaja",
+      "help": "Log peribadi: apa yang anda ubah, hantar, batalkan. Tiada jumlah atau alamat. Panic Wipe memadamnya.",
+      "enable_aria": "Aktifkan log aktiviti",
+      "disable_aria": "Nyahaktifkan log aktiviti",
+      "no_events": "Belum ada peristiwa direkodkan."
+    },
+    "message_signing": {
+      "label": "Penandatanganan mesej",
+      "description": "Mati secara lalai · disimpan pada peranti ini sahaja",
+      "help": "Mati secara lalai. Membolehkan anda menandatangani mesej teks sewenang-wenangnya dengan kunci dompet anda. Hanya aktifkan jika dApp atau perkhidmatan meminta anda menandatangani mesej.",
+      "enable_aria": "Aktifkan penandatanganan mesej",
+      "disable_aria": "Nyahaktifkan penandatanganan mesej"
+    },
+    "telemetry": {
+      "label": "Data penggunaan tanpa nama",
+      "description": "Pilih masuk · tidak pernah termasuk baki atau alamat",
+      "help": "Membantu kami mencari pepijat dan menambah baik aplikasi. ID peranti rawak digunakan — tidak pernah dikaitkan dengan dompet, kunci, atau identiti anda. Mematikan ini menghentikan semua data penggunaan daripada meninggalkan peranti ini.",
+      "enable_aria": "Hidupkan data penggunaan tanpa nama",
+      "disable_aria": "Matikan data penggunaan tanpa nama"
+    },
+    "delete_account": {
+      "title": "Zon Bahaya",
+      "clear_cache_label": "Kosongkan cache tempatan",
+      "clear_cache_description": "Mengosongkan data tersimpan pada peranti ini dan mengunci dompet. Frasa pemulihan anda masih berfungsi. Untuk memadam kunci, gunakan Panic Wipe.",
+      "delete_button": "Padam",
+      "confirm_prompt_pre": "Ini mengosongkan data tersimpan dan mengunci dompet. Frasa pemulihan anda masih berfungsi. Taip",
+      "confirm_prompt_post": "untuk mengesahkan.",
+      "confirm_placeholder": "Taip DELETE untuk mengesahkan",
+      "confirm_aria": "Taip DELETE untuk mengesahkan tetapan semula akaun",
+      "cancel": "Batal",
+      "confirm_delete": "Sahkan Padam",
+      "deleting": "Memadam..."
+    },
+    "biometric_unlock": {
+      "heading": "Buka Kunci Biometrik",
+      "worth_knowing_label": "Perlu diketahui.",
+      "kdf_disclosure": "Buka kunci satu ketik menyimpan kata laluan dompet anda pada peranti ini, dilindungi oleh kunci skrin dan biometrik anda. Jika seseorang mendapat salinan sandaran peranti anda tanpa peranti fizikal itu, mereka boleh mengakses dompet anda. Matikan ini untuk perlindungan paling kukuh.",
+      "app_layer_disclosure_pre": "Buka kunci biometrik menyimpan kata laluan anda pada peranti ini, dilindungi oleh cap jari atau wajah anda. Ini berjalan di dalam aplikasi, bukan di peringkat sistem operasi.",
+      "app_layer_disclosure_mid": "Untuk perlindungan peringkat peranti yang lebih kukuh, aktifkan",
+      "hardware_protection_label": "Perlindungan Perkakasan",
+      "app_layer_disclosure_post": "(tersedia di bawah).",
+      "toggle_label": "Buka Kunci Biometrik (Dompet Utama)",
+      "toggle_description": "Aktifkan buka kunci satu ketik untuk dompet utama anda menggunakan biometrik peranti.",
+      "before_enable_label": "Sebelum anda mengaktifkan ini.",
+      "confirm_disclosure": "Jika seseorang mendapat salinan sandaran peranti anda tanpa peranti fizikal itu, mereka boleh mengakses dompet anda. Hanya hidupkan ini jika anda menerima risiko itu.",
+      "confirm_enable_button": "Aktifkan buka kunci satu ketik",
+      "cancel_button": "Batal",
+      "checking_availability": "Menyemak ketersediaan…",
+      "default_label": "Biometrik",
+      "available": "{{label}} tersedia.",
+      "available_simulated": "{{label}} tersedia (disimulasikan dalam demo).",
+      "status_check_failed": "Tidak dapat menyemak ketersediaan biometrik pada peranti ini.",
+      "awaiting_prompt": "Menunggu gesaan…",
+      "preview_prompt": "Pratonton gesaan",
+      "test_success": "Pengesahan simulasi berjaya",
+      "test_cancelled": "Gesaan dibatalkan"
+    },
+    "passkey_unlock": {
+      "heading_native": "Buka kunci biometrik",
+      "heading_web": "Buka Kunci dengan Passkey",
+      "scope_banner_native_pre": "Cap jari atau wajah anda disemak sebelum membuka kunci —",
+      "scope_banner_native_post": "bukan pengganti kata laluan anda. Kata laluan dan frasa pemulihan anda masih berfungsi dengan sendirinya, jadi kehilangan biometrik tidak akan sekali-kali mengunci anda.",
+      "scope_banner_web_pre": "Passkey menambah ketikan biometrik atau kunci keselamatan yang pantas sebelum membuka kunci —",
+      "scope_banner_web_post": "bukan pengganti kata laluan anda. Kata laluan dan frasa pemulihan anda masih berfungsi dengan sendirinya, jadi kehilangan passkey tidak akan sekali-kali mengunci anda.",
+      "extra_step_label": "langkah tambahan",
+      "enroll_button": "Daftarkan buka kunci biometrik",
+      "register_button": "Daftarkan passkey",
+      "not_setup_native": "Biometrik peranti belum disediakan. Tambah cap jari atau wajah dalam tetapan peranti anda dahulu — kata laluan anda masih berfungsi.",
+      "not_supported_web": "Buka kunci passkey tidak tersedia dalam pelayar ini. Ia berfungsi dalam aplikasi mudah alih dan pelayar moden. Gunakan kata laluan anda di sini.",
+      "enroll_error": "Tidak dapat mendaftarkan buka kunci biometrik pada peranti ini.",
+      "register_error": "Tidak dapat mendaftarkan passkey pada peranti ini.",
+      "enrolled_native": "Buka kunci biometrik didaftarkan",
+      "registered_web": "Passkey didaftarkan",
+      "simulated_suffix": " (disimulasikan)",
+      "remove_button": "Buang",
+      "require_toggle_native": "Wajibkan buka kunci biometrik",
+      "require_toggle_web": "Wajibkan {{label}} semasa membuka kunci",
+      "require_toggle_aria_web": "Wajibkan buka kunci passkey",
+      "require_toggle_desc_native": "Minta biometrik peranti anda sebelum membuka kunci (kata laluan anda masih berfungsi).",
+      "require_toggle_desc_web": "Minta passkey anda sebelum membuka kunci (kata laluan anda masih berfungsi).",
+      "applies_all_sessions": "Ini terpakai kepada semua sesi dompet pada peranti ini.",
+      "default_label": "Passkey",
+      "checking_availability": "Menyemak ketersediaan…",
+      "simulated_in_demo": "{{label}} disimulasikan dalam demo. ",
+      "awaiting_biometric": "Menunggu biometrik…",
+      "awaiting_passkey": "Menunggu passkey…",
+      "preview_biometric_prompt": "Pratonton gesaan biometrik",
+      "preview_passkey_prompt": "Pratonton gesaan passkey",
+      "simulated_prefix": "Disimulasikan ",
+      "biometric_verified": "biometrik disahkan",
+      "passkey_verified": "passkey disahkan",
+      "biometric_prompt_cancelled": "Gesaan biometrik dibatalkan",
+      "passkey_prompt_cancelled": "Gesaan passkey dibatalkan"
+    },
+    "hardware_kek": {
+      "heading": "Perlindungan perkakasan pada peranti",
+      "badge_webauthn": "Dilindungi WebAuthn",
+      "badge_off": "MATI",
+      "description_pre": "Mengunci dompet anda kepada peranti fizikal ini. Selepas diaktifkan, dompet anda hanya boleh dibuka pada ",
+      "description_device": "peranti ini",
+      "description_post": ". Fail sandaran yang dicuri tidak berguna tanpa peranti itu sendiri, walaupun dengan PIN anda.",
+      "description_web_suffix": "Berfungsi pada Chrome 99+ dan Firefox 108+. Safari tidak disokong.",
+      "device_binding_note": "Pengikatan peranti aktif dan telah diuji pada perkakasan sebenar.",
+      "checking_status": "Menyemak status…",
+      "web_prf_unsupported": "Perlindungan perkakasan tidak tersedia pada pelayar ini. Gunakan Chrome 99+ atau Firefox 108+, atau gunakan aplikasi iOS atau Android.",
+      "errors": {
+        "wrong_pin": "PIN salah — masukkan PIN yang anda gunakan untuk membuka kunci dompet anda.",
+        "no_hardware": "Tidak dapat menghubungi keselamatan perkakasan peranti ini. Cuba lagi, atau gunakan peranti lain.",
+        "malformed_vault": "Data dompet tersimpan anda tidak dapat dibaca pada peranti ini.",
+        "not_enrolled": "Perlindungan perkakasan tidak diaktifkan pada vault ini, jadi tiada apa untuk dinaik taraf.",
+        "generic": "Sesuatu tidak kena. Sila cuba lagi.",
+        "key_invalidated": "Cap jari anda telah berubah — perlindungan perkakasan dibatalkan. Nyahaktifkan dan aktifkan semula perlindungan perkakasan, atau pulihkan daripada frasa seed anda.",
+        "insecure_tier": "Peranti ini tidak mempunyai elemen keselamatan perkakasan — perlindungan perkakasan tidak dapat diaktifkan di sini.",
+        "enter_pin_first": "Masukkan PIN vault anda dahulu.",
+        "enter_pin_confirm_removal": "Masukkan PIN vault anda untuk mengesahkan pembuangan.",
+        "enter_pin_upgrade": "Masukkan PIN vault anda untuk menaik taraf."
+      },
+      "toast": {
+        "enabled": "Perlindungan perkakasan diaktifkan — vault anda kini memerlukan peranti ini untuk membuka kunci.",
+        "removed": "Perlindungan perkakasan dibuang.",
+        "upgraded": "Perlindungan perkakasan dinaik taraf — vault anda kini terikat dengan kunci unik setiap peranti."
+      },
+      "pin_strength": {
+        "hardware_title": "Dilindungi perkakasan.",
+        "hardware_body": "PIN anda digabungkan dengan Face ID, cap jari, atau passkey menjadikan serangan luar talian mustahil — penyerang memerlukan kedua-dua PIN anda dan peranti fizikal ini.",
+        "no_hardware_title": "Tiada faktor perkakasan tersedia dalam pelayar ini.",
+        "no_hardware_body": "PIN 8 digit anda (~100 juta kombinasi) hanya dilindungi oleh Argon2id — penyerang khusus boleh menghabiskannya secara luar talian dalam beberapa hari hingga minggu. Gunakan kata laluan 12+ aksara, atau tukar ke Chrome/Firefox untuk mengaktifkan perlindungan perkakasan.",
+        "pre_enroll_title": "Kekuatan PIN.",
+        "pre_enroll_body": "PIN 8 digit mempunyai ~100 juta kombinasi. Argon2id memperlahankan serangan luar talian kepada kira-kira 1–2 tahun bagi satu bebenang — tetapi kluster GPU boleh mengurangkannya kepada beberapa hari. Mengaktifkan Face ID, cap jari, atau passkey di atas menjadikan serangan luar talian mustahil dengan mewajibkan peranti ini untuk setiap buka kunci."
+      },
+      "enrolled": {
+        "active_title": "Aktif pada peranti ini",
+        "active_body_native": "Vault anda memerlukan biometrik peranti ini untuk membuka kunci.",
+        "active_body_web": "Vault anda memerlukan passkey peranti ini untuk membuka kunci."
+      },
+      "upgrade": {
+        "available_title": "Naik taraf tersedia",
+        "available_body": "Dompet anda dilindungi dengan versi lama yang berkongsi kunci merentas peranti. Naik taraf untuk menguncinya kepada peranti ini sahaja. Ini berlaku sekali dan meminta anda mengesahkan dua kali.",
+        "cta": "Naik taraf perlindungan perkakasan",
+        "busy": "Menaik taraf — luluskan kedua-dua gesaan…",
+        "prompt": "Masukkan PIN vault anda. Anda akan mengesahkan dua kali untuk mengamankan semula vault.",
+        "cancel": "Batal"
+      },
+      "remove": {
+        "cta": "Buang perlindungan perkakasan",
+        "prompt_native": "Masukkan PIN anda untuk mengesahkan. Anda perlu mengesahkan dengan cap jari atau wajah anda.",
+        "prompt_web": "Masukkan kata laluan anda untuk mengesahkan. Anda perlu mengesahkan dengan passkey anda.",
+        "busy": "Membuang — luluskan gesaan…",
+        "cancel": "Batal"
+      },
+      "enroll": {
+        "prompt_native": "Masukkan PIN vault anda untuk mengaktifkan perlindungan perkakasan.",
+        "prompt_web": "Masukkan PIN 8 digit anda untuk mengaktifkan perlindungan perkakasan. Pelayar anda akan mencipta passkey untuk mengunci dompet anda kepada peranti ini.",
+        "cta": "Aktifkan perlindungan perkakasan",
+        "busy_native": "Mendaftarkan — luluskan gesaan biometrik…",
+        "busy_web": "Mendaftarkan — luluskan gesaan passkey…",
+        "footnote_native": "Anda akan diminta untuk mengesahkan dengan biometrik atau kod laluan peranti anda.",
+        "footnote_web": "Pelayar anda akan meminta anda mengesahkan dengan biometrik atau PIN peranti untuk mencipta passkey."
+      },
+      "blocked": "Tetapan perlindungan perkakasan tidak tersedia dalam sesi ini."
+    },
+    "two_factor": {
+      "heading": "Dua faktor untuk tindakan kritikal",
+      "intro": "Semakan tambahan di atas PIN anda untuk tindakan sensitif. Walaupun seseorang melihat anda menaip PIN, mereka masih tidak boleh melakukan perkara ini tanpa langkah kedua.",
+      "actions_protects_label": "Tindakan yang dilindungi",
+      "gated_actions": [
+        { "label": "Menghantar dana", "desc": "setiap hantaran, selepas semakan keselamatan" },
+        { "label": "Mendedahkan frasa pemulihan anda", "desc": "melihat atau mengeksport sandaran anda" },
+        { "label": "Menetapkan PIN Kecemasan", "desc": "mencipta dompet Kecemasan" },
+        { "label": "Mencipta atau menyembunyikan dompet", "desc": "perubahan dompet tersembunyi" }
+      ],
+      "currently_enforcing": "Sedang dikuatkuasakan:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + Kata Laluan Tindakan",
+      "badge_off": "Mati (PIN sahaja)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Anda berada dalam sesi umpan / tersembunyi. Konfigurasikan dua faktor daripada sesi sebenar anda.",
+      "method_a_title": "PIN + Kata Laluan Tindakan",
+      "on_suffix": "AKTIF",
+      "method_a_desc": "Kata laluan kedua yang disimpan di dalam dompet anda. Kukuh, tetapi kedua-dua kata laluan berada pada peranti yang sama.",
+      "label_pin": "PIN anda",
+      "label_wallet_password": "Kata laluan dompet",
+      "pin_confirm_placeholder": "Sahkan ini anda",
+      "action_password_label_change": "Kata Laluan Tindakan baharu",
+      "action_password_label_set": "Kata Laluan Tindakan",
+      "action_password_placeholder": "Sekurang-kurangnya 8 aksara",
+      "action_password_hint": "Sekurang-kurangnya 8 aksara · mana-mana aksara dibenarkan",
+      "too_short": "Gunakan sekurang-kurangnya {{min}} aksara.",
+      "confirm_label": "Sahkan",
+      "confirm_placeholder": "Masukkan semula Kata Laluan Tindakan",
+      "confirm_hint": "Mesti sepadan dengan Kata Laluan Tindakan anda",
+      "mismatch": "Kata laluan tidak sepadan.",
+      "save_change": "Tukar Kata Laluan Tindakan",
+      "save_set": "Tetapkan Kata Laluan Tindakan",
+      "remove": "Buang Kata Laluan Tindakan",
+      "toast_changed": "Kata Laluan Tindakan ditukar",
+      "toast_set": "Kata Laluan Tindakan ditetapkan",
+      "toast_set_error": "Tidak dapat menetapkan Kata Laluan Tindakan",
+      "toast_confirm_pin_required": "Masukkan PIN / kata laluan dompet anda untuk mengesahkan",
+      "toast_removed": "Kata Laluan Tindakan dibuang",
+      "toast_remove_error": "Tidak dapat membuang Kata Laluan Tindakan",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "PIN anda ditambah {{label}}. Jika biometrik tidak tersedia, tindakan disekat. Kehilangan peranti anda tidak akan sekali-kali kehilangan dana anda.",
+      "method_b_desc_web": "PIN anda ditambah ketikan passkey. Jika passkey tidak tersedia, tindakan disekat. Kehilangannya tidak akan sekali-kali kehilangan dana anda.",
+      "switch_aria_native": "Gunakan biometrik peranti saya sebagai faktor kedua saya",
+      "switch_aria_web": "Gunakan passkey sebagai faktor kedua saya",
+      "confirm_native": "Sahkan tindakan kritikal dengan {{label}}.",
+      "unavailable_native": "{{label}} / kod laluan peranti belum disediakan pada peranti ini — aktifkan dalam tetapan peranti anda untuk menggunakan faktor ini.",
+      "unsupported_web": "Pelayar ini tidak menyokong WebAuthn / passkey.",
+      "register_hint_web_pre": "Belum ada passkey didaftarkan — sediakan satu dalam",
+      "register_hint_web_strong": "Passkey Dompet",
+      "register_hint_web_post": "di bawah, kemudian aktifkan ini.",
+      "toggle_biometric_needed": "{{label}} belum disediakan pada peranti ini.",
+      "toggle_passkey_needed": "Daftarkan passkey dahulu (Passkey Dompet, di bawah).",
+      "toggle_biometric_on": "Faktor kedua {{label}} aktif",
+      "toggle_biometric_off": "Faktor kedua {{label}} mati",
+      "toggle_passkey_on": "Faktor kedua passkey aktif",
+      "toggle_passkey_off": "Faktor kedua passkey mati"
+    },
+    "session": {
+      "title": "Sesi & Kunci Automatik",
+      "description": "Mengunci dompet anda selepas tempoh tidak aktif atau apabila anda meninggalkan aplikasi",
+      "status_unlocked": "Terbuka kunci",
+      "status_locked": "Berkunci",
+      "auto_lock_after": "Kunci automatik selepas",
+      "never_note": "Tiada kunci automatik semasa diam, tetapi ia masih mengunci selepas ~45 saat di latar belakang dan selepas 8 jam terbuka kunci.",
+      "resets_note": "Ditetapkan semula setiap kali anda berinteraksi dengan aplikasi. Turut mengunci serta-merta apabila dilatarbelakangkan.",
+      "lock_now": "Kunci sekarang",
+      "recent_activity": "Aktiviti terkini",
+      "view_all": "Lihat semua",
+      "this_device": "Peranti ini",
+      "active_now": "Aktif sekarang"
+    },
+    "rehearsal": {
+      "title": "Latihan penafian",
+      "description": "Lihat papan pemuka persis seperti yang akan dilihat oleh seseorang yang memegang telefon anda yang terbuka kunci."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Dompet",
+    "sidebar_expand": "Kembangkan bar sisi",
+    "sidebar_collapse": "Kuncupkan bar sisi",
+    "search_placeholder": "Cari...",
+    "search_shortcut_title": "Cari (⌘K)",
+    "lock": "Kunci",
+    "lock_confirm_prompt": "Kunci dompet ini sekarang?",
+    "back": "Kembali",
+    "settings": "Tetapan",
+    "main_content_aria": "Kandungan utama",
+    "bottom_nav_aria": "Navigasi bawah",
+    "more_features_aria": "Lagi ciri",
+    "more": "Lagi",
+    "close": "Tutup",
+    "all_features_heading": "Semua Ciri",
+    "recent_heading": "Terkini",
+    "tab_home": "Laman Utama",
+    "tab_send": "Hantar",
+    "tab_receive": "Terima"
+  },
+  "back": {
+    "default_label": "Kembali"
+  },
+  "send": {
+    "heading": "Hantar Kripto",
+    "subheading": "Pindah dana dengan selamat",
+    "wallet_fallback": "Dompet",
+    "wallet_picker": { "label": "Daripada Dompet", "placeholder": "Pilih dompet" },
+    "asset_picker": { "label": "Aset", "placeholder": "Pilih aset" },
+    "recipient": {
+      "label": "Hantar kepada (alamat atau nama)",
+      "placeholder": "Tampal alamat atau masukkan nama (cth. vitalik.eth)",
+      "scan_qr": "Imbas kod QR",
+      "resolving": "Menyelesaikan nama…",
+      "name_not_found": "Nama tidak ditemui — semak ejaan atau tampal alamat terus.",
+      "ens_using_prefix": "Menggunakan {{name}} →",
+      "ens_confirm_intro": "dicari secara peribadi pada blockchain kepada:",
+      "ens_confirm_hint": "Sahkan alamat ini betul sebelum menghantar.",
+      "use_this_address": "Guna alamat ini",
+      "not_whitelisted": "Alamat ini tiada dalam senarai putih anda. Semak semula sebelum meneruskan. Anda boleh menambah alamat dipercayai dalam Tetapan.",
+      "self_send_warning": "Anda menghantar kepada alamat dompet anda sendiri. Ini tidak memindahkan apa-apa antara dompet dan masih dikenakan yuran rangkaian. Semak semula penerima sebelum meneruskan."
+    },
+    "screening": {
+      "local_disclosure": "Penerima disemak pada peranti anda untuk alamat penipuan terhadap sejarah anda sendiri — tiada apa yang meninggalkan peranti anda.",
+      "remote_opt_in": "Turut semak terhadap pangkalan data ancaman dalam talian (menghantar alamat ini kepada pihak ketiga)",
+      "remote_unavailable": "Semakan dalam talian diaktifkan, tetapi tiada pembekal dikonfigurasikan dalam binaan ini — semakan kekal tempatan, jadi kami tidak dapat mengesahkan ini terhadap senarai luaran.",
+      "demo_poison_button": "Demo: tampal alamat serupa"
+    },
+    "simulation": {
+      "title": "Simulasi Transaksi",
+      "toggle_aria": "Togol simulasi transaksi",
+      "description": "Sebelum anda menandatangani, kami menjalankan semakan pra-terbang tempatan — tiada perkhidmatan pihak ketiga, tiada data meninggalkan peranti anda.",
+      "checks": [
+        "Risiko alamat (racun / serupa)",
+        "Nyahkod kontrak",
+        "Bendera kebenaran tanpa had",
+        "Ramalan revert",
+        "Anomali berbanding sejarah anda",
+        "Amaran arus keluar besar"
+      ],
+      "results_hint": "Keputusan muncul pada langkah seterusnya sebaik sahaja anda memasukkan alamat dan jumlah.",
+      "off_hint": "Simulasi dimatikan — tiada semakan pra-terbang akan berjalan sebelum penandatanganan.",
+      "taking_too_long": "Terlalu lama?",
+      "turn_off": "Matikan simulasi"
+    },
+    "amount": {
+      "label": "Jumlah",
+      "placeholder": "0.00",
+      "being_sent": "sedang dihantar",
+      "balance_prefix": "Baki:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(langsung)",
+      "reading_from_network": "membaca daripada rangkaian…"
+    },
+    "errors": {
+      "amount_missing": "Jumlah diperlukan",
+      "amount_not_positive": "Jumlah mesti lebih besar daripada sifar",
+      "amount_malformed": "Masukkan jumlah perpuluhan biasa, seperti 0.5",
+      "amount_over_balance": "Baki tidak mencukupi",
+      "insufficient_balance_title": "Baki tidak mencukupi.",
+      "insufficient_balance_body": "Anda mempunyai {{balance}} {{currency}} tersedia untuk dihantar (selepas yuran rangkaian). Kurangkan jumlah untuk meneruskan."
+    },
+    "status": {
+      "not_enabled": "Penghantaran belum diaktifkan untuk {{currency}}. Aset ini hanya-terima sehingga laluan kriptonya disahkan.",
+      "dev_ungate_title": "DEV UNGATE AKTIF",
+      "dev_ungate_body": "— pintu pagar hantaran dipintas untuk {{currency}} melalui VITE_DEV_UNGATE_SEND (binaan dev sahaja). Status aset ini tidak berubah (masih belum aktif); mainnet kekal disekat. Pengesahan testnet sahaja — jangan sekali-kali lepaskan binaan ini.",
+      "locked": "Dompet anda berkunci. Buka kunci dalam Tetapan Dompet untuk menandatangani dan menghantar."
+    },
+    "note": { "label": "Nota (pilihan)", "placeholder": "Untuk apa ini?" },
+    "trezor": {
+      "toggle_label": "Tandatangani dengan Trezor",
+      "connected": "Peranti disambungkan",
+      "connect_button": "Sambungkan peranti"
+    },
+    "buttons": {
+      "continue": "Teruskan",
+      "confirm_send": "Sahkan & Hantar",
+      "back": "Kembali"
+    },
+    "verify": { "summary_label": "Anda menghantar" },
+    "fee": {
+      "automatic": "Yuran rangkaian ditetapkan secara automatik untuk {{currency}} ({{network}}).",
+      "native_fee_note": "Yuran rangkaian dibayar dalam {{symbol}} ({{network}}) — anda memerlukan {{symbol}} untuk menampung yuran rangkaian walaupun semasa menghantar {{token}}."
+    },
+    "decode": {
+      "heading": "Apa yang dilakukan transaksi ini",
+      "action": "Tindakan",
+      "send_tokens": "Hantar token",
+      "token": "Token",
+      "amount": "Jumlah",
+      "recipient": "Penerima",
+      "grant_permission": "Berikan kebenaran perbelanjaan",
+      "permission": "Kebenaran",
+      "unlimited_permission": "Tanpa had (aplikasi ini boleh membelanjakan sebarang jumlah)",
+      "spender": "Pembelanja"
+    },
+    "reauth": {
+      "prompt": "Masukkan semula {{credential}} anda untuk membenarkan",
+      "credential_pin": "PIN",
+      "credential_password": "kata laluan",
+      "submit_pin": "Benarkan",
+      "submit_password": "Benarkan & Hantar",
+      "password_placeholder": "Kata laluan vault",
+      "password_aria": "Kata laluan vault untuk kebenaran hantaran",
+      "errors": {
+        "unavailable": "Pengesahan tidak tersedia — sila kunci semula dan buka kunci dompet.",
+        "incorrect": "Salah — cuba lagi ({{remaining}} lagi)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transaksi disiarkan",
+      "heading": "Transaksi Disiarkan",
+      "body_suffix": "ditandatangani secara tempatan dan dihantar ke rangkaian",
+      "tx_hash_label": "Hash transaksi",
+      "view_explorer": "Lihat di block explorer",
+      "pending_note": "Belum selesai sehingga disahkan pada rangkaian. Baki dikemas kini daripada blockchain, bukan nilai tersimpan.",
+      "send_another": "Hantar Lagi"
+    },
+    "toasts": {
+      "ens_off_in_session": "Resolusi nama dimatikan dalam sesi ini — tampal alamat terus.",
+      "ens_not_found": "Nama ENS tidak ditemui",
+      "sns_unavailable": "Resolusi nama Solana belum tersedia — tampal alamat terus.",
+      "ens_resolution_failed": "Resolusi nama gagal",
+      "verify_required": "Selesaikan pengesahan sandaran anda sebelum menghantar jumlah ini.",
+      "two_factor_retry": "Hantaran tidak dapat selesai — sila sahkan semula untuk mencuba lagi.",
+      "send_failed_fallback": "Hantaran gagal",
+      "unconfirmed": "Tidak dapat mengesahkan transaksi ini pada rangkaian lagi — ia mungkin masih belum selesai. Semak explorer."
+    }
+  },
+  "receive": {
+    "heading": "Terima Kripto",
+    "subheading": "Tunjukkan alamat dompet untuk menerima dana",
+    "asset_label": "Aset",
+    "asset_placeholder": "Pilih aset",
+    "not_available": "Menerima {{name}} ({{symbol}}) belum tersedia. Tiada alamat dipaparkan sehingga aset ini diaktifkan.",
+    "locked": {
+      "title": "Dompet berkunci",
+      "body": "Buka kunci dompet anda untuk mendedahkan alamat terima {{asset}} {{network}} anda.",
+      "open_hd_wallet": "Buka Pengurus Dompet HD"
+    },
+    "your_address": "Alamat {{asset}} anda",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Alamat terima {{symbol}}",
+    "copy": {
+      "copied_aria": "Alamat disalin ke papan keratan",
+      "copy_aria": "Salin alamat",
+      "copied_toast": "Alamat disalin",
+      "copy_failed_toast": "Tidak dapat menyalin — pilih dan salin alamat secara manual"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} ialah token pada rangkaian serasi Ethereum. Ini ialah alamat dompet anda — hanya minta penghantar menghantar {{symbol}} pada {{network}}. Menghantarnya pada rangkaian yang berbeza boleh kehilangan dana secara kekal.",
+      "evm": "Ini ialah alamat dompet dikongsi anda. Hanya hantar {{name}} pada {{network}} ke alamat ini, dan pastikan penghantar menggunakan {{network}}.",
+      "btc": "Hanya hantar Bitcoin pada {{network}} ke alamat ini.",
+      "solana": "Hanya hantar Solana pada {{network}} ke alamat ini."
+    },
+    "select_asset_prompt": "Pilih aset untuk diterima.",
+    "unlock_footer_note": "Alamat datang daripada dompet di peranti anda dan hanya muncul semasa ia terbuka kunci."
+  },
+  "dashboard": {
+    "portfolioValue": "Nilai Portfolio",
+    "priceAlertsTriggered_one": "{{count}} Amaran Harga Dicetuskan!",
+    "priceAlertsTriggered_other": "{{count}} Amaran Harga Dicetuskan!",
+    "lockAriaLabel": "Kunci baki di sebalik biometrik",
+    "lockBalance": "Kunci baki",
+    "synced": "Disegerakkan {{time}}",
+    "syncJustNow": "Baru sahaja",
+    "syncSecondsAgo_one": "{{count}} saat lalu",
+    "syncSecondsAgo_other": "{{count}} saat lalu",
+    "syncMinutesAgo_one": "{{count}} minit lalu",
+    "syncMinutesAgo_other": "{{count}} minit lalu",
+    "actions": {
+      "send": "Hantar",
+      "receive": "Terima",
+      "schedule": "Jadualkan",
+      "add": "Tambah"
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Aktiviti",
+      "analytics": "Analitik"
+    },
+    "emptyWallets": {
+      "title": "Belum ada dompet",
+      "description": "Tambah dompet untuk mula menerima, menghantar, dan menyimpan aset merentas chain."
+    },
+    "addWallet": "Tambah Dompet",
+    "searchTransactionsPlaceholder": "Cari transaksi...",
+    "emptySearch": {
+      "title": "Tiada transaksi sepadan",
+      "description": "Cuba kosongkan penapis atau cari aset atau alamat yang berbeza."
+    },
+    "emptyTransactions": {
+      "title": "Belum ada transaksi",
+      "description": "Aktiviti on-chain anda akan muncul di sini sebaik sahaja anda menghantar atau menerima."
+    },
+    "portfolioPerformance": "Prestasi Portfolio",
+    "assetDistribution": "Pengagihan Aset",
+    "quickAccess": "Akses Pantas",
+    "quickAccessItems": {
+      "receive": "Terima",
+      "security": "Keselamatan",
+      "approvals": "Kelulusan",
+      "addressCheck": "Semak Alamat",
+      "analytics": "Analitik",
+      "sentiment": "Sentimen",
+      "riskScore": "Skor Risiko"
+    },
+    "walletNameLabel": "Nama Dompet",
+    "walletNamePlaceholder": "Dompet ETH Saya",
+    "addWalletDialog": {
+      "title": "Tambah Dompet",
+      "currency": "Mata Wang",
+      "creating": "Mencipta...",
+      "create": "Cipta Dompet"
+    },
+    "renameWalletDialog": {
+      "title": "Namakan Semula Dompet",
+      "saving": "Menyimpan...",
+      "save": "Simpan Nama"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Vault disulitkan",
+    "backup": {
+      "title": "Sandarkan \"{{name}}\"",
+      "reauthDescription": "Sahkan ini anda, kemudian kami akan menunjukkan frasa pemulihan untuk dompet ini.",
+      "description": "Tulis 12 perkataan ini secara luar talian. Sesiapa yang memilikinya boleh membelanjakan dana dompet ini — dan itu satu-satunya cara untuk memulihkannya.",
+      "warning": "Jangan sekali-kali ambil tangkapan skrin. Jangan sekali-kali taip ke dalam aplikasi lain.",
+      "confirmButton": "Saya sudah menuliskannya — tanda sudah disandarkan"
+    },
+    "addWallet": {
+      "defaultWalletName": "dompet baharu anda",
+      "backupDescription": "Dompet ini mempunyai frasa pemulihannya sendiri — berasingan daripada setiap dompet lain dalam vault anda. Tuliskannya secara luar talian sebelum anda menggunakannya.",
+      "backedUpDone": "Saya sudah menyandarkannya — selesai",
+      "title": "Tambah dompet",
+      "createNew": "Cipta baharu",
+      "importSeed": "Import seed",
+      "createDescription": "Menjana seed BAHARU yang menurunkan SEMUA chain (ETH/EVM, BTC, SOL). Anda akan menyandarkannya sebelum ia aktif.",
+      "importDescription": "Tampal seed 12/24 perkataan sedia ada — semua chain diturunkan secara automatik (seed tidak khusus kepada satu chain).",
+      "recoveryPhraseLabel": "Frasa pemulihan",
+      "recoveryPhrasePlaceholder": "perkataan1 perkataan2 ... perkataan12",
+      "walletNameLabel": "Nama dompet",
+      "walletNamePlaceholder": "cth. Simpanan",
+      "assetsToShowLabel": "Aset untuk dipaparkan",
+      "assetsToShowHint": "Pilihan paparan sahaja — seed menyimpan setiap chain tanpa mengira ini.",
+      "confirmVaultPlaceholder": "Sahkan ini anda untuk menukar vault anda",
+      "vaultReentryHint": "Dimasukkan semula untuk membenarkan perubahan kepada vault seed anda. Tidak pernah disimpan dalam memori.",
+      "createAndBackup": "Cipta & sandarkan",
+      "importWallet": "Import dompet"
+    },
+    "vaultPinLabel": "PIN Vault",
+    "vaultPasswordLabel": "Kata laluan Vault",
+    "cancel": "Batal",
+    "done": "Selesai",
+    "manageAssets": {
+      "title": "Aset untuk \"{{name}}\"",
+      "description": "Pilih aset mana yang dipaparkan untuk dompet ini. Yang disembunyikan kekal tidak kelihatan sehingga ditambah."
+    },
+    "rename": {
+      "title": "Namakan semula dompet",
+      "save": "Simpan nama"
+    },
+    "remove": {
+      "title": "Buang \"{{name}}\"?",
+      "onlyWallet": "Ini ialah satu-satunya dompet anda — ia tidak boleh dibuang. Gunakan Panic Wipe dalam Keselamatan untuk memadam segalanya.",
+      "description": "Membuang seed dompet ini daripada peranti ini.",
+      "backedUpNote": "Anda boleh memulihkannya daripada frasa pemulihannya.",
+      "notBackedUpNote": "⚠️ BELUM disandarkan — tanpa frasanya ia hilang selama-lamanya.",
+      "button": "Buang dompet"
+    },
+    "move": {
+      "title": "Pindahkan \"{{name}}\" ke…"
+    },
+    "managePortfolios": {
+      "title": "Portfolio",
+      "defaultTag": "(lalai)",
+      "saveAriaLabel": "Simpan nama portfolio",
+      "renameAriaLabel": "Namakan semula {{name}}",
+      "deleteAriaLabel": "Padam {{name}}",
+      "newNamePlaceholder": "Nama portfolio baharu",
+      "addButton": "Tambah"
+    },
+    "activity": {
+      "unlockPrompt": "Buka kunci dompet anda untuk melihat aktiviti.",
+      "loading": "Memuatkan...",
+      "loadError": "Tidak dapat memuatkan aktiviti.",
+      "noTransactions": "Belum ada transaksi.",
+      "viewFullHistory": "Lihat sejarah penuh →"
+    },
+    "portfolioValueLabel": "Nilai Portfolio",
+    "explore": {
+      "subtitle": "Anda sedang meneroka — lihat sahaja. Belum ada dompet.",
+      "description": "Lihat-lihat dengan bebas. Apabila anda bersedia, cipta dompet self-custody baharu atau import seed sedia ada — kunci dijana dan disulitkan pada peranti ini.",
+      "createOrImport": "Cipta atau import dompet"
+    },
+    "portfoliosButton": "Portfolio",
+    "totalValueHeading": "{{name}} · Nilai Keseluruhan",
+    "partialTotalNote": "Sesetengah baki tidak dapat dimuatkan — jumlah ini mungkin tidak lengkap.",
+    "refreshPricesTooltip": "Segar semula harga langsung",
+    "live": "Langsung",
+    "approximate": "Anggaran",
+    "seedVerify": {
+      "title": "Selesaikan pengesahan sandaran anda",
+      "description": "Diperlukan untuk menghantar melebihi ambang keselamatan.",
+      "verifyAriaLabel": "Sahkan sandaran dompet anda",
+      "verifyButton": "Sahkan"
+    },
+    "unbacked": {
+      "titleBold": "Sandaran dompet belum lengkap.",
+      "body": "Setiap dompet mempunyai frasa pemulihannya sendiri — tanpanya, dana dompet itu tidak dapat dipulihkan. Sandarkan sekarang.",
+      "backUpButton": "Sandarkan \"{{name}}\""
+    },
+    "actions": {
+      "send": "Hantar",
+      "receive": "Terima",
+      "addWallet": "Tambah dompet"
+    },
+    "activeWalletHint": {
+      "prefix": "Hantar/Terima menggunakan",
+      "otherPortfolio": " (dalam portfolio lain)",
+      "suffix": ". Ketik dompet di bawah untuk bertukar."
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Aktiviti",
+      "analytics": "Analitik"
+    },
+    "noWalletsInPortfolio": "Tiada dompet dalam \"{{name}}\". Tambah dompet, atau pindahkan satu ke sini daripada menunya.",
+    "hideAssets": "Sembunyikan aset",
+    "showAllAssets": "Tunjukkan semua aset",
+    "walletCard": {
+      "active": "Aktif",
+      "backedUp": "Sudah disandarkan",
+      "backUp": "Sandarkan",
+      "partial": "sebahagian",
+      "optionsAriaLabel": "Pilihan untuk {{name}}",
+      "noAssetsShown": "Tiada aset dipaparkan. Gunakan \"Urus aset\"."
+    },
+    "menu": {
+      "manageAssets": "Urus aset",
+      "rename": "Namakan semula",
+      "moveToPortfolio": "Pindahkan ke portfolio",
+      "backUp": "Sandarkan",
+      "remove": "Buang"
+    },
+    "balanceLoadFailedTitle": "Baki tidak dapat dimuatkan",
+    "defaultWalletFallbackName": "dompet",
+    "toast": {
+      "walletImported": "Dompet diimport — semua chain diturunkan.",
+      "walletRemoved": "Dompet dibuang daripada peranti ini.",
+      "walletAddedBackedUp": "Dompet ditambah dan disandarkan.",
+      "movedTo": "Dipindahkan ke {{name}}.",
+      "markedBackedUp": "\"{{name}}\" ditanda sudah disandarkan."
+    },
+    "errors": {
+      "couldNotAddWallet": "Tidak dapat menambah dompet",
+      "couldNotImportWallet": "Tidak dapat mengimport dompet",
+      "couldNotRemoveWallet": "Tidak dapat membuang dompet"
+    }
+  },
+  "networth": {
+    "title": "Kekayaan Bersih Kripto",
+    "unlockPrompt": "Buka kunci dompet anda untuk melihat pegangan on-chain anda.",
+    "subtitle": "Pegangan on-chain anda — tidak termasuk aset luaran.",
+    "totalHoldings": "Jumlah pegangan",
+    "partialNote": "sebahagian — sesetengah baki tidak dapat dibaca",
+    "refreshPricesTooltip": "Segar semula harga langsung",
+    "live": "Langsung",
+    "approximate": "Anggaran",
+    "allocation": "Peruntukan",
+    "holdings": "Pegangan",
+    "noHoldings": "Belum ada pegangan."
+  }
+}

@@ -1,7 +1,7 @@
 {
   "language": {
-    "switcher_label": "Idioma",
-    "mt_banner": "Esta traducción fue generada por una máquina y no ha sido revisada por un hablante nativo. Si algo parece incorrecto, vuelve al inglés hasta que sea revisado.",
+    "switcher_label": "ভাষা",
+    "mt_banner": "এই অনুবাদটি মেশিন দ্বারা তৈরি করা হয়েছে এবং একজন স্থানীয় ভাষাভাষী দ্বারা পর্যালোচনা করা হয়নি। কোনো শব্দচয়ন ভুল মনে হলে, পর্যালোচনা না হওয়া পর্যন্ত ইংরেজিতে ফিরে যান।",
     "names": {
       "en": "English",
       "es": "Español",
@@ -40,9 +40,9 @@
     }
   },
   "actions": {
-    "cancel": "Cancelar",
-    "confirm": "Confirmar",
-    "close": "Cerrar",
-    "back": "Atrás"
+    "cancel": "বাতিল",
+    "confirm": "নিশ্চিত করুন",
+    "close": "বন্ধ করুন",
+    "back": "পিছনে"
   }
 }
