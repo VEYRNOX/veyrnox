@@ -11,18 +11,6 @@ on:
   schedule:
     # Sundays 03:00 UTC — weekly load run.
     - cron: '0 3 * * 0'
-  # Path-scoped PR trigger — always runs `smoke`, never `load`/`soak`, so a PR
-  # touching the perf rig can't accidentally launch a 30-minute soak against
-  # staging. Remove this block once the workflow is on main and dispatchable
-  # there, OR keep it as an early warning if you want perf regressions gated
-  # per-PR (the workflow is not on the required-checks ruleset either way).
-  pull_request:
-    paths:
-      - 'perf/supabase-rpcs.k6.js'
-      - '.github/workflows/perf.yml'
-      - 'sql/api-security-hardening.sql'
-      - 'sql/telemetry-events-allowlist.sql'
-      - 'sql/definer-search-path-pin.sql'
 
 concurrency:
   group: perf-${{ github.ref }}
