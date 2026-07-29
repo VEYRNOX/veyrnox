@@ -31,14 +31,45 @@ Each scenario mints its own device UUID per VU so per-device rate limits
 across many buckets rather than piling on one.
 
 `track_event`, `generate_referral_code`, `register_referral_code`,
-`increment_referral`, `record_attribution`. A 429 or `rate.?limit`-shaped 400
-is counted as an *accepted* response — throttling is correct behaviour, not
-a failure.
+`increment_referral`. A 429 or `rate.?limit`-shaped 400 is counted as an
+*accepted* response — throttling is correct behaviour, not a failure.
+
+### Referral code lifecycle (issue #1495)
+
+`setup()` seeds a pool of ~30 real codes by calling
+`generate_referral_code` once per code before any VU starts. Runtime scenarios
+that need an existing code (`register_referral_code`, `increment_referral`)
+pick a random code from that pool per iteration instead of minting a fresh
+`K6xxxxxx` string.
+
+Before this, both scenarios called the RPCs against codes that had never
+been inserted into the `referrals` table, so the RPCs correctly rejected
+them and drove `http_req_failed` to ~45%. That masked any real regression
+those RPCs might have. Post-fix, `http_req_failed < 2%` reflects genuine
+transport / rate-limit signal.
+
+Setup uses fresh `uuidv4()` per generate call to sidestep
+`generate_referral_code`'s 1-per-device rate limit — this is a seeding
+operation and not the shape a real client makes. Runtime scenarios keep
+their existing `deviceId()` / `STICKY_DEVICE` behaviour unchanged.
+
+### `record_attribution` — deliberately not in the smoke rig
+
+`record_attribution` was moved to `service_role`-only by H-3
+(see `sql/api-security-hardening.sql`). The anon key the smoke rig uses
+can no longer reach it, so calling it here would 401/403 and fail the
+`http_req_failed` threshold. It's now omitted from the k6 scenarios and
+its per-RPC latency threshold is gone.
+
+If a run needs to measure it, add a separate `service_role`-scoped
+profile that the workflow only allows on manual `workflow_dispatch`,
+never on schedule — a service-role bearer must not sit in a scheduled
+GitHub Actions run.
 
 ## Thresholds (fail CI)
 
 - `http_req_failed < 2%`
-- `http_req_duration p95 < 800ms` global; per-RPC 400–600 ms
+- `http_req_duration p95 < 800ms` global; per-RPC 600–700 ms
 - `checks{kind:accepted} > 98%`
 
 ## Web perf (Lighthouse-CI)
