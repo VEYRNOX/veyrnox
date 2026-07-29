@@ -244,14 +244,14 @@ export default function AdvancedAnalytics() {
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th scope="col" className="text-left py-1 pr-3 text-muted-foreground font-normal"></th>
+                    <th scope="col" className="text-start py-1 pe-3 text-muted-foreground font-normal"></th>
                     {CORRELATION_ASSETS.map(a => <th key={a} scope="col" className="py-1 px-2 text-muted-foreground font-normal">{a}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {CORRELATION.map(row => (
                     <tr key={row.asset}>
-                      <th scope="row" className="py-1 pr-3 font-semibold text-left">{row.asset}</th>
+                      <th scope="row" className="py-1 pe-3 font-semibold text-start">{row.asset}</th>
                       {CORRELATION_ASSETS.map(col => {
                         const val = row[col];
                         if (val == null) return <td key={col} className="py-1 px-2 text-center font-mono text-muted-foreground">—</td>;

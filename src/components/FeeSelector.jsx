@@ -229,7 +229,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                   key={t.id}
                   type="button"
                   onClick={() => setSelectedId(t.id)}
-                  className={`p-2 rounded-lg border text-left transition-colors ${active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
+                  className={`p-2 rounded-lg border text-start transition-colors ${active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <Icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground"}`} />
@@ -257,11 +257,11 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
               <button
                 type="button"
                 onClick={() => setSelectedId("custom")}
-                className={`w-full p-2 rounded-lg border text-left transition-colors flex items-center gap-1.5 ${selectedId === "custom" ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
+                className={`w-full p-2 rounded-lg border text-start transition-colors flex items-center gap-1.5 ${selectedId === "custom" ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
               >
                 <SlidersHorizontal className={`h-3.5 w-3.5 ${selectedId === "custom" ? "text-primary" : "text-muted-foreground"}`} />
                 <span className="text-xs font-semibold">Custom</span>
-                {customPreview && <span className="text-[10px] text-muted-foreground ml-auto mono-value">{customPreview.nativeText}{customPreview.fiatText ? ` · ${customPreview.fiatText}` : ""}</span>}
+                {customPreview && <span className="text-[10px] text-muted-foreground ms-auto mono-value">{customPreview.nativeText}{customPreview.fiatText ? ` · ${customPreview.fiatText}` : ""}</span>}
               </button>
               {selectedId === "custom" && (
                 <div className="grid grid-cols-3 gap-2 mt-2">

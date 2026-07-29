@@ -191,7 +191,7 @@ export default function PasskeyUnlockSettings() {
 
           {/* The unlock toggle — only meaningful once a passkey exists. */}
           <div className="flex items-center justify-between">
-            <div className="pr-4">
+            <div className="pe-4">
               <p className="text-sm font-medium">
                 {nativeBio ? t('settings.passkey_unlock.require_toggle_native') : t('settings.passkey_unlock.require_toggle_web', { label })}
               </p>

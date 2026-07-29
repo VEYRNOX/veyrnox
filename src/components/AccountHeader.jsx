@@ -39,7 +39,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
         >
           <button
             onClick={() => { onWalletChange(w); setShowPicker(false); }}
-            className="flex items-center gap-3 flex-1 text-left min-w-0"
+            className="flex items-center gap-3 flex-1 text-start min-w-0"
           >
             <CoinLogo symbol={w.currency} size={32} />
             <div className="min-w-0">
@@ -62,7 +62,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
       ))}
       <button
         onClick={goAddWallet}
-        className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-secondary transition-colors text-left"
+        className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-secondary transition-colors text-start"
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
           <Plus className="h-4 w-4" />
@@ -103,7 +103,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
           </button>
 
           {showPicker && (
-            <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 w-64 bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
+            <div className="absolute top-10 start-1/2 -translate-x-1/2 z-50 w-64 bg-card border border-border rounded-xl shadow-2xl overflow-hidden">
               {wallets.map(w => (
                 <div
                   key={w.id}
@@ -111,7 +111,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
                 >
                   <button
                     onClick={() => { onWalletChange(w); setShowPicker(false); }}
-                    className="flex items-center gap-3 flex-1 text-left min-w-0"
+                    className="flex items-center gap-3 flex-1 text-start min-w-0"
                   >
                     <CoinLogo symbol={w.currency} size={32} />
                     <div className="min-w-0">
@@ -134,7 +134,7 @@ export default function AccountHeader({ wallet, wallets, onWalletChange, onRenam
               ))}
               <button
                 onClick={goAddWallet}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors text-left border-t border-border"
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors text-start border-t border-border"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
                   <Plus className="h-4 w-4" />

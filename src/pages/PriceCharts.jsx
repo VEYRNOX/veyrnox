@@ -87,7 +87,7 @@ export default function PriceCharts() {
             {isUp ? "+" : ""}{change}% · {period}
           </div>
         </div>
-        <div className="text-right text-xs text-muted-foreground">
+        <div className="text-end text-xs text-muted-foreground">
           <p>Mkt Cap ${asset.mcap}</p>
           <p className="mt-0.5">{asset.name}</p>
         </div>

@@ -73,8 +73,8 @@ export default function MultiChainNFT() {
           ) : (
             <Image className="h-10 w-10 text-muted-foreground opacity-40" aria-hidden="true" />
           )}
-          <div className="absolute top-2 left-2"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${chain(n.chain)?.color || "bg-secondary text-muted-foreground"}`}>{chain(n.chain)?.icon} {chain(n.chain)?.label}</span></div>
-          <div className="absolute top-2 right-2"><span className={`text-[10px] px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[n.status]}`}>{n.status}</span></div>
+          <div className="absolute top-2 start-2"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${chain(n.chain)?.color || "bg-secondary text-muted-foreground"}`}>{chain(n.chain)?.icon} {chain(n.chain)?.label}</span></div>
+          <div className="absolute top-2 end-2"><span className={`text-[10px] px-2 py-0.5 rounded-full capitalize ${STATUS_STYLES[n.status]}`}>{n.status}</span></div>
         </div>
         <div className="p-3 space-y-1">
           <p className="text-xs text-muted-foreground truncate">{n.collection}</p>
@@ -111,7 +111,7 @@ export default function MultiChainNFT() {
             <span className="text-xs text-muted-foreground">{n.collection}</span>
           </div>
         </div>
-        <div className="text-right shrink-0">
+        <div className="text-end shrink-0">
           <p className="text-sm font-semibold">{n.current_floor || 0} ETH</p>
           <p className={`text-xs ${pnl >= 0 ? "text-success" : "text-destructive"}`}>{pnl >= 0 ? "+" : ""}{pnl.toFixed(4)} ETH</p>
         </div>
@@ -127,7 +127,7 @@ export default function MultiChainNFT() {
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Image className="h-6 w-6 text-primary" /> Multi-Chain NFTs</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Track your NFT portfolio across all chains</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> Add NFT</Button>
+        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 me-1.5" /> Add NFT</Button>
       </div>
 
       {/* Stats */}
@@ -162,7 +162,7 @@ export default function MultiChainNFT() {
             {["holding","listed","sold"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
           </SelectContent>
         </Select>
-        <div className="flex gap-1 ml-auto">
+        <div className="flex gap-1 ms-auto">
           <Button variant={viewMode === "grid" ? "default" : "outline"} size="icon" aria-label="Grid view" className="h-8 w-8" onClick={() => setViewMode("grid")}><Grid3X3 className="h-3.5 w-3.5" /></Button>
           <Button variant={viewMode === "list" ? "default" : "outline"} size="icon" aria-label="List view" className="h-8 w-8" onClick={() => setViewMode("list")}><List className="h-3.5 w-3.5" /></Button>
         </div>

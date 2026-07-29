@@ -211,7 +211,7 @@ function DemoDashboard() {
 
       {/* Portfolio Value */}
       <div className="text-center py-4 relative">
-        <div className="absolute top-4 right-0">
+        <div className="absolute top-4 end-0">
           <DashboardWidgetSettings widgets={widgets} onChange={saveWidgets} />
         </div>
         <div className="flex items-center justify-center gap-2 mb-1">
@@ -317,7 +317,7 @@ function DemoDashboard() {
               description={t("dashboard.emptyWallets.description")}
               action={(
                 <Button size="sm" onClick={() => setOpen(true)}>
-                  <Plus className="h-4 w-4 mr-1.5" />{t("dashboard.addWallet")}
+                  <Plus className="h-4 w-4 me-1.5" />{t("dashboard.addWallet")}
                 </Button>
               )}
             />
@@ -333,12 +333,12 @@ function DemoDashboard() {
         <TabsContent value="activity" className="mt-3 space-y-2">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 value={txSearch}
                 onChange={e => setTxSearch(e.target.value)}
                 placeholder={t("dashboard.searchTransactionsPlaceholder")}
-                className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-border bg-secondary outline-none focus:ring-1 focus:ring-primary"
+                className="w-full ps-8 pe-3 py-2 text-xs rounded-lg border border-border bg-secondary outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
             <TransactionFilters filters={txFilters} onChange={setTxFilters} />
@@ -370,7 +370,7 @@ function DemoDashboard() {
                     {tx.type === "send" ? tx.to_address : tx.from_address}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-end shrink-0">
                   <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-success"}`}>
                     {tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}
                   </p>

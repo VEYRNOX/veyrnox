@@ -52,6 +52,23 @@ const FALLBACK_FIAT = 'USD';
 // outside this set is treated as unset and falls through to the fallback.
 export const SUPPORTED_FIAT = ['USD', 'GBP', 'EUR', 'JPY', 'AUD'];
 
+// RTL locales — the languages whose script naturally reads right-to-left.
+// Match by base language subtag so `ar-EG`, `ar-SA`, `fa-IR`, etc. all
+// resolve to RTL. `he` is the modern ISO tag; `iw` is the legacy alias
+// some older browsers still emit — accept both.
+const RTL_BASE_LANGUAGES = new Set(['ar', 'fa', 'he', 'iw', 'ur', 'ps', 'sd', 'yi']);
+
+/**
+ * True if the given locale should render right-to-left. Accepts a BCP-47
+ * tag (`ar`, `ar-EG`, `fa-IR`, …); resolves by base language subtag.
+ * @param {string|undefined|null} locale
+ */
+export function isRtlLocale(locale) {
+  if (!locale || typeof locale !== 'string') return false;
+  const base = locale.split('-')[0].toLowerCase();
+  return RTL_BASE_LANGUAGES.has(base);
+}
+
 // Best-effort read; localStorage throws on some Safari private-mode paths.
 function safeGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }

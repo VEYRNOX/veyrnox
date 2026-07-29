@@ -48,7 +48,7 @@ export default function TelemetryConsent({ onChoice }) {
           {t('telemetry_consent.body')}
         </p>
       </div>
-      <div className="flex items-start gap-3 text-left p-3 rounded-xl bg-card border border-border">
+      <div className="flex items-start gap-3 text-start p-3 rounded-xl bg-card border border-border">
         <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
         <p className="text-xs text-muted-foreground">
           {t('telemetry_consent.device_id_note')}

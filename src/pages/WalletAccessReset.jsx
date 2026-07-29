@@ -395,11 +395,11 @@ export default function WalletAccessReset() {
                   value={curPw}
                   onChange={(e) => setCurPw(e.target.value)}
                   placeholder="Your current vault password"
-                  className="pr-10"
+                  className="pe-10"
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                   onClick={() => setShowPw((s) => !s)}
                   aria-label={showPw ? "Hide passwords" : "Show passwords"}
                 >
@@ -551,7 +551,7 @@ export default function WalletAccessReset() {
           <ShieldOff className="h-4 w-4 text-muted-foreground" />
           <p className="text-sm font-semibold">What VEYRNOX cannot do</p>
         </div>
-        <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
           <li>No password reset — we never see it.</li>
           <li>No email/SMS recovery link. We have nothing on our servers to recover.</li>
           <li>No key escrow. Support cannot restore access.</li>
@@ -580,7 +580,7 @@ export default function WalletAccessReset() {
             </Button>
             {isUnlocked && (
               <Button size="sm" variant="ghost" disabled={!!demoBusy} onClick={() => lock()}>
-                <Lock className="h-3.5 w-3.5 mr-1" /> Lock
+                <Lock className="h-3.5 w-3.5 me-1" /> Lock
               </Button>
             )}
             <Button size="sm" variant="destructive" disabled={!!demoBusy} onClick={demoReset}>

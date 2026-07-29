@@ -94,13 +94,13 @@ export default function TransactionReceipt() {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder={t("tx.receipt.search_placeholder")} className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder={t("tx.receipt.search_placeholder")} className="ps-9" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-3">
         {/* TX List */}
-        <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1" tabIndex={0}>
+        <div className="space-y-2 max-h-[480px] overflow-y-auto pe-1" tabIndex={0}>
           {isLoading ? <div className="text-center py-8 text-muted-foreground text-sm">{t("tx.receipt.loading")}</div> : isError ? (
             <div className="text-center py-8 text-destructive text-sm">{t("tx.receipt.error")}</div>
           ) : filtered.length === 0 ? (

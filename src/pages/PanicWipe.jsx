@@ -69,7 +69,7 @@ function KeyMaterialReport({ report, title }) {
           ? <CheckCircle2 className="h-4 w-4 text-success" />
           : <Database className="h-4 w-4 text-caution" />}
         <span>{title}</span>
-        <span className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold ${clean ? "bg-success/20 text-success" : "bg-caution/20 text-caution"}`}>
+        <span className={`ms-auto px-2 py-0.5 rounded text-[10px] font-bold ${clean ? "bg-success/20 text-success" : "bg-caution/20 text-caution"}`}>
           {clean ? "NO KEY MATERIAL" : `${report.vaultBlobCount} VAULT BLOB${report.vaultBlobCount === 1 ? "" : "S"}`}
         </span>
       </div>
@@ -263,7 +263,7 @@ export default function PanicWipe() {
           <ShieldOff className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-semibold">Two ways to wipe</p>
-            <ul className="text-xs text-muted-foreground mt-1 space-y-1.5 list-disc pl-4">
+            <ul className="text-xs text-muted-foreground mt-1 space-y-1.5 list-disc ps-4">
               <li>
                 <b>Wipe PIN at unlock</b> — set one below. Enter it at the
                 unlock screen and everything deletes instantly with{" "}
@@ -286,12 +286,12 @@ export default function PanicWipe() {
           <p className="text-sm font-semibold">What goes — and what stays</p>
         </div>
         <p className="text-xs font-medium text-foreground">Deleted:</p>
-        <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
           <li>Your <b>main wallet</b>, any <b>Emergency wallet</b>, and all <b>hidden wallets</b> on this device.</li>
           <li>All local wallet data and the on-device database.</li>
         </ul>
         <p className="text-xs font-medium text-foreground mt-2">Not deleted:</p>
-        <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
           <li><b>Any recovery phrase you wrote down</b> or saved elsewhere. You can restore from that anytime.</li>
           <li><b>Your transaction history on the blockchain.</b> Public records stay public.</li>
           <li><b>Honest limit:</b> we clear the wallet records, but someone examining the storage chip itself may still find traces.</li>
@@ -369,7 +369,7 @@ export default function PanicWipe() {
               onClick={() => setShowRemoveConfirm(true)}
               disabled={removed}
             >
-              <ShieldOff className="h-4 w-4 mr-2" /> Remove panic wipe
+              <ShieldOff className="h-4 w-4 me-2" /> Remove panic wipe
             </Button>
           ) : (
             <div className={`space-y-2 p-3 rounded-lg ${panicEnabled ? "bg-destructive/5 border border-destructive/30" : "bg-caution/5 border border-caution/30"}`}>
@@ -471,14 +471,14 @@ export default function PanicWipe() {
 
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" disabled={!!busy} onClick={demoSetup}>
-              <KeyRound className="h-3.5 w-3.5 mr-1" /> 1. Set up & snapshot
+              <KeyRound className="h-3.5 w-3.5 me-1" /> 1. Set up & snapshot
             </Button>
             <Button size="sm" variant="destructive" disabled={!!busy || !before} onClick={demoPanicUnlock}>
-              <Bomb className="h-3.5 w-3.5 mr-1" /> 2. Enter wipe PIN at unlock
+              <Bomb className="h-3.5 w-3.5 me-1" /> 2. Enter wipe PIN at unlock
             </Button>
             {isUnlocked && (
               <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => lock()}>
-                <Lock className="h-3.5 w-3.5 mr-1" /> Lock
+                <Lock className="h-3.5 w-3.5 me-1" /> Lock
               </Button>
             )}
           </div>
@@ -490,7 +490,7 @@ export default function PanicWipe() {
             <KeyMaterialReport report={before} title="BEFORE — wallet data present" />
             {before && after && (
               <div className="flex items-center justify-center text-muted-foreground">
-                <HardDrive className="h-4 w-4 mr-1" /> <span className="text-xs">wipe PIN entered → wipe fired</span>
+                <HardDrive className="h-4 w-4 me-1" /> <span className="text-xs">wipe PIN entered → wipe fired</span>
               </div>
             )}
             <KeyMaterialReport report={after} title="AFTER — no wallet data left" />

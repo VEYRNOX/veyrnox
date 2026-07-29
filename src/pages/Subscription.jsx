@@ -502,7 +502,7 @@ export default function Subscription() {
               {isNative && (
                 <>
                   <Button variant="outline" className="w-full" onClick={handleManage}>
-                    <ExternalLink className="h-4 w-4 mr-2" />
+                    <ExternalLink className="h-4 w-4 me-2" />
                     Manage subscription
                   </Button>
                   <p className="text-xs text-muted-foreground text-center">
@@ -540,7 +540,7 @@ export default function Subscription() {
                     <span className="block text-xs text-muted-foreground font-normal mono-value">
                       {monthlyPriceString ?? "—"}
                       {hasDiscount && regularMonthlyPrice && regularMonthlyPrice !== monthlyPriceString && (
-                        <span className="ml-1 line-through opacity-60">{regularMonthlyPrice}</span>
+                        <span className="ms-1 line-through opacity-60">{regularMonthlyPrice}</span>
                       )}
                     </span>
                   </button>
@@ -567,7 +567,7 @@ export default function Subscription() {
                     {savingPercent != null && (
                       <Badge
                         variant="outline"
-                        className="absolute -top-2 right-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-primary/40 bg-background text-primary whitespace-nowrap"
+                        className="absolute -top-2 end-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-primary/40 bg-background text-primary whitespace-nowrap"
                       >
                         Save {savingPercent}%
                       </Badge>
@@ -575,7 +575,7 @@ export default function Subscription() {
                     <span className="block text-xs text-muted-foreground font-normal mono-value">
                       {annualPriceString ?? "—"}
                       {hasDiscount && regularAnnualPrice && regularAnnualPrice !== annualPriceString && (
-                        <span className="ml-1 line-through opacity-60">{regularAnnualPrice}</span>
+                        <span className="ms-1 line-through opacity-60">{regularAnnualPrice}</span>
                       )}
                     </span>
                   </button>
@@ -613,7 +613,7 @@ export default function Subscription() {
                 className="w-full"
                 onClick={handleUpgrade}
               >
-                {busy ? <Loader2 className="h-4 w-4 mr-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                {busy ? <Loader2 className="h-4 w-4 me-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 me-2" />}
                 {isNative ? (selectedPriceString ? `Upgrade — ${selectedPriceString}` : "Upgrade — loading pricing") : "Upgrade — mobile only"}
               </Button>
 

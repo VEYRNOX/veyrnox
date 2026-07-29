@@ -169,7 +169,7 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
         <span className="mono-value text-foreground">{amount} {currency}</span> {tw("send.done.body_suffix")}
       </motion.p>
       {txResult?.hash && (
-        <motion.div variants={item} className="p-3 rounded-xl bg-secondary/30 border border-border text-left space-y-2">
+        <motion.div variants={item} className="p-3 rounded-xl bg-secondary/30 border border-border text-start space-y-2">
           <p className="text-xs text-muted-foreground">{tw("send.done.tx_hash_label")}</p>
           <p className="text-xs mono-value break-all">{txResult.hash}</p>
           {txResult.explorerUrl && (
@@ -1352,7 +1352,7 @@ export default function SendCrypto() {
               <p className="text-sm font-semibold">{getAsset(assetSymbol)?.name || assetSymbol}</p>
               <p className="text-xs text-muted-foreground">{selectedWalletName || tw("send.wallet_fallback")}</p>
             </div>
-            <div className="text-right shrink-0">
+            <div className="text-end shrink-0">
               {demoActive ? (
                 <>
                   <p className="text-sm font-semibold mono-value">{demoBalance ?? "—"} {assetSymbol}</p>
@@ -1806,7 +1806,7 @@ export default function SendCrypto() {
               setStep("verify");
             }}
           >
-            <ArrowUpRight className="h-4 w-4 mr-1.5" />
+            <ArrowUpRight className="h-4 w-4 me-1.5" />
             {tw("send.buttons.continue")}
           </Button>
         )}

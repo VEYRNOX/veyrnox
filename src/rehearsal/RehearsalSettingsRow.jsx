@@ -18,7 +18,7 @@ export default function RehearsalSettingsRow() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-full p-5 rounded-xl border border-border bg-card flex items-center justify-between gap-3 text-left hover:bg-secondary/40 transition-colors"
+        className="w-full p-5 rounded-xl border border-border bg-card flex items-center justify-between gap-3 text-start hover:bg-secondary/40 transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
           <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

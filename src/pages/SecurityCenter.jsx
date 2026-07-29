@@ -229,7 +229,7 @@ export default function SecurityCenter() {
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">Cap what you can send per day or per transaction.</p>
             <Button size="sm" onClick={() => setShowAddLimit(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Add Limit
+              <Plus className="h-3.5 w-3.5 me-1" /> Add Limit
             </Button>
           </div>
           {errorLimits && (

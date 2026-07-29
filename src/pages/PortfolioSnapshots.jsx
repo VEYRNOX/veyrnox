@@ -72,7 +72,7 @@ export default function PortfolioSnapshots() {
           <p className="text-sm text-muted-foreground mt-0.5">Save and compare historical portfolio values</p>
         </div>
         <Button onClick={() => setShowSave(true)}>
-          <Camera className="h-4 w-4 mr-1.5" /> Save Snapshot
+          <Camera className="h-4 w-4 me-1.5" /> Save Snapshot
         </Button>
       </div>
 
@@ -133,7 +133,7 @@ export default function PortfolioSnapshots() {
                   <p className="text-xs text-muted-foreground">{new Date(s.created_date).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   {s.note && <p className="text-xs text-muted-foreground italic">{s.note}</p>}
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-end shrink-0">
                   <p className="text-sm font-bold">{formatUsd(s.total_usd, resolveLocale())}</p>
                   {diff != null && (
                     <p className={`text-xs ${diff >= 0 ? "text-success" : "text-destructive"}`}>
@@ -167,7 +167,7 @@ export default function PortfolioSnapshots() {
               <Input value={note} onChange={e => setNote(e.target.value)} placeholder="Any notes..." className="mt-1.5" />
             </div>
             <Button className="w-full" onClick={handleSave}>
-              <Camera className="h-4 w-4 mr-1.5" /> Save Snapshot
+              <Camera className="h-4 w-4 me-1.5" /> Save Snapshot
             </Button>
           </div>
         </DialogContent>

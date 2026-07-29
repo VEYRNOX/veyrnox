@@ -89,7 +89,7 @@ function NewsCard({ article }) {
           <p className="text-xs text-muted-foreground line-clamp-1">{article.description}</p>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground ml-auto">
+          <span className="text-[10px] text-muted-foreground ms-auto">
             {article._source} · {timeAgo(article.pubDate)}
           </span>
         </div>

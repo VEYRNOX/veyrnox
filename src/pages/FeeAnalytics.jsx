@@ -82,7 +82,7 @@ function FeeRow({ tx, symbol }) {
           {tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : "awaiting confirmation"}
         </p>
       </div>
-      <div className="text-right shrink-0">
+      <div className="text-end shrink-0">
         <p className="text-sm font-semibold font-mono text-foreground">{tx.feeNative} {symbol}</p>
         <p className="text-[10px] text-muted-foreground">network fee</p>
       </div>

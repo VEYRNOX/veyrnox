@@ -187,7 +187,7 @@ export default function Calculator() {
                 onChange={e => handleCryptoChange(e.target.value)}
                 placeholder="0.00"
                 autoFocus
-                className="flex-1 text-right font-mono text-base"
+                className="flex-1 text-end font-mono text-base"
               />
             ) : (
               <button
@@ -195,7 +195,7 @@ export default function Calculator() {
                   if (convertedCrypto !== "") setCryptoAmount(String(convertedCrypto));
                   setLastEdited("crypto");
                 }}
-                className="flex-1 text-right font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
+                className="flex-1 text-end font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
               >
                 {convertedCrypto !== "" ? formatNumber(convertedCrypto, null) : <span className="text-muted-foreground">0.00</span>}
               </button>
@@ -249,7 +249,7 @@ export default function Calculator() {
                 onChange={e => handleFiatChange(e.target.value)}
                 placeholder="0.00"
                 autoFocus
-                className="flex-1 text-right font-mono text-base"
+                className="flex-1 text-end font-mono text-base"
               />
             ) : (
               <button
@@ -257,7 +257,7 @@ export default function Calculator() {
                   if (convertedFiat !== "") setFiatAmount(String(convertedFiat));
                   setLastEdited("fiat");
                 }}
-                className="flex-1 text-right font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
+                className="flex-1 text-end font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
               >
                 {convertedFiat !== "" ? formatNumber(convertedFiat, toFiat) : <span className="text-muted-foreground">0.00</span>}
               </button>
@@ -282,7 +282,7 @@ export default function Calculator() {
                 <button
                   key={f}
                   onClick={() => setToFiat(f)}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-colors text-left ${
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-colors text-start ${
                     toFiat === f
                       ? "border-primary/50 bg-primary/10"
                       : "border-border bg-secondary/30 hover:bg-secondary"

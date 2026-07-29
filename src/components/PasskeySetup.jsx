@@ -196,7 +196,7 @@ export default function PasskeySetup({ wallet, onRegistered }) {
         className="w-full"
         size="sm"
       >
-        {loading ? <Loader2 className="h-4 w-4 motion-safe:animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+        {loading ? <Loader2 className="h-4 w-4 motion-safe:animate-spin me-2" /> : <Shield className="h-4 w-4 me-2" />}
         Register Passkey
       </Button>
     </div>

@@ -151,7 +151,7 @@ export default function PortfolioRewind() {
         {assetBreakdown.map(a => (
           <div key={a.sym} className="p-3.5 rounded-xl border border-border bg-card flex items-center justify-between">
             <div><p className="text-sm font-medium">{a.sym}</p></div>
-            <div className="text-right">
+            <div className="text-end">
               <p className="text-sm font-semibold">{formatUsd(a.pastVal, resolveLocale())}</p>
               <p className={`text-xs ${a.change >= 0 ? "text-success" : "text-destructive"}`}>
                 {a.change >= 0 ? "+" : ""}{a.changePct.toFixed(1)}% since then
