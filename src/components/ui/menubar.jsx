@@ -68,7 +68,8 @@ const MenubarSubTrigger = React.forwardRef(({ className, inset, children, ...pro
     )}
     {...props}>
     {children}
-    <ChevronRight className="ms-auto h-4 w-4" />
+    {/* Icon mirrors under dir="rtl" — submenu indicator points into the flyout. */}
+    <ChevronRight className="ms-auto h-4 w-4 rtl:-scale-x-100" />
   </MenubarPrimitive.SubTrigger>
 ))
 MenubarSubTrigger.displayName = MenubarPrimitive.SubTrigger.displayName

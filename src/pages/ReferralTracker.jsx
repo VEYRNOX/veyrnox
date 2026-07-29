@@ -496,7 +496,8 @@ export default function ReferralTracker() {
               className="mono-value tracking-widest"
             />
             <Button onClick={handleRedeem} disabled={!redeemInput.trim() || redeemBusy} variant="outline" aria-label="Apply referral code">
-              {redeemBusy ? '…' : <ChevronRight className="h-4 w-4" />}
+              {/* Icon mirrors under dir="rtl" — forward/submit action chevron. */}
+              {redeemBusy ? '…' : <ChevronRight className="h-4 w-4 rtl:-scale-x-100" />}
             </Button>
           </div>
           {redeemError && (

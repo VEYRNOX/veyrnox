@@ -112,7 +112,8 @@ export default function LandingPage() {
             <div className="flex gap-4 pt-4">
               <Button size="lg" onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90 text-lg px-8">
                 Launch App
-                <ArrowRight className="ms-2 h-5 w-5" />
+                {/* Icon mirrors under dir="rtl" — forward-flow CTA arrow. */}
+                <ArrowRight className="ms-2 h-5 w-5 rtl:-scale-x-100" />
               </Button>
               <Button size="lg" variant="outline" onClick={() => navigate("/docs")} className="border-border hover:bg-secondary text-lg px-8">
                 Learn More

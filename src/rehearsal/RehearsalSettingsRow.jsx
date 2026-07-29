@@ -31,7 +31,8 @@ export default function RehearsalSettingsRow() {
             </p>
           </div>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+        {/* Icon mirrors under dir="rtl" — list-row disclosure chevron. */}
+        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 rtl:-scale-x-100" />
       </button>
       {open && <RehearsalView onClose={() => setOpen(false)} />}
     </>

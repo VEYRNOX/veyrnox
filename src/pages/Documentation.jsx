@@ -365,7 +365,10 @@ export default function Documentation() {
                           <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
                         </div>
                         {idx < workflow.steps.length - 1 && (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground self-center" />
+                          // Icon mirrors under dir="rtl" — this separates ordered
+                          // workflow steps, so it must point "forward in reading
+                          // direction" like a breadcrumb separator.
+                          <ChevronRight className="h-4 w-4 text-muted-foreground self-center rtl:-scale-x-100" />
                         )}
                       </div>
                     ))}
