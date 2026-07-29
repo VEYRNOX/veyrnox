@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { safeFormat } from "@/lib/safeDate";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
+import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const STATUS_COLORS = { draft: "secondary", sent: "default", paid: "outline", overdue: "destructive" };
 
@@ -32,7 +33,7 @@ export default function InvoiceGenerator() {
 
   const create = useMutation({
     mutationFn: (/** @type {any} */ d) => {
-      const amount = parseFloat(d.total_amount);
+      const amount = parseLocaleNumber(d.total_amount, resolveLocale());
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be a positive number");
       const addr = (d.wallet_address || "").trim();
       // Validate address: use currency-aware check when possible, else require non-empty + plausible length
@@ -157,7 +158,7 @@ export default function InvoiceGenerator() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="inv-amount">Amount</Label>
-                <Input id="inv-amount" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} placeholder="500" type="number" className="mt-1.5" />
+                <Input id="inv-amount" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} placeholder="500" type="text" inputMode="decimal" className="mt-1.5" />
               </div>
               <div>
                 <Label id="inv-currency-label">Currency</Label>

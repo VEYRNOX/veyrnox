@@ -11,7 +11,7 @@ import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import Spinner from "@/components/Spinner";
-import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
+import { formatCryptoAmount, parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
@@ -68,13 +68,16 @@ export default function Calculator() {
 
   const convertedFiat = useMemo(() => {
     if (rate == null || !cryptoAmount) return "";
-    const val = parseFloat(cryptoAmount) * rate;
+    // parseLocaleNumber returns NaN for ambiguous input like en-US "1,5",
+    // which then propagates cleanly to the `isNaN(val)` guard and renders
+    // the field empty rather than silently coercing to a wrong number.
+    const val = parseLocaleNumber(cryptoAmount, resolveLocale()) * rate;
     return isNaN(val) ? "" : val;
   }, [cryptoAmount, rate]);
 
   const convertedCrypto = useMemo(() => {
     if (rate == null || !fiatAmount) return "";
-    const val = parseFloat(fiatAmount) / rate;
+    const val = parseLocaleNumber(fiatAmount, resolveLocale()) / rate;
     return isNaN(val) ? "" : val;
   }, [fiatAmount, rate]);
 
@@ -178,8 +181,8 @@ export default function Calculator() {
             </Select>
             {lastEdited === "crypto" ? (
               <Input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={cryptoAmount}
                 onChange={e => handleCryptoChange(e.target.value)}
                 placeholder="0.00"
@@ -240,8 +243,8 @@ export default function Calculator() {
             </Select>
             {lastEdited === "fiat" ? (
               <Input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={fiatAmount}
                 onChange={e => handleFiatChange(e.target.value)}
                 placeholder="0.00"

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TOP_SYMBOLS } from "@/lib/cryptos";
 import CoinLogo from "@/components/CoinLogo";
+import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const POPULAR = TOP_SYMBOLS;
 
@@ -121,17 +122,17 @@ export default function WatchlistPage() {
                   <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-2">
                     <div>
                       <Label className="text-[10px]">Buy below ($)</Label>
-                      <Input value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="65000" type="number" className="h-7 text-xs mt-0.5" />
+                      <Input value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="65000" type="text" inputMode="decimal" className="h-7 text-xs mt-0.5" />
                     </div>
                     <div>
                       <Label className="text-[10px]">Sell above ($)</Label>
-                      <Input value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="75000" type="number" className="h-7 text-xs mt-0.5" />
+                      <Input value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="75000" type="text" inputMode="decimal" className="h-7 text-xs mt-0.5" />
                     </div>
                     <div className="col-span-2">
                       <Label className="text-[10px]">Note</Label>
                       <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Your note..." className="h-7 text-xs mt-0.5" />
                     </div>
-                    <Button size="sm" className="h-7 text-xs" onClick={() => update.mutate({ id: item.id, ...form, target_buy: form.target_buy ? parseFloat(form.target_buy) : undefined, target_sell: form.target_sell ? parseFloat(form.target_sell) : undefined })}>
+                    <Button size="sm" className="h-7 text-xs" onClick={() => update.mutate({ id: item.id, ...form, target_buy: form.target_buy ? parseLocaleNumber(form.target_buy, resolveLocale()) : undefined, target_sell: form.target_sell ? parseLocaleNumber(form.target_sell, resolveLocale()) : undefined })}>
                       <Check className="h-3 w-3 mr-1" /> Save
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditId(null)}>Cancel</Button>
@@ -155,18 +156,18 @@ export default function WatchlistPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Buy Below (USD)</Label>
-                <Input value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="Optional" type="number" className="mt-1.5" />
+                <Input value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="Optional" type="text" inputMode="decimal" className="mt-1.5" />
               </div>
               <div>
                 <Label>Sell Above (USD)</Label>
-                <Input value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="Optional" type="number" className="mt-1.5" />
+                <Input value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="Optional" type="text" inputMode="decimal" className="mt-1.5" />
               </div>
             </div>
             <div>
               <Label>Note (optional)</Label>
               <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Your note..." className="mt-1.5" />
             </div>
-            <Button className="w-full" disabled={!form.symbol || add.isPending} onClick={() => add.mutate({ ...form, target_buy: form.target_buy ? parseFloat(form.target_buy) : undefined, target_sell: form.target_sell ? parseFloat(form.target_sell) : undefined })}>
+            <Button className="w-full" disabled={!form.symbol || add.isPending} onClick={() => add.mutate({ ...form, target_buy: form.target_buy ? parseLocaleNumber(form.target_buy, resolveLocale()) : undefined, target_sell: form.target_sell ? parseLocaleNumber(form.target_sell, resolveLocale()) : undefined })}>
               {add.isPending ? "Adding..." : "Add to Watchlist"}
             </Button>
           </div>
