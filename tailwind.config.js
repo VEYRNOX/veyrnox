@@ -5,7 +5,25 @@ module.exports = {
   theme: {
   	extend: {
   		fontFamily: {
-  			sans: ['"Schibsted Grotesk"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+  			// Schibsted Grotesk covers Latin + Latin-ext. When rendered text
+  			// contains a codepoint outside those ranges, browsers fall through
+  			// to the next family that has a matching glyph — the Noto Sans
+  			// script variants (loaded via src/index.css @fontsource-variable
+  			// imports) each cover their script's codepoints with a small
+  			// unicode-range chunk. English users never download them; Chinese
+  			// (SC/TC), Japanese, Korean, Devanagari (Hindi), Bengali, Thai,
+  			// Arabic (ar/fa/ur), Hebrew, and Tamil users pull only the chunks
+  			// their rendered text needs. Mono stack unchanged because
+  			// verifiable values are ASCII-only (addresses / hashes / amounts).
+  			sans: [
+  				'"Schibsted Grotesk"',
+  				'"Noto Sans SC Variable"', '"Noto Sans TC Variable"',
+  				'"Noto Sans JP Variable"', '"Noto Sans KR Variable"',
+  				'"Noto Sans Devanagari Variable"', '"Noto Sans Bengali Variable"',
+  				'"Noto Sans Thai Variable"', '"Noto Sans Arabic Variable"',
+  				'"Noto Sans Hebrew Variable"', '"Noto Sans Tamil Variable"',
+  				'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'
+  			],
   			mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace']
   		},
   		borderRadius: {
