@@ -15,6 +15,7 @@ import { toast } from "@/lib/toast";
 import { addDays, isBefore, formatDistanceToNow } from "date-fns";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import Spinner from "@/components/Spinner";
+import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 
 const FREQ_LABELS = { daily: "Daily", weekly: "Weekly", biweekly: "Every 2 Weeks", monthly: "Monthly" };
 const FREQ_DAYS = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
@@ -154,7 +155,7 @@ export default function RecurringPayments() {
           {monthlyEntries.map(([cur, amt]) => (
             <div key={cur} className="flex justify-between text-sm">
               <span className="font-mono text-muted-foreground">{cur}</span>
-              <span className="font-semibold">{amt.toFixed(4)}</span>
+              <span className="font-semibold">{formatCryptoAmount(amt, resolveLocale(), { maximumFractionDigits: 4 })}</span>
             </div>
           ))}
           <p className="text-[10px] text-muted-foreground pt-0.5">Shown per asset — cross-currency totals would be meaningless without live prices</p>
@@ -206,7 +207,7 @@ export default function RecurringPayments() {
                       {wallet && <p className="text-xs text-muted-foreground">From: {wallet.name}</p>}
                       <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
                         {p.next_run_at && <span>Next: {formatDistanceToNow(new Date(p.next_run_at), { addSuffix: true })}</span>}
-                        {p.run_count > 0 && <span>· {p.run_count} runs · {p.total_sent?.toFixed(4)} sent</span>}
+                        {p.run_count > 0 && <span>· {p.run_count} runs · {p.total_sent != null ? formatCryptoAmount(p.total_sent, resolveLocale(), { maximumFractionDigits: 4 }) : "—"} sent</span>}
                       </div>
                     </div>
                     <div className="flex flex-col gap-1.5 shrink-0">

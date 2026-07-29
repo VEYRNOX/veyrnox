@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, AlertCircle, ExternalLink, Plug } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useNavigate } from "react-router";
+import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 
 const PROVIDERS = [
   {
@@ -159,7 +160,7 @@ export default function ConnectWallet() {
                 <p className="text-xs text-muted-foreground font-mono truncate">{asset.address}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-sm font-bold">{asset.balance.toFixed(6)}</p>
+                <p className="text-sm font-bold">{formatCryptoAmount(asset.balance, resolveLocale(), { maximumFractionDigits: 6 })}</p>
                 <p className="text-xs text-muted-foreground">{asset.currency}</p>
               </div>
             </div>
