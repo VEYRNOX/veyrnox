@@ -29,6 +29,10 @@ jobs:
       # The script rejects any URL that doesn't look like staging/preview/local.
       SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+      # Comma-separated hostname whitelist for fresh Supabase project refs
+      # whose URLs don't contain "staging". Repo variable, not a secret —
+      # hostnames are public. Set via: gh variable set STAGING_HOSTS_ALLOW.
+      STAGING_HOSTS_ALLOW: ${{ vars.STAGING_HOSTS_ALLOW }}
       PROFILE: ${{ github.event.inputs.profile || (github.event_name == 'schedule' && 'load') || 'smoke' }}
     steps:
       - name: Checkout
