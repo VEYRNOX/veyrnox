@@ -17,6 +17,7 @@ import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScree
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import ReferralPrompt from "@/components/ReferralPrompt";
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -108,22 +109,25 @@ export function isFormAmountWellFormed(amountStr) {
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
 function PoisonWarning({ screen }) {
+  const { t } = useTranslation("security");
   if (!screen?.suspicious) return null;
   return (
     <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
       <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
       <div className="text-xs text-destructive space-y-1.5 min-w-0">
-        <p className="font-semibold">This address looks suspicious — check every character carefully</p>
+        <p className="font-semibold">{t("send_gates.poison.heading")}</p>
         <p className="text-destructive/90">
-          This recipient looks like an address you've used before — same first and last
-          characters, different middle. Scammers craft look-alike addresses hoping you copy
-          the wrong one. We couldn't verify this address; compare every character, not just
-          the ends.
+          {t("send_gates.poison.body")}
         </p>
         {screen.lookAlikes.map((m, i) => (
           <div key={i} className="rounded bg-destructive/10 border border-destructive/20 p-1.5">
             <p className="text-[10px] uppercase tracking-wide text-destructive/70">
-              Resembles {m.label}{m.date ? ` · ${new Date(m.date).toLocaleDateString()}` : ""}
+              {t("send_gates.poison.resembles", {
+                label: m.label,
+                dateSuffix: m.date
+                  ? t("send_gates.poison.resembles_date_suffix", { date: new Date(m.date).toLocaleDateString() })
+                  : "",
+              })}
             </p>
             <p className="mono-value break-all">{m.address}</p>
           </div>
@@ -188,6 +192,7 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
 }
 
 export default function SendCrypto() {
+  const { t } = useTranslation("security");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1494,8 +1499,8 @@ export default function SendCrypto() {
           <p id="send-address-error" role="alert" className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
             <AlertTriangle className="h-3 w-3" aria-hidden="true" />
             {addressErrorKind === 'missing'
-              ? "Recipient address is required"
-              : `Invalid ${selectedWallet?.currency} address format`}
+              ? t("send_gates.address_format.required")
+              : t("send_gates.address_format.invalid_format", { currency: selectedWallet?.currency })}
           </p>
         )}
         {toAddress && addressFormatValid && !isAddressWhitelisted && (
@@ -1730,18 +1735,28 @@ export default function SendCrypto() {
           <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
             <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
             <div className="text-xs text-destructive space-y-1 min-w-0">
-              <p className="font-semibold">This send exceeds the spending limit you set</p>
+              <p className="font-semibold">{t("send_gates.spend_limit.heading")}</p>
               {limitEval.reasons.map((r, i) => (
                 <p key={i} className="text-destructive/90">
                   {r.kind === "per_tx"
-                    ? `This send (${approxUsd(limitEval.amountUSD)}) exceeds your ${r.currency === "ALL" ? "" : r.currency + " "}per-transaction cap of $${r.limitUSD.toLocaleString()}.`
-                    : `You've already sent ${approxUsd(r.spentTodayUSD)} today; this send (${approxUsd(limitEval.amountUSD)}) would reach ${approxUsd(r.projectedUSD)}, over your ${r.currency === "ALL" ? "" : r.currency + " "}daily cap of $${r.limitUSD.toLocaleString()}.`}
+                    ? t("send_gates.spend_limit.per_tx_reason", {
+                        amount: approxUsd(limitEval.amountUSD),
+                        currencyPrefix: r.currency === "ALL" ? "" : r.currency + " ",
+                        limit: `$${r.limitUSD.toLocaleString()}`,
+                      })
+                    : t("send_gates.spend_limit.daily_reason", {
+                        spentToday: approxUsd(r.spentTodayUSD),
+                        amount: approxUsd(limitEval.amountUSD),
+                        projected: approxUsd(r.projectedUSD),
+                        currencyPrefix: r.currency === "ALL" ? "" : r.currency + " ",
+                        limit: `$${r.limitUSD.toLocaleString()}`,
+                      })}
                 </p>
               ))}
-              <p className="text-destructive/70">Adjust the amount, or change the limit in Security Center.</p>
+              <p className="text-destructive/70">{t("send_gates.spend_limit.adjust_hint")}</p>
               <label className="flex items-start gap-2 text-destructive cursor-pointer pt-0.5">
                 <input type="checkbox" checked={limitAck} onChange={e => setLimitAck(e.target.checked)} className="mt-0.5" />
-                I understand this exceeds my limit — send anyway.
+                {t("send_gates.spend_limit.ack_checkbox")}
               </label>
             </div>
           </div>
@@ -1831,7 +1846,7 @@ export default function SendCrypto() {
                         checked={riskAck}
                         onChange={(e) => setRiskAck(e.target.checked)}
                       />
-                      <span>I understand and want to proceed anyway.</span>
+                      <span>{t("send_gates.rasp.proceed_ack")}</span>
                     </label>
                   )}
                 </div>
@@ -1860,7 +1875,7 @@ export default function SendCrypto() {
                 }}
               >
                 <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />
-                Verify with biometrics to proceed
+                {t("send_gates.rasp.verify_biometrics")}
               </button>
             )}
 
@@ -1895,11 +1910,11 @@ export default function SendCrypto() {
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/40 space-y-2">
                 <p className="text-xs text-destructive flex items-start gap-1.5">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  {(btcSim.data?.risks || []).find((r) => r.level === "high")?.detail || "This transaction has a high-severity warning."}
+                  {(btcSim.data?.risks || []).find((r) => r.level === "high")?.detail || t("send_gates.tx_sim.high_severity_fallback")}
                 </p>
                 <label className="flex items-start gap-2 text-xs text-destructive cursor-pointer">
                   <input type="checkbox" checked={btcRiskAck} onChange={e => setBtcRiskAck(e.target.checked)} className="mt-0.5" />
-                  I understand this warning and want to send anyway.
+                  {t("send_gates.tx_sim.high_severity_ack")}
                 </label>
               </div>
             )}
@@ -1928,7 +1943,7 @@ export default function SendCrypto() {
                   </div>
                 )}
                 {tokenCalldata.kind === "unknown" && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Unknown transaction — only confirm if you know what you're signing.</p>
+                  <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {t("send_gates.tx_sim.unknown_tx")}</p>
                 )}
                 {/* Gas is always paid in the chain's native coin, even for tokens —
                     and that coin is NOT always ETH (Phase C). Read it per-chain. */}
@@ -1946,7 +1961,7 @@ export default function SendCrypto() {
                 </p>
                 <label className="flex items-start gap-2 text-xs text-destructive cursor-pointer">
                   <input type="checkbox" checked={approvalAck} onChange={e => setApprovalAck(e.target.checked)} className="mt-0.5" />
-                  I understand this grants UNLIMITED spending and I trust this contract.
+                  {t("send_gates.tx_sim.unlimited_approval_ack")}
                 </label>
               </div>
             )}
@@ -2001,7 +2016,7 @@ export default function SendCrypto() {
                 return (
                   <TwoFactorGate
                     mode={send2faMethod}
-                    title={send2faMethod === SEND_2FA.BIOMETRIC ? "Authorise this send with your PIN + biometrics" : send2faMethod === SEND_2FA.PASSKEY ? "Authorise this send with your PIN + passkey" : "Authorise this send with your PIN + Action Password"}
+                    title={send2faMethod === SEND_2FA.BIOMETRIC ? t("send_gates.two_factor_titles.biometric") : send2faMethod === SEND_2FA.PASSKEY ? t("send_gates.two_factor_titles.passkey") : t("send_gates.two_factor_titles.password")}
                     sendError={sendTx.isError ? /** @type {Error} */ (sendTx.error) : null}
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
