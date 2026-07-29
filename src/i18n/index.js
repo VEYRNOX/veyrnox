@@ -111,6 +111,11 @@ export function pickSupported(raw) {
   // pt-BR — the alternative is fail-honest to English, which is worse UX for a
   // Portuguese speaker who reads pt-BR fine even if pt-PT was their preference.
   if (base === 'pt') return SUPPORTED_LANGUAGES.includes('pt-BR') ? 'pt-BR' : 'en';
+  // Norwegian: browsers send `nb-*` (Bokmål) or `nn-*` (Nynorsk). We ship one
+  // umbrella `no` catalog in Bokmål — both map to it rather than fall through
+  // to English. A Nynorsk speaker reading Bokmål is a much smaller UX cost
+  // than an English fallback, and matches how Norwegian sites usually resolve.
+  if (base === 'nb' || base === 'nn') return SUPPORTED_LANGUAGES.includes('no') ? 'no' : 'en';
   if (SUPPORTED_LANGUAGES.includes(base)) return base;
   return 'en';
 }
@@ -153,11 +158,15 @@ i18n
     lng: 'en',
     fallbackLng: 'en',
     supportedLngs: SUPPORTED_LANGUAGES,
-    // Namespace-per-domain so the security bundle (which MUST render in every
-    // locale without a fallback flash) is kept as its own file. `wallet` is
-    // the core non-security surface (nav, Dashboard, Send, Receive, Tx
-    // history / receipt, Settings labels). `common` is chrome + language
-    // switcher + generic buttons.
+    // Namespace-per-domain: `security` (coercion warnings, gates), `wallet`
+    // (Dashboard, Send, Receive, Tx history/receipt, Settings labels), and
+    // `common` (chrome, switcher, generic buttons). Kept as separate files
+    // so each locale's chunks stay small (~10 KB each) rather than one big
+    // ~30 KB blob. Under Phase 5's code-split, EN is inlined at init time;
+    // non-en locales load asynchronously via loadLocale(). Any t() call that
+    // fires BEFORE the picked locale lands renders in English via
+    // fallbackLng — including security copy — for one to a few render
+    // frames on first launch. Second launch is browser-cached.
     ns: ['common', 'security', 'wallet'],
     defaultNS: 'common',
     resources: {
