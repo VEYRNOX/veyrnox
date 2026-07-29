@@ -15,7 +15,7 @@ import { toast } from "@/lib/toast";
 import { addDays, isBefore, formatDistanceToNow } from "date-fns";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import Spinner from "@/components/Spinner";
-import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
+import { formatCryptoAmount, parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const FREQ_LABELS = { daily: "Daily", weekly: "Weekly", biweekly: "Every 2 Weeks", monthly: "Monthly" };
 const FREQ_DAYS = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
@@ -53,11 +53,16 @@ export default function RecurringPayments() {
 
   const addPayment = useMutation({
     mutationFn: () => {
+      const amount = parseLocaleNumber(form.amount, resolveLocale());
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error("Amount must be a positive number");
+      }
       const nextRun = addDays(new Date(), FREQ_DAYS[form.frequency]).toISOString();
       const wallet = wallets.find(w => w.id === form.wallet_id);
-      return base44.entities.RecurringPayment.create({ ...form, amount: parseFloat(form.amount), currency: wallet?.currency || form.currency, next_run_at: nextRun, status: "active" });
+      return base44.entities.RecurringPayment.create({ ...form, amount, currency: wallet?.currency || form.currency, next_run_at: nextRun, status: "active" });
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }); setShowAdd(false); setForm(EMPTY); toast.success("Recurring payment created"); },
+    onError: (/** @type {any} */ err) => toast.error(err?.message || "Couldn't create recurring payment"),
   });
 
   const toggleStatus = useMutation({
@@ -255,7 +260,7 @@ export default function RecurringPayments() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
+              <div><Label>Amount</Label><Input type="text" inputMode="decimal" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
               <div>
                 <Label id="recurring-frequency-label">Frequency</Label>
                 <Select value={form.frequency} onValueChange={v => setForm(p => ({ ...p, frequency: v }))}>

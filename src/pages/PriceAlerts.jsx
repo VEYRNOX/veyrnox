@@ -17,6 +17,7 @@ import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
@@ -342,7 +343,8 @@ export default function PriceAlerts() {
             <div>
               <Label>Target Price (USD)</Label>
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={targetPrice}
                 onChange={e => setTargetPrice(e.target.value)}
                 placeholder={prices[currency] ? `Current: $${prices[currency].toLocaleString()}` : "e.g. 70000"}
@@ -354,7 +356,8 @@ export default function PriceAlerts() {
             <div>
               <Label>Volatility Threshold (%)</Label>
               <Input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={volatilityPct}
                 onChange={e => setVolatilityPct(e.target.value)}
                 placeholder="e.g. 5 (alert when price swings ≥5%)"
@@ -371,14 +374,17 @@ export default function PriceAlerts() {
               className="w-full"
               disabled={
                 createAlert.isPending ||
-                (alertType === "price" && (!targetPrice || parseFloat(targetPrice) <= 0)) ||
-                (alertType === "volatility" && (!volatilityPct || parseFloat(volatilityPct) <= 0))
+                // Locale-aware parse gates the button: a de-DE "1,5" typed as
+                // a price target now becomes 1.5 (accepted) rather than NaN
+                // (previously blocked mid-entry with no explanation).
+                (alertType === "price" && (!targetPrice || !(parseLocaleNumber(targetPrice, resolveLocale()) > 0))) ||
+                (alertType === "volatility" && (!volatilityPct || !(parseLocaleNumber(volatilityPct, resolveLocale()) > 0)))
               }
               onClick={() => createAlert.mutate({
                 currency, direction, note, status: "active",
                 alert_type: alertType,
-                target_price: alertType === "price" ? parseFloat(targetPrice) : undefined,
-                volatility_pct: alertType === "volatility" ? parseFloat(volatilityPct) : undefined,
+                target_price: alertType === "price" ? parseLocaleNumber(targetPrice, resolveLocale()) : undefined,
+                volatility_pct: alertType === "volatility" ? parseLocaleNumber(volatilityPct, resolveLocale()) : undefined,
               })}
             >
               {createAlert.isPending ? "Creating…" : "Create Alert"}
