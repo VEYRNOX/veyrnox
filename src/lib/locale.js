@@ -103,6 +103,48 @@ export function normalizeDecimalInput(input, locale) {
  * @param {{ navigator?: { language?: string, languages?: readonly string[] } }} [opts]
  * @returns {string}
  */
+/**
+ * Locale-format a USD figure for DISPLAY. Never fed back into a parser — this
+ * side of `locale.js` is DIRECTION-OUT (numbers → strings), while
+ * normalizeDecimalInput is DIRECTION-IN (strings → numbers). SendCrypto's
+ * signing path uses canonicalAmount, not any formatted output, so a display
+ * formatter cannot leak into `parseEther` / `parseUnits` / `toBaseUnits`.
+ *
+ * Callers who need a fallback for missing / unknown rates apply it BEFORE
+ * calling this — the helper's job is narrow: format a real finite number. It
+ * THROWS on NaN / ±Infinity rather than rendering "NaN" or Intl's localised
+ * NaN string, forcing the caller to decide site-appropriately what "no rate"
+ * means (blank? em-dash? approxUsd's "≈$0"?). Bogus locale tags fall through
+ * to Intl's own default rather than throwing — a stale navigator string must
+ * not black-hole the whole USD column.
+ *
+ * @param {number} usd
+ * @param {string} locale BCP-47 tag; falls back to Intl default if unresolvable.
+ * @param {{ maximumFractionDigits?: number, minimumFractionDigits?: number }} [opts]
+ * @returns {string} e.g. "$1,650" (en-US), "1.650 $" (de-DE)
+ */
+export function formatUsd(usd, locale, opts) {
+  if (!Number.isFinite(usd)) {
+    throw new RangeError(`formatUsd: expected finite number, got ${usd}`);
+  }
+  const max = opts?.maximumFractionDigits ?? 0;
+  const min = opts?.minimumFractionDigits ?? 0;
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency', currency: 'USD',
+      maximumFractionDigits: max, minimumFractionDigits: min,
+    }).format(usd);
+  } catch {
+    // Locale tag unrecognised (rare — Intl is permissive). Fall back to the
+    // runtime default so the number still renders, just without the caller's
+    // locale preference. Better than throwing and blanking every USD cell.
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency', currency: 'USD',
+      maximumFractionDigits: max, minimumFractionDigits: min,
+    }).format(usd);
+  }
+}
+
 export function resolveLocale(opts) {
   const nav = opts && 'navigator' in opts
     ? opts.navigator
