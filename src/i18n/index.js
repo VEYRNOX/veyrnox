@@ -39,18 +39,22 @@ import zhCommon from './locales/zh-CN/common.json';
 import zhSecurity from './locales/zh-CN/security.json';
 import zhWallet from './locales/zh-CN/wallet.json';
 
-// Which locales are available AT ALL. zh-CN is INTENTIONALLY absent from the
-// user-facing switcher by default (see LANGUAGE_SWITCHER_AVAILABLE below) —
-// mistranslating a Chinese scam warning in the wrong direction could get
-// someone robbed. It ships as a runtime capability, not a user default.
+// Which locales are available AT ALL. zh-CN was previously gated behind
+// VITE_ENABLE_ZH_CN until human review; the gate is now removed and zh-CN
+// ships as a first-class user-selectable language. Its `security` namespace
+// is still machine-translated (MACHINE_TRANSLATED['zh-CN'] === true), so the
+// MT banner in <LanguageSwitcher> is what protects a user from acting on an
+// unreviewed coercion warning — do not soften that banner without a native
+// reviewer having signed off on `security.json`.
 export const SUPPORTED_LANGUAGES = ['en', 'es', 'de', 'zh-CN'];
 
-// The default user-facing set. zh-CN gated behind a flag until human review.
+// The default user-facing set. All bundled languages are exposed; MT status
+// is disclosed inline (see MACHINE_TRANSLATED + LanguageSwitcher.jsx).
 export const LANGUAGE_SWITCHER_AVAILABLE = /** @type {readonly string[]} */ ([
   'en',
   'es',
   'de',
-  ...(import.meta.env?.VITE_ENABLE_ZH_CN === '1' ? ['zh-CN'] : []),
+  'zh-CN',
 ]);
 
 // Every non-English catalog is machine-translated at the time this ships.
