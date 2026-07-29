@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react";
 
 // Consistent in-page back affordance. The desktop layout has no back control of
@@ -7,8 +8,10 @@ import { ChevronLeft } from "lucide-react";
 // user. Defaults to history-back (returns to wherever you came from — the
 // Security Dashboard when you opened the setting from there); pass `to` for an
 // explicit destination.
-export default function BackButton({ to = undefined, label = "Back", className = "" }) {
+export default function BackButton({ to = undefined, label = undefined, className = "" }) {
+  const { t } = useTranslation('wallet');
   const navigate = useNavigate();
+  const resolvedLabel = label ?? t('back.default_label');
   return (
     <button
       type="button"
@@ -16,7 +19,7 @@ export default function BackButton({ to = undefined, label = "Back", className =
       className={`flex items-center gap-1 -ml-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors ${className}`}
     >
       <ChevronLeft className="h-4 w-4" />
-      <span>{label}</span>
+      <span>{resolvedLabel}</span>
     </button>
   );
 }

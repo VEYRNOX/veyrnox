@@ -1,0 +1,506 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Historial de transacciones",
+      "subhead": "Envíos y recepciones por cadena leídos directamente desde la cadena — solo lectura, con enlaces al explorador.",
+      "badge_demo": "Demo · datos de ejemplo",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Modo demo — no se consulta nada por la red; las filas de abajo son datos de ejemplo locales.",
+      "loading_label": "Cargando historial de {{symbol}}",
+      "error_prefix": "No se pudo cargar el historial: {{reason}}.",
+      "error_fetch_reason": "No se pudo conectar con el nodo RPC — comprueba tu conexión y vuelve a intentarlo.",
+      "error_generic_reason": "el indexador no respondió",
+      "retry": "Reintentar",
+      "no_indexer_title": "El historial en la app no está disponible para {{name}} vía JSON-RPC",
+      "no_indexer_body": "Un nodo JSON-RPC simple no puede listar las transacciones de una dirección, y deliberadamente no añadimos una API externa de explorador/indexador (una nueva fuente de datos y superficie de phone-home). Tu historial completo está en el explorador de bloques.",
+      "view_on_explorer": "Ver {{address}} en el explorador de {{network}}",
+      "view_explorer_title": "Ver en el explorador de bloques",
+      "unlock_for_explorer": "Desbloquea tu cartera para obtener el enlace del explorador para tu dirección {{symbol}}.",
+      "locked_title": "Cartera bloqueada",
+      "locked_body": "Desbloquea tu cartera para derivar tu dirección {{symbol}} y cargar su historial.",
+      "empty": "Aún no hay transacciones para {{symbol}} en {{network}}.",
+      "count_one": "{{count}} transacción",
+      "count_other": "{{count}} transacciones",
+      "most_recent_suffix": " · más reciente",
+      "refresh": "Actualizar",
+      "sample_badge": "Ejemplo",
+      "to_prefix": "A ",
+      "from_prefix": "De ",
+      "status_pending": "Pendiente",
+      "status_confirmed": "Confirmada",
+      "status_failed": "Fallida",
+      "awaiting_confirmation": "esperando confirmación"
+    },
+    "list": {
+      "empty_title": "Aún no hay transacciones",
+      "empty_description": "Cuando envíes o recibas en esta cartera, tu actividad on-chain aparecerá aquí."
+    },
+    "receipt": {
+      "heading": "Recibos de transacciones",
+      "subhead": "Genera recibos imprimibles para cualquier transacción",
+      "search_placeholder": "Buscar por ID, dirección o moneda...",
+      "loading": "Cargando...",
+      "error": "No se pudieron cargar las transacciones. Inténtalo de nuevo.",
+      "empty": "No se encontraron transacciones",
+      "preview_title": "Vista previa del recibo",
+      "print": "Imprimir",
+      "print_window_title": "Recibo de transacción",
+      "brand": "VEYRNOX",
+      "doc_title": "RECIBO DE TRANSACCIÓN",
+      "field_receipt_id": "ID del recibo",
+      "field_date": "Fecha",
+      "field_type": "Tipo",
+      "field_asset": "Activo",
+      "field_amount": "Cantidad",
+      "field_network_fee": "Comisión de red",
+      "field_status": "Estado",
+      "field_to": "A",
+      "default_type": "Transferencia",
+      "default_status": "completada",
+      "thank_you": "Gracias por usar {{brand}}",
+      "thank_you_prefix": "Gracias por usar",
+      "digital_record": "Este es un registro digital de la transacción"
+    }
+  },
+  "settings": {
+    "heading": "Ajustes de seguridad",
+    "subhead": "Bloquea, desbloquea y protege tu cartera",
+    "theme": {
+      "dark": "Modo oscuro",
+      "light": "Modo claro",
+      "saved_note": "Guardado en este dispositivo",
+      "switch_to_light": "Cambiar a modo claro",
+      "switch_to_dark": "Cambiar a modo oscuro"
+    },
+    "activity_log": {
+      "label": "Registro de actividad",
+      "description": "Desactivado por defecto · almacenado solo en este dispositivo",
+      "help": "Registro privado: qué cambiaste, enviaste, revocaste. Sin cantidades ni direcciones. El borrado de emergencia lo elimina.",
+      "enable_aria": "Activar registro de actividad",
+      "disable_aria": "Desactivar registro de actividad",
+      "no_events": "Aún no se han registrado eventos."
+    },
+    "message_signing": {
+      "label": "Firma de mensajes",
+      "description": "Desactivado por defecto · almacenado solo en este dispositivo",
+      "help": "Desactivado por defecto. Te permite firmar mensajes de texto arbitrarios con la clave de tu cartera. Actívalo solo si una dApp o servicio te pide firmar un mensaje.",
+      "enable_aria": "Activar firma de mensajes",
+      "disable_aria": "Desactivar firma de mensajes"
+    },
+    "telemetry": {
+      "label": "Datos de uso anónimos",
+      "description": "Opt-in · nunca incluye saldos ni direcciones",
+      "help": "Nos ayuda a encontrar errores y mejorar la app. Se usa un ID de dispositivo aleatorio — nunca vinculado a tu cartera, claves o identidad. Desactivarlo detiene el envío de todos los datos de uso desde este dispositivo.",
+      "enable_aria": "Activar datos de uso anónimos",
+      "disable_aria": "Desactivar datos de uso anónimos"
+    },
+    "delete_account": {
+      "title": "Zona de peligro",
+      "clear_cache_label": "Borrar caché local",
+      "clear_cache_description": "Borra los datos guardados en este dispositivo y bloquea la cartera. Tu frase de recuperación sigue funcionando. Para borrar las claves, usa el borrado de emergencia.",
+      "delete_button": "Eliminar",
+      "confirm_prompt_pre": "Esto borra los datos guardados y bloquea la cartera. Tu frase de recuperación sigue funcionando. Escribe",
+      "confirm_prompt_post": "para confirmar.",
+      "confirm_placeholder": "Escribe DELETE para confirmar",
+      "confirm_aria": "Escribe DELETE para confirmar el reinicio de la cuenta",
+      "cancel": "Cancelar",
+      "confirm_delete": "Confirmar eliminación",
+      "deleting": "Eliminando..."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Cartera",
+    "sidebar_expand": "Expandir barra lateral",
+    "sidebar_collapse": "Contraer barra lateral",
+    "search_placeholder": "Buscar...",
+    "search_shortcut_title": "Buscar (⌘K)",
+    "lock": "Bloquear",
+    "lock_confirm_prompt": "¿Bloquear esta cartera ahora?",
+    "back": "Atrás",
+    "settings": "Ajustes",
+    "main_content_aria": "Contenido principal",
+    "bottom_nav_aria": "Navegación inferior",
+    "more_features_aria": "Más funciones",
+    "more": "Más",
+    "close": "Cerrar",
+    "all_features_heading": "Todas las funciones",
+    "recent_heading": "Recientes",
+    "tab_home": "Inicio",
+    "tab_send": "Enviar",
+    "tab_receive": "Recibir"
+  },
+  "back": {
+    "default_label": "Atrás"
+  },
+  "send": {
+    "heading": "Enviar cripto",
+    "subheading": "Transfiere fondos de forma segura",
+    "wallet_fallback": "Cartera",
+    "wallet_picker": { "label": "Desde cartera", "placeholder": "Selecciona cartera" },
+    "asset_picker": { "label": "Activo", "placeholder": "Selecciona activo" },
+    "recipient": {
+      "label": "Enviar a (dirección o nombre)",
+      "placeholder": "Pega una dirección o introduce un nombre (p. ej. vitalik.eth)",
+      "scan_qr": "Escanear código QR",
+      "resolving": "Resolviendo nombre…",
+      "name_not_found": "Nombre no encontrado — comprueba la ortografía o pega la dirección directamente.",
+      "ens_using_prefix": "Usando {{name}} →",
+      "ens_confirm_intro": "consultado de forma privada en la blockchain a:",
+      "ens_confirm_hint": "Confirma que esta dirección es correcta antes de enviar.",
+      "use_this_address": "Usar esta dirección",
+      "not_whitelisted": "Esta dirección no está en tu lista blanca. Compruébala antes de continuar. Puedes añadir direcciones de confianza en Ajustes.",
+      "self_send_warning": "Estás enviando a la dirección de tu propia cartera. Esto no mueve nada entre carteras y aun así paga una comisión de red. Comprueba el destinatario antes de continuar."
+    },
+    "screening": {
+      "local_disclosure": "Los destinatarios se comprueban en tu dispositivo contra direcciones fraudulentas de tu propio historial — nada sale del dispositivo.",
+      "remote_opt_in": "Comprobar también contra una base de datos de amenazas en línea (envía esta dirección a un tercero)",
+      "remote_unavailable": "La comprobación en línea está activada, pero no hay ningún proveedor configurado en esta compilación — la comprobación permanece local, así que no pudimos verificar esta dirección contra una lista externa.",
+      "demo_poison_button": "Demo: pegar una dirección parecida"
+    },
+    "simulation": {
+      "title": "Simulación de transacción",
+      "toggle_aria": "Alternar simulación de transacción",
+      "description": "Antes de firmar, ejecutamos una comprobación previa local — sin servicios de terceros, ningún dato sale de tu dispositivo.",
+      "checks": [
+        "Riesgo de dirección (poison / parecida)",
+        "Decodificación del contrato",
+        "Aviso de aprobación ilimitada",
+        "Predicción de revert",
+        "Anomalía frente a tu historial",
+        "Aviso de gran salida"
+      ],
+      "results_hint": "Los resultados aparecen en el siguiente paso una vez que introduzcas dirección y cantidad.",
+      "off_hint": "La simulación está desactivada — no se ejecutará ninguna comprobación previa antes de firmar.",
+      "taking_too_long": "¿Está tardando demasiado?",
+      "turn_off": "Desactivar simulación"
+    },
+    "amount": {
+      "label": "Cantidad",
+      "placeholder": "0,00",
+      "being_sent": "enviándose",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(en vivo)",
+      "reading_from_network": "leyendo desde la red…"
+    },
+    "errors": {
+      "amount_missing": "Se requiere una cantidad",
+      "amount_not_positive": "La cantidad debe ser mayor que cero",
+      "amount_malformed": "Introduce una cantidad decimal simple, como 0.5",
+      "amount_over_balance": "Saldo insuficiente",
+      "insufficient_balance_title": "Saldo insuficiente.",
+      "insufficient_balance_body": "Tienes {{balance}} {{currency}} disponibles para enviar (después de la comisión de red). Reduce la cantidad para continuar."
+    },
+    "status": {
+      "not_enabled": "El envío aún no está habilitado para {{currency}}. Este activo es solo de recepción hasta que se verifique su ruta cripto.",
+      "dev_ungate_title": "DEV UNGATE ACTIVO",
+      "dev_ungate_body": "— la puerta de envío está omitida para {{currency}} vía VITE_DEV_UNGATE_SEND (solo build de desarrollo). El estado de este activo no ha cambiado (sigue sin estar activo); la mainnet permanece bloqueada. Verificación de testnet solamente — no distribuyas esta build.",
+      "locked": "Tu cartera está bloqueada. Desbloquéala en Ajustes de cartera para firmar y enviar."
+    },
+    "note": { "label": "Nota (opcional)", "placeholder": "¿Para qué es esto?" },
+    "trezor": {
+      "toggle_label": "Firmar con Trezor",
+      "connected": "Dispositivo conectado",
+      "connect_button": "Conectar dispositivo"
+    },
+    "buttons": {
+      "continue": "Continuar",
+      "confirm_send": "Confirmar y enviar",
+      "back": "Atrás"
+    },
+    "verify": { "summary_label": "Estás enviando" },
+    "fee": {
+      "automatic": "La comisión de red se establece automáticamente para {{currency}} ({{network}}).",
+      "native_fee_note": "La comisión de red se paga en {{symbol}} ({{network}}) — necesitas {{symbol}} para cubrir la comisión de red incluso al enviar {{token}}."
+    },
+    "decode": {
+      "heading": "Qué hace esta transacción",
+      "action": "Acción",
+      "send_tokens": "Enviar tokens",
+      "token": "Token",
+      "amount": "Cantidad",
+      "recipient": "Destinatario",
+      "grant_permission": "Conceder permiso de gasto",
+      "permission": "Permiso",
+      "unlimited_permission": "Ilimitado (esta app puede gastar cualquier cantidad)",
+      "spender": "Gastador"
+    },
+    "reauth": {
+      "prompt": "Vuelve a introducir tu {{credential}} para autorizar",
+      "credential_pin": "PIN",
+      "credential_password": "contraseña",
+      "submit_pin": "Autorizar",
+      "submit_password": "Autorizar y enviar",
+      "password_placeholder": "Contraseña del vault",
+      "password_aria": "Contraseña del vault para autorizar el envío",
+      "errors": {
+        "unavailable": "Verificación no disponible — vuelve a bloquear y desbloquear la cartera.",
+        "incorrect": "Incorrecta — inténtalo de nuevo ({{remaining}} restantes)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transacción emitida",
+      "heading": "Transacción emitida",
+      "body_suffix": "firmada localmente y enviada a la red",
+      "tx_hash_label": "Hash de la transacción",
+      "view_explorer": "Ver en el explorador de bloques",
+      "pending_note": "Pendiente hasta que se confirme en la red. El saldo se actualiza desde la blockchain, no desde un valor almacenado.",
+      "send_another": "Enviar otra"
+    },
+    "toasts": {
+      "ens_off_in_session": "La resolución de nombres está desactivada en esta sesión — pega la dirección directamente.",
+      "ens_not_found": "Nombre ENS no encontrado",
+      "sns_unavailable": "La resolución de nombres de Solana aún no está disponible — pega la dirección directamente.",
+      "ens_resolution_failed": "Falló la resolución de nombres",
+      "verify_required": "Termina de verificar tu copia de seguridad antes de enviar esta cantidad.",
+      "two_factor_retry": "El envío no se pudo completar — vuelve a verificar para reintentar.",
+      "send_failed_fallback": "El envío falló",
+      "unconfirmed": "Aún no se pudo confirmar esta transacción en la red — puede seguir pendiente. Comprueba el explorador."
+    }
+  },
+  "receive": {
+    "heading": "Recibir cripto",
+    "subheading": "Muestra una dirección de cartera para recibir fondos",
+    "asset_label": "Activo",
+    "asset_placeholder": "Elige un activo",
+    "not_available": "Recibir {{name}} ({{symbol}}) aún no está disponible. No se muestra ninguna dirección hasta que este activo esté habilitado.",
+    "locked": {
+      "title": "Cartera bloqueada",
+      "body": "Desbloquea tu cartera para revelar tu dirección de recepción {{asset}} {{network}}.",
+      "open_hd_wallet": "Abrir el Gestor de carteras HD"
+    },
+    "your_address": "Tu dirección {{asset}}",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Dirección de recepción {{symbol}}",
+    "copy": {
+      "copied_aria": "Dirección copiada al portapapeles",
+      "copy_aria": "Copiar dirección",
+      "copied_toast": "Dirección copiada",
+      "copy_failed_toast": "No se pudo copiar — selecciona y copia la dirección manualmente"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} es un token en una red compatible con Ethereum. Esta es tu dirección de cartera — pide al remitente que envíe {{symbol}} solo en {{network}}. Enviarlo en una red diferente puede perder los fondos permanentemente.",
+      "evm": "Esta es tu dirección de cartera compartida. Envía únicamente {{name}} en {{network}} a esta dirección, y asegúrate de que el remitente use {{network}}.",
+      "btc": "Envía Bitcoin únicamente en {{network}} a esta dirección.",
+      "solana": "Envía Solana únicamente en {{network}} a esta dirección."
+    },
+    "select_asset_prompt": "Selecciona un activo para recibir.",
+    "unlock_footer_note": "Las direcciones provienen de tu cartera en el dispositivo y solo aparecen mientras esté desbloqueada."
+  },
+  "dashboard": {
+    "portfolioValue": "Valor del portafolio",
+    "priceAlertsTriggered_one": "¡{{count}} alerta de precio activada!",
+    "priceAlertsTriggered_other": "¡{{count}} alertas de precio activadas!",
+    "lockAriaLabel": "Bloquear saldo tras biometría",
+    "lockBalance": "Bloquear saldo",
+    "synced": "Sincronizado {{time}}",
+    "syncJustNow": "Ahora mismo",
+    "syncSecondsAgo_one": "hace {{count}}s",
+    "syncSecondsAgo_other": "hace {{count}}s",
+    "syncMinutesAgo_one": "hace {{count}}m",
+    "syncMinutesAgo_other": "hace {{count}}m",
+    "actions": {
+      "send": "Enviar",
+      "receive": "Recibir",
+      "schedule": "Programar",
+      "add": "Añadir"
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Actividad",
+      "analytics": "Análisis"
+    },
+    "emptyWallets": {
+      "title": "Aún no hay carteras",
+      "description": "Añade una cartera para empezar a recibir, enviar y guardar activos en varias cadenas."
+    },
+    "addWallet": "Añadir cartera",
+    "searchTransactionsPlaceholder": "Buscar transacciones...",
+    "emptySearch": {
+      "title": "Sin transacciones coincidentes",
+      "description": "Prueba a borrar filtros o a buscar otro activo o dirección."
+    },
+    "emptyTransactions": {
+      "title": "Aún no hay transacciones",
+      "description": "Tu actividad on-chain aparecerá aquí en cuanto envíes o recibas."
+    },
+    "portfolioPerformance": "Rendimiento del portafolio",
+    "assetDistribution": "Distribución de activos",
+    "quickAccess": "Acceso rápido",
+    "quickAccessItems": {
+      "receive": "Recibir",
+      "security": "Seguridad",
+      "approvals": "Aprobaciones",
+      "addressCheck": "Comprobación de dirección",
+      "analytics": "Análisis",
+      "sentiment": "Sentimiento",
+      "riskScore": "Puntuación de riesgo"
+    },
+    "walletNameLabel": "Nombre de la cartera",
+    "walletNamePlaceholder": "Mi cartera ETH",
+    "addWalletDialog": {
+      "title": "Añadir cartera",
+      "currency": "Moneda",
+      "creating": "Creando...",
+      "create": "Crear cartera"
+    },
+    "renameWalletDialog": {
+      "title": "Renombrar cartera",
+      "saving": "Guardando...",
+      "save": "Guardar nombre"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Vault cifrado",
+    "backup": {
+      "title": "Hacer copia de \"{{name}}\"",
+      "reauthDescription": "Confirma que eres tú y te mostraremos la frase de recuperación de esta cartera.",
+      "description": "Escribe estas 12 palabras fuera de línea. Cualquiera que las tenga puede gastar los fondos de esta cartera — y son la única forma de recuperarla.",
+      "warning": "Nunca hagas una captura de pantalla. Nunca las escribas en otra app.",
+      "confirmButton": "Las he anotado — marcar como respaldadas"
+    },
+    "addWallet": {
+      "defaultWalletName": "tu nueva cartera",
+      "backupDescription": "Esta cartera tiene su propia frase de recuperación — separada de cualquier otra cartera de tu vault. Escríbela fuera de línea antes de usarla.",
+      "backedUpDone": "Ya tengo la copia — hecho",
+      "title": "Añadir una cartera",
+      "createNew": "Crear nueva",
+      "importSeed": "Importar seed",
+      "createDescription": "Genera una nueva seed que deriva TODAS las cadenas (ETH/EVM, BTC, SOL). La respaldarás antes de activarla.",
+      "importDescription": "Pega una seed existente de 12/24 palabras — todas las cadenas se derivan automáticamente (una seed no es específica de una cadena).",
+      "recoveryPhraseLabel": "Frase de recuperación",
+      "recoveryPhrasePlaceholder": "palabra1 palabra2 ... palabra12",
+      "walletNameLabel": "Nombre de la cartera",
+      "walletNamePlaceholder": "p. ej. Ahorros",
+      "assetsToShowLabel": "Activos a mostrar",
+      "assetsToShowHint": "Solo elección de visualización — la seed contiene todas las cadenas de todos modos.",
+      "confirmVaultPlaceholder": "Confirma que eres tú para cambiar el vault",
+      "vaultReentryHint": "Se reintroduce para autorizar un cambio en tu vault de seed. Nunca se guarda en memoria.",
+      "createAndBackup": "Crear y respaldar",
+      "importWallet": "Importar cartera"
+    },
+    "vaultPinLabel": "PIN del vault",
+    "vaultPasswordLabel": "Contraseña del vault",
+    "cancel": "Cancelar",
+    "done": "Hecho",
+    "manageAssets": {
+      "title": "Activos para \"{{name}}\"",
+      "description": "Elige qué activos se muestran para esta cartera. Los ocultos quedan fuera hasta que los añadas."
+    },
+    "rename": {
+      "title": "Renombrar cartera",
+      "save": "Guardar nombre"
+    },
+    "remove": {
+      "title": "¿Quitar \"{{name}}\"?",
+      "onlyWallet": "Esta es tu única cartera — no se puede quitar. Usa el borrado de emergencia en Seguridad para borrar todo.",
+      "description": "Elimina la seed de esta cartera de este dispositivo.",
+      "backedUpNote": "Puedes restaurarla desde su frase de recuperación.",
+      "notBackedUpNote": "⚠️ SIN copia de seguridad — sin su frase se pierde para siempre.",
+      "button": "Quitar cartera"
+    },
+    "move": {
+      "title": "Mover \"{{name}}\" a…"
+    },
+    "managePortfolios": {
+      "title": "Portafolios",
+      "defaultTag": "(por defecto)",
+      "saveAriaLabel": "Guardar nombre del portafolio",
+      "renameAriaLabel": "Renombrar {{name}}",
+      "deleteAriaLabel": "Eliminar {{name}}",
+      "newNamePlaceholder": "Nuevo nombre del portafolio",
+      "addButton": "Añadir"
+    },
+    "activity": {
+      "unlockPrompt": "Desbloquea tu cartera para ver la actividad.",
+      "loading": "Cargando...",
+      "loadError": "No se pudo cargar la actividad.",
+      "noTransactions": "Aún no hay transacciones.",
+      "viewFullHistory": "Ver historial completo →"
+    },
+    "portfolioValueLabel": "Valor del portafolio",
+    "explore": {
+      "subtitle": "Estás explorando — solo vista. Aún sin cartera.",
+      "description": "Explora libremente. Cuando quieras, crea una nueva cartera de autocustodia o importa una seed existente — las claves se generan y cifran en este dispositivo.",
+      "createOrImport": "Crear o importar una cartera"
+    },
+    "portfoliosButton": "Portafolios",
+    "totalValueHeading": "{{name}} · Valor total",
+    "partialTotalNote": "No se pudieron cargar algunos saldos — este total puede estar incompleto.",
+    "refreshPricesTooltip": "Actualizar precios en vivo",
+    "live": "En vivo",
+    "approximate": "Aproximado",
+    "seedVerify": {
+      "title": "Termina de verificar tu copia de seguridad",
+      "description": "Requerido para enviar por encima del umbral de seguridad.",
+      "verifyAriaLabel": "Verifica la copia de tu cartera",
+      "verifyButton": "Verificar"
+    },
+    "unbacked": {
+      "titleBold": "Copia de seguridad de la cartera incompleta.",
+      "body": "Cada cartera tiene su propia frase de recuperación — sin ella, los fondos de esa cartera son irrecuperables. Haz copia ahora.",
+      "backUpButton": "Hacer copia de \"{{name}}\""
+    },
+    "actions": {
+      "send": "Enviar",
+      "receive": "Recibir",
+      "addWallet": "Añadir cartera"
+    },
+    "activeWalletHint": {
+      "prefix": "Enviar/Recibir usan",
+      "otherPortfolio": " (en otro portafolio)",
+      "suffix": ". Toca una cartera abajo para cambiar."
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Actividad",
+      "analytics": "Análisis"
+    },
+    "noWalletsInPortfolio": "No hay carteras en \"{{name}}\". Añade una cartera o mueve una aquí desde su menú.",
+    "hideAssets": "Ocultar activos",
+    "showAllAssets": "Mostrar todos los activos",
+    "walletCard": {
+      "active": "Activa",
+      "backedUp": "Respaldada",
+      "backUp": "Respaldar",
+      "partial": "parcial",
+      "optionsAriaLabel": "Opciones de {{name}}",
+      "noAssetsShown": "No se muestran activos. Usa \"Gestionar activos\"."
+    },
+    "menu": {
+      "manageAssets": "Gestionar activos",
+      "rename": "Renombrar",
+      "moveToPortfolio": "Mover a portafolio",
+      "backUp": "Respaldar",
+      "remove": "Quitar"
+    },
+    "balanceLoadFailedTitle": "No se pudo cargar el saldo",
+    "defaultWalletFallbackName": "cartera",
+    "toast": {
+      "walletImported": "Cartera importada — todas las cadenas derivadas.",
+      "walletRemoved": "Cartera eliminada de este dispositivo.",
+      "walletAddedBackedUp": "Cartera añadida y respaldada.",
+      "movedTo": "Movida a {{name}}.",
+      "markedBackedUp": "\"{{name}}\" marcada como respaldada."
+    },
+    "errors": {
+      "couldNotAddWallet": "No se pudo añadir la cartera",
+      "couldNotImportWallet": "No se pudo importar la cartera",
+      "couldNotRemoveWallet": "No se pudo quitar la cartera"
+    }
+  },
+  "networth": {
+    "title": "Patrimonio cripto",
+    "unlockPrompt": "Desbloquea tu cartera para ver tus tenencias on-chain.",
+    "subtitle": "Tus tenencias on-chain — no incluye activos externos.",
+    "totalHoldings": "Tenencias totales",
+    "partialNote": "parcial — no se pudieron leer algunos saldos",
+    "refreshPricesTooltip": "Actualizar precios en vivo",
+    "live": "En vivo",
+    "approximate": "Aproximado",
+    "allocation": "Distribución",
+    "holdings": "Tenencias",
+    "noHoldings": "Aún no hay tenencias."
+  }
+}

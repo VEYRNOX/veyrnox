@@ -28,12 +28,16 @@ import { resolveLocale, LOCALE_CHANGED_EVENT } from '@/lib/locale';
 // each, revisit with i18next-http-backend + Vite's dynamic-import chunking.
 import enCommon from './locales/en/common.json';
 import enSecurity from './locales/en/security.json';
+import enWallet from './locales/en/wallet.json';
 import esCommon from './locales/es/common.json';
 import esSecurity from './locales/es/security.json';
+import esWallet from './locales/es/wallet.json';
 import deCommon from './locales/de/common.json';
 import deSecurity from './locales/de/security.json';
+import deWallet from './locales/de/wallet.json';
 import zhCommon from './locales/zh-CN/common.json';
 import zhSecurity from './locales/zh-CN/security.json';
+import zhWallet from './locales/zh-CN/wallet.json';
 
 // Which locales are available AT ALL. zh-CN is INTENTIONALLY absent from the
 // user-facing switcher by default (see LANGUAGE_SWITCHER_AVAILABLE below) —
@@ -80,15 +84,17 @@ i18n
     fallbackLng: 'en',
     supportedLngs: SUPPORTED_LANGUAGES,
     // Namespace-per-domain so the security bundle (which MUST render in every
-    // locale without a fallback flash) is loaded up-front while less critical
-    // areas can be lazy-added later without changing this bootstrap shape.
-    ns: ['common', 'security'],
+    // locale without a fallback flash) is loaded up-front. `wallet` was added
+    // in Phase 2 slice 3 for the core non-security surfaces (nav, Dashboard,
+    // Send, Receive, Tx history / receipt, Settings labels). Loading it
+    // eagerly matches the offline-first bundle posture — no runtime fetch.
+    ns: ['common', 'security', 'wallet'],
     defaultNS: 'common',
     resources: {
-      en: { common: enCommon, security: enSecurity },
-      es: { common: esCommon, security: esSecurity },
-      de: { common: deCommon, security: deSecurity },
-      'zh-CN': { common: zhCommon, security: zhSecurity },
+      en: { common: enCommon, security: enSecurity, wallet: enWallet },
+      es: { common: esCommon, security: esSecurity, wallet: esWallet },
+      de: { common: deCommon, security: deSecurity, wallet: deWallet },
+      'zh-CN': { common: zhCommon, security: zhSecurity, wallet: zhWallet },
     },
     interpolation: {
       // React escapes for us — double-escaping would render literal "&amp;"
