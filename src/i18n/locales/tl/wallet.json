@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "History ng Transaksyon",
+      "subhead": "Mga pagpapadala at pagtanggap kada chain, direktang binasa mula sa chain — read-only, may mga link sa explorer.",
+      "badge_demo": "Demo · sample na data",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Demo mode — walang kinukuwerying anuman sa network; ang mga row sa ibaba ay lokal na sample na data.",
+      "loading_label": "Nilo-load ang history ng {{symbol}}",
+      "error_prefix": "Hindi na-load ang history: {{reason}}.",
+      "error_fetch_reason": "Hindi maabot ang RPC node — suriin ang iyong koneksyon at subukan muli.",
+      "error_generic_reason": "hindi tumugon ang indexer",
+      "retry": "Subukan muli",
+      "no_indexer_title": "Hindi available ang in-app na history para sa {{name}} sa JSON-RPC",
+      "no_indexer_body": "Ang simpleng JSON-RPC node ay hindi maglilista ng mga transaksyon ng isang address, at sinasadya naming hindi magdagdag ng third-party na explorer/indexer API (isang bagong pinagmumulan ng data at phone-home surface). Ang buo mong history ay nasa block explorer.",
+      "view_on_explorer": "Tingnan ang {{address}} sa {{network}} explorer",
+      "view_explorer_title": "Tingnan sa block explorer",
+      "unlock_for_explorer": "I-unlock ang iyong wallet para makuha ang link sa explorer para sa iyong {{symbol}} address.",
+      "locked_title": "Naka-lock ang wallet",
+      "locked_body": "I-unlock ang iyong wallet para makuha ang iyong {{symbol}} address at i-load ang history nito.",
+      "empty": "Wala pang transaksyon para sa {{symbol}} sa {{network}}.",
+      "count_one": "{{count}} transaksyon",
+      "count_other": "{{count}} na transaksyon",
+      "most_recent_suffix": " · pinakabago",
+      "refresh": "I-refresh",
+      "sample_badge": "Sample",
+      "to_prefix": "Para kay ",
+      "from_prefix": "Mula kay ",
+      "status_pending": "Nakabinbin",
+      "status_confirmed": "Nakumpirma",
+      "status_failed": "Nabigo",
+      "awaiting_confirmation": "naghihintay ng kumpirmasyon"
+    },
+    "list": {
+      "empty_title": "Wala pang transaksyon",
+      "empty_description": "Kapag nagpadala o tumanggap ka gamit ang wallet na ito, lalabas dito ang iyong on-chain na aktibidad."
+    },
+    "receipt": {
+      "heading": "Mga Resibo ng Transaksyon",
+      "subhead": "Gumawa ng mapi-print na resibo para sa anumang transaksyon",
+      "search_placeholder": "Maghanap ayon sa ID, address, o currency...",
+      "loading": "Naglo-load...",
+      "error": "Hindi na-load ang mga transaksyon. Subukan muli.",
+      "empty": "Walang nakitang transaksyon",
+      "preview_title": "Preview ng Resibo",
+      "print": "I-print",
+      "print_window_title": "Resibo ng Transaksyon",
+      "brand": "VEYRNOX",
+      "doc_title": "RESIBO NG TRANSAKSYON",
+      "field_receipt_id": "ID ng Resibo",
+      "field_date": "Petsa",
+      "field_type": "Uri",
+      "field_asset": "Asset",
+      "field_amount": "Halaga",
+      "field_network_fee": "Bayad sa Network",
+      "field_status": "Katayuan",
+      "field_to": "Para kay",
+      "default_type": "Paglilipat",
+      "default_status": "kumpleto",
+      "thank_you": "Salamat sa paggamit ng {{brand}}",
+      "thank_you_prefix": "Salamat sa paggamit ng",
+      "digital_record": "Ito ay isang digital na rekord ng transaksyon"
+    }
+  },
+  "settings": {
+    "heading": "Mga Setting ng Seguridad",
+    "subhead": "I-lock, i-unlock, at protektahan ang iyong wallet",
+    "theme": {
+      "dark": "Dark Mode",
+      "light": "Light Mode",
+      "saved_note": "Na-save sa device na ito",
+      "switch_to_light": "Lumipat sa light mode",
+      "switch_to_dark": "Lumipat sa dark mode"
+    },
+    "activity_log": {
+      "label": "Activity log",
+      "description": "Naka-off bilang default · naka-store lamang sa device na ito",
+      "help": "Pribadong log: ano ang binago mo, ipinadala, binawi. Walang halaga o address. Binubura ito ng Panic Wipe.",
+      "enable_aria": "I-enable ang activity log",
+      "disable_aria": "I-disable ang activity log",
+      "no_events": "Wala pang naitalang event."
+    },
+    "message_signing": {
+      "label": "Paglagda ng mensahe",
+      "description": "Naka-off bilang default · naka-store lamang sa device na ito",
+      "help": "Naka-off bilang default. Nagbibigay-daan sa iyong lumagda ng arbitrary na text na mensahe gamit ang key ng iyong wallet. I-enable lamang kung hinihiling sa iyo ng isang dApp o serbisyo na lumagda ng mensahe.",
+      "enable_aria": "I-enable ang paglagda ng mensahe",
+      "disable_aria": "I-disable ang paglagda ng mensahe"
+    },
+    "telemetry": {
+      "label": "Anonymous na data ng paggamit",
+      "description": "Opt-in · hindi kailanman kasama ang mga balanse o address",
+      "help": "Tumutulong ito sa aming makahanap ng mga bug at pagbutihin ang app. Isang random na device ID ang ginagamit — hindi kailanman naiuugnay sa iyong wallet, mga key, o pagkakakilanlan. Ang pag-off nito ay pipigil sa lahat ng data ng paggamit na umalis sa device na ito.",
+      "enable_aria": "Buksan ang anonymous na data ng paggamit",
+      "disable_aria": "Isara ang anonymous na data ng paggamit"
+    },
+    "delete_account": {
+      "title": "Danger Zone",
+      "clear_cache_label": "I-clear ang lokal na cache",
+      "clear_cache_description": "Binubura ang naka-save na data sa device na ito at ini-lock ang wallet. Gagana pa rin ang iyong recovery phrase. Para burahin ang mga key, gamitin ang Panic Wipe.",
+      "delete_button": "Burahin",
+      "confirm_prompt_pre": "Bubura ito ng naka-save na data at ie-lock ang wallet. Gagana pa rin ang iyong recovery phrase. I-type ang",
+      "confirm_prompt_post": "para kumpirmahin.",
+      "confirm_placeholder": "I-type ang DELETE para kumpirmahin",
+      "confirm_aria": "I-type ang DELETE para kumpirmahin ang pag-reset ng account",
+      "cancel": "Kanselahin",
+      "confirm_delete": "Kumpirmahin ang Pagbura",
+      "deleting": "Binubura..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometric Unlock",
+      "worth_knowing_label": "Mainam malaman.",
+      "kdf_disclosure": "Sinasave ng one-tap na pag-unlock ang password ng iyong wallet sa device na ito, protektado ng screen lock at biometrics mo. Kung may makakuha ng kopya ng backup ng iyong device nang wala ang mismong device, puwede nilang ma-access ang iyong wallet. I-off ito para sa pinakamataas na proteksyon.",
+      "app_layer_disclosure_pre": "Sinasave ng biometric unlock ang iyong password sa device na ito, protektado ng iyong fingerprint o mukha. Tumatakbo ito sa loob ng app, hindi sa antas ng operating system.",
+      "app_layer_disclosure_mid": "Para sa mas matibay na proteksyon sa antas ng device, i-enable ang",
+      "hardware_protection_label": "Hardware Protection",
+      "app_layer_disclosure_post": "(available sa ibaba).",
+      "toggle_label": "Biometric Unlock (Pangunahing Wallet)",
+      "toggle_description": "I-enable ang one-tap na pag-unlock para sa iyong pangunahing wallet gamit ang biometrics ng device.",
+      "before_enable_label": "Bago mo ito i-enable.",
+      "confirm_disclosure": "Kung may makakuha ng kopya ng backup ng iyong device nang wala ang mismong device, puwede nilang ma-access ang iyong wallet. I-on lamang ito kung okay ka rito.",
+      "confirm_enable_button": "I-enable ang one-tap na pag-unlock",
+      "cancel_button": "Kanselahin",
+      "checking_availability": "Sinusuri ang availability…",
+      "default_label": "Biometrics",
+      "available": "Available ang {{label}}.",
+      "available_simulated": "Available ang {{label}} (sopistikadong simulasyon sa demo).",
+      "status_check_failed": "Hindi masuri ang availability ng biometric sa device na ito.",
+      "awaiting_prompt": "Naghihintay ng prompt…",
+      "preview_prompt": "I-preview ang prompt",
+      "test_success": "Matagumpay ang sopistikadong simulasyong pag-authenticate",
+      "test_cancelled": "Kinansela ang prompt"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometric unlock",
+      "heading_web": "I-unlock gamit ang Passkey",
+      "scope_banner_native_pre": "Sinusuri ang iyong fingerprint o mukha bago mag-unlock —",
+      "scope_banner_native_post": "hindi ito kapalit ng iyong password. Gagana pa rin nang mag-isa ang iyong password at recovery phrase, kaya hindi ka na-lock out kahit mawala ang biometrics.",
+      "scope_banner_web_pre": "Nagdaragdag ang passkey ng mabilisang biometric o security-key na tap bago mag-unlock —",
+      "scope_banner_web_post": "hindi ito kapalit ng iyong password. Gagana pa rin nang mag-isa ang iyong password at recovery phrase, kaya hindi ka na-lock out kahit mawala ang passkey.",
+      "extra_step_label": "isang karagdagang hakbang",
+      "enroll_button": "I-enroll ang biometric unlock",
+      "register_button": "Magrehistro ng passkey",
+      "not_setup_native": "Hindi pa naka-setup ang biometrics ng device. Magdagdag muna ng fingerprint o mukha sa mga setting ng iyong device — gagana pa rin ang iyong password.",
+      "not_supported_web": "Hindi available ang passkey unlock sa browser na ito. Gumagana ito sa mobile app at sa mga modernong browser. Gamitin ang iyong password dito.",
+      "enroll_error": "Hindi ma-enroll ang biometric unlock sa device na ito.",
+      "register_error": "Hindi makarehistro ng passkey sa device na ito.",
+      "enrolled_native": "Na-enroll ang biometric unlock",
+      "registered_web": "Narehistro ang passkey",
+      "simulated_suffix": " (sopistikadong simulasyon)",
+      "remove_button": "Alisin",
+      "require_toggle_native": "Kinakailangan ang biometric unlock",
+      "require_toggle_web": "Kinakailangan ang {{label}} sa pag-unlock",
+      "require_toggle_aria_web": "Kinakailangan ang passkey unlock",
+      "require_toggle_desc_native": "Hilingin ang biometric ng iyong device bago mag-unlock (gagana pa rin ang iyong password).",
+      "require_toggle_desc_web": "Hilingin ang iyong passkey bago mag-unlock (gagana pa rin ang iyong password).",
+      "applies_all_sessions": "Naaangkop ito sa lahat ng session ng wallet sa device na ito.",
+      "default_label": "Passkey",
+      "checking_availability": "Sinusuri ang availability…",
+      "simulated_in_demo": "Sopistikadong sinimulate ang {{label}} sa demo. ",
+      "awaiting_biometric": "Naghihintay ng biometric…",
+      "awaiting_passkey": "Naghihintay ng passkey…",
+      "preview_biometric_prompt": "I-preview ang biometric prompt",
+      "preview_passkey_prompt": "I-preview ang passkey prompt",
+      "simulated_prefix": "Sopistikadong sinimulate ",
+      "biometric_verified": "na-verify ang biometric",
+      "passkey_verified": "na-verify ang passkey",
+      "biometric_prompt_cancelled": "Kinansela ang biometric prompt",
+      "passkey_prompt_cancelled": "Kinansela ang passkey prompt"
+    },
+    "hardware_kek": {
+      "heading": "On-device na hardware protection",
+      "badge_webauthn": "Protektado ng WebAuthn",
+      "badge_off": "OFF",
+      "description_pre": "Nagla-lock sa iyong wallet sa pisikal na device na ito. Pagkatapos i-enable, mabubuksan lamang ang iyong wallet sa ",
+      "description_device": "device na ito",
+      "description_post": ". Walang silbi ang ninakaw na backup file nang wala ang mismong device, kahit may PIN ka.",
+      "description_web_suffix": "Gumagana sa Chrome 99+ at Firefox 108+. Hindi sinusuportahan ang Safari.",
+      "device_binding_note": "Aktibo at nasubukan ang device binding sa tunay na hardware.",
+      "checking_status": "Sinusuri ang katayuan…",
+      "web_prf_unsupported": "Hindi available ang hardware protection sa browser na ito. Gumamit ng Chrome 99+ o Firefox 108+, o gamitin ang iOS o Android app.",
+      "errors": {
+        "wrong_pin": "Maling PIN — ilagay ang PIN na ginagamit mo para i-unlock ang iyong wallet.",
+        "no_hardware": "Hindi maabot ang hardware security ng device na ito. Subukan muli, o gumamit ng ibang device.",
+        "malformed_vault": "Hindi mabasa ang naka-store mong data ng wallet sa device na ito.",
+        "not_enrolled": "Hindi naka-enable ang hardware protection sa vault na ito, kaya walang ia-upgrade.",
+        "generic": "May naganap na mali. Subukan muli.",
+        "key_invalidated": "Nagbago ang iyong mga fingerprint — na-invalidate ang hardware protection. I-disable at i-enable muli ang hardware protection, o mag-restore mula sa iyong seed phrase.",
+        "insecure_tier": "Walang secure hardware element ang device na ito — hindi maaaring i-enable ang hardware protection dito.",
+        "enter_pin_first": "Ilagay muna ang PIN ng iyong vault.",
+        "enter_pin_confirm_removal": "Ilagay ang PIN ng iyong vault para kumpirmahin ang pag-alis.",
+        "enter_pin_upgrade": "Ilagay ang PIN ng iyong vault para mag-upgrade."
+      },
+      "toast": {
+        "enabled": "Na-enable ang hardware protection — kailangan na ngayon ng iyong vault ang device na ito para mag-unlock.",
+        "removed": "Naalis ang hardware protection.",
+        "upgraded": "Na-upgrade ang hardware protection — nakatali na ngayon ang iyong vault gamit ang natatanging key kada device."
+      },
+      "pin_strength": {
+        "hardware_title": "Protektado ng hardware.",
+        "hardware_body": "Ginagawang imposible ng kombinasyon ng iyong PIN at Face ID, fingerprint, o passkey ang offline na pag-atake — kakailanganin ng umaatake ang iyong PIN AT ang pisikal na device na ito.",
+        "no_hardware_title": "Walang available na hardware factor sa browser na ito.",
+        "no_hardware_body": "Ang iyong 8-digit na PIN (~100 M na kombinasyon) ay protektado lamang ng Argon2id — puwedeng maubos ito ng determinadong umaatake nang offline sa loob ng ilang araw hanggang linggo. Gumamit ng password na 12+ na karakter, o lumipat sa Chrome/Firefox para i-enable ang hardware protection.",
+        "pre_enroll_title": "Lakas ng PIN.",
+        "pre_enroll_body": "Ang 8-digit na PIN ay may ~100 M na kombinasyon. Pinapabagal ng Argon2id ang offline na pag-atake sa humigit-kumulang 1–2 taon nang single-threaded — pero puwede itong paikliin ng GPU cluster sa ilang araw. Ang pag-enable ng Face ID, fingerprint, o passkey sa itaas ay gumagawang imposible ang offline na pag-atake sa pamamagitan ng pagkakailangan ng device na ito para sa bawat pag-unlock."
+      },
+      "enrolled": {
+        "active_title": "Aktibo sa device na ito",
+        "active_body_native": "Kinakailangan ng iyong vault ang biometric ng device na ito para mag-unlock.",
+        "active_body_web": "Kinakailangan ng iyong vault ang passkey ng device na ito para mag-unlock."
+      },
+      "upgrade": {
+        "available_title": "May available na upgrade",
+        "available_body": "Protektado ang iyong wallet gamit ang mas lumang bersyon na nagbabahagi ng key sa mga device. Mag-upgrade para i-lock ito sa device na ito lamang. Isang beses lamang mangyayari ito at hihilingin sa iyong mag-verify nang dalawang beses.",
+        "cta": "I-upgrade ang hardware protection",
+        "busy": "Ina-upgrade — aprubahan ang parehong prompt…",
+        "prompt": "Ilagay ang PIN ng iyong vault. Mag-a-authenticate ka nang dalawang beses para muling i-secure ang vault.",
+        "cancel": "Kanselahin"
+      },
+      "remove": {
+        "cta": "Alisin ang hardware protection",
+        "prompt_native": "Ilagay ang iyong PIN para kumpirmahin. Kakailanganin mong mag-verify gamit ang iyong fingerprint o mukha.",
+        "prompt_web": "Ilagay ang iyong password para kumpirmahin. Kakailanganin mong mag-verify gamit ang iyong passkey.",
+        "busy": "Inaalis — aprubahan ang prompt…",
+        "cancel": "Kanselahin"
+      },
+      "enroll": {
+        "prompt_native": "Ilagay ang PIN ng iyong vault para i-enable ang hardware protection.",
+        "prompt_web": "Ilagay ang iyong 8-digit na PIN para i-enable ang hardware protection. Gagawa ang iyong browser ng passkey para i-lock ang iyong wallet sa device na ito.",
+        "cta": "I-enable ang hardware protection",
+        "busy_native": "Nagpapa-enroll — aprubahan ang biometric prompt…",
+        "busy_web": "Nagpapa-enroll — aprubahan ang passkey prompt…",
+        "footnote_native": "Hihilingin sa iyong mag-authenticate gamit ang biometric o passcode ng iyong device.",
+        "footnote_web": "Hihilingin sa iyo ng iyong browser na mag-authenticate gamit ang biometric o PIN ng device para gumawa ng passkey."
+      },
+      "blocked": "Hindi available ang mga setting ng hardware protection sa session na ito."
+    },
+    "two_factor": {
+      "heading": "Two-factor sa mga kritikal na aksyon",
+      "intro": "Karagdagang pagsuri sa ibabaw ng iyong PIN para sa mga sensitibong aksyon. Kahit may makakita sa iyong nagta-type ng iyong PIN, hindi pa rin nila magagawa ang mga bagay na ito nang wala ang pangalawang hakbang.",
+      "actions_protects_label": "Mga aksyong pinoprotektahan nito",
+      "gated_actions": [
+        { "label": "Pagpapadala ng pondo", "desc": "bawat pagpapadala, pagkatapos ng mga safety check" },
+        { "label": "Pagpapakita ng recovery phrase", "desc": "pagtingin o pag-export ng iyong backup" },
+        { "label": "Pagtatakda ng Emergency PIN", "desc": "paggawa ng Emergency wallet" },
+        { "label": "Paggawa o pagtatago ng wallet", "desc": "mga pagbabago sa nakatagong wallet" }
+      ],
+      "currently_enforcing": "Kasalukuyang ipinapatupad:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + Action Password",
+      "badge_off": "Naka-off (PIN lamang)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Nasa decoy / nakatagong session ka. I-configure ang two-factor mula sa iyong tunay na session.",
+      "method_a_title": "PIN + Action Password",
+      "on_suffix": "ON",
+      "method_a_desc": "Isang pangalawang password na naka-save sa loob ng iyong wallet. Matibay, pero nasa parehong device ang dalawang password.",
+      "label_pin": "Ang iyong PIN",
+      "label_wallet_password": "Password ng wallet",
+      "pin_confirm_placeholder": "Kumpirmahin na ikaw ito",
+      "action_password_label_change": "Bagong Action Password",
+      "action_password_label_set": "Action Password",
+      "action_password_placeholder": "Hindi bababa sa 8 na karakter",
+      "action_password_hint": "Hindi bababa sa 8 na karakter · anumang karakter ay puwede",
+      "too_short": "Gumamit ng hindi bababa sa {{min}} na karakter.",
+      "confirm_label": "Kumpirmahin",
+      "confirm_placeholder": "Ilagay muli ang Action Password",
+      "confirm_hint": "Dapat tumugma sa iyong Action Password",
+      "mismatch": "Hindi tugma ang mga password.",
+      "save_change": "Palitan ang Action Password",
+      "save_set": "Itakda ang Action Password",
+      "remove": "Alisin ang Action Password",
+      "toast_changed": "Napalitan ang Action Password",
+      "toast_set": "Naitakda ang Action Password",
+      "toast_set_error": "Hindi maitakda ang Action Password",
+      "toast_confirm_pin_required": "Ilagay ang PIN / password ng iyong wallet para kumpirmahin",
+      "toast_removed": "Naalis ang Action Password",
+      "toast_remove_error": "Hindi maalis ang Action Password",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "Ang iyong PIN kasama ang {{label}}. Kung hindi available ang biometrics, hinaharang ang aksyon. Ang pagkawala ng iyong device ay hindi kailanman nagreresulta sa pagkawala ng iyong pondo.",
+      "method_b_desc_web": "Ang iyong PIN kasama ang isang tap sa passkey. Kung hindi available ang passkey, hinaharang ang aksyon. Ang pagkawala nito ay hindi kailanman nagreresulta sa pagkawala ng iyong pondo.",
+      "switch_aria_native": "Gamitin ang biometrics ng aking device bilang aking pangalawang factor",
+      "switch_aria_web": "Gamitin ang passkey bilang aking pangalawang factor",
+      "confirm_native": "Kumpirmahin ang mga kritikal na aksyon gamit ang {{label}}.",
+      "unavailable_native": "Hindi naka-setup ang {{label}} / passcode ng device sa device na ito — i-enable ito sa mga setting ng iyong device para magamit ang factor na ito.",
+      "unsupported_web": "Hindi sinusuportahan ng browser na ito ang WebAuthn / passkeys.",
+      "register_hint_web_pre": "Wala pang nakarehistrong passkey — mag-setup ng isa sa",
+      "register_hint_web_strong": "Wallet Passkeys",
+      "register_hint_web_post": "sa ibaba, pagkatapos ay i-enable ito.",
+      "toggle_biometric_needed": "Hindi naka-setup ang {{label}} sa device na ito.",
+      "toggle_passkey_needed": "Magrehistro muna ng passkey (Wallet Passkeys, sa ibaba).",
+      "toggle_biometric_on": "Naka-on ang pangalawang factor na {{label}}",
+      "toggle_biometric_off": "Naka-off ang pangalawang factor na {{label}}",
+      "toggle_passkey_on": "Naka-on ang pangalawang factor na passkey",
+      "toggle_passkey_off": "Naka-off ang pangalawang factor na passkey"
+    },
+    "session": {
+      "title": "Session at Auto-lock",
+      "description": "Ini-lock ang iyong wallet pagkatapos ng panahon ng hindi aktibidad o kapag umalis ka sa app",
+      "status_unlocked": "Naka-unlock",
+      "status_locked": "Naka-lock",
+      "auto_lock_after": "Auto-lock pagkatapos ng",
+      "never_note": "Walang auto-lock sa idle, pero nagla-lock pa rin ito pagkatapos ng ~45 segundo sa background at pagkatapos ng 8 oras na naka-unlock.",
+      "resets_note": "Nire-reset tuwing makikipag-interact ka sa app. Nagla-lock din agad kapag na-background.",
+      "lock_now": "I-lock ngayon",
+      "recent_activity": "Kamakailang aktibidad",
+      "view_all": "Tingnan lahat",
+      "this_device": "Device na ito",
+      "active_now": "Aktibo ngayon"
+    },
+    "rehearsal": {
+      "title": "Isanay ang deniability",
+      "description": "Tingnan ang dashboard eksakto sa paraan ng makikita ng may hawak ng iyong naka-unlock na telepono."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Wallet",
+    "sidebar_expand": "Palawakin ang sidebar",
+    "sidebar_collapse": "Paliitin ang sidebar",
+    "search_placeholder": "Maghanap...",
+    "search_shortcut_title": "Maghanap (⌘K)",
+    "lock": "I-lock",
+    "lock_confirm_prompt": "I-lock ang wallet na ito ngayon?",
+    "back": "Bumalik",
+    "settings": "Settings",
+    "main_content_aria": "Pangunahing nilalaman",
+    "bottom_nav_aria": "Bottom navigation",
+    "more_features_aria": "Higit pang mga feature",
+    "more": "Higit pa",
+    "close": "Isara",
+    "all_features_heading": "Lahat ng Feature",
+    "recent_heading": "Kamakailan",
+    "tab_home": "Home",
+    "tab_send": "Magpadala",
+    "tab_receive": "Tumanggap"
+  },
+  "back": {
+    "default_label": "Bumalik"
+  },
+  "send": {
+    "heading": "Magpadala ng Crypto",
+    "subheading": "Ligtas na maglipat ng pondo",
+    "wallet_fallback": "Wallet",
+    "wallet_picker": { "label": "Mula sa Wallet", "placeholder": "Pumili ng wallet" },
+    "asset_picker": { "label": "Asset", "placeholder": "Pumili ng asset" },
+    "recipient": {
+      "label": "Ipadala sa (address o pangalan)",
+      "placeholder": "I-paste ang isang address o ilagay ang pangalan (hal. vitalik.eth)",
+      "scan_qr": "I-scan ang QR code",
+      "resolving": "Hinahanap ang pangalan…",
+      "name_not_found": "Hindi nahanap ang pangalan — suriin ang spelling o i-paste ang address nang direkta.",
+      "ens_using_prefix": "Ginagamit ang {{name}} →",
+      "ens_confirm_intro": "hinahanap nang pribado sa blockchain sa:",
+      "ens_confirm_hint": "Kumpirmahin na tama ang address na ito bago magpadala.",
+      "use_this_address": "Gamitin ang address na ito",
+      "not_whitelisted": "Wala sa iyong whitelist ang address na ito. Suriing mabuti bago magpatuloy. Puwede kang magdagdag ng mga pinagkakatiwalaang address sa Settings.",
+      "self_send_warning": "Nagpapadala ka sa iyong sariling address ng wallet. Wala itong inililipat sa pagitan ng mga wallet at may bayad pa rin sa network fee. Suriing mabuti ang tatanggap bago magpatuloy."
+    },
+    "screening": {
+      "local_disclosure": "Sinusuri ang mga tatanggap sa iyong device para sa mga scam address laban sa sarili mong history — walang umaalis sa iyong device.",
+      "remote_opt_in": "Suriin din laban sa online na threat database (ipinapadala ang address na ito sa isang third party)",
+      "remote_unavailable": "Naka-enable ang online screening, pero walang na-configure na provider sa build na ito — mananatiling lokal ang screening, kaya hindi namin ma-verify ito laban sa panlabas na listahan.",
+      "demo_poison_button": "Demo: i-paste ang isang look-alike na address"
+    },
+    "simulation": {
+      "title": "Simulasyon ng Transaksyon",
+      "toggle_aria": "I-toggle ang simulasyon ng transaksyon",
+      "description": "Bago ka lumagda, nagsasagawa kami ng lokal na pre-flight check — walang third-party na serbisyo, walang umaalis na data sa iyong device.",
+      "checks": [
+        "Panganib sa address (poison / lookalike)",
+        "Pag-decode ng kontrata",
+        "Flag ng walang-limit na approval",
+        "Prediksyon ng revert",
+        "Anomalya laban sa iyong history",
+        "Babala sa malaking outflow"
+      ],
+      "results_hint": "Lalabas ang mga resulta sa susunod na hakbang kapag naglagay ka ng address at halaga.",
+      "off_hint": "Naka-off ang simulasyon — walang pre-flight check na tatakbo bago lumagda.",
+      "taking_too_long": "Matagal masyado?",
+      "turn_off": "I-off ang simulasyon"
+    },
+    "amount": {
+      "label": "Halaga",
+      "placeholder": "0.00",
+      "being_sent": "ipinapadala",
+      "balance_prefix": "Balanse:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(live)",
+      "reading_from_network": "binabasa mula sa network…"
+    },
+    "errors": {
+      "amount_missing": "Kinakailangan ang halaga",
+      "amount_not_positive": "Dapat mas malaki sa zero ang halaga",
+      "amount_malformed": "Ilagay ang isang plain decimal na halaga, tulad ng 0.5",
+      "amount_over_balance": "Hindi sapat ang balanse",
+      "insufficient_balance_title": "Hindi sapat ang balanse.",
+      "insufficient_balance_body": "Mayroon kang {{balance}} {{currency}} na available na ipadala (pagkatapos ng network fee). Bawasan ang halaga para magpatuloy."
+    },
+    "status": {
+      "not_enabled": "Hindi pa naka-enable ang pagpapadala para sa {{currency}}. Ang asset na ito ay pagtanggap-lamang hanggang ma-verify ang crypto path nito.",
+      "dev_ungate_title": "AKTIBO ANG DEV UNGATE",
+      "dev_ungate_body": "— na-bypass ang gate ng pagpapadala para sa {{currency}} sa pamamagitan ng VITE_DEV_UNGATE_SEND (dev build lamang). Hindi nagbabago ang katayuan ng asset na ito (hindi pa rin live); nananatiling naka-gate ang mainnet. Testnet verification lamang — huwag kailanman i-ship ang build na ito.",
+      "locked": "Naka-lock ang iyong wallet. I-unlock ito sa Wallet Settings para lumagda at magpadala."
+    },
+    "note": { "label": "Tala (opsyonal)", "placeholder": "Para saan ito?" },
+    "trezor": {
+      "toggle_label": "Lumagda gamit ang Trezor",
+      "connected": "Nakakonekta ang device",
+      "connect_button": "Ikonekta ang device"
+    },
+    "buttons": {
+      "continue": "Magpatuloy",
+      "confirm_send": "Kumpirmahin at Ipadala",
+      "back": "Bumalik"
+    },
+    "verify": { "summary_label": "Ipinapadala mo" },
+    "fee": {
+      "automatic": "Awtomatikong itinatakda ang network fee para sa {{currency}} ({{network}}).",
+      "native_fee_note": "Binabayaran ang network fee sa {{symbol}} ({{network}}) — kailangan mo ng {{symbol}} para masakop ang network fee kahit nagpapadala ka ng {{token}}."
+    },
+    "decode": {
+      "heading": "Ano ang ginagawa ng transaksyong ito",
+      "action": "Aksyon",
+      "send_tokens": "Magpadala ng token",
+      "token": "Token",
+      "amount": "Halaga",
+      "recipient": "Tatanggap",
+      "grant_permission": "Bigyan ng pahintulot sa paggasta",
+      "permission": "Pahintulot",
+      "unlimited_permission": "Walang Limit (puwedeng gumasta ng kahit anong halaga ang app na ito)",
+      "spender": "Gumagasta"
+    },
+    "reauth": {
+      "prompt": "Ilagay muli ang iyong {{credential}} para awtorisahan",
+      "credential_pin": "PIN",
+      "credential_password": "password",
+      "submit_pin": "Awtorisahan",
+      "submit_password": "Awtorisahan at Ipadala",
+      "password_placeholder": "Password ng vault",
+      "password_aria": "Password ng vault para sa pag-awtorisa ng pagpapadala",
+      "errors": {
+        "unavailable": "Hindi available ang pag-verify — mangyaring i-lock at i-unlock muli ang wallet.",
+        "incorrect": "Mali — subukan muli ({{remaining}} na natitira)"
+      }
+    },
+    "done": {
+      "beacon_label": "Na-broadcast ang transaksyon",
+      "heading": "Na-broadcast ang Transaksyon",
+      "body_suffix": "nilagdaan nang lokal at ipinadala sa network",
+      "tx_hash_label": "Hash ng transaksyon",
+      "view_explorer": "Tingnan sa block explorer",
+      "pending_note": "Nakabinbin hanggang makumpirma sa network. Ina-update ang balanse mula sa blockchain, hindi mula sa naka-store na halaga.",
+      "send_another": "Magpadala Ulit"
+    },
+    "toasts": {
+      "ens_off_in_session": "Naka-off ang pagresolba ng pangalan sa session na ito — i-paste nang direkta ang address.",
+      "ens_not_found": "Hindi nahanap ang pangalang ENS",
+      "sns_unavailable": "Hindi pa available ang pagresolba ng pangalang Solana — i-paste nang direkta ang address.",
+      "ens_resolution_failed": "Nabigo ang pagresolba ng pangalan",
+      "verify_required": "Tapusin munang i-verify ang iyong backup bago ipadala ang halagang ito.",
+      "two_factor_retry": "Hindi nakumpleto ang pagpapadala — mangyaring mag-verify muli para subukan ulit.",
+      "send_failed_fallback": "Nabigo ang pagpapadala",
+      "unconfirmed": "Hindi pa makumpirma ang transaksyong ito sa network — puwedeng nakabinbin pa ito. Suriin sa explorer."
+    }
+  },
+  "receive": {
+    "heading": "Tumanggap ng Crypto",
+    "subheading": "Ipakita ang address ng wallet para tumanggap ng pondo",
+    "asset_label": "Asset",
+    "asset_placeholder": "Pumili ng asset",
+    "not_available": "Hindi pa available ang pagtanggap ng {{name}} ({{symbol}}). Walang ipinapakitang address hangga't hindi naka-enable ang asset na ito.",
+    "locked": {
+      "title": "Naka-lock ang wallet",
+      "body": "I-unlock ang iyong wallet para ipakita ang iyong address ng pagtanggap para sa {{asset}} {{network}}.",
+      "open_hd_wallet": "Buksan ang HD Wallet Manager"
+    },
+    "your_address": "Ang iyong {{asset}} address",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Address ng pagtanggap ng {{symbol}}",
+    "copy": {
+      "copied_aria": "Nakopya ang address sa clipboard",
+      "copy_aria": "Kopyahin ang address",
+      "copied_toast": "Nakopya ang address",
+      "copy_failed_toast": "Hindi nakopya — piliin at kopyahin ang address nang manwal"
+    },
+    "network_notes": {
+      "erc20": "Ang {{symbol}} ay isang token sa isang network na Ethereum-compatible. Ito ang address ng iyong wallet — hilingin lamang sa nagpadala na ipadala ang {{symbol}} sa {{network}}. Ang pagpapadala nito sa ibang network ay puwedeng permanenteng magpawala sa pondo.",
+      "evm": "Ito ang shared na address ng iyong wallet. Ipadala lamang ang {{name}} sa {{network}} sa address na ito, at tiyaking gagamitin ng nagpadala ang {{network}}.",
+      "btc": "Ipadala lamang ang Bitcoin sa {{network}} sa address na ito.",
+      "solana": "Ipadala lamang ang Solana sa {{network}} sa address na ito."
+    },
+    "select_asset_prompt": "Pumili ng asset na tatanggapin.",
+    "unlock_footer_note": "Nanggagaling ang mga address mula sa iyong on-device na wallet at lalabas lamang habang naka-unlock ito."
+  },
+  "dashboard": {
+    "portfolioValue": "Halaga ng Portfolio",
+    "priceAlertsTriggered_one": "{{count}} Naka-trigger na Price Alert!",
+    "priceAlertsTriggered_other": "{{count}} na Naka-trigger na Price Alert!",
+    "lockAriaLabel": "I-lock ang balanse sa likod ng biometric",
+    "lockBalance": "I-lock ang balanse",
+    "synced": "Na-sync {{time}}",
+    "syncJustNow": "Kakalipas lang",
+    "syncSecondsAgo_one": "{{count}}s ang nakalipas",
+    "syncSecondsAgo_other": "{{count}}s ang nakalipas",
+    "syncMinutesAgo_one": "{{count}}m ang nakalipas",
+    "syncMinutesAgo_other": "{{count}}m ang nakalipas",
+    "actions": {
+      "send": "Magpadala",
+      "receive": "Tumanggap",
+      "schedule": "I-iskedyul",
+      "add": "Magdagdag"
+    },
+    "tabs": {
+      "tokens": "Mga Token",
+      "activity": "Aktibidad",
+      "analytics": "Analytics"
+    },
+    "emptyWallets": {
+      "title": "Wala pang wallet",
+      "description": "Magdagdag ng wallet para magsimulang tumanggap, magpadala, at humawak ng mga asset sa iba't ibang chain."
+    },
+    "addWallet": "Magdagdag ng Wallet",
+    "searchTransactionsPlaceholder": "Maghanap ng mga transaksyon...",
+    "emptySearch": {
+      "title": "Walang tumugmang transaksyon",
+      "description": "Subukang i-clear ang mga filter o maghanap ng ibang asset o address."
+    },
+    "emptyTransactions": {
+      "title": "Wala pang transaksyon",
+      "description": "Lalabas dito ang iyong on-chain na aktibidad kapag nagpadala o tumanggap ka."
+    },
+    "portfolioPerformance": "Performance ng Portfolio",
+    "assetDistribution": "Distribusyon ng Asset",
+    "quickAccess": "Mabilisang Access",
+    "quickAccessItems": {
+      "receive": "Tumanggap",
+      "security": "Seguridad",
+      "approvals": "Mga Approval",
+      "addressCheck": "Pagsuri sa Address",
+      "analytics": "Analytics",
+      "sentiment": "Damdamin",
+      "riskScore": "Risk Score"
+    },
+    "walletNameLabel": "Pangalan ng Wallet",
+    "walletNamePlaceholder": "Ang Aking ETH Wallet",
+    "addWalletDialog": {
+      "title": "Magdagdag ng Wallet",
+      "currency": "Currency",
+      "creating": "Ginagawa...",
+      "create": "Gumawa ng Wallet"
+    },
+    "renameWalletDialog": {
+      "title": "Palitan ang Pangalan ng Wallet",
+      "saving": "Sine-save...",
+      "save": "I-save ang Pangalan"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Naka-encrypt na vault",
+    "backup": {
+      "title": "I-back up ang \"{{name}}\"",
+      "reauthDescription": "Kumpirmahin na ikaw ito, pagkatapos ay ipapakita namin ang recovery phrase para sa wallet na ito.",
+      "description": "Isulat ang 12 salitang ito offline. Ang sinumang may hawak nito ay puwedeng gastahin ang pondo ng wallet na ito — at ito lamang ang paraan para ma-recover ito.",
+      "warning": "Huwag kailanman kumuha ng screenshot. Huwag kailanman i-type ito sa ibang app.",
+      "confirmButton": "Naisulat ko na ito — markahan bilang na-back up"
+    },
+    "addWallet": {
+      "defaultWalletName": "ang iyong bagong wallet",
+      "backupDescription": "May sariling recovery phrase ang wallet na ito — hiwalay sa bawat ibang wallet sa iyong vault. Isulat ito offline bago mo ito gamitin.",
+      "backedUpDone": "Na-back up ko na ito — tapos na",
+      "title": "Magdagdag ng wallet",
+      "createNew": "Gumawa ng bago",
+      "importSeed": "I-import ang seed",
+      "createDescription": "Gumagawa ng BAGONG seed na nagbubunga ng LAHAT ng chain (ETH/EVM, BTC, SOL). I-back up mo ito bago ito maging aktibo.",
+      "importDescription": "I-paste ang umiiral na 12/24-word na seed — awtomatikong nabubuo ang lahat ng chain (hindi chain-specific ang isang seed).",
+      "recoveryPhraseLabel": "Recovery phrase",
+      "recoveryPhrasePlaceholder": "salita1 salita2 ... salita12",
+      "walletNameLabel": "Pangalan ng wallet",
+      "walletNamePlaceholder": "hal. Savings",
+      "assetsToShowLabel": "Mga asset na ipapakita",
+      "assetsToShowHint": "Pagpili lamang sa ipapakita — hawak pa rin ng seed ang bawat chain kahit ano pa.",
+      "confirmVaultPlaceholder": "Kumpirmahin na ikaw ito para baguhin ang iyong vault",
+      "vaultReentryHint": "Muling inilagay para awtorisahan ang pagbabago sa vault ng iyong seed. Hindi kailanman iniingatan sa memory.",
+      "createAndBackup": "Gumawa at i-back up",
+      "importWallet": "I-import ang wallet"
+    },
+    "vaultPinLabel": "PIN ng Vault",
+    "vaultPasswordLabel": "Password ng Vault",
+    "cancel": "Kanselahin",
+    "done": "Tapos",
+    "manageAssets": {
+      "title": "Mga asset para sa \"{{name}}\"",
+      "description": "Pumili kung aling mga asset ang ipapakita para sa wallet na ito. Ang mga nakatago ay mananatiling wala sa daan hanggang idagdag."
+    },
+    "rename": {
+      "title": "Palitan ang pangalan ng wallet",
+      "save": "I-save ang pangalan"
+    },
+    "remove": {
+      "title": "Alisin ang \"{{name}}\"?",
+      "onlyWallet": "Ito lamang ang iyong wallet — hindi ito maaalis. Gamitin ang Panic Wipe sa Security para burahin ang lahat.",
+      "description": "Inaalis ang seed ng wallet na ito mula sa device na ito.",
+      "backedUpNote": "Puwede mo itong ibalik gamit ang recovery phrase nito.",
+      "notBackedUpNote": "⚠️ HINDI na-back up — nang wala ang phrase nito, mawawala ito nang tuluyan.",
+      "button": "Alisin ang wallet"
+    },
+    "move": {
+      "title": "Ilipat ang \"{{name}}\" sa…"
+    },
+    "managePortfolios": {
+      "title": "Mga Portfolio",
+      "defaultTag": "(default)",
+      "saveAriaLabel": "I-save ang pangalan ng portfolio",
+      "renameAriaLabel": "Palitan ang pangalan ng {{name}}",
+      "deleteAriaLabel": "Burahin ang {{name}}",
+      "newNamePlaceholder": "Bagong pangalan ng portfolio",
+      "addButton": "Magdagdag"
+    },
+    "activity": {
+      "unlockPrompt": "I-unlock ang iyong wallet para tingnan ang aktibidad.",
+      "loading": "Naglo-load...",
+      "loadError": "Hindi ma-load ang aktibidad.",
+      "noTransactions": "Wala pang transaksyon.",
+      "viewFullHistory": "Tingnan ang buong history →"
+    },
+    "portfolioValueLabel": "Halaga ng Portfolio",
+    "explore": {
+      "subtitle": "Nag-eeksplora ka — view lamang. Wala ka pang wallet.",
+      "description": "Malayang tumingin-tingin. Kapag handa ka na, gumawa ng bagong self-custody na wallet o mag-import ng umiiral na seed — nabubuo at naka-encrypt ang mga key sa device na ito.",
+      "createOrImport": "Gumawa o mag-import ng wallet"
+    },
+    "portfoliosButton": "Mga Portfolio",
+    "totalValueHeading": "{{name}} · Kabuuang Halaga",
+    "partialTotalNote": "May mga balanseng hindi na-load — puwedeng hindi kumpleto ang kabuuang ito.",
+    "refreshPricesTooltip": "I-refresh ang mga live na presyo",
+    "live": "Live",
+    "approximate": "Tinatayang",
+    "seedVerify": {
+      "title": "Tapusin ang pag-verify ng iyong backup",
+      "description": "Kinakailangan para sa pagpapadalang lampas sa safety threshold.",
+      "verifyAriaLabel": "I-verify ang iyong backup ng wallet",
+      "verifyButton": "I-verify"
+    },
+    "unbacked": {
+      "titleBold": "Hindi kumpleto ang backup ng wallet.",
+      "body": "May sariling recovery phrase ang bawat wallet — nang wala ito, hindi na maibabalik ang pondo ng wallet na iyon. Mag-back up ngayon.",
+      "backUpButton": "I-back up ang \"{{name}}\""
+    },
+    "actions": {
+      "send": "Magpadala",
+      "receive": "Tumanggap",
+      "addWallet": "Magdagdag ng wallet"
+    },
+    "activeWalletHint": {
+      "prefix": "Ginagamit ng Send/Receive ang",
+      "otherPortfolio": " (sa ibang portfolio)",
+      "suffix": ". I-tap ang isang wallet sa ibaba para lumipat."
+    },
+    "tabs": {
+      "tokens": "Mga Token",
+      "activity": "Aktibidad",
+      "analytics": "Analytics"
+    },
+    "noWalletsInPortfolio": "Walang wallet sa \"{{name}}\". Magdagdag ng wallet, o maglipat ng isa dito mula sa menu nito.",
+    "hideAssets": "Itago ang mga asset",
+    "showAllAssets": "Ipakita lahat ng asset",
+    "walletCard": {
+      "active": "Aktibo",
+      "backedUp": "Na-back up",
+      "backUp": "I-back up",
+      "partial": "bahagya",
+      "optionsAriaLabel": "Mga opsyon para sa {{name}}",
+      "noAssetsShown": "Walang ipinapakitang asset. Gamitin ang \"Pamahalaan ang mga asset\"."
+    },
+    "menu": {
+      "manageAssets": "Pamahalaan ang mga asset",
+      "rename": "Palitan ang pangalan",
+      "moveToPortfolio": "Ilipat sa portfolio",
+      "backUp": "I-back up",
+      "remove": "Alisin"
+    },
+    "balanceLoadFailedTitle": "Hindi na-load ang balanse",
+    "defaultWalletFallbackName": "wallet",
+    "toast": {
+      "walletImported": "Na-import ang wallet — nabuo ang lahat ng chain.",
+      "walletRemoved": "Naalis ang wallet mula sa device na ito.",
+      "walletAddedBackedUp": "Naidagdag at na-back up ang wallet.",
+      "movedTo": "Inilipat sa {{name}}.",
+      "markedBackedUp": "Namarkahan ang \"{{name}}\" bilang na-back up."
+    },
+    "errors": {
+      "couldNotAddWallet": "Hindi maidagdag ang wallet",
+      "couldNotImportWallet": "Hindi ma-import ang wallet",
+      "couldNotRemoveWallet": "Hindi maalis ang wallet"
+    }
+  },
+  "networth": {
+    "title": "Crypto Net Worth",
+    "unlockPrompt": "I-unlock ang iyong wallet para makita ang iyong on-chain na hawak.",
+    "subtitle": "Ang iyong on-chain na hawak — hindi kasama ang mga panlabas na asset.",
+    "totalHoldings": "Kabuuang hawak",
+    "partialNote": "bahagya — may mga balanseng hindi mabasa",
+    "refreshPricesTooltip": "I-refresh ang mga live na presyo",
+    "live": "Live",
+    "approximate": "Tinatayang",
+    "allocation": "Alokasyon",
+    "holdings": "Mga Hawak",
+    "noHoldings": "Wala pang hawak."
+  }
+}

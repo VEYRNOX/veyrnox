@@ -26,7 +26,17 @@
       "sv": "Svenska",
       "da": "Dansk",
       "no": "Norsk",
-      "fi": "Suomi"
+      "fi": "Suomi",
+      "th": "ไทย",
+      "hi": "हिन्दी",
+      "fa": "فارسی",
+      "he": "עברית",
+      "ur": "اردو",
+      "zh-TW": "繁體中文",
+      "ms": "Bahasa Melayu",
+      "tl": "Filipino",
+      "es-419": "Español (Latinoamérica)",
+      "bn": "বাংলা"
     }
   },
   "actions": {
