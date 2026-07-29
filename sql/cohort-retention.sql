@@ -216,51 +216,30 @@ GRANT SELECT ON funnel_dropoff_hotspots TO service_role;
 
 -- RPC: returns NEW alerts (unseen event_name/prev_event pairs) above threshold
 -- and records them in funnel_dropoff_alert_log for dedup.
+-- Uses LANGUAGE sql (not plpgsql) so RETURNS SETOF doesn't create OUT parameters
+-- that would shadow same-named columns inside the query body — plpgsql's classic
+-- 42702 ambiguity trap.
 CREATE OR REPLACE FUNCTION check_funnel_dropoff_alerts(
   p_min_drop_pct       numeric DEFAULT 40,
   p_min_prev_reached   int     DEFAULT 50
 )
-RETURNS TABLE (
-  event_name     text,
-  prev_event     text,
-  drop_pct       numeric,
-  prev_reached   int,
-  reached        int,
-  detected_at    timestamptz
-)
-LANGUAGE plpgsql
+RETURNS SETOF funnel_dropoff_alert_log
+LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-BEGIN
-  RETURN QUERY
   WITH candidates AS (
-    SELECT
-      h.event_name,
-      h.prev_event,
-      h.drop_pct,
-      h.prev_reached,
-      h.reached
+    SELECT h.event_name, h.prev_event, h.drop_pct, h.prev_reached, h.reached
     FROM funnel_dropoff_hotspots h
     WHERE h.drop_pct     >= p_min_drop_pct
       AND h.prev_reached >= p_min_prev_reached
-  ),
-  inserted AS (
-    INSERT INTO funnel_dropoff_alert_log
-      (event_name, prev_event, drop_pct, prev_reached, reached)
-    SELECT c.event_name, c.prev_event, c.drop_pct, c.prev_reached, c.reached
-    FROM candidates c
-    ON CONFLICT (event_name, prev_event) DO NOTHING
-    RETURNING
-      funnel_dropoff_alert_log.event_name,
-      funnel_dropoff_alert_log.prev_event,
-      funnel_dropoff_alert_log.drop_pct,
-      funnel_dropoff_alert_log.prev_reached,
-      funnel_dropoff_alert_log.reached,
-      funnel_dropoff_alert_log.detected_at
   )
-  SELECT * FROM inserted;
-END;
+  INSERT INTO funnel_dropoff_alert_log
+    (event_name, prev_event, drop_pct, prev_reached, reached)
+  SELECT c.event_name, c.prev_event, c.drop_pct, c.prev_reached, c.reached
+  FROM candidates c
+  ON CONFLICT (event_name, prev_event) DO NOTHING
+  RETURNING *;
 $$;
 
 COMMENT ON FUNCTION check_funnel_dropoff_alerts(numeric, int) IS
