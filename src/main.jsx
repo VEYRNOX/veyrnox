@@ -21,6 +21,11 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'
 import '@/index.css'
+// Side-effect init: registers i18next as a singleton and subscribes to
+// LOCALE_CHANGED_EVENT. Imported here (not inside App) so the language is
+// resolved BEFORE any component's first render — otherwise the initial
+// paint would flash English before flipping to the chosen locale.
+import '@/i18n'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
