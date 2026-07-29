@@ -243,6 +243,10 @@ export function formatUsd(usd, locale, opts) {
   const max = opts?.maximumFractionDigits ?? 0;
   const min = opts?.minimumFractionDigits ?? 0;
   const compact = opts?.compact === true;
+  // JSDoc-typed so TS narrows the string-literal `style` / `notation` to their
+  // Intl union types — extracting into a variable widened them to `string` and
+  // failed the NumberFormat overload check (TS2769 on `tsc --noEmit`).
+  /** @type {Intl.NumberFormatOptions} */
   const intlOpts = {
     style: 'currency', currency: 'USD',
     maximumFractionDigits: max, minimumFractionDigits: min,
