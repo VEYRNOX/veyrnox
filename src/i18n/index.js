@@ -62,6 +62,7 @@ export const SUPPORTED_LANGUAGES = [
   'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko', 'ar',
   'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
   'th', 'hi', 'fa', 'he', 'ur', 'zh-TW', 'ms', 'tl', 'es-419', 'bn',
+  'ta', 'sw', 'af', 'hu', 'sk', 'sl', 'hr', 'bg', 'lt', 'lv',
 ];
 
 // The default user-facing set. All bundled languages are exposed; MT status
@@ -71,6 +72,7 @@ export const LANGUAGE_SWITCHER_AVAILABLE = /** @type {readonly string[]} */ ([
   'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko', 'ar',
   'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
   'th', 'hi', 'fa', 'he', 'ur', 'zh-TW', 'ms', 'tl', 'es-419', 'bn',
+  'ta', 'sw', 'af', 'hu', 'sk', 'sl', 'hr', 'bg', 'lt', 'lv',
 ]);
 
 // Every non-English catalog is machine-translated at the time this ships.
@@ -111,6 +113,16 @@ export const MACHINE_TRANSLATED = /** @type {Record<string, boolean>} */ ({
   tl: true,
   'es-419': true,
   bn: true,
+  ta: true,
+  sw: true,
+  af: true,
+  hu: true,
+  sk: true,
+  sl: true,
+  hr: true,
+  bg: true,
+  lt: true,
+  lv: true,
 });
 
 // Normalize whatever resolveLocale returns (which follows navigator.language:

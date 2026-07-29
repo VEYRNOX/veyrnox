@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Transaksiegeskiedenis",
+      "subhead": "Per-ketting stuur- en ontvangtransaksies direk van die ketting gelees — leesalleen, met verkennerskakels.",
+      "badge_demo": "Demo · voorbeelddata",
+      "badge_mainnet": "Hoofnet",
+      "badge_testnet": "Toetsnet",
+      "privacy_demo_note": "Demo-modus — niks word oor die netwerk bevraag nie; die rye hieronder is plaaslike voorbeelddata.",
+      "loading_label": "{{symbol}}-geskiedenis word gelaai",
+      "error_prefix": "Kon nie geskiedenis laai nie: {{reason}}.",
+      "error_fetch_reason": "Kon nie die RPC-node bereik nie — kontroleer jou verbinding en probeer weer.",
+      "error_generic_reason": "die indekseerder het nie gereageer nie",
+      "retry": "Probeer weer",
+      "no_indexer_title": "In-app-geskiedenis is nie beskikbaar vir {{name}} via JSON-RPC nie",
+      "no_indexer_body": "'n Gewone JSON-RPC-node kan nie 'n adres se transaksies lys nie, en ons voeg doelbewus nie 'n derdeparty-verkenner-/indekseerder-API by nie ('n nuwe databron & huis-toe-bel-vlak). Jou volledige geskiedenis is op die blockverkenner.",
+      "view_on_explorer": "Bekyk {{address}} op {{network}}-verkenner",
+      "view_explorer_title": "Bekyk op blockverkenner",
+      "unlock_for_explorer": "Ontsluit jou beursie om die verkennerskakel vir jou {{symbol}}-adres te kry.",
+      "locked_title": "Beursie gesluit",
+      "locked_body": "Ontsluit jou beursie om jou {{symbol}}-adres af te lei en sy geskiedenis te laai.",
+      "empty": "Nog geen transaksies vir {{symbol}} op {{network}} nie.",
+      "count_one": "{{count}} transaksie",
+      "count_other": "{{count}} transaksies",
+      "most_recent_suffix": " · mees onlangse",
+      "refresh": "Verfris",
+      "sample_badge": "Voorbeeld",
+      "to_prefix": "Aan ",
+      "from_prefix": "Van ",
+      "status_pending": "Hangend",
+      "status_confirmed": "Bevestig",
+      "status_failed": "Misluk",
+      "awaiting_confirmation": "wag vir bevestiging"
+    },
+    "list": {
+      "empty_title": "Nog geen transaksies nie",
+      "empty_description": "Wanneer jy stuur of ontvang op hierdie beursie, sal jou aktiwiteit op die ketting hier verskyn."
+    },
+    "receipt": {
+      "heading": "Transaksiekwitansies",
+      "subhead": "Genereer drukbare kwitansies vir enige transaksie",
+      "search_placeholder": "Soek volgens ID, adres of geldeenheid...",
+      "loading": "Word gelaai...",
+      "error": "Kon nie transaksies laai nie. Probeer asseblief weer.",
+      "empty": "Geen transaksies gevind nie",
+      "preview_title": "Kwitansievoorskou",
+      "print": "Druk",
+      "print_window_title": "Transaksiekwitansie",
+      "brand": "VEYRNOX",
+      "doc_title": "TRANSAKSIEKWITANSIE",
+      "field_receipt_id": "Kwitansie-ID",
+      "field_date": "Datum",
+      "field_type": "Tipe",
+      "field_asset": "Bate",
+      "field_amount": "Bedrag",
+      "field_network_fee": "Netwerkfooi",
+      "field_status": "Status",
+      "field_to": "Aan",
+      "default_type": "Oorplasing",
+      "default_status": "voltooi",
+      "thank_you": "Dankie dat jy {{brand}} gebruik",
+      "thank_you_prefix": "Dankie dat jy",
+      "digital_record": "Dit is 'n digitale transaksierekord"
+    }
+  },
+  "settings": {
+    "heading": "Sekuriteitsinstellings",
+    "subhead": "Sluit, ontsluit en beskerm jou beursie",
+    "theme": {
+      "dark": "Donker Modus",
+      "light": "Lig Modus",
+      "saved_note": "Op hierdie toestel gestoor",
+      "switch_to_light": "Skakel na ligmodus",
+      "switch_to_dark": "Skakel na donkermodus"
+    },
+    "activity_log": {
+      "label": "Aktiwiteitlogboek",
+      "description": "Standaard af · slegs op hierdie toestel gestoor",
+      "help": "Private logboek: wat jy verander, gestuur, herroep het. Geen bedrae of adresse nie. Paniekwis wis dit uit.",
+      "enable_aria": "Aktiveer aktiwiteitlogboek",
+      "disable_aria": "Deaktiveer aktiwiteitlogboek",
+      "no_events": "Nog geen gebeurtenisse aangeteken nie."
+    },
+    "message_signing": {
+      "label": "Boodskap-ondertekening",
+      "description": "Standaard af · slegs op hierdie toestel gestoor",
+      "help": "Standaard af. Laat jou toe om arbitrêre teksboodskappe met jou beursiesleutel te onderteken. Aktiveer slegs as 'n dApp of diens jou vra om 'n boodskap te onderteken.",
+      "enable_aria": "Aktiveer boodskap-ondertekening",
+      "disable_aria": "Deaktiveer boodskap-ondertekening"
+    },
+    "telemetry": {
+      "label": "Anonieme gebruiksdata",
+      "description": "Opt-in · sluit nooit saldo's of adresse in nie",
+      "help": "Help ons om foute te vind en die app te verbeter. 'n Willekeurige toestel-ID word gebruik — nooit gekoppel aan jou beursie, sleutels of identiteit nie. Om dit af te skakel, stop alle gebruiksdata om hierdie toestel te verlaat.",
+      "enable_aria": "Skakel anonieme gebruiksdata aan",
+      "disable_aria": "Skakel anonieme gebruiksdata af"
+    },
+    "delete_account": {
+      "title": "Gevaarsone",
+      "clear_cache_label": "Maak plaaslike kas skoon",
+      "clear_cache_description": "Maak gestoorde data op hierdie toestel skoon en sluit die beursie. Jou herstelfrase werk steeds. Om sleutels uit te wis, gebruik Paniekwis.",
+      "delete_button": "Verwyder",
+      "confirm_prompt_pre": "Dit maak gestoorde data skoon en sluit die beursie. Jou herstelfrase werk steeds. Tik",
+      "confirm_prompt_post": "om te bevestig.",
+      "confirm_placeholder": "Tik DELETE om te bevestig",
+      "confirm_aria": "Tik DELETE om rekening-terugstel te bevestig",
+      "cancel": "Kanselleer",
+      "confirm_delete": "Bevestig Verwydering",
+      "deleting": "Word verwyder..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometriese Ontsluiting",
+      "worth_knowing_label": "Goed om te weet.",
+      "kdf_disclosure": "Eenknoppie-ontsluiting stoor jou beursiewagwoord op hierdie toestel, beskerm deur jou skermslot en biometrie. As iemand 'n kopie van jou toestelrugsteun sonder die fisiese toestel in die hande kry, kan hulle jou beursie bereik. Skakel dit af vir die sterkste beskerming.",
+      "app_layer_disclosure_pre": "Biometriese ontsluiting stoor jou wagwoord op hierdie toestel, beskerm deur jou vingerafdruk of gesig. Dit loop binne die app, nie op bedryfstelselvlak nie.",
+      "app_layer_disclosure_mid": "Vir sterker toestelvlak-beskerming, aktiveer",
+      "hardware_protection_label": "Hardeware-beskerming",
+      "app_layer_disclosure_post": "(hieronder beskikbaar).",
+      "toggle_label": "Biometriese Ontsluiting (Primêre Beursie)",
+      "toggle_description": "Aktiveer eenknoppie-ontsluiting vir jou primêre beursie met toestelbiometrie.",
+      "before_enable_label": "Voor jy dit aktiveer.",
+      "confirm_disclosure": "As iemand 'n kopie van jou toestelrugsteun sonder die fisiese toestel in die hande kry, kan hulle jou beursie bereik. Skakel dit slegs aan as jy daarmee tevrede is.",
+      "confirm_enable_button": "Aktiveer eenknoppie-ontsluiting",
+      "cancel_button": "Kanselleer",
+      "checking_availability": "Beskikbaarheid word gekontroleer…",
+      "default_label": "Biometrie",
+      "available": "{{label}} beskikbaar.",
+      "available_simulated": "{{label}} beskikbaar (gesimuleer in demo).",
+      "status_check_failed": "Kon nie biometriese beskikbaarheid op hierdie toestel kontroleer nie.",
+      "awaiting_prompt": "Wag vir aanwysing…",
+      "preview_prompt": "Voorskou aanwysing",
+      "test_success": "Gesimuleerde verifikasie het geslaag",
+      "test_cancelled": "Aanwysing gekanselleer"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometriese ontsluiting",
+      "heading_web": "Ontsluit met Toegangsleutel",
+      "scope_banner_native_pre": "Jou vingerafdruk of gesig word gekontroleer voor ontsluiting —",
+      "scope_banner_native_post": "nie 'n vervanging vir jou wagwoord nie. Jou wagwoord en herstelfrase werk steeds op hul eie, sodat verlies van biometrie jou nooit uitsluit nie.",
+      "scope_banner_web_pre": "'n Toegangsleutel voeg 'n vinnige biometriese of sekuriteitsleutel-tik by voor ontsluiting —",
+      "scope_banner_web_post": "nie 'n vervanging vir jou wagwoord nie. Jou wagwoord en herstelfrase werk steeds op hul eie, sodat verlies van die toegangsleutel jou nooit uitsluit nie.",
+      "extra_step_label": "'n ekstra stap",
+      "enroll_button": "Registreer biometriese ontsluiting",
+      "register_button": "Registreer 'n toegangsleutel",
+      "not_setup_native": "Toestelbiometrie is nie opgestel nie. Voeg eers 'n vingerafdruk of gesig in jou toestelinstellings by — jou wagwoord werk steeds.",
+      "not_supported_web": "Toegangsleutel-ontsluiting is nie in hierdie blaaier beskikbaar nie. Dit werk in die mobiele app en moderne blaaiers. Gebruik jou wagwoord hier.",
+      "enroll_error": "Kon nie biometriese ontsluiting op hierdie toestel registreer nie.",
+      "register_error": "Kon nie 'n toegangsleutel op hierdie toestel registreer nie.",
+      "enrolled_native": "Biometriese ontsluiting geregistreer",
+      "registered_web": "Toegangsleutel geregistreer",
+      "simulated_suffix": " (gesimuleer)",
+      "remove_button": "Verwyder",
+      "require_toggle_native": "Vereis biometriese ontsluiting",
+      "require_toggle_web": "Vereis {{label}} by ontsluiting",
+      "require_toggle_aria_web": "Vereis toegangsleutel-ontsluiting",
+      "require_toggle_desc_native": "Vra vir jou toestelbiometrie voor ontsluiting (jou wagwoord werk steeds).",
+      "require_toggle_desc_web": "Vra vir jou toegangsleutel voor ontsluiting (jou wagwoord werk steeds).",
+      "applies_all_sessions": "Dit geld vir alle beursiesessies op hierdie toestel.",
+      "default_label": "Toegangsleutel",
+      "checking_availability": "Beskikbaarheid word gekontroleer…",
+      "simulated_in_demo": "{{label}} gesimuleer in demo. ",
+      "awaiting_biometric": "Wag vir biometrie…",
+      "awaiting_passkey": "Wag vir toegangsleutel…",
+      "preview_biometric_prompt": "Voorskou biometriese aanwysing",
+      "preview_passkey_prompt": "Voorskou toegangsleutel-aanwysing",
+      "simulated_prefix": "Gesimuleerde ",
+      "biometric_verified": "biometrie geverifieer",
+      "passkey_verified": "toegangsleutel geverifieer",
+      "biometric_prompt_cancelled": "Biometriese aanwysing gekanselleer",
+      "passkey_prompt_cancelled": "Toegangsleutel-aanwysing gekanselleer"
+    },
+    "hardware_kek": {
+      "heading": "Toestel-gebaseerde hardeware-beskerming",
+      "badge_webauthn": "WebAuthn Beskerm",
+      "badge_off": "AF",
+      "description_pre": "Sluit jou beursie aan hierdie fisiese toestel vas. Ná aktivering kan jou beursie slegs oopgemaak word op ",
+      "description_device": "hierdie toestel",
+      "description_post": ". 'n Gesteelde rugsteunlêer is nutteloos sonder die toestel self, selfs met jou PIN.",
+      "description_web_suffix": "Werk op Chrome 99+ en Firefox 108+. Safari word nie ondersteun nie.",
+      "device_binding_note": "Toestel-vasbinding is aktief en op werklike hardeware getoets.",
+      "checking_status": "Status word gekontroleer…",
+      "web_prf_unsupported": "Hardeware-beskerming is nie in hierdie blaaier beskikbaar nie. Gebruik Chrome 99+ of Firefox 108+, of gebruik die iOS- of Android-app.",
+      "errors": {
+        "wrong_pin": "Verkeerde PIN — voer die PIN in wat jy gebruik om jou beursie te ontsluit.",
+        "no_hardware": "Kon nie hierdie toestel se hardeware-sekuriteit bereik nie. Probeer weer, of gebruik 'n ander toestel.",
+        "malformed_vault": "Jou gestoorde beursiedata kon nie op hierdie toestel gelees word nie.",
+        "not_enrolled": "Hardeware-beskerming is nie op hierdie kluis geaktiveer nie, so daar is niks om op te gradeer nie.",
+        "generic": "Iets het verkeerd geloop. Probeer asseblief weer.",
+        "key_invalidated": "Jou vingerafdrukke het verander — hardeware-beskerming is ongeldig gemaak. Skakel hardeware-beskerming af en weer aan, of herstel vanaf jou saadfrase.",
+        "insecure_tier": "Hierdie toestel het geen veilige hardeware-element nie — hardeware-beskerming kan nie hier geaktiveer word nie.",
+        "enter_pin_first": "Voer eers jou kluis-PIN in.",
+        "enter_pin_confirm_removal": "Voer jou kluis-PIN in om verwydering te bevestig.",
+        "enter_pin_upgrade": "Voer jou kluis-PIN in om op te gradeer."
+      },
+      "toast": {
+        "enabled": "Hardeware-beskerming geaktiveer — jou kluis vereis nou hierdie toestel om te ontsluit.",
+        "removed": "Hardeware-beskerming verwyder.",
+        "upgraded": "Hardeware-beskerming opgegradeer — jou kluis is nou gebind met 'n unieke per-toestel-sleutel."
+      },
+      "pin_strength": {
+        "hardware_title": "Hardeware-beskerm.",
+        "hardware_body": "Jou PIN gekombineer met Face ID, vingerafdruk of toegangsleutel maak vanlyn-aanvalle onuitvoerbaar — 'n aanvaller sou beide jou PIN en hierdie fisiese toestel nodig hê.",
+        "no_hardware_title": "Geen hardewarefaktor beskikbaar in hierdie blaaier nie.",
+        "no_hardware_body": "Jou 8-syfer-PIN (~100 M kombinasies) word slegs deur Argon2id beskerm — 'n toegewyde aanvaller kan dit vanlyn in dae tot weke uitput. Gebruik 'n wagwoord van 12+ karakters, of skakel na Chrome/Firefox om hardeware-beskerming te aktiveer.",
+        "pre_enroll_title": "PIN-sterkte.",
+        "pre_enroll_body": "'n 8-syfer-PIN het ~100 M kombinasies. Argon2id vertraag vanlyn-aanvalle na ongeveer 1–2 jaar enkeldraad — maar 'n GPU-groep kan dit tot dae verkort. Om Face ID, vingerafdruk of toegangsleutel hierbo te aktiveer, maak vanlyn-aanvalle onuitvoerbaar deur hierdie toestel vir elke ontsluiting te vereis."
+      },
+      "enrolled": {
+        "active_title": "Aktief op hierdie toestel",
+        "active_body_native": "Jou kluis vereis hierdie toestel se biometrie om te ontsluit.",
+        "active_body_web": "Jou kluis vereis hierdie toestel se toegangsleutel om te ontsluit."
+      },
+      "upgrade": {
+        "available_title": "Opgradering beskikbaar",
+        "available_body": "Jou beursie is met 'n ouer weergawe beskerm wat 'n sleutel oor toestelle gedeel het. Gradeer op om dit slegs aan hierdie toestel vas te sluit. Dit gebeur eenmalig en vra jou om twee keer te verifieer.",
+        "cta": "Gradeer hardeware-beskerming op",
+        "busy": "Word opgegradeer — keur albei aanwysings goed…",
+        "prompt": "Voer jou kluis-PIN in. Jy sal twee keer verifieer om die kluis te herbeveilig.",
+        "cancel": "Kanselleer"
+      },
+      "remove": {
+        "cta": "Verwyder hardeware-beskerming",
+        "prompt_native": "Voer jou PIN in om te bevestig. Jy sal moet verifieer met jou vingerafdruk of gesig.",
+        "prompt_web": "Voer jou wagwoord in om te bevestig. Jy sal moet verifieer met jou toegangsleutel.",
+        "busy": "Word verwyder — keur die aanwysing goed…",
+        "cancel": "Kanselleer"
+      },
+      "enroll": {
+        "prompt_native": "Voer jou kluis-PIN in om hardeware-beskerming te aktiveer.",
+        "prompt_web": "Voer jou 8-syfer-PIN in om hardeware-beskerming te aktiveer. Jou blaaier sal 'n toegangsleutel skep om jou beursie aan hierdie toestel vas te sluit.",
+        "cta": "Aktiveer hardeware-beskerming",
+        "busy_native": "Word geregistreer — keur die biometriese aanwysing goed…",
+        "busy_web": "Word geregistreer — keur die toegangsleutel-aanwysing goed…",
+        "footnote_native": "Jy sal gevra word om met jou toestelbiometrie of wagkode te verifieer.",
+        "footnote_web": "Jou blaaier sal jou vra om met 'n biometrie of toestel-PIN te verifieer om die toegangsleutel te skep."
+      },
+      "blocked": "Hardeware-beskermingsinstellings is nie in hierdie sessie beskikbaar nie."
+    },
+    "two_factor": {
+      "heading": "Twee-faktor by kritieke aksies",
+      "intro": "'n Ekstra kontrole bo-op jou PIN vir sensitiewe aksies. Selfs al sien iemand jou PIN intik, kan hulle steeds nie hierdie dinge doen sonder die tweede stap nie.",
+      "actions_protects_label": "Aksies wat dit beskerm",
+      "gated_actions": [
+        { "label": "Fondse stuur", "desc": "elke stuurbedrag, ná veiligheidskontroles" },
+        { "label": "Jou herstelfrase onthul", "desc": "bekyk of uitvoer van jou rugsteun" },
+        { "label": "'n Noodgeval-PIN stel", "desc": "die Noodgeval-beursie skep" },
+        { "label": "'n Beursie skep of verskuil", "desc": "verskuilde-beursie-veranderinge" }
+      ],
+      "currently_enforcing": "Tans afgedwing:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Toegangsleutel",
+      "badge_password": "PIN + Aksiewagwoord",
+      "badge_off": "Af (slegs PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Jy is in 'n lokval-/verskuilde sessie. Stel twee-faktor vanaf jou werklike sessie op.",
+      "method_a_title": "PIN + Aksiewagwoord",
+      "on_suffix": "AAN",
+      "method_a_desc": "'n Tweede wagwoord binne jou beursie gestoor. Sterk, maar albei wagwoorde bly op dieselfde toestel.",
+      "label_pin": "Jou PIN",
+      "label_wallet_password": "Beursiewagwoord",
+      "pin_confirm_placeholder": "Bevestig dat dit jy is",
+      "action_password_label_change": "Nuwe Aksiewagwoord",
+      "action_password_label_set": "Aksiewagwoord",
+      "action_password_placeholder": "Ten minste 8 karakters",
+      "action_password_hint": "Ten minste 8 karakters · enige karakters toegelaat",
+      "too_short": "Gebruik ten minste {{min}} karakters.",
+      "confirm_label": "Bevestig",
+      "confirm_placeholder": "Voer die Aksiewagwoord weer in",
+      "confirm_hint": "Moet met jou Aksiewagwoord ooreenstem",
+      "mismatch": "Wagwoorde stem nie ooreen nie.",
+      "save_change": "Verander Aksiewagwoord",
+      "save_set": "Stel Aksiewagwoord",
+      "remove": "Verwyder Aksiewagwoord",
+      "toast_changed": "Aksiewagwoord verander",
+      "toast_set": "Aksiewagwoord gestel",
+      "toast_set_error": "Kon nie die Aksiewagwoord stel nie",
+      "toast_confirm_pin_required": "Voer jou beursie-PIN / wagwoord in om te bevestig",
+      "toast_removed": "Aksiewagwoord verwyder",
+      "toast_remove_error": "Kon nie die Aksiewagwoord verwyder nie",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Toegangsleutel / FIDO2",
+      "method_b_desc_native": "Jou PIN plus {{label}}. As biometrie nie beskikbaar is nie, word die aksie geblokkeer. Om jou toestel te verloor, verloor nooit jou fondse nie.",
+      "method_b_desc_web": "Jou PIN plus 'n toegangsleutel-tik. As die toegangsleutel nie beskikbaar is nie, word die aksie geblokkeer. Om dit te verloor, verloor nooit jou fondse nie.",
+      "switch_aria_native": "Gebruik my toestelbiometrie as my tweede faktor",
+      "switch_aria_web": "Gebruik toegangsleutel as my tweede faktor",
+      "confirm_native": "Bevestig kritieke aksies met {{label}}.",
+      "unavailable_native": "{{label}} / toestelwagkode is nie op hierdie toestel opgestel nie — aktiveer dit in jou toestelinstellings om hierdie faktor te gebruik.",
+      "unsupported_web": "Hierdie blaaier ondersteun nie WebAuthn / toegangsleutels nie.",
+      "register_hint_web_pre": "Nog geen toegangsleutel geregistreer nie — stel een op in",
+      "register_hint_web_strong": "Beursie-toegangsleutels",
+      "register_hint_web_post": "hieronder, aktiveer dan dit.",
+      "toggle_biometric_needed": "{{label}} is nie op hierdie toestel opgestel nie.",
+      "toggle_passkey_needed": "Registreer eers 'n toegangsleutel (Beursie-toegangsleutels, hieronder).",
+      "toggle_biometric_on": "{{label}}-tweede-faktor aan",
+      "toggle_biometric_off": "{{label}}-tweede-faktor af",
+      "toggle_passkey_on": "Toegangsleutel-tweede-faktor aan",
+      "toggle_passkey_off": "Toegangsleutel-tweede-faktor af"
+    },
+    "session": {
+      "title": "Sessie & Outomatiese Sluiting",
+      "description": "Sluit jou beursie ná 'n periode van onaktiwiteit of wanneer jy die app verlaat",
+      "status_unlocked": "Ontsluit",
+      "status_locked": "Gesluit",
+      "auto_lock_after": "Sluit outomaties ná",
+      "never_note": "Geen outomatiese sluiting by ledigheid nie, maar dit sluit steeds ná ~45 s op die agtergrond en ná 8 uur ontsluit.",
+      "resets_note": "Herstel wanneer jy met die app interaksie het. Sluit ook onmiddellik wanneer op die agtergrond geplaas.",
+      "lock_now": "Sluit nou",
+      "recent_activity": "Onlangse aktiwiteit",
+      "view_all": "Bekyk alles",
+      "this_device": "Hierdie toestel",
+      "active_now": "Nou aktief"
+    },
+    "rehearsal": {
+      "title": "Oefen ontkenbaarheid",
+      "description": "Sien die paneelbord presies soos iemand wat jou ontsluite foon vashou dit sou sien."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Beursie",
+    "sidebar_expand": "Vou kantbalk uit",
+    "sidebar_collapse": "Vou kantbalk in",
+    "search_placeholder": "Soek...",
+    "search_shortcut_title": "Soek (⌘K)",
+    "lock": "Sluit",
+    "lock_confirm_prompt": "Sluit hierdie beursie nou?",
+    "back": "Terug",
+    "settings": "Instellings",
+    "main_content_aria": "Hoofinhoud",
+    "bottom_nav_aria": "Onderste navigasie",
+    "more_features_aria": "Meer funksies",
+    "more": "Meer",
+    "close": "Maak toe",
+    "all_features_heading": "Alle Funksies",
+    "recent_heading": "Onlangs",
+    "tab_home": "Tuis",
+    "tab_send": "Stuur",
+    "tab_receive": "Ontvang"
+  },
+  "back": {
+    "default_label": "Terug"
+  },
+  "send": {
+    "heading": "Stuur Kripto",
+    "subheading": "Dra fondse veilig oor",
+    "wallet_fallback": "Beursie",
+    "wallet_picker": { "label": "Vanaf Beursie", "placeholder": "Kies beursie" },
+    "asset_picker": { "label": "Bate", "placeholder": "Kies bate" },
+    "recipient": {
+      "label": "Stuur aan (adres of naam)",
+      "placeholder": "Plak 'n adres of voer 'n naam in (bv. vitalik.eth)",
+      "scan_qr": "Skandeer QR-kode",
+      "resolving": "Naam word opgelos…",
+      "name_not_found": "Naam nie gevind nie — kontroleer die spelling of plak die adres direk.",
+      "ens_using_prefix": "Gebruik {{name}} →",
+      "ens_confirm_intro": "privaat op die blockchain nagegaan tot:",
+      "ens_confirm_hint": "Bevestig dat hierdie adres korrek is voor jy stuur.",
+      "use_this_address": "Gebruik hierdie adres",
+      "not_whitelisted": "Hierdie adres is nie op jou witlys nie. Kontroleer dit noukeurig voor jy voortgaan. Jy kan vertroude adresse in Instellings byvoeg.",
+      "self_send_warning": "Jy stuur na jou eie beursie-adres. Dit skuif niks tussen beursies nie en kos steeds 'n netwerkfooi. Kontroleer die ontvanger noukeurig voor jy voortgaan."
+    },
+    "screening": {
+      "local_disclosure": "Ontvangers word op jou toestel teen bedrogadresse in jou eie geskiedenis gekontroleer — niks verlaat jou toestel nie.",
+      "remote_opt_in": "Kontroleer ook teen 'n aanlyn dreigingsdatabasis (stuur hierdie adres na 'n derde party)",
+      "remote_unavailable": "Aanlyn-kontrole is geaktiveer, maar geen verskaffer is in hierdie bou-weergawe opgestel nie — kontrole bly plaaslik, so ons kon dit nie teen 'n eksterne lys verifieer nie.",
+      "demo_poison_button": "Demo: plak 'n soortgelyke adres"
+    },
+    "simulation": {
+      "title": "Transaksiesimulasie",
+      "toggle_aria": "Skakel transaksiesimulasie",
+      "description": "Voor jy onderteken, loop ons 'n plaaslike voorafvlugkontrole — geen derdeparty-dienste, geen data verlaat jou toestel nie.",
+      "checks": [
+        "Adresrisiko (soortgelyke adres)",
+        "Kontrak-dekodering",
+        "Onbeperkte-goedkeuringsvlag",
+        "Terugkeer-voorspelling",
+        "Afwyking van jou geskiedenis",
+        "Groot-uitvloei-waarskuwing"
+      ],
+      "results_hint": "Resultate verskyn by die volgende stap sodra jy 'n adres en bedrag invoer.",
+      "off_hint": "Simulasie is af — geen voorafvlugkontrole sal voor ondertekening loop nie.",
+      "taking_too_long": "Neem dit te lank?",
+      "turn_off": "Skakel simulasie af"
+    },
+    "amount": {
+      "label": "Bedrag",
+      "placeholder": "0.00",
+      "being_sent": "word gestuur",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(lewendig)",
+      "reading_from_network": "word van netwerk gelees…"
+    },
+    "errors": {
+      "amount_missing": "Bedrag word vereis",
+      "amount_not_positive": "Bedrag moet groter as nul wees",
+      "amount_malformed": "Voer 'n eenvoudige desimale bedrag in, soos 0.5",
+      "amount_over_balance": "Onvoldoende saldo",
+      "insufficient_balance_title": "Onvoldoende saldo.",
+      "insufficient_balance_body": "Jy het {{balance}} {{currency}} beskikbaar om te stuur (na die netwerkfooi). Verminder die bedrag om voort te gaan."
+    },
+    "status": {
+      "not_enabled": "Om te stuur is nog nie geaktiveer vir {{currency}} nie. Hierdie bate is slegs-ontvang totdat sy kripto-pad geverifieer is.",
+      "dev_ungate_title": "DEV-ONGRENDELING AKTIEF",
+      "dev_ungate_body": "— die stuurgrendel word omseil vir {{currency}} via VITE_DEV_UNGATE_SEND (slegs ontwikkelingsbou). Hierdie bate se status is onveranderd (steeds nie lewendig nie); hoofnet bly gegrendel. Slegs vir toetsnet-verifikasie — versend hierdie bou nooit nie.",
+      "locked": "Jou beursie is gesluit. Ontsluit dit in Beursie-instellings om te onderteken en te stuur."
+    },
+    "note": { "label": "Nota (opsioneel)", "placeholder": "Waarvoor is dit?" },
+    "trezor": {
+      "toggle_label": "Onderteken met Trezor",
+      "connected": "Toestel verbind",
+      "connect_button": "Verbind toestel"
+    },
+    "buttons": {
+      "continue": "Gaan voort",
+      "confirm_send": "Bevestig & Stuur",
+      "back": "Terug"
+    },
+    "verify": { "summary_label": "Jy stuur" },
+    "fee": {
+      "automatic": "Netwerkfooi word outomaties gestel vir {{currency}} ({{network}}).",
+      "native_fee_note": "Netwerkfooi word in {{symbol}} ({{network}}) betaal — jy het {{symbol}} nodig om die netwerkfooi te dek, selfs wanneer jy {{token}} stuur."
+    },
+    "decode": {
+      "heading": "Wat hierdie transaksie doen",
+      "action": "Aksie",
+      "send_tokens": "Stuur tokens",
+      "token": "Token",
+      "amount": "Bedrag",
+      "recipient": "Ontvanger",
+      "grant_permission": "Verleen bestedingsmagtiging",
+      "permission": "Magtiging",
+      "unlimited_permission": "Onbeperk (hierdie app kan enige bedrag bestee)",
+      "spender": "Besteder"
+    },
+    "reauth": {
+      "prompt": "Voer jou {{credential}} weer in om te magtig",
+      "credential_pin": "PIN",
+      "credential_password": "wagwoord",
+      "submit_pin": "Magtig",
+      "submit_password": "Magtig & Stuur",
+      "password_placeholder": "Kluiswagwoord",
+      "password_aria": "Kluiswagwoord vir stuur-magtiging",
+      "errors": {
+        "unavailable": "Verifikasie nie beskikbaar nie — sluit en ontsluit die beursie asseblief weer.",
+        "incorrect": "Verkeerd — probeer weer ({{remaining}} oor)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transaksie uitgesaai",
+      "heading": "Transaksie Uitgesaai",
+      "body_suffix": "plaaslik onderteken en na die netwerk gestuur",
+      "tx_hash_label": "Transaksie-hutswaarde",
+      "view_explorer": "Bekyk op blockverkenner",
+      "pending_note": "Hangend totdat bevestig op die netwerk. Saldo word vanaf die blockchain opgedateer, nie 'n gestoorde waarde nie.",
+      "send_another": "Stuur Nog Een"
+    },
+    "toasts": {
+      "ens_off_in_session": "Naamresolusie is in hierdie sessie af — plak die adres direk.",
+      "ens_not_found": "ENS-naam nie gevind nie",
+      "sns_unavailable": "Solana-naamresolusie is nog nie beskikbaar nie — plak die adres direk.",
+      "ens_resolution_failed": "Naamresolusie het misluk",
+      "verify_required": "Voltooi die verifikasie van jou rugsteun voor jy hierdie bedrag stuur.",
+      "two_factor_retry": "Stuur kon nie voltooi word nie — verifieer asseblief weer om te herprobeer.",
+      "send_failed_fallback": "Stuur het misluk",
+      "unconfirmed": "Kon hierdie transaksie nog nie op die netwerk bevestig nie — dit is dalk steeds hangend. Kontroleer die verkenner."
+    }
+  },
+  "receive": {
+    "heading": "Ontvang Kripto",
+    "subheading": "Wys 'n beursie-adres om fondse te ontvang",
+    "asset_label": "Bate",
+    "asset_placeholder": "Kies bate",
+    "not_available": "Om {{name}} ({{symbol}}) te ontvang is nog nie beskikbaar nie. Geen adres word gewys totdat hierdie bate geaktiveer is nie.",
+    "locked": {
+      "title": "Beursie gesluit",
+      "body": "Ontsluit jou beursie om jou {{asset}} {{network}}-ontvangadres te onthul.",
+      "open_hd_wallet": "Open HD-beursiebestuurder"
+    },
+    "your_address": "Jou {{asset}}-adres",
+    "testnet_badge": "Toetsnet",
+    "receive_address_label": "{{symbol}}-ontvangadres",
+    "copy": {
+      "copied_aria": "Adres na knipbord gekopieer",
+      "copy_aria": "Kopieer adres",
+      "copied_toast": "Adres gekopieer",
+      "copy_failed_toast": "Kon nie kopieer nie — kies en kopieer die adres self"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} is 'n token op 'n Ethereum-versoenbare netwerk. Dit is jou beursie-adres — laat die stuurder slegs {{symbol}} op {{network}} stuur. Om dit op 'n ander netwerk te stuur, kan die fondse permanent verloor.",
+      "evm": "Dit is jou gedeelde beursie-adres. Stuur slegs {{name}} op {{network}} na hierdie adres, en maak seker die stuurder gebruik {{network}}.",
+      "btc": "Stuur slegs Bitcoin op {{network}} na hierdie adres.",
+      "solana": "Stuur slegs Solana op {{network}} na hierdie adres."
+    },
+    "select_asset_prompt": "Kies 'n bate om te ontvang.",
+    "unlock_footer_note": "Adresse kom van jou toestel-gebaseerde beursie en verskyn slegs terwyl dit ontsluit is."
+  },
+  "dashboard": {
+    "portfolioValue": "Portefeuljewaarde",
+    "priceAlertsTriggered_one": "{{count}} Prysbelegging Geaktiveer!",
+    "priceAlertsTriggered_other": "{{count}} Prysbelegings Geaktiveer!",
+    "lockAriaLabel": "Sluit saldo agter biometrie",
+    "lockBalance": "Sluit saldo",
+    "synced": "Gesinchroniseer {{time}}",
+    "syncJustNow": "Nou net",
+    "syncSecondsAgo_one": "{{count}}s gelede",
+    "syncSecondsAgo_other": "{{count}}s gelede",
+    "syncMinutesAgo_one": "{{count}}m gelede",
+    "syncMinutesAgo_other": "{{count}}m gelede",
+    "actions": {
+      "send": "Stuur",
+      "receive": "Ontvang",
+      "schedule": "Skeduleer",
+      "add": "Voeg by"
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Aktiwiteit",
+      "analytics": "Analise"
+    },
+    "emptyWallets": {
+      "title": "Nog geen beursies nie",
+      "description": "Voeg 'n beursie by om te begin ontvang, stuur en bates oor kettings te hou."
+    },
+    "addWallet": "Voeg Beursie By",
+    "searchTransactionsPlaceholder": "Soek transaksies...",
+    "emptySearch": {
+      "title": "Geen ooreenstemmende transaksies nie",
+      "description": "Probeer filters uitvee of soek 'n ander bate of adres."
+    },
+    "emptyTransactions": {
+      "title": "Nog geen transaksies nie",
+      "description": "Jou aktiwiteit op die ketting sal hier verskyn sodra jy stuur of ontvang."
+    },
+    "portfolioPerformance": "Portefeuljeprestasie",
+    "assetDistribution": "Bateverspreiding",
+    "quickAccess": "Vinnige Toegang",
+    "quickAccessItems": {
+      "receive": "Ontvang",
+      "security": "Sekuriteit",
+      "approvals": "Goedkeurings",
+      "addressCheck": "Adreskontrole",
+      "analytics": "Analise",
+      "sentiment": "Sentiment",
+      "riskScore": "Risikotelling"
+    },
+    "walletNameLabel": "Beursienaam",
+    "walletNamePlaceholder": "My ETH-beursie",
+    "addWalletDialog": {
+      "title": "Voeg Beursie By",
+      "currency": "Geldeenheid",
+      "creating": "Word geskep...",
+      "create": "Skep Beursie"
+    },
+    "renameWalletDialog": {
+      "title": "Hernoem Beursie",
+      "saving": "Word gestoor...",
+      "save": "Stoor Naam"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Geënkripteerde kluis",
+    "backup": {
+      "title": "Maak rugsteun van \"{{name}}\"",
+      "reauthDescription": "Bevestig dat dit jy is, dan sal ons die herstelfrase vir hierdie beursie wys.",
+      "description": "Skryf hierdie 12 woorde vanlyn neer. Enigiemand met hulle kan hierdie beursie se fondse bestee — en dit is die enigste manier om dit te herstel.",
+      "warning": "Neem nooit 'n skermskoot nie. Tik dit nooit in 'n ander app in nie.",
+      "confirmButton": "Ek het dit neergeskryf — merk as rugsteun gemaak"
+    },
+    "addWallet": {
+      "defaultWalletName": "jou nuwe beursie",
+      "backupDescription": "Hierdie beursie het sy eie herstelfrase — apart van elke ander beursie in jou kluis. Skryf dit vanlyn neer voor jy dit gebruik.",
+      "backedUpDone": "Ek het dit rugsteun gemaak — klaar",
+      "title": "Voeg 'n beursie by",
+      "createNew": "Skep nuwe",
+      "importSeed": "Voer saad in",
+      "createDescription": "Genereer 'n NUWE saad wat ALLE kettings aflei (ETH/EVM, BTC, SOL). Jy sal dit rugsteun voordat dit aktief is.",
+      "importDescription": "Plak 'n bestaande 12/24-woord-saad — alle kettings word outomaties afgelei ('n saad is nie ketting-spesifiek nie).",
+      "recoveryPhraseLabel": "Herstelfrase",
+      "recoveryPhrasePlaceholder": "woord1 woord2 ... woord12",
+      "walletNameLabel": "Beursienaam",
+      "walletNamePlaceholder": "bv. Spaargeld",
+      "assetsToShowLabel": "Bates om te wys",
+      "assetsToShowHint": "Slegs vertoonkeuse — die saad hou elke ketting ongeag.",
+      "confirmVaultPlaceholder": "Bevestig dat dit jy is om jou kluis te verander",
+      "vaultReentryHint": "Weer ingevoer om 'n verandering aan jou saadkluis te magtig. Nooit in geheue gehou nie.",
+      "createAndBackup": "Skep & maak rugsteun",
+      "importWallet": "Voer beursie in"
+    },
+    "vaultPinLabel": "Kluis-PIN",
+    "vaultPasswordLabel": "Kluiswagwoord",
+    "cancel": "Kanselleer",
+    "done": "Klaar",
+    "manageAssets": {
+      "title": "Bates vir \"{{name}}\"",
+      "description": "Kies watter bates vir hierdie beursie gewys word. Verskuilde bates bly uit die pad totdat bygevoeg."
+    },
+    "rename": {
+      "title": "Hernoem beursie",
+      "save": "Stoor naam"
+    },
+    "remove": {
+      "title": "Verwyder \"{{name}}\"?",
+      "onlyWallet": "Dit is jou enigste beursie — dit kan nie verwyder word nie. Gebruik Paniekwis in Sekuriteit om alles uit te wis.",
+      "description": "Verwyder hierdie beursie se saad van hierdie toestel.",
+      "backedUpNote": "Jy kan dit vanaf sy herstelfrase herstel.",
+      "notBackedUpNote": "⚠️ NIE rugsteun gemaak nie — sonder sy frase is dit vir altyd weg.",
+      "button": "Verwyder beursie"
+    },
+    "move": {
+      "title": "Skuif \"{{name}}\" na…"
+    },
+    "managePortfolios": {
+      "title": "Portefeuljes",
+      "defaultTag": "(verstek)",
+      "saveAriaLabel": "Stoor portefeuljenaam",
+      "renameAriaLabel": "Hernoem {{name}}",
+      "deleteAriaLabel": "Verwyder {{name}}",
+      "newNamePlaceholder": "Nuwe portefeuljenaam",
+      "addButton": "Voeg by"
+    },
+    "activity": {
+      "unlockPrompt": "Ontsluit jou beursie om aktiwiteit te bekyk.",
+      "loading": "Word gelaai...",
+      "loadError": "Kon nie aktiwiteit laai nie.",
+      "noTransactions": "Nog geen transaksies nie.",
+      "viewFullHistory": "Bekyk volledige geskiedenis →"
+    },
+    "portfolioValueLabel": "Portefeuljewaarde",
+    "explore": {
+      "subtitle": "Jy verken — slegs bekyk. Nog geen beursie nie.",
+      "description": "Kyk vrylik rond. Wanneer jy gereed is, skep 'n nuwe selfbewaring-beursie of voer 'n bestaande saad in — sleutels word op hierdie toestel gegenereer en geënkripteer.",
+      "createOrImport": "Skep of voer 'n beursie in"
+    },
+    "portfoliosButton": "Portefeuljes",
+    "totalValueHeading": "{{name}} · Totale Waarde",
+    "partialTotalNote": "Sommige saldo's kon nie gelaai word nie — hierdie totaal is dalk onvolledig.",
+    "refreshPricesTooltip": "Verfris lewendige pryse",
+    "live": "Lewendig",
+    "approximate": "Benaderd",
+    "seedVerify": {
+      "title": "Voltooi die verifikasie van jou rugsteun",
+      "description": "Vereis om bo die veiligheidsdrempel te stuur.",
+      "verifyAriaLabel": "Verifieer jou beursierugsteun",
+      "verifyButton": "Verifieer"
+    },
+    "unbacked": {
+      "titleBold": "Beursierugsteun onvolledig.",
+      "body": "Elke beursie het sy eie herstelfrase — sonder dit is daardie beursie se fondse onherstelbaar. Maak nou rugsteun.",
+      "backUpButton": "Maak rugsteun van \"{{name}}\""
+    },
+    "actions": {
+      "send": "Stuur",
+      "receive": "Ontvang",
+      "addWallet": "Voeg beursie by"
+    },
+    "activeWalletHint": {
+      "prefix": "Stuur/Ontvang gebruik",
+      "otherPortfolio": " (in 'n ander portefeulje)",
+      "suffix": ". Tik op 'n beursie hieronder om te wissel."
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Aktiwiteit",
+      "analytics": "Analise"
+    },
+    "noWalletsInPortfolio": "Geen beursies in \"{{name}}\" nie. Voeg 'n beursie by, of skuif een hierheen vanaf sy kieslys.",
+    "hideAssets": "Verskuil bates",
+    "showAllAssets": "Wys alle bates",
+    "walletCard": {
+      "active": "Aktief",
+      "backedUp": "Rugsteun gemaak",
+      "backUp": "Maak rugsteun",
+      "partial": "gedeeltelik",
+      "optionsAriaLabel": "Opsies vir {{name}}",
+      "noAssetsShown": "Geen bates gewys nie. Gebruik \"Bestuur bates\"."
+    },
+    "menu": {
+      "manageAssets": "Bestuur bates",
+      "rename": "Hernoem",
+      "moveToPortfolio": "Skuif na portefeulje",
+      "backUp": "Maak rugsteun",
+      "remove": "Verwyder"
+    },
+    "balanceLoadFailedTitle": "Saldo kon nie gelaai word nie",
+    "defaultWalletFallbackName": "beursie",
+    "toast": {
+      "walletImported": "Beursie ingevoer — alle kettings afgelei.",
+      "walletRemoved": "Beursie van hierdie toestel verwyder.",
+      "walletAddedBackedUp": "Beursie bygevoeg en rugsteun gemaak.",
+      "movedTo": "Geskuif na {{name}}.",
+      "markedBackedUp": "\"{{name}}\" as rugsteun gemaak gemerk."
+    },
+    "errors": {
+      "couldNotAddWallet": "Kon nie beursie byvoeg nie",
+      "couldNotImportWallet": "Kon nie beursie invoer nie",
+      "couldNotRemoveWallet": "Kon nie beursie verwyder nie"
+    }
+  },
+  "networth": {
+    "title": "Kripto Netto Waarde",
+    "unlockPrompt": "Ontsluit jou beursie om jou bates op die ketting te sien.",
+    "subtitle": "Jou bates op die ketting — sluit nie eksterne bates in nie.",
+    "totalHoldings": "Totale bates",
+    "partialNote": "gedeeltelik — sommige saldo's kon nie gelees word nie",
+    "refreshPricesTooltip": "Verfris lewendige pryse",
+    "live": "Lewendig",
+    "approximate": "Benaderd",
+    "allocation": "Toewysing",
+    "holdings": "Bates",
+    "noHoldings": "Nog geen bates nie."
+  }
+}

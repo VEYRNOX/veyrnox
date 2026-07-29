@@ -36,7 +36,17 @@
       "ms": "Bahasa Melayu",
       "tl": "Filipino",
       "es-419": "Español (Latinoamérica)",
-      "bn": "বাংলা"
+      "bn": "বাংলা",
+      "ta": "தமிழ்",
+      "sw": "Kiswahili",
+      "af": "Afrikaans",
+      "hu": "Magyar",
+      "sk": "Slovenčina",
+      "sl": "Slovenščina",
+      "hr": "Hrvatski",
+      "bg": "Български",
+      "lt": "Lietuvių",
+      "lv": "Latviešu"
     }
   },
   "actions": {

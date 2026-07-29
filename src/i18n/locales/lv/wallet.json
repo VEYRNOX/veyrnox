@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Darījumu vēsture",
+      "subhead": "Sūtījumi un saņēmumi katrai ķēdei, nolasīti tieši no blokķēdes — tikai lasīšanai, ar saitēm uz pārlūku.",
+      "badge_demo": "Demo · parauga dati",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Demo režīms — tīklā nekas netiek pieprasīts; tālāk redzamās rindas ir vietējie parauga dati.",
+      "loading_label": "Ielādē {{symbol}} vēsturi",
+      "error_prefix": "Neizdevās ielādēt vēsturi: {{reason}}.",
+      "error_fetch_reason": "Neizdevās sasniegt RPC mezglu — pārbaudiet savienojumu un mēģiniet vēlreiz.",
+      "error_generic_reason": "indeksētājs neatbildēja",
+      "retry": "Mēģināt vēlreiz",
+      "no_indexer_title": "Vēsture lietotnē nav pieejama {{name}} caur JSON-RPC",
+      "no_indexer_body": "Vienkāršs JSON-RPC mezgls nevar uzskaitīt adreses darījumus, un mēs apzināti nepievienojam trešās puses pārlūka/indeksētāja API (jauns datu avots un ārējas saziņas virsma). Jūsu pilnā vēsture ir bloku pārlūkā.",
+      "view_on_explorer": "Skatīt {{address}} tīklā {{network}} pārlūkā",
+      "view_explorer_title": "Skatīt bloku pārlūkā",
+      "unlock_for_explorer": "Atbloķējiet savu maku, lai iegūtu pārlūka saiti jūsu {{symbol}} adresei.",
+      "locked_title": "Maks bloķēts",
+      "locked_body": "Atbloķējiet savu maku, lai atvasinātu jūsu {{symbol}} adresi un ielādētu tās vēsturi.",
+      "empty": "Vēl nav darījumu ar {{symbol}} tīklā {{network}}.",
+      "count_one": "{{count}} darījums",
+      "count_other": "{{count}} darījumi",
+      "most_recent_suffix": " · jaunākais",
+      "refresh": "Atsvaidzināt",
+      "sample_badge": "Paraugs",
+      "to_prefix": "Kam ",
+      "from_prefix": "No ",
+      "status_pending": "Gaida",
+      "status_confirmed": "Apstiprināts",
+      "status_failed": "Neizdevās",
+      "awaiting_confirmation": "gaida apstiprinājumu"
+    },
+    "list": {
+      "empty_title": "Vēl nav darījumu",
+      "empty_description": "Kad šajā makā sūtīsiet vai saņemsiet, jūsu darbība blokķēdē parādīsies šeit."
+    },
+    "receipt": {
+      "heading": "Darījumu čeki",
+      "subhead": "Ģenerējiet drukājamus čekus jebkuram darījumam",
+      "search_placeholder": "Meklēt pēc ID, adreses vai valūtas...",
+      "loading": "Ielādē...",
+      "error": "Neizdevās ielādēt darījumus. Lūdzu, mēģiniet vēlreiz.",
+      "empty": "Darījumi nav atrasti",
+      "preview_title": "Čeka priekšskatījums",
+      "print": "Drukāt",
+      "print_window_title": "Darījuma čeks",
+      "brand": "VEYRNOX",
+      "doc_title": "DARĪJUMA ČEKS",
+      "field_receipt_id": "Čeka ID",
+      "field_date": "Datums",
+      "field_type": "Veids",
+      "field_asset": "Aktīvs",
+      "field_amount": "Summa",
+      "field_network_fee": "Tīkla maksa",
+      "field_status": "Statuss",
+      "field_to": "Kam",
+      "default_type": "Pārskaitījums",
+      "default_status": "pabeigts",
+      "thank_you": "Paldies, ka izmantojāt {{brand}}",
+      "thank_you_prefix": "Paldies, ka izmantojāt",
+      "digital_record": "Šis ir digitāls darījuma ieraksts"
+    }
+  },
+  "settings": {
+    "heading": "Drošības iestatījumi",
+    "subhead": "Bloķējiet, atbloķējiet un aizsargājiet savu maku",
+    "theme": {
+      "dark": "Tumšais režīms",
+      "light": "Gaišais režīms",
+      "saved_note": "Saglabāts šajā ierīcē",
+      "switch_to_light": "Pārslēgt uz gaišo režīmu",
+      "switch_to_dark": "Pārslēgt uz tumšo režīmu"
+    },
+    "activity_log": {
+      "label": "Darbību žurnāls",
+      "description": "Pēc noklusējuma izslēgts · glabāts tikai šajā ierīcē",
+      "help": "Privāts žurnāls: ko mainījāt, sūtījāt, atsaucāt. Nav summu vai adrešu. Panikas dzēšana to izdzēš.",
+      "enable_aria": "Iespējot darbību žurnālu",
+      "disable_aria": "Atspējot darbību žurnālu",
+      "no_events": "Vēl nav reģistrētu notikumu."
+    },
+    "message_signing": {
+      "label": "Ziņojumu parakstīšana",
+      "description": "Pēc noklusējuma izslēgts · glabāts tikai šajā ierīcē",
+      "help": "Pēc noklusējuma izslēgts. Ļauj parakstīt patvaļīgus teksta ziņojumus ar jūsu maka atslēgu. Iespējojiet tikai tad, ja dApp vai pakalpojums lūdz jūs parakstīt ziņojumu.",
+      "enable_aria": "Iespējot ziņojumu parakstīšanu",
+      "disable_aria": "Atspējot ziņojumu parakstīšanu"
+    },
+    "telemetry": {
+      "label": "Anonīmi lietošanas dati",
+      "description": "Izvēles · nekad neietver atlikumus vai adreses",
+      "help": "Palīdz mums atrast kļūdas un uzlabot lietotni. Tiek izmantots nejauši ģenerēts ierīces ID — tas nekad netiek saistīts ar jūsu maku, atslēgām vai identitāti. Izslēdzot šo, visi lietošanas dati vairs neatstāj šo ierīci.",
+      "enable_aria": "Ieslēgt anonīmus lietošanas datus",
+      "disable_aria": "Izslēgt anonīmus lietošanas datus"
+    },
+    "delete_account": {
+      "title": "Bīstamā zona",
+      "clear_cache_label": "Notīrīt vietējo kešatmiņu",
+      "clear_cache_description": "Notīra šajā ierīcē saglabātos datus un bloķē maku. Jūsu atkopšanas frāze joprojām darbojas. Lai dzēstu atslēgas, izmantojiet Panikas dzēšanu.",
+      "delete_button": "Dzēst",
+      "confirm_prompt_pre": "Tas notīra saglabātos datus un bloķē maku. Jūsu atkopšanas frāze joprojām darbojas. Ierakstiet",
+      "confirm_prompt_post": "lai apstiprinātu.",
+      "confirm_placeholder": "Ierakstiet DELETE, lai apstiprinātu",
+      "confirm_aria": "Ierakstiet DELETE, lai apstiprinātu konta atiestatīšanu",
+      "cancel": "Atcelt",
+      "confirm_delete": "Apstiprināt dzēšanu",
+      "deleting": "Dzēš..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometriskā atbloķēšana",
+      "worth_knowing_label": "Noderīgi zināt.",
+      "kdf_disclosure": "Atbloķēšana ar vienu pieskārienu saglabā jūsu maka paroli šajā ierīcē, ko aizsargā jūsu ekrāna bloķēšana un biometrija. Ja kāds iegūst jūsu ierīces dublējuma kopiju bez pašas ierīces, viņi varētu piekļūt jūsu makam. Izslēdziet šo funkciju spēcīgākajai aizsardzībai.",
+      "app_layer_disclosure_pre": "Biometriskā atbloķēšana saglabā jūsu paroli šajā ierīcē, ko aizsargā jūsu pirksta nospiedums vai seja. Tas darbojas lietotnes iekšienē, nevis operētājsistēmas līmenī.",
+      "app_layer_disclosure_mid": "Stiprākai aizsardzībai ierīces līmenī iespējojiet",
+      "hardware_protection_label": "Aparatūras aizsardzība",
+      "app_layer_disclosure_post": "(pieejama zemāk).",
+      "toggle_label": "Biometriskā atbloķēšana (galvenais maks)",
+      "toggle_description": "Iespējojiet atbloķēšanu ar vienu pieskārienu savam galvenajam makam, izmantojot ierīces biometriju.",
+      "before_enable_label": "Pirms iespējošanas.",
+      "confirm_disclosure": "Ja kāds iegūst jūsu ierīces dublējuma kopiju bez pašas ierīces, viņi varētu piekļūt jūsu makam. Ieslēdziet to tikai tad, ja jums tas ir pieņemami.",
+      "confirm_enable_button": "Iespējot atbloķēšanu ar vienu pieskārienu",
+      "cancel_button": "Atcelt",
+      "checking_availability": "Pārbauda pieejamību…",
+      "default_label": "Biometrija",
+      "available": "{{label}} pieejama.",
+      "available_simulated": "{{label}} pieejama (simulēta demo režīmā).",
+      "status_check_failed": "Neizdevās pārbaudīt biometrijas pieejamību šajā ierīcē.",
+      "awaiting_prompt": "Gaida uzvedni…",
+      "preview_prompt": "Priekšskatīt uzvedni",
+      "test_success": "Simulētā autentifikācija veiksmīga",
+      "test_cancelled": "Uzvedne atcelta"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometriskā atbloķēšana",
+      "heading_web": "Atbloķēt ar piekļuves atslēgu",
+      "scope_banner_native_pre": "Jūsu pirksta nospiedums vai seja tiek pārbaudīta pirms atbloķēšanas —",
+      "scope_banner_native_post": "nevis paroles aizstājējs. Jūsu parole un atkopšanas frāze joprojām darbojas atsevišķi, tāpēc biometrijas zaudēšana nekad neieslēdz slēdzeni.",
+      "scope_banner_web_pre": "Piekļuves atslēga pievieno ātru biometrisku vai drošības atslēgas pieskārienu pirms atbloķēšanas —",
+      "scope_banner_web_post": "nevis paroles aizstājēju. Jūsu parole un atkopšanas frāze joprojām darbojas atsevišķi, tāpēc piekļuves atslēgas zaudēšana nekad neieslēdz slēdzeni.",
+      "extra_step_label": "papildu solis",
+      "enroll_button": "Reģistrēt biometrisko atbloķēšanu",
+      "register_button": "Reģistrēt piekļuves atslēgu",
+      "not_setup_native": "Ierīces biometrija nav iestatīta. Vispirms pievienojiet pirksta nospiedumu vai seju ierīces iestatījumos — jūsu parole joprojām darbojas.",
+      "not_supported_web": "Piekļuves atslēgas atbloķēšana nav pieejama šajā pārlūkā. Tā darbojas mobilajā lietotnē un mūsdienīgos pārlūkos. Izmantojiet savu paroli šeit.",
+      "enroll_error": "Neizdevās reģistrēt biometrisko atbloķēšanu šajā ierīcē.",
+      "register_error": "Neizdevās reģistrēt piekļuves atslēgu šajā ierīcē.",
+      "enrolled_native": "Biometriskā atbloķēšana reģistrēta",
+      "registered_web": "Piekļuves atslēga reģistrēta",
+      "simulated_suffix": " (simulēts)",
+      "remove_button": "Noņemt",
+      "require_toggle_native": "Pieprasīt biometrisko atbloķēšanu",
+      "require_toggle_web": "Pieprasīt {{label}} atbloķēšanai",
+      "require_toggle_aria_web": "Pieprasīt piekļuves atslēgas atbloķēšanu",
+      "require_toggle_desc_native": "Pieprasīt jūsu ierīces biometriju pirms atbloķēšanas (jūsu parole joprojām darbojas).",
+      "require_toggle_desc_web": "Pieprasīt jūsu piekļuves atslēgu pirms atbloķēšanas (jūsu parole joprojām darbojas).",
+      "applies_all_sessions": "Tas attiecas uz visām maka sesijām šajā ierīcē.",
+      "default_label": "Piekļuves atslēga",
+      "checking_availability": "Pārbauda pieejamību…",
+      "simulated_in_demo": "{{label}} simulēta demo režīmā. ",
+      "awaiting_biometric": "Gaida biometriju…",
+      "awaiting_passkey": "Gaida piekļuves atslēgu…",
+      "preview_biometric_prompt": "Priekšskatīt biometrijas uzvedni",
+      "preview_passkey_prompt": "Priekšskatīt piekļuves atslēgas uzvedni",
+      "simulated_prefix": "Simulēts ",
+      "biometric_verified": "biometrija pārbaudīta",
+      "passkey_verified": "piekļuves atslēga pārbaudīta",
+      "biometric_prompt_cancelled": "Biometrijas uzvedne atcelta",
+      "passkey_prompt_cancelled": "Piekļuves atslēgas uzvedne atcelta"
+    },
+    "hardware_kek": {
+      "heading": "Aparatūras aizsardzība ierīcē",
+      "badge_webauthn": "Aizsargāts ar WebAuthn",
+      "badge_off": "IZSLĒGTS",
+      "description_pre": "Piesaista jūsu maku šai fiziskajai ierīcei. Pēc iespējošanas jūsu maku var atvērt tikai ",
+      "description_device": "šajā ierīcē",
+      "description_post": ". Nozagts dublējuma fails ir bezjēdzīgs bez pašas ierīces, pat ar jūsu PIN.",
+      "description_web_suffix": "Darbojas Chrome 99+ un Firefox 108+. Safari netiek atbalstīts.",
+      "device_binding_note": "Ierīces piesaiste ir aktīva un pārbaudīta uz reālas aparatūras.",
+      "checking_status": "Pārbauda statusu…",
+      "web_prf_unsupported": "Aparatūras aizsardzība nav pieejama šajā pārlūkā. Izmantojiet Chrome 99+ vai Firefox 108+, vai izmantojiet iOS vai Android lietotni.",
+      "errors": {
+        "wrong_pin": "Nepareizs PIN — ievadiet PIN, ko izmantojat maka atbloķēšanai.",
+        "no_hardware": "Neizdevās sasniegt šīs ierīces aparatūras drošību. Mēģiniet vēlreiz vai izmantojiet citu ierīci.",
+        "malformed_vault": "Jūsu saglabātos maka datus šajā ierīcē nevarēja nolasīt.",
+        "not_enrolled": "Aparatūras aizsardzība šai glabātuvei nav iespējota, tāpēc nav ko jaunināt.",
+        "generic": "Kaut kas nogāja greizi. Lūdzu, mēģiniet vēlreiz.",
+        "key_invalidated": "Jūsu pirkstu nospiedumi mainījās — aparatūras aizsardzība tika padarīta par nederīgu. Atspējojiet un atkārtoti iespējojiet aparatūras aizsardzību vai atjaunojiet no savas sēklas frāzes.",
+        "insecure_tier": "Šai ierīcei nav droša aparatūras elementa — šeit aparatūras aizsardzību nevar iespējot.",
+        "enter_pin_first": "Vispirms ievadiet savu glabātuves PIN.",
+        "enter_pin_confirm_removal": "Ievadiet savu glabātuves PIN, lai apstiprinātu noņemšanu.",
+        "enter_pin_upgrade": "Ievadiet savu glabātuves PIN, lai jauninātu."
+      },
+      "toast": {
+        "enabled": "Aparatūras aizsardzība iespējota — jūsu glabātuvei tagad nepieciešama šī ierīce atbloķēšanai.",
+        "removed": "Aparatūras aizsardzība noņemta.",
+        "upgraded": "Aparatūras aizsardzība jaunināta — jūsu glabātuve tagad ir piesaistīta ar unikālu, katrai ierīcei atšķirīgu atslēgu."
+      },
+      "pin_strength": {
+        "hardware_title": "Aizsargāts ar aparatūru.",
+        "hardware_body": "Jūsu PIN kombinācijā ar Face ID, pirksta nospiedumu vai piekļuves atslēgu padara bezsaistes uzbrukumus neīstenojamus — uzbrucējam būtu nepieciešams gan jūsu PIN, gan šī fiziskā ierīce.",
+        "no_hardware_title": "Šajā pārlūkā nav pieejams aparatūras faktors.",
+        "no_hardware_body": "Jūsu 8 ciparu PIN (~100 M kombināciju) ir aizsargāts tikai ar Argon2id — mērķtiecīgs uzbrucējs to varētu izsmelt bezsaistē dienu vai nedēļu laikā. Izmantojiet vismaz 12 rakstzīmju paroli vai pārslēdzieties uz Chrome/Firefox, lai iespējotu aparatūras aizsardzību.",
+        "pre_enroll_title": "PIN stiprums.",
+        "pre_enroll_body": "8 ciparu PIN ir ~100 M kombināciju. Argon2id palēnina bezsaistes uzbrukumus līdz aptuveni 1–2 gadiem viena pavediena režīmā — bet GPU klasteris to varētu saīsināt līdz dienām. Face ID, pirksta nospieduma vai piekļuves atslēgas iespējošana augstāk padara bezsaistes uzbrukumus neīstenojamus, pieprasot šo ierīci katrai atbloķēšanai."
+      },
+      "enrolled": {
+        "active_title": "Aktīvs šajā ierīcē",
+        "active_body_native": "Jūsu glabātuvei atbloķēšanai nepieciešama šīs ierīces biometrija.",
+        "active_body_web": "Jūsu glabātuvei atbloķēšanai nepieciešama šīs ierīces piekļuves atslēga."
+      },
+      "upgrade": {
+        "available_title": "Pieejams jauninājums",
+        "available_body": "Jūsu maks bija aizsargāts ar vecāku versiju, kas koplietoja atslēgu starp ierīcēm. Jauniniet, lai piesaistītu to tikai šai ierīcei. Tas notiek vienu reizi un lūdz jūs pārbaudīt divreiz.",
+        "cta": "Jaunināt aparatūras aizsardzību",
+        "busy": "Jaunina — apstipriniet abas uzvednes…",
+        "prompt": "Ievadiet savu glabātuves PIN. Jūs autentificēsieties divreiz, lai atkārtoti nodrošinātu glabātuvi.",
+        "cancel": "Atcelt"
+      },
+      "remove": {
+        "cta": "Noņemt aparatūras aizsardzību",
+        "prompt_native": "Ievadiet savu PIN, lai apstiprinātu. Jums būs jāpārbauda ar pirksta nospiedumu vai seju.",
+        "prompt_web": "Ievadiet savu paroli, lai apstiprinātu. Jums būs jāpārbauda ar piekļuves atslēgu.",
+        "busy": "Noņem — apstipriniet uzvedni…",
+        "cancel": "Atcelt"
+      },
+      "enroll": {
+        "prompt_native": "Ievadiet savu glabātuves PIN, lai iespējotu aparatūras aizsardzību.",
+        "prompt_web": "Ievadiet savu 8 ciparu PIN, lai iespējotu aparatūras aizsardzību. Jūsu pārlūks izveidos piekļuves atslēgu, lai piesaistītu jūsu maku šai ierīcei.",
+        "cta": "Iespējot aparatūras aizsardzību",
+        "busy_native": "Reģistrē — apstipriniet biometrijas uzvedni…",
+        "busy_web": "Reģistrē — apstipriniet piekļuves atslēgas uzvedni…",
+        "footnote_native": "Jums tiks lūgts autentificēties ar ierīces biometriju vai piekļuves kodu.",
+        "footnote_web": "Jūsu pārlūks lūgs jums autentificēties ar biometriju vai ierīces PIN, lai izveidotu piekļuves atslēgu."
+      },
+      "blocked": "Aparatūras aizsardzības iestatījumi šajā sesijā nav pieejami."
+    },
+    "two_factor": {
+      "heading": "Divfaktoru autentifikācija kritiskām darbībām",
+      "intro": "Papildu pārbaude papildus jūsu PIN sensitīvām darbībām. Pat ja kāds redz jūs ievadām PIN, viņi joprojām nevar veikt šīs darbības bez otrā soļa.",
+      "actions_protects_label": "Darbības, ko tas aizsargā",
+      "gated_actions": [
+        { "label": "Līdzekļu sūtīšana", "desc": "katrs sūtījums pēc drošības pārbaudēm" },
+        { "label": "Atkopšanas frāzes atklāšana", "desc": "dublējuma skatīšana vai eksportēšana" },
+        { "label": "Ārkārtas PIN iestatīšana", "desc": "Ārkārtas maka izveide" },
+        { "label": "Maka izveide vai slēpšana", "desc": "slēptā maka izmaiņas" }
+      ],
+      "currently_enforcing": "Pašlaik piemēro:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + piekļuves atslēga",
+      "badge_password": "PIN + darbības parole",
+      "badge_off": "Izslēgts (tikai PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Jūs atrodaties māneklīša / slēptajā sesijā. Konfigurējiet divfaktoru autentifikāciju no savas īstās sesijas.",
+      "method_a_title": "PIN + darbības parole",
+      "on_suffix": "IESLĒGTS",
+      "method_a_desc": "Otra parole, kas saglabāta jūsu makā. Spēcīga, bet abas paroles atrodas tajā pašā ierīcē.",
+      "label_pin": "Jūsu PIN",
+      "label_wallet_password": "Maka parole",
+      "pin_confirm_placeholder": "Apstipriniet, ka tas esat jūs",
+      "action_password_label_change": "Jaunā darbības parole",
+      "action_password_label_set": "Darbības parole",
+      "action_password_placeholder": "Vismaz 8 rakstzīmes",
+      "action_password_hint": "Vismaz 8 rakstzīmes · atļautas jebkuras rakstzīmes",
+      "too_short": "Izmantojiet vismaz {{min}} rakstzīmes.",
+      "confirm_label": "Apstiprināt",
+      "confirm_placeholder": "Ievadiet darbības paroli vēlreiz",
+      "confirm_hint": "Jāsakrīt ar jūsu darbības paroli",
+      "mismatch": "Paroles nesakrīt.",
+      "save_change": "Mainīt darbības paroli",
+      "save_set": "Iestatīt darbības paroli",
+      "remove": "Noņemt darbības paroli",
+      "toast_changed": "Darbības parole mainīta",
+      "toast_set": "Darbības parole iestatīta",
+      "toast_set_error": "Neizdevās iestatīt darbības paroli",
+      "toast_confirm_pin_required": "Ievadiet savu maka PIN / paroli, lai apstiprinātu",
+      "toast_removed": "Darbības parole noņemta",
+      "toast_remove_error": "Neizdevās noņemt darbības paroli",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + piekļuves atslēga / FIDO2",
+      "method_b_desc_native": "Jūsu PIN plus {{label}}. Ja biometrija nav pieejama, darbība tiek bloķēta. Ierīces zaudēšana nekad nezaudē jūsu līdzekļus.",
+      "method_b_desc_web": "Jūsu PIN plus piekļuves atslēgas pieskāriens. Ja piekļuves atslēga nav pieejama, darbība tiek bloķēta. Tās zaudēšana nekad nezaudē jūsu līdzekļus.",
+      "switch_aria_native": "Izmantot manas ierīces biometriju kā otro faktoru",
+      "switch_aria_web": "Izmantot piekļuves atslēgu kā otro faktoru",
+      "confirm_native": "Apstipriniet kritiskas darbības ar {{label}}.",
+      "unavailable_native": "{{label}} / ierīces piekļuves kods šajā ierīcē nav iestatīts — iespējojiet to ierīces iestatījumos, lai izmantotu šo faktoru.",
+      "unsupported_web": "Šis pārlūks neatbalsta WebAuthn / piekļuves atslēgas.",
+      "register_hint_web_pre": "Vēl nav reģistrēta neviena piekļuves atslēga — iestatiet vienu sadaļā",
+      "register_hint_web_strong": "Maka piekļuves atslēgas",
+      "register_hint_web_post": "zemāk, tad iespējojiet šo.",
+      "toggle_biometric_needed": "{{label}} šajā ierīcē nav iestatīta.",
+      "toggle_passkey_needed": "Vispirms reģistrējiet piekļuves atslēgu (Maka piekļuves atslēgas zemāk).",
+      "toggle_biometric_on": "{{label}} otrais faktors ieslēgts",
+      "toggle_biometric_off": "{{label}} otrais faktors izslēgts",
+      "toggle_passkey_on": "Piekļuves atslēgas otrais faktors ieslēgts",
+      "toggle_passkey_off": "Piekļuves atslēgas otrais faktors izslēgts"
+    },
+    "session": {
+      "title": "Sesija un automātiskā bloķēšana",
+      "description": "Bloķē jūsu maku pēc neaktivitātes perioda vai kad pametat lietotni",
+      "status_unlocked": "Atbloķēts",
+      "status_locked": "Bloķēts",
+      "auto_lock_after": "Automātiski bloķēt pēc",
+      "never_note": "Bez automātiskas bloķēšanas dīkstāvē, bet tā joprojām bloķējas pēc ~45 s fonā un pēc 8 stundām atbloķētā stāvoklī.",
+      "resets_note": "Atiestatās, kad mijiedarbojaties ar lietotni. Arī nekavējoties bloķējas, kad tiek pārvietota fonā.",
+      "lock_now": "Bloķēt tagad",
+      "recent_activity": "Nesenā darbība",
+      "view_all": "Skatīt visu",
+      "this_device": "Šī ierīce",
+      "active_now": "Aktīvs tagad"
+    },
+    "rehearsal": {
+      "title": "Izmēģināt noliedzamību",
+      "description": "Apskatiet informācijas paneli tieši tā, kā to redzētu kāds, kuram rokās ir jūsu atbloķētais tālrunis."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Maks",
+    "sidebar_expand": "Izvērst sānjoslu",
+    "sidebar_collapse": "Sakļaut sānjoslu",
+    "search_placeholder": "Meklēt...",
+    "search_shortcut_title": "Meklēt (⌘K)",
+    "lock": "Bloķēt",
+    "lock_confirm_prompt": "Bloķēt šo maku tagad?",
+    "back": "Atpakaļ",
+    "settings": "Iestatījumi",
+    "main_content_aria": "Galvenais saturs",
+    "bottom_nav_aria": "Apakšējā navigācija",
+    "more_features_aria": "Vairāk funkciju",
+    "more": "Vairāk",
+    "close": "Aizvērt",
+    "all_features_heading": "Visas funkcijas",
+    "recent_heading": "Nesenie",
+    "tab_home": "Sākums",
+    "tab_send": "Sūtīt",
+    "tab_receive": "Saņemt"
+  },
+  "back": {
+    "default_label": "Atpakaļ"
+  },
+  "send": {
+    "heading": "Sūtīt kriptovalūtu",
+    "subheading": "Droši pārskaitiet līdzekļus",
+    "wallet_fallback": "Maks",
+    "wallet_picker": { "label": "No maka", "placeholder": "Izvēlieties maku" },
+    "asset_picker": { "label": "Aktīvs", "placeholder": "Izvēlieties aktīvu" },
+    "recipient": {
+      "label": "Sūtīt uz (adrese vai vārds)",
+      "placeholder": "Ielīmējiet adresi vai ievadiet vārdu (piem., vitalik.eth)",
+      "scan_qr": "Skenēt QR kodu",
+      "resolving": "Atrisina vārdu…",
+      "name_not_found": "Vārds nav atrasts — pārbaudiet pareizrakstību vai ielīmējiet adresi tieši.",
+      "ens_using_prefix": "Izmanto {{name}} →",
+      "ens_confirm_intro": "privāti uzmeklēts blokķēdē uz:",
+      "ens_confirm_hint": "Pirms sūtīšanas apstipriniet, ka šī adrese ir pareiza.",
+      "use_this_address": "Izmantot šo adresi",
+      "not_whitelisted": "Šī adrese nav jūsu baltajā sarakstā. Vēlreiz pārbaudiet pirms turpināšanas. Uzticamas adreses varat pievienot Iestatījumos.",
+      "self_send_warning": "Jūs sūtāt uz savu paša maka adresi. Tas nepārvieto neko starp makiem un tomēr maksā tīkla maksu. Vēlreiz pārbaudiet saņēmēju pirms turpināšanas."
+    },
+    "screening": {
+      "local_disclosure": "Saņēmēji jūsu ierīcē tiek pārbaudīti pret krāpšanas adresēm no jūsu paša vēstures — nekas neatstāj jūsu ierīci.",
+      "remote_opt_in": "Pārbaudīt arī pret tiešsaistes apdraudējumu datubāzi (nosūta šo adresi trešajai pusei)",
+      "remote_unavailable": "Tiešsaistes pārbaude ir iespējota, bet šajā versijā nav konfigurēts neviens pakalpojumu sniedzējs — pārbaude paliek vietēja, tāpēc mēs nevarējām pārbaudīt šo pret ārēju sarakstu.",
+      "demo_poison_button": "Demo: ielīmēt līdzīgu adresi"
+    },
+    "simulation": {
+      "title": "Darījuma simulācija",
+      "toggle_aria": "Pārslēgt darījuma simulāciju",
+      "description": "Pirms parakstāt, mēs veicam vietēju pirmslidojuma pārbaudi — bez trešo pušu pakalpojumiem, bez datu izplūšanas no jūsu ierīces.",
+      "checks": [
+        "Adreses risks (līdzīga / viltota)",
+        "Līguma atkodēšana",
+        "Neierobežota pilnvarojuma karogs",
+        "Atsaukšanas prognoze",
+        "Anomālija salīdzinājumā ar jūsu vēsturi",
+        "Liela izejošā darījuma brīdinājums"
+      ],
+      "results_hint": "Rezultāti parādīsies nākamajā solī, kad ievadīsiet adresi un summu.",
+      "off_hint": "Simulācija ir izslēgta — pirms parakstīšanas netiks veikta neviena pirmslidojuma pārbaude.",
+      "taking_too_long": "Aizņem pārāk ilgu laiku?",
+      "turn_off": "Izslēgt simulāciju"
+    },
+    "amount": {
+      "label": "Summa",
+      "placeholder": "0.00",
+      "being_sent": "tiek sūtīts",
+      "balance_prefix": "Atlikums:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(tiešraidē)",
+      "reading_from_network": "nolasa no tīkla…"
+    },
+    "errors": {
+      "amount_missing": "Nepieciešama summa",
+      "amount_not_positive": "Summai jābūt lielākai par nulli",
+      "amount_malformed": "Ievadiet vienkāršu decimālskaitli, piemēram, 0.5",
+      "amount_over_balance": "Nepietiekams atlikums",
+      "insufficient_balance_title": "Nepietiekams atlikums.",
+      "insufficient_balance_body": "Jums pieejami {{balance}} {{currency}} sūtīšanai (pēc tīkla maksas). Samaziniet summu, lai turpinātu."
+    },
+    "status": {
+      "not_enabled": "Sūtīšana vēl nav iespējota {{currency}}. Šis aktīvs ir tikai saņemšanai, kamēr nav pārbaudīts tā kriptogrāfijas ceļš.",
+      "dev_ungate_title": "IZSTRĀDES ATBLOĶĒŠANA AKTĪVA",
+      "dev_ungate_body": "— sūtīšanas vārti tiek apieti {{currency}} caur VITE_DEV_UNGATE_SEND (tikai izstrādes versijai). Šī aktīva statuss nav mainījies (joprojām nav aktīvs); mainnet joprojām ir bloķēts. Tikai testnet pārbaudei — nekad nepiegādājiet šo versiju.",
+      "locked": "Jūsu maks ir bloķēts. Atbloķējiet to Maka iestatījumos, lai parakstītu un sūtītu."
+    },
+    "note": { "label": "Piezīme (izvēles)", "placeholder": "Kam tas paredzēts?" },
+    "trezor": {
+      "toggle_label": "Parakstīt ar Trezor",
+      "connected": "Ierīce savienota",
+      "connect_button": "Savienot ierīci"
+    },
+    "buttons": {
+      "continue": "Turpināt",
+      "confirm_send": "Apstiprināt un sūtīt",
+      "back": "Atpakaļ"
+    },
+    "verify": { "summary_label": "Jūs sūtāt" },
+    "fee": {
+      "automatic": "Tīkla maksa tiek iestatīta automātiski {{currency}} ({{network}}).",
+      "native_fee_note": "Tīkla maksa tiek maksāta {{symbol}} ({{network}}) — jums nepieciešams {{symbol}}, lai segtu tīkla maksu pat sūtot {{token}}."
+    },
+    "decode": {
+      "heading": "Ko šis darījums dara",
+      "action": "Darbība",
+      "send_tokens": "Sūtīt marķierus",
+      "token": "Marķieris",
+      "amount": "Summa",
+      "recipient": "Saņēmējs",
+      "grant_permission": "Piešķirt tēriņu atļauju",
+      "permission": "Atļauja",
+      "unlimited_permission": "Neierobežota (šī lietotne var iztērēt jebkuru summu)",
+      "spender": "Tērētājs"
+    },
+    "reauth": {
+      "prompt": "Atkārtoti ievadiet savu {{credential}}, lai autorizētu",
+      "credential_pin": "PIN",
+      "credential_password": "paroli",
+      "submit_pin": "Autorizēt",
+      "submit_password": "Autorizēt un sūtīt",
+      "password_placeholder": "Glabātuves parole",
+      "password_aria": "Glabātuves parole sūtījuma autorizācijai",
+      "errors": {
+        "unavailable": "Pārbaude nav pieejama — lūdzu, atkārtoti bloķējiet un atbloķējiet maku.",
+        "incorrect": "Nepareizi — mēģiniet vēlreiz (atlikuši {{remaining}})"
+      }
+    },
+    "done": {
+      "beacon_label": "Darījums pārraidīts",
+      "heading": "Darījums pārraidīts",
+      "body_suffix": "parakstīts vietēji un nosūtīts tīklam",
+      "tx_hash_label": "Darījuma jaucējkods",
+      "view_explorer": "Skatīt bloku pārlūkā",
+      "pending_note": "Gaida līdz apstiprinājumam tīklā. Atlikums tiek atjaunināts no blokķēdes, nevis saglabātas vērtības.",
+      "send_another": "Sūtīt vēl"
+    },
+    "toasts": {
+      "ens_off_in_session": "Vārda atrisināšana šajā sesijā ir izslēgta — ielīmējiet adresi tieši.",
+      "ens_not_found": "ENS vārds nav atrasts",
+      "sns_unavailable": "Solana vārda atrisināšana vēl nav pieejama — ielīmējiet adresi tieši.",
+      "ens_resolution_failed": "Vārda atrisināšana neizdevās",
+      "verify_required": "Pabeidziet dublējuma pārbaudi pirms šīs summas sūtīšanas.",
+      "two_factor_retry": "Sūtījumu neizdevās pabeigt — lūdzu, pārbaudiet vēlreiz, lai mēģinātu vēlreiz.",
+      "send_failed_fallback": "Sūtīšana neizdevās",
+      "unconfirmed": "Neizdevās apstiprināt šo darījumu tīklā vēl — tas var joprojām gaidīt. Pārbaudiet pārlūkā."
+    }
+  },
+  "receive": {
+    "heading": "Saņemt kriptovalūtu",
+    "subheading": "Parādiet maka adresi, lai saņemtu līdzekļus",
+    "asset_label": "Aktīvs",
+    "asset_placeholder": "Izvēlieties aktīvu",
+    "not_available": "{{name}} ({{symbol}}) saņemšana vēl nav pieejama. Adrese netiek rādīta, kamēr šis aktīvs nav iespējots.",
+    "locked": {
+      "title": "Maks bloķēts",
+      "body": "Atbloķējiet savu maku, lai atklātu savu {{asset}} {{network}} saņemšanas adresi.",
+      "open_hd_wallet": "Atvērt HD maka pārvaldnieku"
+    },
+    "your_address": "Jūsu {{asset}} adrese",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "{{symbol}} saņemšanas adrese",
+    "copy": {
+      "copied_aria": "Adrese nokopēta starpliktuvē",
+      "copy_aria": "Kopēt adresi",
+      "copied_toast": "Adrese nokopēta",
+      "copy_failed_toast": "Neizdevās kopēt — atlasiet un nokopējiet adresi manuāli"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} ir marķieris Ethereum saderīgā tīklā. Šī ir jūsu maka adrese — lūdziet sūtītājam sūtīt {{symbol}} tikai tīklā {{network}}. Sūtot to citā tīklā, līdzekļi var tikt neatgriezeniski zaudēti.",
+      "evm": "Šī ir jūsu kopīgā maka adrese. Sūtiet {{name}} uz šo adresi tikai tīklā {{network}}, un pārliecinieties, ka sūtītājs izmanto {{network}}.",
+      "btc": "Sūtiet Bitcoin uz šo adresi tikai tīklā {{network}}.",
+      "solana": "Sūtiet Solana uz šo adresi tikai tīklā {{network}}."
+    },
+    "select_asset_prompt": "Izvēlieties aktīvu, ko saņemt.",
+    "unlock_footer_note": "Adreses nāk no jūsu ierīcē esošā maka un parādās tikai tad, kad tas ir atbloķēts."
+  },
+  "dashboard": {
+    "portfolioValue": "Portfeļa vērtība",
+    "priceAlertsTriggered_one": "{{count}} cenas brīdinājums aktivizēts!",
+    "priceAlertsTriggered_other": "{{count}} cenas brīdinājumi aktivizēti!",
+    "lockAriaLabel": "Bloķēt atlikumu ar biometriju",
+    "lockBalance": "Bloķēt atlikumu",
+    "synced": "Sinhronizēts {{time}}",
+    "syncJustNow": "Tikko",
+    "syncSecondsAgo_one": "pirms {{count}} s",
+    "syncSecondsAgo_other": "pirms {{count}} s",
+    "syncMinutesAgo_one": "pirms {{count}} min",
+    "syncMinutesAgo_other": "pirms {{count}} min",
+    "actions": {
+      "send": "Sūtīt",
+      "receive": "Saņemt",
+      "schedule": "Plānot",
+      "add": "Pievienot"
+    },
+    "tabs": {
+      "tokens": "Marķieri",
+      "activity": "Darbība",
+      "analytics": "Analītika"
+    },
+    "emptyWallets": {
+      "title": "Vēl nav maku",
+      "description": "Pievienojiet maku, lai sāktu saņemt, sūtīt un turēt aktīvus dažādās ķēdēs."
+    },
+    "addWallet": "Pievienot maku",
+    "searchTransactionsPlaceholder": "Meklēt darījumus...",
+    "emptySearch": {
+      "title": "Nav atbilstošu darījumu",
+      "description": "Mēģiniet notīrīt filtrus vai meklēt citu aktīvu vai adresi."
+    },
+    "emptyTransactions": {
+      "title": "Vēl nav darījumu",
+      "description": "Jūsu darbība blokķēdē parādīsies šeit, kad sūtīsiet vai saņemsiet."
+    },
+    "portfolioPerformance": "Portfeļa veiktspēja",
+    "assetDistribution": "Aktīvu sadalījums",
+    "quickAccess": "Ātrā piekļuve",
+    "quickAccessItems": {
+      "receive": "Saņemt",
+      "security": "Drošība",
+      "approvals": "Apstiprinājumi",
+      "addressCheck": "Adreses pārbaude",
+      "analytics": "Analītika",
+      "sentiment": "Noskaņojums",
+      "riskScore": "Riska rādītājs"
+    },
+    "walletNameLabel": "Maka nosaukums",
+    "walletNamePlaceholder": "Mans ETH maks",
+    "addWalletDialog": {
+      "title": "Pievienot maku",
+      "currency": "Valūta",
+      "creating": "Izveido...",
+      "create": "Izveidot maku"
+    },
+    "renameWalletDialog": {
+      "title": "Pārdēvēt maku",
+      "saving": "Saglabā...",
+      "save": "Saglabāt nosaukumu"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Šifrēta glabātuve",
+    "backup": {
+      "title": "Dublēt \"{{name}}\"",
+      "reauthDescription": "Apstipriniet, ka tas esat jūs, un mēs parādīsim šī maka atkopšanas frāzi.",
+      "description": "Pierakstiet šos 12 vārdus bezsaistē. Ikviens ar tiem var iztērēt šī maka līdzekļus — un tie ir vienīgais veids, kā to atgūt.",
+      "warning": "Nekad neuzņemiet ekrānuzņēmumu. Nekad neievadiet to citā lietotnē.",
+      "confirmButton": "Es to esmu pierakstījis — atzīmēt kā dublētu"
+    },
+    "addWallet": {
+      "defaultWalletName": "jūsu jaunais maks",
+      "backupDescription": "Šim makam ir sava atkopšanas frāze — atsevišķa no ikviena cita maka jūsu glabātuvē. Pierakstiet to bezsaistē pirms izmantošanas.",
+      "backedUpDone": "Es to esmu dublējis — gatavs",
+      "title": "Pievienot maku",
+      "createNew": "Izveidot jaunu",
+      "importSeed": "Importēt sēklu",
+      "createDescription": "Ģenerē JAUNU sēklu, kas atvasina VISAS ķēdes (ETH/EVM, BTC, SOL). Jūs to dublēsiet pirms tā kļūst aktīva.",
+      "importDescription": "Ielīmējiet esošu 12/24 vārdu sēklu — visas ķēdes tiek atvasinātas automātiski (sēkla nav specifiska konkrētai ķēdei).",
+      "recoveryPhraseLabel": "Atkopšanas frāze",
+      "recoveryPhrasePlaceholder": "vārds1 vārds2 ... vārds12",
+      "walletNameLabel": "Maka nosaukums",
+      "walletNamePlaceholder": "piem., Uzkrājumi",
+      "assetsToShowLabel": "Rādāmie aktīvi",
+      "assetsToShowHint": "Tikai attēlošanas izvēle — sēkla satur katru ķēdi neatkarīgi no tā.",
+      "confirmVaultPlaceholder": "Apstipriniet, ka tas esat jūs, lai mainītu savu glabātuvi",
+      "vaultReentryHint": "Atkārtoti ievadīts, lai autorizētu izmaiņas jūsu sēklas glabātuvē. Nekad netiek glabāts atmiņā.",
+      "createAndBackup": "Izveidot un dublēt",
+      "importWallet": "Importēt maku"
+    },
+    "vaultPinLabel": "Glabātuves PIN",
+    "vaultPasswordLabel": "Glabātuves parole",
+    "cancel": "Atcelt",
+    "done": "Gatavs",
+    "manageAssets": {
+      "title": "Aktīvi makam \"{{name}}\"",
+      "description": "Izvēlieties, kuri aktīvi tiek rādīti šim makam. Slēptie paliek nomaļus, kamēr netiek pievienoti."
+    },
+    "rename": {
+      "title": "Pārdēvēt maku",
+      "save": "Saglabāt nosaukumu"
+    },
+    "remove": {
+      "title": "Noņemt \"{{name}}\"?",
+      "onlyWallet": "Šis ir jūsu vienīgais maks — to nevar noņemt. Izmantojiet Panikas dzēšanu Drošības sadaļā, lai izdzēstu visu.",
+      "description": "Noņem šī maka sēklu no šīs ierīces.",
+      "backedUpNote": "Jūs varat to atjaunot no tā atkopšanas frāzes.",
+      "notBackedUpNote": "⚠️ NAV dublēts — bez tā frāzes tas ir pazudis uz visiem laikiem.",
+      "button": "Noņemt maku"
+    },
+    "move": {
+      "title": "Pārvietot \"{{name}}\" uz…"
+    },
+    "managePortfolios": {
+      "title": "Portfeļi",
+      "defaultTag": "(noklusējuma)",
+      "saveAriaLabel": "Saglabāt portfeļa nosaukumu",
+      "renameAriaLabel": "Pārdēvēt {{name}}",
+      "deleteAriaLabel": "Dzēst {{name}}",
+      "newNamePlaceholder": "Jauns portfeļa nosaukums",
+      "addButton": "Pievienot"
+    },
+    "activity": {
+      "unlockPrompt": "Atbloķējiet savu maku, lai skatītu darbību.",
+      "loading": "Ielādē...",
+      "loadError": "Neizdevās ielādēt darbību.",
+      "noTransactions": "Vēl nav darījumu.",
+      "viewFullHistory": "Skatīt pilnu vēsturi →"
+    },
+    "portfolioValueLabel": "Portfeļa vērtība",
+    "explore": {
+      "subtitle": "Jūs pārlūkojat — tikai skatīšanai. Vēl nav maka.",
+      "description": "Apskatieties brīvi. Kad esat gatavs, izveidojiet jaunu pašpārvaldes maku vai importējiet esošu sēklu — atslēgas tiek ģenerētas un šifrētas šajā ierīcē.",
+      "createOrImport": "Izveidot vai importēt maku"
+    },
+    "portfoliosButton": "Portfeļi",
+    "totalValueHeading": "{{name}} · Kopējā vērtība",
+    "partialTotalNote": "Dažus atlikumus neizdevās ielādēt — šis kopsumma var būt nepilnīga.",
+    "refreshPricesTooltip": "Atsvaidzināt tiešraides cenas",
+    "live": "Tiešraidē",
+    "approximate": "Aptuveni",
+    "seedVerify": {
+      "title": "Pabeidziet dublējuma pārbaudi",
+      "description": "Nepieciešams sūtīšanai virs drošības sliekšņa.",
+      "verifyAriaLabel": "Pārbaudīt sava maka dublējumu",
+      "verifyButton": "Pārbaudīt"
+    },
+    "unbacked": {
+      "titleBold": "Maka dublējums nav pabeigts.",
+      "body": "Katram makam ir sava atkopšanas frāze — bez tās šī maka līdzekļi ir neatgūstami. Dublējiet tagad.",
+      "backUpButton": "Dublēt \"{{name}}\""
+    },
+    "actions": {
+      "send": "Sūtīt",
+      "receive": "Saņemt",
+      "addWallet": "Pievienot maku"
+    },
+    "activeWalletHint": {
+      "prefix": "Sūtīšanai/saņemšanai tiek izmantots",
+      "otherPortfolio": " (citā portfelī)",
+      "suffix": ". Pieskarieties makam zemāk, lai pārslēgtos."
+    },
+    "tabs": {
+      "tokens": "Marķieri",
+      "activity": "Darbība",
+      "analytics": "Analītika"
+    },
+    "noWalletsInPortfolio": "Portfelī \"{{name}}\" nav maku. Pievienojiet maku vai pārvietojiet vienu šeit no tā izvēlnes.",
+    "hideAssets": "Slēpt aktīvus",
+    "showAllAssets": "Rādīt visus aktīvus",
+    "walletCard": {
+      "active": "Aktīvs",
+      "backedUp": "Dublēts",
+      "backUp": "Dublēt",
+      "partial": "daļējs",
+      "optionsAriaLabel": "Opcijas makam {{name}}",
+      "noAssetsShown": "Nav rādītu aktīvu. Izmantojiet \"Pārvaldīt aktīvus\"."
+    },
+    "menu": {
+      "manageAssets": "Pārvaldīt aktīvus",
+      "rename": "Pārdēvēt",
+      "moveToPortfolio": "Pārvietot uz portfeli",
+      "backUp": "Dublēt",
+      "remove": "Noņemt"
+    },
+    "balanceLoadFailedTitle": "Neizdevās ielādēt atlikumu",
+    "defaultWalletFallbackName": "maks",
+    "toast": {
+      "walletImported": "Maks importēts — visas ķēdes atvasinātas.",
+      "walletRemoved": "Maks noņemts no šīs ierīces.",
+      "walletAddedBackedUp": "Maks pievienots un dublēts.",
+      "movedTo": "Pārvietots uz {{name}}.",
+      "markedBackedUp": "\"{{name}}\" atzīmēts kā dublēts."
+    },
+    "errors": {
+      "couldNotAddWallet": "Neizdevās pievienot maku",
+      "couldNotImportWallet": "Neizdevās importēt maku",
+      "couldNotRemoveWallet": "Neizdevās noņemt maku"
+    }
+  },
+  "networth": {
+    "title": "Kripto neto vērtība",
+    "unlockPrompt": "Atbloķējiet savu maku, lai redzētu savus līdzekļus blokķēdē.",
+    "subtitle": "Jūsu līdzekļi blokķēdē — neietver ārējos aktīvus.",
+    "totalHoldings": "Kopējie līdzekļi",
+    "partialNote": "daļējs — dažus atlikumus neizdevās nolasīt",
+    "refreshPricesTooltip": "Atsvaidzināt tiešraides cenas",
+    "live": "Tiešraidē",
+    "approximate": "Aptuveni",
+    "allocation": "Sadalījums",
+    "holdings": "Līdzekļi",
+    "noHoldings": "Vēl nav līdzekļu."
+  }
+}
