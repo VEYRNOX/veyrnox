@@ -1,7 +1,7 @@
 {
   "language": {
-    "switcher_label": "Bahasa",
-    "mt_banner": "Terjemahan ini dihasilkan oleh mesin dan belum ditinjau oleh penutur asli. Jika ada kata yang terlihat salah, beralihlah kembali ke bahasa Inggris hingga ditinjau.",
+    "switcher_label": "Språk",
+    "mt_banner": "Denne oversettelsen ble generert av en maskin og er ikke gjennomgått av en morsmålsbruker. Hvis en formulering virker feil, bytt tilbake til engelsk til den er gjennomgått.",
     "names": {
       "en": "English",
       "es": "Español",
@@ -30,9 +30,9 @@
     }
   },
   "actions": {
-    "cancel": "Batal",
-    "confirm": "Konfirmasi",
-    "close": "Tutup",
-    "back": "Kembali"
+    "cancel": "Avbryt",
+    "confirm": "Bekreft",
+    "close": "Lukk",
+    "back": "Tilbake"
   }
 }

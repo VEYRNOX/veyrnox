@@ -1,7 +1,7 @@
 {
   "language": {
-    "switcher_label": "Bahasa",
-    "mt_banner": "Terjemahan ini dihasilkan oleh mesin dan belum ditinjau oleh penutur asli. Jika ada kata yang terlihat salah, beralihlah kembali ke bahasa Inggris hingga ditinjau.",
+    "switcher_label": "Język",
+    "mt_banner": "To tłumaczenie zostało wygenerowane maszynowo i nie zostało sprawdzone przez native speakera. Jeśli jakieś sformułowanie wygląda błędnie, przełącz się z powrotem na angielski, dopóki nie zostanie zweryfikowane.",
     "names": {
       "en": "English",
       "es": "Español",
@@ -30,9 +30,9 @@
     }
   },
   "actions": {
-    "cancel": "Batal",
-    "confirm": "Konfirmasi",
-    "close": "Tutup",
-    "back": "Kembali"
+    "cancel": "Anuluj",
+    "confirm": "Potwierdź",
+    "close": "Zamknij",
+    "back": "Wstecz"
   }
 }

@@ -68,6 +68,36 @@ import koWallet from './locales/ko/wallet.json';
 import arCommon from './locales/ar/common.json';
 import arSecurity from './locales/ar/security.json';
 import arWallet from './locales/ar/wallet.json';
+import itCommon from './locales/it/common.json';
+import itSecurity from './locales/it/security.json';
+import itWallet from './locales/it/wallet.json';
+import plCommon from './locales/pl/common.json';
+import plSecurity from './locales/pl/security.json';
+import plWallet from './locales/pl/wallet.json';
+import ukCommon from './locales/uk/common.json';
+import ukSecurity from './locales/uk/security.json';
+import ukWallet from './locales/uk/wallet.json';
+import csCommon from './locales/cs/common.json';
+import csSecurity from './locales/cs/security.json';
+import csWallet from './locales/cs/wallet.json';
+import roCommon from './locales/ro/common.json';
+import roSecurity from './locales/ro/security.json';
+import roWallet from './locales/ro/wallet.json';
+import elCommon from './locales/el/common.json';
+import elSecurity from './locales/el/security.json';
+import elWallet from './locales/el/wallet.json';
+import svCommon from './locales/sv/common.json';
+import svSecurity from './locales/sv/security.json';
+import svWallet from './locales/sv/wallet.json';
+import daCommon from './locales/da/common.json';
+import daSecurity from './locales/da/security.json';
+import daWallet from './locales/da/wallet.json';
+import noCommon from './locales/no/common.json';
+import noSecurity from './locales/no/security.json';
+import noWallet from './locales/no/wallet.json';
+import fiCommon from './locales/fi/common.json';
+import fiSecurity from './locales/fi/security.json';
+import fiWallet from './locales/fi/wallet.json';
 
 // Which locales are available AT ALL. Every catalog listed here is
 // machine-translated at ship time (except `en`) and gated behind the MT-pending
@@ -80,12 +110,14 @@ import arWallet from './locales/ar/wallet.json';
 export const SUPPORTED_LANGUAGES = [
   'en', 'es', 'de', 'zh-CN',
   'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko', 'ar',
+  'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
 ];
 
 // The default user-facing set. `ar` gated pending RTL layout support.
 export const LANGUAGE_SWITCHER_AVAILABLE = /** @type {readonly string[]} */ ([
   'en', 'es', 'de', 'zh-CN',
   'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko',
+  'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
 ]);
 
 // Every non-English catalog is machine-translated at the time this ships.
@@ -106,6 +138,16 @@ export const MACHINE_TRANSLATED = /** @type {Record<string, boolean>} */ ({
   ja: true,
   ko: true,
   ar: true,
+  it: true,
+  pl: true,
+  uk: true,
+  cs: true,
+  ro: true,
+  el: true,
+  sv: true,
+  da: true,
+  no: true,
+  fi: true,
 });
 
 // Normalize whatever resolveLocale returns (which follows navigator.language:
@@ -154,6 +196,16 @@ i18n
       ja: { common: jaCommon, security: jaSecurity, wallet: jaWallet },
       ko: { common: koCommon, security: koSecurity, wallet: koWallet },
       ar: { common: arCommon, security: arSecurity, wallet: arWallet },
+      it: { common: itCommon, security: itSecurity, wallet: itWallet },
+      pl: { common: plCommon, security: plSecurity, wallet: plWallet },
+      uk: { common: ukCommon, security: ukSecurity, wallet: ukWallet },
+      cs: { common: csCommon, security: csSecurity, wallet: csWallet },
+      ro: { common: roCommon, security: roSecurity, wallet: roWallet },
+      el: { common: elCommon, security: elSecurity, wallet: elWallet },
+      sv: { common: svCommon, security: svSecurity, wallet: svWallet },
+      da: { common: daCommon, security: daSecurity, wallet: daWallet },
+      no: { common: noCommon, security: noSecurity, wallet: noWallet },
+      fi: { common: fiCommon, security: fiSecurity, wallet: fiWallet },
     },
     interpolation: {
       // React escapes for us — double-escaping would render literal "&amp;"

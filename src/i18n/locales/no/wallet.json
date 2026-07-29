@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Transaksjonshistorikk",
+      "subhead": "Sendinger og mottak per kjede, lest direkte fra kjeden — kun lesing, med lenker til explorer.",
+      "badge_demo": "Demo · eksempeldata",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnett",
+      "privacy_demo_note": "Demomodus — ingenting spørres opp over nettverket; radene nedenfor er lokale eksempeldata.",
+      "loading_label": "Laster {{symbol}}-historikk",
+      "error_prefix": "Kunne ikke laste historikk: {{reason}}.",
+      "error_fetch_reason": "Kunne ikke nå RPC-noden — sjekk tilkoblingen din og prøv igjen.",
+      "error_generic_reason": "indekseringstjenesten svarte ikke",
+      "retry": "Prøv igjen",
+      "no_indexer_title": "Historikk i appen er ikke tilgjengelig for {{name}} over JSON-RPC",
+      "no_indexer_body": "En vanlig JSON-RPC-node kan ikke liste opp en adresses transaksjoner, og vi legger bevisst ikke til et tredjeparts explorer-/indekserings-API (en ny datakilde og flate for hjemmeringing). Din fullstendige historikk finnes på blokk-exploreren.",
+      "view_on_explorer": "Vis {{address}} på {{network}}-explorer",
+      "view_explorer_title": "Vis i blokk-explorer",
+      "unlock_for_explorer": "Lås opp lommeboken din for å få explorer-lenken for {{symbol}}-adressen din.",
+      "locked_title": "Lommebok låst",
+      "locked_body": "Lås opp lommeboken din for å utlede {{symbol}}-adressen din og laste historikken.",
+      "empty": "Ingen transaksjoner ennå for {{symbol}} på {{network}}.",
+      "count_one": "{{count}} transaksjon",
+      "count_other": "{{count}} transaksjoner",
+      "most_recent_suffix": " · nyeste",
+      "refresh": "Oppdater",
+      "sample_badge": "Eksempel",
+      "to_prefix": "Til ",
+      "from_prefix": "Fra ",
+      "status_pending": "Venter",
+      "status_confirmed": "Bekreftet",
+      "status_failed": "Mislyktes",
+      "awaiting_confirmation": "venter på bekreftelse"
+    },
+    "list": {
+      "empty_title": "Ingen transaksjoner ennå",
+      "empty_description": "Når du sender eller mottar på denne lommeboken, vises aktiviteten på kjeden her."
+    },
+    "receipt": {
+      "heading": "Transaksjonskvitteringer",
+      "subhead": "Generer utskriftsvennlige kvitteringer for enhver transaksjon",
+      "search_placeholder": "Søk etter ID, adresse eller valuta...",
+      "loading": "Laster...",
+      "error": "Kunne ikke laste transaksjoner. Prøv igjen.",
+      "empty": "Ingen transaksjoner funnet",
+      "preview_title": "Forhåndsvisning av kvittering",
+      "print": "Skriv ut",
+      "print_window_title": "Transaksjonskvittering",
+      "brand": "VEYRNOX",
+      "doc_title": "TRANSAKSJONSKVITTERING",
+      "field_receipt_id": "Kvitterings-ID",
+      "field_date": "Dato",
+      "field_type": "Type",
+      "field_asset": "Eiendel",
+      "field_amount": "Beløp",
+      "field_network_fee": "Nettverksgebyr",
+      "field_status": "Status",
+      "field_to": "Til",
+      "default_type": "Overføring",
+      "default_status": "fullført",
+      "thank_you": "Takk for at du bruker {{brand}}",
+      "thank_you_prefix": "Takk for at du bruker",
+      "digital_record": "Dette er en digital transaksjonsjournal"
+    }
+  },
+  "settings": {
+    "heading": "Sikkerhetsinnstillinger",
+    "subhead": "Lås, lås opp og beskytt lommeboken din",
+    "theme": {
+      "dark": "Mørk modus",
+      "light": "Lys modus",
+      "saved_note": "Lagret på denne enheten",
+      "switch_to_light": "Bytt til lys modus",
+      "switch_to_dark": "Bytt til mørk modus"
+    },
+    "activity_log": {
+      "label": "Aktivitetslogg",
+      "description": "Av som standard · lagret kun på denne enheten",
+      "help": "Privat logg: hva du har endret, sendt, tilbakekalt. Ingen beløp eller adresser. Panikksletting sletter den.",
+      "enable_aria": "Aktiver aktivitetslogg",
+      "disable_aria": "Deaktiver aktivitetslogg",
+      "no_events": "Ingen hendelser registrert ennå."
+    },
+    "message_signing": {
+      "label": "Meldingssignering",
+      "description": "Av som standard · lagret kun på denne enheten",
+      "help": "Av som standard. Lar deg signere vilkårlige tekstmeldinger med lommeboknøkkelen din. Aktiver bare hvis en dApp eller tjeneste ber deg signere en melding.",
+      "enable_aria": "Aktiver meldingssignering",
+      "disable_aria": "Deaktiver meldingssignering"
+    },
+    "telemetry": {
+      "label": "Anonyme bruksdata",
+      "description": "Valgfritt (opt-in) · inkluderer aldri saldoer eller adresser",
+      "help": "Hjelper oss å finne feil og forbedre appen. En tilfeldig enhets-ID brukes — aldri knyttet til lommeboken din, nøklene dine eller identiteten din. Å slå dette av stopper alle bruksdata fra å forlate denne enheten.",
+      "enable_aria": "Slå på anonyme bruksdata",
+      "disable_aria": "Slå av anonyme bruksdata"
+    },
+    "delete_account": {
+      "title": "Faresone",
+      "clear_cache_label": "Tøm lokal buffer",
+      "clear_cache_description": "Sletter lagrede data på denne enheten og låser lommeboken. Gjenopprettingsfrasen din fungerer fortsatt. For å slette nøkler, bruk Panikksletting.",
+      "delete_button": "Slett",
+      "confirm_prompt_pre": "Dette sletter lagrede data og låser lommeboken. Gjenopprettingsfrasen din fungerer fortsatt. Skriv",
+      "confirm_prompt_post": "for å bekrefte.",
+      "confirm_placeholder": "Skriv DELETE for å bekrefte",
+      "confirm_aria": "Skriv DELETE for å bekrefte tilbakestilling av konto",
+      "cancel": "Avbryt",
+      "confirm_delete": "Bekreft sletting",
+      "deleting": "Sletter..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometrisk opplåsing",
+      "worth_knowing_label": "Verdt å vite.",
+      "kdf_disclosure": "Opplåsing med ett trykk lagrer lommebokpassordet ditt på denne enheten, beskyttet av skjermlåsen og biometrien din. Hvis noen får tak i en kopi av enhetens sikkerhetskopi uten selve enheten, kan de få tilgang til lommeboken din. Slå dette av for sterkest beskyttelse.",
+      "app_layer_disclosure_pre": "Biometrisk opplåsing lagrer passordet ditt på denne enheten, beskyttet av fingeravtrykket eller ansiktet ditt. Dette kjører inne i appen, ikke på operativsystemnivå.",
+      "app_layer_disclosure_mid": "For sterkere beskyttelse på enhetsnivå, aktiver",
+      "hardware_protection_label": "Maskinvarebeskyttelse",
+      "app_layer_disclosure_post": "(tilgjengelig nedenfor).",
+      "toggle_label": "Biometrisk opplåsing (hovedlommebok)",
+      "toggle_description": "Aktiver opplåsing med ett trykk for hovedlommeboken din ved hjelp av enhetens biometri.",
+      "before_enable_label": "Før du aktiverer dette.",
+      "confirm_disclosure": "Hvis noen får tak i en kopi av enhetens sikkerhetskopi uten selve enheten, kan de få tilgang til lommeboken din. Slå dette på bare hvis du er komfortabel med det.",
+      "confirm_enable_button": "Aktiver opplåsing med ett trykk",
+      "cancel_button": "Avbryt",
+      "checking_availability": "Sjekker tilgjengelighet…",
+      "default_label": "Biometri",
+      "available": "{{label}} er tilgjengelig.",
+      "available_simulated": "{{label}} tilgjengelig (simulert i demo).",
+      "status_check_failed": "Kunne ikke sjekke biometrisk tilgjengelighet på denne enheten.",
+      "awaiting_prompt": "Venter på forespørsel…",
+      "preview_prompt": "Forhåndsvis forespørsel",
+      "test_success": "Simulert autentisering lyktes",
+      "test_cancelled": "Forespørsel avbrutt"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrisk opplåsing",
+      "heading_web": "Lås opp med passkey",
+      "scope_banner_native_pre": "Fingeravtrykket eller ansiktet ditt sjekkes før opplåsing —",
+      "scope_banner_native_post": "ikke en erstatning for passordet ditt. Passordet og gjenopprettingsfrasen din fungerer fortsatt på egen hånd, så tap av biometri stenger deg aldri ute.",
+      "scope_banner_web_pre": "En passkey legger til et raskt biometrisk eller sikkerhetsnøkkeltrykk før opplåsing —",
+      "scope_banner_web_post": "ikke en erstatning for passordet ditt. Passordet og gjenopprettingsfrasen din fungerer fortsatt på egen hånd, så tap av passkey stenger deg aldri ute.",
+      "extra_step_label": "et ekstra trinn",
+      "enroll_button": "Registrer biometrisk opplåsing",
+      "register_button": "Registrer en passkey",
+      "not_setup_native": "Enhetens biometri er ikke satt opp. Legg til et fingeravtrykk eller ansikt i enhetsinnstillingene dine først — passordet ditt fungerer fortsatt.",
+      "not_supported_web": "Passkey-opplåsing er ikke tilgjengelig i denne nettleseren. Det fungerer i mobilappen og moderne nettlesere. Bruk passordet ditt her.",
+      "enroll_error": "Kunne ikke registrere biometrisk opplåsing på denne enheten.",
+      "register_error": "Kunne ikke registrere en passkey på denne enheten.",
+      "enrolled_native": "Biometrisk opplåsing registrert",
+      "registered_web": "Passkey registrert",
+      "simulated_suffix": " (simulert)",
+      "remove_button": "Fjern",
+      "require_toggle_native": "Krev biometrisk opplåsing",
+      "require_toggle_web": "Krev {{label}} ved opplåsing",
+      "require_toggle_aria_web": "Krev passkey-opplåsing",
+      "require_toggle_desc_native": "Be om enhetens biometri før opplåsing (passordet ditt fungerer fortsatt).",
+      "require_toggle_desc_web": "Be om passkey før opplåsing (passordet ditt fungerer fortsatt).",
+      "applies_all_sessions": "Dette gjelder alle lommebokøkter på denne enheten.",
+      "default_label": "Passkey",
+      "checking_availability": "Sjekker tilgjengelighet…",
+      "simulated_in_demo": "{{label}} simulert i demo. ",
+      "awaiting_biometric": "Venter på biometri…",
+      "awaiting_passkey": "Venter på passkey…",
+      "preview_biometric_prompt": "Forhåndsvis biometrisk forespørsel",
+      "preview_passkey_prompt": "Forhåndsvis passkey-forespørsel",
+      "simulated_prefix": "Simulert ",
+      "biometric_verified": "biometri verifisert",
+      "passkey_verified": "passkey verifisert",
+      "biometric_prompt_cancelled": "Biometrisk forespørsel avbrutt",
+      "passkey_prompt_cancelled": "Passkey-forespørsel avbrutt"
+    },
+    "hardware_kek": {
+      "heading": "Maskinvarebeskyttelse på enheten",
+      "badge_webauthn": "WebAuthn-beskyttet",
+      "badge_off": "AV",
+      "description_pre": "Låser lommeboken din til denne fysiske enheten. Etter aktivering kan lommeboken din bare åpnes på ",
+      "description_device": "denne enheten",
+      "description_post": ". En stjålet sikkerhetskopifil er ubrukelig uten selve enheten, selv med PIN-koden din.",
+      "description_web_suffix": "Fungerer på Chrome 99+ og Firefox 108+. Safari støttes ikke.",
+      "device_binding_note": "Enhetsbinding er aktiv og testet på ekte maskinvare.",
+      "checking_status": "Sjekker status…",
+      "web_prf_unsupported": "Maskinvarebeskyttelse er ikke tilgjengelig i denne nettleseren. Bruk Chrome 99+ eller Firefox 108+, eller bruk iOS- eller Android-appen.",
+      "errors": {
+        "wrong_pin": "Feil PIN — tast inn PIN-koden du bruker til å låse opp lommeboken din.",
+        "no_hardware": "Kunne ikke nå denne enhetens maskinvaresikkerhet. Prøv igjen, eller bruk en annen enhet.",
+        "malformed_vault": "De lagrede lommebokdataene dine kunne ikke leses på denne enheten.",
+        "not_enrolled": "Maskinvarebeskyttelse er ikke aktivert for dette hvelvet, så det er ingenting å oppgradere.",
+        "generic": "Noe gikk galt. Prøv igjen.",
+        "key_invalidated": "Fingeravtrykkene dine har endret seg — maskinvarebeskyttelsen ble ugyldiggjort. Deaktiver og reaktiver maskinvarebeskyttelse, eller gjenopprett fra seed-frasen din.",
+        "insecure_tier": "Denne enheten har ikke noe sikkert maskinvareelement — maskinvarebeskyttelse kan ikke aktiveres her.",
+        "enter_pin_first": "Tast inn hvelv-PIN-koden din først.",
+        "enter_pin_confirm_removal": "Tast inn hvelv-PIN-koden din for å bekrefte fjerning.",
+        "enter_pin_upgrade": "Tast inn hvelv-PIN-koden din for å oppgradere."
+      },
+      "toast": {
+        "enabled": "Maskinvarebeskyttelse aktivert — hvelvet ditt krever nå denne enheten for å låses opp.",
+        "removed": "Maskinvarebeskyttelse fjernet.",
+        "upgraded": "Maskinvarebeskyttelse oppgradert — hvelvet ditt er nå bundet med en unik nøkkel per enhet."
+      },
+      "pin_strength": {
+        "hardware_title": "Maskinvarebeskyttet.",
+        "hardware_body": "PIN-koden din kombinert med Face ID, fingeravtrykk eller passkey gjør offline-angrep umulige — en angriper ville trenge både PIN-koden din og denne fysiske enheten.",
+        "no_hardware_title": "Ingen maskinvarefaktor tilgjengelig i denne nettleseren.",
+        "no_hardware_body": "Den 8-sifrede PIN-koden din (~100 mill. kombinasjoner) er kun beskyttet av Argon2id — en dedikert angriper kunne uttømme den offline i løpet av dager til uker. Bruk et passord på 12+ tegn, eller bytt til Chrome/Firefox for å aktivere maskinvarebeskyttelse.",
+        "pre_enroll_title": "PIN-styrke.",
+        "pre_enroll_body": "En 8-sifret PIN-kode har ~100 mill. kombinasjoner. Argon2id bremser offline-angrep til omtrent 1–2 år med én tråd — men en GPU-klynge kan redusere det til dager. Å aktivere Face ID, fingeravtrykk eller passkey ovenfor gjør offline-angrep umulige ved å kreve denne enheten for hver opplåsing."
+      },
+      "enrolled": {
+        "active_title": "Aktiv på denne enheten",
+        "active_body_native": "Hvelvet ditt krever denne enhetens biometri for å låses opp.",
+        "active_body_web": "Hvelvet ditt krever denne enhetens passkey for å låses opp."
+      },
+      "upgrade": {
+        "available_title": "Oppgradering tilgjengelig",
+        "available_body": "Lommeboken din ble beskyttet med en eldre versjon som delte en nøkkel på tvers av enheter. Oppgrader for å låse den kun til denne enheten. Dette skjer én gang og ber deg verifisere to ganger.",
+        "cta": "Oppgrader maskinvarebeskyttelse",
+        "busy": "Oppgraderer — godkjenn begge forespørslene…",
+        "prompt": "Tast inn hvelv-PIN-koden din. Du vil autentisere to ganger for å sikre hvelvet på nytt.",
+        "cancel": "Avbryt"
+      },
+      "remove": {
+        "cta": "Fjern maskinvarebeskyttelse",
+        "prompt_native": "Tast inn PIN-koden din for å bekrefte. Du må verifisere med fingeravtrykket eller ansiktet ditt.",
+        "prompt_web": "Tast inn passordet ditt for å bekrefte. Du må verifisere med passkeyen din.",
+        "busy": "Fjerner — godkjenn forespørselen…",
+        "cancel": "Avbryt"
+      },
+      "enroll": {
+        "prompt_native": "Tast inn hvelv-PIN-koden din for å aktivere maskinvarebeskyttelse.",
+        "prompt_web": "Tast inn den 8-sifrede PIN-koden din for å aktivere maskinvarebeskyttelse. Nettleseren din vil opprette en passkey for å låse lommeboken din til denne enheten.",
+        "cta": "Aktiver maskinvarebeskyttelse",
+        "busy_native": "Registrerer — godkjenn den biometriske forespørselen…",
+        "busy_web": "Registrerer — godkjenn passkey-forespørselen…",
+        "footnote_native": "Du vil bli bedt om å autentisere med enhetens biometri eller passord.",
+        "footnote_web": "Nettleseren din vil be deg autentisere med biometri eller enhets-PIN for å opprette passkeyen."
+      },
+      "blocked": "Innstillinger for maskinvarebeskyttelse er ikke tilgjengelige i denne økten."
+    },
+    "two_factor": {
+      "heading": "Tofaktor for kritiske handlinger",
+      "intro": "En ekstra sjekk i tillegg til PIN-koden din for sensitive handlinger. Selv om noen ser deg taste PIN-koden, kan de fortsatt ikke gjøre dette uten det andre trinnet.",
+      "actions_protects_label": "Handlinger det beskytter",
+      "gated_actions": [
+        { "label": "Sende midler", "desc": "hver sending, etter sikkerhetssjekker" },
+        { "label": "Avsløre gjenopprettingsfrasen din", "desc": "vise eller eksportere sikkerhetskopien din" },
+        { "label": "Angi en nød-PIN", "desc": "opprette nødlommeboken" },
+        { "label": "Opprette eller skjule en lommebok", "desc": "endringer i skjult lommebok" }
+      ],
+      "currently_enforcing": "Håndhever for øyeblikket:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + passkey",
+      "badge_password": "PIN + handlingspassord",
+      "badge_off": "Av (kun PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Du er i en avlednings-/skjult økt. Konfigurer tofaktor fra din reelle økt.",
+      "method_a_title": "PIN + handlingspassord",
+      "on_suffix": "PÅ",
+      "method_a_desc": "Et andre passord lagret inne i lommeboken din. Sterkt, men begge passordene ligger på samme enhet.",
+      "label_pin": "PIN-koden din",
+      "label_wallet_password": "Lommebokpassord",
+      "pin_confirm_placeholder": "Bekreft at det er deg",
+      "action_password_label_change": "Nytt handlingspassord",
+      "action_password_label_set": "Handlingspassord",
+      "action_password_placeholder": "Minst 8 tegn",
+      "action_password_hint": "Minst 8 tegn · alle tegn tillatt",
+      "too_short": "Bruk minst {{min}} tegn.",
+      "confirm_label": "Bekreft",
+      "confirm_placeholder": "Tast inn handlingspassordet på nytt",
+      "confirm_hint": "Må stemme overens med handlingspassordet ditt",
+      "mismatch": "Passordene stemmer ikke overens.",
+      "save_change": "Endre handlingspassord",
+      "save_set": "Angi handlingspassord",
+      "remove": "Fjern handlingspassord",
+      "toast_changed": "Handlingspassord endret",
+      "toast_set": "Handlingspassord angitt",
+      "toast_set_error": "Kunne ikke angi handlingspassordet",
+      "toast_confirm_pin_required": "Tast inn lommebokens PIN-kode/passord for å bekrefte",
+      "toast_removed": "Handlingspassord fjernet",
+      "toast_remove_error": "Kunne ikke fjerne handlingspassordet",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + passkey/FIDO2",
+      "method_b_desc_native": "PIN-koden din pluss {{label}}. Hvis biometri ikke er tilgjengelig, blokkeres handlingen. Å miste enheten din mister aldri midlene dine.",
+      "method_b_desc_web": "PIN-koden din pluss et passkey-trykk. Hvis passkeyen ikke er tilgjengelig, blokkeres handlingen. Å miste den mister aldri midlene dine.",
+      "switch_aria_native": "Bruk enhetens biometri som min andre faktor",
+      "switch_aria_web": "Bruk passkey som min andre faktor",
+      "confirm_native": "Bekreft kritiske handlinger med {{label}}.",
+      "unavailable_native": "{{label}} / enhetspassord er ikke satt opp på denne enheten — aktiver det i enhetsinnstillingene dine for å bruke denne faktoren.",
+      "unsupported_web": "Denne nettleseren støtter ikke WebAuthn/passkeyer.",
+      "register_hint_web_pre": "Ingen passkey registrert ennå — sett opp en under",
+      "register_hint_web_strong": "Lommebok-passkeyer",
+      "register_hint_web_post": "nedenfor, og aktiver deretter dette.",
+      "toggle_biometric_needed": "{{label}} er ikke satt opp på denne enheten.",
+      "toggle_passkey_needed": "Registrer en passkey først (Lommebok-passkeyer, nedenfor).",
+      "toggle_biometric_on": "{{label}} andre faktor på",
+      "toggle_biometric_off": "{{label}} andre faktor av",
+      "toggle_passkey_on": "Passkey andre faktor på",
+      "toggle_passkey_off": "Passkey andre faktor av"
+    },
+    "session": {
+      "title": "Økt og automatisk låsing",
+      "description": "Låser lommeboken din etter en periode med inaktivitet eller når du forlater appen",
+      "status_unlocked": "Låst opp",
+      "status_locked": "Låst",
+      "auto_lock_after": "Automatisk låsing etter",
+      "never_note": "Ingen automatisk låsing ved inaktivitet, men den låses fortsatt etter ~45 sek. i bakgrunnen og etter 8 timer i opplåst tilstand.",
+      "resets_note": "Tilbakestilles hver gang du samhandler med appen. Låser også umiddelbart når appen legges i bakgrunnen.",
+      "lock_now": "Lås nå",
+      "recent_activity": "Nylig aktivitet",
+      "view_all": "Vis alle",
+      "this_device": "Denne enheten",
+      "active_now": "Aktiv nå"
+    },
+    "rehearsal": {
+      "title": "Øv på fornektbarhet",
+      "description": "Se dashbordet akkurat slik noen som holder den opplåste telefonen din, ville sett det."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Lommebok",
+    "sidebar_expand": "Utvid sidefelt",
+    "sidebar_collapse": "Skjul sidefelt",
+    "search_placeholder": "Søk...",
+    "search_shortcut_title": "Søk (⌘K)",
+    "lock": "Lås",
+    "lock_confirm_prompt": "Lås denne lommeboken nå?",
+    "back": "Tilbake",
+    "settings": "Innstillinger",
+    "main_content_aria": "Hovedinnhold",
+    "bottom_nav_aria": "Nedre navigasjon",
+    "more_features_aria": "Flere funksjoner",
+    "more": "Mer",
+    "close": "Lukk",
+    "all_features_heading": "Alle funksjoner",
+    "recent_heading": "Nylig",
+    "tab_home": "Hjem",
+    "tab_send": "Send",
+    "tab_receive": "Motta"
+  },
+  "back": {
+    "default_label": "Tilbake"
+  },
+  "send": {
+    "heading": "Send kryptovaluta",
+    "subheading": "Overfør midler sikkert",
+    "wallet_fallback": "Lommebok",
+    "wallet_picker": { "label": "Fra lommebok", "placeholder": "Velg lommebok" },
+    "asset_picker": { "label": "Eiendel", "placeholder": "Velg eiendel" },
+    "recipient": {
+      "label": "Send til (adresse eller navn)",
+      "placeholder": "Lim inn en adresse eller skriv inn et navn (f.eks. vitalik.eth)",
+      "scan_qr": "Skann QR-kode",
+      "resolving": "Slår opp navn…",
+      "name_not_found": "Navn ikke funnet — sjekk stavemåten eller lim inn adressen direkte.",
+      "ens_using_prefix": "Bruker {{name}} →",
+      "ens_confirm_intro": "slått opp privat på blokkjeden til:",
+      "ens_confirm_hint": "Bekreft at denne adressen er korrekt før du sender.",
+      "use_this_address": "Bruk denne adressen",
+      "not_whitelisted": "Denne adressen er ikke på hvitelisten din. Dobbeltsjekk før du fortsetter. Du kan legge til klarerte adresser i Innstillinger.",
+      "self_send_warning": "Du sender til din egen lommebokadresse. Dette flytter ingenting mellom lommebøker og koster fortsatt et nettverksgebyr. Dobbeltsjekk mottakeren før du fortsetter."
+    },
+    "screening": {
+      "local_disclosure": "Mottakere sjekkes på enheten din for svindeladresser mot din egen historikk — ingenting forlater enheten din.",
+      "remote_opt_in": "Sjekk også mot en nettbasert trusseldatabase (sender denne adressen til en tredjepart)",
+      "remote_unavailable": "Nettbasert screening er aktivert, men ingen leverandør er konfigurert i denne appversjonen — screening forblir lokal, så vi kunne ikke bekrefte dette mot en ekstern liste.",
+      "demo_poison_button": "Demo: lim inn en lignende adresse"
+    },
+    "simulation": {
+      "title": "Transaksjonssimulering",
+      "toggle_aria": "Slå transaksjonssimulering av/på",
+      "description": "Før du signerer, kjører vi en lokal forhåndssjekk — ingen tredjepartstjenester, ingen data forlater enheten din.",
+      "checks": [
+        "Adresserisiko (forfalskning/lignende adresser)",
+        "Kontraktdekoding",
+        "Flagg for ubegrenset godkjenning",
+        "Prediksjon av reversering",
+        "Avvik fra historikken din",
+        "Advarsel om stort utgående beløp"
+      ],
+      "results_hint": "Resultater vises i neste trinn når du har skrevet inn en adresse og et beløp.",
+      "off_hint": "Simulering er av — ingen forhåndssjekk vil kjøres før signering.",
+      "taking_too_long": "Tar det for lang tid?",
+      "turn_off": "Slå av simulering"
+    },
+    "amount": {
+      "label": "Beløp",
+      "placeholder": "0,00",
+      "being_sent": "sendes",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(live)",
+      "reading_from_network": "leser fra nettverket…"
+    },
+    "errors": {
+      "amount_missing": "Beløp er påkrevd",
+      "amount_not_positive": "Beløpet må være større enn null",
+      "amount_malformed": "Skriv inn et enkelt desimalbeløp, som 0.5",
+      "amount_over_balance": "Utilstrekkelig saldo",
+      "insufficient_balance_title": "Utilstrekkelig saldo.",
+      "insufficient_balance_body": "Du har {{balance}} {{currency}} tilgjengelig å sende (etter nettverksgebyret). Reduser beløpet for å fortsette."
+    },
+    "status": {
+      "not_enabled": "Sending er ennå ikke aktivert for {{currency}}. Denne eiendelen er kun for mottak til kryptobanen er verifisert.",
+      "dev_ungate_title": "DEV UNGATE AKTIV",
+      "dev_ungate_body": "— sendingssperren er omgått for {{currency}} via VITE_DEV_UNGATE_SEND (kun utviklingsbygg). Statusen til denne eiendelen er uendret (fortsatt ikke live); mainnet forblir sperret. Kun testnett-verifisering — send aldri dette bygget.",
+      "locked": "Lommeboken din er låst. Lås den opp i Lommebokinnstillinger for å signere og sende."
+    },
+    "note": { "label": "Notat (valgfritt)", "placeholder": "Hva gjelder dette?" },
+    "trezor": {
+      "toggle_label": "Signer med Trezor",
+      "connected": "Enhet tilkoblet",
+      "connect_button": "Koble til enhet"
+    },
+    "buttons": {
+      "continue": "Fortsett",
+      "confirm_send": "Bekreft og send",
+      "back": "Tilbake"
+    },
+    "verify": { "summary_label": "Du sender" },
+    "fee": {
+      "automatic": "Nettverksgebyr angis automatisk for {{currency}} ({{network}}).",
+      "native_fee_note": "Nettverksgebyret betales i {{symbol}} ({{network}}) — du trenger {{symbol}} for å dekke nettverksgebyret, selv når du sender {{token}}."
+    },
+    "decode": {
+      "heading": "Hva denne transaksjonen gjør",
+      "action": "Handling",
+      "send_tokens": "Send tokens",
+      "token": "Token",
+      "amount": "Beløp",
+      "recipient": "Mottaker",
+      "grant_permission": "Gi bruksrettighet",
+      "permission": "Tillatelse",
+      "unlimited_permission": "Ubegrenset (denne appen kan bruke et hvilket som helst beløp)",
+      "spender": "Bruker"
+    },
+    "reauth": {
+      "prompt": "Tast inn {{credential}} på nytt for å autorisere",
+      "credential_pin": "PIN",
+      "credential_password": "passord",
+      "submit_pin": "Autoriser",
+      "submit_password": "Autoriser og send",
+      "password_placeholder": "Hvelvpassord",
+      "password_aria": "Hvelvpassord for sendingsautorisasjon",
+      "errors": {
+        "unavailable": "Verifisering utilgjengelig — lås lommeboken på nytt og lås den opp igjen.",
+        "incorrect": "Feil — prøv igjen ({{remaining}} igjen)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transaksjon kringkastet",
+      "heading": "Transaksjon kringkastet",
+      "body_suffix": "signert lokalt og sendt til nettverket",
+      "tx_hash_label": "Transaksjons-hash",
+      "view_explorer": "Vis i blokk-explorer",
+      "pending_note": "Venter til bekreftet på nettverket. Saldoen oppdateres fra blokkjeden, ikke en lagret verdi.",
+      "send_another": "Send en til"
+    },
+    "toasts": {
+      "ens_off_in_session": "Navneoppslag er av i denne økten — lim inn adressen direkte.",
+      "ens_not_found": "ENS-navn ikke funnet",
+      "sns_unavailable": "Solana-navneoppslag er ikke tilgjengelig ennå — lim inn adressen direkte.",
+      "ens_resolution_failed": "Navneoppslag mislyktes",
+      "verify_required": "Fullfør verifiseringen av sikkerhetskopien din før du sender dette beløpet.",
+      "two_factor_retry": "Sendingen kunne ikke fullføres — verifiser på nytt for å prøve igjen.",
+      "send_failed_fallback": "Sending mislyktes",
+      "unconfirmed": "Kunne ikke bekrefte denne transaksjonen på nettverket ennå — den kan fortsatt være under behandling. Sjekk exploreren."
+    }
+  },
+  "receive": {
+    "heading": "Motta kryptovaluta",
+    "subheading": "Vis en lommebokadresse for å motta midler",
+    "asset_label": "Eiendel",
+    "asset_placeholder": "Velg eiendel",
+    "not_available": "Å motta {{name}} ({{symbol}}) er ikke tilgjengelig ennå. Ingen adresse vises før denne eiendelen er aktivert.",
+    "locked": {
+      "title": "Lommebok låst",
+      "body": "Lås opp lommeboken din for å avsløre {{asset}} {{network}}-mottaksadressen din.",
+      "open_hd_wallet": "Åpne HD-lommebokbehandling"
+    },
+    "your_address": "Din {{asset}}-adresse",
+    "testnet_badge": "Testnett",
+    "receive_address_label": "{{symbol}}-mottaksadresse",
+    "copy": {
+      "copied_aria": "Adresse kopiert til utklippstavlen",
+      "copy_aria": "Kopier adresse",
+      "copied_toast": "Adresse kopiert",
+      "copy_failed_toast": "Kunne ikke kopiere — merk og kopier adressen manuelt"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} er et token på et Ethereum-kompatibelt nettverk. Dette er lommebokadressen din — be avsenderen kun sende {{symbol}} på {{network}}. Å sende det på et annet nettverk kan føre til permanent tap av midlene.",
+      "evm": "Dette er din delte lommebokadresse. Send bare {{name}} på {{network}} til denne adressen, og sørg for at avsenderen bruker {{network}}.",
+      "btc": "Send bare Bitcoin på {{network}} til denne adressen.",
+      "solana": "Send bare Solana på {{network}} til denne adressen."
+    },
+    "select_asset_prompt": "Velg en eiendel å motta.",
+    "unlock_footer_note": "Adresser kommer fra lommeboken din på enheten og vises bare mens den er låst opp."
+  },
+  "dashboard": {
+    "portfolioValue": "Porteføljeverdi",
+    "priceAlertsTriggered_one": "{{count}} prisvarsel utløst!",
+    "priceAlertsTriggered_other": "{{count}} prisvarsler utløst!",
+    "lockAriaLabel": "Lås saldo bak biometri",
+    "lockBalance": "Lås saldo",
+    "synced": "Synkronisert {{time}}",
+    "syncJustNow": "Akkurat nå",
+    "syncSecondsAgo_one": "{{count}} sek. siden",
+    "syncSecondsAgo_other": "{{count}} sek. siden",
+    "syncMinutesAgo_one": "{{count}} min. siden",
+    "syncMinutesAgo_other": "{{count}} min. siden",
+    "actions": {
+      "send": "Send",
+      "receive": "Motta",
+      "schedule": "Planlegg",
+      "add": "Legg til"
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Aktivitet",
+      "analytics": "Analyse"
+    },
+    "emptyWallets": {
+      "title": "Ingen lommebøker ennå",
+      "description": "Legg til en lommebok for å begynne å motta, sende og oppbevare eiendeler på tvers av kjeder."
+    },
+    "addWallet": "Legg til lommebok",
+    "searchTransactionsPlaceholder": "Søk i transaksjoner...",
+    "emptySearch": {
+      "title": "Ingen samsvarende transaksjoner",
+      "description": "Prøv å fjerne filtre eller søk etter en annen eiendel eller adresse."
+    },
+    "emptyTransactions": {
+      "title": "Ingen transaksjoner ennå",
+      "description": "Aktiviteten din på kjeden vises her når du sender eller mottar."
+    },
+    "portfolioPerformance": "Porteføljeutvikling",
+    "assetDistribution": "Fordeling av eiendeler",
+    "quickAccess": "Hurtigtilgang",
+    "quickAccessItems": {
+      "receive": "Motta",
+      "security": "Sikkerhet",
+      "approvals": "Godkjenninger",
+      "addressCheck": "Adressesjekk",
+      "analytics": "Analyse",
+      "sentiment": "Stemning",
+      "riskScore": "Risikoscore"
+    },
+    "walletNameLabel": "Lommeboknavn",
+    "walletNamePlaceholder": "Min ETH-lommebok",
+    "addWalletDialog": {
+      "title": "Legg til lommebok",
+      "currency": "Valuta",
+      "creating": "Oppretter...",
+      "create": "Opprett lommebok"
+    },
+    "renameWalletDialog": {
+      "title": "Gi lommebok nytt navn",
+      "saving": "Lagrer...",
+      "save": "Lagre navn"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Kryptert hvelv",
+    "backup": {
+      "title": "Sikkerhetskopier «{{name}}»",
+      "reauthDescription": "Bekreft at det er deg, så viser vi gjenopprettingsfrasen for denne lommeboken.",
+      "description": "Skriv ned disse 12 ordene offline. Alle som har dem, kan bruke midlene i denne lommeboken — og de er den eneste måten å gjenopprette den på.",
+      "warning": "Ta aldri et skjermbilde. Skriv det aldri inn i en annen app.",
+      "confirmButton": "Jeg har skrevet det ned — merk som sikkerhetskopiert"
+    },
+    "addWallet": {
+      "defaultWalletName": "din nye lommebok",
+      "backupDescription": "Denne lommeboken har sin egen gjenopprettingsfrase — separat fra alle andre lommebøker i hvelvet ditt. Skriv den ned offline før du bruker den.",
+      "backedUpDone": "Jeg har sikkerhetskopiert den — ferdig",
+      "title": "Legg til en lommebok",
+      "createNew": "Opprett ny",
+      "importSeed": "Importer seed",
+      "createDescription": "Genererer et NYTT seed som utleder ALLE kjeder (ETH/EVM, BTC, SOL). Du sikkerhetskopierer det før det aktiveres.",
+      "importDescription": "Lim inn et eksisterende 12/24-ords seed — alle kjeder utledes automatisk (et seed er ikke kjedespesifikt).",
+      "recoveryPhraseLabel": "Gjenopprettingsfrase",
+      "recoveryPhrasePlaceholder": "ord1 ord2 ... ord12",
+      "walletNameLabel": "Lommeboknavn",
+      "walletNamePlaceholder": "f.eks. Sparing",
+      "assetsToShowLabel": "Eiendeler som skal vises",
+      "assetsToShowHint": "Kun et visningsvalg — seedet inneholder alle kjeder uansett.",
+      "confirmVaultPlaceholder": "Bekreft at det er deg for å endre hvelvet ditt",
+      "vaultReentryHint": "Tastet inn på nytt for å autorisere en endring i seed-hvelvet ditt. Aldri lagret i minnet.",
+      "createAndBackup": "Opprett og sikkerhetskopier",
+      "importWallet": "Importer lommebok"
+    },
+    "vaultPinLabel": "Hvelv-PIN",
+    "vaultPasswordLabel": "Hvelvpassord",
+    "cancel": "Avbryt",
+    "done": "Ferdig",
+    "manageAssets": {
+      "title": "Eiendeler for «{{name}}»",
+      "description": "Velg hvilke eiendeler som vises for denne lommeboken. Skjulte forblir ute av veien til de legges til."
+    },
+    "rename": {
+      "title": "Gi lommebok nytt navn",
+      "save": "Lagre navn"
+    },
+    "remove": {
+      "title": "Fjern «{{name}}»?",
+      "onlyWallet": "Dette er din eneste lommebok — den kan ikke fjernes. Bruk Panikksletting i Sikkerhet for å slette alt.",
+      "description": "Fjerner denne lommebokens seed fra denne enheten.",
+      "backedUpNote": "Du kan gjenopprette den fra gjenopprettingsfrasen.",
+      "notBackedUpNote": "⚠️ IKKE sikkerhetskopiert — uten frasen er den tapt for alltid.",
+      "button": "Fjern lommebok"
+    },
+    "move": {
+      "title": "Flytt «{{name}}» til…"
+    },
+    "managePortfolios": {
+      "title": "Porteføljer",
+      "defaultTag": "(standard)",
+      "saveAriaLabel": "Lagre porteføljenavn",
+      "renameAriaLabel": "Gi {{name}} nytt navn",
+      "deleteAriaLabel": "Slett {{name}}",
+      "newNamePlaceholder": "Nytt porteføljenavn",
+      "addButton": "Legg til"
+    },
+    "activity": {
+      "unlockPrompt": "Lås opp lommeboken din for å se aktivitet.",
+      "loading": "Laster...",
+      "loadError": "Kunne ikke laste aktivitet.",
+      "noTransactions": "Ingen transaksjoner ennå.",
+      "viewFullHistory": "Vis full historikk →"
+    },
+    "portfolioValueLabel": "Porteføljeverdi",
+    "explore": {
+      "subtitle": "Du utforsker — kun visning. Ingen lommebok ennå.",
+      "description": "Se deg fritt rundt. Når du er klar, opprett en ny selvforvaltende lommebok eller importer et eksisterende seed — nøkler genereres og krypteres på denne enheten.",
+      "createOrImport": "Opprett eller importer en lommebok"
+    },
+    "portfoliosButton": "Porteføljer",
+    "totalValueHeading": "{{name}} · Total verdi",
+    "partialTotalNote": "Enkelte saldoer kunne ikke lastes — denne totalen kan være ufullstendig.",
+    "refreshPricesTooltip": "Oppdater direkte priser",
+    "live": "Direkte",
+    "approximate": "Omtrentlig",
+    "seedVerify": {
+      "title": "Fullfør verifiseringen av sikkerhetskopien din",
+      "description": "Påkrevd for å sende over sikkerhetsterskelen.",
+      "verifyAriaLabel": "Verifiser sikkerhetskopien av lommeboken din",
+      "verifyButton": "Verifiser"
+    },
+    "unbacked": {
+      "titleBold": "Lommebok-sikkerhetskopi ufullstendig.",
+      "body": "Hver lommebok har sin egen gjenopprettingsfrase — uten den er midlene i den lommeboken ikke gjenopprettbare. Sikkerhetskopier nå.",
+      "backUpButton": "Sikkerhetskopier «{{name}}»"
+    },
+    "actions": {
+      "send": "Send",
+      "receive": "Motta",
+      "addWallet": "Legg til lommebok"
+    },
+    "activeWalletHint": {
+      "prefix": "Send/motta bruker",
+      "otherPortfolio": " (i en annen portefølje)",
+      "suffix": ". Trykk på en lommebok nedenfor for å bytte."
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Aktivitet",
+      "analytics": "Analyse"
+    },
+    "noWalletsInPortfolio": "Ingen lommebøker i «{{name}}». Legg til en lommebok, eller flytt en hit fra menyen.",
+    "hideAssets": "Skjul eiendeler",
+    "showAllAssets": "Vis alle eiendeler",
+    "walletCard": {
+      "active": "Aktiv",
+      "backedUp": "Sikkerhetskopiert",
+      "backUp": "Sikkerhetskopier",
+      "partial": "delvis",
+      "optionsAriaLabel": "Alternativer for {{name}}",
+      "noAssetsShown": "Ingen eiendeler vist. Bruk «Behandle eiendeler»."
+    },
+    "menu": {
+      "manageAssets": "Behandle eiendeler",
+      "rename": "Gi nytt navn",
+      "moveToPortfolio": "Flytt til portefølje",
+      "backUp": "Sikkerhetskopier",
+      "remove": "Fjern"
+    },
+    "balanceLoadFailedTitle": "Saldo kunne ikke lastes",
+    "defaultWalletFallbackName": "lommebok",
+    "toast": {
+      "walletImported": "Lommebok importert — alle kjeder utledet.",
+      "walletRemoved": "Lommebok fjernet fra denne enheten.",
+      "walletAddedBackedUp": "Lommebok lagt til og sikkerhetskopiert.",
+      "movedTo": "Flyttet til {{name}}.",
+      "markedBackedUp": "«{{name}}» merket som sikkerhetskopiert."
+    },
+    "errors": {
+      "couldNotAddWallet": "Kunne ikke legge til lommebok",
+      "couldNotImportWallet": "Kunne ikke importere lommebok",
+      "couldNotRemoveWallet": "Kunne ikke fjerne lommebok"
+    }
+  },
+  "networth": {
+    "title": "Krypto nettoformue",
+    "unlockPrompt": "Lås opp lommeboken din for å se beholdningene dine på kjeden.",
+    "subtitle": "Beholdningene dine på kjeden — inkluderer ikke eksterne eiendeler.",
+    "totalHoldings": "Total beholdning",
+    "partialNote": "delvis — enkelte saldoer kunne ikke leses",
+    "refreshPricesTooltip": "Oppdater direkte priser",
+    "live": "Direkte",
+    "approximate": "Omtrentlig",
+    "allocation": "Fordeling",
+    "holdings": "Beholdning",
+    "noHoldings": "Ingen beholdning ennå."
+  }
+}
