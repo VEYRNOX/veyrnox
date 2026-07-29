@@ -26,7 +26,7 @@
 //   - on LOCALE_CHANGED_EVENT (Settings switcher), load the newly-picked
 //     locale if not already cached, then changeLanguage
 // Non-en users see EN for ~1 render frame before their locale swaps in
-// (i18next fallbackLng: 'en' covers the gap). All 23 non-en catalogs would
+// (i18next fallbackLng: 'en' covers the gap). All 33 non-en catalogs would
 // otherwise sit in the main bundle at ~30 KB gzipped each — the eager
 // baseline before Phase 5 was ~700 KB and regressed LCP through its budget.
 
@@ -35,6 +35,10 @@ import { initReactI18next } from 'react-i18next';
 import { resolveLocale, LOCALE_CHANGED_EVENT } from '@/lib/locale';
 
 // EN is the baseline + fallback — MUST be synchronous, never lazy.
+// Under Phase 5 code-split, all non-en catalogs load via import.meta.glob
+// below — no static imports needed for them, and Phase 6's 10 new locales
+// (th, hi, fa, he, ur, zh-TW, ms, tl, es-419, bn) get their chunks the
+// same way ar/it/etc do.
 import enCommon from './locales/en/common.json';
 import enSecurity from './locales/en/security.json';
 import enWallet from './locales/en/wallet.json';
@@ -57,6 +61,7 @@ export const SUPPORTED_LANGUAGES = [
   'en', 'es', 'de', 'zh-CN',
   'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko', 'ar',
   'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
+  'th', 'hi', 'fa', 'he', 'ur', 'zh-TW', 'ms', 'tl', 'es-419', 'bn',
 ];
 
 // The default user-facing set. All bundled languages are exposed; MT status
@@ -65,6 +70,7 @@ export const LANGUAGE_SWITCHER_AVAILABLE = /** @type {readonly string[]} */ ([
   'en', 'es', 'de', 'zh-CN',
   'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko', 'ar',
   'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
+  'th', 'hi', 'fa', 'he', 'ur', 'zh-TW', 'ms', 'tl', 'es-419', 'bn',
 ]);
 
 // Every non-English catalog is machine-translated at the time this ships.
@@ -95,6 +101,16 @@ export const MACHINE_TRANSLATED = /** @type {Record<string, boolean>} */ ({
   da: true,
   no: true,
   fi: true,
+  th: true,
+  hi: true,
+  fa: true,
+  he: true,
+  ur: true,
+  'zh-TW': true,
+  ms: true,
+  tl: true,
+  'es-419': true,
+  bn: true,
 });
 
 // Normalize whatever resolveLocale returns (which follows navigator.language:
@@ -103,14 +119,29 @@ export const MACHINE_TRANSLATED = /** @type {Record<string, boolean>} */ ({
 export function pickSupported(raw) {
   if (!raw) return 'en';
   if (SUPPORTED_LANGUAGES.includes(raw)) return raw;
-  // Match by language subtag: "de-AT" → "de", "zh-Hans-CN" → "zh-CN" if we
-  // ship zh-CN. Latin scripts collapse to the base tag; zh/pt need region care.
+  // Match by language subtag: "de-AT" → "de", "zh-Hans-CN" → "zh-CN",
+  // "zh-Hant-TW" → "zh-TW". Latin scripts collapse to the base tag;
+  // zh/pt/nb/nn need region-aware handling.
   const [base] = raw.split('-');
-  if (base === 'zh') return SUPPORTED_LANGUAGES.includes('zh-CN') ? 'zh-CN' : 'en';
+  // Chinese: script or region tag decides Simplified vs Traditional.
+  // zh-HK/zh-MO/zh-TW/zh-Hant* → Traditional; everything else zh-* → Simplified.
+  if (base === 'zh') {
+    const lower = raw.toLowerCase();
+    if (lower.includes('hant') || lower.includes('-tw') || lower.includes('-hk') || lower.includes('-mo')) {
+      return SUPPORTED_LANGUAGES.includes('zh-TW') ? 'zh-TW' : 'en';
+    }
+    return SUPPORTED_LANGUAGES.includes('zh-CN') ? 'zh-CN' : 'en';
+  }
   // Portuguese: only pt-BR is shipped. Any "pt", "pt-PT", "pt-AO" etc. maps to
   // pt-BR — the alternative is fail-honest to English, which is worse UX for a
   // Portuguese speaker who reads pt-BR fine even if pt-PT was their preference.
   if (base === 'pt') return SUPPORTED_LANGUAGES.includes('pt-BR') ? 'pt-BR' : 'en';
+  // Spanish: Iberian `es` is historical default (bare "es" keeps it). Every
+  // Latin American country code (es-MX, es-AR, es-CO, es-PE, es-VE, es-US, …)
+  // resolves to the pan-LatAm `es-419` catalog. Only `es-ES` stays Iberian.
+  if (base === 'es' && raw.toLowerCase() !== 'es-es') {
+    return SUPPORTED_LANGUAGES.includes('es-419') ? 'es-419' : 'es';
+  }
   // Norwegian: browsers send `nb-*` (Bokmål) or `nn-*` (Nynorsk). We ship one
   // umbrella `no` catalog in Bokmål — both map to it rather than fall through
   // to English. A Nynorsk speaker reading Bokmål is a much smaller UX cost

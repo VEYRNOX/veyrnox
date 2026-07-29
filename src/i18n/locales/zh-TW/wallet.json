@@ -1,0 +1,735 @@
+{
+  "tx": {
+    "history": {
+      "heading": "交易歷史",
+      "subhead": "按鏈讀取的直接傳送與接收 — 只讀，並附帶瀏覽器連結。",
+      "badge_demo": "演示 · 示例資料",
+      "badge_mainnet": "主網",
+      "badge_testnet": "測試網",
+      "privacy_demo_note": "演示模式 — 不進行任何網路查詢；下面的記錄是本地示例資料。",
+      "loading_label": "正在載入 {{symbol}} 歷史",
+      "error_prefix": "無法載入歷史：{{reason}}。",
+      "error_fetch_reason": "無法連線 RPC 節點 — 請檢查網路後重試。",
+      "error_generic_reason": "索引器未響應",
+      "retry": "重試",
+      "no_indexer_title": "{{name}} 的應用內歷史無法通過 JSON-RPC 提供",
+      "no_indexer_body": "普通 JSON-RPC 節點無法列出某地址的交易，我們也刻意不新增第三方瀏覽器/索引器 API（新的資料來源與外聯面）。你的完整歷史可在區塊瀏覽器檢視。",
+      "view_on_explorer": "在 {{network}} 瀏覽器中檢視 {{address}}",
+      "view_explorer_title": "在區塊瀏覽器中檢視",
+      "unlock_for_explorer": "解鎖錢包以獲取你 {{symbol}} 地址的瀏覽器連結。",
+      "locked_title": "錢包已鎖定",
+      "locked_body": "解鎖錢包以派生你的 {{symbol}} 地址並載入其歷史。",
+      "empty": "{{network}} 上的 {{symbol}} 尚無交易。",
+      "count_one": "{{count}} 筆交易",
+      "count_other": "{{count}} 筆交易",
+      "most_recent_suffix": " · 最新",
+      "refresh": "重新整理",
+      "sample_badge": "示例",
+      "to_prefix": "至 ",
+      "from_prefix": "來自 ",
+      "status_pending": "待處理",
+      "status_confirmed": "已確認",
+      "status_failed": "失敗",
+      "awaiting_confirmation": "等待確認"
+    },
+    "list": {
+      "empty_title": "尚無交易",
+      "empty_description": "當你在此錢包傳送或接收後，鏈上活動將顯示在這裡。"
+    },
+    "receipt": {
+      "heading": "交易憑證",
+      "subhead": "為任意交易生成可列印憑證",
+      "search_placeholder": "按 ID、地址或幣種搜尋...",
+      "loading": "載入中...",
+      "error": "無法載入交易。請重試。",
+      "empty": "未找到交易",
+      "preview_title": "憑證預覽",
+      "print": "列印",
+      "print_window_title": "交易憑證",
+      "brand": "VEYRNOX",
+      "doc_title": "交易憑證",
+      "field_receipt_id": "憑證 ID",
+      "field_date": "日期",
+      "field_type": "類型",
+      "field_asset": "資產",
+      "field_amount": "金額",
+      "field_network_fee": "網路費",
+      "field_status": "狀態",
+      "field_to": "至",
+      "default_type": "轉帳",
+      "default_status": "已完成",
+      "thank_you": "感謝你使用 {{brand}}",
+      "thank_you_prefix": "感謝你使用",
+      "digital_record": "這是一份數字交易記錄"
+    }
+  },
+  "settings": {
+    "heading": "安全設定",
+    "subhead": "鎖定、解鎖並保護你的錢包",
+    "theme": {
+      "dark": "深色模式",
+      "light": "淺色模式",
+      "saved_note": "已儲存在本裝置",
+      "switch_to_light": "切換到淺色模式",
+      "switch_to_dark": "切換到深色模式"
+    },
+    "activity_log": {
+      "label": "活動日誌",
+      "description": "預設關閉 · 僅儲存在本裝置",
+      "help": "私有日誌：你更改、傳送、撤銷的內容。不包含金額或地址。緊急擦除會刪除它。",
+      "enable_aria": "啟用活動日誌",
+      "disable_aria": "停用活動日誌",
+      "no_events": "尚未記錄任何事件。"
+    },
+    "message_signing": {
+      "label": "訊息簽名",
+      "description": "預設關閉 · 僅儲存在本裝置",
+      "help": "預設關閉。允許你使用錢包金鑰簽名任意文本訊息。僅在 dApp 或服務要求你簽名訊息時啟用。",
+      "enable_aria": "啟用訊息簽名",
+      "disable_aria": "停用訊息簽名"
+    },
+    "telemetry": {
+      "label": "匿名使用資料",
+      "description": "選擇加入 · 從不包含餘額或地址",
+      "help": "幫助我們發現錯誤並改進應用。使用隨機裝置 ID — 從不與你的錢包、金鑰或身份關聯。關閉後將停止本裝置的所有使用資料外傳。",
+      "enable_aria": "開啟匿名使用資料",
+      "disable_aria": "關閉匿名使用資料"
+    },
+    "delete_account": {
+      "title": "危險區",
+      "clear_cache_label": "清除本地快取",
+      "clear_cache_description": "清除本裝置上儲存的資料並鎖定錢包。你的助記詞仍然有效。若要清除金鑰，請使用緊急擦除。",
+      "delete_button": "刪除",
+      "confirm_prompt_pre": "這將清除儲存的資料並鎖定錢包。你的助記詞仍然有效。請輸入",
+      "confirm_prompt_post": "以確認。",
+      "confirm_placeholder": "輸入 DELETE 以確認",
+      "confirm_aria": "輸入 DELETE 以確認帳戶重置",
+      "cancel": "取消",
+      "confirm_delete": "確認刪除",
+      "deleting": "刪除中..."
+    },
+    "biometric_unlock": {
+      "heading": "生物識別解鎖",
+      "worth_knowing_label": "值得了解。",
+      "kdf_disclosure": "一鍵解鎖會把你的錢包密碼儲存在本裝置，由螢幕鎖定與生物識別保護。若有人在沒有實體裝置的情況下拿到你裝置備份的副本，他們可能訪問你的錢包。若想獲得最強保護，請關閉此項。",
+      "app_layer_disclosure_pre": "生物識別解鎖把你的密碼儲存在本裝置，由你的指紋或面容保護。執行在應用內部，而非作業系統層面。",
+      "app_layer_disclosure_mid": "若想獲得裝置級別的更強保護，請啟用",
+      "hardware_protection_label": "硬體保護",
+      "app_layer_disclosure_post": "（下方可用）。",
+      "toggle_label": "生物識別解鎖（主錢包）",
+      "toggle_description": "使用裝置生物識別為你的主錢包啟用一鍵解鎖。",
+      "before_enable_label": "啟用前請知悉。",
+      "confirm_disclosure": "若有人在沒有實體裝置的情況下拿到你裝置備份的副本，他們可能訪問你的錢包。若你能接受這一點，才啟用。",
+      "confirm_enable_button": "啟用一鍵解鎖",
+      "cancel_button": "取消",
+      "checking_availability": "正在檢查可用性…",
+      "default_label": "生物識別",
+      "available": "{{label}} 可用。",
+      "available_simulated": "{{label}} 可用（演示中為模擬）。",
+      "status_check_failed": "無法檢查此裝置的生物識別可用性。",
+      "awaiting_prompt": "等待提示…",
+      "preview_prompt": "預覽提示",
+      "test_success": "模擬身份驗證成功",
+      "test_cancelled": "提示已取消"
+    },
+    "passkey_unlock": {
+      "heading_native": "生物識別解鎖",
+      "heading_web": "使用 Passkey 解鎖",
+      "scope_banner_native_pre": "解鎖前會檢查你的指紋或面容 —",
+      "scope_banner_native_post": "不是替代你的密碼。你的密碼和助記詞依然獨立有效，因此失去生物識別不會讓你被鎖在門外。",
+      "scope_banner_web_pre": "Passkey 在解鎖前增加一次快速的生物識別或安全金鑰點選 —",
+      "scope_banner_web_post": "不是替代你的密碼。你的密碼和助記詞依然獨立有效，因此失去 Passkey 不會讓你被鎖在門外。",
+      "extra_step_label": "一個額外步驟",
+      "enroll_button": "註冊生物識別解鎖",
+      "register_button": "註冊 Passkey",
+      "not_setup_native": "尚未設定裝置生物識別。請先在裝置設定中新增指紋或面容 — 你的密碼仍然可用。",
+      "not_supported_web": "此瀏覽器不支援 Passkey 解鎖。它在移動應用和現代瀏覽器中可用。請在此處使用密碼。",
+      "enroll_error": "無法在此裝置註冊生物識別解鎖。",
+      "register_error": "無法在此裝置註冊 Passkey。",
+      "enrolled_native": "已註冊生物識別解鎖",
+      "registered_web": "已註冊 Passkey",
+      "simulated_suffix": "（模擬）",
+      "remove_button": "移除",
+      "require_toggle_native": "解鎖時必須使用生物識別",
+      "require_toggle_web": "解鎖時必須使用 {{label}}",
+      "require_toggle_aria_web": "解鎖時必須使用 Passkey",
+      "require_toggle_desc_native": "解鎖前詢問裝置生物識別（你的密碼仍然可用）。",
+      "require_toggle_desc_web": "解鎖前詢問你的 Passkey（你的密碼仍然可用）。",
+      "applies_all_sessions": "此設定適用於本裝置上的所有錢包會話。",
+      "default_label": "Passkey",
+      "checking_availability": "正在檢查可用性…",
+      "simulated_in_demo": "{{label}} 在演示中為模擬。",
+      "awaiting_biometric": "等待生物識別…",
+      "awaiting_passkey": "等待 Passkey…",
+      "preview_biometric_prompt": "預覽生物識別提示",
+      "preview_passkey_prompt": "預覽 Passkey 提示",
+      "simulated_prefix": "已模擬 ",
+      "biometric_verified": "生物識別已驗證",
+      "passkey_verified": "Passkey 已驗證",
+      "biometric_prompt_cancelled": "生物識別提示已取消",
+      "passkey_prompt_cancelled": "Passkey 提示已取消"
+    },
+    "hardware_kek": {
+      "heading": "裝置端硬體保護",
+      "badge_webauthn": "受 WebAuthn 保護",
+      "badge_off": "關閉",
+      "description_pre": "將你的錢包繫結到這臺物理裝置。啟用後，你的錢包只能在",
+      "description_device": "本裝置",
+      "description_post": "上開啟。即使有你的 PIN，被盜的備份檔案在沒有裝置本身的情況下也無用。",
+      "description_web_suffix": "適用於 Chrome 99+ 與 Firefox 108+。不支援 Safari。",
+      "device_binding_note": "裝置繫結已啟用，並在真實硬體上通過測試。",
+      "checking_status": "正在檢查狀態…",
+      "web_prf_unsupported": "此瀏覽器不支援硬體保護。請使用 Chrome 99+ 或 Firefox 108+，或使用 iOS 或 Android 應用。",
+      "errors": {
+        "wrong_pin": "PIN 錯誤 — 請輸入解鎖錢包時使用的 PIN。",
+        "no_hardware": "無法訪問此裝置的硬體安全模組。請重試，或使用其他裝置。",
+        "malformed_vault": "在此裝置上無法讀取你已儲存的錢包資料。",
+        "not_enrolled": "此 vault 未啟用硬體保護，無需升級。",
+        "generic": "出錯了。請重試。",
+        "key_invalidated": "你的指紋已更改 — 硬體保護已失效。請先停用再重新啟用硬體保護，或從助記詞恢復。",
+        "insecure_tier": "此裝置沒有安全硬體元件 — 無法在此啟用硬體保護。",
+        "enter_pin_first": "請先輸入 vault PIN。",
+        "enter_pin_confirm_removal": "請輸入 vault PIN 以確認移除。",
+        "enter_pin_upgrade": "請輸入 vault PIN 以升級。"
+      },
+      "toast": {
+        "enabled": "硬體保護已啟用 — 你的 vault 現在需要本裝置才能解鎖。",
+        "removed": "硬體保護已移除。",
+        "upgraded": "硬體保護已升級 — 你的 vault 現在使用裝置唯一金鑰進行繫結。"
+      },
+      "pin_strength": {
+        "hardware_title": "已受硬體保護。",
+        "hardware_body": "你的 PIN 與 Face ID、指紋或 Passkey 結合使離線攻擊不可行 — 攻擊者需要同時擁有你的 PIN 與這臺物理裝置。",
+        "no_hardware_title": "此瀏覽器不提供硬體因素。",
+        "no_hardware_body": "你的 8 位 PIN（約 1 億種組合）僅由 Argon2id 保護 — 有決心的攻擊者可能在數天到數週內離線窮舉完。請使用 12 位以上的密碼，或切換到 Chrome/Firefox 以啟用硬體保護。",
+        "pre_enroll_title": "PIN 強度。",
+        "pre_enroll_body": "8 位 PIN 大約有 1 億種組合。Argon2id 將單執行緒離線攻擊拖慢到大約 1–2 年 — 但 GPU 叢集可能把它減少到幾天。上方啟用 Face ID、指紋或 Passkey 會使離線攻擊不可行，因為每次解鎖都需要這臺裝置。"
+      },
+      "enrolled": {
+        "active_title": "在本裝置上已生效",
+        "active_body_native": "你的 vault 需要本裝置的生物識別才能解鎖。",
+        "active_body_web": "你的 vault 需要本裝置的 Passkey 才能解鎖。"
+      },
+      "upgrade": {
+        "available_title": "可用升級",
+        "available_body": "你的錢包由較舊版本保護，該版本在多裝置之間共享一個金鑰。請升級以僅繫結到本裝置。此操作僅進行一次，並會要求你驗證兩次。",
+        "cta": "升級硬體保護",
+        "busy": "正在升級 — 請同意兩次提示…",
+        "prompt": "請輸入你的 vault PIN。你將進行兩次身份驗證以重新保護 vault。",
+        "cancel": "取消"
+      },
+      "remove": {
+        "cta": "移除硬體保護",
+        "prompt_native": "請輸入你的 PIN 以確認。你需要使用指紋或面容進行驗證。",
+        "prompt_web": "請輸入你的密碼以確認。你需要使用 Passkey 進行驗證。",
+        "busy": "正在移除 — 請同意提示…",
+        "cancel": "取消"
+      },
+      "enroll": {
+        "prompt_native": "請輸入你的 vault PIN 以啟用硬體保護。",
+        "prompt_web": "請輸入你的 8 位 PIN 以啟用硬體保護。你的瀏覽器將建立一個 Passkey，將你的錢包繫結到本裝置。",
+        "cta": "啟用硬體保護",
+        "busy_native": "正在註冊 — 請同意生物識別提示…",
+        "busy_web": "正在註冊 — 請同意 Passkey 提示…",
+        "footnote_native": "系統將要求你使用裝置的生物識別或裝置密碼進行身份驗證。",
+        "footnote_web": "你的瀏覽器會要求你使用生物識別或裝置 PIN 進行身份驗證以建立 Passkey。"
+      },
+      "blocked": "此會話中無法使用硬體保護設定。"
+    },
+    "two_factor": {
+      "heading": "關鍵操作的二次驗證",
+      "intro": "在你的 PIN 之上為敏感操作增加一次額外檢查。即使有人看到你輸入 PIN，沒有第二步他們也無法完成這些操作。",
+      "actions_protects_label": "受保護的操作",
+      "gated_actions": [
+        {
+          "label": "傳送資金",
+          "desc": "每次傳送，通過安全檢查後"
+        },
+        {
+          "label": "顯示助記詞",
+          "desc": "檢視或匯出你的備份"
+        },
+        {
+          "label": "設定緊急 PIN",
+          "desc": "建立緊急錢包"
+        },
+        {
+          "label": "建立或隱藏錢包",
+          "desc": "隱藏錢包的更改"
+        }
+      ],
+      "currently_enforcing": "當前啟用：",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + 操作密碼",
+      "badge_off": "關閉（僅 PIN）",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "你正處於誘餌/隱藏會話中。請在真實會話中配置二次驗證。",
+      "method_a_title": "PIN + 操作密碼",
+      "on_suffix": "已開啟",
+      "method_a_desc": "存放在你錢包內的第二個密碼。較強，但兩個密碼都存放在同一臺裝置。",
+      "label_pin": "你的 PIN",
+      "label_wallet_password": "錢包密碼",
+      "pin_confirm_placeholder": "確認是你本人",
+      "action_password_label_change": "新的操作密碼",
+      "action_password_label_set": "操作密碼",
+      "action_password_placeholder": "至少 8 個字元",
+      "action_password_hint": "至少 8 個字元 · 允許任意字元",
+      "too_short": "請至少使用 {{min}} 個字元。",
+      "confirm_label": "確認",
+      "confirm_placeholder": "再次輸入操作密碼",
+      "confirm_hint": "必須與你的操作密碼一致",
+      "mismatch": "密碼不一致。",
+      "save_change": "更改操作密碼",
+      "save_set": "設定操作密碼",
+      "remove": "移除操作密碼",
+      "toast_changed": "操作密碼已更改",
+      "toast_set": "操作密碼已設定",
+      "toast_set_error": "無法設定操作密碼",
+      "toast_confirm_pin_required": "請輸入錢包 PIN/密碼以確認",
+      "toast_removed": "操作密碼已移除",
+      "toast_remove_error": "無法移除操作密碼",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "你的 PIN 加上 {{label}}。若生物識別不可用，操作將被阻止。丟失裝置永遠不會丟失資金。",
+      "method_b_desc_web": "你的 PIN 加上一次 Passkey 點選。若 Passkey 不可用，操作將被阻止。丟失它永遠不會丟失資金。",
+      "switch_aria_native": "使用裝置生物識別作為第二因素",
+      "switch_aria_web": "使用 Passkey 作為第二因素",
+      "confirm_native": "使用 {{label}} 確認關鍵操作。",
+      "unavailable_native": "此裝置上未設定 {{label}} / 裝置密碼 — 請在裝置設定中啟用以使用此因素。",
+      "unsupported_web": "此瀏覽器不支援 WebAuthn / Passkey。",
+      "register_hint_web_pre": "尚未註冊 Passkey — 請在",
+      "register_hint_web_strong": "錢包 Passkey",
+      "register_hint_web_post": "下方設定一個，然後啟用此項。",
+      "toggle_biometric_needed": "此裝置未設定 {{label}}。",
+      "toggle_passkey_needed": "請先註冊一個 Passkey（下方的“錢包 Passkey”）。",
+      "toggle_biometric_on": "{{label}} 第二因素已開啟",
+      "toggle_biometric_off": "{{label}} 第二因素已關閉",
+      "toggle_passkey_on": "Passkey 第二因素已開啟",
+      "toggle_passkey_off": "Passkey 第二因素已關閉"
+    },
+    "session": {
+      "title": "會話與自動鎖定",
+      "description": "在一段時間無操作或你離開應用後鎖定錢包",
+      "status_unlocked": "已解鎖",
+      "status_locked": "已鎖定",
+      "auto_lock_after": "自動鎖定於",
+      "never_note": "閒置時不會自動鎖定，但在後臺約 45 秒或解鎖 8 小時後仍會鎖定。",
+      "resets_note": "只要你與應用互動就會重置。切換到後臺時也會立即鎖定。",
+      "lock_now": "立即鎖定",
+      "recent_activity": "最近活動",
+      "view_all": "檢視全部",
+      "this_device": "本裝置",
+      "active_now": "當前活躍"
+    },
+    "rehearsal": {
+      "title": "演練可否認性",
+      "description": "以拿著你已解鎖手機的人的視角檢視儀表板。"
+    }
+  },
+  "nav": {
+    "wallet_tagline": "錢包",
+    "sidebar_expand": "展開側邊欄",
+    "sidebar_collapse": "收起側邊欄",
+    "search_placeholder": "搜尋...",
+    "search_shortcut_title": "搜尋 (⌘K)",
+    "lock": "鎖定",
+    "lock_confirm_prompt": "現在鎖定此錢包？",
+    "back": "返回",
+    "settings": "設定",
+    "main_content_aria": "主內容",
+    "bottom_nav_aria": "底部導航",
+    "more_features_aria": "更多功能",
+    "more": "更多",
+    "close": "關閉",
+    "all_features_heading": "所有功能",
+    "recent_heading": "最近",
+    "tab_home": "首頁",
+    "tab_send": "傳送",
+    "tab_receive": "接收"
+  },
+  "back": {
+    "default_label": "返回"
+  },
+  "send": {
+    "heading": "傳送加密貨幣",
+    "subheading": "安全地轉移資金",
+    "wallet_fallback": "錢包",
+    "wallet_picker": {
+      "label": "來源錢包",
+      "placeholder": "選擇錢包"
+    },
+    "asset_picker": {
+      "label": "資產",
+      "placeholder": "選擇資產"
+    },
+    "recipient": {
+      "label": "傳送至（地址或名稱）",
+      "placeholder": "貼上地址或輸入名稱（例如 vitalik.eth）",
+      "scan_qr": "掃描二維碼",
+      "resolving": "正在解析名稱…",
+      "name_not_found": "未找到名稱 — 請檢查拼寫或直接貼上地址。",
+      "ens_using_prefix": "使用 {{name}} →",
+      "ens_confirm_intro": "在區塊鏈上私密查詢到：",
+      "ens_confirm_hint": "傳送前請確認此地址正確。",
+      "use_this_address": "使用此地址",
+      "not_whitelisted": "此地址不在你的白名單中。繼續前請再次確認。你可以在設定中新增受信任的地址。",
+      "self_send_warning": "你正在向自己的錢包地址傳送。這不會在錢包之間轉移任何資金，但仍會產生網路費。繼續前請再次確認收件人。"
+    },
+    "screening": {
+      "local_disclosure": "收件人會根據你自己的歷史在裝置上進行詐騙地址檢查 — 資料不會離開你的裝置。",
+      "remote_opt_in": "同時對照線上威脅資料庫進行篩查（會將此地址傳送給第三方）",
+      "remote_unavailable": "線上篩查已啟用，但此構建中未配置提供者 — 篩查仍在本地進行，因此我們無法與外部列表進行比對。",
+      "demo_poison_button": "演示：貼上一個相似地址"
+    },
+    "simulation": {
+      "title": "交易模擬",
+      "toggle_aria": "切換交易模擬",
+      "description": "在簽名之前，我們會在本地執行預檢 — 不使用任何第三方服務，也不會有資料離開你的裝置。",
+      "checks": [
+        "地址風險（汙染 / 相似）",
+        "合約解碼",
+        "無限授權標記",
+        "回滾預測",
+        "與你歷史的異常對比",
+        "大額外流提醒"
+      ],
+      "results_hint": "結果會在下一步顯示，前提是你已輸入地址與金額。",
+      "off_hint": "模擬已關閉 — 簽名前不會執行預檢。",
+      "taking_too_long": "耗時過長？",
+      "turn_off": "關閉模擬"
+    },
+    "amount": {
+      "label": "金額",
+      "placeholder": "0.00",
+      "being_sent": "正在傳送",
+      "balance_prefix": "餘額：",
+      "demo_suffix": "（演示）",
+      "live_suffix": "（即時）",
+      "reading_from_network": "正在從網路讀取…"
+    },
+    "errors": {
+      "amount_missing": "必須輸入金額",
+      "amount_not_positive": "金額必須大於零",
+      "amount_malformed": "請輸入普通十進位制數字，例如 0.5",
+      "amount_over_balance": "餘額不足",
+      "insufficient_balance_title": "餘額不足。",
+      "insufficient_balance_body": "你可傳送的金額為 {{balance}} {{currency}}（已扣除網路費）。請減少金額以繼續。"
+    },
+    "status": {
+      "not_enabled": "{{currency}} 的傳送尚未啟用。在其加密路徑通過驗證之前，此資產僅可接收。",
+      "dev_ungate_title": "DEV UNGATE 已啟用",
+      "dev_ungate_body": "— 已通過 VITE_DEV_UNGATE_SEND 為 {{currency}} 繞過傳送門（僅限開發構建）。該資產狀態未變更（仍未上線）；主網仍處於停用狀態。僅用於測試網驗證 — 切勿釋出此構建。",
+      "locked": "你的錢包已鎖定。請在錢包設定中解鎖以簽名並傳送。"
+    },
+    "note": {
+      "label": "備註（可選）",
+      "placeholder": "這是做什麼用的？"
+    },
+    "trezor": {
+      "toggle_label": "使用 Trezor 簽名",
+      "connected": "裝置已連線",
+      "connect_button": "連線裝置"
+    },
+    "buttons": {
+      "continue": "繼續",
+      "confirm_send": "確認並傳送",
+      "back": "返回"
+    },
+    "verify": {
+      "summary_label": "你正在傳送"
+    },
+    "fee": {
+      "automatic": "{{currency}}（{{network}}）的網路費將自動設定。",
+      "native_fee_note": "網路費以 {{symbol}}（{{network}}）支付 — 即使傳送的是 {{token}}，你也需要 {{symbol}} 來支付網路費。"
+    },
+    "decode": {
+      "heading": "此交易執行的操作",
+      "action": "操作",
+      "send_tokens": "傳送代幣",
+      "token": "代幣",
+      "amount": "金額",
+      "recipient": "收件人",
+      "grant_permission": "授予支出權限",
+      "permission": "權限",
+      "unlimited_permission": "無限額（此應用可花費任意金額）",
+      "spender": "被授權方"
+    },
+    "reauth": {
+      "prompt": "重新輸入你的{{credential}}以授權",
+      "credential_pin": "PIN",
+      "credential_password": "密碼",
+      "submit_pin": "授權",
+      "submit_password": "授權並傳送",
+      "password_placeholder": "Vault 密碼",
+      "password_aria": "用於授權傳送的 Vault 密碼",
+      "errors": {
+        "unavailable": "驗證不可用 — 請重新鎖定並解鎖錢包。",
+        "incorrect": "不正確 — 請重試（剩餘 {{remaining}} 次）"
+      }
+    },
+    "done": {
+      "beacon_label": "交易已廣播",
+      "heading": "交易已廣播",
+      "body_suffix": "已在本地簽名並傳送至網路",
+      "tx_hash_label": "交易雜湊",
+      "view_explorer": "在區塊瀏覽器中檢視",
+      "pending_note": "在網路確認前處於待處理狀態。餘額來自區塊鏈，而非儲存值。",
+      "send_another": "再發一筆"
+    },
+    "toasts": {
+      "ens_off_in_session": "本次會話已關閉名稱解析 — 請直接貼上地址。",
+      "ens_not_found": "未找到 ENS 名稱",
+      "sns_unavailable": "Solana 名稱解析尚不可用 — 請直接貼上地址。",
+      "ens_resolution_failed": "名稱解析失敗",
+      "verify_required": "請先完成備份驗證，然後再發送此金額。",
+      "two_factor_retry": "傳送未能完成 — 請再次驗證以重試。",
+      "send_failed_fallback": "傳送失敗",
+      "unconfirmed": "尚無法在網路中確認此交易 — 可能仍在待處理狀態。請檢視瀏覽器。"
+    }
+  },
+  "receive": {
+    "heading": "接收加密貨幣",
+    "subheading": "顯示一個錢包地址以接收資金",
+    "asset_label": "資產",
+    "asset_placeholder": "選擇資產",
+    "not_available": "尚不支援接收 {{name}}（{{symbol}}）。在此資產啟用前不會顯示地址。",
+    "locked": {
+      "title": "錢包已鎖定",
+      "body": "解鎖錢包以顯示你的 {{asset}} {{network}} 接收地址。",
+      "open_hd_wallet": "開啟 HD 錢包管理器"
+    },
+    "your_address": "你的 {{asset}} 地址",
+    "testnet_badge": "測試網",
+    "receive_address_label": "{{symbol}} 接收地址",
+    "copy": {
+      "copied_aria": "地址已複製到剪貼簿",
+      "copy_aria": "複製地址",
+      "copied_toast": "地址已複製",
+      "copy_failed_toast": "無法複製 — 請手動選中並複製地址"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} 是以太坊相容網路上的一個代幣。這是你的錢包地址 — 請讓傳送方僅在 {{network}} 上傳送 {{symbol}}。在其他網路上傳送可能導致資金永久丟失。",
+      "evm": "這是你的共享錢包地址。請僅在 {{network}} 上傳送 {{name}} 到此地址，並確認傳送方使用的是 {{network}}。",
+      "btc": "請僅在 {{network}} 上向此地址傳送 Bitcoin。",
+      "solana": "請僅在 {{network}} 上向此地址傳送 Solana。"
+    },
+    "select_asset_prompt": "選擇要接收的資產。",
+    "unlock_footer_note": "地址來自你裝置上的錢包，僅在解鎖時才顯示。"
+  },
+  "dashboard": {
+    "portfolioValue": "投資組合價值",
+    "priceAlertsTriggered_one": "觸發 {{count}} 條價格提醒！",
+    "priceAlertsTriggered_other": "觸發 {{count}} 條價格提醒！",
+    "lockAriaLabel": "在生物識別後鎖定餘額",
+    "lockBalance": "鎖定餘額",
+    "synced": "已同步 {{time}}",
+    "syncJustNow": "剛剛",
+    "syncSecondsAgo_one": "{{count}} 秒前",
+    "syncSecondsAgo_other": "{{count}} 秒前",
+    "syncMinutesAgo_one": "{{count}} 分鐘前",
+    "syncMinutesAgo_other": "{{count}} 分鐘前",
+    "actions": {
+      "send": "傳送",
+      "receive": "接收",
+      "schedule": "計劃",
+      "add": "新增"
+    },
+    "tabs": {
+      "tokens": "代幣",
+      "activity": "活動",
+      "analytics": "分析"
+    },
+    "emptyWallets": {
+      "title": "尚無錢包",
+      "description": "新增一個錢包，開始在多鏈上接收、傳送和持有資產。"
+    },
+    "addWallet": "新增錢包",
+    "searchTransactionsPlaceholder": "搜尋交易...",
+    "emptySearch": {
+      "title": "沒有匹配的交易",
+      "description": "試著清除篩選或搜尋其他資產或地址。"
+    },
+    "emptyTransactions": {
+      "title": "尚無交易",
+      "description": "一旦你傳送或接收，鏈上活動會顯示在這裡。"
+    },
+    "portfolioPerformance": "投資組合表現",
+    "assetDistribution": "資產分佈",
+    "quickAccess": "快速訪問",
+    "quickAccessItems": {
+      "receive": "接收",
+      "security": "安全",
+      "approvals": "授權",
+      "addressCheck": "地址檢查",
+      "analytics": "分析",
+      "sentiment": "情緒",
+      "riskScore": "風險評分"
+    },
+    "walletNameLabel": "錢包名稱",
+    "walletNamePlaceholder": "我的 ETH 錢包",
+    "addWalletDialog": {
+      "title": "新增錢包",
+      "currency": "幣種",
+      "creating": "建立中...",
+      "create": "建立錢包"
+    },
+    "renameWalletDialog": {
+      "title": "重新命名錢包",
+      "saving": "儲存中...",
+      "save": "儲存名稱"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "已加密的 Vault",
+    "backup": {
+      "title": "備份 \"{{name}}\"",
+      "reauthDescription": "確認是你之後，我們會顯示此錢包的助記詞。",
+      "description": "把這 12 個詞離線記錄下來。任何拿到它們的人都可以花費此錢包的資金 — 它們也是恢復此錢包的唯一方式。",
+      "warning": "切勿截圖。切勿輸入到其他應用中。",
+      "confirmButton": "我已記下 — 標記為已備份"
+    },
+    "addWallet": {
+      "defaultWalletName": "你的新錢包",
+      "backupDescription": "此錢包有自己獨立的助記詞 — 與你 Vault 中的其他任何錢包分開。使用前請離線記錄下來。",
+      "backedUpDone": "我已備份 — 完成",
+      "title": "新增錢包",
+      "createNew": "新建",
+      "importSeed": "匯入 seed",
+      "createDescription": "生成一個新的 seed，派生所有鏈（ETH/EVM、BTC、SOL）。你將在其啟用前完成備份。",
+      "importDescription": "貼上現有的 12/24 字 seed — 所有鏈都會自動派生（seed 不針對特定鏈）。",
+      "recoveryPhraseLabel": "助記詞",
+      "recoveryPhrasePlaceholder": "詞1 詞2 ... 詞12",
+      "walletNameLabel": "錢包名稱",
+      "walletNamePlaceholder": "例如 儲蓄",
+      "assetsToShowLabel": "要顯示的資產",
+      "assetsToShowHint": "僅顯示選擇 — seed 無論如何都包含每條鏈。",
+      "confirmVaultPlaceholder": "確認是你才能更改 Vault",
+      "vaultReentryHint": "重新輸入以授權對 seed vault 的更改。永不保留在記憶體中。",
+      "createAndBackup": "建立並備份",
+      "importWallet": "匯入錢包"
+    },
+    "vaultPinLabel": "Vault PIN",
+    "vaultPasswordLabel": "Vault 密碼",
+    "cancel": "取消",
+    "done": "完成",
+    "manageAssets": {
+      "title": "\"{{name}}\" 的資產",
+      "description": "選擇此錢包要顯示哪些資產。隱藏的資產會保留但不顯示，直到你重新新增。"
+    },
+    "rename": {
+      "title": "重新命名錢包",
+      "save": "儲存名稱"
+    },
+    "remove": {
+      "title": "移除 \"{{name}}\"？",
+      "onlyWallet": "這是你唯一的錢包 — 無法移除。請在安全中使用緊急擦除以清除全部。",
+      "description": "從本裝置移除此錢包的 seed。",
+      "backedUpNote": "你可以從助記詞恢復它。",
+      "notBackedUpNote": "⚠️ 未備份 — 沒有助記詞將永久丟失。",
+      "button": "移除錢包"
+    },
+    "move": {
+      "title": "把 \"{{name}}\" 移至…"
+    },
+    "managePortfolios": {
+      "title": "投資組合",
+      "defaultTag": "（預設）",
+      "saveAriaLabel": "儲存投資組合名稱",
+      "renameAriaLabel": "重新命名 {{name}}",
+      "deleteAriaLabel": "刪除 {{name}}",
+      "newNamePlaceholder": "新的投資組合名稱",
+      "addButton": "新增"
+    },
+    "activity": {
+      "unlockPrompt": "解鎖錢包以檢視活動。",
+      "loading": "載入中...",
+      "loadError": "無法載入活動。",
+      "noTransactions": "尚無交易。",
+      "viewFullHistory": "檢視完整歷史 →"
+    },
+    "portfolioValueLabel": "投資組合價值",
+    "explore": {
+      "subtitle": "你正在瀏覽 — 僅檢視。尚無錢包。",
+      "description": "自由瀏覽。準備好後，建立一個新的自託管錢包或匯入現有 seed — 金鑰將在本裝置生成並加密。",
+      "createOrImport": "建立或匯入錢包"
+    },
+    "portfoliosButton": "投資組合",
+    "totalValueHeading": "{{name}} · 總價值",
+    "partialTotalNote": "部分餘額無法載入 — 此合計可能不完整。",
+    "refreshPricesTooltip": "重新整理即時價格",
+    "live": "即時",
+    "approximate": "近似",
+    "seedVerify": {
+      "title": "完成備份驗證",
+      "description": "傳送金額超過安全閾值時需要。",
+      "verifyAriaLabel": "驗證錢包備份",
+      "verifyButton": "驗證"
+    },
+    "unbacked": {
+      "titleBold": "錢包備份未完成。",
+      "body": "每個錢包都有自己的助記詞 — 沒有它，該錢包的資金無法恢復。請立即備份。",
+      "backUpButton": "備份 \"{{name}}\""
+    },
+    "actions": {
+      "send": "傳送",
+      "receive": "接收",
+      "addWallet": "新增錢包"
+    },
+    "activeWalletHint": {
+      "prefix": "傳送/接收使用",
+      "otherPortfolio": "（位於另一個投資組合）",
+      "suffix": "。點選下方的錢包切換。"
+    },
+    "tabs": {
+      "tokens": "代幣",
+      "activity": "活動",
+      "analytics": "分析"
+    },
+    "noWalletsInPortfolio": "\"{{name}}\" 中沒有錢包。新增一個，或從其選單中移一個過來。",
+    "hideAssets": "隱藏資產",
+    "showAllAssets": "顯示所有資產",
+    "walletCard": {
+      "active": "活躍",
+      "backedUp": "已備份",
+      "backUp": "備份",
+      "partial": "部分",
+      "optionsAriaLabel": "{{name}} 的選項",
+      "noAssetsShown": "未顯示任何資產。請使用「管理資產」。"
+    },
+    "menu": {
+      "manageAssets": "管理資產",
+      "rename": "重新命名",
+      "moveToPortfolio": "移至投資組合",
+      "backUp": "備份",
+      "remove": "移除"
+    },
+    "balanceLoadFailedTitle": "無法載入餘額",
+    "defaultWalletFallbackName": "錢包",
+    "toast": {
+      "walletImported": "已匯入錢包 — 所有鏈已派生。",
+      "walletRemoved": "已從本裝置移除錢包。",
+      "walletAddedBackedUp": "錢包已新增並備份。",
+      "movedTo": "已移至 {{name}}。",
+      "markedBackedUp": "\"{{name}}\" 已標記為已備份。"
+    },
+    "errors": {
+      "couldNotAddWallet": "無法新增錢包",
+      "couldNotImportWallet": "無法匯入錢包",
+      "couldNotRemoveWallet": "無法移除錢包"
+    }
+  },
+  "networth": {
+    "title": "加密淨值",
+    "unlockPrompt": "解鎖錢包以檢視你的鏈上持倉。",
+    "subtitle": "你的鏈上持倉 — 不包含外部資產。",
+    "totalHoldings": "總持倉",
+    "partialNote": "部分 — 部分餘額無法讀取",
+    "refreshPricesTooltip": "重新整理即時價格",
+    "live": "即時",
+    "approximate": "近似",
+    "allocation": "分佈",
+    "holdings": "持倉",
+    "noHoldings": "尚無持倉。"
+  }
+}
