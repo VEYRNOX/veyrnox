@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useId, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ethers } from 'ethers';
 import styles from './RequestApprovalModal.module.css';
 import { successHaptic, errorHaptic, tapHaptic } from '@/lib/haptics';
@@ -20,6 +21,7 @@ function parseWcChainId(caip2) {
 }
 
 export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
+  const { t } = useTranslation('security');
   const { signPersonal, signTypedData, sendTransaction, rejectRequest, isSendReauthRequired, evmAddress, sessions } = useWalletConnect();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -44,7 +46,9 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   })();
   const nativeSymbol = wcNetwork?.symbol ?? 'ETH';
   const networkLabel = wcNetwork?.name
-    ?? (Number.isFinite(wcChainIdNum) ? `Unknown network (chain ${wcChainIdNum})` : 'Unknown network');
+    ?? (Number.isFinite(wcChainIdNum)
+      ? t('wc.request_approval.unknown_network_with_id', { id: wcChainIdNum })
+      : t('wc.request_approval.unknown_network'));
   const realFundsWarning = wcNetwork ? wcNetwork.isTestnet === false : true;
 
   const needsReauth = isSendReauthRequired();
@@ -122,14 +126,14 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
           aria-labelledby={titleId}
           aria-describedby={descId}
         >
-          <h2 id={titleId} className={styles.title}>Request blocked</h2>
+          <h2 id={titleId} className={styles.title}>{t('wc.request_approval.blocked_title')}</h2>
           <p id={descId} className={styles.body}>
-            <strong>{method}</strong> is not supported by Veyrnox.
-            {method === 'eth_sign' && ' Raw byte signing (eth_sign) is disabled — it cannot show you what you are signing.'}
-            {method === 'wallet_addEthereumChain' && ' Adding arbitrary chains is disabled to prevent RPC injection attacks.'}
+            <strong>{method}</strong> {t('wc.request_approval.not_supported')}
+            {method === 'eth_sign' && ` ${t('wc.request_approval.eth_sign_note')}`}
+            {method === 'wallet_addEthereumChain' && ` ${t('wc.request_approval.add_chain_note')}`}
           </p>
           <button className={styles.rejectBtn} onClick={() => { rejectRequest(topic, id); onClose(); }}>
-            Dismiss
+            {t('wc.request_approval.dismiss')}
           </button>
         </div>
       </div>
@@ -177,9 +181,9 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   const dappCheck = checkDappDomain(sessionMeta.url);
   const dapp = sessionUnresolved
     ? {
-        domain: sessionMeta.url ? dappCheck.domain : 'unknown dApp',
+        domain: sessionMeta.url ? dappCheck.domain : t('wc.request_approval.unresolved_domain_fallback'),
         flagged: true,
-        reason: 'Veyrnox could not verify which dApp made this request (no active session). Treat it as suspicious.',
+        reason: t('wc.request_approval.unresolved_reason'),
       }
     : dappCheck;
 
@@ -224,16 +228,19 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
         aria-labelledby={titleId}
       >
         <div className={styles.header}>
-          <span id={titleId} className={styles.appName}>{sessionMeta.name ?? 'dApp'}</span>
+          <span id={titleId} className={styles.appName}>{sessionMeta.name ?? t('wc.request_approval.fallback_dapp_name')}</span>
           <span className={styles.methodBadge}>{method}</span>
         </div>
 
         {dapp.flagged && (
           <div className={styles.permitWarning}>
-            <p className={styles.permitTitle}>⚠ Known scam / phishing dApp</p>
+            <p className={styles.permitTitle}>{t('wc.request_approval.scam_title')}</p>
             <p className={styles.permitBody}>
-              {sessionMeta.name ?? 'This dApp'} ({dapp.domain}) is on Veyrnox's local known-bad
-              list: {dapp.reason}. Do not approve unless you are absolutely certain.
+              {t('wc.request_approval.scam_body', {
+                name: sessionMeta.name ?? t('wc.request_approval.fallback_dapp_name'),
+                domain: dapp.domain,
+                reason: dapp.reason,
+              })}
             </p>
           </div>
         )}
@@ -241,11 +248,10 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
         {/* PERSONAL SIGN */}
         {type === REQUEST_TYPES.PERSONAL_SIGN && (
           <>
-            <p className={styles.label}>Message to sign</p>
+            <p className={styles.label}>{t('wc.request_approval.message_to_sign_label')}</p>
             <pre className={styles.messageBox}>{personalSignMessage}</pre>
             <p className={styles.hint}>
-              Signing this message will NOT send a transaction or cost gas.
-              Only sign messages from dApps you trust.
+              {t('wc.request_approval.personal_sign_hint')}
             </p>
           </>
         )}
@@ -265,7 +271,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
 
             {isAssetAuth && (
               <div className={styles.permitWarning}>
-                <p className={styles.permitTitle}>⚠ Token Authorisation Warning</p>
+                <p className={styles.permitTitle}>{t('wc.request_approval.permit_title')}</p>
                 <p className={styles.permitBody}>{typedDataMeta.assetAuthorising.reason}</p>
                 <label className={styles.permitCheck}>
                   <input
@@ -273,7 +279,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                     checked={permitAcknowledged}
                     onChange={(e) => setPermitAcknowledged(e.target.checked)}
                   />
-                  I understand this signature authorises a spender to move my tokens
+                  {t('wc.request_approval.permit_ack')}
                 </label>
               </div>
             )}
@@ -283,18 +289,18 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
         {/* SEND TRANSACTION */}
         {type === REQUEST_TYPES.SEND_TRANSACTION && (
           <>
-            <p className={styles.label}>Transaction</p>
+            <p className={styles.label}>{t('wc.request_approval.transaction_label')}</p>
             <div className={styles.txBox}>
               <div className={styles.txRow}>
-                <span>Network</span>
+                <span>{t('wc.request_approval.network_row_label')}</span>
                 <span className={realFundsWarning ? styles.networkMainnet : styles.mono}>{networkLabel}</span>
               </div>
               <div className={styles.txRow}>
-                <span>To</span>
+                <span>{t('wc.request_approval.to_row_label')}</span>
                 <span className={styles.mono}>{reqParams[0]?.to ?? '—'}</span>
               </div>
               <div className={styles.txRow}>
-                <span>Value</span>
+                <span>{t('wc.request_approval.value_row_label')}</span>
                 <span className={styles.mono}>
                   {reqParams[0]?.value
                     ? ethers.formatEther(BigInt(reqParams[0].value)) + ' ' + nativeSymbol
@@ -303,21 +309,20 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
               </div>
               {reqParams[0]?.data && reqParams[0].data !== '0x' && (
                 <div className={styles.txRow}>
-                  <span>Data</span>
+                  <span>{t('wc.request_approval.data_row_label')}</span>
                   <span className={styles.mono}>{reqParams[0].data.slice(0, 10)}…</span>
                 </div>
               )}
             </div>
             {realFundsWarning && (
               <p className={styles.mainnetFlag}>
-                ⚠ REAL FUNDS — live mainnet transaction, not testnet. Double-check the network and amount before approving.
+                {t('wc.request_approval.mainnet_flag')}
               </p>
             )}
             <div className={styles.permitWarning}>
-              <p className={styles.permitTitle}>⚠ This will broadcast a transaction</p>
+              <p className={styles.permitTitle}>{t('wc.request_approval.broadcast_title')}</p>
               <p className={styles.permitBody}>
-                Approving sends a real on-chain transaction and costs gas. Only approve
-                requests from dApps you trust. This action cannot be undone.
+                {t('wc.request_approval.broadcast_body')}
               </p>
               <label className={styles.permitCheck}>
                 <input
@@ -325,7 +330,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                   checked={txAcknowledged}
                   onChange={(e) => setTxAcknowledged(e.target.checked)}
                 />
-                I understand this will send a real transaction
+                {t('wc.request_approval.broadcast_ack')}
               </label>
             </div>
             <RiskVerdictBanner
@@ -340,13 +345,13 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
         {/* UNKNOWN */}
         {type === REQUEST_TYPES.UNKNOWN && (
           <p className={styles.body}>
-            Unknown request method <strong>{method}</strong>. Veyrnox cannot safely display or sign this.
+            {t('wc.request_approval.unknown_method_lead')} <strong>{method}</strong>{t('wc.request_approval.unknown_method_tail')}
           </p>
         )}
 
         {needsReauth && (
           <p className={styles.reauthNotice}>
-            Your session has timed out. Please re-authenticate before signing.
+            {t('wc.request_approval.reauth_notice')}
           </p>
         )}
 
@@ -354,7 +359,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
 
         <div className={styles.actions}>
           <button className={styles.rejectBtn} onClick={handleReject} disabled={busy}>
-            Reject
+            {t('wc.request_approval.reject')}
           </button>
           {type !== REQUEST_TYPES.UNKNOWN && (
             <button
@@ -363,8 +368,8 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
               disabled={busy || (approveBlocked && !needsReauth)}
             >
               {busy
-                ? type === REQUEST_TYPES.SEND_TRANSACTION ? 'Sending…' : 'Signing…'
-                : needsReauth ? 'Re-authenticate' : 'Approve'}
+                ? type === REQUEST_TYPES.SEND_TRANSACTION ? t('wc.request_approval.sending_busy') : t('wc.request_approval.signing_busy')
+                : needsReauth ? t('wc.request_approval.approve_reauth') : t('wc.request_approval.approve')}
             </button>
           )}
         </div>
