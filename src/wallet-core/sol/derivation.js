@@ -65,6 +65,7 @@ export function deriveSolAccount(mnemonic, opts = {}) {
 
   const path = solPath(account);
   const seed = mnemonicToSeed(mnemonic, passphrase); // 64-byte seed (validates checksum)
+  /** @type {{ key: Uint8Array, chainCode: Uint8Array } | null} */
   let node = null;
   try {
     node = deriveEd25519(seed, path);
@@ -101,6 +102,7 @@ export function deriveSolPublicKey(mnemonic, opts = {}) {
 
   const path = solPath(account);
   const seed = mnemonicToSeed(mnemonic, passphrase);
+  /** @type {{ key: Uint8Array, chainCode: Uint8Array } | null} */
   let node = null;
   try {
     node = deriveEd25519(seed, path);
