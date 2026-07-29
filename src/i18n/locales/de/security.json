@@ -135,5 +135,69 @@
       "save": "Limit speichern",
       "saved_toast": "Limit gesetzt"
     }
+  },
+  "fraud": {
+    "heading": "Sicherheits-Scan",
+    "subhead": "Heuristische Prüfungen auf dem Gerät – keine externen Aufrufe",
+    "scanner_title": "Scanner",
+    "loading": "Daten werden geladen …",
+    "load_error": "Lokale Daten konnten nicht geladen werden. Bitte erneut versuchen.",
+    "loaded_summary": "{{txCount}} Transaktionen · {{addressCount}} Adressbucheinträge · 3 Prüfungen",
+    "cta_scan": "Scan starten",
+    "cta_rescan": "Erneut scannen",
+    "last_scan": "Letzter Scan: {{time}} · {{txCount}} Transaktionen · {{addressCount}} Adressen geprüft",
+    "scope": {
+      "anomalies": {
+        "label": "Transaktions-Anomalien",
+        "desc": "Große Ausreißer (>2,5σ), Geschwindigkeits-Peaks, Sendungen außerhalb der üblichen Zeiten"
+      },
+      "addresses": {
+        "label": "Adress-Prüfung",
+        "desc": "Adressbuch + Transaktions-Gegenparteien gegen die lokale Liste markierter Adressen"
+      },
+      "alerts": {
+        "label": "Gespeicherte Betrugs-Warnungen",
+        "desc": "FraudAlert-Einträge im lokalen IndexedDB"
+      }
+    },
+    "check_found": "{{count}} gefunden",
+    "types": {
+      "large_transfer": "Große Überweisung",
+      "rapid_transactions": "Schnelle Transaktionen",
+      "unusual_hour": "Aktivität außerhalb der üblichen Zeiten",
+      "flagged_address": "Markierte Adresse"
+    },
+    "severity": {
+      "critical": "Kritisch",
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig",
+      "medium_low": "Mittel / Niedrig"
+    },
+    "detail": {
+      "large_transfer": "{{amount}} {{currency}} — {{sigma}}σ über deinem Sende-Durchschnitt",
+      "rapid_transactions": "{{count}} Transaktionen innerhalb 1 Stunde",
+      "unusual_hour": "Transaktion um {{hour}}:00 – außerhalb der üblichen Aktivitätszeit",
+      "flagged_address": "{{label}} ({{prefix}}…{{suffix}}) steht auf der lokalen Liste markierter Adressen",
+      "flagged_address_default_label": "Adressbucheintrag",
+      "flagged_tx_recipient": "Empfänger der Transaktion",
+      "flagged_tx_sender": "Absender der Transaktion",
+      "stored_default": "Gespeicherte Betrugs-Warnung"
+    },
+    "empty_prescan": {
+      "title": "Starte einen Scan",
+      "body": "Alle Prüfungen laufen auf lokalen Daten – nichts verlässt dein Gerät"
+    },
+    "empty_clear": {
+      "title": "Nichts gefunden",
+      "body": "Keine Anomalien, keine markierten Adressen, keine gespeicherten Warnungen"
+    },
+    "scan_findings_one": "{{count}} Scan-Befund",
+    "scan_findings_other": "{{count}} Scan-Befunde",
+    "stored_alerts_one": "{{count}} gespeicherte Warnung",
+    "stored_alerts_other": "{{count}} gespeicherte Warnungen",
+    "stored_badge": "gespeichert",
+    "dismiss": "Verwerfen",
+    "footer": "Prüfungen laufen nur auf lokalen Daten – kein externer Aufruf"
   }
 }

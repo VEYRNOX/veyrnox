@@ -1,4 +1,9 @@
 // @ts-nocheck
+//
+// I18N (Phase 2 slice 2 batch D): copy driven by `security.fraud.*`.
+// Detection functions return `{detailKey, detailVars}` so the RENDER layer
+// localizes — same pattern as AnomalyDetection (batch B).
+import { useTranslation } from "react-i18next";
 import { USD_RATES } from "@/lib/cryptos";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -20,7 +25,9 @@ import { notifyFraudAlert } from "@/notify/sources";
 // ---------------------------------------------------------------------------
 // Anomaly detection — same 3-check logic as AnomalyDetection.jsx.
 // USD_RATES is used for normalisation/comparison only, never displayed as a
-// financial figure.
+// financial figure. Returns { detailKey, detailVars } instead of pre-
+// formatted English so the notify() call and the on-screen render both
+// localize (batch B pattern).
 // ---------------------------------------------------------------------------
 function detectAnomalies(transactions) {
   const anomalies = [];
@@ -36,22 +43,21 @@ function detectAnomalies(transactions) {
       .reduce((a, b) => a + b, 0) / amounts.length
   );
 
-  // Check 1 — large transfer outliers
   transactions.forEach((tx) => {
     const score = (tx.amount || 0) * (USD_RATES[tx.currency] || 1);
     if (score > avg + 2.5 * std && score > 500) {
-      const sigmas = std > 0 ? ((score - avg) / std).toFixed(1) : "N/A";
+      const sigma = std > 0 ? ((score - avg) / std).toFixed(1) : "N/A";
       anomalies.push({
         id: tx.id,
         type: "large_transfer",
         severity: score > avg + 4 * std ? "critical" : "high",
         tx,
-        detail: `${tx.amount} ${tx.currency} — ${sigmas}σ above your average send`,
+        detailKey: "fraud.detail.large_transfer",
+        detailVars: { amount: tx.amount, currency: tx.currency, sigma },
       });
     }
   });
 
-  // Check 2 — velocity burst (3+ transactions in 1-hour window)
   const sorted = [...transactions].sort(
     (a, b) =>
       new Date(b.created_date).getTime() - new Date(a.created_date).getTime()
@@ -65,12 +71,12 @@ function detectAnomalies(transactions) {
         id: "rapid-" + first.getTime(),
         type: "rapid_transactions",
         severity: "medium",
-        detail: `${recent.length} transactions within 1 hour`,
+        detailKey: "fraud.detail.rapid_transactions",
+        detailVars: { count: recent.length },
       });
     }
   }
 
-  // Check 3 — off-hours activity (02:00–05:00 local)
   transactions.slice(0, 10).forEach((tx) => {
     const h = new Date(tx.created_date).getHours();
     if (h >= 2 && h <= 5) {
@@ -79,7 +85,8 @@ function detectAnomalies(transactions) {
         type: "unusual_hour",
         severity: "low",
         tx,
-        detail: `Transaction at ${h}:00 — outside typical activity hours`,
+        detailKey: "fraud.detail.unusual_hour",
+        detailVars: { hour: h },
       });
     }
   });
@@ -88,97 +95,85 @@ function detectAnomalies(transactions) {
 }
 
 // ---------------------------------------------------------------------------
-// Address screening — checks AddressBook + tx counterparties against
-// isLocallyFlagged (burn/null addresses and local scam-sink list).
+// Address screening. `labelKey` is a catalog key for tx sender/recipient and
+// the address-book default; `labelLiteral` carries a user-typed contact name
+// unchanged (never key-looked-up).
 // ---------------------------------------------------------------------------
 function screenAddresses(addressBook, transactions) {
   const findings = [];
   const checked = new Set();
 
-  const check = (address, label, source) => {
-    if (!address || checked.has(address.toLowerCase())) return;
-    checked.add(address.toLowerCase());
-    if (isLocallyFlagged(address)) {
-      findings.push({
-        id: "flag-" + address,
-        type: "flagged_address",
-        severity: "critical",
-        detail: `${label} (${address.slice(0, 6)}…${address.slice(-4)}) matches local flagged-address list`,
-        source,
-      });
-    }
+  const pushFlagged = (address, { labelKey, labelLiteral }, source) => {
+    findings.push({
+      id: "flag-" + address,
+      type: "flagged_address",
+      severity: "critical",
+      detailKey: "fraud.detail.flagged_address",
+      detailVars: {
+        labelKey,
+        labelLiteral,
+        prefix: address.slice(0, 6),
+        suffix: address.slice(-4),
+      },
+      source,
+    });
   };
 
-  // Address book contacts
   for (const entry of addressBook) {
-    check(entry.address, entry.name || "Address book entry", "address_book");
+    if (!entry.address) continue;
+    const k = entry.address.toLowerCase();
+    if (checked.has(k)) continue;
+    checked.add(k);
+    if (isLocallyFlagged(entry.address)) {
+      pushFlagged(
+        entry.address,
+        entry.name
+          ? { labelKey: null, labelLiteral: entry.name }
+          : { labelKey: "fraud.detail.flagged_address_default_label", labelLiteral: null },
+        "address_book",
+      );
+    }
   }
 
-  // Transaction counterparties
   for (const tx of transactions.slice(0, 100)) {
-    if (tx.to_address)
-      check(tx.to_address, "Transaction recipient", "transactions");
-    if (tx.from_address)
-      check(tx.from_address, "Transaction sender", "transactions");
+    for (const [addr, key] of [
+      [tx.to_address, "fraud.detail.flagged_tx_recipient"],
+      [tx.from_address, "fraud.detail.flagged_tx_sender"],
+    ]) {
+      if (!addr) continue;
+      const k = addr.toLowerCase();
+      if (checked.has(k)) continue;
+      checked.add(k);
+      if (isLocallyFlagged(addr)) {
+        pushFlagged(addr, { labelKey: key, labelLiteral: null }, "transactions");
+      }
+    }
   }
 
   return findings;
 }
 
 // ---------------------------------------------------------------------------
-// Shared config
+// Shared config — the CSS-class table stays here (not user-facing); severity
+// LABELS come from the catalog.
 // ---------------------------------------------------------------------------
-const SEVERITY_CONFIG = {
-  critical: {
-    cls: "bg-destructive/10 text-destructive border-destructive/30",
-    label: "Critical",
-  },
-  high: {
-    cls: "bg-caution/10 text-caution border-caution/30",
-    label: "High",
-  },
-  medium: {
-    cls: "bg-caution/10 text-caution border-caution/30",
-    label: "Medium",
-  },
-  low: {
-    cls: "bg-info/10 text-info border-info/30",
-    label: "Low",
-  },
+const SEVERITY_CLS = {
+  critical: "bg-destructive/10 text-destructive border-destructive/30",
+  high: "bg-caution/10 text-caution border-caution/30",
+  medium: "bg-caution/10 text-caution border-caution/30",
+  low: "bg-info/10 text-info border-info/30",
 };
 
-const TYPE_LABELS = {
-  large_transfer: "Large Transfer",
-  rapid_transactions: "Rapid Transactions",
-  unusual_hour: "Off-hours Activity",
-  flagged_address: "Flagged Address",
-};
-
+// Icons live here because they're not localizable. Labels/descriptions come
+// from the catalog under `fraud.scope.<key>.{label,desc}`.
 const SCOPE_CHECKS = [
-  {
-    key: "anomalies",
-    icon: ScanLine,
-    label: "Transaction anomalies",
-    desc: "Large outliers (>2.5σ), velocity bursts, off-hours sends",
-  },
-  {
-    key: "addresses",
-    icon: BookUser,
-    label: "Address screening",
-    desc: "Address book + tx counterparties vs. local flagged-address list",
-  },
-  {
-    key: "alerts",
-    icon: History,
-    label: "Stored fraud alerts",
-    desc: "FraudAlert records saved to local IndexedDB",
-  },
+  { key: "anomalies", icon: ScanLine },
+  { key: "addresses", icon: BookUser },
+  { key: "alerts", icon: History },
 ];
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 export default function FraudDetection() {
+  const { t } = useTranslation("security");
   const [scanResult, setScanResult] = useState(null);
   const [dismissed, setDismissed] = useState([]);
 
@@ -200,6 +195,21 @@ export default function FraudDetection() {
   const isLoading = txLoading || abLoading || faLoading;
   const isError = txError || abError || faError;
 
+  // Localize a finding's detail line. Handles the flagged-address
+  // labelKey/labelLiteral fork so a user-typed contact name never gets
+  // key-looked-up.
+  const detailFor = (f) => {
+    if (f.detailRaw) return f.detailRaw;
+    if (!f.detailKey) return "";
+    const vars = { ...(f.detailVars || {}) };
+    if ("labelKey" in vars || "labelLiteral" in vars) {
+      vars.label = vars.labelLiteral ?? (vars.labelKey ? t(vars.labelKey) : "");
+      delete vars.labelKey;
+      delete vars.labelLiteral;
+    }
+    return t(f.detailKey, vars);
+  };
+
   const runScan = () => {
     const anomalies = detectAnomalies(transactions);
     const addressFindings = screenAddresses(addressBook, transactions);
@@ -212,32 +222,37 @@ export default function FraudDetection() {
     });
     setDismissed([]);
 
-    // Fire a Security-tab notification for each critical/high finding (I4: fire-and-forget).
     const ts = Date.now();
     [...anomalies, ...addressFindings].forEach((f) => {
-      notifyFraudAlert({ sentence: f.detail, severity: f.severity, ts });
+      notifyFraudAlert({ sentence: detailFor(f), severity: f.severity, ts });
     });
   };
 
-  // Merge live scan findings
   const liveFindings = scanResult
     ? [...scanResult.anomalies, ...scanResult.addressFindings].filter(
         (f) => !dismissed.includes(f.id)
       )
     : [];
 
-  // Stored FraudAlert records shown separately
+  // Stored FraudAlert records. `description` is raw English from the pre-i18n
+  // write side (same as AnomalyDetection batch B).
   const dbAlerts = fraudAlerts.map((f) => ({
     id: f.id,
     type: f.alert_type || "stored_alert",
     severity: f.severity || "medium",
-    detail: f.description || "Stored fraud alert",
+    detailRaw: f.description || t("fraud.detail.stored_default"),
     storedAt: f.created_date,
     fromDB: true,
   }));
 
   const totalFindings = liveFindings.length + dbAlerts.length;
   const hasScanned = scanResult !== null;
+
+  const scannerStatus = isLoading
+    ? t("fraud.loading")
+    : isError
+    ? t("fraud.load_error")
+    : t("fraud.loaded_summary", { txCount: transactions.length, addressCount: addressBook.length });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -247,10 +262,8 @@ export default function FraudDetection() {
           <ShieldAlert className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl font-bold">Security Scan</h1>
-          <p className="text-sm text-muted-foreground">
-            On-device heuristic checks — no external calls
-          </p>
+          <h1 className="text-xl font-bold">{t("fraud.heading")}</h1>
+          <p className="text-sm text-muted-foreground">{t("fraud.subhead")}</p>
         </div>
       </div>
 
@@ -259,54 +272,36 @@ export default function FraudDetection() {
         <div className="flex items-center gap-3">
           <ScanLine className="h-6 w-6 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm">Scanner</p>
+            <p className="font-semibold text-sm">{t("fraud.scanner_title")}</p>
             <p className={`text-xs ${isError ? "text-destructive" : "text-muted-foreground"}`}>
-              {isLoading
-                ? "Loading data…"
-                : isError
-                ? "Couldn't load local data. Please try again."
-                : `${transactions.length} transactions · ${addressBook.length} address book entries · 3 checks`}
+              {scannerStatus}
             </p>
           </div>
-          <Button
-            onClick={runScan}
-            disabled={isLoading || isError}
-            className="gap-2 shrink-0"
-          >
+          <Button onClick={runScan} disabled={isLoading || isError} className="gap-2 shrink-0">
             <RefreshCw className="h-4 w-4" />
-            {hasScanned ? "Re-scan" : "Run Scan"}
+            {hasScanned ? t("fraud.cta_rescan") : t("fraud.cta_scan")}
           </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {SCOPE_CHECKS.map((c) => {
             const Icon = c.icon;
-            const count =
-              !hasScanned
-                ? null
-                : c.key === "anomalies"
-                ? scanResult.anomalies.length
-                : c.key === "addresses"
-                ? scanResult.addressFindings.length
-                : dbAlerts.length;
+            const count = !hasScanned
+              ? null
+              : c.key === "anomalies"
+              ? scanResult.anomalies.length
+              : c.key === "addresses"
+              ? scanResult.addressFindings.length
+              : dbAlerts.length;
             return (
-              <div
-                key={c.key}
-                className="rounded-lg border border-border bg-background/60 px-3 py-2.5 flex gap-2.5 items-start"
-              >
+              <div key={c.key} className="rounded-lg border border-border bg-background/60 px-3 py-2.5 flex gap-2.5 items-start">
                 <Icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-medium">{c.label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {c.desc}
-                  </p>
+                  <p className="text-xs font-medium">{t(`fraud.scope.${c.key}.label`)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{t(`fraud.scope.${c.key}.desc`)}</p>
                   {count !== null && (
-                    <p
-                      className={`text-[10px] font-semibold mt-1 ${
-                        count > 0 ? "text-destructive" : "text-success"
-                      }`}
-                    >
-                      {count} found
+                    <p className={`text-[10px] font-semibold mt-1 ${count > 0 ? "text-destructive" : "text-success"}`}>
+                      {t("fraud.check_found", { count })}
                     </p>
                   )}
                 </div>
@@ -317,9 +312,11 @@ export default function FraudDetection() {
 
         {scanResult && (
           <p className="text-xs text-muted-foreground">
-            Last scan: {scanResult.scannedAt.toLocaleTimeString(undefined)} ·{" "}
-            {scanResult.txCount} transactions · {scanResult.addressCount}{" "}
-            addresses screened
+            {t("fraud.last_scan", {
+              time: scanResult.scannedAt.toLocaleTimeString(undefined),
+              txCount: scanResult.txCount,
+              addressCount: scanResult.addressCount,
+            })}
           </p>
         )}
       </div>
@@ -328,34 +325,13 @@ export default function FraudDetection() {
       {hasScanned && (
         <div className="grid grid-cols-3 gap-3">
           {[
-            {
-              label: "Critical",
-              count: [...liveFindings, ...dbAlerts].filter(
-                (a) => a.severity === "critical"
-              ).length,
-              color: "text-destructive",
-            },
-            {
-              label: "High",
-              count: [...liveFindings, ...dbAlerts].filter(
-                (a) => a.severity === "high"
-              ).length,
-              color: "text-caution",
-            },
-            {
-              label: "Medium / Low",
-              count: [...liveFindings, ...dbAlerts].filter((a) =>
-                ["medium", "low"].includes(a.severity)
-              ).length,
-              color: "text-caution",
-            },
+            { key: "critical", count: [...liveFindings, ...dbAlerts].filter(a => a.severity === "critical").length, color: "text-destructive" },
+            { key: "high", count: [...liveFindings, ...dbAlerts].filter(a => a.severity === "high").length, color: "text-caution" },
+            { key: "medium_low", count: [...liveFindings, ...dbAlerts].filter(a => ["medium", "low"].includes(a.severity)).length, color: "text-caution" },
           ].map((s) => (
-            <div
-              key={s.label}
-              className="p-4 rounded-xl border border-border bg-card text-center"
-            >
+            <div key={s.key} className="p-4 rounded-xl border border-border bg-card text-center">
               <p className={`font-bold text-2xl ${s.color}`}>{s.count}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t(`fraud.severity.${s.key}`)}</p>
             </div>
           ))}
         </div>
@@ -365,10 +341,8 @@ export default function FraudDetection() {
       {!hasScanned && dbAlerts.length === 0 && (
         <div className="text-center py-14 text-muted-foreground">
           <ShieldCheck className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium text-foreground">Run a scan to start</p>
-          <p className="text-sm mt-1">
-            All checks run on local data — nothing leaves your device
-          </p>
+          <p className="font-medium text-foreground">{t("fraud.empty_prescan.title")}</p>
+          <p className="text-sm mt-1">{t("fraud.empty_prescan.body")}</p>
         </div>
       )}
 
@@ -376,10 +350,8 @@ export default function FraudDetection() {
       {hasScanned && totalFindings === 0 && (
         <div className="text-center py-14 text-muted-foreground">
           <CheckCircle className="h-10 w-10 mx-auto mb-3 text-success opacity-60" />
-          <p className="font-medium text-foreground">Nothing found</p>
-          <p className="text-sm mt-1">
-            No anomalies, no flagged addresses, no stored alerts
-          </p>
+          <p className="font-medium text-foreground">{t("fraud.empty_clear.title")}</p>
+          <p className="text-sm mt-1">{t("fraud.empty_clear.body")}</p>
         </div>
       )}
 
@@ -387,30 +359,26 @@ export default function FraudDetection() {
       {liveFindings.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-semibold">
-            {liveFindings.length} scan{" "}
-            {liveFindings.length === 1 ? "finding" : "findings"}
+            {t(liveFindings.length === 1 ? "fraud.scan_findings_one" : "fraud.scan_findings_other", { count: liveFindings.length })}
           </p>
           {liveFindings.map((f) => {
-            const cfg = SEVERITY_CONFIG[f.severity] || SEVERITY_CONFIG.low;
+            const cls = SEVERITY_CLS[f.severity] || SEVERITY_CLS.low;
+            const sevLabel = t(`fraud.severity.${f.severity}`, { defaultValue: f.severity });
+            const typeLabel = t(`fraud.types.${f.type}`, { defaultValue: f.type?.replace(/_/g, " ") ?? "" });
             return (
-              <div key={f.id} className={`p-4 rounded-xl border ${cfg.cls}`}>
+              <div key={f.id} className={`p-4 rounded-xl border ${cls}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold">
-                          {TYPE_LABELS[f.type] || f.type?.replace(/_/g, " ")}
-                        </p>
-                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border">
-                          {cfg.label}
-                        </span>
+                        <p className="text-sm font-semibold">{typeLabel}</p>
+                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border">{sevLabel}</span>
                       </div>
-                      <p className="text-xs mt-0.5 opacity-80">{f.detail}</p>
+                      <p className="text-xs mt-0.5 opacity-80">{detailFor(f)}</p>
                       {f.tx && (
                         <p className="text-[10px] mt-1 opacity-60">
-                          {new Date(f.tx.created_date).toLocaleString(undefined)}{" "}
-                          · {f.tx.currency}
+                          {new Date(f.tx.created_date).toLocaleString(undefined)} · {f.tx.currency}
                         </p>
                       )}
                     </div>
@@ -419,7 +387,7 @@ export default function FraudDetection() {
                     onClick={() => setDismissed((d) => [...d, f.id])}
                     className="text-[10px] opacity-60 hover:opacity-100 transition-opacity shrink-0"
                   >
-                    Dismiss
+                    {t("fraud.dismiss")}
                   </button>
                 </div>
               </div>
@@ -433,26 +401,23 @@ export default function FraudDetection() {
         <div className="space-y-2">
           <p className="text-sm font-semibold flex items-center gap-2">
             <History className="h-4 w-4" />
-            {dbAlerts.length} stored{" "}
-            {dbAlerts.length === 1 ? "alert" : "alerts"}
+            {t(dbAlerts.length === 1 ? "fraud.stored_alerts_one" : "fraud.stored_alerts_other", { count: dbAlerts.length })}
           </p>
           {dbAlerts.map((a) => {
-            const cfg = SEVERITY_CONFIG[a.severity] || SEVERITY_CONFIG.low;
+            const cls = SEVERITY_CLS[a.severity] || SEVERITY_CLS.low;
+            const sevLabel = t(`fraud.severity.${a.severity}`, { defaultValue: a.severity });
+            const typeLabel = t(`fraud.types.${a.type}`, { defaultValue: a.type?.replace(/_/g, " ") ?? "" });
             return (
-              <div key={a.id} className={`p-4 rounded-xl border ${cfg.cls}`}>
+              <div key={a.id} className={`p-4 rounded-xl border ${cls}`}>
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold">
-                        {TYPE_LABELS[a.type] || a.type?.replace(/_/g, " ")}
-                      </p>
-                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border">
-                        {cfg.label}
-                      </span>
-                      <span className="text-[10px] opacity-50">saved</span>
+                      <p className="text-sm font-semibold">{typeLabel}</p>
+                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border">{sevLabel}</span>
+                      <span className="text-[10px] opacity-50">{t("fraud.stored_badge")}</span>
                     </div>
-                    <p className="text-xs mt-0.5 opacity-80">{a.detail}</p>
+                    <p className="text-xs mt-0.5 opacity-80">{detailFor(a)}</p>
                     {a.storedAt && (
                       <p className="text-[10px] mt-1 opacity-60">
                         {new Date(a.storedAt).toLocaleString(undefined)}
@@ -468,7 +433,7 @@ export default function FraudDetection() {
 
       {/* Footer disclaimer */}
       <p className="text-xs text-muted-foreground text-center pb-2">
-        Checks run on local data only — no external call is made
+        {t("fraud.footer")}
       </p>
     </div>
   );

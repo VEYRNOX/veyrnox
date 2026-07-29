@@ -135,5 +135,69 @@
       "save": "Save Limit",
       "saved_toast": "Limit set"
     }
+  },
+  "fraud": {
+    "heading": "Security Scan",
+    "subhead": "On-device heuristic checks — no external calls",
+    "scanner_title": "Scanner",
+    "loading": "Loading data…",
+    "load_error": "Couldn't load local data. Please try again.",
+    "loaded_summary": "{{txCount}} transactions · {{addressCount}} address book entries · 3 checks",
+    "cta_scan": "Run Scan",
+    "cta_rescan": "Re-scan",
+    "last_scan": "Last scan: {{time}} · {{txCount}} transactions · {{addressCount}} addresses screened",
+    "scope": {
+      "anomalies": {
+        "label": "Transaction anomalies",
+        "desc": "Large outliers (>2.5σ), velocity bursts, off-hours sends"
+      },
+      "addresses": {
+        "label": "Address screening",
+        "desc": "Address book + tx counterparties vs. local flagged-address list"
+      },
+      "alerts": {
+        "label": "Stored fraud alerts",
+        "desc": "FraudAlert records saved to local IndexedDB"
+      }
+    },
+    "check_found": "{{count}} found",
+    "types": {
+      "large_transfer": "Large Transfer",
+      "rapid_transactions": "Rapid Transactions",
+      "unusual_hour": "Off-hours Activity",
+      "flagged_address": "Flagged Address"
+    },
+    "severity": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "medium_low": "Medium / Low"
+    },
+    "detail": {
+      "large_transfer": "{{amount}} {{currency}} — {{sigma}}σ above your average send",
+      "rapid_transactions": "{{count}} transactions within 1 hour",
+      "unusual_hour": "Transaction at {{hour}}:00 — outside typical activity hours",
+      "flagged_address": "{{label}} ({{prefix}}…{{suffix}}) matches local flagged-address list",
+      "flagged_address_default_label": "Address book entry",
+      "flagged_tx_recipient": "Transaction recipient",
+      "flagged_tx_sender": "Transaction sender",
+      "stored_default": "Stored fraud alert"
+    },
+    "empty_prescan": {
+      "title": "Run a scan to start",
+      "body": "All checks run on local data — nothing leaves your device"
+    },
+    "empty_clear": {
+      "title": "Nothing found",
+      "body": "No anomalies, no flagged addresses, no stored alerts"
+    },
+    "scan_findings_one": "{{count}} scan finding",
+    "scan_findings_other": "{{count}} scan findings",
+    "stored_alerts_one": "{{count}} stored alert",
+    "stored_alerts_other": "{{count}} stored alerts",
+    "stored_badge": "saved",
+    "dismiss": "Dismiss",
+    "footer": "Checks run on local data only — no external call is made"
   }
 }

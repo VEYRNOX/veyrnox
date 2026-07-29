@@ -135,5 +135,69 @@
       "save": "保存限额",
       "saved_toast": "限额已设置"
     }
+  },
+  "fraud": {
+    "heading": "安全扫描",
+    "subhead": "设备本地的启发式检查 — 无外部调用",
+    "scanner_title": "扫描器",
+    "loading": "正在加载数据…",
+    "load_error": "无法加载本地数据。请重试。",
+    "loaded_summary": "{{txCount}} 笔交易 · {{addressCount}} 条地址簿 · 3 项检查",
+    "cta_scan": "运行扫描",
+    "cta_rescan": "重新扫描",
+    "last_scan": "上次扫描：{{time}} · {{txCount}} 笔交易 · 已筛查 {{addressCount}} 个地址",
+    "scope": {
+      "anomalies": {
+        "label": "交易异常",
+        "desc": "大额异常（>2.5σ）、速度突增、非常时段发送"
+      },
+      "addresses": {
+        "label": "地址筛查",
+        "desc": "地址簿与交易对手 vs. 本地已标记地址列表"
+      },
+      "alerts": {
+        "label": "已保存的欺诈警报",
+        "desc": "保存在本地 IndexedDB 的 FraudAlert 记录"
+      }
+    },
+    "check_found": "找到 {{count}} 项",
+    "types": {
+      "large_transfer": "大额转账",
+      "rapid_transactions": "快速交易",
+      "unusual_hour": "非常时段活动",
+      "flagged_address": "已标记地址"
+    },
+    "severity": {
+      "critical": "严重",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "medium_low": "中 / 低"
+    },
+    "detail": {
+      "large_transfer": "{{amount}} {{currency}} — 高于你平均发送额 {{sigma}}σ",
+      "rapid_transactions": "1 小时内 {{count}} 笔交易",
+      "unusual_hour": "{{hour}}:00 的交易 — 超出通常活动时段",
+      "flagged_address": "{{label}} ({{prefix}}…{{suffix}}) 匹配本地已标记地址列表",
+      "flagged_address_default_label": "地址簿条目",
+      "flagged_tx_recipient": "交易接收方",
+      "flagged_tx_sender": "交易发送方",
+      "stored_default": "已保存的欺诈警报"
+    },
+    "empty_prescan": {
+      "title": "运行扫描开始",
+      "body": "所有检查均在本地数据上进行 — 不会离开你的设备"
+    },
+    "empty_clear": {
+      "title": "未发现任何问题",
+      "body": "没有异常，没有已标记地址，没有已保存的警报"
+    },
+    "scan_findings_one": "{{count}} 项扫描发现",
+    "scan_findings_other": "{{count}} 项扫描发现",
+    "stored_alerts_one": "{{count}} 条已保存警报",
+    "stored_alerts_other": "{{count}} 条已保存警报",
+    "stored_badge": "已保存",
+    "dismiss": "忽略",
+    "footer": "检查仅在本地数据上进行 — 不发起任何外部调用"
   }
 }
