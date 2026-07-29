@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Transakcijų istorija",
+      "subhead": "Kiekvienos grandinės siuntimai ir gavimai, skaitomi tiesiai iš grandinės — tik skaitymui, su nuorodomis į naršyklę.",
+      "badge_demo": "Demonstracija · pavyzdiniai duomenys",
+      "badge_mainnet": "Pagrindinis tinklas",
+      "badge_testnet": "Testinis tinklas",
+      "privacy_demo_note": "Demonstracinis režimas — per tinklą nieko neužklausiama; toliau pateiktos eilutės yra vietiniai pavyzdiniai duomenys.",
+      "loading_label": "Kraunama {{symbol}} istorija",
+      "error_prefix": "Nepavyko įkelti istorijos: {{reason}}.",
+      "error_fetch_reason": "Nepavyko pasiekti RPC mazgo — patikrinkite ryšį ir bandykite dar kartą.",
+      "error_generic_reason": "indeksatorius neatsakė",
+      "retry": "Bandyti dar kartą",
+      "no_indexer_title": "Istorija programoje neprieinama {{name}} per JSON-RPC",
+      "no_indexer_body": "Paprastas JSON-RPC mazgas negali pateikti adreso transakcijų sąrašo, o mes sąmoningai nepridedame trečiosios šalies naršyklės / indeksavimo API (naujo duomenų šaltinio ir „phone-home“ paviršiaus). Visa jūsų istorija yra blokų naršyklėje.",
+      "view_on_explorer": "Peržiūrėti {{address}} naršyklėje {{network}}",
+      "view_explorer_title": "Peržiūrėti blokų naršyklėje",
+      "unlock_for_explorer": "Atrakinkite piniginę, kad gautumėte naršyklės nuorodą savo {{symbol}} adresui.",
+      "locked_title": "Piniginė užrakinta",
+      "locked_body": "Atrakinkite piniginę, kad gautumėte savo {{symbol}} adresą ir įkeltumėte jo istoriją.",
+      "empty": "Kol kas nėra {{symbol}} transakcijų tinkle {{network}}.",
+      "count_one": "{{count}} transakcija",
+      "count_other": "{{count}} transakcijos",
+      "most_recent_suffix": " · naujausia",
+      "refresh": "Atnaujinti",
+      "sample_badge": "Pavyzdys",
+      "to_prefix": "Kam ",
+      "from_prefix": "Nuo ",
+      "status_pending": "Vykdoma",
+      "status_confirmed": "Patvirtinta",
+      "status_failed": "Nepavyko",
+      "awaiting_confirmation": "laukiama patvirtinimo"
+    },
+    "list": {
+      "empty_title": "Kol kas nėra transakcijų",
+      "empty_description": "Kai siųsite ar gausite šioje piniginėje, jūsų veikla grandinėje čia pasirodys."
+    },
+    "receipt": {
+      "heading": "Transakcijų kvitai",
+      "subhead": "Generuokite spausdinamus kvitus bet kuriai transakcijai",
+      "search_placeholder": "Ieškoti pagal ID, adresą ar valiutą...",
+      "loading": "Kraunama...",
+      "error": "Nepavyko įkelti transakcijų. Bandykite dar kartą.",
+      "empty": "Transakcijų nerasta",
+      "preview_title": "Kvito peržiūra",
+      "print": "Spausdinti",
+      "print_window_title": "Transakcijos kvitas",
+      "brand": "VEYRNOX",
+      "doc_title": "TRANSAKCIJOS KVITAS",
+      "field_receipt_id": "Kvito ID",
+      "field_date": "Data",
+      "field_type": "Tipas",
+      "field_asset": "Turtas",
+      "field_amount": "Suma",
+      "field_network_fee": "Tinklo mokestis",
+      "field_status": "Būsena",
+      "field_to": "Kam",
+      "default_type": "Pervedimas",
+      "default_status": "įvykdyta",
+      "thank_you": "Dėkojame, kad naudojatės {{brand}}",
+      "thank_you_prefix": "Dėkojame, kad naudojatės",
+      "digital_record": "Tai skaitmeninis transakcijos įrašas"
+    }
+  },
+  "settings": {
+    "heading": "Saugos nustatymai",
+    "subhead": "Užrakinkite, atrakinkite ir apsaugokite savo piniginę",
+    "theme": {
+      "dark": "Tamsus režimas",
+      "light": "Šviesus režimas",
+      "saved_note": "Išsaugota šiame įrenginyje",
+      "switch_to_light": "Perjungti į šviesų režimą",
+      "switch_to_dark": "Perjungti į tamsų režimą"
+    },
+    "activity_log": {
+      "label": "Veiklos žurnalas",
+      "description": "Pagal nutylėjimą išjungtas · saugomas tik šiame įrenginyje",
+      "help": "Privatus žurnalas: ką pakeitėte, siuntėte, atšaukėte. Jokių sumų ar adresų. Paniškas ištrynimas jį panaikina.",
+      "enable_aria": "Įjungti veiklos žurnalą",
+      "disable_aria": "Išjungti veiklos žurnalą",
+      "no_events": "Kol kas neįrašyta jokių įvykių."
+    },
+    "message_signing": {
+      "label": "Pranešimų pasirašymas",
+      "description": "Pagal nutylėjimą išjungtas · saugomas tik šiame įrenginyje",
+      "help": "Pagal nutylėjimą išjungtas. Leidžia pasirašyti laisvo teksto pranešimus savo piniginės raktu. Įjunkite tik jei dApp ar paslauga paprašo pasirašyti pranešimą.",
+      "enable_aria": "Įjungti pranešimų pasirašymą",
+      "disable_aria": "Išjungti pranešimų pasirašymą"
+    },
+    "telemetry": {
+      "label": "Anoniminiai naudojimo duomenys",
+      "description": "Pasirenkama · niekada neapima likučių ar adresų",
+      "help": "Padeda mums rasti klaidas ir tobulinti programą. Naudojamas atsitiktinis įrenginio ID — jis niekada nesusiejamas su jūsų pinigine, raktais ar tapatybe. Išjungus tai, jokie naudojimo duomenys nebepaliks šio įrenginio.",
+      "enable_aria": "Įjungti anoniminius naudojimo duomenis",
+      "disable_aria": "Išjungti anoniminius naudojimo duomenis"
+    },
+    "delete_account": {
+      "title": "Pavojinga zona",
+      "clear_cache_label": "Išvalyti vietinę podėlio talpyklą",
+      "clear_cache_description": "Išvalo šiame įrenginyje išsaugotus duomenis ir užrakina piniginę. Jūsų atkūrimo frazė vis tiek veiks. Norėdami ištrinti raktus, naudokite Panišką ištrynimą.",
+      "delete_button": "Ištrinti",
+      "confirm_prompt_pre": "Tai išvalo išsaugotus duomenis ir užrakina piniginę. Jūsų atkūrimo frazė vis tiek veiks. Įrašykite",
+      "confirm_prompt_post": ", kad patvirtintumėte.",
+      "confirm_placeholder": "Įrašykite DELETE, kad patvirtintumėte",
+      "confirm_aria": "Įrašykite DELETE, kad patvirtintumėte paskyros atkūrimą",
+      "cancel": "Atšaukti",
+      "confirm_delete": "Patvirtinti ištrynimą",
+      "deleting": "Trinama..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometrinis atrakinimas",
+      "worth_knowing_label": "Verta žinoti.",
+      "kdf_disclosure": "Atrakinimas vienu palietimu išsaugo jūsų piniginės slaptažodį šiame įrenginyje, apsaugotą jūsų ekrano užrakto ir biometrijos. Jei kas nors gautų jūsų įrenginio atsarginės kopijos failą be paties įrenginio, jis galėtų pasiekti jūsų piniginę. Norėdami stipriausios apsaugos, tai išjunkite.",
+      "app_layer_disclosure_pre": "Biometrinis atrakinimas išsaugo jūsų slaptažodį šiame įrenginyje, apsaugotą jūsų piršto atspaudu ar veidu. Tai veikia programos, o ne operacinės sistemos lygmenyje.",
+      "app_layer_disclosure_mid": "Stipresnei apsaugai įrenginio lygmenyje įjunkite",
+      "hardware_protection_label": "Aparatinę apsaugą",
+      "app_layer_disclosure_post": "(pasiekiama žemiau).",
+      "toggle_label": "Biometrinis atrakinimas (Pagrindinė piniginė)",
+      "toggle_description": "Įjunkite atrakinimą vienu palietimu savo pagrindinei piniginei naudojant įrenginio biometriją.",
+      "before_enable_label": "Prieš tai įjungdami.",
+      "confirm_disclosure": "Jei kas nors gautų jūsų įrenginio atsarginės kopijos failą be paties įrenginio, jis galėtų pasiekti jūsų piniginę. Įjunkite tai tik jei sutinkate su tuo.",
+      "confirm_enable_button": "Įjungti atrakinimą vienu palietimu",
+      "cancel_button": "Atšaukti",
+      "checking_availability": "Tikrinamas prieinamumas…",
+      "default_label": "Biometrija",
+      "available": "{{label}} prieinama.",
+      "available_simulated": "{{label}} prieinama (simuliuota demonstracijoje).",
+      "status_check_failed": "Nepavyko patikrinti biometrijos prieinamumo šiame įrenginyje.",
+      "awaiting_prompt": "Laukiama raginimo…",
+      "preview_prompt": "Peržiūrėti raginimą",
+      "test_success": "Simuliuota autentifikacija pavyko",
+      "test_cancelled": "Raginimas atšauktas"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrinis atrakinimas",
+      "heading_web": "Atrakinti prieigos raktu",
+      "scope_banner_native_pre": "Prieš atrakinant patikrinamas jūsų piršto atspaudas arba veidas —",
+      "scope_banner_native_post": "tai nepakeičia jūsų slaptažodžio. Jūsų slaptažodis ir atkūrimo frazė vis tiek veikia savarankiškai, todėl praradus biometriją niekada neliksite užrakinti.",
+      "scope_banner_web_pre": "Prieigos raktas prideda greitą biometrinį ar apsaugos rakto patvirtinimą prieš atrakinant —",
+      "scope_banner_web_post": "tai nepakeičia jūsų slaptažodžio. Jūsų slaptažodis ir atkūrimo frazė vis tiek veikia savarankiškai, todėl praradus prieigos raktą niekada neliksite užrakinti.",
+      "extra_step_label": "papildomas žingsnis",
+      "enroll_button": "Registruoti biometrinį atrakinimą",
+      "register_button": "Registruoti prieigos raktą",
+      "not_setup_native": "Įrenginio biometrija nenustatyta. Pirmiausia pridėkite piršto atspaudą ar veidą įrenginio nustatymuose — jūsų slaptažodis vis tiek veiks.",
+      "not_supported_web": "Prieigos rakto atrakinimas šioje naršyklėje neprieinamas. Jis veikia mobiliojoje programoje ir modernose naršyklėse. Čia naudokite savo slaptažodį.",
+      "enroll_error": "Nepavyko registruoti biometrinio atrakinimo šiame įrenginyje.",
+      "register_error": "Nepavyko registruoti prieigos rakto šiame įrenginyje.",
+      "enrolled_native": "Biometrinis atrakinimas registruotas",
+      "registered_web": "Prieigos raktas registruotas",
+      "simulated_suffix": " (simuliuota)",
+      "remove_button": "Pašalinti",
+      "require_toggle_native": "Reikalauti biometrinio atrakinimo",
+      "require_toggle_web": "Reikalauti {{label}} atrakinant",
+      "require_toggle_aria_web": "Reikalauti prieigos rakto atrakinimo",
+      "require_toggle_desc_native": "Prašyti įrenginio biometrijos prieš atrakinant (jūsų slaptažodis vis tiek veiks).",
+      "require_toggle_desc_web": "Prašyti prieigos rakto prieš atrakinant (jūsų slaptažodis vis tiek veiks).",
+      "applies_all_sessions": "Tai taikoma visoms piniginės sesijoms šiame įrenginyje.",
+      "default_label": "Prieigos raktas",
+      "checking_availability": "Tikrinamas prieinamumas…",
+      "simulated_in_demo": "{{label}} simuliuota demonstracijoje. ",
+      "awaiting_biometric": "Laukiama biometrijos…",
+      "awaiting_passkey": "Laukiama prieigos rakto…",
+      "preview_biometric_prompt": "Peržiūrėti biometrinį raginimą",
+      "preview_passkey_prompt": "Peržiūrėti prieigos rakto raginimą",
+      "simulated_prefix": "Simuliuota ",
+      "biometric_verified": "biometrija patvirtinta",
+      "passkey_verified": "prieigos raktas patvirtintas",
+      "biometric_prompt_cancelled": "Biometrinis raginimas atšauktas",
+      "passkey_prompt_cancelled": "Prieigos rakto raginimas atšauktas"
+    },
+    "hardware_kek": {
+      "heading": "Aparatinė apsauga įrenginyje",
+      "badge_webauthn": "Apsaugota WebAuthn",
+      "badge_off": "IŠJUNGTA",
+      "description_pre": "Susieja jūsų piniginę su šiuo fiziniu įrenginiu. Įjungus, jūsų piniginę galima atverti tik ",
+      "description_device": "šiame įrenginyje",
+      "description_post": ". Pavogta atsarginė kopija be paties įrenginio yra bevertė, net turint jūsų PIN kodą.",
+      "description_web_suffix": "Veikia su Chrome 99+ ir Firefox 108+. Safari nepalaikoma.",
+      "device_binding_note": "Susiejimas su įrenginiu aktyvus ir išbandytas su tikrąja aparatine įranga.",
+      "checking_status": "Tikrinama būsena…",
+      "web_prf_unsupported": "Aparatinė apsauga šioje naršyklėje neprieinama. Naudokite Chrome 99+ arba Firefox 108+, arba iOS ar Android programą.",
+      "errors": {
+        "wrong_pin": "Neteisingas PIN kodas — įveskite PIN kodą, kurį naudojate piniginei atrakinti.",
+        "no_hardware": "Nepavyko pasiekti šio įrenginio aparatinės saugos. Bandykite dar kartą arba naudokite kitą įrenginį.",
+        "malformed_vault": "Šiame įrenginyje nepavyko nuskaityti jūsų išsaugotų piniginės duomenų.",
+        "not_enrolled": "Aparatinė apsauga šiam saugyklai neįjungta, todėl atnaujinti nėra ko.",
+        "generic": "Kažkas nutiko ne taip. Bandykite dar kartą.",
+        "key_invalidated": "Jūsų piršto atspaudai pasikeitė — aparatinė apsauga buvo panaikinta. Išjunkite ir vėl įjunkite aparatinę apsaugą arba atkurkite iš savo sėklos frazės.",
+        "insecure_tier": "Šiame įrenginyje nėra saugaus aparatinio elemento — čia aparatinės apsaugos įjungti negalima.",
+        "enter_pin_first": "Pirmiausia įveskite savo saugyklos PIN kodą.",
+        "enter_pin_confirm_removal": "Įveskite savo saugyklos PIN kodą, kad patvirtintumėte pašalinimą.",
+        "enter_pin_upgrade": "Įveskite savo saugyklos PIN kodą, kad atnaujintumėte."
+      },
+      "toast": {
+        "enabled": "Aparatinė apsauga įjungta — jūsų saugyklai atrakinti dabar reikia šio įrenginio.",
+        "removed": "Aparatinė apsauga pašalinta.",
+        "upgraded": "Aparatinė apsauga atnaujinta — jūsų saugykla dabar susieta unikaliu kiekvieno įrenginio raktu."
+      },
+      "pin_strength": {
+        "hardware_title": "Apsaugota aparatine įranga.",
+        "hardware_body": "Jūsų PIN kodas kartu su Face ID, piršto atspaudu ar prieigos raktu daro neveiksmingas neprisijungimo (offline) atakas — užpuolikui reikėtų ir jūsų PIN kodo, ir šio fizinio įrenginio.",
+        "no_hardware_title": "Šioje naršyklėje aparatinis veiksnys neprieinamas.",
+        "no_hardware_body": "Jūsų 8 skaitmenų PIN kodą (~100 mln. kombinacijų) saugo tik Argon2id — kryptingas užpuolikas galėtų jį atspėti neprisijungus per dienas ar savaites. Naudokite 12+ simbolių slaptažodį arba pereikite prie Chrome / Firefox, kad įjungtumėte aparatinę apsaugą.",
+        "pre_enroll_title": "PIN kodo stiprumas.",
+        "pre_enroll_body": "8 skaitmenų PIN kodas turi ~100 mln. kombinacijų. Argon2id sulėtina neprisijungimo atakas iki maždaug 1–2 metų vienu gijos siūlu — bet GPU klasteris galėtų tai sutrumpinti iki kelių dienų. Aukščiau įjungę Face ID, piršto atspaudą ar prieigos raktą, padarysite neprisijungimo atakas neveiksmingas, nes kiekvienam atrakinimui reikės šio įrenginio."
+      },
+      "enrolled": {
+        "active_title": "Aktyvu šiame įrenginyje",
+        "active_body_native": "Jūsų saugyklai atrakinti reikia šio įrenginio biometrijos.",
+        "active_body_web": "Jūsų saugyklai atrakinti reikia šio įrenginio prieigos rakto."
+      },
+      "upgrade": {
+        "available_title": "Galimas atnaujinimas",
+        "available_body": "Jūsų piniginė buvo apsaugota senesne versija, kuri naudojo bendrą raktą keliems įrenginiams. Atnaujinkite, kad susietumėte ją tik su šiuo įrenginiu. Tai įvyksta vieną kartą ir paprašys patvirtinti du kartus.",
+        "cta": "Atnaujinti aparatinę apsaugą",
+        "busy": "Atnaujinama — patvirtinkite abu raginimus…",
+        "prompt": "Įveskite savo saugyklos PIN kodą. Autentifikuositės du kartus, kad iš naujo apsaugotumėte saugyklą.",
+        "cancel": "Atšaukti"
+      },
+      "remove": {
+        "cta": "Pašalinti aparatinę apsaugą",
+        "prompt_native": "Įveskite PIN kodą, kad patvirtintumėte. Reikės patvirtinti piršto atspaudu ar veidu.",
+        "prompt_web": "Įveskite slaptažodį, kad patvirtintumėte. Reikės patvirtinti prieigos raktu.",
+        "busy": "Šalinama — patvirtinkite raginimą…",
+        "cancel": "Atšaukti"
+      },
+      "enroll": {
+        "prompt_native": "Įveskite savo saugyklos PIN kodą, kad įjungtumėte aparatinę apsaugą.",
+        "prompt_web": "Įveskite savo 8 skaitmenų PIN kodą, kad įjungtumėte aparatinę apsaugą. Jūsų naršyklė sukurs prieigos raktą, susiejantį jūsų piniginę su šiuo įrenginiu.",
+        "cta": "Įjungti aparatinę apsaugą",
+        "busy_native": "Registruojama — patvirtinkite biometrinį raginimą…",
+        "busy_web": "Registruojama — patvirtinkite prieigos rakto raginimą…",
+        "footnote_native": "Būsite paprašyti autentifikuotis įrenginio biometrija arba slaptažodžiu.",
+        "footnote_web": "Jūsų naršyklė paprašys autentifikuotis biometrija ar įrenginio PIN kodu, kad sukurtų prieigos raktą."
+      },
+      "blocked": "Aparatinės apsaugos nustatymai šioje sesijoje neprieinami."
+    },
+    "two_factor": {
+      "heading": "Dviejų veiksnių patvirtinimas kritiniams veiksmams",
+      "intro": "Papildoma patikra virš jūsų PIN kodo jautriems veiksmams. Net jei kas nors matytų jus įvedant PIN kodą, jis vis tiek negalėtų atlikti šių veiksmų be antrojo žingsnio.",
+      "actions_protects_label": "Veiksmai, kuriuos tai apsaugo",
+      "gated_actions": [
+        { "label": "Lėšų siuntimas", "desc": "kiekvienas siuntimas, po saugumo patikrų" },
+        { "label": "Atkūrimo frazės atskleidimas", "desc": "atsarginės kopijos peržiūra ar eksportavimas" },
+        { "label": "Avarinio PIN kodo nustatymas", "desc": "Avarinės piniginės kūrimas" },
+        { "label": "Piniginės kūrimas ar slėpimas", "desc": "paslėptos piniginės pakeitimai" }
+      ],
+      "currently_enforcing": "Šiuo metu taikoma:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Prieigos raktas",
+      "badge_password": "PIN + Veiksmo slaptažodis",
+      "badge_off": "Išjungta (tik PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Esate masalinėje / paslėptoje sesijoje. Sukonfigūruokite dviejų veiksnių patvirtinimą iš savo tikrosios sesijos.",
+      "method_a_title": "PIN + Veiksmo slaptažodis",
+      "on_suffix": "ĮJUNGTA",
+      "method_a_desc": "Antras slaptažodis, išsaugotas jūsų piniginėje. Stiprus, bet abu slaptažodžiai yra tame pačiame įrenginyje.",
+      "label_pin": "Jūsų PIN kodas",
+      "label_wallet_password": "Piniginės slaptažodis",
+      "pin_confirm_placeholder": "Patvirtinkite, kad tai jūs",
+      "action_password_label_change": "Naujas veiksmo slaptažodis",
+      "action_password_label_set": "Veiksmo slaptažodis",
+      "action_password_placeholder": "Bent 8 simboliai",
+      "action_password_hint": "Bent 8 simboliai · leidžiami bet kokie simboliai",
+      "too_short": "Naudokite bent {{min}} simbolių.",
+      "confirm_label": "Patvirtinti",
+      "confirm_placeholder": "Įveskite veiksmo slaptažodį dar kartą",
+      "confirm_hint": "Turi sutapti su jūsų veiksmo slaptažodžiu",
+      "mismatch": "Slaptažodžiai nesutampa.",
+      "save_change": "Keisti veiksmo slaptažodį",
+      "save_set": "Nustatyti veiksmo slaptažodį",
+      "remove": "Pašalinti veiksmo slaptažodį",
+      "toast_changed": "Veiksmo slaptažodis pakeistas",
+      "toast_set": "Veiksmo slaptažodis nustatytas",
+      "toast_set_error": "Nepavyko nustatyti veiksmo slaptažodžio",
+      "toast_confirm_pin_required": "Įveskite savo piniginės PIN kodą / slaptažodį, kad patvirtintumėte",
+      "toast_removed": "Veiksmo slaptažodis pašalintas",
+      "toast_remove_error": "Nepavyko pašalinti veiksmo slaptažodžio",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Prieigos raktas / FIDO2",
+      "method_b_desc_native": "Jūsų PIN kodas plius {{label}}. Jei biometrija neprieinama, veiksmas blokuojamas. Praradus įrenginį, lėšos niekada neprarandamos.",
+      "method_b_desc_web": "Jūsų PIN kodas plius prieigos rakto palietimas. Jei prieigos raktas neprieinamas, veiksmas blokuojamas. Jį praradus, lėšos niekada neprarandamos.",
+      "switch_aria_native": "Naudoti mano įrenginio biometriją kaip antrąjį veiksnį",
+      "switch_aria_web": "Naudoti prieigos raktą kaip antrąjį veiksnį",
+      "confirm_native": "Patvirtinkite kritinius veiksmus {{label}}.",
+      "unavailable_native": "{{label}} / įrenginio slaptažodis šiame įrenginyje nenustatytas — įjunkite tai įrenginio nustatymuose, kad naudotumėte šį veiksnį.",
+      "unsupported_web": "Ši naršyklė nepalaiko WebAuthn / prieigos raktų.",
+      "register_hint_web_pre": "Kol kas neregistruotas joks prieigos raktas — nustatykite jį",
+      "register_hint_web_strong": "Piniginės prieigos raktuose",
+      "register_hint_web_post": "žemiau, tada tai įjunkite.",
+      "toggle_biometric_needed": "{{label}} šiame įrenginyje nenustatyta.",
+      "toggle_passkey_needed": "Pirmiausia registruokite prieigos raktą (Piniginės prieigos raktai, žemiau).",
+      "toggle_biometric_on": "{{label}} antrasis veiksnys įjungtas",
+      "toggle_biometric_off": "{{label}} antrasis veiksnys išjungtas",
+      "toggle_passkey_on": "Prieigos rakto antrasis veiksnys įjungtas",
+      "toggle_passkey_off": "Prieigos rakto antrasis veiksnys išjungtas"
+    },
+    "session": {
+      "title": "Sesija ir automatinis užrakinimas",
+      "description": "Užrakina jūsų piniginę po neveiklumo laikotarpio arba kai išeinate iš programos",
+      "status_unlocked": "Atrakinta",
+      "status_locked": "Užrakinta",
+      "auto_lock_after": "Automatiškai užrakinti po",
+      "never_note": "Automatinio užrakinimo dėl neveiklumo nėra, bet vis tiek užrakinama po ~45 s fone ir po 8 valandų atrakinta.",
+      "resets_note": "Atsistato kaskart, kai bendraujate su programa. Taip pat iškart užrakinama nustūmus į foną.",
+      "lock_now": "Užrakinti dabar",
+      "recent_activity": "Naujausia veikla",
+      "view_all": "Peržiūrėti viską",
+      "this_device": "Šis įrenginys",
+      "active_now": "Aktyvu dabar"
+    },
+    "rehearsal": {
+      "title": "Repetuoti neatpažįstamumą",
+      "description": "Pamatykite skydelį tiksliai taip, kaip jį matytų jūsų atrakintą telefoną laikantis asmuo."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Piniginė",
+    "sidebar_expand": "Išskleisti šoninę juostą",
+    "sidebar_collapse": "Suskleisti šoninę juostą",
+    "search_placeholder": "Ieškoti...",
+    "search_shortcut_title": "Ieškoti (⌘K)",
+    "lock": "Užrakinti",
+    "lock_confirm_prompt": "Užrakinti šią piniginę dabar?",
+    "back": "Atgal",
+    "settings": "Nustatymai",
+    "main_content_aria": "Pagrindinis turinys",
+    "bottom_nav_aria": "Apatinė navigacija",
+    "more_features_aria": "Daugiau funkcijų",
+    "more": "Daugiau",
+    "close": "Uždaryti",
+    "all_features_heading": "Visos funkcijos",
+    "recent_heading": "Naujausi",
+    "tab_home": "Pradžia",
+    "tab_send": "Siųsti",
+    "tab_receive": "Gauti"
+  },
+  "back": {
+    "default_label": "Atgal"
+  },
+  "send": {
+    "heading": "Siųsti kriptovaliutą",
+    "subheading": "Saugiai pervedkite lėšas",
+    "wallet_fallback": "Piniginė",
+    "wallet_picker": { "label": "Iš piniginės", "placeholder": "Pasirinkite piniginę" },
+    "asset_picker": { "label": "Turtas", "placeholder": "Pasirinkite turtą" },
+    "recipient": {
+      "label": "Siųsti (adresas arba vardas)",
+      "placeholder": "Įklijuokite adresą arba įveskite vardą (pvz., vitalik.eth)",
+      "scan_qr": "Nuskaityti QR kodą",
+      "resolving": "Ieškomas vardas…",
+      "name_not_found": "Vardas nerastas — patikrinkite rašybą arba įklijuokite adresą tiesiogiai.",
+      "ens_using_prefix": "Naudojama {{name}} →",
+      "ens_confirm_intro": "privačiai surastas blokų grandinėje adresas:",
+      "ens_confirm_hint": "Prieš siųsdami patvirtinkite, kad šis adresas teisingas.",
+      "use_this_address": "Naudoti šį adresą",
+      "not_whitelisted": "Šio adreso nėra jūsų patikimų sąraše. Prieš tęsdami dar kartą patikrinkite. Patikimus adresus galite pridėti Nustatymuose.",
+      "self_send_warning": "Siunčiate į savo paties piniginės adresą. Tai nieko neperkelia tarp piniginių, bet vis tiek kainuoja tinklo mokestį. Prieš tęsdami dar kartą patikrinkite gavėją."
+    },
+    "screening": {
+      "local_disclosure": "Gavėjai tikrinami jūsų įrenginyje pagal jūsų pačių istoriją dėl sukčiavimo adresų — niekas nepalieka jūsų įrenginio.",
+      "remote_opt_in": "Taip pat tikrinti pagal internetinę grėsmių duomenų bazę (šis adresas siunčiamas trečiajai šaliai)",
+      "remote_unavailable": "Internetinis tikrinimas įjungtas, bet šioje versijoje nenurodytas joks tiekėjas — tikrinimas lieka vietinis, todėl negalėjome patikrinti pagal išorinį sąrašą.",
+      "demo_poison_button": "Demonstracija: įklijuoti panašiai atrodantį adresą"
+    },
+    "simulation": {
+      "title": "Transakcijos simuliacija",
+      "toggle_aria": "Perjungti transakcijos simuliaciją",
+      "description": "Prieš pasirašydami atliekame vietinę patikrą prieš siunčiant — jokių trečiųjų šalių paslaugų, jokie duomenys nepalieka jūsų įrenginio.",
+      "checks": [
+        "Adreso rizika (klastojimas / panašumas)",
+        "Sutarties dekodavimas",
+        "Neribotas leidimas žymėti",
+        "Atšaukimo (revert) prognozė",
+        "Anomalija, palyginti su jūsų istorija",
+        "Įspėjimas dėl didelio nutekėjimo"
+      ],
+      "results_hint": "Rezultatai atsiras kitame žingsnyje, kai įvesite adresą ir sumą.",
+      "off_hint": "Simuliacija išjungta — prieš pasirašant patikra prieš siunčiant nebus atliekama.",
+      "taking_too_long": "Užtrunka per ilgai?",
+      "turn_off": "Išjungti simuliaciją"
+    },
+    "amount": {
+      "label": "Suma",
+      "placeholder": "0,00",
+      "being_sent": "siunčiama",
+      "balance_prefix": "Likutis:",
+      "demo_suffix": "(demonstracinis)",
+      "live_suffix": "(tiesioginis)",
+      "reading_from_network": "skaitoma iš tinklo…"
+    },
+    "errors": {
+      "amount_missing": "Būtina nurodyti sumą",
+      "amount_not_positive": "Suma turi būti didesnė už nulį",
+      "amount_malformed": "Įveskite paprastą dešimtainę sumą, pvz., 0.5",
+      "amount_over_balance": "Nepakankamas likutis",
+      "insufficient_balance_title": "Nepakankamas likutis.",
+      "insufficient_balance_body": "Turite {{balance}} {{currency}}, kuriuos galite siųsti (atskaičius tinklo mokestį). Sumažinkite sumą, kad tęstumėte."
+    },
+    "status": {
+      "not_enabled": "Siuntimas {{currency}} dar neįjungtas. Šis turtas kol kas tik gaunamas, kol nepatvirtintas jo kriptografinis kelias.",
+      "dev_ungate_title": "AKTYVUOTAS KŪRĖJO REŽIMAS",
+      "dev_ungate_body": "— siuntimo apribojimas {{currency}} apeitas per VITE_DEV_UNGATE_SEND (tik kūrimo versijoje). Šio turto būsena nepakito (vis dar neaktyvus); pagrindinis tinklas lieka uždaras. Tik testinio tinklo tikrinimui — niekada nediekite šios versijos.",
+      "locked": "Jūsų piniginė užrakinta. Atrakinkite ją Piniginės nustatymuose, kad pasirašytumėte ir siųstumėte."
+    },
+    "note": { "label": "Pastaba (nebūtina)", "placeholder": "Kam tai skirta?" },
+    "trezor": {
+      "toggle_label": "Pasirašyti su Trezor",
+      "connected": "Įrenginys prijungtas",
+      "connect_button": "Prijungti įrenginį"
+    },
+    "buttons": {
+      "continue": "Tęsti",
+      "confirm_send": "Patvirtinti ir siųsti",
+      "back": "Atgal"
+    },
+    "verify": { "summary_label": "Siunčiate" },
+    "fee": {
+      "automatic": "Tinklo mokestis {{currency}} ({{network}}) nustatomas automatiškai.",
+      "native_fee_note": "Tinklo mokestis mokamas {{symbol}} ({{network}}) — jums reikia {{symbol}}, kad padengtumėte tinklo mokestį, net siunčiant {{token}}."
+    },
+    "decode": {
+      "heading": "Ką atlieka ši transakcija",
+      "action": "Veiksmas",
+      "send_tokens": "Siųsti žetonus",
+      "token": "Žetonas",
+      "amount": "Suma",
+      "recipient": "Gavėjas",
+      "grant_permission": "Suteikti leidimą išleisti",
+      "permission": "Leidimas",
+      "unlimited_permission": "Neribotas (ši programa gali išleisti bet kokią sumą)",
+      "spender": "Gavėjas (leidimo turėtojas)"
+    },
+    "reauth": {
+      "prompt": "Įveskite savo {{credential}} dar kartą, kad patvirtintumėte",
+      "credential_pin": "PIN kodą",
+      "credential_password": "slaptažodį",
+      "submit_pin": "Patvirtinti",
+      "submit_password": "Patvirtinti ir siųsti",
+      "password_placeholder": "Saugyklos slaptažodis",
+      "password_aria": "Saugyklos slaptažodis siuntimo patvirtinimui",
+      "errors": {
+        "unavailable": "Patvirtinimas neprieinamas — iš naujo užrakinkite ir atrakinkite piniginę.",
+        "incorrect": "Neteisingai — bandykite dar kartą (liko {{remaining}})"
+      }
+    },
+    "done": {
+      "beacon_label": "Transakcija transliuota",
+      "heading": "Transakcija transliuota",
+      "body_suffix": "pasirašyta vietoje ir išsiųsta į tinklą",
+      "tx_hash_label": "Transakcijos maiša (hash)",
+      "view_explorer": "Peržiūrėti blokų naršyklėje",
+      "pending_note": "Vykdoma, kol bus patvirtinta tinkle. Likutis atnaujinamas iš blokų grandinės, o ne iš išsaugotos reikšmės.",
+      "send_another": "Siųsti dar kartą"
+    },
+    "toasts": {
+      "ens_off_in_session": "Vardų nustatymas šioje sesijoje išjungtas — įklijuokite adresą tiesiogiai.",
+      "ens_not_found": "ENS vardas nerastas",
+      "sns_unavailable": "Solana vardų nustatymas kol kas neprieinamas — įklijuokite adresą tiesiogiai.",
+      "ens_resolution_failed": "Nepavyko nustatyti vardo",
+      "verify_required": "Prieš siunčiant šią sumą baikite savo atsarginės kopijos patvirtinimą.",
+      "two_factor_retry": "Siuntimas nepavyko — patvirtinkite dar kartą, kad bandytumėte iš naujo.",
+      "send_failed_fallback": "Siuntimas nepavyko",
+      "unconfirmed": "Nepavyko patvirtinti šios transakcijos tinkle — ji gali dar vykdytis. Patikrinkite naršyklėje."
+    }
+  },
+  "receive": {
+    "heading": "Gauti kriptovaliutą",
+    "subheading": "Parodykite piniginės adresą, kad gautumėte lėšų",
+    "asset_label": "Turtas",
+    "asset_placeholder": "Pasirinkite turtą",
+    "not_available": "{{name}} ({{symbol}}) gavimas kol kas neprieinamas. Kol šis turtas neįjungtas, adresas nerodomas.",
+    "locked": {
+      "title": "Piniginė užrakinta",
+      "body": "Atrakinkite piniginę, kad atskleistumėte savo {{asset}} {{network}} gavimo adresą.",
+      "open_hd_wallet": "Atverti HD piniginės tvarkyklę"
+    },
+    "your_address": "Jūsų {{asset}} adresas",
+    "testnet_badge": "Testinis tinklas",
+    "receive_address_label": "{{symbol}} gavimo adresas",
+    "copy": {
+      "copied_aria": "Adresas nukopijuotas į iškarpinę",
+      "copy_aria": "Kopijuoti adresą",
+      "copied_toast": "Adresas nukopijuotas",
+      "copy_failed_toast": "Nepavyko nukopijuoti — pažymėkite ir nukopijuokite adresą rankiniu būdu"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} yra žetonas Ethereum suderinamame tinkle. Tai jūsų piniginės adresas — leiskite siuntėjui siųsti {{symbol}} tik tinkle {{network}}. Siunčiant kitame tinkle, lėšas galima negrįžtamai prarasti.",
+      "evm": "Tai jūsų bendrasis piniginės adresas. Siųskite {{name}} šiuo adresu tik tinkle {{network}} ir įsitikinkite, kad siuntėjas naudoja {{network}}.",
+      "btc": "Siųskite Bitcoin šiuo adresu tik tinkle {{network}}.",
+      "solana": "Siųskite Solana šiuo adresu tik tinkle {{network}}."
+    },
+    "select_asset_prompt": "Pasirinkite turtą, kurį norite gauti.",
+    "unlock_footer_note": "Adresai gaunami iš jūsų įrenginio piniginės ir rodomi tik kol ji atrakinta."
+  },
+  "dashboard": {
+    "portfolioValue": "Portfelio vertė",
+    "priceAlertsTriggered_one": "Suveikė {{count}} kainos įspėjimas!",
+    "priceAlertsTriggered_other": "Suveikė {{count}} kainos įspėjimai!",
+    "lockAriaLabel": "Užrakinti likutį už biometrijos",
+    "lockBalance": "Užrakinti likutį",
+    "synced": "Sinchronizuota {{time}}",
+    "syncJustNow": "Ką tik",
+    "syncSecondsAgo_one": "prieš {{count}} s",
+    "syncSecondsAgo_other": "prieš {{count}} s",
+    "syncMinutesAgo_one": "prieš {{count}} min",
+    "syncMinutesAgo_other": "prieš {{count}} min",
+    "actions": {
+      "send": "Siųsti",
+      "receive": "Gauti",
+      "schedule": "Suplanuoti",
+      "add": "Pridėti"
+    },
+    "tabs": {
+      "tokens": "Žetonai",
+      "activity": "Veikla",
+      "analytics": "Analitika"
+    },
+    "emptyWallets": {
+      "title": "Kol kas nėra piniginių",
+      "description": "Pridėkite piniginę, kad pradėtumėte gauti, siųsti ir laikyti turtą keliose grandinėse."
+    },
+    "addWallet": "Pridėti piniginę",
+    "searchTransactionsPlaceholder": "Ieškoti transakcijų...",
+    "emptySearch": {
+      "title": "Atitinkančių transakcijų nerasta",
+      "description": "Pabandykite išvalyti filtrus arba ieškoti kito turto ar adreso."
+    },
+    "emptyTransactions": {
+      "title": "Kol kas nėra transakcijų",
+      "description": "Jūsų veikla grandinėje čia pasirodys, kai tik siųsite arba gausite."
+    },
+    "portfolioPerformance": "Portfelio veiklos rodikliai",
+    "assetDistribution": "Turto pasiskirstymas",
+    "quickAccess": "Sparčioji prieiga",
+    "quickAccessItems": {
+      "receive": "Gauti",
+      "security": "Sauga",
+      "approvals": "Leidimai",
+      "addressCheck": "Adreso patikra",
+      "analytics": "Analitika",
+      "sentiment": "Nuotaikos",
+      "riskScore": "Rizikos balas"
+    },
+    "walletNameLabel": "Piniginės pavadinimas",
+    "walletNamePlaceholder": "Mano ETH piniginė",
+    "addWalletDialog": {
+      "title": "Pridėti piniginę",
+      "currency": "Valiuta",
+      "creating": "Kuriama...",
+      "create": "Sukurti piniginę"
+    },
+    "renameWalletDialog": {
+      "title": "Pervadinti piniginę",
+      "saving": "Saugoma...",
+      "save": "Išsaugoti pavadinimą"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Šifruota saugykla",
+    "backup": {
+      "title": "Padaryti atsarginę „{{name}}“ kopiją",
+      "reauthDescription": "Patvirtinkite, kad tai jūs, ir parodysime šios piniginės atkūrimo frazę.",
+      "description": "Užsirašykite šiuos 12 žodžių neprisijungę. Bet kas, turintis juos, gali išleisti šios piniginės lėšas — ir tai vienintelis būdas ją atkurti.",
+      "warning": "Niekada nedarykite ekrano nuotraukos. Niekada neįveskite jos kitoje programoje.",
+      "confirmButton": "Užsirašiau — žymėti kaip padarytą atsarginę kopiją"
+    },
+    "addWallet": {
+      "defaultWalletName": "jūsų nauja piniginė",
+      "backupDescription": "Ši piniginė turi savo atkūrimo frazę — atskirą nuo kiekvienos kitos jūsų saugyklos piniginės. Užsirašykite ją neprisijungę prieš pradėdami naudoti.",
+      "backedUpDone": "Padariau atsarginę kopiją — atlikta",
+      "title": "Pridėti piniginę",
+      "createNew": "Sukurti naują",
+      "importSeed": "Importuoti sėklą",
+      "createDescription": "Sugeneruoja NAUJĄ sėklą, iš kurios kildinamos VISOS grandinės (ETH/EVM, BTC, SOL). Padarysite jos atsarginę kopiją prieš ją aktyvuojant.",
+      "importDescription": "Įklijuokite esamą 12/24 žodžių sėklą — visos grandinės kildinamos automatiškai (sėkla nėra susijusi su konkrečia grandine).",
+      "recoveryPhraseLabel": "Atkūrimo frazė",
+      "recoveryPhrasePlaceholder": "žodis1 žodis2 ... žodis12",
+      "walletNameLabel": "Piniginės pavadinimas",
+      "walletNamePlaceholder": "pvz., Santaupos",
+      "assetsToShowLabel": "Rodomas turtas",
+      "assetsToShowHint": "Tik rodymo pasirinkimas — sėkla vis tiek turi kiekvieną grandinę.",
+      "confirmVaultPlaceholder": "Patvirtinkite, kad tai jūs, norėdami pakeisti savo saugyklą",
+      "vaultReentryHint": "Įvesta pakartotinai, kad patvirtintumėte sėklos saugyklos pakeitimą. Niekada nesaugoma atmintyje.",
+      "createAndBackup": "Sukurti ir padaryti atsarginę kopiją",
+      "importWallet": "Importuoti piniginę"
+    },
+    "vaultPinLabel": "Saugyklos PIN kodas",
+    "vaultPasswordLabel": "Saugyklos slaptažodis",
+    "cancel": "Atšaukti",
+    "done": "Atlikta",
+    "manageAssets": {
+      "title": "Turtas piniginei „{{name}}“",
+      "description": "Pasirinkite, koks turtas rodomas šiai piniginei. Paslėptas turtas lieka nuošalyje, kol nepridedamas."
+    },
+    "rename": {
+      "title": "Pervadinti piniginę",
+      "save": "Išsaugoti pavadinimą"
+    },
+    "remove": {
+      "title": "Pašalinti „{{name}}“?",
+      "onlyWallet": "Tai vienintelė jūsų piniginė — jos pašalinti negalima. Naudokite Panišką ištrynimą Saugoje, kad viską ištrintumėte.",
+      "description": "Pašalina šios piniginės sėklą iš šio įrenginio.",
+      "backedUpNote": "Galite ją atkurti iš atkūrimo frazės.",
+      "notBackedUpNote": "⚠️ NEPADARYTA atsarginė kopija — be jos frazės ji dings negrįžtamai.",
+      "button": "Pašalinti piniginę"
+    },
+    "move": {
+      "title": "Perkelti „{{name}}“ į…"
+    },
+    "managePortfolios": {
+      "title": "Portfeliai",
+      "defaultTag": "(numatytasis)",
+      "saveAriaLabel": "Išsaugoti portfelio pavadinimą",
+      "renameAriaLabel": "Pervadinti {{name}}",
+      "deleteAriaLabel": "Ištrinti {{name}}",
+      "newNamePlaceholder": "Naujas portfelio pavadinimas",
+      "addButton": "Pridėti"
+    },
+    "activity": {
+      "unlockPrompt": "Atrakinkite piniginę, kad peržiūrėtumėte veiklą.",
+      "loading": "Kraunama...",
+      "loadError": "Nepavyko įkelti veiklos.",
+      "noTransactions": "Kol kas nėra transakcijų.",
+      "viewFullHistory": "Peržiūrėti visą istoriją →"
+    },
+    "portfolioValueLabel": "Portfelio vertė",
+    "explore": {
+      "subtitle": "Naršote — tik peržiūra. Piniginės dar nėra.",
+      "description": "Laisvai apsidairykite. Kai būsite pasiruošę, sukurkite naują savarankiško saugojimo piniginę arba importuokite esamą sėklą — raktai sugeneruojami ir užšifruojami šiame įrenginyje.",
+      "createOrImport": "Sukurti arba importuoti piniginę"
+    },
+    "portfoliosButton": "Portfeliai",
+    "totalValueHeading": "{{name}} · Bendra vertė",
+    "partialTotalNote": "Kai kurių likučių įkelti nepavyko — ši suma gali būti neišsami.",
+    "refreshPricesTooltip": "Atnaujinti tiesiogines kainas",
+    "live": "Tiesiogiai",
+    "approximate": "Apytiksliai",
+    "seedVerify": {
+      "title": "Baikite savo atsarginės kopijos patvirtinimą",
+      "description": "Būtina siunčiant virš saugumo ribos.",
+      "verifyAriaLabel": "Patvirtinti savo piniginės atsarginę kopiją",
+      "verifyButton": "Patvirtinti"
+    },
+    "unbacked": {
+      "titleBold": "Piniginės atsarginė kopija neužbaigta.",
+      "body": "Kiekviena piniginė turi savo atkūrimo frazę — be jos šios piniginės lėšų atkurti negalima. Padarykite atsarginę kopiją dabar.",
+      "backUpButton": "Padaryti atsarginę „{{name}}“ kopiją"
+    },
+    "actions": {
+      "send": "Siųsti",
+      "receive": "Gauti",
+      "addWallet": "Pridėti piniginę"
+    },
+    "activeWalletHint": {
+      "prefix": "Siuntimui / gavimui naudojama",
+      "otherPortfolio": " (kitame portfelyje)",
+      "suffix": ". Palieskite piniginę žemiau, kad perjungtumėte."
+    },
+    "tabs": {
+      "tokens": "Žetonai",
+      "activity": "Veikla",
+      "analytics": "Analitika"
+    },
+    "noWalletsInPortfolio": "Portfelyje „{{name}}“ nėra piniginių. Pridėkite piniginę arba perkelkite vieną čia iš jos meniu.",
+    "hideAssets": "Slėpti turtą",
+    "showAllAssets": "Rodyti visą turtą",
+    "walletCard": {
+      "active": "Aktyvi",
+      "backedUp": "Padaryta atsarginė kopija",
+      "backUp": "Padaryti atsarginę kopiją",
+      "partial": "dalinis",
+      "optionsAriaLabel": "Parinktys piniginei {{name}}",
+      "noAssetsShown": "Turtas nerodomas. Naudokite „Tvarkyti turtą“."
+    },
+    "menu": {
+      "manageAssets": "Tvarkyti turtą",
+      "rename": "Pervadinti",
+      "moveToPortfolio": "Perkelti į portfelį",
+      "backUp": "Padaryti atsarginę kopiją",
+      "remove": "Pašalinti"
+    },
+    "balanceLoadFailedTitle": "Nepavyko įkelti likučio",
+    "defaultWalletFallbackName": "piniginė",
+    "toast": {
+      "walletImported": "Piniginė importuota — visos grandinės kildintos.",
+      "walletRemoved": "Piniginė pašalinta iš šio įrenginio.",
+      "walletAddedBackedUp": "Piniginė pridėta ir padaryta atsarginė kopija.",
+      "movedTo": "Perkelta į {{name}}.",
+      "markedBackedUp": "„{{name}}“ pažymėta kaip turinti atsarginę kopiją."
+    },
+    "errors": {
+      "couldNotAddWallet": "Nepavyko pridėti piniginės",
+      "couldNotImportWallet": "Nepavyko importuoti piniginės",
+      "couldNotRemoveWallet": "Nepavyko pašalinti piniginės"
+    }
+  },
+  "networth": {
+    "title": "Grynasis kriptovaliutų turtas",
+    "unlockPrompt": "Atrakinkite piniginę, kad pamatytumėte savo turtą grandinėje.",
+    "subtitle": "Jūsų turtas grandinėje — neįtraukia išorinio turto.",
+    "totalHoldings": "Bendras turimas kiekis",
+    "partialNote": "dalinis — kai kurių likučių nuskaityti nepavyko",
+    "refreshPricesTooltip": "Atnaujinti tiesiogines kainas",
+    "live": "Tiesiogiai",
+    "approximate": "Apytiksliai",
+    "allocation": "Paskirstymas",
+    "holdings": "Turimas turtas",
+    "noHoldings": "Kol kas nėra turimo turto."
+  }
+}

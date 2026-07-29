@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Zgodovina transakcij",
+      "subhead": "Pošiljanja in prejemanja po verigah, prebrana neposredno iz verige — samo za branje, s povezavami do raziskovalca.",
+      "badge_demo": "Demo · vzorčni podatki",
+      "badge_mainnet": "Glavno omrežje",
+      "badge_testnet": "Testno omrežje",
+      "privacy_demo_note": "Demo način — po omrežju se ne poizveduje; spodnje vrstice so lokalni vzorčni podatki.",
+      "loading_label": "Nalaganje zgodovine {{symbol}}",
+      "error_prefix": "Zgodovine ni bilo mogoče naložiti: {{reason}}.",
+      "error_fetch_reason": "Vozlišča RPC ni bilo mogoče doseči — preverite povezavo in poskusite znova.",
+      "error_generic_reason": "indeksator se ni odzval",
+      "retry": "Poskusi znova",
+      "no_indexer_title": "Zgodovina v aplikaciji za {{name}} prek JSON-RPC ni na voljo",
+      "no_indexer_body": "Navadno vozlišče JSON-RPC ne more prikazati seznama transakcij naslova, mi pa namenoma ne dodajamo API-ja raziskovalca/indeksatorja tretje osebe (nov vir podatkov in površina za komunikacijo domov). Vaša celotna zgodovina je na raziskovalcu verige blokov.",
+      "view_on_explorer": "Ogled {{address}} na raziskovalcu {{network}}",
+      "view_explorer_title": "Ogled na raziskovalcu verige blokov",
+      "unlock_for_explorer": "Odklenite denarnico, da dobite povezavo do raziskovalca za vaš naslov {{symbol}}.",
+      "locked_title": "Denarnica zaklenjena",
+      "locked_body": "Odklenite denarnico, da izpeljete svoj naslov {{symbol}} in naložite njegovo zgodovino.",
+      "empty": "Za {{symbol}} na {{network}} še ni transakcij.",
+      "count_one": "{{count}} transakcija",
+      "count_other": "{{count}} transakcij",
+      "most_recent_suffix": " · najnovejša",
+      "refresh": "Osveži",
+      "sample_badge": "Vzorec",
+      "to_prefix": "Za ",
+      "from_prefix": "Od ",
+      "status_pending": "V obdelavi",
+      "status_confirmed": "Potrjeno",
+      "status_failed": "Neuspešno",
+      "awaiting_confirmation": "čaka na potrditev"
+    },
+    "list": {
+      "empty_title": "Še ni transakcij",
+      "empty_description": "Ko boste na tej denarnici pošiljali ali prejemali, se bo vaša dejavnost na verigi prikazala tukaj."
+    },
+    "receipt": {
+      "heading": "Potrdila o transakcijah",
+      "subhead": "Ustvarite potrdila za tiskanje za katero koli transakcijo",
+      "search_placeholder": "Iskanje po ID-ju, naslovu ali valuti ...",
+      "loading": "Nalaganje ...",
+      "error": "Transakcij ni bilo mogoče naložiti. Poskusite znova.",
+      "empty": "Transakcij ni mogoče najti",
+      "preview_title": "Predogled potrdila",
+      "print": "Natisni",
+      "print_window_title": "Potrdilo o transakciji",
+      "brand": "VEYRNOX",
+      "doc_title": "POTRDILO O TRANSAKCIJI",
+      "field_receipt_id": "ID potrdila",
+      "field_date": "Datum",
+      "field_type": "Vrsta",
+      "field_asset": "Sredstvo",
+      "field_amount": "Znesek",
+      "field_network_fee": "Omrežna provizija",
+      "field_status": "Stanje",
+      "field_to": "Za",
+      "default_type": "Prenos",
+      "default_status": "zaključeno",
+      "thank_you": "Hvala, ker uporabljate {{brand}}",
+      "thank_you_prefix": "Hvala, ker uporabljate",
+      "digital_record": "To je digitalni zapis transakcije"
+    }
+  },
+  "settings": {
+    "heading": "Varnostne nastavitve",
+    "subhead": "Zaklenite, odklenite in zaščitite svojo denarnico",
+    "theme": {
+      "dark": "Temni način",
+      "light": "Svetli način",
+      "saved_note": "Shranjeno na tej napravi",
+      "switch_to_light": "Preklopi na svetli način",
+      "switch_to_dark": "Preklopi na temni način"
+    },
+    "activity_log": {
+      "label": "Dnevnik dejavnosti",
+      "description": "Privzeto izklopljeno · shranjeno samo na tej napravi",
+      "help": "Zasebni dnevnik: kaj ste spremenili, poslali, preklicali. Brez zneskov ali naslovov. Panično brisanje ga izbriše.",
+      "enable_aria": "Omogoči dnevnik dejavnosti",
+      "disable_aria": "Onemogoči dnevnik dejavnosti",
+      "no_events": "Še ni zabeleženih dogodkov."
+    },
+    "message_signing": {
+      "label": "Podpisovanje sporočil",
+      "description": "Privzeto izklopljeno · shranjeno samo na tej napravi",
+      "help": "Privzeto izklopljeno. Omogoča podpisovanje poljubnih besedilnih sporočil z vašim ključem denarnice. Omogočite le, če vas dApp ali storitev prosi za podpis sporočila.",
+      "enable_aria": "Omogoči podpisovanje sporočil",
+      "disable_aria": "Onemogoči podpisovanje sporočil"
+    },
+    "telemetry": {
+      "label": "Anonimni podatki o uporabi",
+      "description": "Prostovoljna izbira · nikoli ne vključuje stanj ali naslovov",
+      "help": "Pomaga nam najti napake in izboljšati aplikacijo. Uporablja se naključni ID naprave — nikoli povezan z vašo denarnico, ključi ali identiteto. Izklop tega prepreči, da bi kakršni koli podatki o uporabi zapustili to napravo.",
+      "enable_aria": "Vklopi anonimne podatke o uporabi",
+      "disable_aria": "Izklopi anonimne podatke o uporabi"
+    },
+    "delete_account": {
+      "title": "Nevarno območje",
+      "clear_cache_label": "Počisti lokalni predpomnilnik",
+      "clear_cache_description": "Počisti shranjene podatke na tej napravi in zaklene denarnico. Vaša obnovitvena fraza še vedno deluje. Za izbris ključev uporabite Panično brisanje.",
+      "delete_button": "Izbriši",
+      "confirm_prompt_pre": "To počisti shranjene podatke in zaklene denarnico. Vaša obnovitvena fraza še vedno deluje. Vnesite",
+      "confirm_prompt_post": "za potrditev.",
+      "confirm_placeholder": "Vnesite DELETE za potrditev",
+      "confirm_aria": "Vnesite DELETE za potrditev ponastavitve računa",
+      "cancel": "Prekliči",
+      "confirm_delete": "Potrdi izbris",
+      "deleting": "Brisanje ..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometrično odklepanje",
+      "worth_knowing_label": "Vredno vedeti.",
+      "kdf_disclosure": "Odklepanje z enim dotikom shrani geslo vaše denarnice na tej napravi, zaščiteno z zaklepom zaslona in biometrijo. Če nekdo pridobi kopijo varnostne kopije vaše naprave brez fizične naprave, bi lahko dostopal do vaše denarnice. Izklopite to za najmočnejšo zaščito.",
+      "app_layer_disclosure_pre": "Biometrično odklepanje shrani vaše geslo na tej napravi, zaščiteno z vašim prstnim odtisom ali obrazom. To deluje znotraj aplikacije, ne na ravni operacijskega sistema.",
+      "app_layer_disclosure_mid": "Za močnejšo zaščito na ravni naprave omogočite",
+      "hardware_protection_label": "Strojna zaščita",
+      "app_layer_disclosure_post": "(na voljo spodaj).",
+      "toggle_label": "Biometrično odklepanje (glavna denarnica)",
+      "toggle_description": "Omogočite odklepanje z enim dotikom za vašo glavno denarnico z uporabo biometrije naprave.",
+      "before_enable_label": "Preden to omogočite.",
+      "confirm_disclosure": "Če nekdo pridobi kopijo varnostne kopije vaše naprave brez fizične naprave, bi lahko dostopal do vaše denarnice. To vklopite le, če vam to ustreza.",
+      "confirm_enable_button": "Omogoči odklepanje z enim dotikom",
+      "cancel_button": "Prekliči",
+      "checking_availability": "Preverjanje razpoložljivosti …",
+      "default_label": "Biometrija",
+      "available": "{{label}} na voljo.",
+      "available_simulated": "{{label}} na voljo (simulirano v demo načinu).",
+      "status_check_failed": "Razpoložljivosti biometrije na tej napravi ni bilo mogoče preveriti.",
+      "awaiting_prompt": "Čakanje na poziv …",
+      "preview_prompt": "Predogled poziva",
+      "test_success": "Simulirana avtentikacija uspela",
+      "test_cancelled": "Poziv preklican"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrično odklepanje",
+      "heading_web": "Odkleni s ključem za dostop",
+      "scope_banner_native_pre": "Vaš prstni odtis ali obraz se preveri pred odklepanjem —",
+      "scope_banner_native_post": "ne nadomešča vašega gesla. Vaše geslo in obnovitvena fraza še vedno delujeta samostojno, tako da izguba biometrije nikoli ne povzroči izklepanja.",
+      "scope_banner_web_pre": "Ključ za dostop doda hiter biometrični dotik ali dotik varnostnega ključa pred odklepanjem —",
+      "scope_banner_web_post": "ne nadomešča vašega gesla. Vaše geslo in obnovitvena fraza še vedno delujeta samostojno, tako da izguba ključa za dostop nikoli ne povzroči izklepanja.",
+      "extra_step_label": "dodaten korak",
+      "enroll_button": "Vklopi biometrično odklepanje",
+      "register_button": "Registriraj ključ za dostop",
+      "not_setup_native": "Biometrija naprave ni nastavljena. Najprej dodajte prstni odtis ali obraz v nastavitvah naprave — vaše geslo še vedno deluje.",
+      "not_supported_web": "Odklepanje s ključem za dostop v tem brskalniku ni na voljo. Deluje v mobilni aplikaciji in sodobnih brskalnikih. Tukaj uporabite geslo.",
+      "enroll_error": "Biometričnega odklepanja na tej napravi ni bilo mogoče vklopiti.",
+      "register_error": "Ključa za dostop na tej napravi ni bilo mogoče registrirati.",
+      "enrolled_native": "Biometrično odklepanje vklopljeno",
+      "registered_web": "Ključ za dostop registriran",
+      "simulated_suffix": " (simulirano)",
+      "remove_button": "Odstrani",
+      "require_toggle_native": "Zahtevaj biometrično odklepanje",
+      "require_toggle_web": "Zahtevaj {{label}} pri odklepanju",
+      "require_toggle_aria_web": "Zahtevaj odklepanje s ključem za dostop",
+      "require_toggle_desc_native": "Zahtevaj biometrijo naprave pred odklepanjem (vaše geslo še vedno deluje).",
+      "require_toggle_desc_web": "Zahtevaj ključ za dostop pred odklepanjem (vaše geslo še vedno deluje).",
+      "applies_all_sessions": "To velja za vse seje denarnice na tej napravi.",
+      "default_label": "Ključ za dostop",
+      "checking_availability": "Preverjanje razpoložljivosti …",
+      "simulated_in_demo": "{{label}} simulirano v demo načinu. ",
+      "awaiting_biometric": "Čakanje na biometrijo …",
+      "awaiting_passkey": "Čakanje na ključ za dostop …",
+      "preview_biometric_prompt": "Predogled biometričnega poziva",
+      "preview_passkey_prompt": "Predogled poziva za ključ za dostop",
+      "simulated_prefix": "Simulirano ",
+      "biometric_verified": "biometrija preverjena",
+      "passkey_verified": "ključ za dostop preverjen",
+      "biometric_prompt_cancelled": "Biometrični poziv preklican",
+      "passkey_prompt_cancelled": "Poziv za ključ za dostop preklican"
+    },
+    "hardware_kek": {
+      "heading": "Strojna zaščita na napravi",
+      "badge_webauthn": "Zaščiteno z WebAuthn",
+      "badge_off": "IZKLOPLJENO",
+      "description_pre": "Zaklene vašo denarnico na to fizično napravo. Po omogočitvi lahko denarnico odprete le na ",
+      "description_device": "tej napravi",
+      "description_post": ". Ukradena varnostna kopija je brez same naprave neuporabna, tudi z vašim PIN-om.",
+      "description_web_suffix": "Deluje v Chrome 99+ in Firefox 108+. Safari ni podprt.",
+      "device_binding_note": "Vezava na napravo je aktivna in preizkušena na pravi strojni opremi.",
+      "checking_status": "Preverjanje stanja …",
+      "web_prf_unsupported": "Strojna zaščita v tem brskalniku ni na voljo. Uporabite Chrome 99+ ali Firefox 108+, ali pa uporabite aplikacijo za iOS ali Android.",
+      "errors": {
+        "wrong_pin": "Napačen PIN — vnesite PIN, s katerim odklepate denarnico.",
+        "no_hardware": "Strojne varnosti te naprave ni bilo mogoče doseči. Poskusite znova ali uporabite drugo napravo.",
+        "malformed_vault": "Shranjenih podatkov denarnice na tej napravi ni bilo mogoče prebrati.",
+        "not_enrolled": "Strojna zaščita za ta trezor ni omogočena, zato je ni mogoče nadgraditi.",
+        "generic": "Nekaj je šlo narobe. Poskusite znova.",
+        "key_invalidated": "Vaši prstni odtisi so se spremenili — strojna zaščita je bila razveljavljena. Onemogočite in znova omogočite strojno zaščito ali obnovite iz svoje fraze semena.",
+        "insecure_tier": "Ta naprava nima varnega strojnega elementa — strojne zaščite tukaj ni mogoče omogočiti.",
+        "enter_pin_first": "Najprej vnesite svoj PIN trezorja.",
+        "enter_pin_confirm_removal": "Vnesite svoj PIN trezorja za potrditev odstranitve.",
+        "enter_pin_upgrade": "Vnesite svoj PIN trezorja za nadgradnjo."
+      },
+      "toast": {
+        "enabled": "Strojna zaščita omogočena — vaš trezor zdaj za odklepanje zahteva to napravo.",
+        "removed": "Strojna zaščita odstranjena.",
+        "upgraded": "Strojna zaščita nadgrajena — vaš trezor je zdaj vezan z edinstvenim ključem za to napravo."
+      },
+      "pin_strength": {
+        "hardware_title": "Strojno zaščiteno.",
+        "hardware_body": "Vaš PIN v kombinaciji s Face ID, prstnim odtisom ali ključem za dostop onemogoči napade brez povezave — napadalec bi potreboval tako vaš PIN kot to fizično napravo.",
+        "no_hardware_title": "V tem brskalniku ni na voljo strojnega faktorja.",
+        "no_hardware_body": "Vaš 8-mestni PIN (~100 milijonov kombinacij) je zaščiten le z Argon2id — namenski napadalec bi ga lahko brez povezave izčrpal v dneh do tednih. Uporabite geslo z vsaj 12 znaki ali preklopite na Chrome/Firefox za omogočanje strojne zaščite.",
+        "pre_enroll_title": "Moč PIN-a.",
+        "pre_enroll_body": "8-mestni PIN ima ~100 milijonov kombinacij. Argon2id upočasni napade brez povezave na približno 1–2 leti pri eni niti — vendar bi jih gruča GPE lahko skrajšala na dneve. Omogočanje Face ID, prstnega odtisa ali ključa za dostop zgoraj onemogoči napade brez povezave, saj za vsako odklepanje zahteva to napravo."
+      },
+      "enrolled": {
+        "active_title": "Aktivno na tej napravi",
+        "active_body_native": "Vaš trezor za odklepanje zahteva biometrijo te naprave.",
+        "active_body_web": "Vaš trezor za odklepanje zahteva ključ za dostop te naprave."
+      },
+      "upgrade": {
+        "available_title": "Na voljo je nadgradnja",
+        "available_body": "Vaša denarnica je bila zaščitena s starejšo različico, ki je delila ključ med napravami. Nadgradite, da jo zaklenete samo na to napravo. To se zgodi enkrat in vas prosi za dvojno preverjanje.",
+        "cta": "Nadgradi strojno zaščito",
+        "busy": "Nadgrajevanje — odobrite oba poziva …",
+        "prompt": "Vnesite svoj PIN trezorja. Za ponovno zavarovanje trezorja se boste avtenticirali dvakrat.",
+        "cancel": "Prekliči"
+      },
+      "remove": {
+        "cta": "Odstrani strojno zaščito",
+        "prompt_native": "Vnesite svoj PIN za potrditev. Preveriti se boste morali s prstnim odtisom ali obrazom.",
+        "prompt_web": "Vnesite svoje geslo za potrditev. Preveriti se boste morali s ključem za dostop.",
+        "busy": "Odstranjevanje — odobrite poziv …",
+        "cancel": "Prekliči"
+      },
+      "enroll": {
+        "prompt_native": "Vnesite svoj PIN trezorja za omogočanje strojne zaščite.",
+        "prompt_web": "Vnesite svoj 8-mestni PIN za omogočanje strojne zaščite. Vaš brskalnik bo ustvaril ključ za dostop, da zaklene vašo denarnico na to napravo.",
+        "cta": "Omogoči strojno zaščito",
+        "busy_native": "Vklapljanje — odobrite biometrični poziv …",
+        "busy_web": "Vklapljanje — odobrite poziv za ključ za dostop …",
+        "footnote_native": "Zaprošeni boste za avtentikacijo z biometrijo naprave ali kodo za dostop.",
+        "footnote_web": "Vaš brskalnik vas bo prosil za avtentikacijo z biometrijo ali PIN-om naprave za ustvarjanje ključa za dostop."
+      },
+      "blocked": "Nastavitve strojne zaščite v tej seji niso na voljo."
+    },
+    "two_factor": {
+      "heading": "Dvofaktorska avtentikacija pri ključnih dejanjih",
+      "intro": "Dodatno preverjanje poleg vašega PIN-a za občutljiva dejanja. Tudi če nekdo vidi, kako vnašate svoj PIN, teh stvari brez drugega koraka ne more storiti.",
+      "actions_protects_label": "Dejanja, ki jih ščiti",
+      "gated_actions": [
+        { "label": "Pošiljanje sredstev", "desc": "vsako pošiljanje, po varnostnih preverjanjih" },
+        { "label": "Razkritje obnovitvene fraze", "desc": "ogled ali izvoz varnostne kopije" },
+        { "label": "Nastavitev Izrednega PIN-a", "desc": "ustvarjanje Izredne denarnice" },
+        { "label": "Ustvarjanje ali skrivanje denarnice", "desc": "spremembe skrite denarnice" }
+      ],
+      "currently_enforcing": "Trenutno uveljavljeno:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + ključ za dostop",
+      "badge_password": "PIN + akcijsko geslo",
+      "badge_off": "Izklopljeno (samo PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Ste v seji vabe / skriti seji. Dvofaktorsko avtentikacijo konfigurirajte iz svoje prave seje.",
+      "method_a_title": "PIN + akcijsko geslo",
+      "on_suffix": "VKLOPLJENO",
+      "method_a_desc": "Drugo geslo, shranjeno znotraj vaše denarnice. Močno, vendar obe gesli živita na isti napravi.",
+      "label_pin": "Vaš PIN",
+      "label_wallet_password": "Geslo denarnice",
+      "pin_confirm_placeholder": "Potrdite, da ste to vi",
+      "action_password_label_change": "Novo akcijsko geslo",
+      "action_password_label_set": "Akcijsko geslo",
+      "action_password_placeholder": "Vsaj 8 znakov",
+      "action_password_hint": "Vsaj 8 znakov · dovoljeni vsi znaki",
+      "too_short": "Uporabite vsaj {{min}} znakov.",
+      "confirm_label": "Potrdi",
+      "confirm_placeholder": "Znova vnesite akcijsko geslo",
+      "confirm_hint": "Mora se ujemati z vašim akcijskim geslom",
+      "mismatch": "Gesli se ne ujemata.",
+      "save_change": "Spremeni akcijsko geslo",
+      "save_set": "Nastavi akcijsko geslo",
+      "remove": "Odstrani akcijsko geslo",
+      "toast_changed": "Akcijsko geslo spremenjeno",
+      "toast_set": "Akcijsko geslo nastavljeno",
+      "toast_set_error": "Akcijskega gesla ni bilo mogoče nastaviti",
+      "toast_confirm_pin_required": "Vnesite PIN/geslo denarnice za potrditev",
+      "toast_removed": "Akcijsko geslo odstranjeno",
+      "toast_remove_error": "Akcijskega gesla ni bilo mogoče odstraniti",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + ključ za dostop / FIDO2",
+      "method_b_desc_native": "Vaš PIN plus {{label}}. Če biometrija ni na voljo, je dejanje blokirano. Izguba naprave nikoli ne povzroči izgube sredstev.",
+      "method_b_desc_web": "Vaš PIN plus dotik ključa za dostop. Če ključ za dostop ni na voljo, je dejanje blokirano. Njegova izguba nikoli ne povzroči izgube sredstev.",
+      "switch_aria_native": "Uporabi biometrijo moje naprave kot drugi faktor",
+      "switch_aria_web": "Uporabi ključ za dostop kot moj drugi faktor",
+      "confirm_native": "Potrdite ključna dejanja z {{label}}.",
+      "unavailable_native": "{{label}} / koda naprave ni nastavljena na tej napravi — omogočite jo v nastavitvah naprave za uporabo tega faktorja.",
+      "unsupported_web": "Ta brskalnik ne podpira WebAuthn / ključev za dostop.",
+      "register_hint_web_pre": "Še ni registriranega ključa za dostop — nastavite ga v",
+      "register_hint_web_strong": "Ključi za dostop denarnice",
+      "register_hint_web_post": "spodaj, nato to omogočite.",
+      "toggle_biometric_needed": "{{label}} ni nastavljena na tej napravi.",
+      "toggle_passkey_needed": "Najprej registrirajte ključ za dostop (Ključi za dostop denarnice, spodaj).",
+      "toggle_biometric_on": "Drugi faktor {{label}} vklopljen",
+      "toggle_biometric_off": "Drugi faktor {{label}} izklopljen",
+      "toggle_passkey_on": "Drugi faktor ključ za dostop vklopljen",
+      "toggle_passkey_off": "Drugi faktor ključ za dostop izklopljen"
+    },
+    "session": {
+      "title": "Seja in samodejno zaklepanje",
+      "description": "Zaklene vašo denarnico po obdobju nedejavnosti ali ko zapustite aplikacijo",
+      "status_unlocked": "Odklenjeno",
+      "status_locked": "Zaklenjeno",
+      "auto_lock_after": "Samodejno zaklepanje po",
+      "never_note": "Brez samodejnega zaklepanja ob nedejavnosti, vendar se še vedno zaklene po ~45 s v ozadju in po 8 urah odklenjeno.",
+      "resets_note": "Ponastavi se, kadar koli uporabite aplikacijo. Prav tako se takoj zaklene, ko preide v ozadje.",
+      "lock_now": "Zakleni zdaj",
+      "recent_activity": "Nedavna dejavnost",
+      "view_all": "Ogled vsega",
+      "this_device": "Ta naprava",
+      "active_now": "Trenutno aktivno"
+    },
+    "rehearsal": {
+      "title": "Vadite zanikljivost",
+      "description": "Oglejte si nadzorno ploščo natanko tako, kot bi jo videl nekdo, ki drži vaš odklenjen telefon."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Denarnica",
+    "sidebar_expand": "Razširi stransko vrstico",
+    "sidebar_collapse": "Strni stransko vrstico",
+    "search_placeholder": "Iskanje ...",
+    "search_shortcut_title": "Iskanje (⌘K)",
+    "lock": "Zakleni",
+    "lock_confirm_prompt": "Zaklenem to denarnico zdaj?",
+    "back": "Nazaj",
+    "settings": "Nastavitve",
+    "main_content_aria": "Glavna vsebina",
+    "bottom_nav_aria": "Spodnja navigacija",
+    "more_features_aria": "Več funkcij",
+    "more": "Več",
+    "close": "Zapri",
+    "all_features_heading": "Vse funkcije",
+    "recent_heading": "Nedavno",
+    "tab_home": "Domov",
+    "tab_send": "Pošlji",
+    "tab_receive": "Prejmi"
+  },
+  "back": {
+    "default_label": "Nazaj"
+  },
+  "send": {
+    "heading": "Pošlji kriptovaluto",
+    "subheading": "Varno prenesite sredstva",
+    "wallet_fallback": "Denarnica",
+    "wallet_picker": { "label": "Iz denarnice", "placeholder": "Izberi denarnico" },
+    "asset_picker": { "label": "Sredstvo", "placeholder": "Izberi sredstvo" },
+    "recipient": {
+      "label": "Pošlji na (naslov ali ime)",
+      "placeholder": "Prilepite naslov ali vnesite ime (npr. vitalik.eth)",
+      "scan_qr": "Skeniraj QR kodo",
+      "resolving": "Razreševanje imena …",
+      "name_not_found": "Ime ni najdeno — preverite črkovanje ali neposredno prilepite naslov.",
+      "ens_using_prefix": "Uporaba {{name}} →",
+      "ens_confirm_intro": "zasebno poizvedovano na verigi blokov na:",
+      "ens_confirm_hint": "Pred pošiljanjem potrdite, da je ta naslov pravilen.",
+      "use_this_address": "Uporabi ta naslov",
+      "not_whitelisted": "Ta naslov ni na vašem seznamu zaupanja vrednih. Pred nadaljevanjem dvakrat preverite. Zaupanja vredne naslove lahko dodate v Nastavitvah.",
+      "self_send_warning": "Pošiljate na naslov svoje lastne denarnice. To ne premakne ničesar med denarnicami in vseeno stane omrežno provizijo. Pred nadaljevanjem dvakrat preverite prejemnika."
+    },
+    "screening": {
+      "local_disclosure": "Prejemniki so preverjeni na vaši napravi glede prevarantskih naslovov v primerjavi z vašo lastno zgodovino — nič ne zapusti vaše naprave.",
+      "remote_opt_in": "Preveri tudi glede na spletno bazo groženj (pošlje ta naslov tretji osebi)",
+      "remote_unavailable": "Spletno preverjanje je omogočeno, vendar v tej različici ni konfiguriranega ponudnika — preverjanje ostane lokalno, zato tega nismo mogli preveriti glede na zunanji seznam.",
+      "demo_poison_button": "Demo: prilepi podoben naslov"
+    },
+    "simulation": {
+      "title": "Simulacija transakcije",
+      "toggle_aria": "Preklopi simulacijo transakcije",
+      "description": "Preden podpišete, izvedemo lokalno predhodno preverjanje — brez storitev tretjih oseb, brez podatkov, ki bi zapustili vašo napravo.",
+      "checks": [
+        "Tveganje naslova (zastrupitev / podobnost)",
+        "Dekodiranje pogodbe",
+        "Zastavica neomejenega pooblastila",
+        "Napoved razveljavitve",
+        "Anomalija glede na vašo zgodovino",
+        "Opozorilo o velikem odlivu"
+      ],
+      "results_hint": "Rezultati se prikažejo v naslednjem koraku, ko vnesete naslov in znesek.",
+      "off_hint": "Simulacija je izklopljena — pred podpisovanjem se ne bo izvedlo nobeno predhodno preverjanje.",
+      "taking_too_long": "Traja predolgo?",
+      "turn_off": "Izklopi simulacijo"
+    },
+    "amount": {
+      "label": "Znesek",
+      "placeholder": "0,00",
+      "being_sent": "se pošilja",
+      "balance_prefix": "Stanje:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(v živo)",
+      "reading_from_network": "branje iz omrežja …"
+    },
+    "errors": {
+      "amount_missing": "Znesek je obvezen",
+      "amount_not_positive": "Znesek mora biti večji od nič",
+      "amount_malformed": "Vnesite navadno decimalno število, npr. 0.5",
+      "amount_over_balance": "Nezadostno stanje",
+      "insufficient_balance_title": "Nezadostno stanje.",
+      "insufficient_balance_body": "Na voljo imate {{balance}} {{currency}} za pošiljanje (po omrežni proviziji). Za nadaljevanje zmanjšajte znesek."
+    },
+    "status": {
+      "not_enabled": "Pošiljanje za {{currency}} še ni omogočeno. To sredstvo je le za prejemanje, dokler ni preverjena njegova kripto pot.",
+      "dev_ungate_title": "AKTIVNO RAZVOJNO ODKLEPANJE",
+      "dev_ungate_body": "— varnostni prehod za pošiljanje je za {{currency}} obidjen prek VITE_DEV_UNGATE_SEND (samo razvojna različica). Status tega sredstva se ne spremeni (še vedno ni v živo); glavno omrežje ostaja zaklenjeno. Samo za preverjanje na testnem omrežju — te različice nikoli ne izdajte.",
+      "locked": "Vaša denarnica je zaklenjena. Odklenite jo v Nastavitvah denarnice za podpisovanje in pošiljanje."
+    },
+    "note": { "label": "Opomba (izbirno)", "placeholder": "Za kaj gre?" },
+    "trezor": {
+      "toggle_label": "Podpiši s Trezorjem",
+      "connected": "Naprava povezana",
+      "connect_button": "Poveži napravo"
+    },
+    "buttons": {
+      "continue": "Naprej",
+      "confirm_send": "Potrdi in pošlji",
+      "back": "Nazaj"
+    },
+    "verify": { "summary_label": "Pošiljate" },
+    "fee": {
+      "automatic": "Omrežna provizija je samodejno nastavljena za {{currency}} ({{network}}).",
+      "native_fee_note": "Omrežna provizija je plačana v {{symbol}} ({{network}}) — za kritje omrežne provizije potrebujete {{symbol}}, tudi če pošiljate {{token}}."
+    },
+    "decode": {
+      "heading": "Kaj naredi ta transakcija",
+      "action": "Dejanje",
+      "send_tokens": "Pošlji žetone",
+      "token": "Žeton",
+      "amount": "Znesek",
+      "recipient": "Prejemnik",
+      "grant_permission": "Podeli pooblastilo za porabo",
+      "permission": "Pooblastilo",
+      "unlimited_permission": "Neomejeno (ta aplikacija lahko porabi poljuben znesek)",
+      "spender": "Prejemnik pooblastila"
+    },
+    "reauth": {
+      "prompt": "Znova vnesite svoj {{credential}} za odobritev",
+      "credential_pin": "PIN",
+      "credential_password": "geslo",
+      "submit_pin": "Odobri",
+      "submit_password": "Odobri in pošlji",
+      "password_placeholder": "Geslo trezorja",
+      "password_aria": "Geslo trezorja za odobritev pošiljanja",
+      "errors": {
+        "unavailable": "Preverjanje ni na voljo — znova zaklenite in odklenite denarnico.",
+        "incorrect": "Napačno — poskusite znova (še {{remaining}})"
+      }
+    },
+    "done": {
+      "beacon_label": "Transakcija oddana",
+      "heading": "Transakcija oddana",
+      "body_suffix": "podpisano lokalno in poslano v omrežje",
+      "tx_hash_label": "Zgoščena vrednost transakcije",
+      "view_explorer": "Ogled na raziskovalcu verige blokov",
+      "pending_note": "V obdelavi do potrditve v omrežju. Stanje se posodablja iz verige blokov, ne iz shranjene vrednosti.",
+      "send_another": "Pošlji še eno"
+    },
+    "toasts": {
+      "ens_off_in_session": "Razreševanje imen je v tej seji izklopljeno — prilepite naslov neposredno.",
+      "ens_not_found": "Ime ENS ni najdeno",
+      "sns_unavailable": "Razreševanje imen Solana še ni na voljo — prilepite naslov neposredno.",
+      "ens_resolution_failed": "Razreševanje imena ni uspelo",
+      "verify_required": "Pred pošiljanjem tega zneska dokončajte preverjanje varnostne kopije.",
+      "two_factor_retry": "Pošiljanje ni bilo dokončano — za ponovni poskus se znova preverite.",
+      "send_failed_fallback": "Pošiljanje ni uspelo",
+      "unconfirmed": "Te transakcije v omrežju še ni bilo mogoče potrditi — morda še čaka na obdelavo. Preverite na raziskovalcu."
+    }
+  },
+  "receive": {
+    "heading": "Prejmi kriptovaluto",
+    "subheading": "Prikažite naslov denarnice za prejem sredstev",
+    "asset_label": "Sredstvo",
+    "asset_placeholder": "Izberi sredstvo",
+    "not_available": "Prejemanje {{name}} ({{symbol}}) še ni na voljo. Naslov se ne prikaže, dokler to sredstvo ni omogočeno.",
+    "locked": {
+      "title": "Denarnica zaklenjena",
+      "body": "Odklenite denarnico, da razkrijete svoj naslov za prejem {{asset}} {{network}}.",
+      "open_hd_wallet": "Odpri upravitelja HD denarnice"
+    },
+    "your_address": "Vaš naslov {{asset}}",
+    "testnet_badge": "Testno omrežje",
+    "receive_address_label": "Naslov za prejem {{symbol}}",
+    "copy": {
+      "copied_aria": "Naslov kopiran v odložišče",
+      "copy_aria": "Kopiraj naslov",
+      "copied_toast": "Naslov kopiran",
+      "copy_failed_toast": "Kopiranje ni uspelo — izberite in kopirajte naslov ročno"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} je žeton na omrežju, združljivem z Ethereum. To je naslov vaše denarnice — naj vam pošiljatelj pošlje {{symbol}} le na omrežju {{network}}. Pošiljanje na drugačnem omrežju lahko trajno izgubi sredstva.",
+      "evm": "To je vaš skupni naslov denarnice. Na ta naslov pošiljajte le {{name}} na omrežju {{network}} in poskrbite, da pošiljatelj uporablja {{network}}.",
+      "btc": "Na ta naslov pošiljajte samo Bitcoin na omrežju {{network}}.",
+      "solana": "Na ta naslov pošiljajte samo Solano na omrežju {{network}}."
+    },
+    "select_asset_prompt": "Izberite sredstvo za prejem.",
+    "unlock_footer_note": "Naslovi izvirajo iz vaše denarnice na napravi in se prikažejo le, ko je odklenjena."
+  },
+  "dashboard": {
+    "portfolioValue": "Vrednost portfelja",
+    "priceAlertsTriggered_one": "{{count}} cenovno opozorilo sproženo!",
+    "priceAlertsTriggered_other": "{{count}} cenovnih opozoril sproženih!",
+    "lockAriaLabel": "Zakleni stanje za biometrijo",
+    "lockBalance": "Zakleni stanje",
+    "synced": "Sinhronizirano {{time}}",
+    "syncJustNow": "Pravkar",
+    "syncSecondsAgo_one": "pred {{count}} s",
+    "syncSecondsAgo_other": "pred {{count}} s",
+    "syncMinutesAgo_one": "pred {{count}} min",
+    "syncMinutesAgo_other": "pred {{count}} min",
+    "actions": {
+      "send": "Pošlji",
+      "receive": "Prejmi",
+      "schedule": "Razpored",
+      "add": "Dodaj"
+    },
+    "tabs": {
+      "tokens": "Žetoni",
+      "activity": "Dejavnost",
+      "analytics": "Analitika"
+    },
+    "emptyWallets": {
+      "title": "Še ni denarnic",
+      "description": "Dodajte denarnico za začetek prejemanja, pošiljanja in hranjenja sredstev na različnih verigah."
+    },
+    "addWallet": "Dodaj denarnico",
+    "searchTransactionsPlaceholder": "Iskanje transakcij ...",
+    "emptySearch": {
+      "title": "Ni ujemajočih transakcij",
+      "description": "Poskusite počistiti filtre ali iskati drugo sredstvo ali naslov."
+    },
+    "emptyTransactions": {
+      "title": "Še ni transakcij",
+      "description": "Vaša dejavnost na verigi se bo prikazala tukaj, ko boste poslali ali prejeli."
+    },
+    "portfolioPerformance": "Uspešnost portfelja",
+    "assetDistribution": "Porazdelitev sredstev",
+    "quickAccess": "Hitri dostop",
+    "quickAccessItems": {
+      "receive": "Prejmi",
+      "security": "Varnost",
+      "approvals": "Pooblastila",
+      "addressCheck": "Preverjanje naslova",
+      "analytics": "Analitika",
+      "sentiment": "Razpoloženje",
+      "riskScore": "Ocena tveganja"
+    },
+    "walletNameLabel": "Ime denarnice",
+    "walletNamePlaceholder": "Moja denarnica ETH",
+    "addWalletDialog": {
+      "title": "Dodaj denarnico",
+      "currency": "Valuta",
+      "creating": "Ustvarjanje ...",
+      "create": "Ustvari denarnico"
+    },
+    "renameWalletDialog": {
+      "title": "Preimenuj denarnico",
+      "saving": "Shranjevanje ...",
+      "save": "Shrani ime"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Šifriran trezor",
+    "backup": {
+      "title": "Varnostno kopiraj \"{{name}}\"",
+      "reauthDescription": "Potrdite, da ste to vi, nato bomo prikazali obnovitveno frazo za to denarnico.",
+      "description": "Zapišite teh 12 besed brez povezave. Kdor koli jih pozna, lahko porabi sredstva te denarnice — in to je edini način za njeno obnovitev.",
+      "warning": "Nikoli ne naredite posnetka zaslona. Nikoli je ne vnesite v drugo aplikacijo.",
+      "confirmButton": "Zapisal sem si jo — označi kot varnostno kopirano"
+    },
+    "addWallet": {
+      "defaultWalletName": "vaša nova denarnica",
+      "backupDescription": "Ta denarnica ima svojo lastno obnovitveno frazo — ločeno od vsake druge denarnice v vašem trezorju. Zapišite jo brez povezave, preden jo uporabite.",
+      "backedUpDone": "Varnostno sem jo kopiral — končano",
+      "title": "Dodaj denarnico",
+      "createNew": "Ustvari novo",
+      "importSeed": "Uvozi seme",
+      "createDescription": "Ustvari NOVO seme, ki izpelje VSE verige (ETH/EVM, BTC, SOL). Preden je aktivna, jo boste varnostno kopirali.",
+      "importDescription": "Prilepite obstoječe 12/24-besedno seme — vse verige se izpeljejo samodejno (seme ni specifično za verigo).",
+      "recoveryPhraseLabel": "Obnovitvena fraza",
+      "recoveryPhrasePlaceholder": "beseda1 beseda2 ... beseda12",
+      "walletNameLabel": "Ime denarnice",
+      "walletNamePlaceholder": "npr. Prihranki",
+      "assetsToShowLabel": "Sredstva za prikaz",
+      "assetsToShowHint": "Samo izbira prikaza — seme vsebuje vsako verigo ne glede na to.",
+      "confirmVaultPlaceholder": "Potrdite, da ste to vi, za spremembo trezorja",
+      "vaultReentryHint": "Znova vneseno za odobritev spremembe vašega trezorja semena. Nikoli shranjeno v pomnilniku.",
+      "createAndBackup": "Ustvari in varnostno kopiraj",
+      "importWallet": "Uvozi denarnico"
+    },
+    "vaultPinLabel": "PIN trezorja",
+    "vaultPasswordLabel": "Geslo trezorja",
+    "cancel": "Prekliči",
+    "done": "Končano",
+    "manageAssets": {
+      "title": "Sredstva za \"{{name}}\"",
+      "description": "Izberite, katera sredstva se prikažejo za to denarnico. Skrita ostanejo na poti, dokler jih ne dodate."
+    },
+    "rename": {
+      "title": "Preimenuj denarnico",
+      "save": "Shrani ime"
+    },
+    "remove": {
+      "title": "Odstrani \"{{name}}\"?",
+      "onlyWallet": "To je vaša edina denarnica — ni je mogoče odstraniti. Za izbris vsega uporabite Panično brisanje v Varnosti.",
+      "description": "Odstrani seme te denarnice s te naprave.",
+      "backedUpNote": "Lahko jo obnovite iz njene obnovitvene fraze.",
+      "notBackedUpNote": "⚠️ NI varnostno kopirana — brez njene fraze je za vedno izgubljena.",
+      "button": "Odstrani denarnico"
+    },
+    "move": {
+      "title": "Premakni \"{{name}}\" v …"
+    },
+    "managePortfolios": {
+      "title": "Portfelji",
+      "defaultTag": "(privzeto)",
+      "saveAriaLabel": "Shrani ime portfelja",
+      "renameAriaLabel": "Preimenuj {{name}}",
+      "deleteAriaLabel": "Izbriši {{name}}",
+      "newNamePlaceholder": "Novo ime portfelja",
+      "addButton": "Dodaj"
+    },
+    "activity": {
+      "unlockPrompt": "Odklenite denarnico za ogled dejavnosti.",
+      "loading": "Nalaganje ...",
+      "loadError": "Dejavnosti ni bilo mogoče naložiti.",
+      "noTransactions": "Še ni transakcij.",
+      "viewFullHistory": "Ogled celotne zgodovine →"
+    },
+    "portfolioValueLabel": "Vrednost portfelja",
+    "explore": {
+      "subtitle": "Raziskujete — samo za ogled. Denarnice še ni.",
+      "description": "Poglejte se svobodno naokoli. Ko boste pripravljeni, ustvarite novo samostojno denarnico ali uvozite obstoječe seme — ključi se ustvarijo in šifrirajo na tej napravi.",
+      "createOrImport": "Ustvari ali uvozi denarnico"
+    },
+    "portfoliosButton": "Portfelji",
+    "totalValueHeading": "{{name}} · Skupna vrednost",
+    "partialTotalNote": "Nekaterih stanj ni bilo mogoče naložiti — ta skupni znesek je morda nepopoln.",
+    "refreshPricesTooltip": "Osveži cene v živo",
+    "live": "V živo",
+    "approximate": "Približno",
+    "seedVerify": {
+      "title": "Dokončajte preverjanje varnostne kopije",
+      "description": "Zahtevano za pošiljanje nad varnostnim pragom.",
+      "verifyAriaLabel": "Preveri varnostno kopijo denarnice",
+      "verifyButton": "Preveri"
+    },
+    "unbacked": {
+      "titleBold": "Varnostna kopija denarnice ni popolna.",
+      "body": "Vsaka denarnica ima svojo lastno obnovitveno frazo — brez nje so sredstva te denarnice neobnovljiva. Varnostno kopirajte zdaj.",
+      "backUpButton": "Varnostno kopiraj \"{{name}}\""
+    },
+    "actions": {
+      "send": "Pošlji",
+      "receive": "Prejmi",
+      "addWallet": "Dodaj denarnico"
+    },
+    "activeWalletHint": {
+      "prefix": "Pošlji/Prejmi uporablja",
+      "otherPortfolio": " (v drugem portfelju)",
+      "suffix": ". Dotaknite se denarnice spodaj za preklop."
+    },
+    "tabs": {
+      "tokens": "Žetoni",
+      "activity": "Dejavnost",
+      "analytics": "Analitika"
+    },
+    "noWalletsInPortfolio": "V \"{{name}}\" ni denarnic. Dodajte denarnico ali jo premaknite sem iz njenega menija.",
+    "hideAssets": "Skrij sredstva",
+    "showAllAssets": "Prikaži vsa sredstva",
+    "walletCard": {
+      "active": "Aktivno",
+      "backedUp": "Varnostno kopirano",
+      "backUp": "Varnostno kopiraj",
+      "partial": "delno",
+      "optionsAriaLabel": "Možnosti za {{name}}",
+      "noAssetsShown": "Ni prikazanih sredstev. Uporabite \"Upravljaj sredstva\"."
+    },
+    "menu": {
+      "manageAssets": "Upravljaj sredstva",
+      "rename": "Preimenuj",
+      "moveToPortfolio": "Premakni v portfelj",
+      "backUp": "Varnostno kopiraj",
+      "remove": "Odstrani"
+    },
+    "balanceLoadFailedTitle": "Stanja ni bilo mogoče naložiti",
+    "defaultWalletFallbackName": "denarnica",
+    "toast": {
+      "walletImported": "Denarnica uvožena — vse verige izpeljane.",
+      "walletRemoved": "Denarnica odstranjena s te naprave.",
+      "walletAddedBackedUp": "Denarnica dodana in varnostno kopirana.",
+      "movedTo": "Premaknjeno v {{name}}.",
+      "markedBackedUp": "\"{{name}}\" označena kot varnostno kopirana."
+    },
+    "errors": {
+      "couldNotAddWallet": "Denarnice ni bilo mogoče dodati",
+      "couldNotImportWallet": "Denarnice ni bilo mogoče uvoziti",
+      "couldNotRemoveWallet": "Denarnice ni bilo mogoče odstraniti"
+    }
+  },
+  "networth": {
+    "title": "Neto vrednost kriptovalut",
+    "unlockPrompt": "Odklenite denarnico za ogled svojih sredstev na verigi.",
+    "subtitle": "Vaša sredstva na verigi — ne vključuje zunanjih sredstev.",
+    "totalHoldings": "Skupna sredstva",
+    "partialNote": "delno — nekaterih stanj ni bilo mogoče prebrati",
+    "refreshPricesTooltip": "Osveži cene v živo",
+    "live": "V živo",
+    "approximate": "Približno",
+    "allocation": "Razporeditev",
+    "holdings": "Sredstva",
+    "noHoldings": "Še ni sredstev."
+  }
+}

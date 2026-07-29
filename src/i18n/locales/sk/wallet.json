@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "História transakcií",
+      "subhead": "Odoslania a prijatia pre jednotlivé reťazce čítané priamo z reťazca — len na čítanie, s odkazmi do prehliadača.",
+      "badge_demo": "Demo · vzorové dáta",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Demo režim — cez sieť sa nič nedopytuje; riadky nižšie sú lokálne vzorové dáta.",
+      "loading_label": "Načítava sa história {{symbol}}",
+      "error_prefix": "História sa nepodarila načítať: {{reason}}.",
+      "error_fetch_reason": "Nepodarilo sa spojiť s RPC uzlom — skontrolujte pripojenie a skúste znova.",
+      "error_generic_reason": "indexer neodpovedal",
+      "retry": "Skúsiť znova",
+      "no_indexer_title": "História v aplikácii nie je pre {{name}} cez JSON-RPC dostupná",
+      "no_indexer_body": "Obyčajný JSON-RPC uzol nedokáže vypísať transakcie adresy a zámerne nepridávame API tretej strany typu prehliadač/indexer (nový zdroj dát a povrch na odosielanie údajov mimo aplikácie). Vašu úplnú históriu nájdete v blockchain prehliadači.",
+      "view_on_explorer": "Zobraziť {{address}} v prehliadači siete {{network}}",
+      "view_explorer_title": "Zobraziť v blockchain prehliadači",
+      "unlock_for_explorer": "Odomknite peňaženku, aby ste získali odkaz na prehliadač pre svoju adresu {{symbol}}.",
+      "locked_title": "Peňaženka uzamknutá",
+      "locked_body": "Odomknite peňaženku, aby ste odvodili svoju adresu {{symbol}} a načítali jej históriu.",
+      "empty": "Zatiaľ žiadne transakcie pre {{symbol}} v sieti {{network}}.",
+      "count_one": "{{count}} transakcia",
+      "count_other": "{{count}} transakcií",
+      "most_recent_suffix": " · najnovšia",
+      "refresh": "Obnoviť",
+      "sample_badge": "Vzorka",
+      "to_prefix": "Komu ",
+      "from_prefix": "Od ",
+      "status_pending": "Čaká sa",
+      "status_confirmed": "Potvrdené",
+      "status_failed": "Zlyhalo",
+      "awaiting_confirmation": "čaká sa na potvrdenie"
+    },
+    "list": {
+      "empty_title": "Zatiaľ žiadne transakcie",
+      "empty_description": "Keď na tejto peňaženke niečo pošlete alebo prijmete, vaša on-chain aktivita sa zobrazí tu."
+    },
+    "receipt": {
+      "heading": "Potvrdenky o transakcii",
+      "subhead": "Vygenerujte tlačiteľné potvrdenky pre ľubovoľnú transakciu",
+      "search_placeholder": "Hľadať podľa ID, adresy alebo meny...",
+      "loading": "Načítava sa...",
+      "error": "Transakcie sa nepodarilo načítať. Skúste to znova.",
+      "empty": "Nenašli sa žiadne transakcie",
+      "preview_title": "Náhľad potvrdenky",
+      "print": "Tlačiť",
+      "print_window_title": "Potvrdenka o transakcii",
+      "brand": "VEYRNOX",
+      "doc_title": "POTVRDENKA O TRANSAKCII",
+      "field_receipt_id": "ID potvrdenky",
+      "field_date": "Dátum",
+      "field_type": "Typ",
+      "field_asset": "Aktívum",
+      "field_amount": "Suma",
+      "field_network_fee": "Sieťový poplatok",
+      "field_status": "Stav",
+      "field_to": "Komu",
+      "default_type": "Prevod",
+      "default_status": "dokončené",
+      "thank_you": "Ďakujeme, že používate {{brand}}",
+      "thank_you_prefix": "Ďakujeme, že používate",
+      "digital_record": "Toto je digitálny záznam transakcie"
+    }
+  },
+  "settings": {
+    "heading": "Nastavenia zabezpečenia",
+    "subhead": "Uzamknite, odomknite a chráňte svoju peňaženku",
+    "theme": {
+      "dark": "Tmavý režim",
+      "light": "Svetlý režim",
+      "saved_note": "Uložené v tomto zariadení",
+      "switch_to_light": "Prepnúť na svetlý režim",
+      "switch_to_dark": "Prepnúť na tmavý režim"
+    },
+    "activity_log": {
+      "label": "Denník aktivity",
+      "description": "Predvolene vypnuté · uložené iba v tomto zariadení",
+      "help": "Súkromný denník: čo ste zmenili, poslali, zrušili. Žiadne sumy ani adresy. Panic Wipe ho vymaže.",
+      "enable_aria": "Zapnúť denník aktivity",
+      "disable_aria": "Vypnúť denník aktivity",
+      "no_events": "Zatiaľ nezaznamenané žiadne udalosti."
+    },
+    "message_signing": {
+      "label": "Podpisovanie správ",
+      "description": "Predvolene vypnuté · uložené iba v tomto zariadení",
+      "help": "Predvolene vypnuté. Umožňuje podpisovať ľubovoľné textové správy kľúčom vašej peňaženky. Zapnite iba ak vás o to požiada dApp alebo služba.",
+      "enable_aria": "Zapnúť podpisovanie správ",
+      "disable_aria": "Vypnúť podpisovanie správ"
+    },
+    "telemetry": {
+      "label": "Anonymné údaje o používaní",
+      "description": "Voliteľné · nikdy nezahŕňa zostatky ani adresy",
+      "help": "Pomáha nám nájsť chyby a zlepšovať aplikáciu. Používa sa náhodné ID zariadenia — nikdy nie je prepojené s vašou peňaženkou, kľúčmi ani identitou. Vypnutím tejto voľby zastavíte odosielanie akýchkoľvek údajov o používaní z tohto zariadenia.",
+      "enable_aria": "Zapnúť anonymné údaje o používaní",
+      "disable_aria": "Vypnúť anonymné údaje o používaní"
+    },
+    "delete_account": {
+      "title": "Nebezpečná zóna",
+      "clear_cache_label": "Vymazať lokálnu vyrovnávaciu pamäť",
+      "clear_cache_description": "Vymaže uložené dáta na tomto zariadení a uzamkne peňaženku. Vaša obnovovacia fráza stále funguje. Na vymazanie kľúčov použite Panic Wipe.",
+      "delete_button": "Vymazať",
+      "confirm_prompt_pre": "Toto vymaže uložené dáta a uzamkne peňaženku. Vaša obnovovacia fráza stále funguje. Na potvrdenie napíšte",
+      "confirm_prompt_post": ".",
+      "confirm_placeholder": "Napíšte DELETE na potvrdenie",
+      "confirm_aria": "Napíšte DELETE na potvrdenie resetu účtu",
+      "cancel": "Zrušiť",
+      "confirm_delete": "Potvrdiť vymazanie",
+      "deleting": "Vymazáva sa..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometrické odomknutie",
+      "worth_knowing_label": "Stojí za zmienku.",
+      "kdf_disclosure": "Odomknutie jedným dotykom ukladá heslo vašej peňaženky v tomto zariadení, chránené uzamknutím obrazovky a biometriou. Ak niekto získa kópiu zálohy vášho zariadenia bez fyzického zariadenia, mohol by získať prístup k vašej peňaženke. Vypnite to pre najsilnejšiu ochranu.",
+      "app_layer_disclosure_pre": "Biometrické odomknutie ukladá vaše heslo v tomto zariadení, chránené vaším odtlačkom prsta alebo tvárou. Beží to v rámci aplikácie, nie na úrovni operačného systému.",
+      "app_layer_disclosure_mid": "Pre silnejšiu ochranu na úrovni zariadenia zapnite",
+      "hardware_protection_label": "Hardvérovú ochranu",
+      "app_layer_disclosure_post": "(dostupné nižšie).",
+      "toggle_label": "Biometrické odomknutie (hlavná peňaženka)",
+      "toggle_description": "Zapnúť odomknutie jedným dotykom pre vašu hlavnú peňaženku pomocou biometrie zariadenia.",
+      "before_enable_label": "Pred zapnutím.",
+      "confirm_disclosure": "Ak niekto získa kópiu zálohy vášho zariadenia bez fyzického zariadenia, mohol by získať prístup k vašej peňaženke. Zapnite to iba ak vám to neprekáža.",
+      "confirm_enable_button": "Zapnúť odomknutie jedným dotykom",
+      "cancel_button": "Zrušiť",
+      "checking_availability": "Kontroluje sa dostupnosť…",
+      "default_label": "Biometria",
+      "available": "{{label}} dostupné.",
+      "available_simulated": "{{label}} dostupné (simulované v deme).",
+      "status_check_failed": "Dostupnosť biometrie na tomto zariadení sa nepodarilo skontrolovať.",
+      "awaiting_prompt": "Čaká sa na výzvu…",
+      "preview_prompt": "Náhľad výzvy",
+      "test_success": "Simulované overenie úspešné",
+      "test_cancelled": "Výzva zrušená"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrické odomknutie",
+      "heading_web": "Odomknúť pomocou prístupového kľúča",
+      "scope_banner_native_pre": "Pred odomknutím sa skontroluje váš odtlačok prsta alebo tvár —",
+      "scope_banner_native_post": "nenahrádza vaše heslo. Vaše heslo a obnovovacia fráza fungujú aj samostatne, takže strata biometrie vás nikdy nevylúči.",
+      "scope_banner_web_pre": "Prístupový kľúč pridáva pred odomknutím rýchly dotyk biometriou alebo bezpečnostným kľúčom —",
+      "scope_banner_web_post": "nenahrádza vaše heslo. Vaše heslo a obnovovacia fráza fungujú aj samostatne, takže strata prístupového kľúča vás nikdy nevylúči.",
+      "extra_step_label": "dodatočný krok",
+      "enroll_button": "Zaregistrovať biometrické odomknutie",
+      "register_button": "Zaregistrovať prístupový kľúč",
+      "not_setup_native": "Biometria zariadenia nie je nastavená. Najprv pridajte odtlačok prsta alebo tvár v nastaveniach zariadenia — vaše heslo stále funguje.",
+      "not_supported_web": "Odomknutie prístupovým kľúčom nie je v tomto prehliadači dostupné. Funguje v mobilnej aplikácii a moderných prehliadačoch. Tu použite svoje heslo.",
+      "enroll_error": "Biometrické odomknutie sa na tomto zariadení nepodarilo zaregistrovať.",
+      "register_error": "Prístupový kľúč sa na tomto zariadení nepodarilo zaregistrovať.",
+      "enrolled_native": "Biometrické odomknutie zaregistrované",
+      "registered_web": "Prístupový kľúč zaregistrovaný",
+      "simulated_suffix": " (simulované)",
+      "remove_button": "Odstrániť",
+      "require_toggle_native": "Vyžadovať biometrické odomknutie",
+      "require_toggle_web": "Vyžadovať {{label}} pri odomknutí",
+      "require_toggle_aria_web": "Vyžadovať odomknutie prístupovým kľúčom",
+      "require_toggle_desc_native": "Pred odomknutím vyžiadať biometriu zariadenia (vaše heslo stále funguje).",
+      "require_toggle_desc_web": "Pred odomknutím vyžiadať prístupový kľúč (vaše heslo stále funguje).",
+      "applies_all_sessions": "Toto platí pre všetky relácie peňaženky na tomto zariadení.",
+      "default_label": "Prístupový kľúč",
+      "checking_availability": "Kontroluje sa dostupnosť…",
+      "simulated_in_demo": "{{label}} simulované v deme. ",
+      "awaiting_biometric": "Čaká sa na biometriu…",
+      "awaiting_passkey": "Čaká sa na prístupový kľúč…",
+      "preview_biometric_prompt": "Náhľad biometrickej výzvy",
+      "preview_passkey_prompt": "Náhľad výzvy prístupového kľúča",
+      "simulated_prefix": "Simulované ",
+      "biometric_verified": "biometria overená",
+      "passkey_verified": "prístupový kľúč overený",
+      "biometric_prompt_cancelled": "Biometrická výzva zrušená",
+      "passkey_prompt_cancelled": "Výzva prístupového kľúča zrušená"
+    },
+    "hardware_kek": {
+      "heading": "Hardvérová ochrana v zariadení",
+      "badge_webauthn": "Chránené cez WebAuthn",
+      "badge_off": "VYPNUTÉ",
+      "description_pre": "Naviaže vašu peňaženku na toto fyzické zariadenie. Po zapnutí sa vaša peňaženka dá otvoriť iba na ",
+      "description_device": "tomto zariadení",
+      "description_post": ". Ukradnutý súbor zálohy je bez samotného zariadenia bezcenný, aj s vaším PIN-om.",
+      "description_web_suffix": "Funguje v Chrome 99+ a Firefox 108+. Safari nie je podporovaný.",
+      "device_binding_note": "Naviazanie na zariadenie je aktívne a otestované na skutočnom hardvéri.",
+      "checking_status": "Kontroluje sa stav…",
+      "web_prf_unsupported": "Hardvérová ochrana nie je v tomto prehliadači dostupná. Použite Chrome 99+ alebo Firefox 108+, alebo aplikáciu pre iOS či Android.",
+      "errors": {
+        "wrong_pin": "Nesprávny PIN — zadajte PIN, ktorým odomykáte peňaženku.",
+        "no_hardware": "Nepodarilo sa dosiahnuť hardvérové zabezpečenie tohto zariadenia. Skúste to znova, alebo použite iné zariadenie.",
+        "malformed_vault": "Uložené dáta vašej peňaženky sa na tomto zariadení nepodarilo prečítať.",
+        "not_enrolled": "Hardvérová ochrana nie je pre tento trezor zapnutá, takže nie je čo aktualizovať.",
+        "generic": "Niečo sa pokazilo. Skúste to znova, prosím.",
+        "key_invalidated": "Vaše odtlačky prstov sa zmenili — hardvérová ochrana bola zneplatnená. Vypnite a znova zapnite hardvérovú ochranu, alebo obnovte peňaženku zo seed frázy.",
+        "insecure_tier": "Toto zariadenie nemá bezpečný hardvérový prvok — hardvérovú ochranu tu nemožno zapnúť.",
+        "enter_pin_first": "Najprv zadajte PIN trezoru.",
+        "enter_pin_confirm_removal": "Na potvrdenie odstránenia zadajte PIN trezoru.",
+        "enter_pin_upgrade": "Na aktualizáciu zadajte PIN trezoru."
+      },
+      "toast": {
+        "enabled": "Hardvérová ochrana zapnutá — váš trezor teraz na odomknutie vyžaduje toto zariadenie.",
+        "removed": "Hardvérová ochrana odstránená.",
+        "upgraded": "Hardvérová ochrana aktualizovaná — váš trezor je teraz naviazaný jedinečným kľúčom pre toto zariadenie."
+      },
+      "pin_strength": {
+        "hardware_title": "Hardvérovo chránené.",
+        "hardware_body": "Váš PIN v kombinácii s Face ID, odtlačkom prsta alebo prístupovým kľúčom robí offline útoky nezvládnuteľnými — útočník by potreboval váš PIN aj toto fyzické zariadenie.",
+        "no_hardware_title": "V tomto prehliadači nie je dostupný žiadny hardvérový faktor.",
+        "no_hardware_body": "Váš 8-miestny PIN (~100 mil. kombinácií) je chránený iba Argon2id — cielený útočník by ho mohol offline vyčerpať za dni až týždne. Použite heslo s 12+ znakmi, alebo prejdite na Chrome/Firefox a zapnite hardvérovú ochranu.",
+        "pre_enroll_title": "Sila PIN-u.",
+        "pre_enroll_body": "8-miestny PIN má ~100 mil. kombinácií. Argon2id spomaľuje offline útoky na približne 1–2 roky pri jednom vlákne — ale klaster GPU by to mohol skrátiť na dni. Zapnutím Face ID, odtlačku prsta alebo prístupového kľúča vyššie sa offline útoky stanú nezvládnuteľnými, pretože si každé odomknutie vyžiada toto zariadenie."
+      },
+      "enrolled": {
+        "active_title": "Aktívne na tomto zariadení",
+        "active_body_native": "Váš trezor na odomknutie vyžaduje biometriu tohto zariadenia.",
+        "active_body_web": "Váš trezor na odomknutie vyžaduje prístupový kľúč tohto zariadenia."
+      },
+      "upgrade": {
+        "available_title": "Dostupná aktualizácia",
+        "available_body": "Vaša peňaženka bola chránená staršou verziou, ktorá zdieľala kľúč naprieč zariadeniami. Aktualizujte a naviažte ju iba na toto zariadenie. Toto sa deje jednorazovo a vyžiada si dve overenia.",
+        "cta": "Aktualizovať hardvérovú ochranu",
+        "busy": "Aktualizuje sa — schváľte obe výzvy…",
+        "prompt": "Zadajte PIN trezoru. Na opätovné zabezpečenie trezoru sa overíte dvakrát.",
+        "cancel": "Zrušiť"
+      },
+      "remove": {
+        "cta": "Odstrániť hardvérovú ochranu",
+        "prompt_native": "Na potvrdenie zadajte svoj PIN. Budete musieť overiť odtlačkom prsta alebo tvárou.",
+        "prompt_web": "Na potvrdenie zadajte svoje heslo. Budete musieť overiť prístupovým kľúčom.",
+        "busy": "Odstraňuje sa — schváľte výzvu…",
+        "cancel": "Zrušiť"
+      },
+      "enroll": {
+        "prompt_native": "Zadajte PIN trezoru, aby ste zapli hardvérovú ochranu.",
+        "prompt_web": "Zadajte svoj 8-miestny PIN, aby ste zapli hardvérovú ochranu. Váš prehliadač vytvorí prístupový kľúč a naviaže vašu peňaženku na toto zariadenie.",
+        "cta": "Zapnúť hardvérovú ochranu",
+        "busy_native": "Registruje sa — schváľte biometrickú výzvu…",
+        "busy_web": "Registruje sa — schváľte výzvu prístupového kľúča…",
+        "footnote_native": "Budete požiadaní o overenie biometriou alebo prístupovým kódom zariadenia.",
+        "footnote_web": "Váš prehliadač vás požiada o overenie biometriou alebo PIN-om zariadenia na vytvorenie prístupového kľúča."
+      },
+      "blocked": "Nastavenia hardvérovej ochrany nie sú v tejto relácii dostupné."
+    },
+    "two_factor": {
+      "heading": "Dvojfaktorové overenie pri kritických akciách",
+      "intro": "Dodatočná kontrola nad rámec vášho PIN-u pri citlivých akciách. Aj keby niekto videl, ako zadávate PIN, tieto veci bez druhého kroku vykonať nedokáže.",
+      "actions_protects_label": "Akcie, ktoré to chráni",
+      "gated_actions": [
+        { "label": "Odosielanie prostriedkov", "desc": "každé odoslanie, po bezpečnostných kontrolách" },
+        { "label": "Zobrazenie obnovovacej frázy", "desc": "zobrazenie alebo export zálohy" },
+        { "label": "Nastavenie núdzového PIN-u", "desc": "vytvorenie núdzovej peňaženky" },
+        { "label": "Vytvorenie alebo skrytie peňaženky", "desc": "zmeny skrytej peňaženky" }
+      ],
+      "currently_enforcing": "Aktuálne vynucované:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + prístupový kľúč",
+      "badge_password": "PIN + akčné heslo",
+      "badge_off": "Vypnuté (len PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Ste v relácii návnady / skrytej peňaženky. Dvojfaktorové overenie nastavte zo svojej skutočnej relácie.",
+      "method_a_title": "PIN + akčné heslo",
+      "on_suffix": "ZAPNUTÉ",
+      "method_a_desc": "Druhé heslo uložené vo vašej peňaženke. Silné, ale obe heslá sú na tom istom zariadení.",
+      "label_pin": "Váš PIN",
+      "label_wallet_password": "Heslo peňaženky",
+      "pin_confirm_placeholder": "Potvrďte, že ste to vy",
+      "action_password_label_change": "Nové akčné heslo",
+      "action_password_label_set": "Akčné heslo",
+      "action_password_placeholder": "Aspoň 8 znakov",
+      "action_password_hint": "Aspoň 8 znakov · povolený akýkoľvek znak",
+      "too_short": "Použite aspoň {{min}} znakov.",
+      "confirm_label": "Potvrdiť",
+      "confirm_placeholder": "Zadajte akčné heslo znova",
+      "confirm_hint": "Musí sa zhodovať s vaším akčným heslom",
+      "mismatch": "Heslá sa nezhodujú.",
+      "save_change": "Zmeniť akčné heslo",
+      "save_set": "Nastaviť akčné heslo",
+      "remove": "Odstrániť akčné heslo",
+      "toast_changed": "Akčné heslo zmenené",
+      "toast_set": "Akčné heslo nastavené",
+      "toast_set_error": "Akčné heslo sa nepodarilo nastaviť",
+      "toast_confirm_pin_required": "Na potvrdenie zadajte PIN / heslo peňaženky",
+      "toast_removed": "Akčné heslo odstránené",
+      "toast_remove_error": "Akčné heslo sa nepodarilo odstrániť",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + prístupový kľúč / FIDO2",
+      "method_b_desc_native": "Váš PIN plus {{label}}. Ak biometria nie je dostupná, akcia je zablokovaná. Strata zariadenia nikdy neznamená stratu prostriedkov.",
+      "method_b_desc_web": "Váš PIN plus dotyk prístupovým kľúčom. Ak prístupový kľúč nie je dostupný, akcia je zablokovaná. Jeho strata nikdy neznamená stratu prostriedkov.",
+      "switch_aria_native": "Použiť biometriu môjho zariadenia ako druhý faktor",
+      "switch_aria_web": "Použiť prístupový kľúč ako druhý faktor",
+      "confirm_native": "Potvrdzovať kritické akcie pomocou {{label}}.",
+      "unavailable_native": "{{label}} / prístupový kód zariadenia nie je na tomto zariadení nastavený — zapnite ho v nastaveniach zariadenia, aby ste mohli použiť tento faktor.",
+      "unsupported_web": "Tento prehliadač nepodporuje WebAuthn / prístupové kľúče.",
+      "register_hint_web_pre": "Zatiaľ nie je zaregistrovaný žiadny prístupový kľúč — nastavte ho v",
+      "register_hint_web_strong": "Prístupové kľúče peňaženky",
+      "register_hint_web_post": "nižšie a potom to zapnite.",
+      "toggle_biometric_needed": "{{label}} nie je na tomto zariadení nastavená.",
+      "toggle_passkey_needed": "Najprv zaregistrujte prístupový kľúč (Prístupové kľúče peňaženky, nižšie).",
+      "toggle_biometric_on": "Druhý faktor {{label}} zapnutý",
+      "toggle_biometric_off": "Druhý faktor {{label}} vypnutý",
+      "toggle_passkey_on": "Druhý faktor prístupového kľúča zapnutý",
+      "toggle_passkey_off": "Druhý faktor prístupového kľúča vypnutý"
+    },
+    "session": {
+      "title": "Relácia a automatické uzamknutie",
+      "description": "Uzamkne vašu peňaženku po období nečinnosti alebo po opustení aplikácie",
+      "status_unlocked": "Odomknuté",
+      "status_locked": "Uzamknuté",
+      "auto_lock_after": "Automaticky uzamknúť po",
+      "never_note": "Bez automatického uzamknutia pri nečinnosti, no aj tak sa uzamkne po ~45 s na pozadí a po 8 hodinách odomknutia.",
+      "resets_note": "Resetuje sa vždy, keď s aplikáciou pracujete. Tiež sa okamžite uzamkne pri presune na pozadie.",
+      "lock_now": "Uzamknúť teraz",
+      "recent_activity": "Nedávna aktivita",
+      "view_all": "Zobraziť všetko",
+      "this_device": "Toto zariadenie",
+      "active_now": "Práve aktívne"
+    },
+    "rehearsal": {
+      "title": "Nacvičiť popretie",
+      "description": "Pozrite si dashboard presne tak, ako by ho videl niekto, kto drží váš odomknutý telefón."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Peňaženka",
+    "sidebar_expand": "Rozbaliť bočný panel",
+    "sidebar_collapse": "Zbaliť bočný panel",
+    "search_placeholder": "Hľadať...",
+    "search_shortcut_title": "Hľadať (⌘K)",
+    "lock": "Uzamknúť",
+    "lock_confirm_prompt": "Uzamknúť túto peňaženku teraz?",
+    "back": "Späť",
+    "settings": "Nastavenia",
+    "main_content_aria": "Hlavný obsah",
+    "bottom_nav_aria": "Spodná navigácia",
+    "more_features_aria": "Ďalšie funkcie",
+    "more": "Viac",
+    "close": "Zavrieť",
+    "all_features_heading": "Všetky funkcie",
+    "recent_heading": "Nedávne",
+    "tab_home": "Domov",
+    "tab_send": "Poslať",
+    "tab_receive": "Prijať"
+  },
+  "back": {
+    "default_label": "Späť"
+  },
+  "send": {
+    "heading": "Poslať kryptomenu",
+    "subheading": "Bezpečný prevod prostriedkov",
+    "wallet_fallback": "Peňaženka",
+    "wallet_picker": { "label": "Z peňaženky", "placeholder": "Vyberte peňaženku" },
+    "asset_picker": { "label": "Aktívum", "placeholder": "Vyberte aktívum" },
+    "recipient": {
+      "label": "Poslať na (adresa alebo meno)",
+      "placeholder": "Vložte adresu alebo zadajte meno (napr. vitalik.eth)",
+      "scan_qr": "Naskenovať QR kód",
+      "resolving": "Prekladá sa meno…",
+      "name_not_found": "Meno sa nenašlo — skontrolujte preklep alebo vložte adresu priamo.",
+      "ens_using_prefix": "Používa sa {{name}} →",
+      "ens_confirm_intro": "vyhľadané súkromne na blockchaine na:",
+      "ens_confirm_hint": "Pred odoslaním potvrďte, že táto adresa je správna.",
+      "use_this_address": "Použiť túto adresu",
+      "not_whitelisted": "Táto adresa nie je na vašom zozname dôveryhodných adries. Pred pokračovaním si to dvakrát overte. Dôveryhodné adresy môžete pridať v Nastaveniach.",
+      "self_send_warning": "Posielate na svoju vlastnú adresu peňaženky. Toto nič nepresúva medzi peňaženkami a stále to stojí sieťový poplatok. Pred pokračovaním si dvakrát overte príjemcu."
+    },
+    "screening": {
+      "local_disclosure": "Príjemcovia sa kontrolujú na vašom zariadení voči podvodným adresám z vašej vlastnej histórie — nič neopúšťa vaše zariadenie.",
+      "remote_opt_in": "Tiež overiť voči online databáze hrozieb (odošle túto adresu tretej strane)",
+      "remote_unavailable": "Online overovanie je zapnuté, ale v tejto zostave nie je nakonfigurovaný žiadny poskytovateľ — overovanie zostáva lokálne, takže sme to nemohli overiť voči externému zoznamu.",
+      "demo_poison_button": "Demo: vložiť podobne vyzerajúcu adresu"
+    },
+    "simulation": {
+      "title": "Simulácia transakcie",
+      "toggle_aria": "Prepnúť simuláciu transakcie",
+      "description": "Pred podpisom spustíme lokálnu predbežnú kontrolu — žiadne služby tretích strán, žiadne dáta neopustia vaše zariadenie.",
+      "checks": [
+        "Riziko adresy (poison / podobná adresa)",
+        "Dekódovanie kontraktu",
+        "Príznak neobmedzenej autorizácie",
+        "Predpoveď zlyhania",
+        "Anomália voči vašej histórii",
+        "Upozornenie na veľký odlev"
+      ],
+      "results_hint": "Výsledky sa zobrazia v ďalšom kroku po zadaní adresy a sumy.",
+      "off_hint": "Simulácia je vypnutá — pred podpisom sa nespustí žiadna predbežná kontrola.",
+      "taking_too_long": "Trvá to príliš dlho?",
+      "turn_off": "Vypnúť simuláciu"
+    },
+    "amount": {
+      "label": "Suma",
+      "placeholder": "0,00",
+      "being_sent": "sa posiela",
+      "balance_prefix": "Zostatok:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(naživo)",
+      "reading_from_network": "načítava sa zo siete…"
+    },
+    "errors": {
+      "amount_missing": "Suma je povinná",
+      "amount_not_positive": "Suma musí byť väčšia ako nula",
+      "amount_malformed": "Zadajte obyčajnú desatinnú sumu, napríklad 0,5",
+      "amount_over_balance": "Nedostatočný zostatok",
+      "insufficient_balance_title": "Nedostatočný zostatok.",
+      "insufficient_balance_body": "Na odoslanie máte k dispozícii {{balance}} {{currency}} (po sieťovom poplatku). Znížte sumu, aby ste mohli pokračovať."
+    },
+    "status": {
+      "not_enabled": "Odosielanie pre {{currency}} zatiaľ nie je zapnuté. Toto aktívum je do overenia krypto cesty len na prijímanie.",
+      "dev_ungate_title": "DEV UNGATE AKTÍVNE",
+      "dev_ungate_body": "— brána odosielania je pre {{currency}} obídená cez VITE_DEV_UNGATE_SEND (iba vývojová zostava). Stav tohto aktíva sa nemení (stále nie je živé); mainnet zostáva zablokovaný. Len na overenie testnetu — túto zostavu nikdy nenasadzujte.",
+      "locked": "Vaša peňaženka je uzamknutá. Odomknite ju v Nastaveniach peňaženky, aby ste mohli podpísať a odoslať."
+    },
+    "note": { "label": "Poznámka (voliteľné)", "placeholder": "Na čo to je?" },
+    "trezor": {
+      "toggle_label": "Podpísať pomocou Trezor",
+      "connected": "Zariadenie pripojené",
+      "connect_button": "Pripojiť zariadenie"
+    },
+    "buttons": {
+      "continue": "Pokračovať",
+      "confirm_send": "Potvrdiť a odoslať",
+      "back": "Späť"
+    },
+    "verify": { "summary_label": "Posielate" },
+    "fee": {
+      "automatic": "Sieťový poplatok pre {{currency}} ({{network}}) sa nastavuje automaticky.",
+      "native_fee_note": "Sieťový poplatok sa platí v {{symbol}} ({{network}}) — na pokrytie sieťového poplatku potrebujete {{symbol}} aj pri odosielaní {{token}}."
+    },
+    "decode": {
+      "heading": "Čo táto transakcia robí",
+      "action": "Akcia",
+      "send_tokens": "Poslať tokeny",
+      "token": "Token",
+      "amount": "Suma",
+      "recipient": "Príjemca",
+      "grant_permission": "Udeliť oprávnenie na výdavky",
+      "permission": "Oprávnenie",
+      "unlimited_permission": "Neobmedzené (táto aplikácia môže minúť akúkoľvek sumu)",
+      "spender": "Príjemca oprávnenia"
+    },
+    "reauth": {
+      "prompt": "Na autorizáciu znova zadajte svoje {{credential}}",
+      "credential_pin": "PIN",
+      "credential_password": "heslo",
+      "submit_pin": "Autorizovať",
+      "submit_password": "Autorizovať a odoslať",
+      "password_placeholder": "Heslo trezoru",
+      "password_aria": "Heslo trezoru na autorizáciu odoslania",
+      "errors": {
+        "unavailable": "Overenie nie je dostupné — znova uzamknite a odomknite peňaženku.",
+        "incorrect": "Nesprávne — skúste znova ({{remaining}} zostáva)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transakcia odoslaná",
+      "heading": "Transakcia odoslaná",
+      "body_suffix": "podpísané lokálne a odoslané do siete",
+      "tx_hash_label": "Hash transakcie",
+      "view_explorer": "Zobraziť v blockchain prehliadači",
+      "pending_note": "Čaká na potvrdenie v sieti. Zostatok sa aktualizuje z blockchainu, nie z uloženej hodnoty.",
+      "send_another": "Poslať ďalšiu"
+    },
+    "toasts": {
+      "ens_off_in_session": "Prekladanie mien je v tejto relácii vypnuté — vložte adresu priamo.",
+      "ens_not_found": "ENS meno sa nenašlo",
+      "sns_unavailable": "Prekladanie mien Solana zatiaľ nie je dostupné — vložte adresu priamo.",
+      "ens_resolution_failed": "Preklad mena zlyhal",
+      "verify_required": "Pred odoslaním tejto sumy dokončite overenie zálohy.",
+      "two_factor_retry": "Odoslanie sa nepodarilo dokončiť — na opakovanie sa prosím znova overte.",
+      "send_failed_fallback": "Odoslanie zlyhalo",
+      "unconfirmed": "Túto transakciu sa zatiaľ nepodarilo potvrdiť v sieti — môže ešte čakať na spracovanie. Skontrolujte prehliadač."
+    }
+  },
+  "receive": {
+    "heading": "Prijať kryptomenu",
+    "subheading": "Zobrazte adresu peňaženky na prijatie prostriedkov",
+    "asset_label": "Aktívum",
+    "asset_placeholder": "Zvoľte aktívum",
+    "not_available": "Prijímanie {{name}} ({{symbol}}) zatiaľ nie je dostupné. Kým toto aktívum nie je zapnuté, nezobrazí sa žiadna adresa.",
+    "locked": {
+      "title": "Peňaženka uzamknutá",
+      "body": "Odomknite peňaženku, aby sa zobrazila vaša prijímacia adresa {{asset}} {{network}}.",
+      "open_hd_wallet": "Otvoriť správcu HD peňaženky"
+    },
+    "your_address": "Vaša adresa {{asset}}",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Prijímacia adresa {{symbol}}",
+    "copy": {
+      "copied_aria": "Adresa skopírovaná do schránky",
+      "copy_aria": "Kopírovať adresu",
+      "copied_toast": "Adresa skopírovaná",
+      "copy_failed_toast": "Kopírovanie zlyhalo — vyberte a skopírujte adresu ručne"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} je token v sieti kompatibilnej s Ethereom. Toto je adresa vašej peňaženky — nech vám odosielateľ pošle {{symbol}} iba v sieti {{network}}. Odoslanie v inej sieti môže prostriedky natrvalo stratiť.",
+      "evm": "Toto je vaša zdieľaná adresa peňaženky. Na túto adresu posielajte iba {{name}} v sieti {{network}} a uistite sa, že odosielateľ použije {{network}}.",
+      "btc": "Na túto adresu posielajte Bitcoin iba v sieti {{network}}.",
+      "solana": "Na túto adresu posielajte Solana iba v sieti {{network}}."
+    },
+    "select_asset_prompt": "Vyberte aktívum na prijatie.",
+    "unlock_footer_note": "Adresy pochádzajú z vašej peňaženky v zariadení a zobrazujú sa iba počas jej odomknutia."
+  },
+  "dashboard": {
+    "portfolioValue": "Hodnota portfólia",
+    "priceAlertsTriggered_one": "{{count}} spustené cenové upozornenie!",
+    "priceAlertsTriggered_other": "{{count}} spustených cenových upozornení!",
+    "lockAriaLabel": "Uzamknúť zostatok za biometriou",
+    "lockBalance": "Uzamknúť zostatok",
+    "synced": "Synchronizované {{time}}",
+    "syncJustNow": "Práve teraz",
+    "syncSecondsAgo_one": "pred {{count}} s",
+    "syncSecondsAgo_other": "pred {{count}} s",
+    "syncMinutesAgo_one": "pred {{count}} min",
+    "syncMinutesAgo_other": "pred {{count}} min",
+    "actions": {
+      "send": "Poslať",
+      "receive": "Prijať",
+      "schedule": "Naplánovať",
+      "add": "Pridať"
+    },
+    "tabs": {
+      "tokens": "Tokeny",
+      "activity": "Aktivita",
+      "analytics": "Analytika"
+    },
+    "emptyWallets": {
+      "title": "Zatiaľ žiadne peňaženky",
+      "description": "Pridajte peňaženku a začnite prijímať, posielať a držať aktíva naprieč reťazcami."
+    },
+    "addWallet": "Pridať peňaženku",
+    "searchTransactionsPlaceholder": "Hľadať transakcie...",
+    "emptySearch": {
+      "title": "Žiadne zodpovedajúce transakcie",
+      "description": "Skúste vyčistiť filtre alebo hľadať iné aktívum či adresu."
+    },
+    "emptyTransactions": {
+      "title": "Zatiaľ žiadne transakcie",
+      "description": "Vaša on-chain aktivita sa tu zobrazí, keď niečo pošlete alebo prijmete."
+    },
+    "portfolioPerformance": "Výkonnosť portfólia",
+    "assetDistribution": "Rozloženie aktív",
+    "quickAccess": "Rýchly prístup",
+    "quickAccessItems": {
+      "receive": "Prijať",
+      "security": "Zabezpečenie",
+      "approvals": "Autorizácie",
+      "addressCheck": "Kontrola adresy",
+      "analytics": "Analytika",
+      "sentiment": "Sentiment",
+      "riskScore": "Rizikové skóre"
+    },
+    "walletNameLabel": "Názov peňaženky",
+    "walletNamePlaceholder": "Moja ETH peňaženka",
+    "addWalletDialog": {
+      "title": "Pridať peňaženku",
+      "currency": "Mena",
+      "creating": "Vytvára sa...",
+      "create": "Vytvoriť peňaženku"
+    },
+    "renameWalletDialog": {
+      "title": "Premenovať peňaženku",
+      "saving": "Ukladá sa...",
+      "save": "Uložiť názov"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Šifrovaný trezor",
+    "backup": {
+      "title": "Zálohovať „{{name}}“",
+      "reauthDescription": "Potvrďte, že ste to vy, a zobrazíme obnovovaciu frázu pre túto peňaženku.",
+      "description": "Zapíšte si týchto 12 slov offline. Ktokoľvek ich má, môže minúť prostriedky tejto peňaženky — a je to jediný spôsob, ako ju obnoviť.",
+      "warning": "Nikdy nerobte snímku obrazovky. Nikdy ich nezadávajte do inej aplikácie.",
+      "confirmButton": "Zapísal(a) som si to — označiť ako zálohované"
+    },
+    "addWallet": {
+      "defaultWalletName": "vaša nová peňaženka",
+      "backupDescription": "Táto peňaženka má vlastnú obnovovaciu frázu — oddelenú od každej inej peňaženky vo vašom trezore. Zapíšte si ju offline, kým ju začnete používať.",
+      "backedUpDone": "Zálohoval(a) som ju — hotovo",
+      "title": "Pridať peňaženku",
+      "createNew": "Vytvoriť novú",
+      "importSeed": "Importovať seed",
+      "createDescription": "Vygeneruje NOVÝ seed, z ktorého sa odvodia VŠETKY reťazce (ETH/EVM, BTC, SOL). Pred aktiváciou si ho zálohujete.",
+      "importDescription": "Vložte existujúci 12/24-slovný seed — všetky reťazce sa odvodia automaticky (seed nie je špecifický pre jeden reťazec).",
+      "recoveryPhraseLabel": "Obnovovacia fráza",
+      "recoveryPhrasePlaceholder": "slovo1 slovo2 ... slovo12",
+      "walletNameLabel": "Názov peňaženky",
+      "walletNamePlaceholder": "napr. Sporenie",
+      "assetsToShowLabel": "Aktíva na zobrazenie",
+      "assetsToShowHint": "Iba voľba zobrazenia — seed obsahuje každý reťazec bez ohľadu na to.",
+      "confirmVaultPlaceholder": "Potvrďte, že ste to vy, na zmenu trezoru",
+      "vaultReentryHint": "Zadané znova na autorizáciu zmeny vo vašom trezore seedu. Nikdy sa neuchováva v pamäti.",
+      "createAndBackup": "Vytvoriť a zálohovať",
+      "importWallet": "Importovať peňaženku"
+    },
+    "vaultPinLabel": "PIN trezoru",
+    "vaultPasswordLabel": "Heslo trezoru",
+    "cancel": "Zrušiť",
+    "done": "Hotovo",
+    "manageAssets": {
+      "title": "Aktíva pre „{{name}}“",
+      "description": "Vyberte, ktoré aktíva sa pre túto peňaženku zobrazujú. Skryté zostanú mimo cesty, kým ich nepridáte."
+    },
+    "rename": {
+      "title": "Premenovať peňaženku",
+      "save": "Uložiť názov"
+    },
+    "remove": {
+      "title": "Odstrániť „{{name}}“?",
+      "onlyWallet": "Toto je vaša jediná peňaženka — nemožno ju odstrániť. Na vymazanie všetkého použite Panic Wipe v Zabezpečení.",
+      "description": "Odstráni seed tejto peňaženky z tohto zariadenia.",
+      "backedUpNote": "Môžete ju obnoviť z jej obnovovacej frázy.",
+      "notBackedUpNote": "⚠️ NEZÁLOHOVANÁ — bez jej frázy je navždy stratená.",
+      "button": "Odstrániť peňaženku"
+    },
+    "move": {
+      "title": "Presunúť „{{name}}“ do…"
+    },
+    "managePortfolios": {
+      "title": "Portfóliá",
+      "defaultTag": "(predvolené)",
+      "saveAriaLabel": "Uložiť názov portfólia",
+      "renameAriaLabel": "Premenovať {{name}}",
+      "deleteAriaLabel": "Odstrániť {{name}}",
+      "newNamePlaceholder": "Nový názov portfólia",
+      "addButton": "Pridať"
+    },
+    "activity": {
+      "unlockPrompt": "Odomknite peňaženku a zobrazte aktivitu.",
+      "loading": "Načítava sa...",
+      "loadError": "Aktivitu sa nepodarilo načítať.",
+      "noTransactions": "Zatiaľ žiadne transakcie.",
+      "viewFullHistory": "Zobraziť úplnú históriu →"
+    },
+    "portfolioValueLabel": "Hodnota portfólia",
+    "explore": {
+      "subtitle": "Prezeráte si — iba na zobrazenie. Zatiaľ žiadna peňaženka.",
+      "description": "Poobzerajte sa voľne. Keď budete pripravení, vytvorte novú self-custody peňaženku alebo importujte existujúci seed — kľúče sa generujú a šifrujú v tomto zariadení.",
+      "createOrImport": "Vytvoriť alebo importovať peňaženku"
+    },
+    "portfoliosButton": "Portfóliá",
+    "totalValueHeading": "{{name}} · Celková hodnota",
+    "partialTotalNote": "Niektoré zostatky sa nepodarilo načítať — tento súčet môže byť neúplný.",
+    "refreshPricesTooltip": "Obnoviť aktuálne ceny",
+    "live": "Naživo",
+    "approximate": "Približne",
+    "seedVerify": {
+      "title": "Dokončite overenie zálohy",
+      "description": "Vyžaduje sa na odosielanie nad bezpečnostný limit.",
+      "verifyAriaLabel": "Overiť zálohu peňaženky",
+      "verifyButton": "Overiť"
+    },
+    "unbacked": {
+      "titleBold": "Zálohovanie peňaženky nedokončené.",
+      "body": "Každá peňaženka má vlastnú obnovovaciu frázu — bez nej sú prostriedky tejto peňaženky neobnoviteľné. Zálohujte teraz.",
+      "backUpButton": "Zálohovať „{{name}}“"
+    },
+    "actions": {
+      "send": "Poslať",
+      "receive": "Prijať",
+      "addWallet": "Pridať peňaženku"
+    },
+    "activeWalletHint": {
+      "prefix": "Poslať/Prijať používa",
+      "otherPortfolio": " (v inom portfóliu)",
+      "suffix": ". Prepnete klepnutím na peňaženku nižšie."
+    },
+    "tabs": {
+      "tokens": "Tokeny",
+      "activity": "Aktivita",
+      "analytics": "Analytika"
+    },
+    "noWalletsInPortfolio": "V „{{name}}“ nie sú žiadne peňaženky. Pridajte peňaženku, alebo ju sem presuňte z jej ponuky.",
+    "hideAssets": "Skryť aktíva",
+    "showAllAssets": "Zobraziť všetky aktíva",
+    "walletCard": {
+      "active": "Aktívna",
+      "backedUp": "Zálohovaná",
+      "backUp": "Zálohovať",
+      "partial": "čiastočne",
+      "optionsAriaLabel": "Možnosti pre {{name}}",
+      "noAssetsShown": "Nezobrazujú sa žiadne aktíva. Použite „Spravovať aktíva“."
+    },
+    "menu": {
+      "manageAssets": "Spravovať aktíva",
+      "rename": "Premenovať",
+      "moveToPortfolio": "Presunúť do portfólia",
+      "backUp": "Zálohovať",
+      "remove": "Odstrániť"
+    },
+    "balanceLoadFailedTitle": "Zostatok sa nepodarilo načítať",
+    "defaultWalletFallbackName": "peňaženka",
+    "toast": {
+      "walletImported": "Peňaženka importovaná — všetky reťazce odvodené.",
+      "walletRemoved": "Peňaženka odstránená z tohto zariadenia.",
+      "walletAddedBackedUp": "Peňaženka pridaná a zálohovaná.",
+      "movedTo": "Presunuté do {{name}}.",
+      "markedBackedUp": "„{{name}}“ označená ako zálohovaná."
+    },
+    "errors": {
+      "couldNotAddWallet": "Peňaženku sa nepodarilo pridať",
+      "couldNotImportWallet": "Peňaženku sa nepodarilo importovať",
+      "couldNotRemoveWallet": "Peňaženku sa nepodarilo odstrániť"
+    }
+  },
+  "networth": {
+    "title": "Čistá hodnota v kryptomenách",
+    "unlockPrompt": "Odomknite peňaženku a zobrazte svoje on-chain aktíva.",
+    "subtitle": "Vaše on-chain aktíva — nezahŕňa externé aktíva.",
+    "totalHoldings": "Celkový majetok",
+    "partialNote": "čiastočné — niektoré zostatky sa nepodarilo načítať",
+    "refreshPricesTooltip": "Obnoviť aktuálne ceny",
+    "live": "Naživo",
+    "approximate": "Približne",
+    "allocation": "Alokácia",
+    "holdings": "Majetok",
+    "noHoldings": "Zatiaľ žiadny majetok."
+  }
+}
