@@ -95,6 +95,58 @@ describe('formatUsd — malformed / non-finite input', () => {
   });
 });
 
+describe('formatUsd — compact notation (chart-axis ticks)', () => {
+  // The ad-hoc `$${(v/1000).toFixed(0)}k` template-literal pattern used across
+  // Analytics / PortfolioSnapshots / PortfolioRewind is what this closes: an
+  // en-US "$1k" for a de-DE user is wrong on two axes (thousands separator
+  // AND the "k" abbreviation, which is "Tsd." in de-DE). Intl.NumberFormat's
+  // notation:'compact' handles both, per-locale.
+  it('renders $1k / $1M / $1B in en-US with the "K/M/B" abbreviations', () => {
+    // "K" (capital) is Intl's canonical en-US short abbreviation; the ad-hoc
+    // sites all wrote a lowercase "k", so a byte-for-byte match with the old
+    // output was never possible. The right pin is CONTAINS-the-abbreviation.
+    const out1k = formatUsd(1000, 'en-US', { compact: true });
+    expect(out1k).toMatch(/\$1[.,]?\d*K/);
+
+    const out1m = formatUsd(1_000_000, 'en-US', { compact: true });
+    expect(out1m).toMatch(/\$1[.,]?\d*M/);
+
+    const out1b = formatUsd(1_000_000_000, 'en-US', { compact: true });
+    expect(out1b).toMatch(/\$1[.,]?\d*B/);
+  });
+
+  it('is locale-aware — de-DE uses its own abbreviation, not "K"', () => {
+    // de-DE renders 1000 as "1000 $" (no compact abbreviation for thousands
+    // in short form) or "1 Mio. $" for millions. Different node/ICU versions
+    // may or may not compact at 1k; the STRUCTURAL pin is that the output is
+    // NOT the en-US "$1K" shape.
+    // maxFractionDigits: 1 so 1.5M doesn't round up to "2 Mio. $" and swallow
+    // the "1" this pin looks for. The intent is: de-DE renders in its own
+    // abbreviation form ("Mio."), not the en-US "M".
+    const out1m = formatUsd(1_500_000, 'de-DE', { compact: true, maximumFractionDigits: 1 });
+    // Contains a currency symbol / digit content, and does NOT contain the
+    // en-US "M" abbreviation adjacent to the digit — de-DE uses "Mio.".
+    expect(out1m).toMatch(/\$|€/); // currency mark
+    expect(out1m).toContain('1');
+    expect(out1m).not.toMatch(/1[.,]?\d*M(?![i])/); // not "1M" (allow "Mio.")
+  });
+
+  it('compact still throws on non-finite (same policy as standard mode)', () => {
+    expect(() => formatUsd(NaN, 'en-US', { compact: true })).toThrow();
+  });
+
+  it('compact still falls back on bogus locale', () => {
+    expect(() => formatUsd(1_000_000, 'zz-ZZ', { compact: true })).not.toThrow();
+  });
+
+  it('compact composes with maximumFractionDigits for tick precision', () => {
+    // "$1.5M" not "$1.500000M". Same knob callers already know from the
+    // non-compact form.
+    const out = formatUsd(1_500_000, 'en-US', { compact: true, maximumFractionDigits: 1 });
+    expect(out).toMatch(/\$1\.5M/);
+  });
+});
+
 describe('formatUsd — locale fallback', () => {
   it('falls back gracefully when Intl rejects the locale tag', () => {
     // "zz-ZZ" is not a real BCP-47 tag; Intl.NumberFormat is permissive and

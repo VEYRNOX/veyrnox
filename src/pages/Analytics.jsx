@@ -10,6 +10,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
+import { formatUsd, resolveLocale } from "@/lib/locale";
 
 const RANGES = [
   { label: "7D", days: 7 },
@@ -18,8 +19,12 @@ const RANGES = [
   { label: "1Y", days: 365 },
 ];
 
-const fmt = (n) => "$" + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-const fmtSmall = (n) => "$" + Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+// Locale-aware currency formatters. Was `"$" + n.toLocaleString(...)` which
+// forced the en-US "$" prefix on every user. formatUsd renders per-locale
+// (de-DE: "1.234 $", fr-FR: "1 234 $US"). fmtSmall keeps the abs() because a
+// negative small value already carries the sign in the caller's UI.
+const fmt = (n) => formatUsd(n, resolveLocale(), { maximumFractionDigits: 0 });
+const fmtSmall = (n) => formatUsd(Math.abs(n), resolveLocale(), { maximumFractionDigits: 2 });
 
 const CustomTooltip = (/** @type {any} */ { active, payload, label } = {}) => {
   if (!active || !payload?.length) return null;
@@ -217,7 +222,7 @@ export default function Analytics() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
+                <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={v => formatUsd(v, resolveLocale(), { compact: true, maximumFractionDigits: 1 })} width={36} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="value" name="Portfolio" stroke="hsl(var(--primary))" fill="url(#areaGrad)" strokeWidth={2} dot={false} />
               </AreaChart>
@@ -281,7 +286,7 @@ export default function Analytics() {
             <BarChart data={pnlData} barCategoryGap="30%">
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
+              <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={v => formatUsd(v, resolveLocale(), { compact: true, maximumFractionDigits: 1 })} width={36} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
               <Bar dataKey="gains" name="Received" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
