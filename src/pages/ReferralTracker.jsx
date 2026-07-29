@@ -144,7 +144,7 @@ function TierCard({ tier, isActive, isFuture }) {
           </p>
         </div>
       </div>
-      <div className="text-right">
+      <div className="text-end">
         <span className={`text-lg font-bold ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
           {tier.commission}%
         </span>
@@ -375,7 +375,7 @@ export default function ReferralTracker() {
           <span className="mono-value text-2xl font-bold tracking-widest text-foreground">{code}</span>
           <button
             onClick={shareOrCopy}
-            className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="ms-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             {copied ? <CheckCircle2 className="h-4 w-4 text-primary" /> : navigator.share ? <Share2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             {copied ? 'Copied' : navigator.share ? 'Share' : 'Copy'}
@@ -391,7 +391,7 @@ export default function ReferralTracker() {
         <div className="flex items-center justify-between">
           <div>
             <span className="text-2xl font-bold">{dPaid.toLocaleString()}</span>
-            <span className="text-sm text-muted-foreground ml-1.5">paid subscribers</span>
+            <span className="text-sm text-muted-foreground ms-1.5">paid subscribers</span>
           </div>
           <TierBadge tier={dTier} commission={dCommission} />
         </div>
@@ -438,7 +438,7 @@ export default function ReferralTracker() {
               <DollarSign className="h-5 w-5 text-primary" />
               <span className="text-2xl font-bold">${(dEarnings.totalDiscountCents / 100).toFixed(2)}</span>
             </div>
-            <div className="text-right">
+            <div className="text-end">
               <p className="text-sm text-muted-foreground">{dEarnings.count} paid {dEarnings.count === 1 ? 'subscriber' : 'subscribers'}</p>
               <p className="text-[10px] text-muted-foreground">${(dEarnings.totalRevenueCents / 100).toFixed(2)} total revenue generated</p>
             </div>

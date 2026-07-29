@@ -284,12 +284,12 @@ function WelcomeHero({ onGetStarted, onRestore }) {
         {!isLowEndDevice && (
           <>
             <motion.div
-              className="absolute -top-24 -left-16 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
+              className="absolute -top-24 -start-16 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
               animate={reduce || !visible ? undefined : { x: [0, 24, 0], y: [0, 18, 0] }}
               transition={reduce ? undefined : { duration: 14, ease: 'easeInOut', repeat: Infinity }}
             />
             <motion.div
-              className="absolute -bottom-24 -right-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl"
+              className="absolute -bottom-24 -end-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl"
               animate={reduce || !visible ? undefined : { x: [0, -20, 0], y: [0, -14, 0] }}
               transition={reduce ? undefined : { duration: 18, ease: 'easeInOut', repeat: Infinity }}
             />
@@ -323,7 +323,7 @@ function WelcomeHero({ onGetStarted, onRestore }) {
         </motion.p>
 
         {/* Honest feature bullets — provisional/testnet framing, no overclaims. */}
-        <motion.ul variants={item} className="mt-8 w-full space-y-3 text-left">
+        <motion.ul variants={item} className="mt-8 w-full space-y-3 text-start">
           {features.map(({ icon: Icon, label }) => (
             <li key={label} className="flex items-center gap-3 text-sm text-foreground/90">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
@@ -1486,7 +1486,7 @@ export default function WalletEntry() {
                 disabled={busy}
               />
               <Button className="w-full" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
-                {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin mr-1.5" /> : null} Unlock
+                {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin me-1.5" /> : null} Unlock
               </Button>
             </div>
           ) : (

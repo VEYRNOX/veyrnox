@@ -63,14 +63,14 @@ export default function CorrelationMatrix() {
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr>
-                <th scope="col" className="p-2 text-left text-muted-foreground font-normal w-12"></th>
+                <th scope="col" className="p-2 text-start text-muted-foreground font-normal w-12"></th>
                 {assets.map(a => <th key={a} scope="col" className="p-2 text-center font-semibold w-14">{a}</th>)}
               </tr>
             </thead>
             <tbody>
               {assets.map(row => (
                 <tr key={row}>
-                  <th scope="row" className="p-2 font-semibold pr-3 text-right">{row}</th>
+                  <th scope="row" className="p-2 font-semibold pe-3 text-end">{row}</th>
                   {assets.map(col => {
                     const val = CORRELATIONS[row]?.[col] ?? 0;
                     const isHovered = hovered?.[0] === row && hovered?.[1] === col;

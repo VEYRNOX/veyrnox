@@ -386,7 +386,7 @@ function ManagePortfoliosDialog({ portfolios, onClose }) {
                 <Input className="h-8" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus
                   onKeyDown={(e) => { if (e.key === "Enter" && editName.trim()) { renamePortfolio(p.id, editName.trim()); setEditId(null); } }} />
               ) : (
-                <span className="text-sm flex-1">{p.name}{p.id === MAIN_PORTFOLIO_ID && <span className="text-[10px] text-muted-foreground ml-1">{t("portfolio.managePortfolios.defaultTag")}</span>}</span>
+                <span className="text-sm flex-1">{p.name}{p.id === MAIN_PORTFOLIO_ID && <span className="text-[10px] text-muted-foreground ms-1">{t("portfolio.managePortfolios.defaultTag")}</span>}</span>
               )}
               {editId === p.id ? (
                 <button className="p-1 text-primary" aria-label={t("portfolio.managePortfolios.saveAriaLabel")} onClick={() => { if (editName.trim()) renamePortfolio(p.id, editName.trim()); setEditId(null); }}><Check className="h-4 w-4" /></button>
@@ -487,7 +487,7 @@ function ActivityTabContent({ wallet }) {
                 {tx.type === "send" ? tx.to : tx.from}
               </p>
             </div>
-            <div className="text-right shrink-0 flex items-center gap-1.5">
+            <div className="text-end shrink-0 flex items-center gap-1.5">
               <div>
                 <p className={`text-sm font-semibold ${isSend ? "text-destructive" : "text-primary"}`}>
                   {isSend ? "-" : "+"}{tx.amount} {tx.currency}
@@ -673,7 +673,7 @@ export default function WalletPortfolioPage() {
           tabIndex={0}
           onClick={() => switchWallet(w.id)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); switchWallet(w.id); } }}
-          className="w-full text-left flex items-center justify-between gap-2 px-4 py-3 border-b border-border hover:bg-secondary/40 active:bg-secondary/60 transition-colors cursor-pointer"
+          className="w-full text-start flex items-center justify-between gap-2 px-4 py-3 border-b border-border hover:bg-secondary/40 active:bg-secondary/60 transition-colors cursor-pointer"
         >
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
@@ -702,12 +702,12 @@ export default function WalletPortfolioPage() {
                 <MoreVertical className="h-4 w-4" />
               </button>
               {menuFor === w.id && (
-                <div className="absolute right-0 top-11 z-20 w-48 rounded-xl border border-border bg-popover shadow-lg py-1 text-sm">
-                  <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> {t("portfolio.menu.manageAssets")}</button>
-                  <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setRenameTarget(w); }}><Pencil className="h-3.5 w-3.5" /> {t("portfolio.menu.rename")}</button>
-                  <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setMoveTarget(w); }}><ArrowRightLeft className="h-3.5 w-3.5" /> {t("portfolio.menu.moveToPortfolio")}</button>
-                  {!w.backedUp && <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); revealWithReauth(w.id); }}><ShieldAlert className="h-3.5 w-3.5" /> {t("portfolio.menu.backUp")}</button>}
-                  <button className="w-full text-left px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> {t("portfolio.menu.remove")}</button>
+                <div className="absolute end-0 top-11 z-20 w-48 rounded-xl border border-border bg-popover shadow-lg py-1 text-sm">
+                  <button className="w-full text-start px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> {t("portfolio.menu.manageAssets")}</button>
+                  <button className="w-full text-start px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setRenameTarget(w); }}><Pencil className="h-3.5 w-3.5" /> {t("portfolio.menu.rename")}</button>
+                  <button className="w-full text-start px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setMoveTarget(w); }}><ArrowRightLeft className="h-3.5 w-3.5" /> {t("portfolio.menu.moveToPortfolio")}</button>
+                  {!w.backedUp && <button className="w-full text-start px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); revealWithReauth(w.id); }}><ShieldAlert className="h-3.5 w-3.5" /> {t("portfolio.menu.backUp")}</button>}
+                  <button className="w-full text-start px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> {t("portfolio.menu.remove")}</button>
                 </div>
               )}
             </div>
@@ -723,13 +723,13 @@ export default function WalletPortfolioPage() {
             // the row renders "—", never a fabricated $0.00 (I4 fail-closed).
             const row = resolveAssetRow(data.assets, symbol);
             return (
-              <button key={symbol} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-left flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
+              <button key={symbol} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
                 <CoinLogo symbol={symbol} size={36} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{symbol}</p>
                   <p className="text-xs text-muted-foreground truncate">{a?.name}</p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-end shrink-0">
                   <p
                     className="text-sm font-mono flex items-center justify-end gap-1"
                     title={row.indeterminate ? t("portfolio.balanceLoadFailedTitle") : undefined}

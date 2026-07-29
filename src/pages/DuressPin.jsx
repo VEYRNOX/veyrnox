@@ -96,7 +96,7 @@ function DecoyBalance({ address, refreshKey }) {
   return (
     <span className="text-sm font-semibold">
       {eth.toLocaleString(undefined, { maximumFractionDigits: 6 })} {NET?.symbol || "ETH"}
-      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+      <span className="ms-1 text-[10px] font-normal text-muted-foreground">
         {state.source === "chain" ? t("duress.balance_source_live") : t("duress.balance_source_demo")}
       </span>
     </span>
@@ -378,7 +378,7 @@ export default function DuressPin() {
         <p className="text-xs text-muted-foreground">
           {t("duress.fund_body")}
         </p>
-        <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
           {t("duress.fund_notes", { returnObjects: true }).map((n, i) => (
             <li key={i}>{n}</li>
           ))}
@@ -578,14 +578,14 @@ export default function DuressPin() {
               {t("duress.demo_step1")}
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy || !vaultExists} onClick={() => demoUnlock(DEMO_REAL_PW)}>
-              <Unlock className="h-3.5 w-3.5 mr-1" /> {t("duress.demo_unlock_real")}
+              <Unlock className="h-3.5 w-3.5 me-1" /> {t("duress.demo_unlock_real")}
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy || !vaultExists} onClick={() => demoUnlock(DEMO_DURESS_PW)}>
-              <Shield className="h-3.5 w-3.5 mr-1" /> {t("duress.demo_unlock_duress")}
+              <Shield className="h-3.5 w-3.5 me-1" /> {t("duress.demo_unlock_duress")}
             </Button>
             {isUnlocked && (
               <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => lock()}>
-                <Lock className="h-3.5 w-3.5 mr-1" /> {t("duress.demo_lock")}
+                <Lock className="h-3.5 w-3.5 me-1" /> {t("duress.demo_lock")}
               </Button>
             )}
           </div>

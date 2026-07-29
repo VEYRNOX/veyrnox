@@ -16,9 +16,11 @@ export default function BackButton({ to = undefined, label = undefined, classNam
     <button
       type="button"
       onClick={() => (to ? navigate(to) : navigate(-1))}
-      className={`flex items-center gap-1 -ml-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors ${className}`}
+      className={`flex items-center gap-1 -ms-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors ${className}`}
     >
-      <ChevronLeft className="h-4 w-4" />
+      {/* Icon mirrors under dir="rtl" so the chevron always points "backwards
+          in reading direction" — right-facing for RTL locales. */}
+      <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />
       <span>{resolvedLabel}</span>
     </button>
   );

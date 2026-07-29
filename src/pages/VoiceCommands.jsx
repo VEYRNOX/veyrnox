@@ -95,7 +95,7 @@ export default function VoiceCommands() {
       </div>
 
       <div className="p-3 rounded-xl bg-secondary/30 border border-border text-xs text-muted-foreground">
-        <Volume2 className="h-3.5 w-3.5 inline mr-1.5" />
+        <Volume2 className="h-3.5 w-3.5 inline me-1.5" />
         Voice stays active as you navigate. A pulsing mic icon appears in the corner on every page. Return here to stop.
       </div>
     </div>

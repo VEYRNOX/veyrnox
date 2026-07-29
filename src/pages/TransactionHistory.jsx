@@ -62,7 +62,7 @@ function TxRow({ tx }) {
           {isSend ? t("tx.history.to_prefix") : isSelf ? "" : t("tx.history.from_prefix")}{short(tx.counterparty) || "—"}
         </p>
       </div>
-      <div className="text-right shrink-0">
+      <div className="text-end shrink-0">
         <p className={`text-sm font-semibold ${isSelf ? "text-foreground" : isSend ? "text-destructive" : "text-primary"}`}>
           {isSelf ? "" : isSend ? "-" : "+"}{tx.amount} {tx.assetSymbol}
         </p>

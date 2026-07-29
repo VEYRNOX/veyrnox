@@ -181,7 +181,7 @@ export default function AssetCorrelationTimeline() {
       {/* Loading spinner */}
       {livePricesOn && isLoading && (
         <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
-          <Spinner size="sm" className="mr-2" label="Loading OHLCV data for BTC, ETH, SOL…" />
+          <Spinner size="sm" className="me-2" label="Loading OHLCV data for BTC, ETH, SOL…" />
           Loading OHLCV data for BTC, ETH, SOL…
         </div>
       )}

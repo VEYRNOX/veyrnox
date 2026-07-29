@@ -100,7 +100,7 @@ function SkeletonRow({ last }) {
         </div>
       </div>
       <div className="space-y-1.5">
-        <div className="w-16 h-2.5 rounded bg-muted motion-safe:animate-pulse ml-auto" />
+        <div className="w-16 h-2.5 rounded bg-muted motion-safe:animate-pulse ms-auto" />
         <div className="w-20 h-4 rounded bg-muted motion-safe:animate-pulse" />
       </div>
     </div>
@@ -134,12 +134,12 @@ function FeeRow({ glyph, name, slow, standard, fast, unit, congestion }) {
           )}
         </div>
       </div>
-      <div className="text-right shrink-0 pl-4">
+      <div className="text-end shrink-0 ps-4">
         <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Recommended</p>
         <p className="text-sm font-mono font-semibold tabular-nums">
           {recommended ?? "—"}
           {recommended != null && (
-            <span className="text-[10px] text-muted-foreground font-normal ml-1">{unit}</span>
+            <span className="text-[10px] text-muted-foreground font-normal ms-1">{unit}</span>
           )}
         </p>
       </div>
@@ -173,12 +173,12 @@ function SolFeeRow({ baseLamports, priorityMicroLamports }) {
           )}
         </div>
       </div>
-      <div className="text-right shrink-0 pl-4">
+      <div className="text-end shrink-0 ps-4">
         <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Per tx</p>
         <p className="text-sm font-mono font-semibold tabular-nums">
           {baseSol ?? "—"}
           {baseSol != null && (
-            <span className="text-[10px] text-muted-foreground font-normal ml-1">SOL</span>
+            <span className="text-[10px] text-muted-foreground font-normal ms-1">SOL</span>
           )}
         </p>
       </div>

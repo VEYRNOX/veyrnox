@@ -153,7 +153,7 @@ export default function ExportTransactions({ transactions: propTransactions }) {
                       <thead className="bg-secondary">
                         <tr>
                           {["Date", "Asset", "Amount", "USD Value", "Status"].map(h => (
-                            <th key={h} className="px-2 py-1.5 text-left text-muted-foreground font-medium">{h}</th>
+                            <th key={h} className="px-2 py-1.5 text-start text-muted-foreground font-medium">{h}</th>
                           ))}
                         </tr>
                       </thead>

@@ -180,7 +180,7 @@ export default function LiveBalances() {
                 <p className="text-sm font-semibold">{tokens.length} verified token{tokens.length > 1 ? "s" : ""} with a balance</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">wallet registry</span>
               </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-64 overflow-y-auto pe-1">
                 {tokens.map((t) => (
                   <div key={t.address} className="p-3 rounded-xl border border-border bg-card flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
@@ -190,7 +190,7 @@ export default function LiveBalances() {
                       <p className="font-semibold text-sm">{t.symbol}</p>
                       <p className="text-xs text-muted-foreground truncate font-mono">{t.address}</p>
                     </div>
-                    <div className="text-right shrink-0">
+                    <div className="text-end shrink-0">
                       <p className="font-semibold text-sm">{t.balance >= 0.0001 ? formatCryptoAmount(t.balance, resolveLocale(), { maximumFractionDigits: 4 }) : t.balance.toExponential(2)}</p>
                     </div>
                   </div>

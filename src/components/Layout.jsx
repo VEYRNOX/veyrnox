@@ -246,7 +246,7 @@ export default function Layout() {
     <div className="app-shell flex flex-col md:flex-row md:min-h-screen bg-background">
 
       {/* ── Desktop Sidebar ── */}
-      <aside className={`hidden md:flex md:min-h-screen bg-card border-r border-border flex-col shrink-0 transition-all duration-300 ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
+      <aside className={`hidden md:flex md:min-h-screen bg-card border-e border-border flex-col shrink-0 transition-all duration-300 ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
 
         {/* Logo + Search */}
         <div className="flex flex-col border-b border-border">
@@ -274,7 +274,7 @@ export default function Layout() {
               className="mx-3 mb-3 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-muted-foreground text-xs transition-colors"
             >
               <Search className="h-3.5 w-3.5" />
-              <span className="flex-1 text-left">{t('nav.search_placeholder')}</span>
+              <span className="flex-1 text-start">{t('nav.search_placeholder')}</span>
               <kbd className="text-[9px] bg-background px-1 py-0.5 rounded">⌘K</kbd>
             </button>
           )}
@@ -387,7 +387,7 @@ export default function Layout() {
                   navigate(getParentRoute(location.pathname), { replace: true });
                 }
               }}
-              className="flex items-center gap-1 -ml-1 pr-3 min-h-[44px] text-foreground active:opacity-60 transition-opacity select-none"
+              className="flex items-center gap-1 -ms-1 pe-3 min-h-[44px] text-foreground active:opacity-60 transition-opacity select-none"
             >
               <ChevronLeft className="h-5 w-5" />
               <span className="text-sm font-semibold">{t('nav.back')}</span>
@@ -500,7 +500,7 @@ export default function Layout() {
             className="w-full flex items-center gap-2 px-3 py-2 mb-3 rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground text-sm transition-colors"
           >
             <Search className="h-4 w-4 shrink-0" />
-            <span className="flex-1 text-left">Search features, pages…</span>
+            <span className="flex-1 text-start">Search features, pages…</span>
           </button>
           <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/"><DashboardPage /></FeatureGate></SafeSuspense>
         </div>
@@ -523,7 +523,7 @@ export default function Layout() {
 
       {/* ── Mobile Bottom Navigation ── */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur border-t border-border flex items-stretch"
+        className="md:hidden fixed bottom-0 start-0 end-0 z-40 bg-card/95 backdrop-blur border-t border-border flex items-stretch"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         role="navigation"
         aria-label={t('nav.bottom_nav_aria')}

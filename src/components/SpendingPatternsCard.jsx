@@ -70,7 +70,7 @@ export default function SpendingPatternsCard() {
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="w-full rounded-2xl border border-border bg-card p-4 flex items-center justify-between gap-3 hover:bg-secondary/40 transition-colors text-left"
+        className="w-full rounded-2xl border border-border bg-card p-4 flex items-center justify-between gap-3 hover:bg-secondary/40 transition-colors text-start"
       >
         <span className="flex items-center gap-2.5 min-w-0">
           <TrendingUp className="h-4 w-4 text-primary shrink-0" />

@@ -74,7 +74,7 @@ export default function PrfSpike() {
       </div>
 
       <div className="p-5 rounded-xl border border-border bg-card space-y-4">
-        <ol className="text-xs text-muted-foreground list-decimal pl-4 space-y-1">
+        <ol className="text-xs text-muted-foreground list-decimal ps-4 space-y-1">
           <li>Run the probe on the <b>AVD Pixel_7 emulator</b> and on a <b>physical Android device</b> (the emulator is not authoritative for real hardware).</li>
           <li>Then fully <b>kill and relaunch</b> the app and run it again — same value = stable across restart.</li>
           <li>Record the verdict in <code>kek-architecture-spec.md §8</code>.</li>

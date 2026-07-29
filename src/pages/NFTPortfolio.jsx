@@ -55,7 +55,7 @@ export default function NFTPortfolio() {
           <h1 className="text-2xl font-bold tracking-tight">NFT Portfolio</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Track your NFT holdings</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> Add NFT</Button>
+        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 me-1.5" /> Add NFT</Button>
       </div>
 
       {/* Stats */}
@@ -99,7 +99,7 @@ export default function NFTPortfolio() {
                   ) : (
                     <Image className="h-8 w-8 text-muted-foreground opacity-40" />
                   )}
-                  <span className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[nft.status]}`}>{nft.status}</span>
+                  <span className={`absolute top-2 end-2 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[nft.status]}`}>{nft.status}</span>
                 </div>
                 <div className="p-3 space-y-1">
                   <p className="text-sm font-semibold truncate">{nft.name}</p>

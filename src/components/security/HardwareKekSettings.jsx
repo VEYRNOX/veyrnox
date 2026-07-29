@@ -348,7 +348,7 @@ export default function HardwareKekSettings() {
           // On native, show the real tier label from the vault blob (H-1 honesty fix).
           if (!isNative) {
             return (
-              <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-success">
+              <span className="ms-auto inline-flex items-center gap-1 text-xs font-semibold text-success">
                 <ShieldCheck className="h-3.5 w-3.5" /> {t('settings.hardware_kek.badge_webauthn')}
               </span>
             );
@@ -360,13 +360,13 @@ export default function HardwareKekSettings() {
               ? 'text-caution'
               : 'text-muted-foreground';
           return (
-            <span className={`ml-auto inline-flex items-center gap-1 text-xs font-semibold ${colourClass}`}>
+            <span className={`ms-auto inline-flex items-center gap-1 text-xs font-semibold ${colourClass}`}>
               <ShieldCheck className="h-3.5 w-3.5" /> {badge.label}
             </span>
           );
         })()}
         {showOffBadge && (
-          <span className="ml-auto text-xs text-muted-foreground">{t('settings.hardware_kek.badge_off')}</span>
+          <span className="ms-auto text-xs text-muted-foreground">{t('settings.hardware_kek.badge_off')}</span>
         )}
       </div>
 

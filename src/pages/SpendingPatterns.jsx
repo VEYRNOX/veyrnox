@@ -69,7 +69,7 @@ export default function SpendingPatterns() {
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">By Asset (native amounts)</p>
           <div className="space-y-2">
             <div className="grid grid-cols-[1fr_auto_auto] gap-3 text-[10px] uppercase tracking-wider text-muted-foreground px-1">
-              <span>Asset</span><span className="text-right">Sent</span><span className="text-right">Received</span>
+              <span>Asset</span><span className="text-end">Sent</span><span className="text-end">Received</span>
             </div>
             {byAsset.map((a) => (
               <div key={a.currency} className="grid grid-cols-[1fr_auto_auto] gap-3 items-center text-sm">
@@ -77,11 +77,11 @@ export default function SpendingPatterns() {
                   <CoinLogo symbol={a.currency} size={18} />
                   <span className="font-medium truncate">{a.currency}</span>
                 </span>
-                <span className="text-right font-mono">
+                <span className="text-end font-mono">
                   {fmtAmount(a.sentAmount)} {a.currency}
                   <span className="block text-[10px] text-muted-foreground">{a.sentCount} tx</span>
                 </span>
-                <span className="text-right font-mono">
+                <span className="text-end font-mono">
                   {fmtAmount(a.receivedAmount)} {a.currency}
                   <span className="block text-[10px] text-muted-foreground">{a.receivedCount} tx</span>
                 </span>

@@ -84,7 +84,7 @@ export default function WatchWallets() {
                     </div>
                     {w.note && <p className="text-xs text-muted-foreground mt-1">{w.note}</p>}
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-end shrink-0">
                     <p className="font-bold">{w.balance > 0 ? w.balance.toFixed(4) : "—"} {w.currency}</p>
                     <button onClick={() => remove.mutate(w.id)} aria-label={`Remove ${w.name} from watch list`} className="mt-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>

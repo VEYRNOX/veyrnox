@@ -173,7 +173,7 @@ export default function OnChainAnalytics() {
               <p className="text-xs font-mono truncate text-muted-foreground">{tx.tx_hash || "—"}</p>
               <p className="text-[10px] text-muted-foreground">{safeFormat(tx.created_date, "dd MMM yyyy HH:mm")}</p>
             </div>
-            <div className="text-right shrink-0">
+            <div className="text-end shrink-0">
               <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-success"}`}>{tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}</p>
               <span className={`text-[10px] ${tx.status === "confirmed" ? "text-success" : tx.status === "failed" ? "text-destructive" : "text-caution"}`}>{tx.status}</span>
             </div>

@@ -151,7 +151,7 @@ export default function TokenApprovals() {
             {f}
           </button>
         ))}
-        <span className="ml-auto text-xs text-muted-foreground self-center">
+        <span className="ms-auto text-xs text-muted-foreground self-center">
           {visible.length} approval{visible.length !== 1 ? "s" : ""}
         </span>
       </div>

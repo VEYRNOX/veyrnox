@@ -51,7 +51,7 @@ export default function WatchlistPage() {
           <h1 className="text-xl font-bold flex items-center gap-2"><Star className="h-5 w-5 text-yellow-400 fill-yellow-400" /> Watchlist</h1>
           <p className="text-sm text-muted-foreground">{items.length} assets tracked</p>
         </div>
-        <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Asset</Button>
+        <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 me-1" /> Add Asset</Button>
       </div>
 
       {/* Quick Add Popular */}
@@ -63,7 +63,7 @@ export default function WatchlistPage() {
             return (
               <button key={s} onClick={() => addQuick(s)} disabled={!!has}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${has ? "border-primary/50 text-primary bg-primary/10 cursor-default" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>
-                {has ? <Check className="inline h-3 w-3 mr-1" /> : null}{s}
+                {has ? <Check className="inline h-3 w-3 me-1" /> : null}{s}
               </button>
             );
           })}
@@ -100,7 +100,7 @@ export default function WatchlistPage() {
                       </p>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-end">
                     <p className="text-xs text-muted-foreground">Price unavailable</p>
                     <p className="text-[10px] text-muted-foreground">Connect a live feed</p>
                   </div>
@@ -133,7 +133,7 @@ export default function WatchlistPage() {
                       <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Your note..." className="h-7 text-xs mt-0.5" />
                     </div>
                     <Button size="sm" className="h-7 text-xs" onClick={() => update.mutate({ id: item.id, ...form, target_buy: form.target_buy ? parseLocaleNumber(form.target_buy, resolveLocale()) : undefined, target_sell: form.target_sell ? parseLocaleNumber(form.target_sell, resolveLocale()) : undefined })}>
-                      <Check className="h-3 w-3 mr-1" /> Save
+                      <Check className="h-3 w-3 me-1" /> Save
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditId(null)}>Cancel</Button>
                   </div>

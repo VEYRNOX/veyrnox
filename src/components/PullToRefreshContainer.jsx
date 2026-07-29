@@ -72,7 +72,7 @@ export default function PullToRefreshContainer({ onRefresh, children, className 
           the dial spins continuously (matches VaultIllustration language). */}
       {showIndicator && (
         <div
-          className="absolute left-0 right-0 flex justify-center z-20 pointer-events-none"
+          className="absolute start-0 end-0 flex justify-center z-20 pointer-events-none"
           style={{ top: -40, transform: `translateY(${pullY}px)`, transition: refreshing ? undefined : "transform 0.1s ease" }}
         >
           <div className="h-10 w-10 rounded-full bg-card border border-border shadow-lg flex items-center justify-center relative overflow-hidden">
