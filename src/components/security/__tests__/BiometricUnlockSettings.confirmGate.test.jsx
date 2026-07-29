@@ -21,6 +21,29 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
 import BiometricUnlockSettings from '@/components/security/BiometricUnlockSettings';
 
+// react-i18next 15 uses its own React copy under node_modules/react-i18next/
+// node_modules/react — useContext returns null there. Mock useTranslation
+// with a JSON-catalog resolver (same shape as RaspSecurity / PanicWipe tests).
+vi.mock('react-i18next', async () => {
+  const wallet = /** @type {any} */ (await import('@/i18n/locales/en/wallet.json'));
+  const common = /** @type {any} */ (await import('@/i18n/locales/en/common.json'));
+  const bundles = { wallet: wallet.default, common: common.default };
+  const resolve = (key, opts = {}) => {
+    const ns = opts.ns || 'common';
+    let v = bundles[ns];
+    for (const p of String(key).split('.')) v = v?.[p];
+    if (opts.returnObjects) return v ?? [];
+    if (typeof v !== 'string') return key;
+    return v.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in opts ? String(opts[k]) : `{{${k}}}`));
+  };
+  return {
+    useTranslation: (ns) => ({ t: (k, o) => resolve(k, { ns, ...(o || {}) }) }),
+    Trans: ({ children }) => children,
+    initReactI18next: { type: '3rdParty', init: () => {} },
+    I18nextProvider: ({ children }) => children,
+  };
+});
+
 // --- shared mocks -----------------------------------------------------------
 
 const mockSetBiometricUnlockEnabled = vi.fn();

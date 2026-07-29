@@ -21,6 +21,7 @@
 // WalletProvider.unlock(); this is its settings surface.
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyRound, ShieldCheck, ShieldAlert, Loader2, CheckCircle2, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ import {
 } from '@/lib/passkey';
 
 export default function PasskeyUnlockSettings() {
+  const { t } = useTranslation('wallet');
   const { passkeyPreview } = useWallet();
   const [enabled, setEnabled] = useState(() => isPasskeyUnlockEnabled());
   const [status, setStatus] = useState(null); // null while loading
@@ -60,7 +62,7 @@ export default function PasskeyUnlockSettings() {
   // NATIVE: the factor is the OS biometric, not a FIDO2 passkey — all copy below
   // must say so (honesty at the presentation layer; see lib/passkey.js).
   const nativeBio = status?.mode === 'native-biometric';
-  const label = status?.label || 'Passkey';
+  const label = status?.label || t('settings.passkey_unlock.default_label');
 
   const onToggle = (v) => {
     // FAIL-CLOSED GUARD: WalletProvider.runPasskeyGate() silently SKIPS when no
@@ -90,8 +92,8 @@ export default function PasskeyUnlockSettings() {
       // it silently did nothing when the WebView's dead WebAuthn stub threw it.
       if (!isRegistrationCancel(e, nativeBio)) {
         setError(e?.message || (nativeBio
-          ? 'Could not enroll biometric unlock on this device.'
-          : 'Could not register a passkey on this device.'));
+          ? t('settings.passkey_unlock.enroll_error')
+          : t('settings.passkey_unlock.register_error')));
       }
     } finally {
       setBusy(false);
@@ -125,7 +127,7 @@ export default function PasskeyUnlockSettings() {
     <div className="p-5 rounded-xl border border-border bg-card space-y-4">
       <div className="flex items-center gap-2">
         <KeyRound className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">{nativeBio ? 'Biometric unlock' : 'Unlock with Passkey'}</h2>
+        <h2 className="font-semibold">{nativeBio ? t('settings.passkey_unlock.heading_native') : t('settings.passkey_unlock.heading_web')}</h2>
       </div>
 
       {/* Honest scope banner: convenience factor, never the path to funds. */}
@@ -134,17 +136,15 @@ export default function PasskeyUnlockSettings() {
         <p className="text-xs text-muted-foreground">
           {nativeBio ? (
             <>
-              Your fingerprint or face is checked before unlocking —
-              an <span className="font-medium text-foreground">extra step</span>,
-              not a replacement for your password. Your password and recovery phrase
-              still work on their own, so losing biometrics never locks you out.
+              {t('settings.passkey_unlock.scope_banner_native_pre')}{' '}
+              <span className="font-medium text-foreground">{t('settings.passkey_unlock.extra_step_label')}</span>,{' '}
+              {t('settings.passkey_unlock.scope_banner_native_post')}
             </>
           ) : (
             <>
-              A passkey adds a quick biometric or security-key tap
-              before unlocking — an <span className="font-medium text-foreground">extra step</span>,
-              not a replacement for your password. Your password and recovery phrase
-              still work on their own, so losing the passkey never locks you out.
+              {t('settings.passkey_unlock.scope_banner_web_pre')}{' '}
+              <span className="font-medium text-foreground">{t('settings.passkey_unlock.extra_step_label')}</span>,{' '}
+              {t('settings.passkey_unlock.scope_banner_web_post')}
             </>
           )}
         </p>
@@ -159,13 +159,13 @@ export default function PasskeyUnlockSettings() {
             disabled={busy || (!simulated && !available)}
           >
             {busy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <KeyRound className="h-4 w-4" />}
-            {nativeBio ? 'Enroll biometric unlock' : 'Register a passkey'}
+            {nativeBio ? t('settings.passkey_unlock.enroll_button') : t('settings.passkey_unlock.register_button')}
           </Button>
           {!simulated && !supported && (
             <p className="text-[11px] text-muted-foreground">
               {nativeBio
-                ? 'Device biometrics are not set up. Add a fingerprint or face in your device settings first — your password still works.'
-                : 'Passkey unlock isn\'t available in this browser. It works in the mobile app and modern browsers. Use your password here.'}
+                ? t('settings.passkey_unlock.not_setup_native')
+                : t('settings.passkey_unlock.not_supported_web')}
             </p>
           )}
         </div>
@@ -175,7 +175,7 @@ export default function PasskeyUnlockSettings() {
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-success" />
               <span className="text-sm font-medium">
-                {nativeBio ? 'Biometric unlock enrolled' : 'Passkey registered'}{simulated ? ' (simulated)' : ''}
+                {nativeBio ? t('settings.passkey_unlock.enrolled_native') : t('settings.passkey_unlock.registered_web')}{simulated ? t('settings.passkey_unlock.simulated_suffix') : ''}
               </span>
             </div>
             <Button
@@ -185,7 +185,7 @@ export default function PasskeyUnlockSettings() {
               onClick={handleRemove}
               disabled={busy}
             >
-              <Trash2 className="h-3.5 w-3.5" /> Remove
+              <Trash2 className="h-3.5 w-3.5" /> {t('settings.passkey_unlock.remove_button')}
             </Button>
           </div>
 
@@ -193,21 +193,21 @@ export default function PasskeyUnlockSettings() {
           <div className="flex items-center justify-between">
             <div className="pr-4">
               <p className="text-sm font-medium">
-                {nativeBio ? 'Require biometric unlock' : `Require ${label} on unlock`}
+                {nativeBio ? t('settings.passkey_unlock.require_toggle_native') : t('settings.passkey_unlock.require_toggle_web', { label })}
               </p>
               <p className="text-xs text-muted-foreground">
                 {nativeBio
-                  ? 'Ask for your device biometric before unlocking (your password still works).'
-                  : 'Ask for your passkey before unlocking (your password still works).'}
+                  ? t('settings.passkey_unlock.require_toggle_desc_native')
+                  : t('settings.passkey_unlock.require_toggle_desc_web')}
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                This applies to all wallet sessions on this device.
+                {t('settings.passkey_unlock.applies_all_sessions')}
               </p>
             </div>
             <Switch
               checked={enabled}
               onCheckedChange={onToggle}
-              aria-label={nativeBio ? 'Require biometric unlock' : 'Require passkey unlock'}
+              aria-label={nativeBio ? t('settings.passkey_unlock.require_toggle_native') : t('settings.passkey_unlock.require_toggle_aria_web')}
             />
           </div>
         </>
@@ -224,12 +224,12 @@ export default function PasskeyUnlockSettings() {
       <div className="flex items-start gap-2 text-xs">
         {status == null ? (
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Spinner size="sm" label="Checking availability…" /> Checking availability…
+            <Spinner size="sm" label={t('settings.passkey_unlock.checking_availability')} /> {t('settings.passkey_unlock.checking_availability')}
           </span>
         ) : available ? (
           <span className="flex items-start gap-1.5 text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
-            <span>{simulated ? `${label} simulated in demo. ` : ''}{status.detail}</span>
+            <span>{simulated ? t('settings.passkey_unlock.simulated_in_demo', { label }) : ''}{status.detail}</span>
           </span>
         ) : (
           <span className="flex items-start gap-1.5 text-muted-foreground">
@@ -244,17 +244,17 @@ export default function PasskeyUnlockSettings() {
         <div>
           <Button variant="outline" className="w-full gap-2" onClick={runTest} disabled={testing}>
             {testing
-              ? <><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> {nativeBio ? 'Awaiting biometric…' : 'Awaiting passkey…'}</>
-              : <><KeyRound className="h-4 w-4" /> {nativeBio ? 'Preview biometric prompt' : 'Preview passkey prompt'}</>}
+              ? <><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> {nativeBio ? t('settings.passkey_unlock.awaiting_biometric') : t('settings.passkey_unlock.awaiting_passkey')}</>
+              : <><KeyRound className="h-4 w-4" /> {nativeBio ? t('settings.passkey_unlock.preview_biometric_prompt') : t('settings.passkey_unlock.preview_passkey_prompt')}</>}
           </Button>
           {testResult === 'ok' && (
             <p className="text-xs text-success mt-2 flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" /> {simulated ? 'Simulated ' : ''}{nativeBio ? 'biometric verified' : 'passkey verified'}
+              <CheckCircle2 className="h-3.5 w-3.5" /> {simulated ? t('settings.passkey_unlock.simulated_prefix') : ''}{nativeBio ? t('settings.passkey_unlock.biometric_verified') : t('settings.passkey_unlock.passkey_verified')}
             </p>
           )}
           {testResult === 'cancel' && (
             <p className="text-xs text-muted-foreground mt-2">
-              {nativeBio ? 'Biometric prompt cancelled' : 'Passkey prompt cancelled'}
+              {nativeBio ? t('settings.passkey_unlock.biometric_prompt_cancelled') : t('settings.passkey_unlock.passkey_prompt_cancelled')}
             </p>
           )}
         </div>
