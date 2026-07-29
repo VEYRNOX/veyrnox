@@ -10,6 +10,31 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
 
+// react-i18next resolves ITS OWN React copy under node_modules/react-i18next/
+// node_modules/react, whose ReactCurrentDispatcher never gets set — every
+// useContext there returns null. Mock useTranslation with a lightweight
+// resolver that reads the English JSON catalog directly (same pattern as
+// RaspSecurity.test.jsx in batch A).
+vi.mock('react-i18next', async () => {
+  const actual = /** @type {any} */ (await vi.importActual('react-i18next'));
+  const security = /** @type {any} */ (await import('@/i18n/locales/en/security.json'));
+  const common = /** @type {any} */ (await import('@/i18n/locales/en/common.json'));
+  const bundles = { security: security.default, common: common.default };
+  const resolve = (key, opts = {}) => {
+    const ns = opts.ns || 'common';
+    let v = bundles[ns];
+    for (const p of String(key).split('.')) v = v?.[p];
+    if (opts.returnObjects) return v ?? [];
+    if (typeof v !== 'string') return key;
+    // Best-effort interpolation for {{var}} placeholders.
+    return v.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in opts ? String(opts[k]) : `{{${k}}}`));
+  };
+  return {
+    ...actual,
+    useTranslation: (ns) => ({ t: (k, o) => resolve(k, { ns, ...(o || {}) }) }),
+  };
+});
+
 const { mockPanicWipe } = vi.hoisted(() => ({
   mockPanicWipe: vi.fn(async () => ({
     clean: true, vaultBlobCount: 0, indexedDbKeys: [], localStorageResidue: [],
