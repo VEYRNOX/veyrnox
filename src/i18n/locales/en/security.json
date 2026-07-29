@@ -5,5 +5,35 @@
     "device_id_note": "A random device ID is used — never linked to your wallet, keys, or identity. You can change this anytime in Settings → Privacy.",
     "cta_grant": "Help improve Veyrnox",
     "cta_deny": "No thanks"
+  },
+  "rasp": {
+    "heading": "RASP Security",
+    "subhead": "Runtime risk detection & honest degradation — environment-risk plane",
+    "banner_title": "Runtime integrity checks active",
+    "banner_body": "Before every signature the app checks its runtime for automation, hooking, tampering, root / jailbreak, and emulator signals. A clean environment signs normally; a compromised one is refused.",
+    "current_env": "Current environment:",
+    "ladder_heading": "How a risky environment is handled:",
+    "ladder": {
+      "allow": "Clean runtime — signs normally",
+      "warn": "Rooted / jailbroken — you confirm the risk before signing",
+      "block": "Hooking / tamper / emulator — signing refused, no override"
+    },
+    "tier_severity": {
+      "allow": "Clean",
+      "warn": "Elevated risk",
+      "block": "High risk",
+      "unknown": "Unknown"
+    },
+    "conditions": {
+      "clean": "clean",
+      "rooted": "rooted",
+      "elevated": "elevated (device setting)",
+      "emulator": "emulator",
+      "hooked": "hooked",
+      "tampered": "tampered",
+      "integrity_fail": "integrity-fail",
+      "unavailable": "unavailable"
+    },
+    "footer": "No fake event counts or scan buttons — only real detections shown."
   }
 }

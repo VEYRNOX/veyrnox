@@ -25,22 +25,17 @@
 // The dashboard is an environment-read surface (not an unlock path), so
 // attestation is sampled eagerly (the hook's default behaviour) — attestation
 // itself remains I3-guarded inside attestationProbeSource().
+//
+// I18N (Phase 2 slice 2): copy driven by `security.rasp.*` (see i18n/locales/).
+// CONDITION_LABEL uses translated tokens where the label is USER-facing prose,
+// and keeps the raw slug (e.g. "hooked") where it names an industry term the
+// same across languages. tier / condition CONSTANTS keep their internal string
+// values — those are not user-facing and gate downstream behaviour.
 
 import { Cpu } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { STATUS } from "@/lib/featureCatalogue";
 import { useRaspArtifact, CONDITION, TIER } from "@/rasp";
-
-// Human-readable label for a CONDITION constant.
-const CONDITION_LABEL = {
-  [CONDITION.CLEAN]: "clean",
-  [CONDITION.ROOTED]: "rooted",
-  [CONDITION.ELEVATED]: "elevated (device setting)",
-  [CONDITION.EMULATOR]: "emulator",
-  [CONDITION.HOOKED]: "hooked",
-  [CONDITION.TAMPERED]: "tampered",
-  [CONDITION.INTEGRITY_FAIL]: "integrity-fail",
-  [CONDITION.INTEGRITY_UNAVAILABLE]: "unavailable",
-};
 
 /**
  * Pure signing-path honesty helper (VULN-8). Retained + unit-tested so the
@@ -59,38 +54,49 @@ const TONE = {
   block: { text: "text-risk", dot: "bg-risk" },
 };
 
-// The degradation ladder describes BEHAVIOUR — what happens to signing in each
-// runtime condition — not build status. The WARN tier reflects the wired
-// pre-sign gate: a risky runtime requires an explicit confirmation before the
-// signature proceeds (it is not silently allowed, nor hard-blocked).
-const LADDER = [
-  { tier: "allow", copy: "Clean runtime — signs normally" },
-  { tier: "warn", copy: "Rooted / jailbroken — you confirm the risk before signing" },
-  { tier: "block", copy: "Hooking / tamper / emulator — signing refused, no override" },
-];
-
 const DOT_TONE = {
   [TIER.ALLOW]: "bg-accent",
   [TIER.WARN]:  "bg-caution",
   [TIER.BLOCK]: "bg-risk",
 };
 
-// Screen-reader severity prefix for the environment readout — colour alone is
-// insufficient signal for AT users.
-const TIER_SEVERITY_LABEL = {
-  [TIER.ALLOW]: "Clean",
-  [TIER.WARN]:  "Elevated risk",
-  [TIER.BLOCK]: "High risk",
-};
+// Which ladder rungs to render, in order. Copy comes from the security bundle
+// so the "what happens per tier" story reads consistently across locales.
+const LADDER_TIERS = ["allow", "warn", "block"];
 
 export default function RaspSecurity() {
+  const { t } = useTranslation("security");
+
   // P2-8: single source of truth. The hook composes on-device probe AND
   // attestation, re-probes on foreground/heartbeat, and returns a fail-closed
   // BLOCK artifact on any detection throw.
   const artifact = useRaspArtifact();
   const liveTier = artifact?.tier ?? TIER.BLOCK;
   const liveCondition = artifact?.condition;
-  const liveConditionLabel = CONDITION_LABEL[liveCondition] ?? (liveCondition ?? "unavailable");
+
+  // Condition slug → translated label. The slug is the AUTHORITATIVE key
+  // (never translated); the label is prose. Unknown slug falls back to the raw
+  // slug rather than an empty string (I4 — visible bug > silent blank).
+  const CONDITION_LABEL_MAP = {
+    [CONDITION.CLEAN]: t("rasp.conditions.clean"),
+    [CONDITION.ROOTED]: t("rasp.conditions.rooted"),
+    [CONDITION.ELEVATED]: t("rasp.conditions.elevated"),
+    [CONDITION.EMULATOR]: t("rasp.conditions.emulator"),
+    [CONDITION.HOOKED]: t("rasp.conditions.hooked"),
+    [CONDITION.TAMPERED]: t("rasp.conditions.tampered"),
+    [CONDITION.INTEGRITY_FAIL]: t("rasp.conditions.integrity_fail"),
+    [CONDITION.INTEGRITY_UNAVAILABLE]: t("rasp.conditions.unavailable"),
+  };
+  const liveConditionLabel = CONDITION_LABEL_MAP[liveCondition] ?? (liveCondition ?? t("rasp.conditions.unavailable"));
+
+  // Screen-reader severity prefix for the environment readout — colour alone is
+  // insufficient signal for AT users.
+  const TIER_SEVERITY_LABEL = {
+    [TIER.ALLOW]: t("rasp.tier_severity.allow"),
+    [TIER.WARN]:  t("rasp.tier_severity.warn"),
+    [TIER.BLOCK]: t("rasp.tier_severity.block"),
+  };
+
   const dotTone = DOT_TONE[liveTier] ?? "bg-caution";
 
   return (
@@ -102,9 +108,9 @@ export default function RaspSecurity() {
             <Cpu className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">RASP Security</h1>
+            <h1 className="text-2xl font-bold">{t("rasp.heading")}</h1>
             <p className="text-sm text-muted-foreground">
-              Runtime risk detection &amp; honest degradation — environment-risk plane
+              {t("rasp.subhead")}
             </p>
           </div>
         </div>
@@ -117,11 +123,9 @@ export default function RaspSecurity() {
       >
         <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" />
         <div>
-          <p className="font-bold text-accent">Runtime integrity checks active</p>
+          <p className="font-bold text-accent">{t("rasp.banner_title")}</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Before every signature the app checks its runtime for automation, hooking,
-            tampering, root / jailbreak, and emulator signals. A clean environment signs
-            normally; a compromised one is refused.
+            {t("rasp.banner_body")}
           </p>
         </div>
       </div>
@@ -134,27 +138,27 @@ export default function RaspSecurity() {
         data-testid="rasp-live-condition"
       >
         <span className={`h-2 w-2 shrink-0 rounded-full ${dotTone}`} aria-hidden="true" />
-        <span className="text-sm text-muted-foreground">Current environment:</span>
-        <span className="sr-only">{TIER_SEVERITY_LABEL[liveTier] ?? "Unknown"} — </span>
+        <span className="text-sm text-muted-foreground">{t("rasp.current_env")}</span>
+        <span className="sr-only">{TIER_SEVERITY_LABEL[liveTier] ?? t("rasp.tier_severity.unknown")} — </span>
         <span className="font-mono text-sm" data-testid="rasp-condition-value">{liveConditionLabel}</span>
       </div>
 
       {/* Degradation ladder — behaviour per runtime condition */}
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          How a risky environment is handled:
+          {t("rasp.ladder_heading")}
         </p>
-        {LADDER.map((rung) => {
-          const { text: textTone, dot: dotTone } = TONE[rung.tier];
+        {LADDER_TIERS.map((tier) => {
+          const { text: textTone, dot: dotTone } = TONE[tier];
           return (
             <div
-              key={rung.tier}
+              key={tier}
               className="p-4 rounded-xl border border-border bg-secondary/30 flex items-center gap-4"
-              data-testid={`rasp-ladder-${rung.tier}`}
+              data-testid={`rasp-ladder-${tier}`}
             >
               <span className={`h-2 w-2 shrink-0 rounded-full ${dotTone}`} />
-              <span className={`w-16 shrink-0 font-mono ${textTone}`}>{rung.tier}</span>
-              <span className="text-sm text-foreground">{rung.copy}</span>
+              <span className={`w-16 shrink-0 font-mono ${textTone}`}>{tier}</span>
+              <span className="text-sm text-foreground">{t(`rasp.ladder.${tier}`)}</span>
             </div>
           );
         })}
@@ -162,7 +166,7 @@ export default function RaspSecurity() {
 
       {/* Footer */}
       <p className="text-xs text-muted-foreground border-t border-border pt-4">
-        No fake event counts or scan buttons — only real detections shown.
+        {t("rasp.footer")}
       </p>
     </div>
   );
