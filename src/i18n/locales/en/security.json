@@ -90,5 +90,50 @@
     "found_one": "{{count}} Anomaly Found",
     "found_other": "{{count}} Anomalies Found",
     "dismiss": "Dismiss"
+  },
+  "security_center": {
+    "heading": "Security Center",
+    "subhead": "Sessions and spend limits",
+    "tabs": {
+      "sessions": "Sessions",
+      "limits": "Spend Limits"
+    },
+    "sessions": {
+      "desc": "Devices with an active session.",
+      "load_error": "Couldn't load sessions.",
+      "empty": "No active sessions",
+      "this_device": "This device",
+      "last_active": "Last active {{when}}",
+      "sign_out_confirm": "Sign out this device? The wallet will lock and you'll need your PIN to continue.",
+      "sign_out": "Sign out",
+      "sign_out_title": "Lock this device and require your PIN again",
+      "revoke_title": "Revoke this session",
+      "revoke_aria": "Revoke this session",
+      "options_aria": "Options for {{name}}",
+      "signed_out_toast": "Device signed out."
+    },
+    "limits": {
+      "desc": "Cap what you can send per day or per transaction.",
+      "add_cta": "Add Limit",
+      "load_error": "Couldn't load limits.",
+      "history_error": "Couldn't load history — today's totals may be off.",
+      "empty": "No limits configured",
+      "disabled_note": "(disabled)",
+      "daily_label": "Daily:",
+      "per_tx_label": "Per Tx:",
+      "sent_today": "Sent today",
+      "delete_aria": "Delete {{currency}} limit"
+    },
+    "dialog": {
+      "title": "Add Transaction Limit",
+      "currency_label": "Currency",
+      "all_currencies": "All currencies",
+      "daily_limit_label": "Daily Limit (USD)",
+      "daily_limit_placeholder": "e.g. 1000",
+      "per_tx_limit_label": "Per Transaction Limit (USD)",
+      "per_tx_limit_placeholder": "e.g. 500",
+      "save": "Save Limit",
+      "saved_toast": "Limit set"
+    }
   }
 }

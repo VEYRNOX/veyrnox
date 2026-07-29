@@ -90,5 +90,50 @@
     "found_one": "{{count}} anomalía encontrada",
     "found_other": "{{count}} anomalías encontradas",
     "dismiss": "Descartar"
+  },
+  "security_center": {
+    "heading": "Centro de seguridad",
+    "subhead": "Sesiones y límites de gasto",
+    "tabs": {
+      "sessions": "Sesiones",
+      "limits": "Límites de gasto"
+    },
+    "sessions": {
+      "desc": "Dispositivos con una sesión activa.",
+      "load_error": "No se pudieron cargar las sesiones.",
+      "empty": "Sin sesiones activas",
+      "this_device": "Este dispositivo",
+      "last_active": "Última actividad {{when}}",
+      "sign_out_confirm": "¿Cerrar la sesión de este dispositivo? La cartera se bloqueará y necesitarás tu PIN para continuar.",
+      "sign_out": "Cerrar sesión",
+      "sign_out_title": "Bloquear este dispositivo y requerir el PIN de nuevo",
+      "revoke_title": "Revocar esta sesión",
+      "revoke_aria": "Revocar esta sesión",
+      "options_aria": "Opciones de {{name}}",
+      "signed_out_toast": "Sesión del dispositivo cerrada."
+    },
+    "limits": {
+      "desc": "Limita cuánto puedes enviar por día o por transacción.",
+      "add_cta": "Añadir límite",
+      "load_error": "No se pudieron cargar los límites.",
+      "history_error": "No se pudo cargar el historial — los totales de hoy pueden ser incorrectos.",
+      "empty": "Sin límites configurados",
+      "disabled_note": "(desactivado)",
+      "daily_label": "Diario:",
+      "per_tx_label": "Por Tx:",
+      "sent_today": "Enviado hoy",
+      "delete_aria": "Eliminar límite de {{currency}}"
+    },
+    "dialog": {
+      "title": "Añadir límite de transacción",
+      "currency_label": "Moneda",
+      "all_currencies": "Todas las monedas",
+      "daily_limit_label": "Límite diario (USD)",
+      "daily_limit_placeholder": "p. ej. 1000",
+      "per_tx_limit_label": "Límite por transacción (USD)",
+      "per_tx_limit_placeholder": "p. ej. 500",
+      "save": "Guardar límite",
+      "saved_toast": "Límite establecido"
+    }
   }
 }

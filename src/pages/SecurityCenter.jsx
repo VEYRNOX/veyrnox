@@ -1,4 +1,10 @@
 // @ts-nocheck
+//
+// I18N (Phase 2 slice 2 batch C): copy driven by `security.security_center.*`.
+// Currency codes (BTC/ETH/…) stay as internal keys — those aren't user-facing
+// prose. `ALL` is a sentinel meaning "any currency"; its DISPLAY label goes
+// through the catalog (security.security_center.dialog.all_currencies).
+import { useTranslation } from "react-i18next";
 import { USD_RATES, approxUsd } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState, useEffect } from "react";
@@ -32,6 +38,7 @@ function getDeviceInfo() {
 }
 
 export default function SecurityCenter() {
+  const { t } = useTranslation("security");
   const queryClient = useQueryClient();
   // I2/I3: decoy/hidden sessions must make zero backend calls and write no
   // trackable identifiers. Gate session registration + the tx-history query.
@@ -100,7 +107,7 @@ export default function SecurityCenter() {
       // Honest scope: revoking marks the session revoked; the device with that
       // session locks its wallet + requires re-auth (immediately for this device,
       // next-open for others). See lib/sessionRevocation.js + SessionRevocationGuard.
-      toast.success("Device signed out.");
+      toast.success(t("security_center.sessions.signed_out_toast"));
     },
   });
 
@@ -115,7 +122,7 @@ export default function SecurityCenter() {
       queryClient.invalidateQueries({ queryKey: ["tx-limits"] });
       setShowAddLimit(false);
       setDailyLimit(""); setPerTxLimit(""); setLimitCurrency("ALL");
-      toast.success("Limit set");
+      toast.success(t("security_center.dialog.saved_toast"));
     },
   });
 
@@ -134,24 +141,24 @@ export default function SecurityCenter() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Security Center</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Sessions and spend limits</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("security_center.heading")}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{t("security_center.subhead")}</p>
       </div>
 
       <Tabs defaultValue="sessions">
         <TabsList className="w-full bg-secondary">
-          <TabsTrigger value="sessions" className="flex-1">Sessions</TabsTrigger>
-          <TabsTrigger value="limits" className="flex-1">Spend Limits</TabsTrigger>
+          <TabsTrigger value="sessions" className="flex-1">{t("security_center.tabs.sessions")}</TabsTrigger>
+          <TabsTrigger value="limits" className="flex-1">{t("security_center.tabs.limits")}</TabsTrigger>
         </TabsList>
 
         {/* ── Sessions Tab ── */}
         <TabsContent value="sessions" className="mt-4 space-y-3">
-          <p className="text-xs text-muted-foreground">Devices with an active session.</p>
+          <p className="text-xs text-muted-foreground">{t("security_center.sessions.desc")}</p>
           {errorSessions && (
-            <p className="text-xs text-caution">Couldn't load sessions.</p>
+            <p className="text-xs text-caution">{t("security_center.sessions.load_error")}</p>
           )}
           {sessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No active sessions</p>
+            <p className="text-sm text-muted-foreground text-center py-8">{t("security_center.sessions.empty")}</p>
           ) : (
             sessions.map(s => {
               const isCurrent = s.session_token === currentToken;
@@ -164,10 +171,10 @@ export default function SecurityCenter() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium truncate">{s.device_name}</p>
                       {isCurrent && (
-                        <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">This device</span>
+                        <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">{t("security_center.sessions.this_device")}</span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">Last active {formatDistanceToNow(new Date(s.last_active), { addSuffix: true })}</p>
+                    <p className="text-xs text-muted-foreground">{t("security_center.sessions.last_active", { when: formatDistanceToNow(new Date(s.last_active), { addSuffix: true }) })}</p>
                   </div>
                   {isCurrent ? (
                     // Signing out THIS device is now meaningful: the guard locks
@@ -176,22 +183,22 @@ export default function SecurityCenter() {
                       variant="ghost"
                       size="sm"
                       className="text-destructive hover:bg-destructive/10 shrink-0 gap-1.5"
-                      title="Lock this device and require your PIN again"
+                      title={t("security_center.sessions.sign_out_title")}
                       onClick={() => {
-                        if (window.confirm("Sign out this device? The wallet will lock and you'll need your PIN to continue.")) {
+                        if (window.confirm(t("security_center.sessions.sign_out_confirm"))) {
                           revokeSession.mutate(s.id);
                         }
                       }}
                     >
-                      <LogOut className="h-4 w-4" /> Sign out
+                      <LogOut className="h-4 w-4" /> {t("security_center.sessions.sign_out")}
                     </Button>
                   ) : (
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:bg-destructive/10 shrink-0"
-                      title="Revoke this session"
-                      aria-label="Revoke this session"
+                      title={t("security_center.sessions.revoke_title")}
+                      aria-label={t("security_center.sessions.revoke_aria")}
                       onClick={() => revokeSession.mutate(s.id)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -206,21 +213,21 @@ export default function SecurityCenter() {
         {/* ── Limits Tab ── */}
         <TabsContent value="limits" className="mt-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Cap what you can send per day or per transaction.</p>
+            <p className="text-xs text-muted-foreground">{t("security_center.limits.desc")}</p>
             <Button size="sm" onClick={() => setShowAddLimit(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Add Limit
+              <Plus className="h-3.5 w-3.5 mr-1" /> {t("security_center.limits.add_cta")}
             </Button>
           </div>
           {errorLimits && (
-            <p className="text-xs text-caution">Couldn't load limits.</p>
+            <p className="text-xs text-caution">{t("security_center.limits.load_error")}</p>
           )}
           {errorHistory && (
-            <p className="text-xs text-caution">Couldn't load history — today's totals may be off.</p>
+            <p className="text-xs text-caution">{t("security_center.limits.history_error")}</p>
           )}
           {limits.length === 0 ? (
             <div className="text-center py-8 space-y-2">
               <DollarSign className="h-8 w-8 text-muted-foreground mx-auto" />
-              <p className="text-sm text-muted-foreground">No limits configured</p>
+              <p className="text-sm text-muted-foreground">{t("security_center.limits.empty")}</p>
             </div>
           ) : (
             limits.map(l => (
@@ -228,11 +235,11 @@ export default function SecurityCenter() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono bg-secondary px-2 py-0.5 rounded">{l.currency}</span>
-                    {!l.enabled && <span className="text-xs text-muted-foreground">(disabled)</span>}
+                    {!l.enabled && <span className="text-xs text-muted-foreground">{t("security_center.limits.disabled_note")}</span>}
                   </div>
                   <div className="flex gap-4 mt-1">
-                    {l.daily_limit && <p className="text-xs text-muted-foreground">Daily: <span className="text-foreground font-medium">${l.daily_limit.toLocaleString()}</span></p>}
-                    {l.per_transaction_limit && <p className="text-xs text-muted-foreground">Per Tx: <span className="text-foreground font-medium">${l.per_transaction_limit.toLocaleString()}</span></p>}
+                    {l.daily_limit && <p className="text-xs text-muted-foreground">{t("security_center.limits.daily_label")} <span className="text-foreground font-medium">${l.daily_limit.toLocaleString()}</span></p>}
+                    {l.per_transaction_limit && <p className="text-xs text-muted-foreground">{t("security_center.limits.per_tx_label")} <span className="text-foreground font-medium">${l.per_transaction_limit.toLocaleString()}</span></p>}
                   </div>
                   {/* Today's running total against this daily cap — enforced in the
                       Send flow, summed from local tx history (lib/txLimits.js). */}
@@ -242,7 +249,7 @@ export default function SecurityCenter() {
                     return (
                       <div className="mt-1.5">
                         <div className="flex justify-between text-[11px] text-muted-foreground">
-                          <span>Sent today</span>
+                          <span>{t("security_center.limits.sent_today")}</span>
                           <span className={spent >= l.daily_limit ? "text-destructive font-medium" : "text-foreground"}>
                             {approxUsd(spent)} / ${l.daily_limit.toLocaleString()}
                           </span>
@@ -258,7 +265,7 @@ export default function SecurityCenter() {
                   checked={l.enabled}
                   onCheckedChange={(v) => toggleLimit.mutate({ id: l.id, enabled: v })}
                 />
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" aria-label={`Delete ${l.currency} limit`} onClick={() => deleteLimit.mutate(l.id)}>
+                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" aria-label={t("security_center.limits.delete_aria", { currency: l.currency })} onClick={() => deleteLimit.mutate(l.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -273,29 +280,29 @@ export default function SecurityCenter() {
       {/* Add Limit Dialog */}
       <Dialog open={showAddLimit} onOpenChange={setShowAddLimit}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Add Transaction Limit</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("security_center.dialog.title")}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label id="limit-currency-label">Currency</Label>
+              <Label id="limit-currency-label">{t("security_center.dialog.currency_label")}</Label>
               <Select value={limitCurrency} onValueChange={setLimitCurrency}>
                 <SelectTrigger className="mt-1.5" aria-labelledby="limit-currency-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {["ALL", "BTC", "ETH", "SOL", "USDC", "USDT"].map(c => (
-                    <SelectItem key={c} value={c}>{c === "ALL" ? "All currencies" : c}</SelectItem>
+                    <SelectItem key={c} value={c}>{c === "ALL" ? t("security_center.dialog.all_currencies") : c}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Daily Limit (USD)</Label>
-              <Input type="number" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder="e.g. 1000" className="mt-1.5" />
+              <Label>{t("security_center.dialog.daily_limit_label")}</Label>
+              <Input type="number" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder={t("security_center.dialog.daily_limit_placeholder")} className="mt-1.5" />
             </div>
             <div>
-              <Label>Per Transaction Limit (USD)</Label>
-              <Input type="number" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="e.g. 500" className="mt-1.5" />
+              <Label>{t("security_center.dialog.per_tx_limit_label")}</Label>
+              <Input type="number" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder={t("security_center.dialog.per_tx_limit_placeholder")} className="mt-1.5" />
             </div>
             <Button className="w-full" onClick={() => addLimit.mutate()} disabled={addLimit.isPending || (!dailyLimit && !perTxLimit)}>
-              Save Limit
+              {t("security_center.dialog.save")}
             </Button>
           </div>
         </DialogContent>

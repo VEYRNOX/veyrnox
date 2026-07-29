@@ -90,5 +90,50 @@
     "found_one": "{{count}} Anomalie gefunden",
     "found_other": "{{count}} Anomalien gefunden",
     "dismiss": "Verwerfen"
+  },
+  "security_center": {
+    "heading": "Sicherheitszentrum",
+    "subhead": "Sitzungen und Ausgabelimits",
+    "tabs": {
+      "sessions": "Sitzungen",
+      "limits": "Ausgabelimits"
+    },
+    "sessions": {
+      "desc": "Geräte mit einer aktiven Sitzung.",
+      "load_error": "Sitzungen konnten nicht geladen werden.",
+      "empty": "Keine aktiven Sitzungen",
+      "this_device": "Dieses Gerät",
+      "last_active": "Zuletzt aktiv {{when}}",
+      "sign_out_confirm": "Auf diesem Gerät abmelden? Die Wallet wird gesperrt und du brauchst deinen PIN, um fortzufahren.",
+      "sign_out": "Abmelden",
+      "sign_out_title": "Dieses Gerät sperren und PIN erneut verlangen",
+      "revoke_title": "Diese Sitzung widerrufen",
+      "revoke_aria": "Diese Sitzung widerrufen",
+      "options_aria": "Optionen für {{name}}",
+      "signed_out_toast": "Gerät abgemeldet."
+    },
+    "limits": {
+      "desc": "Begrenze, wie viel du pro Tag oder Transaktion senden kannst.",
+      "add_cta": "Limit hinzufügen",
+      "load_error": "Limits konnten nicht geladen werden.",
+      "history_error": "Verlauf konnte nicht geladen werden – die heutigen Summen könnten ungenau sein.",
+      "empty": "Keine Limits konfiguriert",
+      "disabled_note": "(deaktiviert)",
+      "daily_label": "Täglich:",
+      "per_tx_label": "Pro Tx:",
+      "sent_today": "Heute gesendet",
+      "delete_aria": "{{currency}}-Limit löschen"
+    },
+    "dialog": {
+      "title": "Transaktionslimit hinzufügen",
+      "currency_label": "Währung",
+      "all_currencies": "Alle Währungen",
+      "daily_limit_label": "Tägliches Limit (USD)",
+      "daily_limit_placeholder": "z. B. 1000",
+      "per_tx_limit_label": "Limit pro Transaktion (USD)",
+      "per_tx_limit_placeholder": "z. B. 500",
+      "save": "Limit speichern",
+      "saved_toast": "Limit gesetzt"
+    }
   }
 }
