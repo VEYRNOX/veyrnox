@@ -5,5 +5,35 @@
     "device_id_note": "使用随机设备 ID，从不与您的钱包、密钥或身份关联。您可以随时在“设置 → 隐私”中更改此项。",
     "cta_grant": "帮助改进 Veyrnox",
     "cta_deny": "不用，谢谢"
+  },
+  "rasp": {
+    "heading": "RASP 安全",
+    "subhead": "运行时风险检测与诚实降级 — 环境风险层",
+    "banner_title": "运行时完整性检查已启用",
+    "banner_body": "在每次签名之前，应用会检查其运行时是否存在自动化、hook、篡改、root / 越狱以及模拟器信号。干净的环境正常签名；被入侵的环境将被拒绝。",
+    "current_env": "当前环境：",
+    "ladder_heading": "风险环境的处理方式：",
+    "ladder": {
+      "allow": "干净的运行时 — 正常签名",
+      "warn": "已 root / 越狱 — 签名前需要你确认风险",
+      "block": "Hook / 篡改 / 模拟器 — 拒绝签名，不可绕过"
+    },
+    "tier_severity": {
+      "allow": "干净",
+      "warn": "风险升高",
+      "block": "高风险",
+      "unknown": "未知"
+    },
+    "conditions": {
+      "clean": "干净",
+      "rooted": "已 root",
+      "elevated": "已提升（设备设置）",
+      "emulator": "模拟器",
+      "hooked": "已被 hook",
+      "tampered": "已篡改",
+      "integrity_fail": "完整性失败",
+      "unavailable": "不可用"
+    },
+    "footer": "没有虚假的事件计数或扫描按钮 — 仅显示真实检测。"
   }
 }

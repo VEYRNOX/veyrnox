@@ -18,6 +18,26 @@
 //   - deniability parity (§3, D2/D4): identical real-vs-decoy render
 
 import { describe, it, expect, vi } from 'vitest';
+// This file's pattern is to call the component as a plain function and walk
+// the returned element tree. useTranslation() calls React.useContext under
+// the hood, which throws outside a render. Mock it to read the English JSON
+// catalog directly (no i18next singleton init, no React context) — assertions
+// against real prose still work.
+vi.mock('react-i18next', async () => {
+  const actual = /** @type {any} */ (await vi.importActual('react-i18next'));
+  const security = /** @type {any} */ (await import('@/i18n/locales/en/security.json'));
+  const common = /** @type {any} */ (await import('@/i18n/locales/en/common.json'));
+  const bundles = { security: security.default, common: common.default };
+  const resolve = (key, ns) => {
+    let v = bundles[ns || 'common'];
+    for (const p of String(key).split('.')) v = v?.[p];
+    return typeof v === 'string' ? v : key;
+  };
+  return {
+    ...actual,
+    useTranslation: (ns) => ({ t: (k, o) => resolve(k, o?.ns ?? ns) }),
+  };
+});
 
 // Mock the shared hook so tests control the artifact directly. Default: CLEAN.
 const hookHandle = { artifact: { tier: 'allow', sentence: null, blockedActions: [], requiresBiometric: false, condition: 'clean' } };

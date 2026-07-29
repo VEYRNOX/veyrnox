@@ -5,5 +5,35 @@
     "device_id_note": "Es wird eine zufällige Geräte-ID verwendet – nie mit deiner Wallet, deinen Schlüsseln oder deiner Identität verknüpft. Du kannst dies jederzeit unter Einstellungen → Datenschutz ändern.",
     "cta_grant": "Veyrnox verbessern helfen",
     "cta_deny": "Nein, danke"
+  },
+  "rasp": {
+    "heading": "RASP-Sicherheit",
+    "subhead": "Laufzeit-Risikoerkennung und ehrliche Degradierung – Umgebungsrisiko-Ebene",
+    "banner_title": "Laufzeit-Integritätsprüfungen aktiv",
+    "banner_body": "Vor jeder Signatur prüft die App ihre Laufzeit auf Automatisierung, Hooking, Manipulation, Root / Jailbreak und Emulator-Signale. Eine saubere Umgebung signiert normal; eine kompromittierte wird abgelehnt.",
+    "current_env": "Aktuelle Umgebung:",
+    "ladder_heading": "Wie eine risikoreiche Umgebung behandelt wird:",
+    "ladder": {
+      "allow": "Saubere Laufzeit – signiert normal",
+      "warn": "Root / Jailbreak – du bestätigst das Risiko vor dem Signieren",
+      "block": "Hooking / Manipulation / Emulator – Signieren abgelehnt, keine Umgehung"
+    },
+    "tier_severity": {
+      "allow": "Sauber",
+      "warn": "Erhöhtes Risiko",
+      "block": "Hohes Risiko",
+      "unknown": "Unbekannt"
+    },
+    "conditions": {
+      "clean": "sauber",
+      "rooted": "gerootet",
+      "elevated": "erhöht (Geräteeinstellung)",
+      "emulator": "Emulator",
+      "hooked": "hooked",
+      "tampered": "manipuliert",
+      "integrity_fail": "Integritätsfehler",
+      "unavailable": "nicht verfügbar"
+    },
+    "footer": "Keine gefälschten Ereigniszähler oder Scan-Buttons – nur echte Erkennungen werden angezeigt."
   }
 }

@@ -5,5 +5,35 @@
     "device_id_note": "Se utiliza un identificador de dispositivo aleatorio, nunca vinculado a tu cartera, tus claves ni tu identidad. Puedes cambiar esto en cualquier momento en Ajustes → Privacidad.",
     "cta_grant": "Ayudar a mejorar Veyrnox",
     "cta_deny": "No, gracias"
+  },
+  "rasp": {
+    "heading": "Seguridad RASP",
+    "subhead": "Detección de riesgos en tiempo de ejecución y degradación honesta — plano de riesgo del entorno",
+    "banner_title": "Comprobaciones de integridad en tiempo de ejecución activas",
+    "banner_body": "Antes de cada firma la aplicación comprueba su entorno de ejecución en busca de automatización, hooking, manipulación, root / jailbreak y señales de emulador. Un entorno limpio firma con normalidad; uno comprometido es rechazado.",
+    "current_env": "Entorno actual:",
+    "ladder_heading": "Cómo se maneja un entorno de riesgo:",
+    "ladder": {
+      "allow": "Entorno limpio — firma con normalidad",
+      "warn": "Root / jailbreak — confirmas el riesgo antes de firmar",
+      "block": "Hooking / manipulación / emulador — firma rechazada, sin excepción"
+    },
+    "tier_severity": {
+      "allow": "Limpio",
+      "warn": "Riesgo elevado",
+      "block": "Alto riesgo",
+      "unknown": "Desconocido"
+    },
+    "conditions": {
+      "clean": "limpio",
+      "rooted": "root",
+      "elevated": "elevado (ajuste del dispositivo)",
+      "emulator": "emulador",
+      "hooked": "hooked",
+      "tampered": "manipulado",
+      "integrity_fail": "fallo de integridad",
+      "unavailable": "no disponible"
+    },
+    "footer": "Sin conteos de eventos falsos ni botones de escaneo — solo se muestran detecciones reales."
   }
 }
