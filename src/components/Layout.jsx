@@ -9,8 +9,9 @@ import SafeSuspense from "./SafeSuspense";
 import HelpMenu from "./HelpMenu";
 import {
   LayoutDashboard, Send, Download, Settings, LogOut, Search,
-  MoreHorizontal, ChevronLeft, ChevronRight, X, ChevronDown,
+  MoreHorizontal, ChevronLeft, ChevronRight, X, ChevronDown, CreditCard,
 } from "lucide-react";
+import { useBuyEnabled } from "@/lib/buy/useBuyEnabled";
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import CommandPalette from "./CommandPalette";
@@ -64,9 +65,13 @@ function useIsDesktop() {
 
 // Labels are resolved at render time (see mobileBottomNav in the component
 // body) so they can go through t() — module scope has no hook access.
+// Buy sits alongside Send in the bottom nav — hidden when the ship gate is off
+// or in a deniability/demo session (see useBuyEnabled). The filter runs at render
+// time in the component body; module scope has no hook access.
 const MOBILE_BOTTOM_NAV_ITEMS = [
   { path: "/", labelKey: "nav.tab_home", icon: LayoutDashboard },
   { path: "/send", labelKey: "nav.tab_send", icon: Send },
+  { path: "/buy", labelKey: "nav.tab_buy", icon: CreditCard, requiresBuy: true },
   { path: "/receive", labelKey: "nav.tab_receive", icon: Download },
 ];
 
@@ -98,7 +103,10 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { lock } = useWallet();
-  const mobileBottomNav = MOBILE_BOTTOM_NAV_ITEMS.map((item) => ({ ...item, label: t(item.labelKey) }));
+  const buyEnabled = useBuyEnabled();
+  const mobileBottomNav = MOBILE_BOTTOM_NAV_ITEMS
+    .filter((item) => !item.requiresBuy || buyEnabled)
+    .map((item) => ({ ...item, label: t(item.labelKey) }));
   const prefersReducedMotion = useReducedMotion();
   const navType = useNavigationType();
   const isBack = navType === 'POP';
