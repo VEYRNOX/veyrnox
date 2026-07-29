@@ -73,8 +73,8 @@ export default function NotificationBell({ unseenCount = 0, onOpen, className = 
             'absolute inline-flex items-center justify-center rounded-full',
             'bg-accent text-accent-foreground leading-none mono-value',
             dotOnly
-              ? '-top-0.5 -right-0.5 h-2 w-2'
-              : '-top-0.5 -right-0.5 min-w-[1.05rem] h-[1.05rem] px-1 text-[0.625rem] font-semibold'
+              ? '-top-0.5 -end-0.5 h-2 w-2'
+              : '-top-0.5 -end-0.5 min-w-[1.05rem] h-[1.05rem] px-1 text-[0.625rem] font-semibold'
           )}
         >
           {dotOnly ? null : label}

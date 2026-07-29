@@ -261,7 +261,7 @@ export default function Analytics() {
                       <div className="h-2 w-2 rounded-full shrink-0" style={{ background: CURRENCY_COLORS[d.name] || '#888' }} />
                       <span className="text-xs font-semibold">{d.name}</span>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <p className="text-xs font-mono">{pricesEnabled ? fmt(d.value) : "—"}</p>
                       <p className="text-[10px] text-muted-foreground">{pct}%</p>
                     </div>

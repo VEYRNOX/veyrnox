@@ -46,7 +46,7 @@ export default function TransactionList({ transactions = [] }) {
               {tx.type === "send" ? tx.to_address : tx.from_address}
             </p>
           </div>
-          <div className="text-right shrink-0">
+          <div className="text-end shrink-0">
             <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-primary"}`}>
               {tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}
             </p>

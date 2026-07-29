@@ -51,19 +51,19 @@ const catalogModules = /** @type {Record<string, () => Promise<{ default: object
 // banner in <LanguageSwitcher> until a native reviewer signs off on
 // `security.json` — do NOT soften that banner without signoff.
 //
-// `ar` is bundled but INTENTIONALLY absent from LANGUAGE_SWITCHER_AVAILABLE
-// below: RTL layout support (dir="rtl", CSS logical properties, mirrored
-// icons) is a follow-up PR. Ungate `ar` there.
+// RTL layout support (dir="rtl" flip, Tailwind logical-property sweep) is
+// wired in App.jsx via isRtlLocale() — see src/lib/locale.js RTL_BASE_LANGUAGES.
 export const SUPPORTED_LANGUAGES = [
   'en', 'es', 'de', 'zh-CN',
   'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko', 'ar',
   'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
 ];
 
-// The default user-facing set. `ar` gated pending RTL layout support.
+// The default user-facing set. All bundled languages are exposed; MT status
+// is disclosed via the switcher's inline banner.
 export const LANGUAGE_SWITCHER_AVAILABLE = /** @type {readonly string[]} */ ([
   'en', 'es', 'de', 'zh-CN',
-  'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko',
+  'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko', 'ar',
   'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
 ]);
 

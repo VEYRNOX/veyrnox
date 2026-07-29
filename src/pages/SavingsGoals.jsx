@@ -62,7 +62,7 @@ export default function SavingsGoals() {
           <h1 className="text-xl font-bold flex items-center gap-2"><Target className="h-5 w-5 text-primary" /> Savings Goals</h1>
           <p className="text-sm text-muted-foreground">${totalSaved.toLocaleString()} saved of ${totalTarget.toLocaleString()} total target</p>
         </div>
-        <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" /> New Goal</Button>
+        <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 me-1" /> New Goal</Button>
       </div>
 
       {/* Overall Progress */}
@@ -85,7 +85,7 @@ export default function SavingsGoals() {
         <div className="text-center py-16">
           <p className="text-4xl mb-3">🎯</p>
           <p className="text-muted-foreground text-sm">No savings goals yet</p>
-          <Button className="mt-4" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Create Goal</Button>
+          <Button className="mt-4" onClick={() => setOpen(true)}><Plus className="h-4 w-4 me-1" /> Create Goal</Button>
         </div>
       ) : (
         <div className="grid gap-3">
@@ -107,7 +107,7 @@ export default function SavingsGoals() {
                     </div>
                     <p className="text-xs text-muted-foreground">{goal.currency} · {daysLeft !== null ? `${daysLeft}d left` : "No deadline"}</p>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-end shrink-0">
                     <p className="text-sm font-bold">${(goal.current_amount_usd || 0).toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">of ${goal.target_amount_usd?.toLocaleString()}</p>
                   </div>
@@ -118,7 +118,7 @@ export default function SavingsGoals() {
                   <div className="flex gap-2">
                     {!done && (
                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setDepositId(goal.id)}>
-                        <Plus className="h-3 w-3 mr-1" /> Deposit
+                        <Plus className="h-3 w-3 me-1" /> Deposit
                       </Button>
                     )}
                     <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" aria-label={`Delete goal ${goal.title}`} onClick={() => remove.mutate(goal.id)}>

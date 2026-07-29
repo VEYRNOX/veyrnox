@@ -141,7 +141,7 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
                 ) : (
                   <>
                     {Number(b.amount).toLocaleString(undefined, { maximumFractionDigits: 6 })} {b.unit}
-                    <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                    <span className="ms-1 text-[10px] font-normal text-muted-foreground">
                       {b.source === "chain" ? t("stealth.identity.source_live") : t("stealth.identity.source_demo")}
                     </span>
                   </>
@@ -568,7 +568,7 @@ export default function StealthWallets() {
           <EyeOff className="h-4 w-4 text-primary" />
           <p className="text-sm font-semibold">{t("stealth.protects_title")}</p>
         </div>
-        <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
           {/** @type {string[]} */ (t("stealth.protects_items", { returnObjects: true })).map((item, i) => (
             <li key={i}>{item}</li>
           ))}
@@ -592,11 +592,11 @@ export default function StealthWallets() {
                 placeholder={t("stealth.create.secret_placeholder")}
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
-                className="pr-10 tracking-widest text-lg"
+                className="pe-10 tracking-widest text-lg"
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 onClick={() => setShowSecret((s) => !s)}
               >
                 {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -674,14 +674,14 @@ export default function StealthWallets() {
               {t("stealth.demo.step1")}
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy || !vaultExists} onClick={() => demoUnlock(DEMO_REAL_PW)}>
-              <Unlock className="h-3.5 w-3.5 mr-1" /> {t("stealth.demo.unlock_visible")}
+              <Unlock className="h-3.5 w-3.5 me-1" /> {t("stealth.demo.unlock_visible")}
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy || !vaultExists} onClick={() => demoUnlock(DEMO_HIDDEN_SECRET)}>
-              <Ghost className="h-3.5 w-3.5 mr-1" /> {t("stealth.demo.reveal_hidden")}
+              <Ghost className="h-3.5 w-3.5 me-1" /> {t("stealth.demo.reveal_hidden")}
             </Button>
             {isUnlocked && (
               <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => lock()}>
-                <Lock className="h-3.5 w-3.5 mr-1" /> {t("stealth.demo.lock")}
+                <Lock className="h-3.5 w-3.5 me-1" /> {t("stealth.demo.lock")}
               </Button>
             )}
           </div>

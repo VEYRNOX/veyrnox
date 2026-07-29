@@ -77,7 +77,7 @@ export default class WalletEntryErrorBoundary extends Component {
           </div>
 
           {/* ── Error detail (collapsed, monospaced) ── */}
-          <details className="text-left">
+          <details className="text-start">
             <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none">
               Error details
             </summary>

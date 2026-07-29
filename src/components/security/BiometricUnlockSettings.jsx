@@ -152,7 +152,7 @@ export default function BiometricUnlockSettings() {
           While pendingEnable is true the toggle stays visually off — enabling is
           not yet committed; the confirm panel below is the deliberate action. */}
       <div className="flex items-center justify-between">
-        <div className="pr-4">
+        <div className="pe-4">
           <p className="text-sm font-medium">
             {t('settings.biometric_unlock.toggle_label')}
           </p>

@@ -44,7 +44,7 @@ export default function LanguageSwitcher() {
             <SelectItem key={code} value={code}>
               {t(`language.names.${code}`)}
               {MACHINE_TRANSLATED[code] && (
-                <span className="ml-2 text-[10px] text-caution">· MT</span>
+                <span className="ms-2 text-[10px] text-caution">· MT</span>
               )}
             </SelectItem>
           ))}

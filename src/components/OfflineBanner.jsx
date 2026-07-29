@@ -17,7 +17,7 @@ export default function OfflineBanner() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center gap-2 border-t border-border bg-muted/95 px-4 py-2 text-sm text-foreground backdrop-blur"
+      className="fixed bottom-0 start-0 end-0 z-50 flex items-center justify-center gap-2 border-t border-border bg-muted/95 px-4 py-2 text-sm text-foreground backdrop-blur"
     >
       <WifiOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
       <span>You appear to be offline. Some features may not work until the connection returns.</span>

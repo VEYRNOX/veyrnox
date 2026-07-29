@@ -84,7 +84,7 @@ export default function NotificationToast({ notification, onDismiss }) {
         type="button"
         onClick={() => onDismiss?.(notification.id)}
         aria-label="Dismiss notification"
-        className="shrink-0 -mr-1 -mt-1 p-1 rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="shrink-0 -me-1 -mt-1 p-1 rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <X className="h-3.5 w-3.5" aria-hidden="true" />
       </button>

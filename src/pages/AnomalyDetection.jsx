@@ -96,7 +96,7 @@ export default function AnomalyDetection() {
             <p className={`text-xs ${isError ? "text-destructive" : "text-muted-foreground"}`}>{isLoading ? "Loading transactions…" : isError ? "Couldn’t load transactions — scan may be incomplete." : `${transactions.length} transactions loaded · 3 heuristic checks`}</p>
             <ReferenceRateNote />
           </div>
-          <Button onClick={scan} disabled={scanning || isLoading || isError} className="gap-2 ml-auto">
+          <Button onClick={scan} disabled={scanning || isLoading || isError} className="gap-2 ms-auto">
             <RefreshCw className={`h-4 w-4 ${scanning ? "motion-safe:animate-spin" : ""}`} />
             {scanning ? "Scanning…" : scanResult ? "Re-scan" : "Run Scan"}
           </Button>

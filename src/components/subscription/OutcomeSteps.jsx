@@ -114,13 +114,13 @@ export default function OutcomeSteps({ step, onNext, onBack, onSkip }) {
       <div className="flex items-center gap-3">
         {step > 0 && (
           <Button variant="ghost" onClick={onBack} disabled={!onBack}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
+            <ArrowLeft className="h-4 w-4 me-1" />
             Back
           </Button>
         )}
         <Button className="flex-1" onClick={onNext}>
           {isLast ? "See plans" : "Next"}
-          <ArrowRight className="h-4 w-4 ml-1" />
+          <ArrowRight className="h-4 w-4 ms-1" />
         </Button>
       </div>
 

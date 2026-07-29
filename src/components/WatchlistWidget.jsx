@@ -41,7 +41,7 @@ export default function WatchlistWidget() {
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Watchlist</p>
         </div>
         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setAdding(v => !v)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Add
+          <Plus className="h-3.5 w-3.5 me-1" /> Add
         </Button>
       </div>
 
@@ -73,7 +73,7 @@ export default function WatchlistWidget() {
                   <p className="text-sm font-semibold">{item.symbol}</p>
                   {item.note && <p className="text-[10px] text-muted-foreground truncate">{item.note}</p>}
                 </div>
-                <div className="text-right mr-1">
+                <div className="text-end me-1">
                   <p className="text-sm font-semibold">${data.price.toLocaleString()}</p>
                   <p className={`text-[10px] flex items-center gap-0.5 justify-end ${up ? "text-success" : "text-destructive"}`}>
                     {up ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}

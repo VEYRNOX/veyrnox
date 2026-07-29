@@ -137,7 +137,7 @@ export default function TransactionPreview({ result, loading = undefined, error 
           {result.fee && (
             <div className="flex justify-between gap-2 items-start">
               <span className="text-muted-foreground flex items-center gap-1.5"><Fuel className="h-3 w-3" /> Network fee</span>
-              <span className="text-right">
+              <span className="text-end">
                 <span className="mono-value">{result.fee.amount} {result.fee.symbol}</span>
                 {result.fee.sub && <span className="block text-[10px] text-muted-foreground">{result.fee.sub}</span>}
               </span>

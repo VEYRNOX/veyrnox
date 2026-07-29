@@ -56,13 +56,13 @@ function TermsSection({ number, title, group = "terms", children }) {
     <div className="border-b border-border last:border-b-0">
       <button
         type="button"
-        className="w-full flex items-center justify-between py-3 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+        className="w-full flex items-center justify-between py-3 text-start focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
       >
         <span className="text-xs font-medium">
-          <span className="text-muted-foreground mr-1.5">{number}.</span>
+          <span className="text-muted-foreground me-1.5">{number}.</span>
           {title}
         </span>
         <ChevronDown
@@ -139,7 +139,7 @@ export default function TermsLegal() {
             </TermsSection>
 
             <TermsSection number={2} title="What We Don't Collect" group="privacy">
-              <ul className="list-disc pl-4 space-y-1">
+              <ul className="list-disc ps-4 space-y-1">
                 <li><b>No account or sign-up.</b> You don&rsquo;t register, and we never ask for a name or password.</li>
                 <li><b>No private keys or seed phrases.</b> These are generated and encrypted on your device and never leave it.</li>
                 <li><b>No wallet database.</b> Balances, labels, addresses, and transaction history are stored on your device, not on our servers.</li>
@@ -255,7 +255,7 @@ export default function TermsLegal() {
                 removed when you delete the app, clear its storage, or run a panic wipe.
               </p>
               <p>The events we record are:</p>
-              <ul className="list-disc pl-4 space-y-1">
+              <ul className="list-disc ps-4 space-y-1">
                 <li>a wallet was created, imported, or finished setting up</li>
                 <li>a backup was confirmed</li>
                 <li>a session was started</li>
@@ -354,7 +354,7 @@ export default function TermsLegal() {
               <p>
                 Veyrnox is a non-custodial, self-custody digital asset wallet application. This means:
               </p>
-              <ul className="list-disc pl-4 space-y-1">
+              <ul className="list-disc ps-4 space-y-1">
                 <li>You, and only you, generate and hold your private keys and Secret Recovery Phrase (&ldquo;Seed Phrase&rdquo;) on your own device.</li>
                 <li>Veyrnox never has access to, stores, transmits, or retains your private keys, Seed Phrase, wallet password, or unencrypted key material at any time.</li>
                 <li>Veyrnox never holds, controls, or has custody of your digital assets. Your assets exist solely on the relevant blockchain network.</li>
@@ -374,14 +374,14 @@ export default function TermsLegal() {
                 Your private key and Seed Phrase are the sole proof of ownership of your digital assets.
                 You bear exclusive, non-delegable responsibility for:
               </p>
-              <ul className="list-disc pl-4 space-y-1">
+              <ul className="list-disc ps-4 space-y-1">
                 <li>Generating, storing, and protecting your Seed Phrase securely and offline.</li>
                 <li>Maintaining encrypted backups of your private key material.</li>
                 <li>Ensuring no unauthorised person gains access to your device, Seed Phrase, or PIN.</li>
                 <li>Verifying the accuracy of every recipient address before signing and broadcasting any transaction. Blockchain transactions are final and irreversible — Veyrnox cannot cancel, reverse, or modify any transaction once it has been signed and broadcast.</li>
               </ul>
               <p>Veyrnox expressly disclaims all liability for any loss of digital assets resulting from:</p>
-              <ul className="list-[lower-alpha] pl-4 space-y-1">
+              <ul className="list-[lower-alpha] ps-4 space-y-1">
                 <li>your failure to preserve your Seed Phrase or private key,</li>
                 <li>sharing your credentials with any third party,</li>
                 <li>malware, phishing, or social-engineering attacks on your device,</li>
@@ -394,7 +394,7 @@ export default function TermsLegal() {
 
             <TermsSection number={4} title="Eligibility">
               <p>To use Veyrnox you must:</p>
-              <ul className="list-disc pl-4 space-y-1">
+              <ul className="list-disc ps-4 space-y-1">
                 <li>Be at least 18 years of age (or the age of legal majority in your jurisdiction, whichever is higher) and have the legal capacity to enter into binding agreements.</li>
                 <li>Not be located in, a resident of, or an entity established in any jurisdiction subject to comprehensive sanctions by the United Kingdom, the United States, the European Union, or the United Nations, including but not limited to Cuba, Iran, North Korea, Syria, and the Donetsk, Luhansk, and Crimea regions of Ukraine.</li>
                 <li>Not appear on any government-maintained sanctions or prohibited-persons list, including OFAC&apos;s SDN list, the UK HM Treasury Consolidated List, or equivalent EU or UN lists.</li>
@@ -410,7 +410,7 @@ export default function TermsLegal() {
 
             <TermsSection number={5} title="Permitted Use & Prohibited Conduct">
               <p>You may use Veyrnox solely for lawful purposes. You agree not to:</p>
-              <ul className="list-disc pl-4 space-y-1">
+              <ul className="list-disc ps-4 space-y-1">
                 <li>Use the Services to launder money, finance terrorism, evade sanctions, or engage in any other illegal financial activity.</li>
                 <li>Attempt to reverse-engineer, decompile, disassemble, or otherwise derive the source code of the App.</li>
                 <li>Use automated tools, bots, scrapers, or scripts to interact with the App in any unauthorised manner.</li>
@@ -427,7 +427,7 @@ export default function TermsLegal() {
 
             <TermsSection number={6} title="Blockchain & Digital Asset Risks">
               <p>You acknowledge and accept that:</p>
-              <ul className="list-disc pl-4 space-y-1">
+              <ul className="list-disc ps-4 space-y-1">
                 <li>Digital assets are highly volatile. Their value can fall to zero rapidly and without warning. Veyrnox makes no representation regarding the value, suitability, or future performance of any digital asset.</li>
                 <li>Blockchain networks operate on a decentralised, peer-to-peer basis. Veyrnox has no ability to reverse, cancel, or modify any transaction that has been broadcast to a blockchain network.</li>
                 <li>Network congestion, protocol upgrades (&ldquo;hard forks&rdquo;), or validator/miner failures can delay, fail, or permanently lose transactions. Veyrnox is not responsible for any such outcomes.</li>
@@ -503,7 +503,7 @@ export default function TermsLegal() {
                 To the maximum extent permitted by applicable law, in no event shall Veyrnox, its
                 affiliates, officers, directors, employees, agents, or licensors be liable for any:
               </p>
-              <ul className="list-[lower-alpha] pl-4 space-y-1 uppercase font-semibold text-foreground">
+              <ul className="list-[lower-alpha] ps-4 space-y-1 uppercase font-semibold text-foreground">
                 <li>indirect, incidental, special, consequential, punitive, or exemplary damages;</li>
                 <li>loss of profits, revenue, business, or goodwill;</li>
                 <li>loss of data or digital assets;</li>
@@ -535,7 +535,7 @@ export default function TermsLegal() {
                 losses, costs, and expenses (including reasonable legal fees) arising out of or in
                 connection with:
               </p>
-              <ul className="list-[lower-alpha] pl-4 space-y-1">
+              <ul className="list-[lower-alpha] ps-4 space-y-1">
                 <li>your use or misuse of the Services;</li>
                 <li>your breach of these Terms or any applicable law or regulation;</li>
                 <li>your infringement of any third-party rights; or</li>
@@ -638,7 +638,7 @@ export default function TermsLegal() {
             limits are shown inline where you set each one up; this is a <b>reference copy</b> in
             one place, not a replacement.
           </p>
-          <ul className="list-disc pl-4 space-y-1.5">
+          <ul className="list-disc ps-4 space-y-1.5">
             <li>
               <b>Duress / decoy</b> is runtime deniability, <b>not hidden-volume storage</b>: a
               forensic inspection of device storage can reveal a <b>second vault</b> exists.

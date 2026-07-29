@@ -159,7 +159,7 @@ export default function ConnectWallet() {
                 <p className="text-sm font-semibold">{asset.currency}</p>
                 <p className="text-xs text-muted-foreground font-mono truncate">{asset.address}</p>
               </div>
-              <div className="text-right shrink-0">
+              <div className="text-end shrink-0">
                 <p className="text-sm font-bold">{formatCryptoAmount(asset.balance, resolveLocale(), { maximumFractionDigits: 6 })}</p>
                 <p className="text-xs text-muted-foreground">{asset.currency}</p>
               </div>
@@ -178,7 +178,7 @@ export default function ConnectWallet() {
             disabled={importMutation.isPending}
             onClick={() => importMutation.mutate(preview)}
           >
-            {importMutation.isPending && <Loader2 className="h-4 w-4 motion-safe:animate-spin mr-2" />}
+            {importMutation.isPending && <Loader2 className="h-4 w-4 motion-safe:animate-spin me-2" />}
             Import Wallet
           </Button>
         </div>
@@ -201,7 +201,7 @@ export default function ConnectWallet() {
               key={provider.id}
               onClick={() => handleConnect(provider)}
               disabled={connecting === provider.id}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-all disabled:opacity-50 text-left group"
+              className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-all disabled:opacity-50 text-start group"
             >
               <div aria-hidden="true" className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center text-2xl shrink-0">
                 {provider.emoji}

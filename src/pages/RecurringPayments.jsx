@@ -127,7 +127,7 @@ export default function RecurringPayments() {
           <h1 className="text-2xl font-bold tracking-tight">Recurring Payments</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Automate regular crypto transfers</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> New</Button>
+        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 me-1.5" /> New</Button>
       </div>
 
       <div className="flex items-start gap-3 rounded-2xl bg-caution/10 border border-caution/30 p-3">

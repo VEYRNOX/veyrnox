@@ -88,7 +88,7 @@ export default function PaymentLinks() {
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Link2 className="h-6 w-6 text-primary" /> Payment Links</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Generate shareable crypto payment request links</p>
         </div>
-        <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" /> Create Link</Button>
+        <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 me-1.5" /> Create Link</Button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -123,12 +123,12 @@ export default function PaymentLinks() {
               </div>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => copyLink(link)}>
-                  {copied === link.id ? <CheckCircle2 className="h-3 w-3 mr-1 text-success" /> : <Copy className="h-3 w-3 mr-1" />}
+                  {copied === link.id ? <CheckCircle2 className="h-3 w-3 me-1 text-success" /> : <Copy className="h-3 w-3 me-1" />}
                   {copied === link.id ? "Copied!" : "Copy Link"}
                 </Button>
                 {link.status === "active" && (
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markPaid.mutate(link.id)}>
-                    <CheckCircle2 className="h-3 w-3 mr-1" /> Paid
+                    <CheckCircle2 className="h-3 w-3 me-1" /> Paid
                   </Button>
                 )}
                 <Button size="sm" variant="ghost" aria-label="Delete payment link" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => remove.mutate(link.id)}>

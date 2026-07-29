@@ -27,7 +27,7 @@ import OfflineBanner from '@/components/OfflineBanner';
 import { installGlobalErrorHandlers } from '@/lib/globalErrorHandlers';
 import { captureReferralFromUrl } from '@/lib/referralAttribution';
 import { useCryptoDiagnostics } from '@/lib/tracking-integration';
-import { resolveLocale, LOCALE_CHANGED_EVENT } from '@/lib/locale';
+import { resolveLocale, LOCALE_CHANGED_EVENT, isRtlLocale } from '@/lib/locale';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -250,18 +250,20 @@ function App() {
   useEffect(() => { captureReferralFromUrl(); }, []);
   useEffect(() => installGlobalErrorHandlers(), []);
 
-  // Keep <html lang> in sync with the resolved user locale — index.html hardcodes
-  // "en" for the first paint (before JS runs), and screen readers / auto-translate
-  // heuristics rely on this attribute. Re-runs on LOCALE_CHANGED_EVENT so a
-  // Phase 2 language switcher will flip this without a reload.
+  // Keep <html lang> AND <html dir> in sync with the resolved user locale.
+  // index.html hardcodes lang="en" dir="ltr" for the first paint (before JS
+  // runs); screen readers, auto-translate heuristics, and Tailwind's `rtl:`
+  // variants all read these attributes. Re-runs on LOCALE_CHANGED_EVENT so
+  // the Settings switcher flips both without a reload.
   useEffect(() => {
     const apply = () => {
       try {
         const lang = resolveLocale();
         if (typeof document !== 'undefined' && lang) {
           document.documentElement.setAttribute('lang', lang);
+          document.documentElement.setAttribute('dir', isRtlLocale(lang) ? 'rtl' : 'ltr');
         }
-      } catch { /* fail closed: leave the existing attribute */ }
+      } catch { /* fail closed: leave the existing attributes */ }
     };
     apply();
     if (typeof window === 'undefined') return;

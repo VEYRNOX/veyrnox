@@ -362,7 +362,7 @@ function WebPasskeySection() {
           <div className="mt-3 flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-success" />
             <span className="text-xs text-success font-medium">Passkey registered{simulated ? " (simulated)" : ""}</span>
-            <Button size="sm" variant="ghost" className="ml-auto text-xs text-muted-foreground gap-1" onClick={handleRemove} disabled={busy}>
+            <Button size="sm" variant="ghost" className="ms-auto text-xs text-muted-foreground gap-1" onClick={handleRemove} disabled={busy}>
               <Trash2 className="h-3.5 w-3.5" /> Remove
             </Button>
           </div>

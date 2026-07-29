@@ -81,7 +81,7 @@ export default function LandingPage() {
 
         {mobileMenuOpen && (
           <div id="mobile-nav-menu" className="md:hidden bg-background/95 border-b border-border px-6 py-4 space-y-4">
-            <button type="button" onClick={() => navigate("/login")} className="block w-full text-left py-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Login</button>
+            <button type="button" onClick={() => navigate("/login")} className="block w-full text-start py-2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm">Login</button>
             <Button onClick={() => navigate("/register")} className="w-full bg-primary hover:bg-primary/90">Get Started</Button>
           </div>
         )}
@@ -90,8 +90,8 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section aria-labelledby="hero-heading" className="relative overflow-hidden py-20 md:py-32">
         {/* Background gradient orbs — decorative, hidden from assistive tech */}
-        <div aria-hidden="true" className="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl -z-10"></div>
-        <div aria-hidden="true" className="absolute top-1/3 right-1/4 w-96 h-96 rounded-full blur-3xl -z-10" style={{ backgroundColor: "hsl(var(--info)/0.15)" }}></div>
+        <div aria-hidden="true" className="absolute top-0 start-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl -z-10"></div>
+        <div aria-hidden="true" className="absolute top-1/3 end-1/4 w-96 h-96 rounded-full blur-3xl -z-10" style={{ backgroundColor: "hsl(var(--info)/0.15)" }}></div>
 
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
@@ -112,7 +112,7 @@ export default function LandingPage() {
             <div className="flex gap-4 pt-4">
               <Button size="lg" onClick={() => navigate("/register")} className="bg-primary hover:bg-primary/90 text-lg px-8">
                 Launch App
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ms-2 h-5 w-5" />
               </Button>
               <Button size="lg" variant="outline" onClick={() => navigate("/docs")} className="border-border hover:bg-secondary text-lg px-8">
                 Learn More
@@ -150,10 +150,10 @@ export default function LandingPage() {
               </div>
 
               {/* Coin artwork — decorative illustrative currency tokens, not UI chrome */}
-              <div aria-hidden="true" className="absolute top-4 left-0 w-12 h-12 bg-secondary border border-border rounded-full flex items-center justify-center text-muted-foreground font-bold">₿</div>
-              <div aria-hidden="true" className="absolute top-8 right-8 w-12 h-12 bg-secondary border border-border rounded-full flex items-center justify-center text-muted-foreground font-bold">Ξ</div>
-              <div aria-hidden="true" className="absolute bottom-20 left-4 w-12 h-12 bg-secondary border border-border rounded-full flex items-center justify-center text-muted-foreground font-bold">◎</div>
-              <div aria-hidden="true" className="absolute bottom-4 right-0 w-12 h-12 bg-primary/10 border border-primary/30 rounded-full flex items-center justify-center text-primary font-bold">∞</div>
+              <div aria-hidden="true" className="absolute top-4 start-0 w-12 h-12 bg-secondary border border-border rounded-full flex items-center justify-center text-muted-foreground font-bold">₿</div>
+              <div aria-hidden="true" className="absolute top-8 end-8 w-12 h-12 bg-secondary border border-border rounded-full flex items-center justify-center text-muted-foreground font-bold">Ξ</div>
+              <div aria-hidden="true" className="absolute bottom-20 start-4 w-12 h-12 bg-secondary border border-border rounded-full flex items-center justify-center text-muted-foreground font-bold">◎</div>
+              <div aria-hidden="true" className="absolute bottom-4 end-0 w-12 h-12 bg-primary/10 border border-primary/30 rounded-full flex items-center justify-center text-primary font-bold">∞</div>
             </div>
           </div>
         </div>

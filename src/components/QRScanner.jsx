@@ -113,12 +113,12 @@ export default function QRScanner({ onScan, onClose }) {
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute inset-0 border-2 border-transparent">
                 {/* Corner brackets */}
-                {[["top-3 left-3","border-t-2 border-l-2"],["top-3 right-3","border-t-2 border-r-2"],["bottom-3 left-3","border-b-2 border-l-2"],["bottom-3 right-3","border-b-2 border-r-2"]].map(([pos, cls], i) => (
+                {[["top-3 start-3","border-t-2 border-s-2"],["top-3 end-3","border-t-2 border-e-2"],["bottom-3 start-3","border-b-2 border-s-2"],["bottom-3 end-3","border-b-2 border-e-2"]].map(([pos, cls], i) => (
                   <div key={i} className={`absolute ${pos} ${cls} border-primary w-6 h-6 rounded-sm`} />
                 ))}
               </div>
               {scanning && (
-                <div className="absolute left-4 right-4 top-1/2 h-0.5 bg-primary/70 animate-[scan_2s_ease-in-out_infinite]"
+                <div className="absolute start-4 end-4 top-1/2 h-0.5 bg-primary/70 animate-[scan_2s_ease-in-out_infinite]"
                   style={{ boxShadow: "0 0 8px hsl(28,95%,54%)" }} />
               )}
             </div>

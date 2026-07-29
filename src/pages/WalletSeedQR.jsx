@@ -235,7 +235,7 @@ export default function WalletSeedQR() {
           <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
           <p className="text-sm font-semibold text-destructive">Critical Security Warning</p>
         </div>
-        <ul className="text-xs text-muted-foreground space-y-1 ml-7">
+        <ul className="text-xs text-muted-foreground space-y-1 ms-7">
           <li>• Your recovery phrase grants full wallet access — never share it</li>
           <li>• Only reveal your recovery phrase in a private, secure environment</li>
           <li>• Store the printed phrase in a fireproof safe or safety deposit box</li>
@@ -276,7 +276,7 @@ export default function WalletSeedQR() {
               <div className="grid grid-cols-3 gap-2">
                 {words.map((word, i) => (
                   <div key={i} className="flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1.5">
-                    <span className="text-[10px] text-muted-foreground w-4 text-right shrink-0">{i + 1}</span>
+                    <span className="text-[10px] text-muted-foreground w-4 text-end shrink-0">{i + 1}</span>
                     <span className="font-mono text-xs font-medium">{word}</span>
                   </div>
                 ))}
