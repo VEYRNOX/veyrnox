@@ -149,8 +149,9 @@ export default function ReceiveCrypto() {
                 {t("receive.locked.body", { asset: r.asset.name, network: r.network?.name ? `(${r.network.name})` : "" })}
               </p>
             </div>
+            {/* Icon mirrors under dir="rtl" — forward navigation link arrow. */}
             <Button asChild size="sm" variant="outline" className="gap-1.5">
-              <Link to="/hd-wallet">{t("receive.locked.open_hd_wallet")} <ArrowRight className="h-3.5 w-3.5" /></Link>
+              <Link to="/hd-wallet">{t("receive.locked.open_hd_wallet")} <ArrowRight className="h-3.5 w-3.5 rtl:-scale-x-100" /></Link>
             </Button>
           </div>
         )}

@@ -79,7 +79,8 @@ function FeatureTile({ feature, isUnlocked }) {
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">{feature.summary}</p>
       </div>
-      {isUnlocked && <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
+      {/* Icon mirrors under dir="rtl" — feature-tile disclosure arrow. */}
+      {isUnlocked && <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5 rtl:-scale-x-100" />}
     </div>
   );
 

@@ -131,7 +131,8 @@ export default function PortfolioHealthScore({
                   />
                 </div>
               </div>
-              <ChevronRight className="h-3 w-3 text-muted-foreground/50 group-hover:text-muted-foreground" />
+              {/* Icon mirrors under dir="rtl" — list-row disclosure chevron. */}
+              <ChevronRight className="h-3 w-3 text-muted-foreground/50 group-hover:text-muted-foreground rtl:-scale-x-100" />
             </button>
           );
         })}

@@ -265,7 +265,11 @@ export default function Layout() {
               className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
               title={collapsed ? t('nav.sidebar_expand') : t('nav.sidebar_collapse')}
             >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              {/* Icons mirror under dir="rtl" — the chevron points "forward" to
+                  expand and "backward" to collapse, both in reading direction. */}
+              {collapsed
+                ? <ChevronRight className="h-4 w-4 rtl:-scale-x-100" />
+                : <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />}
             </button>
           </div>
           {!collapsed && (
@@ -389,7 +393,8 @@ export default function Layout() {
               }}
               className="flex items-center gap-1 -ms-1 pe-3 min-h-[44px] text-foreground active:opacity-60 transition-opacity select-none"
             >
-              <ChevronLeft className="h-5 w-5" />
+              {/* Icon mirrors under dir="rtl" — back-navigation chevron. */}
+              <ChevronLeft className="h-5 w-5 rtl:-scale-x-100" />
               <span className="text-sm font-semibold">{t('nav.back')}</span>
             </button>
           )}

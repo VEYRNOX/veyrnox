@@ -419,7 +419,8 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
           onClick={() => setPhase('pick')}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ChevronLeft className="h-4 w-4" />
+          {/* Icon mirrors under dir="rtl" — back-navigation chevron. */}
+          <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />
           Back
         </button>
 
