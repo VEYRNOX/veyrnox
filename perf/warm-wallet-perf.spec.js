@@ -130,10 +130,13 @@ async function measure(url) {
       performance.clearMeasures();
     } catch {}
   });
-  await page.goto(url, { waitUntil: 'networkidle' });
-  // networkidle can return before LCP fires on fast runners; poll for one.
-  // If it never fires, we record null and skip the LCP budget rather than
-  // erroring on a matcher-type mismatch (see previous calibration run).
+  // waitUntil MUST NOT be 'networkidle' — the wallet dashboard polls
+  // price feeds continuously and the network never goes quiet, so
+  // goto would hang to the test timeout. 'load' fires once the initial
+  // resources are done; the explicit LCP wait below handles render.
+  await page.goto(url, { waitUntil: 'load' });
+  // Poll for LCP with a bounded timeout; log + skip if it never fires
+  // rather than erroring on a matcher-type mismatch.
   await page
     .waitForFunction(
       () => performance.getEntriesByType('largest-contentful-paint').length > 0,

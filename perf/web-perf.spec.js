@@ -28,12 +28,15 @@ const ROUTES = [
 ];
 
 async function measure(page, url) {
-  await page.goto(url, { waitUntil: 'networkidle' });
-  // networkidle can return before the browser fires the LCP entry — on a
-  // fast runner the app renders in <200ms and PerformanceObserver hasn't
-  // reported the largest-contentful-paint yet. Poll for one, bounded.
-  // If it never fires (some routes have no LCP-worthy element), we record
-  // null and skip the LCP budget for that route rather than error.
+  // waitUntil MUST NOT be 'networkidle' — the Veyrnox app polls price
+  // feeds and telemetry continuously (even in demo mode), so the network
+  // never goes quiet and goto hangs to the test timeout. 'load' fires
+  // once the initial resources are done; the explicit LCP wait below
+  // gives the app real render time.
+  await page.goto(url, { waitUntil: 'load' });
+  // Poll for the LCP entry with a bounded timeout. If it never fires
+  // (some routes have no LCP-worthy element), record null and skip the
+  // LCP budget for that route rather than error.
   await page
     .waitForFunction(
       () => performance.getEntriesByType('largest-contentful-paint').length > 0,
