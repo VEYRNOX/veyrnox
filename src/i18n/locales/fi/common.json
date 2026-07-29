@@ -1,7 +1,7 @@
 {
   "language": {
-    "switcher_label": "Bahasa",
-    "mt_banner": "Terjemahan ini dihasilkan oleh mesin dan belum ditinjau oleh penutur asli. Jika ada kata yang terlihat salah, beralihlah kembali ke bahasa Inggris hingga ditinjau.",
+    "switcher_label": "Kieli",
+    "mt_banner": "Tämä käännös on tuotettu koneellisesti, eikä äidinkielinen puhuja ole tarkistanut sitä. Jos jokin sanamuoto vaikuttaa väärältä, vaihda takaisin englantiin, kunnes se on tarkistettu.",
     "names": {
       "en": "English",
       "es": "Español",
@@ -30,9 +30,9 @@
     }
   },
   "actions": {
-    "cancel": "Batal",
-    "confirm": "Konfirmasi",
-    "close": "Tutup",
-    "back": "Kembali"
+    "cancel": "Peruuta",
+    "confirm": "Vahvista",
+    "close": "Sulje",
+    "back": "Takaisin"
   }
 }

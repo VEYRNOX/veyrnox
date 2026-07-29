@@ -1,7 +1,7 @@
 {
   "language": {
-    "switcher_label": "Bahasa",
-    "mt_banner": "Terjemahan ini dihasilkan oleh mesin dan belum ditinjau oleh penutur asli. Jika ada kata yang terlihat salah, beralihlah kembali ke bahasa Inggris hingga ditinjau.",
+    "switcher_label": "Limbă",
+    "mt_banner": "Această traducere a fost generată automat și nu a fost revizuită de un vorbitor nativ. Dacă o formulare pare greșită, revino la engleză până este revizuită.",
     "names": {
       "en": "English",
       "es": "Español",
@@ -30,9 +30,9 @@
     }
   },
   "actions": {
-    "cancel": "Batal",
-    "confirm": "Konfirmasi",
-    "close": "Tutup",
-    "back": "Kembali"
+    "cancel": "Anulează",
+    "confirm": "Confirmă",
+    "close": "Închide",
+    "back": "Înapoi"
   }
 }

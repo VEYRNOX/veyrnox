@@ -16,7 +16,17 @@
       "id": "Bahasa Indonesia",
       "ja": "日本語",
       "ko": "한국어",
-      "ar": "العربية"
+      "ar": "العربية",
+      "it": "Italiano",
+      "pl": "Polski",
+      "uk": "Українська",
+      "cs": "Čeština",
+      "ro": "Română",
+      "el": "Ελληνικά",
+      "sv": "Svenska",
+      "da": "Dansk",
+      "no": "Norsk",
+      "fi": "Suomi"
     }
   },
   "actions": {

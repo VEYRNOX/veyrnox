@@ -28,9 +28,12 @@ function reset() {
 async function switchLanguage(code) {
   await act(async () => {
     setLocale(code);
-    // Give i18next.changeLanguage's promise a tick to resolve before React
-    // reads the new bundle.
-    await Promise.resolve();
+    // Phase 5 code-split: LOCALE_CHANGED_EVENT handler is now async — it
+    // dynamic-imports the locale's catalogs before calling changeLanguage.
+    // Poll until i18n.language flips (bounded, so a bad locale still fails).
+    for (let i = 0; i < 40 && i18n.language !== code; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
   });
 }
 

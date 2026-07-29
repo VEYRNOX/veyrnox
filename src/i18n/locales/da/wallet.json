@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Transaktionshistorik",
+      "subhead": "Afsendelser og modtagelser pr. chain læst direkte fra chainen — skrivebeskyttet, med links til explorer.",
+      "badge_demo": "Demo · eksempeldata",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Demotilstand — der forespørges intet over netværket; rækkerne nedenfor er lokale eksempeldata.",
+      "loading_label": "Indlæser {{symbol}}-historik",
+      "error_prefix": "Kunne ikke indlæse historik: {{reason}}.",
+      "error_fetch_reason": "Kunne ikke nå RPC-noden — tjek din forbindelse, og prøv igen.",
+      "error_generic_reason": "indekseringstjenesten svarede ikke",
+      "retry": "Prøv igen",
+      "no_indexer_title": "Historik i appen er ikke tilgængelig for {{name}} via JSON-RPC",
+      "no_indexer_body": "En almindelig JSON-RPC-node kan ikke liste en adresses transaktioner, og vi tilføjer bevidst ikke en tredjeparts explorer-/indekseringstjeneste (en ny datakilde og udgangspunkt for dataudveksling). Din fulde historik findes på blockexploreren.",
+      "view_on_explorer": "Se {{address}} på {{network}}-explorer",
+      "view_explorer_title": "Se i blockexplorer",
+      "unlock_for_explorer": "Lås din wallet op for at få explorer-linket til din {{symbol}}-adresse.",
+      "locked_title": "Wallet låst",
+      "locked_body": "Lås din wallet op for at udlede din {{symbol}}-adresse og indlæse dens historik.",
+      "empty": "Ingen transaktioner endnu for {{symbol}} på {{network}}.",
+      "count_one": "{{count}} transaktion",
+      "count_other": "{{count}} transaktioner",
+      "most_recent_suffix": " · seneste",
+      "refresh": "Opdater",
+      "sample_badge": "Eksempel",
+      "to_prefix": "Til ",
+      "from_prefix": "Fra ",
+      "status_pending": "Afventer",
+      "status_confirmed": "Bekræftet",
+      "status_failed": "Mislykket",
+      "awaiting_confirmation": "afventer bekræftelse"
+    },
+    "list": {
+      "empty_title": "Ingen transaktioner endnu",
+      "empty_description": "Når du sender eller modtager på denne wallet, vises din on-chain-aktivitet her."
+    },
+    "receipt": {
+      "heading": "Transaktionskvitteringer",
+      "subhead": "Generér udskrivbare kvitteringer for enhver transaktion",
+      "search_placeholder": "Søg efter ID, adresse eller valuta...",
+      "loading": "Indlæser...",
+      "error": "Kunne ikke indlæse transaktioner. Prøv igen.",
+      "empty": "Ingen transaktioner fundet",
+      "preview_title": "Kvitteringsforhåndsvisning",
+      "print": "Udskriv",
+      "print_window_title": "Transaktionskvittering",
+      "brand": "VEYRNOX",
+      "doc_title": "TRANSAKTIONSKVITTERING",
+      "field_receipt_id": "Kvitterings-ID",
+      "field_date": "Dato",
+      "field_type": "Type",
+      "field_asset": "Aktiv",
+      "field_amount": "Beløb",
+      "field_network_fee": "Netværksgebyr",
+      "field_status": "Status",
+      "field_to": "Til",
+      "default_type": "Overførsel",
+      "default_status": "gennemført",
+      "thank_you": "Tak fordi du bruger {{brand}}",
+      "thank_you_prefix": "Tak fordi du bruger",
+      "digital_record": "Dette er en digital transaktionsregistrering"
+    }
+  },
+  "settings": {
+    "heading": "Sikkerhedsindstillinger",
+    "subhead": "Lås, lås op, og beskyt din wallet",
+    "theme": {
+      "dark": "Mørk tilstand",
+      "light": "Lys tilstand",
+      "saved_note": "Gemt på denne enhed",
+      "switch_to_light": "Skift til lys tilstand",
+      "switch_to_dark": "Skift til mørk tilstand"
+    },
+    "activity_log": {
+      "label": "Aktivitetslog",
+      "description": "Fra som standard · gemmes kun på denne enhed",
+      "help": "Privat log: hvad du har ændret, sendt, tilbagekaldt. Ingen beløb eller adresser. Panic Wipe sletter den.",
+      "enable_aria": "Aktivér aktivitetslog",
+      "disable_aria": "Deaktivér aktivitetslog",
+      "no_events": "Ingen hændelser registreret endnu."
+    },
+    "message_signing": {
+      "label": "Beskedunderskrivelse",
+      "description": "Fra som standard · gemmes kun på denne enhed",
+      "help": "Fra som standard. Lader dig underskrive vilkårlige tekstbeskeder med din wallet-nøgle. Aktivér kun, hvis en dApp eller tjeneste beder dig underskrive en besked.",
+      "enable_aria": "Aktivér beskedunderskrivelse",
+      "disable_aria": "Deaktivér beskedunderskrivelse"
+    },
+    "telemetry": {
+      "label": "Anonyme brugsdata",
+      "description": "Tilvalg · inkluderer aldrig saldi eller adresser",
+      "help": "Hjælper os med at finde fejl og forbedre appen. Der bruges et tilfældigt enheds-ID — aldrig knyttet til din wallet, dine nøgler eller din identitet. Deaktivering stopper al brugsdata i at forlade denne enhed.",
+      "enable_aria": "Slå anonyme brugsdata til",
+      "disable_aria": "Slå anonyme brugsdata fra"
+    },
+    "delete_account": {
+      "title": "Farezone",
+      "clear_cache_label": "Ryd lokal cache",
+      "clear_cache_description": "Rydder gemte data på denne enhed og låser walleten. Din gendannelsessætning virker stadig. Brug Panic Wipe for at slette nøgler.",
+      "delete_button": "Slet",
+      "confirm_prompt_pre": "Dette rydder gemte data og låser walleten. Din gendannelsessætning virker stadig. Skriv",
+      "confirm_prompt_post": "for at bekræfte.",
+      "confirm_placeholder": "Skriv DELETE for at bekræfte",
+      "confirm_aria": "Skriv DELETE for at bekræfte nulstilling af konto",
+      "cancel": "Annuller",
+      "confirm_delete": "Bekræft sletning",
+      "deleting": "Sletter..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometrisk oplåsning",
+      "worth_knowing_label": "Værd at vide.",
+      "kdf_disclosure": "Oplåsning med ét tryk gemmer din wallet-adgangskode på denne enhed, beskyttet af din skærmlås og biometri. Hvis nogen får fat i en kopi af din enhedsbackup uden selve enheden, kan de få adgang til din wallet. Slå dette fra for den stærkeste beskyttelse.",
+      "app_layer_disclosure_pre": "Biometrisk oplåsning gemmer din adgangskode på denne enhed, beskyttet af dit fingeraftryk eller ansigt. Dette foregår inde i appen, ikke på operativsystemniveau.",
+      "app_layer_disclosure_mid": "For stærkere beskyttelse på enhedsniveau, aktivér",
+      "hardware_protection_label": "Hardwarebeskyttelse",
+      "app_layer_disclosure_post": "(tilgængelig nedenfor).",
+      "toggle_label": "Biometrisk oplåsning (primær wallet)",
+      "toggle_description": "Aktivér oplåsning med ét tryk til din primære wallet ved hjælp af enhedens biometri.",
+      "before_enable_label": "Før du aktiverer dette.",
+      "confirm_disclosure": "Hvis nogen får fat i en kopi af din enhedsbackup uden selve enheden, kan de få adgang til din wallet. Slå kun dette til, hvis du er okay med det.",
+      "confirm_enable_button": "Aktivér oplåsning med ét tryk",
+      "cancel_button": "Annuller",
+      "checking_availability": "Tjekker tilgængelighed…",
+      "default_label": "Biometri",
+      "available": "{{label}} tilgængelig.",
+      "available_simulated": "{{label}} tilgængelig (simuleret i demo).",
+      "status_check_failed": "Kunne ikke tjekke biometrisk tilgængelighed på denne enhed.",
+      "awaiting_prompt": "Afventer prompt…",
+      "preview_prompt": "Forhåndsvis prompt",
+      "test_success": "Simuleret autentificering lykkedes",
+      "test_cancelled": "Prompt annulleret"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrisk oplåsning",
+      "heading_web": "Lås op med Passkey",
+      "scope_banner_native_pre": "Dit fingeraftryk eller ansigt tjekkes før oplåsning —",
+      "scope_banner_native_post": "ikke en erstatning for din adgangskode. Din adgangskode og gendannelsessætning virker stadig alene, så tab af biometri låser dig aldrig ude.",
+      "scope_banner_web_pre": "En passkey tilføjer et hurtigt biometrisk eller sikkerhedsnøgle-tryk før oplåsning —",
+      "scope_banner_web_post": "ikke en erstatning for din adgangskode. Din adgangskode og gendannelsessætning virker stadig alene, så tab af passkeyen låser dig aldrig ude.",
+      "extra_step_label": "et ekstra trin",
+      "enroll_button": "Registrér biometrisk oplåsning",
+      "register_button": "Registrér en passkey",
+      "not_setup_native": "Enhedens biometri er ikke sat op. Tilføj et fingeraftryk eller ansigt i dine enhedsindstillinger først — din adgangskode virker stadig.",
+      "not_supported_web": "Passkey-oplåsning er ikke tilgængelig i denne browser. Den virker i mobilappen og moderne browsere. Brug din adgangskode her.",
+      "enroll_error": "Kunne ikke registrere biometrisk oplåsning på denne enhed.",
+      "register_error": "Kunne ikke registrere en passkey på denne enhed.",
+      "enrolled_native": "Biometrisk oplåsning registreret",
+      "registered_web": "Passkey registreret",
+      "simulated_suffix": " (simuleret)",
+      "remove_button": "Fjern",
+      "require_toggle_native": "Kræv biometrisk oplåsning",
+      "require_toggle_web": "Kræv {{label}} ved oplåsning",
+      "require_toggle_aria_web": "Kræv passkey-oplåsning",
+      "require_toggle_desc_native": "Bed om din enheds biometri før oplåsning (din adgangskode virker stadig).",
+      "require_toggle_desc_web": "Bed om din passkey før oplåsning (din adgangskode virker stadig).",
+      "applies_all_sessions": "Dette gælder for alle wallet-sessioner på denne enhed.",
+      "default_label": "Passkey",
+      "checking_availability": "Tjekker tilgængelighed…",
+      "simulated_in_demo": "{{label}} simuleret i demo. ",
+      "awaiting_biometric": "Afventer biometri…",
+      "awaiting_passkey": "Afventer passkey…",
+      "preview_biometric_prompt": "Forhåndsvis biometrisk prompt",
+      "preview_passkey_prompt": "Forhåndsvis passkey-prompt",
+      "simulated_prefix": "Simuleret ",
+      "biometric_verified": "biometri bekræftet",
+      "passkey_verified": "passkey bekræftet",
+      "biometric_prompt_cancelled": "Biometrisk prompt annulleret",
+      "passkey_prompt_cancelled": "Passkey-prompt annulleret"
+    },
+    "hardware_kek": {
+      "heading": "Hardwarebeskyttelse på enheden",
+      "badge_webauthn": "WebAuthn-beskyttet",
+      "badge_off": "FRA",
+      "description_pre": "Låser din wallet til denne fysiske enhed. Efter aktivering kan din wallet kun åbnes på ",
+      "description_device": "denne enhed",
+      "description_post": ". En stjålet backupfil er ubrugelig uden selve enheden, selv med din PIN.",
+      "description_web_suffix": "Virker på Chrome 99+ og Firefox 108+. Safari understøttes ikke.",
+      "device_binding_note": "Enhedsbinding er aktiv og testet på rigtig hardware.",
+      "checking_status": "Tjekker status…",
+      "web_prf_unsupported": "Hardwarebeskyttelse er ikke tilgængelig i denne browser. Brug Chrome 99+ eller Firefox 108+, eller brug iOS- eller Android-appen.",
+      "errors": {
+        "wrong_pin": "Forkert PIN — indtast den PIN, du bruger til at låse din wallet op.",
+        "no_hardware": "Kunne ikke nå denne enheds hardwaresikkerhed. Prøv igen, eller brug en anden enhed.",
+        "malformed_vault": "Dine gemte wallet-data kunne ikke læses på denne enhed.",
+        "not_enrolled": "Hardwarebeskyttelse er ikke aktiveret på dette vault, så der er intet at opgradere.",
+        "generic": "Noget gik galt. Prøv igen.",
+        "key_invalidated": "Dine fingeraftryk er ændret — hardwarebeskyttelsen blev ugyldiggjort. Deaktivér og genaktivér hardwarebeskyttelse, eller gendan fra din seed-sætning.",
+        "insecure_tier": "Denne enhed har intet sikkert hardwareelement — hardwarebeskyttelse kan ikke aktiveres her.",
+        "enter_pin_first": "Indtast din vault-PIN først.",
+        "enter_pin_confirm_removal": "Indtast din vault-PIN for at bekræfte fjernelse.",
+        "enter_pin_upgrade": "Indtast din vault-PIN for at opgradere."
+      },
+      "toast": {
+        "enabled": "Hardwarebeskyttelse aktiveret — dit vault kræver nu denne enhed for at låse op.",
+        "removed": "Hardwarebeskyttelse fjernet.",
+        "upgraded": "Hardwarebeskyttelse opgraderet — dit vault er nu bundet med en unik enhedsspecifik nøgle."
+      },
+      "pin_strength": {
+        "hardware_title": "Hardwarebeskyttet.",
+        "hardware_body": "Din PIN kombineret med Face ID, fingeraftryk eller passkey gør offline-angreb praktisk umulige — en angriber ville have brug for både din PIN og denne fysiske enhed.",
+        "no_hardware_title": "Ingen hardwarefaktor tilgængelig i denne browser.",
+        "no_hardware_body": "Din 8-cifrede PIN (~100 mio. kombinationer) beskyttes kun af Argon2id — en dedikeret angriber kunne udtømme den offline på dage til uger. Brug en adgangskode på 12+ tegn, eller skift til Chrome/Firefox for at aktivere hardwarebeskyttelse.",
+        "pre_enroll_title": "PIN-styrke.",
+        "pre_enroll_body": "En 8-cifret PIN har ~100 mio. kombinationer. Argon2id sænker offline-angreb til ca. 1-2 år enkelttrådet — men en GPU-klynge kunne skære det ned til dage. Aktivering af Face ID, fingeraftryk eller passkey ovenfor gør offline-angreb praktisk umulige ved at kræve denne enhed ved hver oplåsning."
+      },
+      "enrolled": {
+        "active_title": "Aktiv på denne enhed",
+        "active_body_native": "Dit vault kræver denne enheds biometri for at låse op.",
+        "active_body_web": "Dit vault kræver denne enheds passkey for at låse op."
+      },
+      "upgrade": {
+        "available_title": "Opgradering tilgængelig",
+        "available_body": "Din wallet var beskyttet med en ældre version, der delte en nøgle på tværs af enheder. Opgradér for at låse den til kun denne enhed. Dette sker én gang og beder dig bekræfte to gange.",
+        "cta": "Opgradér hardwarebeskyttelse",
+        "busy": "Opgraderer — godkend begge prompts…",
+        "prompt": "Indtast din vault-PIN. Du skal autentificere to gange for at sikre vaultet igen.",
+        "cancel": "Annuller"
+      },
+      "remove": {
+        "cta": "Fjern hardwarebeskyttelse",
+        "prompt_native": "Indtast din PIN for at bekræfte. Du skal bekræfte med dit fingeraftryk eller ansigt.",
+        "prompt_web": "Indtast din adgangskode for at bekræfte. Du skal bekræfte med din passkey.",
+        "busy": "Fjerner — godkend prompten…",
+        "cancel": "Annuller"
+      },
+      "enroll": {
+        "prompt_native": "Indtast din vault-PIN for at aktivere hardwarebeskyttelse.",
+        "prompt_web": "Indtast din 8-cifrede PIN for at aktivere hardwarebeskyttelse. Din browser opretter en passkey for at låse din wallet til denne enhed.",
+        "cta": "Aktivér hardwarebeskyttelse",
+        "busy_native": "Registrerer — godkend den biometriske prompt…",
+        "busy_web": "Registrerer — godkend passkey-prompten…",
+        "footnote_native": "Du bliver bedt om at autentificere med din enheds biometri eller adgangskode.",
+        "footnote_web": "Din browser beder dig autentificere med biometri eller enheds-PIN for at oprette passkeyen."
+      },
+      "blocked": "Indstillinger for hardwarebeskyttelse er ikke tilgængelige i denne session."
+    },
+    "two_factor": {
+      "heading": "Totrinsbekræftelse ved kritiske handlinger",
+      "intro": "Et ekstra tjek oven i din PIN for følsomme handlinger. Selv hvis nogen ser dig taste din PIN, kan de stadig ikke gøre dette uden det andet trin.",
+      "actions_protects_label": "Handlinger, det beskytter",
+      "gated_actions": [
+        { "label": "Afsendelse af midler", "desc": "hver afsendelse, efter sikkerhedstjek" },
+        { "label": "Afsløring af din gendannelsessætning", "desc": "visning eller eksport af din backup" },
+        { "label": "Angivelse af en Nød-PIN", "desc": "oprettelse af nød-walleten" },
+        { "label": "Oprettelse eller skjulning af en wallet", "desc": "ændringer af skjulte wallets" }
+      ],
+      "currently_enforcing": "Håndhæves i øjeblikket:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + handlingsadgangskode",
+      "badge_off": "Fra (kun PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Du er i en lokke-/skjult session. Konfigurér totrinsbekræftelse fra din rigtige session.",
+      "method_a_title": "PIN + handlingsadgangskode",
+      "on_suffix": "TIL",
+      "method_a_desc": "En anden adgangskode gemt inde i din wallet. Stærk, men begge adgangskoder ligger på samme enhed.",
+      "label_pin": "Din PIN",
+      "label_wallet_password": "Wallet-adgangskode",
+      "pin_confirm_placeholder": "Bekræft, at det er dig",
+      "action_password_label_change": "Ny handlingsadgangskode",
+      "action_password_label_set": "Handlingsadgangskode",
+      "action_password_placeholder": "Mindst 8 tegn",
+      "action_password_hint": "Mindst 8 tegn · alle tegn tilladt",
+      "too_short": "Brug mindst {{min}} tegn.",
+      "confirm_label": "Bekræft",
+      "confirm_placeholder": "Indtast handlingsadgangskoden igen",
+      "confirm_hint": "Skal matche din handlingsadgangskode",
+      "mismatch": "Adgangskoderne stemmer ikke overens.",
+      "save_change": "Ændr handlingsadgangskode",
+      "save_set": "Angiv handlingsadgangskode",
+      "remove": "Fjern handlingsadgangskode",
+      "toast_changed": "Handlingsadgangskode ændret",
+      "toast_set": "Handlingsadgangskode angivet",
+      "toast_set_error": "Kunne ikke angive handlingsadgangskoden",
+      "toast_confirm_pin_required": "Indtast din wallet-PIN/adgangskode for at bekræfte",
+      "toast_removed": "Handlingsadgangskode fjernet",
+      "toast_remove_error": "Kunne ikke fjerne handlingsadgangskoden",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "Din PIN plus {{label}}. Hvis biometri ikke er tilgængelig, blokeres handlingen. Tab af din enhed mister aldrig dine midler.",
+      "method_b_desc_web": "Din PIN plus et passkey-tryk. Hvis passkeyen ikke er tilgængelig, blokeres handlingen. At miste den mister aldrig dine midler.",
+      "switch_aria_native": "Brug min enheds biometri som min anden faktor",
+      "switch_aria_web": "Brug passkey som min anden faktor",
+      "confirm_native": "Bekræft kritiske handlinger med {{label}}.",
+      "unavailable_native": "{{label}} / enhedens adgangskode er ikke sat op på denne enhed — aktivér det i dine enhedsindstillinger for at bruge denne faktor.",
+      "unsupported_web": "Denne browser understøtter ikke WebAuthn/passkeys.",
+      "register_hint_web_pre": "Ingen passkey registreret endnu — opsæt en under",
+      "register_hint_web_strong": "Wallet-passkeys",
+      "register_hint_web_post": "nedenfor, og aktivér derefter dette.",
+      "toggle_biometric_needed": "{{label}} er ikke sat op på denne enhed.",
+      "toggle_passkey_needed": "Registrér en passkey først (Wallet-passkeys nedenfor).",
+      "toggle_biometric_on": "{{label}}-anden faktor til",
+      "toggle_biometric_off": "{{label}}-anden faktor fra",
+      "toggle_passkey_on": "Passkey-anden faktor til",
+      "toggle_passkey_off": "Passkey-anden faktor fra"
+    },
+    "session": {
+      "title": "Session og auto-lås",
+      "description": "Låser din wallet efter en periode med inaktivitet, eller når du forlader appen",
+      "status_unlocked": "Låst op",
+      "status_locked": "Låst",
+      "auto_lock_after": "Auto-lås efter",
+      "never_note": "Ingen auto-lås ved inaktivitet, men den låser stadig efter ~45 sek. i baggrunden og efter 8 timer med oplåsning.",
+      "resets_note": "Nulstilles, hver gang du interagerer med appen. Låser også straks, når appen sendes til baggrunden.",
+      "lock_now": "Lås nu",
+      "recent_activity": "Seneste aktivitet",
+      "view_all": "Se alle",
+      "this_device": "Denne enhed",
+      "active_now": "Aktiv nu"
+    },
+    "rehearsal": {
+      "title": "Øv benægtelighed",
+      "description": "Se dashboardet præcis som en person, der holder din oplåste telefon, ville se det."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Wallet",
+    "sidebar_expand": "Udvid sidepanel",
+    "sidebar_collapse": "Skjul sidepanel",
+    "search_placeholder": "Søg...",
+    "search_shortcut_title": "Søg (⌘K)",
+    "lock": "Lås",
+    "lock_confirm_prompt": "Lås denne wallet nu?",
+    "back": "Tilbage",
+    "settings": "Indstillinger",
+    "main_content_aria": "Hovedindhold",
+    "bottom_nav_aria": "Bundnavigation",
+    "more_features_aria": "Flere funktioner",
+    "more": "Mere",
+    "close": "Luk",
+    "all_features_heading": "Alle funktioner",
+    "recent_heading": "Seneste",
+    "tab_home": "Hjem",
+    "tab_send": "Send",
+    "tab_receive": "Modtag"
+  },
+  "back": {
+    "default_label": "Tilbage"
+  },
+  "send": {
+    "heading": "Send krypto",
+    "subheading": "Overfør midler sikkert",
+    "wallet_fallback": "Wallet",
+    "wallet_picker": { "label": "Fra wallet", "placeholder": "Vælg wallet" },
+    "asset_picker": { "label": "Aktiv", "placeholder": "Vælg aktiv" },
+    "recipient": {
+      "label": "Send til (adresse eller navn)",
+      "placeholder": "Indsæt en adresse, eller indtast et navn (f.eks. vitalik.eth)",
+      "scan_qr": "Scan QR-kode",
+      "resolving": "Slår navn op…",
+      "name_not_found": "Navn ikke fundet — tjek stavemåden, eller indsæt adressen direkte.",
+      "ens_using_prefix": "Bruger {{name}} →",
+      "ens_confirm_intro": "slået op privat på blockchainen til:",
+      "ens_confirm_hint": "Bekræft, at denne adresse er korrekt, før du sender.",
+      "use_this_address": "Brug denne adresse",
+      "not_whitelisted": "Denne adresse er ikke på din hvidliste. Dobbelttjek, før du fortsætter. Du kan tilføje betroede adresser i Indstillinger.",
+      "self_send_warning": "Du sender til din egen wallet-adresse. Dette flytter intet mellem wallets og koster stadig et netværksgebyr. Dobbelttjek modtageren, før du fortsætter."
+    },
+    "screening": {
+      "local_disclosure": "Modtagere tjekkes på din enhed for svindeladresser mod din egen historik — intet forlader din enhed.",
+      "remote_opt_in": "Tjek også mod en online trusselsdatabase (sender denne adresse til en tredjepart)",
+      "remote_unavailable": "Onlinetjek er aktiveret, men ingen udbyder er konfigureret i denne build — tjekket forbliver lokalt, så vi kunne ikke bekræfte dette mod en ekstern liste.",
+      "demo_poison_button": "Demo: indsæt en lignende adresse"
+    },
+    "simulation": {
+      "title": "Transaktionssimulering",
+      "toggle_aria": "Slå transaktionssimulering til/fra",
+      "description": "Før du underskriver, kører vi et lokalt forhåndstjek — ingen tredjepartstjenester, ingen data forlader din enhed.",
+      "checks": [
+        "Adresserisiko (poison/lignende)",
+        "Kontraktafkodning",
+        "Flag for ubegrænset godkendelse",
+        "Forudsigelse af tilbageførsel",
+        "Afvigelse fra din historik",
+        "Advarsel om stor udgående overførsel"
+      ],
+      "results_hint": "Resultater vises i næste trin, når du har angivet en adresse og et beløb.",
+      "off_hint": "Simulering er slået fra — der køres intet forhåndstjek før underskrivelse.",
+      "taking_too_long": "Tager det for lang tid?",
+      "turn_off": "Slå simulering fra"
+    },
+    "amount": {
+      "label": "Beløb",
+      "placeholder": "0,00",
+      "being_sent": "sendes",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(live)",
+      "reading_from_network": "læser fra netværket…"
+    },
+    "errors": {
+      "amount_missing": "Beløb er påkrævet",
+      "amount_not_positive": "Beløbet skal være større end nul",
+      "amount_malformed": "Indtast et almindeligt decimalbeløb, f.eks. 0,5",
+      "amount_over_balance": "Utilstrækkelig saldo",
+      "insufficient_balance_title": "Utilstrækkelig saldo.",
+      "insufficient_balance_body": "Du har {{balance}} {{currency}} tilgængeligt at sende (efter netværksgebyret). Reducér beløbet for at fortsætte."
+    },
+    "status": {
+      "not_enabled": "Afsendelse er endnu ikke aktiveret for {{currency}}. Dette aktiv er kun til modtagelse, indtil dets kryptoforløb er verificeret.",
+      "dev_ungate_title": "DEV UNGATE AKTIV",
+      "dev_ungate_body": "— afsendelsesspærren er omgået for {{currency}} via VITE_DEV_UNGATE_SEND (kun dev-build). Dette aktivs status er uændret (stadig ikke live); mainnet forbliver spærret. Kun til testnet-verificering — send aldrig denne build i produktion.",
+      "locked": "Din wallet er låst. Lås den op under Wallet-indstillinger for at underskrive og sende."
+    },
+    "note": { "label": "Note (valgfrit)", "placeholder": "Hvad er dette til?" },
+    "trezor": {
+      "toggle_label": "Underskriv med Trezor",
+      "connected": "Enhed forbundet",
+      "connect_button": "Forbind enhed"
+    },
+    "buttons": {
+      "continue": "Fortsæt",
+      "confirm_send": "Bekræft og send",
+      "back": "Tilbage"
+    },
+    "verify": { "summary_label": "Du sender" },
+    "fee": {
+      "automatic": "Netværksgebyr indstilles automatisk for {{currency}} ({{network}}).",
+      "native_fee_note": "Netværksgebyret betales i {{symbol}} ({{network}}) — du skal bruge {{symbol}} til at dække netværksgebyret, selv når du sender {{token}}."
+    },
+    "decode": {
+      "heading": "Hvad denne transaktion gør",
+      "action": "Handling",
+      "send_tokens": "Send tokens",
+      "token": "Token",
+      "amount": "Beløb",
+      "recipient": "Modtager",
+      "grant_permission": "Giv forbrugstilladelse",
+      "permission": "Tilladelse",
+      "unlimited_permission": "Ubegrænset (denne app kan bruge et vilkårligt beløb)",
+      "spender": "Modtager af tilladelse"
+    },
+    "reauth": {
+      "prompt": "Indtast din {{credential}} igen for at godkende",
+      "credential_pin": "PIN",
+      "credential_password": "adgangskode",
+      "submit_pin": "Godkend",
+      "submit_password": "Godkend og send",
+      "password_placeholder": "Vault-adgangskode",
+      "password_aria": "Vault-adgangskode til godkendelse af afsendelse",
+      "errors": {
+        "unavailable": "Bekræftelse utilgængelig — lås venligst walleten igen og lås den op.",
+        "incorrect": "Forkert — prøv igen ({{remaining}} tilbage)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transaktion udsendt",
+      "heading": "Transaktion udsendt",
+      "body_suffix": "underskrevet lokalt og sendt til netværket",
+      "tx_hash_label": "Transaktions-hash",
+      "view_explorer": "Se i blockexplorer",
+      "pending_note": "Afventer, indtil den er bekræftet på netværket. Saldoen opdateres fra blockchainen, ikke en gemt værdi.",
+      "send_another": "Send en til"
+    },
+    "toasts": {
+      "ens_off_in_session": "Navneopslag er slået fra i denne session — indsæt adressen direkte.",
+      "ens_not_found": "ENS-navn ikke fundet",
+      "sns_unavailable": "Solana-navneopslag er ikke tilgængeligt endnu — indsæt adressen direkte.",
+      "ens_resolution_failed": "Navneopslag mislykkedes",
+      "verify_required": "Færdiggør verificeringen af din backup, før du sender dette beløb.",
+      "two_factor_retry": "Afsendelsen kunne ikke gennemføres — verificér igen for at prøve igen.",
+      "send_failed_fallback": "Afsendelse mislykkedes",
+      "unconfirmed": "Kunne ikke bekræfte denne transaktion på netværket endnu — den kan stadig være afventende. Tjek explorer."
+    }
+  },
+  "receive": {
+    "heading": "Modtag krypto",
+    "subheading": "Vis en wallet-adresse for at modtage midler",
+    "asset_label": "Aktiv",
+    "asset_placeholder": "Vælg aktiv",
+    "not_available": "Modtagelse af {{name}} ({{symbol}}) er ikke tilgængelig endnu. Der vises ingen adresse, før dette aktiv er aktiveret.",
+    "locked": {
+      "title": "Wallet låst",
+      "body": "Lås din wallet op for at afsløre din {{asset}} {{network}}-modtageradresse.",
+      "open_hd_wallet": "Åbn HD Wallet Manager"
+    },
+    "your_address": "Din {{asset}}-adresse",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "{{symbol}}-modtageradresse",
+    "copy": {
+      "copied_aria": "Adresse kopieret til udklipsholder",
+      "copy_aria": "Kopiér adresse",
+      "copied_toast": "Adresse kopieret",
+      "copy_failed_toast": "Kunne ikke kopiere — markér og kopiér adressen manuelt"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} er et token på et Ethereum-kompatibelt netværk. Dette er din wallet-adresse — lad kun afsenderen sende {{symbol}} på {{network}}. Hvis det sendes på et andet netværk, kan midlerne gå tabt permanent.",
+      "evm": "Dette er din delte wallet-adresse. Send kun {{name}} på {{network}} til denne adresse, og sørg for, at afsenderen bruger {{network}}.",
+      "btc": "Send kun Bitcoin på {{network}} til denne adresse.",
+      "solana": "Send kun Solana på {{network}} til denne adresse."
+    },
+    "select_asset_prompt": "Vælg et aktiv, der skal modtages.",
+    "unlock_footer_note": "Adresser kommer fra din wallet på enheden og vises kun, mens den er låst op."
+  },
+  "dashboard": {
+    "portfolioValue": "Porteføljeværdi",
+    "priceAlertsTriggered_one": "{{count}} prisadvarsel udløst!",
+    "priceAlertsTriggered_other": "{{count}} prisadvarsler udløst!",
+    "lockAriaLabel": "Lås saldo bag biometri",
+    "lockBalance": "Lås saldo",
+    "synced": "Synkroniseret {{time}}",
+    "syncJustNow": "Lige nu",
+    "syncSecondsAgo_one": "{{count}} sek. siden",
+    "syncSecondsAgo_other": "{{count}} sek. siden",
+    "syncMinutesAgo_one": "{{count}} min. siden",
+    "syncMinutesAgo_other": "{{count}} min. siden",
+    "actions": {
+      "send": "Send",
+      "receive": "Modtag",
+      "schedule": "Planlæg",
+      "add": "Tilføj"
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Aktivitet",
+      "analytics": "Analyse"
+    },
+    "emptyWallets": {
+      "title": "Ingen wallets endnu",
+      "description": "Tilføj en wallet for at begynde at modtage, sende og opbevare aktiver på tværs af chains."
+    },
+    "addWallet": "Tilføj wallet",
+    "searchTransactionsPlaceholder": "Søg i transaktioner...",
+    "emptySearch": {
+      "title": "Ingen matchende transaktioner",
+      "description": "Prøv at rydde filtre eller søge et andet aktiv eller en anden adresse."
+    },
+    "emptyTransactions": {
+      "title": "Ingen transaktioner endnu",
+      "description": "Din on-chain-aktivitet vises her, når du sender eller modtager."
+    },
+    "portfolioPerformance": "Porteføljeresultat",
+    "assetDistribution": "Aktivfordeling",
+    "quickAccess": "Genveje",
+    "quickAccessItems": {
+      "receive": "Modtag",
+      "security": "Sikkerhed",
+      "approvals": "Godkendelser",
+      "addressCheck": "Adressetjek",
+      "analytics": "Analyse",
+      "sentiment": "Stemning",
+      "riskScore": "Risikoscore"
+    },
+    "walletNameLabel": "Wallet-navn",
+    "walletNamePlaceholder": "Min ETH-wallet",
+    "addWalletDialog": {
+      "title": "Tilføj wallet",
+      "currency": "Valuta",
+      "creating": "Opretter...",
+      "create": "Opret wallet"
+    },
+    "renameWalletDialog": {
+      "title": "Omdøb wallet",
+      "saving": "Gemmer...",
+      "save": "Gem navn"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Krypteret vault",
+    "backup": {
+      "title": "Sikkerhedskopiér \"{{name}}\"",
+      "reauthDescription": "Bekræft, at det er dig, så viser vi gendannelsessætningen for denne wallet.",
+      "description": "Skriv disse 12 ord ned offline. Alle med dem kan bruge denne wallets midler — og det er den eneste måde at gendanne den på.",
+      "warning": "Tag aldrig et skærmbillede. Skriv den aldrig ind i en anden app.",
+      "confirmButton": "Jeg har skrevet den ned — markér som sikkerhedskopieret"
+    },
+    "addWallet": {
+      "defaultWalletName": "din nye wallet",
+      "backupDescription": "Denne wallet har sin egen gendannelsessætning — separat fra alle andre wallets i dit vault. Skriv den ned offline, før du bruger den.",
+      "backedUpDone": "Jeg har sikkerhedskopieret den — færdig",
+      "title": "Tilføj en wallet",
+      "createNew": "Opret ny",
+      "importSeed": "Importér seed",
+      "createDescription": "Genererer en NY seed, der udleder ALLE chains (ETH/EVM, BTC, SOL). Du sikkerhedskopierer den, før den bliver aktiv.",
+      "importDescription": "Indsæt en eksisterende 12/24-ords seed — alle chains udledes automatisk (en seed er ikke chain-specifik).",
+      "recoveryPhraseLabel": "Gendannelsessætning",
+      "recoveryPhrasePlaceholder": "ord1 ord2 ... ord12",
+      "walletNameLabel": "Wallet-navn",
+      "walletNamePlaceholder": "f.eks. Opsparing",
+      "assetsToShowLabel": "Aktiver, der skal vises",
+      "assetsToShowHint": "Kun et visningsvalg — seeden indeholder hver chain uanset.",
+      "confirmVaultPlaceholder": "Bekræft, at det er dig, for at ændre dit vault",
+      "vaultReentryHint": "Indtastet igen for at godkende en ændring af dit seed-vault. Gemmes aldrig i hukommelsen.",
+      "createAndBackup": "Opret og sikkerhedskopiér",
+      "importWallet": "Importér wallet"
+    },
+    "vaultPinLabel": "Vault-PIN",
+    "vaultPasswordLabel": "Vault-adgangskode",
+    "cancel": "Annuller",
+    "done": "Færdig",
+    "manageAssets": {
+      "title": "Aktiver for \"{{name}}\"",
+      "description": "Vælg hvilke aktiver der vises for denne wallet. Skjulte forbliver væk indtil de tilføjes."
+    },
+    "rename": {
+      "title": "Omdøb wallet",
+      "save": "Gem navn"
+    },
+    "remove": {
+      "title": "Fjern \"{{name}}\"?",
+      "onlyWallet": "Dette er din eneste wallet — den kan ikke fjernes. Brug Panic Wipe under Sikkerhed for at slette alt.",
+      "description": "Fjerner denne wallets seed fra denne enhed.",
+      "backedUpNote": "Du kan gendanne den fra dens gendannelsessætning.",
+      "notBackedUpNote": "⚠️ IKKE sikkerhedskopieret — uden dens sætning er den tabt for evigt.",
+      "button": "Fjern wallet"
+    },
+    "move": {
+      "title": "Flyt \"{{name}}\" til…"
+    },
+    "managePortfolios": {
+      "title": "Porteføljer",
+      "defaultTag": "(standard)",
+      "saveAriaLabel": "Gem porteføljenavn",
+      "renameAriaLabel": "Omdøb {{name}}",
+      "deleteAriaLabel": "Slet {{name}}",
+      "newNamePlaceholder": "Nyt porteføljenavn",
+      "addButton": "Tilføj"
+    },
+    "activity": {
+      "unlockPrompt": "Lås din wallet op for at se aktivitet.",
+      "loading": "Indlæser...",
+      "loadError": "Kunne ikke indlæse aktivitet.",
+      "noTransactions": "Ingen transaktioner endnu.",
+      "viewFullHistory": "Se fuld historik →"
+    },
+    "portfolioValueLabel": "Porteføljeværdi",
+    "explore": {
+      "subtitle": "Du udforsker — kun visning. Ingen wallet endnu.",
+      "description": "Kig frit rundt. Når du er klar, opret en ny selv-forvaltet wallet eller importér en eksisterende seed — nøgler genereres og krypteres på denne enhed.",
+      "createOrImport": "Opret eller importér en wallet"
+    },
+    "portfoliosButton": "Porteføljer",
+    "totalValueHeading": "{{name}} · Samlet værdi",
+    "partialTotalNote": "Nogle saldi kunne ikke indlæses — denne total kan være ufuldstændig.",
+    "refreshPricesTooltip": "Opdater live-priser",
+    "live": "Live",
+    "approximate": "Omtrentlig",
+    "seedVerify": {
+      "title": "Færdiggør verificering af din backup",
+      "description": "Påkrævet for afsendelse over sikkerhedsgrænsen.",
+      "verifyAriaLabel": "Verificér din wallet-backup",
+      "verifyButton": "Verificér"
+    },
+    "unbacked": {
+      "titleBold": "Wallet-backup ufuldstændig.",
+      "body": "Hver wallet har sin egen gendannelsessætning — uden den kan den wallets midler ikke gendannes. Sikkerhedskopiér nu.",
+      "backUpButton": "Sikkerhedskopiér \"{{name}}\""
+    },
+    "actions": {
+      "send": "Send",
+      "receive": "Modtag",
+      "addWallet": "Tilføj wallet"
+    },
+    "activeWalletHint": {
+      "prefix": "Send/Modtag bruger",
+      "otherPortfolio": " (i en anden portefølje)",
+      "suffix": ". Tryk på en wallet nedenfor for at skifte."
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Aktivitet",
+      "analytics": "Analyse"
+    },
+    "noWalletsInPortfolio": "Ingen wallets i \"{{name}}\". Tilføj en wallet, eller flyt en hertil fra dens menu.",
+    "hideAssets": "Skjul aktiver",
+    "showAllAssets": "Vis alle aktiver",
+    "walletCard": {
+      "active": "Aktiv",
+      "backedUp": "Sikkerhedskopieret",
+      "backUp": "Sikkerhedskopiér",
+      "partial": "delvis",
+      "optionsAriaLabel": "Indstillinger for {{name}}",
+      "noAssetsShown": "Ingen aktiver vist. Brug \"Administrér aktiver\"."
+    },
+    "menu": {
+      "manageAssets": "Administrér aktiver",
+      "rename": "Omdøb",
+      "moveToPortfolio": "Flyt til portefølje",
+      "backUp": "Sikkerhedskopiér",
+      "remove": "Fjern"
+    },
+    "balanceLoadFailedTitle": "Saldo kunne ikke indlæses",
+    "defaultWalletFallbackName": "wallet",
+    "toast": {
+      "walletImported": "Wallet importeret — alle chains udledt.",
+      "walletRemoved": "Wallet fjernet fra denne enhed.",
+      "walletAddedBackedUp": "Wallet tilføjet og sikkerhedskopieret.",
+      "movedTo": "Flyttet til {{name}}.",
+      "markedBackedUp": "\"{{name}}\" markeret som sikkerhedskopieret."
+    },
+    "errors": {
+      "couldNotAddWallet": "Kunne ikke tilføje wallet",
+      "couldNotImportWallet": "Kunne ikke importere wallet",
+      "couldNotRemoveWallet": "Kunne ikke fjerne wallet"
+    }
+  },
+  "networth": {
+    "title": "Krypto-nettoformue",
+    "unlockPrompt": "Lås din wallet op for at se dine on-chain-beholdninger.",
+    "subtitle": "Dine on-chain-beholdninger — inkluderer ikke eksterne aktiver.",
+    "totalHoldings": "Samlede beholdninger",
+    "partialNote": "delvis — nogle saldi kunne ikke læses",
+    "refreshPricesTooltip": "Opdater live-priser",
+    "live": "Live",
+    "approximate": "Omtrentlig",
+    "allocation": "Fordeling",
+    "holdings": "Beholdninger",
+    "noHoldings": "Ingen beholdninger endnu."
+  }
+}
