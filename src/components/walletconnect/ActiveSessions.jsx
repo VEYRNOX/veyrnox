@@ -4,6 +4,7 @@ import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { isSafeIconUrl } from '@/lib/wcIconUrl.js';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Show the bare host (drop scheme + trailing slash) so a long dApp URL stays
 // scannable and truncates cleanly instead of wrapping the card.
@@ -13,11 +14,12 @@ function displayHost(url, fallback) {
 }
 
 export function ActiveSessions() {
+  const { t } = useTranslation('security');
   const { sessions, disconnect, refreshSessions } = useWalletConnect();
   const [disconnecting, setDisconnecting] = useState(null);
 
   if (!sessions.length) {
-    return <p className={styles.empty}>No dApps connected yet. Pair one above to get started.</p>;
+    return <p className={styles.empty}>{t('wc.active_sessions.empty')}</p>;
   }
 
   async function handleDisconnect(topic) {
@@ -30,7 +32,7 @@ export function ActiveSessions() {
     <ul className={styles.list}>
       {sessions.map((s) => {
         const meta = s.peer?.metadata ?? {};
-        const name = meta.name || 'Unknown dApp';
+        const name = meta.name || t('wc.active_sessions.unknown_dapp');
         const host = displayHost(meta.url, `${s.topic.slice(0, 16)}…`);
         // M11 — expiry is enforced on the signing path; surface it here too so a
         // stale connection that should be revoked/reconnected is visible.
@@ -67,8 +69,8 @@ export function ActiveSessions() {
               <p className={styles.url} title={meta.url || ''}>{host}</p>
               <div className={styles.meta}>
                 {isExpired
-                  ? <span className={styles.statusExpired} title={`Expired ${expiry} — signing disabled`}>Expired</span>
-                  : <span className={styles.status}>Expires {expiry}</span>}
+                  ? <span className={styles.statusExpired} title={t('wc.active_sessions.expired_title', { expiry })}>{t('wc.active_sessions.expired_badge')}</span>
+                  : <span className={styles.status}>{t('wc.active_sessions.expires_label', { expiry })}</span>}
                 {chainNames.map((c) => <span key={c} className={styles.chip}>{c}</span>)}
               </div>
             </div>
@@ -77,9 +79,9 @@ export function ActiveSessions() {
               className={styles.revokeBtn}
               onClick={() => handleDisconnect(s.topic)}
               disabled={busy}
-              aria-label={`Revoke connection to ${name}`}
+              aria-label={t('wc.active_sessions.revoke_aria', { name })}
             >
-              {busy ? '…' : 'Revoke'}
+              {busy ? t('wc.active_sessions.revoke_busy') : t('wc.active_sessions.revoke')}
             </button>
           </li>
         );

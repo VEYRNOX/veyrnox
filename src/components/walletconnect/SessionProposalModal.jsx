@@ -3,6 +3,7 @@ import styles from './SessionProposalModal.module.css';
 import { successHaptic, errorHaptic, tapHaptic } from '@/lib/haptics';
 import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { useId, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { checkDappDomain, LOCAL_KNOWN_BAD } from '@/risk/knownBadDapps.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { SUPPORTED_CHAIN_IDS } from '@/wallet-core/evm/walletconnect/router.js';
@@ -25,6 +26,7 @@ function chainId(caip2) {
 }
 
 export function SessionProposalModal({ proposal, onClose }) {
+  const { t } = useTranslation('security');
   const { approveSession, rejectSession, evmAddress, isSendReauthRequired } = useWalletConnect();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -54,7 +56,7 @@ export function SessionProposalModal({ proposal, onClose }) {
       // the user sees a clear message rather than a generic thrown error. The
       // provider's handleApproveSession enforces the same check authoritatively.
       if (isSendReauthRequired?.()) {
-        throw new Error('Step-up re-auth required — unlock again to approve this connection');
+        throw new Error(t('wc.session_proposal.step_up_required'));
       }
       await approveSession(proposal.id);
       successHaptic();
@@ -87,11 +89,11 @@ export function SessionProposalModal({ proposal, onClose }) {
         aria-modal="true"
         aria-labelledby={titleId}
       >
-        <h2 id={titleId} className={styles.title}>Connect to dApp?</h2>
+        <h2 id={titleId} className={styles.title}>{t('wc.session_proposal.title')}</h2>
 
         {dapp.flagged && (
           <div className={styles.riskAlert}>
-            <p className={styles.riskTitle}>⚠ Known scam / phishing site</p>
+            <p className={styles.riskTitle}>{t('wc.session_proposal.risk_title')}</p>
             <p className={styles.riskBody}>{dapp.reason}</p>
             <p className={styles.riskDomain}>{dapp.domain}</p>
             <label className={styles.riskCheck}>
@@ -100,13 +102,13 @@ export function SessionProposalModal({ proposal, onClose }) {
                 checked={ackKnownBad}
                 onChange={(e) => setAckKnownBad(e.target.checked)}
               />
-              I understand this site is flagged as a phishing risk and want to connect anyway.
+              {t('wc.session_proposal.risk_ack')}
             </label>
           </div>
         )}
 
         <p className={styles.honestyCaveat}>
-          Veyrnox checks against {LOCAL_KNOWN_BAD.length} known scam domains. A clean result does not confirm this site is safe — always verify the dApp URL independently.
+          {t('wc.session_proposal.honesty_caveat', { count: LOCAL_KNOWN_BAD.length })}
         </p>
 
         <div className={styles.dappInfo}>
@@ -124,27 +126,27 @@ export function SessionProposalModal({ proposal, onClose }) {
             crossOrigin="anonymous"
           />
           <div>
-            <p className={styles.dappName}>{meta.name ?? 'Unknown dApp'}</p>
+            <p className={styles.dappName}>{meta.name ?? t('wc.session_proposal.unknown_dapp')}</p>
             <p className={styles.dappUrl}>{meta.url ?? ''}</p>
           </div>
         </div>
 
         <p className={styles.domainCaveat}>
-          Domain check covers a limited blocklist — absence does not confirm safety.
+          {t('wc.session_proposal.domain_caveat')}
         </p>
 
-        <p className={styles.label}>Connecting wallet</p>
-        <p className={styles.address}>{evmAddress ?? '—'}</p>
+        <p className={styles.label}>{t('wc.session_proposal.connecting_wallet_label')}</p>
+        <p className={styles.address}>{evmAddress ?? t('wc.session_proposal.address_dash')}</p>
 
         {chains.length > 0 && (
           <>
-            <p className={styles.label}>Required chains</p>
+            <p className={styles.label}>{t('wc.session_proposal.required_chains_label')}</p>
             <ul className={styles.list}>
               {chains.map((c) => <li key={c}>{chainLabel(c)}</li>)}
             </ul>
             {chains.some((c) => !SUPPORTED_CHAIN_IDS.has(chainId(c))) && (
               <p className={styles.warning}>
-                Unsupported chains will be excluded from the approved session.
+                {t('wc.session_proposal.unsupported_chains_warning')}
               </p>
             )}
           </>
@@ -152,7 +154,7 @@ export function SessionProposalModal({ proposal, onClose }) {
 
         {optionalChains.length > 0 && (
           <>
-            <p className={styles.label}>Also requested (optional)</p>
+            <p className={styles.label}>{t('wc.session_proposal.optional_requested_label')}</p>
             <ul className={`${styles.list} ${styles.optionalList}`}>
               {optionalChains.map((c) => <li key={c}>{chainLabel(c)}</li>)}
             </ul>
@@ -161,7 +163,7 @@ export function SessionProposalModal({ proposal, onClose }) {
 
         {methods.length > 0 && (
           <>
-            <p className={styles.label}>Requested methods</p>
+            <p className={styles.label}>{t('wc.session_proposal.requested_methods_label')}</p>
             <ul className={styles.list}>
               {methods.map((m) => <li key={m}>{m}</li>)}
             </ul>
@@ -170,7 +172,7 @@ export function SessionProposalModal({ proposal, onClose }) {
 
         {(optionalChains.length > 0 || optionalMethods.length > 0) && (
           <div className={styles.optionalSection}>
-            <p className={styles.label}>Optional chains also requested</p>
+            <p className={styles.label}>{t('wc.session_proposal.optional_chains_label')}</p>
             {optionalChains.length > 0 && (
               <ul className={styles.list}>
                 {optionalChains.map((c) => <li key={c}>{chainLabel(c)}</li>)}
@@ -178,30 +180,30 @@ export function SessionProposalModal({ proposal, onClose }) {
             )}
             {optionalMethods.length > 0 && (
               <>
-                <p className={styles.label}>Optional methods also requested</p>
+                <p className={styles.label}>{t('wc.session_proposal.optional_methods_label')}</p>
                 <ul className={styles.list}>
                   {optionalMethods.map((m) => <li key={m}>{m}</li>)}
                 </ul>
               </>
             )}
             <p className={styles.optionalNote}>
-              These are optional — the dApp has declared it can work without them. They will be included in the approved session if your wallet supports them.
+              {t('wc.session_proposal.optional_note')}
             </p>
           </div>
         )}
 
         <p className={styles.warning}>
-          Only connect to dApps you trust. This wallet will be visible to the dApp once connected.
+          {t('wc.session_proposal.trust_warning')}
         </p>
 
         {err && <p className={styles.error}>{err}</p>}
 
         <div className={styles.actions}>
           <button className={styles.rejectBtn} onClick={handleReject} disabled={busy}>
-            Reject
+            {t('wc.session_proposal.reject')}
           </button>
           <button className={styles.approveBtn} onClick={handleApprove} disabled={busy || (dapp.flagged && !ackKnownBad)}>
-            {busy ? 'Connecting…' : 'Connect'}
+            {busy ? t('wc.session_proposal.connect_busy') : t('wc.session_proposal.connect')}
           </button>
         </div>
       </div>
