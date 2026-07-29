@@ -252,6 +252,28 @@ export default function SendCrypto() {
   const [assetSymbol, setAssetSymbol] = useState(searchParams.get("asset") ?? "");
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
+  // LOCALE-AWARE CANONICAL FORM of the raw input, for every DERIVE / GATE / SEND
+  // site below. A de-DE / fr-FR / es-ES user who types "1,5" needs the same
+  // Continue button to work as an en-US user typing "1.5" — but the downstream
+  // validators (isFormAmountWellFormed, wallet-core assertDecimalAmount — M-3)
+  // are ASCII-only by design. This is the ONE place that translates between the
+  // two. See lib/locale.js for the safety rule: an ambiguous input ("1,5" in
+  // en-US) round-trips unchanged so the strict predicate still flags it — no
+  // silent 10x sends.
+  //
+  // The RAW `amount` is kept for display-only sites (the input's own value, the
+  // confirmation screen, the notification text) so the user sees back exactly
+  // what they typed. Every derive/gate/send site reads canonicalAmount.
+  //
+  // Declared alongside `amount` (NOT next to amountNum / amountWellFormed
+  // further down) because the very first tokenCalldata useMemo references it in
+  // its dep array at render time — a later declaration would produce a TDZ
+  // ReferenceError before the page ever mounted. Caught by web-e2e, missed by
+  // unit tests that pin SendCrypto by source-read.
+  const canonicalAmount = useMemo(
+    () => normalizeDecimalInput(amount, resolveLocale()),
+    [amount],
+  );
   const [note, setNote] = useState("");
   const [step, setStep] = useState("form"); // form | verify | done
   const [showScanner, setShowScanner] = useState(false);
@@ -559,22 +581,6 @@ export default function SendCrypto() {
   // I4 fail-closed: never show a $ value we didn't confirm.
   const balanceIndeterminate = !demoActive && flowSendEnabled && nativeLiveBalance == null;
   const balanceUsd = !balanceIndeterminate && sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
-  // LOCALE-AWARE CANONICAL FORM of the raw input, for every DERIVE / GATE / SEND
-  // site below. A de-DE / fr-FR / es-ES user who types "1,5" needs the same
-  // Continue button to work as an en-US user typing "1.5" — but the downstream
-  // validators (isFormAmountWellFormed here, assertDecimalAmount in wallet-core
-  // amount.js — M-3) are ASCII-only by design. This is the ONE place that
-  // translates between the two. See lib/locale.js for the safety rule: an
-  // ambiguous input ("1,5" in en-US) round-trips unchanged so the strict
-  // predicate still flags it — no silent 10x sends.
-  //
-  // The RAW `amount` is kept for display-only sites (the input's own value, the
-  // confirmation screen, the notification text) so the user sees back exactly
-  // what they typed. Every derive/gate/send site reads canonicalAmount.
-  const canonicalAmount = useMemo(
-    () => normalizeDecimalInput(amount, resolveLocale()),
-    [amount],
-  );
   const amountNum = parseFloat(canonicalAmount);
   // Whether the typed amount is one we are willing to DERIVE FIGURES FROM. The
   // amount field is type="text" (type="number" blanked "1,5" / "1." / "1.2.3"
