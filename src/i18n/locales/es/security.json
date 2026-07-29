@@ -135,5 +135,69 @@
       "save": "Guardar límite",
       "saved_toast": "Límite establecido"
     }
+  },
+  "fraud": {
+    "heading": "Escaneo de seguridad",
+    "subhead": "Comprobaciones heurísticas en el dispositivo — sin llamadas externas",
+    "scanner_title": "Escáner",
+    "loading": "Cargando datos…",
+    "load_error": "No se pudieron cargar los datos locales. Inténtalo de nuevo.",
+    "loaded_summary": "{{txCount}} transacciones · {{addressCount}} entradas de la libreta · 3 comprobaciones",
+    "cta_scan": "Ejecutar escaneo",
+    "cta_rescan": "Reescanear",
+    "last_scan": "Último escaneo: {{time}} · {{txCount}} transacciones · {{addressCount}} direcciones revisadas",
+    "scope": {
+      "anomalies": {
+        "label": "Anomalías de transacciones",
+        "desc": "Atípicos grandes (>2,5σ), ráfagas de velocidad, envíos fuera de horario"
+      },
+      "addresses": {
+        "label": "Revisión de direcciones",
+        "desc": "Libreta + contrapartes de transacciones contra la lista local de direcciones marcadas"
+      },
+      "alerts": {
+        "label": "Alertas de fraude guardadas",
+        "desc": "Registros de FraudAlert guardados en IndexedDB local"
+      }
+    },
+    "check_found": "{{count}} encontradas",
+    "types": {
+      "large_transfer": "Transferencia grande",
+      "rapid_transactions": "Transacciones rápidas",
+      "unusual_hour": "Actividad fuera de horario",
+      "flagged_address": "Dirección marcada"
+    },
+    "severity": {
+      "critical": "Crítica",
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja",
+      "medium_low": "Media / Baja"
+    },
+    "detail": {
+      "large_transfer": "{{amount}} {{currency}} — {{sigma}}σ por encima de tu envío medio",
+      "rapid_transactions": "{{count}} transacciones en 1 hora",
+      "unusual_hour": "Transacción a las {{hour}}:00 — fuera del horario habitual",
+      "flagged_address": "{{label}} ({{prefix}}…{{suffix}}) coincide con la lista local de direcciones marcadas",
+      "flagged_address_default_label": "Entrada de la libreta",
+      "flagged_tx_recipient": "Destinatario de la transacción",
+      "flagged_tx_sender": "Remitente de la transacción",
+      "stored_default": "Alerta de fraude guardada"
+    },
+    "empty_prescan": {
+      "title": "Ejecuta un escaneo para empezar",
+      "body": "Todas las comprobaciones se ejecutan sobre datos locales — nada sale del dispositivo"
+    },
+    "empty_clear": {
+      "title": "No se encontró nada",
+      "body": "Sin anomalías, sin direcciones marcadas, sin alertas guardadas"
+    },
+    "scan_findings_one": "{{count}} hallazgo del escaneo",
+    "scan_findings_other": "{{count}} hallazgos del escaneo",
+    "stored_alerts_one": "{{count}} alerta guardada",
+    "stored_alerts_other": "{{count}} alertas guardadas",
+    "stored_badge": "guardada",
+    "dismiss": "Descartar",
+    "footer": "Las comprobaciones se ejecutan solo sobre datos locales — no se hace ninguna llamada externa"
   }
 }
