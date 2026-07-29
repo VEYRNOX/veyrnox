@@ -55,7 +55,11 @@ export default function BiometricUnlockSettings() {
       .catch(() => {
         // Probe failed — fail honest: render the unavailable state instead of
         // hanging on "Checking availability…" forever (mirrors PasskeyUnlockSettings).
-        if (active) setStatus({ available: false, detail: t('settings.biometric_unlock.status_check_failed') });
+        // Store a translation KEY, not a resolved string, so switching language
+        // mid-mount re-renders the message in the new locale. The render layer
+        // reads `detailKey` first and falls back to `detail` for shapes that
+        // still carry a resolved string (from getBiometricStatus itself).
+        if (active) setStatus({ available: false, detailKey: 'settings.biometric_unlock.status_check_failed' });
       });
     return () => { active = false; };
   }, []);
@@ -216,13 +220,13 @@ export default function BiometricUnlockSettings() {
               {simulated
                 ? t('settings.biometric_unlock.available_simulated', { label })
                 : t('settings.biometric_unlock.available', { label })}{' '}
-              {status.detail}
+              {status.detailKey ? t(status.detailKey) : status.detail}
             </span>
           </span>
         ) : (
           <span className="flex items-start gap-1.5 text-muted-foreground">
             <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <span>{status.detail}</span>
+            <span>{status.detailKey ? t(status.detailKey) : status.detail}</span>
           </span>
         )}
       </div>

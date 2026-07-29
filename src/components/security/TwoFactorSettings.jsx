@@ -48,9 +48,18 @@ export default function TwoFactorSettings() {
   const {
     actionPasswordConfigured, setActionPassword, clearActionPassword, isDecoy, isHidden, recordAudit,
   } = useWallet();
-  const gatedActions = t('settings.two_factor.gated_actions', { returnObjects: true }).map((a, i) => ({
-    ...a, icon: GATED_ACTION_ICONS[i],
-  }));
+  // I4 fail-closed: t(..., {returnObjects}) can return the key string (or a
+  // shape mismatch) when the resource is missing or a translator drops the
+  // array — `.map` would then throw and take the settings page with it. Guard
+  // by clamping to the JSX-side icon array (source of truth for how many rows
+  // ever render) and skipping any entry that is not a { label, desc } object.
+  const gatedRaw = t('settings.two_factor.gated_actions', { returnObjects: true });
+  const gatedActions = (Array.isArray(gatedRaw) ? gatedRaw : [])
+    .slice(0, GATED_ACTION_ICONS.length)
+    .map((a, i) => (a && typeof a === 'object' && typeof a.label === 'string'
+      ? { ...a, icon: GATED_ACTION_ICONS[i] }
+      : null))
+    .filter(Boolean);
 
   // ── Action Password (knowledge) form ──
   const [apVaultPw, setApVaultPw] = useState('');
