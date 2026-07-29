@@ -90,5 +90,50 @@
     "found_one": "发现 {{count}} 项异常",
     "found_other": "发现 {{count}} 项异常",
     "dismiss": "忽略"
+  },
+  "security_center": {
+    "heading": "安全中心",
+    "subhead": "会话与支出限额",
+    "tabs": {
+      "sessions": "会话",
+      "limits": "支出限额"
+    },
+    "sessions": {
+      "desc": "拥有活动会话的设备。",
+      "load_error": "无法加载会话。",
+      "empty": "没有活动会话",
+      "this_device": "本设备",
+      "last_active": "最后活跃时间 {{when}}",
+      "sign_out_confirm": "退出此设备？钱包将锁定，你需要再次输入 PIN 才能继续。",
+      "sign_out": "退出",
+      "sign_out_title": "锁定此设备并再次要求输入 PIN",
+      "revoke_title": "撤销此会话",
+      "revoke_aria": "撤销此会话",
+      "options_aria": "{{name}} 的选项",
+      "signed_out_toast": "设备已退出。"
+    },
+    "limits": {
+      "desc": "限制你每天或每笔交易可发送的金额。",
+      "add_cta": "添加限额",
+      "load_error": "无法加载限额。",
+      "history_error": "无法加载历史 — 今日汇总可能不准确。",
+      "empty": "尚未配置限额",
+      "disabled_note": "（已停用）",
+      "daily_label": "每日：",
+      "per_tx_label": "每笔：",
+      "sent_today": "今日已发送",
+      "delete_aria": "删除 {{currency}} 限额"
+    },
+    "dialog": {
+      "title": "添加交易限额",
+      "currency_label": "币种",
+      "all_currencies": "全部币种",
+      "daily_limit_label": "每日限额（USD）",
+      "daily_limit_placeholder": "例如 1000",
+      "per_tx_limit_label": "每笔交易限额（USD）",
+      "per_tx_limit_placeholder": "例如 500",
+      "save": "保存限额",
+      "saved_toast": "限额已设置"
+    }
   }
 }
