@@ -16,7 +16,7 @@
 import http from 'k6/http';
 import { check, fail, sleep } from 'k6';
 import { Trend, Rate } from 'k6/metrics';
-import { uuidv4, randomIntBetween, randomString } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
+import { uuidv4, randomIntBetween } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
 
 // ---------- config ----------
 
@@ -90,7 +90,12 @@ export const options = {
     generate_referral_code: { ...profiles[PROFILE], exec: 'generateReferralCode', tags: { rpc: 'generate_referral_code' } },
     register_referral_code: { ...profiles[PROFILE], exec: 'registerReferralCode', tags: { rpc: 'register_referral_code' } },
     increment_referral:     { ...profiles[PROFILE], exec: 'incrementReferral',    tags: { rpc: 'increment_referral' } },
-    record_attribution:     { ...profiles[PROFILE], exec: 'recordAttribution',    tags: { rpc: 'record_attribution' } },
+    // record_attribution INTENTIONALLY OMITTED from the anon-key smoke rig
+    // (issue #1495). The RPC was moved to service_role-only by H-3 (see
+    // sql/api-security-hardening.sql) — the anon key can no longer reach it,
+    // so any call here would 401/403 and fail the http_req_failed threshold.
+    // Adding it back needs its own service_role-scoped profile on manual
+    // dispatch only, documented in perf/README.md.
   },
   thresholds: {
     // Global — anything above these fails CI.
@@ -106,7 +111,6 @@ export const options = {
     'http_req_duration{rpc:generate_referral_code}': ['p(95)<600'],
     'http_req_duration{rpc:register_referral_code}': ['p(95)<600'],
     'http_req_duration{rpc:increment_referral}':     ['p(95)<600'],
-    'http_req_duration{rpc:record_attribution}':     ['p(95)<600'],
   },
 };
 
@@ -162,6 +166,61 @@ function callRpc(name, body) {
   return res;
 }
 
+// ---------- setup: seed a real referral-code pool ------------
+//
+// Before-fix (issue #1495): registerReferralCode / incrementReferral each
+// generated a fresh `('K6' + randomString(6))` per iteration and called the
+// RPC against a code that did not exist in the `referrals` table, so the
+// RPCs (correctly) rejected them. Baseline showed ~45% http_req_failed —
+// which meant a real regression on those two RPCs would be invisible under
+// the noise.
+//
+// Fix: setup() runs ONCE before any VU starts, generates a small pool of
+// REAL codes via generate_referral_code, and returns them. The two
+// downstream scenarios pick a random code from the pool for each iteration.
+// The pool is intentionally larger than any single-profile VU count so no
+// scenario runs out; if fewer than half seed successfully, we abort loudly
+// rather than silently under-testing.
+//
+// device-id caveat: generate_referral_code is rate-limited at 1 per device.
+// Setup uses a fresh uuidv4() per call to sidestep that — this is a seeding
+// operation, not the shape a real client makes. Runtime scenarios keep
+// their existing deviceId()/STICKY_DEVICE behaviour untouched.
+
+const POOL_SIZE = 30;
+
+export function setup() {
+  const codes = [];
+  for (let i = 0; i < POOL_SIZE; i++) {
+    const res = http.post(
+      rpcUrl('generate_referral_code'),
+      JSON.stringify({ p_device_id: uuidv4() }),
+      { headers: headers() },
+    );
+    if (res.status < 200 || res.status >= 300) continue;
+    // Supabase RPC endpoints return the SQL function's return value verbatim
+    // as JSON: for `RETURNS TEXT` that's a bare JSON string ("K6ABC123"), for
+    // a table-returning function it's an array/object. Accept both shapes so
+    // this doesn't break if the SQL definition tightens later.
+    try {
+      const parsed = JSON.parse(res.body);
+      if (typeof parsed === 'string' && parsed.length > 0) {
+        codes.push(parsed);
+      } else if (parsed && typeof parsed === 'object') {
+        const c = parsed.code || parsed.p_code || parsed.referral_code;
+        if (typeof c === 'string' && c.length > 0) codes.push(c);
+      }
+    } catch { /* malformed body — skip */ }
+  }
+  if (codes.length < Math.ceil(POOL_SIZE / 2)) {
+    fail(
+      `setup: only ${codes.length}/${POOL_SIZE} referral codes seeded — ` +
+        'check generate_referral_code is deployed + reachable on this staging project.',
+    );
+  }
+  return { codes };
+}
+
 // ---------- scenarios: exec functions ----------
 
 // Must match src/lib/analytics.js EVENTS and whatever allowlist the target
@@ -175,6 +234,13 @@ const EVENT_TYPES = [
   'unlock_attempt',
   'consent_granted',
 ];
+
+// Pick a random code from the setup()-seeded pool. Small helper because two
+// scenarios share this shape and getting it wrong (e.g. off-by-one on the
+// bound) silently biases the load toward one code.
+function pickCode(data) {
+  return data.codes[randomIntBetween(0, data.codes.length - 1)];
+}
 
 export function trackEvent() {
   const device = deviceId();
@@ -191,26 +257,21 @@ export function generateReferralCode() {
   sleep(randomIntBetween(2, 5));
 }
 
-export function registerReferralCode() {
-  const code = ('K6' + randomString(6)).toUpperCase();
-  callRpc('register_referral_code', { p_code: code, p_device_id: deviceId() });
+export function registerReferralCode(data) {
+  // Use a real, existing code from the pool so the RPC exercises the actual
+  // registration path (issue #1495). A fresh random string bypasses the
+  // referrals-table existence check and fails at the wrong layer.
+  callRpc('register_referral_code', { p_code: pickCode(data), p_device_id: deviceId() });
   sleep(randomIntBetween(2, 5));
 }
 
-export function incrementReferral() {
-  const code = ('K6' + randomString(6)).toUpperCase();
-  callRpc('increment_referral', { p_code: code, p_device_id: deviceId() });
-  sleep(randomIntBetween(2, 5));
-}
-
-export function recordAttribution() {
-  const code = ('K6' + randomString(6)).toUpperCase();
-  callRpc('record_attribution', {
-    p_code: code,
-    p_plan: Math.random() < 0.5 ? 'monthly' : 'annual',
-    p_revenue_cents: randomIntBetween(500, 5000),
-    p_discount_cents: 0,
-  });
+export function incrementReferral(data) {
+  // Same reasoning as registerReferralCode: real code, real code path.
+  // Note: increment_referral dedups 1 per device per code — that means once
+  // a VU's rotating deviceId happens to hit a code it already incremented
+  // in this run, the RPC returns a shaped 400 (`dedup`) which classify()
+  // counts as accepted-throttled, not failed. Correct behaviour to measure.
+  callRpc('increment_referral', { p_code: pickCode(data), p_device_id: deviceId() });
   sleep(randomIntBetween(2, 5));
 }
 
