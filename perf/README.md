@@ -41,43 +41,23 @@ a failure.
 - `http_req_duration p95 < 800ms` global; per-RPC 400–600 ms
 - `checks{kind:accepted} > 98%`
 
-## Web perf (Playwright + Lighthouse-CI)
+## Web perf (Lighthouse-CI)
 
-Runs in the same `perf-web` workflow against a built `dist/` served on `:4173`.
+Runs in the `perf-web` workflow against a built `dist/` served on `:4173`.
 
 - `lighthouserc.json` — LHCI budgets on 5 demo-mode routes (cold-load).
-- `web-perf.spec.js` — Playwright nav timings on the same demo routes,
-  browser-native `PerformanceObserver`.
-- `warm-wallet-perf.spec.js` — same measurement shape on **authenticated**
-  routes (`/`, `/send`, `/receive`, `/analytics`, `/tax`, `/alerts`) after a
-  real onboarding pass in `beforeAll`. Sequential, one BrowserContext for the
-  whole file (Playwright `storageState` doesn't persist IndexedDB, and the
-  vault lives in IDB).
-
-### Warm-wallet modes
-
-| `WARM_WALLET_MODE` | What happens | Use |
-|---|---|---|
-| `create` (default) | Real seed gen + KDF, no chain state | Deterministic, isolated |
-| `import`           | Imports `VITE_TEST_THROWAWAY_SEED`   | Adds real balance-of-zero RPC — reflects the network path |
-
-`import` mode needs `VITE_TEST_THROWAWAY_SEED` set (repo secret in CI, or
-`.env.test` locally — same source the e2e suite already uses).
-
-### Local warm run
-
-```bash
-npm run build
-npx serve -s dist -l 4173 &
-BASE_URL=http://localhost:4173 npx playwright test \
-  --config=perf/playwright.perf.config.js warm-wallet-perf.spec.js
-```
+  Perf score ≥ 0.80, LCP < 2.5s, FCP < 2s, CLS < 0.1, TBT < 300ms.
+  Calibrated from run 30422987700 where 4/5 routes passed all
+  assertions and root came in at 0.83.
 
 ## Not covered (yet)
 
+- **Warm-wallet perf.** Attempted with Playwright but the measure loop
+  (`page.evaluate` after `page.goto`) was blocked by the app's cold-start
+  JS load — `page.evaluate` couldn't run, tests hit the per-test timeout.
+  LHCI works because it uses CDP directly rather than in-page evaluate.
+  Follow-up: warm-wallet perf via CDP `Performance.enable` or a rewrite
+  around Playwright's tracing API.
 - Edge Function `first-referral-bonus` — needs a valid `Authorization`
   bearer and a real code that just passed `record_attribution`. Add as a
   chained scenario when the staging pipeline can mint one.
-- Send/Receive **interactions** (form fill, QR render, gas estimate) —
-  currently warm perf measures nav only. Extend `warm-wallet-perf.spec.js`
-  with per-interaction `performance.mark()` pairs when you want that.
