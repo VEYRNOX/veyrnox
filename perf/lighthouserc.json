@@ -1,13 +1,12 @@
 {
   "ci": {
     "collect": {
-      "staticDistDir": "dist",
       "url": [
-        "http://localhost/?demo=1",
-        "http://localhost/plans?demo=1",
-        "http://localhost/settings?demo=1",
-        "http://localhost/receive?demo=1",
-        "http://localhost/calculator?demo=1"
+        "http://localhost:4173/?demo=1",
+        "http://localhost:4173/plans?demo=1",
+        "http://localhost:4173/settings?demo=1",
+        "http://localhost:4173/receive?demo=1",
+        "http://localhost:4173/calculator?demo=1"
       ],
       "numberOfRuns": 3,
       "settings": {
