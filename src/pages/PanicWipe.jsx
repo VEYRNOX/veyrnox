@@ -34,6 +34,7 @@
 //     again (after) to prove nothing recoverable remains — all on the simulator.
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import {
@@ -60,8 +61,17 @@ const CONFIRM_WORD = "WIPE";
 // exists (vault blobs in IndexedDB + demo address-residue maps). Used to show
 // "before" (key material present) and "after" (clean) a wipe.
 function KeyMaterialReport({ report, title }) {
+  const { t } = useTranslation("security");
   if (!report) return null;
   const clean = report.clean;
+  const badge = clean
+    ? t("panic.keys_report_no_material")
+    : t(
+        report.vaultBlobCount === 1
+          ? "panic.keys_report_vault_blobs_one"
+          : "panic.keys_report_vault_blobs_other",
+        { count: report.vaultBlobCount },
+      );
   return (
     <div className={`rounded-lg border p-3 text-xs space-y-2 ${clean ? "border-success/30 bg-success/5" : "border-caution/30 bg-caution/5"}`}>
       <div className="flex items-center gap-2 font-semibold">
@@ -70,21 +80,21 @@ function KeyMaterialReport({ report, title }) {
           : <Database className="h-4 w-4 text-caution" />}
         <span>{title}</span>
         <span className={`ml-auto px-2 py-0.5 rounded text-[10px] font-bold ${clean ? "bg-success/20 text-success" : "bg-caution/20 text-caution"}`}>
-          {clean ? "NO KEY MATERIAL" : `${report.vaultBlobCount} VAULT BLOB${report.vaultBlobCount === 1 ? "" : "S"}`}
+          {badge}
         </span>
       </div>
       <div>
-        <p className="text-muted-foreground">IndexedDB <code>veyrnox-vault / vault</code> keys:</p>
+        <p className="text-muted-foreground">{t("panic.keys_report_indexeddb_label")}</p>
         {report.indexedDbKeys.length === 0 ? (
-          <p className="font-mono text-success">— empty —</p>
+          <p className="font-mono text-success">{t("panic.keys_report_indexeddb_empty")}</p>
         ) : (
           <p className="font-mono break-all">{report.indexedDbKeys.join(", ")}</p>
         )}
       </div>
       <div>
-        <p className="text-muted-foreground">localStorage address residue:</p>
+        <p className="text-muted-foreground">{t("panic.keys_report_localstorage_label")}</p>
         {report.localStorageResidue.length === 0 ? (
-          <p className="font-mono text-success">— none —</p>
+          <p className="font-mono text-success">{t("panic.keys_report_localstorage_empty")}</p>
         ) : (
           <p className="font-mono break-all">{report.localStorageResidue.join(", ")}</p>
         )}
@@ -94,6 +104,7 @@ function KeyMaterialReport({ report, title }) {
 }
 
 export default function PanicWipe() {
+  const { t } = useTranslation("security");
   const {
     isUnlocked, wasWiped,
     hasVault, setDuressPin,
@@ -151,8 +162,8 @@ export default function PanicWipe() {
   // ----- setup handlers -----
   const handleSave = async () => {
     setError(""); setSaved(false);
-    if (pin.length < 8) { setError("Panic/wipe PIN must be exactly 8 digits"); return; }
-    if (pin !== confirmPin) { setError("PINs do not match"); return; }
+    if (pin.length < 8) { setError(t("panic.pin_error_length")); return; }
+    if (pin !== confirmPin) { setError(t("panic.pin_error_mismatch")); return; }
     setSaving(true);
     try {
       await setPanicPin(pin);
@@ -162,7 +173,7 @@ export default function PanicWipe() {
       setPin(""); setConfirmPin(""); setPanicPinStep("enter");
       await refresh();
     } catch (e) {
-      setError(e?.message || "Could not save panic/wipe PIN");
+      setError(e?.message || t("panic.pin_error_generic"));
     } finally {
       setSaving(false);
     }
@@ -184,7 +195,7 @@ export default function PanicWipe() {
       } finally {
         setWiping(false);
       }
-    }, { title: "Confirm device wipe" });
+    }, { title: t("panic.wipe_now_gate_title") });
   };
 
   // ----- remove panic wipe -----
@@ -199,7 +210,7 @@ export default function PanicWipe() {
       setRemoved(true);
       await refresh();
     } catch (e) {
-      setRemoveError(e?.message || "Could not remove panic wipe");
+      setRemoveError(e?.message || t("panic.remove_error_generic"));
     } finally {
       setRemoving(false);
     }
@@ -207,7 +218,7 @@ export default function PanicWipe() {
 
   // ----- demo handlers (use the REAL unlock + wipe path) -----
   const demoSetup = async () => {
-    setBusy("Setting up demo…"); setDemoErr(""); setBefore(null); setAfter(null);
+    setBusy(t("panic.demo_busy_setup")); setDemoErr(""); setBefore(null); setAfter(null);
     try {
       if (!(await hasVault())) await createWallet(DEMO_REAL_PW);
       await setDuressPin(DEMO_DURESS_PW);       // a decoy vault ('secondary')
@@ -217,7 +228,7 @@ export default function PanicWipe() {
       setBefore(await inspectKeyMaterial());     // snapshot: key material present
       await refresh();
     } catch (e) {
-      setDemoErr(e?.message || "Demo setup failed");
+      setDemoErr(e?.message || t("panic.demo_err_setup"));
     } finally {
       setBusy("");
     }
@@ -227,7 +238,7 @@ export default function PanicWipe() {
   // what a user under threat would do. unlock() runs the wipe then throws the
   // generic wrong-password error (no "wiped!" tell), which we swallow here.
   const demoPanicUnlock = async () => {
-    setBusy("Entering wipe PIN at unlock…"); setDemoErr("");
+    setBusy(t("panic.demo_busy_unlock")); setDemoErr("");
     try {
       await unlock(DEMO_PANIC_PW);
     } catch {
@@ -243,17 +254,17 @@ export default function PanicWipe() {
     <div className="max-w-lg mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <Bomb className="h-5 w-5 text-destructive" /> Panic Wipe
+          <Bomb className="h-5 w-5 text-destructive" /> {t("panic.heading")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Wipe all wallet data from this device. Permanent. No undo.
+          {t("panic.subhead")}
         </p>
       </div>
 
       <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs flex items-start gap-2">
         <AlertOctagon className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          <b>Permanent.</b> Everything on this device is deleted. You cannot undo this.
+          <b>{t("panic.permanent_banner_leading")}</b> {t("panic.permanent_banner_body")}
         </span>
       </div>
 
@@ -262,17 +273,13 @@ export default function PanicWipe() {
         <div className="flex items-start gap-3">
           <ShieldOff className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold">Two ways to wipe</p>
+            <p className="text-sm font-semibold">{t("panic.how_title")}</p>
             <ul className="text-xs text-muted-foreground mt-1 space-y-1.5 list-disc pl-4">
               <li>
-                <b>Wipe PIN at unlock</b> — set one below. Enter it at the
-                unlock screen and everything deletes instantly with{" "}
-                <b>no confirmation</b>. A pop-up dialog under pressure could
-                give you away.
+                <b>{t("panic.how_pin_leading")}</b> {t("panic.how_pin_body")}
               </li>
               <li>
-                <b>Wipe now</b> — for selling or retiring a device. Type{" "}
-                <code>{CONFIRM_WORD}</code> and tick the box below.
+                <b>{t("panic.how_now_leading")}</b> {t("panic.how_now_body", { word: CONFIRM_WORD })}
               </li>
             </ul>
           </div>
@@ -283,18 +290,19 @@ export default function PanicWipe() {
       <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2">
         <div className="flex items-center gap-2">
           <Trash2 className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">What goes — and what stays</p>
+          <p className="text-sm font-semibold">{t("panic.scope_title")}</p>
         </div>
-        <p className="text-xs font-medium text-foreground">Deleted:</p>
+        <p className="text-xs font-medium text-foreground">{t("panic.scope_deleted_label")}</p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>Your <b>main wallet</b>, any <b>Emergency wallet</b>, and all <b>hidden wallets</b> on this device.</li>
-          <li>All local wallet data and the on-device database.</li>
+          {t("panic.scope_deleted_items", { returnObjects: true }).map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
         </ul>
-        <p className="text-xs font-medium text-foreground mt-2">Not deleted:</p>
+        <p className="text-xs font-medium text-foreground mt-2">{t("panic.scope_kept_label")}</p>
         <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li><b>Any recovery phrase you wrote down</b> or saved elsewhere. You can restore from that anytime.</li>
-          <li><b>Your transaction history on the blockchain.</b> Public records stay public.</li>
-          <li><b>Honest limit:</b> we clear the wallet records, but someone examining the storage chip itself may still find traces.</li>
+          {t("panic.scope_kept_items", { returnObjects: true }).map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
         </ul>
       </div>
 
@@ -302,45 +310,42 @@ export default function PanicWipe() {
       <div className="p-5 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 mb-4">
           <Bomb className="h-5 w-5 text-destructive" />
-          <span className="font-medium">Set a wipe PIN</span>
+          <span className="font-medium">{t("panic.setup_title")}</span>
         </div>
 
         <div className="space-y-4">
           <p className="text-[11px] text-muted-foreground">
-            ⚠️ This PIN must be <b>different</b> from your real PIN, Emergency
-            PIN, and any hidden wallet secret. If it matches one, that wallet
-            opens instead and nothing gets wiped. We cannot check this for you.
-            Entering this PIN at unlock <b>permanently deletes your wallet</b>.
+            {t("panic.setup_warning")}
           </p>
 
           {panicPinStep === "enter" ? (
             <div className="space-y-2">
-              <Label>New wipe PIN (8 digits)</Label>
+              <Label>{t("panic.pin_new_label")}</Label>
               <PinPad
                 value={pin}
                 onChange={setPin}
                 onComplete={() => setPanicPinStep("confirm")}
                 length={8}
-                submitLabel="Continue"
+                submitLabel={t("panic.pin_continue")}
                 disabled={saving}
               />
             </div>
           ) : (
             <div className="space-y-2">
-              <Label>Confirm wipe PIN</Label>
+              <Label>{t("panic.pin_confirm_label")}</Label>
               <PinPad
                 value={confirmPin}
                 onChange={setConfirmPin}
                 onComplete={handleSave}
                 length={8}
-                submitLabel="Save wipe PIN"
+                submitLabel={t("panic.pin_save")}
                 disabled={saving}
               />
             </div>
           )}
 
           {error && <p className="text-xs text-destructive">{error}</p>}
-          {saved && <p className="text-xs text-success">Wipe PIN saved. Enter it at the unlock screen to wipe this device.</p>}
+          {saved && <p className="text-xs text-success">{t("panic.pin_saved_ok")}</p>}
           {/* NOTE: Deniability tradeoff — exposing a "remove panic PIN" button reveals
               to an observer that the feature exists on this device and is being
               managed. This is accepted as a usability requirement for users who want
@@ -353,12 +358,12 @@ export default function PanicWipe() {
         {/* Remove panic wipe */}
         <div className="mt-4 pt-4 border-t border-border space-y-3">
           <p className="text-xs text-muted-foreground">
-            Changed your mind? Remove the wipe PIN without triggering anything.
+            {t("panic.remove_prompt")}
           </p>
 
           {removed && (
             <p className="text-xs text-success flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4" /> Wipe PIN removed.
+              <CheckCircle2 className="h-4 w-4" /> {t("panic.removed_ok")}
             </p>
           )}
 
@@ -369,16 +374,15 @@ export default function PanicWipe() {
               onClick={() => setShowRemoveConfirm(true)}
               disabled={removed}
             >
-              <ShieldOff className="h-4 w-4 mr-2" /> Remove panic wipe
+              <ShieldOff className="h-4 w-4 mr-2" /> {t("panic.remove_cta")}
             </Button>
           ) : (
             <div className={`space-y-2 p-3 rounded-lg ${panicEnabled ? "bg-destructive/5 border border-destructive/30" : "bg-caution/5 border border-caution/30"}`}>
               <p className="text-xs font-semibold text-caution">
-                Remove the wipe PIN?
+                {t("panic.remove_confirm_title")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Your wipe PIN is cleared. You won&apos;t be able to trigger
-                a wipe from the unlock screen after this.
+                {t("panic.remove_confirm_body")}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -388,7 +392,7 @@ export default function PanicWipe() {
                   disabled={removing}
                   className="flex-1"
                 >
-                  {removing ? "Removing…" : "Yes, remove it"}
+                  {removing ? t("panic.remove_confirm_yes_busy") : t("panic.remove_confirm_yes")}
                 </Button>
                 <Button
                   size="sm"
@@ -397,7 +401,7 @@ export default function PanicWipe() {
                   disabled={removing}
                   className="flex-1"
                 >
-                  Cancel
+                  {t("panic.remove_cancel")}
                 </Button>
               </div>
               {removeError && <p className="text-xs text-destructive">{removeError}</p>}
@@ -410,15 +414,15 @@ export default function PanicWipe() {
       <div className="p-5 rounded-xl border border-destructive/40 bg-destructive/5 space-y-3">
         <div className="flex items-center gap-2">
           <AlertOctagon className="h-5 w-5 text-destructive" />
-          <span className="font-semibold text-destructive">Wipe this device now</span>
+          <span className="font-semibold text-destructive">{t("panic.wipe_now_title")}</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          Deletes every wallet on this device right now.{" "}
-          <b>There is no undo.</b>{" "}
-          {wasWiped ? "" : "Save your recovery phrase somewhere safe before doing this if you want to restore later."}
+          {t("panic.wipe_now_body_lead")}{" "}
+          <b>{t("panic.wipe_now_body_undo")}</b>{" "}
+          {wasWiped ? "" : t("panic.wipe_now_body_backup")}
         </p>
         <div>
-          <Label className="text-xs">Type <code>{CONFIRM_WORD}</code> to confirm</Label>
+          <Label className="text-xs">{t("panic.wipe_now_type_confirm", { word: CONFIRM_WORD })}</Label>
           <Input
             className="mt-1.5 font-mono"
             value={confirmText}
@@ -428,10 +432,7 @@ export default function PanicWipe() {
         </div>
         <label className="flex items-start gap-2 text-xs text-muted-foreground">
           <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5" />
-          <span>
-            I understand this <b>permanently deletes</b> all wallets on this
-            device. Only a recovery phrase backup can restore them.
-          </span>
+          <span>{t("panic.wipe_now_ack")}</span>
         </label>
         <Button
           variant="destructive"
@@ -440,15 +441,15 @@ export default function PanicWipe() {
           onClick={handleInAppWipe}
         >
           <Bomb className="h-4 w-4" />
-          {wiping ? "Wiping…" : "Destroy local keys"}
+          {wiping ? t("panic.wipe_now_cta_busy") : t("panic.wipe_now_cta")}
         </Button>
 
         {wipeReport && (
           <div className="space-y-2">
             <p className="text-xs font-semibold text-success flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4" /> Done. Wallet data on this device is cleared — though traces may remain on the storage chip.
+              <CheckCircle2 className="h-4 w-4" /> {t("panic.wipe_now_done")}
             </p>
-            <KeyMaterialReport report={wipeReport} title="Local storage after wipe" />
+            <KeyMaterialReport report={wipeReport} title={t("panic.wipe_now_report_title")} />
           </div>
         )}
       </div>
@@ -458,27 +459,27 @@ export default function PanicWipe() {
         <div className="p-5 rounded-xl border border-dashed border-primary/40 bg-primary/5 space-y-4">
           <div className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Live demonstration (demo mode)</span>
+            <span className="font-semibold">{t("panic.demo_title")}</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Sets up a throwaway real wallet (<code>{DEMO_REAL_PW}</code>), an Emergency
-            wallet (<code>{DEMO_DURESS_PW}</code>), a hidden wallet
-            (<code>{DEMO_HIDDEN_SECRET}</code>), and a wipe PIN
-            (<code>{DEMO_PANIC_PW}</code>). Step 1 snapshots local wallet data;
-            step 2 enters the wipe PIN at the unlock screen; then it snapshots
-            again to show the vault store is empty.
+            {t("panic.demo_body", {
+              real: DEMO_REAL_PW,
+              duress: DEMO_DURESS_PW,
+              hidden: DEMO_HIDDEN_SECRET,
+              panic: DEMO_PANIC_PW,
+            })}
           </p>
 
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" disabled={!!busy} onClick={demoSetup}>
-              <KeyRound className="h-3.5 w-3.5 mr-1" /> 1. Set up & snapshot
+              <KeyRound className="h-3.5 w-3.5 mr-1" /> {t("panic.demo_step1")}
             </Button>
             <Button size="sm" variant="destructive" disabled={!!busy || !before} onClick={demoPanicUnlock}>
-              <Bomb className="h-3.5 w-3.5 mr-1" /> 2. Enter wipe PIN at unlock
+              <Bomb className="h-3.5 w-3.5 mr-1" /> {t("panic.demo_step2")}
             </Button>
             {isUnlocked && (
               <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => lock()}>
-                <Lock className="h-3.5 w-3.5 mr-1" /> Lock
+                <Lock className="h-3.5 w-3.5 mr-1" /> {t("panic.demo_lock")}
               </Button>
             )}
           </div>
@@ -487,16 +488,16 @@ export default function PanicWipe() {
           {demoErr && <p className="text-xs text-destructive">{demoErr}</p>}
 
           <div className="space-y-3">
-            <KeyMaterialReport report={before} title="BEFORE — wallet data present" />
+            <KeyMaterialReport report={before} title={t("panic.demo_before_title")} />
             {before && after && (
               <div className="flex items-center justify-center text-muted-foreground">
-                <HardDrive className="h-4 w-4 mr-1" /> <span className="text-xs">wipe PIN entered → wipe fired</span>
+                <HardDrive className="h-4 w-4 mr-1" /> <span className="text-xs">{t("panic.demo_between_note")}</span>
               </div>
             )}
-            <KeyMaterialReport report={after} title="AFTER — no wallet data left" />
+            <KeyMaterialReport report={after} title={t("panic.demo_after_title")} />
             {after?.clean && (
               <p className="text-xs text-success flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4" /> Checked: the vault store is now empty and no address data remains.
+                <CheckCircle2 className="h-4 w-4" /> {t("panic.demo_clean_confirm")}
               </p>
             )}
           </div>
@@ -506,9 +507,7 @@ export default function PanicWipe() {
       {!DEMO && (
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
-            Lock your wallet and enter the wipe PIN at the unlock screen.
-            Everything deletes instantly — no confirmation. Keep your recovery
-            phrase somewhere safe if you ever want to restore.
+            {t("panic.non_demo_hint")}
           </p>
         </div>
       )}
