@@ -7,10 +7,12 @@
 // mere presence discloses nothing about cardinality.
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, ChevronRight } from 'lucide-react';
 import RehearsalView from './RehearsalView.jsx';
 
 export default function RehearsalSettingsRow() {
+  const { t } = useTranslation('wallet');
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -23,9 +25,9 @@ export default function RehearsalSettingsRow() {
             <ShieldCheck className="h-5 w-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Rehearse deniability</p>
+            <p className="text-sm font-semibold">{t('settings.rehearsal.title')}</p>
             <p className="text-xs text-muted-foreground">
-              See the dashboard exactly as someone holding your unlocked phone would.
+              {t('settings.rehearsal.description')}
             </p>
           </div>
         </div>

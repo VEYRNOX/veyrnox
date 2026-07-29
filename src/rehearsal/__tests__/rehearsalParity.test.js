@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { componentParity } from '../assert.js';
+import walletEn from '../../i18n/locales/en/wallet.json';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (rel) => readFileSync(resolve(here, rel), 'utf8');
@@ -55,8 +56,13 @@ describe('no rehearsal-only chrome (brief §2 hard exclusion)', () => {
 });
 
 describe('Settings entry row reads as ordinary (brief §7)', () => {
+  // i18n Phase 2 slice 4: the literal label moved to
+  // src/i18n/locales/en/wallet.json (settings.rehearsal.title). The row's JSX
+  // now references the translation key, not the string, so assert against the
+  // resolved English resource — same guarantee, translated source.
   it('uses the plain "Rehearse deniability" label', () => {
-    expect(rowCode).toMatch(/Rehearse deniability/);
+    expect(rowCode).toMatch(/t\(['"]settings\.rehearsal\.title['"]\)/);
+    expect(walletEn.settings.rehearsal.title).toMatch(/Rehearse deniability/);
   });
 
   it('exposes no wallet/set count or multi-set hint', () => {

@@ -11,6 +11,7 @@
 // is in WalletProvider.unlock().
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScanFace, ShieldCheck, ShieldAlert, Loader2, CheckCircle2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
 // (a deliberate user action), never automatically on mount.
 
 export default function BiometricUnlockSettings() {
+  const { t } = useTranslation('wallet');
   const { biometricPreview, disableBiometricUnlock, recordAudit } = useWallet();
   const [enabled, setEnabled] = useState(() => isBiometricUnlockEnabled());
   const [status, setStatus] = useState(null); // null while loading
@@ -53,7 +55,11 @@ export default function BiometricUnlockSettings() {
       .catch(() => {
         // Probe failed — fail honest: render the unavailable state instead of
         // hanging on "Checking availability…" forever (mirrors PasskeyUnlockSettings).
-        if (active) setStatus({ available: false, detail: 'Could not check biometric availability on this device.' });
+        // Store a translation KEY, not a resolved string, so switching language
+        // mid-mount re-renders the message in the new locale. The render layer
+        // reads `detailKey` first and falls back to `detail` for shapes that
+        // still carry a resolved string (from getBiometricStatus itself).
+        if (active) setStatus({ available: false, detailKey: 'settings.biometric_unlock.status_check_failed' });
       });
     return () => { active = false; };
   }, []);
@@ -101,14 +107,14 @@ export default function BiometricUnlockSettings() {
   };
 
   const available = status?.available;
-  const label = status?.label || 'Biometrics';
+  const label = status?.label || t('settings.biometric_unlock.default_label');
   const simulated = status?.simulated;
 
   return (
     <div className="p-5 rounded-xl border border-border bg-card space-y-4">
       <div className="flex items-center gap-2">
         <ScanFace className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">Biometric Unlock</h2>
+        <h2 className="font-semibold">{t('settings.biometric_unlock.heading')}</h2>
       </div>
 
       {/* VULN-1 / VULN-2 disclosure — explicit about the security trade-off. */}
@@ -119,11 +125,8 @@ export default function BiometricUnlockSettings() {
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-caution">Worth knowing.</span>{' '}
-            One-tap unlock saves your <strong>wallet password</strong> on this device,
-            protected by your screen lock and biometrics. If someone gets a copy of your
-            device backup without the physical device, they could access your wallet.
-            Turn this off for the strongest protection.
+            <span className="font-semibold text-caution">{t('settings.biometric_unlock.worth_knowing_label')}</span>{' '}
+            {t('settings.biometric_unlock.kdf_disclosure')}
           </p>
         </div>
       </div>
@@ -136,12 +139,10 @@ export default function BiometricUnlockSettings() {
           data-testid="biometric-app-layer-disclosure"
           className="text-xs text-muted-foreground leading-relaxed"
         >
-          Biometric unlock saves your password on this device, protected by your
-          fingerprint or face. This runs inside the app, not at the operating system
-          level.{' '}
-          For stronger device-level protection, enable{' '}
-          <span className="font-medium text-foreground">Hardware Protection</span>{' '}
-          (available below).
+          {t('settings.biometric_unlock.app_layer_disclosure_pre')}{' '}
+          {t('settings.biometric_unlock.app_layer_disclosure_mid')}{' '}
+          <span className="font-medium text-foreground">{t('settings.biometric_unlock.hardware_protection_label')}</span>{' '}
+          {t('settings.biometric_unlock.app_layer_disclosure_post')}
         </p>
       )}
 
@@ -153,16 +154,16 @@ export default function BiometricUnlockSettings() {
       <div className="flex items-center justify-between">
         <div className="pr-4">
           <p className="text-sm font-medium">
-            Biometric Unlock (Primary Wallet)
+            {t('settings.biometric_unlock.toggle_label')}
           </p>
           <p className="text-xs text-muted-foreground">
-            Enable one-tap unlock for your primary wallet using device biometrics.
+            {t('settings.biometric_unlock.toggle_description')}
           </p>
         </div>
         <Switch
           checked={enabled}
           onCheckedChange={onToggle}
-          aria-label="Biometric Unlock (Primary Wallet)"
+          aria-label={t('settings.biometric_unlock.toggle_label')}
         />
       </div>
 
@@ -178,9 +179,8 @@ export default function BiometricUnlockSettings() {
           <div className="flex items-start gap-2">
             <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-caution">Before you enable this.</span>{' '}
-              If someone gets a copy of your device backup without the physical device, they
-              could access your wallet. Only turn this on if you're OK with that.
+              <span className="font-semibold text-caution">{t('settings.biometric_unlock.before_enable_label')}</span>{' '}
+              {t('settings.biometric_unlock.confirm_disclosure')}
             </p>
           </div>
           <div className="flex gap-2">
@@ -191,7 +191,7 @@ export default function BiometricUnlockSettings() {
               onClick={confirmEnable}
               data-testid="biometric-confirm-enable-btn"
             >
-              Enable one-tap unlock
+              {t('settings.biometric_unlock.confirm_enable_button')}
             </Button>
             <Button
               variant="ghost"
@@ -200,7 +200,7 @@ export default function BiometricUnlockSettings() {
               onClick={cancelEnable}
               data-testid="biometric-cancel-enable-btn"
             >
-              Cancel
+              {t('settings.biometric_unlock.cancel_button')}
             </Button>
           </div>
         </div>
@@ -211,19 +211,22 @@ export default function BiometricUnlockSettings() {
       <div className="flex items-start gap-2 text-xs">
         {status == null ? (
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Spinner size="sm" label="Checking availability…" /> Checking availability…
+            <Spinner size="sm" label={t('settings.biometric_unlock.checking_availability')} /> {t('settings.biometric_unlock.checking_availability')}
           </span>
         ) : available ? (
           <span className="flex items-start gap-1.5 text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
             <span>
-              {label} available{simulated ? ' (simulated in demo)' : ''}. {status.detail}
+              {simulated
+                ? t('settings.biometric_unlock.available_simulated', { label })
+                : t('settings.biometric_unlock.available', { label })}{' '}
+              {status.detailKey ? t(status.detailKey) : status.detail}
             </span>
           </span>
         ) : (
           <span className="flex items-start gap-1.5 text-muted-foreground">
             <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <span>{status.detail}</span>
+            <span>{status.detailKey ? t(status.detailKey) : status.detail}</span>
           </span>
         )}
       </div>
@@ -233,16 +236,16 @@ export default function BiometricUnlockSettings() {
         <div>
           <Button variant="outline" className="w-full gap-2" onClick={runTest} disabled={testing}>
             {testing
-              ? <><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Awaiting prompt…</>
-              : <><ScanFace className="h-4 w-4" /> Preview prompt</>}
+              ? <><Loader2 className="h-4 w-4 motion-safe:animate-spin" /> {t('settings.biometric_unlock.awaiting_prompt')}</>
+              : <><ScanFace className="h-4 w-4" /> {t('settings.biometric_unlock.preview_prompt')}</>}
           </Button>
           {testResult === 'ok' && (
             <p className="text-xs text-success mt-2 flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Simulated authentication succeeded
+              <CheckCircle2 className="h-3.5 w-3.5" /> {t('settings.biometric_unlock.test_success')}
             </p>
           )}
           {testResult === 'cancel' && (
-            <p className="text-xs text-muted-foreground mt-2">Prompt cancelled</p>
+            <p className="text-xs text-muted-foreground mt-2">{t('settings.biometric_unlock.test_cancelled')}</p>
           )}
         </div>
       )}

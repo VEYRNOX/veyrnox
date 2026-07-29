@@ -19,6 +19,7 @@
 // Never fabricates an "ON" badge without confirmed enrollment (I4).
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Capacitor } from '@capacitor/core';
 import { HardDrive, ShieldCheck, ShieldAlert, ArrowUpCircle, Info } from 'lucide-react';
 import { toast } from '@/lib/toast';
@@ -33,41 +34,26 @@ import Spinner from '@/components/Spinner';
 // contract and a raw message can leak internals). Returns the plain-language string
 // to show. The final fallback is deliberately GENERIC: we never render the raw
 // thrown text (I4 — fail honest, and no internal-detail leak to the UI).
-const WRONG_PIN_MSG = 'Wrong PIN — enter the PIN you use to unlock your wallet.';
-const NO_HARDWARE_MSG =
-  'Couldn’t reach this device’s hardware security. Try again, or use a different device.';
-const MALFORMED_MSG =
-  'Your stored wallet data couldn’t be read on this device.';
-const NOT_ENROLLED_MSG =
-  'Hardware protection isn’t enabled on this vault, so there’s nothing to upgrade.';
-const GENERIC_MSG = 'Something went wrong. Please try again.';
-const KEY_INVALIDATED_MSG =
-  'Your fingerprints changed — hardware protection was invalidated. Disable and re-enable hardware protection, or restore from your seed phrase.';
-
-function classifyKekError(e) {
+// Copy for these lives at settings.hardware_kek.errors.* in wallet.json; classifyKekError
+// takes a `t` function so it can resolve the translated string for the caller's locale.
+function classifyKekError(e, t) {
   const code = e?.code || e?.message;
   switch (code) {
     // Wrong PIN against a KEK wrap decrypts to a failed unwrap (generic oracle).
     case KEK_ERR.UNWRAP_FAILED:
-      return WRONG_PIN_MSG;
+      return t('settings.hardware_kek.errors.wrong_pin');
     case KEK_ERR.NO_HARDWARE_FACTOR:
-      return NO_HARDWARE_MSG;
+      return t('settings.hardware_kek.errors.no_hardware');
     case KEK_ERR.MALFORMED_VAULT:
-      return MALFORMED_MSG;
+      return t('settings.hardware_kek.errors.malformed_vault');
     case KEK_ERR.NOT_ENROLLED:
-      return NOT_ENROLLED_MSG;
+      return t('settings.hardware_kek.errors.not_enrolled');
     case KEK_ERR.KEY_PERMANENTLY_INVALIDATED:
-      return KEY_INVALIDATED_MSG;
+      return t('settings.hardware_kek.errors.key_invalidated');
     default:
-      return GENERIC_MSG;
+      return t('settings.hardware_kek.errors.generic');
   }
 }
-
-// Enroll can also fail on a wrong PIN via decryptVault (which throws a vault error,
-// not a KEK_ERR) and on an insecure hardware tier (ENROLL_ERR.INSECURE_TIER). Those
-// are surfaced by dedicated messages before falling through to classifyKekError.
-const INSECURE_TIER_MSG =
-  'This device has no secure hardware element — hardware protection can’t be enabled here.';
 
 // decryptVault (../vault.js) throws a code-less Error whose message is a STABLE
 // internal sentinel ('Decryption failed: …' / 'No wallet …'). These are not
@@ -89,6 +75,7 @@ const isNative = (() => {
 // requires the bound device. Without a hardware factor (Safari / no PRF) Argon2id is
 // the sole protection, so a longer password is strongly recommended.
 function PinStrengthNotice({ variant }) {
+  const { t } = useTranslation('wallet');
   if (variant === 'hardware') {
     return (
       <div
@@ -97,9 +84,8 @@ function PinStrengthNotice({ variant }) {
       >
         <ShieldCheck className="h-4 w-4 text-success shrink-0 mt-0.5" aria-hidden="true" />
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-success">Hardware-protected.</span>{' '}
-          Your PIN combined with Face ID, fingerprint, or passkey makes offline attacks
-          infeasible — an attacker would need both your PIN and this physical device.
+          <span className="font-semibold text-success">{t('settings.hardware_kek.pin_strength.hardware_title')}</span>{' '}
+          {t('settings.hardware_kek.pin_strength.hardware_body')}
         </p>
       </div>
     );
@@ -112,10 +98,8 @@ function PinStrengthNotice({ variant }) {
       >
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" aria-hidden="true" />
         <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-caution">No hardware factor available in this browser.</span>{' '}
-          Your 8-digit PIN (~100 M combinations) is protected only by Argon2id — a dedicated
-          attacker could exhaust it offline in days to weeks. Use a password of 12+ characters,
-          or switch to Chrome/Firefox to enable hardware protection.
+          <span className="font-semibold text-caution">{t('settings.hardware_kek.pin_strength.no_hardware_title')}</span>{' '}
+          {t('settings.hardware_kek.pin_strength.no_hardware_body')}
         </p>
       </div>
     );
@@ -128,17 +112,15 @@ function PinStrengthNotice({ variant }) {
     >
       <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
       <p className="text-xs text-muted-foreground">
-        <span className="font-semibold">PIN strength.</span>{' '}
-        An 8-digit PIN has ~100 M combinations. Argon2id slows offline attacks to roughly
-        1–2 years single-threaded — but a GPU cluster could cut that to days.
-        Enabling Face ID, fingerprint, or passkey above makes offline attacks infeasible
-        by requiring this device for every unlock.
+        <span className="font-semibold">{t('settings.hardware_kek.pin_strength.pre_enroll_title')}</span>{' '}
+        {t('settings.hardware_kek.pin_strength.pre_enroll_body')}
       </p>
     </div>
   );
 }
 
 export default function HardwareKekSettings() {
+  const { t } = useTranslation('wallet');
   const { isDecoy, isHidden, recordAudit } = useWallet();
 
   // null = loading, true/false = resolved
@@ -218,7 +200,7 @@ export default function HardwareKekSettings() {
 
   const handleEnroll = async (testPin) => {
     const pinToUse = testPin || pin;
-    if (!pinToUse) { setError('Enter your vault PIN first.'); return; }
+    if (!pinToUse) { setError(t('settings.hardware_kek.errors.enter_pin_first')); return; }
     setError('');
     setBusy(true);
     try {
@@ -254,19 +236,19 @@ export default function HardwareKekSettings() {
       setKekVersion(3);
       setPin('');
       recordAudit('settings_changed');
-      toast.success('Hardware protection enabled — your vault now requires this device to unlock.');
+      toast.success(t('settings.hardware_kek.toast.enabled'));
     } catch (e) {
       // Classify by STABLE machine CODE, never by prose (copy is not a contract) and
       // never render the raw thrown message (no internal-detail leak, I4).
       const code = e?.code;
       if (code === 'KEK_ENROLL_INSECURE_TIER') {
         // Machine code from hardware.js ENROLL_ERR.INSECURE_TIER.
-        setError(INSECURE_TIER_MSG);
+        setError(t('settings.hardware_kek.errors.insecure_tier'));
       } else if (isWrongPinVaultError(e)) {
-        setError(WRONG_PIN_MSG);
+        setError(t('settings.hardware_kek.errors.wrong_pin'));
       } else {
         console.error('[KEK-ENROLL] failed:', e?.code, e?.message, JSON.stringify(e), e);
-        setError(classifyKekError(e));
+        setError(classifyKekError(e, t));
       }
       // Best-effort cleanup of any partially-created credential.
       try {
@@ -285,7 +267,7 @@ export default function HardwareKekSettings() {
   };
 
   const handleUnenroll = async () => {
-    if (!pin) { setError('Enter your vault PIN to confirm removal.'); return; }
+    if (!pin) { setError(t('settings.hardware_kek.errors.enter_pin_confirm_removal')); return; }
     setError('');
     setBusy(true);
     try {
@@ -301,14 +283,14 @@ export default function HardwareKekSettings() {
       setPin('');
       setRemoving(false);
       recordAudit('settings_changed');
-      toast.success('Hardware protection removed.');
+      toast.success(t('settings.hardware_kek.toast.removed'));
     } catch (e) {
       // Classify by STABLE machine CODE (UNWRAP_FAILED = wrong PIN/device). Vault
       // decrypt sentinels also map to wrong-PIN guidance; everything else is generic.
       if (isWrongPinVaultError(e)) {
-        setError(WRONG_PIN_MSG);
+        setError(t('settings.hardware_kek.errors.wrong_pin'));
       } else {
-        setError(classifyKekError(e));
+        setError(classifyKekError(e, t));
       }
     } finally {
       setBusy(false);
@@ -323,7 +305,7 @@ export default function HardwareKekSettings() {
   // left byte-for-byte unchanged, so a cancelled/failed upgrade is safe to retry.
   const handleUpgrade = async (testPin) => {
     const pinToUse = testPin || pin;
-    if (!pinToUse) { setError('Enter your vault PIN to upgrade.'); return; }
+    if (!pinToUse) { setError(t('settings.hardware_kek.errors.enter_pin_upgrade')); return; }
     setError('');
     setBusy(true);
     try {
@@ -338,13 +320,13 @@ export default function HardwareKekSettings() {
       setPin('');
       setUpgrading(false);
       recordAudit('settings_changed');
-      toast.success('Hardware protection upgraded — your vault is now bound with a unique per-device key.');
+      toast.success(t('settings.hardware_kek.toast.upgraded'));
     } catch (e) {
       // Same STABLE-code classification as enroll/remove; never render raw thrown text (I4).
       if (isWrongPinVaultError(e)) {
-        setError(WRONG_PIN_MSG);
+        setError(t('settings.hardware_kek.errors.wrong_pin'));
       } else {
-        setError(classifyKekError(e));
+        setError(classifyKekError(e, t));
       }
     } finally {
       setBusy(false);
@@ -360,14 +342,14 @@ export default function HardwareKekSettings() {
     <div className="p-5 rounded-xl border border-border bg-card space-y-4">
       <div className="flex items-center gap-2">
         <HardDrive className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">On-device hardware protection</h2>
+        <h2 className="font-semibold">{t('settings.hardware_kek.heading')}</h2>
         {enrolled && (() => {
           // On web (PRF), kekTier is null — show "WebAuthn Protected".
           // On native, show the real tier label from the vault blob (H-1 honesty fix).
           if (!isNative) {
             return (
               <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-success">
-                <ShieldCheck className="h-3.5 w-3.5" /> WebAuthn Protected
+                <ShieldCheck className="h-3.5 w-3.5" /> {t('settings.hardware_kek.badge_webauthn')}
               </span>
             );
           }
@@ -384,30 +366,30 @@ export default function HardwareKekSettings() {
           );
         })()}
         {showOffBadge && (
-          <span className="ml-auto text-xs text-muted-foreground">OFF</span>
+          <span className="ml-auto text-xs text-muted-foreground">{t('settings.hardware_kek.badge_off')}</span>
         )}
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Locks your wallet to this physical device. After enabling, your wallet can only
-        be opened on <strong>this device</strong>. A stolen backup file is useless without
-        the device itself, even with your PIN.
+        {t('settings.hardware_kek.description_pre')}
+        <strong>{t('settings.hardware_kek.description_device')}</strong>
+        {t('settings.hardware_kek.description_post')}
         {!isNative && (
-          <> Works on Chrome 99+ and Firefox 108+. Safari is not supported.</>
+          <> {t('settings.hardware_kek.description_web_suffix')}</>
         )}
       </p>
 
       <div className="flex items-start gap-2 rounded-lg bg-muted/40 border border-border px-3 py-2">
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          Device binding is active and tested on real hardware.
+          {t('settings.hardware_kek.device_binding_note')}
         </p>
       </div>
 
       {/* Loading */}
       {enrolled === null && (
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Spinner size="sm" decorative /> Checking status…
+          <Spinner size="sm" decorative /> {t('settings.hardware_kek.checking_status')}
         </p>
       )}
 
@@ -416,8 +398,7 @@ export default function HardwareKekSettings() {
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <ShieldAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            Hardware protection isn&apos;t available on this browser. Use Chrome 99+ or Firefox 108+,
-            or use the iOS or Android app.
+            {t('settings.hardware_kek.web_prf_unsupported')}
           </p>
           <PinStrengthNotice variant="no-hardware" />
         </div>
@@ -429,9 +410,11 @@ export default function HardwareKekSettings() {
           <div className="flex items-start gap-2 rounded-lg bg-success/10 border border-success/30 px-3 py-2">
             <ShieldCheck className="h-4 w-4 text-success shrink-0 mt-0.5" />
             <div className="space-y-0.5">
-              <p className="text-xs font-semibold text-success">Active on this device</p>
+              <p className="text-xs font-semibold text-success">{t('settings.hardware_kek.enrolled.active_title')}</p>
               <p className="text-xs text-muted-foreground">
-                Your vault requires this device&apos;s {isNative ? 'biometric' : 'passkey'} to unlock.
+                {isNative
+                  ? t('settings.hardware_kek.enrolled.active_body_native')
+                  : t('settings.hardware_kek.enrolled.active_body_web')}
               </p>
             </div>
           </div>
@@ -446,11 +429,9 @@ export default function HardwareKekSettings() {
               <div className="flex items-start gap-2">
                 <ArrowUpCircle className="h-4 w-4 text-caution shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <p className="text-xs font-semibold">Upgrade available</p>
+                  <p className="text-xs font-semibold">{t('settings.hardware_kek.upgrade.available_title')}</p>
                   <p className="text-xs text-muted-foreground">
-                    Your wallet was protected with an older version that shared a key across
-                    devices. Upgrade to lock it to this device only.
-                    This happens once and asks you to verify twice.
+                    {t('settings.hardware_kek.upgrade.available_body')}
                   </p>
                 </div>
               </div>
@@ -459,7 +440,7 @@ export default function HardwareKekSettings() {
                   className="text-xs text-primary underline"
                   onClick={() => { setUpgrading(true); setPin(''); setError(''); }}
                 >
-                  Upgrade hardware protection
+                  {t('settings.hardware_kek.upgrade.cta')}
                 </button>
               ) : (
                 <div className="space-y-2">
@@ -467,12 +448,12 @@ export default function HardwareKekSettings() {
                   {busy
                     ? (
                       <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                        <Spinner size="sm" decorative /> Upgrading — approve both prompts…
+                        <Spinner size="sm" decorative /> {t('settings.hardware_kek.upgrade.busy')}
                       </p>
                     ) : (
                       <>
                         <p className="text-xs text-muted-foreground">
-                          Enter your vault PIN. You’ll authenticate twice to re-secure the vault.
+                          {t('settings.hardware_kek.upgrade.prompt')}
                         </p>
                         <PinPad
                           value={pin}
@@ -480,14 +461,14 @@ export default function HardwareKekSettings() {
                           onComplete={handleUpgrade}
                           disabled={busy}
                           length={8}
-                          submitLabel="Upgrade hardware protection"
+                          submitLabel={t('settings.hardware_kek.upgrade.cta')}
                           numericOnly
                         />
                         <button
                           className="text-xs text-muted-foreground underline"
                           onClick={() => { setUpgrading(false); setPin(''); setError(''); }}
                         >
-                          Cancel
+                          {t('settings.hardware_kek.upgrade.cancel')}
                         </button>
                       </>
                     )
@@ -503,21 +484,21 @@ export default function HardwareKekSettings() {
                 className="text-xs text-destructive underline"
                 onClick={() => { setRemoving(true); setPin(''); setError(''); }}
               >
-                Remove hardware protection
+                {t('settings.hardware_kek.remove.cta')}
               </button>
             )
           ) : (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
                 {isNative
-                  ? 'Enter your PIN to confirm. You\'ll need to verify with your fingerprint or face.'
-                  : 'Enter your password to confirm. You\'ll need to verify with your passkey.'}
+                  ? t('settings.hardware_kek.remove.prompt_native')
+                  : t('settings.hardware_kek.remove.prompt_web')}
               </p>
               {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
               {busy
                 ? (
                   <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                    <Spinner size="sm" decorative /> Removing — approve the prompt…
+                    <Spinner size="sm" decorative /> {t('settings.hardware_kek.remove.busy')}
                   </p>
                 ) : (
                   <>
@@ -527,14 +508,14 @@ export default function HardwareKekSettings() {
                       onComplete={handleUnenroll}
                       disabled={busy}
                       length={8}
-                      submitLabel="Remove hardware protection"
+                      submitLabel={t('settings.hardware_kek.remove.cta')}
                       numericOnly
                     />
                     <button
                       className="text-xs text-muted-foreground underline"
                       onClick={() => { setRemoving(false); setPin(''); setError(''); }}
                     >
-                      Cancel
+                      {t('settings.hardware_kek.remove.cancel')}
                     </button>
                   </>
                 )
@@ -547,7 +528,7 @@ export default function HardwareKekSettings() {
       {/* Not enrolled — native */}
       {isNative && enrolled === false && !blocked && (
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">Enter your vault PIN to enable hardware protection.</p>
+          <p className="text-xs text-muted-foreground">{t('settings.hardware_kek.enroll.prompt_native')}</p>
 
           <PinStrengthNotice variant="pre-enroll" />
 
@@ -556,7 +537,7 @@ export default function HardwareKekSettings() {
           {busy
             ? (
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                <Spinner size="sm" decorative /> Enrolling — approve the biometric prompt…
+                <Spinner size="sm" decorative /> {t('settings.hardware_kek.enroll.busy_native')}
               </p>
             ) : (
               <PinPad
@@ -565,13 +546,13 @@ export default function HardwareKekSettings() {
                 onComplete={handleEnroll}
                 disabled={busy}
                 length={8}
-                submitLabel="Enable hardware protection"
+                submitLabel={t('settings.hardware_kek.enroll.cta')}
               />
             )
           }
 
           <p className="text-[11px] text-muted-foreground">
-            You will be asked to authenticate with your device biometric or passcode.
+            {t('settings.hardware_kek.enroll.footnote_native')}
           </p>
         </div>
       )}
@@ -580,8 +561,7 @@ export default function HardwareKekSettings() {
       {!isNative && webPrfAvailable && enrolled === false && !blocked && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            Enter your 8-digit PIN to enable hardware protection. Your browser will create a
-            passkey to lock your wallet to this device.
+            {t('settings.hardware_kek.enroll.prompt_web')}
           </p>
 
           <PinStrengthNotice variant="pre-enroll" />
@@ -591,7 +571,7 @@ export default function HardwareKekSettings() {
           {busy
             ? (
               <p role="status" aria-live="polite" className="text-xs text-muted-foreground flex items-center gap-1.5 justify-center py-4">
-                <Spinner size="sm" decorative /> Enrolling — approve the passkey prompt…
+                <Spinner size="sm" decorative /> {t('settings.hardware_kek.enroll.busy_web')}
               </p>
             ) : (
               <PinPad
@@ -600,15 +580,14 @@ export default function HardwareKekSettings() {
                 onComplete={handleEnroll}
                 disabled={busy}
                 length={8}
-                submitLabel="Enable hardware protection"
+                submitLabel={t('settings.hardware_kek.enroll.cta')}
                 numericOnly
               />
             )
           }
 
           <p className="text-[11px] text-muted-foreground">
-            Your browser will ask you to authenticate with a biometric or device PIN to
-            create the passkey.
+            {t('settings.hardware_kek.enroll.footnote_web')}
           </p>
         </div>
       )}
@@ -616,7 +595,7 @@ export default function HardwareKekSettings() {
       {/* Blocked in decoy / hidden session */}
       {blocked && (
         <p className="text-xs text-muted-foreground">
-          Hardware protection settings are not available in this session.
+          {t('settings.hardware_kek.blocked')}
         </p>
       )}
     </div>

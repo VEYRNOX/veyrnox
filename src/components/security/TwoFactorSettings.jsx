@@ -18,6 +18,7 @@
 // resolveSend2faMethod). Still BUILT, not 'verified'.
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Capacitor } from '@capacitor/core';
 import { useWallet } from '@/lib/WalletProvider';
 import {
@@ -38,19 +39,27 @@ import { getAuthModel } from '@/lib/authModel';
 
 const MIN_ACTION_PASSWORD_LENGTH = 8;
 
-// The critical actions the guard gates — shown explicitly so the user knows what the
-// second factor actually protects (matches the useActionGuard call sites).
-const GATED_ACTIONS = [
-  { icon: Send, label: 'Sending funds', desc: 'every send, after safety checks' },
-  { icon: Eye, label: 'Revealing your recovery phrase', desc: 'viewing or exporting your backup' },
-  { icon: UserX, label: 'Setting an Emergency PIN', desc: 'creating the Emergency wallet' },
-  { icon: EyeOff, label: 'Creating or hiding a wallet', desc: 'hidden wallet changes' },
-];
+// Icons for the critical actions the guard gates — order matches
+// settings.two_factor.gated_actions in the wallet locale bundle.
+const GATED_ACTION_ICONS = [Send, Eye, UserX, EyeOff];
 
 export default function TwoFactorSettings() {
+  const { t } = useTranslation('wallet');
   const {
     actionPasswordConfigured, setActionPassword, clearActionPassword, isDecoy, isHidden, recordAudit,
   } = useWallet();
+  // I4 fail-closed: t(..., {returnObjects}) can return the key string (or a
+  // shape mismatch) when the resource is missing or a translator drops the
+  // array — `.map` would then throw and take the settings page with it. Guard
+  // by clamping to the JSX-side icon array (source of truth for how many rows
+  // ever render) and skipping any entry that is not a { label, desc } object.
+  const gatedRaw = t('settings.two_factor.gated_actions', { returnObjects: true });
+  const gatedActions = (Array.isArray(gatedRaw) ? gatedRaw : [])
+    .slice(0, GATED_ACTION_ICONS.length)
+    .map((a, i) => (a && typeof a === 'object' && typeof a.label === 'string'
+      ? { ...a, icon: GATED_ACTION_ICONS[i] }
+      : null))
+    .filter(Boolean);
 
   // ── Action Password (knowledge) form ──
   const [apVaultPw, setApVaultPw] = useState('');
@@ -72,23 +81,23 @@ export default function TwoFactorSettings() {
     try {
       await setActionPassword(apVaultPw, apNew);
       resetApForm();
-      toast.success(actionPasswordConfigured ? 'Action Password changed' : 'Action Password set');
+      toast.success(actionPasswordConfigured ? t('settings.two_factor.toast_changed') : t('settings.two_factor.toast_set'));
       recordAudit('settings_changed');
     } catch (e) {
-      toast.error(e?.message || 'Could not set the Action Password');
+      toast.error(e?.message || t('settings.two_factor.toast_set_error'));
     } finally { setApBusy(false); }
   };
 
   const handleClearActionPassword = async () => {
-    if (!apVaultPw) { toast.error('Enter your wallet PIN / password to confirm'); return; }
+    if (!apVaultPw) { toast.error(t('settings.two_factor.toast_confirm_pin_required')); return; }
     setApBusy(true);
     try {
       await clearActionPassword(apVaultPw);
       resetApForm();
-      toast.success('Action Password removed');
+      toast.success(t('settings.two_factor.toast_removed'));
       recordAudit('settings_changed');
     } catch (e) {
-      toast.error(e?.message || 'Could not remove the Action Password');
+      toast.error(e?.message || t('settings.two_factor.toast_remove_error'));
     } finally { setApBusy(false); }
   };
 
@@ -102,7 +111,7 @@ export default function TwoFactorSettings() {
   const isNative = Capacitor.isNativePlatform();
   const webauthn = isWebAuthnSupported() || isNative;
   const [bioAvailable, setBioAvailable] = useState(false);
-  const [biometricLabel, setBiometricLabel] = useState('Face ID / Touch ID');
+  const [biometricLabel, setBiometricLabel] = useState(t('settings.two_factor.biometric_label_default'));
   useEffect(() => {
     if (!isNative) return;
     let live = true;
@@ -136,16 +145,16 @@ export default function TwoFactorSettings() {
   const togglePasskey2fa = (on) => {
     if (on && !factorReady) {
       toast.error(isNative
-        ? `${biometricLabel} is not set up on this device.`
-        : 'Register a passkey first (Wallet Passkeys, below).');
+        ? t('settings.two_factor.toggle_biometric_needed', { label: biometricLabel })
+        : t('settings.two_factor.toggle_passkey_needed'));
       return;
     }
     if (isNative) set2faBiometricEnabled(on);
     else set2faPasskeyEnabled(on);
     setPasskey2fa(on);
     toast.success(on
-      ? (isNative ? `${biometricLabel} second factor on` : 'Passkey second factor on')
-      : (isNative ? `${biometricLabel} second factor off` : 'Passkey second factor off'));
+      ? (isNative ? t('settings.two_factor.toggle_biometric_on', { label: biometricLabel }) : t('settings.two_factor.toggle_passkey_on'))
+      : (isNative ? t('settings.two_factor.toggle_biometric_off', { label: biometricLabel }) : t('settings.two_factor.toggle_passkey_off')));
     recordAudit('settings_changed');
   };
 
@@ -157,17 +166,17 @@ export default function TwoFactorSettings() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <ShieldCheck className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">Two-factor at critical actions</h2>
+        <h2 className="font-semibold">{t('settings.two_factor.heading')}</h2>
       </div>
 
       {/* What it is + WHICH actions it gates (explicit) */}
       <div className="p-4 rounded-xl border border-border bg-card space-y-3">
         <p className="text-sm text-muted-foreground">
-          An extra check on top of your PIN for sensitive actions. Even if someone sees you type your PIN, they still can't do these things without the second step.
+          {t('settings.two_factor.intro')}
         </p>
         <div className="space-y-2">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Actions it protects</p>
-          {GATED_ACTIONS.map(({ icon: Icon, label, desc }) => (
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{t('settings.two_factor.actions_protects_label')}</p>
+          {gatedActions.map(({ icon: Icon, label, desc }) => (
             <div key={label} className="flex items-start gap-2.5">
               <Icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
               <p className="text-sm leading-tight">{label}
@@ -176,16 +185,19 @@ export default function TwoFactorSettings() {
           ))}
         </div>
         <div className="flex items-center gap-2 pt-1">
-          <span className="text-[11px] text-muted-foreground">Currently enforcing:</span>
+          <span className="text-[11px] text-muted-foreground">{t('settings.two_factor.currently_enforcing')}</span>
           <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${activeMethod === 'none' ? 'bg-secondary text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
-            {activeMethod === 'biometric' ? `PIN + ${biometricLabel}` : activeMethod === 'passkey' ? 'PIN + Passkey' : activeMethod === 'password' ? 'PIN + Action Password' : 'Off (PIN only)'}
+            {activeMethod === 'biometric' ? t('settings.two_factor.badge_biometric', { label: biometricLabel })
+              : activeMethod === 'passkey' ? t('settings.two_factor.badge_passkey')
+              : activeMethod === 'password' ? t('settings.two_factor.badge_password')
+              : t('settings.two_factor.badge_off')}
           </span>
         </div>
       </div>
 
       {setupBlocked && (
         <p className="text-[11px] text-muted-foreground">
-          You're in a decoy / hidden session. Configure two-factor from your real session.
+          {t('settings.two_factor.setup_blocked')}
         </p>
       )}
 
@@ -196,15 +208,15 @@ export default function TwoFactorSettings() {
             {actionPasswordConfigured ? <Lock className="h-5 w-5 text-primary" /> : <KeyRound className="h-5 w-5 text-muted-foreground" />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">PIN + Action Password {actionPasswordConfigured && <span className="text-primary">· ON</span>}</p>
-            <p className="text-[11px] text-muted-foreground">A second password saved inside your wallet. Strong, but both passwords live on the same device.</p>
+            <p className="text-sm font-medium">{t('settings.two_factor.method_a_title')} {actionPasswordConfigured && <span className="text-primary">· {t('settings.two_factor.on_suffix')}</span>}</p>
+            <p className="text-[11px] text-muted-foreground">{t('settings.two_factor.method_a_desc')}</p>
           </div>
         </div>
 
         {!setupBlocked && (
           <div className="space-y-3 pt-1">
             <div>
-              <Label htmlFor={isPinModel ? undefined : 'ap-vault'}>{isPinModel ? 'Your PIN' : 'Wallet password'}</Label>
+              <Label htmlFor={isPinModel ? undefined : 'ap-vault'}>{isPinModel ? t('settings.two_factor.label_pin') : t('settings.two_factor.label_wallet_password')}</Label>
               {isPinModel ? (
                 <div className="mt-2">
                   <PinPad
@@ -217,30 +229,30 @@ export default function TwoFactorSettings() {
                 </div>
               ) : (
                 <PasswordInput id="ap-vault" autoComplete="current-password" value={apVaultPw}
-                  onChange={e => setApVaultPw(e.target.value)} placeholder="Confirm it's you" className="mt-1.5 mono-value" />
+                  onChange={e => setApVaultPw(e.target.value)} placeholder={t('settings.two_factor.pin_confirm_placeholder')} className="mt-1.5 mono-value" />
               )}
             </div>
             <div>
-              <Label htmlFor="ap-new">{actionPasswordConfigured ? 'New Action Password' : 'Action Password'}</Label>
+              <Label htmlFor="ap-new">{actionPasswordConfigured ? t('settings.two_factor.action_password_label_change') : t('settings.two_factor.action_password_label_set')}</Label>
               <PasswordInput id="ap-new" autoComplete="new-password" value={apNew}
-                onChange={e => setApNew(e.target.value)} placeholder="At least 8 characters" className="mt-1.5 mono-value" />
-              <p className="text-xs text-muted-foreground mt-1">At least 8 characters · any characters allowed</p>
-              {apTooShort && <p className="text-[11px] text-destructive mt-1">Use at least {MIN_ACTION_PASSWORD_LENGTH} characters.</p>}
+                onChange={e => setApNew(e.target.value)} placeholder={t('settings.two_factor.action_password_placeholder')} className="mt-1.5 mono-value" />
+              <p className="text-xs text-muted-foreground mt-1">{t('settings.two_factor.action_password_hint')}</p>
+              {apTooShort && <p className="text-[11px] text-destructive mt-1">{t('settings.two_factor.too_short', { min: MIN_ACTION_PASSWORD_LENGTH })}</p>}
             </div>
             <div>
-              <Label htmlFor="ap-confirm">Confirm</Label>
+              <Label htmlFor="ap-confirm">{t('settings.two_factor.confirm_label')}</Label>
               <PasswordInput id="ap-confirm" autoComplete="new-password" value={apConfirm}
-                onChange={e => setApConfirm(e.target.value)} placeholder="Re-enter the Action Password" className="mt-1.5 mono-value" />
-              <p className="text-xs text-muted-foreground mt-1">Must match your Action Password</p>
-              {apMismatch && <p className="text-[11px] text-destructive mt-1">Passwords don't match.</p>}
+                onChange={e => setApConfirm(e.target.value)} placeholder={t('settings.two_factor.confirm_placeholder')} className="mt-1.5 mono-value" />
+              <p className="text-xs text-muted-foreground mt-1">{t('settings.two_factor.confirm_hint')}</p>
+              {apMismatch && <p className="text-[11px] text-destructive mt-1">{t('settings.two_factor.mismatch')}</p>}
             </div>
             <Button className="w-full gap-2" onClick={handleSetActionPassword} disabled={!apCanSave}>
-              <KeyRound className="h-4 w-4" /> {actionPasswordConfigured ? 'Change Action Password' : 'Set Action Password'}
+              <KeyRound className="h-4 w-4" /> {actionPasswordConfigured ? t('settings.two_factor.save_change') : t('settings.two_factor.save_set')}
             </Button>
             {actionPasswordConfigured && (
               <Button variant="ghost" className="w-full text-destructive hover:bg-destructive/10 gap-2"
                 onClick={handleClearActionPassword} disabled={apBusy}>
-                <Trash2 className="h-4 w-4" /> Remove Action Password
+                <Trash2 className="h-4 w-4" /> {t('settings.two_factor.remove')}
               </Button>
             )}
           </div>
@@ -255,30 +267,32 @@ export default function TwoFactorSettings() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">
-              {isNative ? `PIN + ${biometricLabel}` : 'PIN + Passkey / FIDO2'} {(passkey2fa && factorReady) && <span className="text-primary">· ON</span>}
+              {isNative ? t('settings.two_factor.method_b_title_native', { label: biometricLabel }) : t('settings.two_factor.method_b_title_web')} {(passkey2fa && factorReady) && <span className="text-primary">· {t('settings.two_factor.on_suffix')}</span>}
             </p>
             <p className="text-[11px] text-muted-foreground">
               {isNative
-                ? `Your PIN plus ${biometricLabel}. If biometrics aren't available, the action is blocked. Losing your device never loses your funds.`
-                : 'Your PIN plus a passkey tap. If the passkey isn\'t available, the action is blocked. Losing it never loses your funds.'}
+                ? t('settings.two_factor.method_b_desc_native', { label: biometricLabel })
+                : t('settings.two_factor.method_b_desc_web')}
             </p>
           </div>
           <Switch
             checked={passkey2fa && factorReady}
             onCheckedChange={togglePasskey2fa}
             disabled={!webauthn || (isNative && !bioAvailable)}
-            aria-label={isNative ? 'Use my device biometrics as my second factor' : 'Use passkey as my second factor'}
+            aria-label={isNative ? t('settings.two_factor.switch_aria_native') : t('settings.two_factor.switch_aria_web')}
           />
         </div>
         {isNative && bioAvailable && (
-          <p className="text-[11px] text-muted-foreground">Confirm critical actions with {biometricLabel}.</p>
+          <p className="text-[11px] text-muted-foreground">{t('settings.two_factor.confirm_native', { label: biometricLabel })}</p>
         )}
         {isNative && !bioAvailable && (
-          <p className="text-[11px] text-muted-foreground">{biometricLabel} / device passcode is not set up on this device — enable it in your device settings to use this factor.</p>
+          <p className="text-[11px] text-muted-foreground">{t('settings.two_factor.unavailable_native', { label: biometricLabel })}</p>
         )}
-        {!isNative && !webauthn && <p className="text-[11px] text-muted-foreground">This browser doesn't support WebAuthn / passkeys.</p>}
+        {!isNative && !webauthn && <p className="text-[11px] text-muted-foreground">{t('settings.two_factor.unsupported_web')}</p>}
         {!isNative && webauthn && !passkeyRegistered && (
-          <p className="text-[11px] text-muted-foreground">No passkey registered yet — set one up in <strong>Wallet Passkeys</strong> below, then enable this.</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t('settings.two_factor.register_hint_web_pre')} <strong>{t('settings.two_factor.register_hint_web_strong')}</strong> {t('settings.two_factor.register_hint_web_post')}
+          </p>
         )}
       </div>
     </div>
