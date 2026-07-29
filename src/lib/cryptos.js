@@ -72,18 +72,26 @@ export const USD_RATES = Object.freeze({ ..._usd, ARB: _usd.ETH, OP: _usd.ETH })
  * presented as a real-time market value. Single source of truth for the wording.
  */
 export const USD_REFERENCE_NOTE = "Reference rate, not live market data";
+import { formatUsd, resolveLocale } from '@/lib/locale';
+
 /**
  * Format a USD figure that was DERIVED from the static USD_RATES table, marked
  * approximate (≈) and rounded to whole dollars, so a reference-rate number is
  * never shown as an exact amount. Pairs with USD_REFERENCE_NOTE: that discloses
  * WHY the figure is approximate, this renders the number itself. Use ONLY for
  * converted values — NEVER for user-entered caps, which are exact. Non-finite,
- * zero, sub-dollar, and negative inputs all render as "≈$0".
+ * zero, sub-dollar, and negative inputs all render as the locale's zero form
+ * (e.g. "≈$0" in en-US, "≈0 $" in de-DE).
+ *
+ * The `≈` prefix is language-neutral; the currency portion is delegated to
+ * `formatUsd` so a de-DE user sees "1.650 $" not "$1,650". The `locale` arg
+ * defaults to `resolveLocale()` (navigator-driven) and is threaded explicitly
+ * so tests can pin exact output without touching the global navigator.
  */
-export function approxUsd(usd) {
+export function approxUsd(usd, locale = resolveLocale()) {
   const n = Number(usd);
   const dollars = Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
-  return `≈$${dollars.toLocaleString('en-US')}`;
+  return `≈${formatUsd(dollars, locale)}`;
 }
 /** { BTC: "#F7931A", ... } brand colours. */
 export const CURRENCY_COLORS = byKey("color");
