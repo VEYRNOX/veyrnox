@@ -43,7 +43,13 @@ const ED25519_CURVE = new TextEncoder().encode('ed25519 seed');
  */
 function masterKey(seed) {
   const I = hmac(sha512, ED25519_CURVE, seed);
-  return { key: I.slice(0, 32), chainCode: I.slice(32) };
+  // slice() copies, so we can wipe I without disturbing the returned halves.
+  // Leaving the 64-byte HMAC output (which contains the master private scalar
+  // in its low 32 bytes) sitting on the heap defeats every downstream wipe
+  // effort — M-2 (2026-07-28 internal audit).
+  const out = { key: I.slice(0, 32), chainCode: I.slice(32) };
+  I.fill(0);
+  return out;
 }
 
 /**
@@ -63,7 +69,13 @@ function deriveChild(parent, index) {
   data[35] = (i >>> 8) & 0xff;
   data[36] = i & 0xff;
   const I = hmac(sha512, parent.chainCode, data);
-  return { key: I.slice(0, 32), chainCode: I.slice(32) };
+  const out = { key: I.slice(0, 32), chainCode: I.slice(32) };
+  // Same rationale as masterKey: don't leave the child private scalar living
+  // in the raw HMAC buffer after we've copied it out. Also scrub the input
+  // scratch buffer, which contains the parent private scalar (bytes 1..32).
+  I.fill(0);
+  data.fill(0);
+  return out;
 }
 
 /**
