@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "@/lib/recharts";
 import { toast } from "@/lib/toast";
+import { formatUsd, resolveLocale } from "@/lib/locale";
 
 
 export default function PortfolioSnapshots() {
@@ -79,14 +80,14 @@ export default function PortfolioSnapshots() {
       <div className="grid grid-cols-2 gap-3">
         <div className="p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground mb-1">Current Value</p>
-          <p className="text-xl font-bold">${currentTotalUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+          <p className="text-xl font-bold">{formatUsd(currentTotalUSD, resolveLocale(), { maximumFractionDigits: 2 })}</p>
         </div>
         <div className="p-4 rounded-xl border border-border bg-card">
           <p className="text-xs text-muted-foreground mb-1">Since Last Snapshot</p>
           {change != null ? (
             <div className={`flex items-center gap-1 text-lg font-bold ${change >= 0 ? "text-success" : "text-destructive"}`}>
               {change >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-              {change >= 0 ? "+" : ""}${Math.abs(change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              {change >= 0 ? "+" : ""}{formatUsd(Math.abs(change), resolveLocale())}
               <span className="text-sm">({changePct?.toFixed(1)}%)</span>
             </div>
           ) : (
@@ -103,8 +104,8 @@ export default function PortfolioSnapshots() {
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-              <Tooltip formatter={(v) => [`$${v.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, "Portfolio"]} labelFormatter={l => l} />
+              <YAxis tickFormatter={v => formatUsd(v, resolveLocale(), { compact: true, maximumFractionDigits: 1 })} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+              <Tooltip formatter={(v) => [formatUsd(v, resolveLocale(), { maximumFractionDigits: 2 }), "Portfolio"]} labelFormatter={l => l} />
               <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
@@ -133,10 +134,10 @@ export default function PortfolioSnapshots() {
                   {s.note && <p className="text-xs text-muted-foreground italic">{s.note}</p>}
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold">${s.total_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                  <p className="text-sm font-bold">{formatUsd(s.total_usd, resolveLocale())}</p>
                   {diff != null && (
                     <p className={`text-xs ${diff >= 0 ? "text-success" : "text-destructive"}`}>
-                      {diff >= 0 ? "+" : ""}${diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {diff >= 0 ? "+" : ""}{formatUsd(diff, resolveLocale())}
                     </p>
                   )}
                 </div>
@@ -155,7 +156,7 @@ export default function PortfolioSnapshots() {
           <div className="space-y-4 pt-2">
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
               <p className="text-xs text-muted-foreground mb-1">Current value to snapshot</p>
-              <p className="text-xl font-bold">${currentTotalUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+              <p className="text-xl font-bold">{formatUsd(currentTotalUSD, resolveLocale(), { maximumFractionDigits: 2 })}</p>
             </div>
             <div>
               <Label>Label (optional)</Label>

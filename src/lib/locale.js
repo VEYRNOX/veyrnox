@@ -225,10 +225,16 @@ export function formatCryptoAmount(amount, locale, opts) {
  * to Intl's own default rather than throwing — a stale navigator string must
  * not black-hole the whole USD column.
  *
+ * The `compact: true` opt switches Intl to `notation: 'compact'` — the
+ * "$1K" / "$1.5M" / "$1B" form chart-axis ticks need. Locale-aware: de-DE
+ * renders "1,5 Mio. $" for a million, not "$1.5M". Same throw / fallback
+ * policy as standard mode; composes with `maximumFractionDigits` for tick
+ * precision (`{ compact: true, maximumFractionDigits: 1 }` → "$1.5M").
+ *
  * @param {number} usd
  * @param {string} locale BCP-47 tag; falls back to Intl default if unresolvable.
- * @param {{ maximumFractionDigits?: number, minimumFractionDigits?: number }} [opts]
- * @returns {string} e.g. "$1,650" (en-US), "1.650 $" (de-DE)
+ * @param {{ maximumFractionDigits?: number, minimumFractionDigits?: number, compact?: boolean }} [opts]
+ * @returns {string} e.g. "$1,650" (en-US), "1.650 $" (de-DE), "$1.5M" (compact en-US)
  */
 export function formatUsd(usd, locale, opts) {
   if (!Number.isFinite(usd)) {
@@ -236,19 +242,19 @@ export function formatUsd(usd, locale, opts) {
   }
   const max = opts?.maximumFractionDigits ?? 0;
   const min = opts?.minimumFractionDigits ?? 0;
+  const compact = opts?.compact === true;
+  const intlOpts = {
+    style: 'currency', currency: 'USD',
+    maximumFractionDigits: max, minimumFractionDigits: min,
+    ...(compact ? { notation: 'compact', compactDisplay: 'short' } : {}),
+  };
   try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency', currency: 'USD',
-      maximumFractionDigits: max, minimumFractionDigits: min,
-    }).format(usd);
+    return new Intl.NumberFormat(locale, intlOpts).format(usd);
   } catch {
     // Locale tag unrecognised (rare — Intl is permissive). Fall back to the
     // runtime default so the number still renders, just without the caller's
     // locale preference. Better than throwing and blanking every USD cell.
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency', currency: 'USD',
-      maximumFractionDigits: max, minimumFractionDigits: min,
-    }).format(usd);
+    return new Intl.NumberFormat(undefined, intlOpts).format(usd);
   }
 }
 

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { USD_RATES } from "@/lib/cryptos";
+import { formatUsd, resolveLocale } from "@/lib/locale";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
@@ -10,7 +11,7 @@ function CustomTooltip({ active = undefined, payload = undefined }) {
   return (
     <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-xl text-xs">
       <p className="font-semibold">{d.name}</p>
-      <p className="text-muted-foreground">${d.usd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+      <p className="text-muted-foreground">{formatUsd(d.usd, resolveLocale(), { maximumFractionDigits: 2 })}</p>
       <p className="text-muted-foreground">{d.percent}%</p>
     </div>
   );
