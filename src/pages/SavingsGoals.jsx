@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Progress } from "@/components/ui/progress";
 import { differenceInDays } from "date-fns";
 import { safeFormat } from "@/lib/safeDate";
+import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const EMOJIS = ["🎯","🏠","🚀","✈️","💎","🏖️","🎓","💻","🏋️","🎸"];
 
@@ -27,8 +28,10 @@ export default function SavingsGoals() {
   });
 
   const create = useMutation({
+    // Locale-aware parse: de-DE "1,5" → 1.5, en-US "1,5" → NaN (refused by
+    // the existing positive-number gate below). See parseLocaleNumber docs.
     mutationFn: (/** @type {any} */ d) => {
-      const target = parseFloat(d.target_amount_usd);
+      const target = parseLocaleNumber(d.target_amount_usd, resolveLocale());
       if (!Number.isFinite(target) || target <= 0) throw new Error("Target amount must be a positive number");
       return base44.entities.SavingsGoal.create({ ...d, target_amount_usd: target, current_amount_usd: 0, status: "active" });
     },
@@ -37,7 +40,7 @@ export default function SavingsGoals() {
 
   const deposit = useMutation({
     mutationFn: (/** @type {any} */ vars) => {
-      const amount = parseFloat(vars.amount);
+      const amount = parseLocaleNumber(vars.amount, resolveLocale());
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Deposit amount must be a positive number");
       return base44.entities.SavingsGoal.update(vars.id, { current_amount_usd: vars.current + amount });
     },
@@ -126,7 +129,7 @@ export default function SavingsGoals() {
 
                 {depositId === goal.id && (
                   <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                    <Input value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="Amount USD" className="h-8 text-xs flex-1" type="number" />
+                    <Input value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="Amount USD" className="h-8 text-xs flex-1" type="text" inputMode="decimal" />
                     <Button size="sm" className="h-8 text-xs" onClick={() => deposit.mutate({ id: goal.id, current: goal.current_amount_usd || 0, amount: depositAmount })} disabled={!depositAmount}>
                       Add
                     </Button>
@@ -162,7 +165,7 @@ export default function SavingsGoals() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Target (USD)</Label>
-                <Input value={form.target_amount_usd} onChange={e => setForm(f => ({ ...f, target_amount_usd: e.target.value }))} placeholder="5000" type="number" className="mt-1.5" />
+                <Input value={form.target_amount_usd} onChange={e => setForm(f => ({ ...f, target_amount_usd: e.target.value }))} placeholder="5000" type="text" inputMode="decimal" className="mt-1.5" />
               </div>
               <div>
                 <Label id="savings-currency-label">Currency</Label>
@@ -183,7 +186,7 @@ export default function SavingsGoals() {
               <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Saving for..." className="mt-1.5" />
             </div>
             <Button className="w-full" disabled={!form.title || !form.target_amount_usd || create.isPending}
-              onClick={() => create.mutate({ ...form, target_amount_usd: parseFloat(form.target_amount_usd) })}>
+              onClick={() => create.mutate(form)}>
               {create.isPending ? "Creating..." : "Create Goal"}
             </Button>
           </div>
