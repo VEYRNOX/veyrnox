@@ -50,7 +50,7 @@ jobs:
 
       - name: Install perf-only deps
         # LHCI + serve are perf-rig-only; don't bloat the app's package.json.
-        run: npm install --no-save --no-package-lock @lhci/cli@0.14.x serve@14
+        run: npm install --no-save --no-package-lock --legacy-peer-deps @lhci/cli@0.14.x serve@14
 
       - name: Build
         run: npm run build
