@@ -80,11 +80,11 @@ export const LANGUAGE_SWITCHER_AVAILABLE = /** @type {readonly string[]} */ ([
 // to `false` when a native reviewer signs off on that language's copy.
 export const MACHINE_TRANSLATED = /** @type {Record<string, boolean>} */ ({
   en: false,
-  es: true,
+  es: false, // security.json reviewer-approved 2026-07-29 (native es/pt/fr/it/en speaker)
   de: true,
   'zh-CN': true,
-  'pt-BR': true,
-  fr: true,
+  'pt-BR': false, // security.json reviewer-approved 2026-07-29
+  fr: false,      // security.json reviewer-approved 2026-07-29
   nl: true,
   tr: true,
   ru: true,
@@ -93,7 +93,7 @@ export const MACHINE_TRANSLATED = /** @type {Record<string, boolean>} */ ({
   ja: true,
   ko: true,
   ar: true,
-  it: true,
+  it: false,      // security.json reviewer-approved 2026-07-29
   pl: true,
   uk: true,
   cs: true,
@@ -111,7 +111,7 @@ export const MACHINE_TRANSLATED = /** @type {Record<string, boolean>} */ ({
   'zh-TW': true,
   ms: true,
   tl: true,
-  'es-419': true,
+  'es-419': false, // security.json reviewer-approved 2026-07-29
   bn: true,
   ta: true,
   sw: true,
