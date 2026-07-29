@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
+import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
@@ -23,7 +24,11 @@ export default function BudgetLimits() {
 
   const create = useMutation({
     mutationFn: (/** @type {any} */ d) => {
-      const limit = parseFloat(d.limit_usd);
+      // Locale-aware parse: canonicalises "1,5" in comma-decimal locales
+      // (de-DE, fr-FR, es-ES, it-IT, pt-PT, nl-NL) and returns NaN for
+      // anything ambiguous. The existing "must be positive" gate below
+      // catches NaN naturally (Number.isFinite(NaN) is false).
+      const limit = parseLocaleNumber(d.limit_usd, resolveLocale());
       if (!Number.isFinite(limit) || limit <= 0) throw new Error("Limit must be a positive number");
       const rawAlert = parseInt(d.alert_at_percent, 10);
       const alert_at_percent = Number.isFinite(rawAlert) ? Math.min(100, Math.max(0, rawAlert)) : 80;
@@ -141,7 +146,12 @@ export default function BudgetLimits() {
                 </Select>
               </div>
             </div>
-            <div><Label htmlFor="budget-limit">Limit (native amount)</Label><Input id="budget-limit" className="mt-1.5" type="number" placeholder="e.g. 0.5 for ETH" value={form.limit_usd} onChange={e => setForm(f => ({ ...f, limit_usd: e.target.value }))} /></div>
+            {/* type="text" + inputMode="decimal": same reason as SecurityCenter's
+                limit fields — type="number" blanks locale-typed values like
+                de-DE "1,5" before React sees them. Text preserves the raw
+                string so parseLocaleNumber (in the save mutation) can
+                canonicalise it. */}
+            <div><Label htmlFor="budget-limit">Limit (native amount)</Label><Input id="budget-limit" className="mt-1.5" type="text" inputMode="decimal" placeholder="e.g. 0.5 for ETH" value={form.limit_usd} onChange={e => setForm(f => ({ ...f, limit_usd: e.target.value }))} /></div>
             <div><Label htmlFor="budget-alert">Alert at (%)</Label><Input id="budget-alert" className="mt-1.5" type="number" placeholder="80" value={form.alert_at_percent} onChange={e => setForm(f => ({ ...f, alert_at_percent: parseInt(e.target.value) }))} /></div>
             <Button className="w-full" disabled={!form.limit_usd || create.isPending} onClick={() => create.mutate(form)}>
               {create.isPending ? "Saving..." : "Save Limit"}
