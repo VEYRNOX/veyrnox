@@ -99,12 +99,21 @@ const HONESTY = {
 // in `i18n/locales/en/security.json` and read via `t('duress.foo')` /
 // `t('panic.foo')` / `t('stealth.foo')` at render time. The GUARANTEE the test
 // enforces — "these phrases must not silently disappear from the app" — is
-// unchanged; only the physical file they live in shifted. Scan both the page
-// source AND the English catalog (the source-of-truth non-MT copy the switcher
-// renders whenever no other language is selected, and the fallback every MT
-// language falls through to).
-const CATALOG_EN = read('i18n/locales/en/security.json');
-const rendered = (rel) => (read(rel) + '\n' + CATALOG_EN).replace(/\s+/g, ' ');
+// unchanged; only the physical file they live in shifted.
+//
+// PARSE the catalog (don't concatenate the raw JSON): raw-JSON text escapes
+// internal quotes as \" so an assertion for the literal phrase `not "hidden
+// wallets"` misses because the file contains `not \"hidden wallets\"`. Parsing
+// gives us the truly-rendered user-visible strings, which is what the phrase
+// list was written against.
+function flattenStrings(obj, out = []) {
+  if (typeof obj === 'string') out.push(obj);
+  else if (Array.isArray(obj)) obj.forEach((v) => flattenStrings(v, out));
+  else if (obj && typeof obj === 'object') Object.values(obj).forEach((v) => flattenStrings(v, out));
+  return out;
+}
+const CATALOG_EN_TEXT = flattenStrings(JSON.parse(read('i18n/locales/en/security.json'))).join(' ');
+const rendered = (rel) => (read(rel) + '\n' + CATALOG_EN_TEXT).replace(/\s+/g, ' ');
 
 describe('Part F — coercion-page honesty points survive condensation', () => {
   for (const [page, claims] of Object.entries(HONESTY)) {
