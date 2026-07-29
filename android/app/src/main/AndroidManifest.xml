@@ -47,6 +47,19 @@
                 <data android:scheme="https" android:host="veyrnox.com" android:pathPrefix="/wc" />
             </intent-filter>
 
+            <!-- Transak on-ramp return: https://veyrnox.com/buy/return?tid=... — same
+                 autoVerify path as /wc above, reads the SAME assetlinks.json. Routes
+                 to /buy/in-progress via src/components/DeepLinkHandler.jsx. The
+                 return-URL payload is NOT trusted as proof of purchase; funds are
+                 confirmed by on-chain balance polling of the deposit address. See
+                 docs/transak-integration-spec.md §7 for the full return handling. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="veyrnox.com" android:pathPrefix="/buy/return" />
+            </intent-filter>
+
         </activity>
 
         <provider

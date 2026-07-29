@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Veyrnox × Transak — Buy flow (UX)</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --ink: #0f1720;
+      --muted: #6b7480;
+      --line: #d9dde3;
+      --card: #f5f6f8;
+      --accent: #10b981;
+    }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 960px; margin: 0 auto; padding: 40px 32px 64px; }
+    header { border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 28px; }
+    h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
+    header p { color: var(--muted); font-size: 13px; margin: 0; }
+    h2 { font-size: 15px; margin: 32px 0 12px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--muted); }
+    .diagram { border: 1px solid var(--line); border-radius: 12px; padding: 20px; background: var(--card); overflow-x: auto; }
+    .diagram .mermaid { min-width: 720px; }
+    .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; font-size: 12.5px; margin-top: 12px; }
+    .legend div { padding: 6px 10px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); }
+    .legend b { color: var(--ink); }
+    footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+    @media print {
+      body { background: #fff; }
+      .page { padding: 16px 12px 24px; }
+      .diagram { break-inside: avoid; page-break-inside: avoid; }
+    }
+  </style>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: {
+      primaryColor: '#ffffff',
+      primaryTextColor: '#0f1720',
+      primaryBorderColor: '#0f1720',
+      lineColor: '#6b7480',
+      secondaryColor: '#e6faf3',
+      tertiaryColor: '#f5f6f8',
+      fontSize: '13px',
+    }, flowchart: { htmlLabels: true, curve: 'basis' } });
+  </script>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>Veyrnox × Transak — Buy flow</h1>
+      <p>End-to-end UX for the Buy on-ramp integration. Mirrors the pattern used by MetaMask Mobile and Trust Wallet. Green nodes are Transak surfaces; grey are Veyrnox; diamonds are decision gates.</p>
+    </header>
+
+    <h2>1 · Entry points → Transak handoff → confirmation</h2>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart TD
+  A("Wallet home / Detail page /<br/>Empty state / Bottom nav<br/><i>Buy button tapped</i>"):::wallet
+  B{"Deniability /<br/>demo session?"}:::gate
+  A --> B
+  B -- "yes" --> Z("Button not rendered<br/>fail-closed, I3"):::hidden
+  B -- "no" --> C("/buy — in-app picker<br/>Amount + Fiat + Asset/Network"):::wallet
+  C --> D("Continue tapped"):::wallet
+  D --> E("Disclosure sheet<br/>'You are leaving Veyrnox'<br/>Names Transak Ltd + policy link"):::wallet
+  E -- "Cancel" --> C
+  E -- "Continue" --> F{"URL builder<br/>egress gate<br/>I3 second chokepoint"}:::gate
+  F -- "block" --> Z
+  F -- "ok" --> G("Address derived at press-time<br/>from on-device wallet<br/>EVM shared / BTC / SOL"):::wallet
+  G --> H("Browser.open<br/>@capacitor/browser"):::wallet
+  H --> I("Transak hosted widget<br/>SFSafariViewController on iOS<br/>Chrome Custom Tabs on Android"):::transak
+  I --> J("KYC + card / Apple Pay /<br/>Google Pay / bank transfer<br/>Transak scope; sandboxed from wallet"):::transak
+  J --> K("Redirect to<br/>veyrnox.com/buy/return<br/>Universal Link / App Link"):::transak
+  K --> L("Veyrnox /buy/in-progress<br/>Neutral 'purchase in progress'"):::wallet
+  L --> M("On-chain balance polling<br/>on the deposit address<br/>source of truth — I5"):::wallet
+  M --> N("Funds visible in wallet<br/>Wallet home shows updated balance"):::wallet
+
+  classDef wallet fill:#ffffff,stroke:#0f1720,color:#0f1720,stroke-width:1px
+  classDef transak fill:#e6faf3,stroke:#10b981,color:#0f1720,stroke-width:1.2px
+  classDef gate fill:#fff8e1,stroke:#b7791f,color:#0f1720,stroke-width:1px
+  classDef hidden fill:#f5f6f8,stroke:#d9dde3,color:#6b7480,stroke-dasharray:4 3
+      </pre>
+    </div>
+
+    <div class="legend">
+      <div><b>Wallet surface</b> — Veyrnox-rendered UI, native React inside Capacitor</div>
+      <div><b>Transak surface</b> — Transak's hosted widget in the system browser (separate process)</div>
+      <div><b>Gate</b> — deniability or fail-closed check; blocked paths render nothing (I3, I4)</div>
+      <div><b>Hidden</b> — the button never renders in decoy/demo sessions</div>
+    </div>
+
+    <h2>2 · Entry-point placement (Buy alongside Send everywhere Send appears)</h2>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  subgraph BOTTOM["Mobile bottom nav"]
+    b1["Home"]:::wallet --- b2["Send"]:::wallet --- b3["Buy"]:::buy --- b4["Receive"]:::wallet
+  end
+  subgraph PORTFOLIO["Wallet portfolio home — action row"]
+    p1["Send"]:::wallet --- p2["Buy"]:::buy --- p3["Receive"]:::wallet --- p4["+ Add wallet"]:::wallet
+  end
+  subgraph DETAIL["Per-asset detail page"]
+    d1["Send"]:::wallet --- d2["Buy"]:::buy --- d3["Receive"]:::wallet
+  end
+  subgraph EMPTY["Empty-state onboarding card (0 balance)"]
+    e1["Receive"]:::wallet --- e2["Buy"]:::buy
+  end
+
+  classDef wallet fill:#ffffff,stroke:#0f1720,color:#0f1720,stroke-width:1px
+  classDef buy fill:#e6faf3,stroke:#10b981,color:#0f1720,stroke-width:1.2px
+      </pre>
+    </div>
+
+    <h2>3 · Controls annotated in the flow</h2>
+    <ul style="font-size: 13px; line-height: 1.55; margin: 0; padding-left: 18px; color: var(--ink);">
+      <li><b>I3 render gate</b> — <code>isDeniabilityOrDemoActive()</code> hides every Buy entry point in decoy/hidden/demo sessions; the URL builder throws <code>BUY_DENIABILITY_BLOCKED</code> even if a caller bypasses the render check (two-chokepoint pattern).</li>
+      <li><b>I5 address correctness</b> — deposit address is read from the on-device wallet AT PRESS-TIME, not at mount, not from a cached value, not from a URL param. Wrong network → hard error rather than send-to-unusable-address.</li>
+      <li><b>System browser, not in-app WebView</b> — Transak's KYC session, cookies and analytics run in a browser context separate from the wallet process. Transak's data collection is not attributed to the Veyrnox app.</li>
+      <li><b>Universal Link return</b> — <code>https://veyrnox.com/buy/return</code> (not a custom <code>veyrnox://</code> scheme). Apple/Google-blessed; survives Chrome's custom-scheme stripping.</li>
+      <li><b>Return payload not trusted</b> — <code>/buy/in-progress</code> shows a neutral status; funds are confirmed only by on-chain observation of the deposit address (I5, backend untrusted).</li>
+      <li><b>Ship gate</b> — <code>VITE_BUY_ENABLED</code> defaults to <code>false</code>; the Buy tiles are dead-code-eliminated from production builds until Transak's partner agreement + production API keys are in place.</li>
+    </ul>
+
+    <footer>
+      Veyrnox LTD — Buy flow diagram for Transak KYB. Rendered client-side with Mermaid. Save as PDF via your browser's Print dialog (Save as PDF → A4 → Fit to page).
+    </footer>
+  </div>
+</body>
+</html>
