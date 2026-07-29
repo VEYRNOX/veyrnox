@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "İşlem Geçmişi",
+      "subhead": "Zincirden doğrudan okunan zincir bazlı gönderim ve alımlar — yalnızca okunur, explorer bağlantılarıyla.",
+      "badge_demo": "Demo · örnek veri",
+      "badge_mainnet": "Ana ağ",
+      "badge_testnet": "Test ağı",
+      "privacy_demo_note": "Demo modu — ağ üzerinden hiçbir şey sorgulanmaz; aşağıdaki satırlar yerel örnek verilerdir.",
+      "loading_label": "{{symbol}} geçmişi yükleniyor",
+      "error_prefix": "Geçmiş yüklenemedi: {{reason}}.",
+      "error_fetch_reason": "RPC düğümüne ulaşılamadı — bağlantınızı kontrol edip tekrar deneyin.",
+      "error_generic_reason": "indeksleyici yanıt vermedi",
+      "retry": "Tekrar dene",
+      "no_indexer_title": "{{name}} için uygulama içi geçmiş JSON-RPC üzerinden kullanılamıyor",
+      "no_indexer_body": "Sade bir JSON-RPC düğümü bir adresin işlemlerini listeleyemez ve kasıtlı olarak üçüncü taraf bir explorer/indeksleyici API'si eklemiyoruz (yeni bir veri kaynağı ve eve telefon açma yüzeyi). Tam geçmişiniz blok explorer'da bulunur.",
+      "view_on_explorer": "{{address}} adresini {{network}} explorer'da görüntüle",
+      "view_explorer_title": "Blok explorer'da görüntüle",
+      "unlock_for_explorer": "{{symbol}} adresiniz için explorer bağlantısını almak üzere cüzdanınızın kilidini açın.",
+      "locked_title": "Cüzdan kilitli",
+      "locked_body": "{{symbol}} adresinizi türetip geçmişini yüklemek için cüzdanınızın kilidini açın.",
+      "empty": "{{network}} üzerinde {{symbol}} için henüz işlem yok.",
+      "count_one": "{{count}} işlem",
+      "count_other": "{{count}} işlem",
+      "most_recent_suffix": " · en yeni",
+      "refresh": "Yenile",
+      "sample_badge": "Örnek",
+      "to_prefix": "Alıcı: ",
+      "from_prefix": "Gönderen: ",
+      "status_pending": "Beklemede",
+      "status_confirmed": "Onaylandı",
+      "status_failed": "Başarısız",
+      "awaiting_confirmation": "onay bekleniyor"
+    },
+    "list": {
+      "empty_title": "Henüz işlem yok",
+      "empty_description": "Bu cüzdanda gönderim veya alım yaptığınızda, zincir üzerindeki hareketleriniz burada görünecek."
+    },
+    "receipt": {
+      "heading": "İşlem Makbuzları",
+      "subhead": "Herhangi bir işlem için yazdırılabilir makbuz oluşturun",
+      "search_placeholder": "Kimlik, adres veya para birimine göre ara...",
+      "loading": "Yükleniyor...",
+      "error": "İşlemler yüklenemedi. Lütfen tekrar deneyin.",
+      "empty": "İşlem bulunamadı",
+      "preview_title": "Makbuz Önizlemesi",
+      "print": "Yazdır",
+      "print_window_title": "İşlem Makbuzu",
+      "brand": "VEYRNOX",
+      "doc_title": "İŞLEM MAKBUZU",
+      "field_receipt_id": "Makbuz Kimliği",
+      "field_date": "Tarih",
+      "field_type": "Tür",
+      "field_asset": "Varlık",
+      "field_amount": "Miktar",
+      "field_network_fee": "Ağ Ücreti",
+      "field_status": "Durum",
+      "field_to": "Alıcı",
+      "default_type": "Transfer",
+      "default_status": "tamamlandı",
+      "thank_you": "{{brand}} kullandığınız için teşekkür ederiz",
+      "thank_you_prefix": "Kullandığınız için teşekkür ederiz",
+      "digital_record": "Bu dijital bir işlem kaydıdır"
+    }
+  },
+  "settings": {
+    "heading": "Güvenlik Ayarları",
+    "subhead": "Cüzdanınızı kilitleyin, açın ve koruyun",
+    "theme": {
+      "dark": "Koyu Mod",
+      "light": "Açık Mod",
+      "saved_note": "Bu cihaza kaydedildi",
+      "switch_to_light": "Açık moda geç",
+      "switch_to_dark": "Koyu moda geç"
+    },
+    "activity_log": {
+      "label": "Etkinlik günlüğü",
+      "description": "Varsayılan olarak kapalı · yalnızca bu cihazda saklanır",
+      "help": "Özel günlük: nelerini değiştirdiğiniz, gönderdiğiniz, iptal ettiğiniz. Miktar veya adres yok. Panik Silme onu siler.",
+      "enable_aria": "Etkinlik günlüğünü etkinleştir",
+      "disable_aria": "Etkinlik günlüğünü devre dışı bırak",
+      "no_events": "Henüz kaydedilmiş etkinlik yok."
+    },
+    "message_signing": {
+      "label": "Mesaj imzalama",
+      "description": "Varsayılan olarak kapalı · yalnızca bu cihazda saklanır",
+      "help": "Varsayılan olarak kapalı. Cüzdan anahtarınızla rastgele metin mesajları imzalamanızı sağlar. Yalnızca bir dApp veya hizmet mesaj imzalamanızı isterse etkinleştirin.",
+      "enable_aria": "Mesaj imzalamayı etkinleştir",
+      "disable_aria": "Mesaj imzalamayı devre dışı bırak"
+    },
+    "telemetry": {
+      "label": "Anonim kullanım verisi",
+      "description": "İsteğe bağlı · asla bakiye veya adres içermez",
+      "help": "Hataları bulup uygulamayı geliştirmemize yardımcı olur. Rastgele bir cihaz kimliği kullanılır — asla cüzdanınıza, anahtarlarınıza veya kimliğinize bağlanmaz. Bunu kapatmak bu cihazdan çıkan tüm kullanım verilerini durdurur.",
+      "enable_aria": "Anonim kullanım verisini aç",
+      "disable_aria": "Anonim kullanım verisini kapat"
+    },
+    "delete_account": {
+      "title": "Tehlikeli Bölge",
+      "clear_cache_label": "Yerel önbelleği temizle",
+      "clear_cache_description": "Bu cihazda kayıtlı verileri temizler ve cüzdanı kilitler. Kurtarma ifadeniz yine çalışır. Anahtarları silmek için Panik Silme'yi kullanın.",
+      "delete_button": "Sil",
+      "confirm_prompt_pre": "Bu, kayıtlı verileri temizler ve cüzdanı kilitler. Kurtarma ifadeniz yine çalışır.",
+      "confirm_prompt_post": "yazarak onaylayın.",
+      "confirm_placeholder": "Onaylamak için DELETE yazın",
+      "confirm_aria": "Hesap sıfırlamayı onaylamak için DELETE yazın",
+      "cancel": "İptal",
+      "confirm_delete": "Silmeyi Onayla",
+      "deleting": "Siliniyor..."
+    },
+    "biometric_unlock": {
+      "heading": "Biyometrik Kilit Açma",
+      "worth_knowing_label": "Bilmekte fayda var.",
+      "kdf_disclosure": "Tek dokunuşla kilit açma, cüzdan parolanızı ekran kilidiniz ve biyometrinizle korunarak bu cihazda saklar. Birisi cihazınızın fiziksel kendisi olmadan bir yedek kopyasını ele geçirirse cüzdanınıza erişebilir. En güçlü koruma için bunu kapatın.",
+      "app_layer_disclosure_pre": "Biyometrik kilit açma, parolanızı parmak izinizle veya yüzünüzle korunarak bu cihazda saklar. Bu, işletim sistemi düzeyinde değil, uygulama içinde çalışır.",
+      "app_layer_disclosure_mid": "Daha güçlü cihaz düzeyinde koruma için",
+      "hardware_protection_label": "Donanım Koruması",
+      "app_layer_disclosure_post": "seçeneğini etkinleştirin (aşağıda mevcut).",
+      "toggle_label": "Biyometrik Kilit Açma (Ana Cüzdan)",
+      "toggle_description": "Ana cüzdanınız için cihaz biyometrisi kullanarak tek dokunuşla kilit açmayı etkinleştirin.",
+      "before_enable_label": "Bunu etkinleştirmeden önce.",
+      "confirm_disclosure": "Birisi cihazınızın fiziksel kendisi olmadan bir yedek kopyasını ele geçirirse cüzdanınıza erişebilir. Bunu yalnızca bu durumla sorununuz yoksa açın.",
+      "confirm_enable_button": "Tek dokunuşla kilit açmayı etkinleştir",
+      "cancel_button": "İptal",
+      "checking_availability": "Kullanılabilirlik kontrol ediliyor…",
+      "default_label": "Biyometri",
+      "available": "{{label}} kullanılabilir.",
+      "available_simulated": "{{label}} kullanılabilir (demoda simüle edilmiş).",
+      "status_check_failed": "Bu cihazda biyometrik kullanılabilirlik kontrol edilemedi.",
+      "awaiting_prompt": "İstem bekleniyor…",
+      "preview_prompt": "İstemi önizle",
+      "test_success": "Simüle edilmiş kimlik doğrulama başarılı",
+      "test_cancelled": "İstem iptal edildi"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biyometrik kilit açma",
+      "heading_web": "Geçiş Anahtarı ile Kilit Aç",
+      "scope_banner_native_pre": "Kilidi açmadan önce parmak iziniz veya yüzünüz kontrol edilir —",
+      "scope_banner_native_post": "parolanızın yerini almaz. Parolanız ve kurtarma ifadeniz kendi başına çalışmaya devam eder, bu yüzden biyometriyi kaybetmek sizi asla dışarıda bırakmaz.",
+      "scope_banner_web_pre": "Bir geçiş anahtarı, kilidi açmadan önce hızlı bir biyometrik veya güvenlik anahtarı dokunuşu ekler —",
+      "scope_banner_web_post": "parolanızın yerini almaz. Parolanız ve kurtarma ifadeniz kendi başına çalışmaya devam eder, bu yüzden geçiş anahtarını kaybetmek sizi asla dışarıda bırakmaz.",
+      "extra_step_label": "ek bir adım",
+      "enroll_button": "Biyometrik kilit açmayı kaydet",
+      "register_button": "Bir geçiş anahtarı kaydet",
+      "not_setup_native": "Cihaz biyometrisi kurulmamış. Önce cihaz ayarlarınızdan bir parmak izi veya yüz ekleyin — parolanız yine çalışır.",
+      "not_supported_web": "Geçiş anahtarıyla kilit açma bu tarayıcıda kullanılamıyor. Mobil uygulamada ve modern tarayıcılarda çalışır. Burada parolanızı kullanın.",
+      "enroll_error": "Bu cihazda biyometrik kilit açma kaydedilemedi.",
+      "register_error": "Bu cihazda bir geçiş anahtarı kaydedilemedi.",
+      "enrolled_native": "Biyometrik kilit açma kaydedildi",
+      "registered_web": "Geçiş anahtarı kaydedildi",
+      "simulated_suffix": " (simüle edilmiş)",
+      "remove_button": "Kaldır",
+      "require_toggle_native": "Biyometrik kilit açmayı zorunlu kıl",
+      "require_toggle_web": "Kilit açmada {{label}} iste",
+      "require_toggle_aria_web": "Geçiş anahtarıyla kilit açmayı zorunlu kıl",
+      "require_toggle_desc_native": "Kilit açmadan önce cihaz biyometrinizi isteyin (parolanız yine çalışır).",
+      "require_toggle_desc_web": "Kilit açmadan önce geçiş anahtarınızı isteyin (parolanız yine çalışır).",
+      "applies_all_sessions": "Bu, bu cihazdaki tüm cüzdan oturumları için geçerlidir.",
+      "default_label": "Geçiş Anahtarı",
+      "checking_availability": "Kullanılabilirlik kontrol ediliyor…",
+      "simulated_in_demo": "{{label}} demoda simüle edildi. ",
+      "awaiting_biometric": "Biyometri bekleniyor…",
+      "awaiting_passkey": "Geçiş anahtarı bekleniyor…",
+      "preview_biometric_prompt": "Biyometrik istemi önizle",
+      "preview_passkey_prompt": "Geçiş anahtarı istemini önizle",
+      "simulated_prefix": "Simüle edilmiş ",
+      "biometric_verified": "biyometri doğrulandı",
+      "passkey_verified": "geçiş anahtarı doğrulandı",
+      "biometric_prompt_cancelled": "Biyometrik istem iptal edildi",
+      "passkey_prompt_cancelled": "Geçiş anahtarı istemi iptal edildi"
+    },
+    "hardware_kek": {
+      "heading": "Cihaz üzerinde donanım koruması",
+      "badge_webauthn": "WebAuthn Korumalı",
+      "badge_off": "KAPALI",
+      "description_pre": "Cüzdanınızı bu fiziksel cihaza kilitler. Etkinleştirdikten sonra cüzdanınız yalnızca ",
+      "description_device": "bu cihazda",
+      "description_post": " açılabilir. Çalınan bir yedek dosyası, PIN'iniz olsa bile cihazın kendisi olmadan işe yaramaz.",
+      "description_web_suffix": "Chrome 99+ ve Firefox 108+ üzerinde çalışır. Safari desteklenmiyor.",
+      "device_binding_note": "Cihaz bağlama etkin ve gerçek donanımda test edilmiş.",
+      "checking_status": "Durum kontrol ediliyor…",
+      "web_prf_unsupported": "Donanım koruması bu tarayıcıda kullanılamıyor. Chrome 99+ veya Firefox 108+ kullanın, ya da iOS veya Android uygulamasını kullanın.",
+      "errors": {
+        "wrong_pin": "Yanlış PIN — cüzdanınızın kilidini açmak için kullandığınız PIN'i girin.",
+        "no_hardware": "Bu cihazın donanım güvenliğine ulaşılamadı. Tekrar deneyin veya farklı bir cihaz kullanın.",
+        "malformed_vault": "Kayıtlı cüzdan verileriniz bu cihazda okunamadı.",
+        "not_enrolled": "Bu kasada donanım koruması etkin değil, yükseltilecek bir şey yok.",
+        "generic": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+        "key_invalidated": "Parmak izleriniz değişti — donanım koruması geçersiz kılındı. Donanım korumasını kapatıp yeniden açın veya tohum ifadenizden geri yükleyin.",
+        "insecure_tier": "Bu cihazda güvenli donanım öğesi yok — burada donanım koruması etkinleştirilemez.",
+        "enter_pin_first": "Önce kasa PIN'inizi girin.",
+        "enter_pin_confirm_removal": "Kaldırmayı onaylamak için kasa PIN'inizi girin.",
+        "enter_pin_upgrade": "Yükseltmek için kasa PIN'inizi girin."
+      },
+      "toast": {
+        "enabled": "Donanım koruması etkinleştirildi — kasanız artık kilit açmak için bu cihazı gerektiriyor.",
+        "removed": "Donanım koruması kaldırıldı.",
+        "upgraded": "Donanım koruması yükseltildi — kasanız artık cihaza özgü benzersiz bir anahtarla bağlandı."
+      },
+      "pin_strength": {
+        "hardware_title": "Donanım korumalı.",
+        "hardware_body": "PIN'inizin Face ID, parmak izi veya geçiş anahtarıyla birleşimi çevrimdışı saldırıları imkansız hale getirir — bir saldırganın hem PIN'inize hem de bu fiziksel cihaza ihtiyacı olur.",
+        "no_hardware_title": "Bu tarayıcıda donanım faktörü mevcut değil.",
+        "no_hardware_body": "8 haneli PIN'iniz (~100 milyon kombinasyon) yalnızca Argon2id ile korunuyor — kararlı bir saldırgan bunu çevrimdışı günler ile haftalar içinde tüketebilir. 12+ karakterli bir parola kullanın veya donanım korumasını etkinleştirmek için Chrome/Firefox'a geçin.",
+        "pre_enroll_title": "PIN gücü.",
+        "pre_enroll_body": "8 haneli bir PIN'in ~100 milyon kombinasyonu vardır. Argon2id çevrimdışı saldırıları tek iş parçacığında kabaca 1-2 yıla yavaşlatır — ancak bir GPU kümesi bunu günlere indirebilir. Yukarıda Face ID, parmak izi veya geçiş anahtarını etkinleştirmek, her kilit açma için bu cihazı gerektirerek çevrimdışı saldırıları imkansız hale getirir."
+      },
+      "enrolled": {
+        "active_title": "Bu cihazda etkin",
+        "active_body_native": "Kasanız kilit açmak için bu cihazın biyometrisini gerektiriyor.",
+        "active_body_web": "Kasanız kilit açmak için bu cihazın geçiş anahtarını gerektiriyor."
+      },
+      "upgrade": {
+        "available_title": "Yükseltme mevcut",
+        "available_body": "Cüzdanınız, cihazlar arasında paylaşılan bir anahtar kullanan eski bir sürümle korunuyordu. Yalnızca bu cihaza kilitlemek için yükseltin. Bu bir kez gerçekleşir ve sizden iki kez doğrulama ister.",
+        "cta": "Donanım korumasını yükselt",
+        "busy": "Yükseltiliyor — her iki istemi de onaylayın…",
+        "prompt": "Kasa PIN'inizi girin. Kasayı yeniden güvenli hale getirmek için iki kez kimlik doğrulayacaksınız.",
+        "cancel": "İptal"
+      },
+      "remove": {
+        "cta": "Donanım korumasını kaldır",
+        "prompt_native": "Onaylamak için PIN'inizi girin. Parmak izinizle veya yüzünüzle doğrulamanız gerekecek.",
+        "prompt_web": "Onaylamak için parolanızı girin. Geçiş anahtarınızla doğrulamanız gerekecek.",
+        "busy": "Kaldırılıyor — istemi onaylayın…",
+        "cancel": "İptal"
+      },
+      "enroll": {
+        "prompt_native": "Donanım korumasını etkinleştirmek için kasa PIN'inizi girin.",
+        "prompt_web": "Donanım korumasını etkinleştirmek için 8 haneli PIN'inizi girin. Tarayıcınız cüzdanınızı bu cihaza kilitlemek için bir geçiş anahtarı oluşturacak.",
+        "cta": "Donanım korumasını etkinleştir",
+        "busy_native": "Kaydediliyor — biyometrik istemi onaylayın…",
+        "busy_web": "Kaydediliyor — geçiş anahtarı istemini onaylayın…",
+        "footnote_native": "Cihaz biyometrinizle veya parolanızla kimlik doğrulamanız istenecek.",
+        "footnote_web": "Tarayıcınız, geçiş anahtarını oluşturmak için bir biyometrik veya cihaz PIN'i ile kimlik doğrulamanızı isteyecek."
+      },
+      "blocked": "Donanım koruması ayarları bu oturumda kullanılamıyor."
+    },
+    "two_factor": {
+      "heading": "Kritik eylemlerde iki faktörlü doğrulama",
+      "intro": "Hassas eylemler için PIN'inize ek bir kontrol. Birisi PIN'inizi yazarken görse bile, ikinci adım olmadan bu eylemleri gerçekleştiremez.",
+      "actions_protects_label": "Koruduğu eylemler",
+      "gated_actions": [
+        { "label": "Para gönderme", "desc": "güvenlik kontrollerinden sonra her gönderim" },
+        { "label": "Kurtarma ifadenizi ortaya çıkarma", "desc": "yedeğinizi görüntüleme veya dışa aktarma" },
+        { "label": "Acil Durum PIN'i belirleme", "desc": "Acil Durum cüzdanını oluşturma" },
+        { "label": "Cüzdan oluşturma veya gizleme", "desc": "gizli cüzdan değişiklikleri" }
+      ],
+      "currently_enforcing": "Şu anda uygulanıyor:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Geçiş Anahtarı",
+      "badge_password": "PIN + İşlem Parolası",
+      "badge_off": "Kapalı (yalnızca PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Bir yem / gizli oturumdasınız. İki faktörlü doğrulamayı gerçek oturumunuzdan yapılandırın.",
+      "method_a_title": "PIN + İşlem Parolası",
+      "on_suffix": "AÇIK",
+      "method_a_desc": "Cüzdanınızın içinde saklanan ikinci bir parola. Güçlüdür ama her iki parola da aynı cihazda bulunur.",
+      "label_pin": "PIN'iniz",
+      "label_wallet_password": "Cüzdan parolası",
+      "pin_confirm_placeholder": "Sizin olduğunuzu onaylayın",
+      "action_password_label_change": "Yeni İşlem Parolası",
+      "action_password_label_set": "İşlem Parolası",
+      "action_password_placeholder": "En az 8 karakter",
+      "action_password_hint": "En az 8 karakter · her karaktere izin verilir",
+      "too_short": "En az {{min}} karakter kullanın.",
+      "confirm_label": "Onayla",
+      "confirm_placeholder": "İşlem Parolasını yeniden girin",
+      "confirm_hint": "İşlem Parolanızla eşleşmelidir",
+      "mismatch": "Parolalar eşleşmiyor.",
+      "save_change": "İşlem Parolasını Değiştir",
+      "save_set": "İşlem Parolası Belirle",
+      "remove": "İşlem Parolasını Kaldır",
+      "toast_changed": "İşlem Parolası değiştirildi",
+      "toast_set": "İşlem Parolası belirlendi",
+      "toast_set_error": "İşlem Parolası belirlenemedi",
+      "toast_confirm_pin_required": "Onaylamak için cüzdan PIN'inizi / parolanızı girin",
+      "toast_removed": "İşlem Parolası kaldırıldı",
+      "toast_remove_error": "İşlem Parolası kaldırılamadı",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Geçiş Anahtarı / FIDO2",
+      "method_b_desc_native": "PIN'iniz artı {{label}}. Biyometri kullanılamıyorsa eylem engellenir. Cihazınızı kaybetmek asla paranızı kaybettirmez.",
+      "method_b_desc_web": "PIN'iniz artı bir geçiş anahtarı dokunuşu. Geçiş anahtarı kullanılamıyorsa eylem engellenir. Onu kaybetmek asla paranızı kaybettirmez.",
+      "switch_aria_native": "İkinci faktörüm olarak cihaz biyometrimi kullan",
+      "switch_aria_web": "İkinci faktörüm olarak geçiş anahtarını kullan",
+      "confirm_native": "Kritik eylemleri {{label}} ile onaylayın.",
+      "unavailable_native": "{{label}} / cihaz parolası bu cihazda kurulmamış — bu faktörü kullanmak için cihaz ayarlarınızdan etkinleştirin.",
+      "unsupported_web": "Bu tarayıcı WebAuthn / geçiş anahtarlarını desteklemiyor.",
+      "register_hint_web_pre": "Henüz kayıtlı bir geçiş anahtarı yok — aşağıda",
+      "register_hint_web_strong": "Cüzdan Geçiş Anahtarları",
+      "register_hint_web_post": "bölümünden birini kurun, ardından bunu etkinleştirin.",
+      "toggle_biometric_needed": "{{label}} bu cihazda kurulmamış.",
+      "toggle_passkey_needed": "Önce bir geçiş anahtarı kaydedin (Cüzdan Geçiş Anahtarları, aşağıda).",
+      "toggle_biometric_on": "{{label}} ikinci faktörü açık",
+      "toggle_biometric_off": "{{label}} ikinci faktörü kapalı",
+      "toggle_passkey_on": "Geçiş anahtarı ikinci faktörü açık",
+      "toggle_passkey_off": "Geçiş anahtarı ikinci faktörü kapalı"
+    },
+    "session": {
+      "title": "Oturum ve Otomatik Kilitleme",
+      "description": "Bir süre işlem yapılmadığında veya uygulamadan çıktığınızda cüzdanınızı kilitler",
+      "status_unlocked": "Kilidi açık",
+      "status_locked": "Kilitli",
+      "auto_lock_after": "Şu süre sonra otomatik kilitle",
+      "never_note": "Boşta otomatik kilitleme yok, ancak yine de arka planda ~45 sn sonra ve kilit açıkken 8 saat sonra kilitlenir.",
+      "resets_note": "Uygulamayla her etkileşiminizde sıfırlanır. Ayrıca arka plana alındığında hemen kilitlenir.",
+      "lock_now": "Şimdi kilitle",
+      "recent_activity": "Son etkinlik",
+      "view_all": "Tümünü görüntüle",
+      "this_device": "Bu cihaz",
+      "active_now": "Şu anda etkin"
+    },
+    "rehearsal": {
+      "title": "İnkâr edilebilirliği prova et",
+      "description": "Kilidi açık telefonunuzu elinde tutan birinin göreceği gibi panoyu görün."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Cüzdan",
+    "sidebar_expand": "Kenar çubuğunu genişlet",
+    "sidebar_collapse": "Kenar çubuğunu daralt",
+    "search_placeholder": "Ara...",
+    "search_shortcut_title": "Ara (⌘K)",
+    "lock": "Kilitle",
+    "lock_confirm_prompt": "Bu cüzdan şimdi kilitlensin mi?",
+    "back": "Geri",
+    "settings": "Ayarlar",
+    "main_content_aria": "Ana içerik",
+    "bottom_nav_aria": "Alt gezinme",
+    "more_features_aria": "Daha fazla özellik",
+    "more": "Daha fazla",
+    "close": "Kapat",
+    "all_features_heading": "Tüm Özellikler",
+    "recent_heading": "Son",
+    "tab_home": "Ana Sayfa",
+    "tab_send": "Gönder",
+    "tab_receive": "Al"
+  },
+  "back": {
+    "default_label": "Geri"
+  },
+  "send": {
+    "heading": "Kripto Gönder",
+    "subheading": "Fonları güvenle transfer edin",
+    "wallet_fallback": "Cüzdan",
+    "wallet_picker": { "label": "Gönderen Cüzdan", "placeholder": "Cüzdan seçin" },
+    "asset_picker": { "label": "Varlık", "placeholder": "Varlık seçin" },
+    "recipient": {
+      "label": "Alıcı (adres veya isim)",
+      "placeholder": "Bir adres yapıştırın veya bir isim girin (örn. vitalik.eth)",
+      "scan_qr": "QR kodu tara",
+      "resolving": "İsim çözümleniyor…",
+      "name_not_found": "İsim bulunamadı — yazımı kontrol edin veya adresi doğrudan yapıştırın.",
+      "ens_using_prefix": "{{name}} kullanılıyor →",
+      "ens_confirm_intro": "blok zincirinde gizlice aranarak şuna ulaşıldı:",
+      "ens_confirm_hint": "Göndermeden önce bu adresin doğru olduğunu onaylayın.",
+      "use_this_address": "Bu adresi kullan",
+      "not_whitelisted": "Bu adres beyaz listenizde değil. Devam etmeden önce iki kez kontrol edin. Ayarlar'dan güvenilir adresler ekleyebilirsiniz.",
+      "self_send_warning": "Kendi cüzdan adresinize gönderiyorsunuz. Bu, cüzdanlar arasında hiçbir şeyi taşımaz ve yine de bir ağ ücretine mal olur. Devam etmeden önce alıcıyı iki kez kontrol edin."
+    },
+    "screening": {
+      "local_disclosure": "Alıcılar, kendi geçmişinize karşı dolandırıcılık adresleri için cihazınızda kontrol edilir — hiçbir şey cihazınızdan çıkmaz.",
+      "remote_opt_in": "Ayrıca çevrimiçi bir tehdit veritabanına karşı tarayın (bu adresi bir üçüncü tarafa gönderir)",
+      "remote_unavailable": "Çevrimiçi tarama etkin, ancak bu sürümde yapılandırılmış bir sağlayıcı yok — tarama yerel kalıyor, bu yüzden bunu harici bir listeye karşı doğrulayamadık.",
+      "demo_poison_button": "Demo: benzer görünümlü bir adres yapıştır"
+    },
+    "simulation": {
+      "title": "İşlem Simülasyonu",
+      "toggle_aria": "İşlem simülasyonunu aç/kapat",
+      "description": "İmzalamadan önce yerel bir ön kontrol çalıştırırız — üçüncü taraf hizmeti yok, cihazınızdan hiçbir veri çıkmaz.",
+      "checks": [
+        "Adres riski (zehirlenme / benzer görünüm)",
+        "Sözleşme çözümü",
+        "Sınırsız yetki bayrağı",
+        "Geri alma tahmini",
+        "Geçmişinize göre anomali",
+        "Büyük çıkış uyarısı"
+      ],
+      "results_hint": "Sonuçlar, bir adres ve miktar girdikten sonra bir sonraki adımda görünür.",
+      "off_hint": "Simülasyon kapalı — imzalamadan önce ön kontrol çalışmayacak.",
+      "taking_too_long": "Çok mu uzun sürüyor?",
+      "turn_off": "Simülasyonu kapat"
+    },
+    "amount": {
+      "label": "Miktar",
+      "placeholder": "0.00",
+      "being_sent": "gönderiliyor",
+      "balance_prefix": "Bakiye:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(canlı)",
+      "reading_from_network": "ağdan okunuyor…"
+    },
+    "errors": {
+      "amount_missing": "Miktar gereklidir",
+      "amount_not_positive": "Miktar sıfırdan büyük olmalıdır",
+      "amount_malformed": "0.5 gibi düz bir ondalık miktar girin",
+      "amount_over_balance": "Yetersiz bakiye",
+      "insufficient_balance_title": "Yetersiz bakiye.",
+      "insufficient_balance_body": "Göndermek için elinizde {{balance}} {{currency}} var (ağ ücretinden sonra). Devam etmek için miktarı azaltın."
+    },
+    "status": {
+      "not_enabled": "{{currency}} için gönderme henüz etkinleştirilmedi. Kripto yolu doğrulanana kadar bu varlık yalnızca alım içindir.",
+      "dev_ungate_title": "GELİŞTİRME AÇMASI ETKİN",
+      "dev_ungate_body": "— {{currency}} için gönderme kısıtlaması VITE_DEV_UNGATE_SEND aracılığıyla atlanıyor (yalnızca geliştirme sürümü). Bu varlığın durumu değişmedi (hâlâ canlı değil); ana ağ kısıtlaması devam ediyor. Yalnızca test ağı doğrulaması — bu sürümü asla yayınlamayın.",
+      "locked": "Cüzdanınız kilitli. İmzalayıp göndermek için Cüzdan Ayarları'nda kilidini açın."
+    },
+    "note": { "label": "Not (isteğe bağlı)", "placeholder": "Bu ne için?" },
+    "trezor": {
+      "toggle_label": "Trezor ile imzala",
+      "connected": "Cihaz bağlandı",
+      "connect_button": "Cihazı bağla"
+    },
+    "buttons": {
+      "continue": "Devam et",
+      "confirm_send": "Onayla ve Gönder",
+      "back": "Geri"
+    },
+    "verify": { "summary_label": "Gönderiyorsunuz" },
+    "fee": {
+      "automatic": "Ağ ücreti {{currency}} ({{network}}) için otomatik olarak ayarlanır.",
+      "native_fee_note": "Ağ ücreti {{symbol}} ({{network}}) ile ödenir — {{token}} gönderirken bile ağ ücretini karşılamak için {{symbol}}'e ihtiyacınız var."
+    },
+    "decode": {
+      "heading": "Bu işlem ne yapar",
+      "action": "Eylem",
+      "send_tokens": "Token gönder",
+      "token": "Token",
+      "amount": "Miktar",
+      "recipient": "Alıcı",
+      "grant_permission": "Harcama izni ver",
+      "permission": "İzin",
+      "unlimited_permission": "Sınırsız (bu uygulama herhangi bir miktar harcayabilir)",
+      "spender": "Harcayıcı"
+    },
+    "reauth": {
+      "prompt": "Yetkilendirmek için {{credential}} bilginizi yeniden girin",
+      "credential_pin": "PIN",
+      "credential_password": "parola",
+      "submit_pin": "Yetkilendir",
+      "submit_password": "Yetkilendir ve Gönder",
+      "password_placeholder": "Kasa parolası",
+      "password_aria": "Gönderim yetkilendirmesi için kasa parolası",
+      "errors": {
+        "unavailable": "Doğrulama kullanılamıyor — lütfen cüzdanı yeniden kilitleyip açın.",
+        "incorrect": "Yanlış — tekrar deneyin ({{remaining}} kaldı)"
+      }
+    },
+    "done": {
+      "beacon_label": "İşlem yayınlandı",
+      "heading": "İşlem Yayınlandı",
+      "body_suffix": "yerel olarak imzalandı ve ağa gönderildi",
+      "tx_hash_label": "İşlem hash'i",
+      "view_explorer": "Blok explorer'da görüntüle",
+      "pending_note": "Ağda onaylanana kadar beklemede. Bakiye blok zincirinden güncellenir, saklanan bir değerden değil.",
+      "send_another": "Başka Bir Tane Gönder"
+    },
+    "toasts": {
+      "ens_off_in_session": "Bu oturumda isim çözümlemesi kapalı — adresi doğrudan yapıştırın.",
+      "ens_not_found": "ENS ismi bulunamadı",
+      "sns_unavailable": "Solana isim çözümlemesi henüz kullanılamıyor — adresi doğrudan yapıştırın.",
+      "ens_resolution_failed": "İsim çözümleme başarısız oldu",
+      "verify_required": "Bu miktarı göndermeden önce yedeğinizi doğrulamayı tamamlayın.",
+      "two_factor_retry": "Gönderim tamamlanamadı — tekrar denemek için lütfen yeniden doğrulayın.",
+      "send_failed_fallback": "Gönderim başarısız oldu",
+      "unconfirmed": "Bu işlem ağda henüz onaylanamadı — hâlâ beklemede olabilir. Explorer'ı kontrol edin."
+    }
+  },
+  "receive": {
+    "heading": "Kripto Al",
+    "subheading": "Fon almak için bir cüzdan adresi gösterin",
+    "asset_label": "Varlık",
+    "asset_placeholder": "Varlık seçin",
+    "not_available": "{{name}} ({{symbol}}) alma henüz kullanılamıyor. Bu varlık etkinleştirilene kadar hiçbir adres gösterilmez.",
+    "locked": {
+      "title": "Cüzdan kilitli",
+      "body": "{{asset}} {{network}} alım adresinizi ortaya çıkarmak için cüzdanınızın kilidini açın.",
+      "open_hd_wallet": "HD Cüzdan Yöneticisini Aç"
+    },
+    "your_address": "{{asset}} adresiniz",
+    "testnet_badge": "Test ağı",
+    "receive_address_label": "{{symbol}} alım adresi",
+    "copy": {
+      "copied_aria": "Adres panoya kopyalandı",
+      "copy_aria": "Adresi kopyala",
+      "copied_toast": "Adres kopyalandı",
+      "copy_failed_toast": "Kopyalanamadı — adresi elle seçip kopyalayın"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}}, Ethereum uyumlu bir ağdaki bir token'dır. Bu sizin cüzdan adresinizdir — gönderenin yalnızca {{symbol}}'i {{network}} üzerinde göndermesini sağlayın. Farklı bir ağda göndermek fonların kalıcı olarak kaybolmasına neden olabilir.",
+      "evm": "Bu sizin paylaşılan cüzdan adresinizdir. Bu adrese yalnızca {{network}} üzerinde {{name}} gönderin ve gönderenin {{network}} kullandığından emin olun.",
+      "btc": "Bu adrese yalnızca {{network}} üzerinde Bitcoin gönderin.",
+      "solana": "Bu adrese yalnızca {{network}} üzerinde Solana gönderin."
+    },
+    "select_asset_prompt": "Alınacak bir varlık seçin.",
+    "unlock_footer_note": "Adresler cihaz üzerindeki cüzdanınızdan gelir ve yalnızca kilidi açıkken görünür."
+  },
+  "dashboard": {
+    "portfolioValue": "Portföy Değeri",
+    "priceAlertsTriggered_one": "{{count}} Fiyat Uyarısı Tetiklendi!",
+    "priceAlertsTriggered_other": "{{count}} Fiyat Uyarısı Tetiklendi!",
+    "lockAriaLabel": "Bakiyeyi biyometrik arkasında kilitle",
+    "lockBalance": "Bakiyeyi kilitle",
+    "synced": "{{time}} senkronize edildi",
+    "syncJustNow": "Az önce",
+    "syncSecondsAgo_one": "{{count}} sn önce",
+    "syncSecondsAgo_other": "{{count}} sn önce",
+    "syncMinutesAgo_one": "{{count}} dk önce",
+    "syncMinutesAgo_other": "{{count}} dk önce",
+    "actions": {
+      "send": "Gönder",
+      "receive": "Al",
+      "schedule": "Zamanla",
+      "add": "Ekle"
+    },
+    "tabs": {
+      "tokens": "Token'lar",
+      "activity": "Etkinlik",
+      "analytics": "Analitik"
+    },
+    "emptyWallets": {
+      "title": "Henüz cüzdan yok",
+      "description": "Zincirler arasında varlık almaya, göndermeye ve tutmaya başlamak için bir cüzdan ekleyin."
+    },
+    "addWallet": "Cüzdan Ekle",
+    "searchTransactionsPlaceholder": "İşlemlerde ara...",
+    "emptySearch": {
+      "title": "Eşleşen işlem yok",
+      "description": "Filtreleri temizlemeyi veya farklı bir varlık ya da adres aramayı deneyin."
+    },
+    "emptyTransactions": {
+      "title": "Henüz işlem yok",
+      "description": "Gönderim veya alım yaptığınızda zincir üzerindeki hareketleriniz burada görünecek."
+    },
+    "portfolioPerformance": "Portföy Performansı",
+    "assetDistribution": "Varlık Dağılımı",
+    "quickAccess": "Hızlı Erişim",
+    "quickAccessItems": {
+      "receive": "Al",
+      "security": "Güvenlik",
+      "approvals": "Onaylar",
+      "addressCheck": "Adres Kontrolü",
+      "analytics": "Analitik",
+      "sentiment": "Duyarlılık",
+      "riskScore": "Risk Skoru"
+    },
+    "walletNameLabel": "Cüzdan Adı",
+    "walletNamePlaceholder": "ETH Cüzdanım",
+    "addWalletDialog": {
+      "title": "Cüzdan Ekle",
+      "currency": "Para Birimi",
+      "creating": "Oluşturuluyor...",
+      "create": "Cüzdan Oluştur"
+    },
+    "renameWalletDialog": {
+      "title": "Cüzdanı Yeniden Adlandır",
+      "saving": "Kaydediliyor...",
+      "save": "Adı Kaydet"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Şifrelenmiş kasa",
+    "backup": {
+      "title": "\"{{name}}\" için yedek al",
+      "reauthDescription": "Sizin olduğunuzu onaylayın, ardından bu cüzdan için kurtarma ifadesini gösterelim.",
+      "description": "Bu 12 kelimeyi çevrimdışı olarak yazın. Bunlara sahip herkes bu cüzdanın fonlarını harcayabilir — ve onlar bu cüzdanı kurtarmanın tek yoludur.",
+      "warning": "Asla ekran görüntüsü almayın. Asla başka bir uygulamaya yazmayın.",
+      "confirmButton": "Yazdım — yedeklendi olarak işaretle"
+    },
+    "addWallet": {
+      "defaultWalletName": "yeni cüzdanınız",
+      "backupDescription": "Bu cüzdanın kasanızdaki her cüzdandan ayrı, kendine ait bir kurtarma ifadesi vardır. Kullanmadan önce çevrimdışı olarak yazın.",
+      "backedUpDone": "Yedekledim — tamamlandı",
+      "title": "Bir cüzdan ekle",
+      "createNew": "Yeni oluştur",
+      "importSeed": "Tohum ifadeyi içe aktar",
+      "createDescription": "TÜM zincirleri (ETH/EVM, BTC, SOL) türeten YENİ bir tohum oluşturur. Etkinleşmeden önce yedekleyeceksiniz.",
+      "importDescription": "Mevcut 12/24 kelimelik bir tohum ifadeyi yapıştırın — tüm zincirler otomatik olarak türetilir (bir tohum zincire özgü değildir).",
+      "recoveryPhraseLabel": "Kurtarma ifadesi",
+      "recoveryPhrasePlaceholder": "kelime1 kelime2 ... kelime12",
+      "walletNameLabel": "Cüzdan adı",
+      "walletNamePlaceholder": "örn. Birikim",
+      "assetsToShowLabel": "Gösterilecek varlıklar",
+      "assetsToShowHint": "Yalnızca görüntüleme seçimi — tohum ifade her zincir için geçerlidir.",
+      "confirmVaultPlaceholder": "Kasanızda değişiklik yapmak için sizin olduğunuzu onaylayın",
+      "vaultReentryHint": "Tohum kasanızda bir değişikliği yetkilendirmek için yeniden girildi. Asla bellekte tutulmaz.",
+      "createAndBackup": "Oluştur ve yedekle",
+      "importWallet": "Cüzdanı içe aktar"
+    },
+    "vaultPinLabel": "Kasa PIN'i",
+    "vaultPasswordLabel": "Kasa parolası",
+    "cancel": "İptal",
+    "done": "Bitti",
+    "manageAssets": {
+      "title": "\"{{name}}\" için varlıklar",
+      "description": "Bu cüzdan için hangi varlıkların gösterileceğini seçin. Gizlenenler eklenene kadar gözden uzak kalır."
+    },
+    "rename": {
+      "title": "Cüzdanı yeniden adlandır",
+      "save": "Adı kaydet"
+    },
+    "remove": {
+      "title": "\"{{name}}\" kaldırılsın mı?",
+      "onlyWallet": "Bu tek cüzdanınız — kaldırılamaz. Her şeyi silmek için Güvenlik'te Panik Silme'yi kullanın.",
+      "description": "Bu cüzdanın tohum ifadesini bu cihazdan kaldırır.",
+      "backedUpNote": "Kurtarma ifadesinden geri yükleyebilirsiniz.",
+      "notBackedUpNote": "⚠️ Yedeklenmedi — ifadesi olmadan sonsuza kadar kaybolur.",
+      "button": "Cüzdanı kaldır"
+    },
+    "move": {
+      "title": "\"{{name}}\" cüzdanını şuraya taşı…"
+    },
+    "managePortfolios": {
+      "title": "Portföyler",
+      "defaultTag": "(varsayılan)",
+      "saveAriaLabel": "Portföy adını kaydet",
+      "renameAriaLabel": "{{name}} yeniden adlandır",
+      "deleteAriaLabel": "{{name}} sil",
+      "newNamePlaceholder": "Yeni portföy adı",
+      "addButton": "Ekle"
+    },
+    "activity": {
+      "unlockPrompt": "Etkinliği görüntülemek için cüzdanınızın kilidini açın.",
+      "loading": "Yükleniyor...",
+      "loadError": "Etkinlik yüklenemedi.",
+      "noTransactions": "Henüz işlem yok.",
+      "viewFullHistory": "Tam geçmişi görüntüle →"
+    },
+    "portfolioValueLabel": "Portföy Değeri",
+    "explore": {
+      "subtitle": "Keşfediyorsunuz — yalnızca görüntüleme. Henüz cüzdan yok.",
+      "description": "Özgürce etrafa bakının. Hazır olduğunuzda yeni bir self-custody cüzdan oluşturun veya mevcut bir tohum ifadeyi içe aktarın — anahtarlar bu cihazda oluşturulur ve şifrelenir.",
+      "createOrImport": "Bir cüzdan oluştur veya içe aktar"
+    },
+    "portfoliosButton": "Portföyler",
+    "totalValueHeading": "{{name}} · Toplam Değer",
+    "partialTotalNote": "Bazı bakiyeler yüklenemedi — bu toplam eksik olabilir.",
+    "refreshPricesTooltip": "Canlı fiyatları yenile",
+    "live": "Canlı",
+    "approximate": "Yaklaşık",
+    "seedVerify": {
+      "title": "Yedeğinizi doğrulamayı tamamlayın",
+      "description": "Güvenlik eşiğinin üzerinde gönderim için gereklidir.",
+      "verifyAriaLabel": "Cüzdan yedeğinizi doğrulayın",
+      "verifyButton": "Doğrula"
+    },
+    "unbacked": {
+      "titleBold": "Cüzdan yedeği eksik.",
+      "body": "Her cüzdanın kendine ait bir kurtarma ifadesi vardır — olmadan, o cüzdanın fonları kurtarılamaz. Şimdi yedekleyin.",
+      "backUpButton": "\"{{name}}\" için yedek al"
+    },
+    "actions": {
+      "send": "Gönder",
+      "receive": "Al",
+      "addWallet": "Cüzdan ekle"
+    },
+    "activeWalletHint": {
+      "prefix": "Gönder/Al şunu kullanır",
+      "otherPortfolio": " (başka bir portföyde)",
+      "suffix": ". Değiştirmek için aşağıdan bir cüzdana dokunun."
+    },
+    "tabs": {
+      "tokens": "Token'lar",
+      "activity": "Etkinlik",
+      "analytics": "Analitik"
+    },
+    "noWalletsInPortfolio": "\"{{name}}\" içinde cüzdan yok. Bir cüzdan ekleyin veya menüsünden buraya bir tane taşıyın.",
+    "hideAssets": "Varlıkları gizle",
+    "showAllAssets": "Tüm varlıkları göster",
+    "walletCard": {
+      "active": "Etkin",
+      "backedUp": "Yedeklendi",
+      "backUp": "Yedekle",
+      "partial": "kısmi",
+      "optionsAriaLabel": "{{name}} için seçenekler",
+      "noAssetsShown": "Hiçbir varlık gösterilmiyor. \"Varlıkları yönet\"i kullanın."
+    },
+    "menu": {
+      "manageAssets": "Varlıkları yönet",
+      "rename": "Yeniden adlandır",
+      "moveToPortfolio": "Portföye taşı",
+      "backUp": "Yedekle",
+      "remove": "Kaldır"
+    },
+    "balanceLoadFailedTitle": "Bakiye yüklenemedi",
+    "defaultWalletFallbackName": "cüzdan",
+    "toast": {
+      "walletImported": "Cüzdan içe aktarıldı — tüm zincirler türetildi.",
+      "walletRemoved": "Cüzdan bu cihazdan kaldırıldı.",
+      "walletAddedBackedUp": "Cüzdan eklendi ve yedeklendi.",
+      "movedTo": "{{name}} cüzdanına taşındı.",
+      "markedBackedUp": "\"{{name}}\" yedeklendi olarak işaretlendi."
+    },
+    "errors": {
+      "couldNotAddWallet": "Cüzdan eklenemedi",
+      "couldNotImportWallet": "Cüzdan içe aktarılamadı",
+      "couldNotRemoveWallet": "Cüzdan kaldırılamadı"
+    }
+  },
+  "networth": {
+    "title": "Kripto Net Değer",
+    "unlockPrompt": "Zincir üzerindeki varlıklarınızı görmek için cüzdanınızın kilidini açın.",
+    "subtitle": "Zincir üzerindeki varlıklarınız — harici varlıkları içermez.",
+    "totalHoldings": "Toplam varlıklar",
+    "partialNote": "kısmi — bazı bakiyeler okunamadı",
+    "refreshPricesTooltip": "Canlı fiyatları yenile",
+    "live": "Canlı",
+    "approximate": "Yaklaşık",
+    "allocation": "Dağılım",
+    "holdings": "Varlıklar",
+    "noHoldings": "Henüz varlık yok."
+  }
+}

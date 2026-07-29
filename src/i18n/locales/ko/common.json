@@ -1,7 +1,7 @@
 {
   "language": {
-    "switcher_label": "Idioma",
-    "mt_banner": "Esta traducción fue generada por una máquina y no ha sido revisada por un hablante nativo. Si algo parece incorrecto, vuelve al inglés hasta que sea revisado.",
+    "switcher_label": "언어",
+    "mt_banner": "이 번역은 기계로 생성되었으며 원어민의 검수를 거치지 않았습니다. 어색한 표현이 있다면 검수가 완료될 때까지 영어로 전환해 주세요.",
     "names": {
       "en": "English",
       "es": "Español",
@@ -20,9 +20,9 @@
     }
   },
   "actions": {
-    "cancel": "Cancelar",
-    "confirm": "Confirmar",
-    "close": "Cerrar",
-    "back": "Atrás"
+    "cancel": "취소",
+    "confirm": "확인",
+    "close": "닫기",
+    "back": "뒤로"
   }
 }
