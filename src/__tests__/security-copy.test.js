@@ -93,7 +93,18 @@ const HONESTY = {
 // RENDERED text, not the source's line-wrapping (JSX collapses whitespace the
 // same way). Without this, a phrase that happens to wrap across two JSX lines —
 // "count\n  deniability" — would fail despite reading correctly on screen.
-const rendered = (rel) => read(rel).replace(/\s+/g, ' ');
+//
+// i18n note (Phase 2 slice 2, batches E/F/G): the load-bearing honesty phrases
+// used to live as literal JSX text in the coercion pages. They are now stored
+// in `i18n/locales/en/security.json` and read via `t('duress.foo')` /
+// `t('panic.foo')` / `t('stealth.foo')` at render time. The GUARANTEE the test
+// enforces — "these phrases must not silently disappear from the app" — is
+// unchanged; only the physical file they live in shifted. Scan both the page
+// source AND the English catalog (the source-of-truth non-MT copy the switcher
+// renders whenever no other language is selected, and the fallback every MT
+// language falls through to).
+const CATALOG_EN = read('i18n/locales/en/security.json');
+const rendered = (rel) => (read(rel) + '\n' + CATALOG_EN).replace(/\s+/g, ' ');
 
 describe('Part F — coercion-page honesty points survive condensation', () => {
   for (const [page, claims] of Object.entries(HONESTY)) {

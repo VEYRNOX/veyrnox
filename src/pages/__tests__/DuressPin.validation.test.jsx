@@ -14,6 +14,28 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// react-i18next 15 uses its own React copy under node_modules/react-i18next/
+// node_modules/react — useContext returns null there. Mock useTranslation
+// with a JSON-catalog resolver (same shape as RaspSecurity / PanicWipe tests).
+vi.mock('react-i18next', async () => {
+  const actual = /** @type {any} */ (await vi.importActual('react-i18next'));
+  const security = /** @type {any} */ (await import('@/i18n/locales/en/security.json'));
+  const common = /** @type {any} */ (await import('@/i18n/locales/en/common.json'));
+  const bundles = { security: security.default, common: common.default };
+  const resolve = (key, opts = {}) => {
+    const ns = opts.ns || 'common';
+    let v = bundles[ns];
+    for (const p of String(key).split('.')) v = v?.[p];
+    if (opts.returnObjects) return v ?? [];
+    if (typeof v !== 'string') return key;
+    return v.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in opts ? String(opts[k]) : `{{${k}}}`));
+  };
+  return {
+    ...actual,
+    useTranslation: (ns) => ({ t: (k, o) => resolve(k, { ns, ...(o || {}) }) }),
+  };
+});
 import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
