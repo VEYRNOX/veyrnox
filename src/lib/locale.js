@@ -146,6 +146,39 @@ export function normalizeDecimalInput(input, locale) {
   return s;
 }
 
+/**
+ * Parse a user-typed decimal string in `locale` to a Number, returning `NaN`
+ * for anything the locale canonicaliser can't unambiguously accept.
+ *
+ * WHY THIS EXISTS SEPARATELY from `parseFloat(normalizeDecimalInput(...))`.
+ * A caller pairing the two by hand can silently truncate: `parseFloat('1,5')`
+ * is 1, and `normalizeDecimalInput('1,5', 'en-US')` returns '1,5' unchanged
+ * (safety pin against silent 10×). Every SendCrypto-style page pairs the
+ * canonicaliser with `isFormAmountWellFormed` to catch that. The security-limit
+ * pages (SecurityCenter, BudgetLimits) parse user-typed numeric input too,
+ * so they need the same pairing — packaged as one function so the well-
+ * formedness check cannot be skipped by accident.
+ *
+ * Callers still apply their own business rules on top: SecurityCenter
+ * rejects zero / negative, BudgetLimits requires > 0. This helper is about
+ * SHAPE, not values — accepts `0` and `0.5`, rejects `1e-8`, `1,5` en-US,
+ * `10.00,50` de-DE, `-5`, `abc`, `''`.
+ *
+ * @param {string|null|undefined} input
+ * @param {string} [locale] BCP-47 tag; defaults to `resolveLocale()`.
+ * @returns {number} the parsed value, or `NaN` if the shape is unrecognised.
+ */
+export function parseLocaleNumber(input, locale) {
+  const canonical = normalizeDecimalInput(input, locale);
+  // The predicate mirrors `isFormAmountWellFormed` in SendCrypto.jsx — plain
+  // decimal, no leading sign, no exponent — but ALSO accepts "0" here.
+  // SendCrypto rejects zero because a send of 0 is nonsensical; parseLocaleNumber
+  // returns 0 and lets the caller decide (e.g. a "% of balance" input that
+  // could legitimately be 0 for "disable").
+  if (!/^\d+(\.\d+)?$|^\.\d+$/.test(canonical)) return NaN;
+  return parseFloat(canonical);
+}
+
 // ── Detection ─────────────────────────────────────────────────────────────
 
 function detectBrowserLocale(nav) {
