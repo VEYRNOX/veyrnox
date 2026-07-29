@@ -1,0 +1,100 @@
+name: perf-web
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'vite.config.*'
+      - 'package-lock.json'
+      - 'perf/**'
+      - '.github/workflows/perf-web.yml'
+  schedule:
+    - cron: '15 3 * * 0'   # Sundays 03:15 UTC
+
+concurrency:
+  group: perf-web-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web-perf:
+    name: Lighthouse-CI sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # LHCI hits ?demo=1 URLs — no Supabase writes escape (I3). Blank
+      # the analytics env as belt-and-braces.
+      VITE_SUPABASE_URL: ''
+      VITE_SUPABASE_ANON_KEY: ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # Match ci.yml — Node 22 + npm 11. The lockfile is authored with
+          # npm 11; npm 10 (Node 20 default, Node 22 default) rejects it.
+          node-version: 22
+          cache: 'npm'
+
+      - name: Pin npm 11
+        run: npm install -g npm@11
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install perf-only deps
+        # LHCI + serve are perf-rig-only; don't bloat the app's package.json.
+        run: npm install --no-save --no-package-lock @lhci/cli@0.14.x serve@14
+
+      - name: Build
+        run: npm run build
+
+      - name: Start preview server
+        # `serve -s dist -l 4173` handles SPA fallback so /plans etc resolve.
+        run: |
+          mkdir -p perf/results
+          nohup npx serve -s dist -l 4173 > perf/results/serve.log 2>&1 &
+          echo $! > perf/results/serve.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:4173 > /dev/null; then
+              echo "preview up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::preview did not come up in 30s"
+          cat perf/results/serve.log || true
+          exit 1
+
+      - name: Lighthouse-CI
+        run: npx lhci autorun --config=perf/lighthouserc.json
+
+      - name: Stop preview server
+        if: always()
+        run: |
+          if [ -f perf/results/serve.pid ]; then
+            kill "$(cat perf/results/serve.pid)" 2>/dev/null || true
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-perf-${{ github.run_id }}
+          path: |
+            perf/results/
+            .lighthouseci/
+          retention-days: 30
+
+      - name: Job summary
+        if: always()
+        run: |
+          echo "## Lighthouse-CI sweep" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Full reports uploaded as artifact (\`.lighthouseci/\`)." >> "$GITHUB_STEP_SUMMARY"

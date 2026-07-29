@@ -1,0 +1,87 @@
+name: perf
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'k6 profile'
+        type: choice
+        default: smoke
+        options: [smoke, load, soak]
+  schedule:
+    # Sundays 03:00 UTC — weekly load run.
+    - cron: '0 3 * * 0'
+
+concurrency:
+  group: perf-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  k6:
+    name: k6 — Supabase RPCs (staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Staging Supabase — REQUIRED. Configure both as repo/environment secrets.
+      # The script rejects any URL that doesn't look like staging/preview/local.
+      SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+      PROFILE: ${{ github.event.inputs.profile || (github.event_name == 'schedule' && 'load') || 'smoke' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Refuse to run without staging secrets
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::STAGING_SUPABASE_URL / STAGING_SUPABASE_ANON_KEY must be configured."
+            exit 1
+          fi
+
+      - name: Install k6
+        run: |
+          curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+          k6 version
+
+      - name: Prepare results dir
+        run: mkdir -p perf/results
+
+      - name: Run k6
+        run: k6 run --summary-export=perf/results/summary-export.json perf/supabase-rpcs.k6.js
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results-${{ env.PROFILE }}-${{ github.run_id }}
+          path: perf/results/
+          retention-days: 30
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## k6 — profile \`$PROFILE\`"
+            echo
+            if [ -f perf/results/summary.json ]; then
+              node -e '
+                const s = require("./perf/results/summary.json").metrics || {};
+                const pct = (r) => r == null ? "n/a" : (r * 100).toFixed(2) + "%";
+                const row = (k, v) => `| ${k} | ${v} |`;
+                console.log("| metric | value |");
+                console.log("|---|---|");
+                console.log(row("http_req_failed", pct(s.http_req_failed?.values?.rate)));
+                console.log(row("http_req_duration p95 (ms)", s.http_req_duration?.values?.["p(95)"]?.toFixed(1) ?? "n/a"));
+                console.log(row("rate_limited (expected)", pct(s.rate_limited?.values?.rate)));
+                console.log(row("checks accepted", pct(s["checks{kind:accepted}"]?.values?.rate)));
+              '
+            else
+              echo "_no summary.json produced_"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
