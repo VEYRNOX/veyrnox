@@ -82,6 +82,7 @@ import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-
 import { trackEvent, EVENT } from "@/api/trackEvent";
 import { requiresVerification } from "@/lib/seedVerifyGate";
 import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
+import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -251,6 +252,28 @@ export default function SendCrypto() {
   const [assetSymbol, setAssetSymbol] = useState(searchParams.get("asset") ?? "");
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
+  // LOCALE-AWARE CANONICAL FORM of the raw input, for every DERIVE / GATE / SEND
+  // site below. A de-DE / fr-FR / es-ES user who types "1,5" needs the same
+  // Continue button to work as an en-US user typing "1.5" — but the downstream
+  // validators (isFormAmountWellFormed, wallet-core assertDecimalAmount — M-3)
+  // are ASCII-only by design. This is the ONE place that translates between the
+  // two. See lib/locale.js for the safety rule: an ambiguous input ("1,5" in
+  // en-US) round-trips unchanged so the strict predicate still flags it — no
+  // silent 10x sends.
+  //
+  // The RAW `amount` is kept for display-only sites (the input's own value, the
+  // confirmation screen, the notification text) so the user sees back exactly
+  // what they typed. Every derive/gate/send site reads canonicalAmount.
+  //
+  // Declared alongside `amount` (NOT next to amountNum / amountWellFormed
+  // further down) because the very first tokenCalldata useMemo references it in
+  // its dep array at render time — a later declaration would produce a TDZ
+  // ReferenceError before the page ever mounted. Caught by web-e2e, missed by
+  // unit tests that pin SendCrypto by source-read.
+  const canonicalAmount = useMemo(
+    () => normalizeDecimalInput(amount, resolveLocale()),
+    [amount],
+  );
   const [note, setNote] = useState("");
   const [step, setStep] = useState("form"); // form | verify | done
   const [showScanner, setShowScanner] = useState(false);
@@ -514,14 +537,14 @@ export default function SendCrypto() {
   // screen BEFORE any signature (the anti-blind-signing control). Transfers show
   // recipient/amount/token; an unlimited `approve` would surface a red warning.
   const tokenCalldata = /** @type {any} */ (useMemo(() => {
-    if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
+    if (!isErc20 || !toAddress || !canonicalAmount || parseFloat(canonicalAmount) <= 0) return null;
     try {
-      const { data } = buildTokenTransfer({ networkKey: networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
+      const { data } = buildTokenTransfer({ networkKey: networkKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount });
       return describeErc20Call({ data, tokenSymbol: selectedAsset.symbol, decimals: getToken(networkKey, selectedAsset.symbol).decimals });
     } catch {
       return null; // unconfigured token / invalid input — UI shows nothing to decode
     }
-  }, [isErc20, selectedAsset, toAddress, amount]));
+  }, [isErc20, selectedAsset, toAddress, canonicalAmount]));
 
   // Unlimited-approval extra confirmation. Send flows are transfer-only, so this
   // stays false in normal use; it hard-gates the action only if an unlimited
@@ -558,7 +581,7 @@ export default function SendCrypto() {
   // I4 fail-closed: never show a $ value we didn't confirm.
   const balanceIndeterminate = !demoActive && flowSendEnabled && nativeLiveBalance == null;
   const balanceUsd = !balanceIndeterminate && sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
-  const amountNum = parseFloat(amount);
+  const amountNum = parseFloat(canonicalAmount);
   // Whether the typed amount is one we are willing to DERIVE FIGURES FROM. The
   // amount field is type="text" (type="number" blanked "1,5" / "1." / "1.2.3"
   // before React saw them, so the 'malformed' message could never fire for them —
@@ -569,11 +592,10 @@ export default function SendCrypto() {
   //
   // NaN unless well-formed, using the SAME verdict the Continue button gates on, so
   // what the form is willing to show and what it is willing to send cannot drift.
-  // Deliberately NOT used for `amountNum` above: sendAmountErrorKind needs the
-  // honest parseFloat, because isFormAmountWellFormed('0') is false and a gated
-  // value would turn "0" into 'malformed', losing the more specific
-  // "Amount must be greater than zero".
-  const amountWellFormed = isFormAmountWellFormed(amount);
+  // Both the well-formedness check and the parse read canonicalAmount so a
+  // locale-comma input is judged after normalisation — "0,5" de-DE parses as
+  // 0.5, not 0, and no longer trips the "must be greater than zero" message.
+  const amountWellFormed = isFormAmountWellFormed(canonicalAmount);
   const usableAmountNum = amountWellFormed ? amountNum : NaN;
   const amountUsd = sendUsdRate != null && Number.isFinite(usableAmountNum) && usableAmountNum > 0 ? usableAmountNum * sendUsdRate : null;
 
@@ -645,14 +667,14 @@ export default function SendCrypto() {
   // specific reason; it never silently blocks.
   const limitEval = useMemo(
     () => evaluateSendAgainstLimits({
-      amount,
+      amount: canonicalAmount,
       currency: selectedWallet?.currency,
       usdRates: USD_RATES,
       history: /** @type {any} */ (history),
       limits: /** @type {any} */ (txLimits),
       now: new Date(),
     }),
-    [amount, selectedWallet, history, txLimits]
+    [canonicalAmount, selectedWallet, history, txLimits]
   );
 
   // ANOMALY / FRAUD DETECTION inputs (Phase S2) — derived from the SAME local data
@@ -683,12 +705,12 @@ export default function SendCrypto() {
   // instead. Errors are surfaced as a degraded "couldn't simulate" note, not a
   // block. Keys are never involved (simulation needs only the sender address).
   const txSim = /** @type {any} */ (useQuery({
-    queryKey: ["tx-sim", networkKey, selectedWallet?.address, toAddress, amount, selectedAsset?.symbol, isErc20],
+    queryKey: ["tx-sim", networkKey, selectedWallet?.address, toAddress, canonicalAmount, selectedAsset?.symbol, isErc20],
     queryFn: async () => {
       const from = selectedWallet.address;
       if (isErc20) {
         const t = getToken(networkKey, selectedAsset.symbol);
-        const { data } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
+        const { data } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount });
         return simulateEvmTransaction({
           networkKey, from, to: t.address, data, valueWei: 0n,
           nativeSymbol, tokenSymbol: selectedAsset.symbol, tokenDecimals: t.decimals,
@@ -697,13 +719,13 @@ export default function SendCrypto() {
         });
       }
       return simulateEvmTransaction({
-        networkKey, from, to: toAddress, valueWei: parseEther(String(amount)),
+        networkKey, from, to: toAddress, valueWei: parseEther(String(canonicalAmount)),
         nativeSymbol, knownAddresses, priorSends, knownCounterparties,
       });
     },
     // I3: never issue simulation RPC in a decoy/hidden (deniability) session.
     enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
-      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
+      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(canonicalAmount) > 0,
     retry: false,
     staleTime: 10000,
   }));
@@ -717,16 +739,16 @@ export default function SendCrypto() {
   // plan + decode-only risk flags (entire_balance / large_outflow) BEFORE signing.
   // LOCAL: only the existing Esplora indexer; no third-party scorer; no keys.
   const btcSim = /** @type {any} */ (useQuery({
-    queryKey: ["btc-sim", networkKey, selectedWallet?.address, toAddress, amount],
+    queryKey: ["btc-sim", networkKey, selectedWallet?.address, toAddress, canonicalAmount],
     queryFn: async () => {
       const fromAddress = selectedWallet.address;
-      const amountSats = parseUnits(String(amount), 8); // BTC has 8 decimals; exact, no float
+      const amountSats = parseUnits(String(canonicalAmount), 8); // BTC has 8 decimals; exact, no float
       const { plan } = await estimateBtcSend({ networkKey, fromAddress, toAddress, amountSats });
       return describeBtcPlan({ plan, fromAddress });
     },
     // I3: never issue Esplora estimate RPC in a decoy/hidden (deniability) session.
     enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && isBtc
-      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
+      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(canonicalAmount) > 0,
     retry: false,
     staleTime: 10000,
   }));
@@ -735,13 +757,13 @@ export default function SendCrypto() {
   // tokenCalldata above, which is the human-readable DECODE. Native sends have no
   // calldata. Cheap + local; recomputed with the same inputs as the decode.
   const riskCalldata = useMemo(() => {
-    if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
+    if (!isErc20 || !toAddress || !canonicalAmount || parseFloat(canonicalAmount) <= 0) return null;
     try {
-      return buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount }).data;
+      return buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount }).data;
     } catch {
       return null;
     }
-  }, [isErc20, selectedAsset, toAddress, amount, networkKey]);
+  }, [isErc20, selectedAsset, toAddress, canonicalAmount, networkKey]);
 
   // PRE-SIGN RISK SCORE (src/risk) — the authoritative one-sentence verdict + the
   // RISK gate. Pure + local: maps the SAME local state the existing warnings read
@@ -763,7 +785,7 @@ export default function SendCrypto() {
     const recipientCode = DEMO ? '0x' : txSim.data?.recipientCode;
     const { unsignedTx, activeSetLocalState, chainData } = buildRiskInputs({
       to: toAddress,
-      amountText: amount,
+      amountText: canonicalAmount,
       isErc20,
       calldata: riskCalldata,
       displayedEns: ensResolved?.name ?? null,
@@ -787,10 +809,10 @@ export default function SendCrypto() {
     if (!riskApplicable || !riskReady) return null;
     return scoreCurrentSend();
     // scoreCurrentSend reads the live send state via closure; deps below mirror
-    // every input it touches (amount included — native sends carry value, not
-    // calldata, so amount must invalidate even when riskCalldata is null).
+    // every input it touches (canonicalAmount included — native sends carry value,
+    // not calldata, so amount must invalidate even when riskCalldata is null).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toAddress, amount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
+  }, [toAddress, canonicalAmount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
 
   // RISK acknowledgement ("Sign anyway"). Reset whenever the breach could change —
   // amount, asset, or recipient — so a stale ack never carries into a changed send
@@ -882,7 +904,7 @@ export default function SendCrypto() {
 
       // 7 — spend limits, recomputed against the latest local history (per-tx + daily).
       const limitGate = evaluateSendAgainstLimits({
-        amount,
+        amount: canonicalAmount,
         currency: selectedWallet.currency,
         usdRates: USD_RATES,
         history: /** @type {any} */ (history),
@@ -1024,7 +1046,7 @@ export default function SendCrypto() {
           // coin-selection plan against the Trezor-derived address (it owns the
           // UTXOs and receives change), translate it into the device's input/
           // output shape, sign on-device, then broadcast the signed bytes.
-          const amountSats = toBaseUnits(amount, 8);
+          const amountSats = toBaseUnits(canonicalAmount, 8);
           const { plan } = await estimateBtcSend({
             networkKey,
             fromAddress: trezorBtcAddress,
@@ -1054,7 +1076,7 @@ export default function SendCrypto() {
               publicKey,
               fromAddress: address,
               toAddress,
-              amountSats: toBaseUnits(amount, 8),
+              amountSats: toBaseUnits(canonicalAmount, 8),
             })
           );
         }
@@ -1065,7 +1087,7 @@ export default function SendCrypto() {
           // SOL Trezor path: the key never leaves the device (I1). Build the
           // unsigned transfer (fresh blockhash via the network provider), sign it
           // on-device, reattach the device signature, then broadcast.
-          const lamports = toBaseUnits(amount, 9);
+          const lamports = toBaseUnits(canonicalAmount, 9);
           const { unsignedTxBase64 } = await buildUnsignedSolTx({
             fromAddress: trezorSolAddress,
             toAddress,
@@ -1083,7 +1105,7 @@ export default function SendCrypto() {
               privateKey,
               fromAddress: address,
               toAddress,
-              amountLamports: toBaseUnits(amount, 9),
+              amountLamports: toBaseUnits(canonicalAmount, 9),
             })
           );
         }
@@ -1141,7 +1163,7 @@ export default function SendCrypto() {
               fromAddress: trezorEvmAddress,
               symbol: selectedAsset.symbol,
               to: toAddress,
-              amount,
+              amount: canonicalAmount,
               fee: clampedFee,
             });
           } else {
@@ -1149,7 +1171,7 @@ export default function SendCrypto() {
               networkKey,
               fromAddress: trezorEvmAddress,
               to: toAddress,
-              amountEth: amount,
+              amountEth: canonicalAmount,
               fee: clampedFee,
             });
           }
@@ -1162,8 +1184,8 @@ export default function SendCrypto() {
           const fee = selectedFee?.fee || undefined;
           raw = await withPrivateKey(acct.index, (privateKey) =>
             isErc20
-              ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount, fee })
-              : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: amount, fee })
+              ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount, fee })
+              : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: canonicalAmount, fee })
           );
         }
       }
@@ -1176,7 +1198,7 @@ export default function SendCrypto() {
       await base44.entities.Transaction.create({
         wallet_id: walletId,
         type: "send",
-        amount: parseFloat(amount),
+        amount: parseFloat(canonicalAmount),
         currency: selectedWallet.currency,
         to_address: toAddress,
         from_address: selectedWallet.address,
@@ -1597,9 +1619,12 @@ export default function SendCrypto() {
             // Feeding one call into both is what stops the gate and the message from
             // drifting apart — the drift that made Continue a silent dead end for
             // "1e-8" and friends.
+            // Raw `amount` for the "missing" check (empty is empty in every
+            // locale). canonicalAmount for wellFormed — same call the Continue
+            // gate below now uses, so gate and message agree in every locale.
             const amountErrorKind = sendAmountErrorKind({
               amount, amountNum,
-              wellFormed: isFormAmountWellFormed(amount),
+              wellFormed: isFormAmountWellFormed(canonicalAmount),
               amountTouched, showErrors, balanceKnown, effectiveBalance,
             });
             const amountInvalid = amountErrorKind !== null;
@@ -1762,11 +1787,11 @@ export default function SendCrypto() {
 
         {step === "form" && (
           <Button
-            className={`w-full ${(!toAddress || !isFormAmountWellFormed(amount) || !addressFormatValid || (balanceKnown && parseFloat(amount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
+            className={`w-full ${(!toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid || (balanceKnown && parseFloat(canonicalAmount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
             disabled={!walletId || !assetSymbol || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive)}
             onClick={() => {
-              const invalid = !toAddress || !isFormAmountWellFormed(amount) || !addressFormatValid
-                || (balanceKnown && parseFloat(amount) > effectiveBalance)
+              const invalid = !toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid
+                || (balanceKnown && parseFloat(canonicalAmount) > effectiveBalance)
                 || (limitEval.blocked && !limitAck);
               if (invalid) { setShowErrors(true); return; }
               setShowErrors(false);
