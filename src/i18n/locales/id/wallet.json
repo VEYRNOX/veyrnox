@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Riwayat Transaksi",
+      "subhead": "Pengiriman & penerimaan per-chain dibaca langsung dari chain — hanya baca, dengan tautan explorer.",
+      "badge_demo": "Demo · data contoh",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Mode demo — tidak ada yang ditanyakan melalui jaringan; baris di bawah adalah data contoh lokal.",
+      "loading_label": "Memuat riwayat {{symbol}}",
+      "error_prefix": "Tidak dapat memuat riwayat: {{reason}}.",
+      "error_fetch_reason": "Tidak dapat menjangkau node RPC — periksa koneksi Anda dan coba lagi.",
+      "error_generic_reason": "indexer tidak merespons",
+      "retry": "Coba lagi",
+      "no_indexer_title": "Riwayat dalam aplikasi tidak tersedia untuk {{name}} melalui JSON-RPC",
+      "no_indexer_body": "Node JSON-RPC biasa tidak dapat mendaftar transaksi suatu alamat, dan kami sengaja tidak menambahkan API explorer/indexer pihak ketiga (sumber data baru & permukaan phone-home). Riwayat lengkap Anda ada di block explorer.",
+      "view_on_explorer": "Lihat {{address}} di explorer {{network}}",
+      "view_explorer_title": "Lihat di block explorer",
+      "unlock_for_explorer": "Buka kunci wallet Anda untuk mendapatkan tautan explorer untuk alamat {{symbol}} Anda.",
+      "locked_title": "Wallet terkunci",
+      "locked_body": "Buka kunci wallet Anda untuk menurunkan alamat {{symbol}} Anda dan memuat riwayatnya.",
+      "empty": "Belum ada transaksi untuk {{symbol}} di {{network}}.",
+      "count_one": "{{count}} transaksi",
+      "count_other": "{{count}} transaksi",
+      "most_recent_suffix": " · terbaru",
+      "refresh": "Segarkan",
+      "sample_badge": "Contoh",
+      "to_prefix": "Kepada ",
+      "from_prefix": "Dari ",
+      "status_pending": "Tertunda",
+      "status_confirmed": "Terkonfirmasi",
+      "status_failed": "Gagal",
+      "awaiting_confirmation": "menunggu konfirmasi"
+    },
+    "list": {
+      "empty_title": "Belum ada transaksi",
+      "empty_description": "Saat Anda mengirim atau menerima di wallet ini, aktivitas on-chain Anda akan muncul di sini."
+    },
+    "receipt": {
+      "heading": "Kuitansi Transaksi",
+      "subhead": "Buat kuitansi yang dapat dicetak untuk transaksi mana pun",
+      "search_placeholder": "Cari berdasarkan ID, alamat, atau mata uang...",
+      "loading": "Memuat...",
+      "error": "Tidak dapat memuat transaksi. Silakan coba lagi.",
+      "empty": "Tidak ditemukan transaksi",
+      "preview_title": "Pratinjau Kuitansi",
+      "print": "Cetak",
+      "print_window_title": "Kuitansi Transaksi",
+      "brand": "VEYRNOX",
+      "doc_title": "KUITANSI TRANSAKSI",
+      "field_receipt_id": "ID Kuitansi",
+      "field_date": "Tanggal",
+      "field_type": "Jenis",
+      "field_asset": "Aset",
+      "field_amount": "Jumlah",
+      "field_network_fee": "Biaya Jaringan",
+      "field_status": "Status",
+      "field_to": "Kepada",
+      "default_type": "Transfer",
+      "default_status": "selesai",
+      "thank_you": "Terima kasih telah menggunakan {{brand}}",
+      "thank_you_prefix": "Terima kasih telah menggunakan",
+      "digital_record": "Ini adalah catatan transaksi digital"
+    }
+  },
+  "settings": {
+    "heading": "Pengaturan Keamanan",
+    "subhead": "Kunci, buka kunci, dan lindungi wallet Anda",
+    "theme": {
+      "dark": "Mode Gelap",
+      "light": "Mode Terang",
+      "saved_note": "Disimpan ke perangkat ini",
+      "switch_to_light": "Beralih ke mode terang",
+      "switch_to_dark": "Beralih ke mode gelap"
+    },
+    "activity_log": {
+      "label": "Log aktivitas",
+      "description": "Nonaktif secara default · disimpan hanya di perangkat ini",
+      "help": "Log pribadi: apa yang Anda ubah, kirim, cabut. Tidak ada jumlah atau alamat. Panic Wipe menghapusnya.",
+      "enable_aria": "Aktifkan log aktivitas",
+      "disable_aria": "Nonaktifkan log aktivitas",
+      "no_events": "Belum ada peristiwa yang tercatat."
+    },
+    "message_signing": {
+      "label": "Penandatanganan pesan",
+      "description": "Nonaktif secara default · disimpan hanya di perangkat ini",
+      "help": "Nonaktif secara default. Memungkinkan Anda menanda tangani pesan teks sembarangan dengan kunci wallet Anda. Aktifkan hanya jika dApp atau layanan meminta Anda menanda tangani pesan.",
+      "enable_aria": "Aktifkan penandatanganan pesan",
+      "disable_aria": "Nonaktifkan penandatanganan pesan"
+    },
+    "telemetry": {
+      "label": "Data penggunaan anonim",
+      "description": "Opsional · tidak pernah menyertakan saldo atau alamat",
+      "help": "Membantu kami menemukan bug dan meningkatkan aplikasi. ID perangkat acak digunakan — tidak pernah terhubung ke wallet, kunci, atau identitas Anda. Menonaktifkan ini menghentikan semua data penggunaan meninggalkan perangkat ini.",
+      "enable_aria": "Aktifkan data penggunaan anonim",
+      "disable_aria": "Nonaktifkan data penggunaan anonim"
+    },
+    "delete_account": {
+      "title": "Zona Berbahaya",
+      "clear_cache_label": "Hapus cache lokal",
+      "clear_cache_description": "Menghapus data tersimpan di perangkat ini dan mengunci wallet. Frasa pemulihan Anda tetap berfungsi. Untuk menghapus kunci, gunakan Panic Wipe.",
+      "delete_button": "Hapus",
+      "confirm_prompt_pre": "Ini menghapus data tersimpan dan mengunci wallet. Frasa pemulihan Anda tetap berfungsi. Ketik",
+      "confirm_prompt_post": "untuk mengonfirmasi.",
+      "confirm_placeholder": "Ketik DELETE untuk mengonfirmasi",
+      "confirm_aria": "Ketik DELETE untuk mengonfirmasi reset akun",
+      "cancel": "Batal",
+      "confirm_delete": "Konfirmasi Hapus",
+      "deleting": "Menghapus..."
+    },
+    "biometric_unlock": {
+      "heading": "Buka Kunci Biometrik",
+      "worth_knowing_label": "Perlu diketahui.",
+      "kdf_disclosure": "Buka kunci satu ketuk menyimpan kata sandi wallet Anda di perangkat ini, dilindungi oleh kunci layar dan biometrik Anda. Jika seseorang mendapatkan salinan cadangan perangkat Anda tanpa perangkat fisiknya, mereka dapat mengakses wallet Anda. Matikan ini untuk perlindungan terkuat.",
+      "app_layer_disclosure_pre": "Buka kunci biometrik menyimpan kata sandi Anda di perangkat ini, dilindungi oleh sidik jari atau wajah Anda. Ini berjalan di dalam aplikasi, bukan di tingkat sistem operasi.",
+      "app_layer_disclosure_mid": "Untuk perlindungan tingkat perangkat yang lebih kuat, aktifkan",
+      "hardware_protection_label": "Perlindungan Perangkat Keras",
+      "app_layer_disclosure_post": "(tersedia di bawah).",
+      "toggle_label": "Buka Kunci Biometrik (Wallet Utama)",
+      "toggle_description": "Aktifkan buka kunci satu ketuk untuk wallet utama Anda menggunakan biometrik perangkat.",
+      "before_enable_label": "Sebelum Anda mengaktifkan ini.",
+      "confirm_disclosure": "Jika seseorang mendapatkan salinan cadangan perangkat Anda tanpa perangkat fisiknya, mereka dapat mengakses wallet Anda. Aktifkan ini hanya jika Anda menerima risiko itu.",
+      "confirm_enable_button": "Aktifkan buka kunci satu ketuk",
+      "cancel_button": "Batal",
+      "checking_availability": "Memeriksa ketersediaan…",
+      "default_label": "Biometrik",
+      "available": "{{label}} tersedia.",
+      "available_simulated": "{{label}} tersedia (disimulasikan dalam demo).",
+      "status_check_failed": "Tidak dapat memeriksa ketersediaan biometrik di perangkat ini.",
+      "awaiting_prompt": "Menunggu perintah…",
+      "preview_prompt": "Pratinjau perintah",
+      "test_success": "Autentikasi simulasi berhasil",
+      "test_cancelled": "Perintah dibatalkan"
+    },
+    "passkey_unlock": {
+      "heading_native": "Buka kunci biometrik",
+      "heading_web": "Buka Kunci dengan Passkey",
+      "scope_banner_native_pre": "Sidik jari atau wajah Anda diperiksa sebelum membuka kunci —",
+      "scope_banner_native_post": "bukan pengganti kata sandi Anda. Kata sandi dan frasa pemulihan Anda tetap berfungsi sendiri, jadi kehilangan biometrik tidak akan pernah mengunci Anda.",
+      "scope_banner_web_pre": "Passkey menambahkan ketukan biometrik atau kunci keamanan cepat sebelum membuka kunci —",
+      "scope_banner_web_post": "bukan pengganti kata sandi Anda. Kata sandi dan frasa pemulihan Anda tetap berfungsi sendiri, jadi kehilangan passkey tidak akan pernah mengunci Anda.",
+      "extra_step_label": "langkah tambahan",
+      "enroll_button": "Daftarkan buka kunci biometrik",
+      "register_button": "Daftarkan passkey",
+      "not_setup_native": "Biometrik perangkat belum disiapkan. Tambahkan sidik jari atau wajah di pengaturan perangkat Anda terlebih dahulu — kata sandi Anda tetap berfungsi.",
+      "not_supported_web": "Buka kunci passkey tidak tersedia di browser ini. Ini berfungsi di aplikasi seluler dan browser modern. Gunakan kata sandi Anda di sini.",
+      "enroll_error": "Tidak dapat mendaftarkan buka kunci biometrik di perangkat ini.",
+      "register_error": "Tidak dapat mendaftarkan passkey di perangkat ini.",
+      "enrolled_native": "Buka kunci biometrik terdaftar",
+      "registered_web": "Passkey terdaftar",
+      "simulated_suffix": " (disimulasikan)",
+      "remove_button": "Hapus",
+      "require_toggle_native": "Wajibkan buka kunci biometrik",
+      "require_toggle_web": "Wajibkan {{label}} saat membuka kunci",
+      "require_toggle_aria_web": "Wajibkan buka kunci passkey",
+      "require_toggle_desc_native": "Minta biometrik perangkat Anda sebelum membuka kunci (kata sandi Anda tetap berfungsi).",
+      "require_toggle_desc_web": "Minta passkey Anda sebelum membuka kunci (kata sandi Anda tetap berfungsi).",
+      "applies_all_sessions": "Ini berlaku untuk semua sesi wallet di perangkat ini.",
+      "default_label": "Passkey",
+      "checking_availability": "Memeriksa ketersediaan…",
+      "simulated_in_demo": "{{label}} disimulasikan dalam demo. ",
+      "awaiting_biometric": "Menunggu biometrik…",
+      "awaiting_passkey": "Menunggu passkey…",
+      "preview_biometric_prompt": "Pratinjau perintah biometrik",
+      "preview_passkey_prompt": "Pratinjau perintah passkey",
+      "simulated_prefix": "Disimulasikan ",
+      "biometric_verified": "biometrik terverifikasi",
+      "passkey_verified": "passkey terverifikasi",
+      "biometric_prompt_cancelled": "Perintah biometrik dibatalkan",
+      "passkey_prompt_cancelled": "Perintah passkey dibatalkan"
+    },
+    "hardware_kek": {
+      "heading": "Perlindungan perangkat keras di perangkat",
+      "badge_webauthn": "Dilindungi WebAuthn",
+      "badge_off": "MATI",
+      "description_pre": "Mengunci wallet Anda ke perangkat fisik ini. Setelah diaktifkan, wallet Anda hanya dapat dibuka di ",
+      "description_device": "perangkat ini",
+      "description_post": ". File cadangan yang dicuri tidak berguna tanpa perangkat itu sendiri, bahkan dengan PIN Anda.",
+      "description_web_suffix": "Berfungsi di Chrome 99+ dan Firefox 108+. Safari tidak didukung.",
+      "device_binding_note": "Pengikatan perangkat aktif dan telah diuji pada perangkat keras sungguhan.",
+      "checking_status": "Memeriksa status…",
+      "web_prf_unsupported": "Perlindungan perangkat keras tidak tersedia di browser ini. Gunakan Chrome 99+ atau Firefox 108+, atau gunakan aplikasi iOS atau Android.",
+      "errors": {
+        "wrong_pin": "PIN salah — masukkan PIN yang Anda gunakan untuk membuka kunci wallet Anda.",
+        "no_hardware": "Tidak dapat menjangkau keamanan perangkat keras perangkat ini. Coba lagi, atau gunakan perangkat lain.",
+        "malformed_vault": "Data wallet tersimpan Anda tidak dapat dibaca di perangkat ini.",
+        "not_enrolled": "Perlindungan perangkat keras tidak diaktifkan pada vault ini, jadi tidak ada yang perlu diperbarui.",
+        "generic": "Terjadi kesalahan. Silakan coba lagi.",
+        "key_invalidated": "Sidik jari Anda berubah — perlindungan perangkat keras dibatalkan. Nonaktifkan lalu aktifkan kembali perlindungan perangkat keras, atau pulihkan dari frasa seed Anda.",
+        "insecure_tier": "Perangkat ini tidak memiliki elemen keamanan perangkat keras — perlindungan perangkat keras tidak dapat diaktifkan di sini.",
+        "enter_pin_first": "Masukkan PIN vault Anda terlebih dahulu.",
+        "enter_pin_confirm_removal": "Masukkan PIN vault Anda untuk mengonfirmasi penghapusan.",
+        "enter_pin_upgrade": "Masukkan PIN vault Anda untuk memperbarui."
+      },
+      "toast": {
+        "enabled": "Perlindungan perangkat keras diaktifkan — vault Anda sekarang memerlukan perangkat ini untuk membuka kunci.",
+        "removed": "Perlindungan perangkat keras dihapus.",
+        "upgraded": "Perlindungan perangkat keras diperbarui — vault Anda sekarang terikat dengan kunci unik per-perangkat."
+      },
+      "pin_strength": {
+        "hardware_title": "Dilindungi perangkat keras.",
+        "hardware_body": "PIN Anda dikombinasikan dengan Face ID, sidik jari, atau passkey membuat serangan offline tidak mungkin dilakukan — penyerang memerlukan PIN Anda dan perangkat fisik ini.",
+        "no_hardware_title": "Tidak ada faktor perangkat keras yang tersedia di browser ini.",
+        "no_hardware_body": "PIN 8 digit Anda (~100 juta kombinasi) hanya dilindungi oleh Argon2id — penyerang khusus dapat menghabiskannya secara offline dalam hitungan hari hingga minggu. Gunakan kata sandi 12+ karakter, atau beralih ke Chrome/Firefox untuk mengaktifkan perlindungan perangkat keras.",
+        "pre_enroll_title": "Kekuatan PIN.",
+        "pre_enroll_body": "PIN 8 digit memiliki ~100 juta kombinasi. Argon2id memperlambat serangan offline hingga sekitar 1–2 tahun dengan satu thread — tetapi klaster GPU dapat memangkas itu menjadi hitungan hari. Mengaktifkan Face ID, sidik jari, atau passkey di atas membuat serangan offline tidak mungkin dilakukan dengan mewajibkan perangkat ini untuk setiap buka kunci."
+      },
+      "enrolled": {
+        "active_title": "Aktif di perangkat ini",
+        "active_body_native": "Vault Anda memerlukan biometrik perangkat ini untuk membuka kunci.",
+        "active_body_web": "Vault Anda memerlukan passkey perangkat ini untuk membuka kunci."
+      },
+      "upgrade": {
+        "available_title": "Pembaruan tersedia",
+        "available_body": "Wallet Anda dilindungi dengan versi lama yang berbagi kunci di beberapa perangkat. Perbarui untuk menguncinya hanya ke perangkat ini. Ini terjadi sekali dan meminta Anda memverifikasi dua kali.",
+        "cta": "Perbarui perlindungan perangkat keras",
+        "busy": "Memperbarui — setujui kedua perintah…",
+        "prompt": "Masukkan PIN vault Anda. Anda akan mengautentikasi dua kali untuk mengamankan ulang vault.",
+        "cancel": "Batal"
+      },
+      "remove": {
+        "cta": "Hapus perlindungan perangkat keras",
+        "prompt_native": "Masukkan PIN Anda untuk mengonfirmasi. Anda perlu memverifikasi dengan sidik jari atau wajah Anda.",
+        "prompt_web": "Masukkan kata sandi Anda untuk mengonfirmasi. Anda perlu memverifikasi dengan passkey Anda.",
+        "busy": "Menghapus — setujui perintah…",
+        "cancel": "Batal"
+      },
+      "enroll": {
+        "prompt_native": "Masukkan PIN vault Anda untuk mengaktifkan perlindungan perangkat keras.",
+        "prompt_web": "Masukkan PIN 8 digit Anda untuk mengaktifkan perlindungan perangkat keras. Browser Anda akan membuat passkey untuk mengunci wallet Anda ke perangkat ini.",
+        "cta": "Aktifkan perlindungan perangkat keras",
+        "busy_native": "Mendaftarkan — setujui perintah biometrik…",
+        "busy_web": "Mendaftarkan — setujui perintah passkey…",
+        "footnote_native": "Anda akan diminta untuk mengautentikasi dengan biometrik atau kata sandi perangkat Anda.",
+        "footnote_web": "Browser Anda akan meminta Anda mengautentikasi dengan biometrik atau PIN perangkat untuk membuat passkey."
+      },
+      "blocked": "Pengaturan perlindungan perangkat keras tidak tersedia dalam sesi ini."
+    },
+    "two_factor": {
+      "heading": "Dua faktor untuk tindakan kritis",
+      "intro": "Pemeriksaan tambahan di atas PIN Anda untuk tindakan sensitif. Bahkan jika seseorang melihat Anda mengetik PIN, mereka tetap tidak bisa melakukan hal-hal ini tanpa langkah kedua.",
+      "actions_protects_label": "Tindakan yang dilindungi",
+      "gated_actions": [
+        { "label": "Mengirim dana", "desc": "setiap pengiriman, setelah pemeriksaan keamanan" },
+        { "label": "Mengungkap frasa pemulihan Anda", "desc": "melihat atau mengekspor cadangan Anda" },
+        { "label": "Mengatur PIN Darurat", "desc": "membuat wallet Darurat" },
+        { "label": "Membuat atau menyembunyikan wallet", "desc": "perubahan wallet tersembunyi" }
+      ],
+      "currently_enforcing": "Saat ini diberlakukan:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + Kata Sandi Tindakan",
+      "badge_off": "Mati (hanya PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Anda berada dalam sesi umpan / tersembunyi. Konfigurasikan dua faktor dari sesi asli Anda.",
+      "method_a_title": "PIN + Kata Sandi Tindakan",
+      "on_suffix": "AKTIF",
+      "method_a_desc": "Kata sandi kedua yang disimpan di dalam wallet Anda. Kuat, tetapi kedua kata sandi berada di perangkat yang sama.",
+      "label_pin": "PIN Anda",
+      "label_wallet_password": "Kata sandi wallet",
+      "pin_confirm_placeholder": "Konfirmasi ini Anda",
+      "action_password_label_change": "Kata Sandi Tindakan baru",
+      "action_password_label_set": "Kata Sandi Tindakan",
+      "action_password_placeholder": "Minimal 8 karakter",
+      "action_password_hint": "Minimal 8 karakter · karakter apa pun diperbolehkan",
+      "too_short": "Gunakan minimal {{min}} karakter.",
+      "confirm_label": "Konfirmasi",
+      "confirm_placeholder": "Masukkan ulang Kata Sandi Tindakan",
+      "confirm_hint": "Harus cocok dengan Kata Sandi Tindakan Anda",
+      "mismatch": "Kata sandi tidak cocok.",
+      "save_change": "Ubah Kata Sandi Tindakan",
+      "save_set": "Atur Kata Sandi Tindakan",
+      "remove": "Hapus Kata Sandi Tindakan",
+      "toast_changed": "Kata Sandi Tindakan diubah",
+      "toast_set": "Kata Sandi Tindakan diatur",
+      "toast_set_error": "Tidak dapat mengatur Kata Sandi Tindakan",
+      "toast_confirm_pin_required": "Masukkan PIN / kata sandi wallet Anda untuk mengonfirmasi",
+      "toast_removed": "Kata Sandi Tindakan dihapus",
+      "toast_remove_error": "Tidak dapat menghapus Kata Sandi Tindakan",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "PIN Anda ditambah {{label}}. Jika biometrik tidak tersedia, tindakan diblokir. Kehilangan perangkat Anda tidak pernah kehilangan dana Anda.",
+      "method_b_desc_web": "PIN Anda ditambah ketukan passkey. Jika passkey tidak tersedia, tindakan diblokir. Kehilangannya tidak pernah kehilangan dana Anda.",
+      "switch_aria_native": "Gunakan biometrik perangkat saya sebagai faktor kedua saya",
+      "switch_aria_web": "Gunakan passkey sebagai faktor kedua saya",
+      "confirm_native": "Konfirmasi tindakan kritis dengan {{label}}.",
+      "unavailable_native": "{{label}} / kata sandi perangkat belum disiapkan di perangkat ini — aktifkan di pengaturan perangkat Anda untuk menggunakan faktor ini.",
+      "unsupported_web": "Browser ini tidak mendukung WebAuthn / passkey.",
+      "register_hint_web_pre": "Belum ada passkey terdaftar — siapkan satu di",
+      "register_hint_web_strong": "Passkey Wallet",
+      "register_hint_web_post": "di bawah, lalu aktifkan ini.",
+      "toggle_biometric_needed": "{{label}} belum disiapkan di perangkat ini.",
+      "toggle_passkey_needed": "Daftarkan passkey terlebih dahulu (Passkey Wallet, di bawah).",
+      "toggle_biometric_on": "Faktor kedua {{label}} aktif",
+      "toggle_biometric_off": "Faktor kedua {{label}} mati",
+      "toggle_passkey_on": "Faktor kedua passkey aktif",
+      "toggle_passkey_off": "Faktor kedua passkey mati"
+    },
+    "session": {
+      "title": "Sesi & Kunci Otomatis",
+      "description": "Mengunci wallet Anda setelah periode tidak aktif atau saat Anda meninggalkan aplikasi",
+      "status_unlocked": "Terbuka kuncinya",
+      "status_locked": "Terkunci",
+      "auto_lock_after": "Kunci otomatis setelah",
+      "never_note": "Tidak ada kunci otomatis saat diam, tetapi tetap terkunci setelah ~45 detik di latar belakang dan setelah 8 jam terbuka kuncinya.",
+      "resets_note": "Direset setiap kali Anda berinteraksi dengan aplikasi. Juga terkunci segera saat dilatarbelakangkan.",
+      "lock_now": "Kunci sekarang",
+      "recent_activity": "Aktivitas terbaru",
+      "view_all": "Lihat semua",
+      "this_device": "Perangkat ini",
+      "active_now": "Aktif sekarang"
+    },
+    "rehearsal": {
+      "title": "Latihan penyangkalan",
+      "description": "Lihat dashboard persis seperti yang akan dilihat seseorang yang memegang ponsel Anda yang terbuka kuncinya."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Wallet",
+    "sidebar_expand": "Perluas sidebar",
+    "sidebar_collapse": "Ciutkan sidebar",
+    "search_placeholder": "Cari...",
+    "search_shortcut_title": "Cari (⌘K)",
+    "lock": "Kunci",
+    "lock_confirm_prompt": "Kunci wallet ini sekarang?",
+    "back": "Kembali",
+    "settings": "Pengaturan",
+    "main_content_aria": "Konten utama",
+    "bottom_nav_aria": "Navigasi bawah",
+    "more_features_aria": "Fitur lainnya",
+    "more": "Lainnya",
+    "close": "Tutup",
+    "all_features_heading": "Semua Fitur",
+    "recent_heading": "Terbaru",
+    "tab_home": "Beranda",
+    "tab_send": "Kirim",
+    "tab_receive": "Terima"
+  },
+  "back": {
+    "default_label": "Kembali"
+  },
+  "send": {
+    "heading": "Kirim Kripto",
+    "subheading": "Transfer dana dengan aman",
+    "wallet_fallback": "Wallet",
+    "wallet_picker": { "label": "Dari Wallet", "placeholder": "Pilih wallet" },
+    "asset_picker": { "label": "Aset", "placeholder": "Pilih aset" },
+    "recipient": {
+      "label": "Kirim ke (alamat atau nama)",
+      "placeholder": "Tempel alamat atau masukkan nama (mis. vitalik.eth)",
+      "scan_qr": "Pindai kode QR",
+      "resolving": "Menyelesaikan nama…",
+      "name_not_found": "Nama tidak ditemukan — periksa ejaannya atau tempel alamatnya langsung.",
+      "ens_using_prefix": "Menggunakan {{name}} →",
+      "ens_confirm_intro": "dicari secara pribadi di blockchain menjadi:",
+      "ens_confirm_hint": "Konfirmasi alamat ini benar sebelum mengirim.",
+      "use_this_address": "Gunakan alamat ini",
+      "not_whitelisted": "Alamat ini tidak ada di daftar putih Anda. Periksa kembali sebelum melanjutkan. Anda dapat menambahkan alamat tepercaya di Pengaturan.",
+      "self_send_warning": "Anda mengirim ke alamat wallet Anda sendiri. Ini tidak memindahkan apa pun antar wallet dan tetap dikenakan biaya jaringan. Periksa kembali penerima sebelum melanjutkan."
+    },
+    "screening": {
+      "local_disclosure": "Penerima diperiksa di perangkat Anda untuk alamat penipuan terhadap riwayat Anda sendiri — tidak ada yang meninggalkan perangkat Anda.",
+      "remote_opt_in": "Juga periksa terhadap basis data ancaman online (mengirim alamat ini ke pihak ketiga)",
+      "remote_unavailable": "Pemeriksaan online diaktifkan, tetapi tidak ada penyedia yang dikonfigurasi dalam build ini — pemeriksaan tetap lokal, jadi kami tidak dapat memverifikasi ini terhadap daftar eksternal.",
+      "demo_poison_button": "Demo: tempel alamat serupa"
+    },
+    "simulation": {
+      "title": "Simulasi Transaksi",
+      "toggle_aria": "Alihkan simulasi transaksi",
+      "description": "Sebelum Anda menanda tangani, kami menjalankan pemeriksaan pra-terbang lokal — tanpa layanan pihak ketiga, tanpa data yang meninggalkan perangkat Anda.",
+      "checks": [
+        "Risiko alamat (poison / serupa)",
+        "Decode kontrak",
+        "Tanda persetujuan tanpa batas",
+        "Prediksi revert",
+        "Anomali dibandingkan riwayat Anda",
+        "Peringatan arus keluar besar"
+      ],
+      "results_hint": "Hasil muncul di langkah berikutnya setelah Anda memasukkan alamat dan jumlah.",
+      "off_hint": "Simulasi mati — tidak ada pemeriksaan pra-terbang yang akan berjalan sebelum penandatanganan.",
+      "taking_too_long": "Terlalu lama?",
+      "turn_off": "Matikan simulasi"
+    },
+    "amount": {
+      "label": "Jumlah",
+      "placeholder": "0.00",
+      "being_sent": "sedang dikirim",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(langsung)",
+      "reading_from_network": "membaca dari jaringan…"
+    },
+    "errors": {
+      "amount_missing": "Jumlah diperlukan",
+      "amount_not_positive": "Jumlah harus lebih besar dari nol",
+      "amount_malformed": "Masukkan jumlah desimal biasa, seperti 0.5",
+      "amount_over_balance": "Saldo tidak mencukupi",
+      "insufficient_balance_title": "Saldo tidak mencukupi.",
+      "insufficient_balance_body": "Anda memiliki {{balance}} {{currency}} yang tersedia untuk dikirim (setelah biaya jaringan). Kurangi jumlahnya untuk melanjutkan."
+    },
+    "status": {
+      "not_enabled": "Pengiriman belum diaktifkan untuk {{currency}}. Aset ini hanya-terima hingga jalur kriptonya diverifikasi.",
+      "dev_ungate_title": "DEV UNGATE AKTIF",
+      "dev_ungate_body": "— gerbang pengiriman dilewati untuk {{currency}} melalui VITE_DEV_UNGATE_SEND (hanya build dev). Status aset ini tidak berubah (masih belum aktif); mainnet tetap terkunci. Hanya verifikasi testnet — jangan pernah merilis build ini.",
+      "locked": "Wallet Anda terkunci. Buka kunci di Pengaturan Wallet untuk menanda tangani dan mengirim."
+    },
+    "note": { "label": "Catatan (opsional)", "placeholder": "Untuk apa ini?" },
+    "trezor": {
+      "toggle_label": "Tanda tangani dengan Trezor",
+      "connected": "Perangkat terhubung",
+      "connect_button": "Hubungkan perangkat"
+    },
+    "buttons": {
+      "continue": "Lanjutkan",
+      "confirm_send": "Konfirmasi & Kirim",
+      "back": "Kembali"
+    },
+    "verify": { "summary_label": "Anda mengirim" },
+    "fee": {
+      "automatic": "Biaya jaringan diatur secara otomatis untuk {{currency}} ({{network}}).",
+      "native_fee_note": "Biaya jaringan dibayar dalam {{symbol}} ({{network}}) — Anda memerlukan {{symbol}} untuk menutupi biaya jaringan bahkan saat mengirim {{token}}."
+    },
+    "decode": {
+      "heading": "Apa yang dilakukan transaksi ini",
+      "action": "Tindakan",
+      "send_tokens": "Kirim token",
+      "token": "Token",
+      "amount": "Jumlah",
+      "recipient": "Penerima",
+      "grant_permission": "Berikan izin pengeluaran",
+      "permission": "Izin",
+      "unlimited_permission": "Tanpa batas (aplikasi ini dapat menggunakan jumlah berapa pun)",
+      "spender": "Pengguna"
+    },
+    "reauth": {
+      "prompt": "Masukkan ulang {{credential}} Anda untuk mengotorisasi",
+      "credential_pin": "PIN",
+      "credential_password": "kata sandi",
+      "submit_pin": "Otorisasi",
+      "submit_password": "Otorisasi & Kirim",
+      "password_placeholder": "Kata sandi vault",
+      "password_aria": "Kata sandi vault untuk otorisasi pengiriman",
+      "errors": {
+        "unavailable": "Verifikasi tidak tersedia — silakan kunci ulang dan buka kunci wallet.",
+        "incorrect": "Salah — coba lagi ({{remaining}} tersisa)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transaksi disiarkan",
+      "heading": "Transaksi Disiarkan",
+      "body_suffix": "ditanda tangani secara lokal dan dikirim ke jaringan",
+      "tx_hash_label": "Hash transaksi",
+      "view_explorer": "Lihat di block explorer",
+      "pending_note": "Tertunda hingga dikonfirmasi di jaringan. Saldo diperbarui dari blockchain, bukan nilai tersimpan.",
+      "send_another": "Kirim Lagi"
+    },
+    "toasts": {
+      "ens_off_in_session": "Resolusi nama mati dalam sesi ini — tempel alamatnya langsung.",
+      "ens_not_found": "Nama ENS tidak ditemukan",
+      "sns_unavailable": "Resolusi nama Solana belum tersedia — tempel alamatnya langsung.",
+      "ens_resolution_failed": "Resolusi nama gagal",
+      "verify_required": "Selesaikan verifikasi cadangan Anda sebelum mengirim jumlah ini.",
+      "two_factor_retry": "Pengiriman tidak dapat diselesaikan — silakan verifikasi lagi untuk mencoba ulang.",
+      "send_failed_fallback": "Pengiriman gagal",
+      "unconfirmed": "Tidak dapat mengonfirmasi transaksi ini di jaringan — mungkin masih tertunda. Periksa explorer."
+    }
+  },
+  "receive": {
+    "heading": "Terima Kripto",
+    "subheading": "Tampilkan alamat wallet untuk menerima dana",
+    "asset_label": "Aset",
+    "asset_placeholder": "Pilih aset",
+    "not_available": "Menerima {{name}} ({{symbol}}) belum tersedia. Tidak ada alamat yang ditampilkan hingga aset ini diaktifkan.",
+    "locked": {
+      "title": "Wallet terkunci",
+      "body": "Buka kunci wallet Anda untuk mengungkap alamat terima {{asset}} {{network}} Anda.",
+      "open_hd_wallet": "Buka Pengelola HD Wallet"
+    },
+    "your_address": "Alamat {{asset}} Anda",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Alamat terima {{symbol}}",
+    "copy": {
+      "copied_aria": "Alamat disalin ke clipboard",
+      "copy_aria": "Salin alamat",
+      "copied_toast": "Alamat disalin",
+      "copy_failed_toast": "Tidak dapat menyalin — pilih dan salin alamat secara manual"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} adalah token di jaringan yang kompatibel dengan Ethereum. Ini adalah alamat wallet Anda — hanya minta pengirim mengirim {{symbol}} di {{network}}. Mengirimnya di jaringan yang berbeda dapat menghilangkan dana secara permanen.",
+      "evm": "Ini adalah alamat wallet bersama Anda. Hanya kirim {{name}} di {{network}} ke alamat ini, dan pastikan pengirim menggunakan {{network}}.",
+      "btc": "Hanya kirim Bitcoin di {{network}} ke alamat ini.",
+      "solana": "Hanya kirim Solana di {{network}} ke alamat ini."
+    },
+    "select_asset_prompt": "Pilih aset untuk diterima.",
+    "unlock_footer_note": "Alamat berasal dari wallet di perangkat Anda dan hanya muncul saat terbuka kuncinya."
+  },
+  "dashboard": {
+    "portfolioValue": "Nilai Portofolio",
+    "priceAlertsTriggered_one": "{{count}} Peringatan Harga Terpicu!",
+    "priceAlertsTriggered_other": "{{count}} Peringatan Harga Terpicu!",
+    "lockAriaLabel": "Kunci saldo di balik biometrik",
+    "lockBalance": "Kunci saldo",
+    "synced": "Disinkronkan {{time}}",
+    "syncJustNow": "Baru saja",
+    "syncSecondsAgo_one": "{{count}} detik lalu",
+    "syncSecondsAgo_other": "{{count}} detik lalu",
+    "syncMinutesAgo_one": "{{count}} menit lalu",
+    "syncMinutesAgo_other": "{{count}} menit lalu",
+    "actions": {
+      "send": "Kirim",
+      "receive": "Terima",
+      "schedule": "Jadwalkan",
+      "add": "Tambah"
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Aktivitas",
+      "analytics": "Analitik"
+    },
+    "emptyWallets": {
+      "title": "Belum ada wallet",
+      "description": "Tambahkan wallet untuk mulai menerima, mengirim, dan menyimpan aset di berbagai chain."
+    },
+    "addWallet": "Tambah Wallet",
+    "searchTransactionsPlaceholder": "Cari transaksi...",
+    "emptySearch": {
+      "title": "Tidak ada transaksi yang cocok",
+      "description": "Coba hapus filter atau cari aset atau alamat yang berbeda."
+    },
+    "emptyTransactions": {
+      "title": "Belum ada transaksi",
+      "description": "Aktivitas on-chain Anda akan muncul di sini setelah Anda mengirim atau menerima."
+    },
+    "portfolioPerformance": "Kinerja Portofolio",
+    "assetDistribution": "Distribusi Aset",
+    "quickAccess": "Akses Cepat",
+    "quickAccessItems": {
+      "receive": "Terima",
+      "security": "Keamanan",
+      "approvals": "Persetujuan",
+      "addressCheck": "Periksa Alamat",
+      "analytics": "Analitik",
+      "sentiment": "Sentimen",
+      "riskScore": "Skor Risiko"
+    },
+    "walletNameLabel": "Nama Wallet",
+    "walletNamePlaceholder": "Wallet ETH Saya",
+    "addWalletDialog": {
+      "title": "Tambah Wallet",
+      "currency": "Mata Uang",
+      "creating": "Membuat...",
+      "create": "Buat Wallet"
+    },
+    "renameWalletDialog": {
+      "title": "Ganti Nama Wallet",
+      "saving": "Menyimpan...",
+      "save": "Simpan Nama"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Vault terenkripsi",
+    "backup": {
+      "title": "Cadangkan \"{{name}}\"",
+      "reauthDescription": "Konfirmasi ini Anda, lalu kami akan menampilkan frasa pemulihan untuk wallet ini.",
+      "description": "Tulis 12 kata ini secara offline. Siapa pun yang memilikinya dapat menggunakan dana wallet ini — dan itu satu-satunya cara untuk memulihkannya.",
+      "warning": "Jangan pernah mengambil tangkapan layar. Jangan pernah mengetiknya di aplikasi lain.",
+      "confirmButton": "Saya sudah menuliskannya — tandai sudah dicadangkan"
+    },
+    "addWallet": {
+      "defaultWalletName": "wallet baru Anda",
+      "backupDescription": "Wallet ini memiliki frasa pemulihannya sendiri — terpisah dari setiap wallet lain di vault Anda. Tuliskan secara offline sebelum Anda menggunakannya.",
+      "backedUpDone": "Saya sudah mencadangkannya — selesai",
+      "title": "Tambah wallet",
+      "createNew": "Buat baru",
+      "importSeed": "Impor seed",
+      "createDescription": "Menghasilkan seed BARU yang menurunkan SEMUA chain (ETH/EVM, BTC, SOL). Anda akan mencadangkannya sebelum aktif.",
+      "importDescription": "Tempel seed 12/24 kata yang sudah ada — semua chain diturunkan secara otomatis (seed tidak spesifik chain).",
+      "recoveryPhraseLabel": "Frasa pemulihan",
+      "recoveryPhrasePlaceholder": "kata1 kata2 ... kata12",
+      "walletNameLabel": "Nama wallet",
+      "walletNamePlaceholder": "mis. Tabungan",
+      "assetsToShowLabel": "Aset yang ditampilkan",
+      "assetsToShowHint": "Hanya pilihan tampilan — seed menyimpan setiap chain terlepas dari ini.",
+      "confirmVaultPlaceholder": "Konfirmasi ini Anda untuk mengubah vault Anda",
+      "vaultReentryHint": "Dimasukkan ulang untuk mengotorisasi perubahan pada vault seed Anda. Tidak pernah disimpan dalam memori.",
+      "createAndBackup": "Buat & cadangkan",
+      "importWallet": "Impor wallet"
+    },
+    "vaultPinLabel": "PIN Vault",
+    "vaultPasswordLabel": "Kata sandi Vault",
+    "cancel": "Batal",
+    "done": "Selesai",
+    "manageAssets": {
+      "title": "Aset untuk \"{{name}}\"",
+      "description": "Pilih aset mana yang ditampilkan untuk wallet ini. Yang disembunyikan tetap tidak terlihat hingga ditambahkan."
+    },
+    "rename": {
+      "title": "Ganti nama wallet",
+      "save": "Simpan nama"
+    },
+    "remove": {
+      "title": "Hapus \"{{name}}\"?",
+      "onlyWallet": "Ini adalah satu-satunya wallet Anda — tidak dapat dihapus. Gunakan Panic Wipe di Keamanan untuk menghapus semuanya.",
+      "description": "Menghapus seed wallet ini dari perangkat ini.",
+      "backedUpNote": "Anda dapat memulihkannya dari frasa pemulihannya.",
+      "notBackedUpNote": "⚠️ BELUM dicadangkan — tanpa frasanya, hilang selamanya.",
+      "button": "Hapus wallet"
+    },
+    "move": {
+      "title": "Pindahkan \"{{name}}\" ke…"
+    },
+    "managePortfolios": {
+      "title": "Portofolio",
+      "defaultTag": "(default)",
+      "saveAriaLabel": "Simpan nama portofolio",
+      "renameAriaLabel": "Ganti nama {{name}}",
+      "deleteAriaLabel": "Hapus {{name}}",
+      "newNamePlaceholder": "Nama portofolio baru",
+      "addButton": "Tambah"
+    },
+    "activity": {
+      "unlockPrompt": "Buka kunci wallet Anda untuk melihat aktivitas.",
+      "loading": "Memuat...",
+      "loadError": "Tidak dapat memuat aktivitas.",
+      "noTransactions": "Belum ada transaksi.",
+      "viewFullHistory": "Lihat riwayat lengkap →"
+    },
+    "portfolioValueLabel": "Nilai Portofolio",
+    "explore": {
+      "subtitle": "Anda sedang menjelajah — hanya lihat. Belum ada wallet.",
+      "description": "Lihat-lihat dengan bebas. Saat Anda siap, buat wallet self-custody baru atau impor seed yang sudah ada — kunci dibuat dan dienkripsi di perangkat ini.",
+      "createOrImport": "Buat atau impor wallet"
+    },
+    "portfoliosButton": "Portofolio",
+    "totalValueHeading": "{{name}} · Nilai Total",
+    "partialTotalNote": "Beberapa saldo tidak dapat dimuat — total ini mungkin tidak lengkap.",
+    "refreshPricesTooltip": "Segarkan harga langsung",
+    "live": "Langsung",
+    "approximate": "Perkiraan",
+    "seedVerify": {
+      "title": "Selesaikan verifikasi cadangan Anda",
+      "description": "Diperlukan untuk mengirim di atas ambang batas keamanan.",
+      "verifyAriaLabel": "Verifikasi cadangan wallet Anda",
+      "verifyButton": "Verifikasi"
+    },
+    "unbacked": {
+      "titleBold": "Cadangan wallet belum lengkap.",
+      "body": "Setiap wallet memiliki frasa pemulihannya sendiri — tanpanya, dana wallet itu tidak dapat dipulihkan. Cadangkan sekarang.",
+      "backUpButton": "Cadangkan \"{{name}}\""
+    },
+    "actions": {
+      "send": "Kirim",
+      "receive": "Terima",
+      "addWallet": "Tambah wallet"
+    },
+    "activeWalletHint": {
+      "prefix": "Kirim/Terima menggunakan",
+      "otherPortfolio": " (di portofolio lain)",
+      "suffix": ". Ketuk wallet di bawah untuk beralih."
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Aktivitas",
+      "analytics": "Analitik"
+    },
+    "noWalletsInPortfolio": "Tidak ada wallet di \"{{name}}\". Tambahkan wallet, atau pindahkan satu ke sini dari menunya.",
+    "hideAssets": "Sembunyikan aset",
+    "showAllAssets": "Tampilkan semua aset",
+    "walletCard": {
+      "active": "Aktif",
+      "backedUp": "Sudah dicadangkan",
+      "backUp": "Cadangkan",
+      "partial": "sebagian",
+      "optionsAriaLabel": "Opsi untuk {{name}}",
+      "noAssetsShown": "Tidak ada aset yang ditampilkan. Gunakan \"Kelola aset\"."
+    },
+    "menu": {
+      "manageAssets": "Kelola aset",
+      "rename": "Ganti nama",
+      "moveToPortfolio": "Pindahkan ke portofolio",
+      "backUp": "Cadangkan",
+      "remove": "Hapus"
+    },
+    "balanceLoadFailedTitle": "Saldo tidak dapat dimuat",
+    "defaultWalletFallbackName": "wallet",
+    "toast": {
+      "walletImported": "Wallet diimpor — semua chain diturunkan.",
+      "walletRemoved": "Wallet dihapus dari perangkat ini.",
+      "walletAddedBackedUp": "Wallet ditambahkan dan dicadangkan.",
+      "movedTo": "Dipindahkan ke {{name}}.",
+      "markedBackedUp": "\"{{name}}\" ditandai sudah dicadangkan."
+    },
+    "errors": {
+      "couldNotAddWallet": "Tidak dapat menambahkan wallet",
+      "couldNotImportWallet": "Tidak dapat mengimpor wallet",
+      "couldNotRemoveWallet": "Tidak dapat menghapus wallet"
+    }
+  },
+  "networth": {
+    "title": "Kekayaan Bersih Kripto",
+    "unlockPrompt": "Buka kunci wallet Anda untuk melihat kepemilikan on-chain Anda.",
+    "subtitle": "Kepemilikan on-chain Anda — tidak termasuk aset eksternal.",
+    "totalHoldings": "Total kepemilikan",
+    "partialNote": "sebagian — beberapa saldo tidak dapat dibaca",
+    "refreshPricesTooltip": "Segarkan harga langsung",
+    "live": "Langsung",
+    "approximate": "Perkiraan",
+    "allocation": "Alokasi",
+    "holdings": "Kepemilikan",
+    "noHoldings": "Belum ada kepemilikan."
+  }
+}

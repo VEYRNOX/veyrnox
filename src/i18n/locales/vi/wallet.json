@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Lịch sử giao dịch",
+      "subhead": "Lệnh gửi & nhận theo từng chuỗi được đọc trực tiếp từ chuỗi khối — chỉ đọc, kèm liên kết trình khám phá.",
+      "badge_demo": "Demo · dữ liệu mẫu",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Chế độ demo — không có gì được truy vấn qua mạng; các dòng dưới đây là dữ liệu mẫu cục bộ.",
+      "loading_label": "Đang tải lịch sử {{symbol}}",
+      "error_prefix": "Không thể tải lịch sử: {{reason}}.",
+      "error_fetch_reason": "Không thể kết nối đến node RPC — kiểm tra kết nối của bạn và thử lại.",
+      "error_generic_reason": "trình lập chỉ mục không phản hồi",
+      "retry": "Thử lại",
+      "no_indexer_title": "Lịch sử trong ứng dụng không khả dụng cho {{name}} qua JSON-RPC",
+      "no_indexer_body": "Một node JSON-RPC đơn thuần không thể liệt kê các giao dịch của một địa chỉ, và chúng tôi cố tình không thêm API trình khám phá/lập chỉ mục của bên thứ ba (một nguồn dữ liệu mới & bề mặt gọi về máy chủ). Lịch sử đầy đủ của bạn có trên trình khám phá khối.",
+      "view_on_explorer": "Xem {{address}} trên trình khám phá {{network}}",
+      "view_explorer_title": "Xem trên trình khám phá khối",
+      "unlock_for_explorer": "Mở khóa ví của bạn để lấy liên kết trình khám phá cho địa chỉ {{symbol}} của bạn.",
+      "locked_title": "Ví đã khóa",
+      "locked_body": "Mở khóa ví của bạn để tạo địa chỉ {{symbol}} và tải lịch sử của nó.",
+      "empty": "Chưa có giao dịch nào cho {{symbol}} trên {{network}}.",
+      "count_one": "{{count}} giao dịch",
+      "count_other": "{{count}} giao dịch",
+      "most_recent_suffix": " · gần đây nhất",
+      "refresh": "Làm mới",
+      "sample_badge": "Mẫu",
+      "to_prefix": "Đến ",
+      "from_prefix": "Từ ",
+      "status_pending": "Đang chờ",
+      "status_confirmed": "Đã xác nhận",
+      "status_failed": "Thất bại",
+      "awaiting_confirmation": "đang chờ xác nhận"
+    },
+    "list": {
+      "empty_title": "Chưa có giao dịch nào",
+      "empty_description": "Khi bạn gửi hoặc nhận trên ví này, hoạt động trên chuỗi của bạn sẽ xuất hiện ở đây."
+    },
+    "receipt": {
+      "heading": "Biên lai giao dịch",
+      "subhead": "Tạo biên lai có thể in cho bất kỳ giao dịch nào",
+      "search_placeholder": "Tìm theo ID, địa chỉ hoặc tiền tệ...",
+      "loading": "Đang tải...",
+      "error": "Không thể tải giao dịch. Vui lòng thử lại.",
+      "empty": "Không tìm thấy giao dịch nào",
+      "preview_title": "Xem trước biên lai",
+      "print": "In",
+      "print_window_title": "Biên lai giao dịch",
+      "brand": "VEYRNOX",
+      "doc_title": "BIÊN LAI GIAO DỊCH",
+      "field_receipt_id": "ID biên lai",
+      "field_date": "Ngày",
+      "field_type": "Loại",
+      "field_asset": "Tài sản",
+      "field_amount": "Số lượng",
+      "field_network_fee": "Phí mạng",
+      "field_status": "Trạng thái",
+      "field_to": "Đến",
+      "default_type": "Chuyển khoản",
+      "default_status": "đã hoàn tất",
+      "thank_you": "Cảm ơn bạn đã sử dụng {{brand}}",
+      "thank_you_prefix": "Cảm ơn bạn đã sử dụng",
+      "digital_record": "Đây là bản ghi giao dịch kỹ thuật số"
+    }
+  },
+  "settings": {
+    "heading": "Cài đặt bảo mật",
+    "subhead": "Khóa, mở khóa và bảo vệ ví của bạn",
+    "theme": {
+      "dark": "Chế độ tối",
+      "light": "Chế độ sáng",
+      "saved_note": "Đã lưu trên thiết bị này",
+      "switch_to_light": "Chuyển sang chế độ sáng",
+      "switch_to_dark": "Chuyển sang chế độ tối"
+    },
+    "activity_log": {
+      "label": "Nhật ký hoạt động",
+      "description": "Tắt theo mặc định · chỉ lưu trên thiết bị này",
+      "help": "Nhật ký riêng tư: những gì bạn đã thay đổi, gửi, thu hồi. Không có số tiền hay địa chỉ. Xóa khẩn cấp sẽ xóa nó.",
+      "enable_aria": "Bật nhật ký hoạt động",
+      "disable_aria": "Tắt nhật ký hoạt động",
+      "no_events": "Chưa có sự kiện nào được ghi lại."
+    },
+    "message_signing": {
+      "label": "Ký tin nhắn",
+      "description": "Tắt theo mặc định · chỉ lưu trên thiết bị này",
+      "help": "Tắt theo mặc định. Cho phép bạn ký các tin nhắn văn bản tùy ý bằng khóa ví của bạn. Chỉ bật nếu một dApp hoặc dịch vụ yêu cầu bạn ký một tin nhắn.",
+      "enable_aria": "Bật ký tin nhắn",
+      "disable_aria": "Tắt ký tin nhắn"
+    },
+    "telemetry": {
+      "label": "Dữ liệu sử dụng ẩn danh",
+      "description": "Tùy chọn tham gia · không bao giờ bao gồm số dư hoặc địa chỉ",
+      "help": "Giúp chúng tôi tìm lỗi và cải thiện ứng dụng. Một ID thiết bị ngẫu nhiên được sử dụng — không bao giờ liên kết với ví, khóa hoặc danh tính của bạn. Tắt tính năng này sẽ dừng mọi dữ liệu sử dụng rời khỏi thiết bị này.",
+      "enable_aria": "Bật dữ liệu sử dụng ẩn danh",
+      "disable_aria": "Tắt dữ liệu sử dụng ẩn danh"
+    },
+    "delete_account": {
+      "title": "Vùng nguy hiểm",
+      "clear_cache_label": "Xóa bộ nhớ đệm cục bộ",
+      "clear_cache_description": "Xóa dữ liệu đã lưu trên thiết bị này và khóa ví. Cụm từ khôi phục của bạn vẫn hoạt động. Để xóa khóa, hãy dùng Xóa khẩn cấp.",
+      "delete_button": "Xóa",
+      "confirm_prompt_pre": "Thao tác này xóa dữ liệu đã lưu và khóa ví. Cụm từ khôi phục của bạn vẫn hoạt động. Nhập",
+      "confirm_prompt_post": "để xác nhận.",
+      "confirm_placeholder": "Nhập DELETE để xác nhận",
+      "confirm_aria": "Nhập DELETE để xác nhận đặt lại tài khoản",
+      "cancel": "Hủy",
+      "confirm_delete": "Xác nhận xóa",
+      "deleting": "Đang xóa..."
+    },
+    "biometric_unlock": {
+      "heading": "Mở khóa bằng sinh trắc học",
+      "worth_knowing_label": "Điều nên biết.",
+      "kdf_disclosure": "Mở khóa bằng một chạm lưu mật khẩu ví của bạn trên thiết bị này, được bảo vệ bởi khóa màn hình và sinh trắc học của bạn. Nếu ai đó lấy được bản sao lưu thiết bị của bạn mà không có thiết bị vật lý, họ có thể truy cập ví của bạn. Tắt tính năng này để có mức bảo vệ mạnh nhất.",
+      "app_layer_disclosure_pre": "Mở khóa bằng sinh trắc học lưu mật khẩu của bạn trên thiết bị này, được bảo vệ bởi vân tay hoặc khuôn mặt của bạn. Điều này chạy bên trong ứng dụng, không phải ở cấp hệ điều hành.",
+      "app_layer_disclosure_mid": "Để có mức bảo vệ mạnh hơn ở cấp thiết bị, hãy bật",
+      "hardware_protection_label": "Bảo vệ phần cứng",
+      "app_layer_disclosure_post": "(có sẵn bên dưới).",
+      "toggle_label": "Mở khóa sinh trắc học (Ví chính)",
+      "toggle_description": "Bật mở khóa một chạm cho ví chính của bạn bằng sinh trắc học thiết bị.",
+      "before_enable_label": "Trước khi bạn bật tính năng này.",
+      "confirm_disclosure": "Nếu ai đó lấy được bản sao lưu thiết bị của bạn mà không có thiết bị vật lý, họ có thể truy cập ví của bạn. Chỉ bật tính năng này nếu bạn chấp nhận điều đó.",
+      "confirm_enable_button": "Bật mở khóa một chạm",
+      "cancel_button": "Hủy",
+      "checking_availability": "Đang kiểm tra tính khả dụng…",
+      "default_label": "Sinh trắc học",
+      "available": "{{label}} khả dụng.",
+      "available_simulated": "{{label}} khả dụng (mô phỏng trong demo).",
+      "status_check_failed": "Không thể kiểm tra tính khả dụng sinh trắc học trên thiết bị này.",
+      "awaiting_prompt": "Đang chờ yêu cầu…",
+      "preview_prompt": "Xem trước yêu cầu",
+      "test_success": "Xác thực mô phỏng thành công",
+      "test_cancelled": "Yêu cầu đã bị hủy"
+    },
+    "passkey_unlock": {
+      "heading_native": "Mở khóa bằng sinh trắc học",
+      "heading_web": "Mở khóa bằng Passkey",
+      "scope_banner_native_pre": "Vân tay hoặc khuôn mặt của bạn được kiểm tra trước khi mở khóa —",
+      "scope_banner_native_post": "không thay thế mật khẩu của bạn. Mật khẩu và cụm từ khôi phục của bạn vẫn hoạt động độc lập, nên mất sinh trắc học không bao giờ khiến bạn bị khóa ngoài.",
+      "scope_banner_web_pre": "Một passkey thêm một lần chạm sinh trắc học hoặc khóa bảo mật nhanh trước khi mở khóa —",
+      "scope_banner_web_post": "không thay thế mật khẩu của bạn. Mật khẩu và cụm từ khôi phục của bạn vẫn hoạt động độc lập, nên mất passkey không bao giờ khiến bạn bị khóa ngoài.",
+      "extra_step_label": "một bước bổ sung",
+      "enroll_button": "Đăng ký mở khóa sinh trắc học",
+      "register_button": "Đăng ký một passkey",
+      "not_setup_native": "Sinh trắc học thiết bị chưa được thiết lập. Trước tiên hãy thêm vân tay hoặc khuôn mặt trong cài đặt thiết bị của bạn — mật khẩu của bạn vẫn hoạt động.",
+      "not_supported_web": "Mở khóa bằng passkey không khả dụng trên trình duyệt này. Nó hoạt động trong ứng dụng di động và các trình duyệt hiện đại. Hãy dùng mật khẩu của bạn ở đây.",
+      "enroll_error": "Không thể đăng ký mở khóa sinh trắc học trên thiết bị này.",
+      "register_error": "Không thể đăng ký một passkey trên thiết bị này.",
+      "enrolled_native": "Đã đăng ký mở khóa sinh trắc học",
+      "registered_web": "Đã đăng ký passkey",
+      "simulated_suffix": " (mô phỏng)",
+      "remove_button": "Xóa",
+      "require_toggle_native": "Yêu cầu mở khóa sinh trắc học",
+      "require_toggle_web": "Yêu cầu {{label}} khi mở khóa",
+      "require_toggle_aria_web": "Yêu cầu mở khóa bằng passkey",
+      "require_toggle_desc_native": "Yêu cầu sinh trắc học thiết bị trước khi mở khóa (mật khẩu của bạn vẫn hoạt động).",
+      "require_toggle_desc_web": "Yêu cầu passkey của bạn trước khi mở khóa (mật khẩu của bạn vẫn hoạt động).",
+      "applies_all_sessions": "Điều này áp dụng cho tất cả các phiên ví trên thiết bị này.",
+      "default_label": "Passkey",
+      "checking_availability": "Đang kiểm tra tính khả dụng…",
+      "simulated_in_demo": "{{label}} được mô phỏng trong demo. ",
+      "awaiting_biometric": "Đang chờ sinh trắc học…",
+      "awaiting_passkey": "Đang chờ passkey…",
+      "preview_biometric_prompt": "Xem trước yêu cầu sinh trắc học",
+      "preview_passkey_prompt": "Xem trước yêu cầu passkey",
+      "simulated_prefix": "Mô phỏng ",
+      "biometric_verified": "sinh trắc học đã xác minh",
+      "passkey_verified": "passkey đã xác minh",
+      "biometric_prompt_cancelled": "Yêu cầu sinh trắc học đã bị hủy",
+      "passkey_prompt_cancelled": "Yêu cầu passkey đã bị hủy"
+    },
+    "hardware_kek": {
+      "heading": "Bảo vệ phần cứng trên thiết bị",
+      "badge_webauthn": "Được bảo vệ bởi WebAuthn",
+      "badge_off": "TẮT",
+      "description_pre": "Khóa ví của bạn vào thiết bị vật lý này. Sau khi bật, ví của bạn chỉ có thể mở trên ",
+      "description_device": "thiết bị này",
+      "description_post": ". Một tệp sao lưu bị đánh cắp sẽ vô dụng nếu không có chính thiết bị đó, ngay cả khi có PIN của bạn.",
+      "description_web_suffix": "Hoạt động trên Chrome 99+ và Firefox 108+. Safari không được hỗ trợ.",
+      "device_binding_note": "Liên kết thiết bị đang hoạt động và đã được kiểm thử trên phần cứng thật.",
+      "checking_status": "Đang kiểm tra trạng thái…",
+      "web_prf_unsupported": "Bảo vệ phần cứng không khả dụng trên trình duyệt này. Hãy dùng Chrome 99+ hoặc Firefox 108+, hoặc dùng ứng dụng iOS hoặc Android.",
+      "errors": {
+        "wrong_pin": "PIN sai — nhập PIN bạn dùng để mở khóa ví.",
+        "no_hardware": "Không thể truy cập bảo mật phần cứng của thiết bị này. Thử lại, hoặc dùng một thiết bị khác.",
+        "malformed_vault": "Không thể đọc dữ liệu ví đã lưu của bạn trên thiết bị này.",
+        "not_enrolled": "Bảo vệ phần cứng chưa được bật trên kho lưu trữ này, vì vậy không có gì để nâng cấp.",
+        "generic": "Đã xảy ra lỗi. Vui lòng thử lại.",
+        "key_invalidated": "Vân tay của bạn đã thay đổi — bảo vệ phần cứng đã bị vô hiệu hóa. Tắt rồi bật lại bảo vệ phần cứng, hoặc khôi phục từ cụm từ hạt giống của bạn.",
+        "insecure_tier": "Thiết bị này không có phần tử bảo mật phần cứng — không thể bật bảo vệ phần cứng ở đây.",
+        "enter_pin_first": "Trước tiên hãy nhập PIN kho lưu trữ của bạn.",
+        "enter_pin_confirm_removal": "Nhập PIN kho lưu trữ của bạn để xác nhận xóa.",
+        "enter_pin_upgrade": "Nhập PIN kho lưu trữ của bạn để nâng cấp."
+      },
+      "toast": {
+        "enabled": "Đã bật bảo vệ phần cứng — kho lưu trữ của bạn giờ yêu cầu thiết bị này để mở khóa.",
+        "removed": "Đã xóa bảo vệ phần cứng.",
+        "upgraded": "Đã nâng cấp bảo vệ phần cứng — kho lưu trữ của bạn giờ được liên kết bằng một khóa riêng biệt cho mỗi thiết bị."
+      },
+      "pin_strength": {
+        "hardware_title": "Được bảo vệ bởi phần cứng.",
+        "hardware_body": "PIN của bạn kết hợp với Face ID, vân tay hoặc passkey khiến các cuộc tấn công ngoại tuyến trở nên bất khả thi — kẻ tấn công cần cả PIN của bạn lẫn thiết bị vật lý này.",
+        "no_hardware_title": "Không có yếu tố phần cứng khả dụng trên trình duyệt này.",
+        "no_hardware_body": "PIN 8 chữ số của bạn (~100 triệu tổ hợp) chỉ được bảo vệ bởi Argon2id — một kẻ tấn công tận tâm có thể vét cạn nó ngoại tuyến trong vài ngày đến vài tuần. Hãy dùng mật khẩu từ 12 ký tự trở lên, hoặc chuyển sang Chrome/Firefox để bật bảo vệ phần cứng.",
+        "pre_enroll_title": "Độ mạnh của PIN.",
+        "pre_enroll_body": "Một PIN 8 chữ số có ~100 triệu tổ hợp. Argon2id làm chậm các cuộc tấn công ngoại tuyến xuống khoảng 1–2 năm với một luồng xử lý — nhưng một cụm GPU có thể rút ngắn xuống còn vài ngày. Bật Face ID, vân tay hoặc passkey ở trên khiến các cuộc tấn công ngoại tuyến trở nên bất khả thi bằng cách yêu cầu thiết bị này cho mỗi lần mở khóa."
+      },
+      "enrolled": {
+        "active_title": "Đang hoạt động trên thiết bị này",
+        "active_body_native": "Kho lưu trữ của bạn yêu cầu sinh trắc học của thiết bị này để mở khóa.",
+        "active_body_web": "Kho lưu trữ của bạn yêu cầu passkey của thiết bị này để mở khóa."
+      },
+      "upgrade": {
+        "available_title": "Có bản nâng cấp",
+        "available_body": "Ví của bạn đã được bảo vệ bằng một phiên bản cũ hơn dùng chung khóa giữa các thiết bị. Nâng cấp để khóa nó chỉ vào thiết bị này. Điều này chỉ xảy ra một lần và yêu cầu bạn xác minh hai lần.",
+        "cta": "Nâng cấp bảo vệ phần cứng",
+        "busy": "Đang nâng cấp — chấp thuận cả hai yêu cầu…",
+        "prompt": "Nhập PIN kho lưu trữ của bạn. Bạn sẽ xác thực hai lần để bảo mật lại kho lưu trữ.",
+        "cancel": "Hủy"
+      },
+      "remove": {
+        "cta": "Xóa bảo vệ phần cứng",
+        "prompt_native": "Nhập PIN của bạn để xác nhận. Bạn sẽ cần xác minh bằng vân tay hoặc khuôn mặt.",
+        "prompt_web": "Nhập mật khẩu của bạn để xác nhận. Bạn sẽ cần xác minh bằng passkey.",
+        "busy": "Đang xóa — chấp thuận yêu cầu…",
+        "cancel": "Hủy"
+      },
+      "enroll": {
+        "prompt_native": "Nhập PIN kho lưu trữ của bạn để bật bảo vệ phần cứng.",
+        "prompt_web": "Nhập PIN 8 chữ số của bạn để bật bảo vệ phần cứng. Trình duyệt của bạn sẽ tạo một passkey để khóa ví của bạn vào thiết bị này.",
+        "cta": "Bật bảo vệ phần cứng",
+        "busy_native": "Đang đăng ký — chấp thuận yêu cầu sinh trắc học…",
+        "busy_web": "Đang đăng ký — chấp thuận yêu cầu passkey…",
+        "footnote_native": "Bạn sẽ được yêu cầu xác thực bằng sinh trắc học hoặc mã khóa của thiết bị.",
+        "footnote_web": "Trình duyệt của bạn sẽ yêu cầu bạn xác thực bằng sinh trắc học hoặc PIN thiết bị để tạo passkey."
+      },
+      "blocked": "Cài đặt bảo vệ phần cứng không khả dụng trong phiên này."
+    },
+    "two_factor": {
+      "heading": "Xác thực hai yếu tố cho các hành động quan trọng",
+      "intro": "Một bước kiểm tra bổ sung ngoài PIN của bạn cho các hành động nhạy cảm. Ngay cả khi ai đó thấy bạn gõ PIN, họ vẫn không thể thực hiện những việc này nếu không có bước thứ hai.",
+      "actions_protects_label": "Các hành động được bảo vệ",
+      "gated_actions": [
+        { "label": "Gửi tiền", "desc": "mỗi lệnh gửi, sau các kiểm tra an toàn" },
+        { "label": "Tiết lộ cụm từ khôi phục của bạn", "desc": "xem hoặc xuất bản sao lưu của bạn" },
+        { "label": "Đặt PIN khẩn cấp", "desc": "tạo ví khẩn cấp" },
+        { "label": "Tạo hoặc ẩn một ví", "desc": "thay đổi ví ẩn" }
+      ],
+      "currently_enforcing": "Hiện đang áp dụng:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + Mật khẩu Hành động",
+      "badge_off": "Tắt (chỉ PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Bạn đang ở trong một phiên mồi/ẩn. Hãy cấu hình xác thực hai yếu tố từ phiên thật của bạn.",
+      "method_a_title": "PIN + Mật khẩu Hành động",
+      "on_suffix": "BẬT",
+      "method_a_desc": "Một mật khẩu thứ hai được lưu bên trong ví của bạn. Mạnh, nhưng cả hai mật khẩu đều nằm trên cùng một thiết bị.",
+      "label_pin": "PIN của bạn",
+      "label_wallet_password": "Mật khẩu ví",
+      "pin_confirm_placeholder": "Xác nhận đó là bạn",
+      "action_password_label_change": "Mật khẩu Hành động mới",
+      "action_password_label_set": "Mật khẩu Hành động",
+      "action_password_placeholder": "Ít nhất 8 ký tự",
+      "action_password_hint": "Ít nhất 8 ký tự · cho phép mọi ký tự",
+      "too_short": "Dùng ít nhất {{min}} ký tự.",
+      "confirm_label": "Xác nhận",
+      "confirm_placeholder": "Nhập lại Mật khẩu Hành động",
+      "confirm_hint": "Phải khớp với Mật khẩu Hành động của bạn",
+      "mismatch": "Mật khẩu không khớp.",
+      "save_change": "Đổi Mật khẩu Hành động",
+      "save_set": "Đặt Mật khẩu Hành động",
+      "remove": "Xóa Mật khẩu Hành động",
+      "toast_changed": "Đã đổi Mật khẩu Hành động",
+      "toast_set": "Đã đặt Mật khẩu Hành động",
+      "toast_set_error": "Không thể đặt Mật khẩu Hành động",
+      "toast_confirm_pin_required": "Nhập PIN/mật khẩu ví của bạn để xác nhận",
+      "toast_removed": "Đã xóa Mật khẩu Hành động",
+      "toast_remove_error": "Không thể xóa Mật khẩu Hành động",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "PIN của bạn cộng với {{label}}. Nếu sinh trắc học không khả dụng, hành động sẽ bị chặn. Mất thiết bị của bạn không bao giờ làm mất tiền của bạn.",
+      "method_b_desc_web": "PIN của bạn cộng với một lần chạm passkey. Nếu passkey không khả dụng, hành động sẽ bị chặn. Mất nó không bao giờ làm mất tiền của bạn.",
+      "switch_aria_native": "Dùng sinh trắc học thiết bị của tôi làm yếu tố thứ hai",
+      "switch_aria_web": "Dùng passkey làm yếu tố thứ hai của tôi",
+      "confirm_native": "Xác nhận các hành động quan trọng bằng {{label}}.",
+      "unavailable_native": "{{label}} / mã khóa thiết bị chưa được thiết lập trên thiết bị này — bật nó trong cài đặt thiết bị của bạn để dùng yếu tố này.",
+      "unsupported_web": "Trình duyệt này không hỗ trợ WebAuthn / passkey.",
+      "register_hint_web_pre": "Chưa có passkey nào được đăng ký — thiết lập một cái trong",
+      "register_hint_web_strong": "Passkey của ví",
+      "register_hint_web_post": "bên dưới, sau đó bật tính năng này.",
+      "toggle_biometric_needed": "{{label}} chưa được thiết lập trên thiết bị này.",
+      "toggle_passkey_needed": "Trước tiên hãy đăng ký một passkey (Passkey của ví, bên dưới).",
+      "toggle_biometric_on": "Yếu tố thứ hai {{label}} đã bật",
+      "toggle_biometric_off": "Yếu tố thứ hai {{label}} đã tắt",
+      "toggle_passkey_on": "Yếu tố thứ hai passkey đã bật",
+      "toggle_passkey_off": "Yếu tố thứ hai passkey đã tắt"
+    },
+    "session": {
+      "title": "Phiên & Tự động khóa",
+      "description": "Khóa ví của bạn sau một khoảng thời gian không hoạt động hoặc khi bạn rời khỏi ứng dụng",
+      "status_unlocked": "Đã mở khóa",
+      "status_locked": "Đã khóa",
+      "auto_lock_after": "Tự động khóa sau",
+      "never_note": "Không tự động khóa khi ở trạng thái chờ, nhưng vẫn khóa sau ~45 giây ở nền và sau 8 giờ đã mở khóa.",
+      "resets_note": "Đặt lại mỗi khi bạn tương tác với ứng dụng. Cũng khóa ngay lập tức khi chuyển xuống nền.",
+      "lock_now": "Khóa ngay",
+      "recent_activity": "Hoạt động gần đây",
+      "view_all": "Xem tất cả",
+      "this_device": "Thiết bị này",
+      "active_now": "Đang hoạt động"
+    },
+    "rehearsal": {
+      "title": "Diễn tập chối bỏ",
+      "description": "Xem bảng điều khiển đúng như cách một người đang cầm điện thoại đã mở khóa của bạn sẽ thấy."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Ví",
+    "sidebar_expand": "Mở rộng thanh bên",
+    "sidebar_collapse": "Thu gọn thanh bên",
+    "search_placeholder": "Tìm kiếm...",
+    "search_shortcut_title": "Tìm kiếm (⌘K)",
+    "lock": "Khóa",
+    "lock_confirm_prompt": "Khóa ví này ngay bây giờ?",
+    "back": "Quay lại",
+    "settings": "Cài đặt",
+    "main_content_aria": "Nội dung chính",
+    "bottom_nav_aria": "Điều hướng dưới cùng",
+    "more_features_aria": "Thêm tính năng",
+    "more": "Thêm",
+    "close": "Đóng",
+    "all_features_heading": "Tất cả tính năng",
+    "recent_heading": "Gần đây",
+    "tab_home": "Trang chủ",
+    "tab_send": "Gửi",
+    "tab_receive": "Nhận"
+  },
+  "back": {
+    "default_label": "Quay lại"
+  },
+  "send": {
+    "heading": "Gửi tiền mã hóa",
+    "subheading": "Chuyển tiền một cách an toàn",
+    "wallet_fallback": "Ví",
+    "wallet_picker": { "label": "Từ ví", "placeholder": "Chọn ví" },
+    "asset_picker": { "label": "Tài sản", "placeholder": "Chọn tài sản" },
+    "recipient": {
+      "label": "Gửi đến (địa chỉ hoặc tên)",
+      "placeholder": "Dán một địa chỉ hoặc nhập một tên (ví dụ: vitalik.eth)",
+      "scan_qr": "Quét mã QR",
+      "resolving": "Đang phân giải tên…",
+      "name_not_found": "Không tìm thấy tên — kiểm tra chính tả hoặc dán trực tiếp địa chỉ.",
+      "ens_using_prefix": "Đang dùng {{name}} →",
+      "ens_confirm_intro": "đã tra cứu riêng tư trên blockchain thành:",
+      "ens_confirm_hint": "Xác nhận địa chỉ này đúng trước khi gửi.",
+      "use_this_address": "Dùng địa chỉ này",
+      "not_whitelisted": "Địa chỉ này không có trong danh sách trắng của bạn. Kiểm tra kỹ trước khi tiếp tục. Bạn có thể thêm các địa chỉ tin cậy trong Cài đặt.",
+      "self_send_warning": "Bạn đang gửi đến chính địa chỉ ví của mình. Việc này không di chuyển gì giữa các ví và vẫn tốn phí mạng. Kiểm tra kỹ người nhận trước khi tiếp tục."
+    },
+    "screening": {
+      "local_disclosure": "Người nhận được kiểm tra trên thiết bị của bạn để phát hiện địa chỉ lừa đảo dựa trên lịch sử của chính bạn — không có gì rời khỏi thiết bị của bạn.",
+      "remote_opt_in": "Cũng kiểm tra với một cơ sở dữ liệu mối đe dọa trực tuyến (gửi địa chỉ này cho bên thứ ba)",
+      "remote_unavailable": "Kiểm tra trực tuyến đã được bật, nhưng không có nhà cung cấp nào được cấu hình trong bản dựng này — việc kiểm tra vẫn diễn ra cục bộ, vì vậy chúng tôi không thể xác minh địa chỉ này với danh sách bên ngoài.",
+      "demo_poison_button": "Demo: dán một địa chỉ giả mạo giống hệt"
+    },
+    "simulation": {
+      "title": "Mô phỏng giao dịch",
+      "toggle_aria": "Bật/tắt mô phỏng giao dịch",
+      "description": "Trước khi bạn ký, chúng tôi chạy một kiểm tra tiền bay cục bộ — không có dịch vụ bên thứ ba, không có dữ liệu nào rời khỏi thiết bị của bạn.",
+      "checks": [
+        "Rủi ro địa chỉ (poison / giả mạo giống hệt)",
+        "Giải mã hợp đồng",
+        "Cờ báo phê duyệt không giới hạn",
+        "Dự đoán revert",
+        "Bất thường so với lịch sử của bạn",
+        "Cảnh báo dòng tiền ra lớn"
+      ],
+      "results_hint": "Kết quả sẽ xuất hiện ở bước tiếp theo khi bạn nhập địa chỉ và số tiền.",
+      "off_hint": "Mô phỏng đang tắt — sẽ không có kiểm tra tiền bay nào chạy trước khi ký.",
+      "taking_too_long": "Mất quá nhiều thời gian?",
+      "turn_off": "Tắt mô phỏng"
+    },
+    "amount": {
+      "label": "Số tiền",
+      "placeholder": "0,00",
+      "being_sent": "đang được gửi",
+      "balance_prefix": "Số dư:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(trực tiếp)",
+      "reading_from_network": "đang đọc từ mạng…"
+    },
+    "errors": {
+      "amount_missing": "Cần nhập số tiền",
+      "amount_not_positive": "Số tiền phải lớn hơn 0",
+      "amount_malformed": "Nhập một số thập phân đơn giản, ví dụ 0.5",
+      "amount_over_balance": "Số dư không đủ",
+      "insufficient_balance_title": "Số dư không đủ.",
+      "insufficient_balance_body": "Bạn có {{balance}} {{currency}} khả dụng để gửi (sau phí mạng). Giảm số tiền để tiếp tục."
+    },
+    "status": {
+      "not_enabled": "Gửi chưa được bật cho {{currency}}. Tài sản này chỉ nhận cho đến khi lộ trình mã hóa của nó được xác minh.",
+      "dev_ungate_title": "DEV UNGATE ĐANG HOẠT ĐỘNG",
+      "dev_ungate_body": "— cổng gửi bị bỏ qua cho {{currency}} thông qua VITE_DEV_UNGATE_SEND (chỉ bản dựng dev). Trạng thái của tài sản này không thay đổi (vẫn chưa hoạt động); mainnet vẫn bị khóa. Chỉ để xác minh trên testnet — không bao giờ phát hành bản dựng này.",
+      "locked": "Ví của bạn đã bị khóa. Mở khóa trong Cài đặt ví để ký và gửi."
+    },
+    "note": { "label": "Ghi chú (tùy chọn)", "placeholder": "Đây là để làm gì?" },
+    "trezor": {
+      "toggle_label": "Ký bằng Trezor",
+      "connected": "Thiết bị đã kết nối",
+      "connect_button": "Kết nối thiết bị"
+    },
+    "buttons": {
+      "continue": "Tiếp tục",
+      "confirm_send": "Xác nhận & Gửi",
+      "back": "Quay lại"
+    },
+    "verify": { "summary_label": "Bạn đang gửi" },
+    "fee": {
+      "automatic": "Phí mạng được đặt tự động cho {{currency}} ({{network}}).",
+      "native_fee_note": "Phí mạng được trả bằng {{symbol}} ({{network}}) — bạn cần {{symbol}} để trang trải phí mạng ngay cả khi gửi {{token}}."
+    },
+    "decode": {
+      "heading": "Giao dịch này làm gì",
+      "action": "Hành động",
+      "send_tokens": "Gửi token",
+      "token": "Token",
+      "amount": "Số lượng",
+      "recipient": "Người nhận",
+      "grant_permission": "Cấp quyền chi tiêu",
+      "permission": "Quyền",
+      "unlimited_permission": "Không giới hạn (ứng dụng này có thể chi tiêu bất kỳ số lượng nào)",
+      "spender": "Bên chi tiêu"
+    },
+    "reauth": {
+      "prompt": "Nhập lại {{credential}} của bạn để ủy quyền",
+      "credential_pin": "PIN",
+      "credential_password": "mật khẩu",
+      "submit_pin": "Ủy quyền",
+      "submit_password": "Ủy quyền & Gửi",
+      "password_placeholder": "Mật khẩu kho lưu trữ",
+      "password_aria": "Mật khẩu kho lưu trữ để ủy quyền gửi",
+      "errors": {
+        "unavailable": "Xác minh không khả dụng — vui lòng khóa lại rồi mở khóa ví.",
+        "incorrect": "Không đúng — thử lại ({{remaining}} lần còn lại)"
+      }
+    },
+    "done": {
+      "beacon_label": "Đã phát giao dịch",
+      "heading": "Đã phát giao dịch",
+      "body_suffix": "đã ký cục bộ và gửi đến mạng",
+      "tx_hash_label": "Mã băm giao dịch",
+      "view_explorer": "Xem trên trình khám phá khối",
+      "pending_note": "Đang chờ cho đến khi được xác nhận trên mạng. Số dư cập nhật từ blockchain, không phải từ một giá trị đã lưu.",
+      "send_another": "Gửi thêm"
+    },
+    "toasts": {
+      "ens_off_in_session": "Phân giải tên đang tắt trong phiên này — hãy dán trực tiếp địa chỉ.",
+      "ens_not_found": "Không tìm thấy tên ENS",
+      "sns_unavailable": "Phân giải tên Solana chưa khả dụng — hãy dán trực tiếp địa chỉ.",
+      "ens_resolution_failed": "Phân giải tên thất bại",
+      "verify_required": "Hoàn tất xác minh bản sao lưu của bạn trước khi gửi số tiền này.",
+      "two_factor_retry": "Không thể hoàn tất lệnh gửi — vui lòng xác minh lại để thử lại.",
+      "send_failed_fallback": "Gửi thất bại",
+      "unconfirmed": "Chưa thể xác nhận giao dịch này trên mạng — nó có thể vẫn đang chờ xử lý. Kiểm tra trình khám phá."
+    }
+  },
+  "receive": {
+    "heading": "Nhận tiền mã hóa",
+    "subheading": "Hiển thị một địa chỉ ví để nhận tiền",
+    "asset_label": "Tài sản",
+    "asset_placeholder": "Chọn tài sản",
+    "not_available": "Nhận {{name}} ({{symbol}}) chưa khả dụng. Không có địa chỉ nào được hiển thị cho đến khi tài sản này được bật.",
+    "locked": {
+      "title": "Ví đã khóa",
+      "body": "Mở khóa ví của bạn để hiển thị địa chỉ nhận {{asset}} {{network}}.",
+      "open_hd_wallet": "Mở Trình quản lý ví HD"
+    },
+    "your_address": "Địa chỉ {{asset}} của bạn",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Địa chỉ nhận {{symbol}}",
+    "copy": {
+      "copied_aria": "Đã sao chép địa chỉ vào bộ nhớ tạm",
+      "copy_aria": "Sao chép địa chỉ",
+      "copied_toast": "Đã sao chép địa chỉ",
+      "copy_failed_toast": "Không thể sao chép — chọn và sao chép địa chỉ theo cách thủ công"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} là một token trên mạng tương thích Ethereum. Đây là địa chỉ ví của bạn — chỉ yêu cầu người gửi gửi {{symbol}} trên {{network}}. Gửi trên một mạng khác có thể làm mất vĩnh viễn số tiền.",
+      "evm": "Đây là địa chỉ ví dùng chung của bạn. Chỉ gửi {{name}} trên {{network}} đến địa chỉ này, và đảm bảo người gửi dùng {{network}}.",
+      "btc": "Chỉ gửi Bitcoin trên {{network}} đến địa chỉ này.",
+      "solana": "Chỉ gửi Solana trên {{network}} đến địa chỉ này."
+    },
+    "select_asset_prompt": "Chọn một tài sản để nhận.",
+    "unlock_footer_note": "Địa chỉ đến từ ví trên thiết bị của bạn và chỉ xuất hiện khi ví đã được mở khóa."
+  },
+  "dashboard": {
+    "portfolioValue": "Giá trị danh mục",
+    "priceAlertsTriggered_one": "{{count}} Cảnh báo giá đã kích hoạt!",
+    "priceAlertsTriggered_other": "{{count}} Cảnh báo giá đã kích hoạt!",
+    "lockAriaLabel": "Khóa số dư sau sinh trắc học",
+    "lockBalance": "Khóa số dư",
+    "synced": "Đã đồng bộ {{time}}",
+    "syncJustNow": "Vừa xong",
+    "syncSecondsAgo_one": "{{count}} giây trước",
+    "syncSecondsAgo_other": "{{count}} giây trước",
+    "syncMinutesAgo_one": "{{count}} phút trước",
+    "syncMinutesAgo_other": "{{count}} phút trước",
+    "actions": {
+      "send": "Gửi",
+      "receive": "Nhận",
+      "schedule": "Lên lịch",
+      "add": "Thêm"
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Hoạt động",
+      "analytics": "Phân tích"
+    },
+    "emptyWallets": {
+      "title": "Chưa có ví nào",
+      "description": "Thêm một ví để bắt đầu nhận, gửi và giữ tài sản trên nhiều chuỗi."
+    },
+    "addWallet": "Thêm ví",
+    "searchTransactionsPlaceholder": "Tìm kiếm giao dịch...",
+    "emptySearch": {
+      "title": "Không có giao dịch phù hợp",
+      "description": "Hãy thử xóa bộ lọc hoặc tìm kiếm một tài sản hoặc địa chỉ khác."
+    },
+    "emptyTransactions": {
+      "title": "Chưa có giao dịch nào",
+      "description": "Hoạt động trên chuỗi của bạn sẽ xuất hiện ở đây khi bạn gửi hoặc nhận."
+    },
+    "portfolioPerformance": "Hiệu suất danh mục",
+    "assetDistribution": "Phân bổ tài sản",
+    "quickAccess": "Truy cập nhanh",
+    "quickAccessItems": {
+      "receive": "Nhận",
+      "security": "Bảo mật",
+      "approvals": "Phê duyệt",
+      "addressCheck": "Kiểm tra địa chỉ",
+      "analytics": "Phân tích",
+      "sentiment": "Tâm lý thị trường",
+      "riskScore": "Điểm rủi ro"
+    },
+    "walletNameLabel": "Tên ví",
+    "walletNamePlaceholder": "Ví ETH của tôi",
+    "addWalletDialog": {
+      "title": "Thêm ví",
+      "currency": "Tiền tệ",
+      "creating": "Đang tạo...",
+      "create": "Tạo ví"
+    },
+    "renameWalletDialog": {
+      "title": "Đổi tên ví",
+      "saving": "Đang lưu...",
+      "save": "Lưu tên"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Kho lưu trữ đã mã hóa",
+    "backup": {
+      "title": "Sao lưu \"{{name}}\"",
+      "reauthDescription": "Xác nhận đó là bạn, sau đó chúng tôi sẽ hiển thị cụm từ khôi phục cho ví này.",
+      "description": "Viết 12 từ này ra giấy, ngoại tuyến. Bất kỳ ai có chúng đều có thể chi tiêu tiền của ví này — và đây là cách duy nhất để khôi phục nó.",
+      "warning": "Không bao giờ chụp ảnh màn hình. Không bao giờ gõ nó vào ứng dụng khác.",
+      "confirmButton": "Tôi đã ghi lại — đánh dấu đã sao lưu"
+    },
+    "addWallet": {
+      "defaultWalletName": "ví mới của bạn",
+      "backupDescription": "Ví này có cụm từ khôi phục riêng — tách biệt với mọi ví khác trong kho lưu trữ của bạn. Hãy viết ra giấy, ngoại tuyến, trước khi sử dụng.",
+      "backedUpDone": "Tôi đã sao lưu — xong",
+      "title": "Thêm một ví",
+      "createNew": "Tạo mới",
+      "importSeed": "Nhập seed",
+      "createDescription": "Tạo một seed MỚI tạo ra TẤT CẢ các chuỗi (ETH/EVM, BTC, SOL). Bạn sẽ sao lưu nó trước khi kích hoạt.",
+      "importDescription": "Dán một seed hiện có gồm 12/24 từ — tất cả các chuỗi được tạo tự động (seed không phụ thuộc vào một chuỗi cụ thể).",
+      "recoveryPhraseLabel": "Cụm từ khôi phục",
+      "recoveryPhrasePlaceholder": "từ1 từ2 ... từ12",
+      "walletNameLabel": "Tên ví",
+      "walletNamePlaceholder": "ví dụ: Tiết kiệm",
+      "assetsToShowLabel": "Tài sản để hiển thị",
+      "assetsToShowHint": "Chỉ là lựa chọn hiển thị — seed vẫn giữ mọi chuỗi bất kể lựa chọn này.",
+      "confirmVaultPlaceholder": "Xác nhận đó là bạn để thay đổi kho lưu trữ",
+      "vaultReentryHint": "Nhập lại để ủy quyền cho một thay đổi đối với kho lưu trữ seed của bạn. Không bao giờ được lưu trong bộ nhớ.",
+      "createAndBackup": "Tạo & sao lưu",
+      "importWallet": "Nhập ví"
+    },
+    "vaultPinLabel": "PIN kho lưu trữ",
+    "vaultPasswordLabel": "Mật khẩu kho lưu trữ",
+    "cancel": "Hủy",
+    "done": "Xong",
+    "manageAssets": {
+      "title": "Tài sản cho \"{{name}}\"",
+      "description": "Chọn tài sản nào hiển thị cho ví này. Các tài sản ẩn sẽ không hiện ra cho đến khi được thêm vào."
+    },
+    "rename": {
+      "title": "Đổi tên ví",
+      "save": "Lưu tên"
+    },
+    "remove": {
+      "title": "Xóa \"{{name}}\"?",
+      "onlyWallet": "Đây là ví duy nhất của bạn — không thể xóa. Dùng Xóa khẩn cấp trong Bảo mật để xóa mọi thứ.",
+      "description": "Xóa seed của ví này khỏi thiết bị này.",
+      "backedUpNote": "Bạn có thể khôi phục nó từ cụm từ khôi phục của nó.",
+      "notBackedUpNote": "⚠️ CHƯA sao lưu — không có cụm từ, nó sẽ mất vĩnh viễn.",
+      "button": "Xóa ví"
+    },
+    "move": {
+      "title": "Di chuyển \"{{name}}\" đến…"
+    },
+    "managePortfolios": {
+      "title": "Danh mục",
+      "defaultTag": "(mặc định)",
+      "saveAriaLabel": "Lưu tên danh mục",
+      "renameAriaLabel": "Đổi tên {{name}}",
+      "deleteAriaLabel": "Xóa {{name}}",
+      "newNamePlaceholder": "Tên danh mục mới",
+      "addButton": "Thêm"
+    },
+    "activity": {
+      "unlockPrompt": "Mở khóa ví của bạn để xem hoạt động.",
+      "loading": "Đang tải...",
+      "loadError": "Không thể tải hoạt động.",
+      "noTransactions": "Chưa có giao dịch nào.",
+      "viewFullHistory": "Xem toàn bộ lịch sử →"
+    },
+    "portfolioValueLabel": "Giá trị danh mục",
+    "explore": {
+      "subtitle": "Bạn đang khám phá — chỉ xem. Chưa có ví.",
+      "description": "Tự do khám phá. Khi sẵn sàng, hãy tạo một ví tự quản lý mới hoặc nhập một seed hiện có — khóa được tạo và mã hóa trên thiết bị này.",
+      "createOrImport": "Tạo hoặc nhập một ví"
+    },
+    "portfoliosButton": "Danh mục",
+    "totalValueHeading": "{{name}} · Tổng giá trị",
+    "partialTotalNote": "Một số số dư không thể tải được — tổng này có thể chưa đầy đủ.",
+    "refreshPricesTooltip": "Làm mới giá trực tiếp",
+    "live": "Trực tiếp",
+    "approximate": "Ước tính",
+    "seedVerify": {
+      "title": "Hoàn tất xác minh bản sao lưu của bạn",
+      "description": "Bắt buộc để gửi vượt quá ngưỡng an toàn.",
+      "verifyAriaLabel": "Xác minh bản sao lưu ví của bạn",
+      "verifyButton": "Xác minh"
+    },
+    "unbacked": {
+      "titleBold": "Sao lưu ví chưa hoàn tất.",
+      "body": "Mỗi ví có cụm từ khôi phục riêng — không có nó, tiền của ví đó không thể khôi phục. Hãy sao lưu ngay.",
+      "backUpButton": "Sao lưu \"{{name}}\""
+    },
+    "actions": {
+      "send": "Gửi",
+      "receive": "Nhận",
+      "addWallet": "Thêm ví"
+    },
+    "activeWalletHint": {
+      "prefix": "Gửi/Nhận dùng",
+      "otherPortfolio": " (trong một danh mục khác)",
+      "suffix": ". Nhấn vào một ví bên dưới để chuyển."
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Hoạt động",
+      "analytics": "Phân tích"
+    },
+    "noWalletsInPortfolio": "Không có ví nào trong \"{{name}}\". Thêm một ví, hoặc chuyển một ví vào đây từ menu của nó.",
+    "hideAssets": "Ẩn tài sản",
+    "showAllAssets": "Hiện tất cả tài sản",
+    "walletCard": {
+      "active": "Đang hoạt động",
+      "backedUp": "Đã sao lưu",
+      "backUp": "Sao lưu",
+      "partial": "một phần",
+      "optionsAriaLabel": "Tùy chọn cho {{name}}",
+      "noAssetsShown": "Không có tài sản nào hiển thị. Dùng \"Quản lý tài sản\"."
+    },
+    "menu": {
+      "manageAssets": "Quản lý tài sản",
+      "rename": "Đổi tên",
+      "moveToPortfolio": "Chuyển đến danh mục",
+      "backUp": "Sao lưu",
+      "remove": "Xóa"
+    },
+    "balanceLoadFailedTitle": "Không thể tải số dư",
+    "defaultWalletFallbackName": "ví",
+    "toast": {
+      "walletImported": "Đã nhập ví — tất cả các chuỗi đã được tạo.",
+      "walletRemoved": "Đã xóa ví khỏi thiết bị này.",
+      "walletAddedBackedUp": "Đã thêm và sao lưu ví.",
+      "movedTo": "Đã chuyển đến {{name}}.",
+      "markedBackedUp": "\"{{name}}\" đã được đánh dấu đã sao lưu."
+    },
+    "errors": {
+      "couldNotAddWallet": "Không thể thêm ví",
+      "couldNotImportWallet": "Không thể nhập ví",
+      "couldNotRemoveWallet": "Không thể xóa ví"
+    }
+  },
+  "networth": {
+    "title": "Tài sản ròng tiền mã hóa",
+    "unlockPrompt": "Mở khóa ví của bạn để xem tài sản trên chuỗi của bạn.",
+    "subtitle": "Tài sản trên chuỗi của bạn — không bao gồm tài sản bên ngoài.",
+    "totalHoldings": "Tổng tài sản nắm giữ",
+    "partialNote": "một phần — một số số dư không thể đọc được",
+    "refreshPricesTooltip": "Làm mới giá trực tiếp",
+    "live": "Trực tiếp",
+    "approximate": "Ước tính",
+    "allocation": "Phân bổ",
+    "holdings": "Tài sản nắm giữ",
+    "noHoldings": "Chưa có tài sản nào."
+  }
+}

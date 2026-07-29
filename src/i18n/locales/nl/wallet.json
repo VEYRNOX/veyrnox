@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Transactiegeschiedenis",
+      "subhead": "Verzendingen en ontvangsten per chain, rechtstreeks van de chain gelezen — alleen-lezen, met explorerlinks.",
+      "badge_demo": "Demo · voorbeeldgegevens",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Demomodus — er wordt niets over het netwerk opgevraagd; de onderstaande rijen zijn lokale voorbeeldgegevens.",
+      "loading_label": "{{symbol}}-geschiedenis laden",
+      "error_prefix": "Kon geschiedenis niet laden: {{reason}}.",
+      "error_fetch_reason": "Kon de RPC-node niet bereiken — controleer je verbinding en probeer het opnieuw.",
+      "error_generic_reason": "de indexer reageerde niet",
+      "retry": "Opnieuw proberen",
+      "no_indexer_title": "In-app geschiedenis is niet beschikbaar voor {{name}} via JSON-RPC",
+      "no_indexer_body": "Een gewone JSON-RPC-node kan de transacties van een adres niet weergeven, en we voegen bewust geen externe explorer-/indexer-API toe (een nieuwe gegevensbron en phone-home-oppervlak). Je volledige geschiedenis staat op de block explorer.",
+      "view_on_explorer": "Bekijk {{address}} op de {{network}}-explorer",
+      "view_explorer_title": "Bekijken op block explorer",
+      "unlock_for_explorer": "Ontgrendel je wallet om de explorerlink voor je {{symbol}}-adres te krijgen.",
+      "locked_title": "Wallet vergrendeld",
+      "locked_body": "Ontgrendel je wallet om je {{symbol}}-adres af te leiden en de geschiedenis te laden.",
+      "empty": "Nog geen transacties voor {{symbol}} op {{network}}.",
+      "count_one": "{{count}} transactie",
+      "count_other": "{{count}} transacties",
+      "most_recent_suffix": " · meest recent",
+      "refresh": "Vernieuwen",
+      "sample_badge": "Voorbeeld",
+      "to_prefix": "Naar ",
+      "from_prefix": "Van ",
+      "status_pending": "In behandeling",
+      "status_confirmed": "Bevestigd",
+      "status_failed": "Mislukt",
+      "awaiting_confirmation": "wacht op bevestiging"
+    },
+    "list": {
+      "empty_title": "Nog geen transacties",
+      "empty_description": "Wanneer je vanuit deze wallet verstuurt of ontvangt, verschijnt je on-chain activiteit hier."
+    },
+    "receipt": {
+      "heading": "Transactiebonnen",
+      "subhead": "Genereer afdrukbare bonnen voor elke transactie",
+      "search_placeholder": "Zoek op ID, adres of valuta...",
+      "loading": "Bezig met laden...",
+      "error": "Kon transacties niet laden. Probeer het opnieuw.",
+      "empty": "Geen transacties gevonden",
+      "preview_title": "Bonvoorbeeld",
+      "print": "Afdrukken",
+      "print_window_title": "Transactiebon",
+      "brand": "VEYRNOX",
+      "doc_title": "TRANSACTIEBON",
+      "field_receipt_id": "Bon-ID",
+      "field_date": "Datum",
+      "field_type": "Type",
+      "field_asset": "Asset",
+      "field_amount": "Bedrag",
+      "field_network_fee": "Netwerkkosten",
+      "field_status": "Status",
+      "field_to": "Naar",
+      "default_type": "Overboeking",
+      "default_status": "voltooid",
+      "thank_you": "Bedankt voor het gebruik van {{brand}}",
+      "thank_you_prefix": "Bedankt voor het gebruik van",
+      "digital_record": "Dit is een digitale transactieregistratie"
+    }
+  },
+  "settings": {
+    "heading": "Beveiligingsinstellingen",
+    "subhead": "Vergrendel, ontgrendel en bescherm je wallet",
+    "theme": {
+      "dark": "Donkere modus",
+      "light": "Lichte modus",
+      "saved_note": "Opgeslagen op dit apparaat",
+      "switch_to_light": "Overschakelen naar lichte modus",
+      "switch_to_dark": "Overschakelen naar donkere modus"
+    },
+    "activity_log": {
+      "label": "Activiteitenlogboek",
+      "description": "Standaard uit · alleen op dit apparaat opgeslagen",
+      "help": "Privélogboek: wat je hebt gewijzigd, verstuurd, ingetrokken. Geen bedragen of adressen. Paniekwissen verwijdert het.",
+      "enable_aria": "Activiteitenlogboek inschakelen",
+      "disable_aria": "Activiteitenlogboek uitschakelen",
+      "no_events": "Nog geen gebeurtenissen geregistreerd."
+    },
+    "message_signing": {
+      "label": "Berichten ondertekenen",
+      "description": "Standaard uit · alleen op dit apparaat opgeslagen",
+      "help": "Standaard uitgeschakeld. Hiermee kun je willekeurige tekstberichten ondertekenen met je walletsleutel. Schakel dit alleen in als een dApp of dienst je vraagt een bericht te ondertekenen.",
+      "enable_aria": "Berichten ondertekenen inschakelen",
+      "disable_aria": "Berichten ondertekenen uitschakelen"
+    },
+    "telemetry": {
+      "label": "Anonieme gebruiksgegevens",
+      "description": "Opt-in · bevat nooit saldi of adressen",
+      "help": "Helpt ons bugs te vinden en de app te verbeteren. Er wordt een willekeurige apparaat-ID gebruikt — nooit gekoppeld aan je wallet, sleutels of identiteit. Dit uitschakelen stopt alle gebruiksgegevens die dit apparaat verlaten.",
+      "enable_aria": "Anonieme gebruiksgegevens inschakelen",
+      "disable_aria": "Anonieme gebruiksgegevens uitschakelen"
+    },
+    "delete_account": {
+      "title": "Gevarenzone",
+      "clear_cache_label": "Lokale cache wissen",
+      "clear_cache_description": "Wist opgeslagen gegevens op dit apparaat en vergrendelt de wallet. Je herstelzin blijft werken. Gebruik Paniekwissen om sleutels te wissen.",
+      "delete_button": "Verwijderen",
+      "confirm_prompt_pre": "Dit wist opgeslagen gegevens en vergrendelt de wallet. Je herstelzin blijft werken. Typ",
+      "confirm_prompt_post": "om te bevestigen.",
+      "confirm_placeholder": "Typ DELETE om te bevestigen",
+      "confirm_aria": "Typ DELETE om de reset van het account te bevestigen",
+      "cancel": "Annuleren",
+      "confirm_delete": "Verwijderen bevestigen",
+      "deleting": "Bezig met verwijderen..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometrisch ontgrendelen",
+      "worth_knowing_label": "Goed om te weten.",
+      "kdf_disclosure": "Ontgrendelen met één tik slaat je walletwachtwoord op dit apparaat op, beschermd door je schermvergrendeling en biometrie. Als iemand een kopie van je apparaatback-up bemachtigt zonder het fysieke apparaat, zou hij toegang tot je wallet kunnen krijgen. Schakel dit uit voor de sterkste bescherming.",
+      "app_layer_disclosure_pre": "Biometrisch ontgrendelen slaat je wachtwoord op dit apparaat op, beschermd door je vingerafdruk of gezicht. Dit werkt binnen de app, niet op besturingssysteemniveau.",
+      "app_layer_disclosure_mid": "Schakel voor sterkere bescherming op apparaatniveau",
+      "hardware_protection_label": "Hardwarebescherming",
+      "app_layer_disclosure_post": "in (hieronder beschikbaar).",
+      "toggle_label": "Biometrisch ontgrendelen (hoofdwallet)",
+      "toggle_description": "Schakel ontgrendelen met één tik in voor je hoofdwallet met apparaatbiometrie.",
+      "before_enable_label": "Voordat je dit inschakelt.",
+      "confirm_disclosure": "Als iemand een kopie van je apparaatback-up bemachtigt zonder het fysieke apparaat, zou hij toegang tot je wallet kunnen krijgen. Schakel dit alleen in als je daarmee akkoord gaat.",
+      "confirm_enable_button": "Ontgrendelen met één tik inschakelen",
+      "cancel_button": "Annuleren",
+      "checking_availability": "Beschikbaarheid controleren…",
+      "default_label": "Biometrie",
+      "available": "{{label}} beschikbaar.",
+      "available_simulated": "{{label}} beschikbaar (gesimuleerd in demo).",
+      "status_check_failed": "Kon de beschikbaarheid van biometrie op dit apparaat niet controleren.",
+      "awaiting_prompt": "Wachten op prompt…",
+      "preview_prompt": "Prompt voorbeeld",
+      "test_success": "Gesimuleerde authenticatie geslaagd",
+      "test_cancelled": "Prompt geannuleerd"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrisch ontgrendelen",
+      "heading_web": "Ontgrendelen met passkey",
+      "scope_banner_native_pre": "Je vingerafdruk of gezicht wordt gecontroleerd vóór het ontgrendelen —",
+      "scope_banner_native_post": "geen vervanging voor je wachtwoord. Je wachtwoord en herstelzin blijven op zichzelf werken, dus het verliezen van biometrie sluit je nooit buiten.",
+      "scope_banner_web_pre": "Een passkey voegt een snelle biometrische of security-key-tik toe vóór het ontgrendelen —",
+      "scope_banner_web_post": "geen vervanging voor je wachtwoord. Je wachtwoord en herstelzin blijven op zichzelf werken, dus het verliezen van de passkey sluit je nooit buiten.",
+      "extra_step_label": "een extra stap",
+      "enroll_button": "Biometrisch ontgrendelen registreren",
+      "register_button": "Een passkey registreren",
+      "not_setup_native": "Apparaatbiometrie is niet ingesteld. Voeg eerst een vingerafdruk of gezicht toe in je apparaatinstellingen — je wachtwoord blijft werken.",
+      "not_supported_web": "Passkey-ontgrendeling is niet beschikbaar in deze browser. Het werkt in de mobiele app en moderne browsers. Gebruik hier je wachtwoord.",
+      "enroll_error": "Kon biometrisch ontgrendelen op dit apparaat niet registreren.",
+      "register_error": "Kon geen passkey op dit apparaat registreren.",
+      "enrolled_native": "Biometrisch ontgrendelen geregistreerd",
+      "registered_web": "Passkey geregistreerd",
+      "simulated_suffix": " (gesimuleerd)",
+      "remove_button": "Verwijderen",
+      "require_toggle_native": "Biometrisch ontgrendelen vereisen",
+      "require_toggle_web": "{{label}} vereisen bij ontgrendelen",
+      "require_toggle_aria_web": "Passkey-ontgrendeling vereisen",
+      "require_toggle_desc_native": "Vraag om je apparaatbiometrie vóór het ontgrendelen (je wachtwoord blijft werken).",
+      "require_toggle_desc_web": "Vraag om je passkey vóór het ontgrendelen (je wachtwoord blijft werken).",
+      "applies_all_sessions": "Dit geldt voor alle walletsessies op dit apparaat.",
+      "default_label": "Passkey",
+      "checking_availability": "Beschikbaarheid controleren…",
+      "simulated_in_demo": "{{label}} gesimuleerd in demo. ",
+      "awaiting_biometric": "Wachten op biometrie…",
+      "awaiting_passkey": "Wachten op passkey…",
+      "preview_biometric_prompt": "Voorbeeld biometrische prompt",
+      "preview_passkey_prompt": "Voorbeeld passkey-prompt",
+      "simulated_prefix": "Gesimuleerd ",
+      "biometric_verified": "biometrie geverifieerd",
+      "passkey_verified": "passkey geverifieerd",
+      "biometric_prompt_cancelled": "Biometrische prompt geannuleerd",
+      "passkey_prompt_cancelled": "Passkey-prompt geannuleerd"
+    },
+    "hardware_kek": {
+      "heading": "Hardwarebescherming op het apparaat",
+      "badge_webauthn": "Beschermd met WebAuthn",
+      "badge_off": "UIT",
+      "description_pre": "Koppelt je wallet aan dit fysieke apparaat. Na inschakelen kan je wallet alleen worden geopend op ",
+      "description_device": "dit apparaat",
+      "description_post": ". Een gestolen back-upbestand is nutteloos zonder het apparaat zelf, zelfs met je pincode.",
+      "description_web_suffix": "Werkt op Chrome 99+ en Firefox 108+. Safari wordt niet ondersteund.",
+      "device_binding_note": "Apparaatkoppeling is actief en getest op echte hardware.",
+      "checking_status": "Status controleren…",
+      "web_prf_unsupported": "Hardwarebescherming is niet beschikbaar in deze browser. Gebruik Chrome 99+ of Firefox 108+, of gebruik de iOS- of Android-app.",
+      "errors": {
+        "wrong_pin": "Verkeerde pincode — voer de pincode in die je gebruikt om je wallet te ontgrendelen.",
+        "no_hardware": "Kon de hardwarebeveiliging van dit apparaat niet bereiken. Probeer het opnieuw of gebruik een ander apparaat.",
+        "malformed_vault": "Je opgeslagen walletgegevens konden op dit apparaat niet worden gelezen.",
+        "not_enrolled": "Hardwarebescherming is niet ingeschakeld voor deze kluis, dus er is niets om te upgraden.",
+        "generic": "Er is iets misgegaan. Probeer het opnieuw.",
+        "key_invalidated": "Je vingerafdrukken zijn veranderd — hardwarebescherming is ongeldig gemaakt. Schakel hardwarebescherming uit en weer in, of herstel vanaf je seedphrase.",
+        "insecure_tier": "Dit apparaat heeft geen beveiligd hardware-element — hardwarebescherming kan hier niet worden ingeschakeld.",
+        "enter_pin_first": "Voer eerst je kluispincode in.",
+        "enter_pin_confirm_removal": "Voer je kluispincode in om verwijdering te bevestigen.",
+        "enter_pin_upgrade": "Voer je kluispincode in om te upgraden."
+      },
+      "toast": {
+        "enabled": "Hardwarebescherming ingeschakeld — je kluis vereist nu dit apparaat om te ontgrendelen.",
+        "removed": "Hardwarebescherming verwijderd.",
+        "upgraded": "Hardwarebescherming geüpgraded — je kluis is nu gekoppeld met een unieke sleutel per apparaat."
+      },
+      "pin_strength": {
+        "hardware_title": "Hardwarebeschermd.",
+        "hardware_body": "Je pincode gecombineerd met Face ID, vingerafdruk of passkey maakt offline-aanvallen onhaalbaar — een aanvaller zou zowel je pincode als dit fysieke apparaat nodig hebben.",
+        "no_hardware_title": "Geen hardwarefactor beschikbaar in deze browser.",
+        "no_hardware_body": "Je 8-cijferige pincode (~100 miljoen combinaties) wordt alleen beschermd door Argon2id — een toegewijde aanvaller zou deze offline in dagen tot weken kunnen uitputten. Gebruik een wachtwoord van 12+ tekens, of schakel over naar Chrome/Firefox om hardwarebescherming in te schakelen.",
+        "pre_enroll_title": "Sterkte van de pincode.",
+        "pre_enroll_body": "Een 8-cijferige pincode heeft ~100 miljoen combinaties. Argon2id vertraagt offline-aanvallen tot ruwweg 1–2 jaar single-threaded — maar een GPU-cluster zou dat tot dagen kunnen terugbrengen. Face ID, vingerafdruk of passkey hierboven inschakelen maakt offline-aanvallen onhaalbaar doordat dit apparaat vereist is bij elke ontgrendeling."
+      },
+      "enrolled": {
+        "active_title": "Actief op dit apparaat",
+        "active_body_native": "Je kluis vereist de biometrie van dit apparaat om te ontgrendelen.",
+        "active_body_web": "Je kluis vereist de passkey van dit apparaat om te ontgrendelen."
+      },
+      "upgrade": {
+        "available_title": "Upgrade beschikbaar",
+        "available_body": "Je wallet was beschermd met een oudere versie die een sleutel deelde tussen apparaten. Upgrade om hem alleen aan dit apparaat te koppelen. Dit gebeurt eenmalig en vraagt je twee keer te verifiëren.",
+        "cta": "Hardwarebescherming upgraden",
+        "busy": "Bezig met upgraden — keur beide prompts goed…",
+        "prompt": "Voer je kluispincode in. Je authenticeert twee keer om de kluis opnieuw te beveiligen.",
+        "cancel": "Annuleren"
+      },
+      "remove": {
+        "cta": "Hardwarebescherming verwijderen",
+        "prompt_native": "Voer je pincode in om te bevestigen. Je moet verifiëren met je vingerafdruk of gezicht.",
+        "prompt_web": "Voer je wachtwoord in om te bevestigen. Je moet verifiëren met je passkey.",
+        "busy": "Bezig met verwijderen — keur de prompt goed…",
+        "cancel": "Annuleren"
+      },
+      "enroll": {
+        "prompt_native": "Voer je kluispincode in om hardwarebescherming in te schakelen.",
+        "prompt_web": "Voer je 8-cijferige pincode in om hardwarebescherming in te schakelen. Je browser maakt een passkey aan om je wallet aan dit apparaat te koppelen.",
+        "cta": "Hardwarebescherming inschakelen",
+        "busy_native": "Bezig met registreren — keur de biometrische prompt goed…",
+        "busy_web": "Bezig met registreren — keur de passkey-prompt goed…",
+        "footnote_native": "Je wordt gevraagd te authenticeren met de biometrie of toegangscode van je apparaat.",
+        "footnote_web": "Je browser vraagt je te authenticeren met biometrie of een apparaatpincode om de passkey aan te maken."
+      },
+      "blocked": "Instellingen voor hardwarebescherming zijn niet beschikbaar in deze sessie."
+    },
+    "two_factor": {
+      "heading": "Tweefactor bij kritieke acties",
+      "intro": "Een extra controle bovenop je pincode voor gevoelige acties. Zelfs als iemand je pincode ziet typen, kan hij deze dingen nog steeds niet doen zonder de tweede stap.",
+      "actions_protects_label": "Acties die het beschermt",
+      "gated_actions": [
+        { "label": "Geld versturen", "desc": "elke verzending, na veiligheidscontroles" },
+        { "label": "Je herstelzin onthullen", "desc": "je back-up bekijken of exporteren" },
+        { "label": "Een noodpincode instellen", "desc": "de noodwallet aanmaken" },
+        { "label": "Een wallet aanmaken of verbergen", "desc": "wijzigingen aan verborgen wallets" }
+      ],
+      "currently_enforcing": "Momenteel afgedwongen:",
+      "badge_biometric": "Pincode + {{label}}",
+      "badge_passkey": "Pincode + passkey",
+      "badge_password": "Pincode + actiewachtwoord",
+      "badge_off": "Uit (alleen pincode)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Je bevindt je in een lok-/verborgen sessie. Configureer tweefactor vanuit je echte sessie.",
+      "method_a_title": "Pincode + actiewachtwoord",
+      "on_suffix": "AAN",
+      "method_a_desc": "Een tweede wachtwoord opgeslagen in je wallet. Sterk, maar beide wachtwoorden staan op hetzelfde apparaat.",
+      "label_pin": "Je pincode",
+      "label_wallet_password": "Walletwachtwoord",
+      "pin_confirm_placeholder": "Bevestig dat jij het bent",
+      "action_password_label_change": "Nieuw actiewachtwoord",
+      "action_password_label_set": "Actiewachtwoord",
+      "action_password_placeholder": "Minstens 8 tekens",
+      "action_password_hint": "Minstens 8 tekens · alle tekens toegestaan",
+      "too_short": "Gebruik minstens {{min}} tekens.",
+      "confirm_label": "Bevestigen",
+      "confirm_placeholder": "Voer het actiewachtwoord opnieuw in",
+      "confirm_hint": "Moet overeenkomen met je actiewachtwoord",
+      "mismatch": "Wachtwoorden komen niet overeen.",
+      "save_change": "Actiewachtwoord wijzigen",
+      "save_set": "Actiewachtwoord instellen",
+      "remove": "Actiewachtwoord verwijderen",
+      "toast_changed": "Actiewachtwoord gewijzigd",
+      "toast_set": "Actiewachtwoord ingesteld",
+      "toast_set_error": "Kon het actiewachtwoord niet instellen",
+      "toast_confirm_pin_required": "Voer je walletpincode/-wachtwoord in om te bevestigen",
+      "toast_removed": "Actiewachtwoord verwijderd",
+      "toast_remove_error": "Kon het actiewachtwoord niet verwijderen",
+      "method_b_title_native": "Pincode + {{label}}",
+      "method_b_title_web": "Pincode + passkey/FIDO2",
+      "method_b_desc_native": "Je pincode plus {{label}}. Als biometrie niet beschikbaar is, wordt de actie geblokkeerd. Je apparaat verliezen kost je nooit je geld.",
+      "method_b_desc_web": "Je pincode plus een passkey-tik. Als de passkey niet beschikbaar is, wordt de actie geblokkeerd. Hem verliezen kost je nooit je geld.",
+      "switch_aria_native": "Mijn apparaatbiometrie gebruiken als tweede factor",
+      "switch_aria_web": "Passkey gebruiken als mijn tweede factor",
+      "confirm_native": "Bevestig kritieke acties met {{label}}.",
+      "unavailable_native": "{{label}} / apparaattoegangscode is niet ingesteld op dit apparaat — schakel het in bij je apparaatinstellingen om deze factor te gebruiken.",
+      "unsupported_web": "Deze browser ondersteunt geen WebAuthn/passkeys.",
+      "register_hint_web_pre": "Nog geen passkey geregistreerd — stel er een in bij",
+      "register_hint_web_strong": "Wallet-passkeys",
+      "register_hint_web_post": "hieronder, en schakel dit dan in.",
+      "toggle_biometric_needed": "{{label}} is niet ingesteld op dit apparaat.",
+      "toggle_passkey_needed": "Registreer eerst een passkey (Wallet-passkeys, hieronder).",
+      "toggle_biometric_on": "{{label}} als tweede factor aan",
+      "toggle_biometric_off": "{{label}} als tweede factor uit",
+      "toggle_passkey_on": "Passkey als tweede factor aan",
+      "toggle_passkey_off": "Passkey als tweede factor uit"
+    },
+    "session": {
+      "title": "Sessie en automatisch vergrendelen",
+      "description": "Vergrendelt je wallet na een periode van inactiviteit of wanneer je de app verlaat",
+      "status_unlocked": "Ontgrendeld",
+      "status_locked": "Vergrendeld",
+      "auto_lock_after": "Automatisch vergrendelen na",
+      "never_note": "Geen automatische vergrendeling bij inactiviteit, maar het vergrendelt nog steeds na ~45 s op de achtergrond en na 8 uur ontgrendeld.",
+      "resets_note": "Reset telkens wanneer je met de app interacteert. Vergrendelt ook direct wanneer naar de achtergrond verplaatst.",
+      "lock_now": "Nu vergrendelen",
+      "recent_activity": "Recente activiteit",
+      "view_all": "Alles bekijken",
+      "this_device": "Dit apparaat",
+      "active_now": "Nu actief"
+    },
+    "rehearsal": {
+      "title": "Deniability oefenen",
+      "description": "Bekijk het dashboard precies zoals iemand met je ontgrendelde telefoon het zou zien."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Wallet",
+    "sidebar_expand": "Zijbalk uitklappen",
+    "sidebar_collapse": "Zijbalk inklappen",
+    "search_placeholder": "Zoeken...",
+    "search_shortcut_title": "Zoeken (⌘K)",
+    "lock": "Vergrendelen",
+    "lock_confirm_prompt": "Deze wallet nu vergrendelen?",
+    "back": "Terug",
+    "settings": "Instellingen",
+    "main_content_aria": "Hoofdinhoud",
+    "bottom_nav_aria": "Onderste navigatie",
+    "more_features_aria": "Meer functies",
+    "more": "Meer",
+    "close": "Sluiten",
+    "all_features_heading": "Alle functies",
+    "recent_heading": "Recent",
+    "tab_home": "Start",
+    "tab_send": "Versturen",
+    "tab_receive": "Ontvangen"
+  },
+  "back": {
+    "default_label": "Terug"
+  },
+  "send": {
+    "heading": "Crypto versturen",
+    "subheading": "Geld veilig overmaken",
+    "wallet_fallback": "Wallet",
+    "wallet_picker": { "label": "Van wallet", "placeholder": "Selecteer wallet" },
+    "asset_picker": { "label": "Asset", "placeholder": "Selecteer asset" },
+    "recipient": {
+      "label": "Versturen naar (adres of naam)",
+      "placeholder": "Plak een adres of voer een naam in (bijv. vitalik.eth)",
+      "scan_qr": "QR-code scannen",
+      "resolving": "Naam wordt herleid…",
+      "name_not_found": "Naam niet gevonden — controleer de spelling of plak het adres direct.",
+      "ens_using_prefix": "{{name}} gebruiken →",
+      "ens_confirm_intro": "privé opgezocht op de blockchain naar:",
+      "ens_confirm_hint": "Controleer of dit adres klopt voordat je verstuurt.",
+      "use_this_address": "Dit adres gebruiken",
+      "not_whitelisted": "Dit adres staat niet op je whitelist. Controleer het goed voordat je doorgaat. Je kunt vertrouwde adressen toevoegen bij Instellingen.",
+      "self_send_warning": "Je verstuurt naar je eigen walletadres. Hierdoor verplaatst er niets tussen wallets en toch worden er netwerkkosten in rekening gebracht. Controleer de ontvanger goed voordat je doorgaat."
+    },
+    "screening": {
+      "local_disclosure": "Ontvangers worden op je apparaat gecontroleerd op scamadressen aan de hand van je eigen geschiedenis — er verlaat niets je apparaat.",
+      "remote_opt_in": "Ook screenen tegen een online dreigingsdatabase (verstuurt dit adres naar een derde partij)",
+      "remote_unavailable": "Online screening is ingeschakeld, maar er is geen provider geconfigureerd in deze build — screening blijft lokaal, dus we konden dit niet verifiëren tegen een externe lijst.",
+      "demo_poison_button": "Demo: een lookalike-adres plakken"
+    },
+    "simulation": {
+      "title": "Transactiesimulatie",
+      "toggle_aria": "Transactiesimulatie in-/uitschakelen",
+      "description": "Voordat je ondertekent, voeren we een lokale pre-flightcontrole uit — geen diensten van derden, er verlaat geen data je apparaat.",
+      "checks": [
+        "Adresrisico (poison/lookalike)",
+        "Contract decoderen",
+        "Vlag voor onbeperkte machtiging",
+        "Voorspelling van revert",
+        "Afwijking ten opzichte van je geschiedenis",
+        "Waarschuwing voor grote uitgaande stroom"
+      ],
+      "results_hint": "Resultaten verschijnen bij de volgende stap zodra je een adres en bedrag invoert.",
+      "off_hint": "Simulatie staat uit — er wordt geen pre-flightcontrole uitgevoerd vóór het ondertekenen.",
+      "taking_too_long": "Duurt het te lang?",
+      "turn_off": "Simulatie uitschakelen"
+    },
+    "amount": {
+      "label": "Bedrag",
+      "placeholder": "0,00",
+      "being_sent": "wordt verstuurd",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(live)",
+      "reading_from_network": "wordt van het netwerk gelezen…"
+    },
+    "errors": {
+      "amount_missing": "Bedrag is verplicht",
+      "amount_not_positive": "Bedrag moet groter zijn dan nul",
+      "amount_malformed": "Voer een gewoon decimaal bedrag in, bijv. 0,5",
+      "amount_over_balance": "Onvoldoende saldo",
+      "insufficient_balance_title": "Onvoldoende saldo.",
+      "insufficient_balance_body": "Je hebt {{balance}} {{currency}} beschikbaar om te versturen (na de netwerkkosten). Verlaag het bedrag om door te gaan."
+    },
+    "status": {
+      "not_enabled": "Versturen is nog niet ingeschakeld voor {{currency}}. Deze asset is alleen-ontvangen totdat het cryptopad is geverifieerd.",
+      "dev_ungate_title": "DEV-UNGATE ACTIEF",
+      "dev_ungate_body": "— de verzendgate wordt omzeild voor {{currency}} via VITE_DEV_UNGATE_SEND (alleen dev-build). De status van deze asset is ongewijzigd (nog niet live); mainnet blijft geblokkeerd. Alleen voor testnetverificatie — verzend deze build nooit.",
+      "locked": "Je wallet is vergrendeld. Ontgrendel hem in Wallet-instellingen om te ondertekenen en te versturen."
+    },
+    "note": { "label": "Notitie (optioneel)", "placeholder": "Waar is dit voor?" },
+    "trezor": {
+      "toggle_label": "Ondertekenen met Trezor",
+      "connected": "Apparaat verbonden",
+      "connect_button": "Apparaat verbinden"
+    },
+    "buttons": {
+      "continue": "Doorgaan",
+      "confirm_send": "Bevestigen en versturen",
+      "back": "Terug"
+    },
+    "verify": { "summary_label": "Je verstuurt" },
+    "fee": {
+      "automatic": "Netwerkkosten worden automatisch ingesteld voor {{currency}} ({{network}}).",
+      "native_fee_note": "Netwerkkosten worden betaald in {{symbol}} ({{network}}) — je hebt {{symbol}} nodig om de netwerkkosten te dekken, ook bij het versturen van {{token}}."
+    },
+    "decode": {
+      "heading": "Wat deze transactie doet",
+      "action": "Actie",
+      "send_tokens": "Tokens versturen",
+      "token": "Token",
+      "amount": "Bedrag",
+      "recipient": "Ontvanger",
+      "grant_permission": "Bestedingsmachtiging verlenen",
+      "permission": "Machtiging",
+      "unlimited_permission": "Onbeperkt (deze app kan elk bedrag besteden)",
+      "spender": "Besteder"
+    },
+    "reauth": {
+      "prompt": "Voer je {{credential}} opnieuw in om te autoriseren",
+      "credential_pin": "pincode",
+      "credential_password": "wachtwoord",
+      "submit_pin": "Autoriseren",
+      "submit_password": "Autoriseren en versturen",
+      "password_placeholder": "Kluiswachtwoord",
+      "password_aria": "Kluiswachtwoord voor autorisatie van verzending",
+      "errors": {
+        "unavailable": "Verificatie niet beschikbaar — vergrendel en ontgrendel de wallet opnieuw.",
+        "incorrect": "Onjuist — probeer opnieuw ({{remaining}} over)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transactie uitgezonden",
+      "heading": "Transactie uitgezonden",
+      "body_suffix": "lokaal ondertekend en naar het netwerk verstuurd",
+      "tx_hash_label": "Transactiehash",
+      "view_explorer": "Bekijken op block explorer",
+      "pending_note": "In behandeling totdat bevestigd op het netwerk. Saldo wordt bijgewerkt vanaf de blockchain, niet vanuit een opgeslagen waarde.",
+      "send_another": "Nog een keer versturen"
+    },
+    "toasts": {
+      "ens_off_in_session": "Naamherleiding staat uit in deze sessie — plak het adres direct.",
+      "ens_not_found": "ENS-naam niet gevonden",
+      "sns_unavailable": "Solana-naamherleiding is nog niet beschikbaar — plak het adres direct.",
+      "ens_resolution_failed": "Naamherleiding mislukt",
+      "verify_required": "Verifieer eerst je back-up voordat je dit bedrag verstuurt.",
+      "two_factor_retry": "Versturen kon niet worden voltooid — verifieer opnieuw om het nogmaals te proberen.",
+      "send_failed_fallback": "Versturen mislukt",
+      "unconfirmed": "Kon deze transactie nog niet bevestigen op het netwerk — mogelijk nog in behandeling. Controleer de explorer."
+    }
+  },
+  "receive": {
+    "heading": "Crypto ontvangen",
+    "subheading": "Toon een walletadres om geld te ontvangen",
+    "asset_label": "Asset",
+    "asset_placeholder": "Kies asset",
+    "not_available": "{{name}} ({{symbol}}) ontvangen is nog niet beschikbaar. Er wordt geen adres getoond totdat deze asset is ingeschakeld.",
+    "locked": {
+      "title": "Wallet vergrendeld",
+      "body": "Ontgrendel je wallet om je {{asset}} {{network}}-ontvangstadres te onthullen.",
+      "open_hd_wallet": "HD-walletbeheer openen"
+    },
+    "your_address": "Je {{asset}}-adres",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "{{symbol}}-ontvangstadres",
+    "copy": {
+      "copied_aria": "Adres naar klembord gekopieerd",
+      "copy_aria": "Adres kopiëren",
+      "copied_toast": "Adres gekopieerd",
+      "copy_failed_toast": "Kopiëren mislukt — selecteer en kopieer het adres handmatig"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} is een token op een Ethereum-compatibel netwerk. Dit is je walletadres — laat de afzender {{symbol}} alleen op {{network}} versturen. Het op een ander netwerk versturen kan het geld permanent verloren laten gaan.",
+      "evm": "Dit is je gedeelde walletadres. Stuur alleen {{name}} op {{network}} naar dit adres en zorg dat de afzender {{network}} gebruikt.",
+      "btc": "Stuur alleen Bitcoin op {{network}} naar dit adres.",
+      "solana": "Stuur alleen Solana op {{network}} naar dit adres."
+    },
+    "select_asset_prompt": "Selecteer een asset om te ontvangen.",
+    "unlock_footer_note": "Adressen komen van je wallet op het apparaat en verschijnen alleen wanneer deze ontgrendeld is."
+  },
+  "dashboard": {
+    "portfolioValue": "Portefeuillewaarde",
+    "priceAlertsTriggered_one": "{{count}} prijswaarschuwing geactiveerd!",
+    "priceAlertsTriggered_other": "{{count}} prijswaarschuwingen geactiveerd!",
+    "lockAriaLabel": "Saldo vergrendelen achter biometrie",
+    "lockBalance": "Saldo vergrendelen",
+    "synced": "Gesynchroniseerd {{time}}",
+    "syncJustNow": "Zojuist",
+    "syncSecondsAgo_one": "{{count}}s geleden",
+    "syncSecondsAgo_other": "{{count}}s geleden",
+    "syncMinutesAgo_one": "{{count}}m geleden",
+    "syncMinutesAgo_other": "{{count}}m geleden",
+    "actions": {
+      "send": "Versturen",
+      "receive": "Ontvangen",
+      "schedule": "Plannen",
+      "add": "Toevoegen"
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Activiteit",
+      "analytics": "Analyse"
+    },
+    "emptyWallets": {
+      "title": "Nog geen wallets",
+      "description": "Voeg een wallet toe om te beginnen met ontvangen, versturen en assets aanhouden op verschillende chains."
+    },
+    "addWallet": "Wallet toevoegen",
+    "searchTransactionsPlaceholder": "Transacties zoeken...",
+    "emptySearch": {
+      "title": "Geen overeenkomende transacties",
+      "description": "Probeer filters te wissen of een andere asset of adres te zoeken."
+    },
+    "emptyTransactions": {
+      "title": "Nog geen transacties",
+      "description": "Je on-chain activiteit verschijnt hier zodra je verstuurt of ontvangt."
+    },
+    "portfolioPerformance": "Portefeuilleprestaties",
+    "assetDistribution": "Assetverdeling",
+    "quickAccess": "Snelle toegang",
+    "quickAccessItems": {
+      "receive": "Ontvangen",
+      "security": "Beveiliging",
+      "approvals": "Machtigingen",
+      "addressCheck": "Adrescontrole",
+      "analytics": "Analyse",
+      "sentiment": "Sentiment",
+      "riskScore": "Risicoscore"
+    },
+    "walletNameLabel": "Walletnaam",
+    "walletNamePlaceholder": "Mijn ETH-wallet",
+    "addWalletDialog": {
+      "title": "Wallet toevoegen",
+      "currency": "Valuta",
+      "creating": "Bezig met aanmaken...",
+      "create": "Wallet aanmaken"
+    },
+    "renameWalletDialog": {
+      "title": "Wallet hernoemen",
+      "saving": "Bezig met opslaan...",
+      "save": "Naam opslaan"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Versleutelde kluis",
+    "backup": {
+      "title": "\"{{name}}\" back-uppen",
+      "reauthDescription": "Bevestig dat jij het bent, dan tonen we de herstelzin voor deze wallet.",
+      "description": "Schrijf deze 12 woorden offline op. Iedereen die ze heeft, kan het geld van deze wallet uitgeven — en het is de enige manier om hem te herstellen.",
+      "warning": "Maak er nooit een screenshot van. Typ het nooit in een andere app.",
+      "confirmButton": "Ik heb het opgeschreven — markeren als back-up gemaakt"
+    },
+    "addWallet": {
+      "defaultWalletName": "je nieuwe wallet",
+      "backupDescription": "Deze wallet heeft zijn eigen herstelzin — apart van elke andere wallet in je kluis. Schrijf hem offline op voordat je hem gebruikt.",
+      "backedUpDone": "Ik heb hem geback-upt — klaar",
+      "title": "Een wallet toevoegen",
+      "createNew": "Nieuwe aanmaken",
+      "importSeed": "Seed importeren",
+      "createDescription": "Genereert een NIEUWE seed die ALLE chains afleidt (ETH/EVM, BTC, SOL). Je maakt er een back-up van voordat hij actief wordt.",
+      "importDescription": "Plak een bestaande herstelzin van 12/24 woorden — alle chains worden automatisch afgeleid (een seed is niet chain-specifiek).",
+      "recoveryPhraseLabel": "Herstelzin",
+      "recoveryPhrasePlaceholder": "woord1 woord2 ... woord12",
+      "walletNameLabel": "Walletnaam",
+      "walletNamePlaceholder": "bijv. Spaargeld",
+      "assetsToShowLabel": "Weer te geven assets",
+      "assetsToShowHint": "Alleen weergavekeuze — de seed bevat sowieso elke chain.",
+      "confirmVaultPlaceholder": "Bevestig dat jij het bent om je kluis te wijzigen",
+      "vaultReentryHint": "Opnieuw ingevoerd om een wijziging aan je seedkluis te autoriseren. Nooit in het geheugen bewaard.",
+      "createAndBackup": "Aanmaken en back-uppen",
+      "importWallet": "Wallet importeren"
+    },
+    "vaultPinLabel": "Kluispincode",
+    "vaultPasswordLabel": "Kluiswachtwoord",
+    "cancel": "Annuleren",
+    "done": "Klaar",
+    "manageAssets": {
+      "title": "Assets voor \"{{name}}\"",
+      "description": "Kies welke assets worden weergegeven voor deze wallet. Verborgen assets blijven uit beeld totdat ze zijn toegevoegd."
+    },
+    "rename": {
+      "title": "Wallet hernoemen",
+      "save": "Naam opslaan"
+    },
+    "remove": {
+      "title": "\"{{name}}\" verwijderen?",
+      "onlyWallet": "Dit is je enige wallet — hij kan niet worden verwijderd. Gebruik Paniekwissen bij Beveiliging om alles te wissen.",
+      "description": "Verwijdert de seed van deze wallet van dit apparaat.",
+      "backedUpNote": "Je kunt hem herstellen vanaf zijn herstelzin.",
+      "notBackedUpNote": "⚠️ GEEN back-up gemaakt — zonder zijn zin is hij voor altijd verdwenen.",
+      "button": "Wallet verwijderen"
+    },
+    "move": {
+      "title": "\"{{name}}\" verplaatsen naar…"
+    },
+    "managePortfolios": {
+      "title": "Portefeuilles",
+      "defaultTag": "(standaard)",
+      "saveAriaLabel": "Portefeuillenaam opslaan",
+      "renameAriaLabel": "{{name}} hernoemen",
+      "deleteAriaLabel": "{{name}} verwijderen",
+      "newNamePlaceholder": "Nieuwe portefeuillenaam",
+      "addButton": "Toevoegen"
+    },
+    "activity": {
+      "unlockPrompt": "Ontgrendel je wallet om activiteit te bekijken.",
+      "loading": "Bezig met laden...",
+      "loadError": "Kon activiteit niet laden.",
+      "noTransactions": "Nog geen transacties.",
+      "viewFullHistory": "Volledige geschiedenis bekijken →"
+    },
+    "portfolioValueLabel": "Portefeuillewaarde",
+    "explore": {
+      "subtitle": "Je verkent — alleen weergave. Nog geen wallet.",
+      "description": "Kijk vrij rond. Wanneer je klaar bent, maak een nieuwe self-custody wallet aan of importeer een bestaande seed — sleutels worden op dit apparaat gegenereerd en versleuteld.",
+      "createOrImport": "Een wallet aanmaken of importeren"
+    },
+    "portfoliosButton": "Portefeuilles",
+    "totalValueHeading": "{{name}} · Totale waarde",
+    "partialTotalNote": "Sommige saldi konden niet worden geladen — deze totaalwaarde kan onvolledig zijn.",
+    "refreshPricesTooltip": "Live prijzen vernieuwen",
+    "live": "Live",
+    "approximate": "Bij benadering",
+    "seedVerify": {
+      "title": "Verifieer je back-up",
+      "description": "Vereist voor het versturen boven de veiligheidsdrempel.",
+      "verifyAriaLabel": "Verifieer je walletback-up",
+      "verifyButton": "Verifiëren"
+    },
+    "unbacked": {
+      "titleBold": "Walletback-up onvolledig.",
+      "body": "Elke wallet heeft zijn eigen herstelzin — zonder deze is het geld van die wallet onherstelbaar. Maak nu een back-up.",
+      "backUpButton": "\"{{name}}\" back-uppen"
+    },
+    "actions": {
+      "send": "Versturen",
+      "receive": "Ontvangen",
+      "addWallet": "Wallet toevoegen"
+    },
+    "activeWalletHint": {
+      "prefix": "Versturen/ontvangen gebruikt",
+      "otherPortfolio": " (in een andere portefeuille)",
+      "suffix": ". Tik op een wallet hieronder om te wisselen."
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Activiteit",
+      "analytics": "Analyse"
+    },
+    "noWalletsInPortfolio": "Geen wallets in \"{{name}}\". Voeg een wallet toe, of verplaats er hier een vanuit zijn menu.",
+    "hideAssets": "Assets verbergen",
+    "showAllAssets": "Alle assets tonen",
+    "walletCard": {
+      "active": "Actief",
+      "backedUp": "Back-up gemaakt",
+      "backUp": "Back-uppen",
+      "partial": "gedeeltelijk",
+      "optionsAriaLabel": "Opties voor {{name}}",
+      "noAssetsShown": "Geen assets weergegeven. Gebruik \"Assets beheren\"."
+    },
+    "menu": {
+      "manageAssets": "Assets beheren",
+      "rename": "Hernoemen",
+      "moveToPortfolio": "Verplaatsen naar portefeuille",
+      "backUp": "Back-uppen",
+      "remove": "Verwijderen"
+    },
+    "balanceLoadFailedTitle": "Saldo kon niet worden geladen",
+    "defaultWalletFallbackName": "wallet",
+    "toast": {
+      "walletImported": "Wallet geïmporteerd — alle chains afgeleid.",
+      "walletRemoved": "Wallet van dit apparaat verwijderd.",
+      "walletAddedBackedUp": "Wallet toegevoegd en geback-upt.",
+      "movedTo": "Verplaatst naar {{name}}.",
+      "markedBackedUp": "\"{{name}}\" gemarkeerd als geback-upt."
+    },
+    "errors": {
+      "couldNotAddWallet": "Kon wallet niet toevoegen",
+      "couldNotImportWallet": "Kon wallet niet importeren",
+      "couldNotRemoveWallet": "Kon wallet niet verwijderen"
+    }
+  },
+  "networth": {
+    "title": "Cryptonettowaarde",
+    "unlockPrompt": "Ontgrendel je wallet om je on-chain bezittingen te zien.",
+    "subtitle": "Je on-chain bezittingen — externe assets zijn niet inbegrepen.",
+    "totalHoldings": "Totale bezittingen",
+    "partialNote": "gedeeltelijk — sommige saldi konden niet worden gelezen",
+    "refreshPricesTooltip": "Live prijzen vernieuwen",
+    "live": "Live",
+    "approximate": "Bij benadering",
+    "allocation": "Allocatie",
+    "holdings": "Bezittingen",
+    "noHoldings": "Nog geen bezittingen."
+  }
+}

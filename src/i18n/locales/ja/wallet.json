@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "取引履歴",
+      "subhead": "各チェーンの送受信をチェーンから直接読み取ります — 読み取り専用で、エクスプローラーへのリンク付きです。",
+      "badge_demo": "デモ ・ サンプルデータ",
+      "badge_mainnet": "メインネット",
+      "badge_testnet": "テストネット",
+      "privacy_demo_note": "デモモードです — ネットワークへの問い合わせは一切行われません。以下の行はローカルのサンプルデータです。",
+      "loading_label": "{{symbol}}の履歴を読み込み中",
+      "error_prefix": "履歴を読み込めませんでした: {{reason}}。",
+      "error_fetch_reason": "RPCノードに接続できませんでした — 接続を確認して再試行してください。",
+      "error_generic_reason": "インデクサーが応答しませんでした",
+      "retry": "再試行",
+      "no_indexer_title": "{{name}}のアプリ内履歴はJSON-RPCでは利用できません",
+      "no_indexer_body": "通常のJSON-RPCノードではアドレスの取引一覧を取得できず、当社では意図的にサードパーティのエクスプローラー／インデクサーAPI（新たなデータ源であり外部通信の経路になるため）を追加していません。全履歴はブロックエクスプローラーでご確認いただけます。",
+      "view_on_explorer": "{{network}}エクスプローラーで{{address}}を見る",
+      "view_explorer_title": "ブロックエクスプローラーで見る",
+      "unlock_for_explorer": "{{symbol}}アドレスのエクスプローラーリンクを取得するには、ウォレットのロックを解除してください。",
+      "locked_title": "ウォレットがロックされています",
+      "locked_body": "{{symbol}}アドレスを導出して履歴を読み込むには、ウォレットのロックを解除してください。",
+      "empty": "{{network}}上の{{symbol}}にはまだ取引がありません。",
+      "count_one": "{{count}}件の取引",
+      "count_other": "{{count}}件の取引",
+      "most_recent_suffix": " ・ 最新",
+      "refresh": "更新",
+      "sample_badge": "サンプル",
+      "to_prefix": "宛先: ",
+      "from_prefix": "送信元: ",
+      "status_pending": "保留中",
+      "status_confirmed": "確認済み",
+      "status_failed": "失敗",
+      "awaiting_confirmation": "確認待ち"
+    },
+    "list": {
+      "empty_title": "まだ取引がありません",
+      "empty_description": "このウォレットで送金または受け取りを行うと、オンチェーンの活動がここに表示されます。"
+    },
+    "receipt": {
+      "heading": "取引明細書",
+      "subhead": "任意の取引の印刷可能な明細書を作成します",
+      "search_placeholder": "ID、アドレス、通貨で検索…",
+      "loading": "読み込み中…",
+      "error": "取引を読み込めませんでした。再試行してください。",
+      "empty": "取引が見つかりません",
+      "preview_title": "明細書プレビュー",
+      "print": "印刷",
+      "print_window_title": "取引明細書",
+      "brand": "VEYRNOX",
+      "doc_title": "取引明細書",
+      "field_receipt_id": "明細書ID",
+      "field_date": "日付",
+      "field_type": "種別",
+      "field_asset": "資産",
+      "field_amount": "金額",
+      "field_network_fee": "ネットワーク手数料",
+      "field_status": "ステータス",
+      "field_to": "宛先",
+      "default_type": "振替",
+      "default_status": "完了",
+      "thank_you": "{{brand}}をご利用いただきありがとうございます",
+      "thank_you_prefix": "ご利用ありがとうございます",
+      "digital_record": "これはデジタル取引記録です"
+    }
+  },
+  "settings": {
+    "heading": "セキュリティ設定",
+    "subhead": "ウォレットのロック・解除・保護",
+    "theme": {
+      "dark": "ダークモード",
+      "light": "ライトモード",
+      "saved_note": "この端末に保存されました",
+      "switch_to_light": "ライトモードに切り替える",
+      "switch_to_dark": "ダークモードに切り替える"
+    },
+    "activity_log": {
+      "label": "アクティビティログ",
+      "description": "既定でオフ ・ この端末のみに保存",
+      "help": "非公開のログ: 変更・送金・取り消しの内容を記録します。金額やアドレスは含まれません。パニックワイプで消去されます。",
+      "enable_aria": "アクティビティログを有効にする",
+      "disable_aria": "アクティビティログを無効にする",
+      "no_events": "記録されたイベントはまだありません。"
+    },
+    "message_signing": {
+      "label": "メッセージ署名",
+      "description": "既定でオフ ・ この端末のみに保存",
+      "help": "既定でオフです。ウォレットの鍵で任意のテキストメッセージに署名できるようにします。dAppやサービスからメッセージへの署名を求められた場合のみ有効にしてください。",
+      "enable_aria": "メッセージ署名を有効にする",
+      "disable_aria": "メッセージ署名を無効にする"
+    },
+    "telemetry": {
+      "label": "匿名利用データ",
+      "description": "オプトイン ・ 残高やアドレスは含まれません",
+      "help": "不具合の発見とアプリの改善に役立ちます。ランダムなデバイスIDが使用され、ウォレット、鍵、個人の識別情報とは一切関連付けられません。これをオフにすると、利用データがこの端末から一切送信されなくなります。",
+      "enable_aria": "匿名利用データをオンにする",
+      "disable_aria": "匿名利用データをオフにする"
+    },
+    "delete_account": {
+      "title": "危険な操作",
+      "clear_cache_label": "ローカルキャッシュを消去",
+      "clear_cache_description": "この端末に保存されたデータを消去し、ウォレットをロックします。リカバリーフレーズは引き続き使用できます。鍵ごと消去するにはパニックワイプを使用してください。",
+      "delete_button": "削除",
+      "confirm_prompt_pre": "これにより保存データが消去され、ウォレットがロックされます。リカバリーフレーズは引き続き使用できます。確認のため",
+      "confirm_prompt_post": "と入力してください。",
+      "confirm_placeholder": "確認のため DELETE と入力",
+      "confirm_aria": "アカウントリセットを確認するために DELETE と入力",
+      "cancel": "キャンセル",
+      "confirm_delete": "削除を確認",
+      "deleting": "削除中…"
+    },
+    "biometric_unlock": {
+      "heading": "生体認証によるロック解除",
+      "worth_knowing_label": "知っておくべきこと。",
+      "kdf_disclosure": "ワンタップ解除では、ウォレットのパスワードがこの端末に保存され、画面ロックと生体認証によって保護されます。物理的な端末なしで端末バックアップのコピーを入手されると、ウォレットにアクセスされる可能性があります。最も強固な保護を望む場合はこの機能をオフにしてください。",
+      "app_layer_disclosure_pre": "生体認証によるロック解除では、指紋や顔認証によって保護された状態でパスワードがこの端末に保存されます。これはOSレベルではなく、アプリ内で動作します。",
+      "app_layer_disclosure_mid": "より強固な端末レベルの保護には、",
+      "hardware_protection_label": "ハードウェア保護",
+      "app_layer_disclosure_post": "を有効にしてください（下記）。",
+      "toggle_label": "生体認証によるロック解除（メインウォレット）",
+      "toggle_description": "端末の生体認証を使ってメインウォレットのワンタップ解除を有効にします。",
+      "before_enable_label": "有効にする前に。",
+      "confirm_disclosure": "物理的な端末なしで端末バックアップのコピーを入手されると、ウォレットにアクセスされる可能性があります。それを許容できる場合のみオンにしてください。",
+      "confirm_enable_button": "ワンタップ解除を有効にする",
+      "cancel_button": "キャンセル",
+      "checking_availability": "利用可否を確認中…",
+      "default_label": "生体認証",
+      "available": "{{label}}が利用可能です。",
+      "available_simulated": "{{label}}が利用可能です（デモではシミュレーション）。",
+      "status_check_failed": "この端末で生体認証の利用可否を確認できませんでした。",
+      "awaiting_prompt": "プロンプトを待機中…",
+      "preview_prompt": "プロンプトをプレビュー",
+      "test_success": "シミュレーションによる認証に成功しました",
+      "test_cancelled": "プロンプトがキャンセルされました"
+    },
+    "passkey_unlock": {
+      "heading_native": "生体認証によるロック解除",
+      "heading_web": "パスキーでロック解除",
+      "scope_banner_native_pre": "ロック解除前に指紋または顔が確認されます —",
+      "scope_banner_native_post": "これはパスワードの代わりではありません。パスワードとリカバリーフレーズは単独でも引き続き機能するため、生体認証が使えなくなってもロックアウトされることはありません。",
+      "scope_banner_web_pre": "パスキーにより、ロック解除の前に手軽な生体認証またはセキュリティキーのタップが加わります —",
+      "scope_banner_web_post": "これはパスワードの代わりではありません。パスワードとリカバリーフレーズは単独でも引き続き機能するため、パスキーが使えなくなってもロックアウトされることはありません。",
+      "extra_step_label": "追加の手順",
+      "enroll_button": "生体認証によるロック解除を登録",
+      "register_button": "パスキーを登録",
+      "not_setup_native": "端末の生体認証が設定されていません。まず端末の設定で指紋または顔を追加してください — パスワードは引き続き使用できます。",
+      "not_supported_web": "このブラウザではパスキーによるロック解除は利用できません。モバイルアプリや最新のブラウザで利用できます。ここではパスワードをご利用ください。",
+      "enroll_error": "この端末で生体認証によるロック解除を登録できませんでした。",
+      "register_error": "この端末でパスキーを登録できませんでした。",
+      "enrolled_native": "生体認証によるロック解除を登録しました",
+      "registered_web": "パスキーを登録しました",
+      "simulated_suffix": "（シミュレーション）",
+      "remove_button": "削除",
+      "require_toggle_native": "生体認証によるロック解除を必須にする",
+      "require_toggle_web": "ロック解除時に{{label}}を必須にする",
+      "require_toggle_aria_web": "パスキーによるロック解除を必須にする",
+      "require_toggle_desc_native": "ロック解除前に端末の生体認証を求めます（パスワードは引き続き使用できます）。",
+      "require_toggle_desc_web": "ロック解除前にパスキーを求めます（パスワードは引き続き使用できます）。",
+      "applies_all_sessions": "これはこの端末上のすべてのウォレットセッションに適用されます。",
+      "default_label": "パスキー",
+      "checking_availability": "利用可否を確認中…",
+      "simulated_in_demo": "{{label}}はデモではシミュレーションされます。",
+      "awaiting_biometric": "生体認証を待機中…",
+      "awaiting_passkey": "パスキーを待機中…",
+      "preview_biometric_prompt": "生体認証プロンプトをプレビュー",
+      "preview_passkey_prompt": "パスキープロンプトをプレビュー",
+      "simulated_prefix": "シミュレーション: ",
+      "biometric_verified": "生体認証を確認しました",
+      "passkey_verified": "パスキーを確認しました",
+      "biometric_prompt_cancelled": "生体認証プロンプトがキャンセルされました",
+      "passkey_prompt_cancelled": "パスキープロンプトがキャンセルされました"
+    },
+    "hardware_kek": {
+      "heading": "端末上のハードウェア保護",
+      "badge_webauthn": "WebAuthn保護済み",
+      "badge_off": "オフ",
+      "description_pre": "ウォレットをこの物理的な端末に固定します。有効にすると、ウォレットは",
+      "description_device": "この端末",
+      "description_post": "でのみ開けるようになります。バックアップファイルを盗まれても、端末本体がなければ、PINがあっても無意味です。",
+      "description_web_suffix": "Chrome 99以降およびFirefox 108以降で動作します。Safariには対応していません。",
+      "device_binding_note": "デバイスバインディングは有効で、実機での動作確認済みです。",
+      "checking_status": "状態を確認中…",
+      "web_prf_unsupported": "このブラウザではハードウェア保護を利用できません。Chrome 99以降またはFirefox 108以降を使用するか、iOS／Androidアプリをご利用ください。",
+      "errors": {
+        "wrong_pin": "PINが違います — ウォレットのロック解除に使うPINを入力してください。",
+        "no_hardware": "この端末のハードウェアセキュリティに到達できませんでした。再試行するか、別の端末をお使いください。",
+        "malformed_vault": "この端末で保存済みのウォレットデータを読み取れませんでした。",
+        "not_enrolled": "このボールトではハードウェア保護が有効になっていないため、アップグレードする対象がありません。",
+        "generic": "問題が発生しました。もう一度お試しください。",
+        "key_invalidated": "指紋が変更されたため、ハードウェア保護が無効になりました。ハードウェア保護をオフにしてから再度オンにするか、シードフレーズから復元してください。",
+        "insecure_tier": "この端末には安全なハードウェア要素がないため、ここではハードウェア保護を有効にできません。",
+        "enter_pin_first": "先にボールトのPINを入力してください。",
+        "enter_pin_confirm_removal": "削除を確認するには、ボールトのPINを入力してください。",
+        "enter_pin_upgrade": "アップグレードするには、ボールトのPINを入力してください。"
+      },
+      "toast": {
+        "enabled": "ハードウェア保護を有効にしました — このボールトの解除にはこの端末が必要になります。",
+        "removed": "ハードウェア保護を削除しました。",
+        "upgraded": "ハードウェア保護をアップグレードしました — このボールトは端末ごとに一意な鍵で固定されました。"
+      },
+      "pin_strength": {
+        "hardware_title": "ハードウェア保護済み。",
+        "hardware_body": "PINとFace ID、指紋、パスキーの組み合わせにより、オフライン攻撃は事実上不可能になります — 攻撃者にはPINとこの物理的な端末の両方が必要になります。",
+        "no_hardware_title": "このブラウザではハードウェア要素を利用できません。",
+        "no_hardware_body": "8桁のPIN（約1億通り）はArgon2idのみで保護されており、専念する攻撃者であれば数日から数週間でオフラインで突破できる可能性があります。12文字以上のパスワードを使用するか、Chrome／Firefoxに切り替えてハードウェア保護を有効にしてください。",
+        "pre_enroll_title": "PINの強度。",
+        "pre_enroll_body": "8桁のPINには約1億通りの組み合わせがあります。Argon2idによりオフライン攻撃はシングルスレッドでおおよそ1〜2年かかる速度まで遅くなりますが、GPUクラスタを使えば数日まで短縮される可能性があります。上でFace ID、指紋、パスキーを有効にすると、すべてのロック解除にこの端末が必要になり、オフライン攻撃は事実上不可能になります。"
+      },
+      "enrolled": {
+        "active_title": "この端末で有効",
+        "active_body_native": "このボールトの解除にはこの端末の生体認証が必要です。",
+        "active_body_web": "このボールトの解除にはこの端末のパスキーが必要です。"
+      },
+      "upgrade": {
+        "available_title": "アップグレードが利用可能です",
+        "available_body": "このウォレットは、複数の端末で鍵を共有する旧バージョンで保護されていました。この端末のみに固定するようアップグレードしてください。これは一度だけ行われ、2回の確認が必要です。",
+        "cta": "ハードウェア保護をアップグレード",
+        "busy": "アップグレード中 — 両方のプロンプトを承認してください…",
+        "prompt": "ボールトのPINを入力してください。ボールトを再保護するために2回認証します。",
+        "cancel": "キャンセル"
+      },
+      "remove": {
+        "cta": "ハードウェア保護を削除",
+        "prompt_native": "確認のためPINを入力してください。指紋または顔での認証も必要です。",
+        "prompt_web": "確認のためパスワードを入力してください。パスキーでの認証も必要です。",
+        "busy": "削除中 — プロンプトを承認してください…",
+        "cancel": "キャンセル"
+      },
+      "enroll": {
+        "prompt_native": "ハードウェア保護を有効にするには、ボールトのPINを入力してください。",
+        "prompt_web": "ハードウェア保護を有効にするには、8桁のPINを入力してください。ブラウザがウォレットをこの端末に固定するパスキーを作成します。",
+        "cta": "ハードウェア保護を有効にする",
+        "busy_native": "登録中 — 生体認証プロンプトを承認してください…",
+        "busy_web": "登録中 — パスキープロンプトを承認してください…",
+        "footnote_native": "端末の生体認証またはパスコードでの認証を求められます。",
+        "footnote_web": "パスキーを作成するため、ブラウザから生体認証または端末PINでの認証を求められます。"
+      },
+      "blocked": "このセッションではハードウェア保護の設定は利用できません。"
+    },
+    "two_factor": {
+      "heading": "重要な操作での二段階認証",
+      "intro": "機密性の高い操作に対して、PINに加えた追加のチェックです。誰かがあなたのPIN入力を見てしまった場合でも、2つ目の手順なしにはこれらの操作を行えません。",
+      "actions_protects_label": "保護される操作",
+      "gated_actions": [
+        { "label": "資金の送金", "desc": "安全性チェック後のすべての送金" },
+        { "label": "リカバリーフレーズの表示", "desc": "バックアップの閲覧またはエクスポート" },
+        { "label": "緊急用PINの設定", "desc": "緊急用ウォレットの作成" },
+        { "label": "ウォレットの作成または非表示", "desc": "隠しウォレットの変更" }
+      ],
+      "currently_enforcing": "現在適用中:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + パスキー",
+      "badge_password": "PIN + アクションパスワード",
+      "badge_off": "オフ（PINのみ）",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "現在おとり／隠しセッションです。二段階認証は本来のセッションから設定してください。",
+      "method_a_title": "PIN + アクションパスワード",
+      "on_suffix": "オン",
+      "method_a_desc": "ウォレット内に保存される2つ目のパスワードです。強力ですが、両方のパスワードが同じ端末上にあります。",
+      "label_pin": "あなたのPIN",
+      "label_wallet_password": "ウォレットのパスワード",
+      "pin_confirm_placeholder": "本人確認",
+      "action_password_label_change": "新しいアクションパスワード",
+      "action_password_label_set": "アクションパスワード",
+      "action_password_placeholder": "8文字以上",
+      "action_password_hint": "8文字以上 ・ 任意の文字を使用可能",
+      "too_short": "{{min}}文字以上を使用してください。",
+      "confirm_label": "確認",
+      "confirm_placeholder": "アクションパスワードを再入力",
+      "confirm_hint": "アクションパスワードと一致させてください",
+      "mismatch": "パスワードが一致しません。",
+      "save_change": "アクションパスワードを変更",
+      "save_set": "アクションパスワードを設定",
+      "remove": "アクションパスワードを削除",
+      "toast_changed": "アクションパスワードを変更しました",
+      "toast_set": "アクションパスワードを設定しました",
+      "toast_set_error": "アクションパスワードを設定できませんでした",
+      "toast_confirm_pin_required": "確認のためウォレットのPIN／パスワードを入力してください",
+      "toast_removed": "アクションパスワードを削除しました",
+      "toast_remove_error": "アクションパスワードを削除できませんでした",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + パスキー / FIDO2",
+      "method_b_desc_native": "PINに加えて{{label}}を使用します。生体認証が利用できない場合、操作はブロックされます。端末を紛失しても資金を失うことはありません。",
+      "method_b_desc_web": "PINに加えてパスキーのタップを使用します。パスキーが利用できない場合、操作はブロックされます。紛失しても資金を失うことはありません。",
+      "switch_aria_native": "端末の生体認証を第2要素として使用する",
+      "switch_aria_web": "パスキーを第2要素として使用する",
+      "confirm_native": "重要な操作を{{label}}で確認します。",
+      "unavailable_native": "この端末では{{label}}／端末パスコードが設定されていません — この要素を使用するには端末の設定で有効にしてください。",
+      "unsupported_web": "このブラウザはWebAuthn／パスキーに対応していません。",
+      "register_hint_web_pre": "パスキーがまだ登録されていません — 下の",
+      "register_hint_web_strong": "ウォレットのパスキー",
+      "register_hint_web_post": "でセットアップしてから、これを有効にしてください。",
+      "toggle_biometric_needed": "この端末では{{label}}が設定されていません。",
+      "toggle_passkey_needed": "先にパスキーを登録してください（下のウォレットのパスキー）。",
+      "toggle_biometric_on": "{{label}}第2要素がオンです",
+      "toggle_biometric_off": "{{label}}第2要素がオフです",
+      "toggle_passkey_on": "パスキー第2要素がオンです",
+      "toggle_passkey_off": "パスキー第2要素がオフです"
+    },
+    "session": {
+      "title": "セッションと自動ロック",
+      "description": "一定時間操作がない場合、またはアプリを離れた場合にウォレットをロックします",
+      "status_unlocked": "ロック解除済み",
+      "status_locked": "ロック中",
+      "auto_lock_after": "自動ロックまでの時間",
+      "never_note": "アイドル状態での自動ロックはありませんが、バックグラウンドで約45秒後、およびロック解除から8時間後には自動的にロックされます。",
+      "resets_note": "アプリを操作するたびにリセットされます。バックグラウンドに移動すると即座にロックされます。",
+      "lock_now": "今すぐロック",
+      "recent_activity": "最近のアクティビティ",
+      "view_all": "すべて表示",
+      "this_device": "この端末",
+      "active_now": "現在アクティブ"
+    },
+    "rehearsal": {
+      "title": "デニアビリティ（否認可能性）のリハーサル",
+      "description": "ロック解除された端末を手にした第三者から見えるダッシュボードをそのまま確認できます。"
+    }
+  },
+  "nav": {
+    "wallet_tagline": "ウォレット",
+    "sidebar_expand": "サイドバーを展開",
+    "sidebar_collapse": "サイドバーを折りたたむ",
+    "search_placeholder": "検索…",
+    "search_shortcut_title": "検索 (⌘K)",
+    "lock": "ロック",
+    "lock_confirm_prompt": "今すぐこのウォレットをロックしますか？",
+    "back": "戻る",
+    "settings": "設定",
+    "main_content_aria": "メインコンテンツ",
+    "bottom_nav_aria": "下部ナビゲーション",
+    "more_features_aria": "その他の機能",
+    "more": "その他",
+    "close": "閉じる",
+    "all_features_heading": "すべての機能",
+    "recent_heading": "最近",
+    "tab_home": "ホーム",
+    "tab_send": "送金",
+    "tab_receive": "受取"
+  },
+  "back": {
+    "default_label": "戻る"
+  },
+  "send": {
+    "heading": "暗号資産を送る",
+    "subheading": "安全に資金を送金",
+    "wallet_fallback": "ウォレット",
+    "wallet_picker": { "label": "送金元ウォレット", "placeholder": "ウォレットを選択" },
+    "asset_picker": { "label": "資産", "placeholder": "資産を選択" },
+    "recipient": {
+      "label": "送金先（アドレスまたは名前）",
+      "placeholder": "アドレスを貼り付けるか、名前を入力（例: vitalik.eth）",
+      "scan_qr": "QRコードをスキャン",
+      "resolving": "名前を解決中…",
+      "name_not_found": "名前が見つかりません — スペルを確認するか、アドレスを直接貼り付けてください。",
+      "ens_using_prefix": "{{name}}を使用 →",
+      "ens_confirm_intro": "ブロックチェーン上で非公開に照会した結果:",
+      "ens_confirm_hint": "送金前にこのアドレスが正しいことを確認してください。",
+      "use_this_address": "このアドレスを使用",
+      "not_whitelisted": "このアドレスはホワイトリストに登録されていません。続行前によく確認してください。信頼できるアドレスは設定から追加できます。",
+      "self_send_warning": "自分自身のウォレットアドレスに送金しようとしています。これはウォレット間の資産移動にはならず、それでもネットワーク手数料がかかります。続行前に送金先を再確認してください。"
+    },
+    "screening": {
+      "local_disclosure": "送金先は、あなた自身の履歴と照合して詐欺アドレスがないかこの端末上で確認されます — 何もこの端末の外には送信されません。",
+      "remote_opt_in": "オンラインの脅威データベースとも照合する（このアドレスをサードパーティに送信します）",
+      "remote_unavailable": "オンライン照合は有効になっていますが、このビルドではプロバイダーが設定されていないため、照合はローカルのみで行われ、外部リストとの照合は確認できませんでした。",
+      "demo_poison_button": "デモ: 似せかけのアドレスを貼り付ける"
+    },
+    "simulation": {
+      "title": "トランザクションシミュレーション",
+      "toggle_aria": "トランザクションシミュレーションの切り替え",
+      "description": "署名前に、端末上でのローカルな事前チェックを実行します — サードパーティサービスは使用せず、データが端末外に送信されることもありません。",
+      "checks": [
+        "アドレスリスク（なりすまし／似せかけ）",
+        "コントラクトのデコード",
+        "無制限承認フラグ",
+        "リバート予測",
+        "履歴との比較による異常検知",
+        "大口出金の警告"
+      ],
+      "results_hint": "アドレスと金額を入力すると、次のステップで結果が表示されます。",
+      "off_hint": "シミュレーションはオフです — 署名前の事前チェックは実行されません。",
+      "taking_too_long": "時間がかかりすぎていますか？",
+      "turn_off": "シミュレーションをオフにする"
+    },
+    "amount": {
+      "label": "金額",
+      "placeholder": "0.00",
+      "being_sent": "送金額",
+      "balance_prefix": "残高:",
+      "demo_suffix": "（デモ）",
+      "live_suffix": "（ライブ）",
+      "reading_from_network": "ネットワークから読み込み中…"
+    },
+    "errors": {
+      "amount_missing": "金額を入力してください",
+      "amount_not_positive": "金額は0より大きい値にしてください",
+      "amount_malformed": "0.5のような単純な10進数の金額を入力してください",
+      "amount_over_balance": "残高が不足しています",
+      "insufficient_balance_title": "残高が不足しています。",
+      "insufficient_balance_body": "送金可能な額は{{balance}} {{currency}}です（ネットワーク手数料差引後）。続行するには金額を減らしてください。"
+    },
+    "status": {
+      "not_enabled": "{{currency}}の送金はまだ有効になっていません。この資産の暗号技術パスが検証されるまで受取専用です。",
+      "dev_ungate_title": "開発用アンゲートが有効です",
+      "dev_ungate_body": "— VITE_DEV_UNGATE_SENDにより、{{currency}}の送金ゲートがバイパスされています（開発ビルドのみ）。この資産のステータスは変更されておらず（依然として未提供）、メインネットは引き続き制限されています。テストネットでの検証専用です — このビルドを絶対にリリースしないでください。",
+      "locked": "ウォレットがロックされています。署名・送信するには、ウォレット設定でロックを解除してください。"
+    },
+    "note": { "label": "メモ（任意）", "placeholder": "用途は？" },
+    "trezor": {
+      "toggle_label": "Trezorで署名",
+      "connected": "デバイス接続済み",
+      "connect_button": "デバイスに接続"
+    },
+    "buttons": {
+      "continue": "続ける",
+      "confirm_send": "確認して送金",
+      "back": "戻る"
+    },
+    "verify": { "summary_label": "送金内容" },
+    "fee": {
+      "automatic": "{{currency}}（{{network}}）のネットワーク手数料は自動設定されます。",
+      "native_fee_note": "ネットワーク手数料は{{symbol}}（{{network}}）で支払われます — {{token}}を送金する場合でも、手数料を賄うために{{symbol}}が必要です。"
+    },
+    "decode": {
+      "heading": "このトランザクションの内容",
+      "action": "操作",
+      "send_tokens": "トークンを送金",
+      "token": "トークン",
+      "amount": "金額",
+      "recipient": "受取人",
+      "grant_permission": "使用権限を付与",
+      "permission": "権限",
+      "unlimited_permission": "無制限（このアプリは任意の金額を使用できます）",
+      "spender": "利用者"
+    },
+    "reauth": {
+      "prompt": "承認するには{{credential}}を再入力してください",
+      "credential_pin": "PIN",
+      "credential_password": "パスワード",
+      "submit_pin": "承認",
+      "submit_password": "承認して送信",
+      "password_placeholder": "ボールトのパスワード",
+      "password_aria": "送金承認用のボールトパスワード",
+      "errors": {
+        "unavailable": "確認できません — ウォレットを再度ロックしてから解除してください。",
+        "incorrect": "違います — 再試行してください（残り{{remaining}}回）"
+      }
+    },
+    "done": {
+      "beacon_label": "トランザクションをブロードキャストしました",
+      "heading": "トランザクションをブロードキャストしました",
+      "body_suffix": "はローカルで署名され、ネットワークに送信されました",
+      "tx_hash_label": "トランザクションハッシュ",
+      "view_explorer": "ブロックエクスプローラーで見る",
+      "pending_note": "ネットワーク上で確認されるまで保留中です。残高は保存された値ではなく、ブロックチェーンから更新されます。",
+      "send_another": "もう一度送金"
+    },
+    "toasts": {
+      "ens_off_in_session": "このセッションでは名前解決がオフです — アドレスを直接貼り付けてください。",
+      "ens_not_found": "ENS名が見つかりません",
+      "sns_unavailable": "Solanaの名前解決はまだ利用できません — アドレスを直接貼り付けてください。",
+      "ens_resolution_failed": "名前解決に失敗しました",
+      "verify_required": "この金額を送金する前に、バックアップの確認を完了してください。",
+      "two_factor_retry": "送金を完了できませんでした — 再度確認してから再試行してください。",
+      "send_failed_fallback": "送金に失敗しました",
+      "unconfirmed": "このトランザクションはまだネットワーク上で確認できませんでした — 保留中の可能性があります。エクスプローラーで確認してください。"
+    }
+  },
+  "receive": {
+    "heading": "暗号資産を受け取る",
+    "subheading": "ウォレットアドレスを表示して資金を受け取る",
+    "asset_label": "資産",
+    "asset_placeholder": "資産を選択",
+    "not_available": "{{name}}（{{symbol}}）の受取はまだ利用できません。この資産が有効になるまでアドレスは表示されません。",
+    "locked": {
+      "title": "ウォレットがロックされています",
+      "body": "{{asset}} {{network}}の受取アドレスを表示するには、ウォレットのロックを解除してください。",
+      "open_hd_wallet": "HDウォレットマネージャーを開く"
+    },
+    "your_address": "あなたの{{asset}}アドレス",
+    "testnet_badge": "テストネット",
+    "receive_address_label": "{{symbol}}受取アドレス",
+    "copy": {
+      "copied_aria": "アドレスをクリップボードにコピーしました",
+      "copy_aria": "アドレスをコピー",
+      "copied_toast": "アドレスをコピーしました",
+      "copy_failed_toast": "コピーできませんでした — アドレスを選択して手動でコピーしてください"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}}はEthereum互換ネットワーク上のトークンです。これはあなたのウォレットアドレスです — 送金者には必ず{{network}}上で{{symbol}}を送るよう伝えてください。異なるネットワークで送金すると、資金が永久に失われる可能性があります。",
+      "evm": "これは共有ウォレットアドレスです。このアドレスには{{network}}上の{{name}}のみを送金してください。送金者が{{network}}を使用していることも必ず確認してください。",
+      "btc": "このアドレスには{{network}}上のBitcoinのみを送金してください。",
+      "solana": "このアドレスには{{network}}上のSolanaのみを送金してください。"
+    },
+    "select_asset_prompt": "受け取る資産を選択してください。",
+    "unlock_footer_note": "アドレスは端末内のウォレットから取得され、ロック解除中のみ表示されます。"
+  },
+  "dashboard": {
+    "portfolioValue": "ポートフォリオ評価額",
+    "priceAlertsTriggered_one": "{{count}}件の価格アラートが発生しました！",
+    "priceAlertsTriggered_other": "{{count}}件の価格アラートが発生しました！",
+    "lockAriaLabel": "残高を生体認証でロック",
+    "lockBalance": "残高をロック",
+    "synced": "{{time}}に同期",
+    "syncJustNow": "たった今",
+    "syncSecondsAgo_one": "{{count}}秒前",
+    "syncSecondsAgo_other": "{{count}}秒前",
+    "syncMinutesAgo_one": "{{count}}分前",
+    "syncMinutesAgo_other": "{{count}}分前",
+    "actions": {
+      "send": "送金",
+      "receive": "受取",
+      "schedule": "予約",
+      "add": "追加"
+    },
+    "tabs": {
+      "tokens": "トークン",
+      "activity": "アクティビティ",
+      "analytics": "分析"
+    },
+    "emptyWallets": {
+      "title": "ウォレットがまだありません",
+      "description": "ウォレットを追加すると、複数のチェーンにわたって資産の受け取り・送金・保有を開始できます。"
+    },
+    "addWallet": "ウォレットを追加",
+    "searchTransactionsPlaceholder": "取引を検索…",
+    "emptySearch": {
+      "title": "一致する取引がありません",
+      "description": "フィルターを解除するか、別の資産やアドレスで検索してみてください。"
+    },
+    "emptyTransactions": {
+      "title": "まだ取引がありません",
+      "description": "送金または受け取りを行うと、オンチェーンの活動がここに表示されます。"
+    },
+    "portfolioPerformance": "ポートフォリオのパフォーマンス",
+    "assetDistribution": "資産の分布",
+    "quickAccess": "クイックアクセス",
+    "quickAccessItems": {
+      "receive": "受取",
+      "security": "セキュリティ",
+      "approvals": "承認",
+      "addressCheck": "アドレスチェック",
+      "analytics": "分析",
+      "sentiment": "センチメント",
+      "riskScore": "リスクスコア"
+    },
+    "walletNameLabel": "ウォレット名",
+    "walletNamePlaceholder": "My ETH Wallet",
+    "addWalletDialog": {
+      "title": "ウォレットを追加",
+      "currency": "通貨",
+      "creating": "作成中…",
+      "create": "ウォレットを作成"
+    },
+    "renameWalletDialog": {
+      "title": "ウォレット名を変更",
+      "saving": "保存中…",
+      "save": "名前を保存"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "暗号化されたボールト",
+    "backup": {
+      "title": "「{{name}}」をバックアップ",
+      "reauthDescription": "本人確認の後、このウォレットのリカバリーフレーズを表示します。",
+      "description": "この12語を紙などオフラインの場所に書き留めてください。これを知っている人は誰でもこのウォレットの資金を使用でき、復元する唯一の方法でもあります。",
+      "warning": "スクリーンショットは絶対に撮らないでください。他のアプリに入力することも絶対にしないでください。",
+      "confirmButton": "書き留めました — バックアップ済みにする"
+    },
+    "addWallet": {
+      "defaultWalletName": "新しいウォレット",
+      "backupDescription": "このウォレットには、ボールト内の他のすべてのウォレットとは別の独自のリカバリーフレーズがあります。使用する前にオフラインで書き留めてください。",
+      "backedUpDone": "バックアップしました — 完了",
+      "title": "ウォレットを追加",
+      "createNew": "新規作成",
+      "importSeed": "シードをインポート",
+      "createDescription": "すべてのチェーン（ETH/EVM、BTC、SOL）を導出する新しいシードを生成します。有効化する前にバックアップします。",
+      "importDescription": "既存の12語／24語のシードを貼り付けてください — すべてのチェーンが自動的に導出されます（シードはチェーン固有ではありません）。",
+      "recoveryPhraseLabel": "リカバリーフレーズ",
+      "recoveryPhrasePlaceholder": "word1 word2 ... word12",
+      "walletNameLabel": "ウォレット名",
+      "walletNamePlaceholder": "例: 貯蓄用",
+      "assetsToShowLabel": "表示する資産",
+      "assetsToShowHint": "表示上の選択のみです — シードはどの場合でもすべてのチェーンを保持します。",
+      "confirmVaultPlaceholder": "ボールトの変更を承認するため本人確認",
+      "vaultReentryHint": "シードボールトへの変更を承認するために再入力されました。メモリ上に保持されることはありません。",
+      "createAndBackup": "作成してバックアップ",
+      "importWallet": "ウォレットをインポート"
+    },
+    "vaultPinLabel": "ボールトPIN",
+    "vaultPasswordLabel": "ボールトのパスワード",
+    "cancel": "キャンセル",
+    "done": "完了",
+    "manageAssets": {
+      "title": "「{{name}}」の資産",
+      "description": "このウォレットに表示する資産を選択してください。非表示にした資産は追加するまで表示されません。"
+    },
+    "rename": {
+      "title": "ウォレット名を変更",
+      "save": "名前を保存"
+    },
+    "remove": {
+      "title": "「{{name}}」を削除しますか？",
+      "onlyWallet": "これは唯一のウォレットのため削除できません。すべて消去するには、セキュリティのパニックワイプを使用してください。",
+      "description": "このウォレットのシードをこの端末から削除します。",
+      "backedUpNote": "リカバリーフレーズから復元できます。",
+      "notBackedUpNote": "⚠️ バックアップされていません — フレーズがなければ永久に失われます。",
+      "button": "ウォレットを削除"
+    },
+    "move": {
+      "title": "「{{name}}」を移動…"
+    },
+    "managePortfolios": {
+      "title": "ポートフォリオ",
+      "defaultTag": "（既定）",
+      "saveAriaLabel": "ポートフォリオ名を保存",
+      "renameAriaLabel": "{{name}}の名前を変更",
+      "deleteAriaLabel": "{{name}}を削除",
+      "newNamePlaceholder": "新しいポートフォリオ名",
+      "addButton": "追加"
+    },
+    "activity": {
+      "unlockPrompt": "アクティビティを表示するには、ウォレットのロックを解除してください。",
+      "loading": "読み込み中…",
+      "loadError": "アクティビティを読み込めませんでした。",
+      "noTransactions": "まだ取引がありません。",
+      "viewFullHistory": "全履歴を見る →"
+    },
+    "portfolioValueLabel": "ポートフォリオ評価額",
+    "explore": {
+      "subtitle": "閲覧のみのモードです — ウォレットはまだありません。",
+      "description": "自由にご覧ください。準備ができたら、新しい自己管理型ウォレットを作成するか、既存のシードをインポートしてください — 鍵はこの端末上で生成・暗号化されます。",
+      "createOrImport": "ウォレットを作成またはインポート"
+    },
+    "portfoliosButton": "ポートフォリオ",
+    "totalValueHeading": "{{name}} ・ 合計評価額",
+    "partialTotalNote": "一部の残高を読み込めませんでした — この合計は不完全な可能性があります。",
+    "refreshPricesTooltip": "最新価格を更新",
+    "live": "ライブ",
+    "approximate": "概算",
+    "seedVerify": {
+      "title": "バックアップの確認を完了してください",
+      "description": "安全のしきい値を超える送金には必須です。",
+      "verifyAriaLabel": "ウォレットのバックアップを確認",
+      "verifyButton": "確認"
+    },
+    "unbacked": {
+      "titleBold": "ウォレットのバックアップが未完了です。",
+      "body": "各ウォレットには独自のリカバリーフレーズがあり、これがなければそのウォレットの資金は復元できません。今すぐバックアップしてください。",
+      "backUpButton": "「{{name}}」をバックアップ"
+    },
+    "actions": {
+      "send": "送金",
+      "receive": "受取",
+      "addWallet": "ウォレットを追加"
+    },
+    "activeWalletHint": {
+      "prefix": "送金／受取には",
+      "otherPortfolio": "（別のポートフォリオ）",
+      "suffix": "を使用します。下のウォレットをタップすると切り替わります。"
+    },
+    "tabs": {
+      "tokens": "トークン",
+      "activity": "アクティビティ",
+      "analytics": "分析"
+    },
+    "noWalletsInPortfolio": "「{{name}}」にウォレットがありません。ウォレットを追加するか、メニューから既存のものを移動してください。",
+    "hideAssets": "資産を非表示",
+    "showAllAssets": "すべての資産を表示",
+    "walletCard": {
+      "active": "有効",
+      "backedUp": "バックアップ済み",
+      "backUp": "バックアップ",
+      "partial": "一部のみ",
+      "optionsAriaLabel": "{{name}}のオプション",
+      "noAssetsShown": "表示中の資産はありません。「資産を管理」をご利用ください。"
+    },
+    "menu": {
+      "manageAssets": "資産を管理",
+      "rename": "名前を変更",
+      "moveToPortfolio": "ポートフォリオへ移動",
+      "backUp": "バックアップ",
+      "remove": "削除"
+    },
+    "balanceLoadFailedTitle": "残高を読み込めませんでした",
+    "defaultWalletFallbackName": "ウォレット",
+    "toast": {
+      "walletImported": "ウォレットをインポートしました — すべてのチェーンを導出しました。",
+      "walletRemoved": "ウォレットをこの端末から削除しました。",
+      "walletAddedBackedUp": "ウォレットを追加し、バックアップしました。",
+      "movedTo": "{{name}}に移動しました。",
+      "markedBackedUp": "「{{name}}」をバックアップ済みにしました。"
+    },
+    "errors": {
+      "couldNotAddWallet": "ウォレットを追加できませんでした",
+      "couldNotImportWallet": "ウォレットをインポートできませんでした",
+      "couldNotRemoveWallet": "ウォレットを削除できませんでした"
+    }
+  },
+  "networth": {
+    "title": "暗号資産の純資産",
+    "unlockPrompt": "オンチェーンの保有資産を見るには、ウォレットのロックを解除してください。",
+    "subtitle": "オンチェーンの保有資産のみです — 外部の資産は含まれません。",
+    "totalHoldings": "保有資産合計",
+    "partialNote": "一部のみ — 一部の残高を読み込めませんでした",
+    "refreshPricesTooltip": "最新価格を更新",
+    "live": "ライブ",
+    "approximate": "概算",
+    "allocation": "配分",
+    "holdings": "保有資産",
+    "noHoldings": "まだ保有資産がありません。"
+  }
+}

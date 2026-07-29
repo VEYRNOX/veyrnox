@@ -1,7 +1,7 @@
 {
   "language": {
-    "switcher_label": "Idioma",
-    "mt_banner": "Esta traducción fue generada por una máquina y no ha sido revisada por un hablante nativo. Si algo parece incorrecto, vuelve al inglés hasta que sea revisado.",
+    "switcher_label": "Langue",
+    "mt_banner": "Cette traduction a été générée automatiquement et n'a pas été relue par un locuteur natif. Si une formulation semble incorrecte, repasse en anglais en attendant qu'elle soit relue.",
     "names": {
       "en": "English",
       "es": "Español",
@@ -20,9 +20,9 @@
     }
   },
   "actions": {
-    "cancel": "Cancelar",
-    "confirm": "Confirmar",
-    "close": "Cerrar",
-    "back": "Atrás"
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "back": "Retour"
   }
 }
