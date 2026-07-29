@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio } from "@/lib/portfolioBalances";
 import { buildAllocation } from "@/lib/netWorthAllocation";
@@ -22,6 +23,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : "");
 
 export default function NetWorthTracker() {
+  const { t } = useTranslation("wallet");
   const { isUnlocked, wallets, walletAddresses } = useWallet();
   const { data: portfolio, isLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
   const { locale, fiatCurrency } = useLocalePreferences();
@@ -37,8 +39,8 @@ export default function NetWorthTracker() {
   if (!isUnlocked) {
     return (
       <div className="max-w-2xl mx-auto pt-10 text-center space-y-2">
-        <h1 className="text-xl font-bold">Crypto Net Worth</h1>
-        <p className="text-sm text-muted-foreground">Unlock your wallet to see your on-chain holdings.</p>
+        <h1 className="text-xl font-bold">{t("networth.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("networth.unlockPrompt")}</p>
       </div>
     );
   }
@@ -46,27 +48,27 @@ export default function NetWorthTracker() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold">Crypto Net Worth</h1>
-        <p className="text-sm text-muted-foreground">Your on-chain holdings — does not include external assets.</p>
+        <h1 className="text-xl font-bold">{t("networth.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("networth.subtitle")}</p>
       </div>
 
       {/* Total */}
       <div className="p-5 rounded-2xl border border-border bg-card text-center">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest">Total holdings</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-widest">{t("networth.totalHoldings")}</p>
         <p className="text-4xl font-bold mt-1">{isLoading ? "…" : fmtUsd(total)}</p>
         <div className="mt-2 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
-          {incomplete && <span className="text-caution">partial — some balances couldn't be read</span>}
+          {incomplete && <span className="text-caution">{t("networth.partialNote")}</span>}
           {live ? (
             <button
               type="button"
               onClick={() => refetchPrices?.()}
               className="inline-flex items-center gap-1 hover:text-foreground"
-              title="Refresh live prices"
+              title={t("networth.refreshPricesTooltip")}
             >
-              <RefreshCw className="h-3 w-3" /> Live{pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : ""}
+              <RefreshCw className="h-3 w-3" /> {t("networth.live")}{pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : ""}
             </button>
           ) : (
-            <span>Approximate</span>
+            <span>{t("networth.approximate")}</span>
           )}
         </div>
       </div>
@@ -74,7 +76,7 @@ export default function NetWorthTracker() {
       {/* Allocation donut */}
       {allocation.length > 0 && (
         <div className="p-4 rounded-xl border border-border bg-card">
-          <p className="text-sm font-semibold mb-3">Allocation</p>
+          <p className="text-sm font-semibold mb-3">{t("networth.allocation")}</p>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="50%" height={160}>
               <PieChart>
@@ -101,9 +103,9 @@ export default function NetWorthTracker() {
 
       {/* Per-asset holdings */}
       <div className="p-4 rounded-xl border border-border bg-card">
-        <p className="text-sm font-semibold mb-3">Holdings</p>
+        <p className="text-sm font-semibold mb-3">{t("networth.holdings")}</p>
         {Object.keys(assetTotals).length === 0 ? (
-          <p className="text-sm text-muted-foreground">No holdings yet.</p>
+          <p className="text-sm text-muted-foreground">{t("networth.noHoldings")}</p>
         ) : (
           Object.entries(assetTotals).map(([symbol, t]) => (
             <div key={symbol} className="flex justify-between items-center text-sm py-1 border-b border-border/50 last:border-0">

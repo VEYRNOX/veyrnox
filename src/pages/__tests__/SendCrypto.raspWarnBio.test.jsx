@@ -48,7 +48,10 @@ describe('SendCrypto.jsx — B5 structural pins', () => {
   });
 
   it('threads blockedByRaspBio into the Confirm & Send button disabled prop', () => {
-    const buttonIdx = src.indexOf('Confirm &amp; Send');
+    // i18n (Phase 2 slice 3): the literal "Confirm & Send" copy now lives in
+    // src/i18n/locales/en/wallet.json (send.buttons.confirm_send); the JSX
+    // renders it via tw("send.buttons.confirm_send").
+    const buttonIdx = src.indexOf('tw("send.buttons.confirm_send")');
     expect(buttonIdx).toBeGreaterThan(-1);
     const buttonRegion = src.slice(Math.max(0, buttonIdx - 800), buttonIdx);
     expect(buttonRegion).toMatch(/blockedByRaspBio/);

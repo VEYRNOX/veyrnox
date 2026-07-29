@@ -113,7 +113,20 @@ describe('FLAG S4 (FIXED) — amount field keypad / type / inputMode hardening',
   // before React saw them). min/step are gone — they are inert on text inputs and the
   // authoritative rejection has always been isFormAmountWellFormed + sendAmountErrorKind.
   it('the amount input keeps its "0.00" placeholder', () => {
-    expect(send).toContain('placeholder="0.00"');
+    // Slice 3 (Phase 2) moved the placeholder from a literal `placeholder="0.00"`
+    // in the JSX to `placeholder={tw("send.amount.placeholder")}`, with the
+    // literal value living in `i18n/locales/en/wallet.json` under
+    // `send.amount.placeholder`. The GUARANTEE this test enforces is
+    // unchanged — the amount input still renders "0.00" as its placeholder —
+    // only the physical file the string lives in shifted. Accept either shape.
+    const wallet = read('../../i18n/locales/en/wallet.json');
+    const hasLiteral = send.includes('placeholder="0.00"');
+    const hasKeyedPlaceholder =
+      /placeholder=\{[^}]*t\w*\(\s*['"]send\.amount\.placeholder['"]/.test(send)
+      && JSON.parse(wallet).send?.amount?.placeholder === '0.00';
+    expect(hasLiteral || hasKeyedPlaceholder,
+      'amount input placeholder must be "0.00" (either as JSX literal or via t("send.amount.placeholder"))')
+      .toBe(true);
   });
   it('FIXED: the amount input is type="text" with inputMode="decimal"', () => {
     expect(send).toMatch(/type=["']text["']/);

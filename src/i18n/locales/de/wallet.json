@@ -1,0 +1,506 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Transaktionsverlauf",
+      "subhead": "Sendungen und Empfänge pro Chain, direkt aus der Chain gelesen – nur lesend, mit Explorer-Links.",
+      "badge_demo": "Demo · Beispieldaten",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Demo-Modus – es wird nichts über das Netzwerk abgefragt; die Zeilen unten sind lokale Beispieldaten.",
+      "loading_label": "{{symbol}}-Verlauf wird geladen",
+      "error_prefix": "Verlauf konnte nicht geladen werden: {{reason}}.",
+      "error_fetch_reason": "RPC-Knoten nicht erreichbar – prüfe deine Verbindung und versuche es erneut.",
+      "error_generic_reason": "der Indexer hat nicht geantwortet",
+      "retry": "Erneut versuchen",
+      "no_indexer_title": "In-App-Verlauf ist für {{name}} über JSON-RPC nicht verfügbar",
+      "no_indexer_body": "Ein einfacher JSON-RPC-Knoten kann die Transaktionen einer Adresse nicht auflisten, und wir fügen bewusst keine Drittanbieter-Explorer/Indexer-API hinzu (eine neue Datenquelle und Phone-home-Fläche). Dein vollständiger Verlauf liegt im Block-Explorer.",
+      "view_on_explorer": "{{address}} im {{network}}-Explorer ansehen",
+      "view_explorer_title": "Im Block-Explorer ansehen",
+      "unlock_for_explorer": "Entsperre deine Wallet, um den Explorer-Link für deine {{symbol}}-Adresse zu bekommen.",
+      "locked_title": "Wallet gesperrt",
+      "locked_body": "Entsperre deine Wallet, um deine {{symbol}}-Adresse abzuleiten und ihren Verlauf zu laden.",
+      "empty": "Noch keine Transaktionen für {{symbol}} auf {{network}}.",
+      "count_one": "{{count}} Transaktion",
+      "count_other": "{{count}} Transaktionen",
+      "most_recent_suffix": " · aktuellste",
+      "refresh": "Aktualisieren",
+      "sample_badge": "Beispiel",
+      "to_prefix": "An ",
+      "from_prefix": "Von ",
+      "status_pending": "Ausstehend",
+      "status_confirmed": "Bestätigt",
+      "status_failed": "Fehlgeschlagen",
+      "awaiting_confirmation": "wartet auf Bestätigung"
+    },
+    "list": {
+      "empty_title": "Noch keine Transaktionen",
+      "empty_description": "Wenn du auf dieser Wallet sendest oder empfängst, erscheint deine On-Chain-Aktivität hier."
+    },
+    "receipt": {
+      "heading": "Transaktionsbelege",
+      "subhead": "Erstelle druckbare Belege für jede Transaktion",
+      "search_placeholder": "Nach ID, Adresse oder Währung suchen...",
+      "loading": "Laden...",
+      "error": "Transaktionen konnten nicht geladen werden. Bitte erneut versuchen.",
+      "empty": "Keine Transaktionen gefunden",
+      "preview_title": "Beleg-Vorschau",
+      "print": "Drucken",
+      "print_window_title": "Transaktionsbeleg",
+      "brand": "VEYRNOX",
+      "doc_title": "TRANSAKTIONSBELEG",
+      "field_receipt_id": "Beleg-ID",
+      "field_date": "Datum",
+      "field_type": "Typ",
+      "field_asset": "Asset",
+      "field_amount": "Betrag",
+      "field_network_fee": "Netzwerkgebühr",
+      "field_status": "Status",
+      "field_to": "An",
+      "default_type": "Überweisung",
+      "default_status": "abgeschlossen",
+      "thank_you": "Danke, dass du {{brand}} nutzt",
+      "thank_you_prefix": "Danke, dass du",
+      "digital_record": "Dies ist ein digitaler Transaktionseintrag"
+    }
+  },
+  "settings": {
+    "heading": "Sicherheits-Einstellungen",
+    "subhead": "Sperre, entsperre und schütze deine Wallet",
+    "theme": {
+      "dark": "Dunkler Modus",
+      "light": "Heller Modus",
+      "saved_note": "Auf diesem Gerät gespeichert",
+      "switch_to_light": "Zum hellen Modus wechseln",
+      "switch_to_dark": "Zum dunklen Modus wechseln"
+    },
+    "activity_log": {
+      "label": "Aktivitätsprotokoll",
+      "description": "Standardmäßig aus · nur auf diesem Gerät gespeichert",
+      "help": "Privates Protokoll: was du geändert, gesendet, widerrufen hast. Keine Beträge oder Adressen. Notlöschung löscht es.",
+      "enable_aria": "Aktivitätsprotokoll aktivieren",
+      "disable_aria": "Aktivitätsprotokoll deaktivieren",
+      "no_events": "Noch keine Ereignisse aufgezeichnet."
+    },
+    "message_signing": {
+      "label": "Nachrichten signieren",
+      "description": "Standardmäßig aus · nur auf diesem Gerät gespeichert",
+      "help": "Standardmäßig aus. Erlaubt dir, beliebige Textnachrichten mit deinem Wallet-Schlüssel zu signieren. Nur aktivieren, wenn eine dApp oder ein Dienst dich zum Signieren einer Nachricht auffordert.",
+      "enable_aria": "Nachrichten-Signieren aktivieren",
+      "disable_aria": "Nachrichten-Signieren deaktivieren"
+    },
+    "telemetry": {
+      "label": "Anonyme Nutzungsdaten",
+      "description": "Opt-in · nie mit Kontoständen oder Adressen",
+      "help": "Hilft uns, Fehler zu finden und die App zu verbessern. Es wird eine zufällige Geräte-ID verwendet – nie mit deiner Wallet, deinen Schlüsseln oder deiner Identität verknüpft. Deaktivieren stoppt jeglichen Versand von Nutzungsdaten von diesem Gerät.",
+      "enable_aria": "Anonyme Nutzungsdaten aktivieren",
+      "disable_aria": "Anonyme Nutzungsdaten deaktivieren"
+    },
+    "delete_account": {
+      "title": "Gefahrenzone",
+      "clear_cache_label": "Lokalen Cache leeren",
+      "clear_cache_description": "Löscht die gespeicherten Daten auf diesem Gerät und sperrt die Wallet. Deine Wiederherstellungsphrase funktioniert weiterhin. Um Schlüssel zu löschen, verwende die Notlöschung.",
+      "delete_button": "Löschen",
+      "confirm_prompt_pre": "Dies löscht die gespeicherten Daten und sperrt die Wallet. Deine Wiederherstellungsphrase funktioniert weiterhin. Tippe",
+      "confirm_prompt_post": "zur Bestätigung.",
+      "confirm_placeholder": "Tippe DELETE zur Bestätigung",
+      "confirm_aria": "Tippe DELETE, um das Zurücksetzen des Kontos zu bestätigen",
+      "cancel": "Abbrechen",
+      "confirm_delete": "Löschen bestätigen",
+      "deleting": "Wird gelöscht..."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Wallet",
+    "sidebar_expand": "Seitenleiste ausklappen",
+    "sidebar_collapse": "Seitenleiste einklappen",
+    "search_placeholder": "Suchen...",
+    "search_shortcut_title": "Suchen (⌘K)",
+    "lock": "Sperren",
+    "lock_confirm_prompt": "Diese Wallet jetzt sperren?",
+    "back": "Zurück",
+    "settings": "Einstellungen",
+    "main_content_aria": "Hauptinhalt",
+    "bottom_nav_aria": "Untere Navigation",
+    "more_features_aria": "Weitere Funktionen",
+    "more": "Mehr",
+    "close": "Schließen",
+    "all_features_heading": "Alle Funktionen",
+    "recent_heading": "Zuletzt",
+    "tab_home": "Start",
+    "tab_send": "Senden",
+    "tab_receive": "Empfangen"
+  },
+  "back": {
+    "default_label": "Zurück"
+  },
+  "send": {
+    "heading": "Krypto senden",
+    "subheading": "Sicher Gelder übertragen",
+    "wallet_fallback": "Wallet",
+    "wallet_picker": { "label": "Aus Wallet", "placeholder": "Wallet auswählen" },
+    "asset_picker": { "label": "Asset", "placeholder": "Asset auswählen" },
+    "recipient": {
+      "label": "Senden an (Adresse oder Name)",
+      "placeholder": "Adresse einfügen oder Name eingeben (z. B. vitalik.eth)",
+      "scan_qr": "QR-Code scannen",
+      "resolving": "Name wird aufgelöst …",
+      "name_not_found": "Name nicht gefunden – prüfe die Schreibweise oder füge die Adresse direkt ein.",
+      "ens_using_prefix": "Verwende {{name}} →",
+      "ens_confirm_intro": "privat auf der Blockchain aufgelöst zu:",
+      "ens_confirm_hint": "Bestätige, dass diese Adresse korrekt ist, bevor du sendest.",
+      "use_this_address": "Diese Adresse verwenden",
+      "not_whitelisted": "Diese Adresse steht nicht auf deiner Whitelist. Doppelt prüfen, bevor du fortfährst. Vertrauenswürdige Adressen kannst du in den Einstellungen hinzufügen.",
+      "self_send_warning": "Du sendest an deine eigene Wallet-Adresse. Das bewegt nichts zwischen Wallets und kostet trotzdem eine Netzwerkgebühr. Prüfe den Empfänger, bevor du fortfährst."
+    },
+    "screening": {
+      "local_disclosure": "Empfänger werden auf deinem Gerät anhand deines eigenen Verlaufs auf Scam-Adressen geprüft – nichts verlässt dein Gerät.",
+      "remote_opt_in": "Zusätzlich gegen eine Online-Bedrohungsdatenbank prüfen (sendet diese Adresse an Dritte)",
+      "remote_unavailable": "Online-Screening ist aktiviert, aber in diesem Build ist kein Anbieter konfiguriert – die Prüfung bleibt lokal, daher konnten wir dies nicht mit einer externen Liste abgleichen.",
+      "demo_poison_button": "Demo: Ähnlich aussehende Adresse einfügen"
+    },
+    "simulation": {
+      "title": "Transaktions-Simulation",
+      "toggle_aria": "Transaktions-Simulation umschalten",
+      "description": "Vor dem Signieren führen wir eine lokale Vorabprüfung durch – keine Drittanbieter-Dienste, keine Daten verlassen dein Gerät.",
+      "checks": [
+        "Adressrisiko (Poison / Lookalike)",
+        "Vertrags-Dekodierung",
+        "Kennzeichnung unbegrenzter Freigabe",
+        "Revert-Vorhersage",
+        "Anomalie gegenüber deinem Verlauf",
+        "Warnung bei großem Abfluss"
+      ],
+      "results_hint": "Die Ergebnisse erscheinen im nächsten Schritt, sobald du Adresse und Betrag eingegeben hast.",
+      "off_hint": "Simulation ist aus – vor dem Signieren wird keine Vorabprüfung ausgeführt.",
+      "taking_too_long": "Dauert es zu lange?",
+      "turn_off": "Simulation ausschalten"
+    },
+    "amount": {
+      "label": "Betrag",
+      "placeholder": "0,00",
+      "being_sent": "werden gesendet",
+      "balance_prefix": "Guthaben:",
+      "demo_suffix": "(Demo)",
+      "live_suffix": "(live)",
+      "reading_from_network": "wird aus dem Netzwerk gelesen …"
+    },
+    "errors": {
+      "amount_missing": "Betrag ist erforderlich",
+      "amount_not_positive": "Der Betrag muss größer als null sein",
+      "amount_malformed": "Gib einen einfachen Dezimalbetrag ein, z. B. 0.5",
+      "amount_over_balance": "Guthaben reicht nicht",
+      "insufficient_balance_title": "Guthaben reicht nicht.",
+      "insufficient_balance_body": "Du hast {{balance}} {{currency}} zum Senden verfügbar (nach Netzwerkgebühr). Verringere den Betrag, um fortzufahren."
+    },
+    "status": {
+      "not_enabled": "Senden ist für {{currency}} noch nicht aktiviert. Dieses Asset ist nur zum Empfangen, bis sein Krypto-Pfad verifiziert ist.",
+      "dev_ungate_title": "DEV UNGATE AKTIV",
+      "dev_ungate_body": "– das Send-Gate ist für {{currency}} via VITE_DEV_UNGATE_SEND umgangen (nur Dev-Build). Der Status dieses Assets ist unverändert (immer noch nicht live); Mainnet bleibt gesperrt. Nur Testnet-Verifizierung – diesen Build niemals ausliefern.",
+      "locked": "Deine Wallet ist gesperrt. Entsperre sie in den Wallet-Einstellungen, um zu signieren und zu senden."
+    },
+    "note": { "label": "Notiz (optional)", "placeholder": "Wofür ist das?" },
+    "trezor": {
+      "toggle_label": "Mit Trezor signieren",
+      "connected": "Gerät verbunden",
+      "connect_button": "Gerät verbinden"
+    },
+    "buttons": {
+      "continue": "Weiter",
+      "confirm_send": "Bestätigen & senden",
+      "back": "Zurück"
+    },
+    "verify": { "summary_label": "Du sendest" },
+    "fee": {
+      "automatic": "Die Netzwerkgebühr wird für {{currency}} ({{network}}) automatisch festgelegt.",
+      "native_fee_note": "Die Netzwerkgebühr wird in {{symbol}} ({{network}}) bezahlt – du brauchst {{symbol}} für die Gebühr, auch wenn du {{token}} sendest."
+    },
+    "decode": {
+      "heading": "Was diese Transaktion tut",
+      "action": "Aktion",
+      "send_tokens": "Tokens senden",
+      "token": "Token",
+      "amount": "Betrag",
+      "recipient": "Empfänger",
+      "grant_permission": "Ausgabeberechtigung erteilen",
+      "permission": "Berechtigung",
+      "unlimited_permission": "Unbegrenzt (diese App kann jeden Betrag ausgeben)",
+      "spender": "Berechtigter"
+    },
+    "reauth": {
+      "prompt": "Gib dein {{credential}} erneut ein, um zu autorisieren",
+      "credential_pin": "PIN",
+      "credential_password": "Passwort",
+      "submit_pin": "Autorisieren",
+      "submit_password": "Autorisieren & senden",
+      "password_placeholder": "Vault-Passwort",
+      "password_aria": "Vault-Passwort zur Autorisierung des Sendens",
+      "errors": {
+        "unavailable": "Überprüfung nicht verfügbar – bitte Wallet erneut sperren und entsperren.",
+        "incorrect": "Falsch – erneut versuchen ({{remaining}} verbleibend)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transaktion gesendet",
+      "heading": "Transaktion gesendet",
+      "body_suffix": "lokal signiert und an das Netzwerk gesendet",
+      "tx_hash_label": "Transaktions-Hash",
+      "view_explorer": "Im Block-Explorer ansehen",
+      "pending_note": "Ausstehend, bis im Netzwerk bestätigt. Der Kontostand wird aus der Blockchain aktualisiert, nicht aus einem gespeicherten Wert.",
+      "send_another": "Weitere senden"
+    },
+    "toasts": {
+      "ens_off_in_session": "Namensauflösung ist in dieser Sitzung aus – füge die Adresse direkt ein.",
+      "ens_not_found": "ENS-Name nicht gefunden",
+      "sns_unavailable": "Solana-Namensauflösung ist noch nicht verfügbar – füge die Adresse direkt ein.",
+      "ens_resolution_failed": "Namensauflösung fehlgeschlagen",
+      "verify_required": "Schließe die Verifizierung deines Backups ab, bevor du diesen Betrag sendest.",
+      "two_factor_retry": "Senden konnte nicht abgeschlossen werden – bitte erneut verifizieren, um es erneut zu versuchen.",
+      "send_failed_fallback": "Senden fehlgeschlagen",
+      "unconfirmed": "Diese Transaktion konnte im Netzwerk noch nicht bestätigt werden – sie kann weiterhin ausstehen. Prüfe den Explorer."
+    }
+  },
+  "receive": {
+    "heading": "Krypto empfangen",
+    "subheading": "Zeige eine Wallet-Adresse, um Gelder zu empfangen",
+    "asset_label": "Asset",
+    "asset_placeholder": "Asset wählen",
+    "not_available": "Empfangen von {{name}} ({{symbol}}) ist noch nicht verfügbar. Es wird keine Adresse angezeigt, bis dieses Asset aktiviert ist.",
+    "locked": {
+      "title": "Wallet gesperrt",
+      "body": "Entsperre deine Wallet, um deine {{asset}}-{{network}}-Empfangsadresse anzuzeigen.",
+      "open_hd_wallet": "HD-Wallet-Manager öffnen"
+    },
+    "your_address": "Deine {{asset}}-Adresse",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "{{symbol}}-Empfangsadresse",
+    "copy": {
+      "copied_aria": "Adresse in die Zwischenablage kopiert",
+      "copy_aria": "Adresse kopieren",
+      "copied_toast": "Adresse kopiert",
+      "copy_failed_toast": "Kopieren nicht möglich – markiere und kopiere die Adresse manuell"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} ist ein Token in einem Ethereum-kompatiblen Netzwerk. Dies ist deine Wallet-Adresse – lasse den Absender {{symbol}} nur auf {{network}} senden. Auf einem anderen Netzwerk gesendet, können die Mittel dauerhaft verloren gehen.",
+      "evm": "Dies ist deine gemeinsam genutzte Wallet-Adresse. Sende ausschließlich {{name}} auf {{network}} an diese Adresse und achte darauf, dass der Absender {{network}} verwendet.",
+      "btc": "Sende Bitcoin nur auf {{network}} an diese Adresse.",
+      "solana": "Sende Solana nur auf {{network}} an diese Adresse."
+    },
+    "select_asset_prompt": "Wähle ein Asset zum Empfangen.",
+    "unlock_footer_note": "Adressen stammen aus deiner Wallet auf dem Gerät und erscheinen nur, während sie entsperrt ist."
+  },
+  "dashboard": {
+    "portfolioValue": "Portfoliowert",
+    "priceAlertsTriggered_one": "{{count}} Preisalarm ausgelöst!",
+    "priceAlertsTriggered_other": "{{count}} Preisalarme ausgelöst!",
+    "lockAriaLabel": "Kontostand hinter Biometrie sperren",
+    "lockBalance": "Kontostand sperren",
+    "synced": "Synchronisiert {{time}}",
+    "syncJustNow": "Gerade eben",
+    "syncSecondsAgo_one": "vor {{count}}s",
+    "syncSecondsAgo_other": "vor {{count}}s",
+    "syncMinutesAgo_one": "vor {{count}}m",
+    "syncMinutesAgo_other": "vor {{count}}m",
+    "actions": {
+      "send": "Senden",
+      "receive": "Empfangen",
+      "schedule": "Planen",
+      "add": "Hinzufügen"
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Aktivität",
+      "analytics": "Analyse"
+    },
+    "emptyWallets": {
+      "title": "Noch keine Wallets",
+      "description": "Füge eine Wallet hinzu, um Assets über verschiedene Chains hinweg zu empfangen, senden und zu halten."
+    },
+    "addWallet": "Wallet hinzufügen",
+    "searchTransactionsPlaceholder": "Transaktionen suchen...",
+    "emptySearch": {
+      "title": "Keine passenden Transaktionen",
+      "description": "Versuche, Filter zu entfernen oder nach einem anderen Asset oder einer Adresse zu suchen."
+    },
+    "emptyTransactions": {
+      "title": "Noch keine Transaktionen",
+      "description": "Deine On-Chain-Aktivität erscheint hier, sobald du sendest oder empfängst."
+    },
+    "portfolioPerformance": "Portfolio-Leistung",
+    "assetDistribution": "Asset-Verteilung",
+    "quickAccess": "Schnellzugriff",
+    "quickAccessItems": {
+      "receive": "Empfangen",
+      "security": "Sicherheit",
+      "approvals": "Freigaben",
+      "addressCheck": "Adressprüfung",
+      "analytics": "Analyse",
+      "sentiment": "Stimmung",
+      "riskScore": "Risiko-Score"
+    },
+    "walletNameLabel": "Wallet-Name",
+    "walletNamePlaceholder": "Meine ETH-Wallet",
+    "addWalletDialog": {
+      "title": "Wallet hinzufügen",
+      "currency": "Währung",
+      "creating": "Wird erstellt...",
+      "create": "Wallet erstellen"
+    },
+    "renameWalletDialog": {
+      "title": "Wallet umbenennen",
+      "saving": "Speichern...",
+      "save": "Namen speichern"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Verschlüsselter Vault",
+    "backup": {
+      "title": "Sichere \"{{name}}\"",
+      "reauthDescription": "Bestätige, dass du es bist, dann zeigen wir die Wiederherstellungsphrase dieser Wallet an.",
+      "description": "Schreibe diese 12 Wörter offline auf. Wer sie hat, kann die Mittel dieser Wallet ausgeben – und sie sind die einzige Möglichkeit, sie wiederherzustellen.",
+      "warning": "Mach niemals einen Screenshot. Tippe sie niemals in eine andere App.",
+      "confirmButton": "Ich habe sie aufgeschrieben – als gesichert markieren"
+    },
+    "addWallet": {
+      "defaultWalletName": "deine neue Wallet",
+      "backupDescription": "Diese Wallet hat ihre eigene Wiederherstellungsphrase – getrennt von jeder anderen Wallet in deinem Vault. Schreibe sie offline auf, bevor du sie verwendest.",
+      "backedUpDone": "Ich habe sie gesichert – fertig",
+      "title": "Wallet hinzufügen",
+      "createNew": "Neu erstellen",
+      "importSeed": "Seed importieren",
+      "createDescription": "Erzeugt eine NEUE Seed, die ALLE Chains ableitet (ETH/EVM, BTC, SOL). Du sicherst sie, bevor sie aktiv wird.",
+      "importDescription": "Füge eine bestehende 12/24-Wort-Seed ein – alle Chains werden automatisch abgeleitet (eine Seed ist nicht chain-spezifisch).",
+      "recoveryPhraseLabel": "Wiederherstellungsphrase",
+      "recoveryPhrasePlaceholder": "wort1 wort2 ... wort12",
+      "walletNameLabel": "Wallet-Name",
+      "walletNamePlaceholder": "z. B. Ersparnisse",
+      "assetsToShowLabel": "Anzuzeigende Assets",
+      "assetsToShowHint": "Nur Anzeige – die Seed enthält jede Chain unabhängig davon.",
+      "confirmVaultPlaceholder": "Bestätige, dass du es bist, um deinen Vault zu ändern",
+      "vaultReentryHint": "Erneut eingegeben, um eine Änderung an deinem Seed-Vault zu autorisieren. Wird nie im Speicher gehalten.",
+      "createAndBackup": "Erstellen & sichern",
+      "importWallet": "Wallet importieren"
+    },
+    "vaultPinLabel": "Vault-PIN",
+    "vaultPasswordLabel": "Vault-Passwort",
+    "cancel": "Abbrechen",
+    "done": "Fertig",
+    "manageAssets": {
+      "title": "Assets für \"{{name}}\"",
+      "description": "Wähle, welche Assets für diese Wallet angezeigt werden. Ausgeblendete bleiben weg, bis du sie hinzufügst."
+    },
+    "rename": {
+      "title": "Wallet umbenennen",
+      "save": "Namen speichern"
+    },
+    "remove": {
+      "title": "\"{{name}}\" entfernen?",
+      "onlyWallet": "Das ist deine einzige Wallet – sie kann nicht entfernt werden. Verwende die Notlöschung unter Sicherheit, um alles zu löschen.",
+      "description": "Entfernt die Seed dieser Wallet von diesem Gerät.",
+      "backedUpNote": "Du kannst sie aus ihrer Wiederherstellungsphrase wiederherstellen.",
+      "notBackedUpNote": "⚠️ NICHT gesichert – ohne die Phrase ist sie für immer verloren.",
+      "button": "Wallet entfernen"
+    },
+    "move": {
+      "title": "\"{{name}}\" verschieben nach…"
+    },
+    "managePortfolios": {
+      "title": "Portfolios",
+      "defaultTag": "(Standard)",
+      "saveAriaLabel": "Portfolio-Namen speichern",
+      "renameAriaLabel": "{{name}} umbenennen",
+      "deleteAriaLabel": "{{name}} löschen",
+      "newNamePlaceholder": "Neuer Portfolio-Name",
+      "addButton": "Hinzufügen"
+    },
+    "activity": {
+      "unlockPrompt": "Entsperre deine Wallet, um die Aktivität zu sehen.",
+      "loading": "Laden...",
+      "loadError": "Aktivität konnte nicht geladen werden.",
+      "noTransactions": "Noch keine Transaktionen.",
+      "viewFullHistory": "Vollständigen Verlauf ansehen →"
+    },
+    "portfolioValueLabel": "Portfoliowert",
+    "explore": {
+      "subtitle": "Du erkundest gerade – nur Ansicht. Noch keine Wallet.",
+      "description": "Schau dich frei um. Wenn du bereit bist, erstelle eine neue Self-Custody-Wallet oder importiere eine bestehende Seed – die Schlüssel werden auf diesem Gerät erzeugt und verschlüsselt.",
+      "createOrImport": "Wallet erstellen oder importieren"
+    },
+    "portfoliosButton": "Portfolios",
+    "totalValueHeading": "{{name}} · Gesamtwert",
+    "partialTotalNote": "Einige Kontostände konnten nicht geladen werden – diese Summe kann unvollständig sein.",
+    "refreshPricesTooltip": "Live-Preise aktualisieren",
+    "live": "Live",
+    "approximate": "Näherungswert",
+    "seedVerify": {
+      "title": "Verifizierung deines Backups abschließen",
+      "description": "Erforderlich, um über die Sicherheitsgrenze hinaus zu senden.",
+      "verifyAriaLabel": "Wallet-Backup verifizieren",
+      "verifyButton": "Verifizieren"
+    },
+    "unbacked": {
+      "titleBold": "Wallet-Backup unvollständig.",
+      "body": "Jede Wallet hat ihre eigene Wiederherstellungsphrase – ohne sie sind die Mittel dieser Wallet nicht wiederherstellbar. Jetzt sichern.",
+      "backUpButton": "\"{{name}}\" sichern"
+    },
+    "actions": {
+      "send": "Senden",
+      "receive": "Empfangen",
+      "addWallet": "Wallet hinzufügen"
+    },
+    "activeWalletHint": {
+      "prefix": "Senden/Empfangen verwendet",
+      "otherPortfolio": " (in einem anderen Portfolio)",
+      "suffix": ". Tippe auf eine Wallet unten, um zu wechseln."
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Aktivität",
+      "analytics": "Analyse"
+    },
+    "noWalletsInPortfolio": "Keine Wallets in \"{{name}}\". Füge eine Wallet hinzu oder verschiebe eine aus ihrem Menü hierher.",
+    "hideAssets": "Assets ausblenden",
+    "showAllAssets": "Alle Assets anzeigen",
+    "walletCard": {
+      "active": "Aktiv",
+      "backedUp": "Gesichert",
+      "backUp": "Sichern",
+      "partial": "teilweise",
+      "optionsAriaLabel": "Optionen für {{name}}",
+      "noAssetsShown": "Keine Assets angezeigt. Verwende \"Assets verwalten\"."
+    },
+    "menu": {
+      "manageAssets": "Assets verwalten",
+      "rename": "Umbenennen",
+      "moveToPortfolio": "In Portfolio verschieben",
+      "backUp": "Sichern",
+      "remove": "Entfernen"
+    },
+    "balanceLoadFailedTitle": "Kontostand konnte nicht geladen werden",
+    "defaultWalletFallbackName": "Wallet",
+    "toast": {
+      "walletImported": "Wallet importiert – alle Chains abgeleitet.",
+      "walletRemoved": "Wallet von diesem Gerät entfernt.",
+      "walletAddedBackedUp": "Wallet hinzugefügt und gesichert.",
+      "movedTo": "Nach {{name}} verschoben.",
+      "markedBackedUp": "\"{{name}}\" als gesichert markiert."
+    },
+    "errors": {
+      "couldNotAddWallet": "Wallet konnte nicht hinzugefügt werden",
+      "couldNotImportWallet": "Wallet konnte nicht importiert werden",
+      "couldNotRemoveWallet": "Wallet konnte nicht entfernt werden"
+    }
+  },
+  "networth": {
+    "title": "Krypto-Nettovermögen",
+    "unlockPrompt": "Entsperre deine Wallet, um deine On-Chain-Bestände zu sehen.",
+    "subtitle": "Deine On-Chain-Bestände – externe Vermögenswerte nicht enthalten.",
+    "totalHoldings": "Gesamtbestände",
+    "partialNote": "teilweise – einige Kontostände konnten nicht gelesen werden",
+    "refreshPricesTooltip": "Live-Preise aktualisieren",
+    "live": "Live",
+    "approximate": "Näherungswert",
+    "allocation": "Verteilung",
+    "holdings": "Bestände",
+    "noHoldings": "Noch keine Bestände."
+  }
+}

@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import BackButton from "@/components/BackButton";
 import { useWallet } from "@/lib/WalletProvider";
@@ -28,6 +29,7 @@ import { trackEvent, EVENT } from "@/api/trackEvent";
 // While the wallet is locked (or a chain account isn't derived yet) there is no
 // address to show, and we render the locked state.
 export default function ReceiveCrypto() {
+  const { t } = useTranslation("wallet");
   const { isUnlocked, accounts, btcAccount, solAccount } = useWallet();
   const [searchParams] = useSearchParams();
   const urlAsset = searchParams.get("asset") ?? "ETH";
@@ -65,10 +67,10 @@ export default function ReceiveCrypto() {
     try {
       await navigator.clipboard.writeText(r.address);
       setCopied(true);
-      toast.success("Address copied");
+      toast.success(t("receive.copy.copied_toast"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Couldn't copy — select and copy the address manually");
+      toast.error(t("receive.copy.copy_failed_toast"));
     }
   };
 
@@ -79,13 +81,13 @@ export default function ReceiveCrypto() {
   let sendOnNote = null;
   if (r?.address) {
     if (r.isErc20) {
-      sendOnNote = `${r.asset.symbol} is a token on an Ethereum-compatible network. This is your wallet address — only have the sender send ${r.asset.symbol} on ${networkName}. Sending it on a different network can permanently lose the funds.`;
+      sendOnNote = t("receive.network_notes.erc20", { symbol: r.asset.symbol, network: networkName });
     } else if (r.family === "evm") {
-      sendOnNote = `This is your shared wallet address. Only send ${r.asset.name} on ${networkName} to this address, and make sure the sender uses ${networkName}.`;
+      sendOnNote = t("receive.network_notes.evm", { name: r.asset.name, network: networkName });
     } else if (r.family === "btc") {
-      sendOnNote = `Only send Bitcoin on ${networkName} to this address.`;
+      sendOnNote = t("receive.network_notes.btc", { network: networkName });
     } else if (r.family === "solana") {
-      sendOnNote = `Only send Solana on ${networkName} to this address.`;
+      sendOnNote = t("receive.network_notes.solana", { network: networkName });
     }
   }
 
@@ -93,16 +95,16 @@ export default function ReceiveCrypto() {
     <div className="max-w-md mx-auto space-y-6">
       {searchParams.get("asset") && <BackButton />}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Receive Crypto</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Show a wallet address to receive funds</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("receive.heading")}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{t("receive.subheading")}</p>
       </div>
 
       <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
         <div>
-          <Label id="receive-asset-label">Asset</Label>
+          <Label id="receive-asset-label">{t("receive.asset_label")}</Label>
           <Select value={symbol} onValueChange={(v) => { setSymbol(v); setCopied(false); }}>
             <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="receive-asset-label">
-              <SelectValue placeholder="Choose asset">
+              <SelectValue placeholder={t("receive.asset_placeholder")}>
                 {symbol ? (
                   <>
                     <CoinLogo symbol={symbol} size={32} />
@@ -129,8 +131,7 @@ export default function ReceiveCrypto() {
           <div className="flex items-start gap-2 p-4 rounded-lg bg-secondary/60 border border-border">
             <Clock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
             <p className="text-sm text-muted-foreground">
-              Receiving <span className="font-semibold text-foreground">{r.asset.name} ({r.asset.symbol})</span> isn't
-              available yet. No address is shown until this asset is enabled.
+              {t("receive.not_available", { name: r.asset.name, symbol: r.asset.symbol })}
             </p>
           </div>
         )}
@@ -143,13 +144,13 @@ export default function ReceiveCrypto() {
               <Lock className="h-5 w-5 text-caution" />
             </div>
             <div>
-              <p className="text-sm font-medium">Wallet locked</p>
+              <p className="text-sm font-medium">{t("receive.locked.title")}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Unlock your wallet to reveal your {r.asset.name} {r.network?.name ? `(${r.network.name})` : ""} receive address.
+                {t("receive.locked.body", { asset: r.asset.name, network: r.network?.name ? `(${r.network.name})` : "" })}
               </p>
             </div>
             <Button asChild size="sm" variant="outline" className="gap-1.5">
-              <Link to="/hd-wallet">Open HD Wallet Manager <ArrowRight className="h-3.5 w-3.5" /></Link>
+              <Link to="/hd-wallet">{t("receive.locked.open_hd_wallet")} <ArrowRight className="h-3.5 w-3.5" /></Link>
             </Button>
           </div>
         )}
@@ -161,12 +162,12 @@ export default function ReceiveCrypto() {
             <div className="text-center space-y-1.5">
               <div className="flex items-center justify-center gap-2">
                 <CoinLogo symbol={r.asset.symbol} size={22} />
-                <p className="text-sm font-semibold">Your {r.asset.name} address</p>
+                <p className="text-sm font-semibold">{t("receive.your_address", { asset: r.asset.name })}</p>
               </div>
               <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1">
                 <span className="text-xs font-medium">{r.network?.name || r.asset.chain}</span>
                 {r.network?.isTestnet && (
-                  <span className="text-[10px] uppercase tracking-wide font-semibold text-caution">Testnet</span>
+                  <span className="text-[10px] uppercase tracking-wide font-semibold text-caution">{t("receive.testnet_badge")}</span>
                 )}
               </div>
             </div>
@@ -186,10 +187,10 @@ export default function ReceiveCrypto() {
               animate={{ opacity: 1, y: 0 }}
               transition={reduceMotion ? { duration: 0 } : { duration: 0.28, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
             >
-              <p className="text-[11px] text-muted-foreground text-center mb-1">{r.asset.symbol} receive address</p>
+              <p className="text-[11px] text-muted-foreground text-center mb-1">{t("receive.receive_address_label", { symbol: r.asset.symbol })}</p>
               <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2.5">
                 <code className="mono-value text-xs flex-1 break-all">{r.address}</code>
-                <Button size="icon" variant="ghost" className="relative h-11 w-11 shrink-0" onClick={copyAddress} aria-label={copied ? "Address copied to clipboard" : "Copy address"}>
+                <Button size="icon" variant="ghost" className="relative h-11 w-11 shrink-0" onClick={copyAddress} aria-label={copied ? t("receive.copy.copied_aria") : t("receive.copy.copy_aria")}>
                   <AnimatePresence mode="wait" initial={false}>
                     {copied ? (
                       <motion.span
@@ -230,13 +231,13 @@ export default function ReceiveCrypto() {
 
         {/* Defensive: unknown symbol (should not happen — selector is asset-bound). */}
         {!r && (
-          <p className="text-center text-sm text-muted-foreground py-8">Select an asset to receive.</p>
+          <p className="text-center text-sm text-muted-foreground py-8">{t("receive.select_asset_prompt")}</p>
         )}
       </div>
 
       {!isUnlocked && !demo && (
         <p className="text-center text-[11px] text-muted-foreground">
-          Addresses come from your on-device wallet and only appear while it's unlocked.
+          {t("receive.unlock_footer_note")}
         </p>
       )}
     </div>
