@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { USD_RATES } from "@/lib/cryptos";
+import { USD_RATES, approxUsd } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ function detectAnomalies(transactions) {
   transactions.forEach(tx => {
     const usd = (tx.amount || 0) * (USD_RATES[tx.currency] || 1);
     if (usd > avg + 2.5 * std && usd > 500) {
-      anomalies.push({ id: tx.id, type: "large_transfer", severity: usd > avg + 4 * std ? "critical" : "high", tx, detail: `$${usd.toFixed(0)} — ${((usd - avg) / std).toFixed(1)}σ above average`, usd });
+      anomalies.push({ id: tx.id, type: "large_transfer", severity: usd > avg + 4 * std ? "critical" : "high", tx, detail: `${approxUsd(usd)} — ${((usd - avg) / std).toFixed(1)}σ above average`, usd });
     }
   });
 

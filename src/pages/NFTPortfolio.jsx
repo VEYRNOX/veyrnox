@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "@/lib/toast";
 import Spinner from "@/components/Spinner";
 import { safeNftImageUrl } from "@/lib/nftImageUrl";
+import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 
 const CHAIN_COLORS = { ethereum: "bg-secondary text-muted-foreground", solana: "bg-secondary text-muted-foreground", polygon: "bg-secondary text-muted-foreground", base: "bg-secondary text-muted-foreground" };
 const STATUS_COLORS = { holding: "bg-success/10 text-success", listed: "bg-caution/10 text-caution", sold: "bg-muted text-muted-foreground" };
@@ -61,8 +62,8 @@ export default function NFTPortfolio() {
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Total Holdings", value: `${nfts.filter(n => n.status === "holding").length}` },
-          { label: "Portfolio Value", value: `${totalValueETH.toFixed(3)} ETH` },
-          { label: "Unrealised P&L", value: `${totalPnlETH >= 0 ? "+" : ""}${totalPnlETH.toFixed(3)} ETH`, positive: totalPnlETH >= 0 },
+          { label: "Portfolio Value", value: formatCryptoAmount(totalValueETH, resolveLocale(), { maximumFractionDigits: 3, symbol: "ETH" }) },
+          { label: "Unrealised P&L", value: `${totalPnlETH >= 0 ? "+" : ""}${formatCryptoAmount(totalPnlETH, resolveLocale(), { maximumFractionDigits: 3, symbol: "ETH" })}`, positive: totalPnlETH >= 0 },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
             <p className="text-xs text-muted-foreground mb-1">{s.label}</p>

@@ -97,12 +97,46 @@ export function normalizeDecimalInput(input, locale) {
 }
 
 /**
- * Resolve the UI's BCP-47 locale. Accepts an options bag so tests can pass a
- * synthetic navigator without touching the global.
+ * Locale-format a non-currency crypto amount for DISPLAY. Sibling of formatUsd
+ * (currency style, USD-locked); this is the plain decimal style used for
+ * balance cards, receive-address lines, tx-list rows — any "1.23456789 ETH"
+ * / "0.001 BTC" cell. DISPLAY-ONLY: SendCrypto's signing path uses
+ * canonicalAmount, not any formatted output.
  *
- * @param {{ navigator?: { language?: string, languages?: readonly string[] } }} [opts]
+ * Default max precision is 8 fractional digits (BTC's satoshi scale — the
+ * widest we display); trailing zeros are TRIMMED (minFractionDigits: 0) so
+ * balance columns don't fill with visual noise. Callers who want a shorter
+ * form pass `maximumFractionDigits`. The symbol suffix is appended verbatim
+ * (never localised — "BTC" is a proper noun) with a single space, so a caller
+ * who wrote `${amt} ETH` template-literally silently loses locale grouping.
+ * Throws on non-finite input rather than rendering "NaN ETH" — balance
+ * displays already have "reading from network…" / "—" placeholders for the
+ * unknown case.
+ *
+ * @param {number} amount
+ * @param {string} locale BCP-47 tag; falls back to Intl default if unresolvable.
+ * @param {{ maximumFractionDigits?: number, minimumFractionDigits?: number, symbol?: string }} [opts]
  * @returns {string}
  */
+export function formatCryptoAmount(amount, locale, opts) {
+  if (!Number.isFinite(amount)) {
+    throw new RangeError(`formatCryptoAmount: expected finite number, got ${amount}`);
+  }
+  const max = opts?.maximumFractionDigits ?? 8;
+  const min = opts?.minimumFractionDigits ?? 0;
+  let out;
+  try {
+    out = new Intl.NumberFormat(locale, {
+      maximumFractionDigits: max, minimumFractionDigits: min,
+    }).format(amount);
+  } catch {
+    out = new Intl.NumberFormat(undefined, {
+      maximumFractionDigits: max, minimumFractionDigits: min,
+    }).format(amount);
+  }
+  return opts?.symbol ? `${out} ${opts.symbol}` : out;
+}
+
 /**
  * Locale-format a USD figure for DISPLAY. Never fed back into a parser — this
  * side of `locale.js` is DIRECTION-OUT (numbers → strings), while
@@ -145,6 +179,13 @@ export function formatUsd(usd, locale, opts) {
   }
 }
 
+/**
+ * Resolve the UI's BCP-47 locale. Accepts an options bag so tests can pass a
+ * synthetic navigator without touching the global.
+ *
+ * @param {{ navigator?: { language?: string, languages?: readonly string[] } }} [opts]
+ * @returns {string}
+ */
 export function resolveLocale(opts) {
   const nav = opts && 'navigator' in opts
     ? opts.navigator

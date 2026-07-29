@@ -11,6 +11,7 @@ import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import Spinner from "@/components/Spinner";
+import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
@@ -19,11 +20,19 @@ const FIAT_FLAGS = { USD: "🇺🇸", EUR: "🇪🇺", GBP: "🇬🇧", JPY: "�
 const fetchPrices = () => fetchPortfolioPricesFiatCG(FIATS);
 
 function formatNumber(value, fiat) {
-  if (value == null || isNaN(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "—";
+  const locale = resolveLocale();
   const isSmall = value < 0.01;
   const isJPY = fiat === "JPY" || fiat === "CNY";
-  if (isSmall) return value.toFixed(8);
-  return value.toLocaleString(undefined, {
+  // isSmall: pin 8 fractional digits (BTC satoshi scale) so a tiny value
+  // renders as "0.00000123" not "0.00000123" with trailing zeros trimmed.
+  // isJPY: 0 fractional (JPY / CNY have no everyday sub-unit).
+  // Else: min 2 (never bare "1"), max 6 (readable, matches BTC 8-sat scale
+  // rounded to a middle-ground).
+  if (isSmall) {
+    return formatCryptoAmount(value, locale, { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+  }
+  return formatCryptoAmount(value, locale, {
     minimumFractionDigits: isJPY ? 0 : 2,
     maximumFractionDigits: isJPY ? 0 : 6,
   });
