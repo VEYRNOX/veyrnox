@@ -35,5 +35,60 @@
       "unavailable": "unavailable"
     },
     "footer": "No fake event counts or scan buttons — only real detections shown."
+  },
+  "anomaly": {
+    "heading": "Transaction Anomaly Detection",
+    "subhead": "Statistical analysis of your transaction patterns — runs entirely on-device",
+    "scanner_title": "Pattern Scanner",
+    "loading": "Loading transactions…",
+    "load_error": "Couldn’t load transactions — scan may be incomplete.",
+    "loaded_count": "{{count}} transactions loaded · 3 heuristic checks",
+    "cta_scan": "Run Scan",
+    "cta_rescan": "Re-scan",
+    "cta_scanning": "Scanning…",
+    "last_scan": "Last scan: {{time}} · {{count}} transactions analysed",
+    "checks": {
+      "large_transfer": {
+        "label": "Large transfer outliers",
+        "desc": "Flags sends >2.5σ above your own average"
+      },
+      "rapid_transactions": {
+        "label": "Velocity bursts",
+        "desc": "3+ transactions within a 1-hour window"
+      },
+      "unusual_hour": {
+        "label": "Off-hours activity",
+        "desc": "Transactions between 02:00–05:00 local time"
+      }
+    },
+    "check_found": "{{count}} found",
+    "severity": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "medium_low": "Medium / Low"
+    },
+    "types": {
+      "large_transfer": "Large Transfer",
+      "rapid_transactions": "Rapid Transactions",
+      "unusual_hour": "Unusual Hour"
+    },
+    "detail": {
+      "large_transfer": "${{usd}} — {{sigma}}σ above average",
+      "rapid_transactions": "{{count}} transactions within 1 hour",
+      "unusual_hour": "Transaction at {{hour}}:00 — unusual activity hour"
+    },
+    "empty_prescan": {
+      "title": "Run a scan to check your transactions",
+      "body": "All checks run locally — nothing leaves your device"
+    },
+    "empty_clear": {
+      "title": "All Clear",
+      "body": "No anomalies detected in your transaction history"
+    },
+    "found_one": "{{count}} Anomaly Found",
+    "found_other": "{{count}} Anomalies Found",
+    "dismiss": "Dismiss"
   }
 }

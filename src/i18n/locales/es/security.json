@@ -35,5 +35,60 @@
       "unavailable": "no disponible"
     },
     "footer": "Sin conteos de eventos falsos ni botones de escaneo — solo se muestran detecciones reales."
+  },
+  "anomaly": {
+    "heading": "Detección de anomalías en transacciones",
+    "subhead": "Análisis estadístico de tus patrones de transacción — se ejecuta íntegramente en el dispositivo",
+    "scanner_title": "Escáner de patrones",
+    "loading": "Cargando transacciones…",
+    "load_error": "No se pudieron cargar las transacciones — el escaneo puede estar incompleto.",
+    "loaded_count": "{{count}} transacciones cargadas · 3 comprobaciones heurísticas",
+    "cta_scan": "Ejecutar escaneo",
+    "cta_rescan": "Reescanear",
+    "cta_scanning": "Escaneando…",
+    "last_scan": "Último escaneo: {{time}} · {{count}} transacciones analizadas",
+    "checks": {
+      "large_transfer": {
+        "label": "Transferencias atípicas grandes",
+        "desc": "Marca envíos >2,5σ por encima de tu propia media"
+      },
+      "rapid_transactions": {
+        "label": "Ráfagas de velocidad",
+        "desc": "3 o más transacciones en un intervalo de 1 hora"
+      },
+      "unusual_hour": {
+        "label": "Actividad fuera de horario",
+        "desc": "Transacciones entre las 02:00 y las 05:00 hora local"
+      }
+    },
+    "check_found": "{{count}} encontradas",
+    "severity": {
+      "critical": "Crítica",
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja",
+      "medium_low": "Media / Baja"
+    },
+    "types": {
+      "large_transfer": "Transferencia grande",
+      "rapid_transactions": "Transacciones rápidas",
+      "unusual_hour": "Hora inusual"
+    },
+    "detail": {
+      "large_transfer": "{{usd}} $ — {{sigma}}σ por encima de la media",
+      "rapid_transactions": "{{count}} transacciones en 1 hora",
+      "unusual_hour": "Transacción a las {{hour}}:00 — hora de actividad inusual"
+    },
+    "empty_prescan": {
+      "title": "Ejecuta un escaneo para revisar tus transacciones",
+      "body": "Todas las comprobaciones se ejecutan localmente — nada sale del dispositivo"
+    },
+    "empty_clear": {
+      "title": "Todo en orden",
+      "body": "No se detectaron anomalías en tu historial de transacciones"
+    },
+    "found_one": "{{count}} anomalía encontrada",
+    "found_other": "{{count}} anomalías encontradas",
+    "dismiss": "Descartar"
   }
 }
