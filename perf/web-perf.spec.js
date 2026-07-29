@@ -28,12 +28,15 @@ const ROUTES = [
 ];
 
 async function measure(page, url) {
-  // waitUntil MUST NOT be 'networkidle' — the Veyrnox app polls price
-  // feeds and telemetry continuously (even in demo mode), so the network
-  // never goes quiet and goto hangs to the test timeout. 'load' fires
-  // once the initial resources are done; the explicit LCP wait below
-  // gives the app real render time.
-  await page.goto(url, { waitUntil: 'load' });
+  // waitUntil = 'domcontentloaded' only:
+  //   - 'networkidle' hangs indefinitely (app polls price feeds continuously).
+  //   - 'load' also hangs — the app has lazy JS chunks / service-worker-style
+  //     background work that keeps the load event pending past Playwright's
+  //     30s action timeout, so 3 REPEATS × 30s exceeds the 120s per-test
+  //     budget and the browser is killed mid-evaluate ("Target page … closed").
+  // 'domcontentloaded' fires once the initial HTML is parsed — the explicit
+  // LCP wait below (bounded 5s) gives the app real render time.
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   // Poll for the LCP entry with a bounded timeout. If it never fires
   // (some routes have no LCP-worthy element), record null and skip the
   // LCP budget for that route rather than error.

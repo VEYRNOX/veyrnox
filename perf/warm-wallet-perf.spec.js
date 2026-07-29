@@ -130,11 +130,12 @@ async function measure(url) {
       performance.clearMeasures();
     } catch {}
   });
-  // waitUntil MUST NOT be 'networkidle' — the wallet dashboard polls
-  // price feeds continuously and the network never goes quiet, so
-  // goto would hang to the test timeout. 'load' fires once the initial
-  // resources are done; the explicit LCP wait below handles render.
-  await page.goto(url, { waitUntil: 'load' });
+  // waitUntil = 'domcontentloaded' only. 'networkidle' hangs (continuous
+  // price-feed polling) and 'load' also hangs (lazy chunks / background
+  // work keep the load event pending past Playwright's 30s action
+  // timeout, blowing the per-test budget). DCL + the explicit LCP wait
+  // below gives correct measurements without deadlocking.
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   // Poll for LCP with a bounded timeout; log + skip if it never fires
   // rather than erroring on a matcher-type mismatch.
   await page
