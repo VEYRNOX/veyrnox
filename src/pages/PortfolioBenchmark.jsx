@@ -31,12 +31,12 @@ export default function PortfolioBenchmark() {
     const months = {};
     for (let i = 5; i >= 0; i--) {
       const d = new Date(); d.setMonth(d.getMonth() - i);
-      const key = d.toLocaleString('en-GB', { month: 'short' });
+      const key = d.toLocaleString(undefined, { month: 'short' });
       if (!months[key]) months[key] = { month: key, inflow: 0, outflow: 0 };
     }
     for (const tx of history) {
       if (!tx.timestamp) continue;
-      const key = new Date(tx.timestamp).toLocaleString('en-GB', { month: 'short' });
+      const key = new Date(tx.timestamp).toLocaleString(undefined, { month: 'short' });
       if (!months[key]) continue;
       const rate = (prices?.[tx.assetSymbol] ?? USD_RATES[tx.assetSymbol]) || 0;
       const usd = parseFloat(tx.amount || '0') * rate;

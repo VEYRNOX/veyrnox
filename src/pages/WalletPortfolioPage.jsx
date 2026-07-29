@@ -40,6 +40,7 @@ import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { defaultAssetSymbol } from "@/lib/sendWalletSource";
 import { formatFiat } from "@/components/FiatCurrencySelector";
+import { useLocalePreferences } from "@/lib/useLocale";
 import VaultIllustration from "@/components/VaultIllustration";
 import SeedGrid from "@/components/SeedGrid";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
@@ -517,6 +518,14 @@ export default function WalletPortfolioPage() {
   const [removeTarget, setRemoveTarget] = useState(null);
   const [moveTarget, setMoveTarget] = useState(null);
   const [menuFor, setMenuFor] = useState(null);
+  // Display fiat mirrors the picker on Dashboard/NetWorth — the earlier hardcoded
+  // "USD" here rendered every total in dollars even after a user picked GBP/EUR/JPY
+  // in the Dashboard selector (the selector wrote to storage; this page never
+  // read it). fmtFiat is bound to (currency, locale) so per-locale formatting
+  // (symbol placement, JPY 0-decimal) applies consistently across all four call
+  // sites below.
+  const { locale, fiatCurrency } = useLocalePreferences();
+  const fmtFiat = (usd) => formatFiat(usd, fiatCurrency, locale);
   const [backupTarget, setBackupTarget] = useState(null);
   const [pfManageOpen, setPfManageOpen] = useState(false);
   // Seed reveal (2FA gate + M6 recent-auth window). On a lapsed window this shows
@@ -610,7 +619,7 @@ export default function WalletPortfolioPage() {
       <div className="max-w-lg mx-auto space-y-5 pt-6">
         <div className="text-center space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-widest">Portfolio Value</p>
-          <p className="text-4xl font-bold">{formatFiat(0, "USD")}</p>
+          <p className="text-4xl font-bold">{fmtFiat(0)}</p>
           <p className="text-xs text-muted-foreground">You're exploring — view only. No wallet yet.</p>
         </div>
         <div className="p-6 rounded-2xl border border-dashed border-border bg-card text-center space-y-4">
@@ -668,7 +677,7 @@ export default function WalletPortfolioPage() {
                 : <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">Back up</span>}
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatFiat(data.total, "USD")}
+              {fmtFiat(data.total)}
               {data.indeterminate && <span className="text-caution"> · partial</span>}
             </p>
           </div>
@@ -728,7 +737,7 @@ export default function WalletPortfolioPage() {
                     )}
                   </p>
                   {/* indeterminate read → "—", not a misleading $0.00 */}
-                  <p className="text-[10px] text-muted-foreground">{row.indeterminate ? "—" : formatFiat(row.usd, "USD")}</p>
+                  <p className="text-[10px] text-muted-foreground">{row.indeterminate ? "—" : fmtFiat(row.usd)}</p>
                 </div>
               </button>
             );
@@ -761,7 +770,7 @@ export default function WalletPortfolioPage() {
       {/* Active-portfolio total */}
       <div className="text-center py-3">
         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{activePortfolioName} · Total Value</p>
-        <p className="text-4xl font-bold">{formatFiat(pfTotal, "USD")}</p>
+        <p className="text-4xl font-bold">{fmtFiat(pfTotal)}</p>
         {/* I4 fail-closed: when a balance read failed, the total is incomplete —
             say so rather than presenting a silently-understated figure as fact.
             Same copy in decoy and real sessions (no isDecoy branch). */}

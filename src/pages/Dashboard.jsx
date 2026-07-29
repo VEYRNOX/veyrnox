@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySelector";
+import { useLocalePreferences } from "@/lib/useLocale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
@@ -57,7 +58,10 @@ function DemoDashboard() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
   const [isLocked, setIsLocked] = useState(!DEMO);
-  const [fiatCurrency, setFiatCurrency] = useState("USD");
+  // Shared with WalletPortfolioPage + NetWorthTracker via lib/locale.js — the
+  // picker below now writes to the app-wide preference (I3-gated: no-op in
+  // decoy/demo), so a total on the portfolio page matches the total here.
+  const { locale, fiatCurrency, setFiatCurrency } = useLocalePreferences();
   const [selectedWalletId, setSelectedWalletId] = useState(null);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -213,7 +217,7 @@ function DemoDashboard() {
           <FiatCurrencySelector value={fiatCurrency} onChange={setFiatCurrency} />
         </div>
         <p className={`text-4xl font-bold mono-value transition-all duration-300 ${isLocked ? 'blur-md select-none' : ''}`}>
-          <AnimatedFiat value={displayValue} format={(v) => formatFiat(v, fiatCurrency)} />
+          <AnimatedFiat value={displayValue} format={(v) => formatFiat(v, fiatCurrency, locale)} />
         </p>
         <ReferenceRateNote />
         {!isLocked && wallets.length > 0 && (

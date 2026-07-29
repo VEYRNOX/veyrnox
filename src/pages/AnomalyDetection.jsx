@@ -116,7 +116,7 @@ export default function AnomalyDetection() {
         </div>
         {scanResult && (
           <p className="text-xs text-muted-foreground">
-            Last scan: {scanResult.scannedAt.toLocaleTimeString("en-GB")} · {scanResult.total} transactions analysed
+            Last scan: {scanResult.scannedAt.toLocaleTimeString(undefined)} · {scanResult.total} transactions analysed
           </p>
         )}
       </div>
@@ -168,7 +168,7 @@ export default function AnomalyDetection() {
                         <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border">{cfg.label}</span>
                       </div>
                       <p className="text-xs mt-0.5 opacity-80">{a.detail}</p>
-                      {a.tx && <p className="text-[10px] mt-1 opacity-60">{new Date(a.tx.created_date).toLocaleString("en-GB")} · {a.tx.currency}</p>}
+                      {a.tx && <p className="text-[10px] mt-1 opacity-60">{new Date(a.tx.created_date).toLocaleString(undefined)} · {a.tx.currency}</p>}
                     </div>
                   </div>
                   {!a.fromDB && (

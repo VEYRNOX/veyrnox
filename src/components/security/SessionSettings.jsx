@@ -124,7 +124,7 @@ export default function SessionSettings() {
                 <p className="text-sm font-medium truncate">{s.device || s.user_agent || 'This device'}</p>
                 <p className="text-xs text-muted-foreground">
                   {s.last_active || s.created_date
-                    ? new Date(s.last_active || s.created_date).toLocaleString('en-GB')
+                    ? new Date(s.last_active || s.created_date).toLocaleString(undefined)
                     : 'Active now'}
                 </p>
               </div>

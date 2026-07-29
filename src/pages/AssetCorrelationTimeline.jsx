@@ -61,7 +61,7 @@ function rollingCorr(a, b, window = 7) {
 
 /** Format a unix timestamp (seconds) as "Jun 15" */
 function fmtDate(ts) {
-  return new Date(ts * 1000).toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+  return new Date(ts * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 const PAIRS = [

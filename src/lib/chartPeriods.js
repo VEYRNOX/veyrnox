@@ -1,4 +1,6 @@
 // src/lib/chartPeriods.js
+import { resolveLocale } from './locale';
+
 export const PERIOD_PARAMS = {
   "1H": { resolution: "minute", limit: 60 },
   "4H": { resolution: "minute", limit: 240 },
@@ -18,7 +20,8 @@ export const PERIODS = ["1H", "4H", "1D", "1W", "1M"];
  */
 export function formatCandleTime(tsSec, period) {
   const d = new Date(tsSec * 1000);
-  if (period === "1M") return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-  if (period === "1W") return d.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit" });
-  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const locale = resolveLocale();
+  if (period === "1M") return d.toLocaleDateString(locale, { day: "2-digit", month: "short" });
+  if (period === "1W") return d.toLocaleDateString(locale, { weekday: "short", day: "2-digit" });
+  return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
