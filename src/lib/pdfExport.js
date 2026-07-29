@@ -47,7 +47,7 @@ export function exportCataloguePdf({ title, subtitle, categories = [], fileName 
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 15;
   const contentWidth = pageWidth - margin * 2;
-  const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const dateStr = new Date().toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
 
   // ── Title band ──
   doc.setFillColor(.../** @type {[number,number,number]} */ (BRAND));

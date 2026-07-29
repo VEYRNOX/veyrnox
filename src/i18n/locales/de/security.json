@@ -1,0 +1,9 @@
+{
+  "telemetry_consent": {
+    "heading": "Hilf, Veyrnox zu verbessern",
+    "body": "Teile anonyme Nutzungsdaten, damit wir Fehler beheben und die Erfahrung verbessern können. Keine persönlichen Angaben, keine Kontostände, keine Wallet-Adressen, kein App-übergreifendes Tracking.",
+    "device_id_note": "Es wird eine zufällige Geräte-ID verwendet – nie mit deiner Wallet, deinen Schlüsseln oder deiner Identität verknüpft. Du kannst dies jederzeit unter Einstellungen → Datenschutz ändern.",
+    "cta_grant": "Veyrnox verbessern helfen",
+    "cta_deny": "Nein, danke"
+  }
+}

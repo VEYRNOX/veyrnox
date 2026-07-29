@@ -3,6 +3,7 @@ import { usePortfolio } from "@/lib/portfolioBalances";
 import { buildAllocation } from "@/lib/netWorthAllocation";
 import { CURRENCY_COLORS, approxUsd } from "@/lib/cryptos";
 import { formatFiat } from "@/components/FiatCurrencySelector";
+import { useLocalePreferences } from "@/lib/useLocale";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import CoinLogo from "@/components/CoinLogo";
 import { RefreshCw } from "lucide-react";
@@ -23,13 +24,14 @@ const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { 
 export default function NetWorthTracker() {
   const { isUnlocked, wallets, walletAddresses } = useWallet();
   const { data: portfolio, isLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
+  const { locale, fiatCurrency } = useLocalePreferences();
 
   const total = portfolio?.grandTotal ?? 0;
   const incomplete = !!portfolio?.indeterminate;
   const assetTotals = /** @type {Record<string, { amount?: number, usd?: number|null, indeterminate?: boolean }>} */ (portfolio?.assetTotals || {});
   const live = priceBasis === "live";
   // null amount/usd = indeterminate (read failed) → "—", never a misleading $0.
-  const fmtUsd = (n) => (n == null ? "—" : live ? formatFiat(n, "USD") : approxUsd(n));
+  const fmtUsd = (n) => (n == null ? "—" : live ? formatFiat(n, fiatCurrency, locale) : approxUsd(n));
   const allocation = buildAllocation(assetTotals);
 
   if (!isUnlocked) {

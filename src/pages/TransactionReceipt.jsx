@@ -44,7 +44,7 @@ export default function TransactionReceipt() {
 
     const rows = [
       ["Receipt ID", (selected.id?.slice(0, 12) ?? "") + "..."],
-      ["Date", new Date(selected.created_date).toLocaleString("en-GB")],
+      ["Date", new Date(selected.created_date).toLocaleString(undefined)],
       ["Type", (selected.type || "Transfer").toUpperCase()],
       ["Asset", selected.currency ?? ""],
       ["Amount", `${selected.amount ?? ""} ${selected.currency ?? ""}`],
@@ -114,7 +114,7 @@ export default function TransactionReceipt() {
                     <span className="text-xs font-bold">{tx.amount} {tx.currency}</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground font-mono truncate">{tx.id}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(tx.created_date).toLocaleDateString("en-GB")}</p>
+                  <p className="text-[10px] text-muted-foreground">{new Date(tx.created_date).toLocaleDateString(undefined)}</p>
                 </div>
               </div>
             </div>
@@ -136,7 +136,7 @@ export default function TransactionReceipt() {
               <div className="border-t border-dashed border-border my-3" />
               {[
                 ["Receipt ID", selected.id?.slice(0, 12) + "..."],
-                ["Date", new Date(selected.created_date).toLocaleString("en-GB")],
+                ["Date", new Date(selected.created_date).toLocaleString(undefined)],
                 ["Type", (selected.type || "Transfer").toUpperCase()],
                 ["Asset", selected.currency],
                 ["Amount", `${selected.amount} ${selected.currency}`],

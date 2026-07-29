@@ -4,8 +4,14 @@
 // time; 1W and 1M candles span hours/days, so a clock time ("00:00") is
 // meaningless there and dates must be shown instead.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { PERIOD_PARAMS, PERIODS, formatCandleTime } from '../chartPeriods.js';
+
+// Pin the resolved locale so the regex ordering assertions ("14 Feb", "Tue 14")
+// stay deterministic. formatCandleTime now defers to lib/locale.resolveLocale
+// which reads navigator.language — in a French/US test host it would flip
+// month/day ordering and break these matchers.
+vi.mock('../locale', () => ({ resolveLocale: () => 'en-GB' }));
 
 // 2026-07-14T09:05:00Z (a Tuesday)
 const TS = Math.floor(Date.UTC(2026, 6, 14, 9, 5, 0) / 1000);
