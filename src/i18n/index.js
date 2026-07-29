@@ -38,23 +38,54 @@ import deWallet from './locales/de/wallet.json';
 import zhCommon from './locales/zh-CN/common.json';
 import zhSecurity from './locales/zh-CN/security.json';
 import zhWallet from './locales/zh-CN/wallet.json';
+import ptBRCommon from './locales/pt-BR/common.json';
+import ptBRSecurity from './locales/pt-BR/security.json';
+import ptBRWallet from './locales/pt-BR/wallet.json';
+import frCommon from './locales/fr/common.json';
+import frSecurity from './locales/fr/security.json';
+import frWallet from './locales/fr/wallet.json';
+import nlCommon from './locales/nl/common.json';
+import nlSecurity from './locales/nl/security.json';
+import nlWallet from './locales/nl/wallet.json';
+import trCommon from './locales/tr/common.json';
+import trSecurity from './locales/tr/security.json';
+import trWallet from './locales/tr/wallet.json';
+import ruCommon from './locales/ru/common.json';
+import ruSecurity from './locales/ru/security.json';
+import ruWallet from './locales/ru/wallet.json';
+import viCommon from './locales/vi/common.json';
+import viSecurity from './locales/vi/security.json';
+import viWallet from './locales/vi/wallet.json';
+import idCommon from './locales/id/common.json';
+import idSecurity from './locales/id/security.json';
+import idWallet from './locales/id/wallet.json';
+import jaCommon from './locales/ja/common.json';
+import jaSecurity from './locales/ja/security.json';
+import jaWallet from './locales/ja/wallet.json';
+import koCommon from './locales/ko/common.json';
+import koSecurity from './locales/ko/security.json';
+import koWallet from './locales/ko/wallet.json';
+import arCommon from './locales/ar/common.json';
+import arSecurity from './locales/ar/security.json';
+import arWallet from './locales/ar/wallet.json';
 
-// Which locales are available AT ALL. zh-CN was previously gated behind
-// VITE_ENABLE_ZH_CN until human review; the gate is now removed and zh-CN
-// ships as a first-class user-selectable language. Its `security` namespace
-// is still machine-translated (MACHINE_TRANSLATED['zh-CN'] === true), so the
-// MT banner in <LanguageSwitcher> is what protects a user from acting on an
-// unreviewed coercion warning — do not soften that banner without a native
-// reviewer having signed off on `security.json`.
-export const SUPPORTED_LANGUAGES = ['en', 'es', 'de', 'zh-CN'];
+// Which locales are available AT ALL. Every catalog listed here is
+// machine-translated at ship time (except `en`) and gated behind the MT-pending
+// banner in <LanguageSwitcher> until a native reviewer signs off on
+// `security.json` — do NOT soften that banner without signoff.
+//
+// `ar` is bundled but INTENTIONALLY absent from LANGUAGE_SWITCHER_AVAILABLE
+// below: RTL layout support (dir="rtl", CSS logical properties, mirrored
+// icons) is a follow-up PR. Ungate `ar` there.
+export const SUPPORTED_LANGUAGES = [
+  'en', 'es', 'de', 'zh-CN',
+  'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko', 'ar',
+];
 
-// The default user-facing set. All bundled languages are exposed; MT status
-// is disclosed inline (see MACHINE_TRANSLATED + LanguageSwitcher.jsx).
+// The default user-facing set. `ar` gated pending RTL layout support.
 export const LANGUAGE_SWITCHER_AVAILABLE = /** @type {readonly string[]} */ ([
-  'en',
-  'es',
-  'de',
-  'zh-CN',
+  'en', 'es', 'de', 'zh-CN',
+  'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko',
 ]);
 
 // Every non-English catalog is machine-translated at the time this ships.
@@ -65,6 +96,16 @@ export const MACHINE_TRANSLATED = /** @type {Record<string, boolean>} */ ({
   es: true,
   de: true,
   'zh-CN': true,
+  'pt-BR': true,
+  fr: true,
+  nl: true,
+  tr: true,
+  ru: true,
+  vi: true,
+  id: true,
+  ja: true,
+  ko: true,
+  ar: true,
 });
 
 // Normalize whatever resolveLocale returns (which follows navigator.language:
@@ -74,9 +115,13 @@ export function pickSupported(raw) {
   if (!raw) return 'en';
   if (SUPPORTED_LANGUAGES.includes(raw)) return raw;
   // Match by language subtag: "de-AT" → "de", "zh-Hans-CN" → "zh-CN" if we
-  // ship zh-CN. Latin scripts collapse to the base tag; zh needs script care.
+  // ship zh-CN. Latin scripts collapse to the base tag; zh/pt need region care.
   const [base] = raw.split('-');
   if (base === 'zh') return SUPPORTED_LANGUAGES.includes('zh-CN') ? 'zh-CN' : 'en';
+  // Portuguese: only pt-BR is shipped. Any "pt", "pt-PT", "pt-AO" etc. maps to
+  // pt-BR — the alternative is fail-honest to English, which is worse UX for a
+  // Portuguese speaker who reads pt-BR fine even if pt-PT was their preference.
+  if (base === 'pt') return SUPPORTED_LANGUAGES.includes('pt-BR') ? 'pt-BR' : 'en';
   if (SUPPORTED_LANGUAGES.includes(base)) return base;
   return 'en';
 }
@@ -99,6 +144,16 @@ i18n
       es: { common: esCommon, security: esSecurity, wallet: esWallet },
       de: { common: deCommon, security: deSecurity, wallet: deWallet },
       'zh-CN': { common: zhCommon, security: zhSecurity, wallet: zhWallet },
+      'pt-BR': { common: ptBRCommon, security: ptBRSecurity, wallet: ptBRWallet },
+      fr: { common: frCommon, security: frSecurity, wallet: frWallet },
+      nl: { common: nlCommon, security: nlSecurity, wallet: nlWallet },
+      tr: { common: trCommon, security: trSecurity, wallet: trWallet },
+      ru: { common: ruCommon, security: ruSecurity, wallet: ruWallet },
+      vi: { common: viCommon, security: viSecurity, wallet: viWallet },
+      id: { common: idCommon, security: idSecurity, wallet: idWallet },
+      ja: { common: jaCommon, security: jaSecurity, wallet: jaWallet },
+      ko: { common: koCommon, security: koSecurity, wallet: koWallet },
+      ar: { common: arCommon, security: arSecurity, wallet: arWallet },
     },
     interpolation: {
       // React escapes for us — double-escaping would render literal "&amp;"

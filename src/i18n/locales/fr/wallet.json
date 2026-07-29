@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Historique des transactions",
+      "subhead": "Envois et réceptions par chaîne lus directement depuis la chaîne — lecture seule, avec liens vers l'explorateur.",
+      "badge_demo": "Démo · données d'exemple",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Mode démo — rien n'est interrogé sur le réseau ; les lignes ci-dessous sont des données d'exemple locales.",
+      "loading_label": "Chargement de l'historique {{symbol}}",
+      "error_prefix": "Impossible de charger l'historique : {{reason}}.",
+      "error_fetch_reason": "Impossible de joindre le nœud RPC — vérifie ta connexion et réessaie.",
+      "error_generic_reason": "l'indexeur n'a pas répondu",
+      "retry": "Réessayer",
+      "no_indexer_title": "L'historique intégré n'est pas disponible pour {{name}} via JSON-RPC",
+      "no_indexer_body": "Un simple nœud JSON-RPC ne peut pas lister les transactions d'une adresse, et nous ajoutons délibérément pas d'API d'explorateur/indexeur tiers (une nouvelle source de données et une surface de communication externe). Ton historique complet se trouve sur l'explorateur de blocs.",
+      "view_on_explorer": "Voir {{address}} sur l'explorateur {{network}}",
+      "view_explorer_title": "Voir sur l'explorateur de blocs",
+      "unlock_for_explorer": "Déverrouille ton portefeuille pour obtenir le lien d'explorateur de ton adresse {{symbol}}.",
+      "locked_title": "Portefeuille verrouillé",
+      "locked_body": "Déverrouille ton portefeuille pour dériver ton adresse {{symbol}} et charger son historique.",
+      "empty": "Aucune transaction pour l'instant pour {{symbol}} sur {{network}}.",
+      "count_one": "{{count}} transaction",
+      "count_other": "{{count}} transactions",
+      "most_recent_suffix": " · la plus récente",
+      "refresh": "Actualiser",
+      "sample_badge": "Exemple",
+      "to_prefix": "À ",
+      "from_prefix": "De ",
+      "status_pending": "En attente",
+      "status_confirmed": "Confirmée",
+      "status_failed": "Échouée",
+      "awaiting_confirmation": "en attente de confirmation"
+    },
+    "list": {
+      "empty_title": "Aucune transaction pour l'instant",
+      "empty_description": "Lorsque tu envoies ou reçois avec ce portefeuille, ton activité sur la chaîne s'affichera ici."
+    },
+    "receipt": {
+      "heading": "Reçus de transaction",
+      "subhead": "Génère des reçus imprimables pour toute transaction",
+      "search_placeholder": "Rechercher par ID, adresse ou devise…",
+      "loading": "Chargement…",
+      "error": "Impossible de charger les transactions. Réessaie.",
+      "empty": "Aucune transaction trouvée",
+      "preview_title": "Aperçu du reçu",
+      "print": "Imprimer",
+      "print_window_title": "Reçu de transaction",
+      "brand": "VEYRNOX",
+      "doc_title": "REÇU DE TRANSACTION",
+      "field_receipt_id": "ID du reçu",
+      "field_date": "Date",
+      "field_type": "Type",
+      "field_asset": "Actif",
+      "field_amount": "Montant",
+      "field_network_fee": "Frais de réseau",
+      "field_status": "Statut",
+      "field_to": "À",
+      "default_type": "Transfert",
+      "default_status": "terminé",
+      "thank_you": "Merci d'utiliser {{brand}}",
+      "thank_you_prefix": "Merci d'utiliser",
+      "digital_record": "Ceci est un enregistrement numérique de la transaction"
+    }
+  },
+  "settings": {
+    "heading": "Paramètres de sécurité",
+    "subhead": "Verrouille, déverrouille et protège ton portefeuille",
+    "theme": {
+      "dark": "Mode sombre",
+      "light": "Mode clair",
+      "saved_note": "Enregistré sur cet appareil",
+      "switch_to_light": "Passer au mode clair",
+      "switch_to_dark": "Passer au mode sombre"
+    },
+    "activity_log": {
+      "label": "Journal d'activité",
+      "description": "Désactivé par défaut · stocké uniquement sur cet appareil",
+      "help": "Journal privé : ce que tu as modifié, envoyé, révoqué. Aucun montant ni adresse. L'effacement d'urgence le supprime.",
+      "enable_aria": "Activer le journal d'activité",
+      "disable_aria": "Désactiver le journal d'activité",
+      "no_events": "Aucun événement enregistré pour l'instant."
+    },
+    "message_signing": {
+      "label": "Signature de messages",
+      "description": "Désactivée par défaut · stockée uniquement sur cet appareil",
+      "help": "Désactivée par défaut. Permet de signer des messages texte arbitraires avec la clé de ton portefeuille. N'active cette option que si une dApp ou un service te demande de signer un message.",
+      "enable_aria": "Activer la signature de messages",
+      "disable_aria": "Désactiver la signature de messages"
+    },
+    "telemetry": {
+      "label": "Données d'utilisation anonymes",
+      "description": "Optionnel · n'inclut jamais de soldes ni d'adresses",
+      "help": "Nous aide à trouver des bugs et à améliorer l'application. Un identifiant d'appareil aléatoire est utilisé — jamais lié à ton portefeuille, tes clés ni ton identité. Désactiver cette option arrête toute sortie de données d'utilisation depuis cet appareil.",
+      "enable_aria": "Activer les données d'utilisation anonymes",
+      "disable_aria": "Désactiver les données d'utilisation anonymes"
+    },
+    "delete_account": {
+      "title": "Zone de danger",
+      "clear_cache_label": "Vider le cache local",
+      "clear_cache_description": "Efface les données enregistrées sur cet appareil et verrouille le portefeuille. Ta phrase de récupération fonctionne toujours. Pour effacer les clés, utilise l'effacement d'urgence.",
+      "delete_button": "Supprimer",
+      "confirm_prompt_pre": "Ceci efface les données enregistrées et verrouille le portefeuille. Ta phrase de récupération fonctionne toujours. Saisis",
+      "confirm_prompt_post": "pour confirmer.",
+      "confirm_placeholder": "Saisis DELETE pour confirmer",
+      "confirm_aria": "Saisis DELETE pour confirmer la réinitialisation du compte",
+      "cancel": "Annuler",
+      "confirm_delete": "Confirmer la suppression",
+      "deleting": "Suppression…"
+    },
+    "biometric_unlock": {
+      "heading": "Déverrouillage biométrique",
+      "worth_knowing_label": "Bon à savoir.",
+      "kdf_disclosure": "Le déverrouillage en un geste enregistre le mot de passe de ton portefeuille sur cet appareil, protégé par le verrouillage d'écran et la biométrie. Si quelqu'un obtient une copie de la sauvegarde de ton appareil sans l'appareil physique, il pourrait accéder à ton portefeuille. Désactive cette option pour la protection la plus forte.",
+      "app_layer_disclosure_pre": "Le déverrouillage biométrique enregistre ton mot de passe sur cet appareil, protégé par ton empreinte digitale ou ton visage. Cela fonctionne au sein de l'application, pas au niveau du système d'exploitation.",
+      "app_layer_disclosure_mid": "Pour une protection renforcée au niveau de l'appareil, active",
+      "hardware_protection_label": "Protection matérielle",
+      "app_layer_disclosure_post": "(disponible ci-dessous).",
+      "toggle_label": "Déverrouillage biométrique (portefeuille principal)",
+      "toggle_description": "Active le déverrouillage en un geste pour ton portefeuille principal grâce à la biométrie de l'appareil.",
+      "before_enable_label": "Avant d'activer ceci.",
+      "confirm_disclosure": "Si quelqu'un obtient une copie de la sauvegarde de ton appareil sans l'appareil physique, il pourrait accéder à ton portefeuille. N'active ceci que si tu es d'accord avec ce risque.",
+      "confirm_enable_button": "Activer le déverrouillage en un geste",
+      "cancel_button": "Annuler",
+      "checking_availability": "Vérification de la disponibilité…",
+      "default_label": "Biométrie",
+      "available": "{{label}} disponible.",
+      "available_simulated": "{{label}} disponible (simulée en démo).",
+      "status_check_failed": "Impossible de vérifier la disponibilité biométrique sur cet appareil.",
+      "awaiting_prompt": "En attente de l'invite…",
+      "preview_prompt": "Aperçu de l'invite",
+      "test_success": "Authentification simulée réussie",
+      "test_cancelled": "Invite annulée"
+    },
+    "passkey_unlock": {
+      "heading_native": "Déverrouillage biométrique",
+      "heading_web": "Déverrouiller avec un passkey",
+      "scope_banner_native_pre": "Ton empreinte digitale ou ton visage est vérifié avant le déverrouillage —",
+      "scope_banner_native_post": "ce n'est pas un remplacement de ton mot de passe. Ton mot de passe et ta phrase de récupération fonctionnent toujours seuls, donc perdre la biométrie ne te bloque jamais l'accès.",
+      "scope_banner_web_pre": "Un passkey ajoute une étape biométrique ou une clé de sécurité rapide avant le déverrouillage —",
+      "scope_banner_web_post": "ce n'est pas un remplacement de ton mot de passe. Ton mot de passe et ta phrase de récupération fonctionnent toujours seuls, donc perdre le passkey ne te bloque jamais l'accès.",
+      "extra_step_label": "une étape supplémentaire",
+      "enroll_button": "Activer le déverrouillage biométrique",
+      "register_button": "Enregistrer un passkey",
+      "not_setup_native": "La biométrie de l'appareil n'est pas configurée. Ajoute d'abord une empreinte digitale ou un visage dans les paramètres de ton appareil — ton mot de passe fonctionne toujours.",
+      "not_supported_web": "Le déverrouillage par passkey n'est pas disponible dans ce navigateur. Il fonctionne dans l'application mobile et les navigateurs récents. Utilise ton mot de passe ici.",
+      "enroll_error": "Impossible d'activer le déverrouillage biométrique sur cet appareil.",
+      "register_error": "Impossible d'enregistrer un passkey sur cet appareil.",
+      "enrolled_native": "Déverrouillage biométrique activé",
+      "registered_web": "Passkey enregistré",
+      "simulated_suffix": " (simulé)",
+      "remove_button": "Supprimer",
+      "require_toggle_native": "Exiger le déverrouillage biométrique",
+      "require_toggle_web": "Exiger {{label}} au déverrouillage",
+      "require_toggle_aria_web": "Exiger le déverrouillage par passkey",
+      "require_toggle_desc_native": "Demander ta biométrie d'appareil avant le déverrouillage (ton mot de passe fonctionne toujours).",
+      "require_toggle_desc_web": "Demander ton passkey avant le déverrouillage (ton mot de passe fonctionne toujours).",
+      "applies_all_sessions": "Ceci s'applique à toutes les sessions de portefeuille sur cet appareil.",
+      "default_label": "Passkey",
+      "checking_availability": "Vérification de la disponibilité…",
+      "simulated_in_demo": "{{label}} simulé en démo. ",
+      "awaiting_biometric": "En attente de biométrie…",
+      "awaiting_passkey": "En attente du passkey…",
+      "preview_biometric_prompt": "Aperçu de l'invite biométrique",
+      "preview_passkey_prompt": "Aperçu de l'invite passkey",
+      "simulated_prefix": "Simulé ",
+      "biometric_verified": "biométrie vérifiée",
+      "passkey_verified": "passkey vérifié",
+      "biometric_prompt_cancelled": "Invite biométrique annulée",
+      "passkey_prompt_cancelled": "Invite passkey annulée"
+    },
+    "hardware_kek": {
+      "heading": "Protection matérielle sur l'appareil",
+      "badge_webauthn": "Protégé par WebAuthn",
+      "badge_off": "DÉSACTIVÉ",
+      "description_pre": "Verrouille ton portefeuille à cet appareil physique. Une fois activé, ton portefeuille ne peut être ouvert que sur ",
+      "description_device": "cet appareil",
+      "description_post": ". Une sauvegarde volée est inutilisable sans l'appareil lui-même, même avec ton PIN.",
+      "description_web_suffix": "Fonctionne sur Chrome 99+ et Firefox 108+. Safari n'est pas pris en charge.",
+      "device_binding_note": "La liaison à l'appareil est active et testée sur du matériel réel.",
+      "checking_status": "Vérification du statut…",
+      "web_prf_unsupported": "La protection matérielle n'est pas disponible dans ce navigateur. Utilise Chrome 99+ ou Firefox 108+, ou utilise l'application iOS ou Android.",
+      "errors": {
+        "wrong_pin": "PIN incorrect — saisis le PIN que tu utilises pour déverrouiller ton portefeuille.",
+        "no_hardware": "Impossible d'accéder à la sécurité matérielle de cet appareil. Réessaie, ou utilise un autre appareil.",
+        "malformed_vault": "Les données de portefeuille stockées n'ont pas pu être lues sur cet appareil.",
+        "not_enrolled": "La protection matérielle n'est pas activée sur ce coffre, il n'y a donc rien à mettre à niveau.",
+        "generic": "Une erreur s'est produite. Réessaie.",
+        "key_invalidated": "Tes empreintes digitales ont changé — la protection matérielle a été invalidée. Désactive puis réactive la protection matérielle, ou restaure depuis ta phrase de récupération.",
+        "insecure_tier": "Cet appareil n'a pas d'élément de sécurité matériel — la protection matérielle ne peut pas être activée ici.",
+        "enter_pin_first": "Saisis d'abord ton PIN de coffre.",
+        "enter_pin_confirm_removal": "Saisis ton PIN de coffre pour confirmer la suppression.",
+        "enter_pin_upgrade": "Saisis ton PIN de coffre pour effectuer la mise à niveau."
+      },
+      "toast": {
+        "enabled": "Protection matérielle activée — ton coffre exige désormais cet appareil pour se déverrouiller.",
+        "removed": "Protection matérielle supprimée.",
+        "upgraded": "Protection matérielle mise à niveau — ton coffre est désormais lié à une clé unique par appareil."
+      },
+      "pin_strength": {
+        "hardware_title": "Protégé matériellement.",
+        "hardware_body": "Ton PIN combiné à Face ID, une empreinte digitale ou un passkey rend les attaques hors ligne irréalisables — un attaquant aurait besoin à la fois de ton PIN et de cet appareil physique.",
+        "no_hardware_title": "Aucun facteur matériel disponible dans ce navigateur.",
+        "no_hardware_body": "Ton PIN à 8 chiffres (~100 M combinaisons) n'est protégé que par Argon2id — un attaquant déterminé pourrait l'épuiser hors ligne en quelques jours à quelques semaines. Utilise un mot de passe de 12 caractères ou plus, ou passe à Chrome/Firefox pour activer la protection matérielle.",
+        "pre_enroll_title": "Robustesse du PIN.",
+        "pre_enroll_body": "Un PIN à 8 chiffres offre environ 100 M combinaisons. Argon2id ralentit les attaques hors ligne à environ 1 à 2 ans en mono-thread — mais un cluster de GPU pourrait réduire cela à quelques jours. Activer Face ID, une empreinte digitale ou un passkey ci-dessus rend les attaques hors ligne irréalisables en exigeant cet appareil à chaque déverrouillage."
+      },
+      "enrolled": {
+        "active_title": "Actif sur cet appareil",
+        "active_body_native": "Ton coffre exige la biométrie de cet appareil pour se déverrouiller.",
+        "active_body_web": "Ton coffre exige le passkey de cet appareil pour se déverrouiller."
+      },
+      "upgrade": {
+        "available_title": "Mise à niveau disponible",
+        "available_body": "Ton portefeuille était protégé par une ancienne version qui partageait une clé entre appareils. Mets à niveau pour le verrouiller uniquement à cet appareil. Ceci se produit une seule fois et te demande de vérifier deux fois.",
+        "cta": "Mettre à niveau la protection matérielle",
+        "busy": "Mise à niveau — approuve les deux invites…",
+        "prompt": "Saisis ton PIN de coffre. Tu devras t'authentifier deux fois pour resécuriser le coffre.",
+        "cancel": "Annuler"
+      },
+      "remove": {
+        "cta": "Supprimer la protection matérielle",
+        "prompt_native": "Saisis ton PIN pour confirmer. Tu devras vérifier avec ton empreinte digitale ou ton visage.",
+        "prompt_web": "Saisis ton mot de passe pour confirmer. Tu devras vérifier avec ton passkey.",
+        "busy": "Suppression — approuve l'invite…",
+        "cancel": "Annuler"
+      },
+      "enroll": {
+        "prompt_native": "Saisis ton PIN de coffre pour activer la protection matérielle.",
+        "prompt_web": "Saisis ton PIN à 8 chiffres pour activer la protection matérielle. Ton navigateur créera un passkey pour verrouiller ton portefeuille à cet appareil.",
+        "cta": "Activer la protection matérielle",
+        "busy_native": "Activation — approuve l'invite biométrique…",
+        "busy_web": "Activation — approuve l'invite passkey…",
+        "footnote_native": "Il te sera demandé de t'authentifier avec la biométrie ou le code de ton appareil.",
+        "footnote_web": "Ton navigateur te demandera de t'authentifier avec une biométrie ou le code de l'appareil pour créer le passkey."
+      },
+      "blocked": "Les paramètres de protection matérielle ne sont pas disponibles dans cette session."
+    },
+    "two_factor": {
+      "heading": "Double authentification pour les actions critiques",
+      "intro": "Une vérification supplémentaire en plus de ton PIN pour les actions sensibles. Même si quelqu'un te voit saisir ton PIN, il ne peut toujours pas effectuer ces actions sans la seconde étape.",
+      "actions_protects_label": "Actions protégées",
+      "gated_actions": [
+        { "label": "Envoi de fonds", "desc": "chaque envoi, après les vérifications de sécurité" },
+        { "label": "Révéler ta phrase de récupération", "desc": "afficher ou exporter ta sauvegarde" },
+        { "label": "Définir un PIN d'urgence", "desc": "création du portefeuille d'urgence" },
+        { "label": "Créer ou masquer un portefeuille", "desc": "modifications de portefeuille caché" }
+      ],
+      "currently_enforcing": "Actuellement appliqué :",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + mot de passe d'action",
+      "badge_off": "Désactivé (PIN uniquement)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Tu es dans une session leurre / cachée. Configure la double authentification depuis ta session réelle.",
+      "method_a_title": "PIN + mot de passe d'action",
+      "on_suffix": "ACTIVÉ",
+      "method_a_desc": "Un second mot de passe enregistré dans ton portefeuille. Robuste, mais les deux mots de passe se trouvent sur le même appareil.",
+      "label_pin": "Ton PIN",
+      "label_wallet_password": "Mot de passe du portefeuille",
+      "pin_confirm_placeholder": "Confirme que c'est bien toi",
+      "action_password_label_change": "Nouveau mot de passe d'action",
+      "action_password_label_set": "Mot de passe d'action",
+      "action_password_placeholder": "Au moins 8 caractères",
+      "action_password_hint": "Au moins 8 caractères · tous les caractères sont autorisés",
+      "too_short": "Utilise au moins {{min}} caractères.",
+      "confirm_label": "Confirmer",
+      "confirm_placeholder": "Ressaisis le mot de passe d'action",
+      "confirm_hint": "Doit correspondre à ton mot de passe d'action",
+      "mismatch": "Les mots de passe ne correspondent pas.",
+      "save_change": "Changer le mot de passe d'action",
+      "save_set": "Définir le mot de passe d'action",
+      "remove": "Supprimer le mot de passe d'action",
+      "toast_changed": "Mot de passe d'action modifié",
+      "toast_set": "Mot de passe d'action défini",
+      "toast_set_error": "Impossible de définir le mot de passe d'action",
+      "toast_confirm_pin_required": "Saisis le PIN / mot de passe de ton portefeuille pour confirmer",
+      "toast_removed": "Mot de passe d'action supprimé",
+      "toast_remove_error": "Impossible de supprimer le mot de passe d'action",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "Ton PIN plus {{label}}. Si la biométrie n'est pas disponible, l'action est bloquée. Perdre ton appareil ne fait jamais perdre tes fonds.",
+      "method_b_desc_web": "Ton PIN plus une validation par passkey. Si le passkey n'est pas disponible, l'action est bloquée. Le perdre ne fait jamais perdre tes fonds.",
+      "switch_aria_native": "Utiliser la biométrie de mon appareil comme second facteur",
+      "switch_aria_web": "Utiliser un passkey comme second facteur",
+      "confirm_native": "Confirme les actions critiques avec {{label}}.",
+      "unavailable_native": "{{label}} / le code de l'appareil n'est pas configuré sur cet appareil — active-le dans les paramètres de ton appareil pour utiliser ce facteur.",
+      "unsupported_web": "Ce navigateur ne prend pas en charge WebAuthn / les passkeys.",
+      "register_hint_web_pre": "Aucun passkey enregistré pour l'instant — configures-en un dans",
+      "register_hint_web_strong": "Passkeys du portefeuille",
+      "register_hint_web_post": "ci-dessous, puis active ceci.",
+      "toggle_biometric_needed": "{{label}} n'est pas configuré sur cet appareil.",
+      "toggle_passkey_needed": "Enregistre d'abord un passkey (Passkeys du portefeuille, ci-dessous).",
+      "toggle_biometric_on": "Second facteur {{label}} activé",
+      "toggle_biometric_off": "Second facteur {{label}} désactivé",
+      "toggle_passkey_on": "Second facteur passkey activé",
+      "toggle_passkey_off": "Second facteur passkey désactivé"
+    },
+    "session": {
+      "title": "Session et verrouillage automatique",
+      "description": "Verrouille ton portefeuille après une période d'inactivité ou lorsque tu quittes l'application",
+      "status_unlocked": "Déverrouillé",
+      "status_locked": "Verrouillé",
+      "auto_lock_after": "Verrouillage automatique après",
+      "never_note": "Pas de verrouillage automatique en cas d'inactivité, mais il se verrouille tout de même après environ 45 s en arrière-plan et après 8 heures déverrouillé.",
+      "resets_note": "Se réinitialise à chaque interaction avec l'application. Se verrouille aussi immédiatement en arrière-plan.",
+      "lock_now": "Verrouiller maintenant",
+      "recent_activity": "Activité récente",
+      "view_all": "Tout voir",
+      "this_device": "Cet appareil",
+      "active_now": "Actif maintenant"
+    },
+    "rehearsal": {
+      "title": "Répéter la déniabilité",
+      "description": "Voir le tableau de bord exactement comme le verrait quelqu'un tenant ton téléphone déverrouillé."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Portefeuille",
+    "sidebar_expand": "Déployer la barre latérale",
+    "sidebar_collapse": "Réduire la barre latérale",
+    "search_placeholder": "Rechercher…",
+    "search_shortcut_title": "Rechercher (⌘K)",
+    "lock": "Verrouiller",
+    "lock_confirm_prompt": "Verrouiller ce portefeuille maintenant ?",
+    "back": "Retour",
+    "settings": "Paramètres",
+    "main_content_aria": "Contenu principal",
+    "bottom_nav_aria": "Navigation inférieure",
+    "more_features_aria": "Plus de fonctionnalités",
+    "more": "Plus",
+    "close": "Fermer",
+    "all_features_heading": "Toutes les fonctionnalités",
+    "recent_heading": "Récents",
+    "tab_home": "Accueil",
+    "tab_send": "Envoyer",
+    "tab_receive": "Recevoir"
+  },
+  "back": {
+    "default_label": "Retour"
+  },
+  "send": {
+    "heading": "Envoyer des cryptos",
+    "subheading": "Transfère des fonds en toute sécurité",
+    "wallet_fallback": "Portefeuille",
+    "wallet_picker": { "label": "Depuis le portefeuille", "placeholder": "Sélectionner un portefeuille" },
+    "asset_picker": { "label": "Actif", "placeholder": "Sélectionner un actif" },
+    "recipient": {
+      "label": "Envoyer à (adresse ou nom)",
+      "placeholder": "Colle une adresse ou saisis un nom (p. ex. vitalik.eth)",
+      "scan_qr": "Scanner un code QR",
+      "resolving": "Résolution du nom…",
+      "name_not_found": "Nom introuvable — vérifie l'orthographe ou colle directement l'adresse.",
+      "ens_using_prefix": "Utilisation de {{name}} →",
+      "ens_confirm_intro": "recherché en privé sur la blockchain vers :",
+      "ens_confirm_hint": "Confirme que cette adresse est correcte avant d'envoyer.",
+      "use_this_address": "Utiliser cette adresse",
+      "not_whitelisted": "Cette adresse n'est pas sur ta liste blanche. Vérifie bien avant de continuer. Tu peux ajouter des adresses de confiance dans les paramètres.",
+      "self_send_warning": "Tu envoies vers ta propre adresse de portefeuille. Cela ne déplace rien entre portefeuilles et coûte quand même des frais de réseau. Vérifie le destinataire avant de continuer."
+    },
+    "screening": {
+      "local_disclosure": "Les destinataires sont vérifiés sur ton appareil pour détecter des adresses d'arnaque à partir de ton propre historique — rien ne quitte ton appareil.",
+      "remote_opt_in": "Vérifier aussi auprès d'une base de données de menaces en ligne (envoie cette adresse à un tiers)",
+      "remote_unavailable": "La vérification en ligne est activée, mais aucun fournisseur n'est configuré dans cette version — la vérification reste locale, nous n'avons donc pas pu la confirmer par rapport à une liste externe.",
+      "demo_poison_button": "Démo : coller une adresse ressemblante"
+    },
+    "simulation": {
+      "title": "Simulation de transaction",
+      "toggle_aria": "Activer/désactiver la simulation de transaction",
+      "description": "Avant que tu signes, nous effectuons une vérification préalable locale — aucun service tiers, aucune donnée ne quitte ton appareil.",
+      "checks": [
+        "Risque d'adresse (empoisonnement / ressemblance)",
+        "Décodage du contrat",
+        "Drapeau d'autorisation illimitée",
+        "Prédiction d'annulation (revert)",
+        "Anomalie par rapport à ton historique",
+        "Avertissement de sortie importante"
+      ],
+      "results_hint": "Les résultats apparaissent à l'étape suivante une fois que tu as saisi une adresse et un montant.",
+      "off_hint": "La simulation est désactivée — aucune vérification préalable ne sera effectuée avant la signature.",
+      "taking_too_long": "Ça prend trop de temps ?",
+      "turn_off": "Désactiver la simulation"
+    },
+    "amount": {
+      "label": "Montant",
+      "placeholder": "0,00",
+      "being_sent": "envoyé",
+      "balance_prefix": "Solde :",
+      "demo_suffix": "(démo)",
+      "live_suffix": "(en direct)",
+      "reading_from_network": "lecture depuis le réseau…"
+    },
+    "errors": {
+      "amount_missing": "Le montant est requis",
+      "amount_not_positive": "Le montant doit être supérieur à zéro",
+      "amount_malformed": "Saisis un montant décimal simple, comme 0,5",
+      "amount_over_balance": "Solde insuffisant",
+      "insufficient_balance_title": "Solde insuffisant.",
+      "insufficient_balance_body": "Tu disposes de {{balance}} {{currency}} à envoyer (après les frais de réseau). Réduis le montant pour continuer."
+    },
+    "status": {
+      "not_enabled": "L'envoi n'est pas encore activé pour {{currency}}. Cet actif est en réception seule tant que son chemin crypto n'est pas vérifié.",
+      "dev_ungate_title": "DÉBLOCAGE DEV ACTIF",
+      "dev_ungate_body": "— la vérification d'envoi est contournée pour {{currency}} via VITE_DEV_UNGATE_SEND (build de développement uniquement). Le statut de cet actif est inchangé (toujours non actif) ; le mainnet reste bloqué. Vérification testnet uniquement — ne jamais expédier ce build.",
+      "locked": "Ton portefeuille est verrouillé. Déverrouille-le dans les paramètres du portefeuille pour signer et envoyer."
+    },
+    "note": { "label": "Note (facultatif)", "placeholder": "C'est pour quoi ?" },
+    "trezor": {
+      "toggle_label": "Signer avec Trezor",
+      "connected": "Appareil connecté",
+      "connect_button": "Connecter l'appareil"
+    },
+    "buttons": {
+      "continue": "Continuer",
+      "confirm_send": "Confirmer et envoyer",
+      "back": "Retour"
+    },
+    "verify": { "summary_label": "Tu envoies" },
+    "fee": {
+      "automatic": "Les frais de réseau sont définis automatiquement pour {{currency}} ({{network}}).",
+      "native_fee_note": "Les frais de réseau sont payés en {{symbol}} ({{network}}) — tu as besoin de {{symbol}} pour couvrir les frais de réseau même en envoyant {{token}}."
+    },
+    "decode": {
+      "heading": "Ce que fait cette transaction",
+      "action": "Action",
+      "send_tokens": "Envoyer des jetons",
+      "token": "Jeton",
+      "amount": "Montant",
+      "recipient": "Destinataire",
+      "grant_permission": "Accorder une autorisation de dépense",
+      "permission": "Autorisation",
+      "unlimited_permission": "Illimitée (cette application peut dépenser n'importe quel montant)",
+      "spender": "Dépensier"
+    },
+    "reauth": {
+      "prompt": "Ressaisis ton {{credential}} pour autoriser",
+      "credential_pin": "PIN",
+      "credential_password": "mot de passe",
+      "submit_pin": "Autoriser",
+      "submit_password": "Autoriser et envoyer",
+      "password_placeholder": "Mot de passe du coffre",
+      "password_aria": "Mot de passe du coffre pour l'autorisation d'envoi",
+      "errors": {
+        "unavailable": "Vérification indisponible — veuillez reverrouiller puis déverrouiller le portefeuille.",
+        "incorrect": "Incorrect — réessaie ({{remaining}} restant(s))"
+      }
+    },
+    "done": {
+      "beacon_label": "Transaction diffusée",
+      "heading": "Transaction diffusée",
+      "body_suffix": "signée localement et envoyée au réseau",
+      "tx_hash_label": "Hachage de transaction",
+      "view_explorer": "Voir sur l'explorateur de blocs",
+      "pending_note": "En attente jusqu'à confirmation sur le réseau. Le solde se met à jour depuis la blockchain, pas depuis une valeur stockée.",
+      "send_another": "Envoyer un autre"
+    },
+    "toasts": {
+      "ens_off_in_session": "La résolution de noms est désactivée dans cette session — colle directement l'adresse.",
+      "ens_not_found": "Nom ENS introuvable",
+      "sns_unavailable": "La résolution de noms Solana n'est pas encore disponible — colle directement l'adresse.",
+      "ens_resolution_failed": "Échec de la résolution du nom",
+      "verify_required": "Termine la vérification de ta sauvegarde avant d'envoyer ce montant.",
+      "two_factor_retry": "L'envoi n'a pas pu aboutir — veuillez vérifier à nouveau pour réessayer.",
+      "send_failed_fallback": "Échec de l'envoi",
+      "unconfirmed": "Impossible de confirmer cette transaction sur le réseau pour l'instant — elle est peut-être encore en attente. Vérifie sur l'explorateur."
+    }
+  },
+  "receive": {
+    "heading": "Recevoir des cryptos",
+    "subheading": "Affiche une adresse de portefeuille pour recevoir des fonds",
+    "asset_label": "Actif",
+    "asset_placeholder": "Choisir un actif",
+    "not_available": "La réception de {{name}} ({{symbol}}) n'est pas encore disponible. Aucune adresse ne s'affiche tant que cet actif n'est pas activé.",
+    "locked": {
+      "title": "Portefeuille verrouillé",
+      "body": "Déverrouille ton portefeuille pour révéler ton adresse de réception {{asset}} {{network}}.",
+      "open_hd_wallet": "Ouvrir le gestionnaire de portefeuille HD"
+    },
+    "your_address": "Ton adresse {{asset}}",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Adresse de réception {{symbol}}",
+    "copy": {
+      "copied_aria": "Adresse copiée dans le presse-papiers",
+      "copy_aria": "Copier l'adresse",
+      "copied_toast": "Adresse copiée",
+      "copy_failed_toast": "Impossible de copier — sélectionne et copie l'adresse manuellement"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} est un jeton sur un réseau compatible Ethereum. Ceci est ton adresse de portefeuille — demande uniquement à l'expéditeur d'envoyer {{symbol}} sur {{network}}. L'envoyer sur un réseau différent peut faire perdre les fonds définitivement.",
+      "evm": "Ceci est ton adresse de portefeuille partagée. N'envoie {{name}} sur {{network}} qu'à cette adresse, et assure-toi que l'expéditeur utilise {{network}}.",
+      "btc": "N'envoie du Bitcoin sur {{network}} qu'à cette adresse.",
+      "solana": "N'envoie du Solana sur {{network}} qu'à cette adresse."
+    },
+    "select_asset_prompt": "Sélectionne un actif à recevoir.",
+    "unlock_footer_note": "Les adresses proviennent de ton portefeuille sur l'appareil et n'apparaissent que lorsqu'il est déverrouillé."
+  },
+  "dashboard": {
+    "portfolioValue": "Valeur du portefeuille",
+    "priceAlertsTriggered_one": "{{count}} alerte de prix déclenchée !",
+    "priceAlertsTriggered_other": "{{count}} alertes de prix déclenchées !",
+    "lockAriaLabel": "Verrouiller le solde derrière la biométrie",
+    "lockBalance": "Verrouiller le solde",
+    "synced": "Synchronisé {{time}}",
+    "syncJustNow": "À l'instant",
+    "syncSecondsAgo_one": "il y a {{count}} s",
+    "syncSecondsAgo_other": "il y a {{count}} s",
+    "syncMinutesAgo_one": "il y a {{count}} min",
+    "syncMinutesAgo_other": "il y a {{count}} min",
+    "actions": {
+      "send": "Envoyer",
+      "receive": "Recevoir",
+      "schedule": "Planifier",
+      "add": "Ajouter"
+    },
+    "tabs": {
+      "tokens": "Jetons",
+      "activity": "Activité",
+      "analytics": "Analytique"
+    },
+    "emptyWallets": {
+      "title": "Aucun portefeuille pour l'instant",
+      "description": "Ajoute un portefeuille pour commencer à recevoir, envoyer et détenir des actifs sur plusieurs chaînes."
+    },
+    "addWallet": "Ajouter un portefeuille",
+    "searchTransactionsPlaceholder": "Rechercher des transactions…",
+    "emptySearch": {
+      "title": "Aucune transaction correspondante",
+      "description": "Essaie de réinitialiser les filtres ou de rechercher un autre actif ou une autre adresse."
+    },
+    "emptyTransactions": {
+      "title": "Aucune transaction pour l'instant",
+      "description": "Ton activité sur la chaîne s'affichera ici dès que tu enverras ou recevras."
+    },
+    "portfolioPerformance": "Performance du portefeuille",
+    "assetDistribution": "Répartition des actifs",
+    "quickAccess": "Accès rapide",
+    "quickAccessItems": {
+      "receive": "Recevoir",
+      "security": "Sécurité",
+      "approvals": "Autorisations",
+      "addressCheck": "Vérification d'adresse",
+      "analytics": "Analytique",
+      "sentiment": "Sentiment",
+      "riskScore": "Score de risque"
+    },
+    "walletNameLabel": "Nom du portefeuille",
+    "walletNamePlaceholder": "Mon portefeuille ETH",
+    "addWalletDialog": {
+      "title": "Ajouter un portefeuille",
+      "currency": "Devise",
+      "creating": "Création…",
+      "create": "Créer le portefeuille"
+    },
+    "renameWalletDialog": {
+      "title": "Renommer le portefeuille",
+      "saving": "Enregistrement…",
+      "save": "Enregistrer le nom"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Coffre chiffré",
+    "backup": {
+      "title": "Sauvegarder « {{name}} »",
+      "reauthDescription": "Confirme que c'est bien toi, puis nous afficherons la phrase de récupération de ce portefeuille.",
+      "description": "Note ces 12 mots hors ligne. Quiconque les possède peut dépenser les fonds de ce portefeuille — et c'est le seul moyen de le récupérer.",
+      "warning": "Ne fais jamais de capture d'écran. Ne la saisis jamais dans une autre application.",
+      "confirmButton": "Je l'ai notée — marquer comme sauvegardée"
+    },
+    "addWallet": {
+      "defaultWalletName": "ton nouveau portefeuille",
+      "backupDescription": "Ce portefeuille a sa propre phrase de récupération — distincte de tout autre portefeuille de ton coffre. Note-la hors ligne avant de l'utiliser.",
+      "backedUpDone": "Je l'ai sauvegardée — terminé",
+      "title": "Ajouter un portefeuille",
+      "createNew": "Créer un nouveau",
+      "importSeed": "Importer une graine",
+      "createDescription": "Génère une NOUVELLE graine qui dérive TOUTES les chaînes (ETH/EVM, BTC, SOL). Tu la sauvegarderas avant son activation.",
+      "importDescription": "Colle une graine existante de 12/24 mots — toutes les chaînes sont dérivées automatiquement (une graine n'est pas spécifique à une chaîne).",
+      "recoveryPhraseLabel": "Phrase de récupération",
+      "recoveryPhrasePlaceholder": "mot1 mot2 ... mot12",
+      "walletNameLabel": "Nom du portefeuille",
+      "walletNamePlaceholder": "p. ex. Épargne",
+      "assetsToShowLabel": "Actifs à afficher",
+      "assetsToShowHint": "Choix d'affichage uniquement — la graine détient toutes les chaînes dans tous les cas.",
+      "confirmVaultPlaceholder": "Confirme que c'est bien toi pour modifier ton coffre",
+      "vaultReentryHint": "Ressaisi pour autoriser une modification de ton coffre de graine. Jamais conservé en mémoire.",
+      "createAndBackup": "Créer et sauvegarder",
+      "importWallet": "Importer le portefeuille"
+    },
+    "vaultPinLabel": "PIN du coffre",
+    "vaultPasswordLabel": "Mot de passe du coffre",
+    "cancel": "Annuler",
+    "done": "Terminé",
+    "manageAssets": {
+      "title": "Actifs pour « {{name}} »",
+      "description": "Choisis les actifs à afficher pour ce portefeuille. Les actifs masqués restent à l'écart jusqu'à leur ajout."
+    },
+    "rename": {
+      "title": "Renommer le portefeuille",
+      "save": "Enregistrer le nom"
+    },
+    "remove": {
+      "title": "Supprimer « {{name}} » ?",
+      "onlyWallet": "C'est ton seul portefeuille — il ne peut pas être supprimé. Utilise l'effacement d'urgence dans Sécurité pour tout effacer.",
+      "description": "Supprime la graine de ce portefeuille de cet appareil.",
+      "backedUpNote": "Tu peux le restaurer à partir de sa phrase de récupération.",
+      "notBackedUpNote": "⚠️ NON sauvegardé — sans sa phrase, il est perdu à jamais.",
+      "button": "Supprimer le portefeuille"
+    },
+    "move": {
+      "title": "Déplacer « {{name}} » vers…"
+    },
+    "managePortfolios": {
+      "title": "Portefeuilles (groupes)",
+      "defaultTag": "(par défaut)",
+      "saveAriaLabel": "Enregistrer le nom du groupe de portefeuilles",
+      "renameAriaLabel": "Renommer {{name}}",
+      "deleteAriaLabel": "Supprimer {{name}}",
+      "newNamePlaceholder": "Nouveau nom de groupe",
+      "addButton": "Ajouter"
+    },
+    "activity": {
+      "unlockPrompt": "Déverrouille ton portefeuille pour voir l'activité.",
+      "loading": "Chargement…",
+      "loadError": "Impossible de charger l'activité.",
+      "noTransactions": "Aucune transaction pour l'instant.",
+      "viewFullHistory": "Voir l'historique complet →"
+    },
+    "portfolioValueLabel": "Valeur du portefeuille",
+    "explore": {
+      "subtitle": "Tu explores — lecture seule. Pas encore de portefeuille.",
+      "description": "Regarde librement autour de toi. Quand tu seras prêt, crée un nouveau portefeuille auto-gérée ou importe une graine existante — les clés sont générées et chiffrées sur cet appareil.",
+      "createOrImport": "Créer ou importer un portefeuille"
+    },
+    "portfoliosButton": "Groupes de portefeuilles",
+    "totalValueHeading": "{{name}} · Valeur totale",
+    "partialTotalNote": "Certains soldes n'ont pas pu être chargés — ce total peut être incomplet.",
+    "refreshPricesTooltip": "Actualiser les prix en direct",
+    "live": "En direct",
+    "approximate": "Approximatif",
+    "seedVerify": {
+      "title": "Termine la vérification de ta sauvegarde",
+      "description": "Requis pour envoyer au-delà du seuil de sécurité.",
+      "verifyAriaLabel": "Vérifier la sauvegarde de ton portefeuille",
+      "verifyButton": "Vérifier"
+    },
+    "unbacked": {
+      "titleBold": "Sauvegarde du portefeuille incomplète.",
+      "body": "Chaque portefeuille a sa propre phrase de récupération — sans elle, les fonds de ce portefeuille sont irrécupérables. Sauvegarde maintenant.",
+      "backUpButton": "Sauvegarder « {{name}} »"
+    },
+    "actions": {
+      "send": "Envoyer",
+      "receive": "Recevoir",
+      "addWallet": "Ajouter un portefeuille"
+    },
+    "activeWalletHint": {
+      "prefix": "Envoyer/Recevoir utilise",
+      "otherPortfolio": " (dans un autre groupe de portefeuilles)",
+      "suffix": ". Touche un portefeuille ci-dessous pour changer."
+    },
+    "tabs": {
+      "tokens": "Jetons",
+      "activity": "Activité",
+      "analytics": "Analytique"
+    },
+    "noWalletsInPortfolio": "Aucun portefeuille dans « {{name}} ». Ajoute un portefeuille, ou déplaces-en un ici depuis son menu.",
+    "hideAssets": "Masquer les actifs",
+    "showAllAssets": "Afficher tous les actifs",
+    "walletCard": {
+      "active": "Actif",
+      "backedUp": "Sauvegardé",
+      "backUp": "Sauvegarder",
+      "partial": "partiel",
+      "optionsAriaLabel": "Options pour {{name}}",
+      "noAssetsShown": "Aucun actif affiché. Utilise « Gérer les actifs »."
+    },
+    "menu": {
+      "manageAssets": "Gérer les actifs",
+      "rename": "Renommer",
+      "moveToPortfolio": "Déplacer vers un groupe",
+      "backUp": "Sauvegarder",
+      "remove": "Supprimer"
+    },
+    "balanceLoadFailedTitle": "Le solde n'a pas pu être chargé",
+    "defaultWalletFallbackName": "portefeuille",
+    "toast": {
+      "walletImported": "Portefeuille importé — toutes les chaînes dérivées.",
+      "walletRemoved": "Portefeuille supprimé de cet appareil.",
+      "walletAddedBackedUp": "Portefeuille ajouté et sauvegardé.",
+      "movedTo": "Déplacé vers {{name}}.",
+      "markedBackedUp": "« {{name}} » marqué comme sauvegardé."
+    },
+    "errors": {
+      "couldNotAddWallet": "Impossible d'ajouter le portefeuille",
+      "couldNotImportWallet": "Impossible d'importer le portefeuille",
+      "couldNotRemoveWallet": "Impossible de supprimer le portefeuille"
+    }
+  },
+  "networth": {
+    "title": "Valeur nette crypto",
+    "unlockPrompt": "Déverrouille ton portefeuille pour voir tes avoirs sur la chaîne.",
+    "subtitle": "Tes avoirs sur la chaîne — n'inclut pas les actifs externes.",
+    "totalHoldings": "Avoirs totaux",
+    "partialNote": "partiel — certains soldes n'ont pas pu être lus",
+    "refreshPricesTooltip": "Actualiser les prix en direct",
+    "live": "En direct",
+    "approximate": "Approximatif",
+    "allocation": "Répartition",
+    "holdings": "Avoirs",
+    "noHoldings": "Aucun avoir pour l'instant."
+  }
+}
