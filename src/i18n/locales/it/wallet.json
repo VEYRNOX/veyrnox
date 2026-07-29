@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Cronologia delle transazioni",
+      "subhead": "Invii e ricezioni per chain letti direttamente dalla chain — sola lettura, con link all'explorer.",
+      "badge_demo": "Demo · dati di esempio",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Modalità demo — nulla viene interrogato sulla rete; le righe seguenti sono dati di esempio locali.",
+      "loading_label": "Caricamento cronologia {{symbol}}",
+      "error_prefix": "Impossibile caricare la cronologia: {{reason}}.",
+      "error_fetch_reason": "Impossibile raggiungere il nodo RPC — controlla la connessione e riprova.",
+      "error_generic_reason": "l'indexer non ha risposto",
+      "retry": "Riprova",
+      "no_indexer_title": "La cronologia in-app non è disponibile per {{name}} tramite JSON-RPC",
+      "no_indexer_body": "Un semplice nodo JSON-RPC non può elencare le transazioni di un indirizzo, e deliberatamente non aggiungiamo un'API di explorer/indexer di terze parti (una nuova fonte di dati e una superficie di comunicazione verso l'esterno). La tua cronologia completa è sull'explorer di blocchi.",
+      "view_on_explorer": "Visualizza {{address}} sull'explorer {{network}}",
+      "view_explorer_title": "Visualizza sull'explorer di blocchi",
+      "unlock_for_explorer": "Sblocca il tuo portafoglio per ottenere il link dell'explorer per il tuo indirizzo {{symbol}}.",
+      "locked_title": "Portafoglio bloccato",
+      "locked_body": "Sblocca il tuo portafoglio per derivare il tuo indirizzo {{symbol}} e caricarne la cronologia.",
+      "empty": "Ancora nessuna transazione per {{symbol}} su {{network}}.",
+      "count_one": "{{count}} transazione",
+      "count_other": "{{count}} transazioni",
+      "most_recent_suffix": " · più recente",
+      "refresh": "Aggiorna",
+      "sample_badge": "Esempio",
+      "to_prefix": "A ",
+      "from_prefix": "Da ",
+      "status_pending": "In attesa",
+      "status_confirmed": "Confermata",
+      "status_failed": "Non riuscita",
+      "awaiting_confirmation": "in attesa di conferma"
+    },
+    "list": {
+      "empty_title": "Ancora nessuna transazione",
+      "empty_description": "Quando invii o ricevi con questo portafoglio, la tua attività on-chain apparirà qui."
+    },
+    "receipt": {
+      "heading": "Ricevute delle transazioni",
+      "subhead": "Genera ricevute stampabili per qualsiasi transazione",
+      "search_placeholder": "Cerca per ID, indirizzo o valuta...",
+      "loading": "Caricamento...",
+      "error": "Impossibile caricare le transazioni. Riprova.",
+      "empty": "Nessuna transazione trovata",
+      "preview_title": "Anteprima ricevuta",
+      "print": "Stampa",
+      "print_window_title": "Ricevuta di transazione",
+      "brand": "VEYRNOX",
+      "doc_title": "RICEVUTA DI TRANSAZIONE",
+      "field_receipt_id": "ID ricevuta",
+      "field_date": "Data",
+      "field_type": "Tipo",
+      "field_asset": "Asset",
+      "field_amount": "Importo",
+      "field_network_fee": "Commissione di rete",
+      "field_status": "Stato",
+      "field_to": "A",
+      "default_type": "Trasferimento",
+      "default_status": "completata",
+      "thank_you": "Grazie per aver usato {{brand}}",
+      "thank_you_prefix": "Grazie per aver usato",
+      "digital_record": "Questo è un registro digitale della transazione"
+    }
+  },
+  "settings": {
+    "heading": "Impostazioni di sicurezza",
+    "subhead": "Blocca, sblocca e proteggi il tuo portafoglio",
+    "theme": {
+      "dark": "Modalità scura",
+      "light": "Modalità chiara",
+      "saved_note": "Salvato su questo dispositivo",
+      "switch_to_light": "Passa alla modalità chiara",
+      "switch_to_dark": "Passa alla modalità scura"
+    },
+    "activity_log": {
+      "label": "Registro attività",
+      "description": "Disattivato per impostazione predefinita · memorizzato solo su questo dispositivo",
+      "help": "Registro privato: cosa hai modificato, inviato, revocato. Nessun importo o indirizzo. Il Panic Wipe lo cancella.",
+      "enable_aria": "Attiva il registro attività",
+      "disable_aria": "Disattiva il registro attività",
+      "no_events": "Nessun evento registrato finora."
+    },
+    "message_signing": {
+      "label": "Firma dei messaggi",
+      "description": "Disattivata per impostazione predefinita · memorizzata solo su questo dispositivo",
+      "help": "Disattivata per impostazione predefinita. Ti consente di firmare messaggi di testo arbitrari con la chiave del tuo portafoglio. Attivala solo se una dApp o un servizio ti chiede di firmare un messaggio.",
+      "enable_aria": "Attiva la firma dei messaggi",
+      "disable_aria": "Disattiva la firma dei messaggi"
+    },
+    "telemetry": {
+      "label": "Dati di utilizzo anonimi",
+      "description": "Facoltativo · non include mai saldi o indirizzi",
+      "help": "Ci aiuta a trovare bug e migliorare l'app. Viene usato un ID dispositivo casuale — mai collegato al tuo portafoglio, alle tue chiavi o alla tua identità. Disattivare questa opzione blocca ogni uscita di dati di utilizzo da questo dispositivo.",
+      "enable_aria": "Attiva i dati di utilizzo anonimi",
+      "disable_aria": "Disattiva i dati di utilizzo anonimi"
+    },
+    "delete_account": {
+      "title": "Zona pericolosa",
+      "clear_cache_label": "Cancella cache locale",
+      "clear_cache_description": "Cancella i dati salvati su questo dispositivo e blocca il portafoglio. La tua frase di recupero funziona ancora. Per cancellare le chiavi, usa Panic Wipe.",
+      "delete_button": "Elimina",
+      "confirm_prompt_pre": "Questo cancella i dati salvati e blocca il portafoglio. La tua frase di recupero funziona ancora. Digita",
+      "confirm_prompt_post": "per confermare.",
+      "confirm_placeholder": "Digita DELETE per confermare",
+      "confirm_aria": "Digita DELETE per confermare il ripristino dell'account",
+      "cancel": "Annulla",
+      "confirm_delete": "Conferma eliminazione",
+      "deleting": "Eliminazione..."
+    },
+    "biometric_unlock": {
+      "heading": "Sblocco biometrico",
+      "worth_knowing_label": "Da sapere.",
+      "kdf_disclosure": "Lo sblocco con un tocco salva la password del tuo portafoglio su questo dispositivo, protetta dal blocco schermo e dalla biometria. Se qualcuno ottiene una copia del backup del tuo dispositivo senza il dispositivo fisico, potrebbe accedere al tuo portafoglio. Disattiva questa opzione per la protezione più forte.",
+      "app_layer_disclosure_pre": "Lo sblocco biometrico salva la tua password su questo dispositivo, protetta dalla tua impronta digitale o dal tuo volto. Funziona all'interno dell'app, non a livello di sistema operativo.",
+      "app_layer_disclosure_mid": "Per una protezione più forte a livello di dispositivo, attiva",
+      "hardware_protection_label": "Protezione hardware",
+      "app_layer_disclosure_post": "(disponibile qui sotto).",
+      "toggle_label": "Sblocco biometrico (portafoglio principale)",
+      "toggle_description": "Attiva lo sblocco con un tocco per il tuo portafoglio principale usando la biometria del dispositivo.",
+      "before_enable_label": "Prima di attivarlo.",
+      "confirm_disclosure": "Se qualcuno ottiene una copia del backup del tuo dispositivo senza il dispositivo fisico, potrebbe accedere al tuo portafoglio. Attivalo solo se sei d'accordo con questo rischio.",
+      "confirm_enable_button": "Attiva sblocco con un tocco",
+      "cancel_button": "Annulla",
+      "checking_availability": "Verifica disponibilità…",
+      "default_label": "Biometria",
+      "available": "{{label}} disponibile.",
+      "available_simulated": "{{label}} disponibile (simulata in demo).",
+      "status_check_failed": "Impossibile verificare la disponibilità biometrica su questo dispositivo.",
+      "awaiting_prompt": "In attesa del prompt…",
+      "preview_prompt": "Anteprima prompt",
+      "test_success": "Autenticazione simulata riuscita",
+      "test_cancelled": "Prompt annullato"
+    },
+    "passkey_unlock": {
+      "heading_native": "Sblocco biometrico",
+      "heading_web": "Sblocca con Passkey",
+      "scope_banner_native_pre": "La tua impronta digitale o il tuo volto vengono verificati prima dello sblocco —",
+      "scope_banner_native_post": "non sostituisce la tua password. La tua password e la frase di recupero funzionano comunque da sole, quindi perdere la biometria non ti blocca mai fuori.",
+      "scope_banner_web_pre": "Una passkey aggiunge un rapido tocco biometrico o una chiave di sicurezza prima dello sblocco —",
+      "scope_banner_web_post": "non sostituisce la tua password. La tua password e la frase di recupero funzionano comunque da sole, quindi perdere la passkey non ti blocca mai fuori.",
+      "extra_step_label": "un passaggio in più",
+      "enroll_button": "Attiva sblocco biometrico",
+      "register_button": "Registra una passkey",
+      "not_setup_native": "La biometria del dispositivo non è configurata. Aggiungi prima un'impronta digitale o un volto nelle impostazioni del tuo dispositivo — la tua password funziona comunque.",
+      "not_supported_web": "Lo sblocco con passkey non è disponibile in questo browser. Funziona nell'app mobile e nei browser moderni. Usa qui la tua password.",
+      "enroll_error": "Impossibile attivare lo sblocco biometrico su questo dispositivo.",
+      "register_error": "Impossibile registrare una passkey su questo dispositivo.",
+      "enrolled_native": "Sblocco biometrico attivato",
+      "registered_web": "Passkey registrata",
+      "simulated_suffix": " (simulato)",
+      "remove_button": "Rimuovi",
+      "require_toggle_native": "Richiedi sblocco biometrico",
+      "require_toggle_web": "Richiedi {{label}} allo sblocco",
+      "require_toggle_aria_web": "Richiedi sblocco con passkey",
+      "require_toggle_desc_native": "Chiedi la biometria del dispositivo prima dello sblocco (la tua password funziona comunque).",
+      "require_toggle_desc_web": "Chiedi la tua passkey prima dello sblocco (la tua password funziona comunque).",
+      "applies_all_sessions": "Questo si applica a tutte le sessioni del portafoglio su questo dispositivo.",
+      "default_label": "Passkey",
+      "checking_availability": "Verifica disponibilità…",
+      "simulated_in_demo": "{{label}} simulata in demo. ",
+      "awaiting_biometric": "In attesa della biometria…",
+      "awaiting_passkey": "In attesa della passkey…",
+      "preview_biometric_prompt": "Anteprima prompt biometrico",
+      "preview_passkey_prompt": "Anteprima prompt passkey",
+      "simulated_prefix": "Simulato ",
+      "biometric_verified": "biometria verificata",
+      "passkey_verified": "passkey verificata",
+      "biometric_prompt_cancelled": "Prompt biometrico annullato",
+      "passkey_prompt_cancelled": "Prompt passkey annullato"
+    },
+    "hardware_kek": {
+      "heading": "Protezione hardware sul dispositivo",
+      "badge_webauthn": "Protetto da WebAuthn",
+      "badge_off": "DISATTIVATO",
+      "description_pre": "Vincola il tuo portafoglio a questo dispositivo fisico. Dopo l'attivazione, il tuo portafoglio può essere aperto solo su ",
+      "description_device": "questo dispositivo",
+      "description_post": ". Un backup rubato è inutile senza il dispositivo stesso, anche con il tuo PIN.",
+      "description_web_suffix": "Funziona su Chrome 99+ e Firefox 108+. Safari non è supportato.",
+      "device_binding_note": "Il vincolo al dispositivo è attivo e testato su hardware reale.",
+      "checking_status": "Verifica dello stato…",
+      "web_prf_unsupported": "La protezione hardware non è disponibile in questo browser. Usa Chrome 99+ o Firefox 108+, oppure usa l'app iOS o Android.",
+      "errors": {
+        "wrong_pin": "PIN errato — inserisci il PIN che usi per sbloccare il tuo portafoglio.",
+        "no_hardware": "Impossibile raggiungere la sicurezza hardware di questo dispositivo. Riprova, oppure usa un altro dispositivo.",
+        "malformed_vault": "I dati del portafoglio memorizzati non è stato possibile leggerli su questo dispositivo.",
+        "not_enrolled": "La protezione hardware non è attiva su questo vault, quindi non c'è nulla da aggiornare.",
+        "generic": "Qualcosa è andato storto. Riprova.",
+        "key_invalidated": "Le tue impronte digitali sono cambiate — la protezione hardware è stata invalidata. Disattiva e riattiva la protezione hardware, oppure ripristina dalla tua frase seed.",
+        "insecure_tier": "Questo dispositivo non ha un elemento di sicurezza hardware — la protezione hardware non può essere attivata qui.",
+        "enter_pin_first": "Inserisci prima il tuo PIN del vault.",
+        "enter_pin_confirm_removal": "Inserisci il tuo PIN del vault per confermare la rimozione.",
+        "enter_pin_upgrade": "Inserisci il tuo PIN del vault per l'aggiornamento."
+      },
+      "toast": {
+        "enabled": "Protezione hardware attivata — il tuo vault ora richiede questo dispositivo per sbloccarsi.",
+        "removed": "Protezione hardware rimossa.",
+        "upgraded": "Protezione hardware aggiornata — il tuo vault ora è vincolato con una chiave unica per dispositivo."
+      },
+      "pin_strength": {
+        "hardware_title": "Protetto a livello hardware.",
+        "hardware_body": "Il tuo PIN combinato con Face ID, impronta digitale o passkey rende gli attacchi offline non praticabili — un aggressore avrebbe bisogno sia del tuo PIN sia di questo dispositivo fisico.",
+        "no_hardware_title": "Nessun fattore hardware disponibile in questo browser.",
+        "no_hardware_body": "Il tuo PIN a 8 cifre (~100 M combinazioni) è protetto solo da Argon2id — un aggressore determinato potrebbe esaurirlo offline in giorni o settimane. Usa una password di 12+ caratteri, oppure passa a Chrome/Firefox per attivare la protezione hardware.",
+        "pre_enroll_title": "Robustezza del PIN.",
+        "pre_enroll_body": "Un PIN a 8 cifre ha circa 100 M combinazioni. Argon2id rallenta gli attacchi offline a circa 1-2 anni su un singolo thread — ma un cluster GPU potrebbe ridurlo a giorni. Attivare Face ID, impronta digitale o passkey qui sopra rende gli attacchi offline non praticabili richiedendo questo dispositivo a ogni sblocco."
+      },
+      "enrolled": {
+        "active_title": "Attivo su questo dispositivo",
+        "active_body_native": "Il tuo vault richiede la biometria di questo dispositivo per sbloccarsi.",
+        "active_body_web": "Il tuo vault richiede la passkey di questo dispositivo per sbloccarsi."
+      },
+      "upgrade": {
+        "available_title": "Aggiornamento disponibile",
+        "available_body": "Il tuo portafoglio era protetto con una versione precedente che condivideva una chiave tra i dispositivi. Aggiorna per vincolarlo solo a questo dispositivo. Questo avviene una sola volta e ti chiede di verificare due volte.",
+        "cta": "Aggiorna la protezione hardware",
+        "busy": "Aggiornamento — approva entrambi i prompt…",
+        "prompt": "Inserisci il tuo PIN del vault. Dovrai autenticarti due volte per rimettere in sicurezza il vault.",
+        "cancel": "Annulla"
+      },
+      "remove": {
+        "cta": "Rimuovi la protezione hardware",
+        "prompt_native": "Inserisci il tuo PIN per confermare. Dovrai verificare con la tua impronta digitale o il tuo volto.",
+        "prompt_web": "Inserisci la tua password per confermare. Dovrai verificare con la tua passkey.",
+        "busy": "Rimozione — approva il prompt…",
+        "cancel": "Annulla"
+      },
+      "enroll": {
+        "prompt_native": "Inserisci il tuo PIN del vault per attivare la protezione hardware.",
+        "prompt_web": "Inserisci il tuo PIN a 8 cifre per attivare la protezione hardware. Il tuo browser creerà una passkey per vincolare il tuo portafoglio a questo dispositivo.",
+        "cta": "Attiva protezione hardware",
+        "busy_native": "Attivazione — approva il prompt biometrico…",
+        "busy_web": "Attivazione — approva il prompt passkey…",
+        "footnote_native": "Ti verrà chiesto di autenticarti con la biometria o il codice del tuo dispositivo.",
+        "footnote_web": "Il tuo browser ti chiederà di autenticarti con una biometria o il codice del dispositivo per creare la passkey."
+      },
+      "blocked": "Le impostazioni di protezione hardware non sono disponibili in questa sessione."
+    },
+    "two_factor": {
+      "heading": "Autenticazione a due fattori per le azioni critiche",
+      "intro": "Un controllo aggiuntivo oltre al tuo PIN per le azioni sensibili. Anche se qualcuno ti vede digitare il PIN, non può comunque compiere queste azioni senza il secondo passaggio.",
+      "actions_protects_label": "Azioni protette",
+      "gated_actions": [
+        { "label": "Invio di fondi", "desc": "ogni invio, dopo i controlli di sicurezza" },
+        { "label": "Rivelare la tua frase di recupero", "desc": "visualizzare o esportare il tuo backup" },
+        { "label": "Impostare un PIN di emergenza", "desc": "creazione del portafoglio di emergenza" },
+        { "label": "Creare o nascondere un portafoglio", "desc": "modifiche al portafoglio nascosto" }
+      ],
+      "currently_enforcing": "Attualmente in vigore:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + Password d'azione",
+      "badge_off": "Disattivato (solo PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Sei in una sessione esca / nascosta. Configura l'autenticazione a due fattori dalla tua sessione reale.",
+      "method_a_title": "PIN + Password d'azione",
+      "on_suffix": "ATTIVO",
+      "method_a_desc": "Una seconda password salvata all'interno del tuo portafoglio. Robusta, ma entrambe le password si trovano sullo stesso dispositivo.",
+      "label_pin": "Il tuo PIN",
+      "label_wallet_password": "Password del portafoglio",
+      "pin_confirm_placeholder": "Conferma che sei tu",
+      "action_password_label_change": "Nuova password d'azione",
+      "action_password_label_set": "Password d'azione",
+      "action_password_placeholder": "Almeno 8 caratteri",
+      "action_password_hint": "Almeno 8 caratteri · qualsiasi carattere è ammesso",
+      "too_short": "Usa almeno {{min}} caratteri.",
+      "confirm_label": "Conferma",
+      "confirm_placeholder": "Reinserisci la Password d'azione",
+      "confirm_hint": "Deve corrispondere alla tua Password d'azione",
+      "mismatch": "Le password non corrispondono.",
+      "save_change": "Cambia Password d'azione",
+      "save_set": "Imposta Password d'azione",
+      "remove": "Rimuovi Password d'azione",
+      "toast_changed": "Password d'azione modificata",
+      "toast_set": "Password d'azione impostata",
+      "toast_set_error": "Impossibile impostare la Password d'azione",
+      "toast_confirm_pin_required": "Inserisci il PIN / la password del tuo portafoglio per confermare",
+      "toast_removed": "Password d'azione rimossa",
+      "toast_remove_error": "Impossibile rimuovere la Password d'azione",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "Il tuo PIN più {{label}}. Se la biometria non è disponibile, l'azione viene bloccata. Perdere il tuo dispositivo non fa mai perdere i tuoi fondi.",
+      "method_b_desc_web": "Il tuo PIN più un tocco su passkey. Se la passkey non è disponibile, l'azione viene bloccata. Perderla non fa mai perdere i tuoi fondi.",
+      "switch_aria_native": "Usa la biometria del mio dispositivo come secondo fattore",
+      "switch_aria_web": "Usa la passkey come secondo fattore",
+      "confirm_native": "Conferma le azioni critiche con {{label}}.",
+      "unavailable_native": "{{label}} / il codice del dispositivo non è configurato su questo dispositivo — attivalo nelle impostazioni del tuo dispositivo per usare questo fattore.",
+      "unsupported_web": "Questo browser non supporta WebAuthn / le passkey.",
+      "register_hint_web_pre": "Nessuna passkey registrata ancora — impostane una in",
+      "register_hint_web_strong": "Passkey del portafoglio",
+      "register_hint_web_post": "qui sotto, poi attivalo.",
+      "toggle_biometric_needed": "{{label}} non è configurato su questo dispositivo.",
+      "toggle_passkey_needed": "Registra prima una passkey (Passkey del portafoglio, qui sotto).",
+      "toggle_biometric_on": "Secondo fattore {{label}} attivo",
+      "toggle_biometric_off": "Secondo fattore {{label}} disattivo",
+      "toggle_passkey_on": "Secondo fattore passkey attivo",
+      "toggle_passkey_off": "Secondo fattore passkey disattivo"
+    },
+    "session": {
+      "title": "Sessione e blocco automatico",
+      "description": "Blocca il tuo portafoglio dopo un periodo di inattività o quando esci dall'app",
+      "status_unlocked": "Sbloccato",
+      "status_locked": "Bloccato",
+      "auto_lock_after": "Blocco automatico dopo",
+      "never_note": "Nessun blocco automatico su inattività, ma si blocca comunque dopo ~45 s in background e dopo 8 ore sbloccato.",
+      "resets_note": "Si azzera ogni volta che interagisci con l'app. Si blocca anche immediatamente quando va in background.",
+      "lock_now": "Blocca ora",
+      "recent_activity": "Attività recente",
+      "view_all": "Vedi tutto",
+      "this_device": "Questo dispositivo",
+      "active_now": "Attivo ora"
+    },
+    "rehearsal": {
+      "title": "Prova la negabilità",
+      "description": "Vedi la dashboard esattamente come la vedrebbe qualcuno con il tuo telefono sbloccato in mano."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Portafoglio",
+    "sidebar_expand": "Espandi barra laterale",
+    "sidebar_collapse": "Comprimi barra laterale",
+    "search_placeholder": "Cerca...",
+    "search_shortcut_title": "Cerca (⌘K)",
+    "lock": "Blocca",
+    "lock_confirm_prompt": "Bloccare ora questo portafoglio?",
+    "back": "Indietro",
+    "settings": "Impostazioni",
+    "main_content_aria": "Contenuto principale",
+    "bottom_nav_aria": "Navigazione inferiore",
+    "more_features_aria": "Altre funzionalità",
+    "more": "Altro",
+    "close": "Chiudi",
+    "all_features_heading": "Tutte le funzionalità",
+    "recent_heading": "Recenti",
+    "tab_home": "Home",
+    "tab_send": "Invia",
+    "tab_receive": "Ricevi"
+  },
+  "back": {
+    "default_label": "Indietro"
+  },
+  "send": {
+    "heading": "Invia crypto",
+    "subheading": "Trasferisci fondi in modo sicuro",
+    "wallet_fallback": "Portafoglio",
+    "wallet_picker": { "label": "Dal portafoglio", "placeholder": "Seleziona portafoglio" },
+    "asset_picker": { "label": "Asset", "placeholder": "Seleziona asset" },
+    "recipient": {
+      "label": "Invia a (indirizzo o nome)",
+      "placeholder": "Incolla un indirizzo o inserisci un nome (es. vitalik.eth)",
+      "scan_qr": "Scansiona codice QR",
+      "resolving": "Risoluzione del nome…",
+      "name_not_found": "Nome non trovato — controlla l'ortografia o incolla direttamente l'indirizzo.",
+      "ens_using_prefix": "Uso di {{name}} →",
+      "ens_confirm_intro": "cercato privatamente sulla blockchain su:",
+      "ens_confirm_hint": "Conferma che questo indirizzo sia corretto prima di inviare.",
+      "use_this_address": "Usa questo indirizzo",
+      "not_whitelisted": "Questo indirizzo non è nella tua whitelist. Ricontrolla prima di procedere. Puoi aggiungere indirizzi fidati nelle Impostazioni.",
+      "self_send_warning": "Stai inviando al tuo stesso indirizzo di portafoglio. Questo non sposta nulla tra portafogli e costa comunque una commissione di rete. Ricontrolla il destinatario prima di continuare."
+    },
+    "screening": {
+      "local_disclosure": "I destinatari vengono controllati sul tuo dispositivo per individuare indirizzi di truffa in base alla tua cronologia — nulla lascia il tuo dispositivo.",
+      "remote_opt_in": "Controlla anche su un database di minacce online (invia questo indirizzo a terze parti)",
+      "remote_unavailable": "Il controllo online è attivato, ma nessun provider è configurato in questa build — il controllo resta locale, quindi non abbiamo potuto verificarlo rispetto a una lista esterna.",
+      "demo_poison_button": "Demo: incolla un indirizzo simile"
+    },
+    "simulation": {
+      "title": "Simulazione della transazione",
+      "toggle_aria": "Attiva/disattiva la simulazione della transazione",
+      "description": "Prima che tu firmi, eseguiamo un controllo preliminare locale — nessun servizio di terze parti, nessun dato lascia il tuo dispositivo.",
+      "checks": [
+        "Rischio indirizzo (poison / simile)",
+        "Decodifica del contratto",
+        "Flag di approvazione illimitata",
+        "Previsione di revert",
+        "Anomalia rispetto alla tua cronologia",
+        "Avviso di uscita elevata"
+      ],
+      "results_hint": "I risultati appaiono nel passaggio successivo dopo aver inserito un indirizzo e un importo.",
+      "off_hint": "La simulazione è disattivata — nessun controllo preliminare verrà eseguito prima della firma.",
+      "taking_too_long": "Ci sta mettendo troppo?",
+      "turn_off": "Disattiva simulazione"
+    },
+    "amount": {
+      "label": "Importo",
+      "placeholder": "0,00",
+      "being_sent": "in invio",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(in tempo reale)",
+      "reading_from_network": "lettura dalla rete…"
+    },
+    "errors": {
+      "amount_missing": "L'importo è obbligatorio",
+      "amount_not_positive": "L'importo deve essere maggiore di zero",
+      "amount_malformed": "Inserisci un importo decimale semplice, come 0,5",
+      "amount_over_balance": "Saldo insufficiente",
+      "insufficient_balance_title": "Saldo insufficiente.",
+      "insufficient_balance_body": "Hai {{balance}} {{currency}} disponibili per l'invio (dopo la commissione di rete). Riduci l'importo per continuare."
+    },
+    "status": {
+      "not_enabled": "L'invio non è ancora attivo per {{currency}}. Questo asset è solo in ricezione finché il suo percorso crypto non viene verificato.",
+      "dev_ungate_title": "SBLOCCO DEV ATTIVO",
+      "dev_ungate_body": "— il gate di invio è aggirato per {{currency}} tramite VITE_DEV_UNGATE_SEND (solo build di sviluppo). Lo stato di questo asset è invariato (ancora non attivo); il mainnet resta bloccato. Solo verifica su testnet — non spedire mai questa build.",
+      "locked": "Il tuo portafoglio è bloccato. Sbloccalo in Impostazioni portafoglio per firmare e inviare."
+    },
+    "note": { "label": "Nota (facoltativa)", "placeholder": "A cosa serve?" },
+    "trezor": {
+      "toggle_label": "Firma con Trezor",
+      "connected": "Dispositivo connesso",
+      "connect_button": "Connetti dispositivo"
+    },
+    "buttons": {
+      "continue": "Continua",
+      "confirm_send": "Conferma e invia",
+      "back": "Indietro"
+    },
+    "verify": { "summary_label": "Stai inviando" },
+    "fee": {
+      "automatic": "La commissione di rete è impostata automaticamente per {{currency}} ({{network}}).",
+      "native_fee_note": "La commissione di rete è pagata in {{symbol}} ({{network}}) — ti serve {{symbol}} per coprire la commissione di rete anche quando invii {{token}}."
+    },
+    "decode": {
+      "heading": "Cosa fa questa transazione",
+      "action": "Azione",
+      "send_tokens": "Invia token",
+      "token": "Token",
+      "amount": "Importo",
+      "recipient": "Destinatario",
+      "grant_permission": "Concedi permesso di spesa",
+      "permission": "Permesso",
+      "unlimited_permission": "Illimitato (questa app può spendere qualsiasi importo)",
+      "spender": "Spender"
+    },
+    "reauth": {
+      "prompt": "Reinserisci il tuo {{credential}} per autorizzare",
+      "credential_pin": "PIN",
+      "credential_password": "password",
+      "submit_pin": "Autorizza",
+      "submit_password": "Autorizza e invia",
+      "password_placeholder": "Password del vault",
+      "password_aria": "Password del vault per l'autorizzazione dell'invio",
+      "errors": {
+        "unavailable": "Verifica non disponibile — riblocca e sblocca di nuovo il portafoglio.",
+        "incorrect": "Errata — riprova ({{remaining}} rimasti)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transazione trasmessa",
+      "heading": "Transazione trasmessa",
+      "body_suffix": "firmata localmente e inviata alla rete",
+      "tx_hash_label": "Hash della transazione",
+      "view_explorer": "Visualizza sull'explorer di blocchi",
+      "pending_note": "In attesa fino alla conferma sulla rete. Il saldo si aggiorna dalla blockchain, non da un valore memorizzato.",
+      "send_another": "Invia un altro"
+    },
+    "toasts": {
+      "ens_off_in_session": "La risoluzione dei nomi è disattivata in questa sessione — incolla direttamente l'indirizzo.",
+      "ens_not_found": "Nome ENS non trovato",
+      "sns_unavailable": "La risoluzione dei nomi Solana non è ancora disponibile — incolla direttamente l'indirizzo.",
+      "ens_resolution_failed": "Risoluzione del nome non riuscita",
+      "verify_required": "Completa la verifica del tuo backup prima di inviare questo importo.",
+      "two_factor_retry": "L'invio non è riuscito a completarsi — verifica di nuovo per riprovare.",
+      "send_failed_fallback": "Invio non riuscito",
+      "unconfirmed": "Impossibile confermare questa transazione sulla rete per ora — potrebbe essere ancora in attesa. Controlla sull'explorer."
+    }
+  },
+  "receive": {
+    "heading": "Ricevi crypto",
+    "subheading": "Mostra un indirizzo di portafoglio per ricevere fondi",
+    "asset_label": "Asset",
+    "asset_placeholder": "Scegli asset",
+    "not_available": "La ricezione di {{name}} ({{symbol}}) non è ancora disponibile. Non viene mostrato alcun indirizzo finché questo asset non è attivo.",
+    "locked": {
+      "title": "Portafoglio bloccato",
+      "body": "Sblocca il tuo portafoglio per rivelare il tuo indirizzo di ricezione {{asset}} {{network}}.",
+      "open_hd_wallet": "Apri Gestione portafoglio HD"
+    },
+    "your_address": "Il tuo indirizzo {{asset}}",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Indirizzo di ricezione {{symbol}}",
+    "copy": {
+      "copied_aria": "Indirizzo copiato negli appunti",
+      "copy_aria": "Copia indirizzo",
+      "copied_toast": "Indirizzo copiato",
+      "copy_failed_toast": "Impossibile copiare — seleziona e copia l'indirizzo manualmente"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} è un token su una rete compatibile con Ethereum. Questo è il tuo indirizzo di portafoglio — fai inviare {{symbol}} solo su {{network}}. Inviarlo su una rete diversa può far perdere i fondi in modo permanente.",
+      "evm": "Questo è il tuo indirizzo di portafoglio condiviso. Invia {{name}} solo su {{network}} a questo indirizzo, e assicurati che il mittente usi {{network}}.",
+      "btc": "Invia Bitcoin solo su {{network}} a questo indirizzo.",
+      "solana": "Invia Solana solo su {{network}} a questo indirizzo."
+    },
+    "select_asset_prompt": "Seleziona un asset da ricevere.",
+    "unlock_footer_note": "Gli indirizzi provengono dal tuo portafoglio sul dispositivo e appaiono solo mentre è sbloccato."
+  },
+  "dashboard": {
+    "portfolioValue": "Valore del portafoglio",
+    "priceAlertsTriggered_one": "{{count}} avviso di prezzo attivato!",
+    "priceAlertsTriggered_other": "{{count}} avvisi di prezzo attivati!",
+    "lockAriaLabel": "Blocca il saldo dietro la biometria",
+    "lockBalance": "Blocca il saldo",
+    "synced": "Sincronizzato {{time}}",
+    "syncJustNow": "Proprio ora",
+    "syncSecondsAgo_one": "{{count}} sec fa",
+    "syncSecondsAgo_other": "{{count}} sec fa",
+    "syncMinutesAgo_one": "{{count}} min fa",
+    "syncMinutesAgo_other": "{{count}} min fa",
+    "actions": {
+      "send": "Invia",
+      "receive": "Ricevi",
+      "schedule": "Pianifica",
+      "add": "Aggiungi"
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Attività",
+      "analytics": "Analisi"
+    },
+    "emptyWallets": {
+      "title": "Ancora nessun portafoglio",
+      "description": "Aggiungi un portafoglio per iniziare a ricevere, inviare e detenere asset su più chain."
+    },
+    "addWallet": "Aggiungi portafoglio",
+    "searchTransactionsPlaceholder": "Cerca transazioni...",
+    "emptySearch": {
+      "title": "Nessuna transazione corrispondente",
+      "description": "Prova ad azzerare i filtri o a cercare un asset o un indirizzo diverso."
+    },
+    "emptyTransactions": {
+      "title": "Ancora nessuna transazione",
+      "description": "La tua attività on-chain apparirà qui non appena invii o ricevi."
+    },
+    "portfolioPerformance": "Andamento del portafoglio",
+    "assetDistribution": "Distribuzione degli asset",
+    "quickAccess": "Accesso rapido",
+    "quickAccessItems": {
+      "receive": "Ricevi",
+      "security": "Sicurezza",
+      "approvals": "Approvazioni",
+      "addressCheck": "Verifica indirizzo",
+      "analytics": "Analisi",
+      "sentiment": "Sentiment",
+      "riskScore": "Punteggio di rischio"
+    },
+    "walletNameLabel": "Nome del portafoglio",
+    "walletNamePlaceholder": "Il mio portafoglio ETH",
+    "addWalletDialog": {
+      "title": "Aggiungi portafoglio",
+      "currency": "Valuta",
+      "creating": "Creazione...",
+      "create": "Crea portafoglio"
+    },
+    "renameWalletDialog": {
+      "title": "Rinomina portafoglio",
+      "saving": "Salvataggio...",
+      "save": "Salva nome"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Vault crittografato",
+    "backup": {
+      "title": "Fai il backup di \"{{name}}\"",
+      "reauthDescription": "Conferma che sei tu, poi ti mostreremo la frase di recupero per questo portafoglio.",
+      "description": "Scrivi queste 12 parole offline. Chiunque le possieda può spendere i fondi di questo portafoglio — ed è l'unico modo per recuperarlo.",
+      "warning": "Non fare mai uno screenshot. Non digitarla mai in un'altra app.",
+      "confirmButton": "L'ho scritta — segna come sottoposta a backup"
+    },
+    "addWallet": {
+      "defaultWalletName": "il tuo nuovo portafoglio",
+      "backupDescription": "Questo portafoglio ha una propria frase di recupero — separata da ogni altro portafoglio nel tuo vault. Scrivila offline prima di usarlo.",
+      "backedUpDone": "L'ho sottoposto a backup — fatto",
+      "title": "Aggiungi un portafoglio",
+      "createNew": "Crea nuovo",
+      "importSeed": "Importa seed",
+      "createDescription": "Genera un NUOVO seed che deriva TUTTE le chain (ETH/EVM, BTC, SOL). Ne farai il backup prima che diventi attivo.",
+      "importDescription": "Incolla un seed esistente di 12/24 parole — tutte le chain vengono derivate automaticamente (un seed non è specifico per una chain).",
+      "recoveryPhraseLabel": "Frase di recupero",
+      "recoveryPhrasePlaceholder": "parola1 parola2 ... parola12",
+      "walletNameLabel": "Nome del portafoglio",
+      "walletNamePlaceholder": "es. Risparmi",
+      "assetsToShowLabel": "Asset da mostrare",
+      "assetsToShowHint": "Solo scelta di visualizzazione — il seed detiene comunque ogni chain.",
+      "confirmVaultPlaceholder": "Conferma che sei tu per modificare il tuo vault",
+      "vaultReentryHint": "Reinserito per autorizzare una modifica al tuo vault del seed. Mai conservato in memoria.",
+      "createAndBackup": "Crea e fai il backup",
+      "importWallet": "Importa portafoglio"
+    },
+    "vaultPinLabel": "PIN del vault",
+    "vaultPasswordLabel": "Password del vault",
+    "cancel": "Annulla",
+    "done": "Fatto",
+    "manageAssets": {
+      "title": "Asset per \"{{name}}\"",
+      "description": "Scegli quali asset mostrare per questo portafoglio. Quelli nascosti restano fuori dalla vista finché non vengono aggiunti."
+    },
+    "rename": {
+      "title": "Rinomina portafoglio",
+      "save": "Salva nome"
+    },
+    "remove": {
+      "title": "Rimuovere \"{{name}}\"?",
+      "onlyWallet": "Questo è il tuo unico portafoglio — non può essere rimosso. Usa Panic Wipe in Sicurezza per cancellare tutto.",
+      "description": "Rimuove il seed di questo portafoglio da questo dispositivo.",
+      "backedUpNote": "Puoi ripristinarlo dalla sua frase di recupero.",
+      "notBackedUpNote": "⚠️ NON sottoposto a backup — senza la sua frase è perso per sempre.",
+      "button": "Rimuovi portafoglio"
+    },
+    "move": {
+      "title": "Sposta \"{{name}}\" in…"
+    },
+    "managePortfolios": {
+      "title": "Portafogli (gruppi)",
+      "defaultTag": "(predefinito)",
+      "saveAriaLabel": "Salva nome del gruppo di portafogli",
+      "renameAriaLabel": "Rinomina {{name}}",
+      "deleteAriaLabel": "Elimina {{name}}",
+      "newNamePlaceholder": "Nuovo nome gruppo",
+      "addButton": "Aggiungi"
+    },
+    "activity": {
+      "unlockPrompt": "Sblocca il tuo portafoglio per vedere l'attività.",
+      "loading": "Caricamento...",
+      "loadError": "Impossibile caricare l'attività.",
+      "noTransactions": "Ancora nessuna transazione.",
+      "viewFullHistory": "Vedi la cronologia completa →"
+    },
+    "portfolioValueLabel": "Valore del portafoglio",
+    "explore": {
+      "subtitle": "Stai esplorando — solo visualizzazione. Ancora nessun portafoglio.",
+      "description": "Guarda liberamente in giro. Quando sei pronto, crea un nuovo portafoglio self-custody o importa un seed esistente — le chiavi vengono generate e crittografate su questo dispositivo.",
+      "createOrImport": "Crea o importa un portafoglio"
+    },
+    "portfoliosButton": "Gruppi di portafogli",
+    "totalValueHeading": "{{name}} · Valore totale",
+    "partialTotalNote": "Alcuni saldi non è stato possibile caricarli — questo totale potrebbe essere incompleto.",
+    "refreshPricesTooltip": "Aggiorna prezzi in tempo reale",
+    "live": "In tempo reale",
+    "approximate": "Approssimativo",
+    "seedVerify": {
+      "title": "Completa la verifica del tuo backup",
+      "description": "Richiesto per inviare oltre la soglia di sicurezza.",
+      "verifyAriaLabel": "Verifica il backup del tuo portafoglio",
+      "verifyButton": "Verifica"
+    },
+    "unbacked": {
+      "titleBold": "Backup del portafoglio incompleto.",
+      "body": "Ogni portafoglio ha una propria frase di recupero — senza di essa, i fondi di quel portafoglio sono irrecuperabili. Fai il backup ora.",
+      "backUpButton": "Fai il backup di \"{{name}}\""
+    },
+    "actions": {
+      "send": "Invia",
+      "receive": "Ricevi",
+      "addWallet": "Aggiungi portafoglio"
+    },
+    "activeWalletHint": {
+      "prefix": "Invia/Ricevi usa",
+      "otherPortfolio": " (in un altro gruppo di portafogli)",
+      "suffix": ". Tocca un portafoglio qui sotto per cambiare."
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Attività",
+      "analytics": "Analisi"
+    },
+    "noWalletsInPortfolio": "Nessun portafoglio in \"{{name}}\". Aggiungi un portafoglio, o spostane uno qui dal suo menu.",
+    "hideAssets": "Nascondi asset",
+    "showAllAssets": "Mostra tutti gli asset",
+    "walletCard": {
+      "active": "Attivo",
+      "backedUp": "Sottoposto a backup",
+      "backUp": "Fai il backup",
+      "partial": "parziale",
+      "optionsAriaLabel": "Opzioni per {{name}}",
+      "noAssetsShown": "Nessun asset mostrato. Usa \"Gestisci asset\"."
+    },
+    "menu": {
+      "manageAssets": "Gestisci asset",
+      "rename": "Rinomina",
+      "moveToPortfolio": "Sposta in un gruppo",
+      "backUp": "Fai il backup",
+      "remove": "Rimuovi"
+    },
+    "balanceLoadFailedTitle": "Impossibile caricare il saldo",
+    "defaultWalletFallbackName": "portafoglio",
+    "toast": {
+      "walletImported": "Portafoglio importato — tutte le chain derivate.",
+      "walletRemoved": "Portafoglio rimosso da questo dispositivo.",
+      "walletAddedBackedUp": "Portafoglio aggiunto e sottoposto a backup.",
+      "movedTo": "Spostato in {{name}}.",
+      "markedBackedUp": "\"{{name}}\" contrassegnato come sottoposto a backup."
+    },
+    "errors": {
+      "couldNotAddWallet": "Impossibile aggiungere il portafoglio",
+      "couldNotImportWallet": "Impossibile importare il portafoglio",
+      "couldNotRemoveWallet": "Impossibile rimuovere il portafoglio"
+    }
+  },
+  "networth": {
+    "title": "Patrimonio netto crypto",
+    "unlockPrompt": "Sblocca il tuo portafoglio per vedere i tuoi possedimenti on-chain.",
+    "subtitle": "I tuoi possedimenti on-chain — non include asset esterni.",
+    "totalHoldings": "Possedimenti totali",
+    "partialNote": "parziale — alcuni saldi non è stato possibile leggerli",
+    "refreshPricesTooltip": "Aggiorna prezzi in tempo reale",
+    "live": "In tempo reale",
+    "approximate": "Approssimativo",
+    "allocation": "Allocazione",
+    "holdings": "Possedimenti",
+    "noHoldings": "Ancora nessun possedimento."
+  }
+}

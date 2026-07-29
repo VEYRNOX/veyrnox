@@ -17,57 +17,34 @@
 //
 // FALLBACK: any missing key falls through to 'en'. Zero silent blanks in
 // prod (a missing German string renders the English one, not nothing).
+//
+// LOAD STRATEGY — code-split per locale (Phase 5, 2026-07-29).
+// Only EN is bundled synchronously. Every other catalog is a Vite lazy
+// chunk pulled in via `import.meta.glob` and materialised on demand:
+//   - at boot, if `pickSupported(navigator.language) !== 'en'`, load that
+//     locale's 3 catalogs asynchronously, addResourceBundle, changeLanguage
+//   - on LOCALE_CHANGED_EVENT (Settings switcher), load the newly-picked
+//     locale if not already cached, then changeLanguage
+// Non-en users see EN for ~1 render frame before their locale swaps in
+// (i18next fallbackLng: 'en' covers the gap). All 23 non-en catalogs would
+// otherwise sit in the main bundle at ~30 KB gzipped each — the eager
+// baseline before Phase 5 was ~700 KB and regressed LCP through its budget.
 
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { resolveLocale, LOCALE_CHANGED_EVENT } from '@/lib/locale';
 
-// Static imports — bundled at build time. Small enough (~a few KB each) that
-// code-splitting per-locale isn't worth the runtime fetch penalty for a
-// wallet app that already ships offline-first. If catalogs grow past ~50 KB
-// each, revisit with i18next-http-backend + Vite's dynamic-import chunking.
+// EN is the baseline + fallback — MUST be synchronous, never lazy.
 import enCommon from './locales/en/common.json';
 import enSecurity from './locales/en/security.json';
 import enWallet from './locales/en/wallet.json';
-import esCommon from './locales/es/common.json';
-import esSecurity from './locales/es/security.json';
-import esWallet from './locales/es/wallet.json';
-import deCommon from './locales/de/common.json';
-import deSecurity from './locales/de/security.json';
-import deWallet from './locales/de/wallet.json';
-import zhCommon from './locales/zh-CN/common.json';
-import zhSecurity from './locales/zh-CN/security.json';
-import zhWallet from './locales/zh-CN/wallet.json';
-import ptBRCommon from './locales/pt-BR/common.json';
-import ptBRSecurity from './locales/pt-BR/security.json';
-import ptBRWallet from './locales/pt-BR/wallet.json';
-import frCommon from './locales/fr/common.json';
-import frSecurity from './locales/fr/security.json';
-import frWallet from './locales/fr/wallet.json';
-import nlCommon from './locales/nl/common.json';
-import nlSecurity from './locales/nl/security.json';
-import nlWallet from './locales/nl/wallet.json';
-import trCommon from './locales/tr/common.json';
-import trSecurity from './locales/tr/security.json';
-import trWallet from './locales/tr/wallet.json';
-import ruCommon from './locales/ru/common.json';
-import ruSecurity from './locales/ru/security.json';
-import ruWallet from './locales/ru/wallet.json';
-import viCommon from './locales/vi/common.json';
-import viSecurity from './locales/vi/security.json';
-import viWallet from './locales/vi/wallet.json';
-import idCommon from './locales/id/common.json';
-import idSecurity from './locales/id/security.json';
-import idWallet from './locales/id/wallet.json';
-import jaCommon from './locales/ja/common.json';
-import jaSecurity from './locales/ja/security.json';
-import jaWallet from './locales/ja/wallet.json';
-import koCommon from './locales/ko/common.json';
-import koSecurity from './locales/ko/security.json';
-import koWallet from './locales/ko/wallet.json';
-import arCommon from './locales/ar/common.json';
-import arSecurity from './locales/ar/security.json';
-import arWallet from './locales/ar/wallet.json';
+
+// Vite generates a separate JS chunk per non-en JSON — matched by the glob,
+// pulled in via dynamic import() at call time. `eager: false` is default;
+// stated for clarity.
+const catalogModules = /** @type {Record<string, () => Promise<{ default: object }>>} */ (
+  import.meta.glob('./locales/*/*.json', { eager: false })
+);
 
 // Which locales are available AT ALL. Every catalog listed here is
 // machine-translated at ship time (except `en`) and gated behind the MT-pending
@@ -80,12 +57,14 @@ import arWallet from './locales/ar/wallet.json';
 export const SUPPORTED_LANGUAGES = [
   'en', 'es', 'de', 'zh-CN',
   'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko', 'ar',
+  'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
 ];
 
 // The default user-facing set. `ar` gated pending RTL layout support.
 export const LANGUAGE_SWITCHER_AVAILABLE = /** @type {readonly string[]} */ ([
   'en', 'es', 'de', 'zh-CN',
   'pt-BR', 'fr', 'nl', 'tr', 'ru', 'vi', 'id', 'ja', 'ko',
+  'it', 'pl', 'uk', 'cs', 'ro', 'el', 'sv', 'da', 'no', 'fi',
 ]);
 
 // Every non-English catalog is machine-translated at the time this ships.
@@ -106,6 +85,16 @@ export const MACHINE_TRANSLATED = /** @type {Record<string, boolean>} */ ({
   ja: true,
   ko: true,
   ar: true,
+  it: true,
+  pl: true,
+  uk: true,
+  cs: true,
+  ro: true,
+  el: true,
+  sv: true,
+  da: true,
+  no: true,
+  fi: true,
 });
 
 // Normalize whatever resolveLocale returns (which follows navigator.language:
@@ -122,38 +111,66 @@ export function pickSupported(raw) {
   // pt-BR — the alternative is fail-honest to English, which is worse UX for a
   // Portuguese speaker who reads pt-BR fine even if pt-PT was their preference.
   if (base === 'pt') return SUPPORTED_LANGUAGES.includes('pt-BR') ? 'pt-BR' : 'en';
+  // Norwegian: browsers send `nb-*` (Bokmål) or `nn-*` (Nynorsk). We ship one
+  // umbrella `no` catalog in Bokmål — both map to it rather than fall through
+  // to English. A Nynorsk speaker reading Bokmål is a much smaller UX cost
+  // than an English fallback, and matches how Norwegian sites usually resolve.
+  if (base === 'nb' || base === 'nn') return SUPPORTED_LANGUAGES.includes('no') ? 'no' : 'en';
   if (SUPPORTED_LANGUAGES.includes(base)) return base;
   return 'en';
 }
 
+// Lazily materialise a non-en locale's 3 catalogs and register them with
+// i18next. No-op for 'en' (already static) and for locales already loaded.
+// On failure (bad chunk, offline first-launch), rejects — caller falls
+// back to 'en'. Never throws sync.
+export async function loadLocale(loc) {
+  if (loc === 'en') return;
+  if (!SUPPORTED_LANGUAGES.includes(loc)) return;
+  // hasResourceBundle('en') returns true from static init; for other locales
+  // it's true only after a previous addResourceBundle succeeded.
+  if (i18n.hasResourceBundle(loc, 'common')
+      && i18n.hasResourceBundle(loc, 'security')
+      && i18n.hasResourceBundle(loc, 'wallet')) {
+    return;
+  }
+  const commonPath = `./locales/${loc}/common.json`;
+  const securityPath = `./locales/${loc}/security.json`;
+  const walletPath = `./locales/${loc}/wallet.json`;
+  const loadOne = (p) => {
+    const mod = catalogModules[p];
+    if (!mod) throw new Error(`i18n: no chunk registered for ${p}`);
+    return mod().then((m) => m.default);
+  };
+  const [common, security, wallet] = await Promise.all([
+    loadOne(commonPath), loadOne(securityPath), loadOne(walletPath),
+  ]);
+  i18n.addResourceBundle(loc, 'common', common, true, true);
+  i18n.addResourceBundle(loc, 'security', security, true, true);
+  i18n.addResourceBundle(loc, 'wallet', wallet, true, true);
+}
+
+// Initial synchronous init with EN only. Non-en catalogs are added
+// via loadLocale() below.
 i18n
   .use(initReactI18next)
   .init({
-    lng: pickSupported(resolveLocale()),
+    lng: 'en',
     fallbackLng: 'en',
     supportedLngs: SUPPORTED_LANGUAGES,
-    // Namespace-per-domain so the security bundle (which MUST render in every
-    // locale without a fallback flash) is loaded up-front. `wallet` was added
-    // in Phase 2 slice 3 for the core non-security surfaces (nav, Dashboard,
-    // Send, Receive, Tx history / receipt, Settings labels). Loading it
-    // eagerly matches the offline-first bundle posture — no runtime fetch.
+    // Namespace-per-domain: `security` (coercion warnings, gates), `wallet`
+    // (Dashboard, Send, Receive, Tx history/receipt, Settings labels), and
+    // `common` (chrome, switcher, generic buttons). Kept as separate files
+    // so each locale's chunks stay small (~10 KB each) rather than one big
+    // ~30 KB blob. Under Phase 5's code-split, EN is inlined at init time;
+    // non-en locales load asynchronously via loadLocale(). Any t() call that
+    // fires BEFORE the picked locale lands renders in English via
+    // fallbackLng — including security copy — for one to a few render
+    // frames on first launch. Second launch is browser-cached.
     ns: ['common', 'security', 'wallet'],
     defaultNS: 'common',
     resources: {
       en: { common: enCommon, security: enSecurity, wallet: enWallet },
-      es: { common: esCommon, security: esSecurity, wallet: esWallet },
-      de: { common: deCommon, security: deSecurity, wallet: deWallet },
-      'zh-CN': { common: zhCommon, security: zhSecurity, wallet: zhWallet },
-      'pt-BR': { common: ptBRCommon, security: ptBRSecurity, wallet: ptBRWallet },
-      fr: { common: frCommon, security: frSecurity, wallet: frWallet },
-      nl: { common: nlCommon, security: nlSecurity, wallet: nlWallet },
-      tr: { common: trCommon, security: trSecurity, wallet: trWallet },
-      ru: { common: ruCommon, security: ruSecurity, wallet: ruWallet },
-      vi: { common: viCommon, security: viSecurity, wallet: viWallet },
-      id: { common: idCommon, security: idSecurity, wallet: idWallet },
-      ja: { common: jaCommon, security: jaSecurity, wallet: jaWallet },
-      ko: { common: koCommon, security: koSecurity, wallet: koWallet },
-      ar: { common: arCommon, security: arSecurity, wallet: arWallet },
     },
     interpolation: {
       // React escapes for us — double-escaping would render literal "&amp;"
@@ -166,19 +183,45 @@ i18n
     saveMissing: false,
     returnEmptyString: false,
     react: {
-      // Suspense off — the security bundle is static so nothing loads async,
-      // and Suspense boundaries around every t() call would hurt LCP.
+      // Suspense off — we handle missing bundles via fallbackLng('en'), not
+      // Suspense boundaries around every t() call (which would hurt LCP).
       useSuspense: false,
     },
   });
 
+// Boot: kick off async load of the user's picked locale (if not en).
+// The initial render uses EN via fallbackLng; when the catalogs land
+// (~1 render frame later on a hot cache, longer on first load) we call
+// changeLanguage and the app re-renders in-language.
+const bootPicked = pickSupported(resolveLocale());
+if (bootPicked !== 'en') {
+  loadLocale(bootPicked)
+    .then(() => i18n.changeLanguage(bootPicked))
+    .catch((err) => {
+      // Fail-honest: stay on EN rather than render broken/blank.
+      if (import.meta.env?.DEV) {
+        console.warn('[i18n] failed to load boot locale', bootPicked, err);
+      }
+    });
+}
+
 // Keep i18next.language in sync with lib/locale.js. When Settings' language
-// switcher fires setLocale(), lib/locale.js emits LOCALE_CHANGED_EVENT and
-// i18next flips too — so no component needs to know about both APIs.
+// switcher fires setLocale(), lib/locale.js emits LOCALE_CHANGED_EVENT; we
+// dynamic-import the newly-picked catalogs if not yet cached, then flip
+// i18next — so no component needs to know about both APIs.
 if (typeof window !== 'undefined') {
-  window.addEventListener(LOCALE_CHANGED_EVENT, () => {
+  window.addEventListener(LOCALE_CHANGED_EVENT, async () => {
     const next = pickSupported(resolveLocale());
-    if (i18n.language !== next) i18n.changeLanguage(next);
+    if (i18n.language === next) return;
+    try {
+      await loadLocale(next);
+    } catch (err) {
+      if (import.meta.env?.DEV) {
+        console.warn('[i18n] failed to load locale on switch', next, err);
+      }
+      return; // stay on current language rather than break
+    }
+    i18n.changeLanguage(next);
   });
 }
 

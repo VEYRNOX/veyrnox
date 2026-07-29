@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Historia transakcji",
+      "subhead": "Wysyłki i wpłaty dla każdego łańcucha odczytywane bezpośrednio z blockchaina — tylko do odczytu, z linkami do eksploratora.",
+      "badge_demo": "Demo · przykładowe dane",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Tryb demo — nic nie jest zapytywane przez sieć; poniższe wiersze to lokalne przykładowe dane.",
+      "loading_label": "Wczytywanie historii {{symbol}}",
+      "error_prefix": "Nie udało się wczytać historii: {{reason}}.",
+      "error_fetch_reason": "Nie udało się połączyć z węzłem RPC — sprawdź połączenie i spróbuj ponownie.",
+      "error_generic_reason": "indeksator nie odpowiedział",
+      "retry": "Ponów",
+      "no_indexer_title": "Historia w aplikacji jest niedostępna dla {{name}} przez JSON-RPC",
+      "no_indexer_body": "Zwykły węzeł JSON-RPC nie potrafi wylistować transakcji adresu, a my celowo nie dodajemy zewnętrznego API eksploratora/indeksatora (nowe źródło danych i powierzchnia łączności z zewnętrznym serwerem). Twoja pełna historia jest dostępna w eksploratorze bloków.",
+      "view_on_explorer": "Zobacz {{address}} w eksploratorze {{network}}",
+      "view_explorer_title": "Zobacz w eksploratorze bloków",
+      "unlock_for_explorer": "Odblokuj portfel, aby uzyskać link do eksploratora dla adresu {{symbol}}.",
+      "locked_title": "Portfel zablokowany",
+      "locked_body": "Odblokuj portfel, aby wyznaczyć adres {{symbol}} i wczytać jego historię.",
+      "empty": "Brak transakcji dla {{symbol}} w sieci {{network}}.",
+      "count_one": "{{count}} transakcja",
+      "count_other": "{{count}} transakcji",
+      "most_recent_suffix": " · najnowsza",
+      "refresh": "Odśwież",
+      "sample_badge": "Przykład",
+      "to_prefix": "Do ",
+      "from_prefix": "Od ",
+      "status_pending": "Oczekująca",
+      "status_confirmed": "Potwierdzona",
+      "status_failed": "Nieudana",
+      "awaiting_confirmation": "oczekuje na potwierdzenie"
+    },
+    "list": {
+      "empty_title": "Brak transakcji",
+      "empty_description": "Gdy wyślesz lub odbierzesz środki na tym portfelu, Twoja aktywność on-chain pojawi się tutaj."
+    },
+    "receipt": {
+      "heading": "Potwierdzenia transakcji",
+      "subhead": "Generuj potwierdzenia do wydruku dla dowolnej transakcji",
+      "search_placeholder": "Szukaj po ID, adresie lub walucie...",
+      "loading": "Wczytywanie...",
+      "error": "Nie udało się wczytać transakcji. Spróbuj ponownie.",
+      "empty": "Nie znaleziono transakcji",
+      "preview_title": "Podgląd potwierdzenia",
+      "print": "Drukuj",
+      "print_window_title": "Potwierdzenie transakcji",
+      "brand": "VEYRNOX",
+      "doc_title": "POTWIERDZENIE TRANSAKCJI",
+      "field_receipt_id": "ID potwierdzenia",
+      "field_date": "Data",
+      "field_type": "Typ",
+      "field_asset": "Aktywo",
+      "field_amount": "Kwota",
+      "field_network_fee": "Opłata sieciowa",
+      "field_status": "Status",
+      "field_to": "Do",
+      "default_type": "Przelew",
+      "default_status": "zakończona",
+      "thank_you": "Dziękujemy za korzystanie z {{brand}}",
+      "thank_you_prefix": "Dziękujemy za korzystanie z",
+      "digital_record": "To jest cyfrowy zapis transakcji"
+    }
+  },
+  "settings": {
+    "heading": "Ustawienia bezpieczeństwa",
+    "subhead": "Blokuj, odblokowuj i chroń swój portfel",
+    "theme": {
+      "dark": "Tryb ciemny",
+      "light": "Tryb jasny",
+      "saved_note": "Zapisano na tym urządzeniu",
+      "switch_to_light": "Przełącz na tryb jasny",
+      "switch_to_dark": "Przełącz na tryb ciemny"
+    },
+    "activity_log": {
+      "label": "Dziennik aktywności",
+      "description": "Domyślnie wyłączony · przechowywany wyłącznie na tym urządzeniu",
+      "help": "Prywatny dziennik: co zmieniłeś, wysłałeś, odwołałeś. Bez kwot i adresów. Panic Wipe go usuwa.",
+      "enable_aria": "Włącz dziennik aktywności",
+      "disable_aria": "Wyłącz dziennik aktywności",
+      "no_events": "Nie zarejestrowano jeszcze żadnych zdarzeń."
+    },
+    "message_signing": {
+      "label": "Podpisywanie wiadomości",
+      "description": "Domyślnie wyłączone · przechowywane wyłącznie na tym urządzeniu",
+      "help": "Domyślnie wyłączone. Pozwala podpisywać dowolne wiadomości tekstowe kluczem portfela. Włącz tylko wtedy, gdy dApp lub usługa poprosi Cię o podpisanie wiadomości.",
+      "enable_aria": "Włącz podpisywanie wiadomości",
+      "disable_aria": "Wyłącz podpisywanie wiadomości"
+    },
+    "telemetry": {
+      "label": "Anonimowe dane o użytkowaniu",
+      "description": "Opcjonalne · nigdy nie obejmuje sald ani adresów",
+      "help": "Pomaga nam znajdować błędy i ulepszać aplikację. Używany jest losowy identyfikator urządzenia — nigdy niepowiązany z Twoim portfelem, kluczami ani tożsamością. Wyłączenie tego zatrzymuje wysyłanie wszelkich danych o użytkowaniu z tego urządzenia.",
+      "enable_aria": "Włącz anonimowe dane o użytkowaniu",
+      "disable_aria": "Wyłącz anonimowe dane o użytkowaniu"
+    },
+    "delete_account": {
+      "title": "Strefa zagrożenia",
+      "clear_cache_label": "Wyczyść lokalną pamięć podręczną",
+      "clear_cache_description": "Czyści zapisane dane na tym urządzeniu i blokuje portfel. Twoja fraza odzyskiwania nadal działa. Aby usunąć klucze, użyj Panic Wipe.",
+      "delete_button": "Usuń",
+      "confirm_prompt_pre": "To czyści zapisane dane i blokuje portfel. Twoja fraza odzyskiwania nadal działa. Wpisz",
+      "confirm_prompt_post": "aby potwierdzić.",
+      "confirm_placeholder": "Wpisz DELETE, aby potwierdzić",
+      "confirm_aria": "Wpisz DELETE, aby potwierdzić reset konta",
+      "cancel": "Anuluj",
+      "confirm_delete": "Potwierdź usunięcie",
+      "deleting": "Usuwanie..."
+    },
+    "biometric_unlock": {
+      "heading": "Odblokowanie biometryczne",
+      "worth_knowing_label": "Warto wiedzieć.",
+      "kdf_disclosure": "Odblokowanie jednym dotknięciem zapisuje hasło Twojego portfela na tym urządzeniu, chronione blokadą ekranu i biometrią. Jeśli ktoś zdobędzie kopię kopii zapasowej Twojego urządzenia bez fizycznego dostępu do niego, mógłby uzyskać dostęp do Twojego portfela. Wyłącz to dla najsilniejszej ochrony.",
+      "app_layer_disclosure_pre": "Odblokowanie biometryczne zapisuje Twoje hasło na tym urządzeniu, chronione odciskiem palca lub twarzą. Działa to wewnątrz aplikacji, nie na poziomie systemu operacyjnego.",
+      "app_layer_disclosure_mid": "Dla silniejszej ochrony na poziomie urządzenia włącz",
+      "hardware_protection_label": "Ochronę sprzętową",
+      "app_layer_disclosure_post": "(dostępne poniżej).",
+      "toggle_label": "Odblokowanie biometryczne (portfel główny)",
+      "toggle_description": "Włącz odblokowanie jednym dotknięciem dla głównego portfela za pomocą biometrii urządzenia.",
+      "before_enable_label": "Zanim to włączysz.",
+      "confirm_disclosure": "Jeśli ktoś zdobędzie kopię kopii zapasowej Twojego urządzenia bez fizycznego dostępu do niego, mógłby uzyskać dostęp do Twojego portfela. Włącz to tylko wtedy, gdy godzisz się z tym ryzykiem.",
+      "confirm_enable_button": "Włącz odblokowanie jednym dotknięciem",
+      "cancel_button": "Anuluj",
+      "checking_availability": "Sprawdzanie dostępności…",
+      "default_label": "Biometria",
+      "available": "{{label}} dostępne.",
+      "available_simulated": "{{label}} dostępne (symulowane w trybie demo).",
+      "status_check_failed": "Nie udało się sprawdzić dostępności biometrii na tym urządzeniu.",
+      "awaiting_prompt": "Oczekiwanie na monit…",
+      "preview_prompt": "Podgląd monitu",
+      "test_success": "Symulowane uwierzytelnienie powiodło się",
+      "test_cancelled": "Monit anulowany"
+    },
+    "passkey_unlock": {
+      "heading_native": "Odblokowanie biometryczne",
+      "heading_web": "Odblokuj kluczem dostępu (Passkey)",
+      "scope_banner_native_pre": "Twój odcisk palca lub twarz są sprawdzane przed odblokowaniem —",
+      "scope_banner_native_post": "to nie zastępuje Twojego hasła. Twoje hasło i fraza odzyskiwania nadal działają samodzielnie, więc utrata biometrii nigdy Cię nie zablokuje.",
+      "scope_banner_web_pre": "Klucz dostępu (passkey) dodaje szybkie dotknięcie biometryczne lub klucz bezpieczeństwa przed odblokowaniem —",
+      "scope_banner_web_post": "to nie zastępuje Twojego hasła. Twoje hasło i fraza odzyskiwania nadal działają samodzielnie, więc utrata klucza dostępu nigdy Cię nie zablokuje.",
+      "extra_step_label": "dodatkowy krok",
+      "enroll_button": "Zarejestruj odblokowanie biometryczne",
+      "register_button": "Zarejestruj klucz dostępu",
+      "not_setup_native": "Biometria urządzenia nie jest skonfigurowana. Najpierw dodaj odcisk palca lub twarz w ustawieniach urządzenia — Twoje hasło nadal działa.",
+      "not_supported_web": "Odblokowanie kluczem dostępu jest niedostępne w tej przeglądarce. Działa w aplikacji mobilnej i nowoczesnych przeglądarkach. Użyj tutaj swojego hasła.",
+      "enroll_error": "Nie udało się zarejestrować odblokowania biometrycznego na tym urządzeniu.",
+      "register_error": "Nie udało się zarejestrować klucza dostępu na tym urządzeniu.",
+      "enrolled_native": "Odblokowanie biometryczne zarejestrowane",
+      "registered_web": "Klucz dostępu zarejestrowany",
+      "simulated_suffix": " (symulowane)",
+      "remove_button": "Usuń",
+      "require_toggle_native": "Wymagaj odblokowania biometrycznego",
+      "require_toggle_web": "Wymagaj {{label}} przy odblokowaniu",
+      "require_toggle_aria_web": "Wymagaj odblokowania kluczem dostępu",
+      "require_toggle_desc_native": "Poproś o biometrię urządzenia przed odblokowaniem (Twoje hasło nadal działa).",
+      "require_toggle_desc_web": "Poproś o klucz dostępu przed odblokowaniem (Twoje hasło nadal działa).",
+      "applies_all_sessions": "Dotyczy to wszystkich sesji portfela na tym urządzeniu.",
+      "default_label": "Klucz dostępu",
+      "checking_availability": "Sprawdzanie dostępności…",
+      "simulated_in_demo": "{{label}} symulowane w trybie demo. ",
+      "awaiting_biometric": "Oczekiwanie na biometrię…",
+      "awaiting_passkey": "Oczekiwanie na klucz dostępu…",
+      "preview_biometric_prompt": "Podgląd monitu biometrycznego",
+      "preview_passkey_prompt": "Podgląd monitu klucza dostępu",
+      "simulated_prefix": "Symulowane ",
+      "biometric_verified": "biometria zweryfikowana",
+      "passkey_verified": "klucz dostępu zweryfikowany",
+      "biometric_prompt_cancelled": "Monit biometryczny anulowany",
+      "passkey_prompt_cancelled": "Monit klucza dostępu anulowany"
+    },
+    "hardware_kek": {
+      "heading": "Ochrona sprzętowa na urządzeniu",
+      "badge_webauthn": "Chronione WebAuthn",
+      "badge_off": "WYŁĄCZONE",
+      "description_pre": "Blokuje Twój portfel do tego fizycznego urządzenia. Po włączeniu portfel można otworzyć wyłącznie na ",
+      "description_device": "tym urządzeniu",
+      "description_post": ". Skradziony plik kopii zapasowej jest bezużyteczny bez samego urządzenia, nawet znając Twój PIN.",
+      "description_web_suffix": "Działa w Chrome 99+ i Firefox 108+. Safari nie jest obsługiwany.",
+      "device_binding_note": "Wiązanie z urządzeniem jest aktywne i przetestowane na prawdziwym sprzęcie.",
+      "checking_status": "Sprawdzanie statusu…",
+      "web_prf_unsupported": "Ochrona sprzętowa jest niedostępna w tej przeglądarce. Użyj Chrome 99+ lub Firefox 108+, albo aplikacji iOS lub Android.",
+      "errors": {
+        "wrong_pin": "Błędny PIN — wpisz PIN, którego używasz do odblokowania portfela.",
+        "no_hardware": "Nie udało się połączyć z zabezpieczeniami sprzętowymi tego urządzenia. Spróbuj ponownie lub użyj innego urządzenia.",
+        "malformed_vault": "Nie udało się odczytać zapisanych danych portfela na tym urządzeniu.",
+        "not_enrolled": "Ochrona sprzętowa nie jest włączona dla tego magazynu, więc nie ma czego uaktualniać.",
+        "generic": "Coś poszło nie tak. Spróbuj ponownie.",
+        "key_invalidated": "Twoje odciski palców uległy zmianie — ochrona sprzętowa została unieważniona. Wyłącz i ponownie włącz ochronę sprzętową lub przywróć z frazy zalążkowej.",
+        "insecure_tier": "To urządzenie nie ma bezpiecznego elementu sprzętowego — ochrony sprzętowej nie można tu włączyć.",
+        "enter_pin_first": "Najpierw wpisz PIN magazynu.",
+        "enter_pin_confirm_removal": "Wpisz PIN magazynu, aby potwierdzić usunięcie.",
+        "enter_pin_upgrade": "Wpisz PIN magazynu, aby dokonać uaktualnienia."
+      },
+      "toast": {
+        "enabled": "Ochrona sprzętowa włączona — Twój magazyn wymaga teraz tego urządzenia do odblokowania.",
+        "removed": "Ochrona sprzętowa usunięta.",
+        "upgraded": "Ochrona sprzętowa uaktualniona — Twój magazyn jest teraz powiązany unikalnym kluczem dla tego urządzenia."
+      },
+      "pin_strength": {
+        "hardware_title": "Chronione sprzętowo.",
+        "hardware_body": "Twój PIN w połączeniu z Face ID, odciskiem palca lub kluczem dostępu sprawia, że ataki offline są niewykonalne — atakujący potrzebowałby zarówno Twojego PIN-u, jak i tego fizycznego urządzenia.",
+        "no_hardware_title": "W tej przeglądarce niedostępny jest żaden czynnik sprzętowy.",
+        "no_hardware_body": "Twój 8-cyfrowy PIN (~100 mln kombinacji) jest chroniony wyłącznie przez Argon2id — zdeterminowany atakujący mógłby go wyczerpać offline w dni do tygodni. Użyj hasła o długości co najmniej 12 znaków lub przełącz się na Chrome/Firefox, aby włączyć ochronę sprzętową.",
+        "pre_enroll_title": "Siła PIN-u.",
+        "pre_enroll_body": "8-cyfrowy PIN ma ~100 mln kombinacji. Argon2id spowalnia ataki offline do mniej więcej 1–2 lat na jednym wątku — ale klaster GPU mógłby skrócić to do dni. Włączenie Face ID, odcisku palca lub klucza dostępu powyżej sprawia, że ataki offline są niewykonalne, wymagając tego urządzenia przy każdym odblokowaniu."
+      },
+      "enrolled": {
+        "active_title": "Aktywne na tym urządzeniu",
+        "active_body_native": "Twój magazyn wymaga biometrii tego urządzenia do odblokowania.",
+        "active_body_web": "Twój magazyn wymaga klucza dostępu tego urządzenia do odblokowania."
+      },
+      "upgrade": {
+        "available_title": "Dostępne uaktualnienie",
+        "available_body": "Twój portfel był chroniony starszą wersją, która dzieliła klucz między urządzeniami. Uaktualnij, aby zablokować go wyłącznie do tego urządzenia. Dzieje się to jednorazowo i poprosi o dwukrotną weryfikację.",
+        "cta": "Uaktualnij ochronę sprzętową",
+        "busy": "Uaktualnianie — zatwierdź oba monity…",
+        "prompt": "Wpisz PIN magazynu. Uwierzytelnisz się dwukrotnie, aby ponownie zabezpieczyć magazyn.",
+        "cancel": "Anuluj"
+      },
+      "remove": {
+        "cta": "Usuń ochronę sprzętową",
+        "prompt_native": "Wpisz PIN, aby potwierdzić. Będziesz musiał zweryfikować się odciskiem palca lub twarzą.",
+        "prompt_web": "Wpisz hasło, aby potwierdzić. Będziesz musiał zweryfikować się kluczem dostępu.",
+        "busy": "Usuwanie — zatwierdź monit…",
+        "cancel": "Anuluj"
+      },
+      "enroll": {
+        "prompt_native": "Wpisz PIN magazynu, aby włączyć ochronę sprzętową.",
+        "prompt_web": "Wpisz swój 8-cyfrowy PIN, aby włączyć ochronę sprzętową. Twoja przeglądarka utworzy klucz dostępu, aby zablokować portfel do tego urządzenia.",
+        "cta": "Włącz ochronę sprzętową",
+        "busy_native": "Rejestrowanie — zatwierdź monit biometryczny…",
+        "busy_web": "Rejestrowanie — zatwierdź monit klucza dostępu…",
+        "footnote_native": "Zostaniesz poproszony o uwierzytelnienie biometrią urządzenia lub kodem dostępu.",
+        "footnote_web": "Twoja przeglądarka poprosi o uwierzytelnienie biometrią lub kodem PIN urządzenia, aby utworzyć klucz dostępu."
+      },
+      "blocked": "Ustawienia ochrony sprzętowej są niedostępne w tej sesji."
+    },
+    "two_factor": {
+      "heading": "Uwierzytelnianie dwuskładnikowe przy kluczowych działaniach",
+      "intro": "Dodatkowa weryfikacja poza Twoim PIN-em dla wrażliwych działań. Nawet jeśli ktoś zobaczy, jak wpisujesz PIN, i tak nie będzie w stanie wykonać tych czynności bez drugiego kroku.",
+      "actions_protects_label": "Działania, które to chroni",
+      "gated_actions": [
+        { "label": "Wysyłanie środków", "desc": "każda wysyłka, po sprawdzeniach bezpieczeństwa" },
+        { "label": "Ujawnienie frazy odzyskiwania", "desc": "przeglądanie lub eksportowanie kopii zapasowej" },
+        { "label": "Ustawienie PIN-u awaryjnego", "desc": "tworzenie portfela awaryjnego" },
+        { "label": "Tworzenie lub ukrywanie portfela", "desc": "zmiany ukrytego portfela" }
+      ],
+      "currently_enforcing": "Obecnie wymagane:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Klucz dostępu",
+      "badge_password": "PIN + Hasło czynności",
+      "badge_off": "Wyłączone (tylko PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Jesteś w sesji przynęty / ukrytej. Skonfiguruj uwierzytelnianie dwuskładnikowe ze swojej prawdziwej sesji.",
+      "method_a_title": "PIN + Hasło czynności",
+      "on_suffix": "WŁĄCZONE",
+      "method_a_desc": "Drugie hasło zapisane wewnątrz Twojego portfela. Silne, ale oba hasła znajdują się na tym samym urządzeniu.",
+      "label_pin": "Twój PIN",
+      "label_wallet_password": "Hasło portfela",
+      "pin_confirm_placeholder": "Potwierdź, że to Ty",
+      "action_password_label_change": "Nowe hasło czynności",
+      "action_password_label_set": "Hasło czynności",
+      "action_password_placeholder": "Co najmniej 8 znaków",
+      "action_password_hint": "Co najmniej 8 znaków · dowolne znaki dozwolone",
+      "too_short": "Użyj co najmniej {{min}} znaków.",
+      "confirm_label": "Potwierdź",
+      "confirm_placeholder": "Wpisz ponownie hasło czynności",
+      "confirm_hint": "Musi odpowiadać Twojemu hasłu czynności",
+      "mismatch": "Hasła nie są zgodne.",
+      "save_change": "Zmień hasło czynności",
+      "save_set": "Ustaw hasło czynności",
+      "remove": "Usuń hasło czynności",
+      "toast_changed": "Hasło czynności zmienione",
+      "toast_set": "Hasło czynności ustawione",
+      "toast_set_error": "Nie udało się ustawić hasła czynności",
+      "toast_confirm_pin_required": "Wpisz PIN / hasło portfela, aby potwierdzić",
+      "toast_removed": "Hasło czynności usunięte",
+      "toast_remove_error": "Nie udało się usunąć hasła czynności",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Klucz dostępu / FIDO2",
+      "method_b_desc_native": "Twój PIN plus {{label}}. Jeśli biometria jest niedostępna, czynność zostaje zablokowana. Utrata urządzenia nigdy nie oznacza utraty środków.",
+      "method_b_desc_web": "Twój PIN plus dotknięcie kluczem dostępu. Jeśli klucz dostępu jest niedostępny, czynność zostaje zablokowana. Jego utrata nigdy nie oznacza utraty środków.",
+      "switch_aria_native": "Użyj biometrii mojego urządzenia jako drugiego czynnika",
+      "switch_aria_web": "Użyj klucza dostępu jako drugiego czynnika",
+      "confirm_native": "Potwierdzaj krytyczne działania za pomocą {{label}}.",
+      "unavailable_native": "{{label}} / kod dostępu urządzenia nie jest skonfigurowany na tym urządzeniu — włącz go w ustawieniach urządzenia, aby użyć tego czynnika.",
+      "unsupported_web": "Ta przeglądarka nie obsługuje WebAuthn / kluczy dostępu.",
+      "register_hint_web_pre": "Nie zarejestrowano jeszcze klucza dostępu — skonfiguruj go w",
+      "register_hint_web_strong": "Kluczach dostępu portfela",
+      "register_hint_web_post": "poniżej, a następnie włącz to.",
+      "toggle_biometric_needed": "{{label}} nie jest skonfigurowane na tym urządzeniu.",
+      "toggle_passkey_needed": "Najpierw zarejestruj klucz dostępu (Klucze dostępu portfela, poniżej).",
+      "toggle_biometric_on": "Drugi czynnik {{label}} włączony",
+      "toggle_biometric_off": "Drugi czynnik {{label}} wyłączony",
+      "toggle_passkey_on": "Drugi czynnik — klucz dostępu włączony",
+      "toggle_passkey_off": "Drugi czynnik — klucz dostępu wyłączony"
+    },
+    "session": {
+      "title": "Sesja i automatyczna blokada",
+      "description": "Blokuje portfel po okresie bezczynności lub gdy opuszczasz aplikację",
+      "status_unlocked": "Odblokowany",
+      "status_locked": "Zablokowany",
+      "auto_lock_after": "Automatyczna blokada po",
+      "never_note": "Brak automatycznej blokady przy bezczynności, ale nadal blokuje się po ~45 s w tle i po 8 godzinach odblokowania.",
+      "resets_note": "Resetuje się przy każdej interakcji z aplikacją. Blokuje się też natychmiast po przejściu w tło.",
+      "lock_now": "Zablokuj teraz",
+      "recent_activity": "Ostatnia aktywność",
+      "view_all": "Zobacz wszystko",
+      "this_device": "To urządzenie",
+      "active_now": "Aktywne teraz"
+    },
+    "rehearsal": {
+      "title": "Przećwicz zaprzeczalność",
+      "description": "Zobacz panel dokładnie tak, jak zobaczyłaby go osoba trzymająca Twój odblokowany telefon."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Portfel",
+    "sidebar_expand": "Rozwiń pasek boczny",
+    "sidebar_collapse": "Zwiń pasek boczny",
+    "search_placeholder": "Szukaj...",
+    "search_shortcut_title": "Szukaj (⌘K)",
+    "lock": "Zablokuj",
+    "lock_confirm_prompt": "Zablokować ten portfel teraz?",
+    "back": "Wstecz",
+    "settings": "Ustawienia",
+    "main_content_aria": "Główna zawartość",
+    "bottom_nav_aria": "Dolna nawigacja",
+    "more_features_aria": "Więcej funkcji",
+    "more": "Więcej",
+    "close": "Zamknij",
+    "all_features_heading": "Wszystkie funkcje",
+    "recent_heading": "Ostatnie",
+    "tab_home": "Start",
+    "tab_send": "Wyślij",
+    "tab_receive": "Odbierz"
+  },
+  "back": {
+    "default_label": "Wstecz"
+  },
+  "send": {
+    "heading": "Wyślij krypto",
+    "subheading": "Bezpiecznie przelej środki",
+    "wallet_fallback": "Portfel",
+    "wallet_picker": { "label": "Z portfela", "placeholder": "Wybierz portfel" },
+    "asset_picker": { "label": "Aktywo", "placeholder": "Wybierz aktywo" },
+    "recipient": {
+      "label": "Wyślij do (adres lub nazwa)",
+      "placeholder": "Wklej adres lub wpisz nazwę (np. vitalik.eth)",
+      "scan_qr": "Skanuj kod QR",
+      "resolving": "Rozwiązywanie nazwy…",
+      "name_not_found": "Nie znaleziono nazwy — sprawdź pisownię lub wklej adres bezpośrednio.",
+      "ens_using_prefix": "Używanie {{name}} →",
+      "ens_confirm_intro": "sprawdzone prywatnie w blockchainie i wskazuje na:",
+      "ens_confirm_hint": "Potwierdź, że ten adres jest poprawny przed wysłaniem.",
+      "use_this_address": "Użyj tego adresu",
+      "not_whitelisted": "Ten adres nie znajduje się na Twojej białej liście. Sprawdź go dokładnie przed kontynuowaniem. Zaufane adresy możesz dodać w Ustawieniach.",
+      "self_send_warning": "Wysyłasz na adres własnego portfela. To nie przenosi niczego między portfelami, a mimo to kosztuje opłatę sieciową. Sprawdź dokładnie odbiorcę przed kontynuowaniem."
+    },
+    "screening": {
+      "local_disclosure": "Odbiorcy są sprawdzani na Twoim urządzeniu pod kątem adresów oszustw względem Twojej własnej historii — nic nie opuszcza Twojego urządzenia.",
+      "remote_opt_in": "Sprawdzaj też w internetowej bazie zagrożeń (wysyła ten adres do strony trzeciej)",
+      "remote_unavailable": "Sprawdzanie online jest włączone, ale w tej wersji nie skonfigurowano dostawcy — sprawdzanie pozostaje lokalne, więc nie mogliśmy zweryfikować tego adresu na liście zewnętrznej.",
+      "demo_poison_button": "Demo: wklej podobny adres"
+    },
+    "simulation": {
+      "title": "Symulacja transakcji",
+      "toggle_aria": "Przełącz symulację transakcji",
+      "description": "Przed podpisaniem przeprowadzamy lokalne sprawdzenie wstępne — bez usług stron trzecich, żadne dane nie opuszczają Twojego urządzenia.",
+      "checks": [
+        "Ryzyko adresu (podszywanie się / podobieństwo)",
+        "Dekodowanie kontraktu",
+        "Flaga nieograniczonej autoryzacji",
+        "Przewidywanie cofnięcia (revert)",
+        "Anomalia względem Twojej historii",
+        "Ostrzeżenie o dużym odpływie"
+      ],
+      "results_hint": "Wyniki pojawią się w kolejnym kroku po wpisaniu adresu i kwoty.",
+      "off_hint": "Symulacja jest wyłączona — żadne sprawdzenie wstępne nie zostanie wykonane przed podpisaniem.",
+      "taking_too_long": "Trwa zbyt długo?",
+      "turn_off": "Wyłącz symulację"
+    },
+    "amount": {
+      "label": "Kwota",
+      "placeholder": "0,00",
+      "being_sent": "wysyłana",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(na żywo)",
+      "reading_from_network": "odczytywanie z sieci…"
+    },
+    "errors": {
+      "amount_missing": "Kwota jest wymagana",
+      "amount_not_positive": "Kwota musi być większa od zera",
+      "amount_malformed": "Wpisz zwykłą kwotę dziesiętną, np. 0.5",
+      "amount_over_balance": "Niewystarczające saldo",
+      "insufficient_balance_title": "Niewystarczające saldo.",
+      "insufficient_balance_body": "Masz do dyspozycji {{balance}} {{currency}} (po opłacie sieciowej). Zmniejsz kwotę, aby kontynuować."
+    },
+    "status": {
+      "not_enabled": "Wysyłanie nie jest jeszcze włączone dla {{currency}}. To aktywo obsługuje tylko odbieranie do czasu zweryfikowania jego ścieżki kryptograficznej.",
+      "dev_ungate_title": "TRYB DEV UNGATE AKTYWNY",
+      "dev_ungate_body": "— brama wysyłania jest obchodzona dla {{currency}} przez VITE_DEV_UNGATE_SEND (tylko wersja dev). Status tego aktywa się nie zmienia (nadal nieaktywne); mainnet pozostaje zablokowany. Wyłącznie do weryfikacji testnetowej — nigdy nie publikuj tej wersji.",
+      "locked": "Twój portfel jest zablokowany. Odblokuj go w Ustawieniach portfela, aby podpisać i wysłać."
+    },
+    "note": { "label": "Notatka (opcjonalnie)", "placeholder": "Czego dotyczy ta transakcja?" },
+    "trezor": {
+      "toggle_label": "Podpisz za pomocą Trezor",
+      "connected": "Urządzenie podłączone",
+      "connect_button": "Podłącz urządzenie"
+    },
+    "buttons": {
+      "continue": "Dalej",
+      "confirm_send": "Potwierdź i wyślij",
+      "back": "Wstecz"
+    },
+    "verify": { "summary_label": "Wysyłasz" },
+    "fee": {
+      "automatic": "Opłata sieciowa jest ustawiana automatycznie dla {{currency}} ({{network}}).",
+      "native_fee_note": "Opłata sieciowa jest płacona w {{symbol}} ({{network}}) — potrzebujesz {{symbol}}, aby pokryć opłatę sieciową, nawet gdy wysyłasz {{token}}."
+    },
+    "decode": {
+      "heading": "Co robi ta transakcja",
+      "action": "Działanie",
+      "send_tokens": "Wyślij tokeny",
+      "token": "Token",
+      "amount": "Kwota",
+      "recipient": "Odbiorca",
+      "grant_permission": "Przyznaj uprawnienie do wydawania",
+      "permission": "Uprawnienie",
+      "unlimited_permission": "Nieograniczone (ta aplikacja może wydać dowolną kwotę)",
+      "spender": "Podmiot uprawniony"
+    },
+    "reauth": {
+      "prompt": "Wpisz ponownie swój {{credential}}, aby autoryzować",
+      "credential_pin": "PIN",
+      "credential_password": "hasło",
+      "submit_pin": "Autoryzuj",
+      "submit_password": "Autoryzuj i wyślij",
+      "password_placeholder": "Hasło magazynu",
+      "password_aria": "Hasło magazynu do autoryzacji wysyłki",
+      "errors": {
+        "unavailable": "Weryfikacja niedostępna — zablokuj i ponownie odblokuj portfel.",
+        "incorrect": "Niepoprawne — spróbuj ponownie (pozostało {{remaining}})"
+      }
+    },
+    "done": {
+      "beacon_label": "Transakcja rozgłoszona",
+      "heading": "Transakcja rozgłoszona",
+      "body_suffix": "podpisana lokalnie i wysłana do sieci",
+      "tx_hash_label": "Hash transakcji",
+      "view_explorer": "Zobacz w eksploratorze bloków",
+      "pending_note": "Oczekuje do potwierdzenia w sieci. Saldo aktualizuje się na podstawie blockchaina, nie zapisanej wartości.",
+      "send_another": "Wyślij kolejną"
+    },
+    "toasts": {
+      "ens_off_in_session": "Rozwiązywanie nazw jest wyłączone w tej sesji — wklej adres bezpośrednio.",
+      "ens_not_found": "Nie znaleziono nazwy ENS",
+      "sns_unavailable": "Rozwiązywanie nazw Solana nie jest jeszcze dostępne — wklej adres bezpośrednio.",
+      "ens_resolution_failed": "Rozwiązywanie nazwy nie powiodło się",
+      "verify_required": "Dokończ weryfikację kopii zapasowej przed wysłaniem tej kwoty.",
+      "two_factor_retry": "Wysyłka nie została zakończona — zweryfikuj się ponownie, aby spróbować jeszcze raz.",
+      "send_failed_fallback": "Wysyłka nie powiodła się",
+      "unconfirmed": "Nie udało się jeszcze potwierdzić tej transakcji w sieci — może nadal oczekiwać. Sprawdź w eksploratorze."
+    }
+  },
+  "receive": {
+    "heading": "Odbierz krypto",
+    "subheading": "Pokaż adres portfela, aby otrzymać środki",
+    "asset_label": "Aktywo",
+    "asset_placeholder": "Wybierz aktywo",
+    "not_available": "Odbieranie {{name}} ({{symbol}}) nie jest jeszcze dostępne. Żaden adres nie jest pokazywany, dopóki to aktywo nie zostanie włączone.",
+    "locked": {
+      "title": "Portfel zablokowany",
+      "body": "Odblokuj portfel, aby ujawnić adres odbiorczy {{asset}} {{network}}.",
+      "open_hd_wallet": "Otwórz menedżera portfela HD"
+    },
+    "your_address": "Twój adres {{asset}}",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Adres odbiorczy {{symbol}}",
+    "copy": {
+      "copied_aria": "Adres skopiowany do schowka",
+      "copy_aria": "Kopiuj adres",
+      "copied_toast": "Adres skopiowany",
+      "copy_failed_toast": "Nie udało się skopiować — zaznacz i skopiuj adres ręcznie"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} jest tokenem w sieci kompatybilnej z Ethereum. To jest adres Twojego portfela — poproś nadawcę wyłącznie o wysłanie {{symbol}} w sieci {{network}}. Wysłanie go w innej sieci może spowodować trwałą utratę środków.",
+      "evm": "To jest Twój współdzielony adres portfela. Wysyłaj na ten adres wyłącznie {{name}} w sieci {{network}} i upewnij się, że nadawca używa sieci {{network}}.",
+      "btc": "Wysyłaj na ten adres wyłącznie Bitcoin w sieci {{network}}.",
+      "solana": "Wysyłaj na ten adres wyłącznie Solana w sieci {{network}}."
+    },
+    "select_asset_prompt": "Wybierz aktywo do odebrania.",
+    "unlock_footer_note": "Adresy pochodzą z Twojego portfela na urządzeniu i pojawiają się wyłącznie, gdy jest on odblokowany."
+  },
+  "dashboard": {
+    "portfolioValue": "Wartość portfela",
+    "priceAlertsTriggered_one": "{{count}} alert cenowy uruchomiony!",
+    "priceAlertsTriggered_other": "{{count}} alertów cenowych uruchomionych!",
+    "lockAriaLabel": "Zablokuj saldo za biometrią",
+    "lockBalance": "Zablokuj saldo",
+    "synced": "Zsynchronizowano {{time}}",
+    "syncJustNow": "Przed chwilą",
+    "syncSecondsAgo_one": "{{count}} s temu",
+    "syncSecondsAgo_other": "{{count}} s temu",
+    "syncMinutesAgo_one": "{{count}} min temu",
+    "syncMinutesAgo_other": "{{count}} min temu",
+    "actions": {
+      "send": "Wyślij",
+      "receive": "Odbierz",
+      "schedule": "Zaplanuj",
+      "add": "Dodaj"
+    },
+    "tabs": {
+      "tokens": "Tokeny",
+      "activity": "Aktywność",
+      "analytics": "Analityka"
+    },
+    "emptyWallets": {
+      "title": "Brak portfeli",
+      "description": "Dodaj portfel, aby zacząć odbierać, wysyłać i przechowywać aktywa w różnych sieciach."
+    },
+    "addWallet": "Dodaj portfel",
+    "searchTransactionsPlaceholder": "Szukaj transakcji...",
+    "emptySearch": {
+      "title": "Brak pasujących transakcji",
+      "description": "Spróbuj wyczyścić filtry lub wyszukać inne aktywo bądź adres."
+    },
+    "emptyTransactions": {
+      "title": "Brak transakcji",
+      "description": "Twoja aktywność on-chain pojawi się tutaj, gdy wyślesz lub odbierzesz środki."
+    },
+    "portfolioPerformance": "Wyniki portfela",
+    "assetDistribution": "Rozkład aktywów",
+    "quickAccess": "Szybki dostęp",
+    "quickAccessItems": {
+      "receive": "Odbierz",
+      "security": "Bezpieczeństwo",
+      "approvals": "Autoryzacje",
+      "addressCheck": "Sprawdzenie adresu",
+      "analytics": "Analityka",
+      "sentiment": "Nastroje rynku",
+      "riskScore": "Wskaźnik ryzyka"
+    },
+    "walletNameLabel": "Nazwa portfela",
+    "walletNamePlaceholder": "Mój portfel ETH",
+    "addWalletDialog": {
+      "title": "Dodaj portfel",
+      "currency": "Waluta",
+      "creating": "Tworzenie...",
+      "create": "Utwórz portfel"
+    },
+    "renameWalletDialog": {
+      "title": "Zmień nazwę portfela",
+      "saving": "Zapisywanie...",
+      "save": "Zapisz nazwę"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Zaszyfrowany magazyn",
+    "backup": {
+      "title": "Zrób kopię zapasową „{{name}}”",
+      "reauthDescription": "Potwierdź, że to Ty, a następnie pokażemy frazę odzyskiwania dla tego portfela.",
+      "description": "Zapisz te 12 słów offline. Każdy, kto je zna, może wydać środki z tego portfela — to jedyny sposób na jego odzyskanie.",
+      "warning": "Nigdy nie rób zrzutu ekranu. Nigdy nie wpisuj tego w innej aplikacji.",
+      "confirmButton": "Zapisałem/am — oznacz jako zabezpieczone"
+    },
+    "addWallet": {
+      "defaultWalletName": "Twój nowy portfel",
+      "backupDescription": "Ten portfel ma własną frazę odzyskiwania — oddzielną od każdego innego portfela w Twoim magazynie. Zapisz ją offline przed rozpoczęciem użytkowania.",
+      "backedUpDone": "Zrobiłem/am kopię zapasową — gotowe",
+      "title": "Dodaj portfel",
+      "createNew": "Utwórz nowy",
+      "importSeed": "Importuj frazę zalążkową",
+      "createDescription": "Generuje NOWĄ frazę zalążkową, z której wyprowadzane są WSZYSTKIE sieci (ETH/EVM, BTC, SOL). Zrobisz jej kopię zapasową, zanim zostanie aktywna.",
+      "importDescription": "Wklej istniejącą 12/24-wyrazową frazę zalążkową — wszystkie sieci są wyprowadzane automatycznie (fraza zalążkowa nie jest przypisana do konkretnej sieci).",
+      "recoveryPhraseLabel": "Fraza odzyskiwania",
+      "recoveryPhrasePlaceholder": "słowo1 słowo2 ... słowo12",
+      "walletNameLabel": "Nazwa portfela",
+      "walletNamePlaceholder": "np. Oszczędności",
+      "assetsToShowLabel": "Aktywa do wyświetlania",
+      "assetsToShowHint": "Wybór tylko wizualny — fraza zalążkowa zawiera każdą sieć niezależnie od tego.",
+      "confirmVaultPlaceholder": "Potwierdź, że to Ty, aby zmienić swój magazyn",
+      "vaultReentryHint": "Wpisane ponownie, aby autoryzować zmianę w Twoim magazynie fraz zalążkowych. Nigdy nie przechowywane w pamięci.",
+      "createAndBackup": "Utwórz i zrób kopię zapasową",
+      "importWallet": "Importuj portfel"
+    },
+    "vaultPinLabel": "PIN magazynu",
+    "vaultPasswordLabel": "Hasło magazynu",
+    "cancel": "Anuluj",
+    "done": "Gotowe",
+    "manageAssets": {
+      "title": "Aktywa dla „{{name}}”",
+      "description": "Wybierz, które aktywa są wyświetlane dla tego portfela. Ukryte pozostają poza zasięgiem wzroku, dopóki nie zostaną dodane."
+    },
+    "rename": {
+      "title": "Zmień nazwę portfela",
+      "save": "Zapisz nazwę"
+    },
+    "remove": {
+      "title": "Usunąć „{{name}}”?",
+      "onlyWallet": "To Twój jedyny portfel — nie można go usunąć. Użyj Panic Wipe w Bezpieczeństwie, aby usunąć wszystko.",
+      "description": "Usuwa frazę zalążkową tego portfela z tego urządzenia.",
+      "backedUpNote": "Możesz go przywrócić z jego frazy odzyskiwania.",
+      "notBackedUpNote": "⚠️ BRAK kopii zapasowej — bez jego frazy zniknie na zawsze.",
+      "button": "Usuń portfel"
+    },
+    "move": {
+      "title": "Przenieś „{{name}}” do…"
+    },
+    "managePortfolios": {
+      "title": "Portfele zbiorcze",
+      "defaultTag": "(domyślny)",
+      "saveAriaLabel": "Zapisz nazwę portfela zbiorczego",
+      "renameAriaLabel": "Zmień nazwę {{name}}",
+      "deleteAriaLabel": "Usuń {{name}}",
+      "newNamePlaceholder": "Nowa nazwa portfela zbiorczego",
+      "addButton": "Dodaj"
+    },
+    "activity": {
+      "unlockPrompt": "Odblokuj portfel, aby zobaczyć aktywność.",
+      "loading": "Wczytywanie...",
+      "loadError": "Nie udało się wczytać aktywności.",
+      "noTransactions": "Brak transakcji.",
+      "viewFullHistory": "Zobacz pełną historię →"
+    },
+    "portfolioValueLabel": "Wartość portfela",
+    "explore": {
+      "subtitle": "Rozglądasz się — tylko podgląd. Brak jeszcze portfela.",
+      "description": "Rozglądaj się swobodnie. Gdy będziesz gotowy, utwórz nowy portfel samodzielnej opieki lub zaimportuj istniejącą frazę zalążkową — klucze są generowane i szyfrowane na tym urządzeniu.",
+      "createOrImport": "Utwórz lub zaimportuj portfel"
+    },
+    "portfoliosButton": "Portfele zbiorcze",
+    "totalValueHeading": "{{name}} · Wartość całkowita",
+    "partialTotalNote": "Niektórych sald nie udało się wczytać — ta suma może być niepełna.",
+    "refreshPricesTooltip": "Odśwież ceny na żywo",
+    "live": "Na żywo",
+    "approximate": "Przybliżone",
+    "seedVerify": {
+      "title": "Dokończ weryfikację kopii zapasowej",
+      "description": "Wymagane do wysyłania powyżej progu bezpieczeństwa.",
+      "verifyAriaLabel": "Zweryfikuj kopię zapasową portfela",
+      "verifyButton": "Zweryfikuj"
+    },
+    "unbacked": {
+      "titleBold": "Kopia zapasowa portfela niekompletna.",
+      "body": "Każdy portfel ma własną frazę odzyskiwania — bez niej środki tego portfela są nie do odzyskania. Zrób kopię zapasową teraz.",
+      "backUpButton": "Zrób kopię zapasową „{{name}}”"
+    },
+    "actions": {
+      "send": "Wyślij",
+      "receive": "Odbierz",
+      "addWallet": "Dodaj portfel"
+    },
+    "activeWalletHint": {
+      "prefix": "Wysyłanie/odbieranie używa",
+      "otherPortfolio": " (w innym portfelu zbiorczym)",
+      "suffix": ". Dotknij portfela poniżej, aby przełączyć."
+    },
+    "tabs": {
+      "tokens": "Tokeny",
+      "activity": "Aktywność",
+      "analytics": "Analityka"
+    },
+    "noWalletsInPortfolio": "Brak portfeli w „{{name}}”. Dodaj portfel lub przenieś jeden tutaj z jego menu.",
+    "hideAssets": "Ukryj aktywa",
+    "showAllAssets": "Pokaż wszystkie aktywa",
+    "walletCard": {
+      "active": "Aktywny",
+      "backedUp": "Zabezpieczony kopią",
+      "backUp": "Zrób kopię zapasową",
+      "partial": "częściowe",
+      "optionsAriaLabel": "Opcje dla {{name}}",
+      "noAssetsShown": "Nie pokazano żadnych aktywów. Użyj „Zarządzaj aktywami”."
+    },
+    "menu": {
+      "manageAssets": "Zarządzaj aktywami",
+      "rename": "Zmień nazwę",
+      "moveToPortfolio": "Przenieś do portfela zbiorczego",
+      "backUp": "Zrób kopię zapasową",
+      "remove": "Usuń"
+    },
+    "balanceLoadFailedTitle": "Nie udało się wczytać salda",
+    "defaultWalletFallbackName": "portfel",
+    "toast": {
+      "walletImported": "Portfel zaimportowany — wszystkie sieci wyprowadzone.",
+      "walletRemoved": "Portfel usunięty z tego urządzenia.",
+      "walletAddedBackedUp": "Portfel dodany i zabezpieczony kopią zapasową.",
+      "movedTo": "Przeniesiono do {{name}}.",
+      "markedBackedUp": "„{{name}}” oznaczono jako zabezpieczone kopią."
+    },
+    "errors": {
+      "couldNotAddWallet": "Nie udało się dodać portfela",
+      "couldNotImportWallet": "Nie udało się zaimportować portfela",
+      "couldNotRemoveWallet": "Nie udało się usunąć portfela"
+    }
+  },
+  "networth": {
+    "title": "Wartość netto krypto",
+    "unlockPrompt": "Odblokuj portfel, aby zobaczyć swoje aktywa on-chain.",
+    "subtitle": "Twoje aktywa on-chain — nie obejmuje aktywów zewnętrznych.",
+    "totalHoldings": "Suma aktywów",
+    "partialNote": "częściowe — niektórych sald nie udało się odczytać",
+    "refreshPricesTooltip": "Odśwież ceny na żywo",
+    "live": "Na żywo",
+    "approximate": "Przybliżone",
+    "allocation": "Alokacja",
+    "holdings": "Aktywa",
+    "noHoldings": "Brak jeszcze żadnych aktywów."
+  }
+}

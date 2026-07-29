@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Siirtohistoria",
+      "subhead": "Ketjukohtaiset lähetykset ja vastaanotot luetaan suoraan lohkoketjusta — vain luku, selainlinkkien kera.",
+      "badge_demo": "Demo · esimerkkidataa",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Demotila — verkkoon ei lähetetä mitään kyselyjä; alla olevat rivit ovat paikallista esimerkkidataa.",
+      "loading_label": "Ladataan {{symbol}}-historiaa",
+      "error_prefix": "Historiaa ei voitu ladata: {{reason}}.",
+      "error_fetch_reason": "RPC-solmua ei tavoitettu — tarkista yhteytesi ja yritä uudelleen.",
+      "error_generic_reason": "indeksoija ei vastannut",
+      "retry": "Yritä uudelleen",
+      "no_indexer_title": "Sovelluksen sisäinen historia ei ole saatavilla verkolle {{name}} JSON-RPC:n kautta",
+      "no_indexer_body": "Tavallinen JSON-RPC-solmu ei voi luetella osoitteen siirtoja, emmekä tarkoituksella lisää kolmannen osapuolen selain-/indeksointi-API:a (uusi tietolähde ja kotiinsoittopinta). Täysi historiasi on lohkoketjun selaimessa.",
+      "view_on_explorer": "Näytä {{address}} verkon {{network}} selaimessa",
+      "view_explorer_title": "Näytä lohkoketjun selaimessa",
+      "unlock_for_explorer": "Avaa lompakkosi saadaksesi selainlinkin {{symbol}}-osoitteellesi.",
+      "locked_title": "Lompakko lukittu",
+      "locked_body": "Avaa lompakkosi johtaaksesi {{symbol}}-osoitteesi ja ladataksesi sen historian.",
+      "empty": "Ei vielä siirtoja kohteelle {{symbol}} verkossa {{network}}.",
+      "count_one": "{{count}} siirto",
+      "count_other": "{{count}} siirtoa",
+      "most_recent_suffix": " · viimeisin",
+      "refresh": "Päivitä",
+      "sample_badge": "Esimerkki",
+      "to_prefix": "Vastaanottaja ",
+      "from_prefix": "Lähettäjä ",
+      "status_pending": "Odottaa",
+      "status_confirmed": "Vahvistettu",
+      "status_failed": "Epäonnistui",
+      "awaiting_confirmation": "odottaa vahvistusta"
+    },
+    "list": {
+      "empty_title": "Ei vielä siirtoja",
+      "empty_description": "Kun lähetät tai vastaanotat tällä lompakolla, lohkoketjutoimintasi näkyy täällä."
+    },
+    "receipt": {
+      "heading": "Siirtokuitit",
+      "subhead": "Luo tulostettavia kuitteja mille tahansa siirrolle",
+      "search_placeholder": "Hae ID:llä, osoitteella tai valuutalla...",
+      "loading": "Ladataan...",
+      "error": "Siirtoja ei voitu ladata. Yritä uudelleen.",
+      "empty": "Siirtoja ei löytynyt",
+      "preview_title": "Kuitin esikatselu",
+      "print": "Tulosta",
+      "print_window_title": "Siirtokuitti",
+      "brand": "VEYRNOX",
+      "doc_title": "SIIRTOKUITTI",
+      "field_receipt_id": "Kuitin tunnus",
+      "field_date": "Päivämäärä",
+      "field_type": "Tyyppi",
+      "field_asset": "Omaisuuserä",
+      "field_amount": "Summa",
+      "field_network_fee": "Verkkomaksu",
+      "field_status": "Tila",
+      "field_to": "Vastaanottaja",
+      "default_type": "Siirto",
+      "default_status": "valmis",
+      "thank_you": "Kiitos, kun käytät {{brand}}ia",
+      "thank_you_prefix": "Kiitos, kun käytät",
+      "digital_record": "Tämä on digitaalinen siirtotietue"
+    }
+  },
+  "settings": {
+    "heading": "Suojausasetukset",
+    "subhead": "Lukitse, avaa ja suojaa lompakkosi",
+    "theme": {
+      "dark": "Tumma tila",
+      "light": "Vaalea tila",
+      "saved_note": "Tallennettu tälle laitteelle",
+      "switch_to_light": "Vaihda vaaleaan tilaan",
+      "switch_to_dark": "Vaihda tummaan tilaan"
+    },
+    "activity_log": {
+      "label": "Toimintaloki",
+      "description": "Pois käytöstä oletuksena · tallennettu vain tälle laitteelle",
+      "help": "Yksityinen loki: mitä muutit, lähetit, peruutit. Ei summia eikä osoitteita. Hätätyhjennys poistaa sen.",
+      "enable_aria": "Ota toimintaloki käyttöön",
+      "disable_aria": "Poista toimintaloki käytöstä",
+      "no_events": "Ei vielä tallennettuja tapahtumia."
+    },
+    "message_signing": {
+      "label": "Viestien allekirjoitus",
+      "description": "Pois käytöstä oletuksena · tallennettu vain tälle laitteelle",
+      "help": "Pois käytöstä oletuksena. Antaa sinun allekirjoittaa mielivaltaisia tekstiviestejä lompakkosi avaimella. Ota käyttöön vain, jos dApp tai palvelu pyytää sinua allekirjoittamaan viestin.",
+      "enable_aria": "Ota viestien allekirjoitus käyttöön",
+      "disable_aria": "Poista viestien allekirjoitus käytöstä"
+    },
+    "telemetry": {
+      "label": "Anonyymit käyttötiedot",
+      "description": "Valinnainen · ei koskaan sisällä saldoja tai osoitteita",
+      "help": "Auttaa meitä löytämään virheitä ja parantamaan sovellusta. Käytössä on satunnainen laitetunniste — sitä ei koskaan yhdistetä lompakkoosi, avaimiisi tai henkilöllisyyteesi. Tämän poistaminen käytöstä estää kaikkien käyttötietojen lähettämisen tästä laitteesta.",
+      "enable_aria": "Ota anonyymit käyttötiedot käyttöön",
+      "disable_aria": "Poista anonyymit käyttötiedot käytöstä"
+    },
+    "delete_account": {
+      "title": "Vaaravyöhyke",
+      "clear_cache_label": "Tyhjennä paikallinen välimuisti",
+      "clear_cache_description": "Tyhjentää tälle laitteelle tallennetut tiedot ja lukitsee lompakon. Palautuslauseesi toimii yhä. Avainten poistamiseksi käytä Hätätyhjennystä.",
+      "delete_button": "Poista",
+      "confirm_prompt_pre": "Tämä tyhjentää tallennetut tiedot ja lukitsee lompakon. Palautuslauseesi toimii yhä. Kirjoita",
+      "confirm_prompt_post": "vahvistaaksesi.",
+      "confirm_placeholder": "Kirjoita DELETE vahvistaaksesi",
+      "confirm_aria": "Kirjoita DELETE vahvistaaksesi tilin nollauksen",
+      "cancel": "Peruuta",
+      "confirm_delete": "Vahvista poisto",
+      "deleting": "Poistetaan..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometrinen avaus",
+      "worth_knowing_label": "Hyvä tietää.",
+      "kdf_disclosure": "Yhden napautuksen avaus tallentaa lompakkosi salasanan tälle laitteelle, suojattuna näyttölukituksellasi ja biometriikalla. Jos joku saa kopion laitteesi varmuuskopiosta ilman itse laitetta, hän voisi päästä käsiksi lompakkoosi. Poista tämä käytöstä vahvinta suojaa varten.",
+      "app_layer_disclosure_pre": "Biometrinen avaus tallentaa salasanasi tälle laitteelle, suojattuna sormenjäljelläsi tai kasvoillasi. Tämä toimii sovelluksen sisällä, ei käyttöjärjestelmätasolla.",
+      "app_layer_disclosure_mid": "Vahvempaa laitetason suojaa varten ota käyttöön",
+      "hardware_protection_label": "Laitteistosuojaus",
+      "app_layer_disclosure_post": "(saatavilla alla).",
+      "toggle_label": "Biometrinen avaus (Päälompakko)",
+      "toggle_description": "Ota käyttöön yhden napautuksen avaus päälompakollesi laitteen biometriikalla.",
+      "before_enable_label": "Ennen kuin otat tämän käyttöön.",
+      "confirm_disclosure": "Jos joku saa kopion laitteesi varmuuskopiosta ilman itse laitetta, hän voisi päästä käsiksi lompakkoosi. Ota tämä käyttöön vain, jos hyväksyt sen.",
+      "confirm_enable_button": "Ota yhden napautuksen avaus käyttöön",
+      "cancel_button": "Peruuta",
+      "checking_availability": "Tarkistetaan saatavuutta…",
+      "default_label": "Biometriikka",
+      "available": "{{label}} saatavilla.",
+      "available_simulated": "{{label}} saatavilla (simuloitu demossa).",
+      "status_check_failed": "Biometriikan saatavuutta ei voitu tarkistaa tällä laitteella.",
+      "awaiting_prompt": "Odotetaan kehotetta…",
+      "preview_prompt": "Esikatsele kehote",
+      "test_success": "Simuloitu todennus onnistui",
+      "test_cancelled": "Kehote peruutettu"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrinen avaus",
+      "heading_web": "Avaa passkeylla",
+      "scope_banner_native_pre": "Sormenjälkesi tai kasvosi tarkistetaan ennen avausta —",
+      "scope_banner_native_post": "ei salasanasi korvaaja. Salasanasi ja palautuslauseesi toimivat yhä itsenäisesti, joten biometriikan menettäminen ei koskaan lukitse sinua ulos.",
+      "scope_banner_web_pre": "Passkey lisää nopean biometrisen tai turva-avainnapautuksen ennen avausta —",
+      "scope_banner_web_post": "ei salasanasi korvaaja. Salasanasi ja palautuslauseesi toimivat yhä itsenäisesti, joten passkeyn menettäminen ei koskaan lukitse sinua ulos.",
+      "extra_step_label": "ylimääräinen vaihe",
+      "enroll_button": "Ota biometrinen avaus käyttöön",
+      "register_button": "Rekisteröi passkey",
+      "not_setup_native": "Laitteen biometriikkaa ei ole määritetty. Lisää sormenjälki tai kasvot laitteesi asetuksissa ensin — salasanasi toimii silti.",
+      "not_supported_web": "Passkey-avaus ei ole saatavilla tässä selaimessa. Se toimii mobiilisovelluksessa ja moderneissa selaimissa. Käytä salasanaasi täällä.",
+      "enroll_error": "Biometristä avausta ei voitu ottaa käyttöön tällä laitteella.",
+      "register_error": "Passkeyta ei voitu rekisteröidä tällä laitteella.",
+      "enrolled_native": "Biometrinen avaus otettu käyttöön",
+      "registered_web": "Passkey rekisteröity",
+      "simulated_suffix": " (simuloitu)",
+      "remove_button": "Poista",
+      "require_toggle_native": "Vaadi biometrinen avaus",
+      "require_toggle_web": "Vaadi {{label}} avattaessa",
+      "require_toggle_aria_web": "Vaadi passkey-avaus",
+      "require_toggle_desc_native": "Pyydä laitteesi biometriikkaa ennen avausta (salasanasi toimii silti).",
+      "require_toggle_desc_web": "Pyydä passkeytäsi ennen avausta (salasanasi toimii silti).",
+      "applies_all_sessions": "Tämä koskee kaikkia lompakkoistuntoja tällä laitteella.",
+      "default_label": "Passkey",
+      "checking_availability": "Tarkistetaan saatavuutta…",
+      "simulated_in_demo": "{{label}} simuloitu demossa. ",
+      "awaiting_biometric": "Odotetaan biometriikkaa…",
+      "awaiting_passkey": "Odotetaan passkeytä…",
+      "preview_biometric_prompt": "Esikatsele biometrinen kehote",
+      "preview_passkey_prompt": "Esikatsele passkey-kehote",
+      "simulated_prefix": "Simuloitu ",
+      "biometric_verified": "biometriikka vahvistettu",
+      "passkey_verified": "passkey vahvistettu",
+      "biometric_prompt_cancelled": "Biometrinen kehote peruutettu",
+      "passkey_prompt_cancelled": "Passkey-kehote peruutettu"
+    },
+    "hardware_kek": {
+      "heading": "Laitteen sisäinen laitteistosuojaus",
+      "badge_webauthn": "WebAuthn-suojattu",
+      "badge_off": "POIS",
+      "description_pre": "Sitoo lompakkosi tähän fyysiseen laitteeseen. Käyttöönoton jälkeen lompakkosi voidaan avata vain ",
+      "description_device": "tällä laitteella",
+      "description_post": ". Varastettu varmuuskopiotiedosto on hyödytön ilman itse laitetta, jopa PIN-koodillasi.",
+      "description_web_suffix": "Toimii Chrome 99+:lla ja Firefox 108+:lla. Safaria ei tueta.",
+      "device_binding_note": "Laitesidonta on käytössä ja testattu oikealla laitteistolla.",
+      "checking_status": "Tarkistetaan tilaa…",
+      "web_prf_unsupported": "Laitteistosuojaus ei ole saatavilla tässä selaimessa. Käytä Chrome 99+:aa tai Firefox 108+:aa, tai käytä iOS- tai Android-sovellusta.",
+      "errors": {
+        "wrong_pin": "Väärä PIN — syötä PIN-koodi, jolla avaat lompakkosi.",
+        "no_hardware": "Tämän laitteen laitteistoturvaa ei tavoitettu. Yritä uudelleen tai käytä toista laitetta.",
+        "malformed_vault": "Tallennettuja lompakkotietojasi ei voitu lukea tällä laitteella.",
+        "not_enrolled": "Laitteistosuojaus ei ole käytössä tässä holvissa, joten päivitettävää ei ole.",
+        "generic": "Jokin meni pieleen. Yritä uudelleen.",
+        "key_invalidated": "Sormenjälkesi muuttuivat — laitteistosuojaus mitätöitiin. Poista ja ota laitteistosuojaus uudelleen käyttöön, tai palauta siemensanoistasi.",
+        "insecure_tier": "Tällä laitteella ei ole suojattua laitteistoelementtiä — laitteistosuojausta ei voida ottaa käyttöön täällä.",
+        "enter_pin_first": "Syötä ensin holvin PIN-koodisi.",
+        "enter_pin_confirm_removal": "Syötä holvin PIN-koodisi vahvistaaksesi poiston.",
+        "enter_pin_upgrade": "Syötä holvin PIN-koodisi päivittääksesi."
+      },
+      "toast": {
+        "enabled": "Laitteistosuojaus otettu käyttöön — holvisi vaatii nyt tämän laitteen avautuakseen.",
+        "removed": "Laitteistosuojaus poistettu.",
+        "upgraded": "Laitteistosuojaus päivitetty — holvisi on nyt sidottu ainutlaatuisella laitekohtaisella avaimella."
+      },
+      "pin_strength": {
+        "hardware_title": "Laitteistosuojattu.",
+        "hardware_body": "PIN-koodisi yhdistettynä Face ID:hen, sormenjälkeen tai passkeyhin tekee offline-hyökkäyksistä mahdottomia — hyökkääjä tarvitsisi sekä PIN-koodisi että tämän fyysisen laitteen.",
+        "no_hardware_title": "Laitteistotekijää ei ole saatavilla tässä selaimessa.",
+        "no_hardware_body": "8-numeroinen PIN-koodisi (~100 miljoonaa yhdistelmää) on suojattu vain Argon2id:llä — omistautunut hyökkääjä voisi käydä sen läpi offline-tilassa päivissä tai viikoissa. Käytä vähintään 12 merkin salasanaa, tai vaihda Chromeen/Firefoxiin ottaaksesi laitteistosuojauksen käyttöön.",
+        "pre_enroll_title": "PIN-koodin vahvuus.",
+        "pre_enroll_body": "8-numeroisessa PIN-koodissa on ~100 miljoonaa yhdistelmää. Argon2id hidastaa offline-hyökkäyksiä noin 1–2 vuoteen yhdellä säikeellä — mutta GPU-klusteri voisi lyhentää sen päiviin. Face ID:n, sormenjäljen tai passkeyn ottaminen käyttöön yllä tekee offline-hyökkäyksistä mahdottomia vaatimalla tämän laitteen jokaiseen avaukseen."
+      },
+      "enrolled": {
+        "active_title": "Käytössä tällä laitteella",
+        "active_body_native": "Holvisi vaatii tämän laitteen biometriikan avautuakseen.",
+        "active_body_web": "Holvisi vaatii tämän laitteen passkeyn avautuakseen."
+      },
+      "upgrade": {
+        "available_title": "Päivitys saatavilla",
+        "available_body": "Lompakkosi oli suojattu vanhemmalla versiolla, joka jakoi avaimen laitteiden välillä. Päivitä sitoaksesi se vain tähän laitteeseen. Tämä tapahtuu kerran ja pyytää sinua vahvistamaan kahdesti.",
+        "cta": "Päivitä laitteistosuojaus",
+        "busy": "Päivitetään — hyväksy molemmat kehotteet…",
+        "prompt": "Syötä holvin PIN-koodisi. Todennat itsesi kahdesti holvin uudelleensuojaamiseksi.",
+        "cancel": "Peruuta"
+      },
+      "remove": {
+        "cta": "Poista laitteistosuojaus",
+        "prompt_native": "Syötä PIN-koodisi vahvistaaksesi. Sinun täytyy vahvistaa sormenjäljelläsi tai kasvoillasi.",
+        "prompt_web": "Syötä salasanasi vahvistaaksesi. Sinun täytyy vahvistaa passkeylläsi.",
+        "busy": "Poistetaan — hyväksy kehote…",
+        "cancel": "Peruuta"
+      },
+      "enroll": {
+        "prompt_native": "Syötä holvin PIN-koodisi ottaaksesi laitteistosuojauksen käyttöön.",
+        "prompt_web": "Syötä 8-numeroinen PIN-koodisi ottaaksesi laitteistosuojauksen käyttöön. Selaimesi luo passkeyn sitoakseen lompakkosi tähän laitteeseen.",
+        "cta": "Ota laitteistosuojaus käyttöön",
+        "busy_native": "Otetaan käyttöön — hyväksy biometrinen kehote…",
+        "busy_web": "Otetaan käyttöön — hyväksy passkey-kehote…",
+        "footnote_native": "Sinua pyydetään todentamaan laitteesi biometriikalla tai tunnusluvulla.",
+        "footnote_web": "Selaimesi pyytää sinua todentamaan biometriikalla tai laitteen PIN-koodilla passkeyn luomiseksi."
+      },
+      "blocked": "Laitteistosuojausasetukset eivät ole saatavilla tässä istunnossa."
+    },
+    "two_factor": {
+      "heading": "Kaksivaiheinen tunnistus kriittisissä toiminnoissa",
+      "intro": "Ylimääräinen tarkistus PIN-koodisi lisäksi arkaluontoisiin toimintoihin. Vaikka joku näkisi sinun kirjoittavan PIN-koodisi, hän ei silti voi tehdä näitä asioita ilman toista vaihetta.",
+      "actions_protects_label": "Toiminnot, jotka se suojaa",
+      "gated_actions": [
+        { "label": "Varojen lähettäminen", "desc": "jokainen lähetys, turvatarkistusten jälkeen" },
+        { "label": "Palautuslauseen paljastaminen", "desc": "varmuuskopion katselu tai vienti" },
+        { "label": "Hätä-PIN-koodin asettaminen", "desc": "hätälompakon luominen" },
+        { "label": "Lompakon luominen tai piilottaminen", "desc": "piilolompakon muutokset" }
+      ],
+      "currently_enforcing": "Voimassa tällä hetkellä:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + Toimintosalasana",
+      "badge_off": "Pois (vain PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Olet harhautus-/piiloistunnossa. Määritä kaksivaiheinen tunnistus oikeasta istunnostasi.",
+      "method_a_title": "PIN + Toimintosalasana",
+      "on_suffix": "PÄÄLLÄ",
+      "method_a_desc": "Toinen salasana, joka on tallennettu lompakkosi sisään. Vahva, mutta molemmat salasanat ovat samalla laitteella.",
+      "label_pin": "PIN-koodisi",
+      "label_wallet_password": "Lompakon salasana",
+      "pin_confirm_placeholder": "Vahvista, että kyseessä olet sinä",
+      "action_password_label_change": "Uusi toimintosalasana",
+      "action_password_label_set": "Toimintosalasana",
+      "action_password_placeholder": "Vähintään 8 merkkiä",
+      "action_password_hint": "Vähintään 8 merkkiä · kaikki merkit sallittu",
+      "too_short": "Käytä vähintään {{min}} merkkiä.",
+      "confirm_label": "Vahvista",
+      "confirm_placeholder": "Syötä toimintosalasana uudelleen",
+      "confirm_hint": "On täsmättävä toimintosalasanaasi",
+      "mismatch": "Salasanat eivät täsmää.",
+      "save_change": "Vaihda toimintosalasana",
+      "save_set": "Aseta toimintosalasana",
+      "remove": "Poista toimintosalasana",
+      "toast_changed": "Toimintosalasana vaihdettu",
+      "toast_set": "Toimintosalasana asetettu",
+      "toast_set_error": "Toimintosalasanaa ei voitu asettaa",
+      "toast_confirm_pin_required": "Syötä lompakkosi PIN-koodi / salasana vahvistaaksesi",
+      "toast_removed": "Toimintosalasana poistettu",
+      "toast_remove_error": "Toimintosalasanaa ei voitu poistaa",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "PIN-koodisi sekä {{label}}. Jos biometriikka ei ole saatavilla, toiminto estetään. Laitteen menettäminen ei koskaan menetä varojasi.",
+      "method_b_desc_web": "PIN-koodisi sekä passkey-napautus. Jos passkey ei ole saatavilla, toiminto estetään. Sen menettäminen ei koskaan menetä varojasi.",
+      "switch_aria_native": "Käytä laitteeni biometriikkaa toisena tekijänä",
+      "switch_aria_web": "Käytä passkeytä toisena tekijänä",
+      "confirm_native": "Vahvista kriittiset toiminnot {{label}}:llä.",
+      "unavailable_native": "{{label}} / laitteen tunnusluku ei ole määritetty tälle laitteelle — ota se käyttöön laitteesi asetuksissa käyttääksesi tätä tekijää.",
+      "unsupported_web": "Tämä selain ei tue WebAuthnia / passkeyta.",
+      "register_hint_web_pre": "Passkeyta ei ole vielä rekisteröity — määritä yksi kohdassa",
+      "register_hint_web_strong": "Lompakon passkeyt",
+      "register_hint_web_post": "alla, ota se sitten käyttöön.",
+      "toggle_biometric_needed": "{{label}} ei ole määritetty tälle laitteelle.",
+      "toggle_passkey_needed": "Rekisteröi ensin passkey (Lompakon passkeyt, alla).",
+      "toggle_biometric_on": "{{label}}-toinen tekijä päällä",
+      "toggle_biometric_off": "{{label}}-toinen tekijä pois",
+      "toggle_passkey_on": "Passkey-toinen tekijä päällä",
+      "toggle_passkey_off": "Passkey-toinen tekijä pois"
+    },
+    "session": {
+      "title": "Istunto ja automaattinen lukitus",
+      "description": "Lukitsee lompakkosi tietyn jouten olon jälkeen tai kun poistut sovelluksesta",
+      "status_unlocked": "Avattu",
+      "status_locked": "Lukittu",
+      "auto_lock_after": "Lukitse automaattisesti",
+      "never_note": "Ei automaattista lukitusta jouten ollessa, mutta lukittuu silti n. 45 sekunnin kuluttua taustalla ja 8 tunnin kuluttua avattuna.",
+      "resets_note": "Nollautuu aina, kun käytät sovellusta. Lukittuu myös heti taustalle siirryttäessä.",
+      "lock_now": "Lukitse nyt",
+      "recent_activity": "Viimeaikainen toiminta",
+      "view_all": "Näytä kaikki",
+      "this_device": "Tämä laite",
+      "active_now": "Aktiivinen nyt"
+    },
+    "rehearsal": {
+      "title": "Harjoittele kiistettävyyttä",
+      "description": "Katso koontinäyttö juuri sellaisena, kuin sen näkisi henkilö, joka pitelee avattua puhelintasi."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Lompakko",
+    "sidebar_expand": "Laajenna sivupalkki",
+    "sidebar_collapse": "Kutista sivupalkki",
+    "search_placeholder": "Hae...",
+    "search_shortcut_title": "Haku (⌘K)",
+    "lock": "Lukitse",
+    "lock_confirm_prompt": "Lukitaanko lompakko nyt?",
+    "back": "Takaisin",
+    "settings": "Asetukset",
+    "main_content_aria": "Pääsisältö",
+    "bottom_nav_aria": "Alanavigointi",
+    "more_features_aria": "Lisää ominaisuuksia",
+    "more": "Lisää",
+    "close": "Sulje",
+    "all_features_heading": "Kaikki ominaisuudet",
+    "recent_heading": "Viimeisimmät",
+    "tab_home": "Koti",
+    "tab_send": "Lähetä",
+    "tab_receive": "Vastaanota"
+  },
+  "back": {
+    "default_label": "Takaisin"
+  },
+  "send": {
+    "heading": "Lähetä kryptoa",
+    "subheading": "Siirrä varoja turvallisesti",
+    "wallet_fallback": "Lompakko",
+    "wallet_picker": { "label": "Lähettävä lompakko", "placeholder": "Valitse lompakko" },
+    "asset_picker": { "label": "Omaisuuserä", "placeholder": "Valitse omaisuuserä" },
+    "recipient": {
+      "label": "Lähetä osoitteeseen (osoite tai nimi)",
+      "placeholder": "Liitä osoite tai syötä nimi (esim. vitalik.eth)",
+      "scan_qr": "Skannaa QR-koodi",
+      "resolving": "Selvitetään nimeä…",
+      "name_not_found": "Nimeä ei löytynyt — tarkista kirjoitusasu tai liitä osoite suoraan.",
+      "ens_using_prefix": "Käytetään {{name}} →",
+      "ens_confirm_intro": "haettu yksityisesti lohkoketjusta osoitteeseen:",
+      "ens_confirm_hint": "Vahvista, että osoite on oikein ennen lähettämistä.",
+      "use_this_address": "Käytä tätä osoitetta",
+      "not_whitelisted": "Tämä osoite ei ole sallittujen listallasi. Tarkista huolellisesti ennen jatkamista. Voit lisätä luotettuja osoitteita Asetuksissa.",
+      "self_send_warning": "Lähetät omaan lompakko-osoitteeseesi. Tämä ei siirrä mitään lompakoiden välillä ja maksaa silti verkkomaksun. Tarkista vastaanottaja huolellisesti ennen jatkamista."
+    },
+    "screening": {
+      "local_disclosure": "Vastaanottajat tarkistetaan laitteellasi huijausosoitteiden varalta omaa historiaasi vasten — mitään ei lähetetä laitteestasi.",
+      "remote_opt_in": "Seulo myös verkossa olevaa uhkatietokantaa vasten (lähettää tämän osoitteen kolmannelle osapuolelle)",
+      "remote_unavailable": "Verkkoseulonta on käytössä, mutta tähän versioon ei ole määritetty palveluntarjoajaa — seulonta pysyy paikallisena, joten emme voineet vahvistaa tätä ulkoista listaa vasten.",
+      "demo_poison_button": "Demo: liitä samannäköinen osoite"
+    },
+    "simulation": {
+      "title": "Siirron simulointi",
+      "toggle_aria": "Vaihda siirron simulointi",
+      "description": "Ennen allekirjoitusta suoritamme paikallisen esitarkistuksen — ei kolmannen osapuolen palveluita, mitään ei lähde laitteeltasi.",
+      "checks": [
+        "Osoitteen riski (myrkytys / samannäköisyys)",
+        "Sopimuksen dekoodaus",
+        "Rajoittamattoman valtuutuksen lippu",
+        "Peruutuksen ennustaminen",
+        "Poikkeama historiaasi verrattuna",
+        "Suuren ulosvirtauksen varoitus"
+      ],
+      "results_hint": "Tulokset näkyvät seuraavassa vaiheessa, kun olet syöttänyt osoitteen ja summan.",
+      "off_hint": "Simulointi on pois käytöstä — mitään esitarkistusta ei suoriteta ennen allekirjoitusta.",
+      "taking_too_long": "Kestääkö liian kauan?",
+      "turn_off": "Poista simulointi käytöstä"
+    },
+    "amount": {
+      "label": "Summa",
+      "placeholder": "0,00",
+      "being_sent": "lähetetään",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(live)",
+      "reading_from_network": "luetaan verkosta…"
+    },
+    "errors": {
+      "amount_missing": "Summa vaaditaan",
+      "amount_not_positive": "Summan on oltava suurempi kuin nolla",
+      "amount_malformed": "Syötä yksinkertainen desimaaliluku, esim. 0.5",
+      "amount_over_balance": "Riittämätön saldo",
+      "insufficient_balance_title": "Riittämätön saldo.",
+      "insufficient_balance_body": "Käytössäsi on {{balance}} {{currency}} lähetettäväksi (verkkomaksun jälkeen). Pienennä summaa jatkaaksesi."
+    },
+    "status": {
+      "not_enabled": "Lähettäminen ei ole vielä käytössä valuutalle {{currency}}. Tämä omaisuuserä on vain vastaanotettavissa, kunnes sen kryptopolku on vahvistettu.",
+      "dev_ungate_title": "KEHITYSVERSION ESTO POISTETTU",
+      "dev_ungate_body": "— lähetysesto on ohitettu valuutalle {{currency}} muuttujan VITE_DEV_UNGATE_SEND kautta (vain kehitysversio). Tämän omaisuuserän tila ei muutu (ei vieläkään live); mainnet pysyy estettynä. Vain testiverkon vahvistukseen — älä koskaan julkaise tätä versiota.",
+      "locked": "Lompakkosi on lukittu. Avaa se Lompakkoasetuksissa allekirjoittaaksesi ja lähettääksesi."
+    },
+    "note": { "label": "Muistiinpano (valinnainen)", "placeholder": "Mihin tämä on tarkoitettu?" },
+    "trezor": {
+      "toggle_label": "Allekirjoita Trezorilla",
+      "connected": "Laite yhdistetty",
+      "connect_button": "Yhdistä laite"
+    },
+    "buttons": {
+      "continue": "Jatka",
+      "confirm_send": "Vahvista ja lähetä",
+      "back": "Takaisin"
+    },
+    "verify": { "summary_label": "Olet lähettämässä" },
+    "fee": {
+      "automatic": "Verkkomaksu asetetaan automaattisesti valuutalle {{currency}} ({{network}}).",
+      "native_fee_note": "Verkkomaksu maksetaan valuutalla {{symbol}} ({{network}}) — tarvitset {{symbol}}ia verkkomaksun kattamiseksi, vaikka lähetätkin {{token}}."
+    },
+    "decode": {
+      "heading": "Mitä tämä siirto tekee",
+      "action": "Toiminto",
+      "send_tokens": "Lähetä tokeneita",
+      "token": "Token",
+      "amount": "Summa",
+      "recipient": "Vastaanottaja",
+      "grant_permission": "Myönnä kulutusoikeus",
+      "permission": "Oikeus",
+      "unlimited_permission": "Rajoittamaton (tämä sovellus voi käyttää mitä tahansa määrää)",
+      "spender": "Käyttäjä"
+    },
+    "reauth": {
+      "prompt": "Syötä {{credential}} uudelleen valtuuttaaksesi",
+      "credential_pin": "PIN",
+      "credential_password": "salasana",
+      "submit_pin": "Valtuuta",
+      "submit_password": "Valtuuta ja lähetä",
+      "password_placeholder": "Holvin salasana",
+      "password_aria": "Holvin salasana lähetyksen valtuuttamiseen",
+      "errors": {
+        "unavailable": "Vahvistus ei ole saatavilla — lukitse ja avaa lompakko uudelleen.",
+        "incorrect": "Väärin — yritä uudelleen ({{remaining}} jäljellä)"
+      }
+    },
+    "done": {
+      "beacon_label": "Siirto lähetetty",
+      "heading": "Siirto lähetetty",
+      "body_suffix": "allekirjoitettu paikallisesti ja lähetetty verkkoon",
+      "tx_hash_label": "Siirron tunniste",
+      "view_explorer": "Näytä lohkoketjun selaimessa",
+      "pending_note": "Odottaa verkon vahvistusta. Saldo päivittyy lohkoketjusta, ei tallennetusta arvosta.",
+      "send_another": "Lähetä toinen"
+    },
+    "toasts": {
+      "ens_off_in_session": "Nimenselvitys on pois käytöstä tässä istunnossa — liitä osoite suoraan.",
+      "ens_not_found": "ENS-nimeä ei löytynyt",
+      "sns_unavailable": "Solanan nimenselvitys ei ole vielä saatavilla — liitä osoite suoraan.",
+      "ens_resolution_failed": "Nimenselvitys epäonnistui",
+      "verify_required": "Viimeistele varmuuskopiosi vahvistus ennen tämän summan lähettämistä.",
+      "two_factor_retry": "Lähetystä ei voitu suorittaa loppuun — vahvista uudelleen yrittääksesi uudelleen.",
+      "send_failed_fallback": "Lähetys epäonnistui",
+      "unconfirmed": "Emme voineet vielä vahvistaa tätä siirtoa verkossa — se saattaa olla yhä odottamassa. Tarkista selaimesta."
+    }
+  },
+  "receive": {
+    "heading": "Vastaanota kryptoa",
+    "subheading": "Näytä lompakko-osoite varojen vastaanottamiseksi",
+    "asset_label": "Omaisuuserä",
+    "asset_placeholder": "Valitse omaisuuserä",
+    "not_available": "Vastaanottaminen ({{name}}, {{symbol}}) ei ole vielä saatavilla. Osoitetta ei näytetä, ennen kuin tämä omaisuuserä on käytössä.",
+    "locked": {
+      "title": "Lompakko lukittu",
+      "body": "Avaa lompakkosi paljastaaksesi {{asset}} {{network}} -vastaanotto-osoitteesi.",
+      "open_hd_wallet": "Avaa HD-lompakon hallinta"
+    },
+    "your_address": "{{asset}}-osoitteesi",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "{{symbol}}-vastaanotto-osoite",
+    "copy": {
+      "copied_aria": "Osoite kopioitu leikepöydälle",
+      "copy_aria": "Kopioi osoite",
+      "copied_toast": "Osoite kopioitu",
+      "copy_failed_toast": "Kopiointi epäonnistui — valitse ja kopioi osoite manuaalisesti"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} on token Ethereum-yhteensopivassa verkossa. Tämä on lompakko-osoitteesi — pyydä lähettäjää lähettämään {{symbol}} vain verkossa {{network}}. Lähettäminen toisessa verkossa voi menettää varat pysyvästi.",
+      "evm": "Tämä on jaettu lompakko-osoitteesi. Lähetä {{name}} vain verkossa {{network}} tähän osoitteeseen, ja varmista, että lähettäjä käyttää verkkoa {{network}}.",
+      "btc": "Lähetä Bitcoinia vain verkossa {{network}} tähän osoitteeseen.",
+      "solana": "Lähetä Solanaa vain verkossa {{network}} tähän osoitteeseen."
+    },
+    "select_asset_prompt": "Valitse vastaanotettava omaisuuserä.",
+    "unlock_footer_note": "Osoitteet tulevat laitteesi lompakosta ja näkyvät vain sen ollessa avattuna."
+  },
+  "dashboard": {
+    "portfolioValue": "Salkun arvo",
+    "priceAlertsTriggered_one": "{{count}} hintahälytys laukesi!",
+    "priceAlertsTriggered_other": "{{count}} hintahälytystä laukesi!",
+    "lockAriaLabel": "Lukitse saldo biometriikan taakse",
+    "lockBalance": "Lukitse saldo",
+    "synced": "Synkronoitu {{time}}",
+    "syncJustNow": "Juuri äsken",
+    "syncSecondsAgo_one": "{{count}} s sitten",
+    "syncSecondsAgo_other": "{{count}} s sitten",
+    "syncMinutesAgo_one": "{{count}} min sitten",
+    "syncMinutesAgo_other": "{{count}} min sitten",
+    "actions": {
+      "send": "Lähetä",
+      "receive": "Vastaanota",
+      "schedule": "Ajasta",
+      "add": "Lisää"
+    },
+    "tabs": {
+      "tokens": "Tokenit",
+      "activity": "Toiminta",
+      "analytics": "Analytiikka"
+    },
+    "emptyWallets": {
+      "title": "Ei vielä lompakoita",
+      "description": "Lisää lompakko aloittaaksesi vastaanoton, lähetyksen ja omaisuuserien säilytyksen eri ketjuissa."
+    },
+    "addWallet": "Lisää lompakko",
+    "searchTransactionsPlaceholder": "Hae siirtoja...",
+    "emptySearch": {
+      "title": "Ei täsmääviä siirtoja",
+      "description": "Kokeile tyhjentää suodattimet tai hakea eri omaisuuserällä tai osoitteella."
+    },
+    "emptyTransactions": {
+      "title": "Ei vielä siirtoja",
+      "description": "Lohkoketjutoimintasi näkyy täällä, kun lähetät tai vastaanotat."
+    },
+    "portfolioPerformance": "Salkun tuotto",
+    "assetDistribution": "Omaisuuserien jakauma",
+    "quickAccess": "Pikavalinnat",
+    "quickAccessItems": {
+      "receive": "Vastaanota",
+      "security": "Suojaus",
+      "approvals": "Valtuutukset",
+      "addressCheck": "Osoitetarkistus",
+      "analytics": "Analytiikka",
+      "sentiment": "Tunnelma",
+      "riskScore": "Riskipisteet"
+    },
+    "walletNameLabel": "Lompakon nimi",
+    "walletNamePlaceholder": "Oma ETH-lompakko",
+    "addWalletDialog": {
+      "title": "Lisää lompakko",
+      "currency": "Valuutta",
+      "creating": "Luodaan...",
+      "create": "Luo lompakko"
+    },
+    "renameWalletDialog": {
+      "title": "Nimeä lompakko uudelleen",
+      "saving": "Tallennetaan...",
+      "save": "Tallenna nimi"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Salattu holvi",
+    "backup": {
+      "title": "Varmuuskopioi ”{{name}}”",
+      "reauthDescription": "Vahvista, että kyseessä olet sinä, niin näytämme tämän lompakon palautuslauseen.",
+      "description": "Kirjoita nämä 12 sanaa muistiin offline-tilassa. Kuka tahansa, jolla ne on, voi käyttää tämän lompakon varoja — ja ne ovat ainoa tapa palauttaa se.",
+      "warning": "Älä koskaan ota kuvakaappausta. Älä koskaan kirjoita sitä toiseen sovellukseen.",
+      "confirmButton": "Kirjoitin sen muistiin — merkitse varmuuskopioiduksi"
+    },
+    "addWallet": {
+      "defaultWalletName": "uusi lompakkosi",
+      "backupDescription": "Tällä lompakolla on oma palautuslauseensa — eri kuin holvisi muilla lompakoilla. Kirjoita se muistiin offline-tilassa ennen käyttöä.",
+      "backedUpDone": "Varmuuskopioin sen — valmis",
+      "title": "Lisää lompakko",
+      "createNew": "Luo uusi",
+      "importSeed": "Tuo siemensana",
+      "createDescription": "Luo UUDEN siemenen, josta johdetaan KAIKKI ketjut (ETH/EVM, BTC, SOL). Varmuuskopioit sen ennen kuin se aktivoituu.",
+      "importDescription": "Liitä olemassa oleva 12/24 sanan siemen — kaikki ketjut johdetaan automaattisesti (siemen ei ole ketjukohtainen).",
+      "recoveryPhraseLabel": "Palautuslause",
+      "recoveryPhrasePlaceholder": "sana1 sana2 ... sana12",
+      "walletNameLabel": "Lompakon nimi",
+      "walletNamePlaceholder": "esim. Säästöt",
+      "assetsToShowLabel": "Näytettävät omaisuuserät",
+      "assetsToShowHint": "Vain näyttövalinta — siemen sisältää joka tapauksessa jokaisen ketjun.",
+      "confirmVaultPlaceholder": "Vahvista, että kyseessä olet sinä muuttaaksesi holviasi",
+      "vaultReentryHint": "Syötetty uudelleen siemenholvisi muutoksen valtuuttamiseksi. Ei koskaan säilytetä muistissa.",
+      "createAndBackup": "Luo ja varmuuskopioi",
+      "importWallet": "Tuo lompakko"
+    },
+    "vaultPinLabel": "Holvin PIN",
+    "vaultPasswordLabel": "Holvin salasana",
+    "cancel": "Peruuta",
+    "done": "Valmis",
+    "manageAssets": {
+      "title": "Omaisuuserät lompakolle ”{{name}}”",
+      "description": "Valitse, mitkä omaisuuserät näytetään tälle lompakolle. Piilotetut pysyvät poissa näkyvistä, kunnes ne lisätään."
+    },
+    "rename": {
+      "title": "Nimeä lompakko uudelleen",
+      "save": "Tallenna nimi"
+    },
+    "remove": {
+      "title": "Poistetaanko ”{{name}}”?",
+      "onlyWallet": "Tämä on ainoa lompakkosi — sitä ei voi poistaa. Käytä Hätätyhjennystä Suojaus-osiossa tyhjentääksesi kaiken.",
+      "description": "Poistaa tämän lompakon siemenen tästä laitteesta.",
+      "backedUpNote": "Voit palauttaa sen sen palautuslauseesta.",
+      "notBackedUpNote": "⚠️ EI varmuuskopioitu — ilman sen lausetta se on ikuisesti menetetty.",
+      "button": "Poista lompakko"
+    },
+    "move": {
+      "title": "Siirrä ”{{name}}” kohteeseen…"
+    },
+    "managePortfolios": {
+      "title": "Salkut",
+      "defaultTag": "(oletus)",
+      "saveAriaLabel": "Tallenna salkun nimi",
+      "renameAriaLabel": "Nimeä uudelleen: {{name}}",
+      "deleteAriaLabel": "Poista: {{name}}",
+      "newNamePlaceholder": "Uuden salkun nimi",
+      "addButton": "Lisää"
+    },
+    "activity": {
+      "unlockPrompt": "Avaa lompakkosi nähdäksesi toiminnan.",
+      "loading": "Ladataan...",
+      "loadError": "Toimintaa ei voitu ladata.",
+      "noTransactions": "Ei vielä siirtoja.",
+      "viewFullHistory": "Näytä koko historia →"
+    },
+    "portfolioValueLabel": "Salkun arvo",
+    "explore": {
+      "subtitle": "Tutustut — vain katselu. Ei vielä lompakkoa.",
+      "description": "Katsele vapaasti. Kun olet valmis, luo uusi itsehallinnoitu lompakko tai tuo olemassa oleva siemen — avaimet luodaan ja salataan tällä laitteella.",
+      "createOrImport": "Luo tai tuo lompakko"
+    },
+    "portfoliosButton": "Salkut",
+    "totalValueHeading": "{{name}} · Kokonaisarvo",
+    "partialTotalNote": "Joitakin saldoja ei voitu ladata — tämä summa saattaa olla vaillinainen.",
+    "refreshPricesTooltip": "Päivitä live-hinnat",
+    "live": "Live",
+    "approximate": "Arvio",
+    "seedVerify": {
+      "title": "Viimeistele varmuuskopiosi vahvistus",
+      "description": "Vaaditaan turvakynnyksen ylittävään lähettämiseen.",
+      "verifyAriaLabel": "Vahvista lompakkosi varmuuskopio",
+      "verifyButton": "Vahvista"
+    },
+    "unbacked": {
+      "titleBold": "Lompakon varmuuskopio kesken.",
+      "body": "Jokaisella lompakolla on oma palautuslauseensa — ilman sitä kyseisen lompakon varat ovat palautuskelvottomia. Varmuuskopioi nyt.",
+      "backUpButton": "Varmuuskopioi ”{{name}}”"
+    },
+    "actions": {
+      "send": "Lähetä",
+      "receive": "Vastaanota",
+      "addWallet": "Lisää lompakko"
+    },
+    "activeWalletHint": {
+      "prefix": "Lähetys/Vastaanotto käyttää",
+      "otherPortfolio": " (toisessa salkussa)",
+      "suffix": ". Napauta lompakkoa alla vaihtaaksesi."
+    },
+    "tabs": {
+      "tokens": "Tokenit",
+      "activity": "Toiminta",
+      "analytics": "Analytiikka"
+    },
+    "noWalletsInPortfolio": "Ei lompakoita salkussa ”{{name}}”. Lisää lompakko tai siirrä yksi tänne sen valikosta.",
+    "hideAssets": "Piilota omaisuuserät",
+    "showAllAssets": "Näytä kaikki omaisuuserät",
+    "walletCard": {
+      "active": "Aktiivinen",
+      "backedUp": "Varmuuskopioitu",
+      "backUp": "Varmuuskopioi",
+      "partial": "osittainen",
+      "optionsAriaLabel": "Asetukset kohteelle {{name}}",
+      "noAssetsShown": "Ei näytettäviä omaisuuseriä. Käytä ”Hallitse omaisuuseriä”."
+    },
+    "menu": {
+      "manageAssets": "Hallitse omaisuuseriä",
+      "rename": "Nimeä uudelleen",
+      "moveToPortfolio": "Siirrä salkkuun",
+      "backUp": "Varmuuskopioi",
+      "remove": "Poista"
+    },
+    "balanceLoadFailedTitle": "Saldoa ei voitu ladata",
+    "defaultWalletFallbackName": "lompakko",
+    "toast": {
+      "walletImported": "Lompakko tuotu — kaikki ketjut johdettu.",
+      "walletRemoved": "Lompakko poistettu tästä laitteesta.",
+      "walletAddedBackedUp": "Lompakko lisätty ja varmuuskopioitu.",
+      "movedTo": "Siirretty kohteeseen {{name}}.",
+      "markedBackedUp": "”{{name}}” merkitty varmuuskopioiduksi."
+    },
+    "errors": {
+      "couldNotAddWallet": "Lompakkoa ei voitu lisätä",
+      "couldNotImportWallet": "Lompakkoa ei voitu tuoda",
+      "couldNotRemoveWallet": "Lompakkoa ei voitu poistaa"
+    }
+  },
+  "networth": {
+    "title": "Kryptovarallisuus",
+    "unlockPrompt": "Avaa lompakkosi nähdäksesi lohkoketjuomistuksesi.",
+    "subtitle": "Lohkoketjuomistuksesi — ei sisällä ulkoisia omaisuuseriä.",
+    "totalHoldings": "Omistukset yhteensä",
+    "partialNote": "osittainen — joitakin saldoja ei voitu lukea",
+    "refreshPricesTooltip": "Päivitä live-hinnat",
+    "live": "Live",
+    "approximate": "Arvio",
+    "allocation": "Jakauma",
+    "holdings": "Omistukset",
+    "noHoldings": "Ei vielä omistuksia."
+  }
+}
