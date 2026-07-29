@@ -54,7 +54,8 @@ const PaginationPrevious = ({
     size="default"
     className={cn("gap-1 ps-2.5", className)}
     {...props}>
-    <ChevronLeft className="h-4 w-4" />
+    {/* Icon mirrors under dir="rtl" — pagination prev/next chevrons. */}
+    <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />
     <span>Previous</span>
   </PaginationLink>
 )
@@ -70,7 +71,8 @@ const PaginationNext = ({
     className={cn("gap-1 pe-2.5", className)}
     {...props}>
     <span>Next</span>
-    <ChevronRight className="h-4 w-4" />
+    {/* Icon mirrors under dir="rtl" — pagination prev/next chevrons. */}
+    <ChevronRight className="h-4 w-4 rtl:-scale-x-100" />
   </PaginationLink>
 )
 PaginationNext.displayName = "PaginationNext"

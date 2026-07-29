@@ -205,7 +205,9 @@ export default function ColdSign() {
     <div className="max-w-md mx-auto p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate("/send")} aria-label="Back to send">
-          <ArrowLeft className="h-5 w-5" />
+          {/* Icon mirrors under dir="rtl" so the arrow always points "backwards
+              in reading direction" — right-facing for RTL locales. */}
+          <ArrowLeft className="h-5 w-5 rtl:-scale-x-100" />
         </Button>
         <h1 className="text-lg font-semibold flex items-center gap-2">
           <ShieldAlert className="h-5 w-5 text-primary" /> Cold-key signing

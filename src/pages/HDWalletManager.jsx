@@ -561,7 +561,9 @@ export default function HDWalletManager() {
                       : address && asset.family === 'solana'
                       ? <SolLiveBalance address={address} networkKey={asset.chain} />
                       : <span className="text-xs font-semibold text-muted-foreground">{asset.symbol}</span>}
-                    {exp ? <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
+                    {/* Collapsed-state chevron mirrors under dir="rtl" — it points
+                        "forward" in reading direction to indicate expandable content. */}
+                    {exp ? <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 text-muted-foreground rtl:-scale-x-100" aria-hidden="true" />}
                   </div>
                 </button>
                 {exp && (

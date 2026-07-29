@@ -482,7 +482,8 @@ export default function Subscription() {
           </p>
           <HighlightChips features={SAFETY_PLUS_FEATURES} max={6} />
           <Link to="/safety-plus" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-            See all Safety Plus features <ArrowRight className="h-3 w-3" />
+            {/* Icon mirrors under dir="rtl" — forward navigation link arrow. */}
+            See all Safety Plus features <ArrowRight className="h-3 w-3 rtl:-scale-x-100" />
           </Link>
         </div>
       </div>

@@ -69,7 +69,8 @@ function FeatureRow({ icon: Icon, label, on, detail, path, gapWhenOff = true }) 
         </div>
         {detail && <p className="text-xs text-muted-foreground truncate">{detail}</p>}
       </div>
-      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+      {/* Icon mirrors under dir="rtl" — list-row disclosure chevron. */}
+      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 rtl:-scale-x-100" />
     </Link>
   );
 }
@@ -221,7 +222,8 @@ export default function SecurityDashboard() {
                   <Link to={r.path} className="flex items-center gap-2 text-sm hover:underline">
                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${SEV[r.severity].dot}`} />
                     <span className={`flex-1 ${SEV[r.severity].cls}`}>{r.text}</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    {/* Icon mirrors under dir="rtl" — list-row disclosure chevron. */}
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 rtl:-scale-x-100" />
                   </Link>
                 ) : (
                   <div className="flex items-center gap-2 text-sm">
@@ -328,7 +330,8 @@ export default function SecurityDashboard() {
           <span className="text-sm font-medium">What your PIN protects — and what it doesn't</span>
           <p className="text-xs text-muted-foreground">Plain-language: what an 8-digit PIN defends against, and what it can't.</p>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+        {/* Icon mirrors under dir="rtl" — list-row disclosure chevron. */}
+        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 rtl:-scale-x-100" />
       </Link>
 
       {/* Honest coverage note — KNOWN signals only, never a guarantee. */}

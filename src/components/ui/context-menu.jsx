@@ -26,7 +26,8 @@ const ContextMenuSubTrigger = React.forwardRef(({ className, inset, children, ..
     )}
     {...props}>
     {children}
-    <ChevronRight className="ms-auto h-4 w-4" />
+    {/* Icon mirrors under dir="rtl" — submenu indicator points into the flyout. */}
+    <ChevronRight className="ms-auto h-4 w-4 rtl:-scale-x-100" />
   </ContextMenuPrimitive.SubTrigger>
 ))
 ContextMenuSubTrigger.displayName = ContextMenuPrimitive.SubTrigger.displayName

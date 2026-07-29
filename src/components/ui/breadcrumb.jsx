@@ -61,7 +61,8 @@ const BreadcrumbSeparator = ({
     aria-hidden="true"
     className={cn("[&>svg]:w-3.5 [&>svg]:h-3.5", className)}
     {...props}>
-    {children ?? <ChevronRight />}
+    {/* Icon mirrors under dir="rtl" — breadcrumb separator points in reading direction. */}
+    {children ?? <ChevronRight className="rtl:-scale-x-100" />}
   </li>
 )
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator"

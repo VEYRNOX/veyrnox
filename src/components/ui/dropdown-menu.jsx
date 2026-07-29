@@ -27,7 +27,8 @@ const DropdownMenuSubTrigger = React.forwardRef(({ className, inset, children, .
     )}
     {...props}>
     {children}
-    <ChevronRight className="ms-auto" />
+    {/* Icon mirrors under dir="rtl" — submenu indicator points into the flyout. */}
+    <ChevronRight className="ms-auto rtl:-scale-x-100" />
   </DropdownMenuPrimitive.SubTrigger>
 ))
 DropdownMenuSubTrigger.displayName =
