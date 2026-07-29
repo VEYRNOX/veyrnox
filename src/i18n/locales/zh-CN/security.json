@@ -35,5 +35,60 @@
       "unavailable": "不可用"
     },
     "footer": "没有虚假的事件计数或扫描按钮 — 仅显示真实检测。"
+  },
+  "anomaly": {
+    "heading": "交易异常检测",
+    "subhead": "对你的交易模式进行统计分析 — 完全在设备本地运行",
+    "scanner_title": "模式扫描器",
+    "loading": "正在加载交易…",
+    "load_error": "无法加载交易 — 扫描结果可能不完整。",
+    "loaded_count": "已加载 {{count}} 笔交易 · 3 项启发式检查",
+    "cta_scan": "运行扫描",
+    "cta_rescan": "重新扫描",
+    "cta_scanning": "扫描中…",
+    "last_scan": "上次扫描：{{time}} · 已分析 {{count}} 笔交易",
+    "checks": {
+      "large_transfer": {
+        "label": "大额转账异常",
+        "desc": "标记高于你平均值 2.5σ 以上的发送"
+      },
+      "rapid_transactions": {
+        "label": "速度突增",
+        "desc": "1 小时内 3 笔或以上交易"
+      },
+      "unusual_hour": {
+        "label": "非常时段活动",
+        "desc": "本地时间 02:00–05:00 之间的交易"
+      }
+    },
+    "check_found": "找到 {{count}} 项",
+    "severity": {
+      "critical": "严重",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "medium_low": "中 / 低"
+    },
+    "types": {
+      "large_transfer": "大额转账",
+      "rapid_transactions": "快速交易",
+      "unusual_hour": "非常时段"
+    },
+    "detail": {
+      "large_transfer": "${{usd}} — 高于平均值 {{sigma}}σ",
+      "rapid_transactions": "1 小时内 {{count}} 笔交易",
+      "unusual_hour": "{{hour}}:00 的交易 — 非常规活动时段"
+    },
+    "empty_prescan": {
+      "title": "运行扫描以检查你的交易",
+      "body": "所有检查均在本地运行 — 不会离开你的设备"
+    },
+    "empty_clear": {
+      "title": "一切正常",
+      "body": "在你的交易历史中未检测到异常"
+    },
+    "found_one": "发现 {{count}} 项异常",
+    "found_other": "发现 {{count}} 项异常",
+    "dismiss": "忽略"
   }
 }

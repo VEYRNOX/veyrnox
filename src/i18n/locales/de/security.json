@@ -35,5 +35,60 @@
       "unavailable": "nicht verfügbar"
     },
     "footer": "Keine gefälschten Ereigniszähler oder Scan-Buttons – nur echte Erkennungen werden angezeigt."
+  },
+  "anomaly": {
+    "heading": "Transaktions-Anomalieerkennung",
+    "subhead": "Statistische Analyse deiner Transaktionsmuster – läuft vollständig auf dem Gerät",
+    "scanner_title": "Muster-Scanner",
+    "loading": "Transaktionen werden geladen …",
+    "load_error": "Transaktionen konnten nicht geladen werden – der Scan ist möglicherweise unvollständig.",
+    "loaded_count": "{{count}} Transaktionen geladen · 3 heuristische Prüfungen",
+    "cta_scan": "Scan starten",
+    "cta_rescan": "Erneut scannen",
+    "cta_scanning": "Scannen …",
+    "last_scan": "Letzter Scan: {{time}} · {{count}} Transaktionen analysiert",
+    "checks": {
+      "large_transfer": {
+        "label": "Ausreißer bei großen Transfers",
+        "desc": "Markiert Sendungen >2,5σ über deinem eigenen Durchschnitt"
+      },
+      "rapid_transactions": {
+        "label": "Geschwindigkeits-Peaks",
+        "desc": "3+ Transaktionen innerhalb eines 1-Stunden-Fensters"
+      },
+      "unusual_hour": {
+        "label": "Aktivität außerhalb der üblichen Zeiten",
+        "desc": "Transaktionen zwischen 02:00 und 05:00 Ortszeit"
+      }
+    },
+    "check_found": "{{count}} gefunden",
+    "severity": {
+      "critical": "Kritisch",
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig",
+      "medium_low": "Mittel / Niedrig"
+    },
+    "types": {
+      "large_transfer": "Große Überweisung",
+      "rapid_transactions": "Schnelle Transaktionen",
+      "unusual_hour": "Ungewöhnliche Uhrzeit"
+    },
+    "detail": {
+      "large_transfer": "{{usd}} $ — {{sigma}}σ über dem Durchschnitt",
+      "rapid_transactions": "{{count}} Transaktionen innerhalb 1 Stunde",
+      "unusual_hour": "Transaktion um {{hour}}:00 Uhr – ungewöhnliche Aktivitätszeit"
+    },
+    "empty_prescan": {
+      "title": "Führe einen Scan aus, um deine Transaktionen zu prüfen",
+      "body": "Alle Prüfungen laufen lokal – nichts verlässt dein Gerät"
+    },
+    "empty_clear": {
+      "title": "Alles in Ordnung",
+      "body": "Keine Anomalien in deinem Transaktionsverlauf erkannt"
+    },
+    "found_one": "{{count}} Anomalie gefunden",
+    "found_other": "{{count}} Anomalien gefunden",
+    "dismiss": "Verwerfen"
   }
 }
