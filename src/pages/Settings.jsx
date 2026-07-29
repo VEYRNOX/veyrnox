@@ -23,6 +23,7 @@ import TwoFactorSettings from "../components/security/TwoFactorSettings";
 import HardwareKekSettings from "../components/security/HardwareKekSettings";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Spinner from "@/components/Spinner";
 
 export default function Settings() {
@@ -227,6 +228,16 @@ export default function Settings() {
           Helps us find bugs and improve the app. A random device ID is used — never linked to your
           wallet, keys, or identity. Turning this off stops all usage data leaving this device.
         </p>
+      </div>
+
+      {/* Language — Phase 2 slice 1. Writes route through lib/locale.js setLocale
+          which is I3-gated (no-op in decoy/duress/stealth/demo), so a coerced
+          tap cannot flip the real user's stored language or leave a "someone
+          changed the language" tell. Non-English catalogs are machine-
+          translated and the switcher renders an MT-pending banner until human
+          review (see i18n/index.js MACHINE_TRANSLATED). */}
+      <div className="p-5 rounded-xl border border-border bg-card">
+        <LanguageSwitcher />
       </div>
 
       {/* Security settings — shown on all platforms.

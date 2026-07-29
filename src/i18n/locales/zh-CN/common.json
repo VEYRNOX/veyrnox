@@ -1,0 +1,18 @@
+{
+  "language": {
+    "switcher_label": "语言",
+    "mt_banner": "此翻译由机器生成，尚未经过母语人士审校。如果任何措辞看起来不对，请切换回英文，直到审校完成。",
+    "names": {
+      "en": "English",
+      "es": "Español",
+      "de": "Deutsch",
+      "zh-CN": "简体中文"
+    }
+  },
+  "actions": {
+    "cancel": "取消",
+    "confirm": "确认",
+    "close": "关闭",
+    "back": "返回"
+  }
+}
