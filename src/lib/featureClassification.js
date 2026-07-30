@@ -14,7 +14,7 @@
 
 // Must remain de-duplicated — the completeness/phantom tests rely on it.
 export const ALL_ROUTE_PATHS = [
-  '/', '/send', '/receive', '/settings', '/connect', '/alerts', '/calculator',
+  '/', '/send', '/receive', '/buy', '/buy/in-progress', '/settings', '/connect', '/alerts', '/calculator',
   '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects',
   '/terms-legal', '/nft',
   '/snapshots', '/onchain', '/spending',
@@ -91,6 +91,14 @@ export const CLASSIFICATION = {
   '/receive': {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Derives the correct receive address from the unlocked HD accounts (accounts[0].address for EVM, btcAccount/solAccount) via resolveReceive(); renders QR and copy. Purely on-device — no external call, no fabrication.',
+  },
+  '/buy': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Transak on-ramp entry. Amount + fiat + asset/network picker; on Continue, buildTransakUrl() reads the correct deposit address from the on-device wallet at press-time (never cached, never from URL param) and Browser.open() hands off to Transak\'s hosted widget in SFSafariViewController / Chrome Custom Tabs. Two-chokepoint deniability gate (render + URL builder throw BUY_DENIABILITY_BLOCKED). Ship gate: VITE_BUY_ENABLED defaults false — dead-code-eliminated from prod builds until Transak partner agreement + prod keys.',
+  },
+  '/buy/in-progress': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Neutral polling screen for the Transak return. Never trusts the return-URL payload as proof of success — confirmation comes from on-chain observation of the deposit address (same code path any incoming transaction uses). Hidden in deniability/demo. Ship-gated by VITE_BUY_ENABLED.',
   },
   '/tx-history': {
     verdict: 'live', dataSource: 'wallet-core',
