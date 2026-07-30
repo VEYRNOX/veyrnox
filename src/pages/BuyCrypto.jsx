@@ -31,7 +31,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import BackButton from '@/components/BackButton';
+import CoinLogo from '@/components/CoinLogo';
 import FiatCurrencySelector from '@/components/FiatCurrencySelector';
+import { getAsset } from '@/wallet-core/assets';
 import { useWallet } from '@/lib/WalletProvider';
 import { useLocalePreferences } from '@/lib/useLocale';
 import { toast } from '@/lib/toast';
@@ -45,6 +47,19 @@ import { buildTransakUrl, supportedAssetNetworks, BuyError } from '@/lib/buy/tra
 const EVM_NETWORKS = new Set([
   'ethereum', 'polygon', 'arbitrum', 'optimism', 'avaxcchain', 'bsc',
 ]);
+
+// Transak network key → user-facing network name. Kept local; the URL builder's
+// matrix owns the raw string, this table just prettifies for display.
+const NETWORK_LABEL = {
+  ethereum:   'Ethereum',
+  polygon:    'Polygon',
+  arbitrum:   'Arbitrum',
+  optimism:   'Optimism',
+  avaxcchain: 'Avalanche C-Chain',
+  bsc:        'BNB Smart Chain',
+  mainnet:    'Bitcoin',
+  solana:     'Solana',
+};
 function resolveDepositAddress(network, { accounts, btcAccount, solAccount }) {
   if (EVM_NETWORKS.has(network)) return accounts?.[0]?.address ?? null;
   if (network === 'mainnet')     return btcAccount?.address ?? null;
@@ -185,7 +200,12 @@ export default function BuyCrypto() {
                 className="flex-1 font-mono"
                 aria-invalid={!amountValid}
               />
-              <FiatCurrencySelector value={fiatCurrency} onChange={setFiatCurrency} />
+              <FiatCurrencySelector
+                value={fiatCurrency}
+                onChange={setFiatCurrency}
+                triggerClassName="h-14 w-24 text-sm font-medium"
+                showName
+              />
             </div>
           </div>
 
@@ -193,14 +213,44 @@ export default function BuyCrypto() {
             <Label htmlFor="buy-asset" className="text-xs text-muted-foreground">
               {t('buy.asset_label')}
             </Label>
+            {/* Mirrors the Send asset picker (CoinLogo + Name — SYMBOL, with a
+                network subtitle to disambiguate rows like USDC on ETH vs USDC on
+                Polygon — same shape as SendCrypto.jsx line 1408-1432). */}
             <Select value={pickKey} onValueChange={setPickKey}>
-              <SelectTrigger id="buy-asset" className="mt-1">
-                <SelectValue />
+              <SelectTrigger
+                id="buy-asset"
+                className="mt-1.5 h-14 [&>span]:flex [&>span]:items-center [&>span]:gap-3"
+              >
+                <SelectValue>
+                  {pick ? (
+                    <>
+                      <CoinLogo symbol={pick.asset} size={32} />
+                      <span className="flex flex-col items-start leading-tight">
+                        <span className="text-sm font-medium">
+                          {getAsset(pick.asset)?.name || pick.asset} — {pick.asset}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          on {NETWORK_LABEL[pick.transakNetwork] || pick.transakNetwork}
+                        </span>
+                      </span>
+                    </>
+                  ) : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {supportedAssetNetworks.map((r) => (
                   <SelectItem key={`${r.asset}:${r.network}`} value={`${r.asset}:${r.network}`}>
-                    {r.asset} · {r.network}
+                    <div className="flex items-center gap-3">
+                      <CoinLogo symbol={r.asset} size={24} />
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-sm font-medium">
+                          {getAsset(r.asset)?.name || r.asset} — {r.asset}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          on {NETWORK_LABEL[r.transakNetwork] || r.transakNetwork}
+                        </span>
+                      </div>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>

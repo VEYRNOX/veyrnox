@@ -48,9 +48,13 @@ const FALLBACK_LOCALE = 'en-US';
 const FALLBACK_TIMEZONE = 'UTC';
 const FALLBACK_FIAT = 'USD';
 
-// Supported fiat currencies (matches FiatCurrencySelector's set). Anything
-// outside this set is treated as unset and falls through to the fallback.
-export const SUPPORTED_FIAT = ['USD', 'GBP', 'EUR', 'JPY', 'AUD'];
+// Supported fiat currencies — SINGLE SOURCE OF TRUTH is the FIAT_CURRENCIES
+// map in FiatCurrencySelector. Deriving here rather than hardcoding so an
+// expansion (or contraction) of the selector's catalogue automatically flows
+// through to isSupportedFiat/persistence — otherwise a user picks INR in the
+// picker and locale.js silently rejects it and falls back to USD.
+import { FIAT_CURRENCIES } from '../components/FiatCurrencySelector';
+export const SUPPORTED_FIAT = Object.keys(FIAT_CURRENCIES);
 
 // RTL locales — the languages whose script naturally reads right-to-left.
 // Match by base language subtag so `ar-EG`, `ar-SA`, `fa-IR`, etc. all
