@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "zh-CN",
+  "native": "简体中文",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth) 2026-07-30. All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "自托管钱包·安全防护",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "面向高风险场景的自托管加密钱包。您的助记词、您的密钥,只存在您的设备上。当密码不足以保护您时,提供抗胁迫模式。",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "加密钱包,自托管,Bitcoin,Ethereum,Solana,web3,安全钱包,胁迫保护,非托管,去中心化钱包",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "您的加密资产。您的密钥。只在您的设备上。\n\nVeyrnox 是一款面向安全至上用户的非托管钱包。密钥仅在您的设备上生成和存储,并通过硬件级(Secure Enclave)加密进行封装——绝不上传服务器。Veyrnox 无法转移您的资金,也无法替您找回密钥。\n\n运行时自我保护(RASP)\nVeyrnox 会主动检测自身运行环境是否被篡改、设备是否已root/越狱,以及是否存在代码注入,一旦发现环境已被入侵便会立即拒绝执行(失败即关闭)。\n\n地址安全检查\n发送前自动提示地址投毒和仿冒地址风险,并过滤垃圾代币。\n\n一个钱包,十种资产\n使用同一份助记词收发 ETH、BTC、SOL、MATIC、ARB、OP、AVAX、BNB、USDC 和 USDT。\n\nSafety Plus(可选订阅)\n解锁抗胁迫模式:\n• 胁迫 PIN——另设一个 PIN 码打开诱饵钱包,被迫解锁时不会暴露真实资产。\n• 隐藏钱包——不出现在任何列表或数量统计中的账户。\n• 紧急擦除——按需不可逆销毁本地密钥材料。\n按月或按年订阅;到期自动续费,可随时取消。可在您的 App Store 账户设置中管理或取消。\n\nVeyrnox 为非托管钱包。如果您丢失助记词,包括我们在内,任何人都无法找回您的钱包。请务必备份。",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "首次发布。",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "自托管加密钱包。密钥只存于您的设备。支持抗胁迫模式。",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "您的加密资产。您的密钥。只在您的设备上。\n\nVeyrnox 是一款为重视安全的用户打造的非托管钱包。您的助记词和私钥均在设备本地生成,并通过硬件级加密(Android Keystore / StrongBox / TEE,视设备支持而定)进行封装,绝不离开您的设备。Veyrnox 不持有任何资产:我们无法转移您的资金,也无法替您找回密钥。\n\n支持的资产\n使用同一份 BIP-39 助记词收发 ETH、BTC、SOL、MATIC、ARB、OP、AVAX、BNB、USDC 和 USDT。\n\n本地设备安全\n• AES-256-GCM 加密保险库,使用 Argon2id(192 MiB KDF)及(视设备支持)硬件绑定密钥解锁。\n• 运行时自我保护(RASP)检测篡改、root、代码注入和 hook 行为,设备一旦被入侵即拒绝执行。\n• 地址安全:发送前自动提示地址投毒与仿冒地址风险,并过滤垃圾代币。\n• 支持 WalletConnect v2,提供逐笔请求审核、链与地址绑定、会话到期机制,以及高风险操作的二次身份验证。\n\nSafety Plus(可选订阅)\n为高风险场景解锁抗胁迫模式:\n• 胁迫 PIN——第二个 PIN 码打开诱饵钱包;被迫解锁时不会暴露真实资产。\n• 隐藏钱包——不出现在任何列表或数量统计中的账户。\n• 紧急擦除——按需不可逆销毁本地密钥材料。\n按月或按年订阅;到期自动续费,可随时取消。可在 Google Play → 订阅 中随时管理或取消。\n\nVeyrnox 不会做的事\n• 无需账户、无需邮箱、不进行云同步、不托管资产、不提供交易、无广告。\n\n助记词由您掌管。如果您丢失助记词,包括我们在内,任何人都无法找回您的钱包。请将其备份在只有您能访问的地方。",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

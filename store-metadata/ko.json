@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "ko",
+  "native": "한국어",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth, docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md, 2026-07-30). Not yet native-reviewed.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "셀프 커스터디 지갑 · 보안",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "위험 부담이 큰 상황을 위한 셀프 커스터디 암호화폐. 시드와 키는 내 기기에만 있습니다. 비밀번호만으로는 부족할 때를 위한 강압 저항 모드를 제공합니다.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "암호화폐지갑,셀프커스터디,Bitcoin,Ethereum,Solana,web3,보안지갑,강압,비수탁형",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "내 암호화폐. 내 키. 내 기기 안에서.\n\nVeyrnox는 보안을 최우선으로 생각하는 사용자를 위한 비수탁형 지갑입니다. 키는 오직 사용자의 기기에서만 생성 및 저장되며, 하드웨어 기반(Secure Enclave) 암호화로 보호됩니다 — 서버에는 절대 저장되지 않습니다. Veyrnox는 사용자의 자금을 이동시킬 수 없으며, 대신 복구해 줄 수도 없습니다.\n\n런타임 자체 보호(RASP)\nVeyrnox는 변조, 루팅/탈옥, 코드 삽입 등 런타임 위협을 능동적으로 감지하며, 손상된 환경이 감지되면 즉시 동작을 차단합니다.\n\n주소 안전성 검사\n전송 전에 주소 포이즈닝 및 유사 주소에 대한 자동 경고와 스팸 토큰 필터링을 제공합니다.\n\n지갑 하나, 자산 10종\nETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, USDT를 하나의 복구 구문만으로 주고받을 수 있습니다.\n\nSafety Plus(선택 구독)\n강압 저항 모드를 사용할 수 있습니다:\n• 듀레스 PIN — 별도의 PIN으로 미끼 지갑이 열리므로, 강제로 잠금이 해제되어도 실제 정보는 드러나지 않습니다.\n• 숨김 지갑 — 어떤 목록이나 개수에도 나타나지 않는 계정입니다.\n• 패닉 와이프 — 요청 시 로컬 키 자료를 복구 불가능하게 완전히 삭제합니다.\n월간 또는 연간 구독이며, 취소하기 전까지 자동 갱신됩니다. App Store 계정 설정에서 언제든지 관리하거나 취소할 수 있습니다.\n\nVeyrnox는 비수탁형입니다. 복구 구문을 분실하면 저희를 포함한 그 누구도 지갑을 복구할 수 없습니다. 반드시 백업해 두십시오.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "최초 출시.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "셀프 커스터디 암호화폐 지갑. 키는 내 기기에만 저장됩니다. 강압 저항 기능 제공.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "내 암호화폐. 내 키. 내 기기 안에서.\n\nVeyrnox는 보안을 진지하게 생각하는 사람들을 위한 비수탁형 지갑입니다. 복구 구문과 개인 키는 기기 내에서 생성되며, 하드웨어 기반 암호화(사용 가능한 경우 Android Keystore / StrongBox / TEE)로 보호됩니다. 이 정보는 기기 밖으로 절대 나가지 않습니다. Veyrnox는 어떤 자산도 보유하지 않습니다: 사용자의 자금을 이동시킬 수 없고, 대신 복구해 줄 수도 없습니다.\n\n지원 자산\nETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, USDT를 하나의 BIP-39 복구 구문만으로 주고받을 수 있습니다.\n\n기기 내 보안\n• AES-256-GCM 볼트를 Argon2id(192 MiB KDF)로 잠금 해제하며, 가능한 경우 하드웨어에 바인딩된 키를 함께 사용합니다.\n• 런타임 자체 보호(RASP)가 변조, 루팅, 코드 삽입, 후킹을 검사하며, 손상된 기기에서는 동작을 차단합니다.\n• 주소 안전성: 전송 전에 주소 포이즈닝 및 유사 주소 경고, 스팸 토큰 필터링을 제공합니다.\n• WalletConnect v2는 요청별 검토, 체인 및 주소 바인딩, 세션 만료, 고위험 작업에 대한 추가 인증을 지원합니다.\n\nSafety Plus(선택 구독)\n위험 부담이 큰 상황을 위한 강압 저항 모드를 사용할 수 있습니다:\n• 듀레스 PIN — 두 번째 PIN으로 미끼 지갑이 열리며, 강제로 잠금이 해제되어도 실제 정보는 드러나지 않습니다.\n• 숨김 지갑 — 어떤 목록이나 개수에도 나타나지 않는 계정입니다.\n• 패닉 와이프 — 요청 시 로컬 키 자료를 복구 불가능하게 완전히 삭제합니다.\n월간 또는 연간 구독이며, 취소하기 전까지 자동 갱신됩니다. Google Play → 구독에서 언제든지 관리하거나 취소할 수 있습니다.\n\nVeyrnox가 하지 않는 것\n• 계정 없음. 이메일 없음. 클라우드 동기화 없음. 자산 보관 없음. 거래 중개 없음. 광고 없음.\n\n시드는 사용자가 직접 소유합니다. 복구 구문을 분실하면 저희를 포함한 그 누구도 지갑을 복구할 수 없습니다. 오직 본인만 접근할 수 있는 곳에 반드시 백업해 두십시오.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

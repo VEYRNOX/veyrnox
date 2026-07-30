@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "lt",
+  "native": "Lietuvių",
+  "reviewed": false,
+  "notes": "Lithuanian (lt) translation of en.json. Brand/asset/technical terms (Veyrnox, Bitcoin, Ethereum, Solana, USDC, USDT, WalletConnect, Safety Plus, Secure Enclave, StrongBox, TEE, Android Keystore, RASP, PIN, Argon2id, AES-256-GCM, BIP-39) left untranslated. All values verified against the same limits as en.json.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Savarankiška piniginė · Sauga",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Savarankiško saugojimo kriptovaliuta itin svarbioms situacijoms. Jūsų sėkla, jūsų raktai – jūsų įrenginyje. Prievartai atsparūs režimai, kai slaptažodžio nepakanka.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kripto piniginė,savisauga,bitcoin,ethereum,solana,web3,saugi piniginė,prievarta,be tarpininko",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Jūsų kriptovaliuta. Jūsų raktai. Jūsų įrenginyje.\n\nVeyrnox yra piniginė be tarpininkų, skirta saugumą pirmenybe laikantiems naudotojams. Raktai sukuriami ir saugomi tik jūsų įrenginyje, užšifruoti aparatine (Secure Enclave) apsauga — niekada serveryje. Veyrnox negali perkelti jūsų lėšų ir negali jų atkurti už jus.\n\nVykdymo laiko apsauga (RASP)\nVeyrnox aktyviai tikrina savo veikimo aplinką dėl klastojimo, root/jailbreak požymių ir kodo įskverbimo, ir, aptikusi pažeistą aplinką, veikia uždarai.\n\nAdreso saugumo patikros\nAutomatiniai įspėjimai apie apnuodijimo ir panašius adresus bei šlamšto žetonų filtravimas prieš siunčiant.\n\nViena piniginė, dešimt aktyvų\nSiųskite ir gaukite ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC ir USDT — visus iš vienos atkūrimo frazės.\n\nSafety Plus (neprivaloma prenumerata)\nAtrakina prievartai atsparius režimus:\n• Prievartos PIN — atskiras PIN atveria apgaulingą piniginę, todėl priverstinis atrakinimas neatskleidžia nieko tikro.\n• Paslėptos piniginės — sąskaitos, kurios nerodomos jokiame sąraše ar skaičiuje.\n• Panikos ištrynimas — negrįžtamai sunaikina vietinę rakto medžiagą pagal poreikį.\nMėnesinė arba metinė prenumerata; automatiškai atsinaujina, kol neatšaukiama. Tvarkykite ar atšaukite bet kada savo App Store paskyros nustatymuose.\n\nVeyrnox yra piniginė be tarpininkų. Jei prarasite atkūrimo frazę, niekas — įskaitant mus — negalės atkurti jūsų piniginės. Pasidarykite atsarginę kopiją.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Pirmasis leidimas.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Kripto piniginė be tarpininkų. Raktai – jūsų įrenginyje. Atspari prievartai.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Jūsų kriptovaliuta. Jūsų raktai. Jūsų įrenginyje.\n\nVeyrnox yra piniginė be tarpininkų žmonėms, kurie rimtai žiūri į saugumą. Jūsų atkūrimo frazė ir privatūs raktai sukuriami įrenginyje ir užšifruojami aparatine apsauga (Android Keystore / StrongBox / TEE, kai tai prieinama). Jie niekada nepalieka jūsų įrenginio. Veyrnox nieko nesaugo: mes negalime perkelti jūsų lėšų ir negalime jų atkurti už jus.\n\nPalaikomi aktyvai\nSiųskite ir gaukite ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC ir USDT — visus iš vienos BIP-39 atkūrimo frazės.\n\nSaugumas įrenginyje\n• AES-256-GCM saugykla, atrakinama su Argon2id (192 MiB KDF) ir, kai įmanoma, aparatiškai susietu raktu.\n• Vykdymo laiko apsauga (RASP) tikrina, ar nėra klastojimo, root teisių, kodo įskverbimo ir kabinimo požymių — ir veikia uždarai, jei įrenginys pažeistas.\n• Adreso sauga: įspėjimai apie apnuodijimą ir panašius adresus, šlamšto žetonų filtravimas prieš siunčiant.\n• WalletConnect v2 su kiekvieno prašymo peržiūra, grandinės ir adreso susiejimu, sesijos galiojimo pabaiga bei papildomu pakartotiniu tapatybės patvirtinimu didelės rizikos veiksmams.\n\nSafety Plus (neprivaloma prenumerata)\nAtrakina prievartai atsparius režimus itin svarbioms situacijoms:\n• Prievartos PIN — antrasis PIN atveria apgaulingą piniginę; priverstinis atrakinimas neatskleidžia nieko tikro.\n• Paslėptos piniginės — sąskaitos, kurios nerodomos jokiame sąraše ar skaičiuje.\n• Panikos ištrynimas — negrįžtamai sunaikina vietinę rakto medžiagą pagal poreikį.\nMėnesinė arba metinė prenumerata; automatiškai atsinaujina, kol neatšaukiama. Tvarkykite ar atšaukite bet kada per Google Play → Prenumeratos.\n\nKo Veyrnox NEDARO\n• Jokios paskyros. Jokio el. pašto. Jokios debesijos sinchronizacijos. Jokio tarpininkavimo. Jokios prekybos. Jokios reklamos.\n\nJūs valdote sėklą. Jei prarasite atkūrimo frazę, niekas — įskaitant mus — negalės atkurti jūsų piniginės. Pasidarykite atsarginę kopiją kur nors, kur pasieksite tik jūs.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

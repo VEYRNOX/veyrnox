@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "vi",
+  "native": "Tiếng Việt",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Ví Tự Quản · Bảo Mật",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Tiền mã hóa tự quản cho các tình huống rủi ro cao. Cụm từ khôi phục và khóa của bạn nằm trên thiết bị của bạn. Chế độ chống ép buộc khi mật khẩu không đủ.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "ví tiền mã hóa,tự quản,bitcoin,ethereum,solana,web3,ví bảo mật,ép buộc,không giám sát",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Tiền mã hóa của bạn. Khóa của bạn. Trên thiết bị của bạn.\n\nVeyrnox là ví không giám sát dành cho người dùng đặt bảo mật lên hàng đầu. Khóa được tạo và lưu trữ chỉ trên thiết bị của bạn, được niêm phong bằng mã hóa dựa trên phần cứng (Secure Enclave) — không bao giờ trên máy chủ. Veyrnox không thể di chuyển tiền của bạn và không thể khôi phục chúng thay bạn.\n\nTự bảo vệ thời gian chạy (RASP)\nVeyrnox chủ động kiểm tra môi trường thời gian chạy của chính nó để phát hiện can thiệp, root/jailbreak và chèn mã độc, và tự động khóa nếu phát hiện môi trường bị xâm phạm.\n\nKiểm tra an toàn địa chỉ\nCảnh báo tự động về địa chỉ đầu độc và địa chỉ giả mạo giống thật, cùng bộ lọc token rác, trước khi bạn gửi.\n\nMột ví, mười tài sản\nGửi và nhận ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC và USDT — tất cả từ một cụm từ khôi phục duy nhất.\n\nSafety Plus (gói đăng ký tùy chọn)\nMở khóa các chế độ chống ép buộc:\n• Duress PIN — một PIN riêng biệt mở ra một ví mồi, để việc mở khóa bị ép buộc không tiết lộ bất cứ điều gì thật.\n• Ví ẩn — các tài khoản không xuất hiện trong bất kỳ danh sách hay số lượng nào.\n• Xóa khẩn cấp — hủy vĩnh viễn khóa cục bộ theo yêu cầu.\nHàng tháng hoặc hàng năm; tự động gia hạn cho đến khi bị hủy. Quản lý hoặc hủy bất cứ lúc nào trong cài đặt tài khoản App Store của bạn.\n\nVeyrnox là ví không giám sát. Nếu bạn làm mất cụm từ khôi phục, không ai — kể cả chúng tôi — có thể khôi phục ví của bạn. Hãy sao lưu nó.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Phát hành lần đầu.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Ví tiền mã hóa tự quản. Khóa của bạn luôn ở trên thiết bị. Chống ép buộc.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Tiền mã hóa của bạn. Khóa của bạn. Trên thiết bị của bạn.\n\nVeyrnox là ví không giám sát dành cho những người coi trọng bảo mật. Cụm từ khôi phục và khóa riêng tư của bạn được tạo ngay trên thiết bị và được niêm phong bằng mã hóa dựa trên phần cứng (Android Keystore / StrongBox / TEE nếu có). Chúng không bao giờ rời khỏi thiết bị của bạn. Veyrnox không nắm giữ gì cả: chúng tôi không thể di chuyển tiền của bạn và không thể khôi phục chúng thay bạn.\n\nTài sản được hỗ trợ\nGửi và nhận ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC và USDT — tất cả từ một cụm từ khôi phục BIP-39 duy nhất.\n\nBảo mật trên thiết bị\n• Kho lưu trữ AES-256-GCM, được mở khóa bằng Argon2id (KDF 192 MiB) và, nếu có, một khóa gắn với phần cứng.\n• Tự bảo vệ thời gian chạy (RASP) kiểm tra can thiệp, root, chèn mã độc và hooking — và tự động khóa trên thiết bị bị xâm phạm.\n• An toàn địa chỉ: cảnh báo đầu độc và địa chỉ giả mạo giống thật, lọc token rác, trước khi bạn gửi.\n• WalletConnect v2 với xem xét từng yêu cầu, ràng buộc chuỗi và địa chỉ, hết hạn phiên, và xác thực lại nâng cao cho các hành động rủi ro cao.\n\nSafety Plus (gói đăng ký tùy chọn)\nMở khóa các chế độ chống ép buộc cho các tình huống rủi ro cao:\n• Duress PIN — một PIN thứ hai mở ra một ví mồi; việc mở khóa bị ép buộc không tiết lộ bất cứ điều gì thật.\n• Ví ẩn — các tài khoản không xuất hiện trong bất kỳ danh sách hay số lượng nào.\n• Xóa khẩn cấp — hủy vĩnh viễn khóa cục bộ theo yêu cầu.\nHàng tháng hoặc hàng năm; tự động gia hạn cho đến khi bị hủy. Quản lý hoặc hủy bất cứ lúc nào trong Google Play → Đăng ký.\n\nNhững gì Veyrnox KHÔNG làm\n• Không tài khoản. Không email. Không đồng bộ đám mây. Không giám sát. Không giao dịch. Không quảng cáo.\n\nBạn sở hữu hạt giống (seed). Nếu bạn làm mất cụm từ khôi phục, không ai — kể cả chúng tôi — có thể khôi phục ví của bạn. Hãy sao lưu nó ở nơi chỉ bạn mới có thể tiếp cận.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}
