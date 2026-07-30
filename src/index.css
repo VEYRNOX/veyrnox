@@ -1,3 +1,26 @@
+/* ── Non-Latin script fonts (Phase-8, task #14) ──────────────────────────────
+   Bundled subset .woff2 files from @fontsource-variable/noto-sans-* packages.
+   Each imported CSS defines @font-face blocks with `unicode-range` so browsers
+   download ONLY the .woff2 chunks whose codepoints appear in currently-rendered
+   text — an English user downloads zero non-Latin bytes; a Chinese user pulls
+   just the SC chunks their rendered characters need (~500 KB typical).
+   All @font-face blocks use `font-display: swap` (fail-honest — a missing
+   chunk renders the system fallback rather than blocking paint).
+   These load BEFORE the Schibsted Grotesk @font-face blocks so the CSS-cascade
+   priority still puts Schibsted first for Latin glyphs (Tailwind sans stack
+   in tailwind.config.js lists Schibsted first, then these as fallbacks).
+   All packages are self-hosted (no runtime CDN, I2 egress closure preserved). */
+@import '@fontsource-variable/noto-sans-sc/index.css';
+@import '@fontsource-variable/noto-sans-tc/index.css';
+@import '@fontsource-variable/noto-sans-jp/index.css';
+@import '@fontsource-variable/noto-sans-kr/index.css';
+@import '@fontsource-variable/noto-sans-devanagari/index.css';
+@import '@fontsource-variable/noto-sans-bengali/index.css';
+@import '@fontsource-variable/noto-sans-thai/index.css';
+@import '@fontsource-variable/noto-sans-arabic/index.css';
+@import '@fontsource-variable/noto-sans-hebrew/index.css';
+@import '@fontsource-variable/noto-sans-tamil/index.css';
+
 /* ── Self-hosted brand fonts (Veyrnox) ──────────────────────────────────────
    Schibsted Grotesk (prose/labels) + IBM Plex Mono (verifiable values:
    addresses, amounts, fees, hashes). Vendored as woff2 under ./assets/fonts/
