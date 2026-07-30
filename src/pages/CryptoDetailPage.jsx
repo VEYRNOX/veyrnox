@@ -1,6 +1,7 @@
 // @ts-nocheck
 // src/pages/CryptoDetailPage.jsx
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router";
 import { ArrowUpRight, ArrowDownLeft, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { TOP_CRYPTOS } from "@/lib/cryptos";
 import { PERIODS } from "@/lib/chartPeriods";
 
 export default function CryptoDetailPage() {
+  const { t } = useTranslation("wallet");
   const { symbol } = useParams();
   const navigate = useNavigate();
   const buyEnabled = useBuyEnabled();
@@ -102,14 +104,19 @@ export default function CryptoDetailPage() {
       {/* Chart */}
       <CandlestickChart symbol={symbol} period={period} />
 
-      {/* Actions — Buy sits alongside Send when the ship gate is on. */}
+      {/* Actions — Buy sits alongside Send when the ship gate is on.
+          All three labels go through nav.tab_* , which every one of the 44
+          locales already defines. Adding an untranslated "Buy" here would have
+          left this row half-English in the 5 locales whose MT-pending banner
+          #1507 just removed, so the neighbours were converted at the same time
+          rather than matching the old hardcoded convention. */}
       <div className={`grid gap-3 pt-1 ${buyEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
         <Button
           className="h-14 gap-2 text-base"
           onClick={() => navigate(`/send?asset=${symbol}`)}
         >
           <ArrowUpRight className="h-5 w-5" />
-          Send
+          {t("nav.tab_send")}
         </Button>
         {buyEnabled && (
           <Button
@@ -118,7 +125,7 @@ export default function CryptoDetailPage() {
             onClick={() => navigate(`/buy`)}
           >
             <CreditCard className="h-5 w-5" />
-            Buy
+            {t("nav.tab_buy")}
           </Button>
         )}
         <Button
@@ -127,7 +134,7 @@ export default function CryptoDetailPage() {
           onClick={() => navigate(`/receive?asset=${symbol}`)}
         >
           <ArrowDownLeft className="h-5 w-5" />
-          Receive
+          {t("nav.tab_receive")}
         </Button>
       </div>
     </div>

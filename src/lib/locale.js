@@ -49,11 +49,17 @@ const FALLBACK_TIMEZONE = 'UTC';
 const FALLBACK_FIAT = 'USD';
 
 // Supported fiat currencies — SINGLE SOURCE OF TRUTH is the FIAT_CURRENCIES
-// map in FiatCurrencySelector. Deriving here rather than hardcoding so an
-// expansion (or contraction) of the selector's catalogue automatically flows
-// through to isSupportedFiat/persistence — otherwise a user picks INR in the
-// picker and locale.js silently rejects it and falls back to USD.
-import { FIAT_CURRENCIES } from '../components/FiatCurrencySelector';
+// map in lib/fiatCurrencies.js. Deriving here rather than hardcoding so an
+// expansion (or contraction) of the catalogue automatically flows through to
+// isSupportedFiat/persistence — otherwise a user picks INR in the picker and
+// locale.js silently rejects it and falls back to USD.
+//
+// Import from lib/fiatCurrencies, NOT from components/FiatCurrencySelector.
+// The component imports resolveLocale from this file, so importing it back here
+// is a cycle: `Object.keys(FIAT_CURRENCIES)` below runs at module-evaluation
+// time and throws `TypeError: Cannot convert undefined or null to object` when
+// the component is evaluated first. A lib/ module must not import a component.
+import { FIAT_CURRENCIES } from './fiatCurrencies.js';
 export const SUPPORTED_FIAT = Object.keys(FIAT_CURRENCIES);
 
 // RTL locales — the languages whose script naturally reads right-to-left.

@@ -74,8 +74,33 @@ export default function BuyCrypto() {
   const { accounts, btcAccount, solAccount, isUnlocked } = useWallet();
   const { fiatCurrency, setFiatCurrency } = useLocalePreferences();
 
+  // ALL hooks must run before ANY early return. The gates below are not static:
+  // useBuyEnabled subscribes to DENIABILITY_SESSION_CHANGED_EVENT, so a
+  // mid-session flip re-renders this component — and if the hooks sat after the
+  // gate, that re-render would call FEWER hooks than the last one and React
+  // would tear the subtree down with "Rendered fewer hooks than expected". A
+  // crash at the moment of coercion, on the exact path the gate exists to
+  // protect. eslint's react-hooks/rules-of-hooks catches the ordering; the
+  // reason it matters here is the live subscription.
+
+  // First supported row is the default (ETH on ethereum). The picker key is
+  // the concatenation because (USDC, ethereum) and (USDC, polygon) are two
+  // distinct rows for the same asset.
+  const [pickKey, setPickKey] = useState(
+    `${supportedAssetNetworks[0].asset}:${supportedAssetNetworks[0].network}`,
+  );
+  const [amount, setAmount] = useState('');
+  const [amountTouched, setAmountTouched] = useState(false);
+  const [showDisclosure, setShowDisclosure] = useState(false);
+
+  const pick = useMemo(
+    () => supportedAssetNetworks.find(r => `${r.asset}:${r.network}` === pickKey)
+       ?? supportedAssetNetworks[0],
+    [pickKey],
+  );
+
   // Two-chokepoint deniability: render gate here + URL-builder throw at press-
-  // time. If ANY of the three fail, render nothing / redirect home.
+  // time. If ANY of the three fail, render nothing / show the unavailable card.
   if (isDeniabilityOrDemoActive()) return null;
   if (!buyEnabled) {
     return (
@@ -92,22 +117,14 @@ export default function BuyCrypto() {
     );
   }
 
-  // First supported row is the default (ETH on ethereum). The picker key is
-  // the concatenation because (USDC, ethereum) and (USDC, polygon) are two
-  // distinct rows for the same asset.
-  const [pickKey, setPickKey] = useState(
-    `${supportedAssetNetworks[0].asset}:${supportedAssetNetworks[0].network}`,
-  );
-  const [amount, setAmount] = useState('');
-  const [showDisclosure, setShowDisclosure] = useState(false);
-
-  const pick = useMemo(
-    () => supportedAssetNetworks.find(r => `${r.asset}:${r.network}` === pickKey)
-       ?? supportedAssetNetworks[0],
-    [pickKey],
-  );
-
+  // The gate's verdict and the user-facing message are derived from the SAME
+  // expression, so they cannot drift. The 2026-07-27 Send review found exactly
+  // this shape broken: the button gated on well-formedness while the error
+  // message returned null for every malformed case, so Continue silently did
+  // nothing and said nothing. `[^\d.]` stripping still admits "1.2.3", "." and
+  // "..", so this case is reachable by typing, not just by paste.
   const amountValid = amount === '' || (Number(amount) > 0 && Number.isFinite(Number(amount)));
+  const showAmountError = amountTouched && !amountValid;
   const canContinue = isUnlocked && amountValid;
 
   const onContinue = () => {
@@ -196,9 +213,12 @@ export default function BuyCrypto() {
                 inputMode="decimal"
                 placeholder={t('buy.amount_placeholder')}
                 value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
-                className="flex-1 font-mono"
+                onChange={(e) => { setAmountTouched(true); setAmount(e.target.value.replace(/[^\d.]/g, '')); }}
+                // `.mono-value`, not `font-mono` — the house token also carries
+                // the slashed zero and letter-spacing every verifiable value gets.
+                className={`flex-1 mono-value ${showAmountError ? 'border-destructive' : ''}`}
                 aria-invalid={!amountValid}
+                aria-describedby={showAmountError ? 'buy-amount-error' : undefined}
               />
               <FiatCurrencySelector
                 value={fiatCurrency}
@@ -207,6 +227,20 @@ export default function BuyCrypto() {
                 showName
               />
             </div>
+            {/* role="status"/polite, not alert: this fires while the user is
+                still typing, so an assertive live region would interrupt on
+                every keystroke. Rendered only once touched, so a pristine form
+                is silent. */}
+            {showAmountError && (
+              <p
+                id="buy-amount-error"
+                role="status"
+                aria-live="polite"
+                className="mt-1.5 text-xs text-destructive"
+              >
+                {t('buy.error.amount_malformed')}
+              </p>
+            )}
           </div>
 
           <div>
@@ -257,6 +291,22 @@ export default function BuyCrypto() {
             </Select>
           </div>
         </div>
+
+        {/* What the user will ACTUALLY receive. For ARB and OP the app's asset
+            symbol is not the token Transak delivers: both rows are the native
+            gas asset, which on Arbitrum and Optimism is ETH (assets.js documents
+            this), so `transakCode` is 'ETH'. That mapping is correct, but a
+            picker reading "Arbitrum — ARB" next to a widget that says ETH invites
+            the reading "it swapped my asset". State the delivered asset whenever
+            it differs from the row's own symbol. */}
+        {pick.transakCode !== pick.asset && (
+          <p className="text-xs text-muted-foreground">
+            {t('buy.receives_note', {
+              received: pick.transakCode,
+              network: NETWORK_LABEL[pick.transakNetwork] || pick.transakNetwork,
+            })}
+          </p>
+        )}
 
         <div className="rounded-xl border border-border bg-card p-3">
           <p className="text-xs font-medium">{t('buy.provider.transak')}</p>

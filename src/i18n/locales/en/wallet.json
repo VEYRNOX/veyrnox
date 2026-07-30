@@ -370,8 +370,10 @@
       "body": "The on-ramp partnership is being finalised. Check back soon."
     },
     "error": {
-      "browser_open_failed": "Couldn’t open the checkout window. Please try again."
-    }
+      "browser_open_failed": "Couldn’t open the checkout window. Please try again.",
+      "amount_malformed": "Enter an amount as digits with a single decimal point — for example 50 or 49.99."
+    },
+    "receives_note": "You’ll receive {{received}} on {{network}}."
   },
   "send": {
     "heading": "Send Crypto",
