@@ -84,16 +84,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@bce182f857edf1feab116e9795a3393d21977282 # v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@bce182f857edf1feab116e9795a3393d21977282 # v4
         with:
           category: /language:${{ matrix.language }}
 
@@ -186,13 +186,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # xcodebuild has nothing to compile until the web assets exist and
       # Capacitor has synced them into ios/App/App/public. Mirrors the working
       # recipe in ios-compile-check.yml.
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: 'npm'
@@ -206,7 +206,7 @@ jobs:
         run: npm ci
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@bce182f857edf1feab116e9795a3393d21977282 # v4
         with:
           languages: swift
           build-mode: manual
@@ -242,6 +242,6 @@ jobs:
             2>&1 | tail -30
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@bce182f857edf1feab116e9795a3393d21977282 # v4
         with:
           category: /language:swift
