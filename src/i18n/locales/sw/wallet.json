@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Historia ya Miamala",
+      "subhead": "Utumaji na upokeaji kwa kila mnyororo, unaosomwa moja kwa moja kutoka kwenye mnyororo — kusoma tu, na viungo vya kivinjari.",
+      "badge_demo": "Onyesho · data ya mfano",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Hali ya onyesho — hakuna kinachotafutwa kwenye mtandao; safu mlalo hapa chini ni data ya mfano ya ndani.",
+      "loading_label": "Inapakia historia ya {{symbol}}",
+      "error_prefix": "Imeshindwa kupakia historia: {{reason}}.",
+      "error_fetch_reason": "Imeshindwa kufikia nodi ya RPC — angalia muunganisho wako na ujaribu tena.",
+      "error_generic_reason": "kiorodheshaji hakikujibu",
+      "retry": "Jaribu tena",
+      "no_indexer_title": "Historia ya ndani ya programu haipatikani kwa {{name}} kupitia JSON-RPC",
+      "no_indexer_body": "Nodi rahisi ya JSON-RPC haiwezi kuorodhesha miamala ya anwani, na kwa makusudi hatuongezi API ya kiorodheshaji/kivinjari cha upande wa tatu (chanzo kipya cha data na eneo la kuwasiliana nyumbani). Historia yako kamili ipo kwenye kivinjari cha mnyororo.",
+      "view_on_explorer": "Angalia {{address}} kwenye kivinjari cha {{network}}",
+      "view_explorer_title": "Angalia kwenye kivinjari cha mnyororo",
+      "unlock_for_explorer": "Fungua pochi yako ili kupata kiungo cha kivinjari kwa anwani yako ya {{symbol}}.",
+      "locked_title": "Pochi imefungwa",
+      "locked_body": "Fungua pochi yako ili kutoa anwani yako ya {{symbol}} na kupakia historia yake.",
+      "empty": "Hakuna miamala bado kwa {{symbol}} kwenye {{network}}.",
+      "count_one": "muamala {{count}}",
+      "count_other": "miamala {{count}}",
+      "most_recent_suffix": " · wa hivi karibuni",
+      "refresh": "Onyesha upya",
+      "sample_badge": "Mfano",
+      "to_prefix": "Kwa ",
+      "from_prefix": "Kutoka ",
+      "status_pending": "Inasubiri",
+      "status_confirmed": "Imethibitishwa",
+      "status_failed": "Imeshindwa",
+      "awaiting_confirmation": "inasubiri uthibitisho"
+    },
+    "list": {
+      "empty_title": "Hakuna miamala bado",
+      "empty_description": "Utakapotuma au kupokea kwenye pochi hii, shughuli yako ya mnyororo itaonekana hapa."
+    },
+    "receipt": {
+      "heading": "Risiti za Miamala",
+      "subhead": "Tengeneza risiti zinazoweza kuchapishwa kwa muamala wowote",
+      "search_placeholder": "Tafuta kwa kitambulisho, anwani au sarafu...",
+      "loading": "Inapakia...",
+      "error": "Imeshindwa kupakia miamala. Tafadhali jaribu tena.",
+      "empty": "Hakuna miamala iliyopatikana",
+      "preview_title": "Muhtasari wa Risiti",
+      "print": "Chapisha",
+      "print_window_title": "Risiti ya Muamala",
+      "brand": "VEYRNOX",
+      "doc_title": "RISITI YA MUAMALA",
+      "field_receipt_id": "Kitambulisho cha Risiti",
+      "field_date": "Tarehe",
+      "field_type": "Aina",
+      "field_asset": "Rasilimali",
+      "field_amount": "Kiasi",
+      "field_network_fee": "Ada ya Mtandao",
+      "field_status": "Hali",
+      "field_to": "Kwa",
+      "default_type": "Uhamisho",
+      "default_status": "imekamilika",
+      "thank_you": "Asante kwa kutumia {{brand}}",
+      "thank_you_prefix": "Asante kwa kutumia",
+      "digital_record": "Hii ni rekodi ya kidijitali ya muamala"
+    }
+  },
+  "settings": {
+    "heading": "Mipangilio ya Usalama",
+    "subhead": "Funga, fungua, na linda pochi yako",
+    "theme": {
+      "dark": "Hali ya Giza",
+      "light": "Hali ya Mwanga",
+      "saved_note": "Imehifadhiwa kwenye kifaa hiki",
+      "switch_to_light": "Badilisha kwenda hali ya mwanga",
+      "switch_to_dark": "Badilisha kwenda hali ya giza"
+    },
+    "activity_log": {
+      "label": "Kumbukumbu ya shughuli",
+      "description": "Imezimwa kwa chaguo-msingi · imehifadhiwa kwenye kifaa hiki tu",
+      "help": "Kumbukumbu binafsi: ulichobadilisha, kutuma, kubatilisha. Hakuna kiasi wala anwani. Kufuta kwa Dharura kunaifuta.",
+      "enable_aria": "Washa kumbukumbu ya shughuli",
+      "disable_aria": "Zima kumbukumbu ya shughuli",
+      "no_events": "Hakuna matukio yaliyorekodiwa bado."
+    },
+    "message_signing": {
+      "label": "Utiaji saini wa ujumbe",
+      "description": "Imezimwa kwa chaguo-msingi · imehifadhiwa kwenye kifaa hiki tu",
+      "help": "Imezimwa kwa chaguo-msingi. Inakuruhusu kutia saini ujumbe wa maandishi yoyote kwa funguo ya pochi yako. Washa tu ikiwa dApp au huduma inakuomba kutia saini ujumbe.",
+      "enable_aria": "Washa utiaji saini wa ujumbe",
+      "disable_aria": "Zima utiaji saini wa ujumbe"
+    },
+    "telemetry": {
+      "label": "Data isiyokutambulisha ya matumizi",
+      "description": "Ya hiari · haijumuishi kamwe salio wala anwani",
+      "help": "Inatusaidia kupata hitilafu na kuboresha programu. Kitambulisho cha kifaa kisicho na mpangilio kinatumika — hakiunganishwi kamwe na pochi yako, funguo, au utambulisho wako. Kuzima hii kunazuia data yote ya matumizi kutoka kwenye kifaa hiki.",
+      "enable_aria": "Washa data isiyokutambulisha ya matumizi",
+      "disable_aria": "Zima data isiyokutambulisha ya matumizi"
+    },
+    "delete_account": {
+      "title": "Eneo la Hatari",
+      "clear_cache_label": "Futa hifadhi ya muda ya ndani",
+      "clear_cache_description": "Inafuta data iliyohifadhiwa kwenye kifaa hiki na kufunga pochi. Kifungu chako cha urejeshaji bado kinafanya kazi. Ili kufuta funguo, tumia Kufuta kwa Dharura.",
+      "delete_button": "Futa",
+      "confirm_prompt_pre": "Hii inafuta data iliyohifadhiwa na kufunga pochi. Kifungu chako cha urejeshaji bado kinafanya kazi. Andika",
+      "confirm_prompt_post": "ili kuthibitisha.",
+      "confirm_placeholder": "Andika DELETE ili kuthibitisha",
+      "confirm_aria": "Andika DELETE ili kuthibitisha kuweka upya akaunti",
+      "cancel": "Ghairi",
+      "confirm_delete": "Thibitisha Kufuta",
+      "deleting": "Inafuta..."
+    },
+    "biometric_unlock": {
+      "heading": "Ufunguzi wa Alama za Mwili",
+      "worth_knowing_label": "Inafaa kujua.",
+      "kdf_disclosure": "Ufunguzi wa mguso mmoja unahifadhi nenosiri la pochi yako kwenye kifaa hiki, kikilindwa na kifungo cha skrini yako na alama za mwili. Ikiwa mtu atapata nakala ya hifadhi mbadala ya kifaa chako bila kifaa chenyewe, wanaweza kufikia pochi yako. Izima kwa ulinzi imara zaidi.",
+      "app_layer_disclosure_pre": "Ufunguzi wa alama za mwili unahifadhi nenosiri lako kwenye kifaa hiki, kikilindwa na kidole chako au uso wako. Hii inaendeshwa ndani ya programu, si kwenye kiwango cha mfumo wa uendeshaji.",
+      "app_layer_disclosure_mid": "Kwa ulinzi imara zaidi wa kiwango cha kifaa, washa",
+      "hardware_protection_label": "Ulinzi wa Vifaa",
+      "app_layer_disclosure_post": "(inapatikana hapa chini).",
+      "toggle_label": "Ufunguzi wa Alama za Mwili (Pochi Kuu)",
+      "toggle_description": "Washa ufunguzi wa mguso mmoja kwa pochi yako kuu ukitumia alama za mwili za kifaa.",
+      "before_enable_label": "Kabla ya kuwasha hili.",
+      "confirm_disclosure": "Ikiwa mtu atapata nakala ya hifadhi mbadala ya kifaa chako bila kifaa chenyewe, wanaweza kufikia pochi yako. Iwashe tu ikiwa uko sawa na hilo.",
+      "confirm_enable_button": "Washa ufunguzi wa mguso mmoja",
+      "cancel_button": "Ghairi",
+      "checking_availability": "Inaangalia upatikanaji…",
+      "default_label": "Alama za Mwili",
+      "available": "{{label}} inapatikana.",
+      "available_simulated": "{{label}} inapatikana (imeigwa katika onyesho).",
+      "status_check_failed": "Imeshindwa kuangalia upatikanaji wa alama za mwili kwenye kifaa hiki.",
+      "awaiting_prompt": "Inasubiri kiashiria…",
+      "preview_prompt": "Onyesha muhtasari wa kiashiria",
+      "test_success": "Uthibitishaji wa kuigwa umefaulu",
+      "test_cancelled": "Kiashiria kimeghairiwa"
+    },
+    "passkey_unlock": {
+      "heading_native": "Ufunguzi wa alama za mwili",
+      "heading_web": "Fungua kwa Ufunguo wa Siri",
+      "scope_banner_native_pre": "Kidole chako au uso wako unaangaliwa kabla ya kufungua —",
+      "scope_banner_native_post": "si mbadala wa nenosiri lako. Nenosiri lako na kifungu cha urejeshaji bado vinafanya kazi peke yake, hivyo kupoteza alama za mwili hakukufungii kamwe nje.",
+      "scope_banner_web_pre": "Ufunguo wa siri unaongeza mguso wa haraka wa alama za mwili au ufunguo wa usalama kabla ya kufungua —",
+      "scope_banner_web_post": "si mbadala wa nenosiri lako. Nenosiri lako na kifungu cha urejeshaji bado vinafanya kazi peke yake, hivyo kupoteza ufunguo wa siri hakukufungii kamwe nje.",
+      "extra_step_label": "hatua ya ziada",
+      "enroll_button": "Sajili ufunguzi wa alama za mwili",
+      "register_button": "Sajili ufunguo wa siri",
+      "not_setup_native": "Alama za mwili za kifaa hazijasanidiwa. Ongeza alama ya kidole au uso katika mipangilio ya kifaa chako kwanza — nenosiri lako bado linafanya kazi.",
+      "not_supported_web": "Ufunguzi kwa ufunguo wa siri haupatikani kwenye kivinjari hiki. Unafanya kazi kwenye programu ya simu na vivinjari vya kisasa. Tumia nenosiri lako hapa.",
+      "enroll_error": "Imeshindwa kusajili ufunguzi wa alama za mwili kwenye kifaa hiki.",
+      "register_error": "Imeshindwa kusajili ufunguo wa siri kwenye kifaa hiki.",
+      "enrolled_native": "Ufunguzi wa alama za mwili umesajiliwa",
+      "registered_web": "Ufunguo wa siri umesajiliwa",
+      "simulated_suffix": " (imeigwa)",
+      "remove_button": "Ondoa",
+      "require_toggle_native": "Hitaji ufunguzi wa alama za mwili",
+      "require_toggle_web": "Hitaji {{label}} wakati wa kufungua",
+      "require_toggle_aria_web": "Hitaji ufunguzi wa ufunguo wa siri",
+      "require_toggle_desc_native": "Omba alama yako ya mwili ya kifaa kabla ya kufungua (nenosiri lako bado linafanya kazi).",
+      "require_toggle_desc_web": "Omba ufunguo wako wa siri kabla ya kufungua (nenosiri lako bado linafanya kazi).",
+      "applies_all_sessions": "Hii inahusu vipindi vyote vya pochi kwenye kifaa hiki.",
+      "default_label": "Ufunguo wa Siri",
+      "checking_availability": "Inaangalia upatikanaji…",
+      "simulated_in_demo": "{{label}} imeigwa katika onyesho. ",
+      "awaiting_biometric": "Inasubiri alama ya mwili…",
+      "awaiting_passkey": "Inasubiri ufunguo wa siri…",
+      "preview_biometric_prompt": "Onyesha muhtasari wa kiashiria cha alama ya mwili",
+      "preview_passkey_prompt": "Onyesha muhtasari wa kiashiria cha ufunguo wa siri",
+      "simulated_prefix": "Kuigwa ",
+      "biometric_verified": "alama ya mwili imethibitishwa",
+      "passkey_verified": "ufunguo wa siri umethibitishwa",
+      "biometric_prompt_cancelled": "Kiashiria cha alama ya mwili kimeghairiwa",
+      "passkey_prompt_cancelled": "Kiashiria cha ufunguo wa siri kimeghairiwa"
+    },
+    "hardware_kek": {
+      "heading": "Ulinzi wa vifaa kwenye kifaa",
+      "badge_webauthn": "Imelindwa na WebAuthn",
+      "badge_off": "IMEZIMWA",
+      "description_pre": "Inafunga pochi yako kwenye kifaa hiki maalum. Baada ya kuwasha, pochi yako inaweza kufunguliwa tu kwenye ",
+      "description_device": "kifaa hiki",
+      "description_post": ". Faili ya hifadhi mbadala iliyoibiwa haifai bila kifaa chenyewe, hata na PIN yako.",
+      "description_web_suffix": "Inafanya kazi kwenye Chrome 99+ na Firefox 108+. Safari haitumiki.",
+      "device_binding_note": "Ufungaji wa kifaa umewashwa na umejaribiwa kwenye vifaa halisi.",
+      "checking_status": "Inaangalia hali…",
+      "web_prf_unsupported": "Ulinzi wa vifaa haupatikani kwenye kivinjari hiki. Tumia Chrome 99+ au Firefox 108+, au tumia programu ya iOS au Android.",
+      "errors": {
+        "wrong_pin": "PIN si sahihi — ingiza PIN unayotumia kufungua pochi yako.",
+        "no_hardware": "Imeshindwa kufikia usalama wa vifaa vya kifaa hiki. Jaribu tena, au tumia kifaa kingine.",
+        "malformed_vault": "Data yako iliyohifadhiwa ya pochi haikuweza kusomwa kwenye kifaa hiki.",
+        "not_enrolled": "Ulinzi wa vifaa haujawashwa kwenye hifadhi hii, hivyo hakuna cha kuboresha.",
+        "generic": "Hitilafu fulani imetokea. Tafadhali jaribu tena.",
+        "key_invalidated": "Alama zako za vidole zimebadilika — ulinzi wa vifaa umebatilishwa. Zima na uwashe tena ulinzi wa vifaa, au rejesha kutoka kwa kifungu chako cha mbegu.",
+        "insecure_tier": "Kifaa hiki hakina kipengele salama cha vifaa — ulinzi wa vifaa hauwezi kuwashwa hapa.",
+        "enter_pin_first": "Ingiza PIN yako ya hifadhi kwanza.",
+        "enter_pin_confirm_removal": "Ingiza PIN yako ya hifadhi ili kuthibitisha kuondolewa.",
+        "enter_pin_upgrade": "Ingiza PIN yako ya hifadhi ili kuboresha."
+      },
+      "toast": {
+        "enabled": "Ulinzi wa vifaa umewashwa — hifadhi yako sasa inahitaji kifaa hiki ili kufungua.",
+        "removed": "Ulinzi wa vifaa umeondolewa.",
+        "upgraded": "Ulinzi wa vifaa umeboreshwa — hifadhi yako sasa imefungwa kwa funguo ya kipekee ya kila kifaa."
+      },
+      "pin_strength": {
+        "hardware_title": "Imelindwa na vifaa.",
+        "hardware_body": "PIN yako pamoja na Face ID, alama ya kidole, au ufunguo wa siri inafanya mashambulizi ya nje ya mtandao yasiwezekane — mshambuliaji angehitaji PIN yako na kifaa hiki maalum.",
+        "no_hardware_title": "Hakuna kipengele cha vifaa kinachopatikana kwenye kivinjari hiki.",
+        "no_hardware_body": "PIN yako ya tarakimu 8 (~mchanganyiko milioni 100) inalindwa na Argon2id pekee — mshambuliaji aliyejitolea anaweza kuivunja nje ya mtandao ndani ya siku hadi wiki. Tumia nenosiri la herufi 12+, au badilisha kwenda Chrome/Firefox ili kuwasha ulinzi wa vifaa.",
+        "pre_enroll_title": "Nguvu ya PIN.",
+        "pre_enroll_body": "PIN ya tarakimu 8 ina mchanganyiko milioni 100. Argon2id inapunguza kasi ya mashambulizi ya nje ya mtandao hadi karibu mwaka 1–2 kwa kichakataji kimoja — lakini kundi la GPU linaweza kupunguza hilo hadi siku. Kuwasha Face ID, alama ya kidole, au ufunguo wa siri hapo juu kunafanya mashambulizi ya nje ya mtandao yasiwezekane kwa kuhitaji kifaa hiki kwa kila ufunguzi."
+      },
+      "enrolled": {
+        "active_title": "Imewashwa kwenye kifaa hiki",
+        "active_body_native": "Hifadhi yako inahitaji alama ya mwili ya kifaa hiki ili kufungua.",
+        "active_body_web": "Hifadhi yako inahitaji ufunguo wa siri wa kifaa hiki ili kufungua."
+      },
+      "upgrade": {
+        "available_title": "Uboreshaji unapatikana",
+        "available_body": "Pochi yako ililindwa kwa toleo la zamani lililoshiriki funguo kati ya vifaa. Boresha ili kuifunga kwa kifaa hiki tu. Hii inafanyika mara moja na inakuomba kuthibitisha mara mbili.",
+        "cta": "Boresha ulinzi wa vifaa",
+        "busy": "Inaboresha — idhinisha viashiria vyote viwili…",
+        "prompt": "Ingiza PIN yako ya hifadhi. Utathibitisha mara mbili ili kulinda tena hifadhi.",
+        "cancel": "Ghairi"
+      },
+      "remove": {
+        "cta": "Ondoa ulinzi wa vifaa",
+        "prompt_native": "Ingiza PIN yako ili kuthibitisha. Utahitaji kuthibitisha kwa kidole chako au uso wako.",
+        "prompt_web": "Ingiza nenosiri lako ili kuthibitisha. Utahitaji kuthibitisha kwa ufunguo wako wa siri.",
+        "busy": "Inaondoa — idhinisha kiashiria…",
+        "cancel": "Ghairi"
+      },
+      "enroll": {
+        "prompt_native": "Ingiza PIN yako ya hifadhi ili kuwasha ulinzi wa vifaa.",
+        "prompt_web": "Ingiza PIN yako ya tarakimu 8 ili kuwasha ulinzi wa vifaa. Kivinjari chako kitaunda ufunguo wa siri ili kufunga pochi yako kwenye kifaa hiki.",
+        "cta": "Washa ulinzi wa vifaa",
+        "busy_native": "Inasajili — idhinisha kiashiria cha alama ya mwili…",
+        "busy_web": "Inasajili — idhinisha kiashiria cha ufunguo wa siri…",
+        "footnote_native": "Utaombwa kuthibitisha kwa alama ya mwili ya kifaa chako au nenosiri la kifaa.",
+        "footnote_web": "Kivinjari chako kitakuomba kuthibitisha kwa alama ya mwili au PIN ya kifaa ili kuunda ufunguo wa siri."
+      },
+      "blocked": "Mipangilio ya ulinzi wa vifaa haipatikani katika kipindi hiki."
+    },
+    "two_factor": {
+      "heading": "Uthibitisho wa hatua mbili kwa vitendo muhimu",
+      "intro": "Ukaguzi wa ziada juu ya PIN yako kwa vitendo nyeti. Hata kama mtu ataona ukiandika PIN yako, bado hawawezi kufanya vitu hivi bila hatua ya pili.",
+      "actions_protects_label": "Vitendo inavyolinda",
+      "gated_actions": [
+        { "label": "Kutuma fedha", "desc": "kila utumaji, baada ya ukaguzi wa usalama" },
+        { "label": "Kufichua kifungu chako cha urejeshaji", "desc": "kutazama au kuhamisha hifadhi mbadala yako" },
+        { "label": "Kuweka PIN ya Dharura", "desc": "kuunda pochi ya Dharura" },
+        { "label": "Kuunda au kuficha pochi", "desc": "mabadiliko ya pochi iliyofichwa" }
+      ],
+      "currently_enforcing": "Kwa sasa inatekeleza:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Ufunguo wa Siri",
+      "badge_password": "PIN + Nenosiri la Kitendo",
+      "badge_off": "Imezimwa (PIN pekee)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Uko kwenye kipindi cha bandia / kilichofichwa. Sanidi uthibitisho wa hatua mbili kutoka kwenye kipindi chako halisi.",
+      "method_a_title": "PIN + Nenosiri la Kitendo",
+      "on_suffix": "IMEWASHWA",
+      "method_a_desc": "Nenosiri la pili lililohifadhiwa ndani ya pochi yako. Imara, lakini manenosiri yote mawili yapo kwenye kifaa kimoja.",
+      "label_pin": "PIN yako",
+      "label_wallet_password": "Nenosiri la pochi",
+      "pin_confirm_placeholder": "Thibitisha ni wewe",
+      "action_password_label_change": "Nenosiri Jipya la Kitendo",
+      "action_password_label_set": "Nenosiri la Kitendo",
+      "action_password_placeholder": "Angalau herufi 8",
+      "action_password_hint": "Angalau herufi 8 · herufi zozote zinaruhusiwa",
+      "too_short": "Tumia angalau herufi {{min}}.",
+      "confirm_label": "Thibitisha",
+      "confirm_placeholder": "Ingiza tena Nenosiri la Kitendo",
+      "confirm_hint": "Lazima lilingane na Nenosiri lako la Kitendo",
+      "mismatch": "Manenosiri hayalingani.",
+      "save_change": "Badilisha Nenosiri la Kitendo",
+      "save_set": "Weka Nenosiri la Kitendo",
+      "remove": "Ondoa Nenosiri la Kitendo",
+      "toast_changed": "Nenosiri la Kitendo limebadilishwa",
+      "toast_set": "Nenosiri la Kitendo limewekwa",
+      "toast_set_error": "Imeshindwa kuweka Nenosiri la Kitendo",
+      "toast_confirm_pin_required": "Ingiza PIN/nenosiri la pochi yako ili kuthibitisha",
+      "toast_removed": "Nenosiri la Kitendo limeondolewa",
+      "toast_remove_error": "Imeshindwa kuondoa Nenosiri la Kitendo",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Ufunguo wa Siri / FIDO2",
+      "method_b_desc_native": "PIN yako pamoja na {{label}}. Ikiwa alama za mwili hazipatikani, kitendo kinazuiwa. Kupoteza kifaa chako hakupotezi kamwe fedha zako.",
+      "method_b_desc_web": "PIN yako pamoja na mguso wa ufunguo wa siri. Ikiwa ufunguo wa siri haupatikani, kitendo kinazuiwa. Kuupoteza hakupotezi kamwe fedha zako.",
+      "switch_aria_native": "Tumia alama za mwili za kifaa changu kama sababu yangu ya pili",
+      "switch_aria_web": "Tumia ufunguo wa siri kama sababu yangu ya pili",
+      "confirm_native": "Thibitisha vitendo muhimu kwa {{label}}.",
+      "unavailable_native": "{{label}} / nenosiri la kifaa halijasanidiwa kwenye kifaa hiki — kiwashe katika mipangilio ya kifaa chako ili kutumia sababu hii.",
+      "unsupported_web": "Kivinjari hiki hakitumii WebAuthn / funguo za siri.",
+      "register_hint_web_pre": "Hakuna ufunguo wa siri uliosajiliwa bado — sanidi mmoja kwenye",
+      "register_hint_web_strong": "Funguo za Siri za Pochi",
+      "register_hint_web_post": "hapa chini, kisha uwashe hili.",
+      "toggle_biometric_needed": "{{label}} haijasanidiwa kwenye kifaa hiki.",
+      "toggle_passkey_needed": "Sajili ufunguo wa siri kwanza (Funguo za Siri za Pochi, hapa chini).",
+      "toggle_biometric_on": "Sababu ya pili ya {{label}} imewashwa",
+      "toggle_biometric_off": "Sababu ya pili ya {{label}} imezimwa",
+      "toggle_passkey_on": "Sababu ya pili ya ufunguo wa siri imewashwa",
+      "toggle_passkey_off": "Sababu ya pili ya ufunguo wa siri imezimwa"
+    },
+    "session": {
+      "title": "Kipindi na Kufunga Kiotomatiki",
+      "description": "Inafunga pochi yako baada ya muda wa kutofanya kazi au unapoondoka kwenye programu",
+      "status_unlocked": "Imefunguliwa",
+      "status_locked": "Imefungwa",
+      "auto_lock_after": "Funga kiotomatiki baada ya",
+      "never_note": "Hakuna kufunga kiotomatiki wakati wa kutofanya kazi, lakini bado inafunga baada ya ~sekunde 45 ya kuwa nyuma na baada ya masaa 8 ya kufunguliwa.",
+      "resets_note": "Inaanza upya kila unapowasiliana na programu. Pia inafunga mara moja inapowekwa nyuma.",
+      "lock_now": "Funga sasa",
+      "recent_activity": "Shughuli za hivi karibuni",
+      "view_all": "Angalia zote",
+      "this_device": "Kifaa hiki",
+      "active_now": "Inaendelea sasa"
+    },
+    "rehearsal": {
+      "title": "Fanya mazoezi ya ukanushaji",
+      "description": "Ona dashibodi kama vile mtu anayeshikilia simu yako iliyofunguliwa angeiona."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Pochi",
+    "sidebar_expand": "Panua upau wa kando",
+    "sidebar_collapse": "Kunja upau wa kando",
+    "search_placeholder": "Tafuta...",
+    "search_shortcut_title": "Tafuta (⌘K)",
+    "lock": "Funga",
+    "lock_confirm_prompt": "Funga pochi hii sasa?",
+    "back": "Rudi",
+    "settings": "Mipangilio",
+    "main_content_aria": "Maudhui makuu",
+    "bottom_nav_aria": "Urambazaji wa chini",
+    "more_features_aria": "Vipengele zaidi",
+    "more": "Zaidi",
+    "close": "Funga",
+    "all_features_heading": "Vipengele Vyote",
+    "recent_heading": "Hivi Karibuni",
+    "tab_home": "Nyumbani",
+    "tab_send": "Tuma",
+    "tab_receive": "Pokea"
+  },
+  "back": {
+    "default_label": "Rudi"
+  },
+  "send": {
+    "heading": "Tuma Sarafu ya Kripto",
+    "subheading": "Hamisha fedha kwa usalama",
+    "wallet_fallback": "Pochi",
+    "wallet_picker": { "label": "Kutoka Pochi", "placeholder": "Chagua pochi" },
+    "asset_picker": { "label": "Rasilimali", "placeholder": "Chagua rasilimali" },
+    "recipient": {
+      "label": "Tuma kwa (anwani au jina)",
+      "placeholder": "Bandika anwani au ingiza jina (mfano vitalik.eth)",
+      "scan_qr": "Changanua msimbo wa QR",
+      "resolving": "Inatafuta jina…",
+      "name_not_found": "Jina halikupatikana — angalia tahajia au bandika anwani moja kwa moja.",
+      "ens_using_prefix": "Inatumia {{name}} →",
+      "ens_confirm_intro": "iliyotafutwa kwa faragha kwenye blockchain kuwa:",
+      "ens_confirm_hint": "Thibitisha anwani hii ni sahihi kabla ya kutuma.",
+      "use_this_address": "Tumia anwani hii",
+      "not_whitelisted": "Anwani hii haipo kwenye orodha yako ya kuaminika. Angalia tena kabla ya kuendelea. Unaweza kuongeza anwani za kuaminika katika Mipangilio.",
+      "self_send_warning": "Unatuma kwa anwani yako mwenyewe ya pochi. Hii haihamishi chochote kati ya pochi na bado inagharimu ada ya mtandao. Angalia tena mpokeaji kabla ya kuendelea."
+    },
+    "screening": {
+      "local_disclosure": "Wapokeaji wanaangaliwa kwenye kifaa chako kwa anwani za udanganyifu dhidi ya historia yako mwenyewe — hakuna kinachotoka kwenye kifaa chako.",
+      "remote_opt_in": "Pia angalia dhidi ya hifadhidata ya vitisho mtandaoni (inatuma anwani hii kwa mtu wa tatu)",
+      "remote_unavailable": "Uangalizi mtandaoni umewashwa, lakini hakuna mtoa huduma aliyesanidiwa katika toleo hili — uangalizi unabaki wa ndani, kwa hivyo hatukuweza kuthibitisha hii dhidi ya orodha ya nje.",
+      "demo_poison_button": "Onyesho: bandika anwani inayofanana"
+    },
+    "simulation": {
+      "title": "Uigaji wa Muamala",
+      "toggle_aria": "Washa/zima uigaji wa muamala",
+      "description": "Kabla ya kutia saini, tunafanya ukaguzi wa ndani kabla ya kuruka — hakuna huduma za watu wa tatu, hakuna data inayotoka kwenye kifaa chako.",
+      "checks": [
+        "Hatari ya anwani (udanganyifu / kufanana)",
+        "Kufasiri kandarasi",
+        "Alama ya idhini isiyo na kikomo",
+        "Utabiri wa kutenguliwa",
+        "Ukiukwaji dhidi ya historia yako",
+        "Onyo la utoaji mkubwa"
+      ],
+      "results_hint": "Matokeo yataonekana katika hatua inayofuata mara utakapoingiza anwani na kiasi.",
+      "off_hint": "Uigaji umezimwa — hakuna ukaguzi wa kabla ya kuruka utakaofanyika kabla ya kutia saini.",
+      "taking_too_long": "Inachukua muda mrefu?",
+      "turn_off": "Zima uigaji"
+    },
+    "amount": {
+      "label": "Kiasi",
+      "placeholder": "0.00",
+      "being_sent": "kinachotumwa",
+      "balance_prefix": "Salio:",
+      "demo_suffix": "(onyesho)",
+      "live_suffix": "(moja kwa moja)",
+      "reading_from_network": "inasoma kutoka kwenye mtandao…"
+    },
+    "errors": {
+      "amount_missing": "Kiasi kinahitajika",
+      "amount_not_positive": "Kiasi lazima kiwe zaidi ya sifuri",
+      "amount_malformed": "Ingiza kiasi cha desimali wazi, kama 0.5",
+      "amount_over_balance": "Salio halitoshi",
+      "insufficient_balance_title": "Salio halitoshi.",
+      "insufficient_balance_body": "Una {{balance}} {{currency}} unayoweza kutuma (baada ya ada ya mtandao). Punguza kiasi ili kuendelea."
+    },
+    "status": {
+      "not_enabled": "Utumaji haujawashwa bado kwa {{currency}}. Rasilimali hii ni ya kupokea tu hadi njia yake ya kripto ithibitishwe.",
+      "dev_ungate_title": "MLANGO WA MAENDELEO UMEFUNGULIWA",
+      "dev_ungate_body": "— mlango wa utumaji umepitwa kwa {{currency}} kupitia VITE_DEV_UNGATE_SEND (toleo la maendeleo tu). Hali ya rasilimali hii haijabadilika (bado si hai); mainnet inabaki imezuiwa. Uthibitishaji wa mtandao wa majaribio tu — kamwe usisambaze toleo hili.",
+      "locked": "Pochi yako imefungwa. Ifungue katika Mipangilio ya Pochi ili kutia saini na kutuma."
+    },
+    "note": { "label": "Maelezo (hiari)", "placeholder": "Hii ni ya nini?" },
+    "trezor": {
+      "toggle_label": "Tia saini kwa Trezor",
+      "connected": "Kifaa kimeunganishwa",
+      "connect_button": "Unganisha kifaa"
+    },
+    "buttons": {
+      "continue": "Endelea",
+      "confirm_send": "Thibitisha & Tuma",
+      "back": "Rudi"
+    },
+    "verify": { "summary_label": "Unatuma" },
+    "fee": {
+      "automatic": "Ada ya mtandao imewekwa kiotomatiki kwa {{currency}} ({{network}}).",
+      "native_fee_note": "Ada ya mtandao inalipwa kwa {{symbol}} ({{network}}) — unahitaji {{symbol}} ili kulipia ada ya mtandao hata unapotuma {{token}}."
+    },
+    "decode": {
+      "heading": "Muamala huu unafanya nini",
+      "action": "Kitendo",
+      "send_tokens": "Tuma tokeni",
+      "token": "Tokeni",
+      "amount": "Kiasi",
+      "recipient": "Mpokeaji",
+      "grant_permission": "Toa idhini ya matumizi",
+      "permission": "Idhini",
+      "unlimited_permission": "Isiyo na kikomo (programu hii inaweza kutumia kiasi chochote)",
+      "spender": "Mtumiaji"
+    },
+    "reauth": {
+      "prompt": "Ingiza tena {{credential}} yako ili kuidhinisha",
+      "credential_pin": "PIN",
+      "credential_password": "nenosiri",
+      "submit_pin": "Idhinisha",
+      "submit_password": "Idhinisha & Tuma",
+      "password_placeholder": "Nenosiri la hifadhi",
+      "password_aria": "Nenosiri la hifadhi kwa idhini ya utumaji",
+      "errors": {
+        "unavailable": "Uthibitishaji haupatikani — tafadhali funga na fungua tena pochi.",
+        "incorrect": "Si sahihi — jaribu tena ({{remaining}} zimebaki)"
+      }
+    },
+    "done": {
+      "beacon_label": "Muamala umesambazwa",
+      "heading": "Muamala Umesambazwa",
+      "body_suffix": "umetiwa saini ndani ya kifaa na kutumwa kwenye mtandao",
+      "tx_hash_label": "Hashi ya muamala",
+      "view_explorer": "Angalia kwenye kivinjari cha mnyororo",
+      "pending_note": "Inasubiri hadi ithibitishwe kwenye mtandao. Salio linasasishwa kutoka kwenye blockchain, si thamani iliyohifadhiwa.",
+      "send_another": "Tuma Nyingine"
+    },
+    "toasts": {
+      "ens_off_in_session": "Utatuzi wa jina umezimwa katika kipindi hiki — bandika anwani moja kwa moja.",
+      "ens_not_found": "Jina la ENS halikupatikana",
+      "sns_unavailable": "Utatuzi wa jina la Solana haupatikani bado — bandika anwani moja kwa moja.",
+      "ens_resolution_failed": "Utatuzi wa jina umeshindwa",
+      "verify_required": "Maliza kuthibitisha hifadhi mbadala yako kabla ya kutuma kiasi hiki.",
+      "two_factor_retry": "Utumaji haukukamilika — tafadhali thibitisha tena ili kujaribu tena.",
+      "send_failed_fallback": "Utumaji umeshindwa",
+      "unconfirmed": "Imeshindwa kuthibitisha muamala huu kwenye mtandao bado — huenda bado unasubiri. Angalia kivinjari."
+    }
+  },
+  "receive": {
+    "heading": "Pokea Sarafu ya Kripto",
+    "subheading": "Onyesha anwani ya pochi ili kupokea fedha",
+    "asset_label": "Rasilimali",
+    "asset_placeholder": "Chagua rasilimali",
+    "not_available": "Kupokea {{name}} ({{symbol}}) hakupatikani bado. Hakuna anwani inayoonyeshwa hadi rasilimali hii iwashwe.",
+    "locked": {
+      "title": "Pochi imefungwa",
+      "body": "Fungua pochi yako ili kufichua anwani yako ya kupokea ya {{asset}} {{network}}.",
+      "open_hd_wallet": "Fungua Msimamizi wa Pochi ya HD"
+    },
+    "your_address": "Anwani yako ya {{asset}}",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Anwani ya kupokea ya {{symbol}}",
+    "copy": {
+      "copied_aria": "Anwani imenakiliwa kwenye ubao wa kunakili",
+      "copy_aria": "Nakili anwani",
+      "copied_toast": "Anwani imenakiliwa",
+      "copy_failed_toast": "Imeshindwa kunakili — chagua na unakili anwani mwenyewe"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} ni tokeni kwenye mtandao unaofanana na Ethereum. Hii ni anwani yako ya pochi — mwambie mtumaji atume {{symbol}} kwenye {{network}} tu. Kuituma kwenye mtandao tofauti kunaweza kupoteza fedha milele.",
+      "evm": "Hii ni anwani yako ya pochi inayoshirikiwa. Tuma tu {{name}} kwenye {{network}} kwenye anwani hii, na hakikisha mtumaji anatumia {{network}}.",
+      "btc": "Tuma tu Bitcoin kwenye {{network}} kwenye anwani hii.",
+      "solana": "Tuma tu Solana kwenye {{network}} kwenye anwani hii."
+    },
+    "select_asset_prompt": "Chagua rasilimali ya kupokea.",
+    "unlock_footer_note": "Anwani zinatoka kwenye pochi yako ya ndani na zinaonekana tu ikiwa imefunguliwa."
+  },
+  "dashboard": {
+    "portfolioValue": "Thamani ya Portfolio",
+    "priceAlertsTriggered_one": "Onyo {{count}} la Bei Limezinduliwa!",
+    "priceAlertsTriggered_other": "Maonyo {{count}} ya Bei Yamezinduliwa!",
+    "lockAriaLabel": "Funga salio nyuma ya alama ya mwili",
+    "lockBalance": "Funga salio",
+    "synced": "Imesawazishwa {{time}}",
+    "syncJustNow": "Sasa hivi",
+    "syncSecondsAgo_one": "sekunde {{count}} zilizopita",
+    "syncSecondsAgo_other": "sekunde {{count}} zilizopita",
+    "syncMinutesAgo_one": "dakika {{count}} iliyopita",
+    "syncMinutesAgo_other": "dakika {{count}} zilizopita",
+    "actions": {
+      "send": "Tuma",
+      "receive": "Pokea",
+      "schedule": "Ratiba",
+      "add": "Ongeza"
+    },
+    "tabs": {
+      "tokens": "Tokeni",
+      "activity": "Shughuli",
+      "analytics": "Uchambuzi"
+    },
+    "emptyWallets": {
+      "title": "Hakuna pochi bado",
+      "description": "Ongeza pochi ili kuanza kupokea, kutuma, na kushikilia rasilimali kwenye minyororo mbalimbali."
+    },
+    "addWallet": "Ongeza Pochi",
+    "searchTransactionsPlaceholder": "Tafuta miamala...",
+    "emptySearch": {
+      "title": "Hakuna miamala inayolingana",
+      "description": "Jaribu kufuta vichujio au kutafuta rasilimali au anwani tofauti."
+    },
+    "emptyTransactions": {
+      "title": "Hakuna miamala bado",
+      "description": "Shughuli yako ya mnyororo itaonekana hapa mara utakapotuma au kupokea."
+    },
+    "portfolioPerformance": "Utendaji wa Portfolio",
+    "assetDistribution": "Ugawaji wa Rasilimali",
+    "quickAccess": "Ufikiaji wa Haraka",
+    "quickAccessItems": {
+      "receive": "Pokea",
+      "security": "Usalama",
+      "approvals": "Idhini",
+      "addressCheck": "Ukaguzi wa Anwani",
+      "analytics": "Uchambuzi",
+      "sentiment": "Mtazamo",
+      "riskScore": "Alama ya Hatari"
+    },
+    "walletNameLabel": "Jina la Pochi",
+    "walletNamePlaceholder": "Pochi Yangu ya ETH",
+    "addWalletDialog": {
+      "title": "Ongeza Pochi",
+      "currency": "Sarafu",
+      "creating": "Inaunda...",
+      "create": "Unda Pochi"
+    },
+    "renameWalletDialog": {
+      "title": "Badilisha Jina la Pochi",
+      "saving": "Inahifadhi...",
+      "save": "Hifadhi Jina"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Hifadhi iliyosimbwa",
+    "backup": {
+      "title": "Hifadhi nakala ya \"{{name}}\"",
+      "reauthDescription": "Thibitisha ni wewe, kisha tutaonyesha kifungu cha urejeshaji cha pochi hii.",
+      "description": "Andika maneno haya 12 nje ya mtandao. Yeyote anayeyajua anaweza kutumia fedha za pochi hii — na ndiyo njia pekee ya kuirejesha.",
+      "warning": "Usichukue picha ya skrini kamwe. Usiiandike kwenye programu nyingine kamwe.",
+      "confirmButton": "Nimeiandika — weka alama imehifadhiwa"
+    },
+    "addWallet": {
+      "defaultWalletName": "pochi yako mpya",
+      "backupDescription": "Pochi hii ina kifungu chake cha urejeshaji — tofauti na kila pochi nyingine katika hifadhi yako. Kiandike nje ya mtandao kabla ya kuitumia.",
+      "backedUpDone": "Nimeihifadhi — nimemaliza",
+      "title": "Ongeza pochi",
+      "createNew": "Unda mpya",
+      "importSeed": "Leta mbegu",
+      "createDescription": "Inatengeneza mbegu MPYA inayotokeza minyororo YOTE (ETH/EVM, BTC, SOL). Utaihifadhi kabla haijaanza kutumika.",
+      "importDescription": "Bandika mbegu iliyopo ya maneno 12/24 — minyororo yote inatokezwa kiotomatiki (mbegu haijafungwa kwa mnyororo mmoja).",
+      "recoveryPhraseLabel": "Kifungu cha urejeshaji",
+      "recoveryPhrasePlaceholder": "neno1 neno2 ... neno12",
+      "walletNameLabel": "Jina la pochi",
+      "walletNamePlaceholder": "mfano Akiba",
+      "assetsToShowLabel": "Rasilimali za kuonyesha",
+      "assetsToShowHint": "Chaguo la kuonyesha tu — mbegu inashikilia mnyororo wowote bila kujali.",
+      "confirmVaultPlaceholder": "Thibitisha ni wewe ili kubadilisha hifadhi yako",
+      "vaultReentryHint": "Imeingizwa tena ili kuidhinisha mabadiliko kwenye hifadhi yako ya mbegu. Haihifadhiwi kwenye kumbukumbu kamwe.",
+      "createAndBackup": "Unda & hifadhi nakala",
+      "importWallet": "Leta pochi"
+    },
+    "vaultPinLabel": "PIN ya Hifadhi",
+    "vaultPasswordLabel": "Nenosiri la Hifadhi",
+    "cancel": "Ghairi",
+    "done": "Imekamilika",
+    "manageAssets": {
+      "title": "Rasilimali za \"{{name}}\"",
+      "description": "Chagua rasilimali zinazoonyeshwa kwa pochi hii. Zilizofichwa zinabaki nje ya njia hadi ziongezwe."
+    },
+    "rename": {
+      "title": "Badilisha jina la pochi",
+      "save": "Hifadhi jina"
+    },
+    "remove": {
+      "title": "Ondoa \"{{name}}\"?",
+      "onlyWallet": "Hii ndiyo pochi yako pekee — haiwezi kuondolewa. Tumia Kufuta kwa Dharura katika Usalama ili kufuta kila kitu.",
+      "description": "Inaondoa mbegu ya pochi hii kutoka kwenye kifaa hiki.",
+      "backedUpNote": "Unaweza kuirejesha kutoka kwa kifungu chake cha urejeshaji.",
+      "notBackedUpNote": "⚠️ HAIJAHIFADHIWA — bila kifungu chake imepotea milele.",
+      "button": "Ondoa pochi"
+    },
+    "move": {
+      "title": "Hamisha \"{{name}}\" kwenda…"
+    },
+    "managePortfolios": {
+      "title": "Portfolio",
+      "defaultTag": "(chaguo-msingi)",
+      "saveAriaLabel": "Hifadhi jina la portfolio",
+      "renameAriaLabel": "Badilisha jina la {{name}}",
+      "deleteAriaLabel": "Futa {{name}}",
+      "newNamePlaceholder": "Jina jipya la portfolio",
+      "addButton": "Ongeza"
+    },
+    "activity": {
+      "unlockPrompt": "Fungua pochi yako ili kuona shughuli.",
+      "loading": "Inapakia...",
+      "loadError": "Imeshindwa kupakia shughuli.",
+      "noTransactions": "Hakuna miamala bado.",
+      "viewFullHistory": "Angalia historia kamili →"
+    },
+    "portfolioValueLabel": "Thamani ya Portfolio",
+    "explore": {
+      "subtitle": "Unachunguza — kuangalia tu. Hakuna pochi bado.",
+      "description": "Angalia kwa uhuru. Ukiwa tayari, unda pochi mpya ya kujitegemea au leta mbegu iliyopo — funguo zinatengenezwa na kusimbwa kwenye kifaa hiki.",
+      "createOrImport": "Unda au leta pochi"
+    },
+    "portfoliosButton": "Portfolio",
+    "totalValueHeading": "{{name}} · Thamani Jumla",
+    "partialTotalNote": "Baadhi ya salio halikuweza kupakiwa — jumla hii huenda haijakamilika.",
+    "refreshPricesTooltip": "Onyesha upya bei za moja kwa moja",
+    "live": "Moja kwa moja",
+    "approximate": "Takriban",
+    "seedVerify": {
+      "title": "Maliza kuthibitisha hifadhi mbadala yako",
+      "description": "Inahitajika kwa kutuma zaidi ya kikomo cha usalama.",
+      "verifyAriaLabel": "Thibitisha hifadhi mbadala ya pochi yako",
+      "verifyButton": "Thibitisha"
+    },
+    "unbacked": {
+      "titleBold": "Hifadhi mbadala ya pochi haijakamilika.",
+      "body": "Kila pochi ina kifungu chake cha urejeshaji — bila hicho, fedha za pochi hiyo hazirejesheki. Hifadhi nakala sasa.",
+      "backUpButton": "Hifadhi nakala ya \"{{name}}\""
+    },
+    "actions": {
+      "send": "Tuma",
+      "receive": "Pokea",
+      "addWallet": "Ongeza pochi"
+    },
+    "activeWalletHint": {
+      "prefix": "Tuma/Pokea inatumia",
+      "otherPortfolio": " (katika portfolio nyingine)",
+      "suffix": ". Gusa pochi hapa chini ili kubadilisha."
+    },
+    "tabs": {
+      "tokens": "Tokeni",
+      "activity": "Shughuli",
+      "analytics": "Uchambuzi"
+    },
+    "noWalletsInPortfolio": "Hakuna pochi katika \"{{name}}\". Ongeza pochi, au hamisha moja hapa kutoka kwenye menyu yake.",
+    "hideAssets": "Ficha rasilimali",
+    "showAllAssets": "Onyesha rasilimali zote",
+    "walletCard": {
+      "active": "Inatumika",
+      "backedUp": "Imehifadhiwa",
+      "backUp": "Hifadhi nakala",
+      "partial": "sehemu",
+      "optionsAriaLabel": "Chaguo za {{name}}",
+      "noAssetsShown": "Hakuna rasilimali zinazoonyeshwa. Tumia \"Simamia rasilimali\"."
+    },
+    "menu": {
+      "manageAssets": "Simamia rasilimali",
+      "rename": "Badilisha jina",
+      "moveToPortfolio": "Hamisha kwenda portfolio",
+      "backUp": "Hifadhi nakala",
+      "remove": "Ondoa"
+    },
+    "balanceLoadFailedTitle": "Salio limeshindwa kupakiwa",
+    "defaultWalletFallbackName": "pochi",
+    "toast": {
+      "walletImported": "Pochi imeletwa — minyororo yote imetokezwa.",
+      "walletRemoved": "Pochi imeondolewa kutoka kwenye kifaa hiki.",
+      "walletAddedBackedUp": "Pochi imeongezwa na kuhifadhiwa.",
+      "movedTo": "Imehamishwa kwenda {{name}}.",
+      "markedBackedUp": "\"{{name}}\" imewekwa alama imehifadhiwa."
+    },
+    "errors": {
+      "couldNotAddWallet": "Imeshindwa kuongeza pochi",
+      "couldNotImportWallet": "Imeshindwa kuleta pochi",
+      "couldNotRemoveWallet": "Imeshindwa kuondoa pochi"
+    }
+  },
+  "networth": {
+    "title": "Thamani Halisi ya Kripto",
+    "unlockPrompt": "Fungua pochi yako ili kuona umiliki wako wa mnyororo.",
+    "subtitle": "Umiliki wako wa mnyororo — hauhusishi rasilimali za nje.",
+    "totalHoldings": "Umiliki jumla",
+    "partialNote": "sehemu — baadhi ya salio halikuweza kusomwa",
+    "refreshPricesTooltip": "Onyesha upya bei za moja kwa moja",
+    "live": "Moja kwa moja",
+    "approximate": "Takriban",
+    "allocation": "Ugawaji",
+    "holdings": "Umiliki",
+    "noHoldings": "Hakuna umiliki bado."
+  }
+}

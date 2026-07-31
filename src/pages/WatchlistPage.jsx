@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TOP_SYMBOLS } from "@/lib/cryptos";
 import CoinLogo from "@/components/CoinLogo";
+import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const POPULAR = TOP_SYMBOLS;
 
@@ -50,7 +51,7 @@ export default function WatchlistPage() {
           <h1 className="text-xl font-bold flex items-center gap-2"><Star className="h-5 w-5 text-yellow-400 fill-yellow-400" /> Watchlist</h1>
           <p className="text-sm text-muted-foreground">{items.length} assets tracked</p>
         </div>
-        <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Asset</Button>
+        <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 me-1" /> Add Asset</Button>
       </div>
 
       {/* Quick Add Popular */}
@@ -62,7 +63,7 @@ export default function WatchlistPage() {
             return (
               <button key={s} onClick={() => addQuick(s)} disabled={!!has}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${has ? "border-primary/50 text-primary bg-primary/10 cursor-default" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}>
-                {has ? <Check className="inline h-3 w-3 mr-1" /> : null}{s}
+                {has ? <Check className="inline h-3 w-3 me-1" /> : null}{s}
               </button>
             );
           })}
@@ -99,7 +100,7 @@ export default function WatchlistPage() {
                       </p>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-end">
                     <p className="text-xs text-muted-foreground">Price unavailable</p>
                     <p className="text-[10px] text-muted-foreground">Connect a live feed</p>
                   </div>
@@ -121,18 +122,18 @@ export default function WatchlistPage() {
                   <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-2">
                     <div>
                       <Label className="text-[10px]">Buy below ($)</Label>
-                      <Input value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="65000" type="number" className="h-7 text-xs mt-0.5" />
+                      <Input value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="65000" type="text" inputMode="decimal" className="h-7 text-xs mt-0.5" />
                     </div>
                     <div>
                       <Label className="text-[10px]">Sell above ($)</Label>
-                      <Input value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="75000" type="number" className="h-7 text-xs mt-0.5" />
+                      <Input value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="75000" type="text" inputMode="decimal" className="h-7 text-xs mt-0.5" />
                     </div>
                     <div className="col-span-2">
                       <Label className="text-[10px]">Note</Label>
                       <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Your note..." className="h-7 text-xs mt-0.5" />
                     </div>
-                    <Button size="sm" className="h-7 text-xs" onClick={() => update.mutate({ id: item.id, ...form, target_buy: form.target_buy ? parseFloat(form.target_buy) : undefined, target_sell: form.target_sell ? parseFloat(form.target_sell) : undefined })}>
-                      <Check className="h-3 w-3 mr-1" /> Save
+                    <Button size="sm" className="h-7 text-xs" onClick={() => update.mutate({ id: item.id, ...form, target_buy: form.target_buy ? parseLocaleNumber(form.target_buy, resolveLocale()) : undefined, target_sell: form.target_sell ? parseLocaleNumber(form.target_sell, resolveLocale()) : undefined })}>
+                      <Check className="h-3 w-3 me-1" /> Save
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditId(null)}>Cancel</Button>
                   </div>
@@ -155,18 +156,18 @@ export default function WatchlistPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Buy Below (USD)</Label>
-                <Input value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="Optional" type="number" className="mt-1.5" />
+                <Input value={form.target_buy} onChange={e => setForm(f => ({ ...f, target_buy: e.target.value }))} placeholder="Optional" type="text" inputMode="decimal" className="mt-1.5" />
               </div>
               <div>
                 <Label>Sell Above (USD)</Label>
-                <Input value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="Optional" type="number" className="mt-1.5" />
+                <Input value={form.target_sell} onChange={e => setForm(f => ({ ...f, target_sell: e.target.value }))} placeholder="Optional" type="text" inputMode="decimal" className="mt-1.5" />
               </div>
             </div>
             <div>
               <Label>Note (optional)</Label>
               <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Your note..." className="mt-1.5" />
             </div>
-            <Button className="w-full" disabled={!form.symbol || add.isPending} onClick={() => add.mutate({ ...form, target_buy: form.target_buy ? parseFloat(form.target_buy) : undefined, target_sell: form.target_sell ? parseFloat(form.target_sell) : undefined })}>
+            <Button className="w-full" disabled={!form.symbol || add.isPending} onClick={() => add.mutate({ ...form, target_buy: form.target_buy ? parseLocaleNumber(form.target_buy, resolveLocale()) : undefined, target_sell: form.target_sell ? parseLocaleNumber(form.target_sell, resolveLocale()) : undefined })}>
               {add.isPending ? "Adding..." : "Add to Watchlist"}
             </Button>
           </div>

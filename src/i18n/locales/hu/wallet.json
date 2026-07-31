@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Tranzakciótörténet",
+      "subhead": "Láncnkénti küldések és fogadások közvetlenül a láncról olvasva — csak olvasható, exploter-hivatkozásokkal.",
+      "badge_demo": "Demó · minta adat",
+      "badge_mainnet": "Fő hálózat",
+      "badge_testnet": "Teszthálózat",
+      "privacy_demo_note": "Demó mód — a hálózaton keresztül semmi nem kerül lekérdezésre; az alábbi sorok helyi minta adatok.",
+      "loading_label": "{{symbol}} előzmények betöltése",
+      "error_prefix": "Nem sikerült betölteni az előzményeket: {{reason}}.",
+      "error_fetch_reason": "Nem sikerült elérni az RPC-csomópontot — ellenőrizze a kapcsolatát, és próbálja újra.",
+      "error_generic_reason": "az indexelő nem válaszolt",
+      "retry": "Újrapróbálkozás",
+      "no_indexer_title": "Az alkalmazáson belüli előzmények nem érhetők el a(z) {{name}} esetében JSON-RPC-n keresztül",
+      "no_indexer_body": "Egy egyszerű JSON-RPC csomópont nem tudja felsorolni egy cím tranzakcióit, és szándékosan nem adunk hozzá harmadik féltől származó explorer/indexelő API-t (ez új adatforrást és „hazatelefonálási” felületet jelentene). A teljes előzmény a blokk-exploreren elérhető.",
+      "view_on_explorer": "{{address}} megtekintése a(z) {{network}} exploreren",
+      "view_explorer_title": "Megtekintés a blokk-exploreren",
+      "unlock_for_explorer": "Oldja fel a pénztárcáját, hogy megkapja a(z) {{symbol}} címéhez tartozó explorer-hivatkozást.",
+      "locked_title": "A pénztárca zárolva",
+      "locked_body": "Oldja fel a pénztárcáját, hogy levezesse a(z) {{symbol}} címét, és betöltse az előzményeit.",
+      "empty": "Még nincs tranzakció a(z) {{symbol}} eszközhöz a(z) {{network}} hálózaton.",
+      "count_one": "{{count}} tranzakció",
+      "count_other": "{{count}} tranzakció",
+      "most_recent_suffix": " · legutóbbi",
+      "refresh": "Frissítés",
+      "sample_badge": "Minta",
+      "to_prefix": "Címzett: ",
+      "from_prefix": "Feladó: ",
+      "status_pending": "Függőben",
+      "status_confirmed": "Megerősítve",
+      "status_failed": "Sikertelen",
+      "awaiting_confirmation": "megerősítésre vár"
+    },
+    "list": {
+      "empty_title": "Még nincs tranzakció",
+      "empty_description": "Amikor küld vagy fogad ezzel a pénztárcával, a láncon belüli tevékenysége itt fog megjelenni."
+    },
+    "receipt": {
+      "heading": "Tranzakciós bizonylatok",
+      "subhead": "Nyomtatható bizonylatok készítése bármely tranzakcióhoz",
+      "search_placeholder": "Keresés azonosító, cím vagy pénznem alapján...",
+      "loading": "Betöltés...",
+      "error": "Nem sikerült betölteni a tranzakciókat. Kérjük, próbálja újra.",
+      "empty": "Nem található tranzakció",
+      "preview_title": "Bizonylat előnézete",
+      "print": "Nyomtatás",
+      "print_window_title": "Tranzakciós bizonylat",
+      "brand": "VEYRNOX",
+      "doc_title": "TRANZAKCIÓS BIZONYLAT",
+      "field_receipt_id": "Bizonylatazonosító",
+      "field_date": "Dátum",
+      "field_type": "Típus",
+      "field_asset": "Eszköz",
+      "field_amount": "Összeg",
+      "field_network_fee": "Hálózati díj",
+      "field_status": "Állapot",
+      "field_to": "Címzett",
+      "default_type": "Átutalás",
+      "default_status": "teljesítve",
+      "thank_you": "Köszönjük, hogy a(z) {{brand}} alkalmazást használja",
+      "thank_you_prefix": "Köszönjük, hogy Ön ezt használja:",
+      "digital_record": "Ez egy digitális tranzakciós nyilvántartás"
+    }
+  },
+  "settings": {
+    "heading": "Biztonsági beállítások",
+    "subhead": "Zárolja, oldja fel és védje a pénztárcáját",
+    "theme": {
+      "dark": "Sötét mód",
+      "light": "Világos mód",
+      "saved_note": "Mentve ezen az eszközön",
+      "switch_to_light": "Váltás világos módra",
+      "switch_to_dark": "Váltás sötét módra"
+    },
+    "activity_log": {
+      "label": "Tevékenységnapló",
+      "description": "Alapértelmezetten ki · csak ezen az eszközön tárolva",
+      "help": "Privát napló: mit módosított, küldött, vont vissza. Nincs benne összeg vagy cím. A Pánik Törlés eltávolítja.",
+      "enable_aria": "Tevékenységnapló engedélyezése",
+      "disable_aria": "Tevékenységnapló letiltása",
+      "no_events": "Még nincs rögzített esemény."
+    },
+    "message_signing": {
+      "label": "Üzenetaláírás",
+      "description": "Alapértelmezetten ki · csak ezen az eszközön tárolva",
+      "help": "Alapértelmezetten ki. Lehetővé teszi tetszőleges szöveges üzenetek aláírását a pénztárca kulcsával. Csak akkor engedélyezze, ha egy dApp vagy szolgáltatás üzenet aláírását kéri.",
+      "enable_aria": "Üzenetaláírás engedélyezése",
+      "disable_aria": "Üzenetaláírás letiltása"
+    },
+    "telemetry": {
+      "label": "Anonim használati adatok",
+      "description": "Opcionális · sosem tartalmaz egyenleget vagy címet",
+      "help": "Segít nekünk hibákat találni és fejleszteni az alkalmazást. Egy véletlenszerű eszközazonosítót használunk — sosem kapcsolódik a pénztárcájához, kulcsaihoz vagy személyazonosságához. Ennek kikapcsolása leállítja az összes, az eszközt elhagyó használati adatot.",
+      "enable_aria": "Anonim használati adatok bekapcsolása",
+      "disable_aria": "Anonim használati adatok kikapcsolása"
+    },
+    "delete_account": {
+      "title": "Veszélyzóna",
+      "clear_cache_label": "Helyi gyorsítótár törlése",
+      "clear_cache_description": "Törli az ezen az eszközön mentett adatokat, és zárolja a pénztárcát. A helyreállítási mondata továbbra is működik. A kulcsok törléséhez használja a Pánik Törlést.",
+      "delete_button": "Törlés",
+      "confirm_prompt_pre": "Ez törli a mentett adatokat, és zárolja a pénztárcát. A helyreállítási mondata továbbra is működik. Írja be:",
+      "confirm_prompt_post": "a megerősítéshez.",
+      "confirm_placeholder": "Írja be: DELETE a megerősítéshez",
+      "confirm_aria": "Írja be: DELETE a fiók-visszaállítás megerősítéséhez",
+      "cancel": "Mégse",
+      "confirm_delete": "Törlés megerősítése",
+      "deleting": "Törlés..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometrikus feloldás",
+      "worth_knowing_label": "Érdemes tudni.",
+      "kdf_disclosure": "Az egyérintéses feloldás elmenti a pénztárca jelszavát ezen az eszközön, a képernyőzár és a biometrikus adatok által védve. Ha valaki hozzájut az eszköze biztonsági mentésének másolatához a fizikai eszköz nélkül, hozzáférhet a pénztárcájához. A legerősebb védelemhez kapcsolja ki ezt.",
+      "app_layer_disclosure_pre": "A biometrikus feloldás elmenti a jelszavát ezen az eszközön, az ujjlenyomata vagy arca által védve. Ez az alkalmazáson belül fut, nem operációs rendszer szinten.",
+      "app_layer_disclosure_mid": "Erősebb, eszközszintű védelemért engedélyezze a(z)",
+      "hardware_protection_label": "Hardvervédelem",
+      "app_layer_disclosure_post": "(alább elérhető) funkciót.",
+      "toggle_label": "Biometrikus feloldás (elsődleges pénztárca)",
+      "toggle_description": "Engedélyezze az egyérintéses feloldást az elsődleges pénztárcájához az eszköz biometrikus adataival.",
+      "before_enable_label": "Mielőtt engedélyezné.",
+      "confirm_disclosure": "Ha valaki hozzájut az eszköze biztonsági mentésének másolatához a fizikai eszköz nélkül, hozzáférhet a pénztárcájához. Csak akkor kapcsolja be, ha ezzel egyetért.",
+      "confirm_enable_button": "Egyérintéses feloldás engedélyezése",
+      "cancel_button": "Mégse",
+      "checking_availability": "Elérhetőség ellenőrzése…",
+      "default_label": "Biometrikus azonosítás",
+      "available": "{{label}} elérhető.",
+      "available_simulated": "{{label}} elérhető (szimulálva demóban).",
+      "status_check_failed": "Nem sikerült ellenőrizni a biometrikus elérhetőséget ezen az eszközön.",
+      "awaiting_prompt": "Felszólításra várakozás…",
+      "preview_prompt": "Felszólítás előnézete",
+      "test_success": "A szimulált hitelesítés sikeres volt",
+      "test_cancelled": "A felszólítás megszakítva"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrikus feloldás",
+      "heading_web": "Feloldás jelszókulccsal",
+      "scope_banner_native_pre": "Az ujjlenyomatát vagy arcát ellenőrizzük feloldás előtt —",
+      "scope_banner_native_post": "ez nem helyettesíti a jelszavát. A jelszava és a helyreállítási mondata önmagukban is működnek, így a biometrikus adatok elvesztése sosem zárja ki.",
+      "scope_banner_web_pre": "A jelszókulcs egy gyors biometrikus vagy biztonsági kulcsos érintést ad hozzá feloldás előtt —",
+      "scope_banner_web_post": "ez nem helyettesíti a jelszavát. A jelszava és a helyreállítási mondata önmagukban is működnek, így a jelszókulcs elvesztése sosem zárja ki.",
+      "extra_step_label": "egy plusz lépés",
+      "enroll_button": "Biometrikus feloldás regisztrálása",
+      "register_button": "Jelszókulcs regisztrálása",
+      "not_setup_native": "Az eszköz biometrikus adatai nincsenek beállítva. Először adjon hozzá ujjlenyomatot vagy arcot az eszköz beállításaiban — a jelszava addig is működik.",
+      "not_supported_web": "A jelszókulcsos feloldás nem érhető el ebben a böngészőben. A mobilalkalmazásban és a modern böngészőkben működik. Itt használja a jelszavát.",
+      "enroll_error": "Nem sikerült regisztrálni a biometrikus feloldást ezen az eszközön.",
+      "register_error": "Nem sikerült regisztrálni a jelszókulcsot ezen az eszközön.",
+      "enrolled_native": "Biometrikus feloldás regisztrálva",
+      "registered_web": "Jelszókulcs regisztrálva",
+      "simulated_suffix": " (szimulált)",
+      "remove_button": "Eltávolítás",
+      "require_toggle_native": "Biometrikus feloldás megkövetelése",
+      "require_toggle_web": "{{label}} megkövetelése feloldáskor",
+      "require_toggle_aria_web": "Jelszókulcsos feloldás megkövetelése",
+      "require_toggle_desc_native": "Kérje az eszköz biometrikus adatait feloldás előtt (a jelszava addig is működik).",
+      "require_toggle_desc_web": "Kérje a jelszókulcsát feloldás előtt (a jelszava addig is működik).",
+      "applies_all_sessions": "Ez az eszköz összes pénztárca-munkamenetére vonatkozik.",
+      "default_label": "Jelszókulcs",
+      "checking_availability": "Elérhetőség ellenőrzése…",
+      "simulated_in_demo": "{{label}} szimulálva demóban. ",
+      "awaiting_biometric": "Biometrikus adatra várakozás…",
+      "awaiting_passkey": "Jelszókulcsra várakozás…",
+      "preview_biometric_prompt": "Biometrikus felszólítás előnézete",
+      "preview_passkey_prompt": "Jelszókulcsos felszólítás előnézete",
+      "simulated_prefix": "Szimulált ",
+      "biometric_verified": "biometrikusan ellenőrizve",
+      "passkey_verified": "jelszókulccsal ellenőrizve",
+      "biometric_prompt_cancelled": "A biometrikus felszólítás megszakítva",
+      "passkey_prompt_cancelled": "A jelszókulcsos felszólítás megszakítva"
+    },
+    "hardware_kek": {
+      "heading": "Eszközön belüli hardvervédelem",
+      "badge_webauthn": "WebAuthn védett",
+      "badge_off": "KI",
+      "description_pre": "A pénztárcáját ehhez a fizikai eszközhöz köti. Az engedélyezés után a pénztárcáját csak ",
+      "description_device": "ezen az eszközön",
+      "description_post": " lehet megnyitni. Egy ellopott mentési fájl az eszköz nélkül használhatatlan, még a PIN-jével együtt is.",
+      "description_web_suffix": "Chrome 99+ és Firefox 108+ böngészőkben működik. A Safari nem támogatott.",
+      "device_binding_note": "Az eszközkötés aktív, és valódi hardveren tesztelve.",
+      "checking_status": "Állapot ellenőrzése…",
+      "web_prf_unsupported": "A hardvervédelem nem érhető el ebben a böngészőben. Használjon Chrome 99+ vagy Firefox 108+ verziót, vagy az iOS/Android alkalmazást.",
+      "errors": {
+        "wrong_pin": "Hibás PIN — adja meg a pénztárca feloldásához használt PIN-t.",
+        "no_hardware": "Nem sikerült elérni az eszköz hardveres biztonsági funkcióját. Próbálja újra, vagy használjon másik eszközt.",
+        "malformed_vault": "A tárolt pénztárcaadatait nem sikerült beolvasni ezen az eszközön.",
+        "not_enrolled": "A hardvervédelem nincs engedélyezve ehhez a tárolóhoz, így nincs mit frissíteni.",
+        "generic": "Hiba történt. Kérjük, próbálja újra.",
+        "key_invalidated": "Az ujjlenyomatai megváltoztak — a hardvervédelem érvénytelenné vált. Kapcsolja ki, majd újra be a hardvervédelmet, vagy állítsa vissza a magszavaiból.",
+        "insecure_tier": "Ezen az eszközön nincs biztonságos hardveres elem — a hardvervédelem itt nem engedélyezhető.",
+        "enter_pin_first": "Adja meg először a tároló PIN-jét.",
+        "enter_pin_confirm_removal": "Adja meg a tároló PIN-jét az eltávolítás megerősítéséhez.",
+        "enter_pin_upgrade": "Adja meg a tároló PIN-jét a frissítéshez."
+      },
+      "toast": {
+        "enabled": "Hardvervédelem engedélyezve — a tárolójának feloldásához mostantól szükséges ez az eszköz.",
+        "removed": "Hardvervédelem eltávolítva.",
+        "upgraded": "Hardvervédelem frissítve — a tárolója most már egyedi, eszközönkénti kulccsal van védve."
+      },
+      "pin_strength": {
+        "hardware_title": "Hardvervédett.",
+        "hardware_body": "A PIN-je Face ID-vel, ujjlenyomattal vagy jelszókulccsal kombinálva kivitelezhetetlenné teszi az offline támadásokat — egy támadónak szüksége lenne a PIN-jére és erre a fizikai eszközre is.",
+        "no_hardware_title": "Ebben a böngészőben nem érhető el hardveres tényező.",
+        "no_hardware_body": "A 8 számjegyű PIN-jét (~100 millió kombináció) csak az Argon2id védi — egy elszánt támadó napok-hetek alatt offline kimeríthetné. Használjon legalább 12 karakteres jelszót, vagy váltson Chrome-ra/Firefoxra a hardvervédelem engedélyezéséhez.",
+        "pre_enroll_title": "PIN erőssége.",
+        "pre_enroll_body": "Egy 8 számjegyű PIN-nek ~100 millió kombinációja van. Az Argon2id az offline támadásokat körülbelül 1–2 évre lassítja egyszálas feldolgozással — de egy GPU-klaszter ezt napokra csökkentheti. A fenti Face ID, ujjlenyomat vagy jelszókulcs engedélyezése minden feloldásnál megköveteli ezt az eszközt, így kivitelezhetetlenné teszi az offline támadásokat."
+      },
+      "enrolled": {
+        "active_title": "Aktív ezen az eszközön",
+        "active_body_native": "A tárolójának feloldásához szükséges ennek az eszköznek a biometrikus adata.",
+        "active_body_web": "A tárolójának feloldásához szükséges ennek az eszköznek a jelszókulcsa."
+      },
+      "upgrade": {
+        "available_title": "Frissítés elérhető",
+        "available_body": "A pénztárcáját egy korábbi verzió védte, amely eszközök között megosztott kulcsot használt. Frissítsen, hogy csak erre az eszközre legyen zárva. Ez egyszeri, és kétszeri ellenőrzést kér.",
+        "cta": "Hardvervédelem frissítése",
+        "busy": "Frissítés — hagyja jóvá mindkét felszólítást…",
+        "prompt": "Adja meg a tároló PIN-jét. Kétszer kell hitelesítenie a tároló újbóli biztosításához.",
+        "cancel": "Mégse"
+      },
+      "remove": {
+        "cta": "Hardvervédelem eltávolítása",
+        "prompt_native": "Adja meg a PIN-jét a megerősítéshez. Ujjlenyomattal vagy arccal kell igazolnia magát.",
+        "prompt_web": "Adja meg a jelszavát a megerősítéshez. Jelszókulccsal kell igazolnia magát.",
+        "busy": "Eltávolítás — hagyja jóvá a felszólítást…",
+        "cancel": "Mégse"
+      },
+      "enroll": {
+        "prompt_native": "Adja meg a tároló PIN-jét a hardvervédelem engedélyezéséhez.",
+        "prompt_web": "Adja meg a 8 számjegyű PIN-jét a hardvervédelem engedélyezéséhez. A böngészője létrehoz egy jelszókulcsot, amely ehhez az eszközhöz zárja a pénztárcáját.",
+        "cta": "Hardvervédelem engedélyezése",
+        "busy_native": "Regisztrálás — hagyja jóvá a biometrikus felszólítást…",
+        "busy_web": "Regisztrálás — hagyja jóvá a jelszókulcsos felszólítást…",
+        "footnote_native": "Meg fogjuk kérni, hogy hitelesítse magát az eszköz biometrikus adatával vagy jelkódjával.",
+        "footnote_web": "A böngészője megkéri, hogy hitelesítse magát biometrikus adattal vagy eszköz-PIN-nel a jelszókulcs létrehozásához."
+      },
+      "blocked": "A hardvervédelem beállításai nem érhetők el ebben a munkamenetben."
+    },
+    "two_factor": {
+      "heading": "Kétfaktoros hitelesítés kritikus műveleteknél",
+      "intro": "Egy extra ellenőrzés a PIN-je mellett érzékeny műveletekhez. Még ha valaki látja is, hogy begépeli a PIN-jét, e nélkül a második lépés nélkül nem tud semmit tenni.",
+      "actions_protects_label": "Az általa védett műveletek",
+      "gated_actions": [
+        { "label": "Pénz küldése", "desc": "minden küldés, a biztonsági ellenőrzések után" },
+        { "label": "Helyreállítási mondat felfedése", "desc": "a biztonsági mentés megtekintése vagy exportálása" },
+        { "label": "Vészhelyzeti PIN beállítása", "desc": "a Vészhelyzeti pénztárca létrehozása" },
+        { "label": "Pénztárca létrehozása vagy elrejtése", "desc": "rejtett pénztárca-változtatások" }
+      ],
+      "currently_enforcing": "Jelenleg érvényesített:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + jelszókulcs",
+      "badge_password": "PIN + Művelet jelszó",
+      "badge_off": "Ki (csak PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Csali / rejtett munkamenetben van. Állítsa be a kétfaktoros hitelesítést a valódi munkamenetéből.",
+      "method_a_title": "PIN + Művelet jelszó",
+      "on_suffix": "BE",
+      "method_a_desc": "Egy második jelszó, amely a pénztárcájában van elmentve. Erős, de mindkét jelszó ugyanazon az eszközön él.",
+      "label_pin": "A PIN-je",
+      "label_wallet_password": "Pénztárca jelszava",
+      "pin_confirm_placeholder": "Erősítse meg, hogy Ön az",
+      "action_password_label_change": "Új Művelet jelszó",
+      "action_password_label_set": "Művelet jelszó",
+      "action_password_placeholder": "Legalább 8 karakter",
+      "action_password_hint": "Legalább 8 karakter · bármilyen karakter megengedett",
+      "too_short": "Használjon legalább {{min}} karaktert.",
+      "confirm_label": "Megerősítés",
+      "confirm_placeholder": "Adja meg újra a Művelet jelszót",
+      "confirm_hint": "Egyeznie kell a Művelet jelszavával",
+      "mismatch": "A jelszavak nem egyeznek.",
+      "save_change": "Művelet jelszó módosítása",
+      "save_set": "Művelet jelszó beállítása",
+      "remove": "Művelet jelszó eltávolítása",
+      "toast_changed": "A Művelet jelszó megváltoztatva",
+      "toast_set": "A Művelet jelszó beállítva",
+      "toast_set_error": "Nem sikerült beállítani a Művelet jelszót",
+      "toast_confirm_pin_required": "Adja meg a pénztárca PIN-jét / jelszavát a megerősítéshez",
+      "toast_removed": "A Művelet jelszó eltávolítva",
+      "toast_remove_error": "Nem sikerült eltávolítani a Művelet jelszót",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + jelszókulcs / FIDO2",
+      "method_b_desc_native": "A PIN-je plusz {{label}}. Ha a biometrikus adat nem elérhető, a művelet blokkolva van. Az eszköz elvesztése sosem jelenti a pénze elvesztését.",
+      "method_b_desc_web": "A PIN-je plusz egy jelszókulcsos érintés. Ha a jelszókulcs nem elérhető, a művelet blokkolva van. Az elvesztése sosem jelenti a pénze elvesztését.",
+      "switch_aria_native": "Az eszköz biometrikus adatainak használata második faktorként",
+      "switch_aria_web": "Jelszókulcs használata második faktorként",
+      "confirm_native": "Kritikus műveletek megerősítése {{label}} használatával.",
+      "unavailable_native": "A(z) {{label}} / eszköz-jelkód nincs beállítva ezen az eszközön — engedélyezze az eszköz beállításaiban ennek a faktornak a használatához.",
+      "unsupported_web": "Ez a böngésző nem támogatja a WebAuthnt / jelszókulcsokat.",
+      "register_hint_web_pre": "Még nincs regisztrált jelszókulcs — állítson be egyet itt:",
+      "register_hint_web_strong": "Pénztárca jelszókulcsok",
+      "register_hint_web_post": "lent, majd engedélyezze ezt.",
+      "toggle_biometric_needed": "A(z) {{label}} nincs beállítva ezen az eszközön.",
+      "toggle_passkey_needed": "Regisztráljon először egy jelszókulcsot (Pénztárca jelszókulcsok, lent).",
+      "toggle_biometric_on": "{{label}} másodfaktor bekapcsolva",
+      "toggle_biometric_off": "{{label}} másodfaktor kikapcsolva",
+      "toggle_passkey_on": "Jelszókulcsos másodfaktor bekapcsolva",
+      "toggle_passkey_off": "Jelszókulcsos másodfaktor kikapcsolva"
+    },
+    "session": {
+      "title": "Munkamenet és automatikus zárolás",
+      "description": "Zárolja a pénztárcáját inaktivitási időszak után, vagy amikor kilép az alkalmazásból",
+      "status_unlocked": "Feloldva",
+      "status_locked": "Zárolva",
+      "auto_lock_after": "Automatikus zárolás ennyi idő után",
+      "never_note": "Nincs automatikus zárolás tétlenség esetén, de akkor is zárol ~45 másodperc után a háttérben, és 8 óra feloldott állapot után.",
+      "resets_note": "Minden alkalmazással való interakciónál visszaáll. Háttérbe kerüléskor is azonnal zárol.",
+      "lock_now": "Zárolás most",
+      "recent_activity": "Legutóbbi tevékenység",
+      "view_all": "Összes megtekintése",
+      "this_device": "Ez az eszköz",
+      "active_now": "Most aktív"
+    },
+    "rehearsal": {
+      "title": "Elutasíthatóság próbája",
+      "description": "Nézze meg a vezérlőpultot pontosan úgy, ahogy azt látná, aki az Ön feloldott telefonját tartja."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Pénztárca",
+    "sidebar_expand": "Oldalsáv kibontása",
+    "sidebar_collapse": "Oldalsáv összecsukása",
+    "search_placeholder": "Keresés...",
+    "search_shortcut_title": "Keresés (⌘K)",
+    "lock": "Zárolás",
+    "lock_confirm_prompt": "Zárolja most ezt a pénztárcát?",
+    "back": "Vissza",
+    "settings": "Beállítások",
+    "main_content_aria": "Fő tartalom",
+    "bottom_nav_aria": "Alsó navigáció",
+    "more_features_aria": "További funkciók",
+    "more": "Több",
+    "close": "Bezárás",
+    "all_features_heading": "Minden funkció",
+    "recent_heading": "Legutóbbi",
+    "tab_home": "Kezdőlap",
+    "tab_send": "Küldés",
+    "tab_receive": "Fogadás"
+  },
+  "back": {
+    "default_label": "Vissza"
+  },
+  "send": {
+    "heading": "Kripto küldése",
+    "subheading": "Pénzeszközök biztonságos átutalása",
+    "wallet_fallback": "Pénztárca",
+    "wallet_picker": { "label": "Feladó pénztárca", "placeholder": "Válasszon pénztárcát" },
+    "asset_picker": { "label": "Eszköz", "placeholder": "Válasszon eszközt" },
+    "recipient": {
+      "label": "Küldés ide (cím vagy név)",
+      "placeholder": "Illesszen be egy címet, vagy adjon meg egy nevet (pl. vitalik.eth)",
+      "scan_qr": "QR-kód beolvasása",
+      "resolving": "Név feloldása…",
+      "name_not_found": "A név nem található — ellenőrizze a helyesírást, vagy illessze be közvetlenül a címet.",
+      "ens_using_prefix": "{{name}} használata →",
+      "ens_confirm_intro": "privát módon lekérdezve a blokkláncon erre:",
+      "ens_confirm_hint": "Küldés előtt erősítse meg, hogy ez a cím helyes.",
+      "use_this_address": "Ezen cím használata",
+      "not_whitelisted": "Ez a cím nincs a fehérlistáján. Folytatás előtt ellenőrizze alaposan. Megbízható címeket a Beállításokban adhat hozzá.",
+      "self_send_warning": "A saját pénztárcacímére küld. Ez nem mozgat semmit a pénztárcák között, és mégis hálózati díjjal jár. Folytatás előtt ellenőrizze a címzettet."
+    },
+    "screening": {
+      "local_disclosure": "A címzetteket az eszközén ellenőrizzük csaló címekre a saját előzményei alapján — semmi nem hagyja el az eszközét.",
+      "remote_opt_in": "Online fenyegetésadatbázis ellen is ellenőrzés (elküldi ezt a címet egy harmadik félnek)",
+      "remote_unavailable": "Az online ellenőrzés engedélyezve van, de ebben az összeállításban nincs beállítva szolgáltató — az ellenőrzés helyi marad, így ezt nem tudtuk külső listával összevetni.",
+      "demo_poison_button": "Demó: hasonló megjelenésű cím beillesztése"
+    },
+    "simulation": {
+      "title": "Tranzakciószimuláció",
+      "toggle_aria": "Tranzakciószimuláció be- és kikapcsolása",
+      "description": "Aláírás előtt egy helyi előellenőrzést futtatunk — nincsenek harmadik féltől származó szolgáltatások, semmi nem hagyja el az eszközét.",
+      "checks": [
+        "Cím kockázata (mérgezett / hasonló megjelenésű)",
+        "Szerződés dekódolása",
+        "Korlátlan jóváhagyás jelzése",
+        "Visszavonás-előrejelzés",
+        "Rendellenesség az előzményeihez képest",
+        "Nagy kiáramlásra vonatkozó figyelmeztetés"
+      ],
+      "results_hint": "Az eredmények a következő lépésnél jelennek meg, amint megadja a címet és az összeget.",
+      "off_hint": "A szimuláció ki van kapcsolva — aláírás előtt nem fut előellenőrzés.",
+      "taking_too_long": "Túl sokáig tart?",
+      "turn_off": "Szimuláció kikapcsolása"
+    },
+    "amount": {
+      "label": "Összeg",
+      "placeholder": "0,00",
+      "being_sent": "küldés alatt",
+      "balance_prefix": "Egyenleg:",
+      "demo_suffix": "(demó)",
+      "live_suffix": "(élő)",
+      "reading_from_network": "beolvasás a hálózatról…"
+    },
+    "errors": {
+      "amount_missing": "Az összeg megadása kötelező",
+      "amount_not_positive": "Az összegnek nullánál nagyobbnak kell lennie",
+      "amount_malformed": "Adjon meg egy egyszerű tizedes összeget, például 0,5",
+      "amount_over_balance": "Nincs elegendő egyenleg",
+      "insufficient_balance_title": "Nincs elegendő egyenleg.",
+      "insufficient_balance_body": "{{balance}} {{currency}} áll rendelkezésére küldésre (a hálózati díj után). Csökkentse az összeget a folytatáshoz."
+    },
+    "status": {
+      "not_enabled": "A(z) {{currency}} küldése még nem engedélyezett. Ez az eszköz csak fogadásra alkalmas, amíg a kriptoútvonala nincs ellenőrizve.",
+      "dev_ungate_title": "FEJLESZTŐI KAPUNYITÁS AKTÍV",
+      "dev_ungate_body": "— a küldési kapu megkerülve a(z) {{currency}} esetében a VITE_DEV_UNGATE_SEND révén (csak fejlesztői összeállítás). Ennek az eszköznek az állapota nem változott (még mindig nem élő); a fő hálózat továbbra is zárolva. Csak teszthálózati ellenőrzéshez — soha ne szállítsa ezt az összeállítást.",
+      "locked": "A pénztárcája zárolva van. Oldja fel a Pénztárca beállításokban az aláíráshoz és a küldéshez."
+    },
+    "note": { "label": "Megjegyzés (opcionális)", "placeholder": "Mire szolgál ez?" },
+    "trezor": {
+      "toggle_label": "Aláírás Trezorral",
+      "connected": "Eszköz csatlakoztatva",
+      "connect_button": "Eszköz csatlakoztatása"
+    },
+    "buttons": {
+      "continue": "Tovább",
+      "confirm_send": "Megerősítés és küldés",
+      "back": "Vissza"
+    },
+    "verify": { "summary_label": "Ön a következőt küldi" },
+    "fee": {
+      "automatic": "A hálózati díj automatikusan van beállítva a(z) {{currency}} ({{network}}) esetében.",
+      "native_fee_note": "A hálózati díjat {{symbol}} ({{network}}) valutában kell fizetni — {{symbol}} szükséges a hálózati díj fedezésére akkor is, ha {{token}} eszközt küld."
+    },
+    "decode": {
+      "heading": "Mit tesz ez a tranzakció",
+      "action": "Művelet",
+      "send_tokens": "Tokenek küldése",
+      "token": "Token",
+      "amount": "Összeg",
+      "recipient": "Címzett",
+      "grant_permission": "Költési jogosultság megadása",
+      "permission": "Jogosultság",
+      "unlimited_permission": "Korlátlan (ez az alkalmazás bármekkora összeget elkölthet)",
+      "spender": "Elköltő"
+    },
+    "reauth": {
+      "prompt": "Adja meg újra a(z) {{credential}} adatát a jóváhagyáshoz",
+      "credential_pin": "PIN",
+      "credential_password": "jelszó",
+      "submit_pin": "Jóváhagyás",
+      "submit_password": "Jóváhagyás és küldés",
+      "password_placeholder": "Tároló jelszava",
+      "password_aria": "Tároló jelszava a küldés jóváhagyásához",
+      "errors": {
+        "unavailable": "Az ellenőrzés nem elérhető — zárolja, majd oldja fel újra a pénztárcát.",
+        "incorrect": "Hibás — próbálja újra ({{remaining}} maradt)"
+      }
+    },
+    "done": {
+      "beacon_label": "Tranzakció közvetítve",
+      "heading": "Tranzakció közvetítve",
+      "body_suffix": "helyben aláírva és elküldve a hálózatnak",
+      "tx_hash_label": "Tranzakció hash",
+      "view_explorer": "Megtekintés a blokk-exploreren",
+      "pending_note": "Megerősítésig függőben. Az egyenleg a blokkláncról frissül, nem egy tárolt értékből.",
+      "send_another": "Újabb küldés"
+    },
+    "toasts": {
+      "ens_off_in_session": "A névfeloldás ki van kapcsolva ebben a munkamenetben — illessze be közvetlenül a címet.",
+      "ens_not_found": "Az ENS-név nem található",
+      "sns_unavailable": "A Solana névfeloldás még nem érhető el — illessze be közvetlenül a címet.",
+      "ens_resolution_failed": "A névfeloldás sikertelen",
+      "verify_required": "Fejezze be a biztonsági mentés ellenőrzését, mielőtt elküldi ezt az összeget.",
+      "two_factor_retry": "A küldés nem fejeződött be — az újrapróbálkozáshoz ellenőrizze magát ismét.",
+      "send_failed_fallback": "A küldés sikertelen",
+      "unconfirmed": "Ezt a tranzakciót még nem sikerült megerősíteni a hálózaton — lehet, hogy még függőben van. Ellenőrizze az exploreren."
+    }
+  },
+  "receive": {
+    "heading": "Kripto fogadása",
+    "subheading": "Mutasson egy pénztárcacímet a pénz fogadásához",
+    "asset_label": "Eszköz",
+    "asset_placeholder": "Válasszon eszközt",
+    "not_available": "A(z) {{name}} ({{symbol}}) fogadása még nem érhető el. Nem jelenik meg cím, amíg ez az eszköz nincs engedélyezve.",
+    "locked": {
+      "title": "A pénztárca zárolva",
+      "body": "Oldja fel a pénztárcáját, hogy felfedje a(z) {{asset}} {{network}} fogadási címét.",
+      "open_hd_wallet": "HD pénztárca-kezelő megnyitása"
+    },
+    "your_address": "A(z) {{asset}} címe",
+    "testnet_badge": "Teszthálózat",
+    "receive_address_label": "{{symbol}} fogadási cím",
+    "copy": {
+      "copied_aria": "A cím a vágólapra másolva",
+      "copy_aria": "Cím másolása",
+      "copied_toast": "Cím másolva",
+      "copy_failed_toast": "Nem sikerült másolni — jelölje ki, és másolja a címet kézzel"
+    },
+    "network_notes": {
+      "erc20": "A(z) {{symbol}} egy token egy Ethereum-kompatibilis hálózaton. Ez a pénztárcacíme — csak akkor kérjen {{symbol}}-t a küldőtől, ha a(z) {{network}} hálózatot használja. Más hálózaton történő küldés végleges pénzvesztést okozhat.",
+      "evm": "Ez a megosztott pénztárcacíme. Csak {{name}} eszközt küldjön erre a címre a(z) {{network}} hálózaton, és győződjön meg róla, hogy a küldő is a(z) {{network}} hálózatot használja.",
+      "btc": "Csak Bitcoint küldjön erre a címre a(z) {{network}} hálózaton.",
+      "solana": "Csak Solanát küldjön erre a címre a(z) {{network}} hálózaton."
+    },
+    "select_asset_prompt": "Válasszon egy fogadandó eszközt.",
+    "unlock_footer_note": "A címek az eszközön lévő pénztárcájából származnak, és csak feloldott állapotban jelennek meg."
+  },
+  "dashboard": {
+    "portfolioValue": "Portfólió értéke",
+    "priceAlertsTriggered_one": "{{count}} árfigyelmeztetés kiváltva!",
+    "priceAlertsTriggered_other": "{{count}} árfigyelmeztetés kiváltva!",
+    "lockAriaLabel": "Egyenleg zárolása biometrikus azonosítás mögé",
+    "lockBalance": "Egyenleg zárolása",
+    "synced": "Szinkronizálva: {{time}}",
+    "syncJustNow": "Éppen most",
+    "syncSecondsAgo_one": "{{count}} másodperce",
+    "syncSecondsAgo_other": "{{count}} másodperce",
+    "syncMinutesAgo_one": "{{count}} perce",
+    "syncMinutesAgo_other": "{{count}} perce",
+    "actions": {
+      "send": "Küldés",
+      "receive": "Fogadás",
+      "schedule": "Ütemezés",
+      "add": "Hozzáadás"
+    },
+    "tabs": {
+      "tokens": "Tokenek",
+      "activity": "Tevékenység",
+      "analytics": "Elemzés"
+    },
+    "emptyWallets": {
+      "title": "Még nincs pénztárca",
+      "description": "Adjon hozzá egy pénztárcát, hogy elkezdhessen eszközöket fogadni, küldeni és tartani láncok között."
+    },
+    "addWallet": "Pénztárca hozzáadása",
+    "searchTransactionsPlaceholder": "Tranzakciók keresése...",
+    "emptySearch": {
+      "title": "Nincs egyező tranzakció",
+      "description": "Próbálja meg törölni a szűrőket, vagy keressen más eszközre vagy címre."
+    },
+    "emptyTransactions": {
+      "title": "Még nincs tranzakció",
+      "description": "A láncon belüli tevékenysége itt fog megjelenni, amint küld vagy fogad."
+    },
+    "portfolioPerformance": "Portfólió teljesítménye",
+    "assetDistribution": "Eszközmegoszlás",
+    "quickAccess": "Gyors elérés",
+    "quickAccessItems": {
+      "receive": "Fogadás",
+      "security": "Biztonság",
+      "approvals": "Jóváhagyások",
+      "addressCheck": "Címellenőrzés",
+      "analytics": "Elemzés",
+      "sentiment": "Hangulat",
+      "riskScore": "Kockázati pontszám"
+    },
+    "walletNameLabel": "Pénztárca neve",
+    "walletNamePlaceholder": "Az ETH pénztárcám",
+    "addWalletDialog": {
+      "title": "Pénztárca hozzáadása",
+      "currency": "Pénznem",
+      "creating": "Létrehozás...",
+      "create": "Pénztárca létrehozása"
+    },
+    "renameWalletDialog": {
+      "title": "Pénztárca átnevezése",
+      "saving": "Mentés...",
+      "save": "Név mentése"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Titkosított tároló",
+    "backup": {
+      "title": "„{{name}}” biztonsági mentése",
+      "reauthDescription": "Erősítse meg, hogy Ön az, majd megjelenítjük a pénztárca helyreállítási mondatát.",
+      "description": "Írja le ezt a 12 szót offline. Aki hozzáfér, elköltheti ennek a pénztárcának a pénzét — és ez az egyetlen módja a helyreállításának.",
+      "warning": "Soha ne készítsen róla képernyőképet. Soha ne írja be egy másik alkalmazásba.",
+      "confirmButton": "Leírtam — megjelölés biztonsági mentettként"
+    },
+    "addWallet": {
+      "defaultWalletName": "az új pénztárcája",
+      "backupDescription": "Ennek a pénztárcának saját helyreállítási mondata van — elkülönítve a tárolójában lévő összes többi pénztárcától. Írja le offline, mielőtt használná.",
+      "backedUpDone": "Elmentettem — kész",
+      "title": "Pénztárca hozzáadása",
+      "createNew": "Új létrehozása",
+      "importSeed": "Mag importálása",
+      "createDescription": "ÚJ magot generál, amely MINDEN láncot levezet (ETH/EVM, BTC, SOL). Aktiválás előtt biztonsági mentést kell készítenie róla.",
+      "importDescription": "Illesszen be egy meglévő, 12/24 szavas magot — minden lánc automatikusan levezetésre kerül (a mag nem lánc-specifikus).",
+      "recoveryPhraseLabel": "Helyreállítási mondat",
+      "recoveryPhrasePlaceholder": "szó1 szó2 ... szó12",
+      "walletNameLabel": "Pénztárca neve",
+      "walletNamePlaceholder": "pl. Megtakarítás",
+      "assetsToShowLabel": "Megjelenítendő eszközök",
+      "assetsToShowHint": "Csak megjelenítési választás — a mag mindenképp minden láncot tartalmaz.",
+      "confirmVaultPlaceholder": "Erősítse meg, hogy Ön az, a tároló módosításához",
+      "vaultReentryHint": "Újra megadva a magtárolójában végzett módosítás jóváhagyásához. Sosem marad a memóriában.",
+      "createAndBackup": "Létrehozás és biztonsági mentés",
+      "importWallet": "Pénztárca importálása"
+    },
+    "vaultPinLabel": "Tároló PIN",
+    "vaultPasswordLabel": "Tároló jelszava",
+    "cancel": "Mégse",
+    "done": "Kész",
+    "manageAssets": {
+      "title": "Eszközök ehhez: „{{name}}”",
+      "description": "Válassza ki, mely eszközök jelenjenek meg ehhez a pénztárcához. A rejtettek nem lesznek útban, amíg nincsenek hozzáadva."
+    },
+    "rename": {
+      "title": "Pénztárca átnevezése",
+      "save": "Név mentése"
+    },
+    "remove": {
+      "title": "Eltávolítja ezt: „{{name}}”?",
+      "onlyWallet": "Ez az egyetlen pénztárcája — nem távolítható el. Használja a Pánik Törlést a Biztonságban minden törléséhez.",
+      "description": "Eltávolítja ennek a pénztárcának a magját erről az eszközről.",
+      "backedUpNote": "Helyreállíthatja a helyreállítási mondatából.",
+      "notBackedUpNote": "⚠️ NINCS biztonsági mentve — a mondata nélkül végleg elveszik.",
+      "button": "Pénztárca eltávolítása"
+    },
+    "move": {
+      "title": "„{{name}}” áthelyezése ide…"
+    },
+    "managePortfolios": {
+      "title": "Portfóliók",
+      "defaultTag": "(alapértelmezett)",
+      "saveAriaLabel": "Portfólió nevének mentése",
+      "renameAriaLabel": "{{name}} átnevezése",
+      "deleteAriaLabel": "{{name}} törlése",
+      "newNamePlaceholder": "Új portfólió neve",
+      "addButton": "Hozzáadás"
+    },
+    "activity": {
+      "unlockPrompt": "Oldja fel a pénztárcáját a tevékenység megtekintéséhez.",
+      "loading": "Betöltés...",
+      "loadError": "Nem sikerült betölteni a tevékenységet.",
+      "noTransactions": "Még nincs tranzakció.",
+      "viewFullHistory": "Teljes előzmény megtekintése →"
+    },
+    "portfolioValueLabel": "Portfólió értéke",
+    "explore": {
+      "subtitle": "Felfedezés — csak megtekintés. Még nincs pénztárca.",
+      "description": "Nézzen körül szabadon. Amikor készen áll, hozzon létre új, önfelügyelt pénztárcát, vagy importáljon egy meglévő magot — a kulcsok ezen az eszközön jönnek létre és titkosítva.",
+      "createOrImport": "Pénztárca létrehozása vagy importálása"
+    },
+    "portfoliosButton": "Portfóliók",
+    "totalValueHeading": "{{name}} · Teljes érték",
+    "partialTotalNote": "Néhány egyenleget nem sikerült betölteni — ez az összeg hiányos lehet.",
+    "refreshPricesTooltip": "Élő árak frissítése",
+    "live": "Élő",
+    "approximate": "Közelítő",
+    "seedVerify": {
+      "title": "Fejezze be a biztonsági mentés ellenőrzését",
+      "description": "A biztonsági küszöb feletti küldéshez szükséges.",
+      "verifyAriaLabel": "A pénztárca biztonsági mentésének ellenőrzése",
+      "verifyButton": "Ellenőrzés"
+    },
+    "unbacked": {
+      "titleBold": "A pénztárca biztonsági mentése hiányos.",
+      "body": "Minden pénztárcának saját helyreállítási mondata van — enélkül az adott pénztárca pénze visszaállíthatatlan. Készítsen biztonsági mentést most.",
+      "backUpButton": "„{{name}}” biztonsági mentése"
+    },
+    "actions": {
+      "send": "Küldés",
+      "receive": "Fogadás",
+      "addWallet": "Pénztárca hozzáadása"
+    },
+    "activeWalletHint": {
+      "prefix": "A Küldés/Fogadás ezt használja:",
+      "otherPortfolio": " (egy másik portfólióban)",
+      "suffix": ". Érintsen meg egy pénztárcát lent a váltáshoz."
+    },
+    "tabs": {
+      "tokens": "Tokenek",
+      "activity": "Tevékenység",
+      "analytics": "Elemzés"
+    },
+    "noWalletsInPortfolio": "Nincs pénztárca ebben: „{{name}}”. Adjon hozzá egy pénztárcát, vagy helyezzen ide egyet a menüjéből.",
+    "hideAssets": "Eszközök elrejtése",
+    "showAllAssets": "Összes eszköz megjelenítése",
+    "walletCard": {
+      "active": "Aktív",
+      "backedUp": "Biztonsági mentve",
+      "backUp": "Biztonsági mentés",
+      "partial": "részleges",
+      "optionsAriaLabel": "Beállítások ehhez: {{name}}",
+      "noAssetsShown": "Nincs megjelenített eszköz. Használja az „Eszközök kezelése” funkciót."
+    },
+    "menu": {
+      "manageAssets": "Eszközök kezelése",
+      "rename": "Átnevezés",
+      "moveToPortfolio": "Áthelyezés portfólióba",
+      "backUp": "Biztonsági mentés",
+      "remove": "Eltávolítás"
+    },
+    "balanceLoadFailedTitle": "Az egyenleget nem sikerült betölteni",
+    "defaultWalletFallbackName": "pénztárca",
+    "toast": {
+      "walletImported": "Pénztárca importálva — minden lánc levezetve.",
+      "walletRemoved": "Pénztárca eltávolítva erről az eszközről.",
+      "walletAddedBackedUp": "Pénztárca hozzáadva és biztonsági mentve.",
+      "movedTo": "Áthelyezve ide: {{name}}.",
+      "markedBackedUp": "„{{name}}” megjelölve biztonsági mentettként."
+    },
+    "errors": {
+      "couldNotAddWallet": "Nem sikerült hozzáadni a pénztárcát",
+      "couldNotImportWallet": "Nem sikerült importálni a pénztárcát",
+      "couldNotRemoveWallet": "Nem sikerült eltávolítani a pénztárcát"
+    }
+  },
+  "networth": {
+    "title": "Kripto nettó vagyon",
+    "unlockPrompt": "Oldja fel a pénztárcáját a láncon belüli eszközei megtekintéséhez.",
+    "subtitle": "A láncon belüli eszközei — nem tartalmazza a külső eszközöket.",
+    "totalHoldings": "Teljes állomány",
+    "partialNote": "részleges — néhány egyenleget nem sikerült beolvasni",
+    "refreshPricesTooltip": "Élő árak frissítése",
+    "live": "Élő",
+    "approximate": "Közelítő",
+    "allocation": "Elosztás",
+    "holdings": "Állomány",
+    "noHoldings": "Még nincs állomány."
+  }
+}

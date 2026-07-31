@@ -647,13 +647,15 @@ describe('Subscription page — outcome-first preamble gating', () => {
     renderPage();
     expect(await screen.findByTestId('outcome-step')).toBeTruthy();
     // ...and the price is not on screen yet — the preamble returns early
-    expect(screen.queryByText('$0')).toBeNull();
+    // Free-tier price renders through Intl.NumberFormat now — matches "$0"
+    // and "$0.00" (en-US host default) while staying robust across locales.
+    expect(screen.queryByText(/^\$0/)).toBeNull();
   });
 
   it('goes straight to pricing once the preamble has been seen', async () => {
     localStorage.setItem('veyrnox-paywall-outcome-seen', '1');
     renderPage();
-    await waitFor(() => expect(screen.getByText('$0')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/^\$0/)).toBeTruthy());
     expect(screen.queryByTestId('outcome-step')).toBeNull();
   });
 

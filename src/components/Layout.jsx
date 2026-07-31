@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Outlet, Link, useLocation, useNavigate, useNavigationType } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { duration as motionDuration, easing as motionEasing } from "@/lib/motion-tokens";
@@ -61,10 +62,12 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-const mobileBottomNav = [
-  { path: "/", label: "Home", icon: LayoutDashboard },
-  { path: "/send", label: "Send", icon: Send },
-  { path: "/receive", label: "Receive", icon: Download },
+// Labels are resolved at render time (see mobileBottomNav in the component
+// body) so they can go through t() — module scope has no hook access.
+const MOBILE_BOTTOM_NAV_ITEMS = [
+  { path: "/", labelKey: "nav.tab_home", icon: LayoutDashboard },
+  { path: "/send", labelKey: "nav.tab_send", icon: Send },
+  { path: "/receive", labelKey: "nav.tab_receive", icon: Download },
 ];
 
 // Routes that host the mobile tab shell (bottom-nav tabs rendered as tab-panels).
@@ -91,9 +94,11 @@ export function shouldShowHeaderSearch(pathname, mobileTab) {
 }
 
 export default function Layout() {
+  const { t } = useTranslation('wallet');
   const location = useLocation();
   const navigate = useNavigate();
   const { lock } = useWallet();
+  const mobileBottomNav = MOBILE_BOTTOM_NAV_ITEMS.map((item) => ({ ...item, label: t(item.labelKey) }));
   const prefersReducedMotion = useReducedMotion();
   const navType = useNavigationType();
   const isBack = navType === 'POP';
@@ -241,7 +246,7 @@ export default function Layout() {
     <div className="app-shell flex flex-col md:flex-row md:min-h-screen bg-background">
 
       {/* ── Desktop Sidebar ── */}
-      <aside className={`hidden md:flex md:min-h-screen bg-card border-r border-border flex-col shrink-0 transition-all duration-300 ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
+      <aside className={`hidden md:flex md:min-h-screen bg-card border-e border-border flex-col shrink-0 transition-all duration-300 ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
 
         {/* Logo + Search */}
         <div className="flex flex-col border-b border-border">
@@ -250,7 +255,7 @@ export default function Layout() {
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <VeyrnoxWordmark className="text-sm" />
-                <p className="text-[9px] text-muted-foreground tracking-widest uppercase">Wallet</p>
+                <p className="text-[9px] text-muted-foreground tracking-widest uppercase">{t('nav.wallet_tagline')}</p>
               </div>
             )}
             {!collapsed && <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} className="h-8 w-8" />}
@@ -258,9 +263,13 @@ export default function Layout() {
             <button
               onClick={() => setCollapsed(c => !c)}
               className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? t('nav.sidebar_expand') : t('nav.sidebar_collapse')}
             >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              {/* Icons mirror under dir="rtl" — the chevron points "forward" to
+                  expand and "backward" to collapse, both in reading direction. */}
+              {collapsed
+                ? <ChevronRight className="h-4 w-4 rtl:-scale-x-100" />
+                : <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />}
             </button>
           </div>
           {!collapsed && (
@@ -269,7 +278,7 @@ export default function Layout() {
               className="mx-3 mb-3 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-muted-foreground text-xs transition-colors"
             >
               <Search className="h-3.5 w-3.5" />
-              <span className="flex-1 text-left">Search...</span>
+              <span className="flex-1 text-start">{t('nav.search_placeholder')}</span>
               <kbd className="text-[9px] bg-background px-1 py-0.5 rounded">⌘K</kbd>
             </button>
           )}
@@ -277,7 +286,7 @@ export default function Layout() {
             <button
               onClick={() => setCmdOpen(true)}
               className="mx-auto mb-3 p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-              title="Search (⌘K)"
+              title={t('nav.search_shortcut_title')}
             >
               <Search className="h-3.5 w-3.5" />
             </button>
@@ -330,11 +339,11 @@ export default function Layout() {
         <div className="px-2 pb-4 border-t border-border pt-2">
           <button
             onClick={signOut}
-            title={collapsed ? "Lock" : undefined}
+            title={collapsed ? t('nav.lock') : undefined}
             className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all w-full ${collapsed ? 'justify-center' : ''}`}
           >
             <LogOut className="h-3.5 w-3.5" />
-            {!collapsed && "Lock"}
+            {!collapsed && t('nav.lock')}
           </button>
         </div>
       </aside>
@@ -382,10 +391,11 @@ export default function Layout() {
                   navigate(getParentRoute(location.pathname), { replace: true });
                 }
               }}
-              className="flex items-center gap-1 -ml-1 pr-3 min-h-[44px] text-foreground active:opacity-60 transition-opacity select-none"
+              className="flex items-center gap-1 -ms-1 pe-3 min-h-[44px] text-foreground active:opacity-60 transition-opacity select-none"
             >
-              <ChevronLeft className="h-5 w-5" />
-              <span className="text-sm font-semibold">Back</span>
+              {/* Icon mirrors under dir="rtl" — back-navigation chevron. */}
+              <ChevronLeft className="h-5 w-5 rtl:-scale-x-100" />
+              <span className="text-sm font-semibold">{t('nav.back')}</span>
             </button>
           )}
         </div>
@@ -400,7 +410,7 @@ export default function Layout() {
           )}
           <NotificationBell unseenCount={unseenCount} onOpen={openNotifications} />
           <HelpMenu triggerClassName="p-2 rounded-lg hover:bg-secondary hover:text-foreground active:bg-secondary inline-flex items-center justify-center min-h-[40px] min-w-[40px]" />
-          <Link to="/settings" aria-label="Settings" title="Settings" className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
+          <Link to="/settings" aria-label={t('nav.settings')} title={t('nav.settings')} className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]">
             <Settings className="h-4 w-4" aria-hidden="true" />
           </Link>
           {/* F-P2-6: mobile Lock button sits next to Settings gear; a mis-tap
@@ -408,11 +418,11 @@ export default function Layout() {
               actually locking to prevent that class of mis-tap. */}
           <button
             onClick={() => {
-              if (typeof window !== 'undefined' && window.confirm && !window.confirm('Lock this wallet now?')) return;
+              if (typeof window !== 'undefined' && window.confirm && !window.confirm(t('nav.lock_confirm_prompt'))) return;
               signOut();
             }}
-            aria-label="Lock"
-            title="Lock"
+            aria-label={t('nav.lock')}
+            title={t('nav.lock')}
             className="p-2 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground active:bg-secondary transition-colors inline-flex items-center justify-center min-h-[40px] min-w-[40px]"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -454,7 +464,7 @@ export default function Layout() {
           desktop region above. Within mobile, the three root tab panels stay mounted
           and toggle via `hidden` to preserve per-tab state (the original intent). */}
       {!isDesktop && (
-      <div id="main-scroll" className="md:hidden flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] pb-28" role="region" aria-label="Main content">
+      <div id="main-scroll" className="md:hidden flex-1 min-h-0 overflow-auto overscroll-contain [-webkit-overflow-scrolling:touch] pb-28" role="region" aria-label={t('nav.main_content_aria')}>
         {/* Sub-pages: rendered via Outlet only when not on a root tab with slide
             transition. The MOBILE_TABS guard wraps AnimatePresence (not its child)
             ON PURPOSE: when the child was gated INSIDE AnimatePresence, leaving a
@@ -495,7 +505,7 @@ export default function Layout() {
             className="w-full flex items-center gap-2 px-3 py-2 mb-3 rounded-xl bg-secondary/60 hover:bg-secondary text-muted-foreground text-sm transition-colors"
           >
             <Search className="h-4 w-4 shrink-0" />
-            <span className="flex-1 text-left">Search features, pages…</span>
+            <span className="flex-1 text-start">Search features, pages…</span>
           </button>
           <SafeSuspense fallback={<TabSpinner />}><FeatureGate path="/"><DashboardPage /></FeatureGate></SafeSuspense>
         </div>
@@ -518,10 +528,10 @@ export default function Layout() {
 
       {/* ── Mobile Bottom Navigation ── */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur border-t border-border flex items-stretch"
+        className="md:hidden fixed bottom-0 start-0 end-0 z-40 bg-card/95 backdrop-blur border-t border-border flex items-stretch"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         role="navigation"
-        aria-label="Bottom navigation"
+        aria-label={t('nav.bottom_nav_aria')}
       >
         {mobileBottomNav.map((item) => {
           const active = mobileTab === item.path;
@@ -556,11 +566,11 @@ export default function Layout() {
         <button
           onClick={() => setMoreOpen(true)}
           className="flex flex-col items-center justify-center gap-1 py-3 flex-1 text-muted-foreground hover:bg-secondary/60 hover:text-foreground active:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset"
-          aria-label="More features"
+          aria-label={t('nav.more_features_aria')}
           aria-expanded={moreOpen}
         >
           <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-          <span className="text-[11px] font-medium">More</span>
+          <span className="text-[11px] font-medium">{t('nav.more')}</span>
         </button>
       </nav>
 
@@ -582,12 +592,12 @@ export default function Layout() {
           aria-labelledby="more-drawer-title"
         >
           <div className="flex items-center justify-between px-4 border-b border-border shrink-0" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
-            <span id="more-drawer-title" className="font-semibold">All Features</span>
+            <span id="more-drawer-title" className="font-semibold">{t('nav.all_features_heading')}</span>
             <button
               ref={moreCloseBtnRef}
               type="button"
               onClick={() => setMoreOpen(false)}
-              aria-label="Close"
+              aria-label={t('nav.close')}
               className="p-2 rounded-lg hover:bg-secondary"
             >
               <X className="h-5 w-5" aria-hidden="true" />
@@ -600,7 +610,7 @@ export default function Layout() {
               <div className="rounded-2xl p-2.5 border border-primary/20 bg-primary/5">
                 <div className="flex items-center gap-2 px-1 pb-2">
                   <span className="h-2 w-2 rounded-full shrink-0 bg-primary" />
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Recent</p>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t('nav.recent_heading')}</p>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {recents.map(path => {

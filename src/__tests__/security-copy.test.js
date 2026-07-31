@@ -93,7 +93,27 @@ const HONESTY = {
 // RENDERED text, not the source's line-wrapping (JSX collapses whitespace the
 // same way). Without this, a phrase that happens to wrap across two JSX lines —
 // "count\n  deniability" — would fail despite reading correctly on screen.
-const rendered = (rel) => read(rel).replace(/\s+/g, ' ');
+//
+// i18n note (Phase 2 slice 2, batches E/F/G): the load-bearing honesty phrases
+// used to live as literal JSX text in the coercion pages. They are now stored
+// in `i18n/locales/en/security.json` and read via `t('duress.foo')` /
+// `t('panic.foo')` / `t('stealth.foo')` at render time. The GUARANTEE the test
+// enforces — "these phrases must not silently disappear from the app" — is
+// unchanged; only the physical file they live in shifted.
+//
+// PARSE the catalog (don't concatenate the raw JSON): raw-JSON text escapes
+// internal quotes as \" so an assertion for the literal phrase `not "hidden
+// wallets"` misses because the file contains `not \"hidden wallets\"`. Parsing
+// gives us the truly-rendered user-visible strings, which is what the phrase
+// list was written against.
+function flattenStrings(obj, out = []) {
+  if (typeof obj === 'string') out.push(obj);
+  else if (Array.isArray(obj)) obj.forEach((v) => flattenStrings(v, out));
+  else if (obj && typeof obj === 'object') Object.values(obj).forEach((v) => flattenStrings(v, out));
+  return out;
+}
+const CATALOG_EN_TEXT = flattenStrings(JSON.parse(read('i18n/locales/en/security.json'))).join(' ');
+const rendered = (rel) => (read(rel) + '\n' + CATALOG_EN_TEXT).replace(/\s+/g, ' ');
 
 describe('Part F — coercion-page honesty points survive condensation', () => {
   for (const [page, claims] of Object.entries(HONESTY)) {

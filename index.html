@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <!-- Content-Security-Policy (defense-in-depth vs XSS for a key-handling app).
@@ -11,8 +11,14 @@
          Notes for reviewers:
            • 'wasm-unsafe-eval' is REQUIRED — the vault KDF (Argon2id via hash-wasm)
              compiles WebAssembly; without it the wallet cannot encrypt/unlock.
-           • img-src allows https: + data: because NFT/avatar art loads from
-             arbitrary gateways; coin logos are local ('self').
+           • img-src (M-10, 2026-07-28) is the UNION of the three per-sink URL
+             allowlists (src/lib/wcIconUrl.js, newsThumbUrl.js, nftImageUrl.js) —
+             a broad `https:` used to be the defence-in-depth backstop, but that
+             let injected code use <img src> as a data-exfil channel. Every
+             remote host below must correspond to an entry in ALLOWED_ICON_HOSTS,
+             ALLOWED_NEWS_THUMB_HOSTS, or ALLOWED_NFT_IMAGE_HOSTS. Do NOT add a
+             host here without adding it to the matching helper (and vice versa).
+             `data:` stays because helpers may return data-URI placeholders.
            • style-src 'unsafe-inline' is needed by the UI libs' injected styles.
            • connect-src is pinned to explicit hostnames (no wildcards); see
              the full list in the meta tag below — 8 publicnode.com + 3 solana.com
@@ -23,7 +29,7 @@
          (see scripts/csp-injection-probe.* and the csp-policy.test.js suite). -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://ethereum-sepolia-rpc.publicnode.com https://polygon-bor-rpc.publicnode.com https://arbitrum-one-rpc.publicnode.com https://optimism-rpc.publicnode.com https://avalanche-fuji-c-chain-rpc.publicnode.com https://avalanche-c-chain-rpc.publicnode.com https://bsc-testnet-rpc.publicnode.com https://bsc-rpc.publicnode.com https://ethereum-rpc.publicnode.com https://rpc-amoy.polygon.technology https://sepolia-rollup.arbitrum.io https://sepolia.optimism.io https://api.avax-test.network https://api.devnet.solana.com https://api.testnet.solana.com https://api.mainnet-beta.solana.com https://mempool.space https://min-api.cryptocompare.com https://api.etherscan.io https://api.rss2json.com https://api.coingecko.com https://openrouter.ai https://jwstkrtslotnjyerzzsi.supabase.co; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://explorer-api.walletconnect.com https://registry.walletconnect.com https://explorer-api.walletconnect.org https://registry.walletconnect.org https://images.cointelegraph.com https://s3.cointelegraph.com https://cdn.decrypt.co https://img.decrypt.co https://cloudflare-ipfs.com https://cf-ipfs.com https://gateway.pinata.cloud https://*.mypinata.cloud https://nft-cdn.alchemy.com https://i.seadn.io https://openseauserdata.com; font-src 'self'; connect-src 'self' https://ethereum-sepolia-rpc.publicnode.com https://polygon-bor-rpc.publicnode.com https://arbitrum-one-rpc.publicnode.com https://optimism-rpc.publicnode.com https://avalanche-fuji-c-chain-rpc.publicnode.com https://avalanche-c-chain-rpc.publicnode.com https://bsc-testnet-rpc.publicnode.com https://bsc-rpc.publicnode.com https://ethereum-rpc.publicnode.com https://rpc-amoy.polygon.technology https://sepolia-rollup.arbitrum.io https://sepolia.optimism.io https://api.avax-test.network https://api.devnet.solana.com https://api.testnet.solana.com https://api.mainnet-beta.solana.com https://mempool.space https://min-api.cryptocompare.com https://api.etherscan.io https://api.rss2json.com https://api.coingecko.com https://openrouter.ai https://jwstkrtslotnjyerzzsi.supabase.co; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
     />
     <link rel="icon" type="image/svg+xml" href="/veyrnox-icon.svg" />
     <!-- viewport-fit=cover so safe-area-inset-* are non-zero (notch / home indicator).

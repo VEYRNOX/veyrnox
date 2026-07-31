@@ -34,7 +34,7 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
 
-## Current state summary (2026-07-27)
+## Current state summary (2026-07-28)
 
 **Hardware KEK:** Both platforms BUILT + device-verified (INTERNAL). M2c (iOS SE) and M2d
 (Android StrongBox/TEE) UNGATED (PR #1152). Android C-1 v3 salt-binding FIXED +
@@ -66,7 +66,10 @@ device-verified. **Apple account is now an Organization (Veyrnox LTD, Team R5426
 verified 2026-07-21; Guideline 3.1.5(b) satisfied**, unblocking the iOS real-device build
 and the first App Store / IAP submission (both still to be done). Play launch still gated
 on the upload-key reset (pending). Referral system BUILT (4-tier discount model, Supabase server-side codes,
-API-hardened PR #1334 — dedup + rate-limited RPCs, see tracking section below);
+API-hardened PR #1334 — dedup + rate-limited RPCs, see tracking section below;
+further API-hardened 2026-07-28 by the internal-audit wave: H-1..H-3 identity/access,
+M-6..M-8 rate-limit + idempotency, L-8..L-10 dedup + IP dimension, see the 07-28
+entry — CODE only, SQL still pending run in Supabase);
 deniability-hardened 2026-07-20 (PR #1262, K-2): `syncCount` no longer coerces a failed API
 read into a fake "synced" success state written to shared localStorage, and the tracker
 page now renders a neutral empty state (gated on `isDeniabilityOrDemoActive()`) instead of
@@ -147,6 +150,22 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
   2/code/hour; `referral_attributions` public SELECT removed (revenue data no
   longer disclosed). Shared `lib/deviceId.js` extracted. SQL migration:
   `sql/api-security-hardening.sql`. BUILT, INTERNAL — not independently audited.
+- **H-3 (2026-07-28) — `record_attribution` REVOKE appended to
+  `sql/api-security-hardening.sql`, SHIP-ONLY.** Every SECURITY DEFINER function
+  in that file was created with the default PUBLIC EXECUTE grant, leaving
+  `record_attribution` reachable by the anon key — a caller can forge revenue
+  rows against any published referral code (subject to the 2/hr rate limit and
+  the $0–$1000 range), inflating a referrer's earnings display. The primary
+  H-3 fix REVOKEs `record_attribution` from PUBLIC/anon/authenticated and
+  GRANTs EXECUTE to service_role only. The seven other functions listed in
+  `sql/check-first-referral-bonus-hardening.sql`'s STILL OPEN section receive
+  the same treatment in the same commit — but six of them (`track_event`,
+  `increment_referral`, `generate_referral_code`, `register_referral_code`,
+  `get_referral_earnings`, `get_referral_paid_count`) still have live anon
+  callers in `src/api/referralApi.js` and `src/api/trackEvent.js`. Running the
+  SQL without a matching client refactor will break referral + telemetry
+  writes at runtime. Owner must review before executing. Only
+  `record_attribution` and `get_referral_leaderboard` are safe-immediate.
 
 **All 10 assets LIVE** — ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT.
 
@@ -375,6 +394,94 @@ read-gate), plus a regression-test assertion restored. Two items needed work.
   first written listing its PRs as still open. **Treat every claim about another PR's
   state as perishable: cite a SHA, or re-read before merging.**
 
+**2026-07-28 internal audit + fix wave — ECC methodology, 28/28 findings merged.**
+Full-stack internal review via ECC skills (`security-review`, `security-scan`,
+`security-bounty-hunter`, `production-audit`) with `veyrnox-recon`/`veyrnox-honest-reviewer`
+on recon/verify. Ten surfaces scanned, every finding adversarially refuted before it
+survived. Report at `docs/audit-2026-07-28-internal.md`. Head after the wave: `4f2d62e0`.
+Distribution: 1 critical, 5 high, 11 medium, 10 low, 1 info — all 28 landed on `main`
+today via PRs #1435..#1461 plus #1462 (M-10) stacked-merged via #1442 (M-4).
+- **C-1 → PR #1438.** `FirstRunTour` rendered its 5-step modal in decoy sessions when a
+  real user armed but never dismissed, and its dismiss handler wrote to shared
+  localStorage from decoy — K-2 pattern, third writer to `TOUR_ARMED/SEEN_KEY`. Fixed
+  with two-chokepoint gating (render + dismiss) via `isDeniabilityOrDemoActive()`,
+  matching the `lib/consent.js` pattern from PR #1410.
+- **Referral / bonus chain overhaul (H-1..H-3, M-6..M-8, L-8..L-10).** Shipped as CODE
+  only — nothing has run against the live DB. `p_rc_user_id` removed from
+  `generate_referral_code`/`register_referral_code` (H-1); server binding deferred to a
+  RC webhook (skeleton in `sql/referral-rc-webhook.sql`, wiring is a TODO — chain does
+  not function end-to-end until it lands). `register_referral_code` requires
+  `p_device_id` with rate-limit hoisted above the NULL check (H-2). `record_attribution`
+  gets `REVOKE ALL FROM PUBLIC, anon, authenticated` + service_role GRANT, applied to
+  every function in the STILL-OPEN section of
+  `check-first-referral-bonus-hardening.sql` (H-3). Per-IP + global caps on
+  `generate_referral_code` (M-6) and `track_event` (M-7). First-referral-bonus Edge
+  Function gets stable `Idempotency-Key` + 4xx/5xx-distinguished rollback (M-8).
+  `record_attribution` gets UNIQUE-index dedup + DISTINCT in read paths (L-8). CORS
+  drops `http://localhost` (L-9). Bonus-claim rate limit gets per-IP dimension (L-10).
+- **H-4 → PR #1436.** Pinned exact versions on `ethers`, `@noble/curves`,
+  `@noble/hashes`, `@scure/bip32`, `@scure/bip39`, `@scure/btc-signer`,
+  `@reown/walletkit`. Floating carets dropped; CODEOWNERS + Dependabot ignore split so a
+  grouped minor PR can no longer land a signing-path bump unreviewed.
+- **H-5 → PR #1435.** Removed `|| true` swallow of lint/typecheck in
+  `android-e2e-tests.yml` and deleted the fabricated 8/8-passing `test-status` summary.
+  Deleted rather than replaced — CI status now reads only what actually ran.
+- **KEK / vault hygiene (M-3, M-1, M-2, L-1, L-2, I-1).** `enrollHardwareCredential`
+  defaults `vaultWrapped=true` on catch (M-3, #1443); a transient probe IO error can no
+  longer enter the destructive `clearCredential()+enroll()` branch. BTC (M-1, #1441)
+  and Sol (M-2, #1445) derivations gained try/finally zeroization of seed + master +
+  leaf key material; Sol needed a second push for a JSDoc `@type` annotation on the
+  `let node = null` refinement pattern. `credentialVerifier.deriveRaw` zeroes encoded
+  PIN bytes (L-1). Native `saveVaultContents`/`_unlockInner`/`upgradeKekToV3` move
+  `decodeKekSalt` + `getHardwareFactor` inside the try/finally (L-2). AAD v:3 migration
+  plan documented at `docs/vault-aad-v3-plan.md` (I-1); #1111 remains open.
+  **Naming note:** this wave's M-1/M-2 are BTC/Sol, unrelated to the pre-existing "M-1
+  (EVM key unzeroable, ethers v6)" in Open residuals below — different audit's
+  numbering, EVM still open on that front.
+- **WalletConnect surface (M-4, M-5, L-4..L-6, M-10).** dApp icon URL now goes through
+  `isSafeIconUrl` (M-4, #1442); news + NFT sinks get their own allowlists
+  (`newsThumbUrl`, `nftImageUrl`) and CSP `img-src` narrowed from `https:` wildcard to
+  the explicit union of hosts (M-10, #1462 stacked on M-4). Typed-data pre-sign gate
+  composes an `assetAuthorising` risk level via `scoreWcTypedDataLevel` (M-5).
+  `handleApproveSession` enforces `isSendReauthRequired()` post-RASP (L-4).
+  `rejectRequest` honours caller-supplied reason and audits it (L-5).
+  `_scheduleProposalExpiry` finally wired into `_storeProposal` (L-6).
+- **M-9 → PR #1449.** `scripts/bundle-trezor-connect.mjs` locks download to
+  `connect.trezor.io` HTTPS-only with ≤3 redirects AND verifies bytes against
+  `scripts/trezor-connect-manifest.json` sha256s. Manifest seeded with current v9 file
+  hashes (`iframe.html`, `popup.html`, `webusb.html`); regenerate on major-version
+  bumps. Failed the first CI run because the finder forgot to seed hashes; second push
+  `38f1df65` fixed.
+- **L-3 → PR #1451.** `PlayIntegrityPlugin.verifyJwsSignature` KDoc drift closed;
+  stale block describing pre-#1097 bypass replaced with a pointer to
+  `PlayIntegrityJwsVerifier` + a JVM test that constructs an issuer-CN-"Google" cert
+  with the wrong SHA-256 and asserts `verify()` returns false.
+- **L-7 → PR #1459.** `finalisePinRestore` enforces `/^\d{8,12}$/` (matching
+  `createBackupEnvelope`).
+- **Rebase collisions handled honestly.** The four SQL PRs editing
+  `sql/api-security-hardening.sql` conflicted as they landed. H-2 (3-file) and M-6
+  (1-file) needed real merges; each preserved BOTH intents — H-1's `p_rc_user_id`
+  removal AND the new PR's addition — never reintroducing a dropped param. Sanity check
+  used `git diff origin/main --stat` scoped to the PR's file set; force-with-lease
+  pushed; auto-merge survived. Do this in the branch's existing worktree (from the fix
+  workflow's leftovers, `.claude/worktrees/wf_fdd618d3-975-*`), not in the primary.
+- **Auto-merge is safer than `--admin`.** The whole wave cleared the ruleset
+  (`verify`, `mainnet-flag-gate`, `unit-tests`, `copilot_code_review`) with zero admin
+  overrides. The M-2 and M-9 real test failures were caught by required checks —
+  exactly what the `--admin`-past-red debug-cert saga
+  (#1310→#1313→#1325→#1338→#1386/#1391) exists to prevent.
+- **Lesson (fix-workflow pattern).** Spawning one worktree-isolated agent per finding
+  shipped 26/28 first try. The two that needed re-work (M-2 typecheck, M-9 manifest
+  seed) both surfaced only in CI — because the fix agents skipped `npm ci`
+  (~5 min × 28 worktrees) and relied on CI. Correct trade-off; the second push was
+  cheap. Do NOT increase the per-worktree local-test cost to catch these; use the
+  monitor + rebase-in-existing-worktree pattern instead.
+- **Not the independent audit (I4).** ECC skills + Veyrnox agents are still Claude-run;
+  this pass narrows the target of the outstanding third-party audit, it does not close
+  it. Real-device RASP, native compiled binaries, live Supabase RLS enumeration, live
+  RevenueCat runtime remain untested. Publish-facing framing must NOT describe this
+  pass as independent.
+
 **Open residuals:** M-1 (EVM key unzeroable, ethers v6), M-6 (iOS bridge H copy),
 #1111 (vault AAD v:3 migration — plan r2 done, implementation blocked on owner decisions),
 LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
@@ -382,15 +489,24 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
   `increment_referral` renamed from `ref_code` to `p_code` (DROP+recreate in
   `sql/api-security-hardening.sql`, client updated in `referralApi.js`). Run the
   updated SQL in Supabase before deploying the matching client build.
-- **First-referral bonus Edge Function — BUILT, NOT DEPLOYED.**
+- **First-referral bonus Edge Function — BUILT, NOT DEPLOYED (updated 2026-07-28).**
   `supabase/functions/first-referral-bonus/index.ts` + `sql/first-referral-bonus.sql`.
-  Requires: (a) run the SQL migrations — `first-referral-bonus.sql`, then
-  `check-first-referral-bonus-hardening.sql`, then `bonus-claim-rate-limit.sql`,
-  then re-run `definer-search-path-pin.sql`; (b) `supabase functions deploy
-  first-referral-bonus` — **NOT `--no-verify-jwt`**, that flag told the platform to
-  skip JWT verification and accept anonymous requests, and dropping it is part of
-  the 2026-07-26 hardening; (c) set `REVENUECAT_V1_SECRET_KEY` in Edge Function
-  secrets, and optionally `ALLOWED_ORIGINS` for preview deployments.
+  Requires: (a) run the SQL migrations in this order —
+  `first-referral-bonus.sql`, `check-first-referral-bonus-hardening.sql`,
+  `bonus-claim-rate-limit.sql`, re-run `definer-search-path-pin.sql`, then the
+  2026-07-28 audit-wave additions: the updated `api-security-hardening.sql` (H-2/H-3
+  changes to `register_referral_code` + REVOKE batch on `record_attribution`), the
+  updated `first-referral-bonus.sql` (H-1 rc_user_id removal, M-6 per-IP + global
+  rate-limit dimension), the new `sql/referral-rc-webhook.sql` skeleton (H-1
+  server-side RC binding), M-7 track_event IP+global caps, M-8 attempts table,
+  L-8 UNIQUE dedup index, L-10 per-IP bonus-claim rate-limit table; (b) **wire the
+  RevenueCat webhook that H-1 depends on** — the client no longer sends `rc_user_id`,
+  so the referral bonus chain does not function end-to-end until the webhook lands
+  and writes `rc_user_id` server-side with signature verification; (c) `supabase
+  functions deploy first-referral-bonus` — **NOT `--no-verify-jwt`**, that flag told
+  the platform to skip JWT verification and accept anonymous requests, and dropping
+  it is part of the 2026-07-26 hardening; (d) set `REVENUECAT_V1_SECRET_KEY` in
+  Edge Function secrets, and optionally `ALLOWED_ORIGINS` for preview deployments.
   Client wired in Subscription.jsx (fires after `record_attribution`).
   Auth note: the bearer check is possession of the PUBLIC anon key, not user
   authentication — this app has no accounts. Containment comes from the atomic
@@ -617,6 +733,50 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
   `git fetch origin main && git log origin/main --oneline -15` before diagnosing bugs.
 - Pure helpers + unit tests where logic can be extracted.
 - One moving part at a time. Don't mark anything verified without the user's on-chain txid.
+
+## The primary checkout is SHARED — never work in it
+
+`C:\Users\aljob\Downloads\Veyrnox` is used concurrently by many sessions: scheduled tasks
+(daily security diff, branch review, weekly audit, dependency watchers) and any number of
+interactive ones. **10+ worktrees are typically checked out at once.** Treat the primary
+checkout as read-only shared state.
+
+**Never in the primary checkout:** `git checkout` / `git switch` / `git rebase` / `git
+stash`, editing files, or `npm install`. Switching its branch reaches into every other
+session at once, and an uncommitted edit there can be swept into an unrelated PR.
+
+**Do this instead** — cut a branch worktree from `origin/main` and work entirely inside it:
+
+```bash
+git fetch origin main
+git worktree prune
+git branch --no-track <branch> origin/main   # --no-track is REQUIRED, see below
+git worktree add "$TEMP/<name>" <branch>
+```
+
+- **`--no-track` is not optional.** Without it git sets the upstream to `origin/main`, and
+  a later bare `git push` from that branch targets **main**.
+- The worktree needs its own `node_modules` (`npm ci`) — it does not inherit the primary's.
+- Remove it when the PR is open, not before: `git worktree remove <path> --force`.
+- Never `git gc --prune` / `git prune` — the repo carries thousands of unreachable commits
+  belonging to other sessions' in-flight work.
+
+**Reading is exposed too, not just writing.** The primary checkout is frequently on a
+detached HEAD or an unrelated feature branch, so anything read from its working tree is of
+unknown provenance. A previous tracker run analysed a detached HEAD and reported the
+results as `main`. Read from the ref, not the tree: `git show origin/main:<path>`.
+
+**Two failures on 2026-07-28, both from this:**
+- **Duplicated work** — two sessions independently found the same panic-residue finding
+  and opened PRs #1414 and #1415 **92 seconds apart**. One had to be closed.
+- **Cross-contamination** — PR #1423's branch picked up an unrelated commit from another
+  session mid-flight. It could not be force-pushed (that would have destroyed work seconds
+  old), so the branch was abandoned and reopened as #1427.
+
+**Windows/Git-Bash trap:** MSYS rewrites the `:` in `git show origin/main:path`, so the
+command fails and prints nothing — which looks exactly like "no matches found" and will
+have you report a false all-clear. Export `MSYS_NO_PATHCONV=1` first, and sanity-check with
+`git cat-file -s origin/main:<path>` that you are reading a non-zero file.
 
 ## Multi-agent working pattern
 

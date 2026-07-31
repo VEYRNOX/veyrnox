@@ -114,13 +114,14 @@ export default function OutcomeSteps({ step, onNext, onBack, onSkip }) {
       <div className="flex items-center gap-3">
         {step > 0 && (
           <Button variant="ghost" onClick={onBack} disabled={!onBack}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
+            {/* Icon mirrors under dir="rtl" — wizard back/next chevrons. */}
+            <ArrowLeft className="h-4 w-4 me-1 rtl:-scale-x-100" />
             Back
           </Button>
         )}
         <Button className="flex-1" onClick={onNext}>
           {isLast ? "See plans" : "Next"}
-          <ArrowRight className="h-4 w-4 ml-1" />
+          <ArrowRight className="h-4 w-4 ms-1 rtl:-scale-x-100" />
         </Button>
       </div>
 

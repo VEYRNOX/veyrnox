@@ -107,7 +107,7 @@ export default function CandlestickChart({ symbol, period }) {
       )}
       {livePricesOn && isLoading && (
         <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-          <Spinner size="sm" className="mr-2" label="Loading chart…" />
+          <Spinner size="sm" className="me-2" label="Loading chart…" />
           Loading chart…
         </div>
       )}

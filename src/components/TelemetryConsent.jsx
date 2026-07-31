@@ -8,6 +8,7 @@
 // CONSENT_GRANTED still fires: setConsent(true) writes synchronously, so the
 // consent check inside trackEvent() already reads 'granted' when we call it.
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { BarChart3, ShieldCheck } from 'lucide-react';
 import { setConsent } from '@/lib/consent';
@@ -15,6 +16,7 @@ import { FunnelEvent } from '@/lib/analytics';
 import { trackEvent } from '@/api/trackEvent';
 
 export default function TelemetryConsent({ onChoice }) {
+  const { t } = useTranslation('security');
   // A11y: WalletEntry swaps its whole subtree for this screen, so focus would
   // otherwise fall to <body> with nothing announced. Move focus to the labelled
   // region on mount so assistive tech lands on the decision being asked.
@@ -41,25 +43,23 @@ export default function TelemetryConsent({ onChoice }) {
         <BarChart3 className="h-6 w-6 text-primary" aria-hidden="true" />
       </div>
       <div className="space-y-2">
-        <h2 id="telemetry-consent-heading" className="text-lg font-semibold">Help improve Veyrnox</h2>
+        <h2 id="telemetry-consent-heading" className="text-lg font-semibold">{t('telemetry_consent.heading')}</h2>
         <p className="text-sm text-muted-foreground">
-          Share anonymous usage data so we can fix bugs and improve the experience.
-          No personal info, no balances, no wallet addresses, no tracking across apps.
+          {t('telemetry_consent.body')}
         </p>
       </div>
-      <div className="flex items-start gap-3 text-left p-3 rounded-xl bg-card border border-border">
+      <div className="flex items-start gap-3 text-start p-3 rounded-xl bg-card border border-border">
         <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
         <p className="text-xs text-muted-foreground">
-          A random device ID is used — never linked to your wallet, keys, or identity.
-          You can change this anytime in Settings → Privacy.
+          {t('telemetry_consent.device_id_note')}
         </p>
       </div>
       <div className="space-y-2">
         <Button className="w-full" onClick={() => choose(true)}>
-          Help improve Veyrnox
+          {t('telemetry_consent.cta_grant')}
         </Button>
         <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => choose(false)}>
-          No thanks
+          {t('telemetry_consent.cta_deny')}
         </Button>
       </div>
     </section>

@@ -39,11 +39,11 @@ export default function TokenList({ wallets, onSelect, selectedId }) {
             }`}
           >
             <CoinLogo symbol={wallet.currency} size={40} />
-            <div className="flex-1 text-left min-w-0">
+            <div className="flex-1 text-start min-w-0">
               <p className="text-sm font-semibold">{wallet.currency}</p>
               <p className="text-xs text-muted-foreground truncate">{wallet.name}</p>
             </div>
-            <div className="text-right shrink-0 flex flex-col items-end">
+            <div className="text-end shrink-0 flex flex-col items-end">
               <p className="text-sm font-semibold">
                 {wallet.balance?.toLocaleString(undefined, { maximumFractionDigits: 6 })}
               </p>

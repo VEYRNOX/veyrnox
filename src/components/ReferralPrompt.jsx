@@ -68,7 +68,7 @@ export default function ReferralPrompt() {
   };
 
   return (
-    <div className="mt-4 p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3 text-left">
+    <div className="mt-4 p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3 text-start">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium">Know someone who needs secure crypto?</p>
         <button

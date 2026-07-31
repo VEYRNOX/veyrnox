@@ -112,7 +112,7 @@ export default function WhitelistManager() {
                     variant="ghost"
                     size="icon"
                     aria-label={`Remove ${item.label} from whitelist`}
-                    className="shrink-0 ml-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="shrink-0 ms-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => removeAddress.mutate(item.id)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -158,7 +158,7 @@ export default function WhitelistManager() {
               </div>
             )}
             <Button className="w-full" onClick={validateAndSubmit} disabled={addAddress.isPending}>
-              <Plus className="h-4 w-4 mr-1.5" /> Add to Whitelist
+              <Plus className="h-4 w-4 me-1.5" /> Add to Whitelist
             </Button>
           </div>
         </DialogContent>

@@ -284,12 +284,12 @@ function WelcomeHero({ onGetStarted, onRestore }) {
         {!isLowEndDevice && (
           <>
             <motion.div
-              className="absolute -top-24 -left-16 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
+              className="absolute -top-24 -start-16 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
               animate={reduce || !visible ? undefined : { x: [0, 24, 0], y: [0, 18, 0] }}
               transition={reduce ? undefined : { duration: 14, ease: 'easeInOut', repeat: Infinity }}
             />
             <motion.div
-              className="absolute -bottom-24 -right-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl"
+              className="absolute -bottom-24 -end-10 h-80 w-80 rounded-full bg-primary/10 blur-3xl"
               animate={reduce || !visible ? undefined : { x: [0, -20, 0], y: [0, -14, 0] }}
               transition={reduce ? undefined : { duration: 18, ease: 'easeInOut', repeat: Infinity }}
             />
@@ -323,7 +323,7 @@ function WelcomeHero({ onGetStarted, onRestore }) {
         </motion.p>
 
         {/* Honest feature bullets — provisional/testnet framing, no overclaims. */}
-        <motion.ul variants={item} className="mt-8 w-full space-y-3 text-left">
+        <motion.ul variants={item} className="mt-8 w-full space-y-3 text-start">
           {features.map(({ icon: Icon, label }) => (
             <li key={label} className="flex items-center gap-3 text-sm text-foreground/90">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
@@ -1203,7 +1203,7 @@ export default function WalletEntry() {
     autoEnrollPinRef.current = null;
     return (
       <>
-        <FirstRunTour />
+        {!isDeniabilityOrDemoActive() && <FirstRunTour />}
         <Outlet />
       </>
     );
@@ -1486,7 +1486,7 @@ export default function WalletEntry() {
                 disabled={busy}
               />
               <Button className="w-full" disabled={!unlockPassword || busy} onClick={() => runUnlock()}>
-                {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin mr-1.5" /> : null} Unlock
+                {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin me-1.5" /> : null} Unlock
               </Button>
             </div>
           ) : (
@@ -1583,7 +1583,7 @@ export default function WalletEntry() {
               </>
             ) : (
               <>
-                <button type="button" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+                <button type="button" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
                 <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally under your PIN — it never leaves this device.</span>
@@ -1638,7 +1638,7 @@ export default function WalletEntry() {
           {/* PIN-FIRST: Back returns to the branded welcome hero (the fresh-device
               landing ahead of the PIN), NOT a dashboard — the empty dashboard is
               only reachable AFTER the PIN is set. */}
-          <button type="button" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+          <button type="button" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
 
           {pinStep === "real" && (
             <div className="space-y-3 text-center">
@@ -1674,7 +1674,7 @@ export default function WalletEntry() {
     return (
       <EntryShell error={error}>
         <div className="space-y-5">
-          <button type="button" onClick={() => { setError(""); setRecovering(false); setView("unlock"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+          <button type="button" onClick={() => { setError(""); setRecovering(false); setView("unlock"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
 
           {pinStep === "seed" && (
             <div className="space-y-4">
@@ -1732,7 +1732,7 @@ export default function WalletEntry() {
       <EntryShell error={error}>
         {!generatedSeed ? (
           <div className="space-y-4">
-            <button type="button" onClick={() => { setError(""); setView("choose"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+            <button type="button" onClick={() => { setError(""); setView("choose"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
             <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
               Your seed phrase will be shown ONCE on the next step. You'll write it down and confirm before entering the wallet — anyone with it has full access to your funds, and it is the only way to recover this wallet.
             </div>
@@ -1790,7 +1790,7 @@ export default function WalletEntry() {
   return (
     <EntryShell error={error}>
       <div className="space-y-4">
-        <button type="button" onClick={() => { setError(""); setView(vaultExists ? "unlock" : "choose"); setRecovering(false); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" /> Back</button>
+        <button type="button" onClick={() => { setError(""); setView(vaultExists ? "unlock" : "choose"); setRecovering(false); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
         {recovering && (
           <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />

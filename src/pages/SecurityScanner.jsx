@@ -122,7 +122,7 @@ export default function SecurityScanner() {
             </div>
           </div>
           <Button className="w-full" onClick={handleScan} disabled={!calldata.trim()}>
-            <ScanSearch className="h-4 w-4 mr-2" />Decode &amp; Assess
+            <ScanSearch className="h-4 w-4 me-2" />Decode &amp; Assess
           </Button>
         </CardContent>
       </Card>

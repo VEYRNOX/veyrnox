@@ -544,7 +544,7 @@ export default function HDWalletManager() {
                     `hidden` we take the smaller-blast-radius fix: only point
                     aria-controls at the id when the target actually exists.
                     Mirrored in TermsLegal's TermsSection for the same reason. */}
-                <button onClick={() => setExpandedSymbol(exp ? null : asset.symbol)} aria-expanded={exp} aria-controls={exp ? `asset-panel-${asset.symbol}` : undefined} className="w-full p-4 flex items-center gap-3 text-left" title={dim ? "Not yet available." : undefined}>
+                <button onClick={() => setExpandedSymbol(exp ? null : asset.symbol)} aria-expanded={exp} aria-controls={exp ? `asset-panel-${asset.symbol}` : undefined} className="w-full p-4 flex items-center gap-3 text-start" title={dim ? "Not yet available." : undefined}>
                   <CoinLogo symbol={asset.symbol} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -553,7 +553,7 @@ export default function HDWalletManager() {
                     </div>
                     <p className="text-xs text-muted-foreground font-mono truncate">{address || (dim ? "Address available once live" : "—")}</p>
                   </div>
-                  <div className="text-right shrink-0 flex items-center gap-2">
+                  <div className="text-end shrink-0 flex items-center gap-2">
                     {address && isEvmFamily(asset)
                       ? <AssetLiveBalance asset={asset} address={address} />
                       : address && asset.family === 'btc'
@@ -561,7 +561,9 @@ export default function HDWalletManager() {
                       : address && asset.family === 'solana'
                       ? <SolLiveBalance address={address} networkKey={asset.chain} />
                       : <span className="text-xs font-semibold text-muted-foreground">{asset.symbol}</span>}
-                    {exp ? <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
+                    {/* Collapsed-state chevron mirrors under dir="rtl" — it points
+                        "forward" in reading direction to indicate expandable content. */}
+                    {exp ? <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 text-muted-foreground rtl:-scale-x-100" aria-hidden="true" />}
                   </div>
                 </button>
                 {exp && (

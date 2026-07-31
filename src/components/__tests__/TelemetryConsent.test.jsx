@@ -1,6 +1,10 @@
 // src/components/__tests__/TelemetryConsent.test.jsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+// Side-effect init of i18next so useTranslation() inside TelemetryConsent
+// resolves keys to real English copy. Without this the tests below match
+// against key names like "telemetry_consent.cta_grant" instead of copy.
+import '@/i18n';
 import TelemetryConsent from '@/components/TelemetryConsent';
 
 // setConsent now comes from the leaf module @/lib/consent (which exists so

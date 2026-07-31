@@ -6,6 +6,7 @@ import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/lib/recharts";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
+import { formatUsd, resolveLocale } from "@/lib/locale";
 
 const PERIODS = [
   { label: "30 Days Ago", key: "30d", days: 30 },
@@ -44,7 +45,7 @@ export default function PortfolioRewind() {
       const d = new Date();
       d.setDate(d.getDate() - Math.round((period?.days ?? 90) * (1 - frac)));
       return {
-        date: d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }),
+        date: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
         value: parseFloat(val.toFixed(2)),
       };
     });
@@ -120,9 +121,9 @@ export default function PortfolioRewind() {
       {/* Summary */}
       <div className="p-5 rounded-xl border border-border bg-card text-center space-y-1">
         <p className="text-xs text-muted-foreground">{PERIODS.find(p => p.key === selectedPeriod)?.label} your portfolio was worth</p>
-        <p className="text-3xl font-bold">${pastValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+        <p className="text-3xl font-bold">{formatUsd(pastValue, resolveLocale())}</p>
         <div className="flex items-center justify-center gap-2">
-          <p className="text-sm text-muted-foreground">Now: ${currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+          <p className="text-sm text-muted-foreground">Now: {formatUsd(currentValue, resolveLocale())}</p>
           <span className={`flex items-center gap-0.5 text-sm font-semibold ${gain >= 0 ? "text-success" : "text-destructive"}`}>
             {gain >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
             {gain >= 0 ? "+" : ""}{gainPct.toFixed(1)}%
@@ -137,8 +138,8 @@ export default function PortfolioRewind() {
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={chartData}>
             <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} interval={3} />
-            <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-            <Tooltip formatter={v => [`$${v.toLocaleString()}`, "Portfolio"]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
+            <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={v => formatUsd(v, resolveLocale(), { compact: true, maximumFractionDigits: 1 })} />
+            <Tooltip formatter={v => [formatUsd(v, resolveLocale()), "Portfolio"]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
             <Line dataKey="value" stroke="hsl(var(--caution))" strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
@@ -150,8 +151,8 @@ export default function PortfolioRewind() {
         {assetBreakdown.map(a => (
           <div key={a.sym} className="p-3.5 rounded-xl border border-border bg-card flex items-center justify-between">
             <div><p className="text-sm font-medium">{a.sym}</p></div>
-            <div className="text-right">
-              <p className="text-sm font-semibold">${a.pastVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            <div className="text-end">
+              <p className="text-sm font-semibold">{formatUsd(a.pastVal, resolveLocale())}</p>
               <p className={`text-xs ${a.change >= 0 ? "text-success" : "text-destructive"}`}>
                 {a.change >= 0 ? "+" : ""}{a.changePct.toFixed(1)}% since then
               </p>

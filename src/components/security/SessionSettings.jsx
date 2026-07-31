@@ -12,6 +12,7 @@
 import { Lock, LockOpen, Clock, Monitor, Smartphone, Globe } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { base44 } from '@/api/base44Client';
 import { useWallet } from '@/lib/WalletProvider';
 import { AUTO_LOCK_OPTIONS } from '@/lib/session';
@@ -23,6 +24,7 @@ function deviceIcon(ua) {
 }
 
 export default function SessionSettings() {
+  const { t } = useTranslation('wallet');
   const { isUnlocked, lock, autoLockValue, setAutoLockTimeout, recordAudit } = useWallet();
 
   // Recent session info — cheap, best-effort. Demo mode seeds one UserSession
@@ -47,9 +49,9 @@ export default function SessionSettings() {
           )}
         </div>
         <div className="flex-1">
-          <p className="text-sm font-semibold">Session &amp; Auto-lock</p>
+          <p className="text-sm font-semibold">{t('settings.session.title')}</p>
           <p className="text-xs text-muted-foreground">
-            Locks your wallet after a period of inactivity or when you leave the app
+            {t('settings.session.description')}
           </p>
         </div>
         <span
@@ -59,7 +61,7 @@ export default function SessionSettings() {
               : 'bg-secondary text-muted-foreground'
           }`}
         >
-          {isUnlocked ? 'Unlocked' : 'Locked'}
+          {isUnlocked ? t('settings.session.status_unlocked') : t('settings.session.status_locked')}
         </span>
       </div>
 
@@ -67,7 +69,7 @@ export default function SessionSettings() {
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-medium">Auto-lock after</p>
+          <p className="text-sm font-medium">{t('settings.session.auto_lock_after')}</p>
         </div>
         <div className="grid grid-cols-4 gap-2">
           {AUTO_LOCK_OPTIONS.map((opt) => {
@@ -90,8 +92,8 @@ export default function SessionSettings() {
         </div>
         <p className="text-xs text-muted-foreground">
           {autoLockValue === 'never'
-            ? 'No auto-lock on idle, but it still locks after ~45 s in the background and after 8 hours unlocked.'
-            : 'Resets whenever you interact with the app. Also locks immediately when backgrounded.'}
+            ? t('settings.session.never_note')
+            : t('settings.session.resets_note')}
         </p>
       </div>
 
@@ -102,7 +104,7 @@ export default function SessionSettings() {
           className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-secondary transition-colors select-none"
         >
           <Lock className="h-4 w-4" />
-          Lock now
+          {t('settings.session.lock_now')}
         </button>
       )}
 
@@ -110,9 +112,9 @@ export default function SessionSettings() {
       {recent.length > 0 && (
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Recent activity</p>
+            <p className="text-sm font-medium">{t('settings.session.recent_activity')}</p>
             <Link to="/session-manager" className="text-xs text-primary hover:underline">
-              View all
+              {t('settings.session.view_all')}
             </Link>
           </div>
           {recent.slice(0, 2).map((s) => (
@@ -121,15 +123,15 @@ export default function SessionSettings() {
                 {deviceIcon(s.user_agent || s.device)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{s.device || s.user_agent || 'This device'}</p>
+                <p className="text-sm font-medium truncate">{s.device || s.user_agent || t('settings.session.this_device')}</p>
                 <p className="text-xs text-muted-foreground">
                   {s.last_active || s.created_date
-                    ? new Date(s.last_active || s.created_date).toLocaleString('en-GB')
-                    : 'Active now'}
+                    ? new Date(s.last_active || s.created_date).toLocaleString(undefined)
+                    : t('settings.session.active_now')}
                 </p>
               </div>
               {s.current && (
-                <span className="text-[10px] font-semibold text-success shrink-0">This device</span>
+                <span className="text-[10px] font-semibold text-success shrink-0">{t('settings.session.this_device')}</span>
               )}
             </div>
           ))}

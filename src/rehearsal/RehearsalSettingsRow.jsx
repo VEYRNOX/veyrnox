@@ -7,29 +7,32 @@
 // mere presence discloses nothing about cardinality.
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ShieldCheck, ChevronRight } from 'lucide-react';
 import RehearsalView from './RehearsalView.jsx';
 
 export default function RehearsalSettingsRow() {
+  const { t } = useTranslation('wallet');
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-full p-5 rounded-xl border border-border bg-card flex items-center justify-between gap-3 text-left hover:bg-secondary/40 transition-colors"
+        className="w-full p-5 rounded-xl border border-border bg-card flex items-center justify-between gap-3 text-start hover:bg-secondary/40 transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
           <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <ShieldCheck className="h-5 w-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Rehearse deniability</p>
+            <p className="text-sm font-semibold">{t('settings.rehearsal.title')}</p>
             <p className="text-xs text-muted-foreground">
-              See the dashboard exactly as someone holding your unlocked phone would.
+              {t('settings.rehearsal.description')}
             </p>
           </div>
         </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+        {/* Icon mirrors under dir="rtl" — list-row disclosure chevron. */}
+        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 rtl:-scale-x-100" />
       </button>
       {open && <RehearsalView onClose={() => setOpen(false)} />}
     </>

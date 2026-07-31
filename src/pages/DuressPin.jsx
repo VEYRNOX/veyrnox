@@ -37,6 +37,7 @@
 //     REAL unlock path so the behaviour is demonstrable on the simulator.
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
@@ -68,13 +69,14 @@ const DEMO_DECOY_ETH = "0.0412";
 
 const NET = getNetworkInfo(DECOY_NETWORK_KEY);
 
-function short(addr) {
-  return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "—";
+function short(addr, dash) {
+  return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : dash;
 }
 
 // Reads and shows the decoy's native testnet balance. REAL on-chain read in
 // real/native builds; SEEDED (clearly labelled) in demo. Never a hardcoded value.
 function DecoyBalance({ address, refreshKey }) {
+  const { t } = useTranslation("security");
   const [state, setState] = useState(/** @type {any} */ ({ loading: true }));
   useEffect(() => {
     let active = true;
@@ -86,22 +88,23 @@ function DecoyBalance({ address, refreshKey }) {
   }, [address, refreshKey]);
 
   if (!address) return null;
-  if (state.loading) return <span className="text-xs text-muted-foreground">reading balance…</span>;
+  if (state.loading) return <span className="text-xs text-muted-foreground">{t("duress.balance_reading")}</span>;
   if (state.error) {
-    return <span className="text-xs text-muted-foreground" title="Could not read balance from chain">balance unavailable</span>;
+    return <span className="text-xs text-muted-foreground" title={t("duress.balance_unavailable_title")}>{t("duress.balance_unavailable")}</span>;
   }
   const eth = Number(state.eth);
   return (
     <span className="text-sm font-semibold">
       {eth.toLocaleString(undefined, { maximumFractionDigits: 6 })} {NET?.symbol || "ETH"}
-      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-        {state.source === "chain" ? "(live on-chain)" : "(demo — simulated)"}
+      <span className="ms-1 text-[10px] font-normal text-muted-foreground">
+        {state.source === "chain" ? t("duress.balance_source_live") : t("duress.balance_source_demo")}
       </span>
     </span>
   );
 }
 
 export default function DuressPin() {
+  const { t } = useTranslation("security");
   const wallet = useWallet();
   const {
     isUnlocked, isDecoy, accounts,
@@ -187,11 +190,11 @@ export default function DuressPin() {
         // shows PIN-only because the biometric cache is now empty (bioReady=false).
         lock();
       } catch (e) {
-        setError(e?.message || "Could not remove Emergency PIN");
+        setError(e?.message || t("duress.remove_err_generic"));
       } finally {
         setRemovingDuress(false);
       }
-    }, { title: "Remove your Emergency PIN" });
+    }, { title: t("duress.remove_gate_title") });
   };
 
   const copy = (text, id) => {
@@ -203,8 +206,8 @@ export default function DuressPin() {
   const handleSave = async () => {
     setError(""); setSavedPhrase(""); setSavedAddr("");
     setBioTurnedOff(false); setBioOptInFailed(false);
-    if (pin.length < 8) { setError("Emergency PIN must be exactly 8 digits"); return; }
-    if (pin !== confirmPin) { setError("PINs do not match"); return; }
+    if (pin.length < 8) { setError(t("duress.setup_err_length")); return; }
+    if (pin !== confirmPin) { setError(t("duress.setup_err_mismatch")); return; }
     // CRITICAL: configuring the decoy/duress system is gated behind the second
     // factor when one is set (no-op otherwise). Runs after local validation so a
     // mismatched PIN never reaches the gate.
@@ -249,11 +252,11 @@ export default function DuressPin() {
         setPin(""); setConfirmPin(""); setDuressStep("enter");
         await refresh();
       } catch (e) {
-        setError(e?.message || "Could not save Emergency PIN");
+        setError(e?.message || t("duress.setup_err_generic"));
       } finally {
         setSaving(false);
       }
-    }, { title: "Set your Emergency PIN" });
+    }, { title: t("duress.setup_gate_title") });
   };
 
   // DEMO ONLY: simulate funding the decoy address with a plausible small balance.
@@ -264,7 +267,7 @@ export default function DuressPin() {
 
   // ----- demo handlers (use the REAL unlock path) -----
   const demoSetup = async () => {
-    setBusy("Setting up demo…"); setTryErr("");
+    setBusy(t("duress.demo_setup_busy")); setTryErr("");
     try {
       // Create a throwaway REAL vault (idempotent: skip if one exists).
       if (!(await hasVault())) {
@@ -281,14 +284,14 @@ export default function DuressPin() {
       lock();
       await refresh();
     } catch (e) {
-      setTryErr(e?.message || "Demo setup failed");
+      setTryErr(e?.message || t("duress.demo_setup_err"));
     } finally {
       setBusy("");
     }
   };
 
   const demoUnlock = async (pw) => {
-    setTryErr(""); setBusy("Unlocking…");
+    setTryErr(""); setBusy(t("duress.demo_unlock_busy"));
     try {
       await unlock(pw);
       setBalRefresh((n) => n + 1);
@@ -296,14 +299,14 @@ export default function DuressPin() {
       // A wrong PIN returns "Incorrect PIN" (v2 model: wrong guess is an explicit
       // error, not a silent decoy). The duress PIN opens the decoy silently.
       // The error text itself does NOT reveal whether a duress vault is configured.
-      setTryErr(e?.message || "Unlock failed");
+      setTryErr(e?.message || t("duress.demo_unlock_err_generic"));
     } finally {
       setBusy("");
     }
   };
 
   const demoReset = async () => {
-    setBusy("Resetting…"); setTryErr("");
+    setBusy(t("duress.demo_reset_busy")); setTryErr("");
     try {
       lock();
       await clearVault();
@@ -328,17 +331,15 @@ export default function DuressPin() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold">Emergency PIN / Hidden Wallet</h1>
+        <h1 className="text-xl font-bold">{t("duress.heading")}</h1>
         <p className="text-sm text-muted-foreground">
-          A second PIN that opens a separate wallet. Use it if someone forces you to unlock your phone.
+          {t("duress.subhead")}
         </p>
       </div>
 
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-        <span>
-          Your PIN opens your wallet. The Emergency PIN opens a decoy. Get it wrong 10 times and this phone wipes.
-        </span>
+        <span>{t("duress.warn_banner")}</span>
       </div>
 
       {/* How it works */}
@@ -346,9 +347,9 @@ export default function DuressPin() {
         <div className="flex items-start gap-3">
           <Shield className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold">How it works</p>
+            <p className="text-sm font-semibold">{t("duress.how_title")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Set an <b>Emergency PIN</b> different from your real one. Face ID can open the decoy if you want.
+              {t("duress.how_body")}
             </p>
           </div>
         </div>
@@ -364,7 +365,7 @@ export default function DuressPin() {
         className="p-4 rounded-xl border border-border bg-secondary/30"
       >
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Veyrnox spends the same effort on every unlock — whether you enter your real PIN or your Emergency PIN — so the one you used isn&apos;t given away by how long unlock takes. It&apos;s a safeguard for when someone in the room forces you to unlock, not against a remote attacker watching your connection.
+          {t("duress.timing_note")}
         </p>
       </div>
 
@@ -372,16 +373,15 @@ export default function DuressPin() {
       <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2">
         <div className="flex items-center gap-2">
           <Coins className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">Fund the Emergency wallet to make it believable</p>
+          <p className="text-sm font-semibold">{t("duress.fund_title")}</p>
         </div>
         <p className="text-xs text-muted-foreground">
-          An empty wallet looks suspicious. Send a small amount you&apos;re
-          willing to hand over. The real balance comes straight from the blockchain
-          — it can&apos;t be faked in the app.
+          {t("duress.fund_body")}
         </p>
-        <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>A fresh wallet has no history, which makes it less convincing.</li>
-          <li>Good to know: someone who examines the device may still find the second wallet.</li>
+        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
+          {t("duress.fund_notes", { returnObjects: true }).map((n, i) => (
+            <li key={i}>{n}</li>
+          ))}
         </ul>
       </div>
 
@@ -392,10 +392,10 @@ export default function DuressPin() {
         <div className={`p-5 rounded-xl border ${duressEnabled ? "border-destructive/20 bg-destructive/5" : "border-border bg-card"}`}>
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle className={`h-5 w-5 ${duressEnabled ? "text-destructive" : "text-muted-foreground"}`} />
-            <span className="font-medium">Remove Emergency PIN</span>
+            <span className="font-medium">{t("duress.remove_title")}</span>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
-            Clears the Emergency PIN and its wallet.
+            {t("duress.remove_body")}
           </p>
           <Button
             variant={duressEnabled ? "destructive" : "outline"}
@@ -404,7 +404,7 @@ export default function DuressPin() {
             onClick={handleRemoveDuress}
             data-testid="remove-duress-pin-btn"
           >
-            {removingDuress ? "Removing…" : "Remove Emergency PIN"}
+            {removingDuress ? t("duress.remove_cta_busy") : t("duress.remove_cta")}
           </Button>
         </div>
       )}
@@ -413,32 +413,32 @@ export default function DuressPin() {
       <div className="p-5 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-5 w-5 text-primary" />
-          <span className="font-medium">Set a custom Emergency PIN</span>
+          <span className="font-medium">{t("duress.setup_title")}</span>
         </div>
 
         <div className="space-y-4">
           {duressStep === "enter" ? (
             <div>
-              <Label className="block mb-3">New Emergency PIN</Label>
+              <Label className="block mb-3">{t("duress.setup_pin_label")}</Label>
               <PinPad
-                aria-label="New Emergency PIN"
+                aria-label={t("duress.setup_pin_label")}
                 value={pin}
                 onChange={setPin}
                 onComplete={() => setDuressStep("confirm")}
                 length={8}
-                submitLabel="Continue"
+                submitLabel={t("duress.setup_pin_continue")}
               />
             </div>
           ) : (
             <div>
-              <Label className="block mb-3">Confirm Emergency PIN</Label>
+              <Label className="block mb-3">{t("duress.setup_pin_confirm_label")}</Label>
               <PinPad
-                aria-label="Confirm Emergency PIN"
+                aria-label={t("duress.setup_pin_confirm_label")}
                 value={confirmPin}
                 onChange={setConfirmPin}
                 onComplete={handleSave}
                 length={8}
-                submitLabel="Save emergency PIN"
+                submitLabel={t("duress.setup_pin_save")}
                 disabled={saving}
               />
             </div>
@@ -460,10 +460,10 @@ export default function DuressPin() {
                 <span className="text-xs">
                   <span className="font-medium inline-flex items-center gap-1.5">
                     <Fingerprint className="h-3.5 w-3.5 text-primary" />
-                    Use {bioLabel} for the Emergency wallet
+                    {t("duress.bio_optin_leading", { label: bioLabel })}
                   </span>
                   <span className="block text-muted-foreground mt-1">
-                    {bioLabel} always opens the decoy. Your real wallet still needs your typed PIN. Anyone forcing you to use {bioLabel} only ever sees the decoy.
+                    {t("duress.bio_optin_body", { label: bioLabel })}
                   </span>
                 </span>
               </label>
@@ -474,7 +474,7 @@ export default function DuressPin() {
 
         {savedPhrase && (
           <div className="mt-4 p-3 rounded-lg bg-success/10 border border-success/20 text-xs space-y-3">
-            <p className="font-medium text-success">Emergency PIN saved. Emergency wallet created.</p>
+            <p className="font-medium text-success">{t("duress.saved_ok")}</p>
 
             {/* H-3 honest notice. One-tap biometric unlock was armed before this
                 save and nothing re-armed it, so the device is now PIN-only. The
@@ -494,8 +494,7 @@ export default function DuressPin() {
               >
                 <Fingerprint className="h-3.5 w-3.5 shrink-0 text-caution mt-0.5" />
                 <p className="text-caution">
-                  {bioLabel} could not be set up for this wallet. Sign in with your PIN — the
-                  Emergency PIN still works. You can try {bioLabel} again in Security settings.
+                  {t("duress.bio_optin_failed", { label: bioLabel })}
                 </p>
               </div>
             )}
@@ -507,8 +506,7 @@ export default function DuressPin() {
               >
                 <Fingerprint className="h-3.5 w-3.5 shrink-0 text-caution mt-0.5" />
                 <p className="text-caution">
-                  {bioLabel} sign-in has been turned off. Sign in with your PIN. You can
-                  turn {bioLabel} back on in Security settings whenever you want.
+                  {t("duress.bio_turned_off", { label: bioLabel })}
                 </p>
               </div>
             )}
@@ -517,44 +515,42 @@ export default function DuressPin() {
             {savedAddr && (
               <div className="space-y-1.5">
                 <p className="text-muted-foreground">
-                  Send a small amount of {NET?.symbol || "ETH"} on{" "}
-                  {NET?.name || "the test network"} to make it look lived-in:
+                  {t("duress.fund_target_lead", { symbol: NET?.symbol || "ETH", network: NET?.name || t("duress.network_default_name") })}
                 </p>
                 <div className="flex items-center gap-2 p-2 rounded bg-background">
                   <code className="flex-1 break-all text-foreground">{savedAddr}</code>
-                  <button onClick={() => copy(savedAddr, "decoy-addr")} title="Copy hidden wallet address" aria-label="Copy hidden wallet address" className="shrink-0">
+                  <button onClick={() => copy(savedAddr, "decoy-addr")} title={t("duress.copy_decoy_addr_title")} aria-label={t("duress.copy_decoy_addr_title")} className="shrink-0">
                     {copied === "decoy-addr" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
                   </button>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Emergency wallet balance:</span>
+                  <span className="text-muted-foreground">{t("duress.balance_label")}</span>
                   <DecoyBalance address={savedAddr} refreshKey={balRefresh} />
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setBalRefresh((n) => n + 1)} className="inline-flex items-center gap-1 text-primary">
-                    <RefreshCw className="h-3 w-3" /> Refresh
+                    <RefreshCw className="h-3 w-3" /> {t("duress.balance_refresh")}
                   </button>
                   {explorerAddr(savedAddr) && (
                     <a href={explorerAddr(savedAddr)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary">
-                      <ExternalLink className="h-3 w-3" /> View on explorer
+                      <ExternalLink className="h-3 w-3" /> {t("duress.explorer_link")}
                     </a>
                   )}
                   {DEMO && (
                     <button onClick={() => handleDemoFund(savedAddr)} className="inline-flex items-center gap-1 text-primary">
-                      <Coins className="h-3 w-3" /> Simulate funding ({DEMO_DECOY_ETH})
+                      <Coins className="h-3 w-3" /> {t("duress.simulate_funding", { eth: DEMO_DECOY_ETH })}
                     </button>
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Use a public faucet to get free test {NET?.symbol || "ETH"}, then send some here.
+                  {t("duress.faucet_hint", { symbol: NET?.symbol || "ETH" })}
                 </p>
               </div>
             )}
 
             <div>
               <p className="text-muted-foreground">
-                Recovery phrase for the Emergency wallet. Only save this if you
-                want to reach it from another app.
+                {t("duress.phrase_note")}
               </p>
               <code className="block break-words rounded bg-background p-2 text-foreground mt-1">{savedPhrase}</code>
             </div>
@@ -571,28 +567,25 @@ export default function DuressPin() {
         <div className="p-5 rounded-xl border border-dashed border-primary/40 bg-primary/5 space-y-4">
           <div className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Live demonstration (demo mode)</span>
+            <span className="font-semibold">{t("duress.demo_title")}</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Exercises the real unlock flow. Step 1 creates a throwaway real wallet
-            (password <code>{DEMO_REAL_PW}</code>) and a hidden wallet (Emergency PIN{" "}
-            <code>{DEMO_DURESS_PW}</code>) seeded with a small{" "}
-            {NET?.symbol || "ETH"} balance. Then unlock with either to compare.
+            {t("duress.demo_body", { real: DEMO_REAL_PW, duress: DEMO_DURESS_PW, symbol: NET?.symbol || "ETH" })}
           </p>
 
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" disabled={!!busy} onClick={demoSetup}>
-              1. Set up real + funded hidden wallet
+              {t("duress.demo_step1")}
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy || !vaultExists} onClick={() => demoUnlock(DEMO_REAL_PW)}>
-              <Unlock className="h-3.5 w-3.5 mr-1" /> Unlock with REAL PIN
+              <Unlock className="h-3.5 w-3.5 me-1" /> {t("duress.demo_unlock_real")}
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy || !vaultExists} onClick={() => demoUnlock(DEMO_DURESS_PW)}>
-              <Shield className="h-3.5 w-3.5 mr-1" /> Unlock with EMERGENCY PIN
+              <Shield className="h-3.5 w-3.5 me-1" /> {t("duress.demo_unlock_duress")}
             </Button>
             {isUnlocked && (
               <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => lock()}>
-                <Lock className="h-3.5 w-3.5 mr-1" /> Lock
+                <Lock className="h-3.5 w-3.5 me-1" /> {t("duress.demo_lock")}
               </Button>
             )}
           </div>
@@ -600,54 +593,54 @@ export default function DuressPin() {
           {/* Free-form unlock: wrong PIN errors; duress PIN silently opens the decoy */}
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <Label htmlFor="duress-try-pw" className="text-xs">Or type any password</Label>
+              <Label htmlFor="duress-try-pw" className="text-xs">{t("duress.demo_try_pw_label")}</Label>
               <Input
                 id="duress-try-pw"
                 className="mt-1"
                 value={tryPw}
                 onChange={(e) => setTryPw(e.target.value)}
-                placeholder="try the wrong password"
+                placeholder={t("duress.demo_try_pw_placeholder")}
               />
             </div>
             <Button size="sm" disabled={!!busy || !tryPw || !vaultExists} onClick={() => demoUnlock(tryPw)}>
-              Unlock
+              {t("duress.demo_unlock")}
             </Button>
           </div>
 
           {busy && <p className="text-xs text-muted-foreground">{busy}</p>}
           {tryErr && (
             <p className="text-xs text-destructive">
-              {tryErr} <span className="text-muted-foreground">(wrong PINs show an error; the Emergency PIN opens its wallet silently)</span>
+              {tryErr} <span className="text-muted-foreground">{t("duress.demo_wrong_pin_hint")}</span>
             </p>
           )}
 
           {/* Result panel */}
           <div className="rounded-lg border border-border bg-card p-4 text-sm">
             {!isUnlocked ? (
-              <p className="text-muted-foreground">Locked. Unlock above to see which wallet opens.</p>
+              <p className="text-muted-foreground">{t("duress.demo_locked")}</p>
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   {isDecoy
-                    ? <span className="px-2 py-0.5 rounded bg-caution/20 text-caution text-xs font-semibold">HIDDEN WALLET</span>
-                    : <span className="px-2 py-0.5 rounded bg-success/20 text-success text-xs font-semibold">REAL WALLET</span>}
+                    ? <span className="px-2 py-0.5 rounded bg-caution/20 text-caution text-xs font-semibold">{t("duress.demo_hidden_badge")}</span>
+                    : <span className="px-2 py-0.5 rounded bg-success/20 text-success text-xs font-semibold">{t("duress.demo_real_badge")}</span>}
                 </div>
-                <p className="font-mono text-xs">Address: {short(currentAddr)}</p>
+                <p className="font-mono text-xs">{t("duress.demo_address", { addr: short(currentAddr, t("duress.address_dash")) })}</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Test network balance:</span>
+                  <span className="text-xs text-muted-foreground">{t("duress.demo_network_balance")}</span>
                   <DecoyBalance address={currentAddr} refreshKey={balRefresh} />
                 </div>
                 {isDecoy ? (
                   <p className="text-xs text-muted-foreground">
-                    In this session you only see the Emergency wallet.
+                    {t("duress.demo_only_decoy")}
                   </p>
                 ) : null}
                 {/* DEMO ORACLE — proves the decoy never shows the real address.
                     Real apps never reveal this; shown here only to teach. */}
                 {realAddr && (
                   <p className="text-[11px] text-muted-foreground/70 border-t border-border pt-2 mt-2">
-                    demo oracle — real wallet address: {short(realAddr)}{" "}
-                    {isDecoy && currentAddr !== realAddr ? "✓ hidden in this hidden wallet session" : ""}
+                    {t("duress.demo_oracle_prefix", { addr: short(realAddr, t("duress.address_dash")) })}{" "}
+                    {isDecoy && currentAddr !== realAddr ? t("duress.demo_oracle_hidden") : ""}
                   </p>
                 )}
               </div>
@@ -655,7 +648,7 @@ export default function DuressPin() {
           </div>
 
           <Button size="sm" variant="destructive" disabled={!!busy} onClick={demoReset}>
-            Reset demo (delete all wallet data + hidden wallet)
+            {t("duress.demo_reset")}
           </Button>
         </div>
       )}
@@ -663,7 +656,7 @@ export default function DuressPin() {
       {!DEMO && (
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
-            Lock your wallet and enter the Emergency PIN to try it. Never share it. Forgot it? Remove it here while unlocked with your real PIN.
+            {t("duress.non_demo_hint")}
           </p>
         </div>
       )}

@@ -43,6 +43,7 @@ import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
+import { scoreWcTypedDataLevel } from '@/lib/wcTypedLevel';
 
 // #1093 — WC pre-sign tx-risk plane. Risk-signal modules (`@/risk/signals` and
 // `@/risk/calldata`) instantiate an ethers Interface at MODULE INIT time, so a
@@ -433,7 +434,17 @@ export async function _handlePersonalSign({ withPrivateKey, evmAddress }, topic,
 }
 
 export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic, id, params, sessionCaip2) {
-  const gate = await presignGateOrReject();
+  // M-5 (2026-07-28 internal audit): score the typed-data body BEFORE the
+  // pre-sign gate so unlimited Permit / Permit2 payloads compose to
+  // CONFIRM/WARN (fail closed) instead of relying on the RASP env plane
+  // alone. Pure, no signer touched. See src/lib/wcTypedLevel.js. Parse once
+  // here and reuse for the H7 chain-id and address checks below — a second
+  // parseTypedData() would burn through single-shot test mocks AND cost a
+  // redundant JSON.parse on every real request.
+  const typedDataJson = params?.[1] ?? params?.[0];
+  const parsed = parseTypedData(typedDataJson);
+  const typedLevel = scoreWcTypedDataLevel(parsed);
+  const gate = await presignGateOrReject(typedLevel);
   if (!gate.proceedAllowed) {
     await rejectRequest(topic, id, gate.rejectCode).catch(() => {});
     return;
@@ -454,8 +465,8 @@ export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic
     );
   }
 
-  const typedDataJson = params[1] ?? params[0];
-  const parsed = parseTypedData(typedDataJson);
+  // `parsed` was produced above (M-5) so the risk score, chain-id bind, and
+  // signer all share ONE parseTypedData() call.
   if (!parsed.valid) throw new Error(`Invalid typed data: ${parsed.error}`);
 
   // H7 — bind the EIP-712 domain.chainId to the WalletConnect SESSION chain.
@@ -779,6 +790,14 @@ export function WalletConnectProvider({ children }) {
     if (!gate.proceedAllowed) {
       throw new Error(`RASP integrity check failed — session refused (${gate.rejectCode})`);
     }
+    // L-4 (audit 2026-07-28): session approval must obey the same step-up window
+    // as signing. Without this, a coerced/opportunistic attacker within the reauth
+    // window could approve a fresh dApp session that then requests signing — the
+    // per-request gate exists but the connection itself sidesteps H-NEW-B.
+    // Fail closed (I4).
+    if (isSendReauthRequired()) {
+      throw new Error('Step-up re-auth required — unlock again to approve this connection');
+    }
     if (!evmAddress) throw new Error('No wallet address — unlock first');
     const proposal = pendingProposals.find((p) => p.id === proposalId);
     if (!proposal) throw new Error('Proposal not found');
@@ -794,7 +813,7 @@ export function WalletConnectProvider({ children }) {
     void trackEvent(EVENT.WC_SESSION_APPROVED).catch(() => {});
     setPendingProposals((prev) => prev.filter((p) => p.id !== proposalId));
     refreshSessions();
-  }, [evmAddress, pendingProposals, refreshSessions]);
+  }, [evmAddress, pendingProposals, refreshSessions, isSendReauthRequired]);
 
   const handleRejectSession = useCallback(async (proposalId) => {
     await rejectSession(proposalId);

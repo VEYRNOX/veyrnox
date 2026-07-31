@@ -62,13 +62,13 @@ export default function AdvancedAnalytics() {
     const months = {};
     for (let i = 5; i >= 0; i--) {
       const d = new Date(); d.setMonth(d.getMonth() - i);
-      const key = d.toLocaleString('en-GB', { month: 'short' });
+      const key = d.toLocaleString(undefined, { month: 'short' });
       if (!months[key]) months[key] = { month: key, inflow: 0, outflow: 0 };
     }
     if (pricesEnabled && prices) {
       for (const tx of history) {
         if (!tx.timestamp) continue;
-        const key = new Date(tx.timestamp).toLocaleString('en-GB', { month: 'short' });
+        const key = new Date(tx.timestamp).toLocaleString(undefined, { month: 'short' });
         if (!months[key]) continue;
         const rate = (prices[tx.assetSymbol] ?? USD_RATES[tx.assetSymbol]) || 0;
         const usd = parseFloat(tx.amount || '0') * rate;
@@ -244,14 +244,14 @@ export default function AdvancedAnalytics() {
               <table className="w-full text-xs">
                 <thead>
                   <tr>
-                    <th scope="col" className="text-left py-1 pr-3 text-muted-foreground font-normal"></th>
+                    <th scope="col" className="text-start py-1 pe-3 text-muted-foreground font-normal"></th>
                     {CORRELATION_ASSETS.map(a => <th key={a} scope="col" className="py-1 px-2 text-muted-foreground font-normal">{a}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {CORRELATION.map(row => (
                     <tr key={row.asset}>
-                      <th scope="row" className="py-1 pr-3 font-semibold text-left">{row.asset}</th>
+                      <th scope="row" className="py-1 pe-3 font-semibold text-start">{row.asset}</th>
                       {CORRELATION_ASSETS.map(col => {
                         const val = row[col];
                         if (val == null) return <td key={col} className="py-1 px-2 text-center font-mono text-muted-foreground">—</td>;

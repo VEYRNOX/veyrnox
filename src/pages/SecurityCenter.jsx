@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { sumSentTodayUSD } from "@/lib/txLimits";
+import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 
 function getDeviceInfo() {
@@ -105,17 +106,37 @@ export default function SecurityCenter() {
   });
 
   const addLimit = useMutation({
-    mutationFn: () => base44.entities.TransactionLimit.create({
-      currency: limitCurrency,
-      daily_limit: dailyLimit ? parseFloat(dailyLimit) : null,
-      per_transaction_limit: perTxLimit ? parseFloat(perTxLimit) : null,
-      enabled: true,
-    }),
+    // Locale-aware parse. A de-DE user typing "1,5" in the USD limit field
+    // used to see the browser blank it (type="number" value-sanitisation) OR
+    // silently save as "1" via parseFloat's comma-truncation. parseLocaleNumber
+    // canonicalises the locale-typed input AND returns NaN for anything
+    // ambiguous / unrecognised, so we can refuse the save rather than persist
+    // a limit the user didn't type.
+    mutationFn: () => {
+      const locale = resolveLocale();
+      const daily = dailyLimit ? parseLocaleNumber(dailyLimit, locale) : null;
+      const perTx = perTxLimit ? parseLocaleNumber(perTxLimit, locale) : null;
+      if (dailyLimit && (!Number.isFinite(daily) || daily <= 0)) {
+        throw new Error("Daily limit must be a positive number");
+      }
+      if (perTxLimit && (!Number.isFinite(perTx) || perTx <= 0)) {
+        throw new Error("Per-transaction limit must be a positive number");
+      }
+      return base44.entities.TransactionLimit.create({
+        currency: limitCurrency,
+        daily_limit: daily,
+        per_transaction_limit: perTx,
+        enabled: true,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tx-limits"] });
       setShowAddLimit(false);
       setDailyLimit(""); setPerTxLimit(""); setLimitCurrency("ALL");
       toast.success("Limit set");
+    },
+    onError: (/** @type {any} */ err) => {
+      toast.error(err?.message || "Couldn't save limit — enter a positive number.");
     },
   });
 
@@ -208,7 +229,7 @@ export default function SecurityCenter() {
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">Cap what you can send per day or per transaction.</p>
             <Button size="sm" onClick={() => setShowAddLimit(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Add Limit
+              <Plus className="h-3.5 w-3.5 me-1" /> Add Limit
             </Button>
           </div>
           {errorLimits && (
@@ -288,11 +309,17 @@ export default function SecurityCenter() {
             </div>
             <div>
               <Label>Daily Limit (USD)</Label>
-              <Input type="number" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder="e.g. 1000" className="mt-1.5" />
+              {/* type="text" + inputMode="decimal": same fix as SendCrypto's
+                  amount field (PR #1409). type="number" blanks locale-typed
+                  values like de-DE "1,5" BEFORE React sees them, hiding the
+                  input entirely. text preserves the raw string so
+                  parseLocaleNumber (in the save handler) can canonicalise it
+                  and refuse anything unrecognised. */}
+              <Input type="text" inputMode="decimal" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder="e.g. 1000" className="mt-1.5" />
             </div>
             <div>
               <Label>Per Transaction Limit (USD)</Label>
-              <Input type="number" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="e.g. 500" className="mt-1.5" />
+              <Input type="text" inputMode="decimal" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="e.g. 500" className="mt-1.5" />
             </div>
             <Button className="w-full" onClick={() => addLimit.mutate()} disabled={addLimit.isPending || (!dailyLimit && !perTxLimit)}>
               Save Limit

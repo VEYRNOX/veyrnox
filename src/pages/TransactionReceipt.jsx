@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { base44 } from "@/api/base44Client";
 import { Search, Printer, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 const STATUS_ICON = { completed: <CheckCircle2 className="h-4 w-4 text-success" />, failed: <XCircle className="h-4 w-4 text-destructive" />, pending: <Clock className="h-4 w-4 text-caution" /> };
 
 export default function TransactionReceipt() {
+  const { t } = useTranslation("wallet");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
 
@@ -33,7 +35,7 @@ export default function TransactionReceipt() {
     // crafted token name or recipient label could inject script via the old path).
     const doc = win.document;
     doc.open();
-    doc.write(`<html><head><title>Transaction Receipt</title><style>
+    doc.write(`<html><head><title>${t("tx.receipt.print_window_title")}</title><style>
       body { font-family: monospace; padding: 32px; max-width: 400px; margin: auto; }
       .divider { border-top: 1px dashed #ccc; margin: 12px 0; }
       .row { display: flex; justify-content: space-between; margin: 6px 0; font-size: 13px; }
@@ -43,23 +45,23 @@ export default function TransactionReceipt() {
     doc.close();
 
     const rows = [
-      ["Receipt ID", (selected.id?.slice(0, 12) ?? "") + "..."],
-      ["Date", new Date(selected.created_date).toLocaleString("en-GB")],
-      ["Type", (selected.type || "Transfer").toUpperCase()],
-      ["Asset", selected.currency ?? ""],
-      ["Amount", `${selected.amount ?? ""} ${selected.currency ?? ""}`],
-      ["Network Fee", fee > 0 ? `${fee} ${selected.currency}` : "—"],
-      ["Status", (selected.status || "completed").toUpperCase()],
-      ["To", selected.to_address ? selected.to_address.slice(0, 20) + "..." : "—"],
+      [t("tx.receipt.field_receipt_id"), (selected.id?.slice(0, 12) ?? "") + "..."],
+      [t("tx.receipt.field_date"), new Date(selected.created_date).toLocaleString(undefined)],
+      [t("tx.receipt.field_type"), (selected.type || t("tx.receipt.default_type")).toUpperCase()],
+      [t("tx.receipt.field_asset"), selected.currency ?? ""],
+      [t("tx.receipt.field_amount"), `${selected.amount ?? ""} ${selected.currency ?? ""}`],
+      [t("tx.receipt.field_network_fee"), fee > 0 ? `${fee} ${selected.currency}` : "—"],
+      [t("tx.receipt.field_status"), (selected.status || t("tx.receipt.default_status")).toUpperCase()],
+      [t("tx.receipt.field_to"), selected.to_address ? selected.to_address.slice(0, 20) + "..." : "—"],
     ];
 
     const h2 = doc.createElement("h2");
-    h2.textContent = "VEYRNOX";
+    h2.textContent = t("tx.receipt.brand");
     doc.body.appendChild(h2);
 
     const sub = doc.createElement("p");
     sub.style.cssText = "text-align:center;color:#666;margin-bottom:16px;";
-    sub.textContent = "TRANSACTION RECEIPT";
+    sub.textContent = t("tx.receipt.doc_title");
     doc.body.appendChild(sub);
 
     const div1 = doc.createElement("div"); div1.className = "divider"; doc.body.appendChild(div1);
@@ -74,10 +76,10 @@ export default function TransactionReceipt() {
 
     const div2 = doc.createElement("div"); div2.className = "divider"; doc.body.appendChild(div2);
 
-    ["Thank you for using VEYRNOX", "This is a digital transaction record"].forEach(t => {
+    [t("tx.receipt.thank_you", { brand: t("tx.receipt.brand") }), t("tx.receipt.digital_record")].forEach(line => {
       const p = doc.createElement("p");
       p.style.cssText = "text-align:center;color:#666;font-size:10px;";
-      p.textContent = t;
+      p.textContent = line;
       doc.body.appendChild(p);
     });
 
@@ -87,22 +89,22 @@ export default function TransactionReceipt() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-bold">Transaction Receipts</h1>
-        <p className="text-sm text-muted-foreground">Generate printable receipts for any transaction</p>
+        <h1 className="text-xl font-bold">{t("tx.receipt.heading")}</h1>
+        <p className="text-sm text-muted-foreground">{t("tx.receipt.subhead")}</p>
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search by ID, address or currency..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder={t("tx.receipt.search_placeholder")} className="ps-9" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-3">
         {/* TX List */}
-        <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1" tabIndex={0}>
-          {isLoading ? <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div> : isError ? (
-            <div className="text-center py-8 text-destructive text-sm">Couldn't load transactions. Please try again.</div>
+        <div className="space-y-2 max-h-[480px] overflow-y-auto pe-1" tabIndex={0}>
+          {isLoading ? <div className="text-center py-8 text-muted-foreground text-sm">{t("tx.receipt.loading")}</div> : isError ? (
+            <div className="text-center py-8 text-destructive text-sm">{t("tx.receipt.error")}</div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">No transactions found</div>
+            <div className="text-center py-8 text-muted-foreground text-sm">{t("tx.receipt.empty")}</div>
           ) : filtered.map(tx => (
             <div key={tx.id} onClick={() => setSelected(tx)}
               className={`p-3 rounded-xl border cursor-pointer transition-colors ${selected?.id === tx.id ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-secondary/50"}`}>
@@ -110,11 +112,11 @@ export default function TransactionReceipt() {
                 {STATUS_ICON[tx.status] || STATUS_ICON.completed}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold capitalize">{tx.type || "Transfer"}</span>
+                    <span className="text-xs font-semibold capitalize">{tx.type || t("tx.receipt.default_type")}</span>
                     <span className="text-xs font-bold">{tx.amount} {tx.currency}</span>
                   </div>
                   <p className="text-[10px] text-muted-foreground font-mono truncate">{tx.id}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(tx.created_date).toLocaleDateString("en-GB")}</p>
+                  <p className="text-[10px] text-muted-foreground">{new Date(tx.created_date).toLocaleDateString(undefined)}</p>
                 </div>
               </div>
             </div>
@@ -125,24 +127,24 @@ export default function TransactionReceipt() {
         {selected && (
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="p-4 border-b border-border flex items-center justify-between">
-              <p className="text-sm font-semibold">Receipt Preview</p>
+              <p className="text-sm font-semibold">{t("tx.receipt.preview_title")}</p>
               <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs">
-                <Printer className="h-3.5 w-3.5" /> Print
+                <Printer className="h-3.5 w-3.5" /> {t("tx.receipt.print")}
               </Button>
             </div>
             <div className="p-5 font-mono text-xs space-y-1">
-              <h2 className="text-center font-bold text-base mb-4 not-italic" style={{ fontFamily: "sans-serif" }}>VEYRNOX</h2>
-              <div className="text-center text-muted-foreground mb-4">TRANSACTION RECEIPT</div>
+              <h2 className="text-center font-bold text-base mb-4 not-italic" style={{ fontFamily: "sans-serif" }}>{t("tx.receipt.brand")}</h2>
+              <div className="text-center text-muted-foreground mb-4">{t("tx.receipt.doc_title")}</div>
               <div className="border-t border-dashed border-border my-3" />
               {[
-                ["Receipt ID", selected.id?.slice(0, 12) + "..."],
-                ["Date", new Date(selected.created_date).toLocaleString("en-GB")],
-                ["Type", (selected.type || "Transfer").toUpperCase()],
-                ["Asset", selected.currency],
-                ["Amount", `${selected.amount} ${selected.currency}`],
-                ["Network Fee", fee > 0 ? `${fee} ${selected.currency}` : "—"],
-                ["Status", (selected.status || "completed").toUpperCase()],
-                ["To", selected.to_address ? selected.to_address.slice(0, 20) + "..." : "—"],
+                [t("tx.receipt.field_receipt_id"), selected.id?.slice(0, 12) + "..."],
+                [t("tx.receipt.field_date"), new Date(selected.created_date).toLocaleString(undefined)],
+                [t("tx.receipt.field_type"), (selected.type || t("tx.receipt.default_type")).toUpperCase()],
+                [t("tx.receipt.field_asset"), selected.currency],
+                [t("tx.receipt.field_amount"), `${selected.amount} ${selected.currency}`],
+                [t("tx.receipt.field_network_fee"), fee > 0 ? `${fee} ${selected.currency}` : "—"],
+                [t("tx.receipt.field_status"), (selected.status || t("tx.receipt.default_status")).toUpperCase()],
+                [t("tx.receipt.field_to"), selected.to_address ? selected.to_address.slice(0, 20) + "..." : "—"],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between py-0.5">
                   <span className="text-muted-foreground">{k}</span>
@@ -150,8 +152,8 @@ export default function TransactionReceipt() {
                 </div>
               ))}
               <div className="border-t border-dashed border-border my-3" />
-              <p className="text-center text-muted-foreground text-[10px]">Thank you for using <strong>VEYRNOX</strong></p>
-              <p className="text-center text-muted-foreground text-[10px]">This is a digital transaction record</p>
+              <p className="text-center text-muted-foreground text-[10px]">{t("tx.receipt.thank_you_prefix")} <strong>{t("tx.receipt.brand")}</strong></p>
+              <p className="text-center text-muted-foreground text-[10px]">{t("tx.receipt.digital_record")}</p>
             </div>
           </div>
         )}

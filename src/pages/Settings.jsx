@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Capacitor } from '@capacitor/core';
 const isNative = (() => { try { return Capacitor.isNativePlatform(); } catch { return false; } })();
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,9 +24,11 @@ import TwoFactorSettings from "../components/security/TwoFactorSettings";
 import HardwareKekSettings from "../components/security/HardwareKekSettings";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Spinner from "@/components/Spinner";
 
 export default function Settings() {
+  const { t } = useTranslation("wallet");
   const queryClient = useQueryClient();
   const { lock, recordAudit, getAuditLogEnabled, toggleAuditLog, fetchAuditEntries } = useWallet();
   const { currentTier } = useTier();
@@ -91,9 +94,9 @@ export default function Settings() {
     <div className="max-w-lg mx-auto space-y-8">
       <BackButton />
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Security Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("settings.heading")}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Lock, unlock, and protect your wallet
+          {t("settings.subhead")}
         </p>
       </div>
 
@@ -105,14 +108,14 @@ export default function Settings() {
               {isDark ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
             </div>
             <div>
-              <p className="text-sm font-semibold">{isDark ? 'Dark Mode' : 'Light Mode'}</p>
-              <p className="text-xs text-muted-foreground">Saved to this device</p>
+              <p className="text-sm font-semibold">{isDark ? t("settings.theme.dark") : t("settings.theme.light")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.theme.saved_note")}</p>
             </div>
           </div>
           <Switch
             checked={isDark}
             onCheckedChange={(checked) => { setTheme(checked ? 'dark' : 'light'); recordAudit('settings_changed'); }}
-            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={isDark ? t("settings.theme.switch_to_light") : t("settings.theme.switch_to_dark")}
           />
         </div>
       </div>
@@ -126,13 +129,13 @@ export default function Settings() {
               <ScrollText className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-semibold">Activity log</p>
-              <p className="text-xs text-muted-foreground">Off by default · stored on this device only</p>
+              <p className="text-sm font-semibold">{t("settings.activity_log.label")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.activity_log.description")}</p>
             </div>
           </div>
           <Switch
             checked={auditLog}
-            aria-label={auditLog ? 'Disable activity log' : 'Enable activity log'}
+            aria-label={auditLog ? t("settings.activity_log.disable_aria") : t("settings.activity_log.enable_aria")}
             onCheckedChange={async (checked) => {
               await toggleAuditLog(checked);
               setAuditLog(checked);
@@ -141,12 +144,12 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Private log: what you changed, sent, revoked. No amounts or addresses. Panic Wipe erases it.
+          {t("settings.activity_log.help")}
         </p>
         {auditLog && auditEntries !== null && (
           <div className="mt-3 border-t border-border pt-3">
             {auditEntries.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">No events recorded yet.</p>
+              <p className="text-xs text-muted-foreground italic">{t("settings.activity_log.no_events")}</p>
             ) : (
               <ul className="space-y-1">
                 {[...auditEntries].reverse().map((e, i) => (
@@ -173,13 +176,13 @@ export default function Settings() {
               <FileSignature className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-semibold">Message signing</p>
-              <p className="text-xs text-muted-foreground">Off by default · stored on this device only</p>
+              <p className="text-sm font-semibold">{t("settings.message_signing.label")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.message_signing.description")}</p>
             </div>
           </div>
           <Switch
             checked={messageSigning}
-            aria-label={messageSigning ? 'Disable message signing' : 'Enable message signing'}
+            aria-label={messageSigning ? t("settings.message_signing.disable_aria") : t("settings.message_signing.enable_aria")}
             onCheckedChange={(checked) => {
               setMessageSigningEnabled(checked);
               setMessageSigning(checked);
@@ -188,7 +191,7 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Off by default. Lets you sign arbitrary text messages with your wallet key. Only enable if a dApp or service asks you to sign a message.
+          {t("settings.message_signing.help")}
         </p>
       </div>
 
@@ -205,13 +208,13 @@ export default function Settings() {
               <BarChart3 className="h-5 w-5 text-primary" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold">Anonymous usage data</p>
-              <p className="text-xs text-muted-foreground">Opt-in · never includes balances or addresses</p>
+              <p className="text-sm font-semibold">{t("settings.telemetry.label")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.telemetry.description")}</p>
             </div>
           </div>
           <Switch
             checked={telemetry}
-            aria-label={telemetry ? 'Turn off anonymous usage data' : 'Turn on anonymous usage data'}
+            aria-label={telemetry ? t("settings.telemetry.disable_aria") : t("settings.telemetry.enable_aria")}
             onCheckedChange={(checked) => {
               // The switch always MOVES — a control that visibly refuses to flip
               // would itself be a tell that this session is not the real one. The
@@ -224,9 +227,18 @@ export default function Settings() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Helps us find bugs and improve the app. A random device ID is used — never linked to your
-          wallet, keys, or identity. Turning this off stops all usage data leaving this device.
+          {t("settings.telemetry.help")}
         </p>
+      </div>
+
+      {/* Language — Phase 2 slice 1. Writes route through lib/locale.js setLocale
+          which is I3-gated (no-op in decoy/duress/stealth/demo), so a coerced
+          tap cannot flip the real user's stored language or leave a "someone
+          changed the language" tell. Non-English catalogs are machine-
+          translated and the switcher renders an MT-pending banner until human
+          review (see i18n/index.js MACHINE_TRANSLATED). */}
+      <div className="p-5 rounded-xl border border-border bg-card">
+        <LanguageSwitcher />
       </div>
 
       {/* Security settings — shown on all platforms.
@@ -357,31 +369,31 @@ export default function Settings() {
       <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
         <div className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-5 w-5" />
-          <h2 className="font-semibold">Danger Zone</h2>
+          <h2 className="font-semibold">{t("settings.delete_account.title")}</h2>
         </div>
         {!showDelete ? (
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium">Clear local cache</p>
-              <p className="text-xs text-muted-foreground">Clears saved data on this device and locks the wallet. Your recovery phrase still works. To erase keys, use Panic Wipe.</p>
+              <p className="text-sm font-medium">{t("settings.delete_account.clear_cache_label")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.delete_account.clear_cache_description")}</p>
             </div>
             <button
               onClick={() => setShowDelete(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg border border-destructive/40 text-destructive text-sm font-semibold hover:bg-destructive/10 transition-colors min-h-[44px] shrink-0 select-none"
             >
               <Trash2 className="h-4 w-4" />
-              Delete
+              {t("settings.delete_account.delete_button")}
             </button>
           </div>
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-destructive">
-              This clears saved data and locks the wallet. Your recovery phrase still works. Type <strong>DELETE</strong> to confirm.
+              {t("settings.delete_account.confirm_prompt_pre")} <strong>DELETE</strong> {t("settings.delete_account.confirm_prompt_post")}
             </p>
             <input
               className="w-full rounded-lg border border-destructive/40 bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive min-h-[44px]"
-              placeholder="Type DELETE to confirm"
-              aria-label="Type DELETE to confirm account reset"
+              placeholder={t("settings.delete_account.confirm_placeholder")}
+              aria-label={t("settings.delete_account.confirm_aria")}
               value={deleteConfirm}
               onChange={e => setDeleteConfirm(e.target.value)}
             />
@@ -390,14 +402,14 @@ export default function Settings() {
                 onClick={() => { setShowDelete(false); setDeleteConfirm(""); }}
                 className="flex-1 py-2 rounded-lg border border-border text-sm font-medium hover:bg-secondary transition-colors min-h-[44px] select-none"
               >
-                Cancel
+                {t("settings.delete_account.cancel")}
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteConfirm !== "DELETE" || isDeleting}
                 className="flex-1 py-2 rounded-lg bg-destructive text-destructive-foreground text-sm font-semibold disabled:opacity-40 hover:bg-destructive/90 transition-colors min-h-[44px] select-none"
               >
-                {isDeleting ? "Deleting..." : "Confirm Delete"}
+                {isDeleting ? t("settings.delete_account.deleting") : t("settings.delete_account.confirm_delete")}
               </button>
             </div>
           </div>

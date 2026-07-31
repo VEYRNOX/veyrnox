@@ -11,6 +11,7 @@ import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import Spinner from "@/components/Spinner";
+import { formatCryptoAmount, parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
@@ -19,11 +20,19 @@ const FIAT_FLAGS = { USD: "🇺🇸", EUR: "🇪🇺", GBP: "🇬🇧", JPY: "�
 const fetchPrices = () => fetchPortfolioPricesFiatCG(FIATS);
 
 function formatNumber(value, fiat) {
-  if (value == null || isNaN(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "—";
+  const locale = resolveLocale();
   const isSmall = value < 0.01;
   const isJPY = fiat === "JPY" || fiat === "CNY";
-  if (isSmall) return value.toFixed(8);
-  return value.toLocaleString(undefined, {
+  // isSmall: pin 8 fractional digits (BTC satoshi scale) so a tiny value
+  // renders as "0.00000123" not "0.00000123" with trailing zeros trimmed.
+  // isJPY: 0 fractional (JPY / CNY have no everyday sub-unit).
+  // Else: min 2 (never bare "1"), max 6 (readable, matches BTC 8-sat scale
+  // rounded to a middle-ground).
+  if (isSmall) {
+    return formatCryptoAmount(value, locale, { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+  }
+  return formatCryptoAmount(value, locale, {
     minimumFractionDigits: isJPY ? 0 : 2,
     maximumFractionDigits: isJPY ? 0 : 6,
   });
@@ -59,13 +68,16 @@ export default function Calculator() {
 
   const convertedFiat = useMemo(() => {
     if (rate == null || !cryptoAmount) return "";
-    const val = parseFloat(cryptoAmount) * rate;
+    // parseLocaleNumber returns NaN for ambiguous input like en-US "1,5",
+    // which then propagates cleanly to the `isNaN(val)` guard and renders
+    // the field empty rather than silently coercing to a wrong number.
+    const val = parseLocaleNumber(cryptoAmount, resolveLocale()) * rate;
     return isNaN(val) ? "" : val;
   }, [cryptoAmount, rate]);
 
   const convertedCrypto = useMemo(() => {
     if (rate == null || !fiatAmount) return "";
-    const val = parseFloat(fiatAmount) / rate;
+    const val = parseLocaleNumber(fiatAmount, resolveLocale()) / rate;
     return isNaN(val) ? "" : val;
   }, [fiatAmount, rate]);
 
@@ -169,13 +181,13 @@ export default function Calculator() {
             </Select>
             {lastEdited === "crypto" ? (
               <Input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={cryptoAmount}
                 onChange={e => handleCryptoChange(e.target.value)}
                 placeholder="0.00"
                 autoFocus
-                className="flex-1 text-right font-mono text-base"
+                className="flex-1 text-end font-mono text-base"
               />
             ) : (
               <button
@@ -183,7 +195,7 @@ export default function Calculator() {
                   if (convertedCrypto !== "") setCryptoAmount(String(convertedCrypto));
                   setLastEdited("crypto");
                 }}
-                className="flex-1 text-right font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
+                className="flex-1 text-end font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
               >
                 {convertedCrypto !== "" ? formatNumber(convertedCrypto, null) : <span className="text-muted-foreground">0.00</span>}
               </button>
@@ -231,13 +243,13 @@ export default function Calculator() {
             </Select>
             {lastEdited === "fiat" ? (
               <Input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={fiatAmount}
                 onChange={e => handleFiatChange(e.target.value)}
                 placeholder="0.00"
                 autoFocus
-                className="flex-1 text-right font-mono text-base"
+                className="flex-1 text-end font-mono text-base"
               />
             ) : (
               <button
@@ -245,7 +257,7 @@ export default function Calculator() {
                   if (convertedFiat !== "") setFiatAmount(String(convertedFiat));
                   setLastEdited("fiat");
                 }}
-                className="flex-1 text-right font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
+                className="flex-1 text-end font-mono text-base px-3 py-2 rounded-md border border-border bg-secondary/40 text-foreground"
               >
                 {convertedFiat !== "" ? formatNumber(convertedFiat, toFiat) : <span className="text-muted-foreground">0.00</span>}
               </button>
@@ -270,7 +282,7 @@ export default function Calculator() {
                 <button
                   key={f}
                   onClick={() => setToFiat(f)}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-colors text-left ${
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-colors text-start ${
                     toFiat === f
                       ? "border-primary/50 bg-primary/10"
                       : "border-border bg-secondary/30 hover:bg-secondary"

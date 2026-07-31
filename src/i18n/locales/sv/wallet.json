@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Transaktionshistorik",
+      "subhead": "Sändningar och mottagningar per kedja läses direkt från kedjan — endast läsbart, med länkar till utforskaren.",
+      "badge_demo": "Demo · exempeldata",
+      "badge_mainnet": "Huvudnät",
+      "badge_testnet": "Testnät",
+      "privacy_demo_note": "Demoläge — inget hämtas över nätverket; raderna nedan är lokal exempeldata.",
+      "loading_label": "Läser in {{symbol}}-historik",
+      "error_prefix": "Kunde inte läsa in historik: {{reason}}.",
+      "error_fetch_reason": "Kunde inte nå RPC-noden — kontrollera din anslutning och försök igen.",
+      "error_generic_reason": "indexeraren svarade inte",
+      "retry": "Försök igen",
+      "no_indexer_title": "Historik i appen är inte tillgänglig för {{name}} via JSON-RPC",
+      "no_indexer_body": "En vanlig JSON-RPC-nod kan inte lista en adress transaktioner, och vi lägger medvetet inte till ett tredjeparts-API för utforskare/indexering (en ny datakälla och yta för hemringning). Din fullständiga historik finns på block-utforskaren.",
+      "view_on_explorer": "Visa {{address}} i {{network}}-utforskaren",
+      "view_explorer_title": "Visa i block-utforskaren",
+      "unlock_for_explorer": "Lås upp din plånbok för att få utforskarlänken till din {{symbol}}-adress.",
+      "locked_title": "Plånboken är låst",
+      "locked_body": "Lås upp din plånbok för att härleda din {{symbol}}-adress och läsa in dess historik.",
+      "empty": "Inga transaktioner ännu för {{symbol}} på {{network}}.",
+      "count_one": "{{count}} transaktion",
+      "count_other": "{{count}} transaktioner",
+      "most_recent_suffix": " · senaste",
+      "refresh": "Uppdatera",
+      "sample_badge": "Exempel",
+      "to_prefix": "Till ",
+      "from_prefix": "Från ",
+      "status_pending": "Väntande",
+      "status_confirmed": "Bekräftad",
+      "status_failed": "Misslyckad",
+      "awaiting_confirmation": "väntar på bekräftelse"
+    },
+    "list": {
+      "empty_title": "Inga transaktioner ännu",
+      "empty_description": "När du skickar eller tar emot i den här plånboken visas din aktivitet på kedjan här."
+    },
+    "receipt": {
+      "heading": "Transaktionskvitton",
+      "subhead": "Skapa utskrivbara kvitton för alla transaktioner",
+      "search_placeholder": "Sök på ID, adress eller valuta …",
+      "loading": "Läser in …",
+      "error": "Kunde inte läsa in transaktioner. Försök igen.",
+      "empty": "Inga transaktioner hittades",
+      "preview_title": "Förhandsgranska kvitto",
+      "print": "Skriv ut",
+      "print_window_title": "Transaktionskvitto",
+      "brand": "VEYRNOX",
+      "doc_title": "TRANSAKTIONSKVITTO",
+      "field_receipt_id": "Kvitto-ID",
+      "field_date": "Datum",
+      "field_type": "Typ",
+      "field_asset": "Tillgång",
+      "field_amount": "Belopp",
+      "field_network_fee": "Nätverksavgift",
+      "field_status": "Status",
+      "field_to": "Till",
+      "default_type": "Överföring",
+      "default_status": "slutförd",
+      "thank_you": "Tack för att du använder {{brand}}",
+      "thank_you_prefix": "Tack för att du använder",
+      "digital_record": "Detta är en digital transaktionsregistrering"
+    }
+  },
+  "settings": {
+    "heading": "Säkerhetsinställningar",
+    "subhead": "Lås, lås upp och skydda din plånbok",
+    "theme": {
+      "dark": "Mörkt läge",
+      "light": "Ljust läge",
+      "saved_note": "Sparad på den här enheten",
+      "switch_to_light": "Växla till ljust läge",
+      "switch_to_dark": "Växla till mörkt läge"
+    },
+    "activity_log": {
+      "label": "Aktivitetslogg",
+      "description": "Avstängd som standard · lagras endast på den här enheten",
+      "help": "Privat logg: vad du ändrat, skickat, återkallat. Inga belopp eller adresser. Panikradering raderar den.",
+      "enable_aria": "Aktivera aktivitetslogg",
+      "disable_aria": "Inaktivera aktivitetslogg",
+      "no_events": "Inga händelser registrerade ännu."
+    },
+    "message_signing": {
+      "label": "Meddelandesignering",
+      "description": "Avstängd som standard · lagras endast på den här enheten",
+      "help": "Avstängd som standard. Låter dig signera fria textmeddelanden med din plånboksnyckel. Aktivera bara om en dApp eller tjänst ber dig signera ett meddelande.",
+      "enable_aria": "Aktivera meddelandesignering",
+      "disable_aria": "Inaktivera meddelandesignering"
+    },
+    "telemetry": {
+      "label": "Anonym användningsdata",
+      "description": "Valfritt (opt-in) · innehåller aldrig saldon eller adresser",
+      "help": "Hjälper oss hitta buggar och förbättra appen. Ett slumpmässigt enhets-ID används — kopplas aldrig till din plånbok, dina nycklar eller din identitet. Om du stänger av detta lämnar ingen användningsdata den här enheten.",
+      "enable_aria": "Slå på anonym användningsdata",
+      "disable_aria": "Slå av anonym användningsdata"
+    },
+    "delete_account": {
+      "title": "Farozon",
+      "clear_cache_label": "Rensa lokal cache",
+      "clear_cache_description": "Rensar sparad data på den här enheten och låser plånboken. Din återställningsfras fungerar fortfarande. För att radera nycklar, använd Panikradering.",
+      "delete_button": "Radera",
+      "confirm_prompt_pre": "Detta rensar sparad data och låser plånboken. Din återställningsfras fungerar fortfarande. Skriv",
+      "confirm_prompt_post": "för att bekräfta.",
+      "confirm_placeholder": "Skriv DELETE för att bekräfta",
+      "confirm_aria": "Skriv DELETE för att bekräfta återställning av kontot",
+      "cancel": "Avbryt",
+      "confirm_delete": "Bekräfta radering",
+      "deleting": "Raderar …"
+    },
+    "biometric_unlock": {
+      "heading": "Biometrisk upplåsning",
+      "worth_knowing_label": "Värt att veta.",
+      "kdf_disclosure": "Upplåsning med ett tryck sparar ditt plånbokslösenord på den här enheten, skyddat av din skärmlås och biometri. Om någon får tag i en kopia av din enhetsbackup utan själva enheten kan de komma åt din plånbok. Stäng av detta för starkast möjliga skydd.",
+      "app_layer_disclosure_pre": "Biometrisk upplåsning sparar ditt lösenord på den här enheten, skyddat av ditt fingeravtryck eller ansikte. Detta körs inuti appen, inte på operativsystemnivå.",
+      "app_layer_disclosure_mid": "För starkare skydd på enhetsnivå, aktivera",
+      "hardware_protection_label": "Hårdvaruskydd",
+      "app_layer_disclosure_post": "(tillgängligt nedan).",
+      "toggle_label": "Biometrisk upplåsning (huvudplånbok)",
+      "toggle_description": "Aktivera upplåsning med ett tryck för din huvudplånbok med enhetens biometri.",
+      "before_enable_label": "Innan du aktiverar detta.",
+      "confirm_disclosure": "Om någon får tag i en kopia av din enhetsbackup utan själva enheten kan de komma åt din plånbok. Slå bara på detta om du är okej med det.",
+      "confirm_enable_button": "Aktivera upplåsning med ett tryck",
+      "cancel_button": "Avbryt",
+      "checking_availability": "Kontrollerar tillgänglighet …",
+      "default_label": "Biometri",
+      "available": "{{label}} tillgänglig.",
+      "available_simulated": "{{label}} tillgänglig (simulerad i demo).",
+      "status_check_failed": "Kunde inte kontrollera tillgänglighet för biometri på den här enheten.",
+      "awaiting_prompt": "Väntar på prompt …",
+      "preview_prompt": "Förhandsgranska prompt",
+      "test_success": "Simulerad autentisering lyckades",
+      "test_cancelled": "Prompten avbröts"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrisk upplåsning",
+      "heading_web": "Lås upp med passkey",
+      "scope_banner_native_pre": "Ditt fingeravtryck eller ansikte kontrolleras innan upplåsning —",
+      "scope_banner_native_post": "det ersätter inte ditt lösenord. Ditt lösenord och din återställningsfras fungerar fortfarande på egen hand, så att förlora biometrin låser dig aldrig ute.",
+      "scope_banner_web_pre": "En passkey lägger till ett snabbt biometriskt eller säkerhetsnyckeltryck innan upplåsning —",
+      "scope_banner_web_post": "det ersätter inte ditt lösenord. Ditt lösenord och din återställningsfras fungerar fortfarande på egen hand, så att förlora passkeyn låser dig aldrig ute.",
+      "extra_step_label": "ett extra steg",
+      "enroll_button": "Registrera biometrisk upplåsning",
+      "register_button": "Registrera en passkey",
+      "not_setup_native": "Enhetens biometri är inte konfigurerad. Lägg till ett fingeravtryck eller ansikte i enhetens inställningar först — ditt lösenord fungerar fortfarande.",
+      "not_supported_web": "Upplåsning med passkey är inte tillgänglig i den här webbläsaren. Det fungerar i mobilappen och i moderna webbläsare. Använd ditt lösenord här.",
+      "enroll_error": "Kunde inte registrera biometrisk upplåsning på den här enheten.",
+      "register_error": "Kunde inte registrera en passkey på den här enheten.",
+      "enrolled_native": "Biometrisk upplåsning registrerad",
+      "registered_web": "Passkey registrerad",
+      "simulated_suffix": " (simulerad)",
+      "remove_button": "Ta bort",
+      "require_toggle_native": "Kräv biometrisk upplåsning",
+      "require_toggle_web": "Kräv {{label}} vid upplåsning",
+      "require_toggle_aria_web": "Kräv upplåsning med passkey",
+      "require_toggle_desc_native": "Be om din enhets biometri innan upplåsning (ditt lösenord fungerar fortfarande).",
+      "require_toggle_desc_web": "Be om din passkey innan upplåsning (ditt lösenord fungerar fortfarande).",
+      "applies_all_sessions": "Detta gäller för alla plånbokssessioner på den här enheten.",
+      "default_label": "Passkey",
+      "checking_availability": "Kontrollerar tillgänglighet …",
+      "simulated_in_demo": "{{label}} simulerad i demo. ",
+      "awaiting_biometric": "Väntar på biometri …",
+      "awaiting_passkey": "Väntar på passkey …",
+      "preview_biometric_prompt": "Förhandsgranska biometriprompt",
+      "preview_passkey_prompt": "Förhandsgranska passkey-prompt",
+      "simulated_prefix": "Simulerad ",
+      "biometric_verified": "biometri verifierad",
+      "passkey_verified": "passkey verifierad",
+      "biometric_prompt_cancelled": "Biometriprompten avbröts",
+      "passkey_prompt_cancelled": "Passkey-prompten avbröts"
+    },
+    "hardware_kek": {
+      "heading": "Hårdvaruskydd på enheten",
+      "badge_webauthn": "Skyddad med WebAuthn",
+      "badge_off": "AV",
+      "description_pre": "Låser din plånbok till den här fysiska enheten. Efter aktivering kan din plånbok bara öppnas på ",
+      "description_device": "den här enheten",
+      "description_post": ". En stulen backupfil är värdelös utan själva enheten, även med din PIN.",
+      "description_web_suffix": "Fungerar på Chrome 99+ och Firefox 108+. Safari stöds inte.",
+      "device_binding_note": "Enhetsbindning är aktiv och testad på riktig hårdvara.",
+      "checking_status": "Kontrollerar status …",
+      "web_prf_unsupported": "Hårdvaruskydd är inte tillgängligt i den här webbläsaren. Använd Chrome 99+ eller Firefox 108+, eller använd iOS- eller Android-appen.",
+      "errors": {
+        "wrong_pin": "Fel PIN — ange PIN-koden du använder för att låsa upp din plånbok.",
+        "no_hardware": "Kunde inte nå den här enhetens hårdvarusäkerhet. Försök igen, eller använd en annan enhet.",
+        "malformed_vault": "Din sparade plånboksdata kunde inte läsas på den här enheten.",
+        "not_enrolled": "Hårdvaruskydd är inte aktiverat för det här valvet, så det finns inget att uppgradera.",
+        "generic": "Något gick fel. Försök igen.",
+        "key_invalidated": "Dina fingeravtryck har ändrats — hårdvaruskyddet ogiltigförklarades. Inaktivera och aktivera hårdvaruskydd igen, eller återställ från din fröfras.",
+        "insecure_tier": "Den här enheten saknar ett säkert hårdvaruelement — hårdvaruskydd kan inte aktiveras här.",
+        "enter_pin_first": "Ange din valv-PIN först.",
+        "enter_pin_confirm_removal": "Ange din valv-PIN för att bekräfta borttagning.",
+        "enter_pin_upgrade": "Ange din valv-PIN för att uppgradera."
+      },
+      "toast": {
+        "enabled": "Hårdvaruskydd aktiverat — ditt valv kräver nu den här enheten för att låsas upp.",
+        "removed": "Hårdvaruskydd borttaget.",
+        "upgraded": "Hårdvaruskydd uppgraderat — ditt valv är nu bundet med en unik nyckel per enhet."
+      },
+      "pin_strength": {
+        "hardware_title": "Hårdvaruskyddad.",
+        "hardware_body": "Din PIN i kombination med Face ID, fingeravtryck eller passkey gör offlineattacker ogenomförbara — en angripare skulle behöva både din PIN och denna fysiska enhet.",
+        "no_hardware_title": "Ingen hårdvarufaktor tillgänglig i den här webbläsaren.",
+        "no_hardware_body": "Din 8-siffriga PIN (~100 miljoner kombinationer) skyddas endast av Argon2id — en riktad angripare skulle kunna knäcka den offline på dagar till veckor. Använd ett lösenord med minst 12 tecken, eller byt till Chrome/Firefox för att aktivera hårdvaruskydd.",
+        "pre_enroll_title": "PIN-styrka.",
+        "pre_enroll_body": "En 8-siffrig PIN har ~100 miljoner kombinationer. Argon2id saktar ner offlineattacker till ungefär 1–2 år med en enda tråd — men ett GPU-kluster kan korta ner det till dagar. Att aktivera Face ID, fingeravtryck eller passkey ovan gör offlineattacker ogenomförbara genom att kräva den här enheten för varje upplåsning."
+      },
+      "enrolled": {
+        "active_title": "Aktivt på den här enheten",
+        "active_body_native": "Ditt valv kräver den här enhetens biometri för att låsas upp.",
+        "active_body_web": "Ditt valv kräver den här enhetens passkey för att låsas upp."
+      },
+      "upgrade": {
+        "available_title": "Uppgradering tillgänglig",
+        "available_body": "Din plånbok skyddades med en äldre version som delade en nyckel mellan enheter. Uppgradera för att låsa den till bara den här enheten. Detta sker en gång och kräver att du verifierar dig två gånger.",
+        "cta": "Uppgradera hårdvaruskydd",
+        "busy": "Uppgraderar — godkänn båda prompterna …",
+        "prompt": "Ange din valv-PIN. Du kommer att autentisera dig två gånger för att skydda valvet på nytt.",
+        "cancel": "Avbryt"
+      },
+      "remove": {
+        "cta": "Ta bort hårdvaruskydd",
+        "prompt_native": "Ange din PIN för att bekräfta. Du behöver verifiera med ditt fingeravtryck eller ansikte.",
+        "prompt_web": "Ange ditt lösenord för att bekräfta. Du behöver verifiera med din passkey.",
+        "busy": "Tar bort — godkänn prompten …",
+        "cancel": "Avbryt"
+      },
+      "enroll": {
+        "prompt_native": "Ange din valv-PIN för att aktivera hårdvaruskydd.",
+        "prompt_web": "Ange din 8-siffriga PIN för att aktivera hårdvaruskydd. Din webbläsare kommer att skapa en passkey för att låsa din plånbok till den här enheten.",
+        "cta": "Aktivera hårdvaruskydd",
+        "busy_native": "Registrerar — godkänn den biometriska prompten …",
+        "busy_web": "Registrerar — godkänn passkey-prompten …",
+        "footnote_native": "Du kommer att ombes autentisera med enhetens biometri eller lösenkod.",
+        "footnote_web": "Din webbläsare kommer att be dig autentisera med biometri eller enhetens PIN för att skapa passkeyn."
+      },
+      "blocked": "Inställningar för hårdvaruskydd är inte tillgängliga i den här sessionen."
+    },
+    "two_factor": {
+      "heading": "Tvåfaktor vid kritiska åtgärder",
+      "intro": "En extra kontroll utöver din PIN för känsliga åtgärder. Även om någon ser dig ange din PIN kan de fortfarande inte göra det här utan det andra steget.",
+      "actions_protects_label": "Åtgärder detta skyddar",
+      "gated_actions": [
+        { "label": "Skicka pengar", "desc": "varje sändning, efter säkerhetskontroller" },
+        { "label": "Visa din återställningsfras", "desc": "visning eller export av din backup" },
+        { "label": "Ange en nödläges-PIN", "desc": "skapande av nödläges-plånboken" },
+        { "label": "Skapa eller dölja en plånbok", "desc": "ändringar av dolda plånböcker" }
+      ],
+      "currently_enforcing": "Tillämpar för närvarande:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + passkey",
+      "badge_password": "PIN + åtgärdslösenord",
+      "badge_off": "Av (endast PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Du är i en lockbete-/dold session. Konfigurera tvåfaktor från din riktiga session.",
+      "method_a_title": "PIN + åtgärdslösenord",
+      "on_suffix": "PÅ",
+      "method_a_desc": "Ett andra lösenord sparat i din plånbok. Starkt, men båda lösenorden finns på samma enhet.",
+      "label_pin": "Din PIN",
+      "label_wallet_password": "Plånbokslösenord",
+      "pin_confirm_placeholder": "Bekräfta att det är du",
+      "action_password_label_change": "Nytt åtgärdslösenord",
+      "action_password_label_set": "Åtgärdslösenord",
+      "action_password_placeholder": "Minst 8 tecken",
+      "action_password_hint": "Minst 8 tecken · alla tecken tillåtna",
+      "too_short": "Använd minst {{min}} tecken.",
+      "confirm_label": "Bekräfta",
+      "confirm_placeholder": "Ange åtgärdslösenordet igen",
+      "confirm_hint": "Måste matcha ditt åtgärdslösenord",
+      "mismatch": "Lösenorden matchar inte.",
+      "save_change": "Ändra åtgärdslösenord",
+      "save_set": "Ange åtgärdslösenord",
+      "remove": "Ta bort åtgärdslösenord",
+      "toast_changed": "Åtgärdslösenordet ändrat",
+      "toast_set": "Åtgärdslösenordet angett",
+      "toast_set_error": "Kunde inte ange åtgärdslösenordet",
+      "toast_confirm_pin_required": "Ange din plånboks-PIN/lösenord för att bekräfta",
+      "toast_removed": "Åtgärdslösenordet borttaget",
+      "toast_remove_error": "Kunde inte ta bort åtgärdslösenordet",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + passkey/FIDO2",
+      "method_b_desc_native": "Din PIN plus {{label}}. Om biometri inte är tillgänglig blockeras åtgärden. Att förlora din enhet förlorar aldrig dina pengar.",
+      "method_b_desc_web": "Din PIN plus ett tryck med passkey. Om passkeyn inte är tillgänglig blockeras åtgärden. Att förlora den förlorar aldrig dina pengar.",
+      "switch_aria_native": "Använd enhetens biometri som min andra faktor",
+      "switch_aria_web": "Använd passkey som min andra faktor",
+      "confirm_native": "Bekräfta kritiska åtgärder med {{label}}.",
+      "unavailable_native": "{{label}}/enhetens lösenkod är inte konfigurerad på den här enheten — aktivera den i enhetens inställningar för att använda den här faktorn.",
+      "unsupported_web": "Den här webbläsaren stöder inte WebAuthn/passkeys.",
+      "register_hint_web_pre": "Ingen passkey registrerad ännu — konfigurera en under",
+      "register_hint_web_strong": "Plånbokens passkeys",
+      "register_hint_web_post": "nedan, och aktivera sedan detta.",
+      "toggle_biometric_needed": "{{label}} är inte konfigurerad på den här enheten.",
+      "toggle_passkey_needed": "Registrera en passkey först (Plånbokens passkeys, nedan).",
+      "toggle_biometric_on": "{{label}} som andra faktor på",
+      "toggle_biometric_off": "{{label}} som andra faktor av",
+      "toggle_passkey_on": "Passkey som andra faktor på",
+      "toggle_passkey_off": "Passkey som andra faktor av"
+    },
+    "session": {
+      "title": "Session och automatisk låsning",
+      "description": "Låser din plånbok efter en period av inaktivitet eller när du lämnar appen",
+      "status_unlocked": "Upplåst",
+      "status_locked": "Låst",
+      "auto_lock_after": "Lås automatiskt efter",
+      "never_note": "Ingen automatisk låsning vid inaktivitet, men den låser ändå efter ~45 s i bakgrunden och efter 8 timmar upplåst.",
+      "resets_note": "Återställs varje gång du interagerar med appen. Låser också direkt när den läggs i bakgrunden.",
+      "lock_now": "Lås nu",
+      "recent_activity": "Senaste aktivitet",
+      "view_all": "Visa alla",
+      "this_device": "Den här enheten",
+      "active_now": "Aktiv nu"
+    },
+    "rehearsal": {
+      "title": "Repetera avvisbarhet",
+      "description": "Se instrumentpanelen precis som någon som håller din upplåsta telefon skulle göra."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Plånbok",
+    "sidebar_expand": "Expandera sidopanel",
+    "sidebar_collapse": "Fäll ihop sidopanel",
+    "search_placeholder": "Sök …",
+    "search_shortcut_title": "Sök (⌘K)",
+    "lock": "Lås",
+    "lock_confirm_prompt": "Lås den här plånboken nu?",
+    "back": "Tillbaka",
+    "settings": "Inställningar",
+    "main_content_aria": "Huvudinnehåll",
+    "bottom_nav_aria": "Nedre navigering",
+    "more_features_aria": "Fler funktioner",
+    "more": "Mer",
+    "close": "Stäng",
+    "all_features_heading": "Alla funktioner",
+    "recent_heading": "Senaste",
+    "tab_home": "Hem",
+    "tab_send": "Skicka",
+    "tab_receive": "Ta emot"
+  },
+  "back": {
+    "default_label": "Tillbaka"
+  },
+  "send": {
+    "heading": "Skicka krypto",
+    "subheading": "Överför pengar säkert",
+    "wallet_fallback": "Plånbok",
+    "wallet_picker": { "label": "Från plånbok", "placeholder": "Välj plånbok" },
+    "asset_picker": { "label": "Tillgång", "placeholder": "Välj tillgång" },
+    "recipient": {
+      "label": "Skicka till (adress eller namn)",
+      "placeholder": "Klistra in en adress eller ange ett namn (t.ex. vitalik.eth)",
+      "scan_qr": "Skanna QR-kod",
+      "resolving": "Slår upp namn …",
+      "name_not_found": "Namnet hittades inte — kontrollera stavningen eller klistra in adressen direkt.",
+      "ens_using_prefix": "Använder {{name}} →",
+      "ens_confirm_intro": "slås upp privat på blockkedjan till:",
+      "ens_confirm_hint": "Bekräfta att den här adressen är korrekt innan du skickar.",
+      "use_this_address": "Använd den här adressen",
+      "not_whitelisted": "Den här adressen finns inte på din vitlista. Dubbelkolla innan du fortsätter. Du kan lägga till betrodda adresser under Inställningar.",
+      "self_send_warning": "Du skickar till din egen plånboksadress. Detta flyttar inget mellan plånböcker och kostar fortfarande en nätverksavgift. Dubbelkolla mottagaren innan du fortsätter."
+    },
+    "screening": {
+      "local_disclosure": "Mottagare kontrolleras på din enhet mot bedrägeriadresser i din egen historik — inget lämnar din enhet.",
+      "remote_opt_in": "Kontrollera även mot en online-hotdatabas (skickar denna adress till en tredje part)",
+      "remote_unavailable": "Online-kontroll är aktiverad, men ingen leverantör är konfigurerad i den här versionen — kontrollen förblir lokal, så vi kunde inte verifiera detta mot en extern lista.",
+      "demo_poison_button": "Demo: klistra in en liknande adress"
+    },
+    "simulation": {
+      "title": "Transaktionssimulering",
+      "toggle_aria": "Växla transaktionssimulering",
+      "description": "Innan du signerar kör vi en lokal förhandskontroll — inga tredjepartstjänster, ingen data lämnar din enhet.",
+      "checks": [
+        "Adressrisk (imitation/liknande adress)",
+        "Kontraktsavkodning",
+        "Flagga för obegränsat godkännande",
+        "Förutsägelse av återkallning",
+        "Avvikelse jämfört med din historik",
+        "Varning för stort utflöde"
+      ],
+      "results_hint": "Resultat visas i nästa steg när du angett en adress och ett belopp.",
+      "off_hint": "Simulering är avstängd — ingen förhandskontroll körs innan signering.",
+      "taking_too_long": "Tar det för lång tid?",
+      "turn_off": "Stäng av simulering"
+    },
+    "amount": {
+      "label": "Belopp",
+      "placeholder": "0,00",
+      "being_sent": "skickas",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(live)",
+      "reading_from_network": "läser från nätverket …"
+    },
+    "errors": {
+      "amount_missing": "Belopp krävs",
+      "amount_not_positive": "Beloppet måste vara större än noll",
+      "amount_malformed": "Ange ett vanligt decimalbelopp, till exempel 0.5",
+      "amount_over_balance": "Otillräckligt saldo",
+      "insufficient_balance_title": "Otillräckligt saldo.",
+      "insufficient_balance_body": "Du har {{balance}} {{currency}} tillgängligt att skicka (efter nätverksavgiften). Minska beloppet för att fortsätta."
+    },
+    "status": {
+      "not_enabled": "Att skicka är ännu inte aktiverat för {{currency}}. Den här tillgången är endast för mottagning tills dess kryptoväg är verifierad.",
+      "dev_ungate_title": "UTVECKLARSPÄRR BORTTAGEN",
+      "dev_ungate_body": "— sändningsspärren är kringgången för {{currency}} via VITE_DEV_UNGATE_SEND (endast utvecklarversion). Den här tillgångens status är oförändrad (fortfarande inte live); huvudnätet förblir spärrat. Endast för testnätsverifiering — släpp aldrig den här versionen.",
+      "locked": "Din plånbok är låst. Lås upp den i plånboksinställningarna för att signera och skicka."
+    },
+    "note": { "label": "Anteckning (valfritt)", "placeholder": "Vad gäller det?" },
+    "trezor": {
+      "toggle_label": "Signera med Trezor",
+      "connected": "Enhet ansluten",
+      "connect_button": "Anslut enhet"
+    },
+    "buttons": {
+      "continue": "Fortsätt",
+      "confirm_send": "Bekräfta och skicka",
+      "back": "Tillbaka"
+    },
+    "verify": { "summary_label": "Du skickar" },
+    "fee": {
+      "automatic": "Nätverksavgiften ställs in automatiskt för {{currency}} ({{network}}).",
+      "native_fee_note": "Nätverksavgiften betalas i {{symbol}} ({{network}}) — du behöver {{symbol}} för att täcka nätverksavgiften även när du skickar {{token}}."
+    },
+    "decode": {
+      "heading": "Vad den här transaktionen gör",
+      "action": "Åtgärd",
+      "send_tokens": "Skicka token",
+      "token": "Token",
+      "amount": "Belopp",
+      "recipient": "Mottagare",
+      "grant_permission": "Bevilja utgiftsbehörighet",
+      "permission": "Behörighet",
+      "unlimited_permission": "Obegränsad (den här appen kan spendera vilket belopp som helst)",
+      "spender": "Mottagare av behörighet"
+    },
+    "reauth": {
+      "prompt": "Ange din {{credential}} igen för att godkänna",
+      "credential_pin": "PIN",
+      "credential_password": "lösenord",
+      "submit_pin": "Godkänn",
+      "submit_password": "Godkänn och skicka",
+      "password_placeholder": "Valvlösenord",
+      "password_aria": "Valvlösenord för godkännande av sändning",
+      "errors": {
+        "unavailable": "Verifiering otillgänglig — lås om och lås upp plånboken igen.",
+        "incorrect": "Felaktigt — försök igen ({{remaining}} kvar)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transaktion sänd",
+      "heading": "Transaktion sänd",
+      "body_suffix": "signerad lokalt och skickad till nätverket",
+      "tx_hash_label": "Transaktionshash",
+      "view_explorer": "Visa i block-utforskaren",
+      "pending_note": "Väntande tills den bekräftats på nätverket. Saldot uppdateras från blockkedjan, inte ett sparat värde.",
+      "send_another": "Skicka en till"
+    },
+    "toasts": {
+      "ens_off_in_session": "Namnuppslagning är avstängd i den här sessionen — klistra in adressen direkt.",
+      "ens_not_found": "ENS-namnet hittades inte",
+      "sns_unavailable": "Namnuppslagning för Solana är inte tillgängligt ännu — klistra in adressen direkt.",
+      "ens_resolution_failed": "Namnuppslagningen misslyckades",
+      "verify_required": "Slutför verifieringen av din backup innan du skickar detta belopp.",
+      "two_factor_retry": "Sändningen kunde inte slutföras — verifiera dig igen för att försöka på nytt.",
+      "send_failed_fallback": "Sändningen misslyckades",
+      "unconfirmed": "Kunde inte bekräfta den här transaktionen på nätverket ännu — den kan fortfarande vara väntande. Kontrollera utforskaren."
+    }
+  },
+  "receive": {
+    "heading": "Ta emot krypto",
+    "subheading": "Visa en plånboksadress för att ta emot pengar",
+    "asset_label": "Tillgång",
+    "asset_placeholder": "Välj tillgång",
+    "not_available": "Att ta emot {{name}} ({{symbol}}) är inte tillgängligt ännu. Ingen adress visas förrän den här tillgången är aktiverad.",
+    "locked": {
+      "title": "Plånboken är låst",
+      "body": "Lås upp din plånbok för att visa din {{asset}} {{network}}-mottagningsadress.",
+      "open_hd_wallet": "Öppna HD-plånbokshanteraren"
+    },
+    "your_address": "Din {{asset}}-adress",
+    "testnet_badge": "Testnät",
+    "receive_address_label": "{{symbol}}-mottagningsadress",
+    "copy": {
+      "copied_aria": "Adress kopierad till urklipp",
+      "copy_aria": "Kopiera adress",
+      "copied_toast": "Adress kopierad",
+      "copy_failed_toast": "Kunde inte kopiera — markera och kopiera adressen manuellt"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} är en token på ett Ethereum-kompatibelt nätverk. Detta är din plånboksadress — låt bara avsändaren skicka {{symbol}} på {{network}}. Att skicka den på ett annat nätverk kan permanent förlora pengarna.",
+      "evm": "Detta är din delade plånboksadress. Skicka bara {{name}} på {{network}} till den här adressen, och se till att avsändaren använder {{network}}.",
+      "btc": "Skicka bara Bitcoin på {{network}} till den här adressen.",
+      "solana": "Skicka bara Solana på {{network}} till den här adressen."
+    },
+    "select_asset_prompt": "Välj en tillgång att ta emot.",
+    "unlock_footer_note": "Adresser hämtas från din plånbok på enheten och visas bara medan den är upplåst."
+  },
+  "dashboard": {
+    "portfolioValue": "Portföljvärde",
+    "priceAlertsTriggered_one": "{{count}} prislarm utlöst!",
+    "priceAlertsTriggered_other": "{{count}} prislarm utlösta!",
+    "lockAriaLabel": "Lås saldo bakom biometri",
+    "lockBalance": "Lås saldo",
+    "synced": "Synkroniserad {{time}}",
+    "syncJustNow": "Just nu",
+    "syncSecondsAgo_one": "{{count}} s sedan",
+    "syncSecondsAgo_other": "{{count}} s sedan",
+    "syncMinutesAgo_one": "{{count}} min sedan",
+    "syncMinutesAgo_other": "{{count}} min sedan",
+    "actions": {
+      "send": "Skicka",
+      "receive": "Ta emot",
+      "schedule": "Schemalägg",
+      "add": "Lägg till"
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Aktivitet",
+      "analytics": "Analys"
+    },
+    "emptyWallets": {
+      "title": "Inga plånböcker ännu",
+      "description": "Lägg till en plånbok för att börja ta emot, skicka och hålla tillgångar över flera kedjor."
+    },
+    "addWallet": "Lägg till plånbok",
+    "searchTransactionsPlaceholder": "Sök transaktioner …",
+    "emptySearch": {
+      "title": "Inga matchande transaktioner",
+      "description": "Prova att rensa filter eller sök på en annan tillgång eller adress."
+    },
+    "emptyTransactions": {
+      "title": "Inga transaktioner ännu",
+      "description": "Din aktivitet på kedjan visas här när du skickar eller tar emot."
+    },
+    "portfolioPerformance": "Portföljutveckling",
+    "assetDistribution": "Tillgångsfördelning",
+    "quickAccess": "Snabbåtkomst",
+    "quickAccessItems": {
+      "receive": "Ta emot",
+      "security": "Säkerhet",
+      "approvals": "Godkännanden",
+      "addressCheck": "Adresskontroll",
+      "analytics": "Analys",
+      "sentiment": "Sentiment",
+      "riskScore": "Riskpoäng"
+    },
+    "walletNameLabel": "Plånboksnamn",
+    "walletNamePlaceholder": "Min ETH-plånbok",
+    "addWalletDialog": {
+      "title": "Lägg till plånbok",
+      "currency": "Valuta",
+      "creating": "Skapar …",
+      "create": "Skapa plånbok"
+    },
+    "renameWalletDialog": {
+      "title": "Byt namn på plånbok",
+      "saving": "Sparar …",
+      "save": "Spara namn"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Krypterat valv",
+    "backup": {
+      "title": "Säkerhetskopiera \"{{name}}\"",
+      "reauthDescription": "Bekräfta att det är du, sedan visar vi återställningsfrasen för den här plånboken.",
+      "description": "Skriv ner dessa 12 ord offline. Vem som helst med dem kan spendera den här plånbokens pengar — och det är det enda sättet att återställa den.",
+      "warning": "Ta aldrig en skärmdump. Skriv aldrig in den i en annan app.",
+      "confirmButton": "Jag har skrivit ner den — markera som säkerhetskopierad"
+    },
+    "addWallet": {
+      "defaultWalletName": "din nya plånbok",
+      "backupDescription": "Den här plånboken har sin egen återställningsfras — separat från alla andra plånböcker i ditt valv. Skriv ner den offline innan du använder den.",
+      "backedUpDone": "Jag har säkerhetskopierat den — klart",
+      "title": "Lägg till en plånbok",
+      "createNew": "Skapa ny",
+      "importSeed": "Importera frö",
+      "createDescription": "Genererar ett NYTT frö som härleder ALLA kedjor (ETH/EVM, BTC, SOL). Du säkerhetskopierar det innan det aktiveras.",
+      "importDescription": "Klistra in ett befintligt frö på 12/24 ord — alla kedjor härleds automatiskt (ett frö är inte kedjespecifikt).",
+      "recoveryPhraseLabel": "Återställningsfras",
+      "recoveryPhrasePlaceholder": "ord1 ord2 … ord12",
+      "walletNameLabel": "Plånboksnamn",
+      "walletNamePlaceholder": "t.ex. Sparande",
+      "assetsToShowLabel": "Tillgångar att visa",
+      "assetsToShowHint": "Endast visningsval — fröet innehåller alla kedjor oavsett.",
+      "confirmVaultPlaceholder": "Bekräfta att det är du för att ändra ditt valv",
+      "vaultReentryHint": "Angiven på nytt för att godkänna en ändring i ditt fröfrö-valv. Sparas aldrig i minnet.",
+      "createAndBackup": "Skapa och säkerhetskopiera",
+      "importWallet": "Importera plånbok"
+    },
+    "vaultPinLabel": "Valv-PIN",
+    "vaultPasswordLabel": "Valvlösenord",
+    "cancel": "Avbryt",
+    "done": "Klart",
+    "manageAssets": {
+      "title": "Tillgångar för \"{{name}}\"",
+      "description": "Välj vilka tillgångar som visas för den här plånboken. Dolda hålls undan tills de läggs till."
+    },
+    "rename": {
+      "title": "Byt namn på plånbok",
+      "save": "Spara namn"
+    },
+    "remove": {
+      "title": "Ta bort \"{{name}}\"?",
+      "onlyWallet": "Detta är din enda plånbok — den kan inte tas bort. Använd Panikradering under Säkerhet för att radera allt.",
+      "description": "Tar bort den här plånbokens frö från den här enheten.",
+      "backedUpNote": "Du kan återställa den från dess återställningsfras.",
+      "notBackedUpNote": "⚠️ INTE säkerhetskopierad — utan dess fras är den borta för gott.",
+      "button": "Ta bort plånbok"
+    },
+    "move": {
+      "title": "Flytta \"{{name}}\" till …"
+    },
+    "managePortfolios": {
+      "title": "Portföljer",
+      "defaultTag": "(standard)",
+      "saveAriaLabel": "Spara portföljnamn",
+      "renameAriaLabel": "Byt namn på {{name}}",
+      "deleteAriaLabel": "Ta bort {{name}}",
+      "newNamePlaceholder": "Nytt portföljnamn",
+      "addButton": "Lägg till"
+    },
+    "activity": {
+      "unlockPrompt": "Lås upp din plånbok för att visa aktivitet.",
+      "loading": "Läser in …",
+      "loadError": "Kunde inte läsa in aktivitet.",
+      "noTransactions": "Inga transaktioner ännu.",
+      "viewFullHistory": "Visa fullständig historik →"
+    },
+    "portfolioValueLabel": "Portföljvärde",
+    "explore": {
+      "subtitle": "Du utforskar — endast visning. Ingen plånbok ännu.",
+      "description": "Titta dig omkring fritt. När du är redo, skapa en ny självförvaltad plånbok eller importera ett befintligt frö — nycklar genereras och krypteras på den här enheten.",
+      "createOrImport": "Skapa eller importera en plånbok"
+    },
+    "portfoliosButton": "Portföljer",
+    "totalValueHeading": "{{name}} · Totalt värde",
+    "partialTotalNote": "Vissa saldon kunde inte läsas in — den här summan kan vara ofullständig.",
+    "refreshPricesTooltip": "Uppdatera livepriser",
+    "live": "Live",
+    "approximate": "Ungefärligt",
+    "seedVerify": {
+      "title": "Slutför verifieringen av din backup",
+      "description": "Krävs för att skicka över säkerhetsgränsen.",
+      "verifyAriaLabel": "Verifiera din plånboksbackup",
+      "verifyButton": "Verifiera"
+    },
+    "unbacked": {
+      "titleBold": "Plånbokens backup är ofullständig.",
+      "body": "Varje plånbok har sin egen återställningsfras — utan den är den plånbokens pengar oåterkalleliga. Säkerhetskopiera nu.",
+      "backUpButton": "Säkerhetskopiera \"{{name}}\""
+    },
+    "actions": {
+      "send": "Skicka",
+      "receive": "Ta emot",
+      "addWallet": "Lägg till plånbok"
+    },
+    "activeWalletHint": {
+      "prefix": "Skicka/Ta emot använder",
+      "otherPortfolio": " (i en annan portfölj)",
+      "suffix": ". Tryck på en plånbok nedan för att byta."
+    },
+    "tabs": {
+      "tokens": "Token",
+      "activity": "Aktivitet",
+      "analytics": "Analys"
+    },
+    "noWalletsInPortfolio": "Inga plånböcker i \"{{name}}\". Lägg till en plånbok, eller flytta en hit från dess meny.",
+    "hideAssets": "Dölj tillgångar",
+    "showAllAssets": "Visa alla tillgångar",
+    "walletCard": {
+      "active": "Aktiv",
+      "backedUp": "Säkerhetskopierad",
+      "backUp": "Säkerhetskopiera",
+      "partial": "delvis",
+      "optionsAriaLabel": "Alternativ för {{name}}",
+      "noAssetsShown": "Inga tillgångar visas. Använd \"Hantera tillgångar\"."
+    },
+    "menu": {
+      "manageAssets": "Hantera tillgångar",
+      "rename": "Byt namn",
+      "moveToPortfolio": "Flytta till portfölj",
+      "backUp": "Säkerhetskopiera",
+      "remove": "Ta bort"
+    },
+    "balanceLoadFailedTitle": "Saldot kunde inte läsas in",
+    "defaultWalletFallbackName": "plånbok",
+    "toast": {
+      "walletImported": "Plånbok importerad — alla kedjor härledda.",
+      "walletRemoved": "Plånboken borttagen från den här enheten.",
+      "walletAddedBackedUp": "Plånbok tillagd och säkerhetskopierad.",
+      "movedTo": "Flyttad till {{name}}.",
+      "markedBackedUp": "\"{{name}}\" markerad som säkerhetskopierad."
+    },
+    "errors": {
+      "couldNotAddWallet": "Kunde inte lägga till plånbok",
+      "couldNotImportWallet": "Kunde inte importera plånbok",
+      "couldNotRemoveWallet": "Kunde inte ta bort plånbok"
+    }
+  },
+  "networth": {
+    "title": "Kryptonettoförmögenhet",
+    "unlockPrompt": "Lås upp din plånbok för att se dina innehav på kedjan.",
+    "subtitle": "Dina innehav på kedjan — inkluderar inte externa tillgångar.",
+    "totalHoldings": "Totala innehav",
+    "partialNote": "delvis — vissa saldon kunde inte läsas",
+    "refreshPricesTooltip": "Uppdatera livepriser",
+    "live": "Live",
+    "approximate": "Ungefärligt",
+    "allocation": "Fördelning",
+    "holdings": "Innehav",
+    "noHoldings": "Inga innehav ännu."
+  }
+}

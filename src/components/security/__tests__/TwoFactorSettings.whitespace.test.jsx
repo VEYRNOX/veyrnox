@@ -7,6 +7,29 @@
 
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// react-i18next 15 uses its own React copy under node_modules/react-i18next/
+// node_modules/react — useContext returns null there. Mock useTranslation with
+// a JSON-catalog resolver (same shape as DuressPin.optin.test.jsx).
+vi.mock('react-i18next', async () => {
+  const wallet = /** @type {any} */ (await import('@/i18n/locales/en/wallet.json'));
+  const bundles = { wallet: wallet.default };
+  const resolve = (key, opts = {}) => {
+    const ns = opts.ns || 'wallet';
+    let v = bundles[ns];
+    for (const p of String(key).split('.')) v = v?.[p];
+    if (opts.returnObjects) return v ?? [];
+    if (typeof v !== 'string') return key;
+    return v.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in opts ? String(opts[k]) : `{{${k}}}`));
+  };
+  return {
+    useTranslation: (ns) => ({ t: (k, o) => resolve(k, { ns, ...(o || {}) }) }),
+    Trans: ({ children }) => children,
+    initReactI18next: { type: '3rdParty', init: () => {} },
+    I18nextProvider: ({ children }) => children,
+  };
+});
+
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import TwoFactorSettings from '@/components/security/TwoFactorSettings';
 

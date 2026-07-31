@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
+import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const STATUS_STYLES = {
@@ -32,8 +33,27 @@ export default function PaymentLinks() {
   const { data: links = [] } = useQuery({ queryKey: ["payment-links"], queryFn: () => base44.entities.PaymentLink.list("-created_date") });
 
   const create = useMutation({
-    mutationFn: () => base44.entities.PaymentLink.create({ ...form, amount: Number(form.amount), link_id: generateLinkId(), status: "active" }),
+    mutationFn: () => {
+      // Optional field — empty is legitimate (open-ended payment link). Only
+      // parse if the user typed something; reject unparseable input rather
+      // than silently coercing (Number("1,5") is NaN → the entity backend
+      // would either drop or record garbage).
+      let amount;
+      if (form.amount && form.amount.trim()) {
+        amount = parseLocaleNumber(form.amount, resolveLocale());
+        if (!Number.isFinite(amount) || amount <= 0) {
+          throw new Error("Amount must be a positive number");
+        }
+      }
+      return base44.entities.PaymentLink.create({
+        ...form,
+        amount: amount ?? null,
+        link_id: generateLinkId(),
+        status: "active",
+      });
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["payment-links"] }); setShowCreate(false); setForm({ title: "", currency: "USDC", amount: "", wallet_address: "", note: "" }); toast.success("Payment link created"); },
+    onError: (/** @type {any} */ err) => toast.error(err?.message || "Couldn't create payment link"),
   });
 
   const markPaid = useMutation({
@@ -68,7 +88,7 @@ export default function PaymentLinks() {
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2"><Link2 className="h-6 w-6 text-primary" /> Payment Links</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Generate shareable crypto payment request links</p>
         </div>
-        <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" /> Create Link</Button>
+        <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 me-1.5" /> Create Link</Button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -103,12 +123,12 @@ export default function PaymentLinks() {
               </div>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="flex-1 h-7 text-xs" onClick={() => copyLink(link)}>
-                  {copied === link.id ? <CheckCircle2 className="h-3 w-3 mr-1 text-success" /> : <Copy className="h-3 w-3 mr-1" />}
+                  {copied === link.id ? <CheckCircle2 className="h-3 w-3 me-1 text-success" /> : <Copy className="h-3 w-3 me-1" />}
                   {copied === link.id ? "Copied!" : "Copy Link"}
                 </Button>
                 {link.status === "active" && (
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markPaid.mutate(link.id)}>
-                    <CheckCircle2 className="h-3 w-3 mr-1" /> Paid
+                    <CheckCircle2 className="h-3 w-3 me-1" /> Paid
                   </Button>
                 )}
                 <Button size="sm" variant="ghost" aria-label="Delete payment link" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => remove.mutate(link.id)}>
@@ -133,7 +153,7 @@ export default function PaymentLinks() {
                   <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Amount (optional)</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
+              <div><Label>Amount (optional)</Label><Input type="text" inputMode="decimal" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
             </div>
             <div>
               <Label htmlFor="pl-wallet-address">Your Wallet Address</Label>

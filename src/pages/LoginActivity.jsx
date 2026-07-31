@@ -189,7 +189,7 @@ export default function LoginActivity() {
               <p className="text-xs text-muted-foreground mt-0.5">
                 Last active: {formatTs(s.last_active)}
                 {s.geo_country && s.geo_country !== "Unknown Location" && (
-                  <span className="ml-2">· {s.geo_country}</span>
+                  <span className="ms-2">· {s.geo_country}</span>
                 )}
               </p>
             </div>

@@ -35,6 +35,7 @@
 //     secret — now showing its full multi-chain identity.
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
@@ -67,8 +68,8 @@ const DEMO_HIDDEN_SECRET = "hidden-key-9753";
 // Small, plausible per-chain balances to seed in the demo.
 const DEMO_AMOUNTS = { evm: "0.0231", btc: "0.0007", sol: "0.42" };
 
-function short(addr) {
-  return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "—";
+function short(addr, dash) {
+  return addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : dash;
 }
 
 // Renders a hidden wallet's EVM + BTC + SOL addresses with copy + explorer links,
@@ -76,6 +77,7 @@ function short(addr) {
 // check is a phone-home to a public node — see lib/hiddenBalance.js). `addresses`
 // is a { evm, btc, sol } map of address strings.
 function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
+  const { t } = useTranslation("security");
   const [balances, setBalances] = useState(/** @type {Record<string, any>|null} */(null)); // null = not checked yet
   const [checking, setChecking] = useState(false);
 
@@ -120,27 +122,27 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
             </div>
             <div className="flex items-center gap-2">
               <code className="flex-1 break-all text-[11px] text-foreground">{address}</code>
-              <button onClick={() => copy(address, `${idPrefix}-${c.key}`)} title={`Copy ${c.label} address`} aria-label={`Copy ${c.label} address`} className="shrink-0">
+              <button onClick={() => copy(address, `${idPrefix}-${c.key}`)} title={t("stealth.identity.copy_address_title", { label: c.label })} aria-label={t("stealth.identity.copy_address_title", { label: c.label })} className="shrink-0">
                 {copied === `${idPrefix}-${c.key}` ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5 text-muted-foreground" />}
               </button>
               {c.explorer(address) && (
-                <a href={c.explorer(address) ?? undefined} target="_blank" rel="noreferrer" title="View on explorer" aria-label={`View ${c.label} address on explorer`} className="shrink-0">
+                <a href={c.explorer(address) ?? undefined} target="_blank" rel="noreferrer" title={t("stealth.identity.view_on_explorer")} aria-label={t("stealth.identity.view_on_explorer_label", { label: c.label })} className="shrink-0">
                   <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                 </a>
               )}
             </div>
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-muted-foreground">Balance</span>
+              <span className="text-muted-foreground">{t("stealth.identity.balance_label")}</span>
               <span className="font-semibold">
                 {!balances ? (
-                  <span className="text-muted-foreground">— not checked</span>
+                  <span className="text-muted-foreground">{t("stealth.identity.balance_not_checked")}</span>
                 ) : b?.error ? (
-                  <span className="text-muted-foreground" title={b.error}>unavailable</span>
+                  <span className="text-muted-foreground" title={b.error}>{t("stealth.identity.balance_unavailable")}</span>
                 ) : (
                   <>
                     {Number(b.amount).toLocaleString(undefined, { maximumFractionDigits: 6 })} {b.unit}
-                    <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-                      {b.source === "chain" ? "(live on-chain)" : "(demo — simulated)"}
+                    <span className="ms-1 text-[10px] font-normal text-muted-foreground">
+                      {b.source === "chain" ? t("stealth.identity.source_live") : t("stealth.identity.source_demo")}
                     </span>
                   </>
                 )}
@@ -152,17 +154,17 @@ function MultiChainIdentity({ addresses, copy, copied, idPrefix }) {
 
       <div className="flex flex-wrap items-center gap-3 pt-0.5">
         <button onClick={check} disabled={checking} className="inline-flex items-center gap-1 text-primary text-[11px]">
-          <Wifi className="h-3 w-3" /> {checking ? "Checking…" : balances ? "Re-check balances" : "Check balances"}
+          <Wifi className="h-3 w-3" /> {checking ? t("stealth.identity.checking_cta") : balances ? t("stealth.identity.recheck_cta") : t("stealth.identity.check_cta")}
         </button>
         {DEMO && (
           <button onClick={demoFundAll} className="inline-flex items-center gap-1 text-primary text-[11px]">
-            <Coins className="h-3 w-3" /> Simulate funding (demo)
+            <Coins className="h-3 w-3" /> {t("stealth.identity.simulate_funding")}
           </button>
         )}
       </div>
       <p className="text-[10px] text-muted-foreground flex items-start gap-1.5">
         <Globe className="h-3 w-3 mt-0.5 shrink-0" />
-        Checking a balance contacts that chain's public node — it reveals your address. So it's opt-in and never automatic.
+        {t("stealth.identity.opt_in_note")}
       </p>
     </div>
   );
@@ -182,6 +184,7 @@ const DEMO_MOVE_LABEL = "Spare ETH (movable demo)";
 // that before proceeding, then (only after the wallet is safely hidden + verified)
 // purges its visible record so no leftover label/address/balance remains in-app.
 function MoveExistingWallet() {
+  const { t } = useTranslation("security");
   const { moveWalletToHidden, peekHiddenWallet } = useWallet();
   const { requireTwoFactor, gateModal } = useActionGuard();
   const qc = useQueryClient();
@@ -211,17 +214,17 @@ function MoveExistingWallet() {
 
   const handleMove = async () => {
     setError(""); setPeek(null);
-    if (!selected) { setError("Select a wallet to hide."); return; }
+    if (!selected) { setError(t("stealth.move.err_select")); return; }
     const m = phrase.trim().replace(/\s+/g, " ");
-    if (secret.length < 4) { setError("Reveal secret must be at least 4 characters."); return; }
-    if (secret !== confirm) { setError("Secrets do not match."); return; }
+    if (secret.length < 4) { setError(t("stealth.move.err_secret_length")); return; }
+    if (secret !== confirm) { setError(t("stealth.move.err_secret_mismatch")); return; }
     // Address-match: you can only hide a wallet you actually hold the keys to (and
     // you're hiding the one you selected, not a different wallet).
     let derived;
     try { derived = deriveAddressFromMnemonic(m, 0); }
-    catch { setError("Enter the valid recovery phrase for this wallet."); return; }
+    catch { setError(t("stealth.move.err_phrase_invalid")); return; }
     if (derived.toLowerCase() !== (selected.address || "").toLowerCase()) {
-      setError("That recovery phrase does not derive this wallet's address. You can only hide a wallet you control.");
+      setError(t("stealth.move.err_phrase_mismatch"));
       return;
     }
     // CRITICAL: hiding a previously-visible wallet (irreversibly purges its visible
@@ -240,11 +243,11 @@ function MoveExistingWallet() {
         setDone({ name: selected.name, address: selected.address });
         reset();
       } catch (/** @type {any} */ e) {
-        setError(e?.message || "Could not hide the wallet.");
+        setError(e?.message || t("stealth.move.err_generic"));
       } finally {
         setBusy(false);
       }
-    }, { title: "Hide this wallet" });
+    }, { title: t("stealth.move.gate_title") });
   };
 
   const verifyReveal = async (sec) => {
@@ -277,15 +280,15 @@ function MoveExistingWallet() {
     <div className="p-5 rounded-xl border border-border bg-card space-y-4">
       <div className="flex items-center gap-2">
         <FolderInput className="h-5 w-5 text-primary" />
-        <span className="font-medium">Move an existing wallet into hidden</span>
+        <span className="font-medium">{t("stealth.move.title")}</span>
       </div>
 
       {/* TRANSITION-TELL WARNING — must be shown before hiding a visible wallet. */}
       <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-[11px] text-destructive space-y-1.5">
         <div className="flex items-center gap-1.5 font-semibold">
-          <ShieldAlert className="h-4 w-4" /> Weaker than a fresh hidden wallet — read this
+          <ShieldAlert className="h-4 w-4" /> {t("stealth.move.transition_warning_leading")}
         </div>
-        <p>This wallet is already visible — anyone who saw it before can notice it's gone and demand it back. A new hidden wallet they never knew about is safer.</p>
+        <p>{t("stealth.move.transition_warning_body")}</p>
       </div>
 
       {/* Live visible-wallet list — so the disappearance after a move is visible.
@@ -294,11 +297,11 @@ function MoveExistingWallet() {
           context cardinality. The selectable list below is functionally required
           (the user picks which wallet to hide), but the count is not. */}
       <div className="text-[11px] text-muted-foreground">
-        Choose a visible wallet to move into hidden:
+        {t("stealth.move.pick_prompt")}
       </div>
       <div className="space-y-1.5">
         {evmWallets.length === 0 && (
-          <p className="text-xs text-muted-foreground">No EVM wallets to hide.</p>
+          <p className="text-xs text-muted-foreground">{t("stealth.move.no_evm_wallets")}</p>
         )}
         {evmWallets.map((w) => (
           <label key={w.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer ${selId === w.id ? "border-primary bg-primary/5" : "border-border"}`}>
@@ -315,33 +318,31 @@ function MoveExistingWallet() {
       {selected && (
         <div className="space-y-3 pt-1">
           <div>
-            <Label className="text-xs">Recovery phrase for “{selected.name}”</Label>
+            <Label className="text-xs">{t("stealth.move.phrase_label", { name: selected.name })}</Label>
             <textarea
               value={phrase}
               onChange={(e) => setPhrase(e.target.value)}
               rows={2}
-              placeholder="The 12/24-word phrase for this wallet (proves you control it)"
+              placeholder={t("stealth.move.phrase_placeholder")}
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono resize-none focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <p className="text-[10px] text-muted-foreground mt-1">
-              The app holds only public data, so you supply the phrase to move the
-              real wallet into hidden. It's encrypted with your reveal secret, never
-              stored in the clear.
+              {t("stealth.move.phrase_note")}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label className="text-xs">Reveal secret</Label>
-              <PasswordInput className="mt-1" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="≥ 4 chars" />
+              <Label className="text-xs">{t("stealth.move.secret_label")}</Label>
+              <PasswordInput className="mt-1" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={t("stealth.move.secret_placeholder")} />
             </div>
             <div>
-              <Label className="text-xs">Confirm</Label>
-              <PasswordInput className="mt-1" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="re-enter" />
+              <Label className="text-xs">{t("stealth.move.confirm_label")}</Label>
+              <PasswordInput className="mt-1" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={t("stealth.move.confirm_placeholder")} />
             </div>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button variant="destructive" className="w-full gap-1.5" disabled={busy} onClick={handleMove}>
-            <FolderInput className="h-4 w-4" /> {busy ? "Hiding…" : "Hide this wallet"}
+            <FolderInput className="h-4 w-4" /> {busy ? t("stealth.move.hide_cta_busy") : t("stealth.move.hide_cta")}
           </Button>
         </div>
       )}
@@ -351,12 +352,10 @@ function MoveExistingWallet() {
       {DEMO && (
         <div className="pt-1 border-t border-border">
           <Button size="sm" variant="secondary" className="mt-3 gap-1.5" disabled={busy} onClick={demoSetup}>
-            <FlaskConical className="h-3.5 w-3.5" /> Demo: add a movable wallet + prefill
+            <FlaskConical className="h-3.5 w-3.5" /> {t("stealth.move.demo_cta")}
           </Button>
           <p className="text-[10px] text-muted-foreground mt-1.5">
-            Adds a visible “{DEMO_MOVE_LABEL}” wallet and fills the phrase + secret
-            (<code>{DEMO_MOVE_SECRET}</code>) so you can run the move, watch it vanish
-            from the list above, then verify it reveals only with its secret.
+            {t("stealth.move.demo_note", { secret: DEMO_MOVE_SECRET })}
           </p>
         </div>
       )}
@@ -364,26 +363,24 @@ function MoveExistingWallet() {
       {done && (
         <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-xs space-y-2">
           <p className="font-medium text-success flex items-center gap-1.5">
-            <CheckCircle2 className="h-4 w-4" /> “{done.name}” is now hidden and removed from your visible wallets.
+            <CheckCircle2 className="h-4 w-4" /> {t("stealth.move.done_message", { name: done.name })}
           </p>
           <p className="text-muted-foreground flex items-start gap-1.5">
             <Trash2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            Its app record (label, address, cached balance) is deleted — it no longer
-            appears in the list above or elsewhere in the app. It opens only by
-            entering its reveal secret at the normal unlock screen.
+            {t("stealth.move.record_deleted_note")}
           </p>
 
           {/* Reveal verification — prove it's recoverable ONLY by the right secret. */}
           <div className="pt-1">
-            <Label className="text-[11px]">Verify it reveals only with its secret</Label>
+            <Label className="text-[11px]">{t("stealth.move.verify_label")}</Label>
             <div className="flex gap-2 mt-1">
-              <Input className="h-8 text-xs" value={verifySecret} onChange={(e) => setVerifySecret(e.target.value)} placeholder="enter the reveal secret (or a wrong one)" />
-              <Button size="sm" variant="outline" disabled={!verifySecret} onClick={() => verifyReveal(verifySecret)}>Check</Button>
+              <Input className="h-8 text-xs" value={verifySecret} onChange={(e) => setVerifySecret(e.target.value)} placeholder={t("stealth.move.verify_placeholder")} />
+              <Button size="sm" variant="outline" disabled={!verifySecret} onClick={() => verifyReveal(verifySecret)}>{t("stealth.move.verify_cta")}</Button>
             </div>
             {peek && !peek.loading && (
               peek.address
-                ? <p className="text-[11px] text-success mt-1">✓ Revealed wallet address: <span className="font-mono">{short(peek.address)}</span>{peek.address.toLowerCase() === (done.address || "").toLowerCase() ? " — matches the wallet you hid" : ""}</p>
-                : <p className="text-[11px] text-muted-foreground mt-1">No wallet revealed for that secret (a wrong secret looks exactly like “nothing here”).</p>
+                ? <p className="text-[11px] text-success mt-1">{t("stealth.move.verify_ok_prefix")} <span className="font-mono">{short(peek.address, t("stealth.address_dash"))}</span>{peek.address.toLowerCase() === (done.address || "").toLowerCase() ? ` ${t("stealth.move.verify_ok_match")}` : ""}</p>
+                : <p className="text-[11px] text-muted-foreground mt-1">{t("stealth.move.verify_none")}</p>
             )}
           </div>
         </div>
@@ -394,6 +391,7 @@ function MoveExistingWallet() {
 }
 
 export default function StealthWallets() {
+  const { t } = useTranslation("security");
   const wallet = useWallet();
   const {
     isUnlocked, isHidden, isDecoy, accounts, btcAccount, solAccount,
@@ -434,8 +432,8 @@ export default function StealthWallets() {
   // ----- create handler -----
   const handleCreate = async () => {
     setError(""); setSavedPhrase(""); setSavedIdentity(null);
-    if (secret.length < 4) { setError("Reveal secret must be at least 4 characters"); return; }
-    if (secret !== confirm) { setError("Secrets do not match"); return; }
+    if (secret.length < 4) { setError(t("stealth.create.err_secret_length")); return; }
+    if (secret !== confirm) { setError(t("stealth.create.err_secret_mismatch")); return; }
     // CRITICAL: creating a hidden wallet is gated behind the second factor when one
     // is set (no-op otherwise). Runs after local validation.
     requireTwoFactor(async () => {
@@ -447,16 +445,16 @@ export default function StealthWallets() {
         setSecret(""); setConfirm("");
         await refresh();
       } catch (/** @type {any} */ e) {
-        setError(e?.message || "Could not create hidden wallet");
+        setError(e?.message || t("stealth.create.err_generic"));
       } finally {
         setSaving(false);
       }
-    }, { title: "Create a hidden wallet" });
+    }, { title: t("stealth.create.gate_title") });
   };
 
   // ----- demo handlers (use the REAL unlock path) -----
   const demoSetup = async () => {
-    setBusy("Setting up demo…"); setTryErr("");
+    setBusy(t("stealth.demo.setup_busy")); setTryErr("");
     try {
       // Create a throwaway REAL (visible) vault (idempotent: skip if one exists).
       if (!(await hasVault())) {
@@ -474,26 +472,26 @@ export default function StealthWallets() {
       lock();
       await refresh();
     } catch (/** @type {any} */ e) {
-      setTryErr(e?.message || "Demo setup failed");
+      setTryErr(e?.message || t("stealth.demo.setup_err"));
     } finally {
       setBusy("");
     }
   };
 
   const demoUnlock = async (pw) => {
-    setTryErr(""); setBusy("Unlocking…");
+    setTryErr(""); setBusy(t("stealth.demo.unlock_busy"));
     try {
       await unlock(pw);
     } catch (/** @type {any} */ e) {
       // SAME generic error whether or not a hidden wallet exists — no tell.
-      setTryErr(e?.message || "Unlock failed");
+      setTryErr(e?.message || t("stealth.demo.unlock_err_generic"));
     } finally {
       setBusy("");
     }
   };
 
   const demoReset = async () => {
-    setBusy("Resetting…"); setTryErr("");
+    setBusy(t("stealth.demo.reset_busy")); setTryErr("");
     try {
       lock();
       await clearVault();
@@ -526,10 +524,10 @@ export default function StealthWallets() {
     <div className="max-w-lg mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <Ghost className="h-5 w-5 text-primary" /> Stealth / Hidden Wallets
+          <Ghost className="h-5 w-5 text-primary" /> {t("stealth.heading")}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Wallets that never appear in the app and are revealed only by a secret.
+          {t("stealth.subhead")}
         </p>
       </div>
 
@@ -540,14 +538,14 @@ export default function StealthWallets() {
       >
         <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          Hidden wallets aren't in the secure vault yet (we're working on it). If someone grabs your phone's data, they see the wallet but can't open it without your secret.
+          {t("stealth.storage_disclosure")}
         </p>
       </div>
 
       <div className="p-3 rounded-lg bg-caution/10 border border-caution/20 text-caution text-xs flex items-start gap-2">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <span>
-          Unlock looks and times the same for every wallet, and the hidden-wallet count is never revealed — an examiner sees a fixed pool of identical slots and can't easily tell real from decoy.
+          {t("stealth.identical_slots_note")}
         </span>
       </div>
 
@@ -556,9 +554,9 @@ export default function StealthWallets() {
         <div className="flex items-start gap-3">
           <Shield className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold">How it works</p>
+            <p className="text-sm font-semibold">{t("stealth.how_title")}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Create a hidden wallet with its own reveal secret. It appears nowhere in the app. Enter its secret at the normal unlock screen and the app opens that wallet instead of your visible one.
+              {t("stealth.how_body")}
             </p>
           </div>
         </div>
@@ -568,14 +566,12 @@ export default function StealthWallets() {
       <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-2">
         <div className="flex items-center gap-2">
           <EyeOff className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">What this protects — and what it does not</p>
+          <p className="text-sm font-semibold">{t("stealth.protects_title")}</p>
         </div>
-        <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
-          <li>A fixed pool of identical slots — some real, most decoys — never reveals the count.</li>
-          <li>The pool exists for every wallet, so it proves "this device has VEYRNOX", not "hidden wallets".</li>
-          <li>Hidden in the app, not on-chain — addresses and history stay public.</li>
-          <li>No list is kept: a forgotten secret makes that wallet unrecoverable here.</li>
-          <li>Back up each seed immediately — a second hidden wallet can silently replace the first in the same slot.</li>
+        <ul className="text-[11px] text-muted-foreground list-disc ps-4 space-y-0.5">
+          {/** @type {string[]} */ (t("stealth.protects_items", { returnObjects: true })).map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
         </ul>
       </div>
 
@@ -583,24 +579,24 @@ export default function StealthWallets() {
       <div className="p-5 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 mb-4">
           <Ghost className="h-5 w-5 text-primary" />
-          <span className="font-medium">Create a hidden wallet</span>
+          <span className="font-medium">{t("stealth.create.title")}</span>
         </div>
 
         <div className="space-y-4">
           <div>
-            <Label>Reveal secret</Label>
+            <Label>{t("stealth.create.secret_label")}</Label>
             <div className="relative mt-1.5">
               <Input
                 type={showSecret ? "text" : "password"}
                 maxLength={64}
-                placeholder="At least 4 characters — different from your main password"
+                placeholder={t("stealth.create.secret_placeholder")}
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
-                className="pr-10 tracking-widest text-lg"
+                className="pe-10 tracking-widest text-lg"
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 onClick={() => setShowSecret((s) => !s)}
               >
                 {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -608,11 +604,11 @@ export default function StealthWallets() {
             </div>
           </div>
           <div>
-            <Label>Confirm reveal secret</Label>
+            <Label>{t("stealth.create.confirm_label")}</Label>
             <Input
               type={showSecret ? "text" : "password"}
               maxLength={64}
-              placeholder="Re-enter secret"
+              placeholder={t("stealth.create.confirm_placeholder")}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               className="mt-1.5 tracking-widest text-lg"
@@ -621,25 +617,25 @@ export default function StealthWallets() {
           <div className="p-2.5 rounded-lg bg-caution/10 border border-caution/20 text-[11px] text-caution flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
-              Make it different from your main PIN and Emergency PIN — if it matches, that one opens instead.
+              {t("stealth.create.warn_note")}
             </span>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           <Button className="w-full" disabled={!secret || !confirm || saving} onClick={handleCreate}>
-            {saving ? "Creating…" : "Create hidden wallet"}
+            {saving ? t("stealth.create.cta_busy") : t("stealth.create.cta")}
           </Button>
         </div>
 
         {savedPhrase && (
           <div className="mt-4 p-3 rounded-lg bg-success/10 border border-success/20 text-xs space-y-3">
             <p className="font-medium text-success flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4" /> Hidden wallet created. It won&apos;t show up anywhere in the app. It opens only with its secret.
+              <CheckCircle2 className="h-4 w-4" /> {t("stealth.create.saved_ok")}
             </p>
 
             {savedIdentity && (
               <div className="space-y-2">
                 <p className="text-muted-foreground">
-                  Fund any chain (send a small testnet amount to the matching address):
+                  {t("stealth.create.fund_prompt")}
                 </p>
                 <MultiChainIdentity addresses={savedIdentity} copy={copy} copied={copied} idPrefix="new" />
               </div>
@@ -647,15 +643,13 @@ export default function StealthWallets() {
 
             <div>
               <p className="text-muted-foreground">
-                Hidden wallet recovery phrase (back this up — there is no other copy,
-                and the app keeps no list of hidden wallets to recover from):
+                {t("stealth.create.phrase_note")}
               </p>
               <code className="block break-words rounded bg-background p-2 text-foreground mt-1">{savedPhrase}</code>
             </div>
 
             <p className="text-[11px] text-muted-foreground">
-              Remember your reveal secret. To open this wallet later, just enter that
-              secret at the normal unlock screen.
+              {t("stealth.create.reminder_note")}
             </p>
           </div>
         )}
@@ -669,29 +663,25 @@ export default function StealthWallets() {
         <div className="p-5 rounded-xl border border-dashed border-primary/40 bg-primary/5 space-y-4">
           <div className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Live demonstration (demo mode)</span>
+            <span className="font-semibold">{t("stealth.demo.title")}</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Exercises the real unlock flow. Step 1 creates a throwaway visible wallet
-            (password <code>{DEMO_REAL_PW}</code>) and a hidden wallet (reveal secret{" "}
-            <code>{DEMO_HIDDEN_SECRET}</code>) seeded with small balances on all three
-            chains. Then unlock with either to compare — and note the visible session
-            shows <b>no</b> sign the hidden wallet exists.
+            {t("stealth.demo.body", { real: DEMO_REAL_PW, secret: DEMO_HIDDEN_SECRET })}
           </p>
 
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="secondary" disabled={!!busy} onClick={demoSetup}>
-              1. Set up visible + hidden wallet
+              {t("stealth.demo.step1")}
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy || !vaultExists} onClick={() => demoUnlock(DEMO_REAL_PW)}>
-              <Unlock className="h-3.5 w-3.5 mr-1" /> Unlock VISIBLE
+              <Unlock className="h-3.5 w-3.5 me-1" /> {t("stealth.demo.unlock_visible")}
             </Button>
             <Button size="sm" variant="outline" disabled={!!busy || !vaultExists} onClick={() => demoUnlock(DEMO_HIDDEN_SECRET)}>
-              <Ghost className="h-3.5 w-3.5 mr-1" /> Reveal HIDDEN (secret)
+              <Ghost className="h-3.5 w-3.5 me-1" /> {t("stealth.demo.reveal_hidden")}
             </Button>
             {isUnlocked && (
               <Button size="sm" variant="ghost" disabled={!!busy} onClick={() => lock()}>
-                <Lock className="h-3.5 w-3.5 mr-1" /> Lock
+                <Lock className="h-3.5 w-3.5 me-1" /> {t("stealth.demo.lock")}
               </Button>
             )}
           </div>
@@ -699,49 +689,48 @@ export default function StealthWallets() {
           {/* Free-form unlock to prove a wrong secret fails identically */}
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <Label className="text-xs">Or type any password / secret</Label>
+              <Label className="text-xs">{t("stealth.demo.try_label")}</Label>
               <Input
                 className="mt-1"
                 value={tryPw}
                 onChange={(e) => setTryPw(e.target.value)}
-                placeholder="try a wrong secret"
+                placeholder={t("stealth.demo.try_placeholder")}
               />
             </div>
             <Button size="sm" disabled={!!busy || !tryPw || !vaultExists} onClick={() => demoUnlock(tryPw)}>
-              Unlock
+              {t("stealth.demo.unlock_cta")}
             </Button>
           </div>
 
           {busy && <p className="text-xs text-muted-foreground">{busy}</p>}
           {tryErr && (
             <p className="text-xs text-destructive">
-              {tryErr} <span className="text-muted-foreground">(same error for any non-matching password — no tell)</span>
+              {tryErr} <span className="text-muted-foreground">{t("stealth.demo.wrong_secret_hint")}</span>
             </p>
           )}
 
           {/* Result panel */}
           <div className="rounded-lg border border-border bg-card p-4 text-sm">
             {!isUnlocked ? (
-              <p className="text-muted-foreground">Locked. Unlock above to see which wallet opens.</p>
+              <p className="text-muted-foreground">{t("stealth.demo.locked")}</p>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   {isHidden
-                    ? <span className="px-2 py-0.5 rounded bg-caution/10 text-caution text-xs font-semibold">HIDDEN WALLET</span>
-                    : <span className="px-2 py-0.5 rounded bg-success/10 text-success text-xs font-semibold">VISIBLE WALLET</span>}
-                  <span className="text-[11px] text-muted-foreground">full multi-chain identity</span>
+                    ? <span className="px-2 py-0.5 rounded bg-caution/10 text-caution text-xs font-semibold">{t("stealth.demo.hidden_badge")}</span>
+                    : <span className="px-2 py-0.5 rounded bg-success/10 text-success text-xs font-semibold">{t("stealth.demo.visible_badge")}</span>}
+                  <span className="text-[11px] text-muted-foreground">{t("stealth.demo.full_identity_note")}</span>
                 </div>
 
                 <MultiChainIdentity addresses={currentIdentity} copy={copy} copied={copied} idPrefix="session" />
 
                 {isHidden ? (
                   <p className="text-xs text-muted-foreground">
-                    Revealed via its secret. This session exposes only the hidden
-                    wallet's own addresses. The visible wallet is not referenced.
+                    {t("stealth.demo.hidden_body")}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    This is the visible wallet. The app shows no sign in the app that a hidden wallet exists.
+                    {t("stealth.demo.visible_body")}
                   </p>
                 )}
 
@@ -749,14 +738,14 @@ export default function StealthWallets() {
                     EVM address (and vice versa). Real apps never reveal this. */}
                 {(realAddr || hiddenOracle) && (
                   <div className="text-[11px] text-muted-foreground/70 border-t border-border pt-2 mt-1 space-y-0.5">
-                    {realAddr && <p>demo oracle — visible EVM address: {short(realAddr)}</p>}
+                    {realAddr && <p>{t("stealth.demo.oracle_visible", { addr: short(realAddr, t("stealth.address_dash")) })}</p>}
                     {hiddenOracle && (
                       <p>
-                        demo oracle — hidden EVM address: {short(hiddenOracle)}{" "}
+                        {t("stealth.demo.oracle_hidden", { addr: short(hiddenOracle, t("stealth.address_dash")) })}{" "}
                         {!isHidden && currentIdentity.evm === realAddr && currentIdentity.evm !== hiddenOracle
-                          ? "✓ absent from this visible session"
+                          ? t("stealth.demo.oracle_hidden_absent_from_visible")
                           : isHidden && currentIdentity.evm === hiddenOracle
-                            ? "✓ this is the revealed hidden wallet"
+                            ? t("stealth.demo.oracle_hidden_is_current")
                             : ""}
                       </p>
                     )}
@@ -767,7 +756,7 @@ export default function StealthWallets() {
           </div>
 
           <Button size="sm" variant="destructive" disabled={!!busy} onClick={demoReset}>
-            Reset demo (wipe vault + hidden wallets)
+            {t("stealth.demo.reset_cta")}
           </Button>
         </div>
       )}
@@ -775,7 +764,7 @@ export default function StealthWallets() {
       {!DEMO && (
         <div className="p-4 rounded-xl bg-secondary/50 border border-border">
           <p className="text-xs text-muted-foreground">
-            Lock your wallet and enter the reveal secret to open the hidden wallet. Never share a reveal secret — there is no list and no reset.
+            {t("stealth.non_demo_hint")}
           </p>
         </div>
       )}

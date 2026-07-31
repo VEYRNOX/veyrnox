@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component {
               <p className="text-sm text-muted-foreground">
                 An unexpected error occurred. This has been logged for debugging purposes.
               </p>
-              {this.state.error && (
+              {this.state.error && import.meta.env.DEV && (
                 <div className="p-3 bg-background rounded-lg border border-border">
                   <p className="text-xs font-mono text-destructive break-all">
                     {this.state.error.toString()}
@@ -57,7 +57,7 @@ export class ErrorBoundary extends Component {
               )}
               <div className="flex gap-2">
                 <Button onClick={this.handleReset} className="flex-1">
-                  <RefreshCw className="h-4 w-4 mr-2" /> Try Again
+                  <RefreshCw className="h-4 w-4 me-2" /> Try Again
                 </Button>
                 <Button
                   variant="outline"

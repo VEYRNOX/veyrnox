@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/lib/toast";
 import Spinner from "@/components/Spinner";
+import { safeNftImageUrl } from "@/lib/nftImageUrl";
+import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 
 const CHAIN_COLORS = { ethereum: "bg-secondary text-muted-foreground", solana: "bg-secondary text-muted-foreground", polygon: "bg-secondary text-muted-foreground", base: "bg-secondary text-muted-foreground" };
 const STATUS_COLORS = { holding: "bg-success/10 text-success", listed: "bg-caution/10 text-caution", sold: "bg-muted text-muted-foreground" };
@@ -53,15 +55,15 @@ export default function NFTPortfolio() {
           <h1 className="text-2xl font-bold tracking-tight">NFT Portfolio</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Track your NFT holdings</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> Add NFT</Button>
+        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 me-1.5" /> Add NFT</Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Total Holdings", value: `${nfts.filter(n => n.status === "holding").length}` },
-          { label: "Portfolio Value", value: `${totalValueETH.toFixed(3)} ETH` },
-          { label: "Unrealised P&L", value: `${totalPnlETH >= 0 ? "+" : ""}${totalPnlETH.toFixed(3)} ETH`, positive: totalPnlETH >= 0 },
+          { label: "Portfolio Value", value: formatCryptoAmount(totalValueETH, resolveLocale(), { maximumFractionDigits: 3, symbol: "ETH" }) },
+          { label: "Unrealised P&L", value: `${totalPnlETH >= 0 ? "+" : ""}${formatCryptoAmount(totalPnlETH, resolveLocale(), { maximumFractionDigits: 3, symbol: "ETH" })}`, positive: totalPnlETH >= 0 },
         ].map(s => (
           <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
             <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
@@ -92,11 +94,12 @@ export default function NFTPortfolio() {
               <div key={nft.id} className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="aspect-square bg-secondary flex items-center justify-center relative">
                   {nft.image_url ? (
-                    <img src={nft.image_url} alt={nft.name} className="w-full h-full object-cover" />
+                    /* M-10: attacker-influenced field; safeNftImageUrl gates the fetch. */
+                    <img src={safeNftImageUrl(nft.image_url)} alt={nft.name} referrerPolicy="no-referrer" crossOrigin="anonymous" className="w-full h-full object-cover" />
                   ) : (
                     <Image className="h-8 w-8 text-muted-foreground opacity-40" />
                   )}
-                  <span className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[nft.status]}`}>{nft.status}</span>
+                  <span className={`absolute top-2 end-2 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[nft.status]}`}>{nft.status}</span>
                 </div>
                 <div className="p-3 space-y-1">
                   <p className="text-sm font-semibold truncate">{nft.name}</p>

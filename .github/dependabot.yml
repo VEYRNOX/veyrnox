@@ -11,6 +11,18 @@ updates:
     groups:
       npm-minor-patch:
         update-types: ["minor", "patch"]
+    # H-4: signing-path crypto packages are pinned to exact versions in package.json.
+    # Dependabot must not silently open PRs bumping these — a supply-chain compromise
+    # of any of them would sit directly under EVM/BTC/SOL signing. Version changes
+    # require named crypto reviewer approval via CODEOWNERS on /package.json.
+    ignore:
+      - dependency-name: "ethers"
+      - dependency-name: "@noble/curves"
+      - dependency-name: "@noble/hashes"
+      - dependency-name: "@scure/bip32"
+      - dependency-name: "@scure/bip39"
+      - dependency-name: "@scure/btc-signer"
+      - dependency-name: "@reown/walletkit"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

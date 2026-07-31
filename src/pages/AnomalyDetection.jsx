@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { USD_RATES } from "@/lib/cryptos";
+import { USD_RATES, approxUsd } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ function detectAnomalies(transactions) {
   transactions.forEach(tx => {
     const usd = (tx.amount || 0) * (USD_RATES[tx.currency] || 1);
     if (usd > avg + 2.5 * std && usd > 500) {
-      anomalies.push({ id: tx.id, type: "large_transfer", severity: usd > avg + 4 * std ? "critical" : "high", tx, detail: `$${usd.toFixed(0)} — ${((usd - avg) / std).toFixed(1)}σ above average`, usd });
+      anomalies.push({ id: tx.id, type: "large_transfer", severity: usd > avg + 4 * std ? "critical" : "high", tx, detail: `${approxUsd(usd)} — ${((usd - avg) / std).toFixed(1)}σ above average`, usd });
     }
   });
 
@@ -96,7 +96,7 @@ export default function AnomalyDetection() {
             <p className={`text-xs ${isError ? "text-destructive" : "text-muted-foreground"}`}>{isLoading ? "Loading transactions…" : isError ? "Couldn’t load transactions — scan may be incomplete." : `${transactions.length} transactions loaded · 3 heuristic checks`}</p>
             <ReferenceRateNote />
           </div>
-          <Button onClick={scan} disabled={scanning || isLoading || isError} className="gap-2 ml-auto">
+          <Button onClick={scan} disabled={scanning || isLoading || isError} className="gap-2 ms-auto">
             <RefreshCw className={`h-4 w-4 ${scanning ? "motion-safe:animate-spin" : ""}`} />
             {scanning ? "Scanning…" : scanResult ? "Re-scan" : "Run Scan"}
           </Button>
@@ -116,7 +116,7 @@ export default function AnomalyDetection() {
         </div>
         {scanResult && (
           <p className="text-xs text-muted-foreground">
-            Last scan: {scanResult.scannedAt.toLocaleTimeString("en-GB")} · {scanResult.total} transactions analysed
+            Last scan: {scanResult.scannedAt.toLocaleTimeString(undefined)} · {scanResult.total} transactions analysed
           </p>
         )}
       </div>
@@ -168,7 +168,7 @@ export default function AnomalyDetection() {
                         <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border">{cfg.label}</span>
                       </div>
                       <p className="text-xs mt-0.5 opacity-80">{a.detail}</p>
-                      {a.tx && <p className="text-[10px] mt-1 opacity-60">{new Date(a.tx.created_date).toLocaleString("en-GB")} · {a.tx.currency}</p>}
+                      {a.tx && <p className="text-[10px] mt-1 opacity-60">{new Date(a.tx.created_date).toLocaleString(undefined)} · {a.tx.currency}</p>}
                     </div>
                   </div>
                   {!a.fromDB && (

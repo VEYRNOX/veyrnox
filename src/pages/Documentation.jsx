@@ -197,7 +197,7 @@ export default function Documentation() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" onClick={() => window.print()}>
-            <FileText className="h-4 w-4 mr-2" />
+            <FileText className="h-4 w-4 me-2" />
             Print
           </Button>
           <Button onClick={() => {
@@ -216,7 +216,7 @@ export default function Documentation() {
               toast.error("Failed to generate documentation PDF");
             }
           }}>
-            <FileText className="h-4 w-4 mr-2" />
+            <FileText className="h-4 w-4 me-2" />
             Download PDF
           </Button>
         </div>
@@ -224,12 +224,12 @@ export default function Documentation() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search features..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="pl-10"
+          className="ps-10"
         />
       </div>
 
@@ -298,7 +298,7 @@ export default function Documentation() {
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-3">
                     <category.icon className="h-5 w-5 text-primary" />
-                    <div className="text-left">
+                    <div className="text-start">
                       <p className="font-semibold">{category.category}</p>
                       <p className="text-xs text-muted-foreground">{category.items.length} features</p>
                     </div>
@@ -365,7 +365,10 @@ export default function Documentation() {
                           <p className="text-xs text-muted-foreground mt-0.5">{step.desc}</p>
                         </div>
                         {idx < workflow.steps.length - 1 && (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground self-center" />
+                          // Icon mirrors under dir="rtl" — this separates ordered
+                          // workflow steps, so it must point "forward in reading
+                          // direction" like a breadcrumb separator.
+                          <ChevronRight className="h-4 w-4 text-muted-foreground self-center rtl:-scale-x-100" />
                         )}
                       </div>
                     ))}

@@ -15,6 +15,7 @@ import { toast } from "@/lib/toast";
 import { addDays, isBefore, formatDistanceToNow } from "date-fns";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import Spinner from "@/components/Spinner";
+import { formatCryptoAmount, parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const FREQ_LABELS = { daily: "Daily", weekly: "Weekly", biweekly: "Every 2 Weeks", monthly: "Monthly" };
 const FREQ_DAYS = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
@@ -52,11 +53,16 @@ export default function RecurringPayments() {
 
   const addPayment = useMutation({
     mutationFn: () => {
+      const amount = parseLocaleNumber(form.amount, resolveLocale());
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error("Amount must be a positive number");
+      }
       const nextRun = addDays(new Date(), FREQ_DAYS[form.frequency]).toISOString();
       const wallet = wallets.find(w => w.id === form.wallet_id);
-      return base44.entities.RecurringPayment.create({ ...form, amount: parseFloat(form.amount), currency: wallet?.currency || form.currency, next_run_at: nextRun, status: "active" });
+      return base44.entities.RecurringPayment.create({ ...form, amount, currency: wallet?.currency || form.currency, next_run_at: nextRun, status: "active" });
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }); setShowAdd(false); setForm(EMPTY); toast.success("Recurring payment created"); },
+    onError: (/** @type {any} */ err) => toast.error(err?.message || "Couldn't create recurring payment"),
   });
 
   const toggleStatus = useMutation({
@@ -121,7 +127,7 @@ export default function RecurringPayments() {
           <h1 className="text-2xl font-bold tracking-tight">Recurring Payments</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Automate regular crypto transfers</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> New</Button>
+        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 me-1.5" /> New</Button>
       </div>
 
       <div className="flex items-start gap-3 rounded-2xl bg-caution/10 border border-caution/30 p-3">
@@ -154,7 +160,7 @@ export default function RecurringPayments() {
           {monthlyEntries.map(([cur, amt]) => (
             <div key={cur} className="flex justify-between text-sm">
               <span className="font-mono text-muted-foreground">{cur}</span>
-              <span className="font-semibold">{amt.toFixed(4)}</span>
+              <span className="font-semibold">{formatCryptoAmount(amt, resolveLocale(), { maximumFractionDigits: 4 })}</span>
             </div>
           ))}
           <p className="text-[10px] text-muted-foreground pt-0.5">Shown per asset — cross-currency totals would be meaningless without live prices</p>
@@ -206,7 +212,7 @@ export default function RecurringPayments() {
                       {wallet && <p className="text-xs text-muted-foreground">From: {wallet.name}</p>}
                       <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
                         {p.next_run_at && <span>Next: {formatDistanceToNow(new Date(p.next_run_at), { addSuffix: true })}</span>}
-                        {p.run_count > 0 && <span>· {p.run_count} runs · {p.total_sent?.toFixed(4)} sent</span>}
+                        {p.run_count > 0 && <span>· {p.run_count} runs · {p.total_sent != null ? formatCryptoAmount(p.total_sent, resolveLocale(), { maximumFractionDigits: 4 }) : "—"} sent</span>}
                       </div>
                     </div>
                     <div className="flex flex-col gap-1.5 shrink-0">
@@ -254,7 +260,7 @@ export default function RecurringPayments() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
+              <div><Label>Amount</Label><Input type="text" inputMode="decimal" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
               <div>
                 <Label id="recurring-frequency-label">Frequency</Label>
                 <Select value={form.frequency} onValueChange={v => setForm(p => ({ ...p, frequency: v }))}>

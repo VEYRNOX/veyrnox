@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Transaction History",
+      "subhead": "Per-chain sends & receives read directly from the chain — read-only, with explorer links.",
+      "badge_demo": "Demo · sample data",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Demo mode — nothing is queried over the network; the rows below are local sample data.",
+      "loading_label": "Loading {{symbol}} history",
+      "error_prefix": "Couldn’t load history: {{reason}}.",
+      "error_fetch_reason": "Couldn’t reach the RPC node — check your connection and try again.",
+      "error_generic_reason": "the indexer didn’t respond",
+      "retry": "Retry",
+      "no_indexer_title": "In-app history isn’t available for {{name}} over JSON-RPC",
+      "no_indexer_body": "A plain JSON-RPC node can’t list an address’s transactions, and we deliberately don’t add a third-party explorer/indexer API (a new data source & phone-home surface). Your full history is on the block explorer.",
+      "view_on_explorer": "View {{address}} on {{network}} explorer",
+      "view_explorer_title": "View on block explorer",
+      "unlock_for_explorer": "Unlock your wallet to get the explorer link for your {{symbol}} address.",
+      "locked_title": "Wallet locked",
+      "locked_body": "Unlock your wallet to derive your {{symbol}} address and load its history.",
+      "empty": "No transactions yet for {{symbol}} on {{network}}.",
+      "count_one": "{{count}} transaction",
+      "count_other": "{{count}} transactions",
+      "most_recent_suffix": " · most recent",
+      "refresh": "Refresh",
+      "sample_badge": "Sample",
+      "to_prefix": "To ",
+      "from_prefix": "From ",
+      "status_pending": "Pending",
+      "status_confirmed": "Confirmed",
+      "status_failed": "Failed",
+      "awaiting_confirmation": "awaiting confirmation"
+    },
+    "list": {
+      "empty_title": "No transactions yet",
+      "empty_description": "When you send or receive on this wallet, your on-chain activity will show up here."
+    },
+    "receipt": {
+      "heading": "Transaction Receipts",
+      "subhead": "Generate printable receipts for any transaction",
+      "search_placeholder": "Search by ID, address or currency...",
+      "loading": "Loading...",
+      "error": "Couldn't load transactions. Please try again.",
+      "empty": "No transactions found",
+      "preview_title": "Receipt Preview",
+      "print": "Print",
+      "print_window_title": "Transaction Receipt",
+      "brand": "VEYRNOX",
+      "doc_title": "TRANSACTION RECEIPT",
+      "field_receipt_id": "Receipt ID",
+      "field_date": "Date",
+      "field_type": "Type",
+      "field_asset": "Asset",
+      "field_amount": "Amount",
+      "field_network_fee": "Network Fee",
+      "field_status": "Status",
+      "field_to": "To",
+      "default_type": "Transfer",
+      "default_status": "completed",
+      "thank_you": "Thank you for using {{brand}}",
+      "thank_you_prefix": "Thank you for using",
+      "digital_record": "This is a digital transaction record"
+    }
+  },
+  "settings": {
+    "heading": "Security Settings",
+    "subhead": "Lock, unlock, and protect your wallet",
+    "theme": {
+      "dark": "Dark Mode",
+      "light": "Light Mode",
+      "saved_note": "Saved to this device",
+      "switch_to_light": "Switch to light mode",
+      "switch_to_dark": "Switch to dark mode"
+    },
+    "activity_log": {
+      "label": "Activity log",
+      "description": "Off by default · stored on this device only",
+      "help": "Private log: what you changed, sent, revoked. No amounts or addresses. Panic Wipe erases it.",
+      "enable_aria": "Enable activity log",
+      "disable_aria": "Disable activity log",
+      "no_events": "No events recorded yet."
+    },
+    "message_signing": {
+      "label": "Message signing",
+      "description": "Off by default · stored on this device only",
+      "help": "Off by default. Lets you sign arbitrary text messages with your wallet key. Only enable if a dApp or service asks you to sign a message.",
+      "enable_aria": "Enable message signing",
+      "disable_aria": "Disable message signing"
+    },
+    "telemetry": {
+      "label": "Anonymous usage data",
+      "description": "Opt-in · never includes balances or addresses",
+      "help": "Helps us find bugs and improve the app. A random device ID is used — never linked to your wallet, keys, or identity. Turning this off stops all usage data leaving this device.",
+      "enable_aria": "Turn on anonymous usage data",
+      "disable_aria": "Turn off anonymous usage data"
+    },
+    "delete_account": {
+      "title": "Danger Zone",
+      "clear_cache_label": "Clear local cache",
+      "clear_cache_description": "Clears saved data on this device and locks the wallet. Your recovery phrase still works. To erase keys, use Panic Wipe.",
+      "delete_button": "Delete",
+      "confirm_prompt_pre": "This clears saved data and locks the wallet. Your recovery phrase still works. Type",
+      "confirm_prompt_post": "to confirm.",
+      "confirm_placeholder": "Type DELETE to confirm",
+      "confirm_aria": "Type DELETE to confirm account reset",
+      "cancel": "Cancel",
+      "confirm_delete": "Confirm Delete",
+      "deleting": "Deleting..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometric Unlock",
+      "worth_knowing_label": "Worth knowing.",
+      "kdf_disclosure": "One-tap unlock saves your wallet password on this device, protected by your screen lock and biometrics. If someone gets a copy of your device backup without the physical device, they could access your wallet. Turn this off for the strongest protection.",
+      "app_layer_disclosure_pre": "Biometric unlock saves your password on this device, protected by your fingerprint or face. This runs inside the app, not at the operating system level.",
+      "app_layer_disclosure_mid": "For stronger device-level protection, enable",
+      "hardware_protection_label": "Hardware Protection",
+      "app_layer_disclosure_post": "(available below).",
+      "toggle_label": "Biometric Unlock (Primary Wallet)",
+      "toggle_description": "Enable one-tap unlock for your primary wallet using device biometrics.",
+      "before_enable_label": "Before you enable this.",
+      "confirm_disclosure": "If someone gets a copy of your device backup without the physical device, they could access your wallet. Only turn this on if you're OK with that.",
+      "confirm_enable_button": "Enable one-tap unlock",
+      "cancel_button": "Cancel",
+      "checking_availability": "Checking availability…",
+      "default_label": "Biometrics",
+      "available": "{{label}} available.",
+      "available_simulated": "{{label}} available (simulated in demo).",
+      "status_check_failed": "Could not check biometric availability on this device.",
+      "awaiting_prompt": "Awaiting prompt…",
+      "preview_prompt": "Preview prompt",
+      "test_success": "Simulated authentication succeeded",
+      "test_cancelled": "Prompt cancelled"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometric unlock",
+      "heading_web": "Unlock with Passkey",
+      "scope_banner_native_pre": "Your fingerprint or face is checked before unlocking —",
+      "scope_banner_native_post": "not a replacement for your password. Your password and recovery phrase still work on their own, so losing biometrics never locks you out.",
+      "scope_banner_web_pre": "A passkey adds a quick biometric or security-key tap before unlocking —",
+      "scope_banner_web_post": "not a replacement for your password. Your password and recovery phrase still work on their own, so losing the passkey never locks you out.",
+      "extra_step_label": "an extra step",
+      "enroll_button": "Enroll biometric unlock",
+      "register_button": "Register a passkey",
+      "not_setup_native": "Device biometrics are not set up. Add a fingerprint or face in your device settings first — your password still works.",
+      "not_supported_web": "Passkey unlock isn't available in this browser. It works in the mobile app and modern browsers. Use your password here.",
+      "enroll_error": "Could not enroll biometric unlock on this device.",
+      "register_error": "Could not register a passkey on this device.",
+      "enrolled_native": "Biometric unlock enrolled",
+      "registered_web": "Passkey registered",
+      "simulated_suffix": " (simulated)",
+      "remove_button": "Remove",
+      "require_toggle_native": "Require biometric unlock",
+      "require_toggle_web": "Require {{label}} on unlock",
+      "require_toggle_aria_web": "Require passkey unlock",
+      "require_toggle_desc_native": "Ask for your device biometric before unlocking (your password still works).",
+      "require_toggle_desc_web": "Ask for your passkey before unlocking (your password still works).",
+      "applies_all_sessions": "This applies to all wallet sessions on this device.",
+      "default_label": "Passkey",
+      "checking_availability": "Checking availability…",
+      "simulated_in_demo": "{{label}} simulated in demo. ",
+      "awaiting_biometric": "Awaiting biometric…",
+      "awaiting_passkey": "Awaiting passkey…",
+      "preview_biometric_prompt": "Preview biometric prompt",
+      "preview_passkey_prompt": "Preview passkey prompt",
+      "simulated_prefix": "Simulated ",
+      "biometric_verified": "biometric verified",
+      "passkey_verified": "passkey verified",
+      "biometric_prompt_cancelled": "Biometric prompt cancelled",
+      "passkey_prompt_cancelled": "Passkey prompt cancelled"
+    },
+    "hardware_kek": {
+      "heading": "On-device hardware protection",
+      "badge_webauthn": "WebAuthn Protected",
+      "badge_off": "OFF",
+      "description_pre": "Locks your wallet to this physical device. After enabling, your wallet can only be opened on ",
+      "description_device": "this device",
+      "description_post": ". A stolen backup file is useless without the device itself, even with your PIN.",
+      "description_web_suffix": "Works on Chrome 99+ and Firefox 108+. Safari is not supported.",
+      "device_binding_note": "Device binding is active and tested on real hardware.",
+      "checking_status": "Checking status…",
+      "web_prf_unsupported": "Hardware protection isn't available on this browser. Use Chrome 99+ or Firefox 108+, or use the iOS or Android app.",
+      "errors": {
+        "wrong_pin": "Wrong PIN — enter the PIN you use to unlock your wallet.",
+        "no_hardware": "Couldn't reach this device's hardware security. Try again, or use a different device.",
+        "malformed_vault": "Your stored wallet data couldn't be read on this device.",
+        "not_enrolled": "Hardware protection isn't enabled on this vault, so there's nothing to upgrade.",
+        "generic": "Something went wrong. Please try again.",
+        "key_invalidated": "Your fingerprints changed — hardware protection was invalidated. Disable and re-enable hardware protection, or restore from your seed phrase.",
+        "insecure_tier": "This device has no secure hardware element — hardware protection can't be enabled here.",
+        "enter_pin_first": "Enter your vault PIN first.",
+        "enter_pin_confirm_removal": "Enter your vault PIN to confirm removal.",
+        "enter_pin_upgrade": "Enter your vault PIN to upgrade."
+      },
+      "toast": {
+        "enabled": "Hardware protection enabled — your vault now requires this device to unlock.",
+        "removed": "Hardware protection removed.",
+        "upgraded": "Hardware protection upgraded — your vault is now bound with a unique per-device key."
+      },
+      "pin_strength": {
+        "hardware_title": "Hardware-protected.",
+        "hardware_body": "Your PIN combined with Face ID, fingerprint, or passkey makes offline attacks infeasible — an attacker would need both your PIN and this physical device.",
+        "no_hardware_title": "No hardware factor available in this browser.",
+        "no_hardware_body": "Your 8-digit PIN (~100 M combinations) is protected only by Argon2id — a dedicated attacker could exhaust it offline in days to weeks. Use a password of 12+ characters, or switch to Chrome/Firefox to enable hardware protection.",
+        "pre_enroll_title": "PIN strength.",
+        "pre_enroll_body": "An 8-digit PIN has ~100 M combinations. Argon2id slows offline attacks to roughly 1–2 years single-threaded — but a GPU cluster could cut that to days. Enabling Face ID, fingerprint, or passkey above makes offline attacks infeasible by requiring this device for every unlock."
+      },
+      "enrolled": {
+        "active_title": "Active on this device",
+        "active_body_native": "Your vault requires this device's biometric to unlock.",
+        "active_body_web": "Your vault requires this device's passkey to unlock."
+      },
+      "upgrade": {
+        "available_title": "Upgrade available",
+        "available_body": "Your wallet was protected with an older version that shared a key across devices. Upgrade to lock it to this device only. This happens once and asks you to verify twice.",
+        "cta": "Upgrade hardware protection",
+        "busy": "Upgrading — approve both prompts…",
+        "prompt": "Enter your vault PIN. You'll authenticate twice to re-secure the vault.",
+        "cancel": "Cancel"
+      },
+      "remove": {
+        "cta": "Remove hardware protection",
+        "prompt_native": "Enter your PIN to confirm. You'll need to verify with your fingerprint or face.",
+        "prompt_web": "Enter your password to confirm. You'll need to verify with your passkey.",
+        "busy": "Removing — approve the prompt…",
+        "cancel": "Cancel"
+      },
+      "enroll": {
+        "prompt_native": "Enter your vault PIN to enable hardware protection.",
+        "prompt_web": "Enter your 8-digit PIN to enable hardware protection. Your browser will create a passkey to lock your wallet to this device.",
+        "cta": "Enable hardware protection",
+        "busy_native": "Enrolling — approve the biometric prompt…",
+        "busy_web": "Enrolling — approve the passkey prompt…",
+        "footnote_native": "You will be asked to authenticate with your device biometric or passcode.",
+        "footnote_web": "Your browser will ask you to authenticate with a biometric or device PIN to create the passkey."
+      },
+      "blocked": "Hardware protection settings are not available in this session."
+    },
+    "two_factor": {
+      "heading": "Two-factor at critical actions",
+      "intro": "An extra check on top of your PIN for sensitive actions. Even if someone sees you type your PIN, they still can't do these things without the second step.",
+      "actions_protects_label": "Actions it protects",
+      "gated_actions": [
+        { "label": "Sending funds", "desc": "every send, after safety checks" },
+        { "label": "Revealing your recovery phrase", "desc": "viewing or exporting your backup" },
+        { "label": "Setting an Emergency PIN", "desc": "creating the Emergency wallet" },
+        { "label": "Creating or hiding a wallet", "desc": "hidden wallet changes" }
+      ],
+      "currently_enforcing": "Currently enforcing:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + Action Password",
+      "badge_off": "Off (PIN only)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "You're in a decoy / hidden session. Configure two-factor from your real session.",
+      "method_a_title": "PIN + Action Password",
+      "on_suffix": "ON",
+      "method_a_desc": "A second password saved inside your wallet. Strong, but both passwords live on the same device.",
+      "label_pin": "Your PIN",
+      "label_wallet_password": "Wallet password",
+      "pin_confirm_placeholder": "Confirm it's you",
+      "action_password_label_change": "New Action Password",
+      "action_password_label_set": "Action Password",
+      "action_password_placeholder": "At least 8 characters",
+      "action_password_hint": "At least 8 characters · any characters allowed",
+      "too_short": "Use at least {{min}} characters.",
+      "confirm_label": "Confirm",
+      "confirm_placeholder": "Re-enter the Action Password",
+      "confirm_hint": "Must match your Action Password",
+      "mismatch": "Passwords don't match.",
+      "save_change": "Change Action Password",
+      "save_set": "Set Action Password",
+      "remove": "Remove Action Password",
+      "toast_changed": "Action Password changed",
+      "toast_set": "Action Password set",
+      "toast_set_error": "Could not set the Action Password",
+      "toast_confirm_pin_required": "Enter your wallet PIN / password to confirm",
+      "toast_removed": "Action Password removed",
+      "toast_remove_error": "Could not remove the Action Password",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "Your PIN plus {{label}}. If biometrics aren't available, the action is blocked. Losing your device never loses your funds.",
+      "method_b_desc_web": "Your PIN plus a passkey tap. If the passkey isn't available, the action is blocked. Losing it never loses your funds.",
+      "switch_aria_native": "Use my device biometrics as my second factor",
+      "switch_aria_web": "Use passkey as my second factor",
+      "confirm_native": "Confirm critical actions with {{label}}.",
+      "unavailable_native": "{{label}} / device passcode is not set up on this device — enable it in your device settings to use this factor.",
+      "unsupported_web": "This browser doesn't support WebAuthn / passkeys.",
+      "register_hint_web_pre": "No passkey registered yet — set one up in",
+      "register_hint_web_strong": "Wallet Passkeys",
+      "register_hint_web_post": "below, then enable this.",
+      "toggle_biometric_needed": "{{label}} is not set up on this device.",
+      "toggle_passkey_needed": "Register a passkey first (Wallet Passkeys, below).",
+      "toggle_biometric_on": "{{label}} second factor on",
+      "toggle_biometric_off": "{{label}} second factor off",
+      "toggle_passkey_on": "Passkey second factor on",
+      "toggle_passkey_off": "Passkey second factor off"
+    },
+    "session": {
+      "title": "Session & Auto-lock",
+      "description": "Locks your wallet after a period of inactivity or when you leave the app",
+      "status_unlocked": "Unlocked",
+      "status_locked": "Locked",
+      "auto_lock_after": "Auto-lock after",
+      "never_note": "No auto-lock on idle, but it still locks after ~45 s in the background and after 8 hours unlocked.",
+      "resets_note": "Resets whenever you interact with the app. Also locks immediately when backgrounded.",
+      "lock_now": "Lock now",
+      "recent_activity": "Recent activity",
+      "view_all": "View all",
+      "this_device": "This device",
+      "active_now": "Active now"
+    },
+    "rehearsal": {
+      "title": "Rehearse deniability",
+      "description": "See the dashboard exactly as someone holding your unlocked phone would."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Wallet",
+    "sidebar_expand": "Expand sidebar",
+    "sidebar_collapse": "Collapse sidebar",
+    "search_placeholder": "Search...",
+    "search_shortcut_title": "Search (⌘K)",
+    "lock": "Lock",
+    "lock_confirm_prompt": "Lock this wallet now?",
+    "back": "Back",
+    "settings": "Settings",
+    "main_content_aria": "Main content",
+    "bottom_nav_aria": "Bottom navigation",
+    "more_features_aria": "More features",
+    "more": "More",
+    "close": "Close",
+    "all_features_heading": "All Features",
+    "recent_heading": "Recent",
+    "tab_home": "Home",
+    "tab_send": "Send",
+    "tab_receive": "Receive"
+  },
+  "back": {
+    "default_label": "Back"
+  },
+  "send": {
+    "heading": "Send Crypto",
+    "subheading": "Transfer funds securely",
+    "wallet_fallback": "Wallet",
+    "wallet_picker": { "label": "From Wallet", "placeholder": "Select wallet" },
+    "asset_picker": { "label": "Asset", "placeholder": "Select asset" },
+    "recipient": {
+      "label": "Send to (address or name)",
+      "placeholder": "Paste an address or enter a name (e.g. vitalik.eth)",
+      "scan_qr": "Scan QR code",
+      "resolving": "Resolving name…",
+      "name_not_found": "Name not found — check the spelling or paste the address directly.",
+      "ens_using_prefix": "Using {{name}} →",
+      "ens_confirm_intro": "looked up privately on the blockchain to:",
+      "ens_confirm_hint": "Confirm this address is correct before sending.",
+      "use_this_address": "Use this address",
+      "not_whitelisted": "This address is not on your whitelist. Double-check before proceeding. You can add trusted addresses in Settings.",
+      "self_send_warning": "You're sending to your own wallet address. This moves nothing between wallets and still costs a network fee. Double-check the recipient before continuing."
+    },
+    "screening": {
+      "local_disclosure": "Recipients are checked on your device for scam addresses against your own history — nothing leaves your device.",
+      "remote_opt_in": "Also screen against an online threat database (sends this address to a third party)",
+      "remote_unavailable": "Online screening is enabled, but no provider is configured in this build — screening stays local, so we couldn't verify this against an external list.",
+      "demo_poison_button": "Demo: paste a look-alike address"
+    },
+    "simulation": {
+      "title": "Transaction Simulation",
+      "toggle_aria": "Toggle transaction simulation",
+      "description": "Before you sign, we run a local pre-flight check — no third-party services, no data leaves your device.",
+      "checks": [
+        "Address risk (poison / lookalike)",
+        "Contract decode",
+        "Unlimited approval flag",
+        "Revert prediction",
+        "Anomaly vs your history",
+        "Large outflow warning"
+      ],
+      "results_hint": "Results appear at the next step once you enter an address and amount.",
+      "off_hint": "Simulation is off — no pre-flight check will run before signing.",
+      "taking_too_long": "Taking too long?",
+      "turn_off": "Turn off simulation"
+    },
+    "amount": {
+      "label": "Amount",
+      "placeholder": "0.00",
+      "being_sent": "being sent",
+      "balance_prefix": "Balance:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(live)",
+      "reading_from_network": "reading from network…"
+    },
+    "errors": {
+      "amount_missing": "Amount is required",
+      "amount_not_positive": "Amount must be greater than zero",
+      "amount_malformed": "Enter a plain decimal amount, like 0.5",
+      "amount_over_balance": "Insufficient balance",
+      "insufficient_balance_title": "Insufficient balance.",
+      "insufficient_balance_body": "You have {{balance}} {{currency}} available to send (after the network fee). Reduce the amount to continue."
+    },
+    "status": {
+      "not_enabled": "Sending is not yet enabled for {{currency}}. This asset is receive-only until its crypto path is verified.",
+      "dev_ungate_title": "DEV UNGATE ACTIVE",
+      "dev_ungate_body": "— the send gate is bypassed for {{currency}} via VITE_DEV_UNGATE_SEND (dev build only). This asset's status is unchanged (still not live); mainnet remains gated. Testnet verification only — never ship this build.",
+      "locked": "Your wallet is locked. Unlock it in Wallet Settings to sign and send."
+    },
+    "note": { "label": "Note (optional)", "placeholder": "What's this for?" },
+    "trezor": {
+      "toggle_label": "Sign with Trezor",
+      "connected": "Device connected",
+      "connect_button": "Connect device"
+    },
+    "buttons": {
+      "continue": "Continue",
+      "confirm_send": "Confirm & Send",
+      "back": "Back"
+    },
+    "verify": { "summary_label": "You're sending" },
+    "fee": {
+      "automatic": "Network fee is set automatically for {{currency}} ({{network}}).",
+      "native_fee_note": "Network fee is paid in {{symbol}} ({{network}}) — you need {{symbol}} to cover the network fee even when sending {{token}}."
+    },
+    "decode": {
+      "heading": "What this transaction does",
+      "action": "Action",
+      "send_tokens": "Send tokens",
+      "token": "Token",
+      "amount": "Amount",
+      "recipient": "Recipient",
+      "grant_permission": "Grant spending permission",
+      "permission": "Permission",
+      "unlimited_permission": "Unlimited (this app can spend any amount)",
+      "spender": "Spender"
+    },
+    "reauth": {
+      "prompt": "Re-enter your {{credential}} to authorise",
+      "credential_pin": "PIN",
+      "credential_password": "password",
+      "submit_pin": "Authorise",
+      "submit_password": "Authorise & Send",
+      "password_placeholder": "Vault password",
+      "password_aria": "Vault password for send authorisation",
+      "errors": {
+        "unavailable": "Verification unavailable — please re-lock and unlock the wallet.",
+        "incorrect": "Incorrect — try again ({{remaining}} left)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transaction broadcast",
+      "heading": "Transaction Broadcast",
+      "body_suffix": "signed locally and sent to the network",
+      "tx_hash_label": "Transaction hash",
+      "view_explorer": "View on block explorer",
+      "pending_note": "Pending until confirmed on the network. Balance updates from the blockchain, not a stored value.",
+      "send_another": "Send Another"
+    },
+    "toasts": {
+      "ens_off_in_session": "Name resolution is off in this session — paste the address directly.",
+      "ens_not_found": "ENS name not found",
+      "sns_unavailable": "Solana name resolution is not available yet — paste the address directly.",
+      "ens_resolution_failed": "Name resolution failed",
+      "verify_required": "Finish verifying your backup before sending this amount.",
+      "two_factor_retry": "Send couldn't complete — please verify again to retry.",
+      "send_failed_fallback": "Send failed",
+      "unconfirmed": "Couldn't confirm this transaction on the network yet — it may still be pending. Check the explorer."
+    }
+  },
+  "receive": {
+    "heading": "Receive Crypto",
+    "subheading": "Show a wallet address to receive funds",
+    "asset_label": "Asset",
+    "asset_placeholder": "Choose asset",
+    "not_available": "Receiving {{name}} ({{symbol}}) isn't available yet. No address is shown until this asset is enabled.",
+    "locked": {
+      "title": "Wallet locked",
+      "body": "Unlock your wallet to reveal your {{asset}} {{network}} receive address.",
+      "open_hd_wallet": "Open HD Wallet Manager"
+    },
+    "your_address": "Your {{asset}} address",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "{{symbol}} receive address",
+    "copy": {
+      "copied_aria": "Address copied to clipboard",
+      "copy_aria": "Copy address",
+      "copied_toast": "Address copied",
+      "copy_failed_toast": "Couldn't copy — select and copy the address manually"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} is a token on an Ethereum-compatible network. This is your wallet address — only have the sender send {{symbol}} on {{network}}. Sending it on a different network can permanently lose the funds.",
+      "evm": "This is your shared wallet address. Only send {{name}} on {{network}} to this address, and make sure the sender uses {{network}}.",
+      "btc": "Only send Bitcoin on {{network}} to this address.",
+      "solana": "Only send Solana on {{network}} to this address."
+    },
+    "select_asset_prompt": "Select an asset to receive.",
+    "unlock_footer_note": "Addresses come from your on-device wallet and only appear while it's unlocked."
+  },
+  "dashboard": {
+    "portfolioValue": "Portfolio Value",
+    "priceAlertsTriggered_one": "{{count}} Price Alert Triggered!",
+    "priceAlertsTriggered_other": "{{count}} Price Alerts Triggered!",
+    "lockAriaLabel": "Lock balance behind biometric",
+    "lockBalance": "Lock balance",
+    "synced": "Synced {{time}}",
+    "syncJustNow": "Just now",
+    "syncSecondsAgo_one": "{{count}}s ago",
+    "syncSecondsAgo_other": "{{count}}s ago",
+    "syncMinutesAgo_one": "{{count}}m ago",
+    "syncMinutesAgo_other": "{{count}}m ago",
+    "actions": {
+      "send": "Send",
+      "receive": "Receive",
+      "schedule": "Schedule",
+      "add": "Add"
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Activity",
+      "analytics": "Analytics"
+    },
+    "emptyWallets": {
+      "title": "No wallets yet",
+      "description": "Add a wallet to start receiving, sending, and holding assets across chains."
+    },
+    "addWallet": "Add Wallet",
+    "searchTransactionsPlaceholder": "Search transactions...",
+    "emptySearch": {
+      "title": "No matching transactions",
+      "description": "Try clearing filters or searching a different asset or address."
+    },
+    "emptyTransactions": {
+      "title": "No transactions yet",
+      "description": "Your on-chain activity will show up here once you send or receive."
+    },
+    "portfolioPerformance": "Portfolio Performance",
+    "assetDistribution": "Asset Distribution",
+    "quickAccess": "Quick Access",
+    "quickAccessItems": {
+      "receive": "Receive",
+      "security": "Security",
+      "approvals": "Approvals",
+      "addressCheck": "Address Check",
+      "analytics": "Analytics",
+      "sentiment": "Sentiment",
+      "riskScore": "Risk Score"
+    },
+    "walletNameLabel": "Wallet Name",
+    "walletNamePlaceholder": "My ETH Wallet",
+    "addWalletDialog": {
+      "title": "Add Wallet",
+      "currency": "Currency",
+      "creating": "Creating...",
+      "create": "Create Wallet"
+    },
+    "renameWalletDialog": {
+      "title": "Rename Wallet",
+      "saving": "Saving...",
+      "save": "Save Name"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Encrypted vault",
+    "backup": {
+      "title": "Back up \"{{name}}\"",
+      "reauthDescription": "Confirm it's you, then we'll show the recovery phrase for this wallet.",
+      "description": "Write these 12 words down offline. Anyone with them can spend this wallet's funds — and they're the only way to recover it.",
+      "warning": "Never take a screenshot. Never type it into another app.",
+      "confirmButton": "I've written it down — mark backed up"
+    },
+    "addWallet": {
+      "defaultWalletName": "your new wallet",
+      "backupDescription": "This wallet has its own recovery phrase — separate from every other wallet in your vault. Write it down offline before you use it.",
+      "backedUpDone": "I've backed it up — done",
+      "title": "Add a wallet",
+      "createNew": "Create new",
+      "importSeed": "Import seed",
+      "createDescription": "Generates a NEW seed that derives ALL chains (ETH/EVM, BTC, SOL). You'll back it up before it's active.",
+      "importDescription": "Paste an existing 12/24-word seed — all chains are derived automatically (a seed isn't chain-specific).",
+      "recoveryPhraseLabel": "Recovery phrase",
+      "recoveryPhrasePlaceholder": "word1 word2 ... word12",
+      "walletNameLabel": "Wallet name",
+      "walletNamePlaceholder": "e.g. Savings",
+      "assetsToShowLabel": "Assets to show",
+      "assetsToShowHint": "Display choice only — the seed holds every chain regardless.",
+      "confirmVaultPlaceholder": "Confirm it's you to change your vault",
+      "vaultReentryHint": "Re-entered to authorise a change to your seed vault. Never kept in memory.",
+      "createAndBackup": "Create & back up",
+      "importWallet": "Import wallet"
+    },
+    "vaultPinLabel": "Vault PIN",
+    "vaultPasswordLabel": "Vault password",
+    "cancel": "Cancel",
+    "done": "Done",
+    "manageAssets": {
+      "title": "Assets for \"{{name}}\"",
+      "description": "Choose which assets show for this wallet. Hidden ones stay out of the way until added."
+    },
+    "rename": {
+      "title": "Rename wallet",
+      "save": "Save name"
+    },
+    "remove": {
+      "title": "Remove \"{{name}}\"?",
+      "onlyWallet": "This is your only wallet — it can't be removed. Use Panic Wipe in Security to erase everything.",
+      "description": "Removes this wallet's seed from this device.",
+      "backedUpNote": "You can restore it from its recovery phrase.",
+      "notBackedUpNote": "⚠️ NOT backed up — without its phrase it is gone forever.",
+      "button": "Remove wallet"
+    },
+    "move": {
+      "title": "Move \"{{name}}\" to…"
+    },
+    "managePortfolios": {
+      "title": "Portfolios",
+      "defaultTag": "(default)",
+      "saveAriaLabel": "Save portfolio name",
+      "renameAriaLabel": "Rename {{name}}",
+      "deleteAriaLabel": "Delete {{name}}",
+      "newNamePlaceholder": "New portfolio name",
+      "addButton": "Add"
+    },
+    "activity": {
+      "unlockPrompt": "Unlock your wallet to view activity.",
+      "loading": "Loading...",
+      "loadError": "Could not load activity.",
+      "noTransactions": "No transactions yet.",
+      "viewFullHistory": "View full history →"
+    },
+    "portfolioValueLabel": "Portfolio Value",
+    "explore": {
+      "subtitle": "You're exploring — view only. No wallet yet.",
+      "description": "Look around freely. When you're ready, create a new self-custody wallet or import an existing seed — keys are generated and encrypted on this device.",
+      "createOrImport": "Create or import a wallet"
+    },
+    "portfoliosButton": "Portfolios",
+    "totalValueHeading": "{{name}} · Total Value",
+    "partialTotalNote": "Some balances couldn't be loaded — this total may be incomplete.",
+    "refreshPricesTooltip": "Refresh live prices",
+    "live": "Live",
+    "approximate": "Approximate",
+    "seedVerify": {
+      "title": "Finish verifying your backup",
+      "description": "Required for sending above the safety threshold.",
+      "verifyAriaLabel": "Verify your wallet backup",
+      "verifyButton": "Verify"
+    },
+    "unbacked": {
+      "titleBold": "Wallet backup incomplete.",
+      "body": "Each wallet has its own recovery phrase — without it, that wallet's funds are unrecoverable. Back up now.",
+      "backUpButton": "Back up \"{{name}}\""
+    },
+    "actions": {
+      "send": "Send",
+      "receive": "Receive",
+      "addWallet": "Add wallet"
+    },
+    "activeWalletHint": {
+      "prefix": "Send/Receive use",
+      "otherPortfolio": " (in another portfolio)",
+      "suffix": ". Tap a wallet below to switch."
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Activity",
+      "analytics": "Analytics"
+    },
+    "noWalletsInPortfolio": "No wallets in \"{{name}}\". Add a wallet, or move one here from its menu.",
+    "hideAssets": "Hide assets",
+    "showAllAssets": "Show all assets",
+    "walletCard": {
+      "active": "Active",
+      "backedUp": "Backed up",
+      "backUp": "Back up",
+      "partial": "partial",
+      "optionsAriaLabel": "Options for {{name}}",
+      "noAssetsShown": "No assets shown. Use \"Manage assets\"."
+    },
+    "menu": {
+      "manageAssets": "Manage assets",
+      "rename": "Rename",
+      "moveToPortfolio": "Move to portfolio",
+      "backUp": "Back up",
+      "remove": "Remove"
+    },
+    "balanceLoadFailedTitle": "Balance couldn't be loaded",
+    "defaultWalletFallbackName": "wallet",
+    "toast": {
+      "walletImported": "Wallet imported — all chains derived.",
+      "walletRemoved": "Wallet removed from this device.",
+      "walletAddedBackedUp": "Wallet added and backed up.",
+      "movedTo": "Moved to {{name}}.",
+      "markedBackedUp": "\"{{name}}\" marked backed up."
+    },
+    "errors": {
+      "couldNotAddWallet": "Could not add wallet",
+      "couldNotImportWallet": "Could not import wallet",
+      "couldNotRemoveWallet": "Could not remove wallet"
+    }
+  },
+  "networth": {
+    "title": "Crypto Net Worth",
+    "unlockPrompt": "Unlock your wallet to see your on-chain holdings.",
+    "subtitle": "Your on-chain holdings — does not include external assets.",
+    "totalHoldings": "Total holdings",
+    "partialNote": "partial — some balances couldn't be read",
+    "refreshPricesTooltip": "Refresh live prices",
+    "live": "Live",
+    "approximate": "Approximate",
+    "allocation": "Allocation",
+    "holdings": "Holdings",
+    "noHoldings": "No holdings yet."
+  }
+}

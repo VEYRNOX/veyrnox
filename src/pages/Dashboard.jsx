@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySelector";
+import { useLocalePreferences } from "@/lib/useLocale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
@@ -53,11 +55,15 @@ export default function Dashboard() {
 }
 
 function DemoDashboard() {
+  const { t } = useTranslation("wallet");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
   const [isLocked, setIsLocked] = useState(!DEMO);
-  const [fiatCurrency, setFiatCurrency] = useState("USD");
+  // Shared with WalletPortfolioPage + NetWorthTracker via lib/locale.js — the
+  // picker below now writes to the app-wide preference (I3-gated: no-op in
+  // decoy/demo), so a total on the portfolio page matches the total here.
+  const { locale, fiatCurrency, setFiatCurrency } = useLocalePreferences();
   const [selectedWalletId, setSelectedWalletId] = useState(null);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -167,9 +173,9 @@ function DemoDashboard() {
 
   const syncLabel = (() => {
     const secs = Math.floor((Date.now() - /** @type {any} */ (lastSynced)) / 1000);
-    if (secs < 10) return "Just now";
-    if (secs < 60) return `${secs}s ago`;
-    return `${Math.floor(secs / 60)}m ago`;
+    if (secs < 10) return t("dashboard.syncJustNow");
+    if (secs < 60) return t("dashboard.syncSecondsAgo", { count: secs });
+    return t("dashboard.syncMinutesAgo", { count: Math.floor(secs / 60) });
   })();
 
   if (isLoading) {
@@ -194,7 +200,7 @@ function DemoDashboard() {
         <Link to="/alerts" className="flex items-center gap-3 p-3 rounded-xl bg-caution/10 border border-caution/30 hover:border-caution/60 transition-colors">
           <span className="text-lg shrink-0">🔔</span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">{triggeredAlerts.length} Price Alert{triggeredAlerts.length > 1 ? 's' : ''} Triggered!</p>
+            <p className="text-sm font-medium">{t("dashboard.priceAlertsTriggered", { count: triggeredAlerts.length })}</p>
             <p className="text-xs text-muted-foreground truncate">
               {triggeredAlerts.map(a => `${a.currency} hit $${a.triggered_price?.toLocaleString()}`).join(' · ')}
             </p>
@@ -205,15 +211,15 @@ function DemoDashboard() {
 
       {/* Portfolio Value */}
       <div className="text-center py-4 relative">
-        <div className="absolute top-4 right-0">
+        <div className="absolute top-4 end-0">
           <DashboardWidgetSettings widgets={widgets} onChange={saveWidgets} />
         </div>
         <div className="flex items-center justify-center gap-2 mb-1">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Portfolio Value</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">{t("dashboard.portfolioValue")}</p>
           <FiatCurrencySelector value={fiatCurrency} onChange={setFiatCurrency} />
         </div>
         <p className={`text-4xl font-bold mono-value transition-all duration-300 ${isLocked ? 'blur-md select-none' : ''}`}>
-          <AnimatedFiat value={displayValue} format={(v) => formatFiat(v, fiatCurrency)} />
+          <AnimatedFiat value={displayValue} format={(v) => formatFiat(v, fiatCurrency, locale)} />
         </p>
         <ReferenceRateNote />
         {!isLocked && wallets.length > 0 && (
@@ -226,16 +232,16 @@ function DemoDashboard() {
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 px-2 py-0.5 rounded-full mono-value">
               <ArrowUp className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" /> {changePercent}% (24h)
             </span>
-            <span className="text-[10px] text-muted-foreground">Synced {syncLabel}</span>
+            <span className="text-[10px] text-muted-foreground">{t("dashboard.synced", { time: syncLabel })}</span>
           </motion.div>
         )}
         {!isLocked && (
           <button
             onClick={() => setIsLocked(true)}
-            aria-label="Lock balance behind biometric"
+            aria-label={t("dashboard.lockAriaLabel")}
             className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Lock className="h-3 w-3" /> Lock balance
+            <Lock className="h-3 w-3" /> {t("dashboard.lockBalance")}
           </button>
         )}
       </div>
@@ -254,19 +260,19 @@ function DemoDashboard() {
       <div className="grid grid-cols-4 gap-2">
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/send")}>
           <ArrowUpRight className="h-5 w-5" />
-          <span className="text-xs">Send</span>
+          <span className="text-xs">{t("dashboard.actions.send")}</span>
         </Button>
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/receive")}>
           <ArrowDownLeft className="h-5 w-5" />
-          <span className="text-xs">Receive</span>
+          <span className="text-xs">{t("dashboard.actions.receive")}</span>
         </Button>
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/recurring")}>
           <CalendarClock className="h-5 w-5" />
-          <span className="text-xs">Schedule</span>
+          <span className="text-xs">{t("dashboard.actions.schedule")}</span>
         </Button>
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => setOpen(true)}>
           <Plus className="h-5 w-5" />
-          <span className="text-xs">Add</span>
+          <span className="text-xs">{t("dashboard.actions.add")}</span>
         </Button>
       </div>
 
@@ -298,20 +304,20 @@ function DemoDashboard() {
       {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">
         <TabsList className="w-full bg-secondary">
-          <TabsTrigger value="tokens" className="flex-1">Tokens</TabsTrigger>
-          <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
-          <TabsTrigger value="analytics" className="flex-1">Analytics</TabsTrigger>
+          <TabsTrigger value="tokens" className="flex-1">{t("dashboard.tabs.tokens")}</TabsTrigger>
+          <TabsTrigger value="activity" className="flex-1">{t("dashboard.tabs.activity")}</TabsTrigger>
+          <TabsTrigger value="analytics" className="flex-1">{t("dashboard.tabs.analytics")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tokens" className="mt-3">
           {wallets.length === 0 ? (
             <EmptyState
               kind="wallets"
-              title="No wallets yet"
-              description="Add a wallet to start receiving, sending, and holding assets across chains."
+              title={t("dashboard.emptyWallets.title")}
+              description={t("dashboard.emptyWallets.description")}
               action={(
                 <Button size="sm" onClick={() => setOpen(true)}>
-                  <Plus className="h-4 w-4 mr-1.5" />Add Wallet
+                  <Plus className="h-4 w-4 me-1.5" />{t("dashboard.addWallet")}
                 </Button>
               )}
             />
@@ -327,12 +333,12 @@ function DemoDashboard() {
         <TabsContent value="activity" className="mt-3 space-y-2">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 value={txSearch}
                 onChange={e => setTxSearch(e.target.value)}
-                placeholder="Search transactions..."
-                className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-border bg-secondary outline-none focus:ring-1 focus:ring-primary"
+                placeholder={t("dashboard.searchTransactionsPlaceholder")}
+                className="w-full ps-8 pe-3 py-2 text-xs rounded-lg border border-border bg-secondary outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
             <TransactionFilters filters={txFilters} onChange={setTxFilters} />
@@ -340,9 +346,9 @@ function DemoDashboard() {
           </div>
           {filteredTx.length === 0 ? (
             (txSearch || Object.values(txFilters).some(Boolean)) ? (
-              <EmptyState kind="search" title="No matching transactions" description="Try clearing filters or searching a different asset or address." />
+              <EmptyState kind="search" title={t("dashboard.emptySearch.title")} description={t("dashboard.emptySearch.description")} />
             ) : (
-              <EmptyState kind="transactions" title="No transactions yet" description="Your on-chain activity will show up here once you send or receive." />
+              <EmptyState kind="transactions" title={t("dashboard.emptyTransactions.title")} description={t("dashboard.emptyTransactions.description")} />
             )
           ) : (
             filteredTx.map(tx => (
@@ -364,7 +370,7 @@ function DemoDashboard() {
                     {tx.type === "send" ? tx.to_address : tx.from_address}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-end shrink-0">
                   <p className={`text-sm font-semibold ${tx.type === "send" ? "text-destructive" : "text-success"}`}>
                     {tx.type === "send" ? "-" : "+"}{tx.amount} {tx.currency}
                   </p>
@@ -377,11 +383,11 @@ function DemoDashboard() {
 
         <TabsContent value="analytics" className="mt-3 space-y-6">
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Portfolio Performance</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">{t("dashboard.portfolioPerformance")}</p>
             <PortfolioChart transactions={transactions} currentBalance={totalUSD} />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Asset Distribution</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">{t("dashboard.assetDistribution")}</p>
             <AssetDistributionChart wallets={wallets} />
           </div>
         </TabsContent>
@@ -390,16 +396,16 @@ function DemoDashboard() {
       {/* Quick Access Feature Grid */}
       {widgets.quickAccess && (
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Quick Access</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">{t("dashboard.quickAccess")}</p>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { label: "Receive",       icon: ArrowDownLeft, path: "/receive",         color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
-              { label: "Security",      icon: ShieldAlert,   path: "/security",        color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
-              { label: "Approvals",     icon: Lock,          path: "/token-approvals", color: "text-[hsl(var(--chart-1))]", bg: "bg-[hsl(var(--chart-1))]/10" },
-              { label: "Address Check", icon: Search,        path: "/address-checker", color: "text-[hsl(var(--chart-5))]", bg: "bg-[hsl(var(--chart-5))]/10" },
-              { label: "Analytics",     icon: BarChart2,     path: "/analytics",       color: "text-[hsl(var(--chart-4))]", bg: "bg-[hsl(var(--chart-4))]/10" },
-              { label: "Sentiment",     icon: Newspaper,     path: "/news-sentiment",  color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
-              { label: "Risk Score",    icon: ShieldCheck,   path: "/risk-score",      color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
+              { label: t("dashboard.quickAccessItems.receive"),     icon: ArrowDownLeft, path: "/receive",         color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
+              { label: t("dashboard.quickAccessItems.security"),    icon: ShieldAlert,   path: "/security",        color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
+              { label: t("dashboard.quickAccessItems.approvals"),   icon: Lock,          path: "/token-approvals", color: "text-[hsl(var(--chart-1))]", bg: "bg-[hsl(var(--chart-1))]/10" },
+              { label: t("dashboard.quickAccessItems.addressCheck"),icon: Search,        path: "/address-checker", color: "text-[hsl(var(--chart-5))]", bg: "bg-[hsl(var(--chart-5))]/10" },
+              { label: t("dashboard.quickAccessItems.analytics"),   icon: BarChart2,     path: "/analytics",       color: "text-[hsl(var(--chart-4))]", bg: "bg-[hsl(var(--chart-4))]/10" },
+              { label: t("dashboard.quickAccessItems.sentiment"),   icon: Newspaper,     path: "/news-sentiment",  color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
+              { label: t("dashboard.quickAccessItems.riskScore"),   icon: ShieldCheck,   path: "/risk-score",      color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
             ].map(item => (
               <button key={item.path} onClick={() => navigate(item.path)}
                 className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border bg-card hover:bg-secondary transition-colors text-center">
@@ -426,14 +432,14 @@ function DemoDashboard() {
       {/* Add Wallet Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Add Wallet</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("dashboard.addWalletDialog.title")}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label htmlFor="add-wallet-name">Wallet Name</Label>
-              <Input id="add-wallet-name" value={name} onChange={e => setName(e.target.value)} placeholder="My ETH Wallet" className="mt-1.5" />
+              <Label htmlFor="add-wallet-name">{t("dashboard.walletNameLabel")}</Label>
+              <Input id="add-wallet-name" value={name} onChange={e => setName(e.target.value)} placeholder={t("dashboard.walletNamePlaceholder")} className="mt-1.5" />
             </div>
             <div>
-              <Label id="add-wallet-currency-label">Currency</Label>
+              <Label id="add-wallet-currency-label">{t("dashboard.addWalletDialog.currency")}</Label>
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger aria-labelledby="add-wallet-currency-label" className="mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -448,7 +454,7 @@ function DemoDashboard() {
               disabled={!name || createWallet.isPending}
               onClick={() => createWallet.mutate({ name, currency, address: generateAddress(currency), balance: 0 })}
             >
-              {createWallet.isPending ? "Creating..." : "Create Wallet"}
+              {createWallet.isPending ? t("dashboard.addWalletDialog.creating") : t("dashboard.addWalletDialog.create")}
             </Button>
           </div>
         </DialogContent>
@@ -457,15 +463,15 @@ function DemoDashboard() {
       {/* Rename Wallet Dialog */}
       <Dialog open={!!renameTarget} onOpenChange={(o) => { if (!o) { setRenameTarget(null); setRenameName(""); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Rename Wallet</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t("dashboard.renameWalletDialog.title")}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label htmlFor="rename-wallet-name">Wallet Name</Label>
+              <Label htmlFor="rename-wallet-name">{t("dashboard.walletNameLabel")}</Label>
               <Input
                 id="rename-wallet-name"
                 value={renameName}
                 onChange={e => setRenameName(e.target.value)}
-                placeholder="My ETH Wallet"
+                placeholder={t("dashboard.walletNamePlaceholder")}
                 className="mt-1.5"
                 autoFocus
                 onKeyDown={e => {
@@ -480,7 +486,7 @@ function DemoDashboard() {
               disabled={!renameName.trim() || renameWallet.isPending}
               onClick={() => renameWallet.mutate({ id: renameTarget.id, name: renameName.trim() })}
             >
-              {renameWallet.isPending ? "Saving..." : "Save Name"}
+              {renameWallet.isPending ? t("dashboard.renameWalletDialog.saving") : t("dashboard.renameWalletDialog.save")}
             </Button>
           </div>
         </DialogContent>

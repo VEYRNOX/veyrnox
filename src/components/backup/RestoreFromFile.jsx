@@ -419,7 +419,8 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
           onClick={() => setPhase('pick')}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ChevronLeft className="h-4 w-4" />
+          {/* Icon mirrors under dir="rtl" — back-navigation chevron. */}
+          <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />
           Back
         </button>
 
@@ -455,7 +456,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
                 <button
                   onClick={() => openListedFile(f)}
                   disabled={busy}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card/50 hover:bg-secondary/40 text-left transition-colors disabled:opacity-50"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card/50 hover:bg-secondary/40 text-start transition-colors disabled:opacity-50"
                 >
                   <FileText className="h-5 w-5 text-primary shrink-0" />
                   <div className="min-w-0 flex-1">

@@ -12,6 +12,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import { toast } from "@/lib/toast";
 import {
   Wallet, Plus, Send, Download, ShieldAlert, Check,
@@ -34,12 +35,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
-import { resolveAssetRow, PARTIAL_TOTAL_NOTE } from "@/lib/balanceDisplay";
+import { resolveAssetRow } from "@/lib/balanceDisplay";
 import { ASSETS, getAsset } from "@/wallet-core/assets.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { defaultAssetSymbol } from "@/lib/sendWalletSource";
 import { formatFiat } from "@/components/FiatCurrencySelector";
+import { useLocalePreferences } from "@/lib/useLocale";
 import VaultIllustration from "@/components/VaultIllustration";
 import SeedGrid from "@/components/SeedGrid";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
@@ -78,19 +80,20 @@ const fmtPriceTime = (ts) => (ts ? new Date(ts).toLocaleTimeString(undefined, { 
 // inline "unlock again" prompt here instead of a mnemonic — same dialog, no dead-end
 // toast (see useRevealWithReauth).
 function BackupDialog({ walletName, mnemonic = null, reauthPrompt = null, onClose, onConfirm = () => {} }) {
+  const { t } = useTranslation("wallet");
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="sr-only">Back up "{walletName}"</DialogTitle>
+          <DialogTitle className="sr-only">{t("portfolio.backup.title", { name: walletName })}</DialogTitle>
         </DialogHeader>
         {reauthPrompt ? (
           <>
             <div className="flex flex-col items-center text-center gap-3 pt-1 pb-2">
-              <VaultIllustration size={132} label="Encrypted vault" />
-              <h2 className="text-lg font-semibold tracking-tight">Back up "{walletName}"</h2>
+              <VaultIllustration size={132} label={t("portfolio.encryptedVaultLabel")} />
+              <h2 className="text-lg font-semibold tracking-tight">{t("portfolio.backup.title", { name: walletName })}</h2>
               <p className="text-xs text-muted-foreground max-w-[20rem]">
-                Confirm it's you, then we'll show the recovery phrase for this wallet.
+                {t("portfolio.backup.reauthDescription")}
               </p>
             </div>
             {reauthPrompt}
@@ -98,20 +101,19 @@ function BackupDialog({ walletName, mnemonic = null, reauthPrompt = null, onClos
         ) : (
           <>
             <div className="flex flex-col items-center text-center gap-3 pt-1 pb-2">
-              <VaultIllustration size={132} label="Encrypted vault" />
-              <h2 className="text-lg font-semibold tracking-tight">Back up "{walletName}"</h2>
+              <VaultIllustration size={132} label={t("portfolio.encryptedVaultLabel")} />
+              <h2 className="text-lg font-semibold tracking-tight">{t("portfolio.backup.title", { name: walletName })}</h2>
               <p className="text-xs text-muted-foreground max-w-[20rem]">
-                Write these 12 words down offline. Anyone with them can spend this
-                wallet's funds — and they're the only way to recover it.
+                {t("portfolio.backup.description")}
               </p>
             </div>
             <div className="flex items-start gap-2 p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
               <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              <span>Never take a screenshot. Never type it into another app.</span>
+              <span>{t("portfolio.backup.warning")}</span>
             </div>
             <SeedGrid mnemonic={mnemonic} />
             <DialogFooter>
-              <Button className="w-full gap-2" onClick={onConfirm}><Check className="h-4 w-4" /> I've written it down — mark backed up</Button>
+              <Button className="w-full gap-2" onClick={onConfirm}><Check className="h-4 w-4" /> {t("portfolio.backup.confirmButton")}</Button>
             </DialogFooter>
           </>
         )}
@@ -141,6 +143,7 @@ function AssetPicker({ selected, onToggle }) {
 // whose CONTENT swaps between form → seed-backup, so the backup step is never
 // dismissed by a parent Dialog unmount. ──────────────────────────────────────
 export function AddWalletDialog({ onClose }) {
+  const { t } = useTranslation("wallet");
   const { addWallet, importAdditionalWallet, confirmWalletBackup } = useWallet();
   const isPin = getAuthModel() === "pin";
   const [mode, setMode] = useState("create"); // 'create' | 'import'
@@ -159,16 +162,16 @@ export function AddWalletDialog({ onClose }) {
     try {
       const res = await addWallet(password, { name: name.trim(), enabledAssets: assets });
       setCreated(res); // swap to backup step (same Dialog)
-    } catch (e) { setError(e?.message || "Could not add wallet"); }
+    } catch (e) { setError(e?.message || t("portfolio.errors.couldNotAddWallet")); }
     finally { setBusy(false); }
   };
   const doImport = async () => {
     setError(""); setBusy(true);
     try {
       await importAdditionalWallet(password, phrase, { name: name.trim(), enabledAssets: assets });
-      toast.success("Wallet imported — all chains derived.");
+      toast.success(t("portfolio.toast.walletImported"));
       onClose();
-    } catch (e) { setError(e?.message || "Could not import wallet"); }
+    } catch (e) { setError(e?.message || t("portfolio.errors.couldNotImportWallet")); }
     finally { setBusy(false); }
   };
 
@@ -178,64 +181,63 @@ export function AddWalletDialog({ onClose }) {
         {created ? (
           <>
             <DialogHeader>
-              <DialogTitle className="sr-only">Back up "{name.trim() || "your new wallet"}"</DialogTitle>
+              <DialogTitle className="sr-only">{t("portfolio.backup.title", { name: name.trim() || t("portfolio.addWallet.defaultWalletName") })}</DialogTitle>
             </DialogHeader>
             <div className="flex flex-col items-center text-center gap-3 pt-1 pb-2">
-              <VaultIllustration size={132} label="Encrypted vault" />
-              <h2 className="text-lg font-semibold tracking-tight">Back up "{name.trim() || "your new wallet"}"</h2>
+              <VaultIllustration size={132} label={t("portfolio.encryptedVaultLabel")} />
+              <h2 className="text-lg font-semibold tracking-tight">{t("portfolio.backup.title", { name: name.trim() || t("portfolio.addWallet.defaultWalletName") })}</h2>
               <p className="text-xs text-muted-foreground max-w-[20rem]">
-                This wallet has its own recovery phrase — separate from every other
-                wallet in your vault. Write it down offline before you use it.
+                {t("portfolio.addWallet.backupDescription")}
               </p>
             </div>
             <div className="flex items-start gap-2 p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
               <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              <span>Never take a screenshot. Never type it into another app.</span>
+              <span>{t("portfolio.backup.warning")}</span>
             </div>
             <SeedGrid mnemonic={created.mnemonic} />
             <DialogFooter>
-              <Button className="w-full gap-2" onClick={() => { confirmWalletBackup(created.walletId); toast.success("Wallet added and backed up."); onClose(); }}>
-                <Check className="h-4 w-4" /> I've backed it up — done
+              <Button className="w-full gap-2" onClick={() => { confirmWalletBackup(created.walletId); toast.success(t("portfolio.toast.walletAddedBackedUp")); onClose(); }}>
+                <Check className="h-4 w-4" /> {t("portfolio.addWallet.backedUpDone")}
               </Button>
             </DialogFooter>
           </>
         ) : (
           <>
-            <DialogHeader><DialogTitle>Add a wallet</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("portfolio.addWallet.title")}</DialogTitle></DialogHeader>
             <div className="flex gap-2 p-1 rounded-lg bg-secondary text-xs">
-              <button className={`flex-1 py-1.5 rounded-md ${mode === "create" ? "bg-card font-medium" : "text-muted-foreground"}`} onClick={() => setMode("create")}>Create new</button>
-              <button className={`flex-1 py-1.5 rounded-md ${mode === "import" ? "bg-card font-medium" : "text-muted-foreground"}`} onClick={() => setMode("import")}>Import seed</button>
+              <button className={`flex-1 py-1.5 rounded-md ${mode === "create" ? "bg-card font-medium" : "text-muted-foreground"}`} onClick={() => setMode("create")}>{t("portfolio.addWallet.createNew")}</button>
+              <button className={`flex-1 py-1.5 rounded-md ${mode === "import" ? "bg-card font-medium" : "text-muted-foreground"}`} onClick={() => setMode("import")}>{t("portfolio.addWallet.importSeed")}</button>
             </div>
             <div className="space-y-3 pt-1">
               <p className="text-xs text-muted-foreground">
                 {mode === "create"
-                  ? "Generates a NEW seed that derives ALL chains (ETH/EVM, BTC, SOL). You'll back it up before it's active."
-                  : "Paste an existing 12/24-word seed — all chains are derived automatically (a seed isn't chain-specific)."}
+                  ? t("portfolio.addWallet.createDescription")
+                  : t("portfolio.addWallet.importDescription")}
               </p>
               {mode === "import" && (
                 <div>
-                  <Label>Recovery phrase</Label>
-                  <textarea value={phrase} onChange={(e) => setPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 ... word12"
+                  <Label>{t("portfolio.addWallet.recoveryPhraseLabel")}</Label>
+                  <textarea value={phrase} onChange={(e) => setPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder={t("portfolio.addWallet.recoveryPhrasePlaceholder")}
                     className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
                 </div>
               )}
               <div>
-                <Label>Wallet name</Label>
-                <Input className="mt-1.5" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Savings" maxLength={40} />
+                <Label>{t("portfolio.addWallet.walletNameLabel")}</Label>
+                <Input className="mt-1.5" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("portfolio.addWallet.walletNamePlaceholder")} maxLength={40} />
               </div>
               <div>
-                <Label>Assets to show</Label>
-                <p className="text-[11px] text-muted-foreground mb-1.5">Display choice only — the seed holds every chain regardless.</p>
+                <Label>{t("portfolio.addWallet.assetsToShowLabel")}</Label>
+                <p className="text-[11px] text-muted-foreground mb-1.5">{t("portfolio.addWallet.assetsToShowHint")}</p>
                 <AssetPicker selected={assets} onToggle={toggleAsset} />
               </div>
               <div>
-                <Label>{isPin ? "Vault PIN" : "Vault password"}</Label>
+                <Label>{isPin ? t("portfolio.vaultPinLabel") : t("portfolio.vaultPasswordLabel")}</Label>
                 {isPin ? (
-                  <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={mode === "create" ? doCreate : doImport} disabled={busy || (mode === "import" && !phrase.trim())} submitLabel={mode === "create" ? "Create & back up" : "Import wallet"} aria-label="Vault PIN" /></div>
+                  <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={mode === "create" ? doCreate : doImport} disabled={busy || (mode === "import" && !phrase.trim())} submitLabel={mode === "create" ? t("portfolio.addWallet.createAndBackup") : t("portfolio.addWallet.importWallet")} aria-label={t("portfolio.vaultPinLabel")} /></div>
                 ) : (
-                  <PasswordInput className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Confirm it's you to change your vault" />
+                  <PasswordInput className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("portfolio.addWallet.confirmVaultPlaceholder")} />
                 )}
-                <p className="text-xs text-muted-foreground mt-1">Re-entered to authorise a change to your seed vault. Never kept in memory.</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("portfolio.addWallet.vaultReentryHint")}</p>
               </div>
               {error && <p className="text-xs text-destructive">{error}</p>}
             </div>
@@ -243,11 +245,11 @@ export function AddWalletDialog({ onClose }) {
               {!isPin && (
                 <Button className="w-full gap-2" disabled={busy || !password || (mode === "import" && !phrase.trim())} onClick={mode === "create" ? doCreate : doImport}>
                   {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Plus className="h-4 w-4" />}
-                  {mode === "create" ? "Create & back up" : "Import wallet"}
+                  {mode === "create" ? t("portfolio.addWallet.createAndBackup") : t("portfolio.addWallet.importWallet")}
                 </Button>
               )}
               <Button variant="ghost" className="w-full" onClick={onClose} disabled={busy}>
-                Cancel
+                {t("portfolio.cancel")}
               </Button>
             </DialogFooter>
           </>
@@ -258,13 +260,14 @@ export function AddWalletDialog({ onClose }) {
 }
 
 function ManageAssetsDialog({ wallet, onClose }) {
+  const { t } = useTranslation("wallet");
   const { toggleWalletAsset } = useWallet();
   const enabled = new Set(wallet.enabledAssets || []);
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Assets for "{wallet.name}"</DialogTitle></DialogHeader>
-        <p className="text-xs text-muted-foreground">Choose which assets show for this wallet. Hidden ones stay out of the way until added.</p>
+        <DialogHeader><DialogTitle>{t("portfolio.manageAssets.title", { name: wallet.name })}</DialogTitle></DialogHeader>
+        <p className="text-xs text-muted-foreground">{t("portfolio.manageAssets.description")}</p>
         <div className="space-y-1.5 pt-1 max-h-80 overflow-y-auto">
           {ASSETS.map((a) => (
             <label key={a.symbol} className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border bg-card cursor-pointer">
@@ -273,28 +276,30 @@ function ManageAssetsDialog({ wallet, onClose }) {
             </label>
           ))}
         </div>
-        <DialogFooter><Button className="w-full" onClick={onClose}>Done</Button></DialogFooter>
+        <DialogFooter><Button className="w-full" onClick={onClose}>{t("portfolio.done")}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
 function RenameDialog({ wallet, onClose }) {
+  const { t } = useTranslation("wallet");
   const { renameWallet } = useWallet();
   const [name, setName] = useState(wallet?.name || "");
   const save = () => { if (name.trim()) { renameWallet(wallet.id, name.trim()); onClose(); } };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Rename wallet</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("portfolio.rename.title")}</DialogTitle></DialogHeader>
         <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={40} onKeyDown={(e) => { if (e.key === "Enter") save(); }} />
-        <DialogFooter><Button className="w-full" disabled={!name.trim()} onClick={save}>Save name</Button></DialogFooter>
+        <DialogFooter><Button className="w-full" disabled={!name.trim()} onClick={save}>{t("portfolio.rename.save")}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
 export function RemoveDialog({ wallet, canRemove, onClose }) {
+  const { t } = useTranslation("wallet");
   const { removeWallet } = useWallet();
   const isPin = getAuthModel() === "pin";
   const [password, setPassword] = useState("");
@@ -302,25 +307,25 @@ export function RemoveDialog({ wallet, canRemove, onClose }) {
   const [error, setError] = useState("");
   const doRemove = async () => {
     setError(""); setBusy(true);
-    try { await removeWallet(password, wallet.id); toast.success("Wallet removed from this device."); onClose(); }
-    catch (e) { setError(e?.message || "Could not remove wallet"); }
+    try { await removeWallet(password, wallet.id); toast.success(t("portfolio.toast.walletRemoved")); onClose(); }
+    catch (e) { setError(e?.message || t("portfolio.errors.couldNotRemoveWallet")); }
     finally { setBusy(false); }
   };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Remove "{wallet.name}"?</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("portfolio.remove.title", { name: wallet.name })}</DialogTitle></DialogHeader>
         {!canRemove ? (
-          <p className="text-sm text-muted-foreground">This is your only wallet — it can't be removed. Use Panic Wipe in Security to erase everything.</p>
+          <p className="text-sm text-muted-foreground">{t("portfolio.remove.onlyWallet")}</p>
         ) : (
           <div className="space-y-3">
             <div className="p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
-              Removes this wallet's seed from this device. {wallet.backedUp ? "You can restore it from its recovery phrase." : "⚠️ NOT backed up — without its phrase it is gone forever."}
+              {t("portfolio.remove.description")} {wallet.backedUp ? t("portfolio.remove.backedUpNote") : t("portfolio.remove.notBackedUpNote")}
             </div>
             <div>
-              <Label>{isPin ? "Vault PIN" : "Vault password"}</Label>
+              <Label>{isPin ? t("portfolio.vaultPinLabel") : t("portfolio.vaultPasswordLabel")}</Label>
               {isPin ? (
-                <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={doRemove} disabled={busy} submitLabel="Remove wallet" aria-label="Vault PIN" /></div>
+                <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={doRemove} disabled={busy} submitLabel={t("portfolio.remove.button")} aria-label={t("portfolio.vaultPinLabel")} /></div>
               ) : (
                 <PasswordInput className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} />
               )}
@@ -331,7 +336,7 @@ export function RemoveDialog({ wallet, canRemove, onClose }) {
         {canRemove && !isPin && (
           <DialogFooter>
             <Button variant="destructive" className="w-full gap-2" disabled={busy || !password} onClick={doRemove}>
-              {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Trash2 className="h-4 w-4" />} Remove wallet
+              {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Trash2 className="h-4 w-4" />} {t("portfolio.remove.button")}
             </Button>
           </DialogFooter>
         )}
@@ -342,14 +347,15 @@ export function RemoveDialog({ wallet, canRemove, onClose }) {
 
 // Move a wallet to another portfolio (one-portfolio-per-wallet).
 function MovePortfolioDialog({ wallet, portfolios, currentId, onClose }) {
+  const { t } = useTranslation("wallet");
   const { assignWalletToPortfolio } = useWallet();
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Move "{wallet.name}" to…</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("portfolio.move.title", { name: wallet.name })}</DialogTitle></DialogHeader>
         <div className="space-y-1.5">
           {portfolios.map((p) => (
-            <button key={p.id} onClick={() => { assignWalletToPortfolio(wallet.id, p.id); toast.success(`Moved to ${p.name}.`); onClose(); }}
+            <button key={p.id} onClick={() => { assignWalletToPortfolio(wallet.id, p.id); toast.success(t("portfolio.toast.movedTo", { name: p.name })); onClose(); }}
               className={`w-full flex items-center justify-between gap-2 p-2.5 rounded-xl border ${p.id === currentId ? "border-primary bg-primary/5" : "border-border bg-card hover:bg-secondary"}`}>
               <span className="flex items-center gap-2 text-sm"><Folder className="h-4 w-4 text-muted-foreground" /> {p.name}</span>
               {p.id === currentId && <Check className="h-4 w-4 text-primary" />}
@@ -363,6 +369,7 @@ function MovePortfolioDialog({ wallet, portfolios, currentId, onClose }) {
 
 // Create / rename / delete portfolios.
 function ManagePortfoliosDialog({ portfolios, onClose }) {
+  const { t } = useTranslation("wallet");
   const { createPortfolio, renamePortfolio, deletePortfolio } = useWallet();
   const [newName, setNewName] = useState("");
   const [editId, setEditId] = useState(null);
@@ -370,7 +377,7 @@ function ManagePortfoliosDialog({ portfolios, onClose }) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Portfolios</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("portfolio.managePortfolios.title")}</DialogTitle></DialogHeader>
         <div className="space-y-1.5 max-h-72 overflow-y-auto">
           {portfolios.map((p) => (
             <div key={p.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-card">
@@ -379,27 +386,27 @@ function ManagePortfoliosDialog({ portfolios, onClose }) {
                 <Input className="h-8" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus
                   onKeyDown={(e) => { if (e.key === "Enter" && editName.trim()) { renamePortfolio(p.id, editName.trim()); setEditId(null); } }} />
               ) : (
-                <span className="text-sm flex-1">{p.name}{p.id === MAIN_PORTFOLIO_ID && <span className="text-[10px] text-muted-foreground ml-1">(default)</span>}</span>
+                <span className="text-sm flex-1">{p.name}{p.id === MAIN_PORTFOLIO_ID && <span className="text-[10px] text-muted-foreground ms-1">{t("portfolio.managePortfolios.defaultTag")}</span>}</span>
               )}
               {editId === p.id ? (
-                <button className="p-1 text-primary" aria-label="Save portfolio name" onClick={() => { if (editName.trim()) renamePortfolio(p.id, editName.trim()); setEditId(null); }}><Check className="h-4 w-4" /></button>
+                <button className="p-1 text-primary" aria-label={t("portfolio.managePortfolios.saveAriaLabel")} onClick={() => { if (editName.trim()) renamePortfolio(p.id, editName.trim()); setEditId(null); }}><Check className="h-4 w-4" /></button>
               ) : (
-                <button className="p-1 text-muted-foreground hover:text-foreground" aria-label={`Rename ${p.name}`} onClick={() => { setEditId(p.id); setEditName(p.name); }}><Pencil className="h-3.5 w-3.5" /></button>
+                <button className="p-1 text-muted-foreground hover:text-foreground" aria-label={t("portfolio.managePortfolios.renameAriaLabel", { name: p.name })} onClick={() => { setEditId(p.id); setEditName(p.name); }}><Pencil className="h-3.5 w-3.5" /></button>
               )}
               {p.id !== MAIN_PORTFOLIO_ID && (
-                <button className="p-1 text-destructive" aria-label={`Delete ${p.name}`} onClick={() => deletePortfolio(p.id)}><Trash2 className="h-3.5 w-3.5" /></button>
+                <button className="p-1 text-destructive" aria-label={t("portfolio.managePortfolios.deleteAriaLabel", { name: p.name })} onClick={() => deletePortfolio(p.id)}><Trash2 className="h-3.5 w-3.5" /></button>
               )}
             </div>
           ))}
         </div>
         <div className="flex gap-2 pt-1">
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="New portfolio name"
+          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("portfolio.managePortfolios.newNamePlaceholder")}
             onKeyDown={(e) => { if (e.key === "Enter" && newName.trim()) { createPortfolio(newName.trim()); setNewName(""); } }} />
           <Button className="gap-1.5 shrink-0" disabled={!newName.trim()} onClick={() => { createPortfolio(newName.trim()); setNewName(""); }}>
-            <FolderPlus className="h-4 w-4" /> Add
+            <FolderPlus className="h-4 w-4" /> {t("portfolio.managePortfolios.addButton")}
           </Button>
         </div>
-        <DialogFooter><Button variant="outline" className="w-full" onClick={onClose}>Done</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" className="w-full" onClick={onClose}>{t("portfolio.done")}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -430,6 +437,7 @@ function AnalyticsChartContent({ wallet, currentBalance }) {
 }
 
 function ActivityTabContent({ wallet }) {
+  const { t } = useTranslation("wallet");
   const address = wallet?.accounts?.[0]?.address || null;
   const { data: txs, isLoading, isError } = useQuery({
     queryKey: ["history", "ETH", address],
@@ -439,17 +447,17 @@ function ActivityTabContent({ wallet }) {
   });
 
   if (!wallet) {
-    return <p className="text-sm text-center text-muted-foreground py-10">Unlock your wallet to view activity.</p>;
+    return <p className="text-sm text-center text-muted-foreground py-10">{t("portfolio.activity.unlockPrompt")}</p>;
   }
   if (isLoading) {
-    return <p className="text-sm text-center text-muted-foreground py-10">Loading...</p>;
+    return <p className="text-sm text-center text-muted-foreground py-10">{t("portfolio.activity.loading")}</p>;
   }
   const txList = txs?.transactions ?? [];
   if (isError || !txList.length) {
     return (
       <div className="text-center py-10 space-y-3">
-        <p className="text-sm text-muted-foreground">{isError ? "Could not load activity." : "No transactions yet."}</p>
-        <a href="/tx-history" className="text-xs text-primary hover:underline">View full history &rarr;</a>
+        <p className="text-sm text-muted-foreground">{isError ? t("portfolio.activity.loadError") : t("portfolio.activity.noTransactions")}</p>
+        <a href="/tx-history" className="text-xs text-primary hover:underline">{t("portfolio.activity.viewFullHistory")}</a>
       </div>
     );
   }
@@ -479,7 +487,7 @@ function ActivityTabContent({ wallet }) {
                 {tx.type === "send" ? tx.to : tx.from}
               </p>
             </div>
-            <div className="text-right shrink-0 flex items-center gap-1.5">
+            <div className="text-end shrink-0 flex items-center gap-1.5">
               <div>
                 <p className={`text-sm font-semibold ${isSend ? "text-destructive" : "text-primary"}`}>
                   {isSend ? "-" : "+"}{tx.amount} {tx.currency}
@@ -496,13 +504,14 @@ function ActivityTabContent({ wallet }) {
         );
       })}
       <a href="/tx-history" className="block text-center text-xs text-primary hover:underline pt-2">
-        View full history &rarr;
+        {t("portfolio.activity.viewFullHistory")}
       </a>
     </div>
   );
 }
 
 export default function WalletPortfolioPage() {
+  const { t } = useTranslation("wallet");
   const navigate = useNavigate();
   const {
     isUnlocked, requireWallet,
@@ -517,6 +526,14 @@ export default function WalletPortfolioPage() {
   const [removeTarget, setRemoveTarget] = useState(null);
   const [moveTarget, setMoveTarget] = useState(null);
   const [menuFor, setMenuFor] = useState(null);
+  // Display fiat mirrors the picker on Dashboard/NetWorth — the earlier hardcoded
+  // "USD" here rendered every total in dollars even after a user picked GBP/EUR/JPY
+  // in the Dashboard selector (the selector wrote to storage; this page never
+  // read it). fmtFiat is bound to (currency, locale) so per-locale formatting
+  // (symbol placement, JPY 0-decimal) applies consistently across all four call
+  // sites below.
+  const { locale, fiatCurrency } = useLocalePreferences();
+  const fmtFiat = (usd) => formatFiat(usd, fiatCurrency, locale);
   const [backupTarget, setBackupTarget] = useState(null);
   const [pfManageOpen, setPfManageOpen] = useState(false);
   // Seed reveal (2FA gate + M6 recent-auth window). On a lapsed window this shows
@@ -609,14 +626,14 @@ export default function WalletPortfolioPage() {
     return (
       <div className="max-w-lg mx-auto space-y-5 pt-6">
         <div className="text-center space-y-1">
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Portfolio Value</p>
-          <p className="text-4xl font-bold">{formatFiat(0, "USD")}</p>
-          <p className="text-xs text-muted-foreground">You're exploring — view only. No wallet yet.</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">{t("portfolio.portfolioValueLabel")}</p>
+          <p className="text-4xl font-bold">{fmtFiat(0)}</p>
+          <p className="text-xs text-muted-foreground">{t("portfolio.explore.subtitle")}</p>
         </div>
         <div className="p-6 rounded-2xl border border-dashed border-border bg-card text-center space-y-4">
           <Wallet className="h-8 w-8 text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Look around freely. When you're ready, create a new self-custody wallet or import an existing seed — keys are generated and encrypted on this device.</p>
-          <Button className="w-full gap-2" onClick={() => requireWallet()}><Plus className="h-4 w-4" /> Create or import a wallet</Button>
+          <p className="text-sm text-muted-foreground">{t("portfolio.explore.description")}</p>
+          <Button className="w-full gap-2" onClick={() => requireWallet()}><Plus className="h-4 w-4" /> {t("portfolio.explore.createOrImport")}</Button>
         </div>
         <div className="grid grid-cols-3 gap-2 opacity-60 pointer-events-none select-none">
           {["ETH", "BTC", "SOL"].map((s) => (
@@ -656,27 +673,27 @@ export default function WalletPortfolioPage() {
           tabIndex={0}
           onClick={() => switchWallet(w.id)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); switchWallet(w.id); } }}
-          className="w-full text-left flex items-center justify-between gap-2 px-4 py-3 border-b border-border hover:bg-secondary/40 active:bg-secondary/60 transition-colors cursor-pointer"
+          className="w-full text-start flex items-center justify-between gap-2 px-4 py-3 border-b border-border hover:bg-secondary/40 active:bg-secondary/60 transition-colors cursor-pointer"
         >
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               {isActive && <Star className="h-3 w-3 text-primary fill-primary shrink-0" />}
               <p className="text-sm font-semibold truncate">{w.name}</p>
-              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary">Active</span>}
+              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary">{t("portfolio.walletCard.active")}</span>}
               {w.backedUp
-                ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/15 text-success">Backed up</span>
-                : <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">Back up</span>}
+                ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/15 text-success">{t("portfolio.walletCard.backedUp")}</span>
+                : <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">{t("portfolio.walletCard.backUp")}</span>}
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatFiat(data.total, "USD")}
-              {data.indeterminate && <span className="text-caution"> · partial</span>}
+              {fmtFiat(data.total)}
+              {data.indeterminate && <span className="text-caution"> · {t("portfolio.walletCard.partial")}</span>}
             </p>
           </div>
           {canManage && (
             <div className="relative" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
-                aria-label={`Options for ${w.name}`}
+                aria-label={t("portfolio.walletCard.optionsAriaLabel", { name: w.name })}
                 aria-haspopup="menu"
                 aria-expanded={menuFor === w.id}
                 onClick={() => setMenuFor(menuFor === w.id ? null : w.id)}
@@ -685,12 +702,12 @@ export default function WalletPortfolioPage() {
                 <MoreVertical className="h-4 w-4" />
               </button>
               {menuFor === w.id && (
-                <div className="absolute right-0 top-11 z-20 w-48 rounded-xl border border-border bg-popover shadow-lg py-1 text-sm">
-                  <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> Manage assets</button>
-                  <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setRenameTarget(w); }}><Pencil className="h-3.5 w-3.5" /> Rename</button>
-                  <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setMoveTarget(w); }}><ArrowRightLeft className="h-3.5 w-3.5" /> Move to portfolio</button>
-                  {!w.backedUp && <button className="w-full text-left px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); revealWithReauth(w.id); }}><ShieldAlert className="h-3.5 w-3.5" /> Back up</button>}
-                  <button className="w-full text-left px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> Remove</button>
+                <div className="absolute end-0 top-11 z-20 w-48 rounded-xl border border-border bg-popover shadow-lg py-1 text-sm">
+                  <button className="w-full text-start px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setManageWallet(w); }}><SlidersHorizontal className="h-3.5 w-3.5" /> {t("portfolio.menu.manageAssets")}</button>
+                  <button className="w-full text-start px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setRenameTarget(w); }}><Pencil className="h-3.5 w-3.5" /> {t("portfolio.menu.rename")}</button>
+                  <button className="w-full text-start px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); setMoveTarget(w); }}><ArrowRightLeft className="h-3.5 w-3.5" /> {t("portfolio.menu.moveToPortfolio")}</button>
+                  {!w.backedUp && <button className="w-full text-start px-3 py-2 hover:bg-secondary flex items-center gap-2" onClick={() => { setMenuFor(null); revealWithReauth(w.id); }}><ShieldAlert className="h-3.5 w-3.5" /> {t("portfolio.menu.backUp")}</button>}
+                  <button className="w-full text-start px-3 py-2 hover:bg-secondary text-destructive flex items-center gap-2" onClick={() => { setMenuFor(null); setRemoveTarget(w); }}><Trash2 className="h-3.5 w-3.5" /> {t("portfolio.menu.remove")}</button>
                 </div>
               )}
             </div>
@@ -698,7 +715,7 @@ export default function WalletPortfolioPage() {
         </div>
         <div className="divide-y divide-border">
           {(w.enabledAssets || []).length === 0 ? (
-            <p className="px-4 py-4 text-xs text-muted-foreground text-center">No assets shown. Use "Manage assets".</p>
+            <p className="px-4 py-4 text-xs text-muted-foreground text-center">{t("portfolio.walletCard.noAssetsShown")}</p>
           ) : (w.enabledAssets || []).map((symbol) => {
             const a = getAsset(symbol);
             // A genuinely MISSING row (not yet computed / race) is INDETERMINATE,
@@ -706,21 +723,21 @@ export default function WalletPortfolioPage() {
             // the row renders "—", never a fabricated $0.00 (I4 fail-closed).
             const row = resolveAssetRow(data.assets, symbol);
             return (
-              <button key={symbol} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-left flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
+              <button key={symbol} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
                 <CoinLogo symbol={symbol} size={36} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{symbol}</p>
                   <p className="text-xs text-muted-foreground truncate">{a?.name}</p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-end shrink-0">
                   <p
                     className="text-sm font-mono flex items-center justify-end gap-1"
-                    title={row.indeterminate ? "Balance couldn't be loaded" : undefined}
+                    title={row.indeterminate ? t("portfolio.balanceLoadFailedTitle") : undefined}
                   >
                     {fmtAmount(row.amount)}
                     {row.indeterminate && (
                       <span
-                        aria-label="Balance couldn't be loaded"
+                        aria-label={t("portfolio.balanceLoadFailedTitle")}
                         className="text-amber-400 opacity-70 text-xs leading-none"
                       >
                         ⚠
@@ -728,7 +745,7 @@ export default function WalletPortfolioPage() {
                     )}
                   </p>
                   {/* indeterminate read → "—", not a misleading $0.00 */}
-                  <p className="text-[10px] text-muted-foreground">{row.indeterminate ? "—" : formatFiat(row.usd, "USD")}</p>
+                  <p className="text-[10px] text-muted-foreground">{row.indeterminate ? "—" : fmtFiat(row.usd)}</p>
                 </div>
               </button>
             );
@@ -753,20 +770,20 @@ export default function WalletPortfolioPage() {
         ))}
         {canManage && (
           <button onClick={() => setPfManageOpen(true)} className="shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:bg-secondary">
-            <FolderPlus className="h-3.5 w-3.5" /> Portfolios
+            <FolderPlus className="h-3.5 w-3.5" /> {t("portfolio.portfoliosButton")}
           </button>
         )}
       </div>
 
       {/* Active-portfolio total */}
       <div className="text-center py-3">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{activePortfolioName} · Total Value</p>
-        <p className="text-4xl font-bold">{formatFiat(pfTotal, "USD")}</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{t("portfolio.totalValueHeading", { name: activePortfolioName })}</p>
+        <p className="text-4xl font-bold">{fmtFiat(pfTotal)}</p>
         {/* I4 fail-closed: when a balance read failed, the total is incomplete —
             say so rather than presenting a silently-understated figure as fact.
             Same copy in decoy and real sessions (no isDecoy branch). */}
         {pfIncomplete && (
-          <p className="text-xs text-caution mt-1">{PARTIAL_TOTAL_NOTE}</p>
+          <p className="text-xs text-caution mt-1">{t("portfolio.partialTotalNote")}</p>
         )}
         <div className="mt-1 flex justify-center">
           {priceBasis === "live" ? (
@@ -774,13 +791,13 @@ export default function WalletPortfolioPage() {
               type="button"
               onClick={() => refetchPrices?.()}
               className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-              title="Refresh live prices"
+              title={t("portfolio.refreshPricesTooltip")}
             >
               <RefreshCw className="h-3 w-3" />
-              {"Live"}{pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : ""}
+              {t("portfolio.live")}{pricesUpdatedAt ? " · " + fmtPriceTime(pricesUpdatedAt) : ""}
             </button>
           ) : (
-            <span className="text-[10px] text-muted-foreground">Approximate</span>
+            <span className="text-[10px] text-muted-foreground">{t("portfolio.approximate")}</span>
           )}
         </div>
         <ReferenceRateNote />
@@ -806,11 +823,11 @@ export default function WalletPortfolioPage() {
         <div role="status" className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
           <ShieldAlert className="h-5 w-5 text-caution shrink-0" aria-hidden="true" />
           <div className="flex-1">
-            <p className="text-sm font-medium">Finish verifying your backup</p>
-            <p className="text-xs text-muted-foreground">Required for sending above the safety threshold.</p>
+            <p className="text-sm font-medium">{t("portfolio.seedVerify.title")}</p>
+            <p className="text-xs text-muted-foreground">{t("portfolio.seedVerify.description")}</p>
           </div>
-          <Button size="sm" variant="outline" aria-label="Verify your wallet backup" onClick={() => navigate('/verify')}>
-            Verify
+          <Button size="sm" variant="outline" aria-label={t("portfolio.seedVerify.verifyAriaLabel")} onClick={() => navigate('/verify')}>
+            {t("portfolio.seedVerify.verifyButton")}
           </Button>
         </div>
       )}
@@ -829,14 +846,14 @@ export default function WalletPortfolioPage() {
           <div className="flex items-start gap-2">
             <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">
-              <b>Wallet backup incomplete.</b> Each wallet has its own recovery phrase — without it, that wallet's funds are unrecoverable. Back up now.
+              <b>{t("portfolio.unbacked.titleBold")}</b> {t("portfolio.unbacked.body")}
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {unbacked.map((w) => (
               <button key={w.id} onClick={() => revealWithReauth(w.id)}
                 className="text-[11px] px-2 py-1 rounded-md bg-caution/20 text-caution hover:bg-caution/30">
-                Back up "{w.name}"
+                {t("portfolio.unbacked.backUpButton", { name: w.name })}
               </button>
             ))}
           </div>
@@ -845,13 +862,13 @@ export default function WalletPortfolioPage() {
 
       {/* Actions */}
       <div className="grid grid-cols-3 gap-2">
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => { const asset = defaultAssetSymbol(activeWallet?.enabledAssets ?? ["ETH"], ""); navigate(`/send?asset=${asset || "ETH"}`); }}><Send className="h-5 w-5" /><span className="text-xs">Send</span></Button>
-        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/receive")}><Download className="h-5 w-5" /><span className="text-xs">Receive</span></Button>
-        <Button variant="secondary" className="flex-col h-16 gap-1" disabled={!canManage} onClick={() => setAddOpen(true)}><Plus className="h-5 w-5" /><span className="text-xs">Add wallet</span></Button>
+        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => { const asset = defaultAssetSymbol(activeWallet?.enabledAssets ?? ["ETH"], ""); navigate(`/send?asset=${asset || "ETH"}`); }}><Send className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.send")}</span></Button>
+        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/receive")}><Download className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.receive")}</span></Button>
+        <Button variant="secondary" className="flex-col h-16 gap-1" disabled={!canManage} onClick={() => setAddOpen(true)}><Plus className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.addWallet")}</span></Button>
       </div>
       {activeWallet && (
         <p className="text-[11px] text-center text-muted-foreground">
-          Send/Receive use <b>{activeWallet.name}</b>{!activeInThisPortfolio ? " (in another portfolio)" : ""}. Tap a wallet below to switch.
+          {t("portfolio.activeWalletHint.prefix")} <b>{activeWallet.name}</b>{!activeInThisPortfolio ? t("portfolio.activeWalletHint.otherPortfolio") : ""}{t("portfolio.activeWalletHint.suffix")}
         </p>
       )}
 
@@ -868,16 +885,16 @@ export default function WalletPortfolioPage() {
       {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">
         <TabsList className="w-full bg-secondary">
-          <TabsTrigger value="tokens" className="flex-1">Tokens</TabsTrigger>
-          <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
-          <TabsTrigger value="analytics" className="flex-1">Analytics</TabsTrigger>
+          <TabsTrigger value="tokens" className="flex-1">{t("portfolio.tabs.tokens")}</TabsTrigger>
+          <TabsTrigger value="activity" className="flex-1">{t("portfolio.tabs.activity")}</TabsTrigger>
+          <TabsTrigger value="analytics" className="flex-1">{t("portfolio.tabs.analytics")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tokens" className="mt-3">
           {/* Per-wallet breakdown (active portfolio only) */}
           {pfWallets.length === 0 ? (
             <div className="text-center py-10 text-sm text-muted-foreground">
-              No wallets in &quot;{activePortfolioName}&quot;. Add a wallet, or move one here from its menu.
+              {t("portfolio.noWalletsInPortfolio", { name: activePortfolioName })}
             </div>
           ) : isZeroState ? (
             <div className="space-y-3">
@@ -896,7 +913,7 @@ export default function WalletPortfolioPage() {
                 className="w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
               >
                 {showZeroAssets ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                {showZeroAssets ? "Hide assets" : "Show all assets"}
+                {showZeroAssets ? t("portfolio.hideAssets") : t("portfolio.showAllAssets")}
               </button>
               {showZeroAssets && <div className="space-y-4">{walletCards}</div>}
             </div>
@@ -942,12 +959,12 @@ export default function WalletPortfolioPage() {
       {backupTarget && (
         <BackupDialog walletName={backupTarget.name} mnemonic={backupTarget.mnemonic}
           onClose={() => setBackupTarget(null)}
-          onConfirm={() => { confirmWalletBackup(backupTarget.id); toast.success(`"${backupTarget.name}" marked backed up.`); setBackupTarget(null); }} />
+          onConfirm={() => { confirmWalletBackup(backupTarget.id); toast.success(t("portfolio.toast.markedBackedUp", { name: backupTarget.name })); setBackupTarget(null); }} />
       )}
       {/* Session-timeout re-auth — inline "unlock again" prompt (same dialog chrome
           as BackupDialog) instead of a dead-end toast. See useRevealWithReauth. */}
       {isReauthPending && (
-        <BackupDialog walletName={pendingReauthWallet?.name || "wallet"} reauthPrompt={reauthPrompt}
+        <BackupDialog walletName={pendingReauthWallet?.name || t("portfolio.defaultWalletFallbackName")} reauthPrompt={reauthPrompt}
           onClose={cancelReauth} />
       )}
       {/* PIN + Action Password 2FA gate (seed reveal) — no-op until one is configured */}

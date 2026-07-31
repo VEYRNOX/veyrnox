@@ -276,11 +276,12 @@ export function vaultAad(blob) {
   // but encryptVaultWithDek seals AAD off a salt-free stub — exclude salt for kek-dek
   // so encrypt and decrypt agree (Codex P1 #1).
   //
-  // Accepted residual (#1111): kek-dek blobs do NOT bind hardwareKekVersion into the
-  // AAD. Adding it would require a VAULT_VERSION bump (2→3) + migration path for
-  // existing v:2 kek-dek blobs, and the kekVersion is already enforced by the
-  // salt-binding chain (v3 kekSalt → combineKek → KEK → wrapDek). Deferred until
-  // the next protocol-version bump where it can be added atomically.
+  // Accepted residual (I-1, #1111): kek-dek blobs do NOT bind kekWrap, kekSalt, or
+  // hardwareKekVersion into the AAD. The kekVersion is already enforced by the
+  // salt-binding chain (v3 kekSalt → combineKek → KEK → wrapDek), so a version-swap
+  // short-circuits at unwrap; the residual is that these fields are not directly
+  // authenticated by GCM at the vault layer. Fix ships atomically as a VAULT_VERSION
+  // bump 2→3 with a silent re-authenticate migration — see docs/vault-aad-v3-plan.md.
   // TS narrowing: blob is Record<string,unknown> so blob.kdf is `unknown`.
   // Cast to the concrete kdf shape so the object-branch below has typed field
   // access. Runtime invariant: assertSaneKdfParams (called upstream on read

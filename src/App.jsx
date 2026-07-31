@@ -22,8 +22,12 @@ import DeepLinkHandler from '@/components/DeepLinkHandler';
 import { VoiceProvider } from '@/context/VoiceContext';
 import VoiceFab from '@/components/VoiceFab';
 import Spinner from '@/components/Spinner';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import OfflineBanner from '@/components/OfflineBanner';
+import { installGlobalErrorHandlers } from '@/lib/globalErrorHandlers';
 import { captureReferralFromUrl } from '@/lib/referralAttribution';
 import { useCryptoDiagnostics } from '@/lib/tracking-integration';
+import { resolveLocale, LOCALE_CHANGED_EVENT, isRtlLocale } from '@/lib/locale';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -244,26 +248,51 @@ const AuthenticatedApp = () => {
 
 function App() {
   useEffect(() => { captureReferralFromUrl(); }, []);
+  useEffect(() => installGlobalErrorHandlers(), []);
+
+  // Keep <html lang> AND <html dir> in sync with the resolved user locale.
+  // index.html hardcodes lang="en" dir="ltr" for the first paint (before JS
+  // runs); screen readers, auto-translate heuristics, and Tailwind's `rtl:`
+  // variants all read these attributes. Re-runs on LOCALE_CHANGED_EVENT so
+  // the Settings switcher flips both without a reload.
+  useEffect(() => {
+    const apply = () => {
+      try {
+        const lang = resolveLocale();
+        if (typeof document !== 'undefined' && lang) {
+          document.documentElement.setAttribute('lang', lang);
+          document.documentElement.setAttribute('dir', isRtlLocale(lang) ? 'rtl' : 'ltr');
+        }
+      } catch { /* fail closed: leave the existing attributes */ }
+    };
+    apply();
+    if (typeof window === 'undefined') return;
+    window.addEventListener(LOCALE_CHANGED_EVENT, apply);
+    return () => window.removeEventListener(LOCALE_CHANGED_EVENT, apply);
+  }, []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" storageKey="veyrnox-theme">
-      <WalletProvider>
-        <TrezorProvider>
-        <TierProvider>
-          <QueryClientProvider client={queryClientInstance}>
-            <Router>
-              <DeepLinkHandler />
-              <VoiceProvider>
-                <EnvBadge />
-                <AuthenticatedApp />
-                <VoiceFab />
-              </VoiceProvider>
-            </Router>
-            <Toaster />
-          </QueryClientProvider>
-        </TierProvider>
-        </TrezorProvider>
-      </WalletProvider>
+      <ErrorBoundary>
+        <WalletProvider>
+          <TrezorProvider>
+          <TierProvider>
+            <QueryClientProvider client={queryClientInstance}>
+              <Router>
+                <DeepLinkHandler />
+                <VoiceProvider>
+                  <EnvBadge />
+                  <AuthenticatedApp />
+                  <VoiceFab />
+                  <OfflineBanner />
+                </VoiceProvider>
+              </Router>
+              <Toaster />
+            </QueryClientProvider>
+          </TierProvider>
+          </TrezorProvider>
+        </WalletProvider>
+      </ErrorBoundary>
     </ThemeProvider>
   )
 }

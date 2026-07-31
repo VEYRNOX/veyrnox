@@ -10,6 +10,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
+import { formatUsd, resolveLocale } from "@/lib/locale";
 
 const RANGES = [
   { label: "7D", days: 7 },
@@ -18,8 +19,12 @@ const RANGES = [
   { label: "1Y", days: 365 },
 ];
 
-const fmt = (n) => "$" + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-const fmtSmall = (n) => "$" + Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+// Locale-aware currency formatters. Was `"$" + n.toLocaleString(...)` which
+// forced the en-US "$" prefix on every user. formatUsd renders per-locale
+// (de-DE: "1.234 $", fr-FR: "1 234 $US"). fmtSmall keeps the abs() because a
+// negative small value already carries the sign in the caller's UI.
+const fmt = (n) => formatUsd(n, resolveLocale(), { maximumFractionDigits: 0 });
+const fmtSmall = (n) => formatUsd(Math.abs(n), resolveLocale(), { maximumFractionDigits: 2 });
 
 const CustomTooltip = (/** @type {any} */ { active, payload, label } = {}) => {
   if (!active || !payload?.length) return null;
@@ -76,7 +81,7 @@ export default function Analytics() {
     const buckets = {};
     for (let i = range; i >= 0; i--) {
       const d = new Date(nowMs - i * 86400_000);
-      const key = d.toLocaleDateString('en-GB', range <= 30
+      const key = d.toLocaleDateString(undefined, range <= 30
         ? { day: 'numeric', month: 'short' }
         : { month: 'short', year: '2-digit' });
       if (!(key in buckets)) buckets[key] = totalUSD;
@@ -89,7 +94,7 @@ export default function Analytics() {
       const usd = parseFloat(tx.amount || '0') * rate;
       if (tx.type === 'send') running += usd;
       else if (tx.type === 'receive') running -= usd;
-      const key = new Date(tx.timestamp).toLocaleDateString('en-GB', range <= 30
+      const key = new Date(tx.timestamp).toLocaleDateString(undefined, range <= 30
         ? { day: 'numeric', month: 'short' }
         : { month: 'short', year: '2-digit' });
       if (key in buckets) buckets[key] = Math.max(0, Math.round(running));
@@ -103,13 +108,13 @@ export default function Analytics() {
     const months = {};
     for (let i = 5; i >= 0; i--) {
       const d = new Date(); d.setMonth(d.getMonth() - i);
-      const key = d.toLocaleString('en-GB', { month: 'short' });
+      const key = d.toLocaleString(undefined, { month: 'short' });
       if (!months[key]) months[key] = { month: key, gains: 0, losses: 0 };
     }
     if (pricesEnabled && prices) {
       for (const tx of history) {
         if (!tx.timestamp) continue;
-        const key = new Date(tx.timestamp).toLocaleString('en-GB', { month: 'short' });
+        const key = new Date(tx.timestamp).toLocaleString(undefined, { month: 'short' });
         if (!months[key]) continue;
         const rate = (prices[tx.assetSymbol] ?? USD_RATES[tx.assetSymbol]) || 0;
         const usd = parseFloat(tx.amount || '0') * rate;
@@ -217,7 +222,7 @@ export default function Analytics() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
+                <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={v => formatUsd(v, resolveLocale(), { compact: true, maximumFractionDigits: 1 })} width={36} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="value" name="Portfolio" stroke="hsl(var(--primary))" fill="url(#areaGrad)" strokeWidth={2} dot={false} />
               </AreaChart>
@@ -256,7 +261,7 @@ export default function Analytics() {
                       <div className="h-2 w-2 rounded-full shrink-0" style={{ background: CURRENCY_COLORS[d.name] || '#888' }} />
                       <span className="text-xs font-semibold">{d.name}</span>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <p className="text-xs font-mono">{pricesEnabled ? fmt(d.value) : "—"}</p>
                       <p className="text-[10px] text-muted-foreground">{pct}%</p>
                     </div>
@@ -281,7 +286,7 @@ export default function Analytics() {
             <BarChart data={pnlData} barCategoryGap="30%">
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={v => "$" + (v / 1000).toFixed(0) + "k"} width={36} />
+              <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={v => formatUsd(v, resolveLocale(), { compact: true, maximumFractionDigits: 1 })} width={36} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
               <Bar dataKey="gains" name="Received" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />

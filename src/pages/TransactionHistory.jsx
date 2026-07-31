@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { formatDistanceToNow } from "date-fns";
 import {
   ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Clock, CheckCircle2, XCircle,
@@ -36,6 +37,7 @@ function addressFor(asset, wallet) {
 }
 
 function TxRow({ tx }) {
+  const { t } = useTranslation("wallet");
   const sMeta = statusMeta[tx.status] || statusMeta.confirmed;
   const StatusIcon = sMeta.icon;
   const isSend = tx.type === "send";
@@ -53,19 +55,19 @@ function TxRow({ tx }) {
           <p className="text-sm font-medium capitalize">{tx.type}</p>
           <StatusIcon className={`h-3.5 w-3.5 ${sMeta.cls}`} />
           {tx.demo && (
-            <span className="text-[9px] px-1 py-0.5 rounded bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">Sample</span>
+            <span className="text-[9px] px-1 py-0.5 rounded bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">{t("tx.history.sample_badge")}</span>
           )}
         </div>
         <p className="text-xs text-muted-foreground truncate font-mono">
-          {isSend ? "To " : isSelf ? "" : "From "}{short(tx.counterparty) || "—"}
+          {isSend ? t("tx.history.to_prefix") : isSelf ? "" : t("tx.history.from_prefix")}{short(tx.counterparty) || "—"}
         </p>
       </div>
-      <div className="text-right shrink-0">
+      <div className="text-end shrink-0">
         <p className={`text-sm font-semibold ${isSelf ? "text-foreground" : isSend ? "text-destructive" : "text-primary"}`}>
           {isSelf ? "" : isSend ? "-" : "+"}{tx.amount} {tx.assetSymbol}
         </p>
         <p className="text-[10px] text-muted-foreground">
-          {tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : "awaiting confirmation"}
+          {tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : t("tx.history.awaiting_confirmation")}
         </p>
       </div>
       {tx.explorerUrl && (
@@ -73,7 +75,7 @@ function TxRow({ tx }) {
           href={tx.explorerUrl}
           target="_blank"
           rel="noreferrer"
-          title="View on block explorer"
+          title={t("tx.history.view_explorer_title")}
           className="shrink-0 p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary transition-colors"
         >
           <ExternalLink className="h-3.5 w-3.5" />
@@ -84,6 +86,7 @@ function TxRow({ tx }) {
 }
 
 export default function TransactionHistory() {
+  const { t } = useTranslation("wallet");
   const wallet = useWallet();
   const egressAllowed = !isDeniabilityOrDemoActive();
   const [symbol, setSymbol] = useState("ETH");
@@ -113,14 +116,14 @@ export default function TransactionHistory() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" /> Transaction History
+            <History className="h-5 w-5 text-primary" /> {t("tx.history.heading")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Per-chain sends &amp; receives read directly from the chain — read-only, with explorer links.
+            {t("tx.history.subhead")}
           </p>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
-          {DEMO ? "Demo · sample data" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
+          {DEMO ? t("tx.history.badge_demo") : ALLOW_MAINNET ? t("tx.history.badge_mainnet") : t("tx.history.badge_testnet")}
         </span>
       </div>
 
@@ -149,7 +152,7 @@ export default function TransactionHistory() {
             <span className="font-semibold text-foreground">{source.networkName}</span>
             {" · "}
             {DEMO
-              ? "Demo mode — nothing is queried over the network; the rows below are local sample data."
+              ? t("tx.history.privacy_demo_note")
               : source.privacyNote}
           </p>
         </div>
@@ -158,7 +161,7 @@ export default function TransactionHistory() {
       {/* States */}
       <div className="space-y-2">
         {isLoading && (
-          <div className="py-2" role="status" aria-live="polite" aria-label={`Loading ${asset.symbol} history`}>
+          <div className="py-2" role="status" aria-live="polite" aria-label={t("tx.history.loading_label", { symbol: asset.symbol })}>
             <SkeletonList rows={5} />
           </div>
         )}
@@ -167,14 +170,14 @@ export default function TransactionHistory() {
           <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 space-y-3">
             <div className="flex items-start gap-2 text-sm text-destructive">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>Couldn’t load history: {error?.message?.toLowerCase().includes("fetch") ? "Couldn’t reach the RPC node — check your connection and try again." : (error?.message || "the indexer didn’t respond")}.</span>
+              <span>{t("tx.history.error_prefix", { reason: error?.message?.toLowerCase().includes("fetch") ? t("tx.history.error_fetch_reason") : (error?.message || t("tx.history.error_generic_reason")) })}</span>
             </div>
             {egressAllowed && (
               <button
                 onClick={() => refetch()}
                 className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-border bg-card hover:border-primary"
               >
-                Retry
+                {t("tx.history.retry")}
               </button>
             )}
           </div>
@@ -184,11 +187,9 @@ export default function TransactionHistory() {
         {evmNoIndexer && !isLoading && (
           <div className="p-5 rounded-xl border border-dashed border-border bg-card/50 space-y-3 text-center">
             <ShieldCheck className="h-6 w-6 text-primary mx-auto" />
-            <p className="text-sm font-medium">In-app history isn’t available for {asset.name} over JSON-RPC</p>
+            <p className="text-sm font-medium">{t("tx.history.no_indexer_title", { name: asset.name })}</p>
             <p className="text-xs text-muted-foreground">
-              A plain JSON-RPC node can’t list an address’s transactions, and we deliberately don’t add a
-              third-party explorer/indexer API (a new data source &amp; phone-home surface). Your full history
-              is on the block explorer.
+              {t("tx.history.no_indexer_body")}
             </p>
             {address && (
               <a
@@ -197,11 +198,11 @@ export default function TransactionHistory() {
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
               >
-                View {short(address)} on {source?.networkName} explorer <ExternalLink className="h-3.5 w-3.5" />
+                {t("tx.history.view_on_explorer", { address: short(address), network: source?.networkName })} <ExternalLink className="h-3.5 w-3.5" />
               </a>
             )}
             {!address && (
-              <p className="text-xs text-muted-foreground">Unlock your wallet to get the explorer link for your {asset.symbol} address.</p>
+              <p className="text-xs text-muted-foreground">{t("tx.history.unlock_for_explorer", { symbol: asset.symbol })}</p>
             )}
           </div>
         )}
@@ -210,15 +211,15 @@ export default function TransactionHistory() {
         {lockedLive && !isLoading && (
           <div className="p-8 text-center rounded-xl border border-dashed border-border space-y-2">
             <Lock className="h-6 w-6 text-muted-foreground mx-auto" />
-            <p className="text-sm font-medium">Wallet locked</p>
-            <p className="text-xs text-muted-foreground">Unlock your wallet to derive your {asset.symbol} address and load its history.</p>
+            <p className="text-sm font-medium">{t("tx.history.locked_title")}</p>
+            <p className="text-xs text-muted-foreground">{t("tx.history.locked_body", { symbol: asset.symbol })}</p>
           </div>
         )}
 
         {/* Empty (supported + address, but no txs) */}
         {!isLoading && !isError && data?.supported && !evmNoIndexer && !lockedLive && txs.length === 0 && (
           <div className="p-8 text-center text-sm text-muted-foreground rounded-xl border border-dashed border-border">
-            No transactions yet for {asset.symbol} on {source?.networkName}.
+            {t("tx.history.empty", { symbol: asset.symbol, network: source?.networkName })}
           </div>
         )}
 
@@ -229,7 +230,7 @@ export default function TransactionHistory() {
       {/* Footer: count + manual refresh (keeps the disclosure on-demand, not auto). */}
       {data?.supported && !evmNoIndexer && !lockedLive && (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{txs.length} transaction{txs.length !== 1 ? "s" : ""}{!DEMO && " · most recent"}</span>
+          <span>{t("tx.history.count", { count: txs.length })}{!DEMO && t("tx.history.most_recent_suffix")}</span>
           {egressAllowed && (
             <button
               onClick={() => refetch()}
@@ -237,7 +238,7 @@ export default function TransactionHistory() {
               className="inline-flex items-center gap-1.5 font-semibold hover:text-foreground disabled:opacity-50"
             >
               {isFetching ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> : <History className="h-3.5 w-3.5" />}
-              Refresh
+              {t("tx.history.refresh")}
             </button>
           )}
         </div>

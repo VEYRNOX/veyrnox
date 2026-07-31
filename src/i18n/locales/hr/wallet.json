@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Povijest transakcija",
+      "subhead": "Slanja i primitci po lancu čitaju se izravno s blockchaina — samo za čitanje, s poveznicama na explorer.",
+      "badge_demo": "Demo · primjer podataka",
+      "badge_mainnet": "Glavna mreža",
+      "badge_testnet": "Testna mreža",
+      "privacy_demo_note": "Demo način — ništa se ne upituje putem mreže; retci ispod su lokalni primjeri podataka.",
+      "loading_label": "Učitavanje povijesti {{symbol}}",
+      "error_prefix": "Nije moguće učitati povijest: {{reason}}.",
+      "error_fetch_reason": "Nije moguće doći do RPC čvora — provjerite vezu i pokušajte ponovno.",
+      "error_generic_reason": "indekser nije odgovorio",
+      "retry": "Pokušaj ponovno",
+      "no_indexer_title": "Povijest unutar aplikacije nije dostupna za {{name}} putem JSON-RPC-a",
+      "no_indexer_body": "Obični JSON-RPC čvor ne može ispisati transakcije adrese, a mi namjerno ne dodajemo API trećeg dobavljača za explorer/indekser (novi izvor podataka i točku curenja podataka). Vaša puna povijest nalazi se na blockchain exploreru.",
+      "view_on_explorer": "Pogledaj {{address}} na exploreru mreže {{network}}",
+      "view_explorer_title": "Pogledaj na blockchain exploreru",
+      "unlock_for_explorer": "Otključajte novčanik da dobijete poveznicu na explorer za svoju {{symbol}} adresu.",
+      "locked_title": "Novčanik zaključan",
+      "locked_body": "Otključajte novčanik da izvedete svoju {{symbol}} adresu i učitate njezinu povijest.",
+      "empty": "Još nema transakcija za {{symbol}} na mreži {{network}}.",
+      "count_one": "{{count}} transakcija",
+      "count_other": "{{count}} transakcija",
+      "most_recent_suffix": " · najnovije",
+      "refresh": "Osvježi",
+      "sample_badge": "Primjer",
+      "to_prefix": "Za ",
+      "from_prefix": "Od ",
+      "status_pending": "U tijeku",
+      "status_confirmed": "Potvrđeno",
+      "status_failed": "Neuspjelo",
+      "awaiting_confirmation": "čeka potvrdu"
+    },
+    "list": {
+      "empty_title": "Još nema transakcija",
+      "empty_description": "Kada pošaljete ili primite sredstva na ovom novčaniku, vaša aktivnost na blockchainu pojavit će se ovdje."
+    },
+    "receipt": {
+      "heading": "Potvrde o transakciji",
+      "subhead": "Generirajte potvrde za ispis za bilo koju transakciju",
+      "search_placeholder": "Pretraži po ID-u, adresi ili valuti...",
+      "loading": "Učitavanje...",
+      "error": "Nije moguće učitati transakcije. Pokušajte ponovno.",
+      "empty": "Nema pronađenih transakcija",
+      "preview_title": "Pregled potvrde",
+      "print": "Ispiši",
+      "print_window_title": "Potvrda o transakciji",
+      "brand": "VEYRNOX",
+      "doc_title": "POTVRDA O TRANSAKCIJI",
+      "field_receipt_id": "ID potvrde",
+      "field_date": "Datum",
+      "field_type": "Vrsta",
+      "field_asset": "Imovina",
+      "field_amount": "Iznos",
+      "field_network_fee": "Naknada za mrežu",
+      "field_status": "Status",
+      "field_to": "Za",
+      "default_type": "Prijenos",
+      "default_status": "završeno",
+      "thank_you": "Hvala vam što koristite {{brand}}",
+      "thank_you_prefix": "Hvala vam što koristite",
+      "digital_record": "Ovo je digitalni zapis transakcije"
+    }
+  },
+  "settings": {
+    "heading": "Sigurnosne postavke",
+    "subhead": "Zaključajte, otključajte i zaštitite svoj novčanik",
+    "theme": {
+      "dark": "Tamni način",
+      "light": "Svijetli način",
+      "saved_note": "Spremljeno na ovom uređaju",
+      "switch_to_light": "Prijeđi na svijetli način",
+      "switch_to_dark": "Prijeđi na tamni način"
+    },
+    "activity_log": {
+      "label": "Zapisnik aktivnosti",
+      "description": "Isključeno prema zadanim postavkama · pohranjeno samo na ovom uređaju",
+      "help": "Privatni zapisnik: što ste promijenili, poslali, opozvali. Bez iznosa ili adresa. Panic Wipe ga briše.",
+      "enable_aria": "Omogući zapisnik aktivnosti",
+      "disable_aria": "Onemogući zapisnik aktivnosti",
+      "no_events": "Još nema zabilježenih događaja."
+    },
+    "message_signing": {
+      "label": "Potpisivanje poruka",
+      "description": "Isključeno prema zadanim postavkama · pohranjeno samo na ovom uređaju",
+      "help": "Isključeno prema zadanim postavkama. Omogućuje vam potpisivanje proizvoljnih tekstualnih poruka ključem vašeg novčanika. Omogućite samo ako vas dApp ili usluga zatraži da potpišete poruku.",
+      "enable_aria": "Omogući potpisivanje poruka",
+      "disable_aria": "Onemogući potpisivanje poruka"
+    },
+    "telemetry": {
+      "label": "Anonimni podaci o korištenju",
+      "description": "Opcionalno · nikada ne uključuje stanja ni adrese",
+      "help": "Pomaže nam pronaći greške i poboljšati aplikaciju. Koristi se nasumični ID uređaja — nikada nije povezan s vašim novčanikom, ključevima ili identitetom. Isključivanjem se zaustavlja svako izlaženje podataka o korištenju s ovog uređaja.",
+      "enable_aria": "Uključi anonimne podatke o korištenju",
+      "disable_aria": "Isključi anonimne podatke o korištenju"
+    },
+    "delete_account": {
+      "title": "Opasna zona",
+      "clear_cache_label": "Obriši lokalnu predmemoriju",
+      "clear_cache_description": "Briše spremljene podatke na ovom uređaju i zaključava novčanik. Vaša sigurnosna fraza i dalje radi. Za brisanje ključeva koristite Panic Wipe.",
+      "delete_button": "Izbriši",
+      "confirm_prompt_pre": "Ovo briše spremljene podatke i zaključava novčanik. Vaša sigurnosna fraza i dalje radi. Upišite",
+      "confirm_prompt_post": "za potvrdu.",
+      "confirm_placeholder": "Upišite DELETE za potvrdu",
+      "confirm_aria": "Upišite DELETE za potvrdu resetiranja računa",
+      "cancel": "Odustani",
+      "confirm_delete": "Potvrdi brisanje",
+      "deleting": "Brisanje..."
+    },
+    "biometric_unlock": {
+      "heading": "Biometrijsko otključavanje",
+      "worth_knowing_label": "Vrijedno znati.",
+      "kdf_disclosure": "Otključavanje jednim dodirom sprema lozinku vašeg novčanika na ovom uređaju, zaštićenu zaključavanjem zaslona i biometrijom. Ako netko dobije kopiju sigurnosne kopije vašeg uređaja bez fizičkog uređaja, mogao bi pristupiti vašem novčaniku. Isključite ovo za najjaču zaštitu.",
+      "app_layer_disclosure_pre": "Biometrijsko otključavanje sprema vašu lozinku na ovom uređaju, zaštićenu vašim otiskom prsta ili licem. Ovo radi unutar aplikacije, ne na razini operacijskog sustava.",
+      "app_layer_disclosure_mid": "Za jaču zaštitu na razini uređaja omogućite",
+      "hardware_protection_label": "Hardversku zaštitu",
+      "app_layer_disclosure_post": "(dostupno ispod).",
+      "toggle_label": "Biometrijsko otključavanje (glavni novčanik)",
+      "toggle_description": "Omogućite otključavanje jednim dodirom za svoj glavni novčanik pomoću biometrije uređaja.",
+      "before_enable_label": "Prije nego što ovo omogućite.",
+      "confirm_disclosure": "Ako netko dobije kopiju sigurnosne kopije vašeg uređaja bez fizičkog uređaja, mogao bi pristupiti vašem novčaniku. Uključite ovo samo ako vam to odgovara.",
+      "confirm_enable_button": "Omogući otključavanje jednim dodirom",
+      "cancel_button": "Odustani",
+      "checking_availability": "Provjera dostupnosti…",
+      "default_label": "Biometrija",
+      "available": "{{label}} dostupno.",
+      "available_simulated": "{{label}} dostupno (simulirano u demou).",
+      "status_check_failed": "Nije moguće provjeriti dostupnost biometrije na ovom uređaju.",
+      "awaiting_prompt": "Čekanje na upit…",
+      "preview_prompt": "Pregledaj upit",
+      "test_success": "Simulirana autentifikacija uspjela",
+      "test_cancelled": "Upit otkazan"
+    },
+    "passkey_unlock": {
+      "heading_native": "Biometrijsko otključavanje",
+      "heading_web": "Otključaj passkeyem",
+      "scope_banner_native_pre": "Vaš otisak prsta ili lice provjerava se prije otključavanja —",
+      "scope_banner_native_post": "ne zamjenjuje vašu lozinku. Vaša lozinka i sigurnosna fraza i dalje rade samostalno, tako da gubitak biometrije nikada neće blokirati pristup.",
+      "scope_banner_web_pre": "Passkey dodaje brzi biometrijski dodir ili dodir sigurnosnog ključa prije otključavanja —",
+      "scope_banner_web_post": "ne zamjenjuje vašu lozinku. Vaša lozinka i sigurnosna fraza i dalje rade samostalno, tako da gubitak passkeya nikada neće blokirati pristup.",
+      "extra_step_label": "dodatni korak",
+      "enroll_button": "Registriraj biometrijsko otključavanje",
+      "register_button": "Registriraj passkey",
+      "not_setup_native": "Biometrija uređaja nije postavljena. Prvo dodajte otisak prsta ili lice u postavkama uređaja — vaša lozinka i dalje radi.",
+      "not_supported_web": "Otključavanje passkeyem nije dostupno u ovom pregledniku. Radi u mobilnoj aplikaciji i modernim preglednicima. Ovdje koristite lozinku.",
+      "enroll_error": "Nije moguće registrirati biometrijsko otključavanje na ovom uređaju.",
+      "register_error": "Nije moguće registrirati passkey na ovom uređaju.",
+      "enrolled_native": "Biometrijsko otključavanje registrirano",
+      "registered_web": "Passkey registriran",
+      "simulated_suffix": " (simulirano)",
+      "remove_button": "Ukloni",
+      "require_toggle_native": "Zahtijevaj biometrijsko otključavanje",
+      "require_toggle_web": "Zahtijevaj {{label}} pri otključavanju",
+      "require_toggle_aria_web": "Zahtijevaj otključavanje passkeyem",
+      "require_toggle_desc_native": "Zatraži biometriju uređaja prije otključavanja (vaša lozinka i dalje radi).",
+      "require_toggle_desc_web": "Zatraži passkey prije otključavanja (vaša lozinka i dalje radi).",
+      "applies_all_sessions": "Ovo se odnosi na sve sesije novčanika na ovom uređaju.",
+      "default_label": "Passkey",
+      "checking_availability": "Provjera dostupnosti…",
+      "simulated_in_demo": "{{label}} simulirano u demou. ",
+      "awaiting_biometric": "Čekanje na biometriju…",
+      "awaiting_passkey": "Čekanje na passkey…",
+      "preview_biometric_prompt": "Pregledaj biometrijski upit",
+      "preview_passkey_prompt": "Pregledaj passkey upit",
+      "simulated_prefix": "Simulirano ",
+      "biometric_verified": "biometrija potvrđena",
+      "passkey_verified": "passkey potvrđen",
+      "biometric_prompt_cancelled": "Biometrijski upit otkazan",
+      "passkey_prompt_cancelled": "Passkey upit otkazan"
+    },
+    "hardware_kek": {
+      "heading": "Hardverska zaštita na uređaju",
+      "badge_webauthn": "Zaštićeno WebAuthnom",
+      "badge_off": "ISKLJUČENO",
+      "description_pre": "Zaključava vaš novčanik na ovaj fizički uređaj. Nakon omogućavanja, vaš novčanik moguće je otvoriti samo na ",
+      "description_device": "ovom uređaju",
+      "description_post": ". Ukradena sigurnosna kopija je beskorisna bez samog uređaja, čak i s vašim PIN-om.",
+      "description_web_suffix": "Radi na Chrome 99+ i Firefox 108+. Safari nije podržan.",
+      "device_binding_note": "Povezivanje s uređajem je aktivno i testirano na pravom hardveru.",
+      "checking_status": "Provjera statusa…",
+      "web_prf_unsupported": "Hardverska zaštita nije dostupna u ovom pregledniku. Koristite Chrome 99+ ili Firefox 108+, ili iOS/Android aplikaciju.",
+      "errors": {
+        "wrong_pin": "Pogrešan PIN — unesite PIN kojim otključavate svoj novčanik.",
+        "no_hardware": "Nije moguće doći do hardverske sigurnosti ovog uređaja. Pokušajte ponovno ili koristite drugi uređaj.",
+        "malformed_vault": "Vaše spremljene podatke novčanika nije moguće pročitati na ovom uređaju.",
+        "not_enrolled": "Hardverska zaštita nije omogućena za ovaj trezor, pa nema što nadograditi.",
+        "generic": "Nešto je pošlo po zlu. Pokušajte ponovno.",
+        "key_invalidated": "Vaši otisci prstiju su se promijenili — hardverska zaštita je poništena. Onemogućite i ponovno omogućite hardversku zaštitu, ili obnovite iz svoje sjemenske fraze.",
+        "insecure_tier": "Ovaj uređaj nema sigurni hardverski element — hardverska zaštita se ovdje ne može omogućiti.",
+        "enter_pin_first": "Prvo unesite PIN svog trezora.",
+        "enter_pin_confirm_removal": "Unesite PIN svog trezora da potvrdite uklanjanje.",
+        "enter_pin_upgrade": "Unesite PIN svog trezora za nadogradnju."
+      },
+      "toast": {
+        "enabled": "Hardverska zaštita omogućena — vaš trezor sada zahtijeva ovaj uređaj za otključavanje.",
+        "removed": "Hardverska zaštita uklonjena.",
+        "upgraded": "Hardverska zaštita nadograđena — vaš trezor sada je vezan jedinstvenim ključem po uređaju."
+      },
+      "pin_strength": {
+        "hardware_title": "Hardverski zaštićeno.",
+        "hardware_body": "Vaš PIN u kombinaciji s Face ID-om, otiskom prsta ili passkeyem čini offline napade neizvedivima — napadaču bi trebao i vaš PIN i ovaj fizički uređaj.",
+        "no_hardware_title": "Nema dostupnog hardverskog faktora u ovom pregledniku.",
+        "no_hardware_body": "Vaš 8-znamenkasti PIN (~100 milijuna kombinacija) zaštićen je samo Argon2idom — posvećeni napadač mogao bi ga iscrpiti offline za dane do tjedne. Koristite lozinku od 12+ znakova ili prijeđite na Chrome/Firefox kako biste omogućili hardversku zaštitu.",
+        "pre_enroll_title": "Snaga PIN-a.",
+        "pre_enroll_body": "8-znamenkasti PIN ima ~100 milijuna kombinacija. Argon2id usporava offline napade na otprilike 1–2 godine s jednom niti — ali GPU klaster mogao bi to smanjiti na dane. Omogućavanjem Face ID-a, otiska prsta ili passkeya gore čini offline napade neizvedivima jer zahtijeva ovaj uređaj za svako otključavanje."
+      },
+      "enrolled": {
+        "active_title": "Aktivno na ovom uređaju",
+        "active_body_native": "Vaš trezor zahtijeva biometriju ovog uređaja za otključavanje.",
+        "active_body_web": "Vaš trezor zahtijeva passkey ovog uređaja za otključavanje."
+      },
+      "upgrade": {
+        "available_title": "Dostupna nadogradnja",
+        "available_body": "Vaš novčanik bio je zaštićen starijom verzijom koja je dijelila ključ između uređaja. Nadogradite kako biste ga zaključali samo na ovaj uređaj. Ovo se događa jednom i traži da se potvrdite dvaput.",
+        "cta": "Nadogradi hardversku zaštitu",
+        "busy": "Nadogradnja — odobrite oba upita…",
+        "prompt": "Unesite PIN svog trezora. Autentificirat ćete se dvaput kako biste ponovno osigurali trezor.",
+        "cancel": "Odustani"
+      },
+      "remove": {
+        "cta": "Ukloni hardversku zaštitu",
+        "prompt_native": "Unesite PIN za potvrdu. Morat ćete potvrditi otiskom prsta ili licem.",
+        "prompt_web": "Unesite lozinku za potvrdu. Morat ćete potvrditi passkeyem.",
+        "busy": "Uklanjanje — odobrite upit…",
+        "cancel": "Odustani"
+      },
+      "enroll": {
+        "prompt_native": "Unesite PIN svog trezora za omogućavanje hardverske zaštite.",
+        "prompt_web": "Unesite svoj 8-znamenkasti PIN za omogućavanje hardverske zaštite. Vaš preglednik će kreirati passkey koji zaključava vaš novčanik na ovaj uređaj.",
+        "cta": "Omogući hardversku zaštitu",
+        "busy_native": "Registracija — odobrite biometrijski upit…",
+        "busy_web": "Registracija — odobrite passkey upit…",
+        "footnote_native": "Bit ćete zamoljeni da se autentificirate biometrijom ili lozinkom uređaja.",
+        "footnote_web": "Vaš preglednik zatražit će da se autentificirate biometrijom ili PIN-om uređaja kako bi se kreirao passkey."
+      },
+      "blocked": "Postavke hardverske zaštite nisu dostupne u ovoj sesiji."
+    },
+    "two_factor": {
+      "heading": "Dvofaktorska autentifikacija za kritične radnje",
+      "intro": "Dodatna provjera uz vaš PIN za osjetljive radnje. Čak i ako netko vidi kako upisujete PIN, i dalje ne može izvesti ove radnje bez drugog koraka.",
+      "actions_protects_label": "Radnje koje štiti",
+      "gated_actions": [
+        { "label": "Slanje sredstava", "desc": "svako slanje, nakon sigurnosnih provjera" },
+        { "label": "Otkrivanje sigurnosne fraze", "desc": "pregled ili izvoz sigurnosne kopije" },
+        { "label": "Postavljanje Hitnog PIN-a", "desc": "kreiranje hitnog novčanika" },
+        { "label": "Kreiranje ili skrivanje novčanika", "desc": "promjene skrivenog novčanika" }
+      ],
+      "currently_enforcing": "Trenutno se primjenjuje:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + lozinka za radnje",
+      "badge_off": "Isključeno (samo PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Nalazite se u lažnoj / skrivenoj sesiji. Konfigurirajte dvofaktorsku autentifikaciju iz svoje prave sesije.",
+      "method_a_title": "PIN + lozinka za radnje",
+      "on_suffix": "UKLJUČENO",
+      "method_a_desc": "Druga lozinka spremljena unutar vašeg novčanika. Jaka, ali obje lozinke žive na istom uređaju.",
+      "label_pin": "Vaš PIN",
+      "label_wallet_password": "Lozinka novčanika",
+      "pin_confirm_placeholder": "Potvrdite da ste to vi",
+      "action_password_label_change": "Nova lozinka za radnje",
+      "action_password_label_set": "Lozinka za radnje",
+      "action_password_placeholder": "Najmanje 8 znakova",
+      "action_password_hint": "Najmanje 8 znakova · dopušteni su svi znakovi",
+      "too_short": "Koristite najmanje {{min}} znakova.",
+      "confirm_label": "Potvrdi",
+      "confirm_placeholder": "Ponovno unesite lozinku za radnje",
+      "confirm_hint": "Mora se podudarati s vašom lozinkom za radnje",
+      "mismatch": "Lozinke se ne podudaraju.",
+      "save_change": "Promijeni lozinku za radnje",
+      "save_set": "Postavi lozinku za radnje",
+      "remove": "Ukloni lozinku za radnje",
+      "toast_changed": "Lozinka za radnje promijenjena",
+      "toast_set": "Lozinka za radnje postavljena",
+      "toast_set_error": "Nije moguće postaviti lozinku za radnje",
+      "toast_confirm_pin_required": "Unesite PIN/lozinku novčanika za potvrdu",
+      "toast_removed": "Lozinka za radnje uklonjena",
+      "toast_remove_error": "Nije moguće ukloniti lozinku za radnje",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "Vaš PIN plus {{label}}. Ako biometrija nije dostupna, radnja se blokira. Gubitak uređaja nikada ne znači gubitak sredstava.",
+      "method_b_desc_web": "Vaš PIN plus dodir passkeya. Ako passkey nije dostupan, radnja se blokira. Njegov gubitak nikada ne znači gubitak sredstava.",
+      "switch_aria_native": "Koristi biometriju uređaja kao drugi faktor",
+      "switch_aria_web": "Koristi passkey kao drugi faktor",
+      "confirm_native": "Potvrdite kritične radnje s {{label}}.",
+      "unavailable_native": "{{label}} / lozinka uređaja nije postavljena na ovom uređaju — omogućite je u postavkama uređaja da biste koristili ovaj faktor.",
+      "unsupported_web": "Ovaj preglednik ne podržava WebAuthn / passkeyeve.",
+      "register_hint_web_pre": "Još nema registriranog passkeya — postavite ga u",
+      "register_hint_web_strong": "Passkeyevi novčanika",
+      "register_hint_web_post": "ispod, zatim omogućite ovo.",
+      "toggle_biometric_needed": "{{label}} nije postavljeno na ovom uređaju.",
+      "toggle_passkey_needed": "Prvo registrirajte passkey (Passkeyevi novčanika, ispod).",
+      "toggle_biometric_on": "{{label}} drugi faktor uključen",
+      "toggle_biometric_off": "{{label}} drugi faktor isključen",
+      "toggle_passkey_on": "Passkey drugi faktor uključen",
+      "toggle_passkey_off": "Passkey drugi faktor isključen"
+    },
+    "session": {
+      "title": "Sesija i automatsko zaključavanje",
+      "description": "Zaključava vaš novčanik nakon razdoblja neaktivnosti ili kada napustite aplikaciju",
+      "status_unlocked": "Otključano",
+      "status_locked": "Zaključano",
+      "auto_lock_after": "Automatsko zaključavanje nakon",
+      "never_note": "Nema automatskog zaključavanja kod neaktivnosti, ali i dalje se zaključava nakon ~45 s u pozadini i nakon 8 sati otključanosti.",
+      "resets_note": "Resetira se svaki put kada komunicirate s aplikacijom. Također se odmah zaključava kada je u pozadini.",
+      "lock_now": "Zaključaj sada",
+      "recent_activity": "Nedavna aktivnost",
+      "view_all": "Prikaži sve",
+      "this_device": "Ovaj uređaj",
+      "active_now": "Aktivno sada"
+    },
+    "rehearsal": {
+      "title": "Uvježbaj poricanje",
+      "description": "Pogledajte nadzornu ploču točno onako kako bi je vidio netko tko drži vaš otključani telefon."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Novčanik",
+    "sidebar_expand": "Proširi bočnu traku",
+    "sidebar_collapse": "Sažmi bočnu traku",
+    "search_placeholder": "Pretraži...",
+    "search_shortcut_title": "Pretraži (⌘K)",
+    "lock": "Zaključaj",
+    "lock_confirm_prompt": "Zaključati ovaj novčanik sada?",
+    "back": "Natrag",
+    "settings": "Postavke",
+    "main_content_aria": "Glavni sadržaj",
+    "bottom_nav_aria": "Donja navigacija",
+    "more_features_aria": "Više značajki",
+    "more": "Više",
+    "close": "Zatvori",
+    "all_features_heading": "Sve značajke",
+    "recent_heading": "Nedavno",
+    "tab_home": "Početna",
+    "tab_send": "Pošalji",
+    "tab_receive": "Primi"
+  },
+  "back": {
+    "default_label": "Natrag"
+  },
+  "send": {
+    "heading": "Pošalji kriptovalutu",
+    "subheading": "Sigurno prenesite sredstva",
+    "wallet_fallback": "Novčanik",
+    "wallet_picker": { "label": "Iz novčanika", "placeholder": "Odaberi novčanik" },
+    "asset_picker": { "label": "Imovina", "placeholder": "Odaberi imovinu" },
+    "recipient": {
+      "label": "Pošalji na (adresa ili ime)",
+      "placeholder": "Zalijepite adresu ili unesite ime (npr. vitalik.eth)",
+      "scan_qr": "Skeniraj QR kod",
+      "resolving": "Razrješavanje imena…",
+      "name_not_found": "Ime nije pronađeno — provjerite pravopis ili izravno zalijepite adresu.",
+      "ens_using_prefix": "Koristi se {{name}} →",
+      "ens_confirm_intro": "privatno pretraženo na blockchainu na:",
+      "ens_confirm_hint": "Potvrdite da je ova adresa točna prije slanja.",
+      "use_this_address": "Koristi ovu adresu",
+      "not_whitelisted": "Ova adresa nije na vašoj listi povjerenja. Dvaput provjerite prije nastavka. Pouzdane adrese možete dodati u Postavkama.",
+      "self_send_warning": "Šaljete na adresu vlastitog novčanika. Ovo ne premješta ništa između novčanika, a i dalje košta mrežnu naknadu. Dvaput provjerite primatelja prije nastavka."
+    },
+    "screening": {
+      "local_disclosure": "Primatelji se provjeravaju na vašem uređaju radi prevarantskih adresa u odnosu na vašu vlastitu povijest — ništa ne napušta vaš uređaj.",
+      "remote_opt_in": "Također provjeri prema online bazi prijetnji (šalje ovu adresu trećoj strani)",
+      "remote_unavailable": "Online provjera je omogućena, ali nijedan davatelj usluge nije konfiguriran u ovoj verziji — provjera ostaje lokalna, pa ovo nismo mogli provjeriti prema vanjskom popisu.",
+      "demo_poison_button": "Demo: zalijepi sličnu adresu"
+    },
+    "simulation": {
+      "title": "Simulacija transakcije",
+      "toggle_aria": "Uključi/isključi simulaciju transakcije",
+      "description": "Prije potpisivanja pokrećemo lokalnu provjeru unaprijed — bez usluga trećih strana, bez podataka koji napuštaju vaš uređaj.",
+      "checks": [
+        "Rizik adrese (poison / slična adresa)",
+        "Dekodiranje ugovora",
+        "Oznaka neograničenog ovlaštenja",
+        "Predviđanje poništavanja",
+        "Anomalija u odnosu na vašu povijest",
+        "Upozorenje o velikom odljevu"
+      ],
+      "results_hint": "Rezultati se pojavljuju u sljedećem koraku nakon što unesete adresu i iznos.",
+      "off_hint": "Simulacija je isključena — prije potpisivanja neće se izvršiti provjera unaprijed.",
+      "taking_too_long": "Predugo traje?",
+      "turn_off": "Isključi simulaciju"
+    },
+    "amount": {
+      "label": "Iznos",
+      "placeholder": "0.00",
+      "being_sent": "šalje se",
+      "balance_prefix": "Stanje:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(uživo)",
+      "reading_from_network": "čitanje s mreže…"
+    },
+    "errors": {
+      "amount_missing": "Iznos je obavezan",
+      "amount_not_positive": "Iznos mora biti veći od nule",
+      "amount_malformed": "Unesite jednostavan decimalni iznos, npr. 0.5",
+      "amount_over_balance": "Nedovoljno sredstava",
+      "insufficient_balance_title": "Nedovoljno sredstava.",
+      "insufficient_balance_body": "Imate na raspolaganju {{balance}} {{currency}} za slanje (nakon mrežne naknade). Smanjite iznos za nastavak."
+    },
+    "status": {
+      "not_enabled": "Slanje za {{currency}} još nije omogućeno. Ova imovina je samo za primanje dok se njezin kripto put ne provjeri.",
+      "dev_ungate_title": "DEV UNGATE AKTIVAN",
+      "dev_ungate_body": "— zapreka za slanje je zaobiđena za {{currency}} putem VITE_DEV_UNGATE_SEND (samo dev verzija). Status ove imovine se ne mijenja (i dalje nije uživo); glavna mreža ostaje blokirana. Samo provjera na testnoj mreži — nikada ne šaljite ovu verziju.",
+      "locked": "Vaš novčanik je zaključan. Otključajte ga u postavkama novčanika kako biste potpisali i poslali."
+    },
+    "note": { "label": "Napomena (opcionalno)", "placeholder": "Za što je ovo?" },
+    "trezor": {
+      "toggle_label": "Potpiši Trezorom",
+      "connected": "Uređaj povezan",
+      "connect_button": "Poveži uređaj"
+    },
+    "buttons": {
+      "continue": "Nastavi",
+      "confirm_send": "Potvrdi i pošalji",
+      "back": "Natrag"
+    },
+    "verify": { "summary_label": "Šaljete" },
+    "fee": {
+      "automatic": "Mrežna naknada se postavlja automatski za {{currency}} ({{network}}).",
+      "native_fee_note": "Mrežna naknada se plaća u {{symbol}} ({{network}}) — trebate {{symbol}} za pokrivanje mrežne naknade čak i pri slanju {{token}}."
+    },
+    "decode": {
+      "heading": "Što ova transakcija radi",
+      "action": "Radnja",
+      "send_tokens": "Pošalji tokene",
+      "token": "Token",
+      "amount": "Iznos",
+      "recipient": "Primatelj",
+      "grant_permission": "Dodijeli dozvolu za trošenje",
+      "permission": "Dozvola",
+      "unlimited_permission": "Neograničeno (ova aplikacija može potrošiti bilo koji iznos)",
+      "spender": "Trošitelj"
+    },
+    "reauth": {
+      "prompt": "Ponovno unesite svoj {{credential}} za ovlaštenje",
+      "credential_pin": "PIN",
+      "credential_password": "lozinku",
+      "submit_pin": "Ovlasti",
+      "submit_password": "Ovlasti i pošalji",
+      "password_placeholder": "Lozinka trezora",
+      "password_aria": "Lozinka trezora za ovlaštenje slanja",
+      "errors": {
+        "unavailable": "Provjera nedostupna — ponovno zaključajte i otključajte novčanik.",
+        "incorrect": "Netočno — pokušajte ponovno (preostalo {{remaining}})"
+      }
+    },
+    "done": {
+      "beacon_label": "Transakcija emitirana",
+      "heading": "Transakcija emitirana",
+      "body_suffix": "potpisano lokalno i poslano mreži",
+      "tx_hash_label": "Hash transakcije",
+      "view_explorer": "Pogledaj na blockchain exploreru",
+      "pending_note": "U tijeku dok se ne potvrdi na mreži. Stanje se ažurira s blockchaina, ne iz spremljene vrijednosti.",
+      "send_another": "Pošalji ponovno"
+    },
+    "toasts": {
+      "ens_off_in_session": "Razrješavanje imena je isključeno u ovoj sesiji — izravno zalijepite adresu.",
+      "ens_not_found": "ENS ime nije pronađeno",
+      "sns_unavailable": "Razrješavanje Solana imena još nije dostupno — izravno zalijepite adresu.",
+      "ens_resolution_failed": "Razrješavanje imena nije uspjelo",
+      "verify_required": "Dovršite provjeru sigurnosne kopije prije slanja ovog iznosa.",
+      "two_factor_retry": "Slanje nije dovršeno — molimo ponovno se potvrdite za ponovni pokušaj.",
+      "send_failed_fallback": "Slanje nije uspjelo",
+      "unconfirmed": "Nije moguće potvrditi ovu transakciju na mreži još — možda je i dalje u tijeku. Provjerite explorer."
+    }
+  },
+  "receive": {
+    "heading": "Primi kriptovalutu",
+    "subheading": "Prikaži adresu novčanika za primanje sredstava",
+    "asset_label": "Imovina",
+    "asset_placeholder": "Odaberi imovinu",
+    "not_available": "Primanje {{name}} ({{symbol}}) još nije dostupno. Adresa se ne prikazuje dok ova imovina ne bude omogućena.",
+    "locked": {
+      "title": "Novčanik zaključan",
+      "body": "Otključajte novčanik da otkrijete svoju {{asset}} {{network}} adresu za primanje.",
+      "open_hd_wallet": "Otvori upravitelja HD novčanika"
+    },
+    "your_address": "Vaša {{asset}} adresa",
+    "testnet_badge": "Testna mreža",
+    "receive_address_label": "{{symbol}} adresa za primanje",
+    "copy": {
+      "copied_aria": "Adresa kopirana u međuspremnik",
+      "copy_aria": "Kopiraj adresu",
+      "copied_toast": "Adresa kopirana",
+      "copy_failed_toast": "Nije moguće kopirati — odaberite i kopirajte adresu ručno"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} je token na mreži kompatibilnoj s Ethereumom. Ovo je adresa vašeg novčanika — neka pošiljatelj šalje {{symbol}} samo na mreži {{network}}. Slanje na drugoj mreži može trajno izgubiti sredstva.",
+      "evm": "Ovo je vaša zajednička adresa novčanika. Šaljite {{name}} samo na mreži {{network}} na ovu adresu i uvjerite se da pošiljatelj koristi {{network}}.",
+      "btc": "Šaljite Bitcoin samo na mreži {{network}} na ovu adresu.",
+      "solana": "Šaljite Solanu samo na mreži {{network}} na ovu adresu."
+    },
+    "select_asset_prompt": "Odaberite imovinu za primanje.",
+    "unlock_footer_note": "Adrese dolaze iz vašeg novčanika na uređaju i pojavljuju se samo dok je otključan."
+  },
+  "dashboard": {
+    "portfolioValue": "Vrijednost portfelja",
+    "priceAlertsTriggered_one": "{{count}} cjenovno upozorenje aktivirano!",
+    "priceAlertsTriggered_other": "{{count}} cjenovnih upozorenja aktivirano!",
+    "lockAriaLabel": "Zaključaj stanje iza biometrije",
+    "lockBalance": "Zaključaj stanje",
+    "synced": "Sinkronizirano {{time}}",
+    "syncJustNow": "Upravo sada",
+    "syncSecondsAgo_one": "prije {{count}} s",
+    "syncSecondsAgo_other": "prije {{count}} s",
+    "syncMinutesAgo_one": "prije {{count}} min",
+    "syncMinutesAgo_other": "prije {{count}} min",
+    "actions": {
+      "send": "Pošalji",
+      "receive": "Primi",
+      "schedule": "Zakaži",
+      "add": "Dodaj"
+    },
+    "tabs": {
+      "tokens": "Tokeni",
+      "activity": "Aktivnost",
+      "analytics": "Analitika"
+    },
+    "emptyWallets": {
+      "title": "Još nema novčanika",
+      "description": "Dodajte novčanik za primanje, slanje i držanje imovine na više lanaca."
+    },
+    "addWallet": "Dodaj novčanik",
+    "searchTransactionsPlaceholder": "Pretraži transakcije...",
+    "emptySearch": {
+      "title": "Nema odgovarajućih transakcija",
+      "description": "Pokušajte ukloniti filtre ili pretražiti drugu imovinu ili adresu."
+    },
+    "emptyTransactions": {
+      "title": "Još nema transakcija",
+      "description": "Vaša aktivnost na blockchainu pojavit će se ovdje nakon što pošaljete ili primite."
+    },
+    "portfolioPerformance": "Uspješnost portfelja",
+    "assetDistribution": "Raspodjela imovine",
+    "quickAccess": "Brzi pristup",
+    "quickAccessItems": {
+      "receive": "Primi",
+      "security": "Sigurnost",
+      "approvals": "Ovlaštenja",
+      "addressCheck": "Provjera adrese",
+      "analytics": "Analitika",
+      "sentiment": "Raspoloženje",
+      "riskScore": "Rizični rezultat"
+    },
+    "walletNameLabel": "Naziv novčanika",
+    "walletNamePlaceholder": "Moj ETH novčanik",
+    "addWalletDialog": {
+      "title": "Dodaj novčanik",
+      "currency": "Valuta",
+      "creating": "Kreiranje...",
+      "create": "Kreiraj novčanik"
+    },
+    "renameWalletDialog": {
+      "title": "Preimenuj novčanik",
+      "saving": "Spremanje...",
+      "save": "Spremi naziv"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Šifrirani trezor",
+    "backup": {
+      "title": "Sigurnosno kopiraj \"{{name}}\"",
+      "reauthDescription": "Potvrdite da ste to vi, a zatim ćemo prikazati sigurnosnu frazu za ovaj novčanik.",
+      "description": "Zapišite ovih 12 riječi negdje izvan mreže. Svatko tko ih posjeduje može trošiti sredstva ovog novčanika — i to je jedini način da ga obnovite.",
+      "warning": "Nikad ne snimajte snimku zaslona. Nikad je ne upisujte u drugu aplikaciju.",
+      "confirmButton": "Zapisao/la sam je — označi kao sigurnosno kopirano"
+    },
+    "addWallet": {
+      "defaultWalletName": "vaš novi novčanik",
+      "backupDescription": "Ovaj novčanik ima vlastitu sigurnosnu frazu — odvojenu od svakog drugog novčanika u vašem trezoru. Zapišite je negdje izvan mreže prije nego što ga koristite.",
+      "backedUpDone": "Sigurnosno sam je kopirao/la — gotovo",
+      "title": "Dodaj novčanik",
+      "createNew": "Kreiraj novi",
+      "importSeed": "Uvezi seed",
+      "createDescription": "Generira NOVI seed koji izvodi SVE lance (ETH/EVM, BTC, SOL). Sigurnosno ćete ga kopirati prije nego što postane aktivan.",
+      "importDescription": "Zalijepite postojeći 12/24-riječni seed — svi lanci se automatski izvode (seed nije specifičan za lanac).",
+      "recoveryPhraseLabel": "Sigurnosna fraza",
+      "recoveryPhrasePlaceholder": "riječ1 riječ2 ... riječ12",
+      "walletNameLabel": "Naziv novčanika",
+      "walletNamePlaceholder": "npr. Štednja",
+      "assetsToShowLabel": "Imovina za prikaz",
+      "assetsToShowHint": "Samo izbor prikaza — seed sadrži svaki lanac bez obzira na to.",
+      "confirmVaultPlaceholder": "Potvrdite da ste to vi kako biste promijenili svoj trezor",
+      "vaultReentryHint": "Ponovno unesena za ovlaštenje promjene vašeg trezora za seed. Nikad se ne čuva u memoriji.",
+      "createAndBackup": "Kreiraj i sigurnosno kopiraj",
+      "importWallet": "Uvezi novčanik"
+    },
+    "vaultPinLabel": "PIN trezora",
+    "vaultPasswordLabel": "Lozinka trezora",
+    "cancel": "Odustani",
+    "done": "Gotovo",
+    "manageAssets": {
+      "title": "Imovina za \"{{name}}\"",
+      "description": "Odaberite koja se imovina prikazuje za ovaj novčanik. Skrivena ostaje sklonjena dok se ne doda."
+    },
+    "rename": {
+      "title": "Preimenuj novčanik",
+      "save": "Spremi naziv"
+    },
+    "remove": {
+      "title": "Ukloniti \"{{name}}\"?",
+      "onlyWallet": "Ovo je vaš jedini novčanik — ne može se ukloniti. Koristite Panic Wipe u Sigurnosti za brisanje svega.",
+      "description": "Uklanja seed ovog novčanika s ovog uređaja.",
+      "backedUpNote": "Možete ga obnoviti iz njegove sigurnosne fraze.",
+      "notBackedUpNote": "⚠️ NIJE sigurnosno kopiran — bez njegove fraze zauvijek je izgubljen.",
+      "button": "Ukloni novčanik"
+    },
+    "move": {
+      "title": "Premjesti \"{{name}}\" u…"
+    },
+    "managePortfolios": {
+      "title": "Portfelji",
+      "defaultTag": "(zadano)",
+      "saveAriaLabel": "Spremi naziv portfelja",
+      "renameAriaLabel": "Preimenuj {{name}}",
+      "deleteAriaLabel": "Izbriši {{name}}",
+      "newNamePlaceholder": "Novi naziv portfelja",
+      "addButton": "Dodaj"
+    },
+    "activity": {
+      "unlockPrompt": "Otključajte novčanik za pregled aktivnosti.",
+      "loading": "Učitavanje...",
+      "loadError": "Nije moguće učitati aktivnost.",
+      "noTransactions": "Još nema transakcija.",
+      "viewFullHistory": "Pogledaj punu povijest →"
+    },
+    "portfolioValueLabel": "Vrijednost portfelja",
+    "explore": {
+      "subtitle": "Istražujete — samo pregled. Još nema novčanika.",
+      "description": "Slobodno se razgledajte. Kada budete spremni, kreirajte novi samostalni novčanik ili uvezite postojeći seed — ključevi se generiraju i šifriraju na ovom uređaju.",
+      "createOrImport": "Kreiraj ili uvezi novčanik"
+    },
+    "portfoliosButton": "Portfelji",
+    "totalValueHeading": "{{name}} · Ukupna vrijednost",
+    "partialTotalNote": "Neka stanja nije bilo moguće učitati — ovaj ukupni iznos može biti nepotpun.",
+    "refreshPricesTooltip": "Osvježi cijene uživo",
+    "live": "Uživo",
+    "approximate": "Približno",
+    "seedVerify": {
+      "title": "Dovršite provjeru sigurnosne kopije",
+      "description": "Obavezno za slanje iznad sigurnosnog praga.",
+      "verifyAriaLabel": "Potvrdite sigurnosnu kopiju svog novčanika",
+      "verifyButton": "Potvrdi"
+    },
+    "unbacked": {
+      "titleBold": "Sigurnosna kopija novčanika nepotpuna.",
+      "body": "Svaki novčanik ima vlastitu sigurnosnu frazu — bez nje su sredstva tog novčanika neobnovljiva. Sigurnosno kopirajte sada.",
+      "backUpButton": "Sigurnosno kopiraj \"{{name}}\""
+    },
+    "actions": {
+      "send": "Pošalji",
+      "receive": "Primi",
+      "addWallet": "Dodaj novčanik"
+    },
+    "activeWalletHint": {
+      "prefix": "Slanje/primanje koristi",
+      "otherPortfolio": " (u drugom portfelju)",
+      "suffix": ". Dodirnite novčanik ispod za promjenu."
+    },
+    "tabs": {
+      "tokens": "Tokeni",
+      "activity": "Aktivnost",
+      "analytics": "Analitika"
+    },
+    "noWalletsInPortfolio": "Nema novčanika u \"{{name}}\". Dodajte novčanik ili premjestite jedan ovamo iz njegovog izbornika.",
+    "hideAssets": "Sakrij imovinu",
+    "showAllAssets": "Prikaži svu imovinu",
+    "walletCard": {
+      "active": "Aktivan",
+      "backedUp": "Sigurnosno kopiran",
+      "backUp": "Sigurnosno kopiraj",
+      "partial": "djelomično",
+      "optionsAriaLabel": "Opcije za {{name}}",
+      "noAssetsShown": "Nema prikazane imovine. Koristite \"Upravljanje imovinom\"."
+    },
+    "menu": {
+      "manageAssets": "Upravljaj imovinom",
+      "rename": "Preimenuj",
+      "moveToPortfolio": "Premjesti u portfelj",
+      "backUp": "Sigurnosno kopiraj",
+      "remove": "Ukloni"
+    },
+    "balanceLoadFailedTitle": "Stanje nije moguće učitati",
+    "defaultWalletFallbackName": "novčanik",
+    "toast": {
+      "walletImported": "Novčanik uvezen — svi lanci izvedeni.",
+      "walletRemoved": "Novčanik uklonjen s ovog uređaja.",
+      "walletAddedBackedUp": "Novčanik dodan i sigurnosno kopiran.",
+      "movedTo": "Premješteno u {{name}}.",
+      "markedBackedUp": "\"{{name}}\" označen kao sigurnosno kopiran."
+    },
+    "errors": {
+      "couldNotAddWallet": "Nije moguće dodati novčanik",
+      "couldNotImportWallet": "Nije moguće uvesti novčanik",
+      "couldNotRemoveWallet": "Nije moguće ukloniti novčanik"
+    }
+  },
+  "networth": {
+    "title": "Neto kripto vrijednost",
+    "unlockPrompt": "Otključajte novčanik za pregled svoje imovine na blockchainu.",
+    "subtitle": "Vaša imovina na blockchainu — ne uključuje vanjsku imovinu.",
+    "totalHoldings": "Ukupna imovina",
+    "partialNote": "djelomično — neka stanja nije bilo moguće pročitati",
+    "refreshPricesTooltip": "Osvježi cijene uživo",
+    "live": "Uživo",
+    "approximate": "Približno",
+    "allocation": "Raspodjela",
+    "holdings": "Imovina",
+    "noHoldings": "Još nema imovine."
+  }
+}

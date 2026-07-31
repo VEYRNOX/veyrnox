@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Histórico de transações",
+      "subhead": "Envios e recebimentos por rede lidos diretamente da blockchain — somente leitura, com links para o explorador.",
+      "badge_demo": "Demonstração · dados de exemplo",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Modo demonstração — nada é consultado pela rede; as linhas abaixo são dados de exemplo locais.",
+      "loading_label": "Carregando histórico de {{symbol}}",
+      "error_prefix": "Não foi possível carregar o histórico: {{reason}}.",
+      "error_fetch_reason": "Não foi possível acessar o nó RPC — verifique sua conexão e tente novamente.",
+      "error_generic_reason": "o indexador não respondeu",
+      "retry": "Tentar novamente",
+      "no_indexer_title": "O histórico no aplicativo não está disponível para {{name}} via JSON-RPC",
+      "no_indexer_body": "Um nó JSON-RPC simples não consegue listar as transações de um endereço, e deliberadamente não adicionamos uma API de explorador/indexador de terceiros (uma nova fonte de dados e superfície de contato externo). Seu histórico completo está no explorador de blocos.",
+      "view_on_explorer": "Ver {{address}} no explorador da {{network}}",
+      "view_explorer_title": "Ver no explorador de blocos",
+      "unlock_for_explorer": "Desbloqueie sua carteira para obter o link do explorador do seu endereço {{symbol}}.",
+      "locked_title": "Carteira bloqueada",
+      "locked_body": "Desbloqueie sua carteira para derivar seu endereço {{symbol}} e carregar seu histórico.",
+      "empty": "Nenhuma transação ainda para {{symbol}} na {{network}}.",
+      "count_one": "{{count}} transação",
+      "count_other": "{{count}} transações",
+      "most_recent_suffix": " · mais recente",
+      "refresh": "Atualizar",
+      "sample_badge": "Exemplo",
+      "to_prefix": "Para ",
+      "from_prefix": "De ",
+      "status_pending": "Pendente",
+      "status_confirmed": "Confirmada",
+      "status_failed": "Falhou",
+      "awaiting_confirmation": "aguardando confirmação"
+    },
+    "list": {
+      "empty_title": "Nenhuma transação ainda",
+      "empty_description": "Quando você enviar ou receber nesta carteira, sua atividade on-chain aparecerá aqui."
+    },
+    "receipt": {
+      "heading": "Comprovantes de transação",
+      "subhead": "Gere comprovantes imprimíveis para qualquer transação",
+      "search_placeholder": "Buscar por ID, endereço ou moeda...",
+      "loading": "Carregando...",
+      "error": "Não foi possível carregar as transações. Tente novamente.",
+      "empty": "Nenhuma transação encontrada",
+      "preview_title": "Pré-visualização do comprovante",
+      "print": "Imprimir",
+      "print_window_title": "Comprovante de transação",
+      "brand": "VEYRNOX",
+      "doc_title": "COMPROVANTE DE TRANSAÇÃO",
+      "field_receipt_id": "ID do comprovante",
+      "field_date": "Data",
+      "field_type": "Tipo",
+      "field_asset": "Ativo",
+      "field_amount": "Valor",
+      "field_network_fee": "Taxa de rede",
+      "field_status": "Status",
+      "field_to": "Para",
+      "default_type": "Transferência",
+      "default_status": "concluída",
+      "thank_you": "Obrigado por usar o {{brand}}",
+      "thank_you_prefix": "Obrigado por usar o",
+      "digital_record": "Este é um registro digital de transação"
+    }
+  },
+  "settings": {
+    "heading": "Configurações de segurança",
+    "subhead": "Bloqueie, desbloqueie e proteja sua carteira",
+    "theme": {
+      "dark": "Modo escuro",
+      "light": "Modo claro",
+      "saved_note": "Salvo neste dispositivo",
+      "switch_to_light": "Mudar para o modo claro",
+      "switch_to_dark": "Mudar para o modo escuro"
+    },
+    "activity_log": {
+      "label": "Registro de atividade",
+      "description": "Desativado por padrão · armazenado somente neste dispositivo",
+      "help": "Registro privado: o que você alterou, enviou, revogou. Sem valores ou endereços. O Apagamento de Emergência o apaga.",
+      "enable_aria": "Ativar registro de atividade",
+      "disable_aria": "Desativar registro de atividade",
+      "no_events": "Nenhum evento registrado ainda."
+    },
+    "message_signing": {
+      "label": "Assinatura de mensagens",
+      "description": "Desativado por padrão · armazenado somente neste dispositivo",
+      "help": "Desativado por padrão. Permite assinar mensagens de texto arbitrárias com a chave da sua carteira. Ative apenas se um dApp ou serviço pedir que você assine uma mensagem.",
+      "enable_aria": "Ativar assinatura de mensagens",
+      "disable_aria": "Desativar assinatura de mensagens"
+    },
+    "telemetry": {
+      "label": "Dados de uso anônimos",
+      "description": "Opcional · nunca inclui saldos ou endereços",
+      "help": "Ajuda a encontrar erros e melhorar o aplicativo. Um ID de dispositivo aleatório é usado — nunca vinculado à sua carteira, chaves ou identidade. Desativar isso interrompe todo envio de dados de uso deste dispositivo.",
+      "enable_aria": "Ativar dados de uso anônimos",
+      "disable_aria": "Desativar dados de uso anônimos"
+    },
+    "delete_account": {
+      "title": "Zona de perigo",
+      "clear_cache_label": "Limpar cache local",
+      "clear_cache_description": "Apaga os dados salvos neste dispositivo e bloqueia a carteira. Sua frase de recuperação continua funcionando. Para apagar as chaves, use o Apagamento de Emergência.",
+      "delete_button": "Excluir",
+      "confirm_prompt_pre": "Isso apaga os dados salvos e bloqueia a carteira. Sua frase de recuperação continua funcionando. Digite",
+      "confirm_prompt_post": "para confirmar.",
+      "confirm_placeholder": "Digite DELETE para confirmar",
+      "confirm_aria": "Digite DELETE para confirmar a redefinição da conta",
+      "cancel": "Cancelar",
+      "confirm_delete": "Confirmar exclusão",
+      "deleting": "Excluindo..."
+    },
+    "biometric_unlock": {
+      "heading": "Desbloqueio biométrico",
+      "worth_knowing_label": "Vale saber.",
+      "kdf_disclosure": "O desbloqueio com um toque salva a senha da sua carteira neste dispositivo, protegida pela tela de bloqueio e pela biometria. Se alguém obtiver uma cópia do backup do seu dispositivo sem o dispositivo físico, pode acessar sua carteira. Desative isso para a proteção mais forte.",
+      "app_layer_disclosure_pre": "O desbloqueio biométrico salva sua senha neste dispositivo, protegida pela sua digital ou rosto. Isso funciona dentro do aplicativo, não no nível do sistema operacional.",
+      "app_layer_disclosure_mid": "Para uma proteção mais forte no nível do dispositivo, ative",
+      "hardware_protection_label": "Proteção de hardware",
+      "app_layer_disclosure_post": "(disponível abaixo).",
+      "toggle_label": "Desbloqueio biométrico (carteira principal)",
+      "toggle_description": "Ative o desbloqueio com um toque para sua carteira principal usando a biometria do dispositivo.",
+      "before_enable_label": "Antes de ativar isso.",
+      "confirm_disclosure": "Se alguém obtiver uma cópia do backup do seu dispositivo sem o dispositivo físico, pode acessar sua carteira. Ative isso somente se estiver de acordo com esse risco.",
+      "confirm_enable_button": "Ativar desbloqueio com um toque",
+      "cancel_button": "Cancelar",
+      "checking_availability": "Verificando disponibilidade…",
+      "default_label": "Biometria",
+      "available": "{{label}} disponível.",
+      "available_simulated": "{{label}} disponível (simulado na demonstração).",
+      "status_check_failed": "Não foi possível verificar a disponibilidade de biometria neste dispositivo.",
+      "awaiting_prompt": "Aguardando confirmação…",
+      "preview_prompt": "Pré-visualizar confirmação",
+      "test_success": "Autenticação simulada bem-sucedida",
+      "test_cancelled": "Confirmação cancelada"
+    },
+    "passkey_unlock": {
+      "heading_native": "Desbloqueio biométrico",
+      "heading_web": "Desbloquear com chave de acesso",
+      "scope_banner_native_pre": "Sua digital ou rosto é verificado antes de desbloquear —",
+      "scope_banner_native_post": "não substitui sua senha. Sua senha e frase de recuperação continuam funcionando por conta própria, então perder a biometria nunca te bloqueia.",
+      "scope_banner_web_pre": "Uma chave de acesso adiciona um toque biométrico rápido ou de chave de segurança antes de desbloquear —",
+      "scope_banner_web_post": "não substitui sua senha. Sua senha e frase de recuperação continuam funcionando por conta própria, então perder a chave de acesso nunca te bloqueia.",
+      "extra_step_label": "uma etapa extra",
+      "enroll_button": "Registrar desbloqueio biométrico",
+      "register_button": "Registrar uma chave de acesso",
+      "not_setup_native": "A biometria do dispositivo não está configurada. Adicione uma digital ou rosto nas configurações do seu dispositivo primeiro — sua senha continua funcionando.",
+      "not_supported_web": "O desbloqueio por chave de acesso não está disponível neste navegador. Ele funciona no aplicativo móvel e em navegadores modernos. Use sua senha aqui.",
+      "enroll_error": "Não foi possível registrar o desbloqueio biométrico neste dispositivo.",
+      "register_error": "Não foi possível registrar uma chave de acesso neste dispositivo.",
+      "enrolled_native": "Desbloqueio biométrico registrado",
+      "registered_web": "Chave de acesso registrada",
+      "simulated_suffix": " (simulado)",
+      "remove_button": "Remover",
+      "require_toggle_native": "Exigir desbloqueio biométrico",
+      "require_toggle_web": "Exigir {{label}} ao desbloquear",
+      "require_toggle_aria_web": "Exigir desbloqueio por chave de acesso",
+      "require_toggle_desc_native": "Pedir a biometria do dispositivo antes de desbloquear (sua senha continua funcionando).",
+      "require_toggle_desc_web": "Pedir sua chave de acesso antes de desbloquear (sua senha continua funcionando).",
+      "applies_all_sessions": "Isso se aplica a todas as sessões da carteira neste dispositivo.",
+      "default_label": "Chave de acesso",
+      "checking_availability": "Verificando disponibilidade…",
+      "simulated_in_demo": "{{label}} simulado na demonstração. ",
+      "awaiting_biometric": "Aguardando biometria…",
+      "awaiting_passkey": "Aguardando chave de acesso…",
+      "preview_biometric_prompt": "Pré-visualizar confirmação biométrica",
+      "preview_passkey_prompt": "Pré-visualizar confirmação da chave de acesso",
+      "simulated_prefix": "Simulado ",
+      "biometric_verified": "biometria verificada",
+      "passkey_verified": "chave de acesso verificada",
+      "biometric_prompt_cancelled": "Confirmação biométrica cancelada",
+      "passkey_prompt_cancelled": "Confirmação da chave de acesso cancelada"
+    },
+    "hardware_kek": {
+      "heading": "Proteção de hardware no dispositivo",
+      "badge_webauthn": "Protegido por WebAuthn",
+      "badge_off": "DESATIVADO",
+      "description_pre": "Vincula sua carteira a este dispositivo físico. Depois de ativar, sua carteira só pode ser aberta em ",
+      "description_device": "este dispositivo",
+      "description_post": ". Um arquivo de backup roubado é inútil sem o próprio dispositivo, mesmo com seu PIN.",
+      "description_web_suffix": "Funciona no Chrome 99+ e Firefox 108+. O Safari não é compatível.",
+      "device_binding_note": "A vinculação ao dispositivo está ativa e testada em hardware real.",
+      "checking_status": "Verificando status…",
+      "web_prf_unsupported": "A proteção de hardware não está disponível neste navegador. Use o Chrome 99+ ou Firefox 108+, ou use o aplicativo iOS ou Android.",
+      "errors": {
+        "wrong_pin": "PIN incorreto — digite o PIN que você usa para desbloquear sua carteira.",
+        "no_hardware": "Não foi possível acessar a segurança de hardware deste dispositivo. Tente novamente ou use outro dispositivo.",
+        "malformed_vault": "Os dados armazenados da sua carteira não puderam ser lidos neste dispositivo.",
+        "not_enrolled": "A proteção de hardware não está ativada neste cofre, então não há nada para atualizar.",
+        "generic": "Algo deu errado. Tente novamente.",
+        "key_invalidated": "Suas digitais mudaram — a proteção de hardware foi invalidada. Desative e reative a proteção de hardware, ou restaure a partir da sua frase-semente.",
+        "insecure_tier": "Este dispositivo não tem um elemento de hardware seguro — a proteção de hardware não pode ser ativada aqui.",
+        "enter_pin_first": "Digite primeiro o PIN do seu cofre.",
+        "enter_pin_confirm_removal": "Digite o PIN do seu cofre para confirmar a remoção.",
+        "enter_pin_upgrade": "Digite o PIN do seu cofre para atualizar."
+      },
+      "toast": {
+        "enabled": "Proteção de hardware ativada — seu cofre agora exige este dispositivo para desbloquear.",
+        "removed": "Proteção de hardware removida.",
+        "upgraded": "Proteção de hardware atualizada — seu cofre agora está vinculado com uma chave única por dispositivo."
+      },
+      "pin_strength": {
+        "hardware_title": "Protegido por hardware.",
+        "hardware_body": "Seu PIN combinado com Face ID, digital ou chave de acesso torna ataques offline inviáveis — um invasor precisaria do seu PIN e deste dispositivo físico.",
+        "no_hardware_title": "Nenhum fator de hardware disponível neste navegador.",
+        "no_hardware_body": "Seu PIN de 8 dígitos (~100 milhões de combinações) é protegido apenas pelo Argon2id — um invasor dedicado poderia esgotá-lo offline em dias ou semanas. Use uma senha de 12+ caracteres ou mude para o Chrome/Firefox para ativar a proteção de hardware.",
+        "pre_enroll_title": "Força do PIN.",
+        "pre_enroll_body": "Um PIN de 8 dígitos tem ~100 milhões de combinações. O Argon2id retarda ataques offline para cerca de 1 a 2 anos com uma única thread — mas um cluster de GPUs poderia reduzir isso a dias. Ativar Face ID, digital ou chave de acesso acima torna ataques offline inviáveis, exigindo este dispositivo em todo desbloqueio."
+      },
+      "enrolled": {
+        "active_title": "Ativo neste dispositivo",
+        "active_body_native": "Seu cofre exige a biometria deste dispositivo para desbloquear.",
+        "active_body_web": "Seu cofre exige a chave de acesso deste dispositivo para desbloquear."
+      },
+      "upgrade": {
+        "available_title": "Atualização disponível",
+        "available_body": "Sua carteira foi protegida com uma versão mais antiga que compartilhava uma chave entre dispositivos. Atualize para vinculá-la somente a este dispositivo. Isso acontece uma vez e pede que você verifique duas vezes.",
+        "cta": "Atualizar proteção de hardware",
+        "busy": "Atualizando — aprove as duas confirmações…",
+        "prompt": "Digite o PIN do seu cofre. Você vai autenticar duas vezes para reforçar a segurança do cofre.",
+        "cancel": "Cancelar"
+      },
+      "remove": {
+        "cta": "Remover proteção de hardware",
+        "prompt_native": "Digite seu PIN para confirmar. Você vai precisar verificar com sua digital ou rosto.",
+        "prompt_web": "Digite sua senha para confirmar. Você vai precisar verificar com sua chave de acesso.",
+        "busy": "Removendo — aprove a confirmação…",
+        "cancel": "Cancelar"
+      },
+      "enroll": {
+        "prompt_native": "Digite o PIN do seu cofre para ativar a proteção de hardware.",
+        "prompt_web": "Digite seu PIN de 8 dígitos para ativar a proteção de hardware. Seu navegador vai criar uma chave de acesso para vincular sua carteira a este dispositivo.",
+        "cta": "Ativar proteção de hardware",
+        "busy_native": "Registrando — aprove a confirmação biométrica…",
+        "busy_web": "Registrando — aprove a confirmação da chave de acesso…",
+        "footnote_native": "Você será solicitado a autenticar com a biometria ou senha do seu dispositivo.",
+        "footnote_web": "Seu navegador vai pedir que você autentique com uma biometria ou PIN do dispositivo para criar a chave de acesso."
+      },
+      "blocked": "As configurações de proteção de hardware não estão disponíveis nesta sessão."
+    },
+    "two_factor": {
+      "heading": "Autenticação de dois fatores em ações críticas",
+      "intro": "Uma verificação extra além do seu PIN para ações sensíveis. Mesmo que alguém veja você digitar seu PIN, ainda assim não consegue fazer essas coisas sem a segunda etapa.",
+      "actions_protects_label": "Ações que protege",
+      "gated_actions": [
+        { "label": "Enviar fundos", "desc": "cada envio, após as verificações de segurança" },
+        { "label": "Revelar sua frase de recuperação", "desc": "visualizar ou exportar seu backup" },
+        { "label": "Definir um PIN de emergência", "desc": "criar a carteira de emergência" },
+        { "label": "Criar ou ocultar uma carteira", "desc": "alterações em carteiras ocultas" }
+      ],
+      "currently_enforcing": "Aplicando atualmente:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Chave de acesso",
+      "badge_password": "PIN + Senha de ação",
+      "badge_off": "Desativado (somente PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Você está em uma sessão isca/oculta. Configure a autenticação de dois fatores a partir da sua sessão real.",
+      "method_a_title": "PIN + Senha de ação",
+      "on_suffix": "ATIVADO",
+      "method_a_desc": "Uma segunda senha salva dentro da sua carteira. Forte, mas as duas senhas ficam no mesmo dispositivo.",
+      "label_pin": "Seu PIN",
+      "label_wallet_password": "Senha da carteira",
+      "pin_confirm_placeholder": "Confirme que é você",
+      "action_password_label_change": "Nova senha de ação",
+      "action_password_label_set": "Senha de ação",
+      "action_password_placeholder": "Pelo menos 8 caracteres",
+      "action_password_hint": "Pelo menos 8 caracteres · qualquer caractere permitido",
+      "too_short": "Use pelo menos {{min}} caracteres.",
+      "confirm_label": "Confirmar",
+      "confirm_placeholder": "Digite a senha de ação novamente",
+      "confirm_hint": "Deve coincidir com sua senha de ação",
+      "mismatch": "As senhas não coincidem.",
+      "save_change": "Alterar senha de ação",
+      "save_set": "Definir senha de ação",
+      "remove": "Remover senha de ação",
+      "toast_changed": "Senha de ação alterada",
+      "toast_set": "Senha de ação definida",
+      "toast_set_error": "Não foi possível definir a senha de ação",
+      "toast_confirm_pin_required": "Digite o PIN/senha da sua carteira para confirmar",
+      "toast_removed": "Senha de ação removida",
+      "toast_remove_error": "Não foi possível remover a senha de ação",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Chave de acesso / FIDO2",
+      "method_b_desc_native": "Seu PIN mais {{label}}. Se a biometria não estiver disponível, a ação é bloqueada. Perder o dispositivo nunca faz você perder os fundos.",
+      "method_b_desc_web": "Seu PIN mais um toque de chave de acesso. Se a chave de acesso não estiver disponível, a ação é bloqueada. Perdê-la nunca faz você perder os fundos.",
+      "switch_aria_native": "Usar a biometria do meu dispositivo como segundo fator",
+      "switch_aria_web": "Usar chave de acesso como segundo fator",
+      "confirm_native": "Confirme ações críticas com {{label}}.",
+      "unavailable_native": "{{label}} / senha do dispositivo não está configurado neste dispositivo — ative-o nas configurações do dispositivo para usar este fator.",
+      "unsupported_web": "Este navegador não é compatível com WebAuthn / chaves de acesso.",
+      "register_hint_web_pre": "Nenhuma chave de acesso registrada ainda — configure uma em",
+      "register_hint_web_strong": "Chaves de acesso da carteira",
+      "register_hint_web_post": "abaixo, depois ative isso.",
+      "toggle_biometric_needed": "{{label}} não está configurado neste dispositivo.",
+      "toggle_passkey_needed": "Registre uma chave de acesso primeiro (Chaves de acesso da carteira, abaixo).",
+      "toggle_biometric_on": "Segundo fator {{label}} ativado",
+      "toggle_biometric_off": "Segundo fator {{label}} desativado",
+      "toggle_passkey_on": "Segundo fator de chave de acesso ativado",
+      "toggle_passkey_off": "Segundo fator de chave de acesso desativado"
+    },
+    "session": {
+      "title": "Sessão e bloqueio automático",
+      "description": "Bloqueia sua carteira após um período de inatividade ou quando você sai do aplicativo",
+      "status_unlocked": "Desbloqueada",
+      "status_locked": "Bloqueada",
+      "auto_lock_after": "Bloqueio automático após",
+      "never_note": "Sem bloqueio automático por inatividade, mas ainda bloqueia após ~45 s em segundo plano e após 8 horas desbloqueada.",
+      "resets_note": "É reiniciado sempre que você interage com o aplicativo. Também bloqueia imediatamente ao ir para segundo plano.",
+      "lock_now": "Bloquear agora",
+      "recent_activity": "Atividade recente",
+      "view_all": "Ver tudo",
+      "this_device": "Este dispositivo",
+      "active_now": "Ativo agora"
+    },
+    "rehearsal": {
+      "title": "Ensaiar a negabilidade",
+      "description": "Veja o painel exatamente como alguém segurando seu celular desbloqueado veria."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Carteira",
+    "sidebar_expand": "Expandir barra lateral",
+    "sidebar_collapse": "Recolher barra lateral",
+    "search_placeholder": "Buscar...",
+    "search_shortcut_title": "Buscar (⌘K)",
+    "lock": "Bloquear",
+    "lock_confirm_prompt": "Bloquear esta carteira agora?",
+    "back": "Voltar",
+    "settings": "Configurações",
+    "main_content_aria": "Conteúdo principal",
+    "bottom_nav_aria": "Navegação inferior",
+    "more_features_aria": "Mais recursos",
+    "more": "Mais",
+    "close": "Fechar",
+    "all_features_heading": "Todos os recursos",
+    "recent_heading": "Recentes",
+    "tab_home": "Início",
+    "tab_send": "Enviar",
+    "tab_receive": "Receber"
+  },
+  "back": {
+    "default_label": "Voltar"
+  },
+  "send": {
+    "heading": "Enviar criptomoeda",
+    "subheading": "Transfira fundos com segurança",
+    "wallet_fallback": "Carteira",
+    "wallet_picker": { "label": "Da carteira", "placeholder": "Selecionar carteira" },
+    "asset_picker": { "label": "Ativo", "placeholder": "Selecionar ativo" },
+    "recipient": {
+      "label": "Enviar para (endereço ou nome)",
+      "placeholder": "Cole um endereço ou digite um nome (ex.: vitalik.eth)",
+      "scan_qr": "Escanear código QR",
+      "resolving": "Resolvendo nome…",
+      "name_not_found": "Nome não encontrado — verifique a grafia ou cole o endereço diretamente.",
+      "ens_using_prefix": "Usando {{name}} →",
+      "ens_confirm_intro": "consultado de forma privada na blockchain para:",
+      "ens_confirm_hint": "Confirme que este endereço está correto antes de enviar.",
+      "use_this_address": "Usar este endereço",
+      "not_whitelisted": "Este endereço não está na sua lista de confiança. Verifique novamente antes de continuar. Você pode adicionar endereços confiáveis nas Configurações.",
+      "self_send_warning": "Você está enviando para o endereço da sua própria carteira. Isso não move nada entre carteiras e ainda custa uma taxa de rede. Verifique o destinatário antes de continuar."
+    },
+    "screening": {
+      "local_disclosure": "Os destinatários são verificados no seu dispositivo em busca de endereços fraudulentos no seu próprio histórico — nada sai do seu dispositivo.",
+      "remote_opt_in": "Também verificar em uma base de dados de ameaças on-line (envia este endereço a terceiros)",
+      "remote_unavailable": "A verificação on-line está ativada, mas nenhum provedor está configurado nesta versão — a verificação continua local, então não conseguimos verificar isso em uma lista externa.",
+      "demo_poison_button": "Demonstração: colar um endereço parecido"
+    },
+    "simulation": {
+      "title": "Simulação de transação",
+      "toggle_aria": "Alternar simulação de transação",
+      "description": "Antes de assinar, fazemos uma verificação local prévia — sem serviços de terceiros, nenhum dado sai do seu dispositivo.",
+      "checks": [
+        "Risco do endereço (envenenamento/parecido)",
+        "Decodificação do contrato",
+        "Sinalização de aprovação ilimitada",
+        "Previsão de reversão",
+        "Anomalia em relação ao seu histórico",
+        "Aviso de grande saída"
+      ],
+      "results_hint": "Os resultados aparecem na próxima etapa, depois que você inserir um endereço e um valor.",
+      "off_hint": "A simulação está desativada — nenhuma verificação prévia será executada antes de assinar.",
+      "taking_too_long": "Está demorando muito?",
+      "turn_off": "Desativar simulação"
+    },
+    "amount": {
+      "label": "Valor",
+      "placeholder": "0,00",
+      "being_sent": "sendo enviado",
+      "balance_prefix": "Saldo:",
+      "demo_suffix": "(demonstração)",
+      "live_suffix": "(ao vivo)",
+      "reading_from_network": "lendo da rede…"
+    },
+    "errors": {
+      "amount_missing": "O valor é obrigatório",
+      "amount_not_positive": "O valor deve ser maior que zero",
+      "amount_malformed": "Digite um valor decimal simples, como 0.5",
+      "amount_over_balance": "Saldo insuficiente",
+      "insufficient_balance_title": "Saldo insuficiente.",
+      "insufficient_balance_body": "Você tem {{balance}} {{currency}} disponíveis para enviar (após a taxa de rede). Reduza o valor para continuar."
+    },
+    "status": {
+      "not_enabled": "O envio ainda não está ativado para {{currency}}. Este ativo é somente para recebimento até que seu caminho criptográfico seja verificado.",
+      "dev_ungate_title": "DESBLOQUEIO DE DESENVOLVIMENTO ATIVO",
+      "dev_ungate_body": "— o bloqueio de envio é ignorado para {{currency}} via VITE_DEV_UNGATE_SEND (somente compilação de desenvolvimento). O status deste ativo não muda (ainda não está ativo); a mainnet permanece bloqueada. Apenas para verificação em testnet — nunca lance esta compilação.",
+      "locked": "Sua carteira está bloqueada. Desbloqueie-a nas Configurações da carteira para assinar e enviar."
+    },
+    "note": { "label": "Observação (opcional)", "placeholder": "Para que é isto?" },
+    "trezor": {
+      "toggle_label": "Assinar com Trezor",
+      "connected": "Dispositivo conectado",
+      "connect_button": "Conectar dispositivo"
+    },
+    "buttons": {
+      "continue": "Continuar",
+      "confirm_send": "Confirmar e enviar",
+      "back": "Voltar"
+    },
+    "verify": { "summary_label": "Você está enviando" },
+    "fee": {
+      "automatic": "A taxa de rede é definida automaticamente para {{currency}} ({{network}}).",
+      "native_fee_note": "A taxa de rede é paga em {{symbol}} ({{network}}) — você precisa de {{symbol}} para cobrir a taxa de rede mesmo ao enviar {{token}}."
+    },
+    "decode": {
+      "heading": "O que esta transação faz",
+      "action": "Ação",
+      "send_tokens": "Enviar tokens",
+      "token": "Token",
+      "amount": "Valor",
+      "recipient": "Destinatário",
+      "grant_permission": "Conceder permissão de gasto",
+      "permission": "Permissão",
+      "unlimited_permission": "Ilimitada (este aplicativo pode gastar qualquer valor)",
+      "spender": "Gastador"
+    },
+    "reauth": {
+      "prompt": "Digite novamente seu {{credential}} para autorizar",
+      "credential_pin": "PIN",
+      "credential_password": "senha",
+      "submit_pin": "Autorizar",
+      "submit_password": "Autorizar e enviar",
+      "password_placeholder": "Senha do cofre",
+      "password_aria": "Senha do cofre para autorização de envio",
+      "errors": {
+        "unavailable": "Verificação indisponível — bloqueie e desbloqueie a carteira novamente.",
+        "incorrect": "Incorreta — tente novamente ({{remaining}} restantes)"
+      }
+    },
+    "done": {
+      "beacon_label": "Transação transmitida",
+      "heading": "Transação transmitida",
+      "body_suffix": "assinada localmente e enviada à rede",
+      "tx_hash_label": "Hash da transação",
+      "view_explorer": "Ver no explorador de blocos",
+      "pending_note": "Pendente até ser confirmada na rede. O saldo é atualizado a partir da blockchain, não de um valor armazenado.",
+      "send_another": "Enviar outra"
+    },
+    "toasts": {
+      "ens_off_in_session": "A resolução de nomes está desativada nesta sessão — cole o endereço diretamente.",
+      "ens_not_found": "Nome ENS não encontrado",
+      "sns_unavailable": "A resolução de nomes da Solana ainda não está disponível — cole o endereço diretamente.",
+      "ens_resolution_failed": "Falha na resolução do nome",
+      "verify_required": "Termine de verificar seu backup antes de enviar este valor.",
+      "two_factor_retry": "O envio não pôde ser concluído — verifique novamente para tentar de novo.",
+      "send_failed_fallback": "Falha no envio",
+      "unconfirmed": "Não foi possível confirmar esta transação na rede ainda — ela pode estar pendente. Verifique no explorador."
+    }
+  },
+  "receive": {
+    "heading": "Receber criptomoeda",
+    "subheading": "Mostre um endereço de carteira para receber fundos",
+    "asset_label": "Ativo",
+    "asset_placeholder": "Escolher ativo",
+    "not_available": "O recebimento de {{name}} ({{symbol}}) ainda não está disponível. Nenhum endereço é exibido até que este ativo seja ativado.",
+    "locked": {
+      "title": "Carteira bloqueada",
+      "body": "Desbloqueie sua carteira para revelar seu endereço de recebimento de {{asset}} na {{network}}.",
+      "open_hd_wallet": "Abrir gerenciador de carteira HD"
+    },
+    "your_address": "Seu endereço {{asset}}",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Endereço de recebimento {{symbol}}",
+    "copy": {
+      "copied_aria": "Endereço copiado para a área de transferência",
+      "copy_aria": "Copiar endereço",
+      "copied_toast": "Endereço copiado",
+      "copy_failed_toast": "Não foi possível copiar — selecione e copie o endereço manualmente"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} é um token em uma rede compatível com Ethereum. Este é o endereço da sua carteira — peça que o remetente envie {{symbol}} apenas na {{network}}. Enviar em outra rede pode causar perda permanente dos fundos.",
+      "evm": "Este é o endereço compartilhado da sua carteira. Envie {{name}} apenas na {{network}} para este endereço, e certifique-se de que o remetente use a {{network}}.",
+      "btc": "Envie Bitcoin apenas na {{network}} para este endereço.",
+      "solana": "Envie Solana apenas na {{network}} para este endereço."
+    },
+    "select_asset_prompt": "Selecione um ativo para receber.",
+    "unlock_footer_note": "Os endereços vêm da sua carteira no dispositivo e só aparecem enquanto ela estiver desbloqueada."
+  },
+  "dashboard": {
+    "portfolioValue": "Valor do portfólio",
+    "priceAlertsTriggered_one": "{{count}} alerta de preço acionado!",
+    "priceAlertsTriggered_other": "{{count}} alertas de preço acionados!",
+    "lockAriaLabel": "Bloquear saldo com biometria",
+    "lockBalance": "Bloquear saldo",
+    "synced": "Sincronizado {{time}}",
+    "syncJustNow": "Agora mesmo",
+    "syncSecondsAgo_one": "há {{count}}s",
+    "syncSecondsAgo_other": "há {{count}}s",
+    "syncMinutesAgo_one": "há {{count}}min",
+    "syncMinutesAgo_other": "há {{count}}min",
+    "actions": {
+      "send": "Enviar",
+      "receive": "Receber",
+      "schedule": "Agendar",
+      "add": "Adicionar"
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Atividade",
+      "analytics": "Análises"
+    },
+    "emptyWallets": {
+      "title": "Nenhuma carteira ainda",
+      "description": "Adicione uma carteira para começar a receber, enviar e manter ativos em várias redes."
+    },
+    "addWallet": "Adicionar carteira",
+    "searchTransactionsPlaceholder": "Buscar transações...",
+    "emptySearch": {
+      "title": "Nenhuma transação correspondente",
+      "description": "Tente limpar os filtros ou buscar outro ativo ou endereço."
+    },
+    "emptyTransactions": {
+      "title": "Nenhuma transação ainda",
+      "description": "Sua atividade on-chain aparecerá aqui assim que você enviar ou receber."
+    },
+    "portfolioPerformance": "Desempenho do portfólio",
+    "assetDistribution": "Distribuição de ativos",
+    "quickAccess": "Acesso rápido",
+    "quickAccessItems": {
+      "receive": "Receber",
+      "security": "Segurança",
+      "approvals": "Aprovações",
+      "addressCheck": "Verificação de endereço",
+      "analytics": "Análises",
+      "sentiment": "Sentimento",
+      "riskScore": "Pontuação de risco"
+    },
+    "walletNameLabel": "Nome da carteira",
+    "walletNamePlaceholder": "Minha carteira ETH",
+    "addWalletDialog": {
+      "title": "Adicionar carteira",
+      "currency": "Moeda",
+      "creating": "Criando...",
+      "create": "Criar carteira"
+    },
+    "renameWalletDialog": {
+      "title": "Renomear carteira",
+      "saving": "Salvando...",
+      "save": "Salvar nome"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Cofre criptografado",
+    "backup": {
+      "title": "Fazer backup de \"{{name}}\"",
+      "reauthDescription": "Confirme que é você, e então mostraremos a frase de recuperação desta carteira.",
+      "description": "Anote estas 12 palavras offline. Qualquer pessoa que as tenha pode gastar os fundos desta carteira — e são a única forma de recuperá-la.",
+      "warning": "Nunca tire uma captura de tela. Nunca digite em outro aplicativo.",
+      "confirmButton": "Já anotei — marcar como salvo"
+    },
+    "addWallet": {
+      "defaultWalletName": "sua nova carteira",
+      "backupDescription": "Esta carteira tem sua própria frase de recuperação — separada de todas as outras carteiras do seu cofre. Anote-a offline antes de usá-la.",
+      "backedUpDone": "Já fiz o backup — concluído",
+      "title": "Adicionar uma carteira",
+      "createNew": "Criar nova",
+      "importSeed": "Importar semente",
+      "createDescription": "Gera uma NOVA semente que deriva TODAS as redes (ETH/EVM, BTC, SOL). Você fará o backup antes de ela ficar ativa.",
+      "importDescription": "Cole uma frase-semente existente de 12/24 palavras — todas as redes são derivadas automaticamente (uma semente não é específica de uma rede).",
+      "recoveryPhraseLabel": "Frase de recuperação",
+      "recoveryPhrasePlaceholder": "palavra1 palavra2 ... palavra12",
+      "walletNameLabel": "Nome da carteira",
+      "walletNamePlaceholder": "ex.: Poupança",
+      "assetsToShowLabel": "Ativos a exibir",
+      "assetsToShowHint": "Apenas uma escolha de exibição — a semente contém todas as redes independentemente.",
+      "confirmVaultPlaceholder": "Confirme que é você para alterar seu cofre",
+      "vaultReentryHint": "Digitado novamente para autorizar uma alteração no seu cofre de sementes. Nunca mantido na memória.",
+      "createAndBackup": "Criar e fazer backup",
+      "importWallet": "Importar carteira"
+    },
+    "vaultPinLabel": "PIN do cofre",
+    "vaultPasswordLabel": "Senha do cofre",
+    "cancel": "Cancelar",
+    "done": "Concluído",
+    "manageAssets": {
+      "title": "Ativos de \"{{name}}\"",
+      "description": "Escolha quais ativos aparecem para esta carteira. Os ocultos ficam fora do caminho até serem adicionados."
+    },
+    "rename": {
+      "title": "Renomear carteira",
+      "save": "Salvar nome"
+    },
+    "remove": {
+      "title": "Remover \"{{name}}\"?",
+      "onlyWallet": "Esta é sua única carteira — não pode ser removida. Use o Apagamento de Emergência em Segurança para apagar tudo.",
+      "description": "Remove a semente desta carteira deste dispositivo.",
+      "backedUpNote": "Você pode restaurá-la a partir da frase de recuperação.",
+      "notBackedUpNote": "⚠️ SEM backup — sem a frase, ela se perde para sempre.",
+      "button": "Remover carteira"
+    },
+    "move": {
+      "title": "Mover \"{{name}}\" para…"
+    },
+    "managePortfolios": {
+      "title": "Portfólios",
+      "defaultTag": "(padrão)",
+      "saveAriaLabel": "Salvar nome do portfólio",
+      "renameAriaLabel": "Renomear {{name}}",
+      "deleteAriaLabel": "Excluir {{name}}",
+      "newNamePlaceholder": "Novo nome do portfólio",
+      "addButton": "Adicionar"
+    },
+    "activity": {
+      "unlockPrompt": "Desbloqueie sua carteira para ver a atividade.",
+      "loading": "Carregando...",
+      "loadError": "Não foi possível carregar a atividade.",
+      "noTransactions": "Nenhuma transação ainda.",
+      "viewFullHistory": "Ver histórico completo →"
+    },
+    "portfolioValueLabel": "Valor do portfólio",
+    "explore": {
+      "subtitle": "Você está explorando — somente visualização. Ainda sem carteira.",
+      "description": "Explore livremente. Quando estiver pronto, crie uma nova carteira de autocustódia ou importe uma semente existente — as chaves são geradas e criptografadas neste dispositivo.",
+      "createOrImport": "Criar ou importar uma carteira"
+    },
+    "portfoliosButton": "Portfólios",
+    "totalValueHeading": "{{name}} · Valor total",
+    "partialTotalNote": "Alguns saldos não puderam ser carregados — este total pode estar incompleto.",
+    "refreshPricesTooltip": "Atualizar preços ao vivo",
+    "live": "Ao vivo",
+    "approximate": "Aproximado",
+    "seedVerify": {
+      "title": "Termine de verificar seu backup",
+      "description": "Obrigatório para envios acima do limite de segurança.",
+      "verifyAriaLabel": "Verificar o backup da sua carteira",
+      "verifyButton": "Verificar"
+    },
+    "unbacked": {
+      "titleBold": "Backup da carteira incompleto.",
+      "body": "Cada carteira tem sua própria frase de recuperação — sem ela, os fundos dessa carteira são irrecuperáveis. Faça o backup agora.",
+      "backUpButton": "Fazer backup de \"{{name}}\""
+    },
+    "actions": {
+      "send": "Enviar",
+      "receive": "Receber",
+      "addWallet": "Adicionar carteira"
+    },
+    "activeWalletHint": {
+      "prefix": "Enviar/Receber usa",
+      "otherPortfolio": " (em outro portfólio)",
+      "suffix": ". Toque em uma carteira abaixo para trocar."
+    },
+    "tabs": {
+      "tokens": "Tokens",
+      "activity": "Atividade",
+      "analytics": "Análises"
+    },
+    "noWalletsInPortfolio": "Nenhuma carteira em \"{{name}}\". Adicione uma carteira ou mova uma para cá pelo menu dela.",
+    "hideAssets": "Ocultar ativos",
+    "showAllAssets": "Mostrar todos os ativos",
+    "walletCard": {
+      "active": "Ativa",
+      "backedUp": "Backup feito",
+      "backUp": "Fazer backup",
+      "partial": "parcial",
+      "optionsAriaLabel": "Opções de {{name}}",
+      "noAssetsShown": "Nenhum ativo exibido. Use \"Gerenciar ativos\"."
+    },
+    "menu": {
+      "manageAssets": "Gerenciar ativos",
+      "rename": "Renomear",
+      "moveToPortfolio": "Mover para portfólio",
+      "backUp": "Fazer backup",
+      "remove": "Remover"
+    },
+    "balanceLoadFailedTitle": "Não foi possível carregar o saldo",
+    "defaultWalletFallbackName": "carteira",
+    "toast": {
+      "walletImported": "Carteira importada — todas as redes derivadas.",
+      "walletRemoved": "Carteira removida deste dispositivo.",
+      "walletAddedBackedUp": "Carteira adicionada e com backup feito.",
+      "movedTo": "Movida para {{name}}.",
+      "markedBackedUp": "\"{{name}}\" marcada como salva."
+    },
+    "errors": {
+      "couldNotAddWallet": "Não foi possível adicionar a carteira",
+      "couldNotImportWallet": "Não foi possível importar a carteira",
+      "couldNotRemoveWallet": "Não foi possível remover a carteira"
+    }
+  },
+  "networth": {
+    "title": "Patrimônio líquido em criptomoedas",
+    "unlockPrompt": "Desbloqueie sua carteira para ver suas posições on-chain.",
+    "subtitle": "Suas posições on-chain — não inclui ativos externos.",
+    "totalHoldings": "Total de posições",
+    "partialNote": "parcial — alguns saldos não puderam ser lidos",
+    "refreshPricesTooltip": "Atualizar preços ao vivo",
+    "live": "Ao vivo",
+    "approximate": "Aproximado",
+    "allocation": "Alocação",
+    "holdings": "Posições",
+    "noHoldings": "Nenhuma posição ainda."
+  }
+}

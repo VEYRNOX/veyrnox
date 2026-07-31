@@ -317,7 +317,7 @@ export default function FraudDetection() {
 
         {scanResult && (
           <p className="text-xs text-muted-foreground">
-            Last scan: {scanResult.scannedAt.toLocaleTimeString("en-GB")} ·{" "}
+            Last scan: {scanResult.scannedAt.toLocaleTimeString(undefined)} ·{" "}
             {scanResult.txCount} transactions · {scanResult.addressCount}{" "}
             addresses screened
           </p>
@@ -409,7 +409,7 @@ export default function FraudDetection() {
                       <p className="text-xs mt-0.5 opacity-80">{f.detail}</p>
                       {f.tx && (
                         <p className="text-[10px] mt-1 opacity-60">
-                          {new Date(f.tx.created_date).toLocaleString("en-GB")}{" "}
+                          {new Date(f.tx.created_date).toLocaleString(undefined)}{" "}
                           · {f.tx.currency}
                         </p>
                       )}
@@ -455,7 +455,7 @@ export default function FraudDetection() {
                     <p className="text-xs mt-0.5 opacity-80">{a.detail}</p>
                     {a.storedAt && (
                       <p className="text-[10px] mt-1 opacity-60">
-                        {new Date(a.storedAt).toLocaleString("en-GB")}
+                        {new Date(a.storedAt).toLocaleString(undefined)}
                       </p>
                     )}
                   </div>

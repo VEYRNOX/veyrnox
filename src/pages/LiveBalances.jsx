@@ -8,6 +8,7 @@ import { Search, Wifi, ExternalLink, Loader2, Coins, AlertTriangle, CheckCircle 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 
 // Networks come straight from the wallet-core EVM registry — the SAME source
 // send / receive / tx-history read from. listEnabledNetworks() returns only
@@ -154,7 +155,7 @@ export default function LiveBalances() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Native Balance · {net?.label}</p>
-                <p className="text-3xl font-bold">{parseFloat(data.eth).toFixed(6)} {net?.symbol}</p>
+                <p className="text-3xl font-bold">{formatCryptoAmount(parseFloat(data.eth), resolveLocale(), { maximumFractionDigits: 6, symbol: net?.symbol })}</p>
                 <p className="text-xs text-muted-foreground mt-1 font-mono break-all">{data.address}</p>
               </div>
               <div className="flex flex-col items-end gap-2">
@@ -165,7 +166,7 @@ export default function LiveBalances() {
               </div>
             </div>
             <div className="flex items-center gap-4 pt-2 border-t border-border text-xs text-muted-foreground">
-              <span>Gas Price: <span className="font-semibold text-foreground">{gasGwei != null ? `${gasGwei.toFixed(2)} Gwei` : "—"}</span></span>
+              <span>Gas Price: <span className="font-semibold text-foreground">{gasGwei != null ? formatCryptoAmount(gasGwei, resolveLocale(), { maximumFractionDigits: 2, symbol: "Gwei" }) : "—"}</span></span>
               <span className="h-3 w-px bg-border" />
               <span>Network: <span className="font-semibold text-success">{net?.label} · Live</span></span>
             </div>
@@ -179,7 +180,7 @@ export default function LiveBalances() {
                 <p className="text-sm font-semibold">{tokens.length} verified token{tokens.length > 1 ? "s" : ""} with a balance</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">wallet registry</span>
               </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-64 overflow-y-auto pe-1">
                 {tokens.map((t) => (
                   <div key={t.address} className="p-3 rounded-xl border border-border bg-card flex items-center gap-3">
                     <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-xs font-bold shrink-0">
@@ -189,8 +190,8 @@ export default function LiveBalances() {
                       <p className="font-semibold text-sm">{t.symbol}</p>
                       <p className="text-xs text-muted-foreground truncate font-mono">{t.address}</p>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-semibold text-sm">{t.balance >= 0.0001 ? t.balance.toFixed(4) : t.balance.toExponential(2)}</p>
+                    <div className="text-end shrink-0">
+                      <p className="font-semibold text-sm">{t.balance >= 0.0001 ? formatCryptoAmount(t.balance, resolveLocale(), { maximumFractionDigits: 4 }) : t.balance.toExponential(2)}</p>
                     </div>
                   </div>
                 ))}

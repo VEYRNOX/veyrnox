@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { safeFormat } from "@/lib/safeDate";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
+import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 
 const STATUS_COLORS = { draft: "secondary", sent: "default", paid: "outline", overdue: "destructive" };
 
@@ -32,7 +33,7 @@ export default function InvoiceGenerator() {
 
   const create = useMutation({
     mutationFn: (/** @type {any} */ d) => {
-      const amount = parseFloat(d.total_amount);
+      const amount = parseLocaleNumber(d.total_amount, resolveLocale());
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Amount must be a positive number");
       const addr = (d.wallet_address || "").trim();
       // Validate address: use currency-aware check when possible, else require non-empty + plausible length
@@ -70,7 +71,7 @@ export default function InvoiceGenerator() {
           <h1 className="text-xl font-bold flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Invoice Generator</h1>
           <p className="text-sm text-muted-foreground">{invoices.length} invoices · ${totalPaid.toLocaleString()} received</p>
         </div>
-        <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" /> New Invoice</Button>
+        <Button onClick={() => setOpen(true)} size="sm"><Plus className="h-4 w-4 me-1" /> New Invoice</Button>
       </div>
 
       {/* Invoice List */}
@@ -82,7 +83,7 @@ export default function InvoiceGenerator() {
         <div className="text-center py-16">
           <p className="text-4xl mb-3">📄</p>
           <p className="text-muted-foreground text-sm mb-4">Create professional crypto invoices</p>
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Create Invoice</Button>
+          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 me-1" /> Create Invoice</Button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -104,19 +105,19 @@ export default function InvoiceGenerator() {
               <div className="flex flex-wrap gap-2">
                 {inv.status === "draft" && (
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus.mutate({ id: inv.id, status: "sent" })}>
-                    <Send className="h-3 w-3 mr-1" /> Mark Sent
+                    <Send className="h-3 w-3 me-1" /> Mark Sent
                   </Button>
                 )}
                 {inv.status === "sent" && (
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatus.mutate({ id: inv.id, status: "paid" })}>
-                    <CheckCircle2 className="h-3 w-3 mr-1" /> Mark Paid
+                    <CheckCircle2 className="h-3 w-3 me-1" /> Mark Paid
                   </Button>
                 )}
                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => copyPaymentLink(inv)}>
-                  {copied === inv.id ? <><CheckCircle2 className="h-3 w-3 mr-1 text-success" /> Copied</> : <><Copy className="h-3 w-3 mr-1" /> Copy Payment Link</>}
+                  {copied === inv.id ? <><CheckCircle2 className="h-3 w-3 me-1 text-success" /> Copied</> : <><Copy className="h-3 w-3 me-1" /> Copy Payment Link</>}
                 </Button>
                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setPreview(inv)}>
-                  <FileText className="h-3 w-3 mr-1" /> Preview
+                  <FileText className="h-3 w-3 me-1" /> Preview
                 </Button>
                 <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => remove.mutate(inv.id)} aria-label="Delete invoice">
                   <Trash2 className="h-3 w-3" />
@@ -157,7 +158,7 @@ export default function InvoiceGenerator() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="inv-amount">Amount</Label>
-                <Input id="inv-amount" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} placeholder="500" type="number" className="mt-1.5" />
+                <Input id="inv-amount" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} placeholder="500" type="text" inputMode="decimal" className="mt-1.5" />
               </div>
               <div>
                 <Label id="inv-currency-label">Currency</Label>
@@ -196,7 +197,7 @@ export default function InvoiceGenerator() {
                   <p className="text-xl font-bold text-gray-900">INVOICE</p>
                   <p className="text-gray-500">{preview.invoice_number}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-end">
                   <p className="font-semibold">VEYRNOX</p>
                   <p className="text-gray-500 text-xs">Crypto Payments</p>
                 </div>

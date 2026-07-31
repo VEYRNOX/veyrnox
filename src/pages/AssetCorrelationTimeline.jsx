@@ -61,7 +61,7 @@ function rollingCorr(a, b, window = 7) {
 
 /** Format a unix timestamp (seconds) as "Jun 15" */
 function fmtDate(ts) {
-  return new Date(ts * 1000).toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+  return new Date(ts * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 const PAIRS = [
@@ -181,7 +181,7 @@ export default function AssetCorrelationTimeline() {
       {/* Loading spinner */}
       {livePricesOn && isLoading && (
         <div className="flex items-center justify-center h-40 text-sm text-muted-foreground">
-          <Spinner size="sm" className="mr-2" label="Loading OHLCV data for BTC, ETH, SOL…" />
+          <Spinner size="sm" className="me-2" label="Loading OHLCV data for BTC, ETH, SOL…" />
           Loading OHLCV data for BTC, ETH, SOL…
         </div>
       )}

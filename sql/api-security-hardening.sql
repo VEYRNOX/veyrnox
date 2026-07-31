@@ -152,6 +152,12 @@ CREATE INDEX IF NOT EXISTS idx_referrals_device
 
 -- Replace generate_referral_code: requires device_id, returns existing code
 -- if one was already generated for this device.
+--
+-- H-1 (2026-07-28): rc_user_id is deliberately NOT a parameter. The referrer's
+-- RevenueCat identity is set server-side from a verified RC webhook (see
+-- sql/referral-rc-webhook.sql). Do not add a client-supplied variant; earlier
+-- revs of sql/first-referral-bonus.sql did, and it was a self-serve
+-- entitlement mint.
 CREATE OR REPLACE FUNCTION generate_referral_code(p_device_id uuid DEFAULT NULL)
 RETURNS text
 LANGUAGE plpgsql
@@ -252,6 +258,21 @@ BEGIN
 END;
 $$;
 
+-- L-8 (2026-07-28 internal audit): record_attribution had no idempotency key,
+-- so a retried purchase webhook (or a coerced retry) could book the same sale
+-- twice within the rate-limit window and inflate paid-count / earnings. Until
+-- a real client-supplied idempotency key (e.g. store transaction id) is
+-- threaded through the RPC signature, collapse duplicates at rest with a
+-- UNIQUE partial index on the natural key of an attribution within an hour
+-- bucket, and dedup at read time so historical duplicates cannot skew payouts.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_attributions_hour_dedup
+  ON referral_attributions (
+    referral_code,
+    plan,
+    revenue_cents,
+    date_trunc('hour', created_at)
+  );
+
 -- Read-only functions for referral owner to query their own data.
 CREATE OR REPLACE FUNCTION get_referral_earnings(p_code text)
 RETURNS TABLE(plan text, revenue_cents integer, discount_cents integer, created_at timestamptz)
@@ -260,11 +281,21 @@ SECURITY DEFINER
 STABLE
 AS $$
 BEGIN
+  -- L-8: dedup by (plan, revenue_cents, hour) so a duplicate attribution
+  -- that slipped in before uq_referral_attributions_hour_dedup existed
+  -- (or via a future signature change) cannot double-count earnings.
   RETURN QUERY
-    SELECT ra.plan, ra.revenue_cents, ra.discount_cents, ra.created_at
-      FROM referral_attributions ra
-     WHERE ra.referral_code = p_code
-     ORDER BY ra.created_at DESC
+    WITH deduped AS (
+      SELECT DISTINCT ON (ra.plan, ra.revenue_cents, date_trunc('hour', ra.created_at))
+             ra.plan, ra.revenue_cents, ra.discount_cents, ra.created_at
+        FROM referral_attributions ra
+       WHERE ra.referral_code = p_code
+       ORDER BY ra.plan, ra.revenue_cents, date_trunc('hour', ra.created_at),
+                ra.created_at ASC
+    )
+    SELECT d.plan, d.revenue_cents, d.discount_cents, d.created_at
+      FROM deduped d
+     ORDER BY d.created_at DESC
      LIMIT 1000;
 END;
 $$;
@@ -278,9 +309,14 @@ AS $$
 DECLARE
   c integer;
 BEGIN
+  -- L-8: count distinct (plan, revenue_cents, hour) tuples so a duplicate
+  -- attribution cannot inflate the paid count that drives tier upgrades.
   SELECT count(*)::integer INTO c
-    FROM referral_attributions
-   WHERE referral_code = p_code;
+    FROM (
+      SELECT DISTINCT plan, revenue_cents, date_trunc('hour', created_at) AS hr
+        FROM referral_attributions
+       WHERE referral_code = p_code
+    ) dedup;
   RETURN c;
 END;
 $$;
@@ -295,7 +331,17 @@ $$;
 -- Supabase RPC fails). Keep INSERT but add a rate-limit wrapper.
 
 -- registerCode upsert wrapper — limits to 3 registrations per device per hour.
-CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid DEFAULT NULL)
+--
+-- H-1 (2026-07-28): rc_user_id is deliberately NOT a parameter here either;
+-- see the note on generate_referral_code above.
+--
+-- INVARIANT (audit H-2, 2026-07-28): p_device_id is REQUIRED. A previous
+-- signature accepted NULL and only rate-limited when NOT NULL, so a client
+-- could bypass the 3/hour cap by omitting device_id and mint unlimited codes.
+-- The rate-limit block therefore runs BEFORE any nullable guard, and NULL is
+-- explicitly rejected. Do not add a DEFAULT back — every caller must pass a
+-- device id from lib/deviceId.js (which itself fails closed on no-CSPRNG).
+CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -303,14 +349,16 @@ AS $$
 DECLARE
   recent_count int;
 BEGIN
-  IF p_device_id IS NOT NULL THEN
-    SELECT count(*) INTO recent_count
-      FROM referrals
-     WHERE device_id = p_device_id
-       AND created_at > now() - interval '1 hour';
-    IF recent_count >= 3 THEN
-      RETURN;
-    END IF;
+  IF p_device_id IS NULL THEN
+    RAISE EXCEPTION 'device_id required' USING ERRCODE = '22004';
+  END IF;
+
+  SELECT count(*) INTO recent_count
+    FROM referrals
+   WHERE device_id = p_device_id
+     AND created_at > now() - interval '1 hour';
+  IF recent_count >= 3 THEN
+    RETURN;
   END IF;
 
   INSERT INTO referrals (code, device_id)
@@ -324,3 +372,94 @@ DROP POLICY IF EXISTS "public insert" ON referrals;
 
 -- Keep public SELECT on referrals (codes are shared by design, count is
 -- vanity-only — paid subscriber count drives tier, not raw referral count).
+
+
+-- ============================================================================
+-- 6. EXECUTE lockdown — H-3 (2026-07-28 internal audit)
+-- ============================================================================
+--
+-- Every SECURITY DEFINER function created above was shipped with the default
+-- PUBLIC EXECUTE grant. `anon` is a member of PUBLIC, so PostgREST exposes
+-- each one to the anon key baked into the client bundle. The primary H-3
+-- finding is `record_attribution`: with only anon access, a caller can forge
+-- revenue rows against any published referral code (subject to the 2/hr rate
+-- limit and the $0–$1000 range), inflating a referrer's earnings display and
+-- polluting the attribution table. Attribution recording belongs
+-- server-side (Edge Function or webhook), never client-driven — REVOKE and
+-- GRANT to service_role only, matching the pattern established by
+-- check-first-referral-bonus-hardening.sql and decrement-referral-hardening.sql.
+--
+-- REVOKE from PUBLIC is required in addition to REVOKE from anon: revoking
+-- the role alone leaves the PUBLIC grant intact and the function stays
+-- reachable.
+--
+-- SHIP FILES ONLY. This migration is NOT executed by this PR. Owner must run
+-- it manually after reviewing the client-impact notes below.
+--
+-- CLIENT IMPACT — the STILL OPEN batch below includes functions the client
+-- currently calls with the anon key (see src/api/referralApi.js and
+-- src/api/trackEvent.js). Running these REVOKEs without a matching client
+-- refactor will break the referral + telemetry flows at runtime. The four
+-- writes flagged (track_event, increment_referral, generate_referral_code,
+-- register_referral_code) each need a decision — leave anon-callable (accept
+-- current threat model, rely on rate limits), or move behind an Edge
+-- Function. record_attribution has no such tension: revenue attribution
+-- should not be client-authored, so this one is safe to REVOKE immediately.
+-- The two read helpers (get_referral_earnings, get_referral_paid_count) are
+-- called from the referral-owner UI on their own device; treat as decisions
+-- pending the same review.
+-- ============================================================================
+
+-- H-3 primary — record_attribution: never client-authored. Safe to revoke.
+REVOKE ALL ON FUNCTION public.record_attribution(text, text, int, int) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.record_attribution(text, text, int, int) FROM anon;
+REVOKE ALL ON FUNCTION public.record_attribution(text, text, int, int) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.record_attribution(text, text, int, int) TO service_role;
+
+-- STILL-OPEN batch from check-first-referral-bonus-hardening.sql.
+-- WARNING: each of the following (except get_referral_leaderboard) currently
+-- has a client caller with the anon key. Running these REVOKEs breaks the
+-- app until callers move to a service-role path. Kept in this file so the
+-- owner has one place to make the call.
+
+REVOKE ALL ON FUNCTION public.track_event(uuid, text, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.track_event(uuid, text, jsonb) FROM anon;
+REVOKE ALL ON FUNCTION public.track_event(uuid, text, jsonb) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.track_event(uuid, text, jsonb) TO service_role;
+
+REVOKE ALL ON FUNCTION public.increment_referral(text, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.increment_referral(text, uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.increment_referral(text, uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_referral(text, uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.generate_referral_code(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.generate_referral_code(uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.generate_referral_code(uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_referral_code(uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.register_referral_code(text, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.register_referral_code(text, uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.register_referral_code(text, uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.register_referral_code(text, uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.get_referral_earnings(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_earnings(text) FROM anon;
+REVOKE ALL ON FUNCTION public.get_referral_earnings(text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.get_referral_earnings(text) TO service_role;
+
+REVOKE ALL ON FUNCTION public.get_referral_paid_count(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_paid_count(text) FROM anon;
+REVOKE ALL ON FUNCTION public.get_referral_paid_count(text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.get_referral_paid_count(text) TO service_role;
+
+-- get_referral_leaderboard has no client caller — safe to revoke immediately.
+REVOKE ALL ON FUNCTION public.get_referral_leaderboard() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_referral_leaderboard() FROM anon;
+REVOKE ALL ON FUNCTION public.get_referral_leaderboard() FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.get_referral_leaderboard() TO service_role;
+
+-- VERIFY (run after the migration; do not take the above on trust):
+--   SELECT has_function_privilege('anon',
+--     'public.record_attribution(text,text,int,int)', 'EXECUTE');   -- expect f
+--   SELECT has_function_privilege('service_role',
+--     'public.record_attribution(text,text,int,int)', 'EXECUTE');   -- expect t

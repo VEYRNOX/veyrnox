@@ -17,6 +17,7 @@ import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScree
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import ReferralPrompt from "@/components/ReferralPrompt";
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,7 @@ import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-
 import { trackEvent, EVENT } from "@/api/trackEvent";
 import { requiresVerification } from "@/lib/seedVerifyGate";
 import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
+import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -107,22 +109,25 @@ export function isFormAmountWellFormed(amountStr) {
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
 function PoisonWarning({ screen }) {
+  const { t } = useTranslation("security");
   if (!screen?.suspicious) return null;
   return (
     <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
       <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
       <div className="text-xs text-destructive space-y-1.5 min-w-0">
-        <p className="font-semibold">This address looks suspicious — check every character carefully</p>
+        <p className="font-semibold">{t("send_gates.poison.heading")}</p>
         <p className="text-destructive/90">
-          This recipient looks like an address you've used before — same first and last
-          characters, different middle. Scammers craft look-alike addresses hoping you copy
-          the wrong one. We couldn't verify this address; compare every character, not just
-          the ends.
+          {t("send_gates.poison.body")}
         </p>
         {screen.lookAlikes.map((m, i) => (
           <div key={i} className="rounded bg-destructive/10 border border-destructive/20 p-1.5">
             <p className="text-[10px] uppercase tracking-wide text-destructive/70">
-              Resembles {m.label}{m.date ? ` · ${new Date(m.date).toLocaleDateString()}` : ""}
+              {t("send_gates.poison.resembles", {
+                label: m.label,
+                dateSuffix: m.date
+                  ? t("send_gates.poison.resembles_date_suffix", { date: new Date(m.date).toLocaleDateString() })
+                  : "",
+              })}
             </p>
             <p className="mono-value break-all">{m.address}</p>
           </div>
@@ -137,6 +142,7 @@ function PoisonWarning({ screen }) {
 // has meaning). Beacon springs in, copy stagger-fades, tx card lifts up.
 // Reduced-motion pins the whole thing static.
 function SendDoneView({ amount, currency, txResult, onSendAnother }) {
+  const { t: tw } = useTranslation("wallet");
   const reduce = useReducedMotion();
   const container = {
     hidden: {},
@@ -156,27 +162,27 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
       className="max-w-md mx-auto text-center py-16 space-y-5"
     >
       <motion.div variants={item} className="flex justify-center">
-        <SuccessBeacon size={112} label="Transaction broadcast" />
+        <SuccessBeacon size={112} label={tw("send.done.beacon_label")} />
       </motion.div>
-      <motion.h2 variants={item} className="text-xl font-bold tracking-tight">Transaction Broadcast</motion.h2>
+      <motion.h2 variants={item} className="text-xl font-bold tracking-tight">{tw("send.done.heading")}</motion.h2>
       <motion.p variants={item} className="text-sm text-muted-foreground">
-        <span className="mono-value text-foreground">{amount} {currency}</span> signed locally and sent to the network
+        <span className="mono-value text-foreground">{amount} {currency}</span> {tw("send.done.body_suffix")}
       </motion.p>
       {txResult?.hash && (
-        <motion.div variants={item} className="p-3 rounded-xl bg-secondary/30 border border-border text-left space-y-2">
-          <p className="text-xs text-muted-foreground">Transaction hash</p>
+        <motion.div variants={item} className="p-3 rounded-xl bg-secondary/30 border border-border text-start space-y-2">
+          <p className="text-xs text-muted-foreground">{tw("send.done.tx_hash_label")}</p>
           <p className="text-xs mono-value break-all">{txResult.hash}</p>
           {txResult.explorerUrl && (
             <a href={txResult.explorerUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
-              View on block explorer <ExternalLink className="h-3 w-3" />
+              {tw("send.done.view_explorer")} <ExternalLink className="h-3 w-3" />
             </a>
           )}
-          <p className="text-[11px] text-muted-foreground">Pending until confirmed on the network. Balance updates from the blockchain, not a stored value.</p>
+          <p className="text-[11px] text-muted-foreground">{tw("send.done.pending_note")}</p>
         </motion.div>
       )}
       <motion.div variants={item}>
         <Button variant="outline" onClick={onSendAnother}>
-          Send Another
+          {tw("send.done.send_another")}
         </Button>
       </motion.div>
       <motion.div variants={item}>
@@ -187,6 +193,8 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
 }
 
 export default function SendCrypto() {
+  const { t } = useTranslation("security");
+  const { t: tw } = useTranslation("wallet");
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -251,6 +259,28 @@ export default function SendCrypto() {
   const [assetSymbol, setAssetSymbol] = useState(searchParams.get("asset") ?? "");
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
+  // LOCALE-AWARE CANONICAL FORM of the raw input, for every DERIVE / GATE / SEND
+  // site below. A de-DE / fr-FR / es-ES user who types "1,5" needs the same
+  // Continue button to work as an en-US user typing "1.5" — but the downstream
+  // validators (isFormAmountWellFormed, wallet-core assertDecimalAmount — M-3)
+  // are ASCII-only by design. This is the ONE place that translates between the
+  // two. See lib/locale.js for the safety rule: an ambiguous input ("1,5" in
+  // en-US) round-trips unchanged so the strict predicate still flags it — no
+  // silent 10x sends.
+  //
+  // The RAW `amount` is kept for display-only sites (the input's own value, the
+  // confirmation screen, the notification text) so the user sees back exactly
+  // what they typed. Every derive/gate/send site reads canonicalAmount.
+  //
+  // Declared alongside `amount` (NOT next to amountNum / amountWellFormed
+  // further down) because the very first tokenCalldata useMemo references it in
+  // its dep array at render time — a later declaration would produce a TDZ
+  // ReferenceError before the page ever mounted. Caught by web-e2e, missed by
+  // unit tests that pin SendCrypto by source-read.
+  const canonicalAmount = useMemo(
+    () => normalizeDecimalInput(amount, resolveLocale()),
+    [amount],
+  );
   const [note, setNote] = useState("");
   const [step, setStep] = useState("form"); // form | verify | done
   const [showScanner, setShowScanner] = useState(false);
@@ -293,7 +323,7 @@ export default function SendCrypto() {
     // still false, and this was the only outlier that would fire resolveEnsName →
     // getProvider(network) in that window (I3 egress).
     if (isDecoy || isHidden || isDeniabilitySessionActive()) {
-      toast.error("Name resolution is off in this session — paste the address directly.");
+      toast.error(tw("send.toasts.ens_off_in_session"));
       return;
     }
     setEnsResolving(true); setEnsResolved(null);
@@ -309,14 +339,14 @@ export default function SendCrypto() {
         const provider = getProvider(network);
         const address = await resolveEnsName(provider, name);
         if (address) setEnsResolved({ name, address });
-        else toast.error("ENS name not found");
+        else toast.error(tw("send.toasts.ens_not_found"));
       } else if (name.endsWith(".sol")) {
         // SNS honest-disable: no on-chain Bonfida resolver is wired yet.
         // The previous path called a third-party proxy (I2/I5 violation).
         // Paste the base58 address directly until on-chain resolution is built.
-        toast.error("Solana name resolution is not available yet — paste the address directly.");
+        toast.error(tw("send.toasts.sns_unavailable"));
       }
-    } catch { toast.error("Name resolution failed"); } finally { setEnsResolving(false); }
+    } catch { toast.error(tw("send.toasts.ens_resolution_failed")); } finally { setEnsResolving(false); }
     // M-3 (internal audit): do NOT auto-populate the signing target with a
     // third-party-resolved address. The resolver is untrusted (a compromised/MITM'd
     // response could substitute an attacker address, and the ENS-mismatch risk input
@@ -514,14 +544,14 @@ export default function SendCrypto() {
   // screen BEFORE any signature (the anti-blind-signing control). Transfers show
   // recipient/amount/token; an unlimited `approve` would surface a red warning.
   const tokenCalldata = /** @type {any} */ (useMemo(() => {
-    if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
+    if (!isErc20 || !toAddress || !canonicalAmount || parseFloat(canonicalAmount) <= 0) return null;
     try {
-      const { data } = buildTokenTransfer({ networkKey: networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
+      const { data } = buildTokenTransfer({ networkKey: networkKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount });
       return describeErc20Call({ data, tokenSymbol: selectedAsset.symbol, decimals: getToken(networkKey, selectedAsset.symbol).decimals });
     } catch {
       return null; // unconfigured token / invalid input — UI shows nothing to decode
     }
-  }, [isErc20, selectedAsset, toAddress, amount]));
+  }, [isErc20, selectedAsset, toAddress, canonicalAmount]));
 
   // Unlimited-approval extra confirmation. Send flows are transfer-only, so this
   // stays false in normal use; it hard-gates the action only if an unlimited
@@ -558,7 +588,7 @@ export default function SendCrypto() {
   // I4 fail-closed: never show a $ value we didn't confirm.
   const balanceIndeterminate = !demoActive && flowSendEnabled && nativeLiveBalance == null;
   const balanceUsd = !balanceIndeterminate && sendUsdRate != null && Number.isFinite(effectiveBalance) ? effectiveBalance * sendUsdRate : null;
-  const amountNum = parseFloat(amount);
+  const amountNum = parseFloat(canonicalAmount);
   // Whether the typed amount is one we are willing to DERIVE FIGURES FROM. The
   // amount field is type="text" (type="number" blanked "1,5" / "1." / "1.2.3"
   // before React saw them, so the 'malformed' message could never fire for them —
@@ -569,11 +599,10 @@ export default function SendCrypto() {
   //
   // NaN unless well-formed, using the SAME verdict the Continue button gates on, so
   // what the form is willing to show and what it is willing to send cannot drift.
-  // Deliberately NOT used for `amountNum` above: sendAmountErrorKind needs the
-  // honest parseFloat, because isFormAmountWellFormed('0') is false and a gated
-  // value would turn "0" into 'malformed', losing the more specific
-  // "Amount must be greater than zero".
-  const amountWellFormed = isFormAmountWellFormed(amount);
+  // Both the well-formedness check and the parse read canonicalAmount so a
+  // locale-comma input is judged after normalisation — "0,5" de-DE parses as
+  // 0.5, not 0, and no longer trips the "must be greater than zero" message.
+  const amountWellFormed = isFormAmountWellFormed(canonicalAmount);
   const usableAmountNum = amountWellFormed ? amountNum : NaN;
   const amountUsd = sendUsdRate != null && Number.isFinite(usableAmountNum) && usableAmountNum > 0 ? usableAmountNum * sendUsdRate : null;
 
@@ -645,14 +674,14 @@ export default function SendCrypto() {
   // specific reason; it never silently blocks.
   const limitEval = useMemo(
     () => evaluateSendAgainstLimits({
-      amount,
+      amount: canonicalAmount,
       currency: selectedWallet?.currency,
       usdRates: USD_RATES,
       history: /** @type {any} */ (history),
       limits: /** @type {any} */ (txLimits),
       now: new Date(),
     }),
-    [amount, selectedWallet, history, txLimits]
+    [canonicalAmount, selectedWallet, history, txLimits]
   );
 
   // ANOMALY / FRAUD DETECTION inputs (Phase S2) — derived from the SAME local data
@@ -683,12 +712,12 @@ export default function SendCrypto() {
   // instead. Errors are surfaced as a degraded "couldn't simulate" note, not a
   // block. Keys are never involved (simulation needs only the sender address).
   const txSim = /** @type {any} */ (useQuery({
-    queryKey: ["tx-sim", networkKey, selectedWallet?.address, toAddress, amount, selectedAsset?.symbol, isErc20],
+    queryKey: ["tx-sim", networkKey, selectedWallet?.address, toAddress, canonicalAmount, selectedAsset?.symbol, isErc20],
     queryFn: async () => {
       const from = selectedWallet.address;
       if (isErc20) {
         const t = getToken(networkKey, selectedAsset.symbol);
-        const { data } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount });
+        const { data } = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount });
         return simulateEvmTransaction({
           networkKey, from, to: t.address, data, valueWei: 0n,
           nativeSymbol, tokenSymbol: selectedAsset.symbol, tokenDecimals: t.decimals,
@@ -697,13 +726,13 @@ export default function SendCrypto() {
         });
       }
       return simulateEvmTransaction({
-        networkKey, from, to: toAddress, valueWei: parseEther(String(amount)),
+        networkKey, from, to: toAddress, valueWei: parseEther(String(canonicalAmount)),
         nativeSymbol, knownAddresses, priorSends, knownCounterparties,
       });
     },
     // I3: never issue simulation RPC in a decoy/hidden (deniability) session.
     enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
-      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
+      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(canonicalAmount) > 0,
     retry: false,
     staleTime: 10000,
   }));
@@ -717,16 +746,16 @@ export default function SendCrypto() {
   // plan + decode-only risk flags (entire_balance / large_outflow) BEFORE signing.
   // LOCAL: only the existing Esplora indexer; no third-party scorer; no keys.
   const btcSim = /** @type {any} */ (useQuery({
-    queryKey: ["btc-sim", networkKey, selectedWallet?.address, toAddress, amount],
+    queryKey: ["btc-sim", networkKey, selectedWallet?.address, toAddress, canonicalAmount],
     queryFn: async () => {
       const fromAddress = selectedWallet.address;
-      const amountSats = parseUnits(String(amount), 8); // BTC has 8 decimals; exact, no float
+      const amountSats = parseUnits(String(canonicalAmount), 8); // BTC has 8 decimals; exact, no float
       const { plan } = await estimateBtcSend({ networkKey, fromAddress, toAddress, amountSats });
       return describeBtcPlan({ plan, fromAddress });
     },
     // I3: never issue Esplora estimate RPC in a decoy/hidden (deniability) session.
     enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && isBtc
-      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(amount) > 0,
+      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(canonicalAmount) > 0,
     retry: false,
     staleTime: 10000,
   }));
@@ -735,13 +764,13 @@ export default function SendCrypto() {
   // tokenCalldata above, which is the human-readable DECODE. Native sends have no
   // calldata. Cheap + local; recomputed with the same inputs as the decode.
   const riskCalldata = useMemo(() => {
-    if (!isErc20 || !toAddress || !amount || parseFloat(amount) <= 0) return null;
+    if (!isErc20 || !toAddress || !canonicalAmount || parseFloat(canonicalAmount) <= 0) return null;
     try {
-      return buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount }).data;
+      return buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount }).data;
     } catch {
       return null;
     }
-  }, [isErc20, selectedAsset, toAddress, amount, networkKey]);
+  }, [isErc20, selectedAsset, toAddress, canonicalAmount, networkKey]);
 
   // PRE-SIGN RISK SCORE (src/risk) — the authoritative one-sentence verdict + the
   // RISK gate. Pure + local: maps the SAME local state the existing warnings read
@@ -763,7 +792,7 @@ export default function SendCrypto() {
     const recipientCode = DEMO ? '0x' : txSim.data?.recipientCode;
     const { unsignedTx, activeSetLocalState, chainData } = buildRiskInputs({
       to: toAddress,
-      amountText: amount,
+      amountText: canonicalAmount,
       isErc20,
       calldata: riskCalldata,
       displayedEns: ensResolved?.name ?? null,
@@ -787,10 +816,10 @@ export default function SendCrypto() {
     if (!riskApplicable || !riskReady) return null;
     return scoreCurrentSend();
     // scoreCurrentSend reads the live send state via closure; deps below mirror
-    // every input it touches (amount included — native sends carry value, not
-    // calldata, so amount must invalidate even when riskCalldata is null).
+    // every input it touches (canonicalAmount included — native sends carry value,
+    // not calldata, so amount must invalidate even when riskCalldata is null).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toAddress, amount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
+  }, [toAddress, canonicalAmount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
 
   // RISK acknowledgement ("Sign anyway"). Reset whenever the breach could change —
   // amount, asset, or recipient — so a stale ack never carries into a changed send
@@ -882,7 +911,7 @@ export default function SendCrypto() {
 
       // 7 — spend limits, recomputed against the latest local history (per-tx + daily).
       const limitGate = evaluateSendAgainstLimits({
-        amount,
+        amount: canonicalAmount,
         currency: selectedWallet.currency,
         usdRates: USD_RATES,
         history: /** @type {any} */ (history),
@@ -1024,7 +1053,7 @@ export default function SendCrypto() {
           // coin-selection plan against the Trezor-derived address (it owns the
           // UTXOs and receives change), translate it into the device's input/
           // output shape, sign on-device, then broadcast the signed bytes.
-          const amountSats = toBaseUnits(amount, 8);
+          const amountSats = toBaseUnits(canonicalAmount, 8);
           const { plan } = await estimateBtcSend({
             networkKey,
             fromAddress: trezorBtcAddress,
@@ -1054,7 +1083,7 @@ export default function SendCrypto() {
               publicKey,
               fromAddress: address,
               toAddress,
-              amountSats: toBaseUnits(amount, 8),
+              amountSats: toBaseUnits(canonicalAmount, 8),
             })
           );
         }
@@ -1065,7 +1094,7 @@ export default function SendCrypto() {
           // SOL Trezor path: the key never leaves the device (I1). Build the
           // unsigned transfer (fresh blockhash via the network provider), sign it
           // on-device, reattach the device signature, then broadcast.
-          const lamports = toBaseUnits(amount, 9);
+          const lamports = toBaseUnits(canonicalAmount, 9);
           const { unsignedTxBase64 } = await buildUnsignedSolTx({
             fromAddress: trezorSolAddress,
             toAddress,
@@ -1083,7 +1112,7 @@ export default function SendCrypto() {
               privateKey,
               fromAddress: address,
               toAddress,
-              amountLamports: toBaseUnits(amount, 9),
+              amountLamports: toBaseUnits(canonicalAmount, 9),
             })
           );
         }
@@ -1141,7 +1170,7 @@ export default function SendCrypto() {
               fromAddress: trezorEvmAddress,
               symbol: selectedAsset.symbol,
               to: toAddress,
-              amount,
+              amount: canonicalAmount,
               fee: clampedFee,
             });
           } else {
@@ -1149,7 +1178,7 @@ export default function SendCrypto() {
               networkKey,
               fromAddress: trezorEvmAddress,
               to: toAddress,
-              amountEth: amount,
+              amountEth: canonicalAmount,
               fee: clampedFee,
             });
           }
@@ -1162,8 +1191,8 @@ export default function SendCrypto() {
           const fee = selectedFee?.fee || undefined;
           raw = await withPrivateKey(acct.index, (privateKey) =>
             isErc20
-              ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount, fee })
-              : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: amount, fee })
+              ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount, fee })
+              : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: canonicalAmount, fee })
           );
         }
       }
@@ -1176,7 +1205,7 @@ export default function SendCrypto() {
       await base44.entities.Transaction.create({
         wallet_id: walletId,
         type: "send",
-        amount: parseFloat(amount),
+        amount: parseFloat(canonicalAmount),
         currency: selectedWallet.currency,
         to_address: toAddress,
         from_address: selectedWallet.address,
@@ -1203,7 +1232,7 @@ export default function SendCrypto() {
           // checks the explorer rather than assuming it confirmed. Fire-and-forget
           // (I4) — a notification failure must never unwind the send path.
           queryClient.invalidateQueries({ queryKey: ["transactions"] });
-          toast("Couldn't confirm this transaction on the network yet — it may still be pending. Check the explorer.");
+          toast(tw("send.toasts.unconfirmed"));
         });
       } else {
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -1230,7 +1259,7 @@ export default function SendCrypto() {
       if (/** @type {Error & {code?: string}} */ (err)?.code === 'VERIFY_REQUIRED') {
         // Say why, like the TWO_FACTOR branch below does. Navigating with no
         // message reads as the send silently vanishing.
-        toast.info("Finish verifying your backup before sending this amount.");
+        toast.info(tw("send.toasts.verify_required"));
         navigate('/verify', { state: { returnTo: '/send' } });
         return;
       }
@@ -1243,11 +1272,11 @@ export default function SendCrypto() {
       // (cleared at line 724 before the gate ran); we are only changing which
       // UI step is rendered, not relaxing any security check.
       if (/** @type {Error & {code?: string}} */ (err)?.code === SEND_GATE.TWO_FACTOR) {
-        toast.info("Send couldn't complete — please verify again to retry.");
+        toast.info(tw("send.toasts.two_factor_retry"));
         setStep("verify");
         return;
       }
-      toast.error(err?.message || "Send failed");
+      toast.error(err?.message || tw("send.toasts.send_failed_fallback"));
     },
   });
 
@@ -1260,7 +1289,7 @@ export default function SendCrypto() {
     try {
       const result = await verifyActiveCredentialDetailed(entered);
       if (result.bricked) {
-        setReauthError("Verification unavailable — please re-lock and unlock the wallet.");
+        setReauthError(tw("send.reauth.errors.unavailable"));
         return;
       }
       if (result.ok) {
@@ -1275,7 +1304,7 @@ export default function SendCrypto() {
         lock();
         return;
       }
-      setReauthError(`Incorrect — try again (${REAUTH_CAP - n} left)`);
+      setReauthError(tw("send.reauth.errors.incorrect", { remaining: REAUTH_CAP - n }));
     } finally {
       setReauthPending(false);
     }
@@ -1311,8 +1340,8 @@ export default function SendCrypto() {
     <div className="max-w-md mx-auto space-y-6">
       {fromDetail && <BackButton />}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Send Crypto</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Transfer funds securely</p>
+        <h1 className="text-2xl font-bold tracking-tight">{tw("send.heading")}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{tw("send.subheading")}</p>
       </div>
 
       <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
@@ -1321,9 +1350,9 @@ export default function SendCrypto() {
             <CoinLogo symbol={assetSymbol} size={36} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">{getAsset(assetSymbol)?.name || assetSymbol}</p>
-              <p className="text-xs text-muted-foreground">{selectedWalletName || "Wallet"}</p>
+              <p className="text-xs text-muted-foreground">{selectedWalletName || tw("send.wallet_fallback")}</p>
             </div>
-            <div className="text-right shrink-0">
+            <div className="text-end shrink-0">
               {demoActive ? (
                 <>
                   <p className="text-sm font-semibold mono-value">{demoBalance ?? "—"} {assetSymbol}</p>
@@ -1339,17 +1368,17 @@ export default function SendCrypto() {
                   )}
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground">reading…</p>
+                <p className="text-xs text-muted-foreground">{tw("send.amount.reading_from_network")}</p>
               )}
             </div>
           </div>
         ) : (
           <>
             <div>
-              <Label id="send-wallet-label">From Wallet</Label>
+              <Label id="send-wallet-label">{tw("send.wallet_picker.label")}</Label>
               <Select value={walletId} onValueChange={setWalletId}>
                 <SelectTrigger className="mt-1.5" aria-labelledby="send-wallet-label">
-                  <SelectValue placeholder="Select wallet">
+                  <SelectValue placeholder={tw("send.wallet_picker.placeholder")}>
                     {selectedWalletName ? (
                       <span className="flex items-center gap-2">
                         <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-primary/20 border border-primary/40">
@@ -1375,10 +1404,10 @@ export default function SendCrypto() {
               </Select>
             </div>
             <div>
-              <Label id="send-asset-label">Asset</Label>
+              <Label id="send-asset-label">{tw("send.asset_picker.label")}</Label>
               <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={/** @type {any} */ (!walletId)}>
                 <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="send-asset-label">
-                  <SelectValue placeholder="Select asset">
+                  <SelectValue placeholder={tw("send.asset_picker.placeholder")}>
                     {assetSymbol ? (
                       <>
                         <CoinLogo symbol={assetSymbol} size={32} />
@@ -1405,14 +1434,14 @@ export default function SendCrypto() {
           </>
         )}
         <div>
-          <Label htmlFor="send-recipient">Send to (address or name)</Label>
+          <Label htmlFor="send-recipient">{tw("send.recipient.label")}</Label>
           <div className="flex gap-2 mt-1.5">
             <Input
               id="send-recipient"
               value={ensName || toAddress}
               onChange={e => { const v = e.target.value; if (v.endsWith(".eth") || v.endsWith(".sol")) { setEnsName(v); setToAddress(""); setEnsResolved(null); } else { setEnsName(""); setToAddress(v); setEnsResolved(null); } }}
               onBlur={e => { setAddressTouched(true); resolveENS(e.target.value); }}
-              placeholder="Paste an address or enter a name (e.g. vitalik.eth)"
+              placeholder={tw("send.recipient.placeholder")}
               // Malformed shows the red border LIVE as you type (deliberately not
               // gated on blur — visual feedback is not disruptive the way an
               // assertive announcement is); missing only after a submit attempt.
@@ -1421,25 +1450,25 @@ export default function SendCrypto() {
               aria-describedby={addressInvalid ? "send-address-error" : undefined}
             />
             {ensResolving && <Loader2 className="h-4 w-4 motion-safe:animate-spin self-center shrink-0 text-muted-foreground" />}
-            <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label="Scan QR code" title="Scan QR code" onClick={() => setShowScanner(true)}>
+            <Button type="button" variant="outline" size="icon" className="shrink-0" aria-label={tw("send.recipient.scan_qr")} title={tw("send.recipient.scan_qr")} onClick={() => setShowScanner(true)}>
               <ScanLine className="h-4 w-4" />
             </Button>
           </div>
           {ensResolving && (
             <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
-              <Loader2 className="h-3 w-3 motion-safe:animate-spin shrink-0" /> Resolving name…
+              <Loader2 className="h-3 w-3 motion-safe:animate-spin shrink-0" /> {tw("send.recipient.resolving")}
             </p>
           )}
           {!ensResolving && ensName && !ensResolved && !toAddress && (
             <p className="text-xs text-destructive mt-1.5 flex items-center gap-1.5">
-              <AlertTriangle className="h-3 w-3 shrink-0" /> Name not found — check the spelling or paste the address directly.
+              <AlertTriangle className="h-3 w-3 shrink-0" /> {tw("send.recipient.name_not_found")}
             </p>
           )}
           {ensResolved && (
             toAddress === ensResolved.address ? (
               // Confirmed: the user accepted the resolved address as the recipient.
               <div className="flex items-center gap-1.5 mt-1.5 text-xs text-success">
-                <CheckCircle2 className="h-3 w-3 shrink-0" /> Using {ensResolved.name} → <span className="mono-value break-all">{ensResolved.address}</span>
+                <CheckCircle2 className="h-3 w-3 shrink-0" /> {tw("send.recipient.ens_using_prefix", { name: ensResolved.name })} <span className="mono-value break-all">{ensResolved.address}</span>
               </div>
             ) : (
               // M-3: resolved via an untrusted third-party service — require an
@@ -1448,13 +1477,13 @@ export default function SendCrypto() {
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   <span>
-                    <b>{ensResolved.name}</b> looked up privately on the blockchain to:
+                    <b>{ensResolved.name}</b> {tw("send.recipient.ens_confirm_intro")}
                     <br /><span className="mono-value break-all text-foreground">{ensResolved.address}</span>
-                    <br />Confirm this address is correct before sending.
+                    <br />{tw("send.recipient.ens_confirm_hint")}
                   </span>
                 </div>
                 <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => setToAddress(ensResolved.address)}>
-                  Use this address
+                  {tw("send.recipient.use_this_address")}
                 </Button>
               </div>
             )
@@ -1472,14 +1501,14 @@ export default function SendCrypto() {
           <p id="send-address-error" role="alert" className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
             <AlertTriangle className="h-3 w-3" aria-hidden="true" />
             {addressErrorKind === 'missing'
-              ? "Recipient address is required"
-              : `Invalid ${selectedWallet?.currency} address format`}
+              ? t("send_gates.address_format.required")
+              : t("send_gates.address_format.invalid_format", { currency: selectedWallet?.currency })}
           </p>
         )}
         {toAddress && addressFormatValid && !isAddressWhitelisted && (
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30 -mt-2">
             <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
-            <p className="text-xs text-caution">This address is not on your whitelist. Double-check before proceeding. You can add trusted addresses in Settings.</p>
+            <p className="text-xs text-caution">{tw("send.recipient.not_whitelisted")}</p>
           </div>
         )}
 
@@ -1491,7 +1520,7 @@ export default function SendCrypto() {
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30 -mt-2">
             <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">
-              You're sending to your own wallet address. This moves nothing between wallets and still costs a network fee. Double-check the recipient before continuing.
+              {tw("send.recipient.self_send_warning")}
             </p>
           </div>
         )}
@@ -1508,17 +1537,17 @@ export default function SendCrypto() {
           <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border -mt-2">
             <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <div className="text-[11px] text-muted-foreground space-y-1.5 flex-1 min-w-0">
-              <p>Recipients are <span className="font-medium">checked on your device</span> for scam addresses against your own history — nothing leaves your device.</p>
+              <p>{tw("send.screening.local_disclosure")}</p>
               <label className="flex items-start gap-2 cursor-pointer">
                 <input type="checkbox" className="mt-0.5" checked={remoteScreen} onChange={e => toggleRemoteScreen(e.target.checked)} />
-                <span>Also screen against an online threat database <span className="text-destructive/80">(sends this address to a third party)</span></span>
+                <span>{tw("send.screening.remote_opt_in")}</span>
               </label>
               {remoteScreen && (
-                <p className="text-destructive/80">Online screening is enabled, but no provider is configured in this build — screening stays local, so we couldn't verify this against an external list.</p>
+                <p className="text-destructive/80">{tw("send.screening.remote_unavailable")}</p>
               )}
               {DEMO && (
                 <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">
-                  Demo: paste a look-alike address
+                  {tw("send.screening.demo_poison_button")}
                 </button>
               )}
             </div>
@@ -1532,31 +1561,23 @@ export default function SendCrypto() {
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium flex items-center gap-1.5">
                 <Activity className={`h-3.5 w-3.5 ${simEnabled ? "text-primary" : "text-muted-foreground"}`} />
-                Transaction Simulation
+                {tw("send.simulation.title")}
               </p>
               <Switch
                 id="sim-toggle"
                 checked={simEnabled}
                 onCheckedChange={toggleSim}
-                aria-label="Toggle transaction simulation"
+                aria-label={tw("send.simulation.toggle_aria")}
               />
             </div>
             {simEnabled && (
               DEMO ? <TransactionSimulationDemo /> : (
                 <>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Before you sign, we run a local pre-flight check — no third-party
-                    services, no data leaves your device.
+                    {tw("send.simulation.description")}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {[
-                      "Address risk (poison / lookalike)",
-                      "Contract decode",
-                      "Unlimited approval flag",
-                      "Revert prediction",
-                      "Anomaly vs your history",
-                      "Large outflow warning",
-                    ].map((label) => (
+                    {/** @type {string[]} */ (tw("send.simulation.checks", { returnObjects: true })).map((label) => (
                       <span
                         key={label}
                         className="text-[11px] px-2 py-1 rounded-md border border-border text-muted-foreground"
@@ -1566,14 +1587,14 @@ export default function SendCrypto() {
                     ))}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Results appear at the next step once you enter an address and amount.
+                    {tw("send.simulation.results_hint")}
                   </p>
                 </>
               )
             )}
             {!simEnabled && (
               <p className="text-[11px] text-muted-foreground">
-                Simulation is off — no pre-flight check will run before signing.
+                {tw("send.simulation.off_hint")}
               </p>
             )}
           </div>
@@ -1586,7 +1607,7 @@ export default function SendCrypto() {
           />
         )}
         <div>
-          <Label htmlFor="send-amount">Amount</Label>
+          <Label htmlFor="send-amount">{tw("send.amount.label")}</Label>
           {(() => {
             // Which amount error applies — decided in one pure, tested helper
             // (lib/sendAmountError.js), the same shape as the address field. See that
@@ -1597,9 +1618,12 @@ export default function SendCrypto() {
             // Feeding one call into both is what stops the gate and the message from
             // drifting apart — the drift that made Continue a silent dead end for
             // "1e-8" and friends.
+            // Raw `amount` for the "missing" check (empty is empty in every
+            // locale). canonicalAmount for wellFormed — same call the Continue
+            // gate below now uses, so gate and message agree in every locale.
             const amountErrorKind = sendAmountErrorKind({
               amount, amountNum,
-              wellFormed: isFormAmountWellFormed(amount),
+              wellFormed: isFormAmountWellFormed(canonicalAmount),
               amountTouched, showErrors, balanceKnown, effectiveBalance,
             });
             const amountInvalid = amountErrorKind !== null;
@@ -1628,21 +1652,21 @@ export default function SendCrypto() {
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                   onBlur={() => setAmountTouched(true)}
-                  placeholder="0.00"
+                  placeholder={tw("send.amount.placeholder")}
                   className="mt-1.5 mono-value"
                   aria-invalid={amountInvalid || undefined}
                   aria-describedby={amountInvalid ? "send-amount-error" : undefined}
                 />
                 {amountUsd != null && (
-                  <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> being sent</p>
+                  <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> {tw("send.amount.being_sent")}</p>
                 )}
                 {selectedWallet && (
                   <p className="text-xs text-muted-foreground mt-1">
                     {demoActive
-                      ? <>Balance: <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-[10px]">(demo)</span></>
+                      ? <>{tw("send.amount.balance_prefix")} <span className="mono-value">{demoBalance} {selectedWallet.currency}</span> <span className="text-[10px]">{tw("send.amount.demo_suffix")}</span></>
                       : flowSendEnabled
-                        ? <>Balance: {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : "reading from network…"} <span className="text-[10px]">(live)</span></>
-                        : <>Balance: <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
+                        ? <>{tw("send.amount.balance_prefix")} {nativeLiveBalance != null ? <span className="mono-value">{nativeLiveBalance} {selectedWallet.currency}</span> : tw("send.amount.reading_from_network")} <span className="text-[10px]">{tw("send.amount.live_suffix")}</span></>
+                        : <>{tw("send.amount.balance_prefix")} <span className="mono-value">{selectedWallet.balance} {selectedWallet.currency}</span></>}
                     {balanceUsd != null && <> · <span className="mono-value">{approxUsd(balanceUsd)}</span></>}
                   </p>
                 )}
@@ -1659,10 +1683,10 @@ export default function SendCrypto() {
                     input still convey the error on focus. */}
                 {amountInvalid && (
                   <p id="send-amount-error" role="status" aria-live="polite" className="text-xs text-destructive mt-1">
-                    {amountErrorKind === 'missing' ? "Amount is required"
-                      : amountErrorKind === 'not-positive' ? "Amount must be greater than zero"
-                        : amountErrorKind === 'malformed' ? "Enter a plain decimal amount, like 0.5"
-                          : "Insufficient balance"}
+                    {amountErrorKind === 'missing' ? tw("send.errors.amount_missing")
+                      : amountErrorKind === 'not-positive' ? tw("send.errors.amount_not_positive")
+                        : amountErrorKind === 'malformed' ? tw("send.errors.amount_malformed")
+                          : tw("send.errors.amount_over_balance")}
                   </p>
                 )}
               </>
@@ -1676,26 +1700,26 @@ export default function SendCrypto() {
         {selectedWallet && !sendEnabled && !devUngated && (
           <div role="status" className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border">
             <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">Sending is not yet enabled for {selectedWallet.currency}. This asset is receive-only until its crypto path is verified.</p>
+            <p className="text-xs text-muted-foreground">{tw("send.status.not_enabled", { currency: selectedWallet.currency })}</p>
           </div>
         )}
         {selectedWallet && !sendEnabled && devUngated && (
           <div role="status" className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/40">
             <AlertTriangle className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
             <p className="text-xs text-caution">
-              <strong>DEV UNGATE ACTIVE</strong> — the send gate is bypassed for {selectedWallet.currency} via VITE_DEV_UNGATE_SEND (dev build only). This asset's status is unchanged (still <strong>not</strong> live); mainnet remains gated. Testnet verification only — never ship this build.
+              <strong>{tw("send.status.dev_ungate_title")}</strong> {tw("send.status.dev_ungate_body", { currency: selectedWallet.currency })}
             </p>
           </div>
         )}
         {selectedWallet && flowSendEnabled && !isUnlocked && !demoActive && (
           <div role="status" className="flex items-start gap-2 p-2.5 rounded-lg bg-caution/10 border border-caution/30">
             <Lock className="h-3.5 w-3.5 text-caution shrink-0 mt-0.5" />
-            <p className="text-xs text-caution">Your wallet is locked. Unlock it in Wallet Settings to sign and send.</p>
+            <p className="text-xs text-caution">{tw("send.status.locked")}</p>
           </div>
         )}
         <div>
-          <Label htmlFor="send-note">Note (optional)</Label>
-          <Input id="send-note" value={note} onChange={e => setNote(e.target.value)} placeholder="What's this for?" className="mt-1.5" />
+          <Label htmlFor="send-note">{tw("send.note.label")}</Label>
+          <Input id="send-note" value={note} onChange={e => setNote(e.target.value)} placeholder={tw("send.note.placeholder")} className="mt-1.5" />
         </div>
 
         {/* Spend-limit breach — explicit, specific message. Per-transaction AND
@@ -1705,18 +1729,28 @@ export default function SendCrypto() {
           <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
             <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
             <div className="text-xs text-destructive space-y-1 min-w-0">
-              <p className="font-semibold">This send exceeds the spending limit you set</p>
+              <p className="font-semibold">{t("send_gates.spend_limit.heading")}</p>
               {limitEval.reasons.map((r, i) => (
                 <p key={i} className="text-destructive/90">
                   {r.kind === "per_tx"
-                    ? `This send (${approxUsd(limitEval.amountUSD)}) exceeds your ${r.currency === "ALL" ? "" : r.currency + " "}per-transaction cap of $${r.limitUSD.toLocaleString()}.`
-                    : `You've already sent ${approxUsd(r.spentTodayUSD)} today; this send (${approxUsd(limitEval.amountUSD)}) would reach ${approxUsd(r.projectedUSD)}, over your ${r.currency === "ALL" ? "" : r.currency + " "}daily cap of $${r.limitUSD.toLocaleString()}.`}
+                    ? t("send_gates.spend_limit.per_tx_reason", {
+                        amount: approxUsd(limitEval.amountUSD),
+                        currencyPrefix: r.currency === "ALL" ? "" : r.currency + " ",
+                        limit: `$${r.limitUSD.toLocaleString()}`,
+                      })
+                    : t("send_gates.spend_limit.daily_reason", {
+                        spentToday: approxUsd(r.spentTodayUSD),
+                        amount: approxUsd(limitEval.amountUSD),
+                        projected: approxUsd(r.projectedUSD),
+                        currencyPrefix: r.currency === "ALL" ? "" : r.currency + " ",
+                        limit: `$${r.limitUSD.toLocaleString()}`,
+                      })}
                 </p>
               ))}
-              <p className="text-destructive/70">Adjust the amount, or change the limit in Security Center.</p>
+              <p className="text-destructive/70">{t("send_gates.spend_limit.adjust_hint")}</p>
               <label className="flex items-start gap-2 text-destructive cursor-pointer pt-0.5">
                 <input type="checkbox" checked={limitAck} onChange={e => setLimitAck(e.target.checked)} className="mt-0.5" />
-                I understand this exceeds my limit — send anyway.
+                {t("send_gates.spend_limit.ack_checkbox")}
               </label>
             </div>
           </div>
@@ -1730,9 +1764,8 @@ export default function SendCrypto() {
           <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/40">
             <ShieldAlert className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
             <p className="text-xs text-destructive min-w-0">
-              <span className="font-semibold">Insufficient balance.</span>{" "}
-              You have {effectiveBalance} {selectedWallet?.currency} available to send (after the
-              network fee). Reduce the amount to continue.
+              <span className="font-semibold">{tw("send.errors.insufficient_balance_title")}</span>{" "}
+              {tw("send.errors.insufficient_balance_body", { balance: effectiveBalance, currency: selectedWallet?.currency })}
             </p>
           </div>
         )}
@@ -1748,12 +1781,12 @@ export default function SendCrypto() {
                 onChange={(e) => { setUseTrezorMode(e.target.checked); if (e.target.checked && !trezorConnected) setTrezorModalOpen(true); }}
                 className="accent-primary"
               />
-              Sign with Trezor
+              {tw("send.trezor.toggle_label")}
             </label>
-            {useTrezorMode && trezorConnected && <span className="text-primary text-xs">✓ Device connected</span>}
+            {useTrezorMode && trezorConnected && <span className="text-primary text-xs">✓ {tw("send.trezor.connected")}</span>}
             {useTrezorMode && !trezorConnected && (
               <button onClick={() => setTrezorModalOpen(true)} className="bg-transparent border-none text-primary text-xs cursor-pointer underline">
-                Connect device
+                {tw("send.trezor.connect_button")}
               </button>
             )}
           </div>
@@ -1762,19 +1795,19 @@ export default function SendCrypto() {
 
         {step === "form" && (
           <Button
-            className={`w-full ${(!toAddress || !isFormAmountWellFormed(amount) || !addressFormatValid || (balanceKnown && parseFloat(amount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
+            className={`w-full ${(!toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid || (balanceKnown && parseFloat(canonicalAmount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
             disabled={!walletId || !assetSymbol || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive)}
             onClick={() => {
-              const invalid = !toAddress || !isFormAmountWellFormed(amount) || !addressFormatValid
-                || (balanceKnown && parseFloat(amount) > effectiveBalance)
+              const invalid = !toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid
+                || (balanceKnown && parseFloat(canonicalAmount) > effectiveBalance)
                 || (limitEval.blocked && !limitAck);
               if (invalid) { setShowErrors(true); return; }
               setShowErrors(false);
               setStep("verify");
             }}
           >
-            <ArrowUpRight className="h-4 w-4 mr-1.5" />
-            Continue
+            <ArrowUpRight className="h-4 w-4 me-1.5" />
+            {tw("send.buttons.continue")}
           </Button>
         )}
 
@@ -1782,7 +1815,7 @@ export default function SendCrypto() {
           <div className="space-y-3">
             {/* Summary */}
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
-              <p className="text-xs text-muted-foreground mb-1">You're sending</p>
+              <p className="text-xs text-muted-foreground mb-1">{tw("send.verify.summary_label")}</p>
               <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
               {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
               <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
@@ -1806,7 +1839,7 @@ export default function SendCrypto() {
                         checked={riskAck}
                         onChange={(e) => setRiskAck(e.target.checked)}
                       />
-                      <span>I understand and want to proceed anyway.</span>
+                      <span>{t("send_gates.rasp.proceed_ack")}</span>
                     </label>
                   )}
                 </div>
@@ -1835,7 +1868,7 @@ export default function SendCrypto() {
                 }}
               >
                 <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />
-                Verify with biometrics to proceed
+                {t("send_gates.rasp.verify_biometrics")}
               </button>
             )}
 
@@ -1843,13 +1876,13 @@ export default function SendCrypto() {
             {/* Hint: one-tap escape while the risk check is still running. */}
             {riskPending && simEnabled && (
               <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-dashed border-border bg-card">
-                <p className="text-[11px] text-muted-foreground">Taking too long?</p>
+                <p className="text-[11px] text-muted-foreground">{tw("send.simulation.taking_too_long")}</p>
                 <button
                   type="button"
                   onClick={() => toggleSim(false)}
                   className="text-[11px] font-medium text-primary underline underline-offset-2 whitespace-nowrap"
                 >
-                  Turn off simulation
+                  {tw("send.simulation.turn_off")}
                 </button>
               </div>
             )}
@@ -1870,11 +1903,11 @@ export default function SendCrypto() {
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/40 space-y-2">
                 <p className="text-xs text-destructive flex items-start gap-1.5">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  {(btcSim.data?.risks || []).find((r) => r.level === "high")?.detail || "This transaction has a high-severity warning."}
+                  {(btcSim.data?.risks || []).find((r) => r.level === "high")?.detail || t("send_gates.tx_sim.high_severity_fallback")}
                 </p>
                 <label className="flex items-start gap-2 text-xs text-destructive cursor-pointer">
                   <input type="checkbox" checked={btcRiskAck} onChange={e => setBtcRiskAck(e.target.checked)} className="mt-0.5" />
-                  I understand this warning and want to send anyway.
+                  {t("send_gates.tx_sim.high_severity_ack")}
                 </label>
               </div>
             )}
@@ -1884,31 +1917,31 @@ export default function SendCrypto() {
             {isErc20 && tokenCalldata && (
               <div className="p-3 rounded-lg bg-secondary/30 border border-border space-y-2">
                 <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
-                  <FileText className="h-3 w-3" /> What this transaction does
+                  <FileText className="h-3 w-3" /> {tw("send.decode.heading")}
                 </p>
                 {tokenCalldata.kind === "transfer" && (
                   <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Action</span><span className="mono-value font-semibold">Send tokens</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Amount</span><span className="mono-value font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Recipient</span><span className="mono-value break-all">{tokenCalldata.to}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.send_tokens")}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.amount")}</span><span className="mono-value font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
+                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.recipient")}</span><span className="mono-value break-all">{tokenCalldata.to}</span></div>
                   </div>
                 )}
                 {tokenCalldata.kind === "approve" && (
                   <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Action</span><span className="mono-value font-semibold">Grant spending permission</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Token</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">Permission</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.unlimited ? "Unlimited (this app can spend any amount)" : tokenCalldata.amount}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">Spender</span><span className="mono-value break-all">{tokenCalldata.spender}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.grant_permission")}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.permission")}</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.unlimited ? tw("send.decode.unlimited_permission") : tokenCalldata.amount}</span></div>
+                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.spender")}</span><span className="mono-value break-all">{tokenCalldata.spender}</span></div>
                   </div>
                 )}
                 {tokenCalldata.kind === "unknown" && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Unknown transaction — only confirm if you know what you're signing.</p>
+                  <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {t("send_gates.tx_sim.unknown_tx")}</p>
                 )}
                 {/* Gas is always paid in the chain's native coin, even for tokens —
                     and that coin is NOT always ETH (Phase C). Read it per-chain. */}
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
-                  <Fuel className="h-3 w-3 shrink-0" /> Network fee is paid in {nativeSymbol} ({networkName}) — you need {nativeSymbol} to cover the network fee even when sending {tokenCalldata.tokenSymbol || selectedWallet?.currency}.
+                  <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.native_fee_note", { symbol: nativeSymbol, network: networkName, token: tokenCalldata.tokenSymbol || selectedWallet?.currency })}
                 </p>
               </div>
             )}
@@ -1921,7 +1954,7 @@ export default function SendCrypto() {
                 </p>
                 <label className="flex items-start gap-2 text-xs text-destructive cursor-pointer">
                   <input type="checkbox" checked={approvalAck} onChange={e => setApprovalAck(e.target.checked)} className="mt-0.5" />
-                  I understand this grants UNLIMITED spending and I trust this contract.
+                  {t("send_gates.tx_sim.unlimited_approval_ack")}
                 </label>
               </div>
             )}
@@ -1948,7 +1981,7 @@ export default function SendCrypto() {
               />
             ) : (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                <Fuel className="h-3 w-3 shrink-0" /> Network fee is set automatically for {selectedWallet?.currency} ({networkName}).
+                <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.automatic", { currency: selectedWallet?.currency, network: networkName })}
               </p>
             )}
             {/* The fee's fiat estimate (and the spend-cap previews) convert via
@@ -1976,7 +2009,7 @@ export default function SendCrypto() {
                 return (
                   <TwoFactorGate
                     mode={send2faMethod}
-                    title={send2faMethod === SEND_2FA.BIOMETRIC ? "Authorise this send with your PIN + biometrics" : send2faMethod === SEND_2FA.PASSKEY ? "Authorise this send with your PIN + passkey" : "Authorise this send with your PIN + Action Password"}
+                    title={send2faMethod === SEND_2FA.BIOMETRIC ? t("send_gates.two_factor_titles.biometric") : send2faMethod === SEND_2FA.PASSKEY ? t("send_gates.two_factor_titles.passkey") : t("send_gates.two_factor_titles.password")}
                     sendError={sendTx.isError ? /** @type {Error} */ (sendTx.error) : null}
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
@@ -2032,7 +2065,7 @@ export default function SendCrypto() {
                     }}
                   >
                     {sendTx.isPending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
-                    Confirm &amp; Send
+                    {tw("send.buttons.confirm_send")}
                   </Button>
                 );
               }
@@ -2040,7 +2073,7 @@ export default function SendCrypto() {
               return (
                 <div className="space-y-3">
                   <p className="text-xs text-center text-muted-foreground font-medium uppercase tracking-widest">
-                    Re-enter your {authModel === "pin" ? "PIN" : "password"} to authorise
+                    {tw("send.reauth.prompt", { credential: authModel === "pin" ? tw("send.reauth.credential_pin") : tw("send.reauth.credential_password") })}
                   </p>
                   {reauthError && <p role="alert" className="text-xs text-center text-destructive">{reauthError}</p>}
                   {authModel === "pin" ? (
@@ -2049,15 +2082,15 @@ export default function SendCrypto() {
                       onChange={setReauthValue}
                       onComplete={submitReauth}
                       disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
-                      submitLabel="Authorise"
+                      submitLabel={tw("send.reauth.submit_pin")}
                     />
                   ) : (
                     <>
                       <PasswordInput
                         value={reauthValue}
                         onChange={(e) => setReauthValue(e.target.value)}
-                        placeholder="Vault password"
-                        aria-label="Vault password for send authorisation"
+                        placeholder={tw("send.reauth.password_placeholder")}
+                        aria-label={tw("send.reauth.password_aria")}
                         autoFocus
                         onKeyDown={(e) => { if (e.key === "Enter" && reauthValue && !reauthPending) submitReauth(reauthValue); }}
                       />
@@ -2067,7 +2100,7 @@ export default function SendCrypto() {
                         onClick={() => submitReauth(reauthValue)}
                       >
                         {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Lock className="h-4 w-4" />}
-                        Authorise &amp; Send
+                        {tw("send.reauth.submit_password")}
                       </Button>
                     </>
                   )}
@@ -2075,7 +2108,7 @@ export default function SendCrypto() {
               );
             })()}
 
-            <Button variant="ghost" className="w-full" onClick={() => { setStep("form"); resetVerify(); }}>Back</Button>
+            <Button variant="ghost" className="w-full" onClick={() => { setStep("form"); resetVerify(); }}>{tw("send.buttons.back")}</Button>
           </div>
         )}
       </div>

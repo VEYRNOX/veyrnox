@@ -10,6 +10,7 @@ import { estimateBtcFeeTiers } from "@/wallet-core/btc/fees";
 import { estimateSolFeeTiers } from "@/wallet-core/sol/fees";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import Spinner from "@/components/Spinner";
+import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
 
 // Per-chain transaction-fee picker. These are GENUINELY different fee models and
 // are rendered each in their own native units — never one chain's format forced
@@ -127,9 +128,22 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
     if (selectedId === "custom") {
       if (chain !== "evm") return;
       try {
+        // Canonicalise locale-typed gwei values BEFORE they reach the
+        // signing leaf. buildEvmCustomFee → parseUnits('gwei') is ASCII-
+        // strict (correct; that's a signing-side leaf) — so a de-DE "1,5"
+        // typed here would throw and the fee would silently become invalid.
+        // normalizeDecimalInput('1,5', 'de-DE') → '1.5' round-trips through
+        // parseUnits cleanly. Anything ambiguous / unrecognised round-trips
+        // unchanged and parseUnits throws (caught by the try/catch below,
+        // marking the tier invalid — the current bad-input behaviour).
+        // gasLimit stays as-is: it's an integer, and its downstream
+        // consumer already calls Math.floor(Number(...)).
+        const locale = resolveLocale();
+        const maxBase = normalizeDecimalInput(custom.maxBaseFeeGwei, locale) || "0";
+        const priority = normalizeDecimalInput(custom.priorityGwei, locale) || "0";
         const fee = buildEvmCustomFee({
-          maxBaseFeeGwei: custom.maxBaseFeeGwei || "0",
-          priorityGwei: custom.priorityGwei || "0",
+          maxBaseFeeGwei: maxBase,
+          priorityGwei: priority,
           gasLimit: custom.gasLimit || gasLimitHint || 21000,
           networkKey,
         });
@@ -153,13 +167,18 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
     onChange({ tierId: tier.id, fee: d.fee, nativeText: d.nativeText, fiatText: d.fiatText, etaLabel: d.eta, valid: true });
   }, [selectedId, custom, tiers, chain, symbol, decimals, usdRate]);
 
-  // Live custom-fee preview (EVM only).
+  // Live custom-fee preview (EVM only). Same canonicalisation as the emit
+  // path above — the preview MUST use identical input so the number the
+  // user sees matches what would get signed.
   const customPreview = useMemo(() => {
     if (chain !== "evm" || selectedId !== "custom") return null;
     try {
+      const locale = resolveLocale();
+      const maxBase = normalizeDecimalInput(custom.maxBaseFeeGwei, locale) || "0";
+      const priority = normalizeDecimalInput(custom.priorityGwei, locale) || "0";
       const fee = buildEvmCustomFee({
-        maxBaseFeeGwei: custom.maxBaseFeeGwei || "0",
-        priorityGwei: custom.priorityGwei || "0",
+        maxBaseFeeGwei: maxBase,
+        priorityGwei: priority,
         gasLimit: custom.gasLimit || gasLimitHint || 21000,
         networkKey,
       });
@@ -210,7 +229,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                   key={t.id}
                   type="button"
                   onClick={() => setSelectedId(t.id)}
-                  className={`p-2 rounded-lg border text-left transition-colors ${active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
+                  className={`p-2 rounded-lg border text-start transition-colors ${active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <Icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground"}`} />
@@ -238,11 +257,11 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
               <button
                 type="button"
                 onClick={() => setSelectedId("custom")}
-                className={`w-full p-2 rounded-lg border text-left transition-colors flex items-center gap-1.5 ${selectedId === "custom" ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
+                className={`w-full p-2 rounded-lg border text-start transition-colors flex items-center gap-1.5 ${selectedId === "custom" ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
               >
                 <SlidersHorizontal className={`h-3.5 w-3.5 ${selectedId === "custom" ? "text-primary" : "text-muted-foreground"}`} />
                 <span className="text-xs font-semibold">Custom</span>
-                {customPreview && <span className="text-[10px] text-muted-foreground ml-auto mono-value">{customPreview.nativeText}{customPreview.fiatText ? ` · ${customPreview.fiatText}` : ""}</span>}
+                {customPreview && <span className="text-[10px] text-muted-foreground ms-auto mono-value">{customPreview.nativeText}{customPreview.fiatText ? ` · ${customPreview.fiatText}` : ""}</span>}
               </button>
               {selectedId === "custom" && (
                 <div className="grid grid-cols-3 gap-2 mt-2">
@@ -250,7 +269,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Label htmlFor="fee-custom-maxbase" className="text-[10px]">Max base (Gwei)</Label>
                     <Input
                       id="fee-custom-maxbase"
-                      type="number" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
+                      type="text" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
                       value={custom.maxBaseFeeGwei}
                       placeholder={data ? fmtNative(BigInt((/** @type {any} */ (data)).baseFeePerGasWei) * 2n, 9, 2) : "0"}
                       onChange={(e) => setCustom((c) => ({ ...c, maxBaseFeeGwei: e.target.value }))}
@@ -260,7 +279,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
                     <Label htmlFor="fee-custom-priority" className="text-[10px]">Priority (Gwei)</Label>
                     <Input
                       id="fee-custom-priority"
-                      type="number" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
+                      type="text" inputMode="decimal" className="mt-1 h-8 text-xs mono-value"
                       value={custom.priorityGwei}
                       placeholder={data ? fmtNative((/** @type {any} */ (data)).suggestedTipWei, 9, 3) : "0"}
                       onChange={(e) => setCustom((c) => ({ ...c, priorityGwei: e.target.value }))}

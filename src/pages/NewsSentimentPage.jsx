@@ -34,7 +34,7 @@ function AssetSentimentBar({ asset, news }) {
       <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span className="text-xs font-bold w-10 text-right" style={{ color }}>{avgScore >= 0 ? "+" : ""}{avgScore.toFixed(2)}</span>
+      <span className="text-xs font-bold w-10 text-end" style={{ color }}>{avgScore >= 0 ? "+" : ""}{avgScore.toFixed(2)}</span>
     </div>
   );
 }
@@ -77,7 +77,7 @@ export default function NewsSentimentPage() {
         </div>
         {LLM_AVAILABLE && !isDeniabilityOrDemoActive() && (
           <Button onClick={() => refresh.mutate()} disabled={refresh.isPending}>
-            <RefreshCw className={`h-4 w-4 mr-1.5 ${refresh.isPending ? "motion-safe:animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 me-1.5 ${refresh.isPending ? "motion-safe:animate-spin" : ""}`} />
             {refresh.isPending ? "Refreshing…" : "Refresh"}
           </Button>
         )}

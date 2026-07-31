@@ -82,8 +82,8 @@ describe('trackEvent', () => {
   });
 
   it('reuses the same device_id across calls', async () => {
-    await trackEvent('a');
-    await trackEvent('b');
+    await trackEvent(EVENT.WALLET_CREATED);
+    await trackEvent(EVENT.SESSION_START);
 
     const calls = mockSupabase.rpc.mock.calls;
     expect(calls).toHaveLength(2);

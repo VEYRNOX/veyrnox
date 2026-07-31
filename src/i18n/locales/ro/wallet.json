@@ -1,0 +1,712 @@
+{
+  "tx": {
+    "history": {
+      "heading": "Istoric tranzacții",
+      "subhead": "Trimiteri și primiri per lanț citite direct din blockchain — doar citire, cu linkuri către explorer.",
+      "badge_demo": "Demo · date exemplu",
+      "badge_mainnet": "Mainnet",
+      "badge_testnet": "Testnet",
+      "privacy_demo_note": "Mod demo — nu se interoghează nimic prin rețea; rândurile de mai jos sunt date exemplu locale.",
+      "loading_label": "Se încarcă istoricul {{symbol}}",
+      "error_prefix": "Nu s-a putut încărca istoricul: {{reason}}.",
+      "error_fetch_reason": "Nu s-a putut ajunge la nodul RPC — verifică conexiunea și încearcă din nou.",
+      "error_generic_reason": "indexerul nu a răspuns",
+      "retry": "Reîncearcă",
+      "no_indexer_title": "Istoricul din aplicație nu este disponibil pentru {{name}} prin JSON-RPC",
+      "no_indexer_body": "Un nod JSON-RPC simplu nu poate lista tranzacțiile unei adrese, iar noi nu adăugăm intenționat un API de explorer/indexer terț (o nouă sursă de date și suprafață de comunicare externă). Istoricul tău complet este pe explorerul blockchain-ului.",
+      "view_on_explorer": "Vezi {{address}} pe explorerul {{network}}",
+      "view_explorer_title": "Vezi în explorerul blockchain-ului",
+      "unlock_for_explorer": "Deblochează-ți portofelul pentru a obține linkul de explorer pentru adresa ta {{symbol}}.",
+      "locked_title": "Portofel blocat",
+      "locked_body": "Deblochează-ți portofelul pentru a deriva adresa {{symbol}} și a-i încărca istoricul.",
+      "empty": "Nicio tranzacție încă pentru {{symbol}} pe {{network}}.",
+      "count_one": "{{count}} tranzacție",
+      "count_other": "{{count}} tranzacții",
+      "most_recent_suffix": " · cea mai recentă",
+      "refresh": "Reîmprospătează",
+      "sample_badge": "Exemplu",
+      "to_prefix": "Către ",
+      "from_prefix": "De la ",
+      "status_pending": "În așteptare",
+      "status_confirmed": "Confirmată",
+      "status_failed": "Eșuată",
+      "awaiting_confirmation": "în așteptarea confirmării"
+    },
+    "list": {
+      "empty_title": "Nicio tranzacție încă",
+      "empty_description": "Când trimiți sau primești pe acest portofel, activitatea ta on-chain va apărea aici."
+    },
+    "receipt": {
+      "heading": "Chitanțe de tranzacție",
+      "subhead": "Generează chitanțe imprimabile pentru orice tranzacție",
+      "search_placeholder": "Caută după ID, adresă sau monedă...",
+      "loading": "Se încarcă...",
+      "error": "Nu s-au putut încărca tranzacțiile. Te rugăm să încerci din nou.",
+      "empty": "Nicio tranzacție găsită",
+      "preview_title": "Previzualizare chitanță",
+      "print": "Imprimă",
+      "print_window_title": "Chitanță de tranzacție",
+      "brand": "VEYRNOX",
+      "doc_title": "CHITANȚĂ DE TRANZACȚIE",
+      "field_receipt_id": "ID chitanță",
+      "field_date": "Data",
+      "field_type": "Tip",
+      "field_asset": "Activ",
+      "field_amount": "Sumă",
+      "field_network_fee": "Comision de rețea",
+      "field_status": "Stare",
+      "field_to": "Către",
+      "default_type": "Transfer",
+      "default_status": "finalizată",
+      "thank_you": "Îți mulțumim că folosești {{brand}}",
+      "thank_you_prefix": "Îți mulțumim că folosești",
+      "digital_record": "Aceasta este o înregistrare digitală a tranzacției"
+    }
+  },
+  "settings": {
+    "heading": "Setări de securitate",
+    "subhead": "Blochează, deblochează și protejează-ți portofelul",
+    "theme": {
+      "dark": "Mod întunecat",
+      "light": "Mod luminos",
+      "saved_note": "Salvat pe acest dispozitiv",
+      "switch_to_light": "Comută la modul luminos",
+      "switch_to_dark": "Comută la modul întunecat"
+    },
+    "activity_log": {
+      "label": "Jurnal de activitate",
+      "description": "Dezactivat implicit · stocat doar pe acest dispozitiv",
+      "help": "Jurnal privat: ce ai modificat, trimis, revocat. Fără sume sau adrese. Panic Wipe îl șterge.",
+      "enable_aria": "Activează jurnalul de activitate",
+      "disable_aria": "Dezactivează jurnalul de activitate",
+      "no_events": "Niciun eveniment înregistrat încă."
+    },
+    "message_signing": {
+      "label": "Semnarea mesajelor",
+      "description": "Dezactivată implicit · stocată doar pe acest dispozitiv",
+      "help": "Dezactivată implicit. Îți permite să semnezi mesaje text arbitrare cu cheia portofelului tău. Activeaz-o doar dacă o dApp sau un serviciu îți cere să semnezi un mesaj.",
+      "enable_aria": "Activează semnarea mesajelor",
+      "disable_aria": "Dezactivează semnarea mesajelor"
+    },
+    "telemetry": {
+      "label": "Date de utilizare anonime",
+      "description": "Opțional · nu include niciodată solduri sau adrese",
+      "help": "Ne ajută să găsim erori și să îmbunătățim aplicația. Se folosește un ID de dispozitiv aleatoriu — niciodată asociat cu portofelul, cheile sau identitatea ta. Dezactivarea acestei opțiuni oprește orice date de utilizare care ies de pe acest dispozitiv.",
+      "enable_aria": "Activează datele de utilizare anonime",
+      "disable_aria": "Dezactivează datele de utilizare anonime"
+    },
+    "delete_account": {
+      "title": "Zonă periculoasă",
+      "clear_cache_label": "Șterge memoria cache locală",
+      "clear_cache_description": "Șterge datele salvate pe acest dispozitiv și blochează portofelul. Fraza ta de recuperare funcționează în continuare. Pentru a șterge cheile, folosește Panic Wipe.",
+      "delete_button": "Șterge",
+      "confirm_prompt_pre": "Aceasta șterge datele salvate și blochează portofelul. Fraza ta de recuperare funcționează în continuare. Scrie",
+      "confirm_prompt_post": "pentru a confirma.",
+      "confirm_placeholder": "Scrie DELETE pentru a confirma",
+      "confirm_aria": "Scrie DELETE pentru a confirma resetarea contului",
+      "cancel": "Anulează",
+      "confirm_delete": "Confirmă ștergerea",
+      "deleting": "Se șterge..."
+    },
+    "biometric_unlock": {
+      "heading": "Deblocare biometrică",
+      "worth_knowing_label": "Bine de știut.",
+      "kdf_disclosure": "Deblocarea instantanee îți salvează parola portofelului pe acest dispozitiv, protejată de blocarea ecranului și de biometrie. Dacă cineva obține o copie a backupului dispozitivului tău fără dispozitivul fizic, ar putea accesa portofelul. Dezactivează asta pentru cea mai puternică protecție.",
+      "app_layer_disclosure_pre": "Deblocarea biometrică îți salvează parola pe acest dispozitiv, protejată de amprentă sau față. Aceasta rulează în interiorul aplicației, nu la nivelul sistemului de operare.",
+      "app_layer_disclosure_mid": "Pentru o protecție mai puternică la nivel de dispozitiv, activează",
+      "hardware_protection_label": "Protecția hardware",
+      "app_layer_disclosure_post": "(disponibilă mai jos).",
+      "toggle_label": "Deblocare biometrică (portofel principal)",
+      "toggle_description": "Activează deblocarea instantanee pentru portofelul tău principal folosind biometria dispozitivului.",
+      "before_enable_label": "Înainte de a activa asta.",
+      "confirm_disclosure": "Dacă cineva obține o copie a backupului dispozitivului tău fără dispozitivul fizic, ar putea accesa portofelul. Activează asta doar dacă ești de acord cu acest lucru.",
+      "confirm_enable_button": "Activează deblocarea instantanee",
+      "cancel_button": "Anulează",
+      "checking_availability": "Se verifică disponibilitatea…",
+      "default_label": "Biometrie",
+      "available": "{{label}} disponibil.",
+      "available_simulated": "{{label}} disponibil (simulat în demo).",
+      "status_check_failed": "Nu s-a putut verifica disponibilitatea biometriei pe acest dispozitiv.",
+      "awaiting_prompt": "Se așteaptă solicitarea…",
+      "preview_prompt": "Previzualizează solicitarea",
+      "test_success": "Autentificare simulată reușită",
+      "test_cancelled": "Solicitare anulată"
+    },
+    "passkey_unlock": {
+      "heading_native": "Deblocare biometrică",
+      "heading_web": "Deblochează cu Passkey",
+      "scope_banner_native_pre": "Amprenta sau fața ta este verificată înainte de deblocare —",
+      "scope_banner_native_post": "nu înlocuiește parola ta. Parola și fraza ta de recuperare funcționează în continuare pe cont propriu, deci pierderea biometriei nu te blochează niciodată în afara portofelului.",
+      "scope_banner_web_pre": "Un passkey adaugă o atingere biometrică sau cu cheie de securitate rapidă înainte de deblocare —",
+      "scope_banner_web_post": "nu înlocuiește parola ta. Parola și fraza ta de recuperare funcționează în continuare pe cont propriu, deci pierderea passkey-ului nu te blochează niciodată în afara portofelului.",
+      "extra_step_label": "un pas suplimentar",
+      "enroll_button": "Înscrie deblocarea biometrică",
+      "register_button": "Înregistrează un passkey",
+      "not_setup_native": "Biometria dispozitivului nu este configurată. Adaugă o amprentă sau o față în setările dispozitivului mai întâi — parola ta funcționează în continuare.",
+      "not_supported_web": "Deblocarea cu passkey nu este disponibilă în acest browser. Funcționează în aplicația mobilă și în browserele moderne. Folosește parola ta aici.",
+      "enroll_error": "Nu s-a putut înscrie deblocarea biometrică pe acest dispozitiv.",
+      "register_error": "Nu s-a putut înregistra un passkey pe acest dispozitiv.",
+      "enrolled_native": "Deblocare biometrică înscrisă",
+      "registered_web": "Passkey înregistrat",
+      "simulated_suffix": " (simulat)",
+      "remove_button": "Elimină",
+      "require_toggle_native": "Necesită deblocare biometrică",
+      "require_toggle_web": "Necesită {{label}} la deblocare",
+      "require_toggle_aria_web": "Necesită deblocare cu passkey",
+      "require_toggle_desc_native": "Solicită biometria dispozitivului tău înainte de deblocare (parola ta funcționează în continuare).",
+      "require_toggle_desc_web": "Solicită passkey-ul tău înainte de deblocare (parola ta funcționează în continuare).",
+      "applies_all_sessions": "Aceasta se aplică tuturor sesiunilor de portofel pe acest dispozitiv.",
+      "default_label": "Passkey",
+      "checking_availability": "Se verifică disponibilitatea…",
+      "simulated_in_demo": "{{label}} simulat în demo. ",
+      "awaiting_biometric": "Se așteaptă biometria…",
+      "awaiting_passkey": "Se așteaptă passkey-ul…",
+      "preview_biometric_prompt": "Previzualizează solicitarea biometrică",
+      "preview_passkey_prompt": "Previzualizează solicitarea passkey",
+      "simulated_prefix": "Simulat ",
+      "biometric_verified": "biometrie verificată",
+      "passkey_verified": "passkey verificat",
+      "biometric_prompt_cancelled": "Solicitarea biometrică a fost anulată",
+      "passkey_prompt_cancelled": "Solicitarea passkey a fost anulată"
+    },
+    "hardware_kek": {
+      "heading": "Protecție hardware pe dispozitiv",
+      "badge_webauthn": "Protejat prin WebAuthn",
+      "badge_off": "DEZACTIVAT",
+      "description_pre": "Blochează portofelul tău pe acest dispozitiv fizic. După activare, portofelul tău poate fi deschis doar pe ",
+      "description_device": "acest dispozitiv",
+      "description_post": ". Un fișier de backup furat este inutil fără dispozitivul în sine, chiar și cu PIN-ul tău.",
+      "description_web_suffix": "Funcționează pe Chrome 99+ și Firefox 108+. Safari nu este acceptat.",
+      "device_binding_note": "Asocierea cu dispozitivul este activă și testată pe hardware real.",
+      "checking_status": "Se verifică starea…",
+      "web_prf_unsupported": "Protecția hardware nu este disponibilă în acest browser. Folosește Chrome 99+ sau Firefox 108+, sau folosește aplicația iOS sau Android.",
+      "errors": {
+        "wrong_pin": "PIN greșit — introdu PIN-ul pe care îl folosești pentru a-ți debloca portofelul.",
+        "no_hardware": "Nu s-a putut ajunge la securitatea hardware a acestui dispozitiv. Încearcă din nou sau folosește alt dispozitiv.",
+        "malformed_vault": "Datele portofelului tău stocate nu au putut fi citite pe acest dispozitiv.",
+        "not_enrolled": "Protecția hardware nu este activată pe acest seif, deci nu este nimic de actualizat.",
+        "generic": "Ceva nu a funcționat corect. Te rugăm să încerci din nou.",
+        "key_invalidated": "Amprentele tale s-au schimbat — protecția hardware a fost invalidată. Dezactivează și reactivează protecția hardware sau restaurează din fraza ta de recuperare.",
+        "insecure_tier": "Acest dispozitiv nu are un element de securitate hardware — protecția hardware nu poate fi activată aici.",
+        "enter_pin_first": "Introdu mai întâi PIN-ul seifului tău.",
+        "enter_pin_confirm_removal": "Introdu PIN-ul seifului tău pentru a confirma eliminarea.",
+        "enter_pin_upgrade": "Introdu PIN-ul seifului tău pentru a actualiza."
+      },
+      "toast": {
+        "enabled": "Protecție hardware activată — seiful tău necesită acum acest dispozitiv pentru deblocare.",
+        "removed": "Protecție hardware eliminată.",
+        "upgraded": "Protecție hardware actualizată — seiful tău este acum asociat cu o cheie unică per dispozitiv."
+      },
+      "pin_strength": {
+        "hardware_title": "Protejat prin hardware.",
+        "hardware_body": "PIN-ul tău combinat cu Face ID, amprentă sau passkey face atacurile offline imposibile — un atacator ar avea nevoie atât de PIN-ul tău, cât și de acest dispozitiv fizic.",
+        "no_hardware_title": "Niciun factor hardware disponibil în acest browser.",
+        "no_hardware_body": "PIN-ul tău din 8 cifre (~100 mil. combinații) este protejat doar de Argon2id — un atacator dedicat l-ar putea epuiza offline în zile-săptămâni. Folosește o parolă de 12+ caractere sau treci la Chrome/Firefox pentru a activa protecția hardware.",
+        "pre_enroll_title": "Puterea PIN-ului.",
+        "pre_enroll_body": "Un PIN din 8 cifre are ~100 mil. combinații. Argon2id încetinește atacurile offline la aproximativ 1-2 ani cu un singur fir de execuție — dar un cluster GPU ar putea reduce asta la zile. Activarea Face ID, amprentei sau passkey-ului de mai sus face atacurile offline imposibile, cerând acest dispozitiv la fiecare deblocare."
+      },
+      "enrolled": {
+        "active_title": "Activ pe acest dispozitiv",
+        "active_body_native": "Seiful tău necesită biometria acestui dispozitiv pentru deblocare.",
+        "active_body_web": "Seiful tău necesită passkey-ul acestui dispozitiv pentru deblocare."
+      },
+      "upgrade": {
+        "available_title": "Actualizare disponibilă",
+        "available_body": "Portofelul tău a fost protejat cu o versiune mai veche care partaja o cheie între dispozitive. Actualizează pentru a-l bloca doar pe acest dispozitiv. Asta se întâmplă o singură dată și îți cere să verifici de două ori.",
+        "cta": "Actualizează protecția hardware",
+        "busy": "Se actualizează — aprobă ambele solicitări…",
+        "prompt": "Introdu PIN-ul seifului tău. Te vei autentifica de două ori pentru a re-securiza seiful.",
+        "cancel": "Anulează"
+      },
+      "remove": {
+        "cta": "Elimină protecția hardware",
+        "prompt_native": "Introdu PIN-ul pentru a confirma. Va trebui să verifici cu amprenta sau fața ta.",
+        "prompt_web": "Introdu parola pentru a confirma. Va trebui să verifici cu passkey-ul tău.",
+        "busy": "Se elimină — aprobă solicitarea…",
+        "cancel": "Anulează"
+      },
+      "enroll": {
+        "prompt_native": "Introdu PIN-ul seifului tău pentru a activa protecția hardware.",
+        "prompt_web": "Introdu PIN-ul tău din 8 cifre pentru a activa protecția hardware. Browserul tău va crea un passkey pentru a-ți bloca portofelul pe acest dispozitiv.",
+        "cta": "Activează protecția hardware",
+        "busy_native": "Se înscrie — aprobă solicitarea biometrică…",
+        "busy_web": "Se înscrie — aprobă solicitarea passkey…",
+        "footnote_native": "Ți se va cere să te autentifici cu biometria sau codul dispozitivului tău.",
+        "footnote_web": "Browserul tău îți va cere să te autentifici cu o biometrie sau un PIN de dispozitiv pentru a crea passkey-ul."
+      },
+      "blocked": "Setările protecției hardware nu sunt disponibile în această sesiune."
+    },
+    "two_factor": {
+      "heading": "Autentificare în doi factori la acțiuni critice",
+      "intro": "O verificare suplimentară pe lângă PIN-ul tău pentru acțiuni sensibile. Chiar dacă cineva te vede introducând PIN-ul, tot nu poate face aceste lucruri fără al doilea pas.",
+      "actions_protects_label": "Acțiuni pe care le protejează",
+      "gated_actions": [
+        { "label": "Trimiterea de fonduri", "desc": "fiecare trimitere, după verificările de siguranță" },
+        { "label": "Dezvăluirea frazei tale de recuperare", "desc": "vizualizarea sau exportarea backupului tău" },
+        { "label": "Setarea unui PIN de urgență", "desc": "crearea portofelului de urgență" },
+        { "label": "Crearea sau ascunderea unui portofel", "desc": "modificări la portofelele ascunse" }
+      ],
+      "currently_enforcing": "Se aplică în prezent:",
+      "badge_biometric": "PIN + {{label}}",
+      "badge_passkey": "PIN + Passkey",
+      "badge_password": "PIN + Parolă de acțiune",
+      "badge_off": "Dezactivat (doar PIN)",
+      "biometric_label_default": "Face ID / Touch ID",
+      "setup_blocked": "Ești într-o sesiune momeală / ascunsă. Configurează autentificarea în doi factori din sesiunea ta reală.",
+      "method_a_title": "PIN + Parolă de acțiune",
+      "on_suffix": "ACTIVAT",
+      "method_a_desc": "O a doua parolă salvată în portofelul tău. Puternică, dar ambele parole se află pe același dispozitiv.",
+      "label_pin": "PIN-ul tău",
+      "label_wallet_password": "Parola portofelului",
+      "pin_confirm_placeholder": "Confirmă că ești tu",
+      "action_password_label_change": "Parolă de acțiune nouă",
+      "action_password_label_set": "Parolă de acțiune",
+      "action_password_placeholder": "Cel puțin 8 caractere",
+      "action_password_hint": "Cel puțin 8 caractere · orice caracter este permis",
+      "too_short": "Folosește cel puțin {{min}} caractere.",
+      "confirm_label": "Confirmă",
+      "confirm_placeholder": "Reintrodu Parola de acțiune",
+      "confirm_hint": "Trebuie să corespundă Parolei tale de acțiune",
+      "mismatch": "Parolele nu se potrivesc.",
+      "save_change": "Schimbă Parola de acțiune",
+      "save_set": "Setează Parola de acțiune",
+      "remove": "Elimină Parola de acțiune",
+      "toast_changed": "Parola de acțiune a fost schimbată",
+      "toast_set": "Parola de acțiune a fost setată",
+      "toast_set_error": "Nu s-a putut seta Parola de acțiune",
+      "toast_confirm_pin_required": "Introdu PIN-ul / parola portofelului tău pentru a confirma",
+      "toast_removed": "Parola de acțiune a fost eliminată",
+      "toast_remove_error": "Nu s-a putut elimina Parola de acțiune",
+      "method_b_title_native": "PIN + {{label}}",
+      "method_b_title_web": "PIN + Passkey / FIDO2",
+      "method_b_desc_native": "PIN-ul tău plus {{label}}. Dacă biometria nu este disponibilă, acțiunea este blocată. Pierderea dispozitivului tău nu duce niciodată la pierderea fondurilor.",
+      "method_b_desc_web": "PIN-ul tău plus o atingere passkey. Dacă passkey-ul nu este disponibil, acțiunea este blocată. Pierderea lui nu duce niciodată la pierderea fondurilor.",
+      "switch_aria_native": "Folosește biometria dispozitivului meu ca al doilea factor",
+      "switch_aria_web": "Folosește passkey ca al doilea factor",
+      "confirm_native": "Confirmă acțiunile critice cu {{label}}.",
+      "unavailable_native": "{{label}} / codul dispozitivului nu este configurat pe acest dispozitiv — activează-l în setările dispozitivului pentru a folosi acest factor.",
+      "unsupported_web": "Acest browser nu acceptă WebAuthn / passkey-uri.",
+      "register_hint_web_pre": "Niciun passkey înregistrat încă — configurează unul în",
+      "register_hint_web_strong": "Passkey-uri portofel",
+      "register_hint_web_post": "mai jos, apoi activează asta.",
+      "toggle_biometric_needed": "{{label}} nu este configurat pe acest dispozitiv.",
+      "toggle_passkey_needed": "Înregistrează mai întâi un passkey (Passkey-uri portofel, mai jos).",
+      "toggle_biometric_on": "Al doilea factor {{label}} activat",
+      "toggle_biometric_off": "Al doilea factor {{label}} dezactivat",
+      "toggle_passkey_on": "Al doilea factor passkey activat",
+      "toggle_passkey_off": "Al doilea factor passkey dezactivat"
+    },
+    "session": {
+      "title": "Sesiune și blocare automată",
+      "description": "Blochează portofelul tău după o perioadă de inactivitate sau când părăsești aplicația",
+      "status_unlocked": "Deblocat",
+      "status_locked": "Blocat",
+      "auto_lock_after": "Blocare automată după",
+      "never_note": "Fără blocare automată la inactivitate, dar tot se blochează după ~45 s în fundal și după 8 ore de la deblocare.",
+      "resets_note": "Se resetează de fiecare dată când interacționezi cu aplicația. De asemenea, se blochează imediat când este trecută în fundal.",
+      "lock_now": "Blochează acum",
+      "recent_activity": "Activitate recentă",
+      "view_all": "Vezi tot",
+      "this_device": "Acest dispozitiv",
+      "active_now": "Activ acum"
+    },
+    "rehearsal": {
+      "title": "Repetiție pentru negabilitate",
+      "description": "Vezi tabloul de bord exact așa cum ar arăta pentru cineva care îți ține telefonul deblocat."
+    }
+  },
+  "nav": {
+    "wallet_tagline": "Portofel",
+    "sidebar_expand": "Extinde bara laterală",
+    "sidebar_collapse": "Restrânge bara laterală",
+    "search_placeholder": "Caută...",
+    "search_shortcut_title": "Caută (⌘K)",
+    "lock": "Blochează",
+    "lock_confirm_prompt": "Blochezi acest portofel acum?",
+    "back": "Înapoi",
+    "settings": "Setări",
+    "main_content_aria": "Conținut principal",
+    "bottom_nav_aria": "Navigare de jos",
+    "more_features_aria": "Mai multe funcții",
+    "more": "Mai multe",
+    "close": "Închide",
+    "all_features_heading": "Toate funcțiile",
+    "recent_heading": "Recente",
+    "tab_home": "Acasă",
+    "tab_send": "Trimite",
+    "tab_receive": "Primește"
+  },
+  "back": {
+    "default_label": "Înapoi"
+  },
+  "send": {
+    "heading": "Trimite criptomonede",
+    "subheading": "Transferă fonduri în siguranță",
+    "wallet_fallback": "Portofel",
+    "wallet_picker": { "label": "Din portofel", "placeholder": "Selectează portofel" },
+    "asset_picker": { "label": "Activ", "placeholder": "Selectează activ" },
+    "recipient": {
+      "label": "Trimite la (adresă sau nume)",
+      "placeholder": "Lipește o adresă sau introdu un nume (ex. vitalik.eth)",
+      "scan_qr": "Scanează codul QR",
+      "resolving": "Se rezolvă numele…",
+      "name_not_found": "Nume negăsit — verifică ortografia sau lipește direct adresa.",
+      "ens_using_prefix": "Se folosește {{name}} →",
+      "ens_confirm_intro": "căutat privat pe blockchain la:",
+      "ens_confirm_hint": "Confirmă că această adresă este corectă înainte de a trimite.",
+      "use_this_address": "Folosește această adresă",
+      "not_whitelisted": "Această adresă nu este pe lista ta albă. Verifică din nou înainte de a continua. Poți adăuga adrese de încredere din Setări.",
+      "self_send_warning": "Trimiți către propria ta adresă de portofel. Aceasta nu mută nimic între portofele și tot costă un comision de rețea. Verifică din nou destinatarul înainte de a continua."
+    },
+    "screening": {
+      "local_disclosure": "Destinatarii sunt verificați pe dispozitivul tău pentru adrese de escrocherie comparate cu propriul tău istoric — nimic nu părăsește dispozitivul tău.",
+      "remote_opt_in": "De asemenea, verifică într-o bază de date online de amenințări (trimite această adresă unui terț)",
+      "remote_unavailable": "Verificarea online este activată, dar niciun furnizor nu este configurat în această versiune — verificarea rămâne locală, deci nu am putut verifica asta față de o listă externă.",
+      "demo_poison_button": "Demo: lipește o adresă asemănătoare"
+    },
+    "simulation": {
+      "title": "Simularea tranzacției",
+      "toggle_aria": "Comută simularea tranzacției",
+      "description": "Înainte să semnezi, rulăm o verificare locală prealabilă — fără servicii terțe, fără date care părăsesc dispozitivul tău.",
+      "checks": [
+        "Riscul adresei (poison / asemănare)",
+        "Decodare contract",
+        "Marcaj de aprobare nelimitată",
+        "Predicție de revert",
+        "Anomalie față de istoricul tău",
+        "Avertisment de ieșire mare de fonduri"
+      ],
+      "results_hint": "Rezultatele apar la pasul următor odată ce introduci o adresă și o sumă.",
+      "off_hint": "Simularea este dezactivată — nicio verificare prealabilă nu va rula înainte de semnare.",
+      "taking_too_long": "Durează prea mult?",
+      "turn_off": "Dezactivează simularea"
+    },
+    "amount": {
+      "label": "Sumă",
+      "placeholder": "0.00",
+      "being_sent": "se trimite",
+      "balance_prefix": "Sold:",
+      "demo_suffix": "(demo)",
+      "live_suffix": "(live)",
+      "reading_from_network": "se citește din rețea…"
+    },
+    "errors": {
+      "amount_missing": "Suma este necesară",
+      "amount_not_positive": "Suma trebuie să fie mai mare decât zero",
+      "amount_malformed": "Introdu o sumă zecimală simplă, cum ar fi 0.5",
+      "amount_over_balance": "Sold insuficient",
+      "insufficient_balance_title": "Sold insuficient.",
+      "insufficient_balance_body": "Ai {{balance}} {{currency}} disponibil de trimis (după comisionul de rețea). Redu suma pentru a continua."
+    },
+    "status": {
+      "not_enabled": "Trimiterea nu este încă activată pentru {{currency}}. Acest activ este doar pentru primire până când calea sa cripto este verificată.",
+      "dev_ungate_title": "DEZACTIVARE DEV ACTIVĂ",
+      "dev_ungate_body": "— blocarea trimiterii este ocolită pentru {{currency}} prin VITE_DEV_UNGATE_SEND (doar versiune de dezvoltare). Starea acestui activ este neschimbată (încă nu este live); mainnet rămâne blocat. Doar verificare pe testnet — nu livra niciodată această versiune.",
+      "locked": "Portofelul tău este blocat. Deblochează-l din Setările portofelului pentru a semna și trimite."
+    },
+    "note": { "label": "Notă (opțional)", "placeholder": "Pentru ce este?" },
+    "trezor": {
+      "toggle_label": "Semnează cu Trezor",
+      "connected": "Dispozitiv conectat",
+      "connect_button": "Conectează dispozitivul"
+    },
+    "buttons": {
+      "continue": "Continuă",
+      "confirm_send": "Confirmă și trimite",
+      "back": "Înapoi"
+    },
+    "verify": { "summary_label": "Trimiți" },
+    "fee": {
+      "automatic": "Comisionul de rețea este setat automat pentru {{currency}} ({{network}}).",
+      "native_fee_note": "Comisionul de rețea este plătit în {{symbol}} ({{network}}) — ai nevoie de {{symbol}} pentru a acoperi comisionul de rețea chiar și atunci când trimiți {{token}}."
+    },
+    "decode": {
+      "heading": "Ce face această tranzacție",
+      "action": "Acțiune",
+      "send_tokens": "Trimite token-uri",
+      "token": "Token",
+      "amount": "Sumă",
+      "recipient": "Destinatar",
+      "grant_permission": "Acordă permisiune de cheltuire",
+      "permission": "Permisiune",
+      "unlimited_permission": "Nelimitată (această aplicație poate cheltui orice sumă)",
+      "spender": "Cheltuitor"
+    },
+    "reauth": {
+      "prompt": "Reintrodu {{credential}} pentru a autoriza",
+      "credential_pin": "PIN",
+      "credential_password": "parola",
+      "submit_pin": "Autorizează",
+      "submit_password": "Autorizează și trimite",
+      "password_placeholder": "Parola seifului",
+      "password_aria": "Parola seifului pentru autorizarea trimiterii",
+      "errors": {
+        "unavailable": "Verificare indisponibilă — te rugăm să blochezi și să deblochezi din nou portofelul.",
+        "incorrect": "Incorect — încearcă din nou ({{remaining}} rămase)"
+      }
+    },
+    "done": {
+      "beacon_label": "Tranzacție difuzată",
+      "heading": "Tranzacție difuzată",
+      "body_suffix": "semnată local și trimisă către rețea",
+      "tx_hash_label": "Hash tranzacție",
+      "view_explorer": "Vezi în explorerul blockchain-ului",
+      "pending_note": "În așteptare până este confirmată pe rețea. Soldul se actualizează din blockchain, nu dintr-o valoare stocată.",
+      "send_another": "Trimite din nou"
+    },
+    "toasts": {
+      "ens_off_in_session": "Rezolvarea numelor este dezactivată în această sesiune — lipește direct adresa.",
+      "ens_not_found": "Numele ENS nu a fost găsit",
+      "sns_unavailable": "Rezolvarea numelor Solana nu este încă disponibilă — lipește direct adresa.",
+      "ens_resolution_failed": "Rezolvarea numelui a eșuat",
+      "verify_required": "Termină verificarea backupului tău înainte de a trimite această sumă.",
+      "two_factor_retry": "Trimiterea nu s-a putut finaliza — te rugăm să verifici din nou pentru a reîncerca.",
+      "send_failed_fallback": "Trimiterea a eșuat",
+      "unconfirmed": "Nu am putut confirma încă această tranzacție pe rețea — poate fi încă în așteptare. Verifică explorerul."
+    }
+  },
+  "receive": {
+    "heading": "Primește criptomonede",
+    "subheading": "Arată o adresă de portofel pentru a primi fonduri",
+    "asset_label": "Activ",
+    "asset_placeholder": "Alege activul",
+    "not_available": "Primirea {{name}} ({{symbol}}) nu este încă disponibilă. Nicio adresă nu este afișată până când acest activ este activat.",
+    "locked": {
+      "title": "Portofel blocat",
+      "body": "Deblochează-ți portofelul pentru a dezvălui adresa ta de primire {{asset}} {{network}}.",
+      "open_hd_wallet": "Deschide gestionarul de portofel HD"
+    },
+    "your_address": "Adresa ta {{asset}}",
+    "testnet_badge": "Testnet",
+    "receive_address_label": "Adresă de primire {{symbol}}",
+    "copy": {
+      "copied_aria": "Adresă copiată în clipboard",
+      "copy_aria": "Copiază adresa",
+      "copied_toast": "Adresă copiată",
+      "copy_failed_toast": "Nu s-a putut copia — selectează și copiază adresa manual"
+    },
+    "network_notes": {
+      "erc20": "{{symbol}} este un token pe o rețea compatibilă cu Ethereum. Aceasta este adresa portofelului tău — cere expeditorului să trimită {{symbol}} doar pe {{network}}. Trimiterea pe o rețea diferită poate pierde permanent fondurile.",
+      "evm": "Aceasta este adresa ta de portofel partajată. Trimite doar {{name}} pe {{network}} la această adresă și asigură-te că expeditorul folosește {{network}}.",
+      "btc": "Trimite Bitcoin doar pe {{network}} la această adresă.",
+      "solana": "Trimite Solana doar pe {{network}} la această adresă."
+    },
+    "select_asset_prompt": "Selectează un activ de primit.",
+    "unlock_footer_note": "Adresele provin din portofelul tău de pe dispozitiv și apar doar cât timp este deblocat."
+  },
+  "dashboard": {
+    "portfolioValue": "Valoarea portofoliului",
+    "priceAlertsTriggered_one": "{{count}} alertă de preț declanșată!",
+    "priceAlertsTriggered_other": "{{count}} alerte de preț declanșate!",
+    "lockAriaLabel": "Blochează soldul cu autentificare biometrică",
+    "lockBalance": "Blochează soldul",
+    "synced": "Sincronizat {{time}}",
+    "syncJustNow": "Chiar acum",
+    "syncSecondsAgo_one": "acum {{count}}s",
+    "syncSecondsAgo_other": "acum {{count}}s",
+    "syncMinutesAgo_one": "acum {{count}}m",
+    "syncMinutesAgo_other": "acum {{count}}m",
+    "actions": {
+      "send": "Trimite",
+      "receive": "Primește",
+      "schedule": "Programează",
+      "add": "Adaugă"
+    },
+    "tabs": {
+      "tokens": "Token-uri",
+      "activity": "Activitate",
+      "analytics": "Analiză"
+    },
+    "emptyWallets": {
+      "title": "Niciun portofel încă",
+      "description": "Adaugă un portofel pentru a începe să primești, trimiți și deții active pe mai multe lanțuri."
+    },
+    "addWallet": "Adaugă portofel",
+    "searchTransactionsPlaceholder": "Caută tranzacții...",
+    "emptySearch": {
+      "title": "Nicio tranzacție potrivită",
+      "description": "Încearcă să ștergi filtrele sau să cauți un alt activ sau adresă."
+    },
+    "emptyTransactions": {
+      "title": "Nicio tranzacție încă",
+      "description": "Activitatea ta on-chain va apărea aici odată ce trimiți sau primești."
+    },
+    "portfolioPerformance": "Performanța portofoliului",
+    "assetDistribution": "Distribuția activelor",
+    "quickAccess": "Acces rapid",
+    "quickAccessItems": {
+      "receive": "Primește",
+      "security": "Securitate",
+      "approvals": "Aprobări",
+      "addressCheck": "Verificare adresă",
+      "analytics": "Analiză",
+      "sentiment": "Sentiment",
+      "riskScore": "Scor de risc"
+    },
+    "walletNameLabel": "Numele portofelului",
+    "walletNamePlaceholder": "Portofelul meu ETH",
+    "addWalletDialog": {
+      "title": "Adaugă portofel",
+      "currency": "Monedă",
+      "creating": "Se creează...",
+      "create": "Creează portofel"
+    },
+    "renameWalletDialog": {
+      "title": "Redenumește portofelul",
+      "saving": "Se salvează...",
+      "save": "Salvează numele"
+    }
+  },
+  "portfolio": {
+    "encryptedVaultLabel": "Seif criptat",
+    "backup": {
+      "title": "Fă backup pentru \"{{name}}\"",
+      "reauthDescription": "Confirmă că ești tu, apoi îți vom arăta fraza de recuperare pentru acest portofel.",
+      "description": "Scrie aceste 12 cuvinte offline. Oricine le are poate cheltui fondurile acestui portofel — și sunt singura modalitate de a-l recupera.",
+      "warning": "Nu face niciodată o captură de ecran. Nu o introduce niciodată în altă aplicație.",
+      "confirmButton": "Am scris-o — marchez ca salvată"
+    },
+    "addWallet": {
+      "defaultWalletName": "portofelul tău nou",
+      "backupDescription": "Acest portofel are propria sa frază de recuperare — separată de orice alt portofel din seiful tău. Scrie-o offline înainte de a-l folosi.",
+      "backedUpDone": "Am salvat-o — gata",
+      "title": "Adaugă un portofel",
+      "createNew": "Creează unul nou",
+      "importSeed": "Importă frază",
+      "createDescription": "Generează o frază NOUĂ care derivă TOATE lanțurile (ETH/EVM, BTC, SOL). O vei salva înainte de a fi activă.",
+      "importDescription": "Lipește o frază existentă de 12/24 cuvinte — toate lanțurile sunt derivate automat (o frază nu este specifică unui singur lanț).",
+      "recoveryPhraseLabel": "Fraza de recuperare",
+      "recoveryPhrasePlaceholder": "cuvânt1 cuvânt2 ... cuvânt12",
+      "walletNameLabel": "Numele portofelului",
+      "walletNamePlaceholder": "ex. Economii",
+      "assetsToShowLabel": "Active de afișat",
+      "assetsToShowHint": "Doar alegerea de afișare — fraza conține fiecare lanț indiferent.",
+      "confirmVaultPlaceholder": "Confirmă că ești tu pentru a-ți schimba seiful",
+      "vaultReentryHint": "Reintrodusă pentru a autoriza o modificare a seifului tău de frază. Niciodată păstrată în memorie.",
+      "createAndBackup": "Creează și fă backup",
+      "importWallet": "Importă portofel"
+    },
+    "vaultPinLabel": "PIN-ul seifului",
+    "vaultPasswordLabel": "Parola seifului",
+    "cancel": "Anulează",
+    "done": "Gata",
+    "manageAssets": {
+      "title": "Active pentru \"{{name}}\"",
+      "description": "Alege ce active se afișează pentru acest portofel. Cele ascunse rămân în afara vederii până sunt adăugate."
+    },
+    "rename": {
+      "title": "Redenumește portofelul",
+      "save": "Salvează numele"
+    },
+    "remove": {
+      "title": "Elimini \"{{name}}\"?",
+      "onlyWallet": "Acesta este singurul tău portofel — nu poate fi eliminat. Folosește Panic Wipe din Securitate pentru a șterge totul.",
+      "description": "Elimină fraza acestui portofel de pe acest dispozitiv.",
+      "backedUpNote": "Îl poți restaura din fraza sa de recuperare.",
+      "notBackedUpNote": "⚠️ NU are backup — fără fraza sa este pierdut definitiv.",
+      "button": "Elimină portofelul"
+    },
+    "move": {
+      "title": "Mută \"{{name}}\" în…"
+    },
+    "managePortfolios": {
+      "title": "Portofolii",
+      "defaultTag": "(implicit)",
+      "saveAriaLabel": "Salvează numele portofoliului",
+      "renameAriaLabel": "Redenumește {{name}}",
+      "deleteAriaLabel": "Șterge {{name}}",
+      "newNamePlaceholder": "Nume nou de portofoliu",
+      "addButton": "Adaugă"
+    },
+    "activity": {
+      "unlockPrompt": "Deblochează-ți portofelul pentru a vedea activitatea.",
+      "loading": "Se încarcă...",
+      "loadError": "Nu s-a putut încărca activitatea.",
+      "noTransactions": "Nicio tranzacție încă.",
+      "viewFullHistory": "Vezi istoricul complet →"
+    },
+    "portfolioValueLabel": "Valoarea portofoliului",
+    "explore": {
+      "subtitle": "Explorezi — doar vizualizare. Niciun portofel încă.",
+      "description": "Uită-te liber în jur. Când ești pregătit, creează un portofel nou de autocustodie sau importă o frază existentă — cheile sunt generate și criptate pe acest dispozitiv.",
+      "createOrImport": "Creează sau importă un portofel"
+    },
+    "portfoliosButton": "Portofolii",
+    "totalValueHeading": "{{name}} · Valoare totală",
+    "partialTotalNote": "Unele solduri nu au putut fi încărcate — acest total poate fi incomplet.",
+    "refreshPricesTooltip": "Reîmprospătează prețurile live",
+    "live": "Live",
+    "approximate": "Aproximativ",
+    "seedVerify": {
+      "title": "Termină verificarea backupului tău",
+      "description": "Necesar pentru trimiteri peste pragul de siguranță.",
+      "verifyAriaLabel": "Verifică backupul portofelului tău",
+      "verifyButton": "Verifică"
+    },
+    "unbacked": {
+      "titleBold": "Backup incomplet al portofelului.",
+      "body": "Fiecare portofel are propria sa frază de recuperare — fără ea, fondurile acelui portofel sunt irecuperabile. Fă backup acum.",
+      "backUpButton": "Fă backup pentru \"{{name}}\""
+    },
+    "actions": {
+      "send": "Trimite",
+      "receive": "Primește",
+      "addWallet": "Adaugă portofel"
+    },
+    "activeWalletHint": {
+      "prefix": "Trimite/Primește folosește",
+      "otherPortfolio": " (în alt portofoliu)",
+      "suffix": ". Atinge un portofel de mai jos pentru a comuta."
+    },
+    "tabs": {
+      "tokens": "Token-uri",
+      "activity": "Activitate",
+      "analytics": "Analiză"
+    },
+    "noWalletsInPortfolio": "Niciun portofel în \"{{name}}\". Adaugă un portofel sau mută unul aici din meniul său.",
+    "hideAssets": "Ascunde activele",
+    "showAllAssets": "Afișează toate activele",
+    "walletCard": {
+      "active": "Activ",
+      "backedUp": "Cu backup",
+      "backUp": "Fă backup",
+      "partial": "parțial",
+      "optionsAriaLabel": "Opțiuni pentru {{name}}",
+      "noAssetsShown": "Niciun activ afișat. Folosește \"Gestionează activele\"."
+    },
+    "menu": {
+      "manageAssets": "Gestionează activele",
+      "rename": "Redenumește",
+      "moveToPortfolio": "Mută în portofoliu",
+      "backUp": "Fă backup",
+      "remove": "Elimină"
+    },
+    "balanceLoadFailedTitle": "Soldul nu a putut fi încărcat",
+    "defaultWalletFallbackName": "portofel",
+    "toast": {
+      "walletImported": "Portofel importat — toate lanțurile derivate.",
+      "walletRemoved": "Portofel eliminat de pe acest dispozitiv.",
+      "walletAddedBackedUp": "Portofel adăugat și salvat.",
+      "movedTo": "Mutat în {{name}}.",
+      "markedBackedUp": "\"{{name}}\" marcat ca salvat."
+    },
+    "errors": {
+      "couldNotAddWallet": "Nu s-a putut adăuga portofelul",
+      "couldNotImportWallet": "Nu s-a putut importa portofelul",
+      "couldNotRemoveWallet": "Nu s-a putut elimina portofelul"
+    }
+  },
+  "networth": {
+    "title": "Averea netă cripto",
+    "unlockPrompt": "Deblochează-ți portofelul pentru a vedea deținerile tale on-chain.",
+    "subtitle": "Deținerile tale on-chain — nu include active externe.",
+    "totalHoldings": "Total deținut",
+    "partialNote": "parțial — unele solduri nu au putut fi citite",
+    "refreshPricesTooltip": "Reîmprospătează prețurile live",
+    "live": "Live",
+    "approximate": "Aproximativ",
+    "allocation": "Alocare",
+    "holdings": "Dețineri",
+    "noHoldings": "Nicio deținere încă."
+  }
+}
