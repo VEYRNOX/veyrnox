@@ -50,7 +50,7 @@ export function buildMoonpayUrl({
   environment,
   baseCurrencyCode,
   baseCurrencyAmount,
-} = {}) {
+}) {
   // I3: deniability chokepoint — must be FIRST so a decoy caller gets the same
   // error shape regardless of what args it passed.
   if (isDeniabilityOrDemoActive()) {
