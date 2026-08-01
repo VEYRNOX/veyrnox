@@ -341,8 +341,9 @@ export default function PriceAlerts() {
             </div>
             {alertType === "price" && (
             <div>
-              <Label>Target Price (USD)</Label>
+              <Label htmlFor="alert-target-price">Target Price (USD)</Label>
               <Input
+                id="alert-target-price"
                 type="text"
                 inputMode="decimal"
                 value={targetPrice}
@@ -354,8 +355,9 @@ export default function PriceAlerts() {
             )}
             {alertType === "volatility" && (
             <div>
-              <Label>Volatility Threshold (%)</Label>
+              <Label htmlFor="alert-volatility">Volatility Threshold (%)</Label>
               <Input
+                id="alert-volatility"
                 type="text"
                 inputMode="decimal"
                 value={volatilityPct}
@@ -367,8 +369,8 @@ export default function PriceAlerts() {
             </div>
             )}
             <div>
-              <Label>Note (optional)</Label>
-              <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. All-time high breakout" className="mt-1.5" />
+              <Label htmlFor="alert-note">Note (optional)</Label>
+              <Input id="alert-note" value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. All-time high breakout" className="mt-1.5" />
             </div>
             <Button
               className="w-full"

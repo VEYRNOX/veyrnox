@@ -58,7 +58,7 @@ export default function DAppSecurityAlerts() {
       <Card>
         <CardContent className="pt-4 space-y-3">
           <div className="flex gap-2">
-            <Input placeholder="app.uniswap.org or paste a dApp URL" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCheck()} />
+            <Input aria-label="DApp URL" placeholder="app.uniswap.org or paste a dApp URL" value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCheck()} />
             <Button onClick={handleCheck} disabled={!url.trim()} aria-label="Check domain">
               <Shield className="h-4 w-4" />
             </Button>

@@ -129,7 +129,7 @@ export default function SavingsGoals() {
 
                 {depositId === goal.id && (
                   <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                    <Input value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="Amount USD" className="h-8 text-xs flex-1" type="text" inputMode="decimal" />
+                    <Input aria-label="Deposit amount" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} placeholder="Amount USD" className="h-8 text-xs flex-1" type="text" inputMode="decimal" />
                     <Button size="sm" className="h-8 text-xs" onClick={() => deposit.mutate({ id: goal.id, current: goal.current_amount_usd || 0, amount: depositAmount })} disabled={!depositAmount}>
                       Add
                     </Button>
@@ -159,13 +159,13 @@ export default function SavingsGoals() {
               </div>
             </div>
             <div>
-              <Label>Goal Title</Label>
-              <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Buy a MacBook" className="mt-1.5" />
+              <Label htmlFor="savings-title">Goal Title</Label>
+              <Input id="savings-title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Buy a MacBook" className="mt-1.5" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Target (USD)</Label>
-                <Input value={form.target_amount_usd} onChange={e => setForm(f => ({ ...f, target_amount_usd: e.target.value }))} placeholder="5000" type="text" inputMode="decimal" className="mt-1.5" />
+                <Label htmlFor="savings-target">Target (USD)</Label>
+                <Input id="savings-target" value={form.target_amount_usd} onChange={e => setForm(f => ({ ...f, target_amount_usd: e.target.value }))} placeholder="5000" type="text" inputMode="decimal" className="mt-1.5" />
               </div>
               <div>
                 <Label id="savings-currency-label">Currency</Label>
@@ -178,12 +178,12 @@ export default function SavingsGoals() {
               </div>
             </div>
             <div>
-              <Label>Target Date (optional)</Label>
-              <Input value={form.target_date} onChange={e => setForm(f => ({ ...f, target_date: e.target.value }))} type="date" className="mt-1.5" />
+              <Label htmlFor="savings-date">Target Date (optional)</Label>
+              <Input id="savings-date" value={form.target_date} onChange={e => setForm(f => ({ ...f, target_date: e.target.value }))} type="date" className="mt-1.5" />
             </div>
             <div>
-              <Label>Note (optional)</Label>
-              <Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Saving for..." className="mt-1.5" />
+              <Label htmlFor="savings-note">Note (optional)</Label>
+              <Input id="savings-note" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Saving for..." className="mt-1.5" />
             </div>
             <Button className="w-full" disabled={!form.title || !form.target_amount_usd || create.isPending}
               onClick={() => create.mutate(form)}>
