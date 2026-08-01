@@ -111,6 +111,8 @@ const Subscription = lazy(() => import('./pages/Subscription'));
 const SafetyPlus = lazy(() => import('./pages/SafetyPlus'));
 const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 const SeedVerificationPage = lazy(() => import('./pages/SeedVerificationPage'));
+const BuyCrypto = lazy(() => import('./pages/BuyCrypto'));
+const BuyInProgress = lazy(() => import('./pages/BuyInProgress'));
 
 function ReferralRedirect() {
   const { code } = useParams();
@@ -232,6 +234,8 @@ const AuthenticatedApp = () => {
           <Route path="/safety-plus" element={<SafetyPlus />} />
           <Route path="/referrals" element={<ReferralTracker />} />
           <Route path="/verify" element={<SeedVerificationPage />} />
+          <Route path="/buy" element={<BuyCrypto />} />
+          <Route path="/buy/in-progress" element={<BuyInProgress />} />
         </Route>
         </Route>
       </Route>

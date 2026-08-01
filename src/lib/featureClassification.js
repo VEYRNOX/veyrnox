@@ -37,6 +37,8 @@ export const ALL_ROUTE_PATHS = [
   '/walletconnect',
   '/asset/:symbol',
   '/verify',
+  '/buy',
+  '/buy/in-progress',
 ];
 
 export const CLASSIFICATION = {
@@ -357,6 +359,8 @@ export const CLASSIFICATION = {
   '/walletconnect':     { verdict: 'live', dataSource: 'on-device', note: 'WalletConnect v2 transport + signing (D1+D2). Pairing + session management via WC relay; signing via on-device key derivation (withPrivateKey). CORRECTION (factual): eth_sendTransaction is NOT display-only — WalletConnectProvider.handleSendTransaction builds new ethers.Wallet(pk, provider) and calls wallet.sendTransaction(tx), a REAL on-chain sign + broadcast (the UI warns "Approving sends a real on-chain transaction"). It is mainnet-capable: the target chain comes from the WC session namespace (getNetworkByChainId on the CAIP-2 chainId), not restricted to testnet. STATUS: BUILT, UNVERIFIED — no on-chain testnet txid has been supplied/confirmed on an explorer, so this is not "verified". Guards present: gas capped at 1M and an eth_chainId match check (VULN-19) before broadcast.' },
   '/asset/:symbol':     { verdict: 'live', dataSource: 'on-device', note: 'CryptoDetailPage — candlestick chart + period selector for a single asset. Price data from useBasketPrices (live market feed, same source as portfolio). Balance strip shows real on-device balance via usePortfolio. Send/Receive deep-links pre-select the asset via ?asset= query param. BUILT, UI-complete.' },
   '/verify':            { verdict: 'live', dataSource: 'on-device', note: 'SeedVerificationPage — route target for deferred seed backup verification. Renders a static placeholder and calls cancelVerificationReminders on mount; it CANNOT verify anything. The SeedVerification quiz component exists but has no route and no production import, because building the quiz requires the reauth-gated mnemonic reveal (useRevealWithReauth) which is not wired. Consequently markDeferred() is never called, isDeferred() is always false, and the send-side gate in lib/seedVerifyGate.js is inert for every wallet. STATUS: HONEST-DISABLED — do not count this as a shipped safety control.' },
+  '/buy':               { verdict: 'live', dataSource: 'external', note: 'BuyCrypto — MoonPay fiat on-ramp landing screen. SHIP_GATED: only renders when VITE_BUY_ENABLED=true (dead-code-eliminated from production bundle when not set). Also gated on deniability: returns null in decoy/demo sessions. Opens MoonPay widget via @capacitor/browser (separate OS process, separate cookie jar; I2 preserved). Address read from on-device accounts at press-time. BUILT, STAGING-ONLY, NOT DEVICE-VERIFIED — no real-money transaction confirmed.' },
+  '/buy/in-progress':   { verdict: 'live', dataSource: 'static', note: 'BuyInProgress — neutral post-handoff wait screen reached via universal-link return (https://veyrnox.com/buy/return?tid=...). SHIP_GATED + deniability-gated (same two-gate pattern). Polls nothing; shows no tid. Confirmation comes from on-chain balance observation (I5). BUILT, STAGING-ONLY.' },
 };
 
 // Runtime registry exceptions derived from the audit: only non-live verdicts
