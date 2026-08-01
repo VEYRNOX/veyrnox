@@ -34,6 +34,8 @@ describe('isBuyEnabled', () => {
 });
 
 describe('useBuyEnabled hook', () => {
+  beforeEach(() => vi.resetModules());
+
   it('returns false when ship gate is off regardless of deniability', async () => {
     vi.stubEnv('VITE_BUY_ENABLED', '');
     isDeniabilityOrDemoActive.mockReturnValue(false);
