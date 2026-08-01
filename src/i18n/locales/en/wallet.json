@@ -708,5 +708,38 @@
     "allocation": "Allocation",
     "holdings": "Holdings",
     "noHoldings": "No holdings yet."
+  },
+  "buy": {
+    "title": "Buy Crypto",
+    "subtitle": "Purchase crypto with a bank card via MoonPay",
+    "amount_label": "Amount",
+    "amount_placeholder": "0.00",
+    "asset_label": "Asset",
+    "continue": "Continue to MoonPay",
+    "receives_note": "You will receive {{deliveredAsset}} on {{network}}",
+    "provider": {
+      "moonpay": "MoonPay",
+      "moonpay_description": "Regulated fiat on-ramp. Fees and availability vary by region."
+    },
+    "unavailable": {
+      "title": "Buy unavailable",
+      "body": "Purchasing crypto is not available in this session."
+    },
+    "disclosure": {
+      "title": "Leaving Veyrnox",
+      "body": "You are about to open MoonPay in your browser to complete the purchase. Veyrnox does not handle your payment details.",
+      "link_label": "MoonPay Privacy Policy",
+      "cancel": "Cancel",
+      "continue": "Open MoonPay"
+    },
+    "in_progress": {
+      "title": "Purchase in progress",
+      "body": "Your MoonPay purchase is being processed. Crypto will appear in your wallet once the transaction confirms on-chain.",
+      "hint": "Check your wallet balance to confirm arrival."
+    },
+    "error": {
+      "amount_malformed": "Please enter a valid amount",
+      "browser_open_failed": "Could not open MoonPay. Please try again."
+    }
   }
 }
