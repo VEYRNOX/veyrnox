@@ -45,13 +45,10 @@ public class MainActivity extends BridgeActivity {
         // com.veyrnox.app.debug/com.veyrnox.app.MainActivity — FLAG_SECURE propagates
         // to the Capacitor WebView surface. Verified via tests/android/specs/
         // flag-secure-screenshot-e2e.spec.js (manual adb path). INTERNAL.
-        // Skip FLAG_SECURE in debug builds so adb screencap works on emulators.
-        if (!BuildConfig.DEBUG) {
-            getWindow().setFlags(
-                WindowManager.LayoutParams.FLAG_SECURE,
-                WindowManager.LayoutParams.FLAG_SECURE
-            );
-        }
+        getWindow().setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        );
 
         // filterTouchesWhenObscured — refuse tap events on the Capacitor WebView when
         // another app's TYPE_APPLICATION_OVERLAY window is above it. Blocks overlay-
