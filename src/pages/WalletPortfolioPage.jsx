@@ -24,6 +24,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import EmptyWalletState from "@/components/EmptyWalletState";
+import { useBuyEnabled } from "@/lib/buy/useBuyEnabled";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
@@ -519,6 +520,7 @@ export default function WalletPortfolioPage() {
     confirmWalletBackup, isDecoy, isHidden,
     portfolios, activePortfolioId, setActivePortfolio, walletPortfolioMap,
   } = useWallet();
+  const buyReady = useBuyEnabled();
 
   const [addOpen, setAddOpen] = useState(false);
   const [manageWallet, setManageWallet] = useState(null);
@@ -904,7 +906,7 @@ export default function WalletPortfolioPage() {
                   balances, so we deliberately do NOT claim the address is device-only. */}
               <EmptyWalletState
                 onReceive={() => navigate("/receive")}
-                transakReady={false}
+                buyReady={buyReady}
               />
               {/* Asset-scoped disclosure (no count → cannot be misread as a wallet
                   count). Reveals the real, all-zero rows on demand. */}

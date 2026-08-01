@@ -46,16 +46,19 @@ export function formatFiat(usdAmount, fiatCurrency, locale) {
   }
 }
 
-export default function FiatCurrencySelector({ value, onChange }) {
+export default function FiatCurrencySelector({ value, onChange, triggerClassName, showName }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger aria-label="Currency" className="w-20 h-7 text-xs border-0 bg-secondary">
+      <SelectTrigger
+        aria-label="Currency"
+        className={triggerClassName ?? "w-20 h-7 text-xs border-0 bg-secondary"}
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {Object.keys(FIAT_CURRENCIES).map((code) => (
           <SelectItem key={code} value={code} className="text-xs">
-            {code}
+            {showName ? `${code} — ${FIAT_CURRENCIES[code].label}` : code}
           </SelectItem>
         ))}
       </SelectContent>

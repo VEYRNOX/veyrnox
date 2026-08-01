@@ -5,7 +5,7 @@ import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySele
 import { useLocalePreferences } from "@/lib/useLocale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
+import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock, CreditCard } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import AnimatedFiat from "@/components/AnimatedFiat";
 import EmptyState from "@/components/EmptyState";
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate, Link } from "react-router";
+import { useBuyEnabled } from "@/lib/buy/useBuyEnabled";
 import AccountHeader from "../components/AccountHeader";
 import TokenList from "../components/TokenList";
 import PortfolioChart from "../components/PortfolioChart";
@@ -64,6 +65,7 @@ function DemoDashboard() {
   // picker below now writes to the app-wide preference (I3-gated: no-op in
   // decoy/demo), so a total on the portfolio page matches the total here.
   const { locale, fiatCurrency, setFiatCurrency } = useLocalePreferences();
+  const buyEnabled = useBuyEnabled();
   const [selectedWalletId, setSelectedWalletId] = useState(null);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -257,7 +259,7 @@ function DemoDashboard() {
       )}
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className={`grid gap-2 ${buyEnabled ? "grid-cols-5" : "grid-cols-4"}`}>
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/send")}>
           <ArrowUpRight className="h-5 w-5" />
           <span className="text-xs">{t("dashboard.actions.send")}</span>
@@ -266,6 +268,12 @@ function DemoDashboard() {
           <ArrowDownLeft className="h-5 w-5" />
           <span className="text-xs">{t("dashboard.actions.receive")}</span>
         </Button>
+        {buyEnabled && (
+          <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/buy")}>
+            <CreditCard className="h-5 w-5" />
+            <span className="text-xs">{t("buy.title", "Buy")}</span>
+          </Button>
+        )}
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/recurring")}>
           <CalendarClock className="h-5 w-5" />
           <span className="text-xs">{t("dashboard.actions.schedule")}</span>

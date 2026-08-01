@@ -54,3 +54,20 @@ if (!localStorageWorks()) {
     Object.defineProperty(globalThis.window, 'localStorage', { value: storage, configurable: true, writable: true });
   }
 }
+
+// matchMedia shim for jsdom. The Select component uses window.matchMedia to detect
+// mobile vs desktop, but jsdom doesn't provide it. Install a mock that defaults to
+// desktop (non-mobile) viewport.
+if (!globalThis.window?.matchMedia) {
+  globalThis.window = globalThis.window || {};
+  globalThis.window.matchMedia = (query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {}, // deprecated
+    removeListener: () => {}, // deprecated
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  });
+}

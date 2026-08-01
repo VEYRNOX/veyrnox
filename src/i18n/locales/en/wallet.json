@@ -334,7 +334,8 @@
     "recent_heading": "Recent",
     "tab_home": "Home",
     "tab_send": "Send",
-    "tab_receive": "Receive"
+    "tab_receive": "Receive",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Back"

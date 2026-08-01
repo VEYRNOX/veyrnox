@@ -9,7 +9,7 @@ import SafeSuspense from "./SafeSuspense";
 import HelpMenu from "./HelpMenu";
 import {
   LayoutDashboard, Send, Download, Settings, LogOut, Search,
-  MoreHorizontal, ChevronLeft, ChevronRight, X, ChevronDown,
+  MoreHorizontal, ChevronLeft, ChevronRight, X, ChevronDown, CreditCard,
 } from "lucide-react";
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
@@ -24,6 +24,7 @@ import { navGroups, groupColor, searchableRoutes } from "@/lib/navigation";
 import { getParentRoute, isFromMoreDrawer } from "@/lib/parentRoute";
 import useRecentPages from "@/hooks/useRecentPages";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { useBuyEnabled } from "@/lib/buy/useBuyEnabled";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNotifications } from "@/notify/useNotifications";
 import NotificationToast from "./NotificationToast";
@@ -98,7 +99,11 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { lock } = useWallet();
-  const mobileBottomNav = MOBILE_BOTTOM_NAV_ITEMS.map((item) => ({ ...item, label: t(item.labelKey) }));
+  const buyEnabled = useBuyEnabled();
+  const mobileBottomNav = [
+    ...MOBILE_BOTTOM_NAV_ITEMS,
+    ...(buyEnabled ? [{ path: '/buy', labelKey: 'nav.tab_buy', icon: CreditCard }] : []),
+  ].map((item) => ({ ...item, label: t(item.labelKey) }));
   const prefersReducedMotion = useReducedMotion();
   const navType = useNavigationType();
   const isBack = navType === 'POP';
@@ -534,7 +539,7 @@ export default function Layout() {
         aria-label={t('nav.bottom_nav_aria')}
       >
         {mobileBottomNav.map((item) => {
-          const active = mobileTab === item.path;
+          const active = location.pathname === item.path;
           return (
             <button
               key={item.path}

@@ -2,7 +2,8 @@
 // src/pages/CryptoDetailPage.jsx
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, CreditCard } from "lucide-react";
+import { useBuyEnabled } from "@/lib/buy/useBuyEnabled";
 import { Button } from "@/components/ui/button";
 import BackButton from "@/components/BackButton";
 import CoinLogo from "@/components/CoinLogo";
@@ -17,6 +18,7 @@ import { PERIODS } from "@/lib/chartPeriods";
 export default function CryptoDetailPage() {
   const { symbol } = useParams();
   const navigate = useNavigate();
+  const buyEnabled = useBuyEnabled();
   const [period, setPeriod] = useState("1D");
   const { isUnlocked, wallets, walletAddresses, activeWalletId } = useWallet();
   const { changeFor } = useBasketPrices();
@@ -101,7 +103,7 @@ export default function CryptoDetailPage() {
       <CandlestickChart symbol={symbol} period={period} />
 
       {/* Actions */}
-      <div className="grid grid-cols-2 gap-3 pt-1">
+      <div className={`grid gap-3 pt-1 ${buyEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
         <Button
           className="h-14 gap-2 text-base"
           onClick={() => navigate(`/send?asset=${symbol}`)}
@@ -117,6 +119,16 @@ export default function CryptoDetailPage() {
           <ArrowDownLeft className="h-5 w-5" />
           Receive
         </Button>
+        {buyEnabled && (
+          <Button
+            variant="secondary"
+            className="h-14 gap-2 text-base"
+            onClick={() => navigate(`/buy?asset=${symbol}`)}
+          >
+            <CreditCard className="h-5 w-5" />
+            Buy
+          </Button>
+        )}
       </div>
     </div>
   );
