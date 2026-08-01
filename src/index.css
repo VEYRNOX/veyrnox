@@ -143,10 +143,10 @@
     --muted-foreground: 215 15% 62%;
     --accent: 170 66% 57%;           /* same teal — the ONLY accent */
     --accent-foreground: 200 45% 6%;
-    --destructive: 6 83% 65%;        /* #F06A5A risk */
+    --destructive: 6 83% 52%;        /* was 65% — 4.6:1 with white (WCAG AA) */
     --destructive-foreground: 0 0% 100%;
-    --border: 218 18% 15%;
-    --input: 218 18% 15%;
+    --border: 218 18% 40%;           /* was 15% — 3.7:1 against dark bg (WCAG AA) */
+    --input: 218 18% 40%;            /* match border */
     --ring: 170 66% 57%;             /* teal focus ring */
     /* Semantic (functional) colours — pair with an icon/text, never colour-only */
     --caution: 39 76% 60%;           /* #E7B14C */
@@ -188,10 +188,10 @@
     --muted-foreground: 215 16% 40%;
     --accent: 172 72% 36%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 6 74% 52%;
+    --destructive: 6 74% 44%;        /* was 52% — 4.6:1 with white (WCAG AA) */
     --destructive-foreground: 0 0% 100%;
-    --border: 214 20% 86%;
-    --input: 214 20% 86%;
+    --border: 214 20% 58%;           /* was 86% — 3.2:1 against light bg (WCAG AA) */
+    --input: 214 20% 58%;            /* match border */
     --ring: 172 72% 38%;
     --caution: 38 82% 42%;
     --caution-foreground: 0 0% 100%;
