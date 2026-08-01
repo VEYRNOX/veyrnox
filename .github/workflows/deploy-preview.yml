@@ -154,6 +154,11 @@ jobs:
           fi
 
       - name: Build
+        # VITE_MOONPAY_API_KEY is a repository variable (not a secret).
+        # Injected only on non-main (staging) builds; omitted on main so the
+        # production bundle carries no API key at build time.
+        env:
+          VITE_MOONPAY_API_KEY: ${{ github.ref != 'refs/heads/main' && vars.VITE_MOONPAY_API_KEY || '' }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             npm run build
