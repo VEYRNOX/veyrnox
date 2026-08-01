@@ -46,6 +46,8 @@ import { argon2id } from 'hash-wasm';
 // lazy-rekey migration below (no lockout). EXPORTED so stealth chaff advertises the
 // SAME params (otherwise chaff vs real blobs differ on the kdf field — a
 // deniability tell).
+export const VAULT_ERR = Object.freeze({ MALFORMED: 'VAULT_MALFORMED' });
+
 export const KDF_PARAMS = Object.freeze({
   parallelism: 1,
   iterations: 3,
@@ -369,6 +371,9 @@ export async function encryptVault(secret, password) {
 export async function decryptVault(vault, password) {
   const v = vault?.v;
   if (v !== 1 && v !== 2) throw new Error('Unsupported vault version');
+  requiredB64Field(vault, 'salt');
+  requiredB64Field(vault, 'iv');
+  requiredB64Field(vault, 'ct');
   const salt = unb64(vault.salt);
   const iv = unb64(vault.iv);
   const ct = unb64(vault.ct);
@@ -422,6 +427,8 @@ export async function encryptVaultWithDek(secret, dek) {
  * @returns {Promise<string>}
  */
 export async function decryptVaultWithDek(vault, dek) {
+  requiredB64Field(vault, 'iv');
+  requiredB64Field(vault, 'ct');
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (dek), { name: 'AES-GCM' }, false, ['decrypt']);
   const gcmOpts = { name: 'AES-GCM', iv: unb64(vault.iv) };
   if ((vault?.v ?? 1) >= 2) gcmOpts.additionalData = vaultAad(vault); // M-8
@@ -475,3 +482,11 @@ function zero(u8) { if (u8 && u8.fill) u8.fill(0); }
 // base64 helpers (no Buffer dependency; browser-safe)
 function b64(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); }
 function unb64(str) { const s = atob(str); const u8 = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i); return u8; }
+
+// Guard: throw VAULT_ERR.MALFORMED before calling unb64() on a missing/non-string field.
+// A raw atob() on undefined throws a DOMException that callers can't distinguish from
+// other failures; this replaces it with a typed, catchable error code.
+function requiredB64Field(vault, name) {
+  if (typeof vault?.[name] !== 'string' || !vault[name])
+    throw Object.assign(new Error(VAULT_ERR.MALFORMED), { code: VAULT_ERR.MALFORMED });
+}
