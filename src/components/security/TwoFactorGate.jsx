@@ -103,7 +103,14 @@ export default function TwoFactorGate({ verify, onSuccess, onCancel, onLock, mod
     }
     // audit-H5: OOM verdict means the session verifier was never captured (Argon2id
     // OOM at unlock). This is not a wrong-credential attempt — don't burn the cap.
-    if (verdict?.oom) {
+    //
+    // Gap-5: `neutral` generalises the same idea to a failed POSSESSION factor that
+    // was never a guess — a cancelled biometric sheet, a permanently invalidated
+    // hardware key, an unavailable sensor (lib/stepUpFactorOutcome.js). The action
+    // stays BLOCKED (allowed is false either way); only the attempt accounting and
+    // the message change. `oom` is kept beside it, not replaced — audit-H5's path
+    // sets that flag and must keep working.
+    if (verdict?.oom || verdict?.neutral) {
       setError(verdict.message || 'Step-up re-auth unavailable — please lock and unlock.');
       return;
     }
