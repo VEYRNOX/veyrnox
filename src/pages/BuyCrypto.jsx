@@ -26,7 +26,7 @@ import FiatCurrencySelector from '@/components/FiatCurrencySelector';
 import { useWallet } from '@/lib/WalletProvider';
 import { useBuyEnabled } from '@/lib/buy/useBuyEnabled';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
-import { buildMoonpayUrl, MOONPAY_ASSET_MAP, BuyError } from '@/lib/buy/moonpayUrl';
+import { buildMoonpayUrl, MOONPAY_ASSET_MAP } from '@/lib/buy/moonpayUrl';
 import { resolveReceive } from '@/lib/receiveAddress';
 import { toast } from '@/lib/toast';
 
