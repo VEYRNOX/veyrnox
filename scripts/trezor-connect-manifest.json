@@ -3,8 +3,8 @@
   "hosts": ["connect.trezor.io"],
   "versions": {
     "9": {
-      "iframe.html": "19759d74f8ac2d0c1fe2d116109af516d23dfe82124535a06cc6d2c32390b0b0",
-      "popup.html": "632c5fed2eaedba57ae24364566b8956a71e5ca945853861c81c0b5fb236ba09",
+      "iframe.html": "a7f89f43e99573bce26c90a0aa56ea26c53b1bb25230d57ed0ea941edc3b1574",
+      "popup.html": "506bde626abc1e5c9259c31000d903f4e3724548d876ee9888a72168c548229b",
       "webusb.html": "6438e4567df3b939921f5dd519d0ccd40489b28d3111e4230da07e8459eaada5"
     }
   }

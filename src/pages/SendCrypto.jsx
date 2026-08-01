@@ -1314,8 +1314,8 @@ export default function SendCrypto() {
       // "Send amount dead-ended silently" finding). Surface it instead.
       //
       // Deliberately does NOT burn a step-up attempt: a thrown verifier is an infra
-      // failure, not a wrong credential. Deliberately does NOT reach sendTx.mutate():
-      // an unverified step-up must never authorise a broadcast.
+      // failure, not a wrong credential — an unverified step-up must never
+      // authorise a broadcast; the send mutation is intentionally unreachable here.
       setReauthError(tw("send.reauth.errors.unavailable"));
     } finally {
       setReauthPending(false);

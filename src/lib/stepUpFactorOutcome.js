@@ -84,7 +84,7 @@ function readCode(err) {
   const code = /** @type {{code?: unknown}} */ (err).code;
   if (typeof code === 'string' && code) return code;
   const message = /** @type {{message?: unknown}} */ (err).message;
-  if (typeof message === 'string' && ALL_KEK_CODES.has(message)) return message;
+  if (typeof message === 'string' && ALL_KEK_CODES.has(/** @type {any} */ (message))) return message;
   return null;
 }
 
