@@ -60,6 +60,7 @@ export default defineConfig({
       VITE_BYPASS_RASP: '',
       VITE_SUPABASE_URL: '',
       VITE_SUPABASE_ANON_KEY: '',
+      VITE_MOONPAY_API_KEY: '',
     },
     setupFiles: ['fake-indexeddb/auto', './vitest.setup.js'],
     // Scoped to app source on purpose. The other suites in this repo have their
