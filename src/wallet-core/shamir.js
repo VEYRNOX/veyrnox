@@ -249,14 +249,14 @@ export function combine(shares) {
     }
   }
 
-  // Defensive copy — prevents TOCTOU via SharedArrayBuffer
+  // Defensive copy — prevents TOCTOU via SharedArrayBuffer.
+  // Inside try so partially-copied shares are zeroed if a later copy throws.
   const local = [];
-  for (let i = 0; i < shares.length; i++) {
-    local.push(new Uint8Array(shares[i]));
-  }
-
   const result = new Uint8Array(SECRET_SIZE);
   try {
+    for (let i = 0; i < shares.length; i++) {
+      local.push(new Uint8Array(shares[i]));
+    }
     // Validate envelope on every share
     const refVersion = local[0][0];
     const refK = local[0][1];
