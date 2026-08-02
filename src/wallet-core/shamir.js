@@ -20,6 +20,11 @@
  *   - Envelope prevents mixing shares from different splits or wrong thresholds
  *   - CRC32 detects corruption (not authentication — the vault's AES-GCM AAD
  *     authenticates the reconstructed DEK)
+ *   - combine() uses exactly k shares for interpolation, then verifies any extras
+ *     against the reconstructed polynomial — a single inconsistent share is a
+ *     hard reject
+ *   - Input shares are defensively copied before validation to prevent TOCTOU
+ *     via SharedArrayBuffer
  *   - NOT constant-time: gfMul branches on zero, table lookups are cache-visible
  *
  * @module wallet-core/shamir
@@ -209,8 +214,10 @@ export function split(secret, n = 3, k = 2) {
 /**
  * Reconstruct a secret from k or more shares using Lagrange interpolation at x=0.
  *
- * Validates envelope: version, threshold, set-ID consistency, and CRC integrity.
- * Rejects shares from different splits or with corrupted data (fail-closed).
+ * Validates envelope: version, threshold, set-ID consistency, CRC integrity,
+ * x-coordinate bounds, and share count bounds. Uses exactly k shares for
+ * interpolation; any extra shares are verified against the reconstructed
+ * polynomial — a single inconsistent extra share is a hard reject.
  *
  * NOT constant-time: gfMul branches on zero, table lookups are cache-visible.
  *
@@ -222,16 +229,19 @@ export function combine(shares) {
     throw new Error('INSUFFICIENT_SHARES');
   }
 
+  // Defensive copy — prevents TOCTOU via SharedArrayBuffer
+  const local = [];
   for (let i = 0; i < shares.length; i++) {
     if (!(shares[i] instanceof Uint8Array) || shares[i].length !== SHARE_SIZE) {
       throw new Error('INVALID_SHARE_SIZE');
     }
+    local.push(new Uint8Array(shares[i]));
   }
 
   // Validate envelope on every share
-  const refVersion = shares[0][0];
-  const refK = shares[0][1];
-  const refN = shares[0][2];
+  const refVersion = local[0][0];
+  const refK = local[0][1];
+  const refN = local[0][2];
 
   if (refVersion !== ENVELOPE_VERSION) {
     throw new Error('UNSUPPORTED_VERSION');
@@ -239,48 +249,51 @@ export function combine(shares) {
   if (refK < 2 || refN < refK || refN > 255) {
     throw new Error('INVALID_ENVELOPE_PARAMS');
   }
-  if (shares.length < refK) {
+  if (local.length < refK) {
     throw new Error('INSUFFICIENT_SHARES');
   }
+  if (local.length > refN) {
+    throw new Error('TOO_MANY_SHARES');
+  }
 
-  for (let i = 0; i < shares.length; i++) {
-    if (shares[i][0] !== refVersion) throw new Error('VERSION_MISMATCH');
-    if (shares[i][1] !== refK) throw new Error('THRESHOLD_MISMATCH');
-    if (shares[i][2] !== refN) throw new Error('N_MISMATCH');
+  for (let i = 0; i < local.length; i++) {
+    if (local[i][0] !== refVersion) throw new Error('VERSION_MISMATCH');
+    if (local[i][1] !== refK) throw new Error('THRESHOLD_MISMATCH');
+    if (local[i][2] !== refN) throw new Error('N_MISMATCH');
 
-    // Verify set-ID matches
     for (let j = 0; j < SET_ID_SIZE; j++) {
-      if (shares[i][3 + j] !== shares[0][3 + j]) {
+      if (local[i][3 + j] !== local[0][3 + j]) {
         throw new Error('SET_ID_MISMATCH');
       }
     }
 
-    if (!verifyCrc(shares[i])) {
+    if (!verifyCrc(local[i])) {
       throw new Error('SHARE_CORRUPT');
     }
   }
 
-  // Check for invalid and duplicate x-coordinates
+  // Check x-coordinates: must be in [1, refN], no duplicates
   const xs = new Set();
-  for (let i = 0; i < shares.length; i++) {
-    const x = shares[i][19];
-    if (x === 0) throw new Error('INVALID_SHARE_X');
+  for (let i = 0; i < local.length; i++) {
+    const x = local[i][19];
+    if (x === 0 || x > refN) throw new Error('INVALID_SHARE_X');
     if (xs.has(x)) throw new Error('DUPLICATE_X_COORD');
     xs.add(x);
   }
 
-  const k = shares.length;
+  // Use exactly refK shares for interpolation (the first refK provided)
+  const kShares = local.slice(0, refK);
   const result = new Uint8Array(SECRET_SIZE);
 
-  const basis = new Uint8Array(k);
+  const basis = new Uint8Array(refK);
   try {
-    for (let i = 0; i < k; i++) {
-      const xi = shares[i][19];
+    for (let i = 0; i < refK; i++) {
+      const xi = kShares[i][19];
       let num = 1;
       let den = 1;
-      for (let j = 0; j < k; j++) {
+      for (let j = 0; j < refK; j++) {
         if (i === j) continue;
-        const xj = shares[j][19];
+        const xj = kShares[j][19];
         num = gfMul(num, xj);
         den = gfMul(den, gfAdd(xi, xj));
       }
@@ -289,13 +302,57 @@ export function combine(shares) {
 
     for (let byteIdx = 0; byteIdx < SECRET_SIZE; byteIdx++) {
       let val = 0;
-      for (let i = 0; i < k; i++) {
-        val = gfAdd(val, gfMul(basis[i], shares[i][HEADER_SIZE + byteIdx]));
+      for (let i = 0; i < refK; i++) {
+        val = gfAdd(val, gfMul(basis[i], kShares[i][HEADER_SIZE + byteIdx]));
       }
       result[byteIdx] = val;
     }
   } finally {
     basis.fill(0);
+  }
+
+  // Verify any extra shares against the reconstructed polynomial.
+  // The secret is coeffs[0]; we need the full polynomial to verify.
+  // Re-derive: for a degree-(k-1) polynomial, we need k points to define it.
+  // We already have the secret (x=0). With k evaluation points we can
+  // reconstruct all coefficients via Lagrange on the k shares themselves,
+  // then verify the extras evaluate correctly.
+  if (local.length > refK) {
+    // Rebuild polynomial coefficients from k shares + secret at x=0
+    // Points: (0, result[byte]), (x1, y1), ..., (xk, yk) — but we only need
+    // to verify extras. Simpler: for each extra share, interpolate using
+    // refK of the original shares at the extra's x-coordinate and compare.
+    for (let e = refK; e < local.length; e++) {
+      const ex = local[e][19];
+      for (let byteIdx = 0; byteIdx < SECRET_SIZE; byteIdx++) {
+        // Evaluate the degree-(k-1) polynomial (defined by kShares) at ex
+        let val = 0;
+        for (let i = 0; i < refK; i++) {
+          const xi = kShares[i][19];
+          let li = 1;
+          for (let j = 0; j < refK; j++) {
+            if (i === j) continue;
+            const xj = kShares[j][19];
+            li = gfMul(li, gfMul(gfAdd(ex, xj), gfInv(gfAdd(xi, xj))));
+          }
+          val = gfAdd(val, gfMul(li, kShares[i][HEADER_SIZE + byteIdx]));
+        }
+        if (val !== local[e][HEADER_SIZE + byteIdx]) {
+          result.fill(0);
+          throw new Error('SHARE_INCONSISTENT');
+        }
+      }
+    }
+  }
+
+  // Reject all-zero reconstruction (matches split's invariant)
+  let allZero = true;
+  for (let i = 0; i < SECRET_SIZE; i++) {
+    if (result[i] !== 0) { allZero = false; break; }
+  }
+  if (allZero) {
+    result.fill(0);
+    throw new Error('ALL_ZERO_RECONSTRUCTED');
   }
 
   return result;
