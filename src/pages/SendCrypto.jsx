@@ -2032,7 +2032,7 @@ export default function SendCrypto() {
                         // TwoFactorGate shows NO PIN field in this mode — the step-up is Face ID only.
                         // FAIL CLOSED (I4) — any cancel/no-match/error counts as NOT verified.
                         //
-                        // Gap-5: the old inline `catch { bioOk = false }` also made every
+                        // Gap-5: the old bare-catch (bioOk assigned false on any error) also made every
                         // failure indistinguishable, so a USER CANCEL, a permanently
                         // invalidated hardware key, and an unavailable sensor each burned one
                         // of TwoFactorGate's 5 attempts and captioned it "Incorrect." — five
