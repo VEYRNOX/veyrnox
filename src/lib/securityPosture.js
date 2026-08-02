@@ -209,7 +209,7 @@ function item(id, earned, points) {
 function scoreAuthentication(s) {
   const items = [
     item('pin_created', !!s.pinCreated, 10),
-    item('pin_length_12', typeof s.pinLength === 'number' && s.pinLength >= 12, 5),
+    item('pin_length_12', !!s.pinCreated && typeof s.pinLength === 'number' && Number.isFinite(s.pinLength) && s.pinLength >= 12, 5),
     item('biometric_enrolled', !!s.biometricEnabled, 5),
   ];
   return { score: items.reduce((a, i) => a + i.points, 0), max: 20, items };
@@ -234,8 +234,8 @@ function scoreDeviceIntegrity(s) {
 function scoreHardwareBinding(s) {
   const kekItem = item('kek_active', !!s.kekActive, 5);
 
-  const isTopTier = s.hardwareTier === 'STRONGBOX' || s.hardwareTier === 'SECURE_ENCLAVE';
-  const isTee = s.hardwareTier === 'TEE';
+  const isTopTier = !!s.kekActive && (s.hardwareTier === 'STRONGBOX' || s.hardwareTier === 'SECURE_ENCLAVE');
+  const isTee = !!s.kekActive && s.hardwareTier === 'TEE';
 
   const hwItem = isTopTier
     ? item('hardware_top_tier', true, 5)
@@ -254,10 +254,10 @@ function scoreHardwareBinding(s) {
 function scoreRecovery(s) {
   const items = [
     item('recovery_passphrase', !!s.recoveryPassphraseSet, 8),
-    item('share_a_wrapped', !!s.shareAWrapped, 2),
-    item('share_b_uploaded', !!s.shareBUploaded, 8),
-    item('share_c_exported', !!s.shareCExported, 6),
-    item('share_c_verified', !!s.shareCVerified, 6),
+    item('share_a_wrapped', !!s.recoveryPassphraseSet && !!s.shareAWrapped, 2),
+    item('share_b_uploaded', !!s.recoveryPassphraseSet && !!s.shareBUploaded, 8),
+    item('share_c_exported', !!s.recoveryPassphraseSet && !!s.shareCExported, 6),
+    item('share_c_verified', !!s.recoveryPassphraseSet && !!s.shareCExported && !!s.shareCVerified, 6),
   ];
   return { score: items.reduce((a, i) => a + i.points, 0), max: 30, items };
 }
