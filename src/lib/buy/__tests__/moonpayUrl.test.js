@@ -125,9 +125,11 @@ describe('URL correctness — common params', () => {
     expect(new URL(url).searchParams.get('lockWalletAddress')).toBe('true');
   });
 
-  it('always sets redirectURL to https://veyrnox.com/buy/return', () => {
+  it('sets redirectURL to current origin + /buy/return', () => {
     const url = buildMoonpayUrl(VALID);
-    expect(new URL(url).searchParams.get('redirectURL')).toBe('https://veyrnox.com/buy/return');
+    expect(new URL(url).searchParams.get('redirectURL')).toBe(
+      `${window.location.origin}/buy/return`,
+    );
   });
 
   it('passes walletAddress correctly', () => {
