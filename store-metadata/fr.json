@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "fr",
+  "native": "Français",
+  "reviewed": true,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Auto-garde crypto · Sécurité",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Cryptomonnaie autogérée pour situations à haut risque. Votre phrase secrète, vos clés, sur votre appareil. Modes anti-coercition quand un mot de passe ne suffit pas.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "portefeuille,auto-garde,bitcoin,ethereum,solana,récupération,web3,sécurisé,contrainte,non-custodial",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Votre cryptomonnaie. Vos clés. Sur votre appareil.\n\nVeyrnox est un portefeuille non-dépositaire conçu pour les utilisateurs qui placent la sécurité en premier. Les clés sont générées et stockées uniquement sur votre appareil, protégées par un chiffrement matériel (Secure Enclave) — jamais sur un serveur. Veyrnox ne peut pas déplacer vos fonds ni les récupérer à votre place.\n\nAuto-protection en temps réel (RASP)\nVeyrnox vérifie activement son propre environnement d'exécution pour détecter toute altération, root/jailbreak ou injection de code, et se ferme par défaut (fail closed) s'il détecte un environnement compromis.\n\nVérifications de sécurité des adresses\nAvertissements automatiques en cas d'empoisonnement d'adresse ou d'adresse similaire, ainsi qu'un filtrage des jetons indésirables, avant chaque envoi.\n\nUn portefeuille, dix actifs\nEnvoyez et recevez ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC et USDT — le tout à partir d'une seule phrase de récupération.\n\nSafety Plus (abonnement facultatif)\nDébloque des modes anti-coercition :\n• PIN de contrainte — un PIN distinct ouvre un portefeuille leurre, afin qu'un déverrouillage forcé ne révèle rien de réel.\n• Portefeuilles cachés — des comptes qui n'apparaissent dans aucune liste ni aucun décompte.\n• Effacement d'urgence — détruit de façon irréversible le matériel de clés local, sur demande.\nMensuel ou annuel ; renouvellement automatique jusqu'à annulation. Gérez ou annulez à tout moment dans les réglages de votre compte App Store.\n\nVeyrnox est non-dépositaire. Si vous perdez votre phrase de récupération, personne — pas même nous — ne peut restaurer votre portefeuille. Sauvegardez-la.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Version initiale.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Portefeuille crypto autogéré. Vos clés restent sur l'appareil. Anti-coercition.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Votre cryptomonnaie. Vos clés. Sur votre appareil.\n\nVeyrnox est un portefeuille non-dépositaire destiné aux personnes qui prennent la sécurité au sérieux. Votre phrase de récupération et vos clés privées sont générées sur l'appareil et protégées par un chiffrement matériel (Android Keystore / StrongBox / TEE selon disponibilité). Elles ne quittent jamais votre appareil. Veyrnox ne détient rien : nous ne pouvons pas déplacer vos fonds ni les récupérer à votre place.\n\nActifs pris en charge\nEnvoyez et recevez ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC et USDT — le tout à partir d'une seule phrase de récupération BIP-39.\n\nSécurité sur l'appareil\n• Coffre AES-256-GCM, déverrouillé avec Argon2id (KDF 192 Mio) et, si disponible, une clé liée au matériel.\n• L'auto-protection en temps réel (RASP) détecte altération, root, injection de code et hooking — et se ferme par défaut sur un appareil compromis.\n• Sécurité des adresses : avertissements d'empoisonnement et d'adresses similaires, filtrage des jetons indésirables, avant chaque envoi.\n• WalletConnect v2 avec vérification de chaque requête, liaison à la chaîne et à l'adresse, expiration de session et ré-authentification renforcée pour les actions à haut risque.\n\nSafety Plus (abonnement facultatif)\nDébloque des modes anti-coercition pour les situations à haut risque :\n• PIN de contrainte — un second PIN ouvre un portefeuille leurre ; un déverrouillage forcé ne révèle rien de réel.\n• Portefeuilles cachés — des comptes qui n'apparaissent dans aucune liste ni aucun décompte.\n• Effacement d'urgence — détruit de façon irréversible le matériel de clés local, sur demande.\nMensuel ou annuel ; renouvellement automatique jusqu'à annulation. Gérez ou annulez à tout moment dans Google Play → Abonnements.\n\nCe que Veyrnox NE fait PAS\n• Pas de compte. Pas d'e-mail. Pas de synchronisation cloud. Pas de garde. Pas de trading. Pas de publicité.\n\nVous êtes propriétaire de la phrase secrète (seed). Si vous perdez votre phrase de récupération, personne — pas même nous — ne peut restaurer votre portefeuille. Sauvegardez-la dans un endroit auquel vous seul avez accès.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

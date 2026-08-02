@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "ro",
+  "native": "Română",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Autocustodie · Securitate",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Crypto autocustodiat pentru situații cu miză mare. Fraza ta, cheile tale, pe dispozitivul tău. Moduri rezistente la coerciție pentru când o parolă nu e suficientă.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "portofel crypto,autocustodie,bitcoin,ethereum,solana,web3,portofel securizat,coerciție,necustodial",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Cripto-monedele tale. Cheile tale. Pe dispozitivul tău.\n\nVeyrnox este un portofel necustodial pentru utilizatori care pun securitatea pe primul loc. Cheile sunt generate și stocate exclusiv pe dispozitivul tău, protejate prin criptare securizată hardware (Secure Enclave) — niciodată pe un server. Veyrnox nu poate muta fondurile tale și nu le poate recupera în locul tău.\n\nAutoprotecție la rulare (RASP)\nVeyrnox își verifică activ propriul mediu de rulare pentru manipulări, root/jailbreak și injecție de cod și se blochează implicit dacă detectează un mediu compromis.\n\nVerificări de siguranță a adreselor\nAvertismente automate pentru adrese de tip poisoning și adrese asemănătoare (look-alike), plus filtrarea token-urilor spam, înainte de trimitere.\n\nUn singur portofel, zece active\nTrimite și primește ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC și USDT — toate dintr-o singură frază de recuperare.\n\nSafety Plus (abonament opțional)\nDeblochează moduri rezistente la coerciție:\n• PIN de coerciție — un PIN separat deschide un portofel-momeală, astfel încât o deblocare forțată nu dezvăluie nimic real.\n• Portofele ascunse — conturi care nu apar în nicio listă și nu sunt numărate.\n• Ștergere de panică — distruge ireversibil materialul criptografic local, la cerere.\nLunar sau anual; se reînnoiește automat până la anulare. Poți gestiona sau anula oricând din setările contului tău din App Store.\n\nVeyrnox este necustodial. Dacă îți pierzi fraza de recuperare, nimeni — nici măcar noi — nu îți poate recupera portofelul. Fă-i o copie de rezervă.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Lansare inițială.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Portofel crypto necustodial. Cheile rămân pe dispozitiv. Rezistent la coerciție.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Cripto-monedele tale. Cheile tale. Pe dispozitivul tău.\n\nVeyrnox este un portofel necustodial pentru cei care iau securitatea în serios. Fraza de recuperare și cheile private sunt generate pe dispozitiv și protejate prin criptare securizată hardware (Android Keystore / StrongBox / TEE, unde este disponibil). Nu părăsesc niciodată dispozitivul tău. Veyrnox nu deține nimic: nu putem muta fondurile tale și nu le putem recupera în locul tău.\n\nActive acceptate\nTrimite și primește ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC și USDT — toate dintr-o singură frază de recuperare BIP-39.\n\nSecuritate pe dispozitiv\n• Seif AES-256-GCM, deblocat cu Argon2id (KDF de 192 MiB) și, unde este disponibilă, o cheie legată de hardware.\n• Autoprotecția la rulare (RASP) verifică manipulările, root-ul, injecția de cod și hooking-ul — și se blochează implicit pe un dispozitiv compromis.\n• Siguranța adreselor: avertismente pentru poisoning și adrese asemănătoare (look-alike), filtrarea token-urilor spam, înainte de trimitere.\n• WalletConnect v2 cu revizuire pentru fiecare cerere, legare de rețea și adresă, expirare a sesiunii și reautentificare suplimentară pentru acțiuni cu risc ridicat.\n\nSafety Plus (abonament opțional)\nDeblochează moduri rezistente la coerciție pentru situații cu miză mare:\n• PIN de coerciție — un al doilea PIN deschide un portofel-momeală; o deblocare forțată nu dezvăluie nimic real.\n• Portofele ascunse — conturi care nu apar în nicio listă și nu sunt numărate.\n• Ștergere de panică — distruge ireversibil materialul criptografic local, la cerere.\nLunar sau anual; se reînnoiește automat până la anulare. Poți gestiona sau anula oricând din Google Play → Abonamente.\n\nCe NU face Veyrnox\n• Fără cont. Fără email. Fără sincronizare în cloud. Fără custodie. Fără tranzacționare. Fără reclame.\n\nFraza-seed îți aparține. Dacă îți pierzi fraza de recuperare, nimeni — nici măcar noi — nu îți poate recupera portofelul. Fă-i o copie de rezervă undeva unde doar tu poți ajunge.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

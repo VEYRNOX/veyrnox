@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "af",
+  "native": "Afrikaans",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth). Standard South African Afrikaans — 'beursie' for wallet, 'kluis' for vault, not Dutch equivalents. Brand names, chain/asset symbols, and technical security terms (Secure Enclave, StrongBox, TEE, Android Keystore, RASP, PIN, Argon2id, AES-256-GCM, BIP-39, WalletConnect, Safety Plus) left untranslated. Character counts verified against the tighter of Apple/Play limits.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Selfbewaring · Sekuriteit",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Selfbewaring-kripto vir hoërisiko-situasies. Jou saadfrase, jou sleutels, op jou toestel. Dwangbestande modusse vir wanneer 'n wagwoord nie genoeg is nie.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kripto-beursie,selfbewaring,bitcoin,ethereum,solana,web3,veilige beursie,dwang,nie-bewarend",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Jou kripto. Jou sleutels. Op jou toestel.\n\nVeyrnox is 'n nie-bewarende beursie vir gebruikers wat sekuriteit eerste stel. Sleutels word slegs op jou toestel gegenereer en gestoor, verseël met hardeware-gesteunde (Secure Enclave) enkripsie — nooit op 'n bediener nie. Veyrnox kan nie jou fondse verskuif nie en kan dit nie namens jou herstel nie.\n\nLooptyd-selfbeskerming (RASP)\nVeyrnox kontroleer voortdurend sy eie looptyd vir peuterwerk, rooting/jailbreaking en kode-inspuiting, en sluit toe indien dit 'n gekompromitteerde omgewing opspoor.\n\nAdresveiligheid-kontroles\nOutomatiese waarskuwings vir vergiftiging en kyk-eenders-adresse, plus filtrering van strooipos-tokens, voordat jy stuur.\n\nEen beursie, tien bates\nStuur en ontvang ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC en USDT — alles vanaf een herstelfrase.\n\nSafety Plus (opsionele intekening)\nOntsluit dwang-bestande modusse:\n• Dwang-PIN — 'n aparte PIN maak 'n lokbeursie oop, sodat 'n gedwonge oopsluiting niks werkliks wys nie.\n• Verskuilde beursies — rekeninge wat in geen lys of telling verskyn nie.\n• Paniekverwydering — vernietig plaaslike sleutelmateriaal onomkeerbaar op aanvraag.\nMaandeliks of jaarliks; hernu outomaties totdat dit gekanselleer word. Bestuur of kanselleer enige tyd in jou App Store-rekeninginstellings.\n\nVeyrnox is nie-bewarend. As jy jou herstelfrase verloor, kan niemand — ook nie ons nie — jou beursie herstel nie. Maak 'n rugsteun daarvan.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Aanvanklike vrystelling.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Selfbewarende kripto-beursie. Jou sleutels bly op jou toestel. Dwangbestand.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Jou kripto. Jou sleutels. Op jou toestel.\n\nVeyrnox is 'n nie-bewarende beursie vir mense wat sekuriteit ernstig opneem. Jou herstelfrase en privaat sleutels word op die toestel gegenereer en verseël met hardeware-gesteunde enkripsie (Android Keystore / StrongBox / TEE waar beskikbaar). Dit verlaat nooit jou toestel nie. Veyrnox hou niks aan: ons kan nie jou fondse verskuif nie en kan dit nie namens jou herstel nie.\n\nOndersteunde bates\nStuur en ontvang ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC en USDT — alles vanaf een BIP-39-herstelfrase.\n\nToestel-sekuriteit\n• AES-256-GCM-kluis, ontsluit met Argon2id (192 MiB KDF) en, waar beskikbaar, 'n hardeware-gebonde sleutel.\n• Looptyd-selfbeskerming (RASP) kontroleer vir peuterwerk, root, kode-inspuiting en hooking — en sluit toe op 'n gekompromitteerde toestel.\n• Adresveiligheid: waarskuwings vir vergiftiging en kyk-eenders-adresse, filtrering van strooipos-tokens, voordat jy stuur.\n• WalletConnect v2 met hersiening per versoek, ketting- en adresbinding, sessieverval, en stap-heroutentisering vir hoërisiko-aksies.\n\nSafety Plus (opsionele intekening)\nOntsluit dwang-bestande modusse vir situasies met hoë inzet:\n• Dwang-PIN — 'n tweede PIN maak 'n lokbeursie oop; 'n gedwonge oopsluiting wys niks werkliks nie.\n• Verskuilde beursies — rekeninge wat in geen lys of telling verskyn nie.\n• Paniekverwydering — vernietig plaaslike sleutelmateriaal onomkeerbaar op aanvraag.\nMaandeliks of jaarliks; hernu outomaties totdat dit gekanselleer word. Bestuur of kanselleer enige tyd in Google Play → Intekeninge.\n\nWat Veyrnox NIE doen nie\n• Geen rekening. Geen e-pos. Geen wolksinkronisasie. Geen bewaring. Geen handel. Geen advertensies.\n\nJy besit die saad. As jy jou herstelfrase verloor, kan niemand — ook nie ons nie — jou beursie herstel nie. Maak 'n rugsteun daarvan iewers waar net jy dit kan bereik.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}
