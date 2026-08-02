@@ -1,0 +1,750 @@
+<title>Veyrnox — Security Posture Architecture</title>
+<style>
+  @font-face {
+    font-family: 'Mono';
+    src: local('IBM Plex Mono'), local('SF Mono'), local('Menlo'), local('Consolas');
+  }
+
+  :root {
+    --bg: #050608;
+    --bg-card: #0D1117;
+    --bg-raised: #141920;
+    --border: #1D2633;
+    --border-subtle: #151B24;
+    --text: #E8ECF1;
+    --text-muted: #5A6A80;
+    --text-dim: #3A4A5C;
+    --teal: #4ADAC2;
+    --teal-dim: rgba(74, 218, 194, 0.12);
+    --purple: #7B6BF0;
+    --purple-dim: rgba(123, 107, 240, 0.10);
+    --amber: #E8A838;
+    --amber-dim: rgba(232, 168, 56, 0.10);
+    --red: #E85A5A;
+    --red-dim: rgba(232, 90, 90, 0.08);
+    --yellow: #D4C44A;
+    --yellow-green: #B8D44A;
+  }
+
+  :root[data-theme="light"] {
+    --bg: #F6F7F9;
+    --bg-card: #FFFFFF;
+    --bg-raised: #F0F1F4;
+    --border: #D8DCE4;
+    --border-subtle: #E8EBF0;
+    --text: #1A1D24;
+    --text-muted: #5A6370;
+    --text-dim: #9AA0AC;
+    --teal-dim: rgba(74, 218, 194, 0.08);
+    --purple-dim: rgba(123, 107, 240, 0.08);
+    --amber-dim: rgba(232, 168, 56, 0.08);
+    --red-dim: rgba(232, 90, 90, 0.06);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #F6F7F9;
+      --bg-card: #FFFFFF;
+      --bg-raised: #F0F1F4;
+      --border: #D8DCE4;
+      --border-subtle: #E8EBF0;
+      --text: #1A1D24;
+      --text-muted: #5A6370;
+      --text-dim: #9AA0AC;
+      --teal-dim: rgba(74, 218, 194, 0.08);
+      --purple-dim: rgba(123, 107, 240, 0.08);
+      --amber-dim: rgba(232, 168, 56, 0.08);
+      --red-dim: rgba(232, 90, 90, 0.06);
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Mono', 'IBM Plex Mono', 'SF Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  .header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header .eyebrow {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    text-wrap: balance;
+  }
+  .header .subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    max-width: 720px;
+  }
+  .header .meta {
+    margin-top: 16px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .header .meta span {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+  .header .meta .tag {
+    background: var(--purple-dim);
+    color: var(--purple);
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: 600;
+  }
+
+  .phase {
+    margin-bottom: 48px;
+  }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .phase-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--bg-card);
+    background: var(--text-muted);
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .phase-num.teal { background: var(--teal); }
+  .phase-num.purple { background: var(--purple); }
+  .phase-title {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .phase-badge {
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: 600;
+    margin-left: auto;
+  }
+  .phase-badge.unchanged {
+    background: var(--teal-dim);
+    color: var(--teal);
+  }
+  .phase-badge.new {
+    background: var(--purple-dim);
+    color: var(--purple);
+  }
+
+  .lanes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 700px) {
+    .lanes { grid-template-columns: 1fr; }
+  }
+  .lane {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .lane-title {
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+  }
+  .step-num {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-dim);
+    width: 16px;
+    text-align: right;
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+  .step-content {
+    font-size: 11px;
+    color: var(--text);
+    flex: 1;
+  }
+  .step-content .detail {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .step-content.crypto { color: var(--teal); }
+  .step-content.import { color: var(--amber); }
+  .step-note {
+    font-size: 9px;
+    color: var(--text-dim);
+    font-style: italic;
+    padding: 4px 0 4px 26px;
+  }
+
+  .result {
+    background: var(--bg-card);
+    border: 2px solid var(--teal);
+    border-radius: 8px;
+    padding: 14px 20px;
+    text-align: center;
+    margin-top: 16px;
+  }
+  .result .label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--teal);
+  }
+  .result .detail {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .dimensions {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 900px) {
+    .dimensions { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .dimensions { grid-template-columns: 1fr 1fr; }
+  }
+  .dim-card {
+    background: var(--bg-card);
+    border: 1px solid var(--purple);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .dim-card .dim-name {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--purple);
+    margin-bottom: 2px;
+  }
+  .dim-card .dim-pts {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--purple);
+    font-variant-numeric: tabular-nums;
+  }
+  .dim-card .dim-pts span {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+  .dim-card ul {
+    list-style: none;
+    margin-top: 10px;
+  }
+  .dim-card ul li {
+    font-size: 9px;
+    color: var(--text-muted);
+    padding: 2px 0;
+    display: flex;
+    justify-content: space-between;
+  }
+  .dim-card ul li .pts {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  .dim-card .bar-track {
+    height: 4px;
+    background: var(--purple-dim);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .dim-card .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--purple);
+    opacity: 0.6;
+  }
+
+  .meter-box {
+    background: var(--bg-card);
+    border: 1.5px solid var(--purple);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+  .meter-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--purple);
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .meter-track {
+    height: 14px;
+    border-radius: 7px;
+    background: var(--bg-raised);
+    display: flex;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+  }
+  .meter-seg {
+    height: 100%;
+    position: relative;
+  }
+  .meter-labels {
+    display: flex;
+    margin-top: 6px;
+  }
+  .meter-labels span {
+    font-size: 8px;
+    font-weight: 600;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .meter-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .meter-indicator .val {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .triggers {
+    margin-top: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 20px;
+  }
+  .triggers .trig-title {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .triggers ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .triggers ul li {
+    font-size: 9px;
+    color: var(--text-muted);
+    background: var(--bg-raised);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .recovery-steps {
+    background: var(--bg-card);
+    border: 1.5px solid var(--purple);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .recovery-steps .step-content.new { color: var(--purple); }
+
+  .timeline {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    overflow-x: auto;
+    margin-top: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .tl-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 110px;
+    flex: 1;
+    position: relative;
+  }
+  .tl-node::after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: calc(50% + 22px);
+    width: calc(100% - 44px);
+    height: 1px;
+    border-top: 2px dashed var(--border);
+  }
+  .tl-node:last-child::after { display: none; }
+  .tl-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    z-index: 1;
+    background: var(--bg-card);
+  }
+  .tl-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 8px;
+    text-align: center;
+  }
+  .tl-detail {
+    font-size: 8px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 2px;
+  }
+  .tl-color {
+    font-size: 8px;
+    font-weight: 600;
+    margin-top: 4px;
+    text-align: center;
+  }
+
+  .props {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  @media (max-width: 700px) {
+    .props { grid-template-columns: 1fr; }
+  }
+  .prop-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .prop-card .prop-title {
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .prop-card ul {
+    list-style: none;
+  }
+  .prop-card ul li {
+    font-size: 9px;
+    color: var(--text-muted);
+    padding: 3px 0;
+    padding-left: 12px;
+    position: relative;
+  }
+  .prop-card ul li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+  }
+</style>
+
+<div class="page">
+  <div class="header">
+    <div class="eyebrow">Veyrnox Wallet</div>
+    <h1>Security Posture Architecture</h1>
+    <div class="subtitle">Post-onboard multi-dimensional security assessment with Shamir 2-of-3 DEK sharding. Onboarding unchanged; recovery triggered by dashboard posture meter.</div>
+    <div class="meta">
+      <span class="tag">PLANNED</span>
+      <span>Owner: Al</span>
+      <span>Pre-audit design spec</span>
+      <span>KEK: zero changes</span>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num teal">1</div>
+      <div class="phase-title">Onboarding — 7–8 steps, unchanged</div>
+      <span class="phase-badge unchanged">Unchanged</span>
+    </div>
+    <div class="lanes">
+      <div class="lane">
+        <div class="lane-title">New Wallet</div>
+        <div class="step"><span class="step-num">1</span><div class="step-content">Welcome &rarr; "Get started"</div></div>
+        <div class="step"><span class="step-num">2</span><div class="step-content">PIN setup (8&ndash;12 digits) + confirm</div></div>
+        <div class="step"><span class="step-num">3</span><div class="step-content">Explore mode (empty dashboard)</div></div>
+        <div class="step"><span class="step-num">4</span><div class="step-content">Tap "Create new wallet"</div></div>
+        <div class="step"><span class="step-num">5</span><div class="step-content crypto">Provisioning (seed &rarr; Argon2id &rarr; AES-256-GCM &rarr; vault)</div></div>
+        <div class="step"><span class="step-num">6</span><div class="step-content crypto">KEK auto-enroll (biometric &rarr; H &rarr; HKDF(H||C) &rarr; wrap DEK)</div></div>
+        <div class="step"><span class="step-num">7</span><div class="step-content">Telemetry consent</div></div>
+        <div class="step"><span class="step-num">8</span><div class="step-content">FirstRunTour (5-step modal)</div></div>
+      </div>
+      <div class="lane">
+        <div class="lane-title">Seed Import</div>
+        <div class="step"><span class="step-num">1</span><div class="step-content">Welcome &rarr; "Get started"</div></div>
+        <div class="step"><span class="step-num">2</span><div class="step-content">PIN setup (8&ndash;12 digits) + confirm</div></div>
+        <div class="step"><span class="step-num">3</span><div class="step-content">Explore mode (empty dashboard)</div></div>
+        <div class="step"><span class="step-num">4</span><div class="step-content import">"Import seed phrase" + enter 12/24 words</div></div>
+        <div class="step"><span class="step-num">5</span><div class="step-content crypto">Provisioning (validate &rarr; Argon2id &rarr; AES-256-GCM &rarr; vault)</div></div>
+        <div class="step"><span class="step-num">6</span><div class="step-content crypto">KEK auto-enroll (biometric &rarr; H &rarr; HKDF(H||C) &rarr; wrap DEK)</div></div>
+        <div class="step"><span class="step-num">7</span><div class="step-content">Telemetry consent</div></div>
+        <div class="step-note">No FirstRunTour on import path</div>
+      </div>
+    </div>
+    <div class="result">
+      <div class="label">Dashboard ready &mdash; wallet functional</div>
+      <div class="detail">7&ndash;8 steps &middot; ~60&ndash;90 sec &middot; KEK untouched &middot; no recovery yet</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num purple">2</div>
+      <div class="phase-title">Security Posture Assessment</div>
+      <span class="phase-badge new">Post-onboard</span>
+    </div>
+    <div class="dimensions">
+      <div class="dim-card">
+        <div class="dim-name">Authentication</div>
+        <div class="dim-pts">20 <span>pts</span></div>
+        <ul>
+          <li>PIN created <span class="pts">10</span></li>
+          <li>PIN &ge;12 chars <span class="pts">5</span></li>
+          <li>FaceID / Biometric <span class="pts">5</span></li>
+        </ul>
+        <div class="bar-track"><div class="bar-fill" style="width:50%"></div></div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Device Integrity</div>
+        <div class="dim-pts">25 <span>pts (RASP)</span></div>
+        <ul>
+          <li>RASP scan clean <span class="pts">10</span></li>
+          <li>No root/jailbreak <span class="pts">5</span></li>
+          <li>No Frida/hook <span class="pts">5</span></li>
+          <li>Play/App Attest <span class="pts">5</span></li>
+        </ul>
+        <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--teal)"></div></div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Hardware Binding</div>
+        <div class="dim-pts">15 <span>pts</span></div>
+        <ul>
+          <li>KEK active <span class="pts">5</span></li>
+          <li>StrongBox / SE <span class="pts">5</span></li>
+          <li>TEE (lower tier) <span class="pts">3</span></li>
+        </ul>
+        <div class="bar-track"><div class="bar-fill" style="width:67%;background:var(--amber)"></div></div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Recovery</div>
+        <div class="dim-pts">30 <span>pts</span></div>
+        <ul>
+          <li>Passphrase set <span class="pts">8</span></li>
+          <li>Share B (cloud) <span class="pts">8</span></li>
+          <li>Share C exported <span class="pts">6</span></li>
+          <li>Share C verified <span class="pts">6</span></li>
+        </ul>
+        <div class="bar-track"><div class="bar-fill" style="width:0%;background:var(--red)"></div></div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Session Security</div>
+        <div class="dim-pts">10 <span>pts</span></div>
+        <ul>
+          <li>WC spend limit <span class="pts">3</span></li>
+          <li>Expiry &le;24h <span class="pts">3</span></li>
+          <li>Step-up re-auth <span class="pts">4</span></li>
+        </ul>
+        <div class="bar-track"><div class="bar-fill" style="width:40%;background:var(--amber)"></div></div>
+      </div>
+    </div>
+
+    <div class="meter-box">
+      <div class="meter-label">Overall Posture Score</div>
+      <div class="meter-track">
+        <div class="meter-seg" style="width:30%;background:var(--red);opacity:0.35"></div>
+        <div class="meter-seg" style="width:20%;background:var(--amber);opacity:0.35"></div>
+        <div class="meter-seg" style="width:20%;background:var(--yellow);opacity:0.35"></div>
+        <div class="meter-seg" style="width:15%;background:var(--yellow-green);opacity:0.35"></div>
+        <div class="meter-seg" style="width:15%;background:var(--teal);opacity:0.35"></div>
+      </div>
+      <div class="meter-labels">
+        <span style="width:30%;color:var(--red)">0&ndash;30% Critical</span>
+        <span style="width:20%;color:var(--amber)">31&ndash;50% Weak</span>
+        <span style="width:20%;color:var(--yellow)">51&ndash;70% Fair</span>
+        <span style="width:15%;color:var(--yellow-green)">71&ndash;85% Strong</span>
+        <span style="width:15%;color:var(--teal)">86&ndash;100% Complete</span>
+      </div>
+      <div class="meter-indicator">
+        <span class="val" style="color:var(--amber)">&larr; Typical post-onboard: ~48% (Weak)</span>
+      </div>
+    </div>
+
+    <div class="triggers">
+      <div class="trig-title">Banner shows lowest-scoring dimension first</div>
+      <ul>
+        <li>First dashboard load</li>
+        <li>First incoming transaction</li>
+        <li>24h after creation</li>
+        <li>Settings &rarr; Security</li>
+        <li>Always skippable &middot; 3-skip cooldown</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num purple">3</div>
+      <div class="phase-title">Recovery Setup &mdash; 6 steps, fills recovery dimension</div>
+      <span class="phase-badge new">From posture</span>
+    </div>
+    <div class="recovery-steps">
+      <div class="step"><span class="step-num">1</span><div class="step-content new">PIN + biometric re-auth</div></div>
+      <div class="step"><span class="step-num">2</span><div class="step-content new">Set recovery passphrase<div class="detail" style="color:var(--text-muted)">Min 16 chars &middot; strength meter &middot; derived key (domain-separated)</div></div></div>
+      <div class="step"><span class="step-num">3</span><div class="step-content new">Shamir split DEK (2-of-3, GF(2^8))<div class="detail" style="color:var(--text-muted)">crypto.getRandomValues &middot; &rarr; Share A + B + C</div></div></div>
+      <div class="step"><span class="step-num">4</span><div class="step-content new">Display Share C as QR &mdash; "shown once"</div></div>
+      <div class="step"><span class="step-num">5</span><div class="step-content new">Scan to verify (constant-time compare)</div></div>
+      <div class="step"><span class="step-num">6</span><div class="step-content new">Persist all shares<div class="detail" style="color:var(--text-muted)">A &rarr; KEK-wrap &rarr; Keystore &middot; B &rarr; RK-wrap &rarr; cloud &middot; DEK cache &rarr; KEK-wrap</div></div></div>
+    </div>
+    <div class="result">
+      <div class="label">Recovery dimension &rarr; 30/30 &middot; shield green</div>
+      <div class="detail">+30&ndash;45 sec when user is ready &middot; KEK completely untouched</div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num">&#x2192;</div>
+      <div class="phase-title">Score Progression &mdash; Typical User Journey</div>
+    </div>
+    <div class="timeline">
+      <div class="tl-node">
+        <div class="tl-circle" style="border-color:var(--amber);color:var(--amber)">48%</div>
+        <div class="tl-label">Post-onboard</div>
+        <div class="tl-detail">PIN+Bio+RASP+KEK</div>
+        <div class="tl-color" style="color:var(--amber)">Amber</div>
+      </div>
+      <div class="tl-node">
+        <div class="tl-circle" style="border-color:var(--amber);color:var(--amber)">53%</div>
+        <div class="tl-label">PIN &ge;12</div>
+        <div class="tl-detail">+5 auth pts</div>
+        <div class="tl-color" style="color:var(--yellow)">Yellow</div>
+      </div>
+      <div class="tl-node">
+        <div class="tl-circle" style="border-color:var(--yellow);color:var(--yellow)">63%</div>
+        <div class="tl-label">WC settings</div>
+        <div class="tl-detail">Spend + expiry</div>
+        <div class="tl-color" style="color:var(--yellow)">Yellow</div>
+      </div>
+      <div class="tl-node">
+        <div class="tl-circle" style="border-color:var(--yellow-green);color:var(--yellow-green)">79%</div>
+        <div class="tl-label">Passphrase + B</div>
+        <div class="tl-detail">+16 recovery</div>
+        <div class="tl-color" style="color:var(--yellow-green)">Strong</div>
+      </div>
+      <div class="tl-node">
+        <div class="tl-circle" style="border-color:var(--yellow-green);color:var(--yellow-green)">85%</div>
+        <div class="tl-label">Share C QR</div>
+        <div class="tl-detail">+6 recovery</div>
+        <div class="tl-color" style="color:var(--yellow-green)">Strong</div>
+      </div>
+      <div class="tl-node">
+        <div class="tl-circle" style="border-color:var(--teal);color:var(--teal)">91%</div>
+        <div class="tl-label">C verified</div>
+        <div class="tl-detail">+6 recovery</div>
+        <div class="tl-color" style="color:var(--teal)">Complete</div>
+      </div>
+      <div class="tl-node">
+        <div class="tl-circle" style="border-color:var(--teal);color:var(--teal);border-width:3px">93%</div>
+        <div class="tl-label">SB device</div>
+        <div class="tl-detail">+2 hw pts</div>
+        <div class="tl-color" style="color:var(--teal)">Complete</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:8px">
+      <span style="font-size:9px;color:var(--text-muted)">TEE users cap at 93% &mdash; honest about the hardware tier difference. 100% requires StrongBox or Secure Enclave.</span>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <div class="phase-num teal">&#x2713;</div>
+      <div class="phase-title">Key Properties</div>
+    </div>
+    <div class="props">
+      <div class="prop-card" style="border:1px solid var(--border)">
+        <div class="prop-title" style="color:var(--text)">KEK untouched</div>
+        <ul>
+          <li style="color:var(--text-muted)">HKDF(H||C) &mdash; zero changes</li>
+          <li style="color:var(--text-muted)">combineKek &mdash; zero changes</li>
+          <li style="color:var(--text-muted)">Vault AES-256-GCM &mdash; zero changes</li>
+          <li style="color:var(--text-muted)">Shamir splits DEK after KEK wrapping</li>
+        </ul>
+      </div>
+      <div class="prop-card" style="border:1px solid var(--purple)">
+        <div class="prop-title" style="color:var(--purple)">Multi-dimensional</div>
+        <ul>
+          <li style="color:var(--text-muted)">Not just recovery readiness</li>
+          <li style="color:var(--text-muted)">RASP, auth, hardware all scored</li>
+          <li style="color:var(--text-muted)">Lowest dimension drives banner</li>
+          <li style="color:var(--text-muted)">Score computed live, not persisted</li>
+        </ul>
+      </div>
+      <div class="prop-card" style="border:1.5px solid var(--teal)">
+        <div class="prop-title" style="color:var(--teal)">Honest scoring</div>
+        <ul>
+          <li style="color:var(--text-muted)">TEE caps at 93% (not StrongBox)</li>
+          <li style="color:var(--text-muted)">RASP BLOCK = 0/25 (read-only)</li>
+          <li style="color:var(--text-muted)">Degradation is live + explained</li>
+          <li style="color:var(--text-muted)">Deniability: per-set, RASP shared</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
