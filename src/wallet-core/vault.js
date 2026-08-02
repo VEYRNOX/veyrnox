@@ -258,6 +258,56 @@ function paramsFromVault(vault) {
 const VAULT_VERSION = 2;
 
 /**
+ * Stable machine codes thrown by this module for STRUCTURAL failures — a blob that
+ * is not a vault at all, as opposed to a credential mismatch. Callers switch on
+ * `err.code` (same shape as KEK_ERR in keystore/kek.js); the message is the code
+ * itself and is NEVER user-facing copy.
+ *
+ * MALFORMED is deliberately DISTINCT from the generic
+ * 'Decryption failed: wrong password or corrupted vault' sentinel. That is not an
+ * oracle: reaching this branch means the stored bytes are not a decodable vault,
+ * which is knowable without any password. Conflating the two would be the dishonest
+ * direction — it would tell a user with a truncated backup to retype their PIN.
+ */
+/** @returns {Error & {code?: string}} */
+function malformedVault() {
+  return Object.assign(new Error(VAULT_ERR.MALFORMED), { code: VAULT_ERR.MALFORMED });
+}
+
+/**
+ * Decode a REQUIRED base64 field of a stored blob, failing closed (I4) with the
+ * stable VAULT_ERR.MALFORMED instead of whatever the platform happens to throw.
+ *
+ * Two raw-exception paths this closes:
+ *   - absent field  -> unb64(undefined) -> atob("undefined") -> DOMException
+ *   - corrupt field -> atob('!!!')      -> DOMException
+ * and one SILENT path, which is the worse of the three: atob() COERCES its
+ * argument, so a numeric `salt: 123` decodes to a 2-byte salt and the blob would
+ * fail much later as a generic "wrong password", blaming the user for a
+ * structurally broken store. Hence the explicit `typeof === 'string'`.
+ *
+ * An empty string is rejected too: encryptVault always writes a 16-byte salt, a
+ * 12-byte iv and a ciphertext of at least the 16-byte GCM tag, so a 0-byte decode
+ * is not a vault this module ever produced.
+ *
+ * @param {any} vault
+ * @param {string} name
+ * @returns {Uint8Array}
+ */
+function requiredB64Field(vault, name) {
+  const raw = vault[name];
+  if (typeof raw !== 'string' || raw.length === 0) throw malformedVault();
+  let bytes;
+  try {
+    bytes = unb64(raw);
+  } catch {
+    throw malformedVault();
+  }
+  if (bytes.length === 0) throw malformedVault();
+  return bytes;
+}
+
+/**
  * Compute the GCM additionalData bytes for a vault blob. Covers all plaintext
  * fields that an attacker could swap without touching the ciphertext: v, kdf, and
  * salt (Argon2id blobs) or v and kdf (KEK-DEK blobs, which have no salt field).
@@ -371,12 +421,19 @@ export async function encryptVault(secret, password) {
 export async function decryptVault(vault, password) {
   const v = vault?.v;
   if (v !== 1 && v !== 2) throw new Error('Unsupported vault version');
-  requiredB64Field(vault, 'salt');
-  requiredB64Field(vault, 'iv');
-  requiredB64Field(vault, 'ct');
-  const salt = unb64(vault.salt);
-  const iv = unb64(vault.iv);
-  const ct = unb64(vault.ct);
+  // --- structural validation ---------------------------------------------------
+  // ORDER MATTERS and is asserted by vault-incomplete-blob.test.js:
+  //   1. version   — keeps the existing 'Unsupported vault version' identity, and
+  //                  means an empty/foreign object never reaches the decoders.
+  //   2. structure — cheapest check, allocates nothing.
+  //   3. KDF params (paramsFromVault, below) — argon2id allocates memorySize KiB
+  //      BEFORE the GCM tag is checked (B-1), so a blob that is malformed AND
+  //      carries an OOM-sized memorySize must be rejected here, not there.
+  // Keep all field validation in THIS block: scattering it across the ~15
+  // decryptVault call sites is how one path ends up unguarded.
+  const salt = requiredB64Field(vault, 'salt');
+  const iv = requiredB64Field(vault, 'iv');
+  const ct = requiredB64Field(vault, 'ct');
   // Decrypt with the params THIS blob was encrypted with (M3 migration), so a
   // vault written under the old 64 MiB params still opens after the default is
   // raised. New vaults record the new params and decrypt with them.
@@ -385,7 +442,7 @@ export async function decryptVault(vault, password) {
   if (v >= 2) gcmOpts.additionalData = vaultAad(vault); // M-8: verify header integrity
   let ptBuf;
   try {
-    ptBuf = await crypto.subtle.decrypt(gcmOpts, key, ct);
+    ptBuf = await crypto.subtle.decrypt(gcmOpts, key, ct.slice());
   } catch {
     // Do not distinguish "wrong password" from "tampered blob" to the caller.
     throw new Error('Decryption failed: wrong password or corrupted vault');
@@ -483,10 +540,3 @@ function zero(u8) { if (u8 && u8.fill) u8.fill(0); }
 function b64(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); }
 function unb64(str) { const s = atob(str); const u8 = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i); return u8; }
 
-// Guard: throw VAULT_ERR.MALFORMED before calling unb64() on a missing/non-string field.
-// A raw atob() on undefined throws a DOMException that callers can't distinguish from
-// other failures; this replaces it with a typed, catchable error code.
-function requiredB64Field(vault, name) {
-  if (typeof vault?.[name] !== 'string' || !vault[name])
-    throw Object.assign(new Error(VAULT_ERR.MALFORMED), { code: VAULT_ERR.MALFORMED });
-}
