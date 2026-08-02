@@ -163,51 +163,58 @@ export function split(secret, n = 3, k = 2) {
   if (!Number.isInteger(n) || !Number.isInteger(k) || k < 2 || n < k || n > 255) {
     throw new Error('INVALID_PARAMS');
   }
-  let allZero = true;
-  for (let i = 0; i < secret.length; i++) {
-    if (secret[i] !== 0) { allZero = false; break; }
-  }
-  if (allZero) {
-    throw new Error('ALL_ZERO_SECRET');
-  }
 
-  const setId = new Uint8Array(SET_ID_SIZE);
-  crypto.getRandomValues(setId);
-
-  const coeffBuf = new Uint8Array((k - 1) * SECRET_SIZE);
+  // Defensive copy — prevents TOCTOU via SharedArrayBuffer (same pattern as combine)
+  const sec = new Uint8Array(secret);
   try {
-    crypto.getRandomValues(coeffBuf);
-
-    const shares = [];
-    for (let i = 0; i < n; i++) {
-      const share = new Uint8Array(SHARE_SIZE);
-      const x = i + 1;
-      writeEnvelope(share, ENVELOPE_VERSION, k, n, setId, x);
-      shares.push(share);
+    let allZero = true;
+    for (let i = 0; i < sec.length; i++) {
+      if (sec[i] !== 0) { allZero = false; break; }
+    }
+    if (allZero) {
+      throw new Error('ALL_ZERO_SECRET');
     }
 
-    const coeffs = new Uint8Array(k);
+    const setId = new Uint8Array(SET_ID_SIZE);
+    crypto.getRandomValues(setId);
+
+    const coeffBuf = new Uint8Array((k - 1) * SECRET_SIZE);
     try {
-      for (let byteIdx = 0; byteIdx < SECRET_SIZE; byteIdx++) {
-        coeffs[0] = secret[byteIdx];
-        for (let c = 1; c < k; c++) {
-          coeffs[c] = coeffBuf[(c - 1) * SECRET_SIZE + byteIdx];
-        }
-        for (let i = 0; i < n; i++) {
-          shares[i][HEADER_SIZE + byteIdx] = polyEval(coeffs, i + 1);
-        }
+      crypto.getRandomValues(coeffBuf);
+
+      const shares = [];
+      for (let i = 0; i < n; i++) {
+        const share = new Uint8Array(SHARE_SIZE);
+        const x = i + 1;
+        writeEnvelope(share, ENVELOPE_VERSION, k, n, setId, x);
+        shares.push(share);
       }
+
+      const coeffs = new Uint8Array(k);
+      try {
+        for (let byteIdx = 0; byteIdx < SECRET_SIZE; byteIdx++) {
+          coeffs[0] = sec[byteIdx];
+          for (let c = 1; c < k; c++) {
+            coeffs[c] = coeffBuf[(c - 1) * SECRET_SIZE + byteIdx];
+          }
+          for (let i = 0; i < n; i++) {
+            shares[i][HEADER_SIZE + byteIdx] = polyEval(coeffs, i + 1);
+          }
+        }
+      } finally {
+        coeffs.fill(0);
+      }
+
+      for (const share of shares) {
+        writeCrc(share);
+      }
+
+      return shares;
     } finally {
-      coeffs.fill(0);
+      coeffBuf.fill(0);
     }
-
-    for (const share of shares) {
-      writeCrc(share);
-    }
-
-    return shares;
   } finally {
-    coeffBuf.fill(0);
+    sec.fill(0);
   }
 }
 
