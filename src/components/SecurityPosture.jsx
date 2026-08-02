@@ -135,31 +135,30 @@ export default function SecurityPosture({ state: stateOverride } = {}) {
     return cleaned;
   }, [stateOverride, deniabilityActive]);
 
-  const state = useMemo(() => ({
-    // Self-detected (UI-reachable, safe):
-    biometricEnabled: biometricOn,
-    raspTier: raspArtifact?.tier,
-    kekActive: hardwareEnrolled,
-    // Not self-detected here — conservative default (0 points, never fabricated):
-    pinCreated: false,
-    pinLength: null,
-    hardwareTier: null,
-    recoveryPassphraseSet: false,
-    shareAWrapped: false,
-    shareBUploaded: false,
-    shareCExported: false,
-    shareCVerified: false,
-    wcSpendLimitSet: false,
-    wcSessionExpiry: false,
-    wcStepUpReauth: false,
-    // Integrator-supplied overrides (WalletPortfolioPage wiring) win —
-    // but security-authoritative fields are stripped in deniability mode (M-2).
-    ...sanitizedOverride,
+  const state = useMemo(() => {
+    const base = {
+      // Not self-detected here — conservative default (0 points, never fabricated):
+      pinCreated: false,
+      pinLength: null,
+      hardwareTier: null,
+      recoveryPassphraseSet: false,
+      shareAWrapped: false,
+      shareBUploaded: false,
+      shareCExported: false,
+      shareCVerified: false,
+      wcSpendLimitSet: false,
+      wcSessionExpiry: false,
+      wcStepUpReauth: false,
+      // Integrator-supplied overrides (WalletPortfolioPage wiring) win —
+      // but security-authoritative fields are stripped in deniability mode (M-2).
+      ...sanitizedOverride,
+    };
     // Live signals applied LAST so they always win over any override:
-    biometricEnabled: biometricOn,
-    raspTier: raspArtifact?.tier,
-    kekActive: hardwareEnrolled,
-  }), [biometricOn, raspArtifact?.tier, hardwareEnrolled, sanitizedOverride]);
+    base.biometricEnabled = biometricOn;
+    base.raspTier = raspArtifact?.tier;
+    base.kekActive = hardwareEnrolled;
+    return base;
+  }, [biometricOn, raspArtifact?.tier, hardwareEnrolled, sanitizedOverride]);
 
   const posture = useMemo(() => computePostureScore(state), [state]);
 
