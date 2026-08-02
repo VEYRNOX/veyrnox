@@ -296,6 +296,7 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // would not be swept automatically — if you add one, add it here too.
   'veyrnox-first-run-tour-armed',   // FirstRunTour.jsx TOUR_ARMED_KEY
   'veyrnox-first-run-tour-seen',    // FirstRunTour.jsx TOUR_SEEN_KEY
+  'veyrnox-posture-dismissed',      // SecurityPosture.jsx dismiss state
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.

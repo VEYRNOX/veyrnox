@@ -53,6 +53,7 @@ import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import PortfolioHealthScore from "@/components/PortfolioHealthScore";
 import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
 import WatchlistWidget from "@/components/WatchlistWidget";
+import SecurityPosture from "@/components/SecurityPosture";
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
@@ -881,6 +882,7 @@ export default function WalletPortfolioPage() {
         isDeniability={healthInputs.isDeniability}
       />
       <WatchlistWidget />
+      <SecurityPosture />
 
       {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">
