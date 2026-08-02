@@ -362,6 +362,7 @@
       "local_disclosure": "Recipients are checked on your device for scam addresses against your own history — nothing leaves your device.",
       "remote_opt_in": "Also screen against an online threat database (sends this address to a third party)",
       "remote_unavailable": "Online screening is enabled, but no provider is configured in this build — screening stays local, so we couldn't verify this against an external list.",
+      "remote_enabled": "Online threat intelligence screening is active. The recipient address will be sent to the TIP service at the verify step.",
       "demo_poison_button": "Demo: paste a look-alike address"
     },
     "simulation": {
