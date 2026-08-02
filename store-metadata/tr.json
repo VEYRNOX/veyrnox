@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "tr",
+  "native": "Türkçe",
+  "reviewed": false,
+  "notes": "Turkish translation of en.json (source of truth). Machine-assisted, not yet reviewed by a native speaker.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Öz Saklama Cüzdanı · Güvenlik",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Yüksek riskli durumlar için öz saklamalı kripto. Tohum ifadeniz, anahtarlarınız, cihazınızda kalır. Bir şifrenin yetmediği anlarda baskıya karşı dayanıklı modlar.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kripto cüzdan,öz saklama,bitcoin,ethereum,solana,web3,güvenli cüzdan,baskı,emanetsiz",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Kripto paranız. Anahtarlarınız. Cihazınızda.\n\nVeyrnox, güvenliği ön planda tutan kullanıcılar için emanetsiz bir cüzdandır. Anahtarlar yalnızca cihazınızda oluşturulur ve saklanır; donanım destekli (Secure Enclave) şifrelemeyle korunur — asla bir sunucuda tutulmaz. Veyrnox fonlarınızı hareket ettiremez ve sizin için kurtaramaz.\n\nÇalışma zamanı öz koruması (RASP)\nVeyrnox kendi çalışma zamanını kurcalanmaya, root/jailbreak durumuna ve kod enjeksiyonuna karşı aktif olarak kontrol eder; güvenliği aşılmış bir ortam tespit ederse kapalı kalarak başarısız olur.\n\nAdres güvenliği kontrolleri\nGönderim öncesinde zehirleme ve benzer görünümlü adresler için otomatik uyarılar, ayrıca spam token filtrelemesi.\n\nTek cüzdan, on varlık\nETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC ve USDT'yi tek bir kurtarma ifadesinden gönderin ve alın.\n\nSafety Plus (isteğe bağlı abonelik)\nBaskıya dayanıklı modların kilidini açar:\n• Baskı PIN'i — ayrı bir PIN, sahte bir cüzdan açar; zorla açılan kilit gerçek hiçbir şeyi ortaya çıkarmaz.\n• Gizli cüzdanlar — hiçbir listede veya sayımda görünmeyen hesaplar.\n• Panik silme — yerel anahtar materyalini talep üzerine geri döndürülemez şekilde yok eder.\nAylık veya yıllık; iptal edilene kadar otomatik yenilenir. App Store hesap ayarlarınızdan istediğiniz zaman yönetin veya iptal edin.\n\nVeyrnox emanetsizdir. Kurtarma ifadenizi kaybederseniz, biz dahil hiç kimse cüzdanınızı geri yükleyemez. Yedeğini alın.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "İlk sürüm.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Öz saklamalı kripto cüzdanı. Anahtarlarınız cihazınızda kalır. Baskıya dayanıklı",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Kripto paranız. Anahtarlarınız. Cihazınızda.\n\nVeyrnox, güvenliği ciddiye alan kişiler için emanetsiz bir cüzdandır. Kurtarma ifadeniz ve özel anahtarlarınız cihaz üzerinde oluşturulur ve donanım destekli şifrelemeyle korunur (mevcut olduğunda Android Keystore / StrongBox / TEE). Cihazınızdan asla çıkmazlar. Veyrnox hiçbir şey tutmaz: fonlarınızı hareket ettiremeyiz ve sizin için kurtaramayız.\n\nDesteklenen varlıklar\nETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC ve USDT'yi tek bir BIP-39 kurtarma ifadesinden gönderin ve alın.\n\nCihaz üzerinde güvenlik\n• Argon2id (192 MiB KDF) ile açılan ve, mevcut olduğunda, donanıma bağlı bir anahtarla korunan AES-256-GCM kasa.\n• Çalışma zamanı öz koruması (RASP), kurcalamaya, root'a, kod enjeksiyonuna ve hooking'e karşı kontrol yapar — güvenliği aşılmış bir cihazda kapalı kalarak başarısız olur.\n• Adres güvenliği: gönderim öncesinde zehirleme ve benzer görünümlü adres uyarıları, spam token filtrelemesi.\n• İstek başına inceleme, zincir ve adres bağlama, oturum sona erme süresi ve yüksek riskli işlemler için ek kimlik doğrulama içeren WalletConnect v2.\n\nSafety Plus (isteğe bağlı abonelik)\nYüksek riskli durumlar için baskıya dayanıklı modların kilidini açar:\n• Baskı PIN'i — ikinci bir PIN, sahte bir cüzdan açar; zorla açılan kilit gerçek hiçbir şeyi ortaya çıkarmaz.\n• Gizli cüzdanlar — hiçbir listede veya sayımda görünmeyen hesaplar.\n• Panik silme — yerel anahtar materyalini talep üzerine geri döndürülemez şekilde yok eder.\nAylık veya yıllık; iptal edilene kadar otomatik yenilenir. Google Play → Abonelikler üzerinden istediğiniz zaman yönetin veya iptal edin.\n\nVeyrnox'un YAPMADIKLARI\n• Hesap yok. E-posta yok. Bulut senkronizasyonu yok. Emanet yok. Alım satım yok. Reklam yok.\n\nTohumun sahibi sizsiniz. Kurtarma ifadenizi kaybederseniz, biz dahil hiç kimse cüzdanınızı geri yükleyemez. Yalnızca sizin ulaşabileceğiniz bir yerde yedekleyin.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

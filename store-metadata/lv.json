@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "lv",
+  "native": "Latviešu",
+  "reviewed": false,
+  "notes": "Latvian (lv) translation of en.json. Brand/asset/technical terms (Veyrnox, Bitcoin, Ethereum, Solana, USDC, USDT, WalletConnect, Safety Plus, Secure Enclave, StrongBox, TEE, Android Keystore, RASP, PIN, Argon2id, AES-256-GCM, BIP-39) left untranslated. All values verified against the same limits as en.json.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Pašglabāšanas maks · Drošība",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Pašglabāšanas kriptovalūta augsta riska situācijām. Jūsu sēkla, jūsu atslēgas, jūsu ierīcē. Piespiešanai izturīgi režīmi, kad parole nav pietiekama.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kripto maks,pašglabāšana,bitcoin,ethereum,solana,web3,drošs maks,piespiešana,bez kontroles",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Jūsu kriptovalūta. Jūsu atslēgas. Jūsu ierīcē.\n\nVeyrnox ir nekontrolēts maks lietotājiem, kuriem drošība ir prioritāte. Atslēgas tiek ģenerētas un glabātas tikai jūsu ierīcē, aizsargātas ar aparatūrā balstītu (Secure Enclave) šifrēšanu — nekad serverī. Veyrnox nevar pārvietot jūsu līdzekļus un nevar tos atgūt jūsu vietā.\n\nDarbības laika pašaizsardzība (RASP)\nVeyrnox aktīvi pārbauda savu darbības vidi uz manipulācijām, root/jailbreak piekļuvi un koda ievadīšanu, un tiek slēgts, ja tiek konstatēta apdraudēta vide.\n\nAdreses drošības pārbaudes\nAutomātiski brīdinājumi par adrešu saindēšanu un līdzīgām adresēm, kā arī surogāta žetonu filtrēšana, pirms sūtīšanas.\n\nViens maks, desmit aktīvi\nSūtiet un saņemiet ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC un USDT — visu no vienas atkopšanas frāzes.\n\nSafety Plus (izvēles abonements)\nAtbloķē piespiešanai izturīgus režīmus:\n• Piespiešanas PIN — atsevišķs PIN atver viltus maku, tāpēc piespiedu atbloķēšana neatklāj neko reālu.\n• Slēptie maki — konti, kas neparādās nekādā sarakstā vai skaitā.\n• Panikas dzēšana — neatgriezeniski iznīcina vietējo atslēgu materiālu pēc pieprasījuma.\nIkmēneša vai ikgadējs; automātiski atjaunojas, kamēr netiek atcelts. Pārvaldiet vai atceliet jebkurā laikā App Store konta iestatījumos.\n\nVeyrnox ir nekontrolēts. Ja pazaudējat atkopšanas frāzi, neviens — arī mēs — nevar atjaunot jūsu maku. Izveidojiet dublējumu.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Pirmais laidiens.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Pašglabāšanas kriptomaks. Atslēgas paliek ierīcē. Izturīgs pret piespiešanu.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Jūsu kriptovalūta. Jūsu atslēgas. Jūsu ierīcē.\n\nVeyrnox ir nekontrolēts maks cilvēkiem, kuri nopietni uztver drošību. Jūsu atkopšanas frāze un privātās atslēgas tiek ģenerētas ierīcē un aizsargātas ar aparatūrā balstītu šifrēšanu (Android Keystore / StrongBox / TEE, ja pieejams). Tās nekad neatstāj jūsu ierīci. Veyrnox neko neglabā: mēs nevaram pārvietot jūsu līdzekļus un nevaram tos atgūt jūsu vietā.\n\nAtbalstītie aktīvi\nSūtiet un saņemiet ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC un USDT — visu no vienas BIP-39 atkopšanas frāzes.\n\nDrošība ierīcē\n• AES-256-GCM glabātuve, atbloķēta ar Argon2id (192 MiB KDF) un, kur pieejams, ar aparatūrai piesaistītu atslēgu.\n• Darbības laika pašaizsardzība (RASP) pārbauda manipulācijas, root piekļuvi, koda ievadīšanu un aizķeršanos — un tiek slēgta apdraudētā ierīcē.\n• Adreses drošība: brīdinājumi par saindēšanu un līdzīgām adresēm, surogāta žetonu filtrēšana, pirms sūtīšanas.\n• WalletConnect v2 ar katra pieprasījuma pārbaudi, ķēdes un adreses piesaisti, sesijas termiņa beigām un papildu autentifikāciju augsta riska darbībām.\n\nSafety Plus (izvēles abonements)\nAtbloķē piespiešanai izturīgus režīmus augsta riska situācijām:\n• Piespiešanas PIN — otrs PIN atver viltus maku; piespiedu atbloķēšana neatklāj neko reālu.\n• Slēptie maki — konti, kas neparādās nekādā sarakstā vai skaitā.\n• Panikas dzēšana — neatgriezeniski iznīcina vietējo atslēgu materiālu pēc pieprasījuma.\nIkmēneša vai ikgadējs; automātiski atjaunojas, kamēr netiek atcelts. Pārvaldiet vai atceliet jebkurā laikā Google Play → Abonementi.\n\nKo Veyrnox NEDARA\n• Nav konta. Nav e-pasta. Nav mākoņa sinhronizācijas. Nav glabāšanas. Nav tirdzniecības. Nav reklāmu.\n\nJums pieder sēkla. Ja pazaudējat atkopšanas frāzi, neviens — arī mēs — nevar atjaunot jūsu maku. Izveidojiet dublējumu vietā, kur to var sasniegt tikai jūs.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

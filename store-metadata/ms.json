@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "ms",
+  "native": "Bahasa Melayu",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth). Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Dompet Sendiri · Keselamatan",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Kripto jaga sendiri untuk situasi berisiko tinggi. Frasa pemulihan dan kunci anda kekal di peranti anda. Mod tahan paksaan untuk ketika kata laluan tidak mencukupi.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "dompet kripto,jaga sendiri,bitcoin,ethereum,solana,web3,dompet selamat,paksaan,bukan custodian",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Kripto anda. Kunci anda. Di peranti anda.\n\nVeyrnox ialah dompet bukan custodian untuk pengguna yang mengutamakan keselamatan. Kunci dijana dan disimpan hanya di peranti anda, dimeteraikan dengan penyulitan berasaskan perkakasan (Secure Enclave) — tidak sekali-kali di pelayan. Veyrnox tidak boleh memindahkan dana anda dan tidak boleh memulihkannya untuk anda.\n\nPerlindungan diri masa jalan (RASP)\nVeyrnox secara aktif memeriksa persekitaran masa jalannya sendiri untuk pengubahsuaian, rooting/jailbreak, dan suntikan kod, serta gagal tertutup jika ia mengesan persekitaran yang terjejas.\n\nSemakan keselamatan alamat\nAmaran automatik untuk keracunan alamat dan alamat serupa palsu, ditambah penapisan token spam, sebelum anda menghantar.\n\nSatu dompet, sepuluh aset\nHantar dan terima ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, dan USDT — semuanya daripada satu frasa pemulihan sahaja.\n\nSafety Plus (langganan pilihan)\nMembuka kunci mod tahan paksaan:\n• Duress PIN — PIN berasingan membuka dompet umpan, jadi membuka kunci secara paksa tidak mendedahkan apa-apa yang sebenar.\n• Dompet tersembunyi — akaun yang tidak muncul dalam mana-mana senarai atau kiraan.\n• Padam panik — memusnahkan bahan kunci tempatan secara kekal mengikut permintaan.\nBulanan atau tahunan; diperbaharui secara automatik sehingga dibatalkan. Urus atau batalkan bila-bila masa dalam tetapan akaun App Store anda.\n\nVeyrnox adalah bukan custodian. Jika anda kehilangan frasa pemulihan anda, tiada sesiapa — termasuk kami — boleh memulihkan dompet anda. Sandarkannya.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Keluaran pertama.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Dompet kripto jaga sendiri. Kunci anda kekal di peranti anda. Tahan paksaan.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Kripto anda. Kunci anda. Di peranti anda.\n\nVeyrnox ialah dompet bukan custodian untuk orang yang menganggap serius keselamatan. Frasa pemulihan dan kunci peribadi anda dijana di peranti dan dimeteraikan dengan penyulitan berasaskan perkakasan (Android Keystore / StrongBox / TEE jika tersedia). Ia tidak sekali-kali meninggalkan peranti anda. Veyrnox tidak memegang apa-apa: kami tidak boleh memindahkan dana anda dan tidak boleh memulihkannya untuk anda.\n\nAset yang disokong\nHantar dan terima ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, dan USDT — semuanya daripada satu frasa pemulihan BIP-39 sahaja.\n\nKeselamatan di peranti\n• Bilik kebal AES-256-GCM, dibuka kunci dengan Argon2id (KDF 192 MiB) dan, jika tersedia, kunci terikat perkakasan.\n• Perlindungan diri masa jalan (RASP) memeriksa pengubahsuaian, root, suntikan kod, dan hooking — serta gagal tertutup pada peranti yang terjejas.\n• Keselamatan alamat: amaran keracunan dan alamat serupa palsu, penapisan token spam, sebelum anda menghantar.\n• WalletConnect v2 dengan semakan setiap permintaan, pengikatan rantaian dan alamat, tamat tempoh sesi, dan pengesahan semula tahap tinggi untuk tindakan berisiko tinggi.\n\nSafety Plus (langganan pilihan)\nMembuka kunci mod tahan paksaan untuk situasi berisiko tinggi:\n• Duress PIN — PIN kedua membuka dompet umpan; membuka kunci secara paksa tidak mendedahkan apa-apa yang sebenar.\n• Dompet tersembunyi — akaun yang tidak muncul dalam mana-mana senarai atau kiraan.\n• Padam panik — memusnahkan bahan kunci tempatan secara kekal mengikut permintaan.\nBulanan atau tahunan; diperbaharui secara automatik sehingga dibatalkan. Urus atau batalkan bila-bila masa dalam Google Play → Langganan.\n\nApa yang Veyrnox TIDAK lakukan\n• Tiada akaun. Tiada e-mel. Tiada penyegerakan awan. Tiada custodian. Tiada dagangan. Tiada iklan.\n\nAnda memiliki frasa pemulihan (seed). Jika anda kehilangan frasa pemulihan anda, tiada sesiapa — termasuk kami — boleh memulihkan dompet anda. Sandarkannya di tempat yang hanya anda boleh capai.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

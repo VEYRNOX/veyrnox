@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "es-419",
+  "native": "Español (Latinoamérica)",
+  "reviewed": true,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Autocustodia · Seguridad",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Cripto autocustodiado para situaciones de alto riesgo. Tu semilla, tus llaves, en tu dispositivo. Modos anticoacción para cuando una contraseña no basta.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "billetera cripto,autocustodia,bitcoin,ethereum,solana,frase semilla,web3,coacción,no custodial",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Tu cripto. Tus llaves. En tu dispositivo.\n\nVeyrnox es una billetera no custodial para usuarios que priorizan la seguridad. Las llaves se generan y se almacenan solo en tu dispositivo, protegidas con cifrado respaldado por hardware (Secure Enclave) — nunca en un servidor. Veyrnox no puede mover tus fondos ni recuperarlos por ti.\n\nAutoprotección en tiempo de ejecución (RASP)\nVeyrnox verifica activamente su propio entorno de ejecución en busca de manipulación, root/jailbreak e inyección de código, y se bloquea por defecto si detecta un entorno comprometido.\n\nVerificaciones de seguridad de direcciones\nAdvertencias automáticas ante direcciones de suplantación y direcciones similares, además de filtrado de tokens de spam, antes de enviar.\n\nUna billetera, diez activos\nEnvía y recibe ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC y USDT — todo desde una sola frase de recuperación.\n\nSafety Plus (suscripción opcional)\nDesbloquea modos anticoacción:\n• PIN de coacción — un PIN independiente abre una billetera señuelo, de modo que un desbloqueo forzado no revela nada real.\n• Billeteras ocultas — cuentas que no aparecen en ninguna lista ni conteo.\n• Borrado de emergencia — destruye de forma irreversible el material de llaves local cuando lo necesites.\nMensual o anual; se renueva automáticamente hasta que se cancele. Puedes gestionarla o cancelarla en cualquier momento desde la configuración de tu cuenta de App Store.\n\nVeyrnox es no custodial. Si pierdes tu frase de recuperación, nadie — ni siquiera nosotros — puede restaurar tu billetera. Guárdala en un lugar seguro.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Versión inicial.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Billetera cripto autocustodiada. Tus llaves en tu dispositivo. Anticoacción.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Tu cripto. Tus llaves. En tu dispositivo.\n\nVeyrnox es una billetera no custodial para personas que se toman en serio la seguridad. Tu frase de recuperación y tus llaves privadas se generan en el dispositivo y se protegen con cifrado respaldado por hardware (Android Keystore / StrongBox / TEE cuando estén disponibles). Nunca salen de tu dispositivo. Veyrnox no retiene nada: no podemos mover tus fondos ni recuperarlos por ti.\n\nActivos compatibles\nEnvía y recibe ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC y USDT — todo desde una sola frase de recuperación BIP-39.\n\nSeguridad en el dispositivo\n• Bóveda AES-256-GCM, desbloqueada con Argon2id (KDF de 192 MiB) y, cuando esté disponible, una llave vinculada al hardware.\n• Autoprotección en tiempo de ejecución (RASP) que detecta manipulación, root, inyección de código y hooking — y se bloquea por defecto en un dispositivo comprometido.\n• Seguridad de direcciones: advertencias de suplantación y direcciones similares, filtrado de tokens de spam, antes de enviar.\n• WalletConnect v2 con revisión por solicitud, vinculación de red y dirección, expiración de sesión y reautenticación reforzada para acciones de alto riesgo.\n\nSafety Plus (suscripción opcional)\nDesbloquea modos anticoacción para situaciones de alto riesgo:\n• PIN de coacción — un segundo PIN abre una billetera señuelo; un desbloqueo forzado no revela nada real.\n• Billeteras ocultas — cuentas que no aparecen en ninguna lista ni conteo.\n• Borrado de emergencia — destruye de forma irreversible el material de llaves local cuando lo necesites.\nMensual o anual; se renueva automáticamente hasta que se cancele. Puedes gestionarla o cancelarla en cualquier momento desde Google Play → Suscripciones.\n\nLo que Veyrnox NO hace\n• Sin cuenta. Sin correo electrónico. Sin sincronización en la nube. Sin custodia. Sin trading. Sin anuncios.\n\nTú eres el dueño de la semilla. Si pierdes tu frase de recuperación, nadie — ni siquiera nosotros — puede restaurar tu billetera. Guárdala en un lugar al que solo tú puedas acceder.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

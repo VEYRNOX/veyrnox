@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "en",
+  "native": "English",
+  "reviewed": true,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Self-Custody Wallet · Security",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Self-custody crypto for high-stakes situations. Your seed, your keys, on your device. Coercion-resistant modes for when a password isn't enough.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "crypto wallet,self custody,bitcoin,ethereum,solana,web3,secure wallet,duress,non-custodial",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Your crypto. Your keys. On your device.\n\nVeyrnox is a non-custodial wallet for security-first users. Keys are generated and stored only on your device, sealed with hardware-backed (Secure Enclave) encryption — never on a server. Veyrnox cannot move your funds and cannot recover them for you.\n\nRuntime self-protection (RASP)\nVeyrnox actively checks its own runtime for tampering, rooting/jailbreaking, and code-injection, and fails closed if it detects a compromised environment.\n\nAddress-safety checks\nAutomatic warnings for poisoning and look-alike addresses, plus spam-token filtering, before you send.\n\nOne wallet, ten assets\nSend and receive ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, and USDT — all from a single recovery phrase.\n\nSafety Plus (optional subscription)\nUnlocks coercion-resistant modes:\n• Duress PIN — a separate PIN opens a decoy wallet, so a forced unlock reveals nothing real.\n• Hidden wallets — accounts that don't appear in any list or count.\n• Panic wipe — irreversibly destroy local key material on demand.\nMonthly or annual; auto-renews until cancelled. Manage or cancel anytime in your App Store account settings.\n\nVeyrnox is non-custodial. If you lose your recovery phrase, no one — including us — can restore your wallet. Back it up.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Initial release.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Self-custody crypto wallet. Your keys stay on your device. Coercion-resistant.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Your crypto. Your keys. On your device.\n\nVeyrnox is a non-custodial wallet for people who take security seriously. Your recovery phrase and private keys are generated on-device and sealed with hardware-backed encryption (Android Keystore / StrongBox / TEE where available). They never leave your device. Veyrnox holds nothing: we cannot move your funds and cannot recover them for you.\n\nSupported assets\nSend and receive ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, and USDT — all from a single BIP-39 recovery phrase.\n\nOn-device security\n• AES-256-GCM vault, unlocked with Argon2id (192 MiB KDF) and, where available, a hardware-bound key.\n• Runtime self-protection (RASP) checks for tampering, root, code injection, and hooking — and fails closed on a compromised device.\n• Address safety: poisoning and look-alike warnings, spam-token filtering, before you send.\n• WalletConnect v2 with per-request review, chain and address binding, session expiry, and step-up re-auth for high-risk actions.\n\nSafety Plus (optional subscription)\nUnlocks coercion-resistant modes for high-stakes situations:\n• Duress PIN — a second PIN opens a decoy wallet; a forced unlock reveals nothing real.\n• Hidden wallets — accounts that don't appear in any list or count.\n• Panic wipe — irreversibly destroy local key material on demand.\nMonthly or annual; auto-renews until cancelled. Manage or cancel anytime in Google Play → Subscriptions.\n\nWhat Veyrnox does NOT do\n• No account. No email. No cloud sync. No custody. No trading. No ads.\n\nYou own the seed. If you lose your recovery phrase, no one — including us — can restore your wallet. Back it up somewhere only you can reach.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

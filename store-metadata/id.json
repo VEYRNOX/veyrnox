@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "id",
+  "native": "Bahasa Indonesia",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Dompet Mandiri · Keamanan",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Kripto mandiri untuk situasi berisiko tinggi. Seed dan kunci Anda, di perangkat Anda. Mode tahan-paksaan untuk saat kata sandi saja tidak cukup.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "dompet kripto,swakustodi,bitcoin,ethereum,solana,web3,dompet aman,paksaan,non-kustodian",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Kripto Anda. Kunci Anda. Di perangkat Anda.\n\nVeyrnox adalah dompet non-kustodian untuk pengguna yang mengutamakan keamanan. Kunci dibuat dan disimpan hanya di perangkat Anda, disegel dengan enkripsi berbasis perangkat keras (Secure Enclave) — tidak pernah di server. Veyrnox tidak dapat memindahkan dana Anda dan tidak dapat memulihkannya untuk Anda.\n\nPerlindungan runtime mandiri (RASP)\nVeyrnox secara aktif memeriksa runtime-nya sendiri untuk mendeteksi manipulasi, rooting/jailbreak, dan injeksi kode, lalu menutup akses (fail closed) jika mendeteksi lingkungan yang telah disusupi.\n\nPemeriksaan keamanan alamat\nPeringatan otomatis untuk alamat poisoning dan alamat mirip-asli, ditambah penyaringan token spam, sebelum Anda mengirim.\n\nSatu dompet, sepuluh aset\nKirim dan terima ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, dan USDT — semuanya dari satu frasa pemulihan.\n\nSafety Plus (langganan opsional)\nMembuka mode tahan-paksaan:\n• PIN Duress — PIN terpisah membuka dompet umpan, sehingga pembukaan paksa tidak menampilkan apa pun yang nyata.\n• Dompet tersembunyi — akun yang tidak muncul di daftar atau hitungan mana pun.\n• Panic wipe — menghapus materi kunci lokal secara permanen sesuai permintaan.\nBulanan atau tahunan; diperpanjang otomatis hingga dibatalkan. Kelola atau batalkan kapan saja di pengaturan akun App Store Anda.\n\nVeyrnox bersifat non-kustodian. Jika Anda kehilangan frasa pemulihan, tidak ada seorang pun — termasuk kami — yang dapat memulihkan dompet Anda. Cadangkan frasa tersebut.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Rilis awal.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Dompet kripto mandiri. Kunci tetap di perangkat Anda. Tahan terhadap paksaan.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Kripto Anda. Kunci Anda. Di perangkat Anda.\n\nVeyrnox adalah dompet non-kustodian untuk orang yang serius soal keamanan. Frasa pemulihan dan kunci privat Anda dibuat di perangkat dan disegel dengan enkripsi berbasis perangkat keras (Android Keystore / StrongBox / TEE jika tersedia). Semuanya tidak pernah meninggalkan perangkat Anda. Veyrnox tidak menyimpan apa pun: kami tidak dapat memindahkan dana Anda dan tidak dapat memulihkannya untuk Anda.\n\nAset yang didukung\nKirim dan terima ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, dan USDT — semuanya dari satu frasa pemulihan BIP-39.\n\nKeamanan di perangkat\n• Vault AES-256-GCM, dibuka dengan Argon2id (KDF 192 MiB) dan, jika tersedia, kunci yang terikat perangkat keras.\n• Perlindungan runtime mandiri (RASP) memeriksa manipulasi, root, injeksi kode, dan hooking — lalu menutup akses (fail closed) pada perangkat yang telah disusupi.\n• Keamanan alamat: peringatan poisoning dan alamat mirip-asli, penyaringan token spam, sebelum Anda mengirim.\n• WalletConnect v2 dengan tinjauan per permintaan, pengikatan chain dan alamat, kedaluwarsa sesi, dan autentikasi ulang bertingkat untuk tindakan berisiko tinggi.\n\nSafety Plus (langganan opsional)\nMembuka mode tahan-paksaan untuk situasi berisiko tinggi:\n• PIN Duress — PIN kedua membuka dompet umpan; pembukaan paksa tidak menampilkan apa pun yang nyata.\n• Dompet tersembunyi — akun yang tidak muncul di daftar atau hitungan mana pun.\n• Panic wipe — menghapus materi kunci lokal secara permanen sesuai permintaan.\nBulanan atau tahunan; diperpanjang otomatis hingga dibatalkan. Kelola atau batalkan kapan saja di Google Play → Langganan.\n\nYang TIDAK dilakukan Veyrnox\n• Tanpa akun. Tanpa email. Tanpa sinkronisasi cloud. Tanpa kustodi. Tanpa trading. Tanpa iklan.\n\nAnda pemilik seed ini. Jika Anda kehilangan frasa pemulihan, tidak ada seorang pun — termasuk kami — yang dapat memulihkan dompet Anda. Cadangkan di tempat yang hanya bisa Anda jangkau.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}
