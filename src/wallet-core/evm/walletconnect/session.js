@@ -102,8 +102,8 @@ export async function initWalletConnect() {
     metadata: {
       name: 'Veyrnox',
       description: 'Self-custody coercion-resistant crypto wallet',
-      url: typeof window !== 'undefined' ? window.location.origin : 'https://veyrnox.app',
-      icons: [],
+      url: 'https://veyrnox.com',
+      icons: ['https://veyrnox.com/icon-512.png'],
     },
   });
   _client.on('session_proposal', (proposal) => {
