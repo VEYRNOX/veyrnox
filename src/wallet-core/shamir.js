@@ -6,9 +6,9 @@
  *
  * Security properties:
  *   - RNG: crypto.getRandomValues only (CSPRNG)
- *   - No data-dependent branching during reconstruction (table lookups are not cache-timing-constant)
  *   - Intermediate buffers zeroed in finally blocks
  *   - Input validation: fail-closed on malformed input
+ *   - NOT constant-time: gfMul branches on zero, table lookups are cache-visible
  *
  * @module wallet-core/shamir
  */
@@ -111,7 +111,7 @@ export function split(secret, n = 3, k = 2) {
   if (!(secret instanceof Uint8Array) || secret.length !== SECRET_SIZE) {
     throw new Error('INVALID_SECRET_SIZE');
   }
-  if (k < 2 || n < k || n > 255) {
+  if (!Number.isInteger(n) || !Number.isInteger(k) || k < 2 || n < k || n > 255) {
     throw new Error('INVALID_PARAMS');
   }
   // Reject all-zero secret — no meaningful security in splitting nothing
@@ -166,7 +166,7 @@ export function split(secret, n = 3, k = 2) {
 /**
  * Reconstruct a secret from k or more shares using Lagrange interpolation at x=0.
  *
- * No data-dependent branching during interpolation (table lookups are not cache-timing-constant).
+ * NOT constant-time: gfMul branches on zero, table lookups are cache-visible.
  *
  * @param {Uint8Array[]} shares - Array of shares (each SHARE_SIZE bytes)
  * @returns {Uint8Array} Reconstructed secret (SECRET_SIZE bytes)

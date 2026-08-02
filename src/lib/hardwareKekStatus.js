@@ -1,22 +1,25 @@
 // @ts-nocheck
-// lib/hardwareKekStatus.js — R2 facade for a READ-ONLY hardware-KEK enrollment
-// check. src/lib is not a forbidden ring layer, so this module may import from
-// wallet-core/keystore directly (ring-import-lint). UI components (src/components)
-// must NOT import wallet-core/keystore/* directly — they call this facade instead,
-// same pattern as lib/useKekEnrollmentGate.js.
+// lib/hardwareKekStatus.js — R2 facade for READ-ONLY hardware-KEK status.
+// UI components call this instead of importing wallet-core/keystore directly
+// (ring-import-lint). Same pattern as lib/useKekEnrollmentGate.js.
 //
-// Read-only: this never enrolls, clears, or mutates the hardware credential — it
-// only reports whether one already exists, for display purposes (e.g. the Security
-// Posture widget). Best-effort: any probe error resolves to `false` rather than
-// throwing, since a status widget must never crash the dashboard it's on (I4 — a
-// failed read is treated as "not enrolled", the conservative/lower-score answer).
+// Reports TWO things: (a) whether a hardware credential alias exists, AND
+// (b) whether the current vault is actually KEK-wrapped. An orphaned alias
+// without a kekWrap is NOT treated as "active" — that would inflate the
+// posture score for an unprotected vault.
 
 import { isHardwareEnrolled } from '@/wallet-core/keystore/hardware';
+import { getKeyStore } from '@/wallet-core/keystore/index';
 
-/** @returns {Promise<boolean>} whether a hardware KEK credential is enrolled on this device. */
+/** @returns {Promise<boolean>} whether a hardware KEK credential is enrolled AND the vault is KEK-wrapped. */
 export async function isHardwareKekEnrolled() {
   try {
-    return await isHardwareEnrolled();
+    const enrolled = await isHardwareEnrolled();
+    if (!enrolled) return false;
+    const ks = getKeyStore();
+    return typeof ks.hasVaultKekWrap === 'function'
+      ? await ks.hasVaultKekWrap()
+      : false;
   } catch {
     return false;
   }
