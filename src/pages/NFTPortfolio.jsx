@@ -138,8 +138,8 @@ export default function NFTPortfolio() {
               { label: "Current Floor (ETH)", key: "current_floor", placeholder: "0.12", type: "number" },
             ].map(f => (
               <div key={f.key}>
-                <Label>{f.label}</Label>
-                <Input type={f.type || "text"} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} className="mt-1" />
+                <Label htmlFor={`nftp-field-${f.key}`}>{f.label}</Label>
+                <Input id={`nftp-field-${f.key}`} type={f.type || "text"} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} className="mt-1" />
               </div>
             ))}
             <div>

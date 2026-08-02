@@ -308,18 +308,18 @@ export default function SecurityCenter() {
               </Select>
             </div>
             <div>
-              <Label>Daily Limit (USD)</Label>
+              <Label htmlFor="security-daily-limit">Daily Limit (USD)</Label>
               {/* type="text" + inputMode="decimal": same fix as SendCrypto's
                   amount field (PR #1409). type="number" blanks locale-typed
                   values like de-DE "1,5" BEFORE React sees them, hiding the
                   input entirely. text preserves the raw string so
                   parseLocaleNumber (in the save handler) can canonicalise it
                   and refuse anything unrecognised. */}
-              <Input type="text" inputMode="decimal" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder="e.g. 1000" className="mt-1.5" />
+              <Input id="security-daily-limit" type="text" inputMode="decimal" value={dailyLimit} onChange={e => setDailyLimit(e.target.value)} placeholder="e.g. 1000" className="mt-1.5" />
             </div>
             <div>
-              <Label>Per Transaction Limit (USD)</Label>
-              <Input type="text" inputMode="decimal" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="e.g. 500" className="mt-1.5" />
+              <Label htmlFor="security-tx-limit">Per Transaction Limit (USD)</Label>
+              <Input id="security-tx-limit" type="text" inputMode="decimal" value={perTxLimit} onChange={e => setPerTxLimit(e.target.value)} placeholder="e.g. 500" className="mt-1.5" />
             </div>
             <Button className="w-full" onClick={() => addLimit.mutate()} disabled={addLimit.isPending || (!dailyLimit && !perTxLimit)}>
               Save Limit

@@ -121,13 +121,13 @@ export default function NetworkManager() {
         <DialogContent>
           <DialogHeader><DialogTitle>Add Custom Network</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            <div><Label>Network Name</Label><Input className="mt-1.5" placeholder="My Custom Chain" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-            <div><Label>Network URL</Label><Input className="mt-1.5 font-mono text-xs" placeholder="https://rpc.example.com" value={form.rpc_url} onChange={e => setForm(f => ({ ...f, rpc_url: e.target.value }))} /></div>
+            <div><Label htmlFor="network-name">Network Name</Label><Input id="network-name" className="mt-1.5" placeholder="My Custom Chain" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div><Label htmlFor="network-url">Network URL</Label><Input id="network-url" className="mt-1.5 font-mono text-xs" placeholder="https://rpc.example.com" value={form.rpc_url} onChange={e => setForm(f => ({ ...f, rpc_url: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Network ID</Label><Input type="number" className="mt-1.5" placeholder="1" value={form.chain_id} onChange={e => setForm(f => ({ ...f, chain_id: e.target.value }))} /></div>
-              <div><Label>Native Symbol</Label><Input className="mt-1.5" placeholder="ETH" value={form.symbol} onChange={e => setForm(f => ({ ...f, symbol: e.target.value }))} /></div>
+              <div><Label htmlFor="network-chain-id">Network ID</Label><Input id="network-chain-id" type="number" className="mt-1.5" placeholder="1" value={form.chain_id} onChange={e => setForm(f => ({ ...f, chain_id: e.target.value }))} /></div>
+              <div><Label htmlFor="network-symbol">Native Symbol</Label><Input id="network-symbol" className="mt-1.5" placeholder="ETH" value={form.symbol} onChange={e => setForm(f => ({ ...f, symbol: e.target.value }))} /></div>
             </div>
-            <div><Label>Block Explorer URL (optional)</Label><Input className="mt-1.5 font-mono text-xs" placeholder="https://etherscan.io" value={form.explorer_url} onChange={e => setForm(f => ({ ...f, explorer_url: e.target.value }))} /></div>
+            <div><Label htmlFor="network-explorer-url">Block Explorer URL (optional)</Label><Input id="network-explorer-url" className="mt-1.5 font-mono text-xs" placeholder="https://etherscan.io" value={form.explorer_url} onChange={e => setForm(f => ({ ...f, explorer_url: e.target.value }))} /></div>
             <div className="flex items-center justify-between p-3 rounded-xl border border-border">
               <Label>This is a test network</Label>
               <Switch checked={form.is_testnet} onCheckedChange={v => setForm(f => ({ ...f, is_testnet: v }))} />

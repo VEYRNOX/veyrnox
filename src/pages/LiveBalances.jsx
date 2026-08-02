@@ -128,7 +128,7 @@ export default function LiveBalances() {
 
       {/* Input row */}
       <div className="flex gap-2">
-        <Input placeholder="0x… EVM address" value={address} onChange={e => setAddress(e.target.value)} className="font-mono text-xs flex-1" onKeyDown={e => e.key === "Enter" && fetchAll()} />
+        <Input aria-label="EVM wallet address" placeholder="0x… EVM address" value={address} onChange={e => setAddress(e.target.value)} className="font-mono text-xs flex-1" onKeyDown={e => e.key === "Enter" && fetchAll()} />
         <Select value={network} onValueChange={setNetwork}>
           <SelectTrigger className="w-40 shrink-0" aria-label="Network"><SelectValue /></SelectTrigger>
           <SelectContent>{NETWORKS.map(n => <SelectItem key={n.id} value={n.id}>{n.label}</SelectItem>)}</SelectContent>

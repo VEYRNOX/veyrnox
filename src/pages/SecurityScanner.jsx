@@ -114,11 +114,11 @@ export default function SecurityScanner() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Token symbol (optional)</label>
-              <Input value={tokenSymbol} onChange={(e) => setTokenSymbol(e.target.value)} placeholder="USDC" className="text-xs" />
+              <Input aria-label="Token symbol" value={tokenSymbol} onChange={(e) => setTokenSymbol(e.target.value)} placeholder="USDC" className="text-xs" />
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Token decimals</label>
-              <Input value={decimals} onChange={(e) => setDecimals(e.target.value)} placeholder="18" inputMode="numeric" className="text-xs" />
+              <Input aria-label="Token decimals" value={decimals} onChange={(e) => setDecimals(e.target.value)} placeholder="18" inputMode="numeric" className="text-xs" />
             </div>
           </div>
           <Button className="w-full" onClick={handleScan} disabled={!calldata.trim()}>

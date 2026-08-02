@@ -145,7 +145,7 @@ export default function PaymentLinks() {
         <DialogContent>
           <DialogHeader><DialogTitle>Create Payment Link</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            <div><Label>Title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Invoice #42" className="mt-1.5" /></div>
+            <div><Label htmlFor="paylink-title">Title</Label><Input id="paylink-title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Invoice #42" className="mt-1.5" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label id="pl-currency-label">Currency</Label>
                 <Select value={form.currency} onValueChange={v => setForm(f => ({ ...f, currency: v }))}>
@@ -153,7 +153,7 @@ export default function PaymentLinks() {
                   <SelectContent>{CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Amount (optional)</Label><Input type="text" inputMode="decimal" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
+              <div><Label htmlFor="paylink-amount">Amount (optional)</Label><Input id="paylink-amount" type="text" inputMode="decimal" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
             </div>
             <div>
               <Label htmlFor="pl-wallet-address">Your Wallet Address</Label>
@@ -169,7 +169,7 @@ export default function PaymentLinks() {
                 <p className="text-xs text-destructive mt-1.5">Invalid {form.currency} address format</p>
               )}
             </div>
-            <div><Label>Note / Memo (optional)</Label><Input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="What is this payment for?" className="mt-1.5" /></div>
+            <div><Label htmlFor="paylink-memo">Note / Memo (optional)</Label><Input id="paylink-memo" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="What is this payment for?" className="mt-1.5" /></div>
             <Button className="w-full" onClick={() => create.mutate()} disabled={!form.title || !form.wallet_address || showAddrError || create.isPending}>Generate Link</Button>
           </div>
         </DialogContent>

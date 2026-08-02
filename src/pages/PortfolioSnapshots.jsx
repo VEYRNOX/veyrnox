@@ -159,12 +159,12 @@ export default function PortfolioSnapshots() {
               <p className="text-xl font-bold">{formatUsd(currentTotalUSD, resolveLocale(), { maximumFractionDigits: 2 })}</p>
             </div>
             <div>
-              <Label>Label (optional)</Label>
-              <Input value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. End of Q2 2025" className="mt-1.5" />
+              <Label htmlFor="snapshot-label">Label (optional)</Label>
+              <Input id="snapshot-label" value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. End of Q2 2025" className="mt-1.5" />
             </div>
             <div>
-              <Label>Note (optional)</Label>
-              <Input value={note} onChange={e => setNote(e.target.value)} placeholder="Any notes..." className="mt-1.5" />
+              <Label htmlFor="snapshot-note">Note (optional)</Label>
+              <Input id="snapshot-note" value={note} onChange={e => setNote(e.target.value)} placeholder="Any notes..." className="mt-1.5" />
             </div>
             <Button className="w-full" onClick={handleSave}>
               <Camera className="h-4 w-4 me-1.5" /> Save Snapshot

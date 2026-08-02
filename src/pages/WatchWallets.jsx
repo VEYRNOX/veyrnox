@@ -99,8 +99,8 @@ export default function WatchWallets() {
         <DialogContent>
           <DialogHeader><DialogTitle>Watch an Address</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            <div><Label>Label / Name</Label><Input className="mt-1.5" placeholder="Vitalik.eth or My Cold Wallet" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-            <div><Label>Wallet Address</Label><Input className="mt-1.5 font-mono text-xs" placeholder="0x... or bc1q..." value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
+            <div><Label htmlFor="watch-wallet-label">Label / Name</Label><Input id="watch-wallet-label" className="mt-1.5" placeholder="Vitalik.eth or My Cold Wallet" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div><Label htmlFor="watch-wallet-address">Wallet Address</Label><Input id="watch-wallet-address" className="mt-1.5 font-mono text-xs" placeholder="0x... or bc1q..." value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label id="watch-network-label">Network</Label>
                 <Select value={form.network} onValueChange={v => setForm(f => ({ ...f, network: v }))}>
@@ -115,7 +115,7 @@ export default function WatchWallets() {
                 </Select>
               </div>
             </div>
-            <div><Label>Note (optional)</Label><Input className="mt-1.5" placeholder="e.g. Ethereum founder wallet" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} /></div>
+            <div><Label htmlFor="watch-wallet-note">Note (optional)</Label><Input id="watch-wallet-note" className="mt-1.5" placeholder="e.g. Ethereum founder wallet" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} /></div>
             <Button className="w-full" disabled={!form.name || !form.address || create.isPending} onClick={() => create.mutate(form)}>Watch Address</Button>
           </div>
         </DialogContent>
