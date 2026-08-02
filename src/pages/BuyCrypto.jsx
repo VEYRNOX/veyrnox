@@ -5,11 +5,12 @@
 // Ship gate (VITE_BUY_ENABLED) + live deniability gate must BOTH pass before
 // this page renders anything interactive. The URL builder has its own I3
 // chokepoint (BUY_DENIABILITY_BLOCKED) as a second-line defence.
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Browser } from '@capacitor/browser';
-import { CreditCard, ExternalLink } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { CreditCard, ExternalLink, X, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,6 +65,8 @@ export default function BuyCrypto() {
   const [amount, setAmount] = useState('');
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [opening, setOpening] = useState(false);
+  const [webIframeUrl, setWebIframeUrl] = useState(null);
+  const iframeRef = useRef(null);
 
   const handleAssetChange = useCallback((sym) => {
     setAsset(sym);
@@ -130,12 +133,23 @@ export default function BuyCrypto() {
     setShowDisclosure(false);
     try {
       const signedUrl = await signMoonpayUrl(url);
-      await Browser.open({ url: signedUrl, presentationStyle: 'popover' });
+      if (Capacitor.isNativePlatform()) {
+        // Native: SFSafariViewController / Chrome Custom Tab — has its own nav controls
+        await Browser.open({ url: signedUrl, presentationStyle: 'popover' });
+      } else {
+        // Web: render in-app iframe so Privacy/Terms links can't navigate away
+        setWebIframeUrl(signedUrl);
+      }
     } catch {
       toast.error(t('buy.error.browser_open_failed'));
     } finally {
       setOpening(false);
     }
+  };
+
+  const handleCloseIframe = () => {
+    setWebIframeUrl(null);
+    navigate('/buy/in-progress');
   };
 
   return (
@@ -225,6 +239,48 @@ export default function BuyCrypto() {
         <CreditCard className="h-4 w-4" />
         {t('buy.continue')}
       </Button>
+
+      {/* Web-only: full-screen iframe overlay so Privacy/Terms links stay in-app */}
+      {webIframeUrl && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background" data-testid="moonpay-iframe-overlay">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+            <button
+              onClick={handleCloseIframe}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              aria-label={t('buy.iframe.back_label')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t('buy.iframe.back_label')}
+            </button>
+            <span className="flex-1 text-center text-sm font-medium truncate">MoonPay</span>
+            <button
+              onClick={handleCloseIframe}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label={t('buy.iframe.close_label')}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <iframe
+            ref={iframeRef}
+            src={webIframeUrl}
+            className="flex-1 w-full border-0"
+            allow="accelerometer; autoplay; camera; gyroscope; payment"
+            title="MoonPay"
+            onLoad={() => {
+              try {
+                const iframeUrl = iframeRef.current?.contentWindow?.location?.href ?? '';
+                if (iframeUrl.includes('/buy/return')) {
+                  setWebIframeUrl(null);
+                  navigate('/buy/in-progress');
+                }
+              } catch {
+                // cross-origin load — normal, ignore
+              }
+            }}
+          />
+        </div>
+      )}
 
       {/* Disclosure dialog */}
       <Dialog open={showDisclosure} onOpenChange={setShowDisclosure}>

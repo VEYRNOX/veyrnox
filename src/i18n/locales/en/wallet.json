@@ -741,6 +741,10 @@
     "error": {
       "amount_malformed": "Please enter a valid amount",
       "browser_open_failed": "Could not open MoonPay. Please try again."
+    },
+    "iframe": {
+      "back_label": "Back to purchase",
+      "close_label": "Close MoonPay"
     }
   }
 }
