@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-// Will fail until shamir.js exists
 import { split, combine, SHARE_SIZE, SECRET_SIZE } from '../shamir.js';
 
 function randomSecret() {
@@ -12,12 +11,12 @@ function randomSecret() {
 describe('shamir – constants', () => {
   it('exports correct sizes', () => {
     expect(SECRET_SIZE).toBe(32);
-    expect(SHARE_SIZE).toBe(33);
+    expect(SHARE_SIZE).toBe(56);
   });
 });
 
 describe('shamir – split', () => {
-  it('returns 3 shares of 33 bytes each for a 32-byte secret', () => {
+  it('returns 3 shares of SHARE_SIZE bytes each for a 32-byte secret', () => {
     const secret = randomSecret();
     const shares = split(secret);
     expect(shares).toHaveLength(3);
@@ -27,11 +26,35 @@ describe('shamir – split', () => {
     }
   });
 
-  it('shares have distinct x-coordinates 1, 2, 3', () => {
+  it('shares have distinct x-coordinates 1, 2, 3 at byte 19', () => {
     const secret = randomSecret();
     const shares = split(secret);
-    const xs = shares.map(s => s[0]);
+    const xs = shares.map(s => s[19]);
     expect(xs).toEqual([1, 2, 3]);
+  });
+
+  it('all shares carry the same envelope header (version, k, n, setId)', () => {
+    const secret = randomSecret();
+    const shares = split(secret);
+    for (const s of shares) {
+      expect(s[0]).toBe(0x01); // version
+      expect(s[1]).toBe(2);    // k
+      expect(s[2]).toBe(3);    // n
+    }
+    // setId (bytes 3..18) must be identical across all shares
+    const setId0 = shares[0].slice(3, 19);
+    for (let i = 1; i < shares.length; i++) {
+      expect(shares[i].slice(3, 19)).toEqual(setId0);
+    }
+  });
+
+  it('different splits produce different setIds', () => {
+    const secret = randomSecret();
+    const a = split(secret);
+    const b = split(secret);
+    const idA = Array.from(a[0].slice(3, 19));
+    const idB = Array.from(b[0].slice(3, 19));
+    expect(idA).not.toEqual(idB);
   });
 
   it('rejects all-zero secret', () => {
@@ -63,6 +86,11 @@ describe('shamir – split', () => {
   it('rejects k < 2', () => {
     const secret = randomSecret();
     expect(() => split(secret, 3, 1)).toThrow('INVALID_PARAMS');
+  });
+
+  it('rejects n > 255', () => {
+    const secret = randomSecret();
+    expect(() => split(secret, 256, 2)).toThrow('INVALID_PARAMS');
   });
 });
 
@@ -102,34 +130,18 @@ describe('shamir – combine', () => {
   it('single share cannot reconstruct (returns wrong value)', () => {
     const secret = randomSecret();
     const shares = split(secret);
-    // Attempting combine with 1 share should reject (k < 2 shares)
     expect(() => combine([shares[0]])).toThrow('INSUFFICIENT_SHARES');
   });
 
   it('rejects duplicate x-coordinates', () => {
     const secret = randomSecret();
     const shares = split(secret);
-    // Pass same share twice
     expect(() => combine([shares[0], shares[0]])).toThrow('DUPLICATE_X_COORD');
   });
 
-  it('rejects shares with x-coordinate 0', () => {
-    const secret = randomSecret();
-    const shares = split(secret);
-    // Tamper: set x-coord to 0
-    const tampered = new Uint8Array(shares[0]);
-    tampered[0] = 0;
-    expect(() => combine([tampered, shares[1]])).toThrow('INVALID_SHARE_X');
-  });
-
-  it('rejects n > 255 (would wrap x-coordinates)', () => {
-    const secret = randomSecret();
-    expect(() => split(secret, 256, 2)).toThrow('INVALID_PARAMS');
-  });
-
   it('rejects wrong-size shares', () => {
-    const bad1 = new Uint8Array(32); // too short
-    const bad2 = new Uint8Array(34); // too long
+    const bad1 = new Uint8Array(32);
+    const bad2 = new Uint8Array(34);
     expect(() => combine([bad1, bad2])).toThrow('INVALID_SHARE_SIZE');
   });
 
@@ -138,6 +150,71 @@ describe('shamir – combine', () => {
     const shares = split(secret);
     const truncated = shares[1].slice(0, 20);
     expect(() => combine([shares[0], truncated])).toThrow('INVALID_SHARE_SIZE');
+  });
+});
+
+describe('shamir – envelope validation', () => {
+  it('rejects shares with tampered version byte', () => {
+    const secret = randomSecret();
+    const shares = split(secret);
+    const tampered = new Uint8Array(shares[0]);
+    tampered[0] = 0x02;
+    expect(() => combine([tampered, shares[1]])).toThrow(/VERSION|CORRUPT/);
+  });
+
+  it('rejects shares with mismatched k (threshold)', () => {
+    const secret = randomSecret();
+    const shares = split(secret);
+    // Tamper share[1]'s k so it disagrees with share[0]
+    const tampered = new Uint8Array(shares[1]);
+    tampered[1] = 3; // change k from 2 to 3
+    expect(() => combine([shares[0], tampered])).toThrow(/THRESHOLD_MISMATCH|CORRUPT/);
+  });
+
+  it('rejects shares with mismatched n', () => {
+    const secret = randomSecret();
+    const shares = split(secret);
+    const tampered = new Uint8Array(shares[0]);
+    tampered[2] = 5; // change n from 3 to 5
+    expect(() => combine([tampered, shares[1]])).toThrow(/N_MISMATCH|CORRUPT/);
+  });
+
+  it('rejects shares from different splits (different setId)', () => {
+    const secret = randomSecret();
+    const sharesA = split(secret);
+    const sharesB = split(secret);
+    expect(() => combine([sharesA[0], sharesB[1]])).toThrow('SET_ID_MISMATCH');
+  });
+
+  it('rejects corrupted share data (CRC check)', () => {
+    const secret = randomSecret();
+    const shares = split(secret);
+    const tampered = new Uint8Array(shares[0]);
+    tampered[25] ^= 0xFF; // flip a y-value byte
+    expect(() => combine([tampered, shares[1]])).toThrow('SHARE_CORRUPT');
+  });
+
+  it('rejects shares with tampered x-coordinate set to 0', () => {
+    const secret = randomSecret();
+    const shares = split(secret);
+    const tampered = new Uint8Array(shares[0]);
+    tampered[19] = 0;
+    // CRC will catch this before x=0 check
+    expect(() => combine([tampered, shares[1]])).toThrow(/CORRUPT|INVALID_SHARE_X/);
+  });
+
+  it('rejects fewer shares than the encoded threshold k', () => {
+    const secret = randomSecret();
+    const shares = split(secret, 3, 3); // k=3
+    // only provide 2 shares — envelope says k=3
+    expect(() => combine([shares[0], shares[1]])).toThrow('INSUFFICIENT_SHARES');
+  });
+
+  it('3-of-3 split requires all 3 shares to reconstruct', () => {
+    const secret = randomSecret();
+    const shares = split(secret, 3, 3);
+    const recovered = combine([shares[0], shares[1], shares[2]]);
+    expect(recovered).toEqual(secret);
   });
 });
 
@@ -160,7 +237,6 @@ describe('shamir – RNG usage', () => {
   it('uses crypto.getRandomValues, not Math.random', () => {
     const mathSpy = vi.spyOn(Math, 'random');
     const secret = randomSecret();
-    // Clear the call from randomSecret() itself
     mathSpy.mockClear();
 
     split(secret);
@@ -171,11 +247,9 @@ describe('shamir – RNG usage', () => {
 
 describe('shamir – GF(2^8) field correctness', () => {
   it('reconstructs a known fixed secret deterministically', () => {
-    // Use a fixed secret and verify split/combine round-trips
     const secret = new Uint8Array(32);
-    for (let i = 0; i < 32; i++) secret[i] = i + 1; // 1..32
+    for (let i = 0; i < 32; i++) secret[i] = i + 1;
     const shares = split(secret);
-    // All 3 pairwise combos must reconstruct
     expect(combine([shares[0], shares[1]])).toEqual(secret);
     expect(combine([shares[0], shares[2]])).toEqual(secret);
     expect(combine([shares[1], shares[2]])).toEqual(secret);
