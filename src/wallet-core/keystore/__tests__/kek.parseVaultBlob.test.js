@@ -1,4 +1,4 @@
-// kek.parseVaultBlob.test.js — unhappy-path coverage for parseVaultBlob (Gap 2).
+// kek.parseVaultBlob.test.js — type-guard for parseVaultBlob (KEK_ERR.MALFORMED_VAULT).
 //
 // COVERAGE GAP THIS CLOSES: `parseVaultBlob` is the single entry point every native
 // vault read goes through (17 call sites in keystore/native.js — unlock, KEK upgrade,
@@ -8,6 +8,11 @@
 // closed) plus the deniability requirement that the failure carries no per-set
 // information (it fires identically for a real or decoy vault).
 //
+// JSON.parse succeeds on 'null', '123', '[]', '"str"', 'true' — all are valid JSON but
+// none are plain objects. Without the post-parse type check, callers that dereference
+// the result (e.g. blob.kekWrap) would throw a raw TypeError instead of the stable
+// KEK_ERR.MALFORMED_VAULT code. These cases must be rejected at the parse boundary.
+//
 // These tests assert the CODE (KEK_ERR.MALFORMED_VAULT), never prose: the string is the
 // contract that native.js's catch sites and the UI error mapping key off.
 //
@@ -15,10 +20,23 @@
 // the 123/null/undefined cases into a raw `JSON.parse` TypeError-or-coercion, and
 // deleting the try/catch turns the 'not json' / '' cases into a raw SyntaxError — either
 // way `.toThrow(KEK_ERR.MALFORMED_VAULT)` fails, because toThrow(string) matches on the
-// message substring. The happy-path cases fail if the guards over-reject.
+// message substring. The post-parse type check handles the valid-JSON-non-object cases.
+// The happy-path cases fail if the guards over-reject.
 
 import { describe, it, expect } from 'vitest';
 import { parseVaultBlob, KEK_ERR } from '../kek.js';
+
+describe('parseVaultBlob — non-object JSON (valid JSON, non-object result)', () => {
+  it.each([
+    ['null JSON',   'null'],
+    ['number JSON', '123'],
+    ['array JSON',  '[]'],
+    ['string JSON', '"hello"'],
+    ['bool JSON',   'true'],
+  ])('%s throws MALFORMED_VAULT', (_label, input) => {
+    expect(() => parseVaultBlob(input)).toThrow(KEK_ERR.MALFORMED_VAULT);
+  });
+});
 
 describe('parseVaultBlob — corrupt input fails closed with KEK_ERR.MALFORMED_VAULT', () => {
   it('rejects a non-JSON string → MALFORMED_VAULT (not a raw SyntaxError)', () => {
