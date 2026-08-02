@@ -68,6 +68,7 @@ export default function BuyCrypto() {
   const [webIframeUrl, setWebIframeUrl] = useState(null);
   const [iframeReloadKey, setIframeReloadKey] = useState(0);
   const iframeRef = useRef(null);
+  const moonpayUnsignedUrlRef = useRef(null);
 
   const handleAssetChange = useCallback((sym) => {
     setAsset(sym);
@@ -138,7 +139,8 @@ export default function BuyCrypto() {
         // Native: SFSafariViewController / Chrome Custom Tab — has its own nav controls
         await Browser.open({ url: signedUrl, presentationStyle: 'popover' });
       } else {
-        // Web: render in-app iframe so Privacy/Terms links can't navigate away
+        // Web: render in-app iframe; store unsigned URL so back button can re-sign fresh
+        moonpayUnsignedUrlRef.current = url;
         setWebIframeUrl(signedUrl);
       }
     } catch {
@@ -151,6 +153,19 @@ export default function BuyCrypto() {
   const handleCloseIframe = () => {
     setWebIframeUrl(null);
     navigate('/buy/in-progress');
+  };
+
+  const handleRestartMoonPay = async () => {
+    const base = moonpayUnsignedUrlRef.current;
+    if (!base) return;
+    try {
+      const freshSigned = await signMoonpayUrl(base);
+      setWebIframeUrl(freshSigned);
+      setIframeReloadKey((k) => k + 1);
+    } catch {
+      // Re-sign failed; remount with the existing signed URL as a fallback
+      setIframeReloadKey((k) => k + 1);
+    }
   };
 
   return (
@@ -242,15 +257,14 @@ export default function BuyCrypto() {
       </Button>
 
       {/* Web-only: full-screen iframe overlay.
-          sandbox omits allow-popups so Privacy/Terms links navigate within
-          the iframe instead of opening a new tab the user can't return from.
-          "← Back to purchase" re-mounts MoonPay at the original URL.
+          "← Back to purchase" re-signs the URL fresh and remounts MoonPay,
+          recovering from any iframe navigation (Privacy/Terms/etc).
           X closes the overlay and routes to /buy/in-progress. */}
       {webIframeUrl && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background" data-testid="moonpay-iframe-overlay">
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
             <button
-              onClick={() => setIframeReloadKey((k) => k + 1)}
+              onClick={handleRestartMoonPay}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
               aria-label={t('buy.iframe.back_label')}
             >
@@ -272,7 +286,6 @@ export default function BuyCrypto() {
             src={webIframeUrl}
             className="flex-1 w-full border-0"
             allow="accelerometer; autoplay; camera; gyroscope; payment"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
             title="MoonPay"
             onLoad={() => {
               try {
