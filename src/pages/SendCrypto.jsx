@@ -72,6 +72,7 @@ import { useSend2faMethod } from "@/lib/useSend2faMethod";
 import { resolveMaxPriorityFeePerGas } from "@/lib/WalletConnectProvider";
 import { verifyPasskeyAssertion } from "@/lib/passkey";
 import { verifyBiometric2fa } from "@/lib/biometric";
+import { evaluateBiometricSecondFactor } from "@/lib/stepUpFactorOutcome.js";
 import { Capacitor } from "@capacitor/core";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
@@ -1305,6 +1306,17 @@ export default function SendCrypto() {
         return;
       }
       setReauthError(tw("send.reauth.errors.incorrect", { remaining: REAUTH_CAP - n }));
+    } catch {
+      // Gap-5 (I4 fail closed + fail honest). This block had a `finally` but no
+      // `catch`: a rejection from the verifier escaped as an unhandled rejection,
+      // the spinner cleared, and the user was left staring at an unchanged screen
+      // with no message and no send — a silent dead-end (same class as the 07-27
+      // "Send amount dead-ended silently" finding). Surface it instead.
+      //
+      // Deliberately does NOT burn a step-up attempt: a thrown verifier is an infra
+      // failure, not a wrong credential — an unverified step-up must never
+      // authorise a broadcast; the send mutation is intentionally unreachable here.
+      setReauthError(tw("send.reauth.errors.unavailable"));
     } finally {
       setReauthPending(false);
     }
@@ -2018,16 +2030,18 @@ export default function SendCrypto() {
                       if (send2faMethod === SEND_2FA.BIOMETRIC) {
                         // BIOMETRIC mode: the user is already unlocked (vault open = PIN proved).
                         // TwoFactorGate shows NO PIN field in this mode — the step-up is Face ID only.
-                        // pinOk is treated as true (unlock = first-factor already satisfied).
                         // FAIL CLOSED (I4) — any cancel/no-match/error counts as NOT verified.
-                        let bioOk = false;
-                        try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
-                        // BIOMETRIC is a possession factor (not the Action Password); the
-                        // second factor here is the live biometric, so this leg is
-                        // configured-by-construction (send2faMethod already resolved to
-                        // BIOMETRIC). Keep the gate's third input honest at `true` only
-                        // for this non-AP method.
-                        return evaluateTwoFactor({ pinOk: true, passwordOk: bioOk, actionPasswordConfigured: true });
+                        //
+                        // Gap-5: the old bare-catch (bioOk assigned false on any error) also made every
+                        // failure indistinguishable, so a USER CANCEL, a permanently
+                        // invalidated hardware key, and an unavailable sensor each burned one
+                        // of TwoFactorGate's 5 attempts and captioned it "Incorrect." — five
+                        // taps on the OS Cancel button locked the session. The send stays
+                        // blocked in all of those cases; only the accounting and the message
+                        // change, and a genuine no-match still counts. The rationale for the
+                        // `pinOk: true` / `actionPasswordConfigured: true` literals moved with
+                        // the logic into lib/stepUpFactorOutcome.js.
+                        return evaluateBiometricSecondFactor(verifyBiometric2fa);
                       }
                       const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
                       if (send2faMethod === SEND_2FA.PASSKEY) {
