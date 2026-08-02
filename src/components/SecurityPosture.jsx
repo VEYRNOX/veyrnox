@@ -59,12 +59,21 @@ import { computePostureScore } from '../lib/securityPosture';
 
 export const POSTURE_DISMISSED_KEY = 'veyrnox-posture-dismissed';
 
+/** @type {readonly string[]} Fields callers must never override in deniability mode. */
+const SECURITY_AUTHORITATIVE_FIELDS = ['raspTier', 'kekActive'];
+
 function readDismissState() {
+  // M-3: don't read dismiss state in deniability/demo — leaves no new trace,
+  // but reading could reveal the real user's prior dismiss decision to a coerced observer.
+  if (isDeniabilityOrDemoActive()) return null;
   try {
     const raw = localStorage.getItem(POSTURE_DISMISSED_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed.at !== 'number' || typeof parsed.score !== 'number') return null;
+    // M-3: range validation — reject out-of-bounds or non-finite values
+    if (!Number.isFinite(parsed.score) || parsed.score < 0 || parsed.score > 100) return null;
+    if (!Number.isFinite(parsed.at) || parsed.at <= 0) return null;
     return parsed;
   } catch {
     return null;
@@ -100,13 +109,31 @@ export default function SecurityPosture({ state: stateOverride } = {}) {
   const [dismissedState] = useState(() => readDismissState());
   const [justDismissed, setJustDismissed] = useState(false);
 
+  const deniabilityActive = useMemo(() => isDeniabilityOrDemoActive(), []);
+
   useEffect(() => {
+    // H-3: don't probe hardware KEK status in deniability/demo — the probe
+    // reads native storage which could leave a timing/access trace.
+    if (deniabilityActive) return;
     let cancelled = false;
     isHardwareKekEnrolled()
       .then((v) => { if (!cancelled) setHardwareEnrolled(!!v); })
       .catch(() => { if (!cancelled) setHardwareEnrolled(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [deniabilityActive]);
+
+  // M-2: sanitize stateOverride — in deniability mode, strip security-authoritative
+  // fields so callers cannot inflate the score with fabricated values. Live signals
+  // (RASP, KEK) are applied AFTER the override, so they always win.
+  const sanitizedOverride = useMemo(() => {
+    if (!stateOverride) return undefined;
+    if (!deniabilityActive) return stateOverride;
+    const cleaned = { ...stateOverride };
+    for (const field of SECURITY_AUTHORITATIVE_FIELDS) {
+      delete cleaned[field];
+    }
+    return cleaned;
+  }, [stateOverride, deniabilityActive]);
 
   const state = useMemo(() => ({
     // Self-detected (UI-reachable, safe):
@@ -125,9 +152,13 @@ export default function SecurityPosture({ state: stateOverride } = {}) {
     wcSpendLimitSet: false,
     wcSessionExpiry: false,
     wcStepUpReauth: false,
-    // Integrator-supplied overrides (WalletPortfolioPage wiring) win.
-    ...stateOverride,
-  }), [biometricOn, raspArtifact?.tier, hardwareEnrolled, stateOverride]);
+    // Integrator-supplied overrides (WalletPortfolioPage wiring) win —
+    // but security-authoritative fields are stripped in deniability mode (M-2).
+    ...sanitizedOverride,
+    // Live signals applied LAST so they always win over any override:
+    raspTier: raspArtifact?.tier,
+    kekActive: hardwareEnrolled,
+  }), [biometricOn, raspArtifact?.tier, hardwareEnrolled, sanitizedOverride]);
 
   const posture = useMemo(() => computePostureScore(state), [state]);
 
