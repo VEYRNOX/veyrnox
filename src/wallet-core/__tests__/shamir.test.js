@@ -216,6 +216,50 @@ describe('shamir – envelope validation', () => {
     const recovered = combine([shares[0], shares[1], shares[2]]);
     expect(recovered).toEqual(secret);
   });
+
+  it('rejects more shares than encoded n', () => {
+    const secret = randomSecret();
+    const shares = split(secret);
+    // Duplicate share[2] with a different x to get 4 shares for n=3
+    const extra = new Uint8Array(shares[2]);
+    expect(() => combine([shares[0], shares[1], shares[2], extra])).toThrow('TOO_MANY_SHARES');
+  });
+
+  it('accepts all n shares and verifies extras against the polynomial', () => {
+    const secret = randomSecret();
+    const shares = split(secret); // n=3, k=2
+    const recovered = combine([shares[0], shares[1], shares[2]]);
+    expect(recovered).toEqual(secret);
+  });
+
+  it('rejects an inconsistent extra share (wrong y-values but valid CRC)', () => {
+    const secret = randomSecret();
+    const sharesA = split(secret);
+    const sharesB = split(secret); // different polynomial (different random coefficients)
+    // Build a Frankenstein: take sharesA[0] and sharesA[1] (consistent),
+    // plus sharesB[2] re-enveloped with sharesA's header so CRC passes
+    const franken = new Uint8Array(sharesA[2]);
+    // Copy y-values from sharesB[2] (different polynomial, same secret)
+    for (let i = 20; i < 52; i++) franken[i] = sharesB[2][i];
+    // Recompute CRC so it passes the corruption check
+    const crc32Fn = (data) => {
+      const T = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        T[i] = c >>> 0;
+      }
+      let crc = 0xFFFFFFFF;
+      for (let i = 0; i < 52; i++) crc = T[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+      return (crc ^ 0xFFFFFFFF) >>> 0;
+    };
+    const c = crc32Fn(franken);
+    franken[52] = (c >>> 0) & 0xFF;
+    franken[53] = (c >>> 8) & 0xFF;
+    franken[54] = (c >>> 16) & 0xFF;
+    franken[55] = (c >>> 24) & 0xFF;
+    expect(() => combine([sharesA[0], sharesA[1], franken])).toThrow('SHARE_INCONSISTENT');
+  });
 });
 
 describe('shamir – round-trip fuzz', () => {
