@@ -21,7 +21,7 @@ const STATUS_STYLES = {
 };
 
 function generateLinkId() {
-  return Math.random().toString(36).substring(2, 10).toUpperCase();
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
 }
 
 export default function PaymentLinks() {

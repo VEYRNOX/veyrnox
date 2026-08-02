@@ -247,7 +247,7 @@ export default function HardwareKekSettings() {
       } else if (isWrongPinVaultError(e)) {
         setError(t('settings.hardware_kek.errors.wrong_pin'));
       } else {
-        console.error('[KEK-ENROLL] failed:', e?.code, e?.message, JSON.stringify(e), e);
+        console.error('[KEK-ENROLL] failed:', e?.code);
         setError(classifyKekError(e, t));
       }
       // Best-effort cleanup of any partially-created credential.
