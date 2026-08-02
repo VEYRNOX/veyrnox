@@ -72,12 +72,15 @@ export function buildMoonpayUrl({
   );
   if (!row) throw new BuyError('NETWORK_MISMATCH');
 
+  const appOrigin = typeof window !== 'undefined'
+    ? window.location.origin
+    : 'https://veyrnox.com';
   const params = new URLSearchParams({
     apiKey,
     currencyCode: row.moonpayCode,
     walletAddress,
     lockWalletAddress: 'true',
-    redirectURL: 'https://veyrnox.com/buy/return',
+    redirectURL: `${appOrigin}/buy/return`,
   });
 
   if (baseCurrencyCode) {
