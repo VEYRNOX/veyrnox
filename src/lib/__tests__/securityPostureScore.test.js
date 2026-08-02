@@ -184,26 +184,24 @@ describe('computePostureScore', () => {
   // -------------------------------------------------------------------------
   // 7. Recovery dimension scoring: each item independently
   // -------------------------------------------------------------------------
-  it('scores each recovery item independently', () => {
+  it('scores recovery items with dependency gating', () => {
     // Only passphrase: 8
     const r1 = computePostureScore(bareState({ recoveryPassphraseSet: true }));
     expect(r1.dimensions.recovery.score).toBe(8);
 
-    // Only share A wrapped: 2
+    // Share flags WITHOUT recoveryPassphraseSet earn nothing (dependency gate)
     const r2 = computePostureScore(bareState({ shareAWrapped: true }));
-    expect(r2.dimensions.recovery.score).toBe(2);
+    expect(r2.dimensions.recovery.score).toBe(0);
 
-    // Only share B uploaded: 8
     const r3 = computePostureScore(bareState({ shareBUploaded: true }));
-    expect(r3.dimensions.recovery.score).toBe(8);
+    expect(r3.dimensions.recovery.score).toBe(0);
 
-    // Only share C exported: 6
     const r4 = computePostureScore(bareState({ shareCExported: true }));
-    expect(r4.dimensions.recovery.score).toBe(6);
+    expect(r4.dimensions.recovery.score).toBe(0);
 
-    // Only share C verified: 6
-    const r5 = computePostureScore(bareState({ shareCVerified: true }));
-    expect(r5.dimensions.recovery.score).toBe(6);
+    // shareCVerified without shareCExported earns nothing
+    const r5 = computePostureScore(bareState({ recoveryPassphraseSet: true, shareCVerified: true }));
+    expect(r5.dimensions.recovery.score).toBe(8); // only passphrase
 
     // All together: 8+2+8+6+6 = 30
     const r6 = computePostureScore(bareState({

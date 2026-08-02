@@ -104,7 +104,7 @@ export default function SecurityPosture({ state: stateOverride } = {}) {
   // identical result in any session, same as SecurityDashboard.jsx's usage.
   const raspArtifact = useRaspArtifact();
 
-  const [biometricOn] = useState(() => isBiometricUnlockEnabled());
+  const [biometricOn] = useState(() => isDeniabilityOrDemoActive() ? false : isBiometricUnlockEnabled());
   const [hardwareEnrolled, setHardwareEnrolled] = useState(false);
   const [dismissedState] = useState(() => readDismissState());
   const [justDismissed, setJustDismissed] = useState(false);
