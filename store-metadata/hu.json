@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "hu",
+  "native": "Magyar",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth). Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). Character counts checked against the tighter of Apple/Play limits.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Önőrzött tárca · Biztonság",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Önvédelmi kripto tárca kritikus helyzetekre. A seed és a kulcsok a saját eszközödön maradnak. Kényszerítésálló módok, ha egy jelszó nem elég.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kripto tárca,önőrzés,bitcoin,ethereum,solana,web3,biztonságos tárca,kényszer,nem letétkezelő",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "A kriptód. A kulcsaid. A saját eszközödön.\n\nA Veyrnox egy non-custodial tárca biztonságtudatos felhasználóknak. A kulcsok kizárólag a te eszközödön jönnek létre és tárolódnak, hardveresen támogatott (Secure Enclave) titkosítással lezárva — sosem szerveren. A Veyrnox nem tudja mozgatni a pénzedet, és nem tudja helyetted visszaállítani.\n\nFutásidejű önvédelem (RASP)\nA Veyrnox aktívan ellenőrzi saját futási környezetét illetéktelen beavatkozás, root/jailbreak és kódbeszúrás szempontjából, és zárva hibázik, ha kompromittált környezetet észlel.\n\nCímbiztonsági ellenőrzések\nAutomatikus figyelmeztetés mérgezett és hasonló megjelenésű címekre, valamint spam-token szűrés küldés előtt.\n\nEgy tárca, tíz eszköz\nKüldj és fogadj ETH-t, BTC-t, SOL-t, MATIC-ot, ARB-t, OP-t, AVAX-ot, BNB-t, USDC-t és USDT-t — mindezt egyetlen helyreállítási kifejezésből.\n\nSafety Plus (opcionális előfizetés)\nFeloldja a kényszerítésálló módokat:\n• Kényszer PIN — egy külön PIN egy csali tárcát nyit meg, így a kikényszerített feloldás semmi valódit nem fed fel.\n• Rejtett tárcák — fiókok, amelyek egyetlen listában vagy számlálásban sem jelennek meg.\n• Pánik törlés — a helyi kulcsanyag visszavonhatatlan megsemmisítése igény szerint.\nHavi vagy éves; lemondásig automatikusan megújul. Bármikor kezelhető vagy lemondható az App Store fiókbeállításaidban.\n\nA Veyrnox non-custodial. Ha elveszíted a helyreállítási kifejezésedet, senki — minket beleértve — nem tudja visszaállítani a tárcádat. Készíts róla biztonsági mentést.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Kezdeti kiadás.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Önőrzött kripto tárca. Kulcsaid az eszközödön maradnak. Kényszerítésálló.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "A kriptód. A kulcsaid. A saját eszközödön.\n\nA Veyrnox egy non-custodial tárca azoknak, akik komolyan veszik a biztonságot. A helyreállítási kifejezésed és a privát kulcsaid az eszközödön jönnek létre, hardveresen támogatott titkosítással lezárva (Android Keystore / StrongBox / TEE, ahol elérhető). Sosem hagyják el az eszközödet. A Veyrnox semmit sem tárol: nem tudjuk mozgatni a pénzedet, és nem tudjuk helyetted visszaállítani.\n\nTámogatott eszközök\nKüldj és fogadj ETH-t, BTC-t, SOL-t, MATIC-ot, ARB-t, OP-t, AVAX-ot, BNB-t, USDC-t és USDT-t — mindezt egyetlen BIP-39 helyreállítási kifejezésből.\n\nEszközön belüli biztonság\n• AES-256-GCM széf, Argon2id (192 MiB KDF) segítségével feloldva, és ahol elérhető, hardverhez kötött kulccsal.\n• Futásidejű önvédelem (RASP) illetéktelen beavatkozást, rootolást, kódbeszúrást és hookingot keres — és zárva hibázik kompromittált eszközön.\n• Címbiztonság: mérgezett és hasonló megjelenésű címekre figyelmeztetés, spam-token szűrés küldés előtt.\n• WalletConnect v2 kérésenkénti áttekintéssel, lánc- és címkötéssel, munkamenet-lejárattal és megerősített újrahitelesítéssel magas kockázatú műveleteknél.\n\nSafety Plus (opcionális előfizetés)\nFeloldja a kényszerítésálló módokat kritikus helyzetekre:\n• Kényszer PIN — egy második PIN egy csali tárcát nyit meg; a kikényszerített feloldás semmi valódit nem fed fel.\n• Rejtett tárcák — fiókok, amelyek egyetlen listában vagy számlálásban sem jelennek meg.\n• Pánik törlés — a helyi kulcsanyag visszavonhatatlan megsemmisítése igény szerint.\nHavi vagy éves; lemondásig automatikusan megújul. Bármikor kezelhető vagy lemondható itt: Google Play → Előfizetések.\n\nAmit a Veyrnox NEM csinál\n• Nincs fiók. Nincs e-mail. Nincs felhő-szinkronizálás. Nincs letétkezelés. Nincs kereskedés. Nincs reklám.\n\nTe birtoklod a magot. Ha elveszíted a helyreállítási kifejezésedet, senki — minket beleértve — nem tudja visszaállítani a tárcádat. Készíts róla biztonsági mentést olyan helyre, ahová csak te férsz hozzá.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

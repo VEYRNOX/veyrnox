@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "da",
+  "native": "Dansk",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth, docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md, 2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Selvopbevaring · Sikkerhed",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Selvopbevaret krypto til situationer med høj risiko. Din seed, dine nøgler, på din enhed. Tvangsresistente tilstande, når en adgangskode ikke er nok.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "krypto wallet,selvopbevaring,bitcoin,ethereum,solana,web3,sikker wallet,tvang,ikke-forvaltet",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Din krypto. Dine nøgler. På din enhed.\n\nVeyrnox er en ikke-forvaltet wallet til sikkerhedsbevidste brugere. Nøgler genereres og opbevares kun på din enhed, forseglet med hardwarebaseret (Secure Enclave) kryptering — aldrig på en server. Veyrnox kan ikke flytte dine midler og kan ikke gendanne dem for dig.\n\nSelvbeskyttelse i realtid (RASP)\nVeyrnox tjekker aktivt sit eget runtime-miljø for manipulation, rooting/jailbreaking og kodeinjektion, og fejler lukket, hvis den registrerer et kompromitteret miljø.\n\nAdressesikkerhedstjek\nAutomatiske advarsler ved poisoning og look-alike-adresser samt filtrering af spam-tokens, før du sender.\n\nÉn wallet, ti aktiver\nSend og modtag ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC og USDT — alt sammen fra én enkelt seed-sætning.\n\nSafety Plus (valgfrit abonnement)\nLåser op for tvangsresistente tilstande:\n• Nøde-PIN — en separat PIN åbner en lokke-wallet, så en tvungen oplåsning ikke afslører noget ægte.\n• Skjulte wallets — konti, der ikke vises i nogen liste eller optælling.\n• Panik-sletning — slet lokalt nøglemateriale uigenkaldeligt på forlangende.\nMånedligt eller årligt; fornyes automatisk indtil det opsiges. Administrer eller opsig når som helst i dine App Store-kontoindstillinger.\n\nVeyrnox er ikke-forvaltet. Hvis du mister din seed-sætning, kan ingen — heller ikke os — gendanne din wallet. Sørg for at tage backup.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Første udgivelse.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Selvopbevaret krypto-wallet. Dine nøgler forbliver på din enhed. Tvangssikker.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Din krypto. Dine nøgler. På din enhed.\n\nVeyrnox er en ikke-forvaltet wallet til folk, der tager sikkerhed alvorligt. Din seed-sætning og private nøgler genereres på enheden og forsegles med hardwarebaseret kryptering (Android Keystore / StrongBox / TEE, hvor det er tilgængeligt). De forlader aldrig din enhed. Veyrnox opbevarer intet: vi kan ikke flytte dine midler og kan ikke gendanne dem for dig.\n\nUnderstøttede aktiver\nSend og modtag ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC og USDT — alt sammen fra én enkelt BIP-39-seed-sætning.\n\nSikkerhed på enheden\n• AES-256-GCM-boks, låst op med Argon2id (192 MiB KDF) og, hvor det er muligt, en hardwarebundet nøgle.\n• Selvbeskyttelse i realtid (RASP) tjekker for manipulation, root, kodeinjektion og hooking — og fejler lukket på en kompromitteret enhed.\n• Adressesikkerhed: advarsler ved poisoning og look-alike-adresser, filtrering af spam-tokens, før du sender.\n• WalletConnect v2 med gennemgang pr. anmodning, kæde- og adressebinding, sessionsudløb og trinvis genautentificering til handlinger med høj risiko.\n\nSafety Plus (valgfrit abonnement)\nLåser op for tvangsresistente tilstande til situationer med høj risiko:\n• Nøde-PIN — en anden PIN åbner en lokke-wallet; en tvungen oplåsning afslører intet ægte.\n• Skjulte wallets — konti, der ikke vises i nogen liste eller optælling.\n• Panik-sletning — slet lokalt nøglemateriale uigenkaldeligt på forlangende.\nMånedligt eller årligt; fornyes automatisk indtil det opsiges. Administrer eller opsig når som helst i Google Play → Abonnementer.\n\nHvad Veyrnox IKKE gør\n• Ingen konto. Ingen e-mail. Ingen cloud-synkronisering. Ingen forvaltning. Ingen handel. Ingen reklamer.\n\nDu ejer seeden. Hvis du mister din seed-sætning, kan ingen — heller ikke os — gendanne din wallet. Opbevar den et sted, kun du kan nå.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

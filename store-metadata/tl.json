@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "tl",
+  "native": "Filipino",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth). Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Ligtas na Sariling Wallet",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Self-custody na crypto para sa mataas ang panganib. Ang seed mo, ang keys mo, nasa device mo. May mga mode laban sa pamimilit kapag hindi na sapat ang password.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "crypto wallet,self-custody,bitcoin,ethereum,solana,web3,ligtas na wallet,pamimilit,non-custodial",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Ang crypto mo. Ang keys mo. Nasa device mo.\n\nAng Veyrnox ay non-custodial na wallet para sa mga user na inuuna ang seguridad. Ang mga key ay ginagawa at itinatago lamang sa iyong device, naka-seal gamit ang hardware-backed (Secure Enclave) encryption — hindi kailanman sa isang server. Hindi kayang ilipat ng Veyrnox ang iyong pondo at hindi ito maaaring bawiin para sa iyo.\n\nRuntime self-protection (RASP)\nAktibong sinusuri ng Veyrnox ang sarili nitong runtime para sa pagmamanipula (tampering), rooting/jailbreaking, at code-injection, at fail-closed ito kapag may nadetect na kompromisadong environment.\n\nMga check sa kaligtasan ng address\nAwtomatikong babala para sa poisoning at halos-magkaparehong (look-alike) address, kasama ang spam-token filtering, bago ka magpadala.\n\nIsang wallet, sampung asset\nMagpadala at tumanggap ng ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, at USDT — lahat mula sa iisang recovery phrase.\n\nSafety Plus (opsyonal na subscription)\nNagbubukas ng mga mode na lumalaban sa pamimilit:\n• Duress PIN — isang hiwalay na PIN ang nagbubukas ng decoy wallet, kaya walang totoong makikita kapag napilitang mag-unlock.\n• Nakatagong wallet — mga account na hindi lumalabas sa anumang listahan o bilang.\n• Panic wipe — hindi na mababawi ang pagsira sa local key material kapag inutos.\nBuwanan o taunan; awtomatikong nagre-renew hanggang kanselahin. I-manage o kanselahin anumang oras sa iyong App Store account settings.\n\nAng Veyrnox ay non-custodial. Kung nawala ang iyong recovery phrase, walang sinuman — kabilang kami — ang makakapagbalik ng iyong wallet. I-back up ito.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Unang release.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Self-custody crypto wallet. Nasa device mo lang ang keys. Laban sa pamimilit.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Ang crypto mo. Ang keys mo. Nasa device mo.\n\nAng Veyrnox ay non-custodial na wallet para sa mga taong seryoso sa seguridad. Ang recovery phrase at private keys mo ay ginagawa sa mismong device at naka-seal gamit ang hardware-backed encryption (Android Keystore / StrongBox / TEE kung available). Hindi ito umaalis sa iyong device. Walang hawak ang Veyrnox: hindi namin kayang ilipat ang iyong pondo at hindi namin ito maibabalik para sa iyo.\n\nMga suportadong asset\nMagpadala at tumanggap ng ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, at USDT — lahat mula sa iisang BIP-39 recovery phrase.\n\nSeguridad sa device\n• AES-256-GCM vault, bubuksan gamit ang Argon2id (192 MiB KDF) at, kung available, isang hardware-bound key.\n• Runtime self-protection (RASP) na sumusuri para sa tampering, root, code injection, at hooking — at fail-closed sa isang kompromisadong device.\n• Kaligtasan ng address: babala sa poisoning at halos-magkaparehong address, spam-token filtering, bago ka magpadala.\n• WalletConnect v2 na may per-request review, chain at address binding, session expiry, at step-up re-auth para sa mga mataas-ang-panganib na aksyon.\n\nSafety Plus (opsyonal na subscription)\nNagbubukas ng mga mode na lumalaban sa pamimilit para sa mataas-ang-panganib na sitwasyon:\n• Duress PIN — isang pangalawang PIN ang nagbubukas ng decoy wallet; walang totoong makikita kapag napilitang mag-unlock.\n• Nakatagong wallet — mga account na hindi lumalabas sa anumang listahan o bilang.\n• Panic wipe — hindi na mababawi ang pagsira sa local key material kapag inutos.\nBuwanan o taunan; awtomatikong nagre-renew hanggang kanselahin. I-manage o kanselahin anumang oras sa Google Play → Subscriptions.\n\nAno ang HINDI ginagawa ng Veyrnox\n• Walang account. Walang email. Walang cloud sync. Walang custody. Walang trading. Walang ads.\n\nIkaw ang may-ari ng seed. Kung nawala ang iyong recovery phrase, walang sinuman — kabilang kami — ang makakapagbalik ng iyong wallet. I-back up ito sa lugar na ikaw lang ang makakaabot.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

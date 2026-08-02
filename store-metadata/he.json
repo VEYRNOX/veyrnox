@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "he",
+  "native": "עברית",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "ארנק בבעלות עצמית · אבטחה",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "קריפטו בבעלות עצמית למצבי לחץ גבוה. הסיד שלך, המפתחות שלך, במכשיר שלך. מצבים עמידים בפני כפייה לרגעים שבהם סיסמה לא מספיקה.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "ארנק קריפטו,בבעלות עצמית,bitcoin,ethereum,solana,web3,ארנק מאובטח,מצוקה,ללא משמורת",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "הקריפטו שלך. המפתחות שלך. במכשיר שלך.\n\nVeyrnox הוא ארנק ללא משמורת למשתמשים ששמים אבטחה במקום הראשון. המפתחות נוצרים ונשמרים רק במכשיר שלך, מוצפנים בהצפנה מבוססת חומרה (Secure Enclave) — לעולם לא בשרת. Veyrnox לא יכול להעביר את הכספים שלך ולא יכול לשחזר אותם עבורך.\n\nהגנה עצמית בזמן ריצה (RASP)\nVeyrnox בודק באופן פעיל את סביבת הריצה שלו לאיתור חבלה, רות/ג'יילברייק והזרקת קוד, ונחסם כברירת מחדל אם הוא מזהה סביבה פגועה.\n\nבדיקות בטיחות כתובות\nאזהרות אוטומטיות מפני הרעלת כתובות וכתובות דומות, וכן סינון טוקנים של ספאם, לפני שליחה.\n\nארנק אחד, עשרה נכסים\nשלחו וקבלו ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC ו-USDT — הכול מביטוי שחזור אחד.\n\nSafety Plus (מנוי אופציונלי)\nפותח מצבים עמידים בפני כפייה:\n• PIN מצוקה — PIN נפרד שפותח ארנק מדומה, כך שפתיחה בכפייה לא חושפת שום דבר אמיתי.\n• ארנקים מוסתרים — חשבונות שלא מופיעים באף רשימה או ספירה.\n• מחיקת בהלה — השמדה בלתי הפיכה של חומר המפתחות המקומי, לפי דרישה.\nחודשי או שנתי; מתחדש אוטומטית עד לביטול. אפשר לנהל או לבטל בכל עת בהגדרות חשבון App Store שלך.\n\nVeyrnox הוא ארנק ללא משמורת. אם תאבדו את ביטוי השחזור שלכם, אף אחד — כולל אנחנו — לא יוכל לשחזר את הארנק שלכם. גבו אותו.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "גרסה ראשונית.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "ארנק קריפטו ללא משמורת. המפתחות נשארים במכשיר שלך. עמיד בפני כפייה.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "הקריפטו שלך. המפתחות שלך. במכשיר שלך.\n\nVeyrnox הוא ארנק ללא משמורת לאנשים שמתייחסים לאבטחה ברצינות. ביטוי השחזור והמפתחות הפרטיים שלך נוצרים במכשיר ומוצפנים בהצפנה מבוססת חומרה (Android Keystore / StrongBox / TEE, במידה שזמין). הם לעולם לא יוצאים מהמכשיר שלך. Veyrnox לא מחזיק בכלום: אנחנו לא יכולים להעביר את הכספים שלך ולא יכולים לשחזר אותם עבורך.\n\nנכסים נתמכים\nשלחו וקבלו ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC ו-USDT — הכול מביטוי שחזור יחיד לפי BIP-39.\n\nאבטחה במכשיר\n• כספת AES-256-GCM, שנפתחת עם Argon2id (KDF של 192MiB) ובמידה שזמין, גם עם מפתח קשור-חומרה.\n• הגנה עצמית בזמן ריצה (RASP) בודקת חבלה, רות, הזרקת קוד ו-hooking — ונחסמת כברירת מחדל במכשיר פגוע.\n• בטיחות כתובות: אזהרות מפני הרעלת כתובות וכתובות דומות, וסינון טוקנים של ספאם, לפני שליחה.\n• WalletConnect v2 עם בדיקה לכל בקשה, קישור לרשת ולכתובת, תפוגת פעילות, ואימות חוזר מוגבר לפעולות בסיכון גבוה.\n\nSafety Plus (מנוי אופציונלי)\nפותח מצבים עמידים בפני כפייה למצבי לחץ גבוה:\n• PIN מצוקה — PIN שני שפותח ארנק מדומה; פתיחה בכפייה לא חושפת שום דבר אמיתי.\n• ארנקים מוסתרים — חשבונות שלא מופיעים באף רשימה או ספירה.\n• מחיקת בהלה — השמדה בלתי הפיכה של חומר המפתחות המקומי, לפי דרישה.\nחודשי או שנתי; מתחדש אוטומטית עד לביטול. אפשר לנהל או לבטל בכל עת ב-Google Play, תחת מנויים.\n\nמה ש-Veyrnox לא עושה\n• בלי חשבון. בלי אימייל. בלי סנכרון ענן. בלי משמורת. בלי מסחר. בלי פרסומות.\n\nאתם הבעלים של הסיד. אם תאבדו את ביטוי השחזור שלכם, אף אחד — כולל אנחנו — לא יוכל לשחזר את הארנק שלכם. גבו אותו במקום שרק אתם יכולים להגיע אליו.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

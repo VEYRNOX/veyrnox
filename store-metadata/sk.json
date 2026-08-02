@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "sk",
+  "native": "Slovenčina",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Vlastná úschova · Bezpečnosť",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Self-custody kryptomeny pre vysokorizikové situácie. Váš seed, vaše kľúče, vo vašom zariadení. Režimy odolné voči nátlaku pre prípady, keď heslo nestačí.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "crypto peňaženka,vlastná úschova,bitcoin,ethereum,solana,web3,bezpečná peňaženka,nátlak,bez správcu",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Vaše kryptomeny. Vaše kľúče. Vo vašom zariadení.\n\nVeyrnox je nezávislá (non-custodial) peňaženka pre používateľov, pre ktorých je bezpečnosť na prvom mieste. Kľúče sa generujú a ukladajú výlučne vo vašom zariadení, zapečatené hardvérovo podporovaným šifrovaním (Secure Enclave) — nikdy na serveri. Veyrnox nemôže premiestniť vaše prostriedky a nemôže vám ich obnoviť.\n\nOchrana za behu (RASP)\nVeyrnox aktívne kontroluje vlastné prostredie počas behu, či nedošlo k neoprávnenému zásahu, rootovaniu/jailbreaku alebo vloženiu škodlivého kódu, a pri zistení narušeného prostredia sa uzavrie (fail closed).\n\nKontroly bezpečnosti adries\nAutomatické upozornenia na „poisoning\" a podobajúce sa adresy, ako aj filtrovanie spamových tokenov pred odoslaním.\n\nJedna peňaženka, desať aktív\nOdosielajte a prijímajte ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC a USDT — všetko z jednej obnovovacej frázy.\n\nSafety Plus (voliteľné predplatné)\nOdomyká režimy odolné voči nátlaku:\n• Núdzový PIN — samostatný PIN otvorí zástupnú (decoy) peňaženku, takže vynútené odomknutie neodhalí nič skutočné.\n• Skryté peňaženky — účty, ktoré sa nezobrazujú v žiadnom zozname ani počte.\n• Panic wipe — na požiadanie nenávratne zničí lokálny kľúčový materiál.\nMesačne alebo ročne; automaticky sa obnovuje až do zrušenia. Spravujte alebo zrušte kedykoľvek v nastaveniach vášho účtu App Store.\n\nVeyrnox je nezávislá (non-custodial) peňaženka. Ak stratíte svoju obnovovaciu frázu, nikto — vrátane nás — nedokáže obnoviť vašu peňaženku. Zálohujte si ju.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Prvé vydanie.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Self-custody peňaženka. Kľúče ostávajú vo vašom zariadení. Odolná voči nátlaku.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Vaše kryptomeny. Vaše kľúče. Vo vašom zariadení.\n\nVeyrnox je nezávislá (non-custodial) peňaženka pre ľudí, ktorí berú bezpečnosť vážne. Vaša obnovovacia fráza a súkromné kľúče sa generujú priamo v zariadení a sú zapečatené hardvérovo podporovaným šifrovaním (Android Keystore / StrongBox / TEE, ak je k dispozícii). Nikdy neopustia vaše zariadenie. Veyrnox neuchováva nič: nemôžeme premiestniť vaše prostriedky a nemôžeme vám ich obnoviť.\n\nPodporované aktíva\nOdosielajte a prijímajte ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC a USDT — všetko z jednej obnovovacej frázy BIP-39.\n\nBezpečnosť priamo v zariadení\n• Trezor AES-256-GCM, odomykaný pomocou Argon2id (192 MiB KDF) a, ak je k dispozícii, kľúčom viazaným na hardvér.\n• Ochrana za behu (RASP) kontroluje neoprávnené zásahy, root, vloženie kódu a hooking — a pri narušenom zariadení sa uzavrie (fail closed).\n• Bezpečnosť adries: upozornenia na „poisoning\" a podobajúce sa adresy, filtrovanie spamových tokenov pred odoslaním.\n• WalletConnect v2 s kontrolou každej požiadavky, viazaním na reťazec a adresu, expiráciou relácie a dodatočným overením pri vysokorizikových akciách.\n\nSafety Plus (voliteľné predplatné)\nOdomyká režimy odolné voči nátlaku pre vysokorizikové situácie:\n• Núdzový PIN — druhý PIN otvorí zástupnú (decoy) peňaženku; vynútené odomknutie neodhalí nič skutočné.\n• Skryté peňaženky — účty, ktoré sa nezobrazujú v žiadnom zozname ani počte.\n• Panic wipe — na požiadanie nenávratne zničí lokálny kľúčový materiál.\nMesačne alebo ročne; automaticky sa obnovuje až do zrušenia. Spravujte alebo zrušte kedykoľvek v Google Play → Predplatné.\n\nČo Veyrnox NEROBÍ\n• Žiadny účet. Žiadny e-mail. Žiadna synchronizácia do cloudu. Žiadna úschova. Žiadne obchodovanie. Žiadna reklama.\n\nSeed patrí len vám. Ak stratíte svoju obnovovaciu frázu, nikto — vrátane nás — nedokáže obnoviť vašu peňaženku. Zálohujte si ju niekde, kam máte prístup iba vy.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

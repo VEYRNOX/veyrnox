@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "pl",
+  "native": "Polski",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Portfel self-custody · Ochrona",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Kryptowaluty self-custody na sytuacje wysokiego ryzyka. Twoja fraza-klucz, Twoje klucze, na Twoim urządzeniu. Tryby odporne na przymus, gdy hasło to za mało.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "portfel krypto,self custody,bitcoin,ethereum,solana,web3,bezpieczny portfel,przymus,non-custodial",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Twoje kryptowaluty. Twoje klucze. Na Twoim urządzeniu.\n\nVeyrnox to portfel non-custodial dla użytkowników, dla których bezpieczeństwo jest priorytetem. Klucze są generowane i przechowywane wyłącznie na Twoim urządzeniu, zabezpieczone szyfrowaniem sprzętowym (Secure Enclave) — nigdy na serwerze. Veyrnox nie może przenieść Twoich środków ani ich dla Ciebie odzyskać.\n\nOchrona środowiska uruchomieniowego (RASP)\nVeyrnox aktywnie sprawdza własne środowisko uruchomieniowe pod kątem manipulacji, roota/jailbreaka oraz wstrzykiwania kodu i domyślnie blokuje działanie, jeśli wykryje skompromitowane środowisko.\n\nWeryfikacja bezpieczeństwa adresów\nAutomatyczne ostrzeżenia przed zatruwaniem adresów i adresami łudząco podobnymi, a także filtrowanie tokenów-spamu — zanim wyślesz środki.\n\nJeden portfel, dziesięć aktywów\nWysyłaj i odbieraj ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC i USDT — wszystko z jednej frazy odzyskiwania.\n\nSafety Plus (opcjonalna subskrypcja)\nOdblokowuje tryby odporne na przymus:\n• PIN pod przymusem — osobny PIN otwiera portfel-wabik, więc wymuszone odblokowanie nie ujawnia niczego prawdziwego.\n• Ukryte portfele — konta, które nie pojawiają się na żadnej liście ani w żadnym liczniku.\n• Awaryjne wymazanie — nieodwracalnie niszczy lokalny materiał kluczy na żądanie.\nMiesięcznie lub rocznie; odnawia się automatycznie do momentu anulowania. Zarządzaj lub anuluj w dowolnym momencie w ustawieniach konta App Store.\n\nVeyrnox jest non-custodial. Jeśli zgubisz frazę odzyskiwania, nikt — łącznie z nami — nie przywróci Twojego portfela. Zrób jej kopię zapasową.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Wydanie początkowe.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Portfel krypto self-custody. Klucze zostają na urządzeniu. Odporny na przymus.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Twoje kryptowaluty. Twoje klucze. Na Twoim urządzeniu.\n\nVeyrnox to portfel non-custodial dla osób, które poważnie podchodzą do bezpieczeństwa. Twoja fraza odzyskiwania i klucze prywatne są generowane na urządzeniu i zabezpieczone szyfrowaniem sprzętowym (Android Keystore / StrongBox / TEE, jeśli dostępne). Nigdy nie opuszczają Twojego urządzenia. Veyrnox niczego nie przechowuje: nie możemy przenieść Twoich środków ani ich dla Ciebie odzyskać.\n\nObsługiwane aktywa\nWysyłaj i odbieraj ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC i USDT — wszystko z jednej frazy odzyskiwania BIP-39.\n\nBezpieczeństwo na urządzeniu\n• Sejf AES-256-GCM, odblokowywany za pomocą Argon2id (KDF 192 MiB) oraz, gdy dostępny, klucza powiązanego ze sprzętem.\n• Ochrona środowiska uruchomieniowego (RASP) wykrywa manipulacje, roota, wstrzykiwanie kodu i hooking — i domyślnie blokuje działanie na skompromitowanym urządzeniu.\n• Bezpieczeństwo adresów: ostrzeżenia przed zatruwaniem i adresami łudząco podobnymi, filtrowanie tokenów-spamu — zanim wyślesz środki.\n• WalletConnect v2 z weryfikacją każdego żądania, powiązaniem z siecią i adresem, wygasaniem sesji oraz dodatkową ponowną autoryzacją przy działaniach wysokiego ryzyka.\n\nSafety Plus (opcjonalna subskrypcja)\nOdblokowuje tryby odporne na przymus w sytuacjach wysokiego ryzyka:\n• PIN pod przymusem — drugi PIN otwiera portfel-wabik; wymuszone odblokowanie nie ujawnia niczego prawdziwego.\n• Ukryte portfele — konta, które nie pojawiają się na żadnej liście ani w żadnym liczniku.\n• Awaryjne wymazanie — nieodwracalnie niszczy lokalny materiał kluczy na żądanie.\nMiesięcznie lub rocznie; odnawia się automatycznie do momentu anulowania. Zarządzaj lub anuluj w dowolnym momencie w Google Play → Subskrypcje.\n\nCzego Veyrnox NIE robi\n• Brak konta. Brak e-maila. Brak synchronizacji w chmurze. Brak przechowywania środków. Brak handlu. Brak reklam.\n\nJesteś właścicielem seeda. Jeśli zgubisz frazę odzyskiwania, nikt — łącznie z nami — nie przywróci Twojego portfela. Zapisz ją w miejscu dostępnym tylko dla Ciebie.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

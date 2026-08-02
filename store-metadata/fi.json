@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "fi",
+  "native": "Suomi",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Itsehallinta-lompakko · Turva",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Itsehallinnassa oleva kryptolompakko korkean riskin tilanteisiin. Sinun siemenesi, sinun avaimesi, omalla laitteellasi. Pakkoa kestävät tilat, kun salasana ei riitä.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kryptolompakko,itsehallinta,bitcoin,ethereum,solana,web3,turvalompakko,pakko,ei-säilytys",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Sinun kryptosi. Sinun avaimesi. Omalla laitteellasi.\n\nVeyrnox on ei-säilyttävä lompakko käyttäjille, joille turvallisuus on etusijalla. Avaimet luodaan ja säilytetään vain laitteellasi, suojattuna laitteistopohjaisella (Secure Enclave) salauksella — ei koskaan palvelimella. Veyrnox ei voi siirtää varojasi eikä palauttaa niitä puolestasi.\n\nSuoritusaikainen itsesuojaus (RASP)\nVeyrnox tarkkailee jatkuvasti omaa suoritusaikaista tilaansa peukaloinnin, roottauksen/jailbreakin ja koodin injektoinnin varalta ja sulkeutuu turvallisesti, jos se havaitsee vaarantuneen ympäristön.\n\nOsoiteturvallisuuden tarkistukset\nAutomaattiset varoitukset myrkytys- ja huijausosoitteista sekä roskatokenien suodatus ennen lähetystä.\n\nYksi lompakko, kymmenen omaisuuserää\nLähetä ja vastaanota ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC ja USDT — kaikki yhdestä palautuslauseesta.\n\nSafety Plus (valinnainen tilaus)\nAvaa pakkoa kestävät tilat:\n• Pakko-PIN — erillinen PIN avaa harhautuslompakon, joten pakotettu avaus ei paljasta mitään todellista.\n• Piilotetut lompakot — tilejä, jotka eivät näy missään listassa tai laskurissa.\n• Hätätyhjennys — tuhoaa paikallisen avainmateriaalin peruuttamattomasti pyynnöstä.\nKuukausittain tai vuosittain; uusiutuu automaattisesti, kunnes peruutetaan. Hallinnoi tai peruuta milloin tahansa App Store -tilisi asetuksissa.\n\nVeyrnox ei säilytä varojasi. Jos kadotat palautuslauseesi, kukaan — ei edes me — voi palauttaa lompakkoasi. Ota siitä varmuuskopio.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Ensimmäinen julkaisu.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Itsehallinnan kryptolompakko. Avaimet pysyvät laitteella. Pakkoa kestävä.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Sinun kryptosi. Sinun avaimesi. Omalla laitteellasi.\n\nVeyrnox on ei-säilyttävä lompakko käyttäjille, jotka ottavat turvallisuuden vakavasti. Palautuslauseesi ja yksityiset avaimesi luodaan laitteella ja suojataan laitteistopohjaisella salauksella (Android Keystore / StrongBox / TEE, mikäli saatavilla). Ne eivät koskaan poistu laitteeltasi. Veyrnox ei säilytä mitään: emme voi siirtää varojasi emmekä palauttaa niitä puolestasi.\n\nTuetut omaisuuserät\nLähetä ja vastaanota ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC ja USDT — kaikki yhdestä BIP-39-palautuslauseesta.\n\nTurvallisuus laitteella\n• AES-256-GCM-holvi, avataan Argon2id-avaimella (192 MiB KDF) ja, mikäli saatavilla, laitteistoon sidotulla avaimella.\n• Suoritusaikainen itsesuojaus (RASP) tarkistaa peukaloinnin, roottauksen, koodin injektoinnin ja koukutuksen varalta — ja sulkeutuu turvallisesti vaarantuneella laitteella.\n• Osoiteturvallisuus: myrkytys- ja huijausvaroitukset sekä roskatokenien suodatus ennen lähetystä.\n• WalletConnect v2, jossa jokainen pyyntö tarkistetaan erikseen, ketju ja osoite sidotaan, istunto vanhenee ja korkean riskin toiminnot vaativat lisävarmennuksen.\n\nSafety Plus (valinnainen tilaus)\nAvaa pakkoa kestävät tilat korkean riskin tilanteisiin:\n• Pakko-PIN — toinen PIN avaa harhautuslompakon; pakotettu avaus ei paljasta mitään todellista.\n• Piilotetut lompakot — tilejä, jotka eivät näy missään listassa tai laskurissa.\n• Hätätyhjennys — tuhoaa paikallisen avainmateriaalin peruuttamattomasti pyynnöstä.\nKuukausittain tai vuosittain; uusiutuu automaattisesti, kunnes peruutetaan. Hallinnoi tai peruuta milloin tahansa kohdassa Google Play → Tilaukset.\n\nMitä Veyrnox EI tee\n• Ei tiliä. Ei sähköpostia. Ei pilvisynkronointia. Ei säilytystä. Ei kaupankäyntiä. Ei mainoksia.\n\nSiemen on sinun. Jos kadotat palautuslauseesi, kukaan — ei edes me — voi palauttaa lompakkoasi. Ota siitä varmuuskopio paikkaan, johon vain sinä pääset.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

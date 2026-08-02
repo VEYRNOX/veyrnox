@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "cs",
+  "native": "Čeština",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Vlastní úschova · Zabezpečení",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Kryptoměny s vlastní úschovou pro vysoce rizikové situace. Váš seed, vaše klíče, na vašem zařízení. Režimy odolné proti nátlaku pro chvíle, kdy heslo nestačí.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kryptopeněženka,vlastní úschova,bitcoin,ethereum,solana,web3,bezpečná peněženka,nátlak,necustodiální",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Vaše kryptoměny. Vaše klíče. Ve vašem zařízení.\n\nVeyrnox je necustodiální peněženka pro uživatele, kteří bezpečnost staví na první místo. Klíče se generují a ukládají výhradně na vašem zařízení, zapečetěné hardwarově podporovaným šifrováním (Secure Enclave) — nikdy na serveru. Veyrnox nemůže přesouvat vaše prostředky ani je za vás obnovit.\n\nOchrana za běhu (RASP)\nVeyrnox aktivně kontroluje své vlastní běhové prostředí kvůli neoprávněným zásahům, rootování/jailbreaku a vkládání kódu a při zjištění kompromitovaného prostředí selže uzavřeně (fail closed).\n\nKontroly bezpečnosti adres\nAutomatická upozornění na otravu adres a podobně vypadající adresy, plus filtrování spamových tokenů před odesláním.\n\nJedna peněženka, deset aktiv\nOdesílejte a přijímejte ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC a USDT — vše z jediné obnovovací fráze.\n\nSafety Plus (volitelné předplatné)\nOdemyká režimy odolné proti nátlaku:\n• Nátlakový PIN — samostatný PIN otevře podvrženou peněženku, takže vynucené odemknutí neodhalí nic skutečného.\n• Skryté peněženky — účty, které se neobjevují v žádném seznamu ani počtu.\n• Panické smazání — nevratně zničí místní klíčový materiál na vyžádání.\nMěsíčně nebo ročně; automaticky se obnovuje až do zrušení. Spravujte nebo zrušte kdykoli v nastavení účtu App Store.\n\nVeyrnox je necustodiální. Pokud ztratíte obnovovací frázi, nikdo — včetně nás — nemůže vaši peněženku obnovit. Zálohujte si ji.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "První vydání.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Kryptopeněženka s vlastní úschovou. Klíče na zařízení. Odolná vůči nátlaku.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Vaše kryptoměny. Vaše klíče. Ve vašem zařízení.\n\nVeyrnox je necustodiální peněženka pro lidi, kteří berou bezpečnost vážně. Vaše obnovovací fráze a soukromé klíče se generují přímo na zařízení a jsou zapečetěné hardwarově podporovaným šifrováním (Android Keystore / StrongBox / TEE, je-li k dispozici). Nikdy neopustí vaše zařízení. Veyrnox nic nedrží: nemůžeme přesouvat vaše prostředky ani je za vás obnovit.\n\nPodporovaná aktiva\nOdesílejte a přijímejte ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC a USDT — vše z jediné obnovovací fráze BIP-39.\n\nZabezpečení na zařízení\n• Trezor AES-256-GCM, odemykaný pomocí Argon2id (192 MiB KDF) a, je-li k dispozici, klíčem vázaným na hardware.\n• Ochrana za běhu (RASP) kontroluje neoprávněné zásahy, root, vkládání kódu a hooking — a při kompromitovaném zařízení selže uzavřeně (fail closed).\n• Bezpečnost adres: upozornění na otravu adres a podobně vypadající adresy, filtrování spamových tokenů před odesláním.\n• WalletConnect v2 s kontrolou každého požadavku, vázáním na řetězec a adresu, expirací relace a dodatečným ověřením (step-up re-auth) pro vysoce rizikové akce.\n\nSafety Plus (volitelné předplatné)\nOdemyká režimy odolné proti nátlaku pro vysoce rizikové situace:\n• Nátlakový PIN — druhý PIN otevře podvrženou peněženku; vynucené odemknutí neodhalí nic skutečného.\n• Skryté peněženky — účty, které se neobjevují v žádném seznamu ani počtu.\n• Panické smazání — nevratně zničí místní klíčový materiál na vyžádání.\nMěsíčně nebo ročně; automaticky se obnovuje až do zrušení. Spravujte nebo zrušte kdykoli v Google Play → Předplatná.\n\nCo Veyrnox NEDĚLÁ\n• Žádný účet. Žádný e-mail. Žádná cloudová synchronizace. Žádná úschova prostředků. Žádné obchodování. Žádné reklamy.\n\nSeed vlastníte vy. Pokud ztratíte obnovovací frázi, nikdo — včetně nás — nemůže vaši peněženku obnovit. Zálohujte si ji někam, kam máte přístup jen vy.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}
