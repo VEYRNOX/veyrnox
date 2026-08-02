@@ -766,6 +766,10 @@ class RaspIntegrityPlugin : Plugin() {
 
     @JvmSynthetic
     private fun detectTamper(): Boolean {
+        // Debug builds (emulator / local dev) skip the cert check — RELEASE_CERT_SHA256
+        // is always blank in assembleDebug so this would always block. Dead-code-eliminated
+        // from release builds where BuildConfig.DEBUG is false at compile time.
+        if (BuildConfig.DEBUG) return false
         if (EXPECTED_CERT_SHA256.isBlank()) {
             android.util.Log.w("RASP", "RELEASE_CERT_SHA256 not set — treating as tampered (fail-closed)")
             return true
@@ -954,27 +958,33 @@ class RaspIntegrityPlugin : Plugin() {
             } ?: false
         }.getOrDefault(false)
 
-        private fun earlyDetectTamper(context: android.content.Context): Boolean = runCatching {
-            val expected = BuildConfig.RELEASE_CERT_SHA256
-            if (expected.isBlank()) return true  // fail-closed (I4)
-            val pm = context.packageManager
-            @Suppress("DEPRECATION")
-            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-            } else {
-                pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
-            }
-            val sigs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                info.signingInfo?.apkContentsSigners
-            } else {
+        private fun earlyDetectTamper(context: android.content.Context): Boolean {
+            // Debug builds skip the cert check — RELEASE_CERT_SHA256 is blank in
+            // assembleDebug so this would always block on emulators. Dead-code-eliminated
+            // in release builds (BuildConfig.DEBUG = false at compile time).
+            if (BuildConfig.DEBUG) return false
+            return runCatching {
+                val expected = BuildConfig.RELEASE_CERT_SHA256
+                if (expected.isBlank()) return@runCatching true  // fail-closed (I4)
+                val pm = context.packageManager
                 @Suppress("DEPRECATION")
-                info.signatures
-            } ?: return true
-            val md = java.security.MessageDigest.getInstance("SHA-256")
-            val actual = sigs.firstOrNull()?.let { sig ->
-                md.digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
-            } ?: return true
-            actual != expected.replace(":", "").lowercase()
-        }.getOrElse { true }
+                val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+                } else {
+                    pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES)
+                }
+                val sigs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    info.signingInfo?.apkContentsSigners
+                } else {
+                    @Suppress("DEPRECATION")
+                    info.signatures
+                } ?: return@runCatching true
+                val md = java.security.MessageDigest.getInstance("SHA-256")
+                val actual = sigs.firstOrNull()?.let { sig ->
+                    md.digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
+                } ?: return@runCatching true
+                actual != expected.replace(":", "").lowercase()
+            }.getOrElse { true }
+        }
     }
 }
