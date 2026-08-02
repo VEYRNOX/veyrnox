@@ -27,6 +27,7 @@ import { useWallet } from '@/lib/WalletProvider';
 import { useBuyEnabled } from '@/lib/buy/useBuyEnabled';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { buildMoonpayUrl, MOONPAY_ASSET_MAP } from '@/lib/buy/moonpayUrl';
+import { signMoonpayUrl } from '@/api/moonpaySign';
 import { resolveReceive } from '@/lib/receiveAddress';
 import { toast } from '@/lib/toast';
 
@@ -128,7 +129,8 @@ export default function BuyCrypto() {
     setOpening(true);
     setShowDisclosure(false);
     try {
-      await Browser.open({ url, presentationStyle: 'popover' });
+      const signedUrl = await signMoonpayUrl(url);
+      await Browser.open({ url: signedUrl, presentationStyle: 'popover' });
     } catch {
       toast.error(t('buy.error.browser_open_failed'));
     } finally {
