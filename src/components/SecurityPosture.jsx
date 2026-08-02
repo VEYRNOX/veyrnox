@@ -60,7 +60,7 @@ import { computePostureScore } from '../lib/securityPosture';
 export const POSTURE_DISMISSED_KEY = 'veyrnox-posture-dismissed';
 
 /** @type {readonly string[]} Fields callers must never override in deniability mode. */
-const SECURITY_AUTHORITATIVE_FIELDS = ['raspTier', 'kekActive'];
+const SECURITY_AUTHORITATIVE_FIELDS = ['raspTier', 'kekActive', 'hardwareTier', 'biometricEnabled'];
 
 function readDismissState() {
   // M-3: don't read dismiss state in deniability/demo — leaves no new trace,
@@ -73,7 +73,7 @@ function readDismissState() {
     if (!parsed || typeof parsed.at !== 'number' || typeof parsed.score !== 'number') return null;
     // M-3: range validation — reject out-of-bounds or non-finite values
     if (!Number.isFinite(parsed.score) || parsed.score < 0 || parsed.score > 100) return null;
-    if (!Number.isFinite(parsed.at) || parsed.at <= 0) return null;
+    if (!Number.isFinite(parsed.at) || parsed.at <= 0 || parsed.at > Date.now()) return null;
     return parsed;
   } catch {
     return null;
@@ -156,6 +156,7 @@ export default function SecurityPosture({ state: stateOverride } = {}) {
     // but security-authoritative fields are stripped in deniability mode (M-2).
     ...sanitizedOverride,
     // Live signals applied LAST so they always win over any override:
+    biometricEnabled: biometricOn,
     raspTier: raspArtifact?.tier,
     kekActive: hardwareEnrolled,
   }), [biometricOn, raspArtifact?.tier, hardwareEnrolled, sanitizedOverride]);
