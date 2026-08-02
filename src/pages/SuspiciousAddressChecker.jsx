@@ -132,7 +132,7 @@ export default function SuspiciousAddressChecker() {
         <div>
           <label className="text-sm font-medium mb-1.5 block">Wallet Address (EVM 0x…)</label>
           <div className="flex gap-2">
-            <Input placeholder="0x… recipient address" value={address} onChange={(e) => { setAddress(e.target.value); setResult(null); }} onKeyDown={(e) => e.key === "Enter" && address && check()} className="font-mono text-sm flex-1" />
+            <Input aria-label="Wallet or contract address" placeholder="0x… recipient address" value={address} onChange={(e) => { setAddress(e.target.value); setResult(null); }} onKeyDown={(e) => e.key === "Enter" && address && check()} className="font-mono text-sm flex-1" />
             <Button disabled={!address} onClick={check} className="gap-2 shrink-0">
               <Search className="h-4 w-4" /> Screen
             </Button>

@@ -95,7 +95,7 @@ export default function TransactionReceipt() {
 
       <div className="relative">
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder={t("tx.receipt.search_placeholder")} className="ps-9" value={search} onChange={e => setSearch(e.target.value)} />
+        <Input aria-label="Search transactions" placeholder={t("tx.receipt.search_placeholder")} className="ps-9" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-3">
