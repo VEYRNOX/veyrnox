@@ -164,3 +164,222 @@ export function buildReviewItems({ approvals, spam, addresses, features = {} }) 
 
   return { review: /** @type {Array<{severity:'medium'|'high', text:string, path:string}>} */ (review) };
 }
+
+// ---------------------------------------------------------------------------
+// Posture SCORE — pure numeric scoring of device security configuration
+// (spec SS9.0.1a). No I/O, no key material, no network.
+// ---------------------------------------------------------------------------
+
+/** @typedef {'ALLOW'|'WARN'|'BLOCK'} RaspTier */
+/** @typedef {'STRONGBOX'|'SECURE_ENCLAVE'|'TEE'|null} HardwareTier */
+
+/**
+ * @typedef {Object} PostureState
+ * @property {boolean}      pinCreated
+ * @property {number|null}  pinLength
+ * @property {boolean}      biometricEnabled
+ * @property {RaspTier}     raspTier
+ * @property {boolean}      kekActive
+ * @property {HardwareTier} hardwareTier
+ * @property {boolean}      recoveryPassphraseSet
+ * @property {boolean}      shareAWrapped
+ * @property {boolean}      shareBUploaded
+ * @property {boolean}      shareCExported
+ * @property {boolean}      shareCVerified
+ * @property {boolean}      wcSpendLimitSet
+ * @property {boolean}      wcSessionExpiry
+ * @property {boolean}      wcStepUpReauth
+ */
+
+/**
+ * Score a single boolean/numeric check.
+ * @param {string} id
+ * @param {boolean} earned
+ * @param {number} points
+ * @returns {{ id: string, earned: boolean, points: number }}
+ */
+function item(id, earned, points) {
+  return { id, earned, points: earned ? points : 0 };
+}
+
+/**
+ * Score the authentication dimension (max 20).
+ * @param {PostureState} s
+ */
+function scoreAuthentication(s) {
+  const items = [
+    item('pin_created', !!s.pinCreated, 10),
+    item('pin_length_12', typeof s.pinLength === 'number' && s.pinLength >= 12, 5),
+    item('biometric_enrolled', !!s.biometricEnabled, 5),
+  ];
+  return { score: items.reduce((a, i) => a + i.points, 0), max: 20, items };
+}
+
+/**
+ * Score the device integrity / RASP dimension (max 25).
+ * @param {PostureState} s
+ */
+function scoreDeviceIntegrity(s) {
+  const tier = s.raspTier;
+  const pts = tier === 'ALLOW' ? 25 : tier === 'WARN' ? 10 : 0;
+  const items = [item('rasp_tier', pts > 0, pts)];
+  return { score: pts, max: 25, items };
+}
+
+/**
+ * Score the hardware binding dimension (max 15).
+ * KEK active = 5. StrongBox/SecureEnclave = 5, TEE = 3 (mutually exclusive).
+ * @param {PostureState} s
+ */
+function scoreHardwareBinding(s) {
+  const kekItem = item('kek_active', !!s.kekActive, 5);
+
+  const isTopTier = s.hardwareTier === 'STRONGBOX' || s.hardwareTier === 'SECURE_ENCLAVE';
+  const isTee = s.hardwareTier === 'TEE';
+
+  const hwItem = isTopTier
+    ? item('hardware_top_tier', true, 5)
+    : isTee
+      ? item('hardware_tee', true, 3)
+      : item('hardware_none', false, 0);
+
+  const items = [kekItem, hwItem];
+  return { score: items.reduce((a, i) => a + i.points, 0), max: 15, items };
+}
+
+/**
+ * Score the recovery dimension (max 30).
+ * @param {PostureState} s
+ */
+function scoreRecovery(s) {
+  const items = [
+    item('recovery_passphrase', !!s.recoveryPassphraseSet, 8),
+    item('share_a_wrapped', !!s.shareAWrapped, 2),
+    item('share_b_uploaded', !!s.shareBUploaded, 8),
+    item('share_c_exported', !!s.shareCExported, 6),
+    item('share_c_verified', !!s.shareCVerified, 6),
+  ];
+  return { score: items.reduce((a, i) => a + i.points, 0), max: 30, items };
+}
+
+/**
+ * Score the session security dimension (max 10).
+ * @param {PostureState} s
+ */
+function scoreSessionSecurity(s) {
+  const items = [
+    item('wc_spend_limit', !!s.wcSpendLimitSet, 3),
+    item('wc_session_expiry', !!s.wcSessionExpiry, 3),
+    item('wc_step_up_reauth', !!s.wcStepUpReauth, 4),
+  ];
+  return { score: items.reduce((a, i) => a + i.points, 0), max: 10, items };
+}
+
+// ---------------------------------------------------------------------------
+// Color / label thresholds
+// ---------------------------------------------------------------------------
+
+/**
+ * Map a percentage (0-100) to a hex color.
+ * @param {number} pct
+ * @returns {string}
+ */
+export function getPostureColor(pct) {
+  if (pct <= 30) return '#E85A5A';
+  if (pct <= 50) return '#E8A838';
+  if (pct <= 70) return '#D4C44A';
+  if (pct <= 85) return '#B8D44A';
+  return '#4ADAC2';
+}
+
+/**
+ * Map a percentage (0-100) to a human label.
+ * @param {number} pct
+ * @returns {string}
+ */
+export function getPostureLabel(pct) {
+  if (pct <= 30) return 'Critical';
+  if (pct <= 50) return 'Weak';
+  if (pct <= 70) return 'Fair';
+  if (pct <= 85) return 'Strong';
+  return 'Complete';
+}
+
+// ---------------------------------------------------------------------------
+// Banner message — context-aware, keyed to lowest dimension
+// ---------------------------------------------------------------------------
+
+const BANNER_MESSAGES = {
+  deviceIntegrity: 'Device integrity issue detected — tap to review',
+  authentication: 'Strengthen your authentication settings',
+  hardwareBinding: 'Hardware protection available — enable for stronger binding',
+  recovery: 'No recovery — set up backup to protect against device loss',
+  sessionSecurity: 'Tighten WalletConnect session settings',
+};
+
+/**
+ * Find the lowest-scoring dimension (by percentage) and return a banner message.
+ * @param {Record<string, {score:number, max:number}>} dimensions
+ * @returns {string}
+ */
+export function getBannerMessage(dimensions) {
+  const lowest = findLowestDimension(dimensions);
+  return BANNER_MESSAGES[lowest] || '';
+}
+
+/**
+ * Find the key of the lowest-scoring dimension by percentage (score/max).
+ * Ties broken by iteration order (authentication first).
+ * @param {Record<string, {score:number, max:number}>} dimensions
+ * @returns {string}
+ */
+function findLowestDimension(dimensions) {
+  let lowestKey = '';
+  let lowestPct = Infinity;
+  for (const [key, dim] of Object.entries(dimensions)) {
+    const pct = dim.max > 0 ? dim.score / dim.max : 1;
+    if (pct < lowestPct) {
+      lowestPct = pct;
+      lowestKey = key;
+    }
+  }
+  return lowestKey;
+}
+
+// ---------------------------------------------------------------------------
+// Main entry point
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the full posture score from device security state.
+ * Pure function -- no I/O, no side effects.
+ *
+ * @param {PostureState} state
+ * @returns {{
+ *   total: number,
+ *   percentage: number,
+ *   color: string,
+ *   label: string,
+ *   dimensions: Record<string, {score:number, max:number, items:Array}>,
+ *   lowestDimension: string,
+ *   bannerMessage: string,
+ * }}
+ */
+export function computePostureScore(state) {
+  const dimensions = {
+    authentication: scoreAuthentication(state),
+    deviceIntegrity: scoreDeviceIntegrity(state),
+    hardwareBinding: scoreHardwareBinding(state),
+    recovery: scoreRecovery(state),
+    sessionSecurity: scoreSessionSecurity(state),
+  };
+
+  const total = Object.values(dimensions).reduce((a, d) => a + d.score, 0);
+  const percentage = total; // max is 100
+  const color = getPostureColor(percentage);
+  const label = getPostureLabel(percentage);
+  const lowestDimension = findLowestDimension(dimensions);
+  const bannerMessage = getBannerMessage(dimensions);
+
+  return { total, percentage, color, label, dimensions, lowestDimension, bannerMessage };
+}
