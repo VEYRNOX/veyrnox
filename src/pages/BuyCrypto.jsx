@@ -66,6 +66,7 @@ export default function BuyCrypto() {
   const [showDisclosure, setShowDisclosure] = useState(false);
   const [opening, setOpening] = useState(false);
   const [webIframeUrl, setWebIframeUrl] = useState(null);
+  const [iframeReloadKey, setIframeReloadKey] = useState(0);
   const iframeRef = useRef(null);
 
   const handleAssetChange = useCallback((sym) => {
@@ -240,12 +241,16 @@ export default function BuyCrypto() {
         {t('buy.continue')}
       </Button>
 
-      {/* Web-only: full-screen iframe overlay so Privacy/Terms links stay in-app */}
+      {/* Web-only: full-screen iframe overlay.
+          sandbox omits allow-popups so Privacy/Terms links navigate within
+          the iframe instead of opening a new tab the user can't return from.
+          "← Back to purchase" re-mounts MoonPay at the original URL.
+          X closes the overlay and routes to /buy/in-progress. */}
       {webIframeUrl && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background" data-testid="moonpay-iframe-overlay">
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
             <button
-              onClick={handleCloseIframe}
+              onClick={() => setIframeReloadKey((k) => k + 1)}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
               aria-label={t('buy.iframe.back_label')}
             >
@@ -262,10 +267,12 @@ export default function BuyCrypto() {
             </button>
           </div>
           <iframe
+            key={iframeReloadKey}
             ref={iframeRef}
             src={webIframeUrl}
             className="flex-1 w-full border-0"
             allow="accelerometer; autoplay; camera; gyroscope; payment"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
             title="MoonPay"
             onLoad={() => {
               try {
@@ -275,7 +282,7 @@ export default function BuyCrypto() {
                   navigate('/buy/in-progress');
                 }
               } catch {
-                // cross-origin load — normal, ignore
+                // cross-origin — normal on MoonPay pages, ignore
               }
             }}
           />
