@@ -286,6 +286,7 @@ export const KNOWLEDGE_BASE = {
 
 export function findLocalAnswer(question) {
   const q = question.toLowerCase();
+  /** @type {{ q: string, a: string } | null} */
   let bestMatch = null;
   let bestScore = 0;
 
