@@ -49,7 +49,7 @@ describe('composite score', () => {
   it('always returns one entry per signal, same shape (deniability-safe structure)', () => {
     const r = score(...benign());
     expect(Array.isArray(r.signals)).toBe(true);
-    expect(r.signals).toHaveLength(8);
+    expect(r.signals).toHaveLength(9);
     for (const s of r.signals) {
       expect(s).toHaveProperty('id');
       expect(s).toHaveProperty('level');

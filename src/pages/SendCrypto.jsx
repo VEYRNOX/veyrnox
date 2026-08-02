@@ -78,6 +78,7 @@ import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
+import { screenTransaction } from "@/api/tipScreen";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
@@ -88,6 +89,20 @@ import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
+
+// Merge TIP threat-intel risks into a simulation result for TransactionPreview.
+// Returns the original result unchanged when tipResult is absent.
+function enrichWithTip(simResult, tipResult) {
+  if (!simResult || !tipResult || !tipResult.risks?.length) return simResult;
+  return {
+    ...simResult,
+    risks: [...(simResult.risks || []), ...tipResult.risks],
+    source: {
+      ...(simResult.source || {}),
+      mode: simResult.source?.mode ? `${simResult.source.mode}+tip` : 'tip',
+    },
+  };
+}
 
 // M-3: form-boundary amount validity. `parseFloat(amount) <= 0` alone ACCEPTS
 // scientific notation ("1e-8" parses to a small positive float) and other
@@ -666,6 +681,27 @@ export default function SendCrypto() {
     [toAddress, knownAddresses]
   );
 
+  // TIP REMOTE SCREENING (opt-in, off by default). I2: only fires when the user
+  // has explicitly enabled remoteScreen. I3: screenTransaction returns null in
+  // deniability/demo. Runs at the verify step so the form step makes no call.
+  const tipChain = isBtc ? 'btc' : isSolana ? 'solana' : 'evm';
+  const tipQuery = useQuery({
+    queryKey: ['tip-screen', toAddress, selectedWallet?.address, tipChain, canonicalAmount],
+    queryFn: () => screenTransaction({
+      chain: tipChain,
+      actionType: isErc20 ? 'token_transfer' : 'transfer',
+      from: selectedWallet?.address,
+      to: toAddress,
+      ...(isErc20 && selectedAsset?.contractAddress && { contractAddress: selectedAsset.contractAddress }),
+      ...(riskCalldata && { calldata: riskCalldata }),
+      ...(canonicalAmount && { valueWei: canonicalAmount }),
+      recentCounterparties: knownAddresses.slice(0, 20).map(k => k.address),
+    }),
+    enabled: remoteScreen && step === 'verify' && !!toAddress && !!selectedWallet?.address && addressFormatValid,
+    staleTime: 30_000,
+    retry: false,
+  });
+
   // SPEND-LIMIT ENFORCEMENT (Security Center → Tx Limits). Evaluates this send
   // against the user's per-transaction AND daily caps. The daily cap was
   // previously saved-but-never-read (security theatre); it is now enforced by
@@ -805,12 +841,17 @@ export default function SendCrypto() {
       whitelist,
       recipientCode,
     });
+    // S9: inject TIP result into chainData when remote screening is enabled and
+    // has returned. tipResult is null when opt-out, deniability, or unconfigured —
+    // S9 returns OK in that case and contributes nothing to the composite.
+    if (tipQuery.data) chainData.tipResult = tipQuery.data;
     return score(unsignedTx, activeSetLocalState, chainData);
   };
 
-  // Does the risk score apply to this send at all? (EVM family / ERC-20 with a
-  // format-valid recipient.) Non-EVM sends are not scored.
-  const riskApplicable = !!toAddress && addressFormatValid && (isEvmFamily(selectedAsset) || isErc20);
+  // Does the risk score apply to this send at all? EVM/ERC-20 always scored
+  // (local signals S1–S8). BTC/SOL scored only when TIP remote screening is
+  // enabled (S9 is the sole contributor; S1–S8 are EVM-specific and return OK).
+  const riskApplicable = !!toAddress && addressFormatValid && (isEvmFamily(selectedAsset) || isErc20 || (remoteScreen && (isBtc || isSolana)));
   // We wait for the simulation to settle (data or error) before judging so S7
   // doesn't flash a transient fail-closed CAUTION while eth_getCode loads.
   const riskVerdict = useMemo(() => {
@@ -820,7 +861,7 @@ export default function SendCrypto() {
     // every input it touches (canonicalAmount included — native sends carry value,
     // not calldata, so amount must invalidate even when riskCalldata is null).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toAddress, canonicalAmount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
+  }, [toAddress, canonicalAmount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data, tipQuery.data]);
 
   // RISK acknowledgement ("Sign anyway"). Reset whenever the breach could change —
   // amount, asset, or recipient — so a stale ack never carries into a changed send
@@ -1349,6 +1390,7 @@ export default function SendCrypto() {
   }
 
   return (
+    <>
     <div className="max-w-md mx-auto space-y-6">
       {fromDetail && <BackButton />}
       <div>
@@ -1554,8 +1596,11 @@ export default function SendCrypto() {
                 <input type="checkbox" className="mt-0.5" checked={remoteScreen} onChange={e => toggleRemoteScreen(e.target.checked)} />
                 <span>{tw("send.screening.remote_opt_in")}</span>
               </label>
-              {remoteScreen && (
+              {remoteScreen && !import.meta.env.VITE_TIP_BASE_URL && (
                 <p className="text-destructive/80">{tw("send.screening.remote_unavailable")}</p>
+              )}
+              {remoteScreen && import.meta.env.VITE_TIP_BASE_URL && (
+                <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
               )}
               {DEMO && (
                 <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">
@@ -1811,7 +1856,7 @@ export default function SendCrypto() {
             disabled={!walletId || !assetSymbol || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive)}
             onClick={() => {
               const invalid = !toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid
-                || (balanceKnown && parseFloat(canonicalAmount) > effectiveBalance)
+                || (!devUngated && balanceKnown && parseFloat(canonicalAmount) > effectiveBalance)
                 || (limitEval.blocked && !limitAck);
               if (invalid) { setShowErrors(true); return; }
               setShowErrors(false);
@@ -1901,13 +1946,14 @@ export default function SendCrypto() {
 
             {/* PRE-SIGN SIMULATION — predicted balance changes, decoded call, and
                 KNOWN risk flags, dry-run against your own RPC before you confirm.
-                Local-only; warns, never blocks; never claims "safe". */}
+                Local-only baseline; TIP threat signals appended when remote
+                screening is enabled (risks[] merge, same RiskRow shape). */}
             {(isEvmFamily(selectedAsset) || isErc20) && (
-              <TransactionPreview result={txSim.data} loading={txSim.isFetching && !txSim.data} error={txSim.error} />
+              <TransactionPreview result={enrichWithTip(txSim.data, tipQuery.data)} loading={txSim.isFetching && !txSim.data} error={txSim.error} />
             )}
             {/* BTC preview (H-1/M-2): the exact decoded tx + fee before signing. */}
             {isBtc && (
-              <TransactionPreview result={btcSim.data} loading={btcSim.isFetching && !btcSim.data} error={btcSim.error} />
+              <TransactionPreview result={enrichWithTip(btcSim.data, tipQuery.data)} loading={btcSim.isFetching && !btcSim.data} error={btcSim.error} />
             )}
             {/* BTC risk gate (M-2): a high-severity decode flag (e.g. sends all inputs /
                 no change) must be explicitly acknowledged before Confirm & Send. */}
@@ -2127,5 +2173,6 @@ export default function SendCrypto() {
         )}
       </div>
     </div>
+    </>
   );
 }
