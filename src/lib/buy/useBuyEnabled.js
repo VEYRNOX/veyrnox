@@ -38,7 +38,10 @@ const SHIP_GATE = import.meta.env.VITE_BUY_ENABLED === 'true';
 
 /** React hook: true iff the Buy entry should render. */
 export function useBuyEnabled() {
-  const notDeniable = useSyncExternalStore(subscribe, getSnapshot, () => true);
+  // getServerSnapshot returns FALSE, not true. There is no SSR today so this is
+  // inert, but the default for a fail-closed gate must be "hide" — a snapshot
+  // that claims "not in deniability" is the wrong way to be wrong (I4).
+  const notDeniable = useSyncExternalStore(subscribe, getSnapshot, () => false);
   return SHIP_GATE && notDeniable;
 }
 

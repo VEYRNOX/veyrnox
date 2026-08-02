@@ -94,11 +94,11 @@ export const CLASSIFICATION = {
   },
   '/buy': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Transak on-ramp entry. Amount + fiat + asset/network picker; on Continue, buildTransakUrl() reads the correct deposit address from the on-device wallet at press-time (never cached, never from URL param) and Browser.open() hands off to Transak\'s hosted widget in SFSafariViewController / Chrome Custom Tabs. Two-chokepoint deniability gate (render + URL builder throw BUY_DENIABILITY_BLOCKED). Ship gate: VITE_BUY_ENABLED defaults false — dead-code-eliminated from prod builds until Transak partner agreement + prod keys.',
+    note: 'Transak on-ramp entry. Amount + fiat + asset/network picker; on Continue, buildTransakUrl() reads the correct deposit address from the on-device wallet at press-time (never cached, never from URL param) and Browser.open() hands off to Transak\'s hosted widget in SFSafariViewController / Chrome Custom Tabs. Two-chokepoint deniability gate (render + URL builder throw BUY_DENIABILITY_BLOCKED). Ship gate: VITE_BUY_ENABLED defaults false. Precisely: the ENTRY TILES are dead-code-eliminated (SHIP_GATE is a load-time constant Vite folds), but this page and /buy/in-progress are NOT — their lazy imports and routes in App.jsx are unconditional, so both chunks ship in production and each needs its own render gate. No purchase has ever been completed on either store; BUILT (staging-gated), not verified.',
   },
   '/buy/in-progress': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Neutral polling screen for the Transak return. Never trusts the return-URL payload as proof of success — confirmation comes from on-chain observation of the deposit address (same code path any incoming transaction uses). Hidden in deniability/demo. Ship-gated by VITE_BUY_ENABLED.',
+    note: 'Neutral waiting screen for the Transak return. It POLLS NOTHING and shows no confirmation signal — earlier versions of this note claimed "confirmation comes from on-chain observation", which the file itself contradicts; it renders static copy plus links to Dashboard/Receive, which poll the addresses. The property that holds is negative and is the one that matters: nothing from the return-URL payload is read or displayed, so a spoofed return cannot fake a success. Gated at RENDER on both deniability and VITE_BUY_ENABLED — the route and its lazy chunk are registered unconditionally in App.jsx, so the ship gate does NOT dead-code-eliminate this page and a render check is the only thing standing between a production build and a fabricated "purchase in progress".',
   },
   '/tx-history': {
     verdict: 'live', dataSource: 'wallet-core',

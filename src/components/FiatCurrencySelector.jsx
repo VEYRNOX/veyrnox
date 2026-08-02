@@ -9,63 +9,21 @@
 //   - forced 2 decimal places even for currencies that use 0 (JPY)
 //   - hardcoded symbols that don't disambiguate (AUD vs USD both `$`)
 //
-// The FX-conversion rates below are STILL hardcoded and stale — Phase 1 keeps
-// the selector functional under the new formatting path; a live FX feed is
-// out of scope (needs backend + I2/I3 review) and tracked separately.
+// The FX-conversion rates are STILL hardcoded and stale (see lib/fiatCurrencies.js)
+// — Phase 1 keeps the selector functional under the new formatting path; a live
+// FX feed is out of scope (needs backend + I2/I3 review) and tracked separately.
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { resolveLocale } from "@/lib/locale";
+import { FIAT_CURRENCIES } from "@/lib/fiatCurrencies";
 
-// Global fiat set matching the on-ramp partner (Transak) coverage. The `rate`
-// is USD→local, HARDCODED and STALE — used only for the wallet's display
-// conversion of USD-denominated portfolio values into the user's chosen fiat.
-// The actual on-ramp exchange rate is quoted live by Transak inside their
-// widget at the point of purchase; nothing here influences what the user is
-// charged. A live FX feed is out of scope (needs backend + I2/I3 review).
-// Rates as of mid-2026 mid-market; refresh when the live feed lands.
-export const FIAT_CURRENCIES = {
-  // Americas
-  USD: { rate: 1,      label: "USD", name: "US Dollar",         flag: "🇺🇸" },
-  CAD: { rate: 1.37,   label: "CAD", name: "Canadian Dollar",   flag: "🇨🇦" },
-  MXN: { rate: 17.1,   label: "MXN", name: "Mexican Peso",      flag: "🇲🇽" },
-  BRL: { rate: 5.05,   label: "BRL", name: "Brazilian Real",    flag: "🇧🇷" },
-  ARS: { rate: 950,    label: "ARS", name: "Argentine Peso",    flag: "🇦🇷" },
-  COP: { rate: 4100,   label: "COP", name: "Colombian Peso",    flag: "🇨🇴" },
-  CLP: { rate: 940,    label: "CLP", name: "Chilean Peso",      flag: "🇨🇱" },
-  // Europe
-  EUR: { rate: 0.92,   label: "EUR", name: "Euro",              flag: "🇪🇺" },
-  GBP: { rate: 0.79,   label: "GBP", name: "British Pound",     flag: "🇬🇧" },
-  CHF: { rate: 0.88,   label: "CHF", name: "Swiss Franc",       flag: "🇨🇭" },
-  SEK: { rate: 10.5,   label: "SEK", name: "Swedish Krona",     flag: "🇸🇪" },
-  NOK: { rate: 10.8,   label: "NOK", name: "Norwegian Krone",   flag: "🇳🇴" },
-  DKK: { rate: 6.85,   label: "DKK", name: "Danish Krone",      flag: "🇩🇰" },
-  PLN: { rate: 3.98,   label: "PLN", name: "Polish Zloty",      flag: "🇵🇱" },
-  CZK: { rate: 23,     label: "CZK", name: "Czech Koruna",      flag: "🇨🇿" },
-  HUF: { rate: 358,    label: "HUF", name: "Hungarian Forint",  flag: "🇭🇺" },
-  RON: { rate: 4.55,   label: "RON", name: "Romanian Leu",      flag: "🇷🇴" },
-  // Asia-Pacific
-  JPY: { rate: 149,    label: "JPY", name: "Japanese Yen",      flag: "🇯🇵" },
-  KRW: { rate: 1370,   label: "KRW", name: "South Korean Won",  flag: "🇰🇷" },
-  HKD: { rate: 7.82,   label: "HKD", name: "Hong Kong Dollar",  flag: "🇭🇰" },
-  SGD: { rate: 1.35,   label: "SGD", name: "Singapore Dollar",  flag: "🇸🇬" },
-  TWD: { rate: 32,     label: "TWD", name: "Taiwan Dollar",     flag: "🇹🇼" },
-  INR: { rate: 83.5,   label: "INR", name: "Indian Rupee",      flag: "🇮🇳" },
-  IDR: { rate: 15900,  label: "IDR", name: "Indonesian Rupiah", flag: "🇮🇩" },
-  PHP: { rate: 57,     label: "PHP", name: "Philippine Peso",   flag: "🇵🇭" },
-  THB: { rate: 36,     label: "THB", name: "Thai Baht",         flag: "🇹🇭" },
-  MYR: { rate: 4.72,   label: "MYR", name: "Malaysian Ringgit", flag: "🇲🇾" },
-  VND: { rate: 25400,  label: "VND", name: "Vietnamese Dong",   flag: "🇻🇳" },
-  AUD: { rate: 1.53,   label: "AUD", name: "Australian Dollar", flag: "🇦🇺" },
-  NZD: { rate: 1.68,   label: "NZD", name: "New Zealand Dollar",flag: "🇳🇿" },
-  // Middle East + Africa
-  AED: { rate: 3.67,   label: "AED", name: "UAE Dirham",        flag: "🇦🇪" },
-  SAR: { rate: 3.75,   label: "SAR", name: "Saudi Riyal",       flag: "🇸🇦" },
-  ILS: { rate: 3.75,   label: "ILS", name: "Israeli Shekel",    flag: "🇮🇱" },
-  TRY: { rate: 32,     label: "TRY", name: "Turkish Lira",      flag: "🇹🇷" },
-  ZAR: { rate: 18.7,   label: "ZAR", name: "South African Rand",flag: "🇿🇦" },
-  NGN: { rate: 1550,   label: "NGN", name: "Nigerian Naira",    flag: "🇳🇬" },
-  KES: { rate: 129,    label: "KES", name: "Kenyan Shilling",   flag: "🇰🇪" },
-  GHS: { rate: 15.8,   label: "GHS", name: "Ghanaian Cedi",     flag: "🇬🇭" },
-};
+// The catalogue itself lives in lib/fiatCurrencies.js — a pure data module with
+// no imports. It must NOT live here: lib/locale.js derives SUPPORTED_FIAT from
+// it at module-evaluation time, and this file imports resolveLocale back from
+// lib/locale.js, so owning the map here creates a cycle that throws at module
+// init whenever this component is evaluated first. Re-exported for the existing
+// import sites; new code should import from lib/fiatCurrencies directly.
+export { FIAT_CURRENCIES };
+
 
 /**
  * Format a USD-denominated amount as a display string in the requested fiat.
