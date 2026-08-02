@@ -149,7 +149,10 @@ export default function BuyCrypto() {
         <Label>{t('buy.asset_label')}</Label>
         <Select value={asset} onValueChange={handleAssetChange}>
           <SelectTrigger>
-            <SelectValue />
+            <div className="flex items-center gap-2">
+              <CoinLogo symbol={asset} size={20} />
+              <span>{asset}</span>
+            </div>
           </SelectTrigger>
           <SelectContent>
             {SUPPORTED_SYMBOLS.map((sym) => (
