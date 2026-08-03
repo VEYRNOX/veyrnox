@@ -68,6 +68,9 @@
 :global(:root:not(.dark)) .txRow span:first-child {
   color: #4a5568;
 }
+:global(:root:not(.dark)) .feeNote {
+  color: #4a5568;
+}
 :global(:root:not(.dark)) .methodBadge {
   background: #e8eaed;
   color: #4a5568;
@@ -155,6 +158,10 @@
 .mono { font-family: 'IBM Plex Mono', monospace; color: #f0f2f5; word-break: break-all; max-width: 72%; text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1, 'zero' 1; }
 .networkMainnet { font-family: 'IBM Plex Mono', monospace; color: #f85149; font-weight: 700; word-break: break-all; max-width: 72%; text-align: right; }
 .mainnetFlag { background: rgba(248, 81, 73, 0.12); border: 1px solid rgba(248, 81, 73, 0.45); border-radius: 8px; padding: 9px 11px; color: #f85149; font-weight: 600; font-size: 0.82rem; line-height: 1.45; margin: 0; }
+/* H-7 — explains that the fee row is a CEILING. Deliberately muted, not an
+   alert: red is reserved here for the real-funds/mainnet warning, and styling a
+   routine fee disclosure as an alarm would dilute that signal. */
+.feeNote { color: #8b949e; font-size: 0.78rem; line-height: 1.45; margin: 0; }
 .simBtn {
   background: #1D222B;
   border: 1px solid #2d3748;
