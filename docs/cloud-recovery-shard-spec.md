@@ -109,9 +109,29 @@ Each share is 33 bytes: 1 byte x-coordinate (share index, 1–3) + 32 bytes
 y-values. The x-coordinate is non-secret (it identifies which share this is).
 
 **Library:** `@noble/shamir` (if available) or a hand-rolled GF(2^8) implementation
-(~200 lines). The implementation MUST be constant-time on the share bytes to prevent
-timing side-channels during reconstruction. The same `@noble` / `@scure` audit
-lineage as the rest of the crypto stack.
+(~200 lines). The same `@noble` / `@scure` audit lineage as the rest of the crypto
+stack.
+
+**Timing requirement (reworded 2026-08-03, audit M-7).** This previously read
+"MUST be constant-time on the share bytes". That bar is not achievable in
+JavaScript and the shipped code did not meet it, so the requirement is restated
+as something both achievable and mechanically verifiable:
+
+> The GF(2^8) routines MUST contain no data-dependent branches and no
+> secret-indexed memory access. Multiplication runs a fixed number of iterations
+> with arithmetic masks in place of conditionals; inversion uses a fixed
+> square-and-multiply chain. No log/exp lookup tables.
+
+Enforced by `src/wallet-core/__tests__/shamir.constant-time.test.js`, which scans
+the source for branches, ternaries and indexed reads inside `gfMul`/`gfInv`.
+
+**What this does NOT claim.** JavaScript cannot guarantee constant-time execution
+end to end — JIT deoptimisation, GC pauses and engine-level specialisation on
+integer ranges are outside our control. An attacker with the ability to take
+precise local timing measurements is also, in this threat model, an attacker with
+code execution on the device, who has far cheaper avenues (reading process
+memory) than cache-timing analysis. The residual risk is accepted and disclosed
+rather than papered over with a guarantee the language cannot honour.
 
 **RNG:** `crypto.getRandomValues` for the random polynomial coefficients — the
 same CSPRNG used for DEK generation. Never `Math.random`.
@@ -750,7 +770,7 @@ No mechanism is deprecated.
 
 | Module | Responsibility |
 |---|---|
-| `src/wallet-core/keystore/shamir.js` | GF(2^8) split/combine, constant-time |
+| `src/wallet-core/shamir.js` (actual path — the spec's `keystore/` location was never used) | GF(2^8) split/combine; branch-free, table-free (see §Timing requirement) |
 | `src/wallet-core/keystore/recoveryShare.js` | Share B encryption/decryption, cloud transport |
 | `src/wallet-core/keystore/localShare.js` | Share C encoding (QR/NFC/file), scanning |
 
