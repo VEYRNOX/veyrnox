@@ -39,8 +39,14 @@ describe('screenTransaction — response schema validation (M-4)', () => {
 
   async function withResponse(payload) {
     vi.resetModules();
-    vi.stubEnv('VITE_TIP_API_KEY', 'test-key');
-    vi.stubEnv('VITE_TIP_SIGNING_SECRET', 'test-secret');
+    // H-4 (audit 2026-08-03): the client no longer holds VITE_TIP_API_KEY /
+    // VITE_TIP_SIGNING_SECRET — those are Edge Function secrets, and setting
+    // them here makes getClient() REFUSE (asserted in tipScreen.proxy.test.js),
+    // which would return null and break every assertion below on null.verdict.
+    // The client is configured with Supabase credentials plus VITE_TIP_BASE_URL
+    // as the feature switch.
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
     vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
     const dm = await import('@/wallet-core/deniabilitySession.js');
     dm.isDeniabilityOrDemoActive.mockReturnValue(false);
@@ -105,8 +111,14 @@ describe('screenTransaction — response schema validation (M-4)', () => {
 
   it('a thrown client error still fails closed to CAUTION (unchanged behaviour)', async () => {
     vi.resetModules();
-    vi.stubEnv('VITE_TIP_API_KEY', 'test-key');
-    vi.stubEnv('VITE_TIP_SIGNING_SECRET', 'test-secret');
+    // H-4 (audit 2026-08-03): the client no longer holds VITE_TIP_API_KEY /
+    // VITE_TIP_SIGNING_SECRET — those are Edge Function secrets, and setting
+    // them here makes getClient() REFUSE (asserted in tipScreen.proxy.test.js),
+    // which would return null and break every assertion below on null.verdict.
+    // The client is configured with Supabase credentials plus VITE_TIP_BASE_URL
+    // as the feature switch.
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
     vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
     const dm = await import('@/wallet-core/deniabilitySession.js');
     dm.isDeniabilityOrDemoActive.mockReturnValue(false);
