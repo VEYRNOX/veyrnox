@@ -1,72 +1,63 @@
 // @ts-nocheck
-// TIP Client SDK — HMAC-SHA256 request signing (F1: per-key derived secret).
-// Web Crypto only — works in browser, Capacitor, and Workers.
+// TIP Client SDK — talks to the Veyrnox-hosted signing proxy, never to TIP
+// directly.
+//
+// Audit 2026-08-03 H-4. This module used to hold the TIP HMAC signing secret and
+// derive the per-key secret in the browser:
+//
+//   keySecret = HMAC(signingSecret, sha256(apiKey))
+//
+// with `signingSecret` read from import.meta.env.VITE_TIP_SIGNING_SECRET. Vite
+// statically inlines every VITE_-prefixed variable into the built bundle — web
+// and the Capacitor app alike — and the identifier-renaming obfuscation in
+// vite.config.js does not hide string literals. An HMAC scheme whose verifying
+// secret is shipped to the caller authenticates nothing: anyone who unpacks the
+// bundle can forge a validly-signed request. Per the TIP backend's own review
+// (F1), that secret is also the root from which every tenant's per-key secret is
+// derived, so re-deriving it client-side inverted the whole mitigation.
+//
+// Signing now happens in supabase/functions/tip-screen, which holds TIP_API_KEY
+// and TIP_SIGNING_SECRET as server-side secrets. The client sends an UNSIGNED
+// request to that proxy with the Supabase anon key, exactly like every other
+// Supabase call in this app.
+//
+// Nothing leaked: VITE_TIP_* was never set in .env.example, .env.staging or CI,
+// so the feature has been inert in every build. This is the architecture landing
+// before the endpoint is provisioned rather than after.
 
-const enc = new TextEncoder();
-
-async function sha256Hex(input) {
-  const hash = await crypto.subtle.digest('SHA-256', enc.encode(input));
-  return bufToHex(new Uint8Array(hash));
-}
-
-async function hmacHex(message, secret) {
-  const key = await crypto.subtle.importKey(
-    'raw', enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
-  return bufToHex(new Uint8Array(sig));
-}
-
-function bufToHex(buf) {
-  return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-export function createTipClient({ apiKey, signingSecret, baseUrl, timeout = 10_000 }) {
-  if (!apiKey || !signingSecret || !baseUrl) {
-    throw new Error('tipClient: apiKey, signingSecret, and baseUrl are required');
+export function createTipClient({ proxyUrl, anonKey, timeout = 10_000 }) {
+  if (!proxyUrl || !anonKey) {
+    throw new Error('tipClient: proxyUrl and anonKey are required');
   }
 
-  const url = baseUrl.replace(/\/$/, '');
-  let _keySecret = null;
+  const url = proxyUrl.replace(/\/$/, '');
 
-  async function getKeySecret() {
-    if (_keySecret) return _keySecret;
-    const keyHash = await sha256Hex(apiKey);
-    _keySecret = await hmacHex(keyHash, signingSecret);
-    return _keySecret;
-  }
-
-  async function signedFetch(path, body) {
-    const keySecret = await getKeySecret();
-    const bodyStr = JSON.stringify(body);
-    const ts = Math.floor(Date.now() / 1000).toString();
-    const sig = await hmacHex(`${ts}.${bodyStr}`, keySecret);
-
+  async function proxyFetch(body) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
-
     try {
-      const resp = await fetch(`${url}${path}`, {
+      return await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Api-Key': apiKey,
-          'X-Timestamp': ts,
-          'X-Signature': sig,
+          // The Supabase anon key is PUBLIC by design — it is the same bar every
+          // other RPC in this app sits behind, and it is not authentication.
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
         },
-        body: bodyStr,
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
-      return resp;
     } finally {
       clearTimeout(timer);
     }
   }
 
   async function screen(params) {
+    // request_id is assigned SERVER-side now. It used to be built here with
+    // Math.random(), which this project's own rules forbid for anything
+    // security-relevant, and it is one less caller-controlled field reaching TIP.
     const body = {
-      request_id: params.request_id || `tip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       chain: params.chain,
       action_type: params.action_type,
       from_address: params.from_address,
@@ -79,7 +70,7 @@ export function createTipClient({ apiKey, signingSecret, baseUrl, timeout = 10_0
       ...(params.recent_counterparties && { recent_counterparties: params.recent_counterparties }),
     };
 
-    const resp = await signedFetch('/api/v1/screen', body);
+    const resp = await proxyFetch(body);
 
     if (!resp.ok) {
       const errBody = await resp.json().catch(() => ({ error: resp.statusText }));
@@ -92,69 +83,12 @@ export function createTipClient({ apiKey, signingSecret, baseUrl, timeout = 10_0
     return resp.json();
   }
 
-  async function chat(messages, context) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 30_000);
-
-    try {
-      const resp = await fetch(`${url}/api/v1/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, context }),
-        signal: controller.signal,
-      });
-
-      if (!resp.ok) {
-        const errBody = await resp.json().catch(() => ({ error: resp.statusText }));
-        throw new Error(errBody.error || `TIP chat failed: ${resp.status}`);
-      }
-
-      return parseSseStream(resp.body);
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  async function health() {
-    const resp = await fetch(`${url}/health`);
-    return resp.json();
-  }
-
-  return { screen, chat, health };
-}
-
-async function* parseSseStream(body) {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6);
-        if (data === '[DONE]') {
-          yield { token: '', done: true };
-          return;
-        }
-        try {
-          const parsed = JSON.parse(data);
-          yield { token: parsed.response || '', done: false };
-        } catch {
-          yield { token: data, done: false };
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
+  // chat() and health() lived here and were dead code — nothing in the app ever
+  // called either (SecurityAdvisor does its own inline fetch). They pointed at
+  // the TIP host directly, so leaving them after the proxy move would have left
+  // two functions silently aimed at the wrong origin. Removed rather than
+  // rewired: an unused code path is not worth the footgun.
+  return { screen };
 }
 
 export function verdictToRiskLevel(verdict) {
