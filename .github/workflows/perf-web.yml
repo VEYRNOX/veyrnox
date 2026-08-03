@@ -73,7 +73,13 @@ jobs:
           exit 1
 
       - name: Lighthouse-CI
-        run: npx lhci autorun --config=perf/lighthouserc.json
+        # tee the output so the job summary can show the MEASURED values, not just
+        # a pass/fail. `pipefail` keeps the assertion exit code as the step's exit
+        # code — piping through tee would otherwise mask a failed budget.
+        run: |
+          set -o pipefail
+          mkdir -p perf/results
+          npx lhci autorun --config=perf/lighthouserc.json 2>&1 | tee perf/results/lhci.log
 
       - name: Stop preview server
         if: always()
@@ -90,11 +96,45 @@ jobs:
           path: |
             perf/results/
             .lighthouseci/
+          # `.lighthouseci/` is a DOT-directory, and upload-artifact@v4 excludes
+          # hidden paths by default — so every artifact this job has ever produced
+          # contained only serve.log, never a single Lighthouse report, while the
+          # summary claimed otherwise. Without this flag the budget failures are
+          # undiagnosable after the fact.
+          include-hidden-files: true
           retention-days: 30
 
       - name: Job summary
         if: always()
         run: |
-          echo "## Lighthouse-CI sweep" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Full reports uploaded as artifact (\`.lighthouseci/\`)." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Lighthouse-CI sweep"
+            echo ""
+            if [ -f perf/results/lhci.log ]; then
+              # lhci colours its output; strip ANSI or the summary renders as escape soup.
+              sed 's/\x1b\[[0-9;]*m//g' perf/results/lhci.log > perf/results/lhci-plain.log
+              if grep -q 'Assertion failed' perf/results/lhci-plain.log; then
+                echo "**Budget assertions FAILED.** Measured values are below — thresholds live in \`perf/lighthouserc.json\`."
+              else
+                echo "All budget assertions passed."
+              fi
+              echo ""
+              echo '```'
+              sed -n '/Checking assertions/,$p' perf/results/lhci-plain.log
+              echo '```'
+              echo ""
+              echo "### Hosted reports"
+              # Capture first: `grep | sed` reports SED's status, so a `|| fallback`
+              # on the pipeline would never fire and the section would render empty.
+              report_urls="$(grep -oE 'https://storage\.googleapis\.com/[^ ]+\.report\.html' perf/results/lhci-plain.log || true)"
+              if [ -n "$report_urls" ]; then
+                echo "$report_urls" | sed 's/^/- /'
+              else
+                echo "_none emitted_"
+              fi
+            else
+              echo "_No lhci log — the run failed before Lighthouse started._"
+            fi
+            echo ""
+            echo "Raw \`.lighthouseci/\` JSON and \`lhci.log\` are in artifact \`web-perf-${{ github.run_id }}\`."
+          } >> "$GITHUB_STEP_SUMMARY"
