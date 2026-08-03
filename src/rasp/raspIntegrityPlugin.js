@@ -38,7 +38,6 @@ import { registerPlugin } from '@capacitor/core';
  * Soft environment signals (PR #1007 → CONDITION.ELEVATED). Consumed by
  * nativeProbe.js when composing the elevated axis. All optional — a native
  * plugin that doesn't report a signal simply omits it (treated as false).
- * @property {boolean} [overlayActive]
  * @property {boolean} [developerMode]
  * @property {boolean} [virtualApp]
  * @property {boolean} [suspiciousPackage]
@@ -46,10 +45,22 @@ import { registerPlugin } from '@capacitor/core';
  * @property {boolean} [mockLocation]
  * @property {boolean} [networkProxy]
  * @property {boolean} [accessibilityService]
- *
- * Additional signals folded into the hooked axis (nativeProbe.js:182–184).
- * @property {boolean} [debuggerAttached]
  * @property {boolean} [screenCapture]
+ *
+ * L-2 (audit 2026-08-03) — this grouping had drifted. screenCapture was listed
+ * under the hooked axis and overlayActive under elevated; neither matched
+ * src/rasp/nativeProbe.js, which is the authority:
+ *   - #1108 re-bucketed screenCapture from hooked (BLOCK) to elevated (WARN)
+ *   - #1104 DROPPED overlayActive entirely — it feeds no signal and cannot
+ *     affect the tier, so it is listed on its own below rather than under an
+ *     axis it does not belong to
+ * Both are pinned by named regression tests in nativeProbe.test.js.
+ *
+ * Reported by the plugin but deliberately NOT consumed (see above).
+ * @property {boolean} [overlayActive]
+ *
+ * Additional signals folded into the hooked axis.
+ * @property {boolean} [debuggerAttached]
  *
  * @typedef {Object} RaspIntegrityPlugin
  * @property {() => Promise<IntegrityVerdict>} checkIntegrity
