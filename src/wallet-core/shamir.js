@@ -40,7 +40,10 @@
  *     hard reject
  *   - Input shares are defensively copied before validation to prevent TOCTOU
  *     via SharedArrayBuffer
- *   - NOT constant-time: gfMul branches on zero, table lookups are cache-visible
+ *   - GF arithmetic is branch-free and table-free (audit 2026-08-03 M-7): no
+ *     data-dependent branches, no secret-indexed memory access. This is NOT a
+ *     claim of end-to-end constant-time execution, which JavaScript cannot
+ *     provide — see the note above gfMul and the spec's Timing requirement.
  *
  * @module wallet-core/shamir
  */
@@ -93,39 +96,72 @@ function crc32(data, start = 0, end = data.length) {
 // GF(2^8) arithmetic — irreducible polynomial x^8 + x^4 + x^3 + x + 1 = 0x11B
 // ---------------------------------------------------------------------------
 
-const GF_ORDER = 256;
 const IRREDUCIBLE = 0x11b;
+// Low byte of the irreducible polynomial — what gets XORed back in after a
+// left shift overflows out of x^8.
+const REDUCTION = IRREDUCIBLE & 0xFF; // 0x1B
 
-const EXP_TABLE = new Uint8Array(512);
-const LOG_TABLE = new Uint8Array(256);
-
-const GF_GENERATOR = 3;
-
-(() => {
-  let x = 1;
-  for (let i = 0; i < 255; i++) {
-    EXP_TABLE[i] = x;
-    EXP_TABLE[i + 255] = x;
-    LOG_TABLE[x] = i;
-    x = gfMulByGen(x);
+// Audit 2026-08-03 M-7 — this arithmetic used to be table-driven
+// (EXP_TABLE/LOG_TABLE) with `if (a === 0 || b === 0) return 0` on top. Both
+// operands are secret-derived on the hot paths (the DEK's bytes in split(),
+// share y-values in combine()), so that was a data-dependent branch plus
+// secret-indexed memory access — the classic cache-timing shape, the same class
+// as naive T-table AES. docs/cloud-recovery-shard-spec.md required this
+// implementation to be constant-time on the share bytes; it was not.
+//
+// Now branch-free and table-free: a fixed 8-iteration loop, arithmetic masks
+// instead of conditionals, no indexed reads at all. Zero is handled by the
+// algebra rather than special-cased (multiplying by zero produces zero because
+// every mask is zero), so the absorbing case costs exactly what any other
+// multiplication costs.
+//
+// HONEST LIMIT — do not upgrade this claim: JavaScript cannot guarantee
+// constant-time execution end to end. JIT deoptimisation, GC pauses, and
+// engine-level specialisation on integer ranges are outside our control. What
+// is verifiable, and what the tests pin, is the absence of secret-dependent
+// branches and secret-indexed memory access in the source. That is the
+// achievable part of the spec's requirement; the spec is reworded to match
+// rather than left asserting something no JS implementation can deliver.
+//
+// Exported for exhaustive verification (all 65,536 multiply pairs, all 255
+// inverses). Field arithmetic is the one part of this module where a silent
+// off-by-one is both catastrophic and invisible end-to-end, so it is checked
+// directly rather than inferred from round-trips.
+export function gfMul(a, b) {
+  let p = 0;
+  let x = a & 0xFF;
+  let y = b & 0xFF;
+  for (let i = 0; i < 8; i++) {
+    // mask = 0xFFFFFFFF when the low bit of y is set, else 0.
+    p ^= x & -(y & 1);
+    // carry = 0xFFFFFFFF when x is about to overflow past x^7, else 0.
+    const carry = -((x >> 7) & 1);
+    x = (x << 1) & 0xFF;
+    x ^= REDUCTION & carry;
+    y >>= 1;
   }
-  LOG_TABLE[0] = 0;
-})();
-
-function gfMulByGen(a) {
-  let a2 = a << 1;
-  if (a2 & 0x100) a2 ^= IRREDUCIBLE;
-  return a2 ^ a;
+  return p & 0xFF;
 }
 
-function gfMul(a, b) {
-  if (a === 0 || b === 0) return 0;
-  return EXP_TABLE[LOG_TABLE[a] + LOG_TABLE[b]];
-}
-
-function gfInv(a) {
+// a^254 is the multiplicative inverse in GF(2^8)*, since a^255 = 1. Computed by
+// a FIXED square-and-multiply chain over the bits of 254 (0b11111110) — the
+// same 13 gfMul calls in the same order for every input, so no value-dependent
+// control flow and no table read.
+//
+// The zero guard is a branch, but on the ZERO ELEMENT of a public value: gfInv
+// is only ever called on differences of x-coordinates, which are envelope
+// header bytes (1..n), never secret material. Keeping it preserves the existing
+// fail-closed contract; a silent 0 would let a degenerate share set through.
+export function gfInv(a) {
   if (a === 0) throw new Error('GF_ZERO_INVERSE');
-  return EXP_TABLE[255 - LOG_TABLE[a]];
+  let r = a;
+  r = gfMul(gfMul(r, r), a); // a^3
+  r = gfMul(gfMul(r, r), a); // a^7
+  r = gfMul(gfMul(r, r), a); // a^15
+  r = gfMul(gfMul(r, r), a); // a^31
+  r = gfMul(gfMul(r, r), a); // a^63
+  r = gfMul(gfMul(r, r), a); // a^127
+  return gfMul(r, r);        // a^254
 }
 
 function gfAdd(a, b) {
