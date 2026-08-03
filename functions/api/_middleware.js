@@ -11,6 +11,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://veyrnox.com',
   'https://www.veyrnox.com',
   'https://veyrnox-staging.pages.dev',
+  'capacitor://localhost',
+  'https://localhost',
 ];
 
 function getAllowedOrigins(env) {

@@ -9,7 +9,7 @@
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { DEMO } from '@/api/demoClient';
 
-const EDGE_BASE = '';
+const EDGE_BASE = import.meta.env.VITE_EDGE_BASE || '';
 
 function i3Guard() {
   if (DEMO || isDeniabilityOrDemoActive()) {

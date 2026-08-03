@@ -11,7 +11,7 @@
 // never created on a demo-only install). No event content
 // distinguishes real from decoy.
 
-import { supabase } from '@/lib/supabaseClient';
+import { rpc } from '@/api/edgeApi';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { DEMO } from '@/api/demoClient';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
@@ -20,7 +20,7 @@ import { hasConsent } from '@/lib/consent';
 const METADATA_BYTE_LIMIT = 4096;
 
 export async function trackEvent(event, metadata = {}) {
-  if (!supabase || DEMO || isDeniabilityOrDemoActive()) return;
+  if (DEMO || isDeniabilityOrDemoActive()) return;
   // Client-side pre-flight: mirrors the server allowlist and 4 KB cap in
   // sql/telemetry-events-allowlist.sql. Catches typos at call sites in dev
   // and avoids unnecessary round-trips for invalid input.
@@ -42,7 +42,7 @@ export async function trackEvent(event, metadata = {}) {
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) return;
   try {
-    await supabase.rpc('track_event', {
+    await rpc('track_event', {
       p_device_id: deviceId,
       p_event: event,
       p_metadata: safeMetadata,

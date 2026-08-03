@@ -22,6 +22,16 @@ const CACHE_TTL = {
   'coins/ohlc': 120,
 };
 
+function resolveEndpoint(endpoint, params) {
+  if (endpoint === 'coins/ohlc') {
+    const coinId = params.get('coin_id');
+    if (!coinId || !ALLOWED_CG_IDS.has(coinId)) err(400, `Invalid coin_id for OHLC: ${coinId}`);
+    params.delete('coin_id');
+    return `coins/${coinId}/ohlc`;
+  }
+  return endpoint;
+}
+
 function err(status, message) {
   const e = new Error(message);
   e.status = status;
@@ -46,10 +56,15 @@ export async function onRequestGet(context) {
     err(400, 'Invalid or missing endpoint');
   }
 
-  const upstream = new URL(`${CG_BASE}/${endpoint}`);
-
+  const upstreamParams = new URLSearchParams();
   for (const [key, val] of url.searchParams.entries()) {
     if (key === 'endpoint') continue;
+    upstreamParams.set(key, val);
+  }
+
+  const resolvedPath = resolveEndpoint(endpoint, upstreamParams);
+  const upstream = new URL(`${CG_BASE}/${resolvedPath}`);
+  for (const [key, val] of upstreamParams.entries()) {
     upstream.searchParams.set(key, val);
   }
 

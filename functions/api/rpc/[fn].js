@@ -61,6 +61,18 @@ export async function onRequestPost(context) {
 
   const responseBody = await res.text();
 
+  if (!res.ok) {
+    let errorMsg = `RPC ${fn} failed`;
+    try {
+      const parsed = JSON.parse(responseBody);
+      errorMsg = parsed.message || parsed.error || errorMsg;
+    } catch {}
+    return new Response(JSON.stringify({ error: errorMsg }), {
+      status: res.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   return new Response(responseBody, {
     status: res.status,
     headers: {
