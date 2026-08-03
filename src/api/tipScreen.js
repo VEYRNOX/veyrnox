@@ -50,28 +50,68 @@ export async function screenTransaction(params) {
       ...(params.recentCounterparties?.length && { recent_counterparties: params.recentCounterparties }),
     });
 
+    // M-4 — I5, the backend is untrusted, and that includes its SHAPE. The catch
+    // below only fires on thrown errors (network, non-2xx, abort, bad JSON
+    // syntax). A response that parses but does not match the contract used to
+    // flow through as a success, and s9TipThreat scores an unrecognised verdict
+    // as OK — so a backend regression or schema drift read as "no threat".
+    // Anything unrecognised degrades to the 'error' verdict, which the caller
+    // already maps to CAUTION.
+    if (!isWellFormedScreenResult(result)) {
+      if (import.meta.env.DEV) console.error('[TIP] unrecognised screen response shape');
+      return unavailableResult();
+    }
+
+    const signals = Array.isArray(result.risk_data?.threat_signals)
+      ? result.risk_data.threat_signals
+      : [];
+
     return {
       verdict: result.verdict,
       level: verdictToRiskLevel(result.verdict),
-      risks: signalsToRiskRows(result.risk_data?.threat_signals || []),
-      signals: result.risk_data?.threat_signals || [],
-      sanctions: result.risk_data?.sanctions_hit || false,
+      risks: signalsToRiskRows(signals),
+      signals,
+      // Strict boolean: a truthy non-boolean must not become a sanctions hit,
+      // and a non-boolean must never be carried through as-is.
+      sanctions: result.risk_data?.sanctions_hit === true,
       raw: result,
     };
   } catch (err) {
     // I4 fail closed: a TIP error returns CAUTION, never a silent pass.
     if (import.meta.env.DEV) console.error('[TIP] screenTransaction error:', err);
-    return {
-      verdict: 'error',
-      level: 'medium',
-      risks: [{
-        level: 'medium',
-        title: 'threat screening unavailable',
-        detail: 'Remote screening could not complete. Proceed with caution.',
-      }],
-      signals: [],
-      sanctions: false,
-      raw: null,
-    };
+    return unavailableResult();
   }
+}
+
+// The only verdicts the client will act on. Anything else — absent, renamed,
+// a future value this build predates, or attacker-supplied — is not trusted.
+const KNOWN_VERDICTS = Object.freeze(['allow', 'warn', 'block']);
+
+function isWellFormedScreenResult(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+  if (typeof result.verdict !== 'string') return false;
+  if (!KNOWN_VERDICTS.includes(result.verdict)) return false;
+  const rd = result.risk_data;
+  // risk_data may be absent (a clean allow carries no detail), but if present it
+  // must be an object we can read fields off.
+  if (rd != null && (typeof rd !== 'object' || Array.isArray(rd))) return false;
+  return true;
+}
+
+// The single CAUTION-level result used for every "screening did not give us a
+// usable answer" path — thrown error and unrecognised shape alike. One shape so
+// the two cannot drift apart.
+function unavailableResult() {
+  return {
+    verdict: 'error',
+    level: 'medium',
+    risks: [{
+      level: 'medium',
+      title: 'threat screening unavailable',
+      detail: 'Remote screening could not complete. Proceed with caution.',
+    }],
+    signals: [],
+    sanctions: false,
+    raw: null,
+  };
 }

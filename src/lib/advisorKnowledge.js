@@ -256,11 +256,15 @@ export const KNOWLEDGE_BASE = {
     entries: [
       {
         q: 'What is Safety Plus?',
-        a: 'Safety Plus is Veyrnox\'s optional premium tier that provides enhanced threat intelligence screening, advanced security alerts, and priority access to new security features. It\'s a monthly ($5.99) or annual ($49.99) subscription managed through your device\'s app store.',
+        // M-6 (audit 2026-08-03): this used to list "enhanced threat intelligence
+        // screening" as a Safety Plus feature. The remote-screening toggle in the
+        // send flow has no entitlement check of any kind — it is available on
+        // every tier — so the claim described a gate that does not exist.
+        a: 'Safety Plus is Veyrnox\'s optional premium tier: advanced security alerts and priority access to new security features. It\'s a monthly ($5.99) or annual ($49.99) subscription managed through your device\'s app store. Note that on-device and online threat screening are NOT behind it — both are free and opt-in for everyone.',
       },
       {
         q: 'Do I need Safety Plus to be secure?',
-        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, RASP, deniability mode — is available to all users. Safety Plus adds enhanced threat screening for transactions (checking addresses against sanctions lists and known scam databases) and advanced advisory features. The free tier is already significantly more secure than most wallets.',
+        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, RASP, deniability mode — is available to all users, and so is transaction threat screening, both on-device and the optional online check against sanctions lists and known scam databases. Nothing that protects a transaction is behind the paywall. Safety Plus adds advanced security alerts and advisory features. The free tier is already significantly more secure than most wallets.',
       },
     ],
   },
