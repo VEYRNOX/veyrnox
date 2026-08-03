@@ -360,10 +360,9 @@
     },
     "screening": {
       "local_disclosure": "Recipients are checked on your device for scam addresses against your own history — nothing leaves your device.",
-      "remote_opt_in": "Also screen against an online threat database (sends transaction details to a third party — see below)",
+      "remote_opt_in": "Also screen against an online threat database (sends this transaction's details to a third party)",
       "remote_unavailable": "Online screening is enabled, but no provider is configured in this build — screening stays local, so we couldn't verify this against an external list.",
-      "remote_enabled": "Online threat intelligence screening is active. At the verify step this sends the recipient address, your own sending address, the amount, and — for token transfers — the contract address and call data to the TIP service.",
-      "remote_counterparties_note": "It also sends up to 20 addresses you have transacted with before, so the service can spot look-alike addresses. That is a portion of your transaction history leaving your device.",
+      "remote_enabled": "Online threat intelligence screening is active. At the verify step this sends the recipient address, your own sending address, the amount, and — for token transfers — the contract address and call data to the TIP service. Nothing from your transaction history is sent.",
       "demo_poison_button": "Demo: paste a look-alike address"
     },
     "simulation": {

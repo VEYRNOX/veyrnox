@@ -46,23 +46,52 @@ describe('H-5 — the TIP opt-in discloses what actually leaves the device', () 
     expect(screening.remote_enabled).toMatch(/call data/i);
   });
 
-  it('discloses the historical counterparties, with the count', () => {
-    expect(screening.remote_counterparties_note).toMatch(/20 addresses/i);
-    expect(screening.remote_counterparties_note).toMatch(/transacted with before/i);
-    // And says plainly what that means, rather than burying it in a field list.
-    expect(screening.remote_counterparties_note).toMatch(/transaction history leaving your device/i);
-  });
-
   it('no longer claims only the recipient address is sent', () => {
     // The exact defective sentence.
     expect(screening.remote_enabled)
       .not.toMatch(/^Online threat intelligence screening is active\. The recipient address will be sent to the TIP service at the verify step\.$/);
   });
 
-  it('the counterparties note is actually rendered, not just defined', () => {
-    // A disclosure string nobody renders is not a disclosure.
-    expect(sendSrc).toMatch(/send\.screening\.remote_counterparties_note/);
-    expect(sendSrc).toMatch(/data-testid="tip-counterparties-note"/);
+  // ---- transaction history is no longer sent at all (owner decision) ----
+  //
+  // These assertions were INVERTED. They used to require the counterparties
+  // disclosure to exist and be rendered, which was correct while the field was
+  // in the payload. The owner chose to drop the field rather than only disclose
+  // it, so the same tests now guard the opposite property: the data must not be
+  // sent, and the copy must not claim it is.
+  //
+  // Both halves matter. A stale note promising we send history would be the same
+  // honesty defect as H-5 pointing the other way — overstating egress is no more
+  // acceptable than understating it.
+
+  it('sends NO transaction history: recentCounterparties is gone from the payload', () => {
+    const call = sendSrc.slice(
+      sendSrc.indexOf('queryFn: () => screenTransaction({'),
+      sendSrc.indexOf('enabled: tipScreenApplies'),
+    );
+    expect(call).not.toMatch(/recentCounterparties\s*:/);
+    expect(call).not.toMatch(/knownAddresses\.slice/);
+  });
+
+  it('the counterparties disclosure is gone from the copy and the UI', () => {
+    expect(screening.remote_counterparties_note).toBeUndefined();
+    expect(sendSrc).not.toMatch(/remote_counterparties_note/);
+    expect(sendSrc).not.toMatch(/tip-counterparties-note/);
+  });
+
+  it('the copy states positively that history is NOT sent', () => {
+    // Silence would be honest but weak: a user weighing the opt-in benefits from
+    // knowing the counterparty graph specifically stays on device.
+    expect(screening.remote_enabled).toMatch(/nothing from your transaction history is sent/i);
+  });
+
+  it('the proxy cannot carry the field back even if a caller supplies it', () => {
+    // The Edge Function rebuilds the upstream body from an allowlist, so the
+    // privacy decision is enforced server-side rather than trusted to the client.
+    const fnSrc = readFileSync(
+      join(here, '../../../supabase/functions/tip-screen/index.ts'), 'utf8',
+    ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    expect(fnSrc).not.toMatch(/recent_counterparties/);
   });
 
   it('every field the request actually sends is covered by the disclosure', () => {
@@ -73,19 +102,18 @@ describe('H-5 — the TIP opt-in discloses what actually leaves the device', () 
       sendSrc.indexOf('queryFn: () => screenTransaction({'),
       sendSrc.indexOf('enabled: tipScreenApplies'),
     );
-    const sentFields = ['from:', 'to:', 'contractAddress', 'calldata', 'valueWei', 'recentCounterparties'];
+    const sentFields = ['from:', 'to:', 'contractAddress', 'calldata', 'valueWei'];
     for (const f of sentFields) {
       expect(call, `${f} should still be part of the screened payload this test reasons about`).toContain(f);
     }
     // chain/actionType are not user data; everything else above is disclosed by
-    // remote_enabled + remote_counterparties_note.
-    const disclosure = `${screening.remote_enabled} ${screening.remote_counterparties_note}`.toLowerCase();
+    // remote_enabled.
+    const disclosure = screening.remote_enabled.toLowerCase();
     expect(disclosure).toMatch(/recipient address/);
     expect(disclosure).toMatch(/own sending address/);
     expect(disclosure).toMatch(/amount/);
     expect(disclosure).toMatch(/contract address/);
     expect(disclosure).toMatch(/call data/);
-    expect(disclosure).toMatch(/20 addresses/);
   });
 });
 

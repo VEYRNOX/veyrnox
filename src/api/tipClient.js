@@ -67,7 +67,6 @@ export function createTipClient({ proxyUrl, anonKey, timeout = 10_000 }) {
       ...(params.token_address && { token_address: params.token_address }),
       ...(params.calldata && { calldata: params.calldata }),
       ...(params.metadata && { metadata: params.metadata }),
-      ...(params.recent_counterparties && { recent_counterparties: params.recent_counterparties }),
     };
 
     const resp = await proxyFetch(body);

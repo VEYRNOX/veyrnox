@@ -141,9 +141,15 @@ const STRING_FIELDS = [
 ] as const;
 
 const MAX_STRING = 4096;          // calldata is the long one
-const MAX_COUNTERPARTIES = 20;    // matches what the client sends
 const MAX_BODY_BYTES = 64 * 1024;
 
+// recent_counterparties is deliberately ABSENT from STRING_FIELDS and handled
+// nowhere below (owner decision, 2026-08-03). The client no longer sends it, and
+// because this function rebuilds the upstream body from an allowlist rather than
+// forwarding input, dropping it here means a caller cannot reintroduce the field
+// by putting it back in their own request — the proxy simply will not carry it.
+// That is the allowlist earning its keep: the privacy decision is enforced
+// server-side, not merely on the honour system in the client.
 function buildUpstreamBody(input: Record<string, unknown>, requestId: string) {
   const out: Record<string, unknown> = { request_id: requestId };
   for (const f of STRING_FIELDS) {
@@ -151,12 +157,6 @@ function buildUpstreamBody(input: Record<string, unknown>, requestId: string) {
     if (typeof v === 'string' && v.length > 0 && v.length <= MAX_STRING) out[f] = v;
   }
   if (typeof out.chain !== 'string' || typeof out.to_address !== 'string') return null;
-  const rc = input.recent_counterparties;
-  if (Array.isArray(rc)) {
-    const list = rc.filter((x) => typeof x === 'string' && x.length > 0 && x.length <= 128)
-      .slice(0, MAX_COUNTERPARTIES);
-    if (list.length) out.recent_counterparties = list;
-  }
   return out;
 }
 

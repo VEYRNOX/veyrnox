@@ -53,7 +53,7 @@ function getClient() {
 /**
  * Screen a transaction against TIP's threat-intel engine.
  *
- * @param {{ chain: string, actionType: string, from: string, to: string, contractAddress?: string, calldata?: string, valueWei?: string, recentCounterparties?: string[] }} params
+ * @param {{ chain: string, actionType: string, from: string, to: string, contractAddress?: string, calldata?: string, valueWei?: string }} params
  * @returns {Promise<{ verdict: string, level: string, risks: Array, signals: Array, sanctions: boolean, raw: object } | null>}
  *   null when screening is unavailable or suppressed (deniability/demo/unconfigured).
  */
@@ -72,7 +72,6 @@ export async function screenTransaction(params) {
       ...(params.contractAddress && { contract_address: params.contractAddress }),
       ...(params.calldata && { calldata: params.calldata }),
       ...(params.valueWei && { value_wei: params.valueWei }),
-      ...(params.recentCounterparties?.length && { recent_counterparties: params.recentCounterparties }),
     });
 
     // M-4 — I5, the backend is untrusted, and that includes its SHAPE. The catch

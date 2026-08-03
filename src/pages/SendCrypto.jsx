@@ -704,7 +704,22 @@ export default function SendCrypto() {
       ...(isErc20 && selectedAsset?.contractAddress && { contractAddress: selectedAsset.contractAddress }),
       ...(riskCalldata && { calldata: riskCalldata }),
       ...(canonicalAmount && { valueWei: canonicalAmount }),
-      recentCounterparties: knownAddresses.slice(0, 20).map(k => k.address),
+      // recentCounterparties REMOVED (owner decision, 2026-08-03; the alternative
+      // the audit offered alongside H-5's disclosure fix — both were done).
+      //
+      // It sent up to 20 addresses from this wallet's history, address book and
+      // whitelist on EVERY screened send — a slice of the user's counterparty
+      // graph, and the most sensitive thing in the payload — so TIP could spot
+      // look-alike addresses.
+      //
+      // S4 already does that detection LOCALLY from the same set:
+      // risk/fromSendState.js feeds `counterparties: knownAddresses` into
+      // activeSetLocalState, and S4 runs on every send whether or not remote
+      // screening is enabled. The field bought a duplicate of a capability we
+      // already had, at the highest privacy cost in the request.
+      //
+      // Do not add it back without a concrete detection gap that S4
+      // demonstrably cannot close.
     }),
     enabled: tipScreenApplies,
     staleTime: 30_000,
@@ -1645,15 +1660,16 @@ export default function SendCrypto() {
               )}
               {/* H-5 — the disclosure must name what actually leaves the device.
                   It previously said only "the recipient address", while the
-                  payload also carries the user's own address, the amount,
-                  contract/calldata, and up to 20 historical counterparties. */}
+                  payload also carried the user's own address, the amount and
+                  contract/calldata.
+
+                  The separate counterparties note that stood here is gone with
+                  the field itself: the payload no longer carries any transaction
+                  history, so a note claiming it does would be the SAME defect in
+                  the opposite direction — overstating egress is as dishonest as
+                  understating it. */}
               {remoteScreen && import.meta.env.VITE_TIP_BASE_URL && (
-                <>
-                  <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
-                  <p className="text-muted-foreground" data-testid="tip-counterparties-note">
-                    {tw("send.screening.remote_counterparties_note")}
-                  </p>
-                </>
+                <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
               )}
               {DEMO && (
                 <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">
