@@ -4,22 +4,37 @@
  * Pure implementation, no external dependencies beyond Web Crypto RNG.
  * Designed for 2-of-3 threshold splitting of 32-byte DEK material.
  *
- * Share envelope (v1, 56 bytes):
- *   [0]       version   = 0x01
- *   [1]       k         threshold required for reconstruction
- *   [2]       n         total shares in this set
- *   [3..18]   setId     16-byte random identifier (same across all shares in a split)
- *   [19]      x         evaluation point (1-indexed)
- *   [20..51]  y[32]     evaluated polynomial bytes
- *   [52..55]  crc32     IEEE CRC-32 of bytes [0..51]
+ * Share envelope (v2, 88 bytes):
+ *   [0]       version    = 0x02
+ *   [1]       k          threshold required for reconstruction
+ *   [2]       n          total shares in this set
+ *   [3..18]   setId      16-byte random identifier (same across all shares in a split)
+ *   [19]      x          evaluation point (1-indexed)
+ *   [20..51]  y[32]      evaluated polynomial bytes
+ *   [52..83]  commitment SHA-256(DOMAIN || setId || k || n || secret)
+ *   [84..87]  crc32      IEEE CRC-32 of bytes [0..83]
+ *
+ * v1 (56 bytes, no commitment) is REJECTED, not migrated: it had no
+ * authentication, and accepting it would reopen H-6 below. No v1 shares were
+ * ever issued — nothing calls this module yet.
  *
  * Security properties:
  *   - RNG: crypto.getRandomValues only (CSPRNG)
  *   - Intermediate buffers zeroed in finally blocks
  *   - Input validation: fail-closed on malformed input
  *   - Envelope prevents mixing shares from different splits or wrong thresholds
- *   - CRC32 detects corruption (not authentication — the vault's AES-GCM AAD
- *     authenticates the reconstructed DEK)
+ *   - CRC32 detects corruption. It is NOT authentication: it is unkeyed and
+ *     linear, so a forger can always recompute it. Authentication comes from the
+ *     commitment (audit 2026-08-03 H-6) — combine() recomputes it over the
+ *     reconstructed secret and rejects a mismatch, so producing a share that
+ *     reconstructs to an attacker-chosen value needs a SHA-256 preimage.
+ *     Previously the module documented that "the caller MUST authenticate the
+ *     reconstructed DEK against the vault's AES-GCM AAD"; an advisory contract
+ *     no caller is obliged to honour is not a control, so the check now lives
+ *     here. A caller that ALSO authenticates via AAD is still correct — this is
+ *     defence in depth, not a replacement.
+ *   - The commitment binds setId/k/n too, so a consistent set of tampered
+ *     headers (e.g. a lowered threshold, CRCs recomputed) is rejected as well
  *   - combine() uses exactly k shares for interpolation, then verifies any extras
  *     against the reconstructed polynomial — a single inconsistent share is a
  *     hard reject
@@ -30,13 +45,26 @@
  * @module wallet-core/shamir
  */
 
-export const SECRET_SIZE = 32;
-export const SHARE_SIZE = 56; // envelope v1: 1+1+1+16+1+32+4
+// @noble/hashes — the project's mandated audited primitive source ("no custom
+// crypto primitives"). Synchronous, so combine() stays synchronous.
+import { sha256 } from '@noble/hashes/sha256';
 
-const ENVELOPE_VERSION = 0x01;
+export const SECRET_SIZE = 32;
+export const SHARE_SIZE = 88; // envelope v2: 1+1+1+16+1+32+32+4
+
+const ENVELOPE_VERSION = 0x02;
 const SET_ID_SIZE = 16;
-const HEADER_SIZE = 20; // version(1) + k(1) + n(1) + setId(16) + x(1)
+// Exported so tests address the envelope by offset constants rather than
+// hardcoded numbers — a format change should not silently invalidate them.
+export const HEADER_SIZE = 20; // version(1) + k(1) + n(1) + setId(16) + x(1)
+export const COMMITMENT_SIZE = 32;
+const COMMITMENT_OFFSET = HEADER_SIZE + SECRET_SIZE; // 52
 const CRC_SIZE = 4;
+const CRC_OFFSET = COMMITMENT_OFFSET + COMMITMENT_SIZE; // 84
+
+// Domain-separated so this hash can never collide with any other SHA-256 use in
+// the codebase (same discipline as kek.js's KEK_DOMAIN).
+const COMMITMENT_DOMAIN = 'veyrnox/shamir/v2/commit(setId||k||n||secret)';
 
 // ---------------------------------------------------------------------------
 // CRC-32 (IEEE 802.3) — corruption detection for share envelopes
@@ -128,20 +156,72 @@ function writeEnvelope(buf, version, k, n, setId, x) {
   buf[19] = x;
 }
 
+// CRC covers everything before it, which as of v2 includes the commitment — so a
+// corrupted commitment is caught as corruption, and a DELIBERATELY rewritten one
+// is caught by the commitment check itself.
 function writeCrc(buf) {
-  const c = crc32(buf, 0, HEADER_SIZE + SECRET_SIZE);
-  buf[52] = (c >>> 0) & 0xFF;
-  buf[53] = (c >>> 8) & 0xFF;
-  buf[54] = (c >>> 16) & 0xFF;
-  buf[55] = (c >>> 24) & 0xFF;
+  const c = crc32(buf, 0, CRC_OFFSET);
+  buf[CRC_OFFSET] = (c >>> 0) & 0xFF;
+  buf[CRC_OFFSET + 1] = (c >>> 8) & 0xFF;
+  buf[CRC_OFFSET + 2] = (c >>> 16) & 0xFF;
+  buf[CRC_OFFSET + 3] = (c >>> 24) & 0xFF;
 }
 
 function readCrc(buf) {
-  return (buf[52] | (buf[53] << 8) | (buf[54] << 16) | (buf[55] << 24)) >>> 0;
+  return (
+    buf[CRC_OFFSET]
+    | (buf[CRC_OFFSET + 1] << 8)
+    | (buf[CRC_OFFSET + 2] << 16)
+    | (buf[CRC_OFFSET + 3] << 24)
+  ) >>> 0;
 }
 
 function verifyCrc(buf) {
-  return crc32(buf, 0, HEADER_SIZE + SECRET_SIZE) === readCrc(buf);
+  return crc32(buf, 0, CRC_OFFSET) === readCrc(buf);
+}
+
+// ---------------------------------------------------------------------------
+// Commitment (H-6) — the authentication CRC-32 cannot provide
+// ---------------------------------------------------------------------------
+//
+// commitment = SHA-256(DOMAIN || setId || k || n || secret)
+//
+// CRC-32 is unkeyed and linear: a holder of one genuine share could rewrite any
+// byte of a companion share, recompute the CRC, and make combine() return a
+// value of their choosing with no error raised. Recomputing this commitment
+// after reconstruction and comparing it to the one carried in the envelope makes
+// that forgery require a SHA-256 preimage.
+//
+// Binding setId/k/n into the hash authenticates them too — they previously sat
+// inside the CRC-protected region and were only cross-checked BETWEEN the shares
+// presented in a single call, so a consistent set of tampered headers passed.
+//
+// This does NOT leak the secret. The secret is 32 uniformly random bytes (a DEK);
+// a domain-separated SHA-256 of it is preimage-resistant, and the commitment is
+// only ever stored beside shares that are already threshold-protected.
+function computeCommitment(setId, k, n, secret) {
+  const domain = new TextEncoder().encode(COMMITMENT_DOMAIN);
+  const buf = new Uint8Array(domain.length + SET_ID_SIZE + 2 + SECRET_SIZE);
+  let o = 0;
+  buf.set(domain, o); o += domain.length;
+  buf.set(setId, o); o += SET_ID_SIZE;
+  buf[o++] = k;
+  buf[o++] = n;
+  buf.set(secret, o);
+  try {
+    return sha256(buf);
+  } finally {
+    buf.fill(0); // the input carried the plaintext secret
+  }
+}
+
+// Constant-time equality. The commitment is not itself secret, but an early-exit
+// compare here would leak how many leading bytes of a forged commitment matched,
+// which is a free oracle for an attacker grinding one.
+function timingSafeEqual(a, b, aOffset = 0) {
+  let diff = 0;
+  for (let i = 0; i < COMMITMENT_SIZE; i++) diff |= a[aOffset + i] ^ b[i];
+  return diff === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,7 +285,11 @@ export function split(secret, n = 3, k = 2) {
         coeffs.fill(0);
       }
 
+      // H-6 — every share carries the same commitment to (setId, k, n, secret).
+      // Written before the CRC so the CRC covers it.
+      const commitment = computeCommitment(setId, k, n, sec);
       for (const share of shares) {
+        share.set(commitment, COMMITMENT_OFFSET);
         writeCrc(share);
       }
 
@@ -293,6 +377,13 @@ export function combine(shares) {
         }
       }
 
+      // Every share in a set commits to the same value. This is a consistency
+      // check only — the authoritative test is the recomputation after
+      // reconstruction below, which is what a forger cannot satisfy.
+      if (!timingSafeEqual(local[i], local[0].subarray(COMMITMENT_OFFSET, CRC_OFFSET), COMMITMENT_OFFSET)) {
+        throw new Error('COMMITMENT_MISMATCH');
+      }
+
       if (!verifyCrc(local[i])) {
         throw new Error('SHARE_CORRUPT');
       }
@@ -334,6 +425,28 @@ export function combine(shares) {
       }
     } finally {
       basis.fill(0);
+    }
+
+    // H-6 — AUTHENTICATE the reconstruction. Everything above this line is
+    // CRC-checked only, i.e. protected against corruption but not against a
+    // deliberate forger. Recompute the commitment over the value we just
+    // rebuilt and require it to match the one the shares carry; producing a
+    // forged share that survives this needs a SHA-256 preimage.
+    //
+    // Runs BEFORE the extra-share interpolation below so an authentication
+    // failure short-circuits, and so a forged share among the first k is
+    // rejected even when no extra shares were supplied to cross-check it.
+    {
+      const setId = local[0].subarray(3, 3 + SET_ID_SIZE);
+      const expected = computeCommitment(setId, refK, refN, result);
+      try {
+        if (!timingSafeEqual(local[0], expected, COMMITMENT_OFFSET)) {
+          result.fill(0);
+          throw new Error('COMMITMENT_MISMATCH');
+        }
+      } finally {
+        expected.fill(0);
+      }
     }
 
     // Verify any extra shares against the reconstructed polynomial.

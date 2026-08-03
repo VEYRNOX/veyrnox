@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import { split, combine, SHARE_SIZE, SECRET_SIZE } from '../shamir.js';
+import { split, combine, SHARE_SIZE, SECRET_SIZE, HEADER_SIZE } from '../shamir.js';
 
 function randomSecret() {
   const buf = new Uint8Array(32);
@@ -11,7 +11,8 @@ function randomSecret() {
 describe('shamir – constants', () => {
   it('exports correct sizes', () => {
     expect(SECRET_SIZE).toBe(32);
-    expect(SHARE_SIZE).toBe(56);
+    // envelope v2 (H-6): 1+1+1+16+1+32+32+4 — the extra 32 is the commitment.
+    expect(SHARE_SIZE).toBe(88);
   });
 });
 
@@ -37,7 +38,7 @@ describe('shamir – split', () => {
     const secret = randomSecret();
     const shares = split(secret);
     for (const s of shares) {
-      expect(s[0]).toBe(0x01); // version
+      expect(s[0]).toBe(0x02); // version (v2 — envelope carries a commitment)
       expect(s[1]).toBe(2);    // k
       expect(s[2]).toBe(3);    // n
     }
@@ -154,12 +155,20 @@ describe('shamir – combine', () => {
 });
 
 describe('shamir – envelope validation', () => {
-  it('rejects shares with tampered version byte', () => {
+  // NOTE: this test used to tamper the version to 0x02. When the envelope moved
+  // to v2 (H-6) that made the "tampered" share byte-identical to a genuine one,
+  // so the test silently became vacuous — it asserted a rejection that could no
+  // longer occur. Rewritten to use versions that are genuinely unsupported, and
+  // widened to pin that the LEGACY v1 envelope is rejected rather than
+  // downgraded to (v1 has no commitment, so accepting it would reopen H-6).
+  it('rejects shares with an unsupported version byte', () => {
     const secret = randomSecret();
     const shares = split(secret);
-    const tampered = new Uint8Array(shares[0]);
-    tampered[0] = 0x02;
-    expect(() => combine([tampered, shares[1]])).toThrow(/VERSION|CORRUPT/);
+    for (const badVersion of [0x00, 0x01, 0x03, 0xFF]) {
+      const tampered = new Uint8Array(shares[0]);
+      tampered[0] = badVersion;
+      expect(() => combine([tampered, shares[1]])).toThrow(/VERSION|CORRUPT/);
+    }
   });
 
   it('rejects shares with mismatched k (threshold)', () => {
@@ -239,8 +248,17 @@ describe('shamir – envelope validation', () => {
     // Build a Frankenstein: take sharesA[0] and sharesA[1] (consistent),
     // plus sharesB[2] re-enveloped with sharesA's header so CRC passes
     const franken = new Uint8Array(sharesA[2]);
-    // Copy y-values from sharesB[2] (different polynomial, same secret)
-    for (let i = 20; i < 52; i++) franken[i] = sharesB[2][i];
+    // Copy y-values from sharesB[2] (different polynomial, same secret). Offsets
+    // are derived from the exported constants, not hardcoded, so an envelope
+    // format change cannot silently point this at the wrong bytes (it did:
+    // these were literal v1 offsets before H-6 widened the envelope).
+    const Y_START = HEADER_SIZE;
+    const Y_END = HEADER_SIZE + SECRET_SIZE;
+    const CRC_AT = SHARE_SIZE - 4;
+    for (let i = Y_START; i < Y_END; i++) franken[i] = sharesB[2][i];
+    // The commitment (Y_END..CRC_AT) is left as sharesA's, so this share is
+    // authentic-looking at every layer EXCEPT the polynomial itself — which is
+    // the point: it isolates the extra-share consistency check.
     // Recompute CRC so it passes the corruption check
     const crc32Fn = (data) => {
       const T = new Uint32Array(256);
@@ -250,14 +268,14 @@ describe('shamir – envelope validation', () => {
         T[i] = c >>> 0;
       }
       let crc = 0xFFFFFFFF;
-      for (let i = 0; i < 52; i++) crc = T[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+      for (let i = 0; i < CRC_AT; i++) crc = T[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
       return (crc ^ 0xFFFFFFFF) >>> 0;
     };
     const c = crc32Fn(franken);
-    franken[52] = (c >>> 0) & 0xFF;
-    franken[53] = (c >>> 8) & 0xFF;
-    franken[54] = (c >>> 16) & 0xFF;
-    franken[55] = (c >>> 24) & 0xFF;
+    franken[CRC_AT] = (c >>> 0) & 0xFF;
+    franken[CRC_AT + 1] = (c >>> 8) & 0xFF;
+    franken[CRC_AT + 2] = (c >>> 16) & 0xFF;
+    franken[CRC_AT + 3] = (c >>> 24) & 0xFF;
     expect(() => combine([sharesA[0], sharesA[1], franken])).toThrow('SHARE_INCONSISTENT');
   });
 });
