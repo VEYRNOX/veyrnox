@@ -17,8 +17,13 @@ describe('screenTransaction', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    vi.stubEnv('VITE_TIP_API_KEY', 'test-key');
-    vi.stubEnv('VITE_TIP_SIGNING_SECRET', 'test-secret');
+    // H-4 (audit 2026-08-03): the configuration contract changed. The client no
+    // longer holds VITE_TIP_API_KEY / VITE_TIP_SIGNING_SECRET — those are Edge
+    // Function secrets now, and setting them here would make getClient() REFUSE
+    // (which tipScreen.proxy.test.js asserts). The client is configured with
+    // Supabase credentials plus VITE_TIP_BASE_URL as the feature switch.
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
     vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
 
     isDeniabilityOrDemoActive = (await import('@/wallet-core/deniabilitySession.js')).isDeniabilityOrDemoActive;
