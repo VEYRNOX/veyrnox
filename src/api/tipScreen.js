@@ -12,16 +12,41 @@ import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 let _client = null;
 
+// H-4 — the TIP API key and signing secret are SERVER-side only, held by the
+// tip-screen Edge Function. The client presents the Supabase anon key (public by
+// design) exactly as every other Supabase call does.
+//
+// A VITE_-prefixed variable is statically inlined into the shipped bundle, so a
+// signing secret read here would be handed to every user. If one is ever set
+// again, refuse to build a client rather than quietly using it: that is the
+// whole finding, and a comment alone would not have stopped it recurring.
 function getClient() {
   if (_client) return _client;
 
-  const apiKey = import.meta.env.VITE_TIP_API_KEY;
-  const signingSecret = import.meta.env.VITE_TIP_SIGNING_SECRET;
-  const baseUrl = import.meta.env.VITE_TIP_BASE_URL;
+  if (import.meta.env.VITE_TIP_SIGNING_SECRET || import.meta.env.VITE_TIP_API_KEY) {
+    // Loud in dev, inert-but-safe in production: screening is simply disabled
+    // rather than run with a bundled secret.
+    if (import.meta.env.DEV) {
+      console.error(
+        '[TIP] VITE_TIP_SIGNING_SECRET / VITE_TIP_API_KEY must never be set — they ship in the '
+        + 'client bundle. Configure TIP_SIGNING_SECRET and TIP_API_KEY as Edge Function secrets '
+        + 'for supabase/functions/tip-screen instead. Screening is disabled.',
+      );
+    }
+    return null;
+  }
 
-  if (!apiKey || !signingSecret || !baseUrl) return null;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  // Kept as the feature switch: screening stays off until an endpoint exists.
+  const tipConfigured = import.meta.env.VITE_TIP_BASE_URL;
 
-  _client = createTipClient({ apiKey, signingSecret, baseUrl });
+  if (!supabaseUrl || !anonKey || !tipConfigured) return null;
+
+  _client = createTipClient({
+    proxyUrl: `${String(supabaseUrl).replace(/\/$/, '')}/functions/v1/tip-screen`,
+    anonKey,
+  });
   return _client;
 }
 
