@@ -196,7 +196,7 @@ export const CLASSIFICATION = {
   },
   '/session-manager': {
     verdict: 'live', dataSource: 'local-entities',
-    note: 'Lists and revokes UserSession records from local local entity store. Revocation is real: self-enforcement via lib/sessionRevocation locks the wallet and clears the local session token. Honestly discloses that remote devices apply revocation at next open, not instantly. geo_country/ip_address fields display "Unknown Location" if not populated — no server-side geolocation dependency for the revoke action.',
+    note: 'Lists and revokes UserSession records from the local entity store. Revocation is device-local: lib/sessionRevocation locks the wallet and clears the session token on this device only. Cross-device revocation is not available in the local build (no shared backend). geo_country/ip_address fields display "Unknown Location" if not populated — no server-side geolocation dependency for the revoke action.',
   },
   '/duress-pin': {
     verdict: 'live', dataSource: 'wallet-core',

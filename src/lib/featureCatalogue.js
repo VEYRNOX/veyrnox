@@ -302,7 +302,7 @@ export const FEATURE_CATEGORIES = [
         name: 'On-Chain Analytics',
         status: 'verified',
         summary: 'Public on-chain activity insights',
-        explanation: 'Built (/onchain). Address-level on-chain analytics: transaction lookup by address or hash, inbound/outbound activity breakdown, refreshable via public RPC. Read-only; uses local entities + public chain data. No private data egress.',
+        explanation: 'Built (/onchain). Address-level transaction history analytics from local records: inbound/outbound activity breakdown. Read-only; uses local entities only — no blockchain query is made. No private data egress.',
       },
       {
         name: 'Fee Analytics',

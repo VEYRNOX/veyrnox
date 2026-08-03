@@ -53,8 +53,8 @@ export function summarizeApprovals(rows = []) {
 
 /**
  * Aggregate token holdings (local WalletToken shape) into a spam count, reusing
- * the SAME classifyToken() the Spam Token Filter uses. Display-only signal — these
- * tokens are never moved; the count is "what the filter would hide".
+ * the SAME classifyToken() that TrustScore uses. Display-only signal — these
+ * tokens are never moved; the count reflects how many would be flagged.
  *
  * @param {Array<object>} tokens
  * @returns {{ total:number, spam:number }}
