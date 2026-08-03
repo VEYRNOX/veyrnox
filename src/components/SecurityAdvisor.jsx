@@ -23,6 +23,11 @@ import {
   buildAdvisorSystemContext,
   getFollowUpQuestions,
 } from "@/lib/advisorKnowledge";
+import {
+  getAdvisorConsentState,
+  hasAdvisorConsent,
+  setAdvisorConsent,
+} from "@/lib/advisorConsent";
 
 const TIP_BASE_URL = import.meta.env.VITE_TIP_BASE_URL;
 const SCREEN_MAP = {
@@ -254,6 +259,19 @@ export default function SecurityAdvisor({ walletChain }) {
 
   const hidden = isDeniabilityOrDemoActive() || DEMO;
 
+  // M-5 — remote answers require an explicit, separate grant. Seeded from the
+  // stored answer at mount so a device that has already decided is never
+  // re-asked (the mistake PR #1409/#1410 had to fix for telemetry consent).
+  const [advisorConsent, setAdvisorConsentState] = useState(() => getAdvisorConsentState());
+  const chooseAdvisorConsent = useCallback((granted) => {
+    setAdvisorConsent(granted);
+    setAdvisorConsentState(granted ? 'granted' : 'denied');
+  }, []);
+  // Only ask when there is actually a remote endpoint to send to; an
+  // unconfigured build is local-only anyway and a consent prompt there would be
+  // asking permission for something that cannot happen.
+  const needsAdvisorConsent = !!TIP_BASE_URL && advisorConsent == null;
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -291,7 +309,12 @@ export default function SecurityAdvisor({ walletChain }) {
 
     const assistantIdx = history.length;
 
-    if (!TIP_BASE_URL) {
+    // M-5 — free text the user typed must NEVER reach the remote endpoint
+    // without an explicit grant. Absent or denied consent is not a dead end:
+    // the local knowledge base answers instead, exactly as it does when no
+    // endpoint is configured. Checked here, at the one place egress happens,
+    // rather than at the input or the drawer.
+    if (!TIP_BASE_URL || !hasAdvisorConsent()) {
       answerLocally(text, history);
       return;
     }
@@ -446,6 +469,46 @@ ${buildAdvisorSystemContext(currentScreen)}`,
               </button>
             </DrawerClose>
           </DrawerHeader>
+
+          {/* M-5 — one-time disclosure before any typed question can leave the
+              device. Deliberately NOT a blocking modal: declining keeps the
+              advisor fully usable from the local knowledge base, so there is no
+              pressure to accept just to get an answer. */}
+          {needsAdvisorConsent && (
+            <div
+              className="mx-4 mt-3 rounded-lg border border-border bg-muted/40 p-3 text-xs"
+              data-testid="advisor-remote-consent"
+            >
+              <p className="font-medium text-foreground">Answer questions online?</p>
+              <p className="mt-1 text-muted-foreground">
+                The advisor can send the questions you type — plus which screen you are on and
+                which chain is selected — to Veyrnox&rsquo;s threat-intelligence service for a
+                fuller answer. Your addresses, balances, seed and PIN are never included.
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Decline and the advisor keeps working, answering from the guidance built into
+                the app. You can change this later from the advisor.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => chooseAdvisorConsent(true)}
+                  className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground"
+                  data-testid="advisor-consent-allow"
+                >
+                  Allow online answers
+                </button>
+                <button
+                  type="button"
+                  onClick={() => chooseAdvisorConsent(false)}
+                  className="rounded-md border border-border px-3 py-1.5 font-medium text-foreground"
+                  data-testid="advisor-consent-deny"
+                >
+                  Keep answers local
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div
