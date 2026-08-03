@@ -64,7 +64,20 @@ export function s9TipThreat(_unsignedTx, _localState, chainData) {
     };
   }
 
-  return { level: LEVEL.OK, evidence: { reason: '' } };
+  // M-4 — only an EXPLICIT allow is OK. This used to be a bare fall-through to
+  // OK, so a verdict this build did not recognise — renamed, absent, a future
+  // value, or attacker-supplied — read as "no threat". tipScreen.js now
+  // validates the shape upstream, but S9 is reachable from anywhere that
+  // populates chainData.tipResult, and "the caller already validated it" is the
+  // same advisory-contract mistake H-6 was about.
+  if (tip.verdict === 'allow') {
+    return { level: LEVEL.OK, evidence: { reason: '' } };
+  }
+
+  return {
+    level: LEVEL.CAUTION,
+    evidence: { reason: 'Remote threat screening returned an unrecognised result. Proceed with caution.' },
+  };
 }
 
 function tipSentence(signals, fallback) {
