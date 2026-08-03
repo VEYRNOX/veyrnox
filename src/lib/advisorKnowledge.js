@@ -301,7 +301,7 @@ export function findLocalAnswer(question) {
     }
   }
 
-  if (bestScore >= 2 && bestMatch) return bestMatch.a;
+  if (bestMatch && bestScore >= 2) return bestMatch.a;
   return null;
 }
 
