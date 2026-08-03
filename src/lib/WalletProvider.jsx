@@ -1253,13 +1253,24 @@ export function WalletProvider({ children }) {
 
   // Confirm the user has backed up a wallet's seed (defaults to the active one).
   // Cheap localStorage flip — no password, no re-encrypt (it is not secret).
+  //
+  // Audit 2026-08-03 H-3 — but "not secret" was the wrong test. `veyrnox-wallet-meta`
+  // is a single shared blob keyed by wallet UUID, and walletMeta.js's own header
+  // states hidden/duress wallets are NOT referenced there. Writing a decoy/hidden
+  // id into it adds a key whose mere PRESENCE proves the user owns more wallets
+  // than they admit to — the deniability tell is the key, not its value. This path
+  // is reachable: WalletSeedQR's Print/Share handler calls it with no gate, and
+  // backing up the decoy seed is exactly what a coerced user is meant to do.
+  // Nothing is lost by skipping it — decoy wallets are already hardcoded
+  // backedUp:true at unlock, so no reader in that session consults the flag.
   const confirmWalletBackup = useCallback((walletId) => {
+    if (isDecoy || isHidden) return;
     const id = walletId || activeIdRef.current;
     if (!id) return;
     setWalletBackedUp(id, true);
     void trackEvent(EVENT.BACKUP_CONFIRMED).catch(() => {});
     refreshWalletsState();
-  }, [refreshWalletsState]);
+  }, [isDecoy, isHidden, refreshWalletsState]);
 
   // Rename a wallet (cosmetic, non-secret localStorage; no password needed).
   const renameWallet = useCallback((walletId, name) => {
