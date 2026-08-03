@@ -245,9 +245,10 @@ The `code_scanning` rule was **removed** from ruleset `Veyrnox Code Review` (`17
 CodeQL still scans all six languages on every PR and still files alerts to the Security
 tab; they no longer block merges. Swift stays covered by push-to-main and the weekly scan.
 Everything else on the ruleset is unchanged — `required_status_checks` (`verify`,
-`mainnet-flag-gate`, `unit-tests`), `pull_request` (0 required approvals),
-`copilot_code_review`, `deletion`, `non_fast_forward`. Exact rule JSON for restoring it is
-in issue #1375.
+`mainnet-flag-gate`, `unit-tests`), `pull_request` (0 required approvals — **on the
+ruleset only**; classic branch protection is a separate, tighter layer, see the two-layer
+note below), `copilot_code_review`, `deletion`, `non_fast_forward`. Exact rule JSON for
+restoring it is in issue #1375.
 - **Why.** #1368 scoped the Swift scan (60–90 min: scarce macOS runner + full
   Capacitor/xcodebuild compile) to PRs touching iOS/Swift. But the rule gates on the CodeQL
   **TOOL** with no per-language granularity, so a typical PR uploaded 5 of 6 languages, the
@@ -269,6 +270,37 @@ in issue #1375.
   against its *actual* prior behaviour (a gate satisfied by `--admin` on every merge). The
   remaining honest alternative is running the real Swift scan on every PR and accepting the
   60–90 min block.
+
+**`main` is gated by TWO layers, not one — and the second one was broken (fixed
+2026-08-03).** Everything above describes ruleset `Veyrnox Code Review` (`17946638`).
+There is ALSO **classic branch protection** on `main`, which this file never mentioned,
+and which is strictly the tighter of the two. Read both before concluding anything about
+what gates a merge — `gh api repos/VEYRNOX/veyrnox/branches/main/protection` is the half
+that `gh api repos/.../rulesets/17946638` does not show you.
+- **It made every PR unmergeable, and that is why the history is full of `--admin`.**
+  Two independent blockers: (a) `required_approving_review_count: 1` +
+  `require_code_owner_reviews: true`, on a repo where one account authors every PR —
+  GitHub forbids self-approval, so the requirement could never be met; (b) a required
+  status context `release-cert-guard`, which is the job's **id**. GitHub matches required
+  contexts on the job's **display name**, and that job sets
+  `name: Release-cert guard rejects wrong fingerprints` — so the context never reported
+  and every PR sat at "Expected — waiting for status to be reported".
+- **The irony: the job was purpose-built to be required.** Its own comment in `ci.yml`
+  says it "ALWAYS runs and ALWAYS reports a conclusion, so that it can be added to the
+  branch ruleset's required checks", and spells out that a skipped-or-absent required
+  check blocks every PR. The intent was right; it was wired up under the wrong string.
+- **Fixed 2026-08-03:** context corrected to
+  `Release-cert guard rejects wrong fingerprints` (this RESTORES a gate that had never
+  once fired), and approvals set to `0` / code-owner review off, matching the ruleset.
+  `--admin` should no longer be needed for a green PR. **If you find yourself reaching
+  for `--admin`, that is a signal the config regressed — diagnose it, do not habituate.**
+  Verified by merging PR #1546 with a plain `gh pr merge --squash`, no override.
+- `strict: true` (branch must be current with `main`) is retained and NOT part of the
+  fix. With `main` moving 10+ commits/day it forces frequent rebases; left alone
+  deliberately rather than quietly loosened.
+- `enforce_admins` is `false`, which is the only reason the three `--admin` merges on
+  2026-08-03 (#1542, #1544, #1545) were possible at all. All three were green on every
+  check that actually reported; nothing red was bypassed.
 
 **2026-07-20 branch-review + weekly audit (`docs/audit-2026-07-20-weekly.md`):** C-1
 (CRITICAL, More-drawer "Recent" tiles named duress/stealth/panic routes and survived
