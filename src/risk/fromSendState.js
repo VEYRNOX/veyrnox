@@ -34,7 +34,7 @@ function toWeiOrNull(text) {
  * @param {string|null} [p.ensResolvedAddress] the address that name resolved to (display-time), else null
  * @param {number} [p.chainId]
  * @param {string} [p.assetCurrency]         selected asset symbol (filters prior native sends)
- * @param {Array}  [p.history]               base44 Transaction records
+ * @param {Array}  [p.history]               local Transaction records
  * @param {Array}  [p.knownAddresses]        [{address,label,date}] interacted-with corpus
  * @param {Array}  [p.whitelist]             [{address,currency}] whitelisted addresses
  * @param {string|null|undefined} [p.recipientCode] eth_getCode hex of `to` (S7); undefined when unknown

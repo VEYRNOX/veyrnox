@@ -82,7 +82,6 @@ const WatchWallets = lazy(() => import('./pages/WatchWallets'));
 const PriceCharts = lazy(() => import('./pages/PriceCharts'));
 const PersonalBackup = lazy(() => import('./pages/PersonalBackup'));
 const GasFeeControl = lazy(() => import('./pages/GasFeeControl'));
-const SpamTokenFilter = lazy(() => import('./pages/SpamTokenFilter'));
 const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
 const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
@@ -129,7 +128,7 @@ const AuthenticatedApp = () => {
     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><Spinner size="lg" /></div>}>
     <Routes>
       <Route path="/landing" element={<LandingGuard />} />
-      {/* Hosted-account auth routes are gone (base44 removal complete, Phase 4).
+      {/* Hosted-account auth routes are gone.
           There is no hosted account — the seed/vault is the identity — so any
           stale /login, /register, /forgot-password, /reset-password or
           /onboarding link redirects to "/", which the WalletGate resolves to the
@@ -215,7 +214,7 @@ const AuthenticatedApp = () => {
           <Route path="/gas-fees" element={<GasFeeControl />} />
           {/* F-P2-2: /spam-filter kept as legacy compat redirect to canonical /trust-score.
               Both surfaced overlapping "token spam" functionality; /trust-score is the
-              broader screening surface. SpamTokenFilter component retained for now — see
+              broader screening surface. SpamTokenFilter component deleted (dead code cleanup) — see
               ecc-multi-lens-2026-07-18.md. */}
           <Route path="/spam-filter" element={<Navigate to="/trust-score" replace />} />
           <Route path="/hd-wallet" element={<HDWalletManager />} />

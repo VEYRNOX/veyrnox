@@ -3,7 +3,6 @@
 // Full-page honest notice for a route classified 'disabled' in the feature
 // registry. It reads the registry entry for the current path and explains WHY
 // the feature is off, rather than showing fabricated data. Visual language
-// mirrors components/LocalBuildNotice.jsx.
 import { CloudOff } from 'lucide-react';
 import { getFeatureStatus } from '@/lib/featureRegistry';
 

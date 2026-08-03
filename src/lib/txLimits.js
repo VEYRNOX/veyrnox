@@ -9,7 +9,7 @@
 //
 // "TODAY'S TOTAL" — DATA SOURCE & LOCALITY (important):
 //   - It is summed from the SAME local transaction-history records the Send and
-//     anomaly/poison screens already read (base44.entities.Transaction — the
+//     anomaly/poison screens already read (local entity Transaction records — the
 //     app's own tx history; seeded client-side in demo, the user's own records
 //     otherwise). NOTHING new is fetched and NOTHING is sent anywhere: this is a
 //     pure reduction over records the caller already has in hand.

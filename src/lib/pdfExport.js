@@ -1,6 +1,6 @@
 // src/lib/pdfExport.js
 //
-// CLIENT-SIDE PDF EXPORT (base44 removal, Phase 3).
+// CLIENT-SIDE PDF EXPORT.
 //
 // Replaces the old `generateDocumentationPDF` / `generateArchitectureDocuments`
 // server functions. Those ran jsPDF on a Deno backend and uploaded the result
