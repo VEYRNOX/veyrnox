@@ -96,7 +96,10 @@ export function verdictToRiskLevel(verdict) {
     case 'block': return 'high';
     case 'warn': return 'medium';
     case 'allow': return 'info';
-    default: return 'info';
+    // M-4 — an unrecognised verdict is NOT informational. This defaulted to
+    // 'info', so a renamed/absent/unknown verdict rendered as benign in the UI
+    // while s9 separately scored it OK. Both defaults are now cautionary.
+    default: return 'medium';
   }
 }
 
