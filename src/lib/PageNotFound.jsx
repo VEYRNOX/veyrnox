@@ -1,11 +1,6 @@
 import { useLocation } from 'react-router';
 
-// Plain on-device 404. The former "Admin Note" block (and the base44.auth.me()
-// call that fed it) was hosted-platform residue from the base44 era: it surfaced
-// a "the AI hasn't implemented this page yet — ask it in the chat" hint whenever
-// the auth stub reported role === 'admin', which the offline auth stub always
-// does. That leaked a stale builder-platform hint to anyone on any unknown path,
-// so it has been removed. This page now has no backend dependency.
+// Plain on-device 404. No backend dependency.
 export default function PageNotFound({}) {
     const location = useLocation();
     const pageName = location.pathname.substring(1);
