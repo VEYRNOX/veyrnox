@@ -17,7 +17,7 @@
     ]
   },
   "env": {
-    "NODE_OPTIONS": "--max-old-space-size=2048",
+    "NODE_OPTIONS": "--max-old-space-size=1024",
     "ECC_DISABLED_HOOKS": "pre:bash:gateguard-fact-force,pre:edit-write:gateguard-fact-force"
   },
   "permissions": {
