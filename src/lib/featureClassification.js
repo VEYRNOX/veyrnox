@@ -9,7 +9,7 @@
 // Entry shape: { verdict: 'live'|'disabled'|'cut', dataSource, note, reason? }
 //   reason (disabled): 'leaks' | 'server' | 'unverified'
 //   reason (cut):      'off-wedge'
-//   dataSource: 'wallet-core' | 'on-device' | 'base44-entities' | 'external'
+//   dataSource: 'wallet-core' | 'on-device' | 'local-entities' | 'external'
 //               | 'invented' | 'static'
 
 // Must remain de-duplicated — the completeness/phantom tests rely on it.
@@ -51,7 +51,7 @@ export const CLASSIFICATION = {
   },
   '/analytics': {
     verdict: 'live', dataSource: 'local-first',
-    note: 'Migrated (2026-06-17): base44 removed. Portfolio allocation from usePortfolio; monthly activity and PnL from tx history via useAnalytics; USD views gated on pricesEnabled (live prices opt-in). No fabrication.',
+    note: 'Migrated (2026-06-17): hosted platform removed. Portfolio allocation from usePortfolio; monthly activity and PnL from tx history via useAnalytics; USD views gated on pricesEnabled (live prices opt-in). No fabrication.',
   },
   '/advanced-analytics': {
     verdict: 'live', dataSource: 'local-first',
@@ -63,15 +63,15 @@ export const CLASSIFICATION = {
     note: 'Benchmarking cut: benchmark comparison requires historical market data not available in local-only mode; the feature cannot be delivered honestly without a live market data feed, which is off-wedge.',
   },
   '/risk-score': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'Derives risk score from real local wallet balances, staking positions, and loan records via IndexedDB. Applies static per-asset volatility constants (reasonable calibration, not claimed to be live market data). No fabrication — formula is transparent and entirely driven by the user\'s actual holdings.',
   },
   '/correlation': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'Hardcoded CORRELATIONS matrix retained as reference/illustrative values — disclaimer added prominently in yellow before the table. Wallet list used to filter shown assets (real data). No live price feed used — per-asset coefficients are static reference constants, clearly labeled as such.',
   },
   '/correlation-timeline': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'PRICE_SERIES and EVENTS hardcoded constants removed. Page now shows honest "historical price data not available" notice. Existing NewsSentiment records from the database are still displayed if present. No fabricated data remains.',
   },
   '/dashboard-widgets': {
@@ -79,8 +79,8 @@ export const CLASSIFICATION = {
     note: 'A pure settings/preference UI: reads and writes widget visibility and order to localStorage only. No data fabrication, no external calls. Cleanly on-device.',
   },
   '/news-sentiment': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'MOCK_NEWS array removed. allNews now only contains records from base44.entities.NewsSentiment (user-saved or AI-refreshed). Added honest "no live feed connected" notice. AI refresh correctly disabled via LLM_AVAILABLE guard. No fabricated Bloomberg/Reuters/CoinDesk articles shown.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'MOCK_NEWS array removed. allNews now only contains records from local entities NewsSentiment (user-saved or AI-refreshed). Added honest "no live feed connected" notice. AI refresh correctly disabled via LLM_AVAILABLE guard. No fabricated Bloomberg/Reuters/CoinDesk articles shown.',
   },
 
   // ── Wallet group (audit batch 2) ───────────────────────────────────────────
@@ -97,7 +97,7 @@ export const CLASSIFICATION = {
     note: 'BTC history from wallet-core/btc/provider (Esplora — same endpoint used for UTXOs/broadcast); SOL from wallet-core/sol/provider (same RPC used for balance/broadcast); EVM explicitly unsupported (no third-party indexer added — shows honest explorer fallback). Demo rows clearly badged "Sample". Privacy disclosure surfaced in-app.',
   },
   '/receipt': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'Reads real local Transaction records. USD Value row removed — receipt now shows native amount and fee only, with no stale fiat conversion on a financial document.',
   },
   '/fee-analytics': {
@@ -106,15 +106,15 @@ export const CLASSIFICATION = {
   },
   '/hd-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Core HD wallet management: createWallet/importWallet/unlock/lock/deriveAccounts from useWallet(); live per-chain balances via getBalanceEth/getTokenBalance; only public addresses cached in base44. Seed/keys never leave device.',
+    note: 'Core HD wallet management: createWallet/importWallet/unlock/lock/deriveAccounts from useWallet(); live per-chain balances via getBalanceEth/getTokenBalance; only public addresses cached in local storage. Seed/keys never leave device.',
   },
   '/crypto-signing': {
     verdict: 'live', dataSource: 'on-device',
     note: 'Entirely local: ethers.Wallet.createRandom() for key gen, ethers.HDNodeWallet.fromPhrase() for derivation, wallet.signMessage()/signTransaction() for signing — all client-side ethers.js v6, no external call. Standard cryptographic signing utility.',
   },
   '/recurring': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Schedules stored in base44.entities.RecurringPayment (local IndexedDB). Page uses browser Notification API to fire a reminder when a payment is due. Monthly estimate now shown per-currency — cross-currency totals removed. Self-custody contract maintained: no autonomous value transfer; due payments hand off to /send for user signing. Monthly-estimate mixed-currency bug fixed.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'Schedules stored in local entities RecurringPayment (local IndexedDB). Page uses browser Notification API to fire a reminder when a payment is due. Monthly estimate now shown per-currency — cross-currency totals removed. Self-custody contract maintained: no autonomous value transfer; due payments hand off to /send for user signing. Monthly-estimate mixed-currency bug fixed.',
   },
   '/calculator': {
     verdict: 'live', dataSource: 'external',
@@ -128,11 +128,11 @@ export const CLASSIFICATION = {
   },
   // ── Finance group (audit batch 3) ─────────────────────────────────────────
   '/savings': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Pure local CRUD on base44.entities.SavingsGoal. Users enter USD target and current amounts directly; progress bars are computed from those user-entered values. No currency conversion, no fabricated data, no external call.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'Pure local CRUD on local entities SavingsGoal. Users enter USD target and current amounts directly; progress bars are computed from those user-entered values. No currency conversion, no fabricated data, no external call.',
   },
   '/budget': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'Rewritten to track native amounts per currency — no USD conversion. Limit field relabelled "native amount". Spend shown as "X {currency} sent of Y {currency} limit". Stale USD_RATES removed entirely.',
   },
   '/net-worth': {
@@ -140,47 +140,47 @@ export const CLASSIFICATION = {
     note: 'BUILT — UI-confirmed 2026-06-20 (recharts v2): real on-chain balances loaded in the UI via the throwaway testnet wallet (bamboo… seed) — ETH ≈$1,248, BTC ≈$177, ARB ≈$160, USDT ≈$98, OP ≈$96, SOL ≈$82, USDC ≈$38, MATIC/AVAX/BNB ≈$0 (small testnet residuals). "Reference rate, not live market data" disclosure present (I2). "does not include external assets" scope note present (crypto-only). Allocation donut + per-asset rows all rendered. Demo OFF (veyrnox-demo=null), no round seeded fixtures. RE-VERIFIED under recharts v3 (3.8.1) 2026-06-22 after #281 bumped recharts 2→3 (see issue #285): same throwaway testnet wallet, demo OFF, total ≈$1,991 — allocation donut re-rendered with 8 populated arc sectors (ETH/BTC/BNB/ARB/OP/SOL/AVAX/MATIC) + per-asset rows; "Reference rate"/"does not include external assets" disclosures still present; zero console errors. (USDC/USDT RPC balances did not load this run — shown as "—"; the "partial — some balances couldn’t be read" notice surfaced honestly.) Render-only re-confirmation; no on-chain txid involved.',
   },
   '/invoices': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Pure CRUD on base44.entities.Invoice. Invoices are denominated in user-chosen crypto amounts — no USD conversion, no stale price usage, no fabricated data. Invoice number derived from Date.now() as a non-financial identifier only.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'Pure CRUD on local entities Invoice. Invoices are denominated in user-chosen crypto amounts — no USD conversion, no stale price usage, no fabricated data. Invoice number derived from Date.now() as a non-financial identifier only.',
   },
   '/tax': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'Replaced with an honest "Tax Export" stub. historicalRate() FIFO engine and all fabricated cost-basis/gain figures removed. Exports raw transactions (date/type/asset/amount/fee/tx_hash) as CSV with no invented prices. Directs users to Koinly/CoinTracker/etc. for real tax computation. Explicit disclaimer that this is not tax advice.',
   },
 
   // ── Assets group (audit batch 4) ─────────────────────────────────────────
   '/watchlist': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'MOCK_PRICES and 24h change display removed. Price shown as "unavailable — connect a live feed". Target buy/sell values are stored but not evaluated against stale prices — no false signals. Pure CRUD on local PersonalWatchlist records.',
   },
   '/nft': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'NFTAsset CRUD backed by local IndexedDB. Portfolio Value shown in ETH only — stale ETH_PRICE=3200 USD sub-label removed. P&L in ETH only. No USD conversion, no stale rate injection.',
   },
   '/nft-multichain': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'NFTAsset CRUD backed by local IndexedDB. All portfolio values are shown in ETH only — no USD conversion and no stale rate injection. Math.random() is used only for selecting a placeholder image URL (cosmetic), not financial data. Manual tracking, honestly labeled.',
   },
   '/spending': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'Reports only real on-device transaction data: per-asset NATIVE amounts and transaction counts/timing (lib/spendingPatterns). The fabricated stale-USD aggregates were removed — no cross-asset fiat conversion is shown, so there is no silently-stale value. Honest activity view.',
   },
   '/snapshots': {
     verdict: 'live', dataSource: 'local-first',
-    note: 'Migrated (2026-06-17): base44 CRUD replaced with snapshotStore (localStorage, keyed by wallet-address fingerprint for deniability). USD values captured only when pricesEnabled; indeterminate flag preserved on snapshot records. No stale USD_RATES fabrication.',
+    note: 'Migrated (2026-06-17): entity CRUD replaced with snapshotStore (localStorage, keyed by wallet-address fingerprint for deniability). USD values captured only when pricesEnabled; indeterminate flag preserved on snapshot records. No stale USD_RATES fabrication.',
   },
   '/onchain': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'Relabelled "Transaction History" with explicit disclaimer "no blockchain query is made". Aggregates real local Transaction records; address lookup searches local wallet/tx store only. No fabrication, no external call.',
   },
   // ── Security group (audit batch A) ───────────────────────────────────────
   '/security-dashboard': {
     verdict: 'live', dataSource: 'on-device',
-    note: 'Aggregates real local signals only: summarizeApprovals/summarizeSpamTokens/screenAddressHistory from lib/securityPosture.js (run over base44 entity records already held on device); biometric/passkey/session toggles from lib/biometric, lib/passkey, lib/session; hasStealthPool from WalletProvider (a non-destructive IndexedDB read of the universal baseline pool only — the provider exposes no duress/panic configured-state accessor, deniability v2). No external call, no fabrication. Explicitly disclaims being a guarantee.',
+    note: 'Aggregates real local signals only: summarizeApprovals/summarizeSpamTokens/screenAddressHistory from lib/securityPosture.js (run over local entity records already held on device); biometric/passkey/session toggles from lib/biometric, lib/passkey, lib/session; hasStealthPool from WalletProvider (a non-destructive IndexedDB read of the universal baseline pool only — the provider exposes no duress/panic configured-state accessor, deniability v2). No external call, no fabrication. Explicitly disclaims being a guarantee.',
   },
   '/security': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Sessions tab manages local UserSession records via base44.entities; revocation enforced by lib/sessionRevocation (self-enforcing on each device). Limits tab stores TransactionLimit records in local IndexedDB; daily progress computed via lib/txLimits.js over local Transaction records. No external call, no fabricated data.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'Sessions tab manages local UserSession records via local entities.entities; revocation enforced by lib/sessionRevocation (self-enforcing on each device). Limits tab stores TransactionLimit records in local IndexedDB; daily progress computed via lib/txLimits.js over local Transaction records. No external call, no fabricated data.',
   },
   '/what-this-protects': {
     verdict: 'live', dataSource: 'static',
@@ -195,8 +195,8 @@ export const CLASSIFICATION = {
     note: 'Change-password calls WalletProvider.changePassword (decrypt-then-re-encrypt the same seed under Argon2id+AES-GCM, on-device). Recovery calls WalletProvider.importWallet (BIP-39 checksum → local vault overwrite). Explicitly states no custodial reset path exists. DEMO panel exercises the real change-password code path on a throwaway vault.',
   },
   '/session-manager': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Lists and revokes UserSession records from local base44 store. Revocation is real: self-enforcement via lib/sessionRevocation locks the wallet and clears the local session token. Honestly discloses that remote devices apply revocation at next open, not instantly. geo_country/ip_address fields display "Unknown Location" if not populated — no server-side geolocation dependency for the revoke action.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'Lists and revokes UserSession records from local local entity store. Revocation is real: self-enforcement via lib/sessionRevocation locks the wallet and clears the local session token. Honestly discloses that remote devices apply revocation at next open, not instantly. geo_country/ip_address fields display "Unknown Location" if not populated — no server-side geolocation dependency for the revoke action.',
   },
   '/duress-pin': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -212,7 +212,7 @@ export const CLASSIFICATION = {
   },
   '/address-checker': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Runs isLocallyFlagged + screenRecipient from wallet-core/evm/poison.js over user-pasted address and local AddressBook contacts (base44.entities.AddressBook). Fully on-device: no network, no third-party reputation feed. Explicitly says "not flagged" is not a safety guarantee and that a live threat-intel feed is on the roadmap, not built.',
+    note: 'Runs isLocallyFlagged + screenRecipient from wallet-core/evm/poison.js over user-pasted address and local AddressBook contacts (local entities AddressBook). Fully on-device: no network, no third-party reputation feed. Explicitly says "not flagged" is not a safety guarantee and that a live threat-intel feed is on the roadmap, not built.',
   },
   '/wallet-seed-qr': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -241,8 +241,8 @@ export const CLASSIFICATION = {
     note: 'Config stored in localStorage; passkey registration calls the real WebAuthn navigator.credentials.create() with a live challenge (window.PublicKeyCredential guard). The "Test Biometric Now" button is a UX confirmation stub (setTimeout) — it does not claim to perform a real auth challenge. Core vault-protection feature.',
   },
   '/anomaly-detection': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'detectAnomalies() applies real sigma-threshold math to real local Transaction records (base44.entities.Transaction). Scan button now synchronously runs the detection and stores results in state — no fake delay. Labels updated to "Transaction Anomaly Detection" / "Statistical analysis"; "AI Pattern Scanner" / "machine learning" removed. Three explicit heuristic checks shown to the user: large-transfer z-score (>2.5σ), velocity burst (3+ tx/hr), off-hours (02:00–05:00). All runs on-device.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'detectAnomalies() applies real sigma-threshold math to real local Transaction records (local entities Transaction). Scan button now synchronously runs the detection and stores results in state — no fake delay. Labels updated to "Transaction Anomaly Detection" / "Statistical analysis"; "AI Pattern Scanner" / "machine learning" removed. Three explicit heuristic checks shown to the user: large-transfer z-score (>2.5σ), velocity burst (3+ tx/hr), off-hours (02:00–05:00). All runs on-device.',
   },
   '/voice-commands': {
     verdict: 'live', dataSource: 'external',
@@ -260,7 +260,7 @@ export const CLASSIFICATION = {
     note: 'Imports classifyToken from @/wallet-core/evm/spam. Runs the real on-device heuristic classifier over user-supplied or preset token metadata. Extensive in-file honesty contract: never claims on-chain analysis, never asserts safety, explicitly labels results as local-heuristic only. No external call.',
   },
   '/fraud': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'Real on-device security scan: (1) transaction anomaly detection — large-transfer z-score >2.5σ, velocity burst 3+ tx/hr, off-hours 02:00–05:00; (2) address screening via isLocallyFlagged from wallet-core/evm/poison over AddressBook + tx history; (3) FraudAlert records from IndexedDB. No AI claim, no fake delay, no external call. Scope panel lists all three checks with per-check counts after scan.',
   },
   '/rasp-security': {
@@ -272,21 +272,21 @@ export const CLASSIFICATION = {
     note: 'BUILT — UI-confirmed 2026-06-20: enabled toggle via /audit-log page, navigated away (triggering settings_changed), returned to confirm 1 entry appeared — "Settings changed | 6/20/2026, 8:38:58 AM". Write→read cycle confirmed. {type, ts} only (no amounts/addresses). "Encrypted blob in primary vault store. Panic wipe destroys it." and "No-op in decoy/hidden sessions" disclosures present. Clear button rendered. Demo OFF, real wallet (bamboo… seed). Opt-in encrypted audit log viewer — primary-session only; returns [] in decoy/hidden sessions. At most 100 entries.',
   },
   '/login-activity': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'BUILT — UI-confirmed 2026-06-20: page loaded with real vault data — "Previous session — this device: Jun 20, 2026, 8:50 AM (26m ago)" from vault-stored lastUnlockAt. "No devices recorded yet" (web browser, no base44 UserSession entries). I3 deniability note present: "Per-unlock event history is not stored — doing so would create a metadata trail that could violate deniability guarantees." Session Manager link rendered. Demo OFF, real wallet. Read-only; no new metadata introduced.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'BUILT — UI-confirmed 2026-06-20: page loaded with real vault data — "Previous session — this device: Jun 20, 2026, 8:50 AM (26m ago)" from vault-stored lastUnlockAt. "No devices recorded yet" (web browser, no hosted UserSession entries). I3 deniability note present: "Per-unlock event history is not stored — doing so would create a metadata trail that could violate deniability guarantees." Session Manager link rendered. Demo OFF, real wallet. Read-only; no new metadata introduced.',
   },
   '/alerts': {
     verdict: 'live', dataSource: 'external',
-    note: 'CryptoCompare egress gated behind isLivePricesEnabled(). Live prices useQuery has enabled: isLivePricesEnabled() and refetchInterval removed — no auto-poll. Ticker hidden when off (shows "enable in Settings" note). checkNow remains user-triggered (calls fetchMarketPricesUsd on demand — intentional opt-in action). Alert CRUD on base44.entities.PriceAlert is real. On-device trigger evaluation unchanged. On native platforms, triggered alerts fire OS-level local notifications via @capacitor/local-notifications (I3-gated: suppressed in decoy/hidden/locked sessions; payload contains user-selected currency + target price only — no wallet holdings derived).',
+    note: 'CryptoCompare egress gated behind isLivePricesEnabled(). Live prices useQuery has enabled: isLivePricesEnabled() and refetchInterval removed — no auto-poll. Ticker hidden when off (shows "enable in Settings" note). checkNow remains user-triggered (calls fetchMarketPricesUsd on demand — intentional opt-in action). Alert CRUD on local entities PriceAlert is real. On-device trigger evaluation unchanged. On native platforms, triggered alerts fire OS-level local notifications via @capacitor/local-notifications (I3-gated: suppressed in decoy/hidden/locked sessions; payload contains user-selected currency + target price only — no wallet holdings derived).',
   },
 
   // ── Connect group (audit batch 5) ─────────────────────────────────────────
   '/address-book': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'Pure CRUD on base44.entities.AddressBook (local IndexedDB). Address entry is validated on save via isValidAddressForCurrency/addressKindLabel from lib/addressValidation — the same validators used by the Send flow. No external call, no fabricated data, no USD conversion.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'Pure CRUD on local entities AddressBook (local IndexedDB). Address entry is validated on save via isValidAddressForCurrency/addressKindLabel from lib/addressValidation — the same validators used by the Send flow. No external call, no fabricated data, no USD conversion.',
   },
   '/watch-wallets': {
-    verdict: 'live', dataSource: 'base44-entities',
+    verdict: 'live', dataSource: 'local-entities',
     note: 'MOCK array and USD_RATES removed. Empty state shows honest empty UI (no fake Vitalik.eth / Whale #1 entries). USD value computation removed — cards now show native balance only (or "—" when balance is zero). Watch-only wallet CRUD and copy/explorer links remain fully functional.',
   },
   '/live-balances': {
@@ -294,8 +294,8 @@ export const CLASSIFICATION = {
     note: 'All balance reads go through wallet-core: getBalanceEth + getProvider from @/wallet-core/evm/provider and ERC-20 balanceOf from @/wallet-core/evm/tokens. Networks come from listEnabledNetworks() (testnet-only gate). No third-party indexer or price feed is used — token discovery is limited to the wallet\'s own verified token registry. Gas price also read from the same provider.',
   },
   '/network-manager': {
-    verdict: 'live', dataSource: 'base44-entities',
-    note: 'CRUD on base44.entities.NetworkConfig (local IndexedDB). The component itself makes no live RPC calls — it manages the user-controlled RPC endpoint list. The "Connected" badge is cosmetic (not a live ping). Custom RPC entry is user-controlled plumbing. Honestly displays chain IDs and RPC URLs.',
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'CRUD on local entities NetworkConfig (local IndexedDB). The component itself makes no live RPC calls — it manages the user-controlled RPC endpoint list. The "Connected" badge is cosmetic (not a live ping). Custom RPC entry is user-controlled plumbing. Honestly displays chain IDs and RPC URLs.',
   },
   '/solana': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -311,12 +311,12 @@ export const CLASSIFICATION = {
   },
   '/connect': {
     verdict: 'live', dataSource: 'on-device',
-    note: 'Uses real browser wallet injection (window.ethereum for MetaMask/Coinbase, window.solana for Phantom). Balance reads go through the injected provider API (eth_getBalance) or a public Solana JSON-RPC call (user-initiated, single request on connect, not a background feed). Imports to base44.entities.Wallet as a read-only snapshot with an honest disclosure. No private key access.',
+    note: 'Uses real browser wallet injection (window.ethereum for MetaMask/Coinbase, window.solana for Phantom). Balance reads go through the injected provider API (eth_getBalance) or a public Solana JSON-RPC call (user-initiated, single request on connect, not a background feed). Imports to local entities Wallet as a read-only snapshot with an honest disclosure. No private key access.',
   },
   // ── Core / Preferences group (audit batch 5) ──────────────────────────────
   '/settings': {
     verdict: 'live', dataSource: 'on-device',
-    note: 'On-device preferences: theme via next-themes (localStorage), BiometricUnlockSettings/PasskeyUnlockSettings use WebAuthn navigator.credentials, SessionSettings manages auto-lock via WalletProvider, per-wallet passkey registration updates base44.entities.Wallet (local). Delete Account clears local entity records and locks the vault. No external call, no fabricated data.',
+    note: 'On-device preferences: theme via next-themes (localStorage), BiometricUnlockSettings/PasskeyUnlockSettings use WebAuthn navigator.credentials, SessionSettings manages auto-lock via WalletProvider, per-wallet passkey registration updates local entities Wallet (local). Delete Account clears local entity records and locks the vault. No external call, no fabricated data.',
   },
   '/docs': {
     verdict: 'live', dataSource: 'static',

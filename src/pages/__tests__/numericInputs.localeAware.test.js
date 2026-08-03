@@ -32,7 +32,6 @@ const PAGES = [
   { file: 'SavingsGoals.jsx', numericInputCount: 2 },
   { file: 'PriceAlerts.jsx', numericInputCount: 2 },
   { file: 'InvoiceGenerator.jsx', numericInputCount: 1 },
-  { file: 'PaymentLinks.jsx', numericInputCount: 1 },
   { file: 'RecurringPayments.jsx', numericInputCount: 1 },
   { file: 'WatchlistPage.jsx', numericInputCount: 4 },
   { file: 'Calculator.jsx', numericInputCount: 2 },

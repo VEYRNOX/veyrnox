@@ -5,11 +5,11 @@
 //     a random `session_token` (a UUID stored in localStorage under
 //     `sdw_session_token`). Security Center registers the current device on
 //     mount; Session Manager lists/revokes these records. In demo this store is
-//     client-side; with a backend it is the shared base44 store.
+//     client-side; with a backend it is the shared entity store.
 //   - This entity is SEPARATE from the actual access control. Fund/signing access
 //     is gated by WalletProvider's in-memory decrypted mnemonic (unlock() loads
 //     it, lock() clears it, plus idle/background auto-lock). The account-login
-//     session (base44.auth) is a third, separate thing.
+//     session auth is a third, separate thing.
 //   - PREVIOUS BEHAVIOUR (the theatre): "Revoke" wrote status:"revoked" on the
 //     UserSession record and NOTHING read it — access was unchanged. A revoked
 //     session did not affect anything.

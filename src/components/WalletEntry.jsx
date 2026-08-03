@@ -1,5 +1,5 @@
-// components/WalletEntry.jsx — the on-device auth front door (base44 removal,
-// Phase 2; streamlined onboarding). This is THE entry point for the local build:
+// components/WalletEntry.jsx — the on-device auth front door.
+// This is THE entry point for the local build:
 // there is no hosted account, so the user's seed/vault is their identity. It
 // renders one of three states, driven entirely by the on-device WalletProvider:
 //

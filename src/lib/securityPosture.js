@@ -22,7 +22,7 @@ import { classifyToken } from '@/wallet-core/evm/spam';
 import { screenRecipient, isLocallyFlagged } from '@/wallet-core/evm/poison';
 
 /**
- * Aggregate ERC-20 allowance rows (base44 TokenApproval shape) into counts.
+ * Aggregate ERC-20 allowance rows (local TokenApproval shape) into counts.
  * Reuses summarizeAllowance() (the same calldata decoder the confirm screen and
  * the Token Approvals page use) so "UNLIMITED" is classified identically. The
  * high-risk rule mirrors TokenApprovals.jsx riskOf(): an unlimited allowance to an
@@ -52,7 +52,7 @@ export function summarizeApprovals(rows = []) {
 }
 
 /**
- * Aggregate token holdings (base44 WalletToken shape) into a spam count, reusing
+ * Aggregate token holdings (local WalletToken shape) into a spam count, reusing
  * the SAME classifyToken() the Spam Token Filter uses. Display-only signal — these
  * tokens are never moved; the count is "what the filter would hide".
  *
