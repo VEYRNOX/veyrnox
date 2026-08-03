@@ -274,6 +274,41 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
         {type === REQUEST_TYPES.SIGN_TYPED_DATA && typedDataMeta && (
           <>
             <p className={styles.label}>{typedDataMeta.description.summary}</p>
+
+            {/* M-1 (audit 2026-08-03) — describeTypedData has always returned
+                `contract` and `chainId`, and nothing rendered them. The summary
+                above is `${primaryType} on ${domain.name}`, and domain.name is
+                free text the dApp chooses — so for a Permit the only asset
+                identity on screen was a NAME the attacker controls, while the
+                contract the signature actually authorises stayed invisible.
+                H7 already binds domain.chainId, so the chain axis was covered;
+                this closes the contract-identity axis. Rendered in full, never
+                truncated: a shortened address is exactly what look-alike
+                attacks defeat. */}
+            {(typedDataMeta.description.contract || typedDataMeta.description.chainId != null) && (
+              <div className={styles.txBox}>
+                {typedDataMeta.description.contract && (
+                  <div className={styles.txRow}>
+                    <span>{t('wc.request_approval.typed_contract_row_label')}</span>
+                    <span className={styles.mono} data-testid="wc-verifying-contract">
+                      {typedDataMeta.description.contract}
+                    </span>
+                  </div>
+                )}
+                {typedDataMeta.description.chainId != null && (
+                  <div className={styles.txRow}>
+                    <span>{t('wc.request_approval.typed_chain_row_label')}</span>
+                    <span className={styles.mono} data-testid="wc-typed-chain">
+                      {String(typedDataMeta.description.chainId)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+            {typedDataMeta.description.contract && (
+              <p className={styles.hint}>{t('wc.request_approval.typed_contract_hint')}</p>
+            )}
+
             <ul className={styles.fieldList}>
               {typedDataMeta.description.fields.map((f) => (
                 <li key={f.name} className={styles.field}>
