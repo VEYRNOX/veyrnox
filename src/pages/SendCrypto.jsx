@@ -86,6 +86,7 @@ import { trackEvent, EVENT } from "@/api/trackEvent";
 import { requiresVerification } from "@/lib/seedVerifyGate";
 import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
 import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
+import { isRiskGateReady } from "@/lib/riskGateReady";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -685,6 +686,14 @@ export default function SendCrypto() {
   // has explicitly enabled remoteScreen. I3: screenTransaction returns null in
   // deniability/demo. Runs at the verify step so the form step makes no call.
   const tipChain = isBtc ? 'btc' : isSolana ? 'solana' : 'evm';
+
+  // H-1 — the readiness gate must be derived from the SAME condition that
+  // enables each query. Previously the gate was written independently of the
+  // queries and drifted from them; declaring the condition once makes that
+  // impossible. Both `enabled:` props below read these constants.
+  const tipScreenApplies = remoteScreen && step === 'verify' && !!toAddress
+    && !!selectedWallet?.address && addressFormatValid;
+
   const tipQuery = useQuery({
     queryKey: ['tip-screen', toAddress, selectedWallet?.address, tipChain, canonicalAmount],
     queryFn: () => screenTransaction({
@@ -697,7 +706,7 @@ export default function SendCrypto() {
       ...(canonicalAmount && { valueWei: canonicalAmount }),
       recentCounterparties: knownAddresses.slice(0, 20).map(k => k.address),
     }),
-    enabled: remoteScreen && step === 'verify' && !!toAddress && !!selectedWallet?.address && addressFormatValid,
+    enabled: tipScreenApplies,
     staleTime: 30_000,
     retry: false,
   });
@@ -748,6 +757,16 @@ export default function SendCrypto() {
   // Disabled in DEMO (no live RPC) — the demo harness renders sample previews
   // instead. Errors are surfaced as a degraded "couldn't simulate" note, not a
   // block. Keys are never involved (simulation needs only the sender address).
+  // Mirrors tipScreenApplies: one declaration, read by both the query's
+  // `enabled` and the readiness gate, so the two cannot drift (H-1).
+  // NOTE the EVM-family clause — this simulation NEVER runs for BTC/SOL, which
+  // is exactly why keying readiness off it alone blocked those sends forever
+  // (L-4).
+  const txSimApplies = simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden
+    && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
+    && !!selectedWallet?.address && !!toAddress && addressFormatValid
+    && parseFloat(canonicalAmount) > 0;
+
   const txSim = /** @type {any} */ (useQuery({
     queryKey: ["tx-sim", networkKey, selectedWallet?.address, toAddress, canonicalAmount, selectedAsset?.symbol, isErc20],
     queryFn: async () => {
@@ -768,8 +787,7 @@ export default function SendCrypto() {
       });
     },
     // I3: never issue simulation RPC in a decoy/hidden (deniability) session.
-    enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
-      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(canonicalAmount) > 0,
+    enabled: txSimApplies,
     retry: false,
     staleTime: 10000,
   }));
@@ -815,7 +833,19 @@ export default function SendCrypto() {
   // reused from the simulation's already-fetched eth_getCode (I2).
   // Also ready when simulation is disabled — the score runs without recipientCode
   // (S7 escalates to CAUTION, which now requires confirmation per score.js).
-  const riskReady = DEMO || !!txSim.data || txSim.isError || !simEnabled;
+  // H-1 / L-4 — ready when EVERY contributor that applies to THIS send has
+  // settled, not when the EVM simulation alone has. The old expression
+  // (`DEMO || !!txSim.data || txSim.isError || !simEnabled`) both failed to wait
+  // for TIP — letting a send be judged while screening was in flight, which S9
+  // scores as OK because it cannot tell "not answered" from "answered, clean" —
+  // and, on BTC/SOL where txSim never runs, never became true at all.
+  const riskReady = isRiskGateReady({
+    demo: DEMO,
+    contributors: [
+      { applies: txSimApplies, query: txSim },
+      { applies: tipScreenApplies, query: tipQuery },
+    ],
+  });
 
   // SINGLE source of truth for the verdict: maps the live send state → score().
   // BOTH the displayed banner and the hard pre-sign gate call this, so the
@@ -980,6 +1010,20 @@ export default function SendCrypto() {
       // Fire-and-forget (I4) — the notification path must never block or unwind the send.
       if (freshRaspTier !== 'allow') {
         notifyRaspAlert({ tier: freshRaspTier, sentence: freshArtifact?.sentence ?? null, ts: Date.now() });
+      }
+
+      // H-1 chokepoint re-assert. The Continue button is disabled while remote
+      // screening is in flight, but button state is not the security boundary —
+      // scoreCurrentSend() below reads tipQuery.data through a closure, and an
+      // unsettled query means `tipResult` is undefined, which S9 scores as OK.
+      // Refuse to sign rather than sign on a verdict that never consulted the
+      // screening the user opted into. Mirrors the RASP fresh-artifact re-assert
+      // immediately below (I4 fail-closed).
+      if (tipScreenApplies && !(tipQuery.isSuccess || tipQuery.isError)) {
+        throw Object.assign(
+          new Error('Threat screening has not finished for this transaction yet.'),
+          { code: 'TIP_SCREEN_PENDING' }
+        );
       }
 
       let riskScoreFailed = false;
