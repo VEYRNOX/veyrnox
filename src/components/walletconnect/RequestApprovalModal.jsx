@@ -6,6 +6,10 @@ import styles from './RequestApprovalModal.module.css';
 import { successHaptic, errorHaptic, tapHaptic } from '@/lib/haptics';
 import { useWalletConnect, resolvePersonalSignMessage } from '@/lib/WalletConnectProvider.jsx';
 import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
+// Imported from wallet-core, NOT from WalletConnectProvider: this is the same
+// helper the provider uses to CAP the fee, so the ceiling shown here and the
+// ceiling enforced at send time are one value (H-7).
+import { resolveWcWorstCaseFeeWei } from '@/wallet-core/evm/walletconnect/fee.js';
 import { checkDappDomain } from '@/risk/knownBadDapps.js';
 import { score } from '@/risk/score.js';
 import { buildRiskInputsFromWcRequest } from '@/risk/fromWalletConnect.js';
@@ -50,6 +54,16 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
       ? t('wc.request_approval.unknown_network_with_id', { id: wcChainIdNum })
       : t('wc.request_approval.unknown_network'));
   const realFundsWarning = wcNetwork ? wcNetwork.isTestnet === false : true;
+
+  // H-7 — the MOST this request can cost in fees. M9/F-02-GASCAP already bound
+  // it; the bug was that the bound was invisible, so a `value: 0x0` request with
+  // the fee pinned at the ceiling read as harmless. null when it cannot be
+  // derived honestly (no dApp-supplied fee, or an unparseable one) — in that case
+  // we render no row at all rather than a fabricated number (I4).
+  const worstCaseFeeWei = (() => {
+    try { return resolveWcWorstCaseFeeWei(reqParams?.[0], wcNetwork?.key); } catch { return null; }
+  })();
+  const worstCaseFeeText = worstCaseFeeWei == null ? null : ethers.formatEther(worstCaseFeeWei);
 
   const needsReauth = isSendReauthRequired();
 
@@ -307,6 +321,17 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                     : '0 ' + nativeSymbol}
                 </span>
               </div>
+              {worstCaseFeeText != null && (
+                <div className={styles.txRow}>
+                  <span>{t('wc.request_approval.max_fee_row_label')}</span>
+                  <span className={styles.mono} data-testid="wc-max-fee">
+                    {t('wc.request_approval.max_fee_row_value', {
+                      amount: worstCaseFeeText,
+                      symbol: nativeSymbol,
+                    })}
+                  </span>
+                </div>
+              )}
               {reqParams[0]?.data && reqParams[0].data !== '0x' && (
                 <div className={styles.txRow}>
                   <span>{t('wc.request_approval.data_row_label')}</span>
@@ -314,6 +339,9 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                 </div>
               )}
             </div>
+            {worstCaseFeeText != null && (
+              <p className={styles.feeNote}>{t('wc.request_approval.max_fee_note')}</p>
+            )}
             {realFundsWarning && (
               <p className={styles.mainnetFlag}>
                 {t('wc.request_approval.mainnet_flag')}

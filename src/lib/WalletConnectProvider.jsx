@@ -39,7 +39,6 @@ import { classifyRequest, isBlocked, REQUEST_TYPES } from '@/wallet-core/evm/wal
 import { parseTypedData, detectAssetAuthorising, describeTypedData } from '@/wallet-core/evm/typed-data.js';
 import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
-import { MAX_BASE_FEE_GWEI } from '@/wallet-core/evm/fees.js';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
@@ -157,65 +156,33 @@ export function assertPersonalSignAddress(addrParam, walletAddress) {
 
 const WalletConnectCtx = createContext(null);
 
-// M9 — enforce a 1,000,000 gas cap UNCONDITIONALLY, including when the dApp
-// omits the `gas` field. Previously the cap only applied to a dApp-supplied
-// `gas`; with `gas` omitted, ethers auto-estimated with no ceiling, so a
-// malicious dApp could craft a tx that consumes the full block gas limit and
-// drain funds. We estimate gas ourselves when omitted, then clamp either value
-// (dApp's or our estimate) to the cap. I5 — backend/dApp untrusted by design.
+// M9 (gas cap), F-02-GASCAP (per-chain maxFeePerGas ceiling) and L-2 (priority-fee
+// clamp) now live in wallet-core/evm/walletconnect/fee.js, and are re-exported
+// here so every existing import and test site is unchanged.
 //
-// txGas: the dApp-supplied `gas` (hex string, bigint, or undefined).
-// estimatedGas: bigint result of provider.estimateGas, used when txGas is absent.
-// Returns a bigint <= 1_000_000n.
-export const WC_GAS_CAP = 1_000_000n;
-export function resolveGasLimit(txGas, estimatedGas) {
-  const requested = txGas != null ? BigInt(txGas) : BigInt(estimatedGas);
-  return requested > WC_GAS_CAP ? WC_GAS_CAP : requested;
-}
+// They were moved (audit 2026-08-03 H-7) because the approval modal has to show
+// the user the worst-case fee these caps permit, and it must compute that from
+// the SAME helpers that enforce it — but the modal's test suite mocks this whole
+// module, so importing them from here would have forced a hand-inlined copy into
+// a test file. That copy is exactly the display-vs-enforcement drift the fee row
+// exists to close.
+// Imported (not just re-exported) because this module calls them internally when
+// building the transaction — `export … from` would not create local bindings.
+import {
+  WC_GAS_CAP,
+  resolveGasLimit,
+  resolveMaxFeePerGas,
+  resolveMaxPriorityFeePerGas,
+  resolveWcWorstCaseFeeWei,
+} from '@/wallet-core/evm/walletconnect/fee.js';
 
-// F-02-GASCAP — a dApp-supplied `maxFeePerGas` was set directly with no ceiling,
-// letting a malicious dApp pin an arbitrarily large fee. Clamp it to the same
-// per-chain ceiling used by the in-app fee path (MAX_BASE_FEE_GWEI from fees.js).
-// The map is keyed by baseFee gwei; maxFeePerGas is buffered above baseFee, so we
-// use the same cap as an upper bound (I5 — dApp untrusted).
-// Fail closed (I4): if the raw value is absent or cannot be parsed to a BigInt,
-// return null so the caller SKIPS setting maxFeePerGas rather than constructing a
-// bad tx. An unknown networkKey falls back to the mainnet cap (the lowest, safest).
-export function resolveMaxFeePerGas(rawMaxFee, networkKey) {
-  if (rawMaxFee == null) return null;
-  let requested;
-  try {
-    requested = BigInt(rawMaxFee);
-  } catch {
-    return null;
-  }
-  const capGwei = MAX_BASE_FEE_GWEI[networkKey] ?? MAX_BASE_FEE_GWEI.mainnet;
-  const cap = capGwei * 1_000_000_000n;
-  return requested > cap ? cap : requested;
-}
-
-// L-2 — clamp the dApp-supplied maxPriorityFeePerGas so it can never exceed the
-// already-capped maxFeePerGas. Under EIP-1559 a priority fee greater than the max
-// fee is an invalid transaction; a dApp could also use an uncapped priority fee to
-// pin an implausibly large tip. Given the raw dApp value and the resolved (capped)
-// max fee, return min(parsed, resolvedMaxFee). Fail closed (I4): an absent, negative
-// or unparseable value becomes 0n (the EIP-1559 default), never larger than the cap.
-// Pure; exported for unit tests.
-export function resolveMaxPriorityFeePerGas(rawPriorityFee, resolvedMaxFee) {
-  // #1115: when both feeData.maxFeePerGas and feeData.gasPrice are nullish,
-  // cappedMaxFeePerGas is undefined. The BigInt comparison `parsed > undefined`
-  // throws "Cannot mix BigInt and other types". Return null so the caller can
-  // let ethers/RPC populate fees rather than crash with an opaque error.
-  if (resolvedMaxFee == null) return null;
-  let parsed;
-  try {
-    parsed = BigInt(rawPriorityFee ?? 0);
-  } catch {
-    parsed = 0n;
-  }
-  if (parsed < 0n) parsed = 0n;
-  return parsed > resolvedMaxFee ? resolvedMaxFee : parsed;
-}
+export {
+  WC_GAS_CAP,
+  resolveGasLimit,
+  resolveMaxFeePerGas,
+  resolveMaxPriorityFeePerGas,
+  resolveWcWorstCaseFeeWei,
+};
 
 // H8 — resolve which personal_sign param is the message and bind the address
 // param to the wallet's own EVM address. EIP-1474 specifies [message, address]
