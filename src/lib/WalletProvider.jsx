@@ -1777,6 +1777,20 @@ export function WalletProvider({ children }) {
     void ensureBiometric2faOnNative().catch(() => {});
     void ensureKekPinNoticeOnNative().catch(() => {}); // M-9: one-time offline-exhaustion notice for unenrolled native users
     void (async () => {
+      // M-3 (audit 2026-08-03) — this block used to run for EVERY session type,
+      // and its first action is clearPendingReferral(), a plain localStorage
+      // write. So a coerced decoy unlock silently deleted a referral the REAL
+      // user had applied at wallet creation, and it was gone the next time they
+      // unlocked properly.
+      //
+      // Not a deniability leak: redeemCode() is independently gated inside
+      // referralApi.js, so I3's "zero backend calls" always held and nothing
+      // observable left the device. The defect is a decoy session mutating real
+      // persisted state — the same class as the K-2 referral-tracker finding.
+      //
+      // Reuses unlock()'s own `isPrimary` (!decoy && !hidden) rather than
+      // introducing a second definition of "this is the real session".
+      if (!isPrimary) return;
       const pending = getPendingReferral();
       if (!pending) return;
       clearPendingReferral();
