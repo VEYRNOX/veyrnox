@@ -151,9 +151,9 @@ function reasonFor(m) {
  *
  * @param {string} address                          the recipient to screen
  * @param {{ providers?: Array<{name:string, families?:string[], screen:Function}> }} [opts]
- *        Defaults to DEFAULT_PROVIDERS (local seed blocklist [evm] + OFAC SDN
- *        snapshot [evm,btc]), both LOCAL. Pass an explicit list to override (e.g. to
- *        add a future, opt-in remote provider).
+ *        Defaults to DEFAULT_PROVIDERS (local seed blocklist [evm] only). Pass an
+ *        explicit list to override (e.g. to add the TIP remote provider via the
+ *        opt-in in SendCrypto).
  * @returns {{
  *   valid: boolean,    // recipient is a parseable EVM address (NOT a gate on flagged)
  *   flagged: boolean,  // at least one provider matched it (possible even when !valid)

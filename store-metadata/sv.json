@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "sv",
+  "native": "Svenska",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth). All character counts checked against the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Självförvaring · Säkerhet",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Självförvarad krypto för högrisksituationer. Din seed, dina nycklar, på din enhet. Tvångssäkra lägen för när ett lösenord inte räcker.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kryptoplånbok,självförvar,bitcoin,ethereum,solana,web3,säker plånbok,tvång,icke-förvarande",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Din krypto. Dina nycklar. På din enhet.\n\nVeyrnox är en icke-förvarande plånbok för säkerhetsmedvetna användare. Nycklar genereras och lagras enbart på din enhet, förseglade med hårdvarubaserad (Secure Enclave) kryptering — aldrig på en server. Veyrnox kan inte flytta dina tillgångar och kan inte återställa dem åt dig.\n\nRuntime-skydd (RASP)\nVeyrnox kontrollerar aktivt sin egen körmiljö för manipulation, root/jailbreak och kodinjektion, och stängs säkert av om en komprometterad miljö upptäcks.\n\nAdresssäkerhet\nAutomatiska varningar för förgiftade och likartade adresser, samt filtrering av skräptoken, innan du skickar.\n\nEn plånbok, tio tillgångar\nSkicka och ta emot ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC och USDT — allt från en enda återställningsfras.\n\nSafety Plus (valfri prenumeration)\nLåser upp tvångssäkra lägen:\n• Tvångs-PIN — en separat PIN-kod öppnar en lockplånbok, så en påtvingad upplåsning avslöjar ingenting äkta.\n• Dolda plånböcker — konton som inte visas i någon lista eller räknas.\n• Panikradering — förstör lokalt nyckelmaterial permanent på begäran.\nMånadsvis eller årsvis; förnyas automatiskt tills den avbryts. Hantera eller avbryt när som helst i dina kontoinställningar i App Store.\n\nVeyrnox är icke-förvarande. Om du förlorar din återställningsfras kan ingen — inte ens vi — återställa din plånbok. Säkerhetskopiera den.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Första utgåvan.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Självförvarad kryptoplånbok. Dina nycklar stannar på din enhet. Tvångssäker.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Din krypto. Dina nycklar. På din enhet.\n\nVeyrnox är en icke-förvarande plånbok för dig som tar säkerhet på allvar. Din återställningsfras och dina privata nycklar genereras på enheten och förseglas med hårdvarubaserad kryptering (Android Keystore / StrongBox / TEE där det finns tillgängligt). De lämnar aldrig din enhet. Veyrnox förvarar ingenting: vi kan inte flytta dina tillgångar och kan inte återställa dem åt dig.\n\nTillgångar som stöds\nSkicka och ta emot ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC och USDT — allt från en enda BIP-39-återställningsfras.\n\nSäkerhet på enheten\n• AES-256-GCM-valv, som låses upp med Argon2id (192 MiB KDF) och, där det är tillgängligt, en hårdvarubunden nyckel.\n• Runtime-skydd (RASP) kontrollerar manipulation, root, kodinjektion och hookning — och stängs säkert av på en komprometterad enhet.\n• Adresssäkerhet: varningar för förgiftade och likartade adresser, filtrering av skräptoken, innan du skickar.\n• WalletConnect v2 med granskning per begäran, bindning av kedja och adress, sessionsutgång och förhöjd återautentisering för högriskåtgärder.\n\nSafety Plus (valfri prenumeration)\nLåser upp tvångssäkra lägen för högriskbaserade situationer:\n• Tvångs-PIN — en andra PIN-kod öppnar en lockplånbok; en påtvingad upplåsning avslöjar ingenting äkta.\n• Dolda plånböcker — konton som inte visas i någon lista eller räknas.\n• Panikradering — förstör lokalt nyckelmaterial permanent på begäran.\nMånadsvis eller årsvis; förnyas automatiskt tills den avbryts. Hantera eller avbryt när som helst i Google Play → Prenumerationer.\n\nVad Veyrnox INTE gör\n• Inget konto. Ingen e-post. Ingen molnsynkronisering. Ingen förvaring. Ingen handel. Inga annonser.\n\nDu äger seedfrasen. Om du förlorar din återställningsfras kan ingen — inte ens vi — återställa din plånbok. Säkerhetskopiera den någonstans där bara du kommer åt den.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

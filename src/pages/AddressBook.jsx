@@ -74,7 +74,7 @@ export default function AddressBook() {
 
       <div className="relative">
         <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search contacts..." className="ps-9" value={search} onChange={e => setSearch(e.target.value)} />
+        <Input aria-label="Search contacts" placeholder="Search contacts..." className="ps-9" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <PageState

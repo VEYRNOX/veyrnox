@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "sw",
+  "native": "Kiswahili",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth, 2026-07-30). Standard East African Kiswahili (Kenya/Tanzania). Brand/technical terms left untranslated per glossary: Veyrnox, Bitcoin, Ethereum, Solana, USDC, USDT, asset tickers, WalletConnect, Safety Plus, Secure Enclave, StrongBox, TEE, Android Keystore, RASP, PIN, Argon2id, AES-256-GCM, BIP-39. Lost-recovery-phrase warning translated at full strength, not softened.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Pochi ya Umiliki · Usalama",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Sarafu-crypto ya umiliki binafsi kwa hali hatarishi. Mbegu yako, funguo zako, kwenye kifaa chako. Hali za kupinga kulazimishwa kwa wakati nenosiri halitoshi.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "pochi ya crypto,umiliki binafsi,bitcoin,ethereum,solana,web3,pochi salama,kulazimishwa,si uhifadhi",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Sarafu yako ya crypto. Funguo zako. Kwenye kifaa chako.\n\nVeyrnox ni pochi isiyo ya uhifadhi kwa watumiaji wanaotanguliza usalama. Funguo huzalishwa na kuhifadhiwa tu kwenye kifaa chako, zikiwa zimefungwa kwa usimbaji fiche unaotegemea maunzi (Secure Enclave) — kamwe si kwenye seva. Veyrnox haiwezi kuhamisha fedha zako wala kuzirejesha kwa ajili yako.\n\nUlinzi wa muda-halisi (RASP)\nVeyrnox hukagua kwa uangalifu mfumo wake wenyewe wa uendeshaji kwa dalili za uvamizi, root/jailbreak, na uingizaji wa msimbo, na hujifunga (fail closed) ikiwa itagundua mazingira yaliyovamiwa.\n\nUkaguzi wa usalama wa anwani\nMaonyo ya kiotomatiki kwa anwani za sumu (poisoning) na zinazofanana na nyingine, pamoja na uchujaji wa token-taka, kabla ya kutuma.\n\nPochi moja, mali kumi\nTuma na pokea ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, na USDT — zote kutoka kwa kifungu kimoja cha urejeshaji.\n\nSafety Plus (usajili wa hiari)\nHufungua hali za kupinga kulazimishwa:\n• PIN ya kulazimishwa — PIN tofauti hufungua pochi ya kudanganya, hivyo kufunguliwa kwa nguvu hakufichui kitu halisi.\n• Pochi zilizofichwa — akaunti zisizoonekana kwenye orodha au hesabu yoyote.\n• Ufutaji wa dharura — huharibu nyenzo za funguo za ndani ya kifaa bila kurudishwa, papo hapo.\nKila mwezi au kila mwaka; hujirejesha kiotomatiki hadi ufute. Dhibiti au ghairi wakati wowote kwenye mipangilio ya akaunti yako ya App Store.\n\nVeyrnox si ya uhifadhi. Ukipoteza kifungu chako cha urejeshaji, hakuna mtu — hata sisi — anayeweza kurejesha pochi yako. Hifadhi nakala yake.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Toleo la kwanza.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Pochi ya crypto ya kujimiliki. Funguo zako kwenye kifaa. Dhidi ya kulazimishwa.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Sarafu yako ya crypto. Funguo zako. Kwenye kifaa chako.\n\nVeyrnox ni pochi isiyo ya uhifadhi kwa watu wanaochukulia usalama kwa uzito. Kifungu chako cha urejeshaji na funguo za faragha huzalishwa kwenye kifaa na kufungwa kwa usimbaji fiche unaotegemea maunzi (Android Keystore / StrongBox / TEE pale inapopatikana). Havitoki kwenye kifaa chako kamwe. Veyrnox haihifadhi kitu chochote: hatuwezi kuhamisha fedha zako wala kuzirejesha kwa ajili yako.\n\nMali zinazotumika\nTuma na pokea ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC, na USDT — zote kutoka kwa kifungu kimoja cha urejeshaji cha BIP-39.\n\nUsalama kwenye kifaa\n• Hazina ya AES-256-GCM, inayofunguliwa kwa Argon2id (KDF ya 192 MiB) na, pale inapopatikana, funguo iliyofungamanishwa na maunzi.\n• Ulinzi wa muda-halisi (RASP) hukagua dalili za uvamizi, root, uingizaji wa msimbo, na hooking — na hujifunga (fail closed) kwenye kifaa kilichovamiwa.\n• Usalama wa anwani: maonyo ya sumu (poisoning) na anwani zinazofanana, uchujaji wa token-taka, kabla ya kutuma.\n• WalletConnect v2 yenye ukaguzi wa kila ombi, ufungamanisho wa mnyororo na anwani, muda wa kuisha wa kipindi, na uthibitisho wa ziada kwa vitendo vyenye hatari kubwa.\n\nSafety Plus (usajili wa hiari)\nHufungua hali za kupinga kulazimishwa kwa hali hatarishi:\n• PIN ya kulazimishwa — PIN ya pili hufungua pochi ya kudanganya; kufunguliwa kwa nguvu hakufichui kitu halisi.\n• Pochi zilizofichwa — akaunti zisizoonekana kwenye orodha au hesabu yoyote.\n• Ufutaji wa dharura — huharibu nyenzo za funguo za ndani bila kurudishwa, papo hapo.\nKila mwezi au kila mwaka; hujirejesha kiotomatiki hadi ufute. Dhibiti au ghairi wakati wowote kwenye Google Play → Michango (Subscriptions).\n\nMambo ambayo Veyrnox HAIFANYI\n• Hakuna akaunti. Hakuna barua pepe. Hakuna usawazishaji wa wingu. Hakuna uhifadhi wa fedha kwa niaba yako. Hakuna biashara. Hakuna matangazo.\n\nWewe ndiye mmiliki wa mbegu. Ukipoteza kifungu chako cha urejeshaji, hakuna mtu — hata sisi — anayeweza kurejesha pochi yako. Hifadhi nakala mahali ambapo wewe pekee unaweza kufikia.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

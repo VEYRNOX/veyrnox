@@ -60,12 +60,12 @@ export default function TrustScore() {
       <div className="space-y-2">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label className="text-xs">Symbol</Label>
-            <Input placeholder="e.g. USDC" value={symbol} onChange={(e) => setSymbol(e.target.value)} onKeyDown={(e) => e.key === "Enter" && analyze()} className="mt-1" />
+            <Label htmlFor="trust-symbol" className="text-xs">Symbol</Label>
+            <Input id="trust-symbol" placeholder="e.g. USDC" value={symbol} onChange={(e) => setSymbol(e.target.value)} onKeyDown={(e) => e.key === "Enter" && analyze()} className="mt-1" />
           </div>
           <div>
-            <Label className="text-xs">Name (optional)</Label>
-            <Input placeholder="e.g. USD Coin" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && analyze()} className="mt-1" />
+            <Label htmlFor="trust-name" className="text-xs">Name (optional)</Label>
+            <Input id="trust-name" placeholder="e.g. USD Coin" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && analyze()} className="mt-1" />
           </div>
         </div>
         <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border">

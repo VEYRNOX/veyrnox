@@ -388,9 +388,10 @@ export default function WalletAccessReset() {
         ) : (
           <div className="space-y-3">
             <div>
-              <Label>Current password</Label>
+              <Label htmlFor="reset-current-password">Current password</Label>
               <div className="relative mt-1.5">
                 <Input
+                  id="reset-current-password"
                   type={showPw ? "text" : "password"}
                   value={curPw}
                   onChange={(e) => setCurPw(e.target.value)}
@@ -408,8 +409,9 @@ export default function WalletAccessReset() {
               </div>
             </div>
             <div>
-              <Label>New password</Label>
+              <Label htmlFor="reset-new-password">New password</Label>
               <Input
+                id="reset-new-password"
                 type={showPw ? "text" : "password"}
                 className="mt-1.5"
                 value={newPw}
@@ -419,8 +421,9 @@ export default function WalletAccessReset() {
               <p className="text-xs text-muted-foreground mt-1">At least 12 characters · any characters allowed</p>
             </div>
             <div>
-              <Label>Confirm new password</Label>
+              <Label htmlFor="reset-confirm-password">Confirm new password</Label>
               <Input
+                id="reset-confirm-password"
                 type={showPw ? "text" : "password"}
                 className="mt-1.5"
                 value={confirmPw}
@@ -478,8 +481,10 @@ export default function WalletAccessReset() {
         </div>
 
         <div>
-          <Label>12 or 24-word recovery phrase</Label>
+          <Label htmlFor="reset-seed-phrase">12 or 24-word recovery phrase</Label>
           <textarea
+            id="reset-seed-phrase"
+            aria-label="Recovery seed phrase"
             value={recPhrase}
             onChange={(e) => setRecPhrase(e.target.value)}
             rows={3}
@@ -516,8 +521,9 @@ export default function WalletAccessReset() {
         ) : (
         <>
         <div>
-          <Label>New vault password</Label>
+          <Label htmlFor="reset-vault-password">New vault password</Label>
           <PasswordInput
+            id="reset-vault-password"
             className="mt-1.5"
             value={recPw}
             onChange={(e) => setRecPw(e.target.value)}

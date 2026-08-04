@@ -1,5 +1,5 @@
-// components/WalletEntry.jsx — the on-device auth front door (base44 removal,
-// Phase 2; streamlined onboarding). This is THE entry point for the local build:
+// components/WalletEntry.jsx — the on-device auth front door.
+// This is THE entry point for the local build:
 // there is no hosted account, so the user's seed/vault is their identity. It
 // renders one of three states, driven entirely by the on-device WalletProvider:
 //
@@ -1566,8 +1566,9 @@ export default function WalletEntry() {
                   </Button>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Got an invite code? (optional)</Label>
+                  <Label htmlFor="wallet-invite-code" className="text-xs text-muted-foreground">Got an invite code? (optional)</Label>
                   <Input
+                    id="wallet-invite-code"
                     value={referralInput}
                     onChange={e => setReferralInput(e.target.value.toUpperCase())}
                     placeholder="VYX-XXXXXX"
@@ -1589,8 +1590,8 @@ export default function WalletEntry() {
                   <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally under your PIN — it never leaves this device.</span>
                 </div>
                 <div>
-                  <Label>12 or 24-word BIP-39 Seed Phrase</Label>
-                  <textarea value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+                  <Label htmlFor="wallet-seed-import-pin">12 or 24-word BIP-39 Seed Phrase</Label>
+                  <textarea id="wallet-seed-import-pin" value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
                 </div>
                 <Button className="w-full gap-2" disabled={!importPhrasePin.trim() || busy} onClick={() => { if (referralInput.trim()) setPendingReferral(referralInput.trim().toUpperCase()); doImportWallet(); }}>
                   {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Download className="h-4 w-4" />} Restore / Import
@@ -1687,8 +1688,8 @@ export default function WalletEntry() {
                 <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally — it never leaves this device.</span>
               </div>
               <div>
-                <Label>12 or 24-word recovery phrase</Label>
-                <textarea value={recoverySeed} onChange={e => setRecoverySeed(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+                <Label htmlFor="wallet-seed-recovery">12 or 24-word recovery phrase</Label>
+                <textarea id="wallet-seed-recovery" value={recoverySeed} onChange={e => setRecoverySeed(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
               </div>
               <Button className="w-full gap-2" disabled={!recoverySeed.trim() || busy} onClick={() => {
                 const phrase = recoverySeed.trim().replace(/\s+/g, " ");
@@ -1746,8 +1747,8 @@ export default function WalletEntry() {
               </div>
             )}
             <div>
-              <Label>Vault Password</Label>
-              <PasswordInput className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" aria-label="New vault password" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
+              <Label htmlFor="wallet-vault-password-entry">Vault Password</Label>
+              <PasswordInput id="wallet-vault-password-entry" className="mt-1.5" value={genPassword} onChange={e => setGenPassword(e.target.value)} placeholder="Encrypts your new seed on this device" aria-label="New vault password" onKeyDown={e => { if (e.key === "Enter" && !busy) handleGenerate(); }} />
               <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed. This is your real key — required, never skipped.</p>
             </div>
             <Button className="w-full gap-2" disabled={busy} onClick={handleGenerate}>
@@ -1801,12 +1802,12 @@ export default function WalletEntry() {
           Never share your seed phrase. It is validated and encrypted locally with your password — it is never sent to a server.
         </div>
         <div>
-          <Label>12 or 24-word BIP-39 Seed Phrase</Label>
-          <textarea value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
+          <Label htmlFor="wallet-seed-import">12 or 24-word BIP-39 Seed Phrase</Label>
+          <textarea id="wallet-seed-import" value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
         </div>
         <div>
-          <Label>{recovering ? "New Vault Password" : "Vault Password"}</Label>
-          <PasswordInput className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" aria-label="Vault password for imported seed" />
+          <Label htmlFor="wallet-vault-password-create">{recovering ? "New Vault Password" : "Vault Password"}</Label>
+          <PasswordInput id="wallet-vault-password-create" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" aria-label="Vault password for imported seed" />
           <p className="text-xs text-muted-foreground mt-1">Encrypts the vault with strong on-device encryption. At least 12 characters · any characters allowed.</p>
         </div>
 

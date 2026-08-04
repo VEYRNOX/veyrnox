@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Veyrnox store listing per-locale metadata",
+  "description": "One file per shipping locale under store-metadata/<locale>.json — the source of truth for what gets uploaded to App Store Connect (appInfoLocalizations + appStoreVersionLocalizations) and Google Play Publishing API (listings.update). The upload script scripts/upload-store-listings.mjs reads every .json file that does NOT start with an underscore.",
+  "type": "object",
+  "required": ["locale", "native", "reviewed", "shared", "apple", "play"],
+  "properties": {
+    "locale": {
+      "type": "string",
+      "description": "BCP-47 tag matching one entry in src/i18n/SUPPORTED_LANGUAGES."
+    },
+    "native": { "type": "string" },
+    "reviewed": {
+      "type": "boolean",
+      "description": "True iff a native reviewer has looked at this store copy AND vouches for its meaning. If false, upload script warns and can be blocked with --require-reviewed."
+    },
+    "notes": { "type": "string" },
+    "shared": {
+      "type": "object",
+      "properties": {
+        "appName": {
+          "type": "object",
+          "required": ["value", "limit_apple", "limit_play"],
+          "properties": {
+            "value": { "type": "string" },
+            "limit_apple": { "type": "integer" },
+            "limit_play": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "apple": {
+      "type": "object",
+      "description": "App Store Connect fields. subtitle + promotionalText + keywords + description + whatsNew are per-appStoreVersionLocalization; supportUrl + marketingUrl + privacyPolicyUrl are per-appInfoLocalization.",
+      "required": ["subtitle", "promotionalText", "keywords", "description"],
+      "properties": {
+        "subtitle": { "$ref": "#/$defs/limitedString" },
+        "promotionalText": { "$ref": "#/$defs/limitedString" },
+        "keywords": {
+          "allOf": [
+            { "$ref": "#/$defs/limitedString" },
+            {
+              "properties": {
+                "format": {
+                  "const": "comma-separated, no spaces after commas"
+                }
+              }
+            }
+          ]
+        },
+        "description": { "$ref": "#/$defs/limitedString" },
+        "whatsNew": { "$ref": "#/$defs/limitedString" },
+        "supportUrl": { "$ref": "#/$defs/urlField" },
+        "marketingUrl": { "$ref": "#/$defs/urlField" },
+        "privacyPolicyUrl": { "$ref": "#/$defs/urlField" }
+      }
+    },
+    "play": {
+      "type": "object",
+      "description": "Google Play Publishing fields. shortDescription + fullDescription are per-locale on the main store listing.",
+      "required": ["shortDescription", "fullDescription"],
+      "properties": {
+        "shortDescription": { "$ref": "#/$defs/limitedString" },
+        "fullDescription": { "$ref": "#/$defs/limitedString" }
+      }
+    }
+  },
+  "$defs": {
+    "limitedString": {
+      "type": "object",
+      "required": ["value", "limit"],
+      "properties": {
+        "value": { "type": "string" },
+        "limit": { "type": "integer" },
+        "note": { "type": "string" },
+        "format": { "type": "string" }
+      }
+    },
+    "urlField": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "string", "format": "uri" },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

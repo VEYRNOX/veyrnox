@@ -237,7 +237,7 @@ export default function RecurringPayments() {
         <DialogContent className="top-1/2 -translate-y-1/2 max-h-[90vh] overflow-y-auto" onOpenAutoFocus={e => e.preventDefault()}>
           <DialogHeader><DialogTitle>New Recurring Payment</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            <div><Label>Label</Label><Input value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="e.g. Rent" className="mt-1.5" /></div>
+            <div><Label htmlFor="recurring-label">Label</Label><Input id="recurring-label" value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="e.g. Rent" className="mt-1.5" /></div>
             <div>
               <Label id="recurring-wallet-label">From Wallet</Label>
               <Select value={form.wallet_id} onValueChange={v => { const w = wallets.find(x => x.id === v); setForm(p => ({ ...p, wallet_id: v, currency: w?.currency || p.currency })); }}>
@@ -260,7 +260,7 @@ export default function RecurringPayments() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Amount</Label><Input type="text" inputMode="decimal" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
+              <div><Label htmlFor="recurring-amount">Amount</Label><Input id="recurring-amount" type="text" inputMode="decimal" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
               <div>
                 <Label id="recurring-frequency-label">Frequency</Label>
                 <Select value={form.frequency} onValueChange={v => setForm(p => ({ ...p, frequency: v }))}>
@@ -269,7 +269,7 @@ export default function RecurringPayments() {
                 </Select>
               </div>
             </div>
-            <div><Label>Note (optional)</Label><Input value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} className="mt-1.5" /></div>
+            <div><Label htmlFor="recurring-note">Note (optional)</Label><Input id="recurring-note" value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} className="mt-1.5" /></div>
             <div className="flex gap-3 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancel</Button>
               <Button className="flex-1" onClick={() => addPayment.mutate()} disabled={!form.label || !form.wallet_id || !form.to_address || !form.amount || showToAddrError || addPayment.isPending}>Create Payment</Button>

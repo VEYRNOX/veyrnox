@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "ja",
+  "native": "日本語",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth) 2026-07-30. All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "セルフカストディ・ウォレット・セキュリティ",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "高リスクな状況のためのセルフカストディ型暗号資産ウォレット。シードもキーも、あなたのデバイスの中に。パスワードだけでは不十分な場面のための、強要耐性モード。",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "暗号資産ウォレット,セルフカストディ,ビットコイン,イーサリアム,ソラナ,web3,安全なウォレット,デュレス,非管理型,bitcoin,ethereum,solana",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "あなたの暗号資産。あなたの鍵。あなたのデバイスの中に。\n\nVeyrnoxは、セキュリティを最優先するユーザーのための非管理型ウォレットです。鍵はお使いのデバイス上でのみ生成・保管され、ハードウェアに基づく(Secure Enclave)暗号化で保護されます — サーバーに保存されることは一切ありません。Veyrnoxはあなたの資金を移動することも、代わりに復元することもできません。\n\nランタイム自己防御(RASP)\nVeyrnoxは、改ざん、root化・脱獄、コードインジェクションがないかを実行時に自ら継続的にチェックし、環境が侵害されていると判断した場合はフェイルクローズ(安全側に倒して機能停止)します。\n\nアドレス安全性チェック\n送金前に、アドレスポイズニングや類似アドレスを自動で警告し、スパムトークンもフィルタリングします。\n\n1つのウォレットで、10種類の資産\nETH、BTC、SOL、MATIC、ARB、OP、AVAX、BNB、USDC、USDTの送受信が、1つのリカバリーフレーズだけで可能です。\n\nSafety Plus(任意のサブスクリプション)\n強要耐性モードを解放します:\n• デュレスPIN — 別のPINでおとりウォレットが開くため、強制的にロック解除させられても本物の資産は一切表示されません。\n• 隠しウォレット — どの一覧にも件数にも表示されないアカウント。\n• パニックワイプ — 端末上の鍵情報を即座かつ復元不能に消去します。\n月額または年額プランで、解約するまで自動更新されます。App Storeのアカウント設定からいつでも管理・解約できます。\n\nVeyrnoxは非管理型です。リカバリーフレーズを紛失した場合、私たちを含め誰であってもウォレットを復元することはできません。必ずバックアップを取ってください。",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "初回リリースです。",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "セルフカストディ型暗号資産ウォレット。鍵は端末内にのみ保存。強要耐性設計。",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "あなたの暗号資産。あなたの鍵。あなたのデバイスの中に。\n\nVeyrnoxは、セキュリティを真剣に考える人のための非管理型ウォレットです。リカバリーフレーズと秘密鍵はデバイス上で生成され、ハードウェアに基づく暗号化(利用可能な場合はAndroid Keystore / StrongBox / TEE)で保護されます。これらがデバイスの外に出ることは一切ありません。Veyrnoxは何も預かりません:あなたの資金を移動することも、代わりに復元することもできません。\n\n対応資産\nETH、BTC、SOL、MATIC、ARB、OP、AVAX、BNB、USDC、USDTの送受信が、1つのBIP-39リカバリーフレーズだけで可能です。\n\nデバイス内セキュリティ\n• AES-256-GCMボールト。Argon2id(192 MiB KDF)と、利用可能な場合はハードウェア紐付け鍵でロック解除。\n• ランタイム自己防御(RASP)が改ざん、root化、コードインジェクション、フッキングをチェックし、端末が侵害されている場合はフェイルクローズします。\n• アドレス安全性:送金前にアドレスポイズニングや類似アドレスを警告し、スパムトークンをフィルタリング。\n• WalletConnect v2に対応。リクエストごとの確認、チェーン・アドレスのバインディング、セッションの有効期限、リスクの高い操作に対するステップアップ再認証を備えています。\n\nSafety Plus(任意のサブスクリプション)\n高リスクな状況のための強要耐性モードを解放します:\n• デュレスPIN — 別のPINでおとりウォレットが開き、強制的にロック解除させられても本物の資産は一切表示されません。\n• 隠しウォレット — どの一覧にも件数にも表示されないアカウント。\n• パニックワイプ — 端末上の鍵情報を即座かつ復元不能に消去します。\n月額または年額プランで、解約するまで自動更新されます。Google Play → 定期購入からいつでも管理・解約できます。\n\nVeyrnoxがしないこと\n• アカウント登録なし。メールアドレス不要。クラウド同期なし。資産の預かりなし。トレーディング機能なし。広告なし。\n\nシードを保有するのはあなただけです。リカバリーフレーズを紛失した場合、私たちを含め誰であってもウォレットを復元することはできません。あなただけがアクセスできる場所に必ずバックアップを保管してください。",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

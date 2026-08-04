@@ -189,8 +189,8 @@ export default function MultiChainNFT() {
           <DialogHeader><DialogTitle>Add NFT</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2 max-h-[60vh] overflow-y-auto">
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>NFT Name</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Bored Ape #1234" className="mt-1.5" /></div>
-              <div><Label>Collection</Label><Input value={form.collection} onChange={e => setForm(f => ({ ...f, collection: e.target.value }))} placeholder="BAYC" className="mt-1.5" /></div>
+              <div><Label htmlFor="nft-name">NFT Name</Label><Input id="nft-name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Bored Ape #1234" className="mt-1.5" /></div>
+              <div><Label htmlFor="nft-collection">Collection</Label><Input id="nft-collection" value={form.collection} onChange={e => setForm(f => ({ ...f, collection: e.target.value }))} placeholder="BAYC" className="mt-1.5" /></div>
             </div>
             <div><Label id="nft-chain-label">Chain</Label>
               <Select value={form.chain} onValueChange={v => setForm(f => ({ ...f, chain: v }))}>
@@ -199,7 +199,7 @@ export default function MultiChainNFT() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Token ID</Label><Input value={form.token_id} onChange={e => setForm(f => ({ ...f, token_id: e.target.value }))} className="mt-1.5" /></div>
+              <div><Label htmlFor="nft-token-id">Token ID</Label><Input id="nft-token-id" value={form.token_id} onChange={e => setForm(f => ({ ...f, token_id: e.target.value }))} className="mt-1.5" /></div>
               <div><Label id="nft-status-label">Status</Label>
                 <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
                   <SelectTrigger className="mt-1.5" aria-labelledby="nft-status-label"><SelectValue /></SelectTrigger>
@@ -208,11 +208,11 @@ export default function MultiChainNFT() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Purchase Price (ETH)</Label><Input type="number" value={form.purchase_price} onChange={e => setForm(f => ({ ...f, purchase_price: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
-              <div><Label>Current Floor (ETH)</Label><Input type="number" value={form.current_floor} onChange={e => setForm(f => ({ ...f, current_floor: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
+              <div><Label htmlFor="nft-purchase-price">Purchase Price (ETH)</Label><Input id="nft-purchase-price" type="number" value={form.purchase_price} onChange={e => setForm(f => ({ ...f, purchase_price: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
+              <div><Label htmlFor="nft-floor-price">Current Floor (ETH)</Label><Input id="nft-floor-price" type="number" value={form.current_floor} onChange={e => setForm(f => ({ ...f, current_floor: e.target.value }))} placeholder="0.00" className="mt-1.5" /></div>
             </div>
-            <div><Label>Contract Address</Label><Input value={form.contract_address} onChange={e => setForm(f => ({ ...f, contract_address: e.target.value }))} placeholder="0x..." className="mt-1.5 font-mono text-xs" /></div>
-            <div><Label>Image URL (optional)</Label><Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://..." className="mt-1.5" /></div>
+            <div><Label htmlFor="nft-contract-address">Contract Address</Label><Input id="nft-contract-address" value={form.contract_address} onChange={e => setForm(f => ({ ...f, contract_address: e.target.value }))} placeholder="0x..." className="mt-1.5 font-mono text-xs" /></div>
+            <div><Label htmlFor="nft-image-url">Image URL (optional)</Label><Input id="nft-image-url" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://..." className="mt-1.5" /></div>
             <Button className="w-full" onClick={() => add.mutate()} disabled={!form.name || !form.collection || add.isPending}>Add NFT</Button>
           </div>
         </DialogContent>

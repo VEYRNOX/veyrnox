@@ -191,15 +191,16 @@ export default defineConfig(({ command }) => {
       },
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
-        output: {
-          manualChunks(id) {
-            // recharts + d3 deps are ~350KB and only needed on chart pages —
-            // split them out so the dashboard initial load doesn't pay for them.
-            if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') || id.includes('node_modules/victory-')) {
-              return 'charts';
-            }
-          },
-        },
+        // No manual chunk grouping for recharts/d3/victory here: a previous rule
+        // forced every module under those paths into one 'charts' chunk regardless
+        // of reachability. All real recharts consumers are already route-lazy, but
+        // some unrelated eagerly-loaded code pulls in a small d3-* utility (e.g.
+        // number formatting) — the blanket path match swept that into the same
+        // chunk as full recharts+d3-scale+d3-shape+victory-vendor, dragging ~460KB
+        // into the eager bundle on every page load (Lighthouse-CI sweep
+        // perf-score/FCP budget failures across /, /plans, /settings, /receive,
+        // /calculator). Rollup's default automatic chunking already keeps
+        // dynamic-import-only code out of the eager graph without this rule.
         // The hardware-wallet libs (@ledgerhq/*) are OPTIONAL and not in
         // package.json. Mark them external so a missing dep can't hard-fail the
         // production build (rollup otherwise errors on the unresolved import).

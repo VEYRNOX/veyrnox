@@ -6,7 +6,7 @@
 // Build brief §3 (event-source adapters) + §4 (event set) + §2 (I1–I5).
 //
 // A SELF-CONTAINED, in-memory pub/sub. No network, no storage, no backend — the
-// only "subscribe" pattern in this module. (Deliberately NOT the base44-backed
+// only "subscribe" pattern in this module. (Deliberately NOT the entity-backed
 // usePriceAlertNotifier pattern, which reaches a backend; that would violate
 // I2/I3/I5.) Subscribers receive raw event objects; useNotifications maps them
 // via buildNotification.

@@ -1,4 +1,4 @@
-// components/WalletGate.jsx — the on-device access gate (base44 removal, Phase 2).
+// components/WalletGate.jsx — the on-device access gate.
 //
 // In the default LOCAL build the SINGLE source of truth for access is the vault
 // unlock state, not a hosted account. This gate wraps every protected route: if

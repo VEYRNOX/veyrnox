@@ -48,6 +48,7 @@ export default function WatchlistWidget() {
       {adding && (
         <div className="flex gap-2 mb-3">
           <Input
+            aria-label="Token symbol"
             value={symbol}
             onChange={e => setSymbol(e.target.value.toUpperCase())}
             placeholder="BTC, ETH, SOL..."

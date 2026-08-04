@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { createContext, useContext, useState, useCallback } from 'react';
 import { getTransport } from '../wallet-core/hw/transport.js';
-import { getTrezorEvmAddress, getTrezorBtcAddress, getTrezorSolAddress } from '../wallet-core/hw/trezorAddress.js';
 
 const TrezorContext = createContext(null);
 
@@ -19,6 +18,11 @@ export function TrezorProvider({ children }) {
     setConnecting(true);
     setError(null);
     try {
+      // @trezor/connect-web + ethers pull ~500KB into whatever chunk this
+      // lives in; deferred to first actual connect attempt so every page
+      // load doesn't eagerly fetch hardware-wallet code nobody may ever use.
+      const { getTrezorEvmAddress, getTrezorBtcAddress, getTrezorSolAddress } =
+        await import('../wallet-core/hw/trezorAddress.js');
       const [evm, btc, sol] = await Promise.all([
         getTrezorEvmAddress(),
         getTrezorBtcAddress(btcNetworkKey),

@@ -72,11 +72,13 @@ import { useSend2faMethod } from "@/lib/useSend2faMethod";
 import { resolveMaxPriorityFeePerGas } from "@/lib/WalletConnectProvider";
 import { verifyPasskeyAssertion } from "@/lib/passkey";
 import { verifyBiometric2fa } from "@/lib/biometric";
+import { evaluateBiometricSecondFactor } from "@/lib/stepUpFactorOutcome.js";
 import { Capacitor } from "@capacitor/core";
 import TwoFactorGate from "@/components/security/TwoFactorGate";
 import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notify/sources";
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
+import { screenTransaction } from "@/api/tipScreen";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
@@ -84,9 +86,24 @@ import { trackEvent, EVENT } from "@/api/trackEvent";
 import { requiresVerification } from "@/lib/seedVerifyGate";
 import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
 import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
+import { isRiskGateReady } from "@/lib/riskGateReady";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
+
+// Merge TIP threat-intel risks into a simulation result for TransactionPreview.
+// Returns the original result unchanged when tipResult is absent.
+function enrichWithTip(simResult, tipResult) {
+  if (!simResult || !tipResult || !tipResult.risks?.length) return simResult;
+  return {
+    ...simResult,
+    risks: [...(simResult.risks || []), ...tipResult.risks],
+    source: {
+      ...(simResult.source || {}),
+      mode: simResult.source?.mode ? `${simResult.source.mode}+tip` : 'tip',
+    },
+  };
+}
 
 // M-3: form-boundary amount validity. `parseFloat(amount) <= 0` alone ACCEPTS
 // scientific notation ("1e-8" parses to a small positive float) and other
@@ -444,12 +461,17 @@ export default function SendCrypto() {
     queryFn: () => base44.entities.AddressBook.list(),
   });
 
-  // Opt-in, off-by-default remote screening. DISCLOSED privacy trade-off: turning
-  // this on would send the recipient address to a third-party threat-intel API,
-  // leaking your intent off-device. The default is LOCAL-ONLY look-alike
-  // detection, which queries nothing. Persisted as a display preference.
+  // Remote screening via the Veyrnox TIP. When TIP is configured
+  // (VITE_TIP_BASE_URL set), defaults to ON so sanctions/threat screening is
+  // active without manual opt-in. When unconfigured, defaults to OFF. The user
+  // can always toggle it; the choice is persisted across sessions.
+  const tipConfigured = !!import.meta.env.VITE_TIP_BASE_URL;
   const [remoteScreen, setRemoteScreen] = useState(() => {
-    try { return localStorage.getItem("veyrnox-remote-screen") === "1"; } catch { return false; }
+    try {
+      const stored = localStorage.getItem("veyrnox-remote-screen");
+      if (stored !== null) return stored === "1";
+      return tipConfigured;
+    } catch { return tipConfigured; }
   });
   const toggleRemoteScreen = (v) => {
     setRemoteScreen(v);
@@ -665,6 +687,35 @@ export default function SendCrypto() {
     [toAddress, knownAddresses]
   );
 
+  // TIP REMOTE SCREENING (opt-in, off by default). I2: only fires when the user
+  // has explicitly enabled remoteScreen. I3: screenTransaction returns null in
+  // deniability/demo. Runs at the verify step so the form step makes no call.
+  const tipChain = isBtc ? 'btc' : isSolana ? 'solana' : 'evm';
+
+  // H-1 — the readiness gate must be derived from the SAME condition that
+  // enables each query. Previously the gate was written independently of the
+  // queries and drifted from them; declaring the condition once makes that
+  // impossible. Both `enabled:` props below read these constants.
+  const tipScreenApplies = remoteScreen && step === 'verify' && !!toAddress
+    && !!selectedWallet?.address && addressFormatValid;
+
+  const tipQuery = useQuery({
+    queryKey: ['tip-screen', toAddress, selectedWallet?.address, tipChain, canonicalAmount],
+    queryFn: () => screenTransaction({
+      chain: tipChain,
+      actionType: isErc20 ? 'token_transfer' : 'transfer',
+      from: selectedWallet?.address,
+      to: toAddress,
+      ...(isErc20 && selectedAsset?.contractAddress && { contractAddress: selectedAsset.contractAddress }),
+      ...(riskCalldata && { calldata: riskCalldata }),
+      ...(canonicalAmount && { valueWei: canonicalAmount }),
+      recentCounterparties: knownAddresses.slice(0, 20).map(k => k.address),
+    }),
+    enabled: tipScreenApplies,
+    staleTime: 30_000,
+    retry: false,
+  });
+
   // SPEND-LIMIT ENFORCEMENT (Security Center → Tx Limits). Evaluates this send
   // against the user's per-transaction AND daily caps. The daily cap was
   // previously saved-but-never-read (security theatre); it is now enforced by
@@ -711,6 +762,16 @@ export default function SendCrypto() {
   // Disabled in DEMO (no live RPC) — the demo harness renders sample previews
   // instead. Errors are surfaced as a degraded "couldn't simulate" note, not a
   // block. Keys are never involved (simulation needs only the sender address).
+  // Mirrors tipScreenApplies: one declaration, read by both the query's
+  // `enabled` and the readiness gate, so the two cannot drift (H-1).
+  // NOTE the EVM-family clause — this simulation NEVER runs for BTC/SOL, which
+  // is exactly why keying readiness off it alone blocked those sends forever
+  // (L-4).
+  const txSimApplies = simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden
+    && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
+    && !!selectedWallet?.address && !!toAddress && addressFormatValid
+    && parseFloat(canonicalAmount) > 0;
+
   const txSim = /** @type {any} */ (useQuery({
     queryKey: ["tx-sim", networkKey, selectedWallet?.address, toAddress, canonicalAmount, selectedAsset?.symbol, isErc20],
     queryFn: async () => {
@@ -731,8 +792,7 @@ export default function SendCrypto() {
       });
     },
     // I3: never issue simulation RPC in a decoy/hidden (deniability) session.
-    enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
-      && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(canonicalAmount) > 0,
+    enabled: txSimApplies,
     retry: false,
     staleTime: 10000,
   }));
@@ -778,7 +838,19 @@ export default function SendCrypto() {
   // reused from the simulation's already-fetched eth_getCode (I2).
   // Also ready when simulation is disabled — the score runs without recipientCode
   // (S7 escalates to CAUTION, which now requires confirmation per score.js).
-  const riskReady = DEMO || !!txSim.data || txSim.isError || !simEnabled;
+  // H-1 / L-4 — ready when EVERY contributor that applies to THIS send has
+  // settled, not when the EVM simulation alone has. The old expression
+  // (`DEMO || !!txSim.data || txSim.isError || !simEnabled`) both failed to wait
+  // for TIP — letting a send be judged while screening was in flight, which S9
+  // scores as OK because it cannot tell "not answered" from "answered, clean" —
+  // and, on BTC/SOL where txSim never runs, never became true at all.
+  const riskReady = isRiskGateReady({
+    demo: DEMO,
+    contributors: [
+      { applies: txSimApplies, query: txSim },
+      { applies: tipScreenApplies, query: tipQuery },
+    ],
+  });
 
   // SINGLE source of truth for the verdict: maps the live send state → score().
   // BOTH the displayed banner and the hard pre-sign gate call this, so the
@@ -804,12 +876,17 @@ export default function SendCrypto() {
       whitelist,
       recipientCode,
     });
+    // S9: inject TIP result into chainData when remote screening is enabled and
+    // has returned. tipResult is null when opt-out, deniability, or unconfigured —
+    // S9 returns OK in that case and contributes nothing to the composite.
+    if (tipQuery.data) chainData.tipResult = tipQuery.data;
     return score(unsignedTx, activeSetLocalState, chainData);
   };
 
-  // Does the risk score apply to this send at all? (EVM family / ERC-20 with a
-  // format-valid recipient.) Non-EVM sends are not scored.
-  const riskApplicable = !!toAddress && addressFormatValid && (isEvmFamily(selectedAsset) || isErc20);
+  // Does the risk score apply to this send at all? EVM/ERC-20 always scored
+  // (local signals S1–S8). BTC/SOL scored only when TIP remote screening is
+  // enabled (S9 is the sole contributor; S1–S8 are EVM-specific and return OK).
+  const riskApplicable = !!toAddress && addressFormatValid && (isEvmFamily(selectedAsset) || isErc20 || (remoteScreen && (isBtc || isSolana)));
   // We wait for the simulation to settle (data or error) before judging so S7
   // doesn't flash a transient fail-closed CAUTION while eth_getCode loads.
   const riskVerdict = useMemo(() => {
@@ -819,7 +896,7 @@ export default function SendCrypto() {
     // every input it touches (canonicalAmount included — native sends carry value,
     // not calldata, so amount must invalidate even when riskCalldata is null).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toAddress, canonicalAmount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data]);
+  }, [toAddress, canonicalAmount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data, tipQuery.data]);
 
   // RISK acknowledgement ("Sign anyway"). Reset whenever the breach could change —
   // amount, asset, or recipient — so a stale ack never carries into a changed send
@@ -938,6 +1015,20 @@ export default function SendCrypto() {
       // Fire-and-forget (I4) — the notification path must never block or unwind the send.
       if (freshRaspTier !== 'allow') {
         notifyRaspAlert({ tier: freshRaspTier, sentence: freshArtifact?.sentence ?? null, ts: Date.now() });
+      }
+
+      // H-1 chokepoint re-assert. The Continue button is disabled while remote
+      // screening is in flight, but button state is not the security boundary —
+      // scoreCurrentSend() below reads tipQuery.data through a closure, and an
+      // unsettled query means `tipResult` is undefined, which S9 scores as OK.
+      // Refuse to sign rather than sign on a verdict that never consulted the
+      // screening the user opted into. Mirrors the RASP fresh-artifact re-assert
+      // immediately below (I4 fail-closed).
+      if (tipScreenApplies && !(tipQuery.isSuccess || tipQuery.isError)) {
+        throw Object.assign(
+          new Error('Threat screening has not finished for this transaction yet.'),
+          { code: 'TIP_SCREEN_PENDING' }
+        );
       }
 
       let riskScoreFailed = false;
@@ -1305,6 +1396,17 @@ export default function SendCrypto() {
         return;
       }
       setReauthError(tw("send.reauth.errors.incorrect", { remaining: REAUTH_CAP - n }));
+    } catch {
+      // Gap-5 (I4 fail closed + fail honest). This block had a `finally` but no
+      // `catch`: a rejection from the verifier escaped as an unhandled rejection,
+      // the spinner cleared, and the user was left staring at an unchanged screen
+      // with no message and no send — a silent dead-end (same class as the 07-27
+      // "Send amount dead-ended silently" finding). Surface it instead.
+      //
+      // Deliberately does NOT burn a step-up attempt: a thrown verifier is an infra
+      // failure, not a wrong credential — an unverified step-up must never
+      // authorise a broadcast; the send mutation is intentionally unreachable here.
+      setReauthError(tw("send.reauth.errors.unavailable"));
     } finally {
       setReauthPending(false);
     }
@@ -1337,6 +1439,7 @@ export default function SendCrypto() {
   }
 
   return (
+    <>
     <div className="max-w-md mx-auto space-y-6">
       {fromDetail && <BackButton />}
       <div>
@@ -1542,8 +1645,20 @@ export default function SendCrypto() {
                 <input type="checkbox" className="mt-0.5" checked={remoteScreen} onChange={e => toggleRemoteScreen(e.target.checked)} />
                 <span>{tw("send.screening.remote_opt_in")}</span>
               </label>
-              {remoteScreen && (
+              {remoteScreen && !import.meta.env.VITE_TIP_BASE_URL && (
                 <p className="text-destructive/80">{tw("send.screening.remote_unavailable")}</p>
+              )}
+              {/* H-5 — the disclosure must name what actually leaves the device.
+                  It previously said only "the recipient address", while the
+                  payload also carries the user's own address, the amount,
+                  contract/calldata, and up to 20 historical counterparties. */}
+              {remoteScreen && import.meta.env.VITE_TIP_BASE_URL && (
+                <>
+                  <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
+                  <p className="text-muted-foreground" data-testid="tip-counterparties-note">
+                    {tw("send.screening.remote_counterparties_note")}
+                  </p>
+                </>
               )}
               {DEMO && (
                 <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">
@@ -1799,7 +1914,7 @@ export default function SendCrypto() {
             disabled={!walletId || !assetSymbol || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive)}
             onClick={() => {
               const invalid = !toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid
-                || (balanceKnown && parseFloat(canonicalAmount) > effectiveBalance)
+                || (!devUngated && balanceKnown && parseFloat(canonicalAmount) > effectiveBalance)
                 || (limitEval.blocked && !limitAck);
               if (invalid) { setShowErrors(true); return; }
               setShowErrors(false);
@@ -1889,13 +2004,14 @@ export default function SendCrypto() {
 
             {/* PRE-SIGN SIMULATION — predicted balance changes, decoded call, and
                 KNOWN risk flags, dry-run against your own RPC before you confirm.
-                Local-only; warns, never blocks; never claims "safe". */}
+                Local-only baseline; TIP threat signals appended when remote
+                screening is enabled (risks[] merge, same RiskRow shape). */}
             {(isEvmFamily(selectedAsset) || isErc20) && (
-              <TransactionPreview result={txSim.data} loading={txSim.isFetching && !txSim.data} error={txSim.error} />
+              <TransactionPreview result={enrichWithTip(txSim.data, tipQuery.data)} loading={txSim.isFetching && !txSim.data} error={txSim.error} />
             )}
             {/* BTC preview (H-1/M-2): the exact decoded tx + fee before signing. */}
             {isBtc && (
-              <TransactionPreview result={btcSim.data} loading={btcSim.isFetching && !btcSim.data} error={btcSim.error} />
+              <TransactionPreview result={enrichWithTip(btcSim.data, tipQuery.data)} loading={btcSim.isFetching && !btcSim.data} error={btcSim.error} />
             )}
             {/* BTC risk gate (M-2): a high-severity decode flag (e.g. sends all inputs /
                 no change) must be explicitly acknowledged before Confirm & Send. */}
@@ -2018,16 +2134,18 @@ export default function SendCrypto() {
                       if (send2faMethod === SEND_2FA.BIOMETRIC) {
                         // BIOMETRIC mode: the user is already unlocked (vault open = PIN proved).
                         // TwoFactorGate shows NO PIN field in this mode — the step-up is Face ID only.
-                        // pinOk is treated as true (unlock = first-factor already satisfied).
                         // FAIL CLOSED (I4) — any cancel/no-match/error counts as NOT verified.
-                        let bioOk = false;
-                        try { bioOk = (await verifyBiometric2fa()) === true; } catch { bioOk = false; }
-                        // BIOMETRIC is a possession factor (not the Action Password); the
-                        // second factor here is the live biometric, so this leg is
-                        // configured-by-construction (send2faMethod already resolved to
-                        // BIOMETRIC). Keep the gate's third input honest at `true` only
-                        // for this non-AP method.
-                        return evaluateTwoFactor({ pinOk: true, passwordOk: bioOk, actionPasswordConfigured: true });
+                        //
+                        // Gap-5: the old bare-catch (bioOk assigned false on any error) also made every
+                        // failure indistinguishable, so a USER CANCEL, a permanently
+                        // invalidated hardware key, and an unavailable sensor each burned one
+                        // of TwoFactorGate's 5 attempts and captioned it "Incorrect." — five
+                        // taps on the OS Cancel button locked the session. The send stays
+                        // blocked in all of those cases; only the accounting and the message
+                        // change, and a genuine no-match still counts. The rationale for the
+                        // `pinOk: true` / `actionPasswordConfigured: true` literals moved with
+                        // the logic into lib/stepUpFactorOutcome.js.
+                        return evaluateBiometricSecondFactor(verifyBiometric2fa);
                       }
                       const pinOk = await verifyActiveCredential(pin);        // refreshes the auth window on success
                       if (send2faMethod === SEND_2FA.PASSKEY) {
@@ -2113,5 +2231,6 @@ export default function SendCrypto() {
         )}
       </div>
     </div>
+    </>
   );
 }

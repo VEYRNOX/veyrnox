@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "no",
+  "native": "Norsk",
+  "reviewed": false,
+  "notes": "Translated from en.json (source of truth). Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Selvforvaring · Sikkerhet",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Selvforvaring av krypto for situasjoner med høy risiko. Din seed, dine nøkler, på din enhet. Tvangsresistente moduser for når et passord ikke er nok.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kryptolommebok,selvforvaring,bitcoin,ethereum,solana,web3,sikker lommebok,tvang,non-custodial",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Din krypto. Dine nøkler. På din enhet.\n\nVeyrnox er en ikke-forvaltende lommebok for sikkerhetsbevisste brukere. Nøkler genereres og lagres kun på enheten din, forseglet med maskinvarebasert (Secure Enclave) kryptering — aldri på en server. Veyrnox kan ikke flytte pengene dine og kan ikke gjenopprette dem for deg.\n\nKjøretidsselvbeskyttelse (RASP)\nVeyrnox sjekker aktivt sitt eget kjøremiljø for manipulering, root/jailbreak og kodeinjeksjon, og feiler lukket dersom den oppdager et kompromittert miljø.\n\nAdressesikkerhetssjekker\nAutomatiske advarsler for adresseforgiftning og liknende adresser, i tillegg til filtrering av spam-tokens, før du sender.\n\nÉn lommebok, ti eiendeler\nSend og motta ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC og USDT — alt fra én gjenopprettingsfrase.\n\nSafety Plus (valgfritt abonnement)\nLåser opp tvangsresistente moduser:\n• Tvangs-PIN — en egen PIN åpner en lokkelommebok, slik at en tvungen opplåsing ikke avslører noe reelt.\n• Skjulte lommebøker — kontoer som ikke vises i noen liste eller telling.\n• Panikksletting — ødelegg lokalt nøkkelmateriale ugjenkallelig på forespørsel.\nMånedlig eller årlig; fornyes automatisk til det avbestilles. Administrer eller avbestill når som helst i kontoinnstillingene i App Store.\n\nVeyrnox er ikke-forvaltende. Hvis du mister gjenopprettingsfrasen din, kan ingen — heller ikke vi — gjenopprette lommeboken din. Ta backup av den.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Førstegangsutgivelse.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Kryptolommebok med selvforvaring. Nøklene blir på enheten din. Tvangsresistent.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Din krypto. Dine nøkler. På din enhet.\n\nVeyrnox er en ikke-forvaltende lommebok for folk som tar sikkerhet på alvor. Gjenopprettingsfrasen og de private nøklene dine genereres på enheten og forsegles med maskinvarebasert kryptering (Android Keystore / StrongBox / TEE der tilgjengelig). De forlater aldri enheten din. Veyrnox oppbevarer ingenting: vi kan ikke flytte pengene dine og kan ikke gjenopprette dem for deg.\n\nStøttede eiendeler\nSend og motta ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC og USDT — alt fra én BIP-39-gjenopprettingsfrase.\n\nSikkerhet på enheten\n• AES-256-GCM-hvelv, låst opp med Argon2id (192 MiB KDF) og, der tilgjengelig, en maskinvarebundet nøkkel.\n• Kjøretidsselvbeskyttelse (RASP) sjekker for manipulering, root, kodeinjeksjon og hooking — og feiler lukket på en kompromittert enhet.\n• Adressesikkerhet: advarsler om adresseforgiftning og liknende adresser, filtrering av spam-tokens, før du sender.\n• WalletConnect v2 med gjennomgang per forespørsel, kjede- og adressebinding, økt-utløp og trinnvis autentisering for høyrisikohandlinger.\n\nSafety Plus (valgfritt abonnement)\nLåser opp tvangsresistente moduser for situasjoner med høy risiko:\n• Tvangs-PIN — en andre PIN åpner en lokkelommebok; en tvungen opplåsing avslører ikke noe reelt.\n• Skjulte lommebøker — kontoer som ikke vises i noen liste eller telling.\n• Panikksletting — ødelegg lokalt nøkkelmateriale ugjenkallelig på forespørsel.\nMånedlig eller årlig; fornyes automatisk til det avbestilles. Administrer eller avbestill når som helst i Google Play → Abonnementer.\n\nHva Veyrnox IKKE gjør\n• Ingen konto. Ingen e-post. Ingen skysynkronisering. Ingen forvaltning. Ingen handel. Ingen reklame.\n\nDu eier seeden. Hvis du mister gjenopprettingsfrasen din, kan ingen — heller ikke vi — gjenopprette lommeboken din. Ta backup et sted bare du kan nå.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

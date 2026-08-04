@@ -54,6 +54,7 @@ import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import PortfolioHealthScore from "@/components/PortfolioHealthScore";
 import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
 import WatchlistWidget from "@/components/WatchlistWidget";
+import SecurityPosture from "@/components/SecurityPosture";
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
@@ -223,8 +224,8 @@ export function AddWalletDialog({ onClose }) {
                 </div>
               )}
               <div>
-                <Label>{t("portfolio.addWallet.walletNameLabel")}</Label>
-                <Input className="mt-1.5" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("portfolio.addWallet.walletNamePlaceholder")} maxLength={40} />
+                <Label htmlFor="portfolio-wallet-name">{t("portfolio.addWallet.walletNameLabel")}</Label>
+                <Input id="portfolio-wallet-name" className="mt-1.5" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("portfolio.addWallet.walletNamePlaceholder")} maxLength={40} />
               </div>
               <div>
                 <Label>{t("portfolio.addWallet.assetsToShowLabel")}</Label>
@@ -232,11 +233,11 @@ export function AddWalletDialog({ onClose }) {
                 <AssetPicker selected={assets} onToggle={toggleAsset} />
               </div>
               <div>
-                <Label>{isPin ? t("portfolio.vaultPinLabel") : t("portfolio.vaultPasswordLabel")}</Label>
+                <Label htmlFor="portfolio-vault-credential">{isPin ? t("portfolio.vaultPinLabel") : t("portfolio.vaultPasswordLabel")}</Label>
                 {isPin ? (
                   <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={mode === "create" ? doCreate : doImport} disabled={busy || (mode === "import" && !phrase.trim())} submitLabel={mode === "create" ? t("portfolio.addWallet.createAndBackup") : t("portfolio.addWallet.importWallet")} aria-label={t("portfolio.vaultPinLabel")} /></div>
                 ) : (
-                  <PasswordInput className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("portfolio.addWallet.confirmVaultPlaceholder")} />
+                  <PasswordInput id="portfolio-vault-credential" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("portfolio.addWallet.confirmVaultPlaceholder")} />
                 )}
                 <p className="text-xs text-muted-foreground mt-1">{t("portfolio.addWallet.vaultReentryHint")}</p>
               </div>
@@ -292,7 +293,7 @@ function RenameDialog({ wallet, onClose }) {
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
         <DialogHeader><DialogTitle>{t("portfolio.rename.title")}</DialogTitle></DialogHeader>
-        <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={40} onKeyDown={(e) => { if (e.key === "Enter") save(); }} />
+        <Input aria-label="Wallet name" value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={40} onKeyDown={(e) => { if (e.key === "Enter") save(); }} />
         <DialogFooter><Button className="w-full" disabled={!name.trim()} onClick={save}>{t("portfolio.rename.save")}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
@@ -324,11 +325,11 @@ export function RemoveDialog({ wallet, canRemove, onClose }) {
               {t("portfolio.remove.description")} {wallet.backedUp ? t("portfolio.remove.backedUpNote") : t("portfolio.remove.notBackedUpNote")}
             </div>
             <div>
-              <Label>{isPin ? t("portfolio.vaultPinLabel") : t("portfolio.vaultPasswordLabel")}</Label>
+              <Label htmlFor="portfolio-vault-credential-2">{isPin ? t("portfolio.vaultPinLabel") : t("portfolio.vaultPasswordLabel")}</Label>
               {isPin ? (
                 <div className="mt-1.5"><PinPad value={password} onChange={setPassword} onComplete={doRemove} disabled={busy} submitLabel={t("portfolio.remove.button")} aria-label={t("portfolio.vaultPinLabel")} /></div>
               ) : (
-                <PasswordInput className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <PasswordInput id="portfolio-vault-credential-2" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} />
               )}
             </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
@@ -384,7 +385,7 @@ function ManagePortfoliosDialog({ portfolios, onClose }) {
             <div key={p.id} className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-card">
               <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
               {editId === p.id ? (
-                <Input className="h-8" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus
+                <Input aria-label="Portfolio name" className="h-8" value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus
                   onKeyDown={(e) => { if (e.key === "Enter" && editName.trim()) { renamePortfolio(p.id, editName.trim()); setEditId(null); } }} />
               ) : (
                 <span className="text-sm flex-1">{p.name}{p.id === MAIN_PORTFOLIO_ID && <span className="text-[10px] text-muted-foreground ms-1">{t("portfolio.managePortfolios.defaultTag")}</span>}</span>
@@ -401,7 +402,7 @@ function ManagePortfoliosDialog({ portfolios, onClose }) {
           ))}
         </div>
         <div className="flex gap-2 pt-1">
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("portfolio.managePortfolios.newNamePlaceholder")}
+          <Input aria-label="New portfolio name" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("portfolio.managePortfolios.newNamePlaceholder")}
             onKeyDown={(e) => { if (e.key === "Enter" && newName.trim()) { createPortfolio(newName.trim()); setNewName(""); } }} />
           <Button className="gap-1.5 shrink-0" disabled={!newName.trim()} onClick={() => { createPortfolio(newName.trim()); setNewName(""); }}>
             <FolderPlus className="h-4 w-4" /> {t("portfolio.managePortfolios.addButton")}
@@ -887,6 +888,7 @@ export default function WalletPortfolioPage() {
         isDeniability={healthInputs.isDeniability}
       />
       <WatchlistWidget />
+      <SecurityPosture />
 
       {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">

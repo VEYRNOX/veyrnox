@@ -33,6 +33,7 @@ import { useReceiveDetector } from "@/notify/useReceiveDetector";
 import LockSealingOverlay from "./LockSealingOverlay";
 import Spinner from "./Spinner";
 import PaywallNudge from "./PaywallNudge";
+import SecurityAdvisor from "./SecurityAdvisor";
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
 const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
@@ -373,6 +374,7 @@ export default function Layout() {
       {/* Day-3 soft paywall nudge (Task 6). Renders nothing until
           shouldShowPaywallNudge() is true; I3-gated internally. */}
       <PaywallNudge />
+      <SecurityAdvisor walletChain="evm" />
 
       {/* ── Mobile Top Bar ── */}
       <header

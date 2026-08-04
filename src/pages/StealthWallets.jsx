@@ -332,12 +332,12 @@ function MoveExistingWallet() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <Label className="text-xs">{t("stealth.move.secret_label")}</Label>
-              <PasswordInput className="mt-1" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={t("stealth.move.secret_placeholder")} />
+              <Label htmlFor="stealth-secret-input" className="text-xs">{t("stealth.move.secret_label")}</Label>
+              <PasswordInput id="stealth-secret-input" className="mt-1" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={t("stealth.move.secret_placeholder")} />
             </div>
             <div>
-              <Label className="text-xs">{t("stealth.move.confirm_label")}</Label>
-              <PasswordInput className="mt-1" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={t("stealth.move.confirm_placeholder")} />
+              <Label htmlFor="stealth-secret-confirm" className="text-xs">{t("stealth.move.confirm_label")}</Label>
+              <PasswordInput id="stealth-secret-confirm" className="mt-1" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={t("stealth.move.confirm_placeholder")} />
             </div>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -372,9 +372,9 @@ function MoveExistingWallet() {
 
           {/* Reveal verification — prove it's recoverable ONLY by the right secret. */}
           <div className="pt-1">
-            <Label className="text-[11px]">{t("stealth.move.verify_label")}</Label>
+            <Label htmlFor="stealth-verify-input" className="text-[11px]">{t("stealth.move.verify_label")}</Label>
             <div className="flex gap-2 mt-1">
-              <Input className="h-8 text-xs" value={verifySecret} onChange={(e) => setVerifySecret(e.target.value)} placeholder={t("stealth.move.verify_placeholder")} />
+              <Input id="stealth-verify-input" className="h-8 text-xs" value={verifySecret} onChange={(e) => setVerifySecret(e.target.value)} placeholder={t("stealth.move.verify_placeholder")} />
               <Button size="sm" variant="outline" disabled={!verifySecret} onClick={() => verifyReveal(verifySecret)}>{t("stealth.move.verify_cta")}</Button>
             </div>
             {peek && !peek.loading && (
@@ -584,9 +584,10 @@ export default function StealthWallets() {
 
         <div className="space-y-4">
           <div>
-            <Label>{t("stealth.create.secret_label")}</Label>
+            <Label htmlFor="stealth-create-secret">{t("stealth.create.secret_label")}</Label>
             <div className="relative mt-1.5">
               <Input
+                id="stealth-create-secret"
                 type={showSecret ? "text" : "password"}
                 maxLength={64}
                 placeholder={t("stealth.create.secret_placeholder")}
@@ -604,8 +605,9 @@ export default function StealthWallets() {
             </div>
           </div>
           <div>
-            <Label>{t("stealth.create.confirm_label")}</Label>
+            <Label htmlFor="stealth-create-confirm">{t("stealth.create.confirm_label")}</Label>
             <Input
+              id="stealth-create-confirm"
               type={showSecret ? "text" : "password"}
               maxLength={64}
               placeholder={t("stealth.create.confirm_placeholder")}
@@ -689,8 +691,9 @@ export default function StealthWallets() {
           {/* Free-form unlock to prove a wrong secret fails identically */}
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <Label className="text-xs">{t("stealth.demo.try_label")}</Label>
+              <Label htmlFor="stealth-demo-input" className="text-xs">{t("stealth.demo.try_label")}</Label>
               <Input
+                id="stealth-demo-input"
                 className="mt-1"
                 value={tryPw}
                 onChange={(e) => setTryPw(e.target.value)}

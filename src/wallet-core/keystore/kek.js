@@ -170,11 +170,14 @@ export function decodeKekSalt(kekSalt) {
 export function parseVaultBlob(raw) {
   if (raw && typeof raw === 'object') return raw;
   if (typeof raw !== 'string') throw new Error(KEK_ERR.MALFORMED_VAULT);
+  let parsed;
   try {
-    return JSON.parse(raw);
+    parsed = JSON.parse(raw);
   } catch {
     throw new Error(KEK_ERR.MALFORMED_VAULT);
   }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error(KEK_ERR.MALFORMED_VAULT);
+  return parsed;
 }
 
 function isExactBytes(x, len) {

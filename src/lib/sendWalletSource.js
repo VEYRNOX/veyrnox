@@ -3,7 +3,7 @@
 // Adapts the WalletProvider's multi-seed wallet model to the Send screen.
 //
 // WHY THIS EXISTS
-// The Send screen historically read its wallets from base44.entities.Wallet.list()
+// The Send screen historically read its wallets from a hosted entity store
 // — the DEMO data layer, which is EMPTY in a live build — so its "From Wallet"
 // dropdown was blank even though the dashboard (WalletPortfolioPage, which reads the
 // live vault via useWallet) rendered Wallet 1 fine. Same wallet, two sources. These
@@ -12,7 +12,7 @@
 // MODEL SHIFT
 // In the live vault a "wallet" is a SEED with an `enabledAssets` list (one wallet
 // holds every chain). The Send flow, by contrast, acts on a single (wallet, asset)
-// pair and downstream expects a record shaped like the old base44 wallet
+// pair and downstream expects a record shaped like the old entity-store wallet
 // (.id/.name/.currency/.address/.balance). buildSendWallet() produces exactly that
 // shape from a chosen wallet + asset, so the large body of send / spend-limit /
 // poison-screening logic in SendCrypto is untouched.
@@ -28,7 +28,7 @@ import { DEFAULT_ENABLED_ASSETS, ALL_ASSET_SYMBOLS } from '@/lib/walletMeta';
 // ── DEMO SEND SOURCE ────────────────────────────────────────────────────────
 // Demo is a backend-less walkthrough with NO unlocked on-device vault, so the
 // live useWallet() wallet set + derived accounts are EMPTY. After #127 bound the
-// Send screen to useWallet() (to fix the live build, where the old base44 demo
+// Send screen to useWallet() (to fix the live build, where the old demo
 // source was empty), the demo build regressed the OTHER way: both the From-Wallet
 // and Asset pickers had nothing to list, so the Asset bottom-sheet opened with
 // zero options and an asset could never be picked.
@@ -128,7 +128,7 @@ export function defaultAssetSymbol(enabledAssets, current) {
 
 /**
  * Build the per-(wallet, asset) record the Send screen consumes, shaped like the old
- * base44 wallet so downstream logic is unchanged. Returns null until BOTH a wallet
+ * * entity-store wallet so downstream logic is unchanged. Returns null until BOTH a wallet
  * and an asset are chosen (or the wallet id is unknown).
  *
  * @param {object} args

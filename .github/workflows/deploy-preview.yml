@@ -17,6 +17,7 @@ permissions:
 
 env:
   VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+  VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
 
 jobs:
   # Decides whether this change can skip the staging deploy + e2e.
@@ -47,7 +48,7 @@ jobs:
     outputs:
       docs_only: ${{ steps.detect.outputs.docs_only }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
       - name: Detect docs-only change
@@ -134,9 +135,9 @@ jobs:
       environment: ${{ steps.set-env.outputs.environment }}
       slug: ${{ steps.slug.outputs.slug }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
@@ -160,6 +161,8 @@ jobs:
         # means a prod build never receives the key even by accident.
         env:
           VITE_TRANSAK_API_KEY: ${{ github.ref == 'refs/heads/main' && '' || vars.VITE_TRANSAK_API_KEY }}
+          VITE_SUPABASE_URL: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_URL || '' }}
+          VITE_SUPABASE_ANON_KEY: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_ANON_KEY || '' }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             npm run build
@@ -185,16 +188,16 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         id: deploy
-        uses: cloudflare/wrangler-action@v4
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: ''
-          command: pages deploy dist --project-name=veyrnox-staging --branch=${{ steps.slug.outputs.slug }}
+          command: pages deploy dist --project-name=veyrnox-prod --branch=${{ steps.slug.outputs.slug }}
 
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
         with:
@@ -253,9 +256,9 @@ jobs:
     # so deploy produces nothing to test against).
     if: ${{ needs.deploy.outputs.deployment_url != '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
@@ -301,7 +304,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: staging-e2e-report
           path: playwright-report/

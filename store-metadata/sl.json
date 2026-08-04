@@ -1,0 +1,76 @@
+{
+  "$schema": "./_schema.json",
+  "locale": "sl",
+  "native": "Slovenščina",
+  "reviewed": false,
+  "notes": "Source of truth. Extracted from docs/play-launch/app-store-submission-copy.md and docs/play-launch/store-listing.md (2026-07-30). All character counts within the tighter of Apple/Play limits so the same string can serve both stores when equivalent.",
+  "shared": {
+    "appName": {
+      "value": "Veyrnox",
+      "limit_apple": 30,
+      "limit_play": 30
+    }
+  },
+  "apple": {
+    "subtitle": {
+      "value": "Lastna denarnica · Varnost",
+      "limit": 30
+    },
+    "promotionalText": {
+      "value": "Kripto brez skrbnika za situacije z visokim tveganjem. Vaš seed, vaši ključi, na vaši napravi. Načini, odporni na prisilo, kadar geslo ne zadostuje.",
+      "limit": 170,
+      "note": "Editable without a review resubmission."
+    },
+    "keywords": {
+      "value": "kripto denarnica,lastna hramba,bitcoin,ethereum,solana,web3,varna denarnica,prisila,brez posrednika",
+      "limit": 100,
+      "format": "comma-separated, no spaces after commas"
+    },
+    "description": {
+      "value": "Vaš kripto. Vaši ključi. Na vaši napravi.\n\nVeyrnox je denarnica brez skrbnika za uporabnike, ki varnost postavljajo na prvo mesto. Ključi so ustvarjeni in shranjeni izključno na vaši napravi, zaščiteni s strojno podprtim šifriranjem (Secure Enclave) — nikoli na strežniku. Veyrnox ne more premikati vašega denarja in ga ne more obnoviti namesto vas.\n\nSamozaščita med delovanjem (RASP)\nVeyrnox med delovanjem aktivno preverja lastno okolje za posege, root/jailbreak dostop in vrivanje kode ter se ob zaznanem ogroženem okolju zapre v varno stanje.\n\nPreverjanje varnosti naslovov\nSamodejna opozorila za zastrupljanje naslovov in podobne lažne naslove ter filtriranje neželenih žetonov pred pošiljanjem.\n\nEna denarnica, deset sredstev\nPošiljajte in prejemajte ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC in USDT — vse iz ene same obnovitvene fraze.\n\nSafety Plus (izbirna naročnina)\nOdklene načine, odporne na prisilo:\n• PIN pod prisilo — ločen PIN odpre lažno denarnico, zato prisilno odklepanje ne razkrije ničesar pravega.\n• Skrite denarnice — računi, ki se ne prikažejo na nobenem seznamu ali v štetju.\n• Panični izbris — nepovratno uniči lokalno ključno gradivo na zahtevo.\nMesečno ali letno; samodejno se obnavlja do preklica. Upravljajte ali prekličite kadar koli v nastavitvah računa App Store.\n\nVeyrnox je denarnica brez skrbnika. Če izgubite obnovitveno frazo, je nihče — vključno z nami — ne more obnoviti. Shranite jo varno.",
+      "limit": 4000
+    },
+    "whatsNew": {
+      "value": "Začetna izdaja.",
+      "limit": 4000
+    },
+    "supportUrl": {
+      "value": "https://veyrnox.com/support",
+      "note": "Same for every locale — not translated."
+    },
+    "marketingUrl": {
+      "value": "https://veyrnox.com",
+      "note": "Same for every locale — not translated."
+    },
+    "privacyPolicyUrl": {
+      "value": "https://veyrnox.com/privacy",
+      "note": "Same for every locale — not translated."
+    }
+  },
+  "play": {
+    "shortDescription": {
+      "value": "Kripto denarnica brez skrbnika. Ključi ostanejo na napravi. Odporna na prisilo.",
+      "limit": 80,
+      "note": "Play's headline field — highest-impact single line."
+    },
+    "fullDescription": {
+      "value": "Vaš kripto. Vaši ključi. Na vaši napravi.\n\nVeyrnox je denarnica brez skrbnika za ljudi, ki varnost jemljejo resno. Vaša obnovitvena fraza in zasebni ključi so ustvarjeni na napravi in zaščiteni s strojno podprtim šifriranjem (Android Keystore / StrongBox / TEE, kjer je na voljo). Nikoli ne zapustijo vaše naprave. Veyrnox ne hrani ničesar: ne moremo premikati vašega denarja niti ga obnoviti namesto vas.\n\nPodprta sredstva\nPošiljajte in prejemajte ETH, BTC, SOL, MATIC, ARB, OP, AVAX, BNB, USDC in USDT — vse iz ene same obnovitvene fraze BIP-39.\n\nVarnost na napravi\n• Trezor AES-256-GCM, odklenjen z Argon2id (192 MiB KDF) in, kjer je na voljo, s strojno vezanim ključem.\n• Samozaščita med delovanjem (RASP) preverja posege, root dostop, vrivanje kode in prestrezanje ter se ob ogroženi napravi zapre v varno stanje.\n• Varnost naslovov: opozorila za zastrupljanje in podobne lažne naslove ter filtriranje neželenih žetonov pred pošiljanjem.\n• WalletConnect v2 s pregledom vsake zahteve, vezavo na verigo in naslov, potekom seje ter dodatno potrditvijo za tvegana dejanja.\n\nSafety Plus (izbirna naročnina)\nOdklene načine, odporne na prisilo, za situacije z visokim tveganjem:\n• PIN pod prisilo — drugi PIN odpre lažno denarnico; prisilno odklepanje ne razkrije ničesar pravega.\n• Skrite denarnice — računi, ki se ne prikažejo na nobenem seznamu ali v štetju.\n• Panični izbris — nepovratno uniči lokalno ključno gradivo na zahtevo.\nMesečno ali letno; samodejno se obnavlja do preklica. Upravljajte ali prekličite kadar koli v Google Play → Naročnine.\n\nKaj Veyrnox NE počne\n• Brez računa. Brez e-pošte. Brez sinhronizacije v oblaku. Brez skrbništva. Brez trgovanja. Brez oglasov.\n\nSeme je vaše. Če izgubite obnovitveno frazo, je nihče — vključno z nami — ne more obnoviti vaše denarnice. Shranite jo tja, kjer imate dostop samo vi.",
+      "limit": 4000
+    }
+  },
+  "commonLimits": {
+    "apple": {
+      "appName": 30,
+      "subtitle": 30,
+      "promotionalText": 170,
+      "description": 4000,
+      "keywords": 100,
+      "whatsNew": 4000
+    },
+    "play": {
+      "appName": 30,
+      "shortDescription": 80,
+      "fullDescription": 4000
+    }
+  }
+}

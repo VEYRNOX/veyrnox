@@ -33,6 +33,7 @@ import { s5EnsMismatch } from './signals/s5-ens-mismatch.js';
 import { s6DustInput } from './signals/s6-dust-input.js';
 import { s7CalldataMismatch } from './signals/s7-calldata-mismatch.js';
 import { s8ValueAnomaly } from './signals/s8-value-anomaly.js';
+import { s9TipThreat } from './signals/s9-tip-threat.js';
 
 // Registry order is the tie-breaker when several signals fire at the SAME
 // priority: the earlier entry owns the sentence. The attacker-targeted RISK
@@ -54,6 +55,7 @@ export const SIGNALS = Object.freeze([
   { id: 'S6', fn: s6DustInput },
   { id: 'S1', fn: s1FreshRecipient },
   { id: 'S8', fn: s8ValueAnomaly },
+  { id: 'S9', fn: s9TipThreat },
 ]);
 
 // An INDETERMINATE result is reported to the UI as CAUTION (fail-closed). All
