@@ -1,8 +1,5 @@
-# Rolls back the veyrnox-staging Cloudflare Pages project — the only Pages
-# project this repo deploys to (see deploy-preview.yml). This workflow was
-# titled "Rollback Production" while both of its steps targeted staging, which
-# is a bad thing to discover mid-incident.
-name: Rollback Staging
+# Rolls back the veyrnox-prod Cloudflare Pages project (production).
+name: Rollback Production
 
 on:
   workflow_dispatch:
@@ -79,7 +76,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deployment list --project-name=veyrnox-staging
+          command: pages deployment list --project-name=veyrnox-prod
 
       - name: Rollback deployment
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4
@@ -88,7 +85,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: >-
             pages deployment rollback
-            --project-name=veyrnox-staging
+            --project-name=veyrnox-prod
             ${{ steps.dep.outputs.id && format('--deployment-id={0}', steps.dep.outputs.id) }}
             --x-versions
 
@@ -101,7 +98,7 @@ jobs:
           if [ -n "$DEPLOYMENT_ID" ]; then
             echo "Rolled back to deployment \`$DEPLOYMENT_ID\`" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Rolled back to the previous staging deployment" >> "$GITHUB_STEP_SUMMARY"
+            echo "Rolled back to the previous production deployment" >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Triggered by: @$ACTOR" >> "$GITHUB_STEP_SUMMARY"

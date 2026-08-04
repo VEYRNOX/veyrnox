@@ -41,7 +41,7 @@ describe('fetchLivePricesUsd — holdings-agnostic live fetch', () => {
     const out = await fetchLivePricesUsd();
     const url = fetchMock.mock.calls[0][0];
     // CoinGecko URL uses coin IDs and vs_currencies, not tickers or tsyms
-    expect(url).toContain('api.coingecko.com');
+    expect(url).toContain('/api/data/coingecko');
     expect(url).toContain('vs_currencies=usd');
     expect(url).toContain('ethereum');
     expect(url).toContain('bitcoin');

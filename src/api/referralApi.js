@@ -4,7 +4,7 @@
 // All writes go through rate-limited Postgres functions — never direct
 // table access. See sql/api-security-hardening.sql.
 
-import { supabase } from '@/lib/supabaseClient';
+import { rpc, edgeFn } from '@/api/edgeApi';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
 
@@ -24,14 +24,14 @@ function isValidCode(code) {
 // the first-referral bonus path is inert — check_first_referral_bonus returns
 // NULL when rc_user_id is unset (I4: fail closed).
 export async function generateServerCode() {
-  if (!supabase || isDeniabilityOrDemoActive()) return null;
+  if (isDeniabilityOrDemoActive()) return null;
   try {
     const deviceId = getOrCreateDeviceId();
     if (!deviceId) return null;
-    const { data, error } = await supabase.rpc('generate_referral_code', {
+    const data = await rpc('generate_referral_code', {
       p_device_id: deviceId,
     });
-    if (error || !data) return null;
+    if (!data) return null;
     return data;
   } catch {
     return null;
@@ -40,16 +40,11 @@ export async function generateServerCode() {
 
 export async function registerCode(code) {
   if (!isValidCode(code)) return;
-  if (!supabase || isDeniabilityOrDemoActive()) return;
-  // Audit H-2: register_referral_code REQUIRES p_device_id. If deviceId
-  // is missing (no CSPRNG → deviceId is null), do not call the RPC — an
-  // undefined/null p_device_id used to bypass the 3/hour rate limit
-  // server-side and now raises. Fail closed here (I4) rather than making
-  // a doomed round-trip.
+  if (isDeniabilityOrDemoActive()) return;
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) return;
   try {
-    await supabase.rpc('register_referral_code', {
+    await rpc('register_referral_code', {
       p_code: code,
       p_device_id: deviceId,
     });
@@ -61,24 +56,23 @@ export async function registerCode(code) {
 export async function redeemCode(code) {
   if (!isValidCode(code)) throw Object.assign(new Error('Invalid code format'), { status: 400 });
   if (isDeniabilityOrDemoActive()) throw Object.assign(new Error('Unavailable'), { status: 503 });
-  if (!supabase) throw Object.assign(new Error('No referral backend configured'), { status: 503 });
 
   const deviceId = getOrCreateDeviceId();
   if (!deviceId) throw Object.assign(new Error('No device ID'), { status: 500 });
 
-  const { data, error } = await supabase.rpc('increment_referral', {
-    p_code: code,
-    p_device_id: deviceId,
-  });
-
-  if (error) {
-    if (error.code === 'P0001' || error.message?.includes('not found')) {
+  try {
+    const data = await rpc('increment_referral', {
+      p_code: code,
+      p_device_id: deviceId,
+    });
+    return { newCount: data };
+  } catch (err) {
+    const e = /** @type {Error & {status?: number}} */ (err);
+    if (e.status === 404 || e.message?.includes('not found')) {
       throw Object.assign(new Error('Code not found'), { status: 404 });
     }
-    throw Object.assign(new Error(error.message || 'Referral error'), { status: 500 });
+    throw Object.assign(new Error(e.message || 'Referral error'), { status: 500 });
   }
-
-  return { newCount: data };
 }
 
 // Reads the code's redemption count through an RPC rather than selecting from
@@ -92,12 +86,12 @@ export async function redeemCode(code) {
 // `!data`: a count of 0 is a real value the tracker renders, not a miss.
 export async function fetchStatus(code) {
   if (!isValidCode(code)) return null;
-  if (!supabase || isDeniabilityOrDemoActive()) return null;
+  if (isDeniabilityOrDemoActive()) return null;
   try {
-    const { data, error } = await supabase.rpc('get_referral_count', {
+    const data = await rpc('get_referral_count', {
       p_code: code,
     });
-    if (error || data == null) return null;
+    if (data == null) return null;
     return { count: data };
   } catch {
     return null;
@@ -108,12 +102,12 @@ export const fetchReferrerTier = fetchStatus;
 
 export async function fetchPaidCount(code) {
   if (!isValidCode(code)) return null;
-  if (!supabase || isDeniabilityOrDemoActive()) return null;
+  if (isDeniabilityOrDemoActive()) return null;
   try {
-    const { data, error } = await supabase.rpc('get_referral_paid_count', {
+    const data = await rpc('get_referral_paid_count', {
       p_code: code,
     });
-    if (error || data == null) return null;
+    if (data == null) return null;
     return data;
   } catch {
     return null;
@@ -122,9 +116,9 @@ export async function fetchPaidCount(code) {
 
 export async function recordAttribution(referralCode, plan, revenueCents, discountCents) {
   if (!isValidCode(referralCode)) return;
-  if (!supabase || isDeniabilityOrDemoActive()) return;
+  if (isDeniabilityOrDemoActive()) return;
   try {
-    await supabase.rpc('record_attribution', {
+    await rpc('record_attribution', {
       p_code: referralCode,
       p_plan: plan,
       p_revenue_cents: revenueCents,
@@ -137,12 +131,12 @@ export async function recordAttribution(referralCode, plan, revenueCents, discou
 
 export async function fetchEarnings(code) {
   if (!isValidCode(code)) return null;
-  if (!supabase || isDeniabilityOrDemoActive()) return null;
+  if (isDeniabilityOrDemoActive()) return null;
   try {
-    const { data, error } = await supabase.rpc('get_referral_earnings', {
+    const data = await rpc('get_referral_earnings', {
       p_code: code,
     });
-    if (error || !data) return null;
+    if (!data) return null;
     return data;
   } catch {
     return null;
@@ -151,25 +145,9 @@ export async function fetchEarnings(code) {
 
 export async function claimFirstReferralBonus(referralCode) {
   if (!isValidCode(referralCode)) return null;
-  if (!supabase || isDeniabilityOrDemoActive()) return null;
+  if (isDeniabilityOrDemoActive()) return null;
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseKey) return null;
-
-    const res = await fetch(
-      `${supabaseUrl}/functions/v1/first-referral-bonus`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ referral_code: referralCode }),
-      },
-    );
-    if (!res.ok) return null;
-    return await res.json();
+    return await edgeFn('first-referral-bonus', { referral_code: referralCode });
   } catch {
     return null;
   }
