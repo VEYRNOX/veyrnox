@@ -7,7 +7,7 @@
 // and never derived from the user's holdings — same structural I2 guarantee
 // as the original cryptoCompare.js.
 
-import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { fetchCoinGecko } from '@/api/edgeApi';
 import { TOP_SYMBOLS } from '@/lib/cryptos.js';
 import { ASSETS } from '@/wallet-core/assets.js';
 
@@ -29,8 +29,6 @@ const TICKER_TO_CG = {
   AVAX: 'avalanche-2',
 };
 
-const CG_BASE = 'https://api.coingecko.com/api/v3';
-
 // Market basket — top coins we display prices for.
 const MARKET_SUPPORTED = TOP_SYMBOLS.filter(s => TICKER_TO_CG[s]);
 const MARKET_CG_IDS    = MARKET_SUPPORTED.map(s => TICKER_TO_CG[s]);
@@ -38,17 +36,6 @@ const MARKET_CG_IDS    = MARKET_SUPPORTED.map(s => TICKER_TO_CG[s]);
 // Portfolio universe — all holdable assets (deduped tickers).
 const PORTFOLIO_TICKERS  = [...new Set(ASSETS.map(a => a.symbol))].filter(s => TICKER_TO_CG[s]);
 const PORTFOLIO_CG_IDS   = PORTFOLIO_TICKERS.map(s => TICKER_TO_CG[s]);
-
-async function cgGet(url) {
-  if (Capacitor.isNativePlatform()) {
-    const res = await CapacitorHttp.get({ url });
-    if (res.status < 200 || res.status >= 300) throw new Error(`coingecko HTTP ${res.status}`);
-    return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-  }
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`coingecko HTTP ${res.status}`);
-  return res.json();
-}
 
 // ── Current price helpers ──────────────────────────────────────────────────
 
@@ -64,15 +51,19 @@ function buildPriceMap(raw, tickers, fiat) {
 
 /** USD prices for all holdable assets → { [sym]: number }. Replaces fetchPortfolioPricesUsd. */
 export async function fetchPortfolioPricesUsdCG() {
-  const url = `${CG_BASE}/simple/price?ids=${PORTFOLIO_CG_IDS.join(',')}&vs_currencies=usd`;
-  const raw = await cgGet(url);
+  const raw = await fetchCoinGecko('simple/price', {
+    ids: PORTFOLIO_CG_IDS.join(','),
+    vs_currencies: 'usd',
+  });
   return buildPriceMap(raw, PORTFOLIO_TICKERS, 'USD');
 }
 
 /** USD prices for the market basket → { [sym]: number }. Replaces fetchMarketPricesUsd. */
 export async function fetchMarketPricesUsdCG() {
-  const url = `${CG_BASE}/simple/price?ids=${MARKET_CG_IDS.join(',')}&vs_currencies=usd`;
-  const raw = await cgGet(url);
+  const raw = await fetchCoinGecko('simple/price', {
+    ids: MARKET_CG_IDS.join(','),
+    vs_currencies: 'usd',
+  });
   return buildPriceMap(raw, MARKET_SUPPORTED, 'USD');
 }
 
@@ -82,8 +73,10 @@ export async function fetchMarketPricesUsdCG() {
  */
 export async function fetchMarketPricesFiatCG(fiats) {
   const vsCurrencies = fiats.map(f => f.toLowerCase()).join(',');
-  const url = `${CG_BASE}/simple/price?ids=${MARKET_CG_IDS.join(',')}&vs_currencies=${vsCurrencies}`;
-  const raw = await cgGet(url);
+  const raw = await fetchCoinGecko('simple/price', {
+    ids: MARKET_CG_IDS.join(','),
+    vs_currencies: vsCurrencies,
+  });
   const out = {};
   for (const ticker of MARKET_SUPPORTED) {
     const cgId   = TICKER_TO_CG[ticker];
@@ -104,8 +97,10 @@ export async function fetchMarketPricesFiatCG(fiats) {
  */
 export async function fetchPortfolioPricesFiatCG(fiats) {
   const vsCurrencies = fiats.map(f => f.toLowerCase()).join(',');
-  const url = `${CG_BASE}/simple/price?ids=${PORTFOLIO_CG_IDS.join(',')}&vs_currencies=${vsCurrencies}`;
-  const raw = await cgGet(url);
+  const raw = await fetchCoinGecko('simple/price', {
+    ids: PORTFOLIO_CG_IDS.join(','),
+    vs_currencies: vsCurrencies,
+  });
   const out = {};
   for (const ticker of PORTFOLIO_TICKERS) {
     const cgId   = TICKER_TO_CG[ticker];
@@ -125,8 +120,12 @@ export async function fetchPortfolioPricesFiatCG(fiats) {
  * Replaces fetchMarketChanges24h.
  */
 export async function fetchMarketChanges24hCG() {
-  const url = `${CG_BASE}/coins/markets?vs_currency=usd&ids=${MARKET_CG_IDS.join(',')}&price_change_percentage=24h&per_page=50`;
-  const raw = await cgGet(url);
+  const raw = await fetchCoinGecko('coins/markets', {
+    vs_currency: 'usd',
+    ids: MARKET_CG_IDS.join(','),
+    price_change_percentage: '24h',
+    per_page: '50',
+  });
   const out = {};
   for (const ticker of MARKET_SUPPORTED) {
     out[ticker] = { change24h: null };
@@ -164,8 +163,11 @@ export async function fetchOHLCVCG(fsym, resolution = 'hour', limit = 24) {
   const cgId = TICKER_TO_CG[fsym];
   if (!cgId) throw new Error(`coingecko: no mapping for ${fsym}`);
   const days = toCgDays(resolution, limit);
-  const url  = `${CG_BASE}/coins/${cgId}/ohlc?vs_currency=usd&days=${days}`;
-  const raw  = await cgGet(url);
+  const raw  = await fetchCoinGecko('coins/ohlc', {
+    coin_id: cgId,
+    vs_currency: 'usd',
+    days: String(days),
+  });
   // CoinGecko returns [[timestamp_ms, open, high, low, close], ...]
   return raw.map(([ts, open, high, low, close]) => ({
     time:       Math.floor(ts / 1000),

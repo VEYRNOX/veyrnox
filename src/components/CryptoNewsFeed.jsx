@@ -1,18 +1,11 @@
 // @ts-nocheck
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, TrendingUp, Newspaper } from "lucide-react";
-import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
+import { fetchNews } from "@/api/edgeApi";
 import { safeNewsThumbUrl } from "@/lib/newsThumbUrl";
-
-// RSS feeds proxied through rss2json.com (free, no API key, CORS-friendly).
-// Two sources merged and sorted by date for broader coverage.
-const RSS_FEEDS = [
-  { url: "https://cointelegraph.com/rss", source: "CoinTelegraph" },
-  { url: "https://decrypt.co/feed", source: "Decrypt" },
-];
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -22,32 +15,9 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-async function fetchRssJson(url) {
-  const fullUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`;
-  if (Capacitor.isNativePlatform()) {
-    const res = await CapacitorHttp.get({ url: fullUrl });
-    if (res.status < 200 || res.status >= 300) throw new Error(`HTTP ${res.status}`);
-    return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-  }
-  const res = await fetch(fullUrl);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
 async function fetchCryptoNews() {
-  const results = await Promise.allSettled(
-    RSS_FEEDS.map(({ url, source }) =>
-      fetchRssJson(url)
-        .then(d => (d.items || []).map(item => ({ ...item, _source: source })))
-    )
-  );
-
-  const articles = results
-    .filter(r => r.status === "fulfilled")
-    .flatMap(r => r.value)
-    .sort((a, b) => +new Date(b.pubDate) - +new Date(a.pubDate))
-    .slice(0, 15);
-
+  const data = await fetchNews();
+  const articles = (data.articles || []).slice(0, 15);
   if (!articles.length) throw new Error("No articles from any feed");
   return articles;
 }

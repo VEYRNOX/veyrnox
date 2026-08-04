@@ -1,6 +1,3 @@
 # Cloudflare Pages deployment config.
-# Project must be created first: `npx wrangler pages project create veyrnox-staging`
-name = "veyrnox-staging"
-
-[pages]
-build_output_dir = "dist"
+name = "veyrnox-prod"
+pages_build_output_dir = "dist"
