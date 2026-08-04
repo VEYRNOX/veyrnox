@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import CoinLogo from '@/components/CoinLogo';
 import { useWallet } from '@/lib/WalletProvider';
 import { createBuySession } from '@/api/edgeApi';
-import { ASSETS, isEvmFamily } from '@/wallet-core/assets';
+import { ASSETS } from '@/wallet-core/assets';
 import { resolveReceive } from '@/lib/receiveAddress';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { DEMO } from '@/api/demoClient';
