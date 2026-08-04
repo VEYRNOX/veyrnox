@@ -130,4 +130,42 @@ describe('L-2 saltBytes zeroization on getHardwareFactor throw', () => {
     expect(decodedSalts.length).toBeGreaterThan(0);
     for (const salt of decodedSalts) expect(isAllZero(salt)).toBe(true);
   });
+
+  // M-2 (2026-08-03 audit) — the L-2 fix listed three call sites and unenrollKek
+  // was not one of them. It kept the pre-fix shape: decodeKekSalt and the
+  // biometric-gated getHardwareFactorWithLockoutFallback both ran BEFORE the
+  // try, so a throw between them skipped the finally entirely.
+  //
+  // The throw is not hypothetical: cancelling the biometric prompt is the exact
+  // scenario the L-2 commit cites, and "remove hardware protection" is a flow a
+  // user may well back out of halfway.
+  it('unenrollKek: saltBytes wiped when getHardwareFactor rejects (M-2)', async () => {
+    secureStoreMock.get.mockResolvedValue(JSON.stringify({ iv: 'x', ct: 'y', kekWrap: { v: 1 }, kekSalt }));
+    const getHF = vi.fn(async () => { throw new Error('biometric-cancel'); });
+
+    await expect(
+      nativeKeyStore.unenrollKek('pw', { getHardwareFactor: getHF }),
+    ).rejects.toThrow('biometric-cancel');
+
+    expect(decodedSalts.length).toBeGreaterThan(0);
+    for (const salt of decodedSalts) expect(isAllZero(salt)).toBe(true);
+  });
+
+  it('unenrollKek: saltBytes wiped on the SUCCESS path too', async () => {
+    // The control that proves the fix did not simply move the wipe onto the
+    // error path. safeWriteVault re-reads what it wrote to verify it, so `get`
+    // has to reflect `set` or the call throws VAULT_WRITE_VERIFY_FAILED before
+    // the assertion is ever reached — a green here would then mean nothing.
+    let stored = JSON.stringify({ iv: 'x', ct: 'y', kekWrap: { v: 1 }, kekSalt });
+    secureStoreMock.get.mockImplementation(async () => stored);
+    secureStoreMock.set.mockImplementation(async (_k, v) => {
+      stored = typeof v === 'string' ? v : JSON.stringify(v);
+    });
+    const getHF = vi.fn(async () => new Uint8Array(32).fill(1));
+
+    await nativeKeyStore.unenrollKek('pw', { getHardwareFactor: getHF });
+
+    expect(decodedSalts.length).toBeGreaterThan(0);
+    for (const salt of decodedSalts) expect(isAllZero(salt)).toBe(true);
+  });
 });

@@ -26,6 +26,8 @@ const storeMock = {
   hasVault: vi.fn(),
   clearVault: vi.fn(),
 };
+// Every Uint8Array decodeKekSalt hands out, so M-2's tests can assert wiping.
+const decodedSalts = [];
 const kekMock = {
   combineKek: vi.fn(async () => new Uint8Array(32).fill(9)),
   randomDek: vi.fn(() => new Uint8Array(32).fill(3)),
@@ -37,7 +39,11 @@ const kekMock = {
   decodeKekSalt: (kekSalt) => {
     if (typeof kekSalt !== 'string' || kekSalt.length === 0) throw new Error('KEK_MALFORMED_VAULT');
     let bin; try { bin = atob(kekSalt); } catch { throw new Error('KEK_MALFORMED_VAULT'); }
-    const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out;
+    const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    // M-2: capture every decoded salt so a test can assert it was wiped. Purely
+    // additive — the returned value is unchanged.
+    decodedSalts.push(out);
+    return out;
   },
   parseVaultBlob: (raw) => {
     if (raw && typeof raw === 'object') return raw;
@@ -217,6 +223,39 @@ describe('unenrollKek — H hardware factor zeroed even on early throw (issue #7
 
     expect(H).toBeDefined();
     expect(isAllZero(H)).toBe(true);
+  });
+
+  // M-2 (2026-08-03 audit). Two separate gaps here, both worse than the native
+  // side: decodeKekSalt and getHF() ran BEFORE the try (so a throw between them
+  // skipped the finally entirely), AND the finally never referenced saltBytes at
+  // all — so the salt was unwiped even when everything SUCCEEDED.
+  it('zeroes saltBytes when getHardwareFactor throws (M-2)', async () => {
+    decodedSalts.length = 0;
+    storeMock.loadVault.mockResolvedValue({ iv: 'x', ct: 'y', kekWrap: 'w', kekSalt });
+
+    await expect(
+      webKeyStore.unenrollKek('pw', {
+        getHardwareFactor: async () => { throw new Error('getHF-fail'); },
+      }),
+    ).rejects.toThrow('getHF-fail');
+
+    expect(decodedSalts.length).toBeGreaterThan(0);
+    for (const salt of decodedSalts) expect(isAllZero(salt)).toBe(true);
+  });
+
+  it('zeroes saltBytes on the SUCCESS path (web never wiped it at all)', async () => {
+    decodedSalts.length = 0;
+    storeMock.loadVault.mockResolvedValue({ iv: 'x', ct: 'y', kekWrap: 'w', kekSalt });
+    vaultMock.deriveKekC.mockResolvedValue(new Uint8Array(32).fill(7));
+    vaultMock.decryptVaultWithDek.mockResolvedValue('seed');
+    vaultMock.encryptVault.mockResolvedValue({ v: 1, iv: 'iv', ct: 'ct' });
+
+    await webKeyStore.unenrollKek('pw', {
+      getHardwareFactor: async () => new Uint8Array(32).fill(1),
+    });
+
+    expect(decodedSalts.length).toBeGreaterThan(0);
+    for (const salt of decodedSalts) expect(isAllZero(salt)).toBe(true);
   });
 });
 
