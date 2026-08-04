@@ -4,7 +4,8 @@
       {
         "appIDs": ["R54268MWFV.com.veyrnox.app"],
         "components": [
-          { "/": "/wc*", "comment": "WalletConnect pairing deep link (https://veyrnox.com/wc?uri=...)" }
+          { "/": "/wc*", "comment": "WalletConnect pairing deep link (https://veyrnox.com/wc?uri=...)" },
+          { "/": "/buy/return*", "comment": "Transak on-ramp return (https://veyrnox.com/buy/return?tid=...) — handled by DeepLinkHandler.jsx" }
         ]
       }
     ]

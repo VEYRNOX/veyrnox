@@ -100,6 +100,8 @@ export default function BuyCrypto() {
     return () => window.removeEventListener('message', onMessage);
   }, [navigate]);
 
+  if (suppressed) return null;
+
   if (widgetUrl) {
     return (
       <div className="flex flex-col h-full">
