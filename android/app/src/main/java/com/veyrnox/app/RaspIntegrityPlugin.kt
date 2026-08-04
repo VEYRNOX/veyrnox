@@ -84,15 +84,28 @@ class RaspIntegrityPlugin : Plugin() {
      * screenCapture (item 21): platform-symmetry field mirroring iOS screenCapture
      * (UIScreen.isCaptured). True when a presentation/virtual display is active,
      * indicating Miracast/WFD screen mirroring — a surveillance vector during PIN
-     * entry or seed display. nativeProbe.js maps screenCapture:true → signals.hooked
-     * (item 16 wiring), so this field flows to BLOCK via the same JS path as iOS.
+     * entry or seed display.
+     *
+     * L-2 (audit 2026-08-03) — this block used to say screenCapture maps to
+     * signals.hooked and therefore BLOCK. That stopped being true at fix #1108,
+     * which re-bucketed it onto the `elevated` axis: it now yields WARN, not
+     * BLOCK. Verify against src/rasp/nativeProbe.js, which is the authority, and
+     * against its "Item 16 — screenCapture re-bucketed to elevated (#1108)"
+     * regression test. The underlying surveillance vector is separately blocked
+     * at the OS layer by MainActivity's unconditional FLAG_SECURE.
      *
      * overlayActive (item 23): platform-symmetry field mirroring iOS overlayActive
      * (UIAccessibilityIsAssistiveTouchRunning). True when any accessibility service
      * with FEEDBACK_ALL_MASK is active — a potential tapjacking vector during PIN
-     * entry. nativeProbe.js maps overlayActive:true → signals.rooted → WARN (item 19
-     * wiring); the send flow is not blocked but the user sees a caution notice.
-     * Honest scope: also fires for legitimate accessibility users (TalkBack etc.).
+     * entry. Honest scope: also fires for legitimate accessibility users
+     * (TalkBack etc.), which is why it was dropped.
+     *
+     * L-2 — this block used to say overlayActive maps to signals.rooted → WARN.
+     * Fix #1104 DROPPED it entirely: it contributes to no signal and does not
+     * affect the tier at all, pinned by the "Item 19 — overlayActive DROPPED
+     * from elevated (#1104 fix)" test. The security-relevant subset — a
+     * malicious third-party overlay-capable accessibility service — is still
+     * caught by checkAccessibilityService(), which does feed `elevated`/WARN.
      *
      * developerMode (item 24): Android-only field (no iOS equivalent). True when
      * Settings.Global.ADB_ENABLED != 0 (USB debugging on) OR
