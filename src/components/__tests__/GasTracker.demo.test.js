@@ -56,7 +56,7 @@ describe('GasTracker — DEMO egress suppression structural guards (source scan)
     // that consumes it (and before the fetch-defining queryFn reference).
     const gateIdx = code.search(/!DEMO/);
     expect(gateIdx).toBeGreaterThan(-1);
-    expect(gateIdx).toBeLessThan(code.indexOf('queryFn: fetchFees'));
+    expect(gateIdx).toBeLessThan(code.indexOf('queryFn:'));
     expect(gateIdx).toBeLessThan(code.indexOf('enabled:'));
   });
 
