@@ -1,3 +1,3 @@
 # Cloudflare Pages deployment config.
-name = "veyrnox"
+name = "veyrnox-staging"
 pages_build_output_dir = "dist"
