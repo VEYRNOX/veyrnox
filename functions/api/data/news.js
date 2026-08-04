@@ -18,7 +18,8 @@ export async function onRequestGet(context) {
   const results = await Promise.allSettled(
     RSS_FEEDS.map(async ({ url, source }) => {
       const res = await fetch(
-        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`
+        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`,
+        { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Veyrnox/1.0)' } }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();

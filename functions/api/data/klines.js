@@ -40,7 +40,9 @@ export async function onRequestGet(context) {
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
-  const res = await fetch(upstream);
+  const res = await fetch(upstream, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Veyrnox/1.0)' },
+  });
   if (!res.ok) err(502, `Binance returned ${res.status}`);
 
   const body = await res.text();

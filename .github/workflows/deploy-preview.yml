@@ -18,8 +18,6 @@ permissions:
 env:
   VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
   VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
-  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
 jobs:
   # Decides whether this change can skip the staging deploy + e2e.
@@ -157,6 +155,9 @@ jobs:
           fi
 
       - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_URL || '' }}
+          VITE_SUPABASE_ANON_KEY: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_ANON_KEY || '' }}
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             npm run build
