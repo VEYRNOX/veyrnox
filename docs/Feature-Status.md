@@ -786,7 +786,21 @@ value / mutate balances without a user signature through wallet-core signing).
 > shipped, no longer advertised · [out-of-scope-regulated] = custodial/regulated,
 > never in scope.
 
-- ❌ **Social Recovery** (guardian / Shamir SSS / multi-party approval) — [audit-blocked-and-not-advertised] never built; audit-flagged and removed from roadmap 2026-06. No code exists.
+- ❌ **Social Recovery** (guardian / multi-party approval) — [audit-blocked-and-not-advertised] never built; audit-flagged and removed from roadmap 2026-06. No code exists.
+  - **Correction (audit 2026-08-03, L-5).** This line used to read "guardian /
+    Shamir SSS / multi-party approval … No code exists", and the Shamir clause
+    became false when PR #1538 landed `src/wallet-core/shamir.js`. It was doubly
+    wrong by the time it was caught: H-6 (#1552) and M-7 (#1553) had both edited
+    that file since. Recording the correction rather than quietly rewording,
+    because this file is the honesty ledger and a silent edit here is exactly the
+    thing it exists to prevent.
+  - **Shamir SSS as a PERSONAL 2-of-3 split** (device / cloud / paper — no
+    guardians, no third parties holding shares) is a separate feature and does
+    have code: `src/wallet-core/shamir.js`, spec at
+    `docs/cloud-recovery-shard-spec.md`. Status **PLANNED / pre-audit and NOT
+    WIRED** — the module has zero non-test callers, so nothing in the app can
+    reach it. The guardian/social/multi-party form above remains correctly
+    absent.
 - ❌ **Crypto Will / Inheritance** — [audit-blocked-and-not-advertised] never built; removed from roadmap 2026-06. No code exists.
 - ❌ Multi-Sig wallets (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
 - ❌ Rebalance + Rebalance History — [breaks-self-custody] autonomous value movement; removed (PR #47).
