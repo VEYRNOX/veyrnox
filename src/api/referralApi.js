@@ -67,10 +67,11 @@ export async function redeemCode(code) {
     });
     return { newCount: data };
   } catch (err) {
-    if (err.status === 404 || err.message?.includes('not found')) {
+    const e = /** @type {Error & {status?: number}} */ (err);
+    if (e.status === 404 || e.message?.includes('not found')) {
       throw Object.assign(new Error('Code not found'), { status: 404 });
     }
-    throw Object.assign(new Error(err.message || 'Referral error'), { status: 500 });
+    throw Object.assign(new Error(e.message || 'Referral error'), { status: 500 });
   }
 }
 

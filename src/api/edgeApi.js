@@ -13,9 +13,7 @@ const EDGE_BASE = import.meta.env.VITE_EDGE_BASE || '';
 
 function i3Guard() {
   if (DEMO || isDeniabilityOrDemoActive()) {
-    const err = new Error('I3_DENIABILITY_ACTIVE');
-    err.code = 'I3_DENIABILITY_ACTIVE';
-    throw err;
+    throw Object.assign(new Error('I3_DENIABILITY_ACTIVE'), { code: 'I3_DENIABILITY_ACTIVE' });
   }
 }
 
@@ -27,9 +25,7 @@ async function post(path, body) {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    const err = new Error(data.error || `Edge API ${res.status}`);
-    err.status = res.status;
-    throw err;
+    throw Object.assign(new Error(data.error || `Edge API ${res.status}`), { status: res.status });
   }
   return res.json();
 }
@@ -38,9 +34,7 @@ async function get(path) {
   const res = await fetch(`${EDGE_BASE}${path}`);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    const err = new Error(data.error || `Edge API ${res.status}`);
-    err.status = res.status;
-    throw err;
+    throw Object.assign(new Error(data.error || `Edge API ${res.status}`), { status: res.status });
   }
   return res.json();
 }
