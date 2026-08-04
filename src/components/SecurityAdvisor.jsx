@@ -8,7 +8,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router";
-import { ShieldCheck, Send, X, Loader2, WifiOff } from "lucide-react";
+import { ShieldCheck, Send, X, Loader2, WifiOff, AlertTriangle, CheckCircle2, ShieldAlert as ShieldAlertIcon } from "lucide-react";
+import { screenTransaction } from "@/api/tipScreen.js";
 import {
   Drawer,
   DrawerContent,
@@ -246,6 +247,58 @@ function getSuggestedQuestions(screen) {
   return SUGGESTED_QUESTIONS_BY_SCREEN[screen] || SUGGESTED_QUESTIONS_BY_SCREEN.general;
 }
 
+const EVM_ADDRESS_RE = /\b(0x[a-fA-F0-9]{40})\b/;
+
+function extractAddress(text) {
+  const match = text.match(EVM_ADDRESS_RE);
+  return match ? match[1] : null;
+}
+
+function ScreeningVerdict({ result }) {
+  if (!result) return null;
+
+  const isBlock = result.verdict === 'block';
+  const isWarn = result.verdict === 'warn' || result.verdict === 'error';
+  const isClear = result.verdict === 'allow';
+
+  const Icon = isBlock ? ShieldAlertIcon : isWarn ? AlertTriangle : CheckCircle2;
+  const color = isBlock ? 'text-red-500' : isWarn ? 'text-amber-500' : 'text-emerald-500';
+  const bg = isBlock ? 'bg-red-500/10 border-red-500/30' : isWarn ? 'bg-amber-500/10 border-amber-500/30' : 'bg-emerald-500/10 border-emerald-500/30';
+  const label = isBlock ? 'BLOCKED' : isWarn ? 'CAUTION' : 'CLEAR';
+
+  return (
+    <div className={`rounded-lg border p-3 text-xs ${bg}`} data-testid="tip-screening-verdict">
+      <div className="flex items-center gap-2 font-semibold">
+        <Icon className={`h-4 w-4 ${color}`} />
+        <span className={color}>Threat Screening: {label}</span>
+      </div>
+      {result.sanctions && (
+        <p className="mt-1.5 font-medium text-red-400">
+          Sanctions match detected — this address appears on a government sanctions list (e.g. OFAC SDN).
+        </p>
+      )}
+      {result.risks.length > 0 && (
+        <ul className="mt-1.5 space-y-1">
+          {result.risks.map((r, i) => (
+            <li key={i} className="text-foreground/80">
+              <span className="font-medium">{r.title}</span>
+              {r.detail && <span className="text-muted-foreground"> — {r.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {isClear && result.risks.length === 0 && (
+        <p className="mt-1.5 text-muted-foreground">
+          No threats, sanctions hits, or risk signals found for this address.
+        </p>
+      )}
+      <p className="mt-2 text-[10px] text-muted-foreground/60 italic">
+        from threat intelligence screening
+      </p>
+    </div>
+  );
+}
+
 export default function SecurityAdvisor({ walletChain }) {
   const location = useLocation();
   const currentScreen = resolveScreen(location.pathname);
@@ -307,6 +360,30 @@ export default function SecurityAdvisor({ walletChain }) {
     setMessages(history);
     setInput("");
     setStreaming(true);
+
+    const detectedAddress = extractAddress(text);
+
+    if (detectedAddress) {
+      try {
+        const result = await screenTransaction({
+          chain: walletChain || 'ethereum',
+          actionType: 'address_lookup',
+          from: '0x0000000000000000000000000000000000000000',
+          to: detectedAddress,
+        });
+        if (result) {
+          setMessages((prev) => [...prev, {
+            role: "assistant",
+            content: "",
+            screening: result,
+          }]);
+          setStreaming(false);
+          return;
+        }
+      } catch {
+        // screening failed — fall through to normal chat/local
+      }
+    }
 
     const assistantIdx = history.length;
 
@@ -546,16 +623,20 @@ ${buildAdvisorSystemContext(currentScreen)}`,
                     className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${
                       msg.role === "user"
                         ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "bg-secondary/60 text-foreground rounded-bl-md"
+                        : msg.screening ? "" : "bg-secondary/60 text-foreground rounded-bl-md"
                     }`}
                   >
-                    {msg.content || (
+                    {msg.screening ? (
+                      <ScreeningVerdict result={msg.screening} />
+                    ) : msg.content ? (
+                      msg.content
+                    ) : (
                       <span className="flex items-center gap-1.5 text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" />
                         Thinking...
                       </span>
                     )}
-                    {msg.local && msg.role === "assistant" && msg.content && (
+                    {msg.local && msg.role === "assistant" && msg.content && !msg.screening && (
                       <p className="mt-1.5 text-[10px] text-muted-foreground/60 italic">
                         from local knowledge base
                       </p>
