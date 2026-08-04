@@ -11,17 +11,17 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const rpc = vi.fn().mockResolvedValue({ data: null, error: null });
-vi.mock('@/lib/supabaseClient', () => ({ supabase: { rpc } }));
+const rpc = vi.fn().mockResolvedValue(null);
+vi.mock('@/api/edgeApi', () => ({
+  rpc: (...args) => rpc(...args),
+  edgeFn: vi.fn().mockResolvedValue(null),
+}));
 vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilityOrDemoActive: () => false,
 }));
 const getOrCreateDeviceId = vi.fn();
 vi.mock('@/lib/deviceId', () => ({
   getOrCreateDeviceId: (...args) => getOrCreateDeviceId(...args),
-}));
-vi.mock('@/lib/purchases', () => ({
-  getAppUserId: vi.fn().mockResolvedValue(null),
 }));
 
 const VALID_CODE = 'VYX-ABCDEF';
