@@ -76,6 +76,7 @@ const TIP_TIMEOUT_MS = 10_000;
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://veyrnox.com',
   'https://www.veyrnox.com',
+  'https://veyrnox-prod.pages.dev',
   'capacitor://localhost',
   'https://localhost',
 ];
