@@ -184,7 +184,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: ''
-          command: pages deploy dist --project-name=veyrnox-staging --branch=${{ steps.slug.outputs.slug }}
+          command: pages deploy dist --project-name=veyrnox-prod --branch=${{ steps.slug.outputs.slug }}
 
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
