@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-let mockSupabase;
+let mockRpc;
 let mockIsDeniabilityOrDemoActive;
 let mockDEMO;
 
-vi.mock('@/lib/supabaseClient', () => ({
-  get supabase() { return mockSupabase; },
+mockRpc = vi.fn(() => Promise.resolve(null));
+vi.mock('@/api/edgeApi', () => ({
+  rpc: (...args) => mockRpc(...args),
 }));
 
 vi.mock('@/wallet-core/deniabilitySession', () => ({
@@ -34,13 +35,11 @@ const deviceIdMod = await import('@/lib/deviceId');
 
 describe('trackEvent', () => {
   beforeEach(() => {
-    mockSupabase = { rpc: vi.fn(() => Promise.resolve({ error: null })) };
+    mockRpc = vi.fn(() => Promise.resolve(null));
     mockIsDeniabilityOrDemoActive = vi.fn(() => false);
     mockDEMO = false;
     localStorage.clear();
     deviceIdMod.__resetForTest?.();
-    // trackEvent is the consent chokepoint, so the happy-path cases below
-    // need an explicit grant. The consent gate itself is covered separately.
     localStorage.setItem('veyrnox-telemetry-consent', 'granted');
   });
 
@@ -51,16 +50,11 @@ describe('trackEvent', () => {
   it('calls track_event RPC with correct params', async () => {
     await trackEvent(EVENT.WALLET_CREATED, { foo: 'bar' });
 
-    expect(mockSupabase.rpc).toHaveBeenCalledWith('track_event', {
+    expect(mockRpc).toHaveBeenCalledWith('track_event', {
       p_device_id: 'aaaaaaaa-bbbb-4ccc-9ddd-eeeeeeeeeeee',
       p_event: 'wallet_created',
       p_metadata: { foo: 'bar' },
     });
-  });
-
-  it('no-ops when supabase is null', async () => {
-    mockSupabase = null;
-    await expect(trackEvent('test_event')).resolves.toBeUndefined();
   });
 
   it('no-ops when DEMO is true (load-time gate)', async () => {
@@ -68,7 +62,7 @@ describe('trackEvent', () => {
 
     await trackEvent('test_event');
 
-    expect(mockSupabase.rpc).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
     expect(localStorage.getItem('veyrnox-device-id')).toBeNull();
   });
 
@@ -77,7 +71,7 @@ describe('trackEvent', () => {
 
     await trackEvent('test_event');
 
-    expect(mockSupabase.rpc).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
     expect(localStorage.getItem('veyrnox-device-id')).toBeNull();
   });
 
@@ -85,29 +79,24 @@ describe('trackEvent', () => {
     await trackEvent(EVENT.WALLET_CREATED);
     await trackEvent(EVENT.SESSION_START);
 
-    const calls = mockSupabase.rpc.mock.calls;
+    const calls = mockRpc.mock.calls;
     expect(calls).toHaveLength(2);
     expect(calls[0][1].p_device_id).toBe(calls[1][1].p_device_id);
     expect(calls[0][1].p_device_id).toBeTruthy();
   });
 
   it('swallows RPC errors silently', async () => {
-    mockSupabase.rpc = vi.fn(() => Promise.reject(new Error('network')));
-    await expect(trackEvent('test_event')).resolves.toBeUndefined();
+    mockRpc = vi.fn(() => Promise.reject(new Error('network')));
+    await expect(trackEvent(EVENT.WALLET_CREATED)).resolves.toBeUndefined();
   });
 
-  // REGRESSION: consent used to be enforced only in analytics.js emit(), so
-  // the 11 call sites that invoke trackEvent() directly (WalletProvider,
-  // SendCrypto, ReceiveCrypto, WalletConnectProvider, referral, paywall)
-  // uploaded events from users who had explicitly declined. The gate lives
-  // here now precisely so no call site can opt out of it.
   describe('consent gate', () => {
     it('no-ops when consent was explicitly denied', async () => {
       localStorage.setItem('veyrnox-telemetry-consent', 'denied');
 
       await trackEvent(EVENT.WALLET_CREATED);
 
-      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+      expect(mockRpc).not.toHaveBeenCalled();
     });
 
     it('no-ops when consent was never answered (absent != consent)', async () => {
@@ -115,7 +104,7 @@ describe('trackEvent', () => {
 
       await trackEvent(EVENT.WALLET_CREATED);
 
-      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+      expect(mockRpc).not.toHaveBeenCalled();
     });
 
     it('does not mint a device id for a user who declined', async () => {
@@ -138,7 +127,7 @@ describe('trackEvent', () => {
         await trackEvent(e);
       }
 
-      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+      expect(mockRpc).not.toHaveBeenCalled();
     });
 
     it('allows events once consent is granted', async () => {
@@ -146,7 +135,7 @@ describe('trackEvent', () => {
 
       await trackEvent(EVENT.WALLET_CREATED);
 
-      expect(mockSupabase.rpc).toHaveBeenCalledTimes(1);
+      expect(mockRpc).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -16,7 +16,7 @@
 // same structural I2 guarantee as coinGecko.js. Callers gate egress behind
 // isLivePricesEnabled() and the I3 deniability guard in lib/ohlcv.js.
 
-import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { fetchKlines } from '@/api/edgeApi';
 
 // Map Veyrnox ticker → Binance spot pair.
 // - MATIC → POLUSDT: MATICUSDT was delisted (frozen candles since 2024); the
@@ -43,22 +43,9 @@ const TICKER_TO_BINANCE = {
 const RESOLUTION_TO_INTERVAL = { minute: '1m', hour: '1h', day: '1d' };
 const RESOLUTION_SECONDS     = { minute: 60,   hour: 3600, day: 86400 };
 
-const BINANCE_BASE = 'https://api.binance.com/api/v3';
-
 /** @returns {boolean} whether a Binance pair exists for this ticker. */
 export function hasBinanceMapping(fsym) {
   return Boolean(TICKER_TO_BINANCE[fsym]);
-}
-
-async function bGet(url) {
-  if (Capacitor.isNativePlatform()) {
-    const res = await CapacitorHttp.get({ url });
-    if (res.status < 200 || res.status >= 300) throw new Error(`binance HTTP ${res.status}`);
-    return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-  }
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`binance HTTP ${res.status}`);
-  return res.json();
 }
 
 /**
@@ -84,8 +71,7 @@ export async function fetchOHLCVBinance(fsym, resolution = 'hour', limit = 24, n
   if (!interval) throw new Error(`binance: unsupported resolution ${resolution}`);
 
   const capped = Math.max(1, Math.min(1000, Math.floor(limit)));
-  const url = `${BINANCE_BASE}/klines?symbol=${pair}&interval=${interval}&limit=${capped}`;
-  const raw = await bGet(url);
+  const raw = await fetchKlines(pair, interval, capped);
 
   if (!Array.isArray(raw)) throw new Error('binance: unexpected response shape');
   if (raw.length === 0) throw new Error('binance: empty response');
