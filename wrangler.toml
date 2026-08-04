@@ -1,5 +1,3 @@
 # Cloudflare Pages deployment config.
-name = "veyrnox"
-
-[pages]
-build_output_dir = "dist"
+name = "veyrnox-prod"
+pages_build_output_dir = "dist"
