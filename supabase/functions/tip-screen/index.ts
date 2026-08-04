@@ -59,7 +59,6 @@
 //
 // Secrets (Supabase dashboard → Edge Functions → Secrets):
 //   SUPABASE_URL       — auto-injected
-//   SUPABASE_ANON_KEY  — auto-injected; the public key we compare against
 //   TIP_BASE_URL       — e.g. https://veyrnox-tip-staging.al-jobson.workers.dev
 //   TIP_API_KEY        — TIP tenant API key            (NEVER VITE_-prefixed)
 //   TIP_SIGNING_SECRET — TIP HMAC signing secret       (NEVER VITE_-prefixed)
@@ -123,15 +122,6 @@ async function hmacHex(message: string, secret: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Constant-time compare for the anon-key check, so a mismatch cannot be probed
-// byte by byte.
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 // Rebuild the outbound body from an explicit allowlist. The caller does not get
 // to choose which fields reach TIP — an unexpected key is dropped, not
 // forwarded, so this proxy cannot be used to smuggle arbitrary payloads to the
@@ -174,11 +164,18 @@ serve(async (req: Request) => {
   if (!originOk) return json({ error: 'origin_not_allowed' }, 403, origin);
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, origin);
 
-  // Possession of the PUBLIC anon key — see the honesty note in the header.
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+  // The Supabase gateway validates the JWT BEFORE this code runs (we deploy
+  // WITHOUT --no-verify-jwt). If execution reaches here the caller already
+  // proved possession of a valid project key — repeating that check inside the
+  // function is redundant and broke when Supabase migrated the auto-injected
+  // SUPABASE_ANON_KEY from a 208-char legacy JWT to a 46-char sb_publishable_*
+  // key (the client bundle still carries the legacy JWT, so the lengths never
+  // match). Require that a credential header IS present (the gateway enforces
+  // this too, but belt-and-suspenders costs nothing), and trust the gateway for
+  // the actual validation.
   const bearer = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
   const apikey = req.headers.get('apikey') ?? '';
-  if (!anonKey || !(timingSafeEqual(bearer, anonKey) || timingSafeEqual(apikey, anonKey))) {
+  if (!bearer && !apikey) {
     return json({ error: 'unauthorized' }, 401, origin);
   }
 
