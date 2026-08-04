@@ -155,7 +155,12 @@ jobs:
           fi
 
       - name: Build
+        # VITE_TRANSAK_API_KEY is intentionally passed ONLY on non-main (staging)
+        # builds. Production reads VITE_BUY_ENABLED=false from .env.example so the
+        # Buy tiles are dead-code-eliminated regardless — but being explicit here
+        # means a prod build never receives the key even by accident.
         env:
+          VITE_TRANSAK_API_KEY: ${{ github.ref == 'refs/heads/main' && '' || vars.VITE_TRANSAK_API_KEY }}
           VITE_SUPABASE_URL: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_URL || '' }}
           VITE_SUPABASE_ANON_KEY: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_ANON_KEY || '' }}
         run: |
