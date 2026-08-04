@@ -17,7 +17,6 @@
     ]
   },
   "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "NODE_OPTIONS": "--max-old-space-size=2048",
     "ECC_DISABLED_HOOKS": "pre:bash:gateguard-fact-force,pre:edit-write:gateguard-fact-force"
   },
@@ -26,16 +25,8 @@
       "Bash(npx @claude-flow*)",
       "Bash(npx claude-flow*)",
       "Bash(node .claude/*)",
-      "Bash(npx playwright*)",
-      "Bash(npm run test:e2e)",
-      "Bash(npm run test)",
       "mcp__claude-flow__*",
       "mcp__ruflo__*",
-      "mcp__Claude_Preview__preview_snapshot",
-      "mcp__Claude_Preview__preview_console_logs",
-      "mcp__Claude_Preview__preview_screenshot",
-      "mcp__Claude_Preview__preview_logs",
-      "mcp__Claude_Preview__preview_list",
       "mcp__computer-use__screenshot",
       "mcp__computer-use__wait"
     ]

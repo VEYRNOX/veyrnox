@@ -11,8 +11,17 @@ Conducted: 2026-08-03
 Method: Static code analysis via parallel specialist agents (6 agents × 6 surfaces)
 Branch audited: `security-audit/2026-08-03`, a worktree pinned to `origin/main`
 Commit audited: `f39c0a89476c8a9a6ffa085954e9655e3a8c22d3`
-Status: **Findings only — nothing fixed. Do not mark anything verified without an
-on-chain txid or on-device evidence.**
+Status when written: **Findings only — nothing fixed.**
+Status now: **remediation in progress — see the Remediation log at the end of
+this document.** The findings below are left EXACTLY as first written, including
+the ones since fixed. This is a dated record of what the tree looked like on
+2026-08-03; rewriting a finding to say "fixed" would destroy the evidence of what
+was wrong and make the report useless for judging whether the fix was adequate.
+The log at the end is the single place that tracks state.
+
+**Do not mark anything verified without an on-chain txid or on-device evidence.**
+Nothing in the remediation log is "verified" in that sense either — the fixes
+carry unit tests and CI, which this project does not count as verification.
 
 ### Scope extension this run (noted per the task's "make reasonable choices" clause)
 
@@ -98,7 +107,7 @@ Verified per-asset behaviour (`txSim` at `:751` is EVM-only per `:771`; there is
 |---|---|---|
 | EVM, remoteScreen on | true once `txSim` settles | Local RPC sim typically settles **before** the remote TIP call (10 s timeout) → S9 skipped. S1–S8 still run, so partial local protection remains. |
 | BTC/SOL, sim toggle **off** | true immediately (`!simEnabled`) | **No wait for TIP at all**, and per the code's own comment at `:851-853` S9 is the *sole* contributor for these chains → zero threat-intel protection. |
-| BTC/SOL, sim toggle **on** (default) | never true (`txSim` never runs for these chains) | Send is permanently blocked. Fail-*closed*, but a functional bug — see L-5. |
+| BTC/SOL, sim toggle **on** (default) | never true (`txSim` never runs for these chains) | Send is permanently blocked. Fail-*closed*, but a functional bug — see L-4. |
 
 **Why HIGH and not CRITICAL:** `VITE_TIP_API_KEY` / `_SIGNING_SECRET` / `_BASE_URL` are
 unset in `.env.example`, `.env.staging`, and every CI workflow — verified by grep. With
@@ -618,3 +627,120 @@ neither, nor in CI.
    claims it is enforced. The current state is the I4 problem.
 9. **L-5** (`Feature-Status.md` stale Shamir claim) — one line, and it is the project's
    own honesty ledger.
+
+---
+
+# Remediation log
+
+Appended 2026-08-03, after the findings above were written. **The findings
+themselves are unmodified** — this section is the only place that tracks state,
+so the report stays a faithful record of the tree at `f39c0a89` while remaining
+useful for follow-up.
+
+One exception, recorded rather than made silently: H-1's per-asset table pointed
+at "L-5" for the permanent-block case. That was a wrong cross-reference in the
+original write-up — the finding is **L-4**; L-5 is the `Feature-Status.md` claim.
+Corrected in place. No finding text, severity or conclusion changed.
+
+Nothing here is "verified" in this project's sense. Every fix carries unit tests
+and passed CI's required checks; that is not an on-chain txid and not on-device
+evidence, and it does not close the outstanding independent third-party audit.
+
+## Merged to `main`
+
+| Finding | Fix | PR | Squash commit |
+|---|---|---|---|
+| **H-2** clipboard seed wipe fails on backgrounding | Wipe commits only on a CONFIRMED successful write; a rejection leaves every trigger armed and a return to `visible` retries. `inFlight` collapses overlapping triggers; `MAX_WIPE_ATTEMPTS` bounds them. "At most once" is preserved and unchanged in meaning — at most one *successful* wipe. | [#1548](https://github.com/VEYRNOX/veyrnox/pull/1548) | `8b09570d` |
+| **H-3** decoy backup-confirm writes a forensic tell | An `isDecoy`/`isHidden` early return in `confirmWalletBackup`, matching the eight sibling mutators, with both added to the `useCallback` deps. | [#1549](https://github.com/VEYRNOX/veyrnox/pull/1549) | `e11e00a5` |
+| **H-7** WalletConnect fee never displayed | "Max fee — up to X SYMBOL" row plus a note stating it is a ceiling, not an estimate. Derived from the same `resolveMaxFeePerGas` / `WC_GAS_CAP` that ENFORCE the cap, so display and enforcement cannot drift. | [#1551](https://github.com/VEYRNOX/veyrnox/pull/1551) | `3fb12228` |
+| **H-6** Shamir CRC-only authentication | Envelope v2 adds a domain-separated SHA-256 commitment over setId, k, n and the secret, recomputed inside `combine()` and rejected on mismatch. Runs before the extra-share check so a forgery among the first k is caught; constant-time compare; binds setId/k/n. v1 rejected, not migrated. | [#1552](https://github.com/VEYRNOX/veyrnox/pull/1552) | `9d37f016` |
+| **M-7** GF arithmetic not constant-time | `gfMul` is a fixed 8-iteration masked loop with no indexed reads; `gfInv` is a fixed square-and-multiply chain; the log/exp tables are deleted. The spec's unachievable "MUST be constant-time" was reworded to the verifiable bar rather than ticked off. | [#1553](https://github.com/VEYRNOX/veyrnox/pull/1553) | `97750cbb` |
+| **M-4** unvalidated TIP response read as "no threat" | Explicit verdict allowlist; unrecognised shapes degrade to the `error` verdict (CAUTION). Strict-boolean sanctions flag, array-coerced signals, one shared unavailable-result object. Hardened at the second layer too: S9 returns OK only for an explicit `allow`, and `verdictToRiskLevel`'s default moved from `info` to `medium`. | [#1555](https://github.com/VEYRNOX/veyrnox/pull/1555) | `e98fd300` |
+| **H-5** opt-in understated egress | Disclosure now enumerates the fields actually sent, with historical counterparties called out in their own sentence. | [#1555](https://github.com/VEYRNOX/veyrnox/pull/1555) | `e98fd300` |
+| **M-6** advisor sold free screening as paid | Copy corrected — nothing protecting a transaction is behind the paywall. Pinned by a test that also asserts the send flow still has no entitlement gate, so the code and the claim must move together. | [#1555](https://github.com/VEYRNOX/veyrnox/pull/1555) | `e98fd300` |
+
+## Open, awaiting CI
+
+All three passed `verify`, `mainnet-flag-gate` and `staging-gate`; each was
+waiting on the ~20-minute `unit-tests` full suite when this log was written.
+**Do not read these as landed.**
+
+| Finding | Fix | PR |
+|---|---|---|
+| **H-1** send gate never awaited the TIP verdict; **L-4** BTC/SOL blocked forever | Readiness stated once in `lib/riskGateReady.js`: ready when EVERY contributor that applies to this send has settled. Both queries' `enabled` and the gate read the same constants, so they cannot drift. Keys off the query's settled state, not its payload. Re-asserted at the signing chokepoint. | [#1554](https://github.com/VEYRNOX/veyrnox/pull/1554) |
+| **M-5** advisor chat was a second ungated egress path | Separate, explicit, one-time consent in `lib/advisorConsent.js`, deliberately NOT reusing the telemetry answer. Declining routes to the existing local knowledge base, so it is not a dead end. Key registered in the panic-wipe residue list, with a test. | [#1556](https://github.com/VEYRNOX/veyrnox/pull/1556) |
+| **H-4** HMAC signing secret would ship in the bundle | Signing moved to `supabase/functions/tip-screen`, which holds the TIP API key and signing secret as Edge Function secrets. The client sends an unsigned request with the Supabase anon key. Guard: setting the forbidden client-exposed vars DISABLES screening rather than using them. | [#1557](https://github.com/VEYRNOX/veyrnox/pull/1557) |
+
+**H-4 is BUILT, NOT DEPLOYED.** No request has ever gone through that function.
+Before TIP can be switched on: deploy the function (note the deliberately
+missing `--no-verify-jwt`), set the TIP base URL, API key and signing secret as
+Edge Function secrets, and set the client-side base URL as the feature switch.
+
+## Still open — nothing done
+
+- **M-1** — WC `verifyingContract` computed but never rendered. One-line UI fix;
+  the data already exists.
+- **M-2** — `unenrollKek` missed by the L-2 zeroization fix on both platforms.
+- **M-3** — decoy/hidden unlock destroys the real user's pending-referral state.
+- **L-1** — `changePassword` decodes salt before its `try/finally`.
+- **L-2** — RASP detection-chain doc drift (`screenCapture` / `overlayActive`).
+- **L-3** — four wallet-metadata mutators rely on UI-level gating only.
+- **L-5** — `docs/Feature-Status.md:789` still says Shamir SSS has no code. Now
+  doubly wrong: H-6 and M-7 both changed that file since.
+- **C-1 … C-7** — every carried finding. C-3/C-4 (native H zeroization, both
+  platforms) and C-5 (WC flagged-dApp gate) are on their **third consecutive
+  audit** and should either be fixed or moved to a documented accepted-residual
+  list so they stop recurring as findings.
+
+## Owner decision taken
+
+**Drop `recentCounterparties` from the TIP payload.** The audit offered this as
+an alternative to H-5's disclosure fix; the owner chose to do both. Verified
+before acting that `risk/fromSendState.js:92` feeds the same `knownAddresses` set
+into `activeSetLocalState` as `counterparties`, which **S4** reads for
+lookalike/near-duplicate detection — on every send, regardless of the remote
+toggle. The field was therefore buying a duplicate of a capability already held
+locally, at the cost of the most sensitive item in the payload. Change pending;
+it also removes the H-5 counterparties disclosure, because copy claiming that
+history is sent would be the same defect inverted.
+
+## Process notes worth keeping
+
+Three of these are about the tests rather than the code, and all three are the
+same failure: **a test that is green for a reason other than the one you think.**
+
+- **A test written for this wave was vacuously green.** The first
+  `SecurityAdvisor` consent suite used `keyDown` to submit, but the composer is a
+  form with an `onSubmit` handler — so nothing was ever sent, and the "sends
+  nothing to the network" assertions passed against the **unfixed** component.
+  Caught by running the suite against `origin/main` before trusting it. After the
+  correction, 6 of 7 fail pre-fix.
+- **The H-5/M-6 copy tests were written after the edit**, so they were checked by
+  reverting to the original strings: 9 of 11 fail against the old copy.
+- **A pre-existing test had become vacuous.** "rejects shares with tampered
+  version byte" set the version to `0x02`, which H-6's v2 bump made
+  byte-identical to a genuine share — it asserted a rejection that could no
+  longer occur. Rewritten to use genuinely unsupported versions, and widened to
+  pin that legacy v1 is rejected, since accepting v1 would reopen H-6.
+
+Two more, about method:
+
+- **M-7's verification ORDER was the point.** `gfMul`/`gfInv` were exported and
+  the exhaustive tests run against the OLD table-driven code first (9 passing),
+  then the rewrite applied and the same 9 re-run. That is direct evidence the
+  change altered the timing profile and not a single output value, across all
+  65,536 multiply pairs and all 255 inverses.
+- **Mutation checks, not just red-green.** H-2, H-6 and M-7 each had the fix
+  selectively disabled to confirm the new tests fail for the specific reason
+  claimed, and that the controls stay green.
+
+And one about scope:
+
+- **Tests were edited in three PRs, always deliberately and always flagged.**
+  H-6 changed format constants (share size, version byte, CRC offsets — the last
+  now derived from exported constants so they cannot rot again); H-4 changed two
+  env stubs because the configuration contract genuinely changed. In both cases
+  the new behaviour is asserted independently, so the edited tests are not the
+  only thing standing behind the claim. "Align tests with the new flow" is a
+  documented review smell in this repo, and these were checked against it rather
+  than waved through.
