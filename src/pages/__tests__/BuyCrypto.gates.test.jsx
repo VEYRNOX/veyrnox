@@ -72,10 +72,10 @@ describe('BuyCrypto — every hook runs before every early return', () => {
       const hookAfterGate = lines
         .slice(firstReturnIdx)
         .map((l, i) => [i + firstReturnIdx + 1, l])
-        .filter(([, l]) => /(?:^|[^.\w])use[A-Z]\w*\s*\(/.test(l) && !/^\s*(\/\/|\*)/.test(l));
+        .filter(([, l]) => /(?:^|[^.\w])use[A-Z]\w*\s*\(/.test(String(l)) && !/^\s*(\/\/|\*)/.test(String(l)));
 
       expect(
-        hookAfterGate.map(([n, l]) => `L${n}: ${l.trim()}`),
+        hookAfterGate.map(([n, l]) => `L${n}: ${String(l).trim()}`),
         'hooks must be called before the deniability / ship gates — a mid-session '
           + 'deniability flip re-renders this component, and a shrinking hook count '
           + 'crashes the subtree',
