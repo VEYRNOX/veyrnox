@@ -62,20 +62,22 @@ async function getPartnerToken(env) {
   }
 
   const apiSecret = env.TRANSAK_API_SECRET;
-  if (!apiSecret) err(503, 'Transak not configured');
+  const apiKey = env.TRANSAK_API_KEY;
+  if (!apiSecret || !apiKey) err(503, 'Transak not configured');
 
   const res = await fetch(urls.refreshToken, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'api-secret': apiSecret,
+      'x-api-key': apiKey,
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ apiKey }),
   });
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    err(502, `Transak auth failed: ${res.status}`);
+    err(502, `Transak refresh-token ${res.status}: ${text.slice(0, 300)}`);
   }
 
   const data = await res.json();
@@ -113,49 +115,60 @@ export async function onRequestPost(context) {
 
   const product = productsAvailed === 'SELL' ? 'SELL' : 'BUY';
 
-  const { accessToken, urls } = await getPartnerToken(env);
-
   const clientIp = request.headers.get('CF-Connecting-IP')
     || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
     || '0.0.0.0';
 
-  const sessionBody = {
+  const widgetParams = {
     apiKey,
+    referrerDomain: 'veyrnox.com',
     cryptoCurrencyCode: row.code,
     network: row.network,
     walletAddress: address,
     productsAvailed: product,
     disableWalletAddressForm: true,
   };
-  if (fiatAmount != null) sessionBody.fiatAmount = Number(fiatAmount);
-  if (fiatCurrency) sessionBody.fiatCurrency = String(fiatCurrency).toUpperCase();
+  if (fiatAmount != null) widgetParams.fiatAmount = Number(fiatAmount);
+  if (fiatCurrency) widgetParams.fiatCurrency = String(fiatCurrency).toUpperCase();
 
-  const sessionRes = await fetch(urls.createSession, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'x-user-ip': clientIp,
-      'x-partner-access-token': accessToken,
-    },
-    body: JSON.stringify(sessionBody),
-  });
+  const sessionBody = {
+    apiKey,
+    referrerDomain: 'veyrnox.com',
+    widgetParams,
+  };
+
+  async function callCreateSession(token, urls) {
+    return fetch(urls.createSession, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'x-user-ip': clientIp,
+        'access-token': token,
+      },
+      body: JSON.stringify(sessionBody),
+    });
+  }
+
+  let { accessToken, urls } = await getPartnerToken(env);
+  let sessionRes = await callCreateSession(accessToken, urls);
+
+  if (sessionRes.status === 401) {
+    await caches.default.delete(
+      new Request(`https://edge-cache.internal/transak-partner-token-${env.TRANSAK_ENVIRONMENT || 'STAGING'}`)
+    );
+    ({ accessToken, urls } = await getPartnerToken(env));
+    sessionRes = await callCreateSession(accessToken, urls);
+  }
 
   if (!sessionRes.ok) {
     const text = await sessionRes.text().catch(() => '');
-    if (sessionRes.status === 401) {
-      await caches.default.delete(
-        new Request(`https://edge-cache.internal/transak-partner-token-${env.TRANSAK_ENVIRONMENT || 'STAGING'}`)
-      );
-    }
-    err(502, `Transak session failed: ${sessionRes.status}`);
+    err(502, `Transak session ${sessionRes.status}: ${text.slice(0, 300)}`);
   }
 
   const sessionData = await sessionRes.json();
-  const sessionId = sessionData?.data?.sessionId || sessionData?.sessionId;
-  if (!sessionId) err(502, 'No sessionId in Transak response');
-
-  const widgetUrl = `${urls.widget}?apiKey=${encodeURIComponent(apiKey)}&sessionId=${encodeURIComponent(sessionId)}`;
+  const widgetUrl = sessionData?.data?.widgetUrl;
+  if (!widgetUrl) err(502, 'No widgetUrl in Transak response');
 
   return new Response(JSON.stringify({ url: widgetUrl }), {
     headers: { 'Content-Type': 'application/json' },
