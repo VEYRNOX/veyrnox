@@ -30,8 +30,12 @@ import {
   setAdvisorConsent,
 } from "@/lib/advisorConsent";
 
-const TIP_BASE_URL_RAW = import.meta.env.VITE_TIP_BASE_URL;
-const TIP_BASE_URL = TIP_BASE_URL_RAW?.startsWith('http') ? TIP_BASE_URL_RAW : null;
+const TIP_CONFIGURED = !!import.meta.env.VITE_TIP_BASE_URL;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const TIP_CHAT_URL = (SUPABASE_URL && SUPABASE_ANON_KEY && TIP_CONFIGURED)
+  ? `${String(SUPABASE_URL).replace(/\/$/, '')}/functions/v1/tip-screen`
+  : null;
 const SCREEN_MAP = {
   '/': 'dashboard',
   '/send': 'send',
@@ -324,7 +328,7 @@ export default function SecurityAdvisor({ walletChain }) {
   // Only ask when there is actually a remote endpoint to send to; an
   // unconfigured build is local-only anyway and a consent prompt there would be
   // asking permission for something that cannot happen.
-  const needsAdvisorConsent = !!TIP_BASE_URL && advisorConsent == null;
+  const needsAdvisorConsent = !!TIP_CHAT_URL && advisorConsent == null;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -392,7 +396,7 @@ export default function SecurityAdvisor({ walletChain }) {
     // the local knowledge base answers instead, exactly as it does when no
     // endpoint is configured. Checked here, at the one place egress happens,
     // rather than at the input or the drawer.
-    if (!TIP_BASE_URL || !hasAdvisorConsent()) {
+    if (!TIP_CHAT_URL || !hasAdvisorConsent()) {
       answerLocally(text, history);
       return;
     }
@@ -403,10 +407,15 @@ export default function SecurityAdvisor({ walletChain }) {
     abortRef.current = controller;
 
     try {
-      const resp = await fetch(`${TIP_BASE_URL}/api/v1/chat`, {
+      const resp = await fetch(TIP_CHAT_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
         body: JSON.stringify({
+          action: "chat",
           messages: [
             {
               role: "system",
