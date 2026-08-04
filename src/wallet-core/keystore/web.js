@@ -639,13 +639,21 @@ export const webKeyStore = {
     if (!blob) throw new Error('No wallet found on this device');
     if (!blob.kekWrap) throw new Error('Hardware KEK not enrolled.');
 
-    const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → KEK_ERR.MALFORMED_VAULT
-    const H = await getHF();
+    // M-2 (2026-08-03) — two gaps here, both worse than the native side.
+    // decodeKekSalt and getHF() ran BEFORE the try, so a throw between them (a
+    // cancelled biometric/PRF prompt) skipped the finally entirely; and the
+    // finally never referenced saltBytes at all, so it was left unwiped even
+    // when everything SUCCEEDED. The L-2 fix named three call sites and this
+    // was not one of them.
+    let saltBytes;
+    let H;
     let C = null;
     let kek;
     let dek;
     let secret;
     try {
+      saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → KEK_ERR.MALFORMED_VAULT
+      H = await getHF();
       C = await deriveKekC(password, saltBytes);
       kek = await combineKek(H, C);
       H.fill(0);
@@ -653,12 +661,15 @@ export const webKeyStore = {
       dek = await unwrapDek(kek, blob.kekWrap);
       secret = await decryptVaultWithDek(blob, dek);
     } finally {
-      // H-2 (issue #721): H is captured before the try; if deriveKekC throws before
+      // H-2 (issue #721): H is acquired inside the try; if deriveKekC throws before
       // the in-try eager H.fill(0), H would otherwise linger — zero it here too (I4).
       if (H && H.fill) H.fill(0);
       if (C) C.fill(0);
       if (kek) kek.fill(0);
       if (dek) dek.fill(0);
+      // Guarded: decodeKekSalt now runs inside the try, so a malformed kekSalt
+      // leaves this undefined and an unguarded .fill() would mask the real error.
+      if (saltBytes) saltBytes.fill(0);
     }
 
     // Re-persist as a bare vault (no KEK wrap). encryptVault writes fresh Argon2id params.
