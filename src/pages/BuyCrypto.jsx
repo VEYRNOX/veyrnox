@@ -1,354 +1,208 @@
 // @ts-nocheck
-// src/pages/BuyCrypto.jsx
+// src/pages/BuyCrypto.jsx — Fiat on-ramp via Transak.
 //
-// The Buy landing screen: pick an amount + fiat + asset+network, tap Continue,
-// hand off to Transak's hosted widget in SFSafariViewController / Chrome
-// Custom Tabs via @capacitor/browser.
+// Server-side session creation: the client sends (asset, network, address) to
+// the edge function; secrets never leave the server. The edge returns a one-time
+// widget URL loaded in an iframe.
 //
-// Address correctness (I5): the deposit address is READ at press-time from the
-// on-device wallet — never at mount, never from a cached value, never from a
-// URL param. `resolveReceive`-equivalent inline mapping below picks the right
-// address family per Transak network name.
-//
-// Deniability (I3): mount is gated by `isDeniabilityOrDemoActive()`; the URL
-// builder (`transakUrl.js`) has its own egress gate that throws
-// BUY_DENIABILITY_BLOCKED even if this render check were somehow bypassed.
-// Two-chokepoint pattern — K-2 discipline (see docs/transak-integration-spec.md §5).
+// I3: suppressed in deniability/demo (createBuySession throws I3_DENIABILITY_ACTIVE).
+// I2: the request sends a fixed asset/network pair and the user's own receive
+//     address — no holdings data, no browsing fingerprint beyond the IP that
+//     Transak already sees from the KYC flow.
 
-import { useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
-import { Capacitor } from '@capacitor/core';
-import { Browser } from '@capacitor/browser';
-import { CreditCard, ExternalLink, AlertTriangle } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
+import { CreditCard, ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@/components/ui/dialog';
-import BackButton from '@/components/BackButton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CoinLogo from '@/components/CoinLogo';
-import FiatCurrencySelector from '@/components/FiatCurrencySelector';
-import { getAsset } from '@/wallet-core/assets';
 import { useWallet } from '@/lib/WalletProvider';
-import { useLocalePreferences } from '@/lib/useLocale';
-import { toast } from '@/lib/toast';
+import { createBuySession } from '@/api/edgeApi';
+import { ASSETS } from '@/wallet-core/assets';
+import { resolveReceive } from '@/lib/receiveAddress';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
-import { useBuyEnabled } from '@/lib/buy/useBuyEnabled';
-import { buildTransakUrl, supportedAssetNetworks, BuyError } from '@/lib/buy/transakUrl';
+import { DEMO } from '@/api/demoClient';
 
-// Transak network → address family. Kept local (not exported) — the URL builder
-// is the source of truth for which network strings are valid; this table only
-// answers "given that network, which of the wallet's addresses do we hand off?".
-const EVM_NETWORKS = new Set([
-  'ethereum', 'polygon', 'arbitrum', 'optimism', 'avaxcchain', 'bsc',
-]);
-
-// Transak network key → user-facing network name. Kept local; the URL builder's
-// matrix owns the raw string, this table just prettifies for display.
-const NETWORK_LABEL = {
-  ethereum:   'Ethereum',
-  polygon:    'Polygon',
-  arbitrum:   'Arbitrum',
-  optimism:   'Optimism',
-  avaxcchain: 'Avalanche C-Chain',
-  bsc:        'BNB Smart Chain',
-  mainnet:    'Bitcoin',
-  solana:     'Solana',
+const TRANSAK_NETWORK_MAP = {
+  ETH:   'ethereum',
+  MATIC: 'polygon',
+  ARB:   'arbitrum',
+  OP:    'optimism',
+  AVAX:  'avaxcchain',
+  BNB:   'bsc',
+  BTC:   'mainnet',
+  SOL:   'solana',
+  USDC:  'ethereum',
+  USDT:  'ethereum',
 };
-function resolveDepositAddress(network, { accounts, btcAccount, solAccount }) {
-  if (EVM_NETWORKS.has(network)) return accounts?.[0]?.address ?? null;
-  if (network === 'mainnet')     return btcAccount?.address ?? null;
-  if (network === 'solana')      return solAccount?.address ?? null;
-  return null;
-}
+
+const BUYABLE_ASSETS = ASSETS.filter(a => TRANSAK_NETWORK_MAP[a.symbol]);
 
 export default function BuyCrypto() {
-  const { t } = useTranslation('wallet');
   const navigate = useNavigate();
-  const buyEnabled = useBuyEnabled();
-  const { accounts, btcAccount, solAccount, isUnlocked } = useWallet();
-  const { fiatCurrency, setFiatCurrency } = useLocalePreferences();
+  const [searchParams] = useSearchParams();
+  const { accounts, btcAccount, solAccount } = useWallet();
 
-  // ALL hooks must run before ANY early return. The gates below are not static:
-  // useBuyEnabled subscribes to DENIABILITY_SESSION_CHANGED_EVENT, so a
-  // mid-session flip re-renders this component — and if the hooks sat after the
-  // gate, that re-render would call FEWER hooks than the last one and React
-  // would tear the subtree down with "Rendered fewer hooks than expected". A
-  // crash at the moment of coercion, on the exact path the gate exists to
-  // protect. eslint's react-hooks/rules-of-hooks catches the ordering; the
-  // reason it matters here is the live subscription.
-
-  // First supported row is the default (ETH on ethereum). The picker key is
-  // the concatenation because (USDC, ethereum) and (USDC, polygon) are two
-  // distinct rows for the same asset.
-  const [pickKey, setPickKey] = useState(
-    `${supportedAssetNetworks[0].asset}:${supportedAssetNetworks[0].network}`,
+  const preselected = searchParams.get('asset');
+  const [selectedAsset, setSelectedAsset] = useState(
+    preselected && TRANSAK_NETWORK_MAP[preselected] ? preselected : 'ETH'
   );
-  const [amount, setAmount] = useState('');
-  const [amountTouched, setAmountTouched] = useState(false);
-  const [showDisclosure, setShowDisclosure] = useState(false);
+  const [widgetUrl, setWidgetUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const iframeRef = useRef(null);
 
-  const pick = useMemo(
-    () => supportedAssetNetworks.find(r => `${r.asset}:${r.network}` === pickKey)
-       ?? supportedAssetNetworks[0],
-    [pickKey],
-  );
+  const suppressed = DEMO || isDeniabilityOrDemoActive();
 
-  // Two-chokepoint deniability: render gate here + URL-builder throw at press-
-  // time. If ANY of the three fail, render nothing / show the unavailable card.
-  if (isDeniabilityOrDemoActive()) return null;
-  if (!buyEnabled) {
+  const getAddress = useCallback((symbol) => {
+    const r = resolveReceive(symbol, { accounts, btcAccount, solAccount });
+    return r?.address || null;
+  }, [accounts, btcAccount, solAccount]);
+
+  const handleBuy = useCallback(async () => {
+    const address = getAddress(selectedAsset);
+    if (!address) {
+      setError('Wallet address not available. Please unlock your wallet first.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { url } = await createBuySession({
+        asset: selectedAsset,
+        network: TRANSAK_NETWORK_MAP[selectedAsset],
+        address,
+      });
+      setWidgetUrl(url);
+    } catch (err) {
+      if (err.code === 'I3_DENIABILITY_ACTIVE') {
+        setError('Buy is not available in this session.');
+      } else {
+        setError(err.message || 'Could not start buy session. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedAsset, getAddress]);
+
+  useEffect(() => {
+    function onMessage(event) {
+      if (!event.data?.event_id) return;
+      if (event.data.event_id === 'TRANSAK_ORDER_SUCCESSFUL') {
+        setWidgetUrl(null);
+        navigate('/');
+      }
+      if (event.data.event_id === 'TRANSAK_WIDGET_CLOSE') {
+        setWidgetUrl(null);
+      }
+    }
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [navigate]);
+
+  if (widgetUrl) {
     return (
-      <div className="max-w-md mx-auto space-y-6">
-        <BackButton className="mb-2" />
-        <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3">
-          <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center mx-auto">
-            <AlertTriangle className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h1 className="text-base font-semibold">{t('buy.unavailable.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('buy.unavailable.body')}</p>
+      <div className="flex flex-col h-full">
+        <div className="flex items-center gap-3 p-4 border-b border-border">
+          <Button variant="ghost" size="icon" onClick={() => setWidgetUrl(null)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-semibold">Buy {selectedAsset}</h1>
         </div>
+        <iframe
+          ref={iframeRef}
+          src={widgetUrl}
+          allow="camera;microphone;payment"
+          className="flex-1 w-full border-none"
+          style={{ minHeight: 'calc(100vh - 64px)' }}
+          title="Buy crypto"
+        />
       </div>
     );
   }
 
-  // The gate's verdict and the user-facing message are derived from the SAME
-  // expression, so they cannot drift. The 2026-07-27 Send review found exactly
-  // this shape broken: the button gated on well-formedness while the error
-  // message returned null for every malformed case, so Continue silently did
-  // nothing and said nothing. `[^\d.]` stripping still admits "1.2.3", "." and
-  // "..", so this case is reachable by typing, not just by paste.
-  const amountValid = amount === '' || (Number(amount) > 0 && Number.isFinite(Number(amount)));
-  const showAmountError = amountTouched && !amountValid;
-  const canContinue = isUnlocked && amountValid;
-
-  const onContinue = () => {
-    if (!canContinue) return;
-    setShowDisclosure(true);
-  };
-
-  const proceedToTransak = async () => {
-    // Read the address AT PRESS-TIME. `resolveDepositAddress` reads from the
-    // live wallet snapshot passed into this render — a stale snapshot would
-    // fail the null check below rather than deliver funds to a wrong address.
-    const address = resolveDepositAddress(pick.transakNetwork, { accounts, btcAccount, solAccount });
-    if (!address) {
-      toast.error(t('buy.error.browser_open_failed'));
-      return;
-    }
-
-    let url;
-    try {
-      url = buildTransakUrl({
-        asset: pick.asset,
-        network: pick.network,
-        address,
-        apiKey: import.meta.env.VITE_TRANSAK_API_KEY,
-        environment: import.meta.env.VITE_TRANSAK_ENVIRONMENT || 'STAGING',
-        redirectURL: 'https://veyrnox.com/buy/return',
-        fiatCurrency,
-        fiatAmount: amount ? Number(amount) : undefined,
-      });
-    } catch (err) {
-      // BuyError.code === 'BUY_DENIABILITY_BLOCKED' is the deniability path;
-      // silently no-op (the render gate should have caught this already, but
-      // the second chokepoint is here on purpose). Any other error is a
-      // config bug — surface a generic message and log the code for support.
-      if (!(err instanceof BuyError) || err.code !== 'BUY_DENIABILITY_BLOCKED') {
-        toast.error(t('buy.error.browser_open_failed'));
-        if (import.meta.env.DEV) console.error('buildTransakUrl:', err);
-      }
-      setShowDisclosure(false);
-      return;
-    }
-
-    setShowDisclosure(false);
-    try {
-      if (Capacitor.isNativePlatform()) {
-        // presentationStyle: 'popover' gives SFSafariViewController on iOS and
-        // Chrome Custom Tabs on Android — the OS-native "in-app browser" chrome
-        // users expect from a wallet's Buy flow. Not a WKWebView; separate
-        // cookie jar; Transak's telemetry runs OUT of our app process.
-        await Browser.open({ url, presentationStyle: 'popover' });
-      } else {
-        // Web fallback (dev only). Opens in a new tab; production web build
-        // has the Buy button hidden by VITE_BUY_ENABLED anyway.
-        window.open(url, '_blank', 'noopener,noreferrer');
-      }
-      navigate('/buy/in-progress');
-    } catch (err) {
-      toast.error(t('buy.error.browser_open_failed'));
-      if (import.meta.env.DEV) console.error('Browser.open:', err);
-    }
-  };
-
   return (
-    <div className="max-w-md mx-auto space-y-6">
-      <BackButton className="mb-2" />
+    <div className="space-y-6 p-4 max-w-lg mx-auto">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-lg font-semibold">Buy Crypto</h1>
+      </div>
 
-      <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+      <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
             <CreditCard className="h-5 w-5 text-primary" />
           </div>
-          <div className="space-y-1">
-            <h1 className="text-base font-semibold">{t('buy.title')}</h1>
-            <p className="text-sm text-muted-foreground">{t('buy.subtitle')}</p>
+          <div>
+            <p className="font-semibold">Buy with card</p>
+            <p className="text-xs text-muted-foreground">
+              Purchase crypto with a debit or credit card via Transak.
+            </p>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div>
-            <Label htmlFor="buy-amount" className="text-xs text-muted-foreground">
-              {t('buy.amount_label')}
-            </Label>
-            <div className="mt-1 flex items-center gap-2">
-              <Input
-                id="buy-amount"
-                inputMode="decimal"
-                placeholder={t('buy.amount_placeholder')}
-                value={amount}
-                onChange={(e) => { setAmountTouched(true); setAmount(e.target.value.replace(/[^\d.]/g, '')); }}
-                // `.mono-value`, not `font-mono` — the house token also carries
-                // the slashed zero and letter-spacing every verifiable value gets.
-                className={`flex-1 mono-value ${showAmountError ? 'border-destructive' : ''}`}
-                aria-invalid={!amountValid}
-                aria-describedby={showAmountError ? 'buy-amount-error' : undefined}
-              />
-              <FiatCurrencySelector
-                value={fiatCurrency}
-                onChange={setFiatCurrency}
-                triggerClassName="h-14 w-24 text-sm font-medium"
-                showName
-              />
-            </div>
-            {/* role="status"/polite, not alert: this fires while the user is
-                still typing, so an assertive live region would interrupt on
-                every keystroke. Rendered only once touched, so a pristine form
-                is silent. */}
-            {showAmountError && (
-              <p
-                id="buy-amount-error"
-                role="status"
-                aria-live="polite"
-                className="mt-1.5 text-xs text-destructive"
-              >
-                {t('buy.error.amount_malformed')}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="buy-asset" className="text-xs text-muted-foreground">
-              {t('buy.asset_label')}
-            </Label>
-            {/* Mirrors the Send asset picker (CoinLogo + Name — SYMBOL, with a
-                network subtitle to disambiguate rows like USDC on ETH vs USDC on
-                Polygon — same shape as SendCrypto.jsx line 1408-1432). */}
-            <Select value={pickKey} onValueChange={setPickKey}>
-              <SelectTrigger
-                id="buy-asset"
-                className="mt-1.5 h-14 [&>span]:flex [&>span]:items-center [&>span]:gap-3"
-              >
-                <SelectValue>
-                  {pick ? (
-                    <>
-                      <CoinLogo symbol={pick.asset} size={32} />
-                      <span className="flex flex-col items-start leading-tight">
-                        <span className="text-sm font-medium">
-                          {getAsset(pick.asset)?.name || pick.asset} — {pick.asset}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          on {NETWORK_LABEL[pick.transakNetwork] || pick.transakNetwork}
-                        </span>
-                      </span>
-                    </>
-                  ) : null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {supportedAssetNetworks.map((r) => (
-                  <SelectItem key={`${r.asset}:${r.network}`} value={`${r.asset}:${r.network}`}>
-                    <div className="flex items-center gap-3">
-                      <CoinLogo symbol={r.asset} size={24} />
-                      <div className="flex flex-col leading-tight">
-                        <span className="text-sm font-medium">
-                          {getAsset(r.asset)?.name || r.asset} — {r.asset}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          on {NETWORK_LABEL[r.transakNetwork] || r.transakNetwork}
-                        </span>
-                      </div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium" id="buy-asset-label">Asset</label>
+          <Select value={selectedAsset} onValueChange={(v) => { setSelectedAsset(v); setError(null); }}>
+            <SelectTrigger className="h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="buy-asset-label">
+              <SelectValue>
+                {selectedAsset ? (
+                  <>
+                    <CoinLogo symbol={selectedAsset} size={32} />
+                    <span>{BUYABLE_ASSETS.find(a => a.symbol === selectedAsset)?.name || selectedAsset} — {selectedAsset}</span>
+                  </>
+                ) : null}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {BUYABLE_ASSETS.map((a) => (
+                <SelectItem key={a.symbol} value={a.symbol}>
+                  <div className="flex items-center gap-2">
+                    <CoinLogo symbol={a.symbol} size={20} />
+                    <span>{a.name} — {a.symbol}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {/* What the user will ACTUALLY receive. For ARB and OP the app's asset
-            symbol is not the token Transak delivers: both rows are the native
-            gas asset, which on Arbitrum and Optimism is ETH (assets.js documents
-            this), so `transakCode` is 'ETH'. That mapping is correct, but a
-            picker reading "Arbitrum — ARB" next to a widget that says ETH invites
-            the reading "it swapped my asset". State the delivered asset whenever
-            it differs from the row's own symbol. */}
-        {pick.transakCode !== pick.asset && (
-          <p className="text-xs text-muted-foreground">
-            {t('buy.receives_note', {
-              received: pick.transakCode,
-              network: NETWORK_LABEL[pick.transakNetwork] || pick.transakNetwork,
-            })}
-          </p>
+        {error && (
+          <div className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
         )}
-
-        <div className="rounded-xl border border-border bg-card p-3">
-          <p className="text-xs font-medium">{t('buy.provider.transak')}</p>
-          <p className="text-xs text-muted-foreground">{t('buy.provider.transak_description')}</p>
-        </div>
 
         <Button
           className="w-full gap-2"
-          onClick={onContinue}
-          disabled={!canContinue}
+          onClick={handleBuy}
+          disabled={loading || suppressed}
         >
-          <ExternalLink className="h-4 w-4" />
-          {t('buy.continue')}
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Starting...
+            </>
+          ) : (
+            <>
+              <CreditCard className="h-4 w-4" /> Continue to Buy
+            </>
+          )}
         </Button>
+
+        {suppressed && (
+          <p className="text-xs text-muted-foreground text-center">
+            Buy is not available in demo or deniability mode.
+          </p>
+        )}
       </div>
 
-      <Dialog open={showDisclosure} onOpenChange={setShowDisclosure}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('buy.disclosure.title')}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">{t('buy.disclosure.body')}</p>
-          <p className="text-xs">
-            <a
-              href="https://transak.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline"
-            >
-              {t('buy.disclosure.link_label')}
-            </a>
-          </p>
-          <DialogFooter className="gap-2">
-            <Button variant="secondary" onClick={() => setShowDisclosure(false)}>
-              {t('buy.disclosure.cancel')}
-            </Button>
-            <Button onClick={proceedToTransak}>
-              {t('buy.disclosure.continue')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <p className="text-xs text-muted-foreground text-center px-4">
+        Powered by Transak. KYC, payment processing, and delivery are handled
+        by Transak — Veyrnox never sees your payment details.
+      </p>
     </div>
   );
 }
