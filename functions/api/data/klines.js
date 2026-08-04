@@ -3,8 +3,20 @@
 // Binance kline (OHLC candlestick) proxy. No API key required — Binance
 // public market data is free. Proxying through the edge avoids CORS issues
 // on native WebViews and gives us edge caching.
+//
+// Binance blocks Cloudflare Workers' default User-Agent on api.binance.com.
+// CF Workers overrides any custom UA header set in fetch(), so we can't fix
+// it that way. Instead we try multiple official Binance endpoints — they are
+// on different CDNs and may not all block CF IPs.
 
-const BINANCE_BASE = 'https://api.binance.com/api/v3/klines';
+const BINANCE_ENDPOINTS = [
+  'https://data-api.binance.vision/api/v3/klines',
+  'https://api1.binance.com/api/v3/klines',
+  'https://api2.binance.com/api/v3/klines',
+  'https://api3.binance.com/api/v3/klines',
+  'https://api4.binance.com/api/v3/klines',
+  'https://api.binance.com/api/v3/klines',
+];
 
 const ALLOWED_SYMBOLS = new Set([
   'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'POLUSDT',
@@ -33,26 +45,40 @@ export async function onRequestGet(context) {
   if (!ALLOWED_SYMBOLS.has(symbol)) err(400, 'Invalid symbol');
   if (!ALLOWED_INTERVALS.has(interval)) err(400, 'Invalid interval');
 
-  const upstream = `${BINANCE_BASE}?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const qs = `?symbol=${symbol}&interval=${interval}&limit=${limit}`;
 
-  const cacheKey = new Request(upstream);
+  // Edge cache keyed on canonical params (endpoint-agnostic).
+  const cacheKey = new Request(`https://binance-klines.internal/${symbol}/${interval}/${limit}`);
   const cache = caches.default;
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
-  const res = await fetch(upstream);
-  if (!res.ok) err(502, `Binance returned ${res.status}`);
+  // Try each endpoint until one succeeds. Binance blocks CF Workers on some
+  // hosts but not others — data-api.binance.vision and the numbered api
+  // endpoints are on different CDNs.
+  let lastStatus = 0;
+  for (const base of BINANCE_ENDPOINTS) {
+    try {
+      const res = await fetch(`${base}${qs}`);
+      if (res.ok) {
+        const body = await res.text();
+        const ttl = interval === '1m' ? 15 : interval === '1h' ? 30 : 60;
 
-  const body = await res.text();
-  const ttl = interval === '1m' ? 15 : interval === '1h' ? 30 : 60;
+        const response = new Response(body, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': `public, max-age=${ttl}`,
+          },
+        });
 
-  const response = new Response(body, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': `public, max-age=${ttl}`,
-    },
-  });
+        context.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
+      }
+      lastStatus = res.status;
+    } catch {
+      // Network error on this endpoint — try the next one.
+    }
+  }
 
-  context.waitUntil(cache.put(cacheKey, response.clone()));
-  return response;
+  err(502, `All Binance endpoints returned ${lastStatus || 'network error'}`);
 }

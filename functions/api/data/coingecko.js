@@ -1,7 +1,8 @@
 // functions/api/data/coingecko.js
 //
-// CoinGecko price proxy. No API key required (free tier). Proxying through
-// the edge solves CORS on native WebViews and gives us edge caching.
+// CoinGecko price proxy. Passes the demo API key when COINGECKO_API_KEY is
+// set in CF Pages env vars. Proxying through the edge solves CORS on native
+// WebViews and gives us edge caching.
 //
 // Allowed endpoints (allowlist):
 //   simple/price, coins/markets, coins/:id/ohlc
@@ -75,7 +76,11 @@ export async function onRequestGet(context) {
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
-  const res = await fetch(upstream.toString());
+  const headers = {};
+  const apiKey = context.env?.COINGECKO_API_KEY;
+  if (apiKey) headers['x-cg-demo-api-key'] = apiKey;
+
+  const res = await fetch(upstream.toString(), { headers });
   if (!res.ok) err(502, `CoinGecko returned ${res.status}`);
 
   const body = await res.text();
