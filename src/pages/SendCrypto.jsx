@@ -461,12 +461,17 @@ export default function SendCrypto() {
     queryFn: () => base44.entities.AddressBook.list(),
   });
 
-  // Opt-in, off-by-default remote screening. DISCLOSED privacy trade-off: turning
-  // this on would send the recipient address to a third-party threat-intel API,
-  // leaking your intent off-device. The default is LOCAL-ONLY look-alike
-  // detection, which queries nothing. Persisted as a display preference.
+  // Remote screening via the Veyrnox TIP. When TIP is configured
+  // (VITE_TIP_BASE_URL set), defaults to ON so sanctions/threat screening is
+  // active without manual opt-in. When unconfigured, defaults to OFF. The user
+  // can always toggle it; the choice is persisted across sessions.
+  const tipConfigured = !!import.meta.env.VITE_TIP_BASE_URL;
   const [remoteScreen, setRemoteScreen] = useState(() => {
-    try { return localStorage.getItem("veyrnox-remote-screen") === "1"; } catch { return false; }
+    try {
+      const stored = localStorage.getItem("veyrnox-remote-screen");
+      if (stored !== null) return stored === "1";
+      return tipConfigured;
+    } catch { return tipConfigured; }
   });
   const toggleRemoteScreen = (v) => {
     setRemoteScreen(v);

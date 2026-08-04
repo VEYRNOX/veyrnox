@@ -29,7 +29,8 @@ import {
   setAdvisorConsent,
 } from "@/lib/advisorConsent";
 
-const TIP_BASE_URL = import.meta.env.VITE_TIP_BASE_URL;
+const TIP_BASE_URL_RAW = import.meta.env.VITE_TIP_BASE_URL;
+const TIP_BASE_URL = TIP_BASE_URL_RAW?.startsWith('http') ? TIP_BASE_URL_RAW : null;
 const SCREEN_MAP = {
   '/': 'dashboard',
   '/send': 'send',
