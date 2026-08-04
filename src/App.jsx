@@ -31,6 +31,7 @@ import { resolveLocale, LOCALE_CHANGED_EVENT, isRtlLocale } from '@/lib/locale';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
+const BuyCrypto = lazy(() => import('./pages/BuyCrypto'));
 const Settings = lazy(() => import('./pages/Settings'));
 const ConnectWallet = lazy(() => import('./pages/ConnectWallet'));
 const PriceAlerts = lazy(() => import('./pages/PriceAlerts'));
@@ -152,6 +153,7 @@ const AuthenticatedApp = () => {
           <Route path="/" element={<Dashboard />} />
           <Route path="/send" element={<SendCrypto />} />
           <Route path="/receive" element={<ReceiveCrypto />} />
+          <Route path="/buy" element={<BuyCrypto />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/connect" element={<ConnectWallet />} />
           <Route path="/walletconnect" element={<WalletConnect />} />

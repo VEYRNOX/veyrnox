@@ -24,7 +24,7 @@ import {
   RotateCcw, Mic,
   ShieldOff, Gauge, KeyRound, ScanLine, Frame, Wifi, Pen,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb, Scissors,
-  CreditCard,
+  CreditCard, ShoppingCart,
 } from "lucide-react";
 import { isCut } from './featureRegistry';
 
@@ -72,6 +72,7 @@ const RAW_NAV_GROUPS = [
       { path: "/hd-wallet", label: "Wallet Manager", icon: WalletCards, keywords: "hd wallet manager add new create account seed" },
       { path: "/send", label: "Send", icon: Send, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol transfer crypto" },
       { path: "/receive", label: "Receive", icon: Download, keywords: "bitcoin btc ethereum eth usdc usdt matic polygon arbitrum arb optimism op avalanche avax bnb binance solana sol deposit crypto" },
+      { path: "/buy", label: "Buy", icon: ShoppingCart, keywords: "buy crypto fiat onramp transak purchase card bank" },
       { path: "/tx-history", label: "Transaction History", icon: History, keywords: "bitcoin btc ethereum eth transactions history activity" },
       { path: "/split-bill", label: "Split Bill", icon: Scissors },
       { path: "/receipt", label: "TX Receipts", icon: Receipt },
