@@ -1042,12 +1042,19 @@ export const nativeKeyStore = {
         return;
       }
 
-      const saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
-      const H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
+      // M-2 (2026-08-03) — decodeKekSalt and the biometric-gated getHardwareFactor
+      // used to run BEFORE this try, so a throw between them (a cancelled
+      // biometric prompt — the very case the L-2 commit cites) skipped the
+      // finally and left the decoded salt in the heap. The L-2 fix named three
+      // call sites and missed this fourth one.
+      let saltBytes;
+      let H;
       let C;
       let kek;
       let dek;
       try {
+        saltBytes = decodeKekSalt(blob.kekSalt); // malformed kekSalt → MALFORMED_VAULT
+        H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
         C = await deriveKekC(password, saltBytes);
         kek = await combineKek(H, C);
         if (H && H.fill) H.fill(0);
@@ -1062,7 +1069,11 @@ export const nativeKeyStore = {
         if (C) C.fill(0);
         if (kek) kek.fill(0);
         if (dek) dek.fill(0);
-        saltBytes.fill(0);
+        // Guarded: decodeKekSalt now runs INSIDE the try, so a malformed
+        // kekSalt leaves this undefined. An unguarded .fill() would throw a
+        // TypeError from the finally and mask the real MALFORMED_VAULT error.
+        // Same shape as the other L-2 sites (`:428`, `:801`).
+        if (saltBytes) saltBytes.fill(0);
       }
     });
   },
