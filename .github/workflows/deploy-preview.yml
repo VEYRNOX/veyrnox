@@ -301,6 +301,7 @@ jobs:
         run: npx playwright test e2e/staging-smoke.spec.js --project=staging
         env:
           BASE_URL: ${{ needs.deploy.outputs.deployment_url }}
+          IS_PRODUCTION_BUILD: ${{ github.ref == 'refs/heads/main' && 'true' || '' }}
 
       - name: Upload Playwright report
         if: always()
