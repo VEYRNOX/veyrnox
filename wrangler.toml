@@ -1,3 +1,6 @@
 # Cloudflare Pages deployment config.
 name = "veyrnox-prod"
 pages_build_output_dir = "dist"
+
+[vars]
+VITE_BUY_ENABLED = "true"
