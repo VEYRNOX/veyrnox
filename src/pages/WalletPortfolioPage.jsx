@@ -17,9 +17,10 @@ import { toast } from "@/lib/toast";
 import {
   Wallet, Plus, Send, Download, ShieldAlert, Check,
   RefreshCw, MoreVertical, Pencil, Trash2, SlidersHorizontal, Star, FolderPlus,
-  Folder, ArrowRightLeft, ChevronDown, ChevronUp,
+  Folder, ArrowRightLeft, ChevronDown, ChevronUp, CreditCard,
   ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, XCircle, ExternalLink,
 } from "lucide-react";
+import { useBuyEnabled } from "@/lib/buy/useBuyEnabled";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -514,6 +515,7 @@ function ActivityTabContent({ wallet }) {
 export default function WalletPortfolioPage() {
   const { t } = useTranslation("wallet");
   const navigate = useNavigate();
+  const buyEnabled = useBuyEnabled();
   const {
     isUnlocked, requireWallet,
     wallets, activeWalletId, switchWallet, walletAddresses,
@@ -861,9 +863,13 @@ export default function WalletPortfolioPage() {
         </div>
       )}
 
-      {/* Actions */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Actions — Buy sits next to Send when the ship gate is on (useBuyEnabled).
+          Grid columns adapt so the row stays balanced whether Buy is present or not. */}
+      <div className={`grid gap-2 ${buyEnabled ? "grid-cols-4" : "grid-cols-3"}`}>
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => { const asset = defaultAssetSymbol(activeWallet?.enabledAssets ?? ["ETH"], ""); navigate(`/send?asset=${asset || "ETH"}`); }}><Send className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.send")}</span></Button>
+        {buyEnabled && (
+          <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/buy")}><CreditCard className="h-5 w-5" /><span className="text-xs">{t("nav.tab_buy")}</span></Button>
+        )}
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/receive")}><Download className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.receive")}</span></Button>
         <Button variant="secondary" className="flex-col h-16 gap-1" disabled={!canManage} onClick={() => setAddOpen(true)}><Plus className="h-5 w-5" /><span className="text-xs">{t("portfolio.actions.addWallet")}</span></Button>
       </div>
@@ -906,7 +912,8 @@ export default function WalletPortfolioPage() {
                   balances, so we deliberately do NOT claim the address is device-only. */}
               <EmptyWalletState
                 onReceive={() => navigate("/receive")}
-                transakReady={false}
+                onBuy={() => navigate("/buy")}
+                transakReady={buyEnabled}
               />
               {/* Asset-scoped disclosure (no count → cannot be misread as a wallet
                   count). Reveals the real, all-zero rows on demand. */}

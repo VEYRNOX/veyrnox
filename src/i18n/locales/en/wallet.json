@@ -334,10 +334,46 @@
     "recent_heading": "Recent",
     "tab_home": "Home",
     "tab_send": "Send",
-    "tab_receive": "Receive"
+    "tab_receive": "Receive",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Back"
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "subtitle": "Fund your wallet with a card or bank transfer.",
+    "amount_label": "Amount",
+    "amount_placeholder": "0.00",
+    "asset_label": "You’re buying",
+    "network_label": "On network",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "title": "You’re leaving Veyrnox",
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter.",
+      "link_label": "Read Transak’s privacy policy",
+      "continue": "Continue to Transak",
+      "cancel": "Cancel"
+    },
+    "in_progress": {
+      "title": "Purchase in progress",
+      "body": "Your Transak purchase is being processed. Funds appear in your wallet as soon as the deposit lands on-chain — this can take a few minutes for card payments and longer for bank transfers.",
+      "hint": "You can close this screen and check back later — nothing is lost if you leave."
+    },
+    "empty_state_cta": "Or buy {{asset}}",
+    "unavailable": {
+      "title": "Buying crypto isn’t available yet",
+      "body": "The on-ramp partnership is being finalised. Check back soon."
+    },
+    "error": {
+      "browser_open_failed": "Couldn’t open the checkout window. Please try again.",
+      "amount_malformed": "Enter an amount as digits with a single decimal point — for example 50 or 49.99."
+    },
+    "receives_note": "You’ll receive {{received}} on {{network}}."
   },
   "send": {
     "heading": "Send Crypto",
