@@ -110,7 +110,7 @@ export const KNOWLEDGE_BASE = {
     entries: [
       {
         q: 'How do I set up a strong PIN?',
-        a: 'Your PIN protects access to your wallet on this device. Use at least 12 digits (the minimum enforced by Veyrnox). Avoid patterns like 123456789012 or repeated digits. Your PIN encrypts the vault using Argon2id key derivation with 192 MiB of memory — making brute-force attacks extremely expensive.',
+        a: 'Your PIN protects access to your wallet on this device. Use at least 8 digits (the minimum enforced by Veyrnox). Avoid patterns like 123456789012 or repeated digits. Your PIN encrypts the vault using Argon2id key derivation with 192 MiB of memory — making brute-force attacks extremely expensive.',
       },
       {
         q: 'What does hardware key encryption do?',
@@ -126,7 +126,7 @@ export const KNOWLEDGE_BASE = {
       },
       {
         q: 'Can I change my PIN?',
-        a: 'Yes. Go to Settings to change your PIN. You\'ll need to enter your current PIN first, then set a new one (minimum 12 digits). Changing your PIN re-encrypts the vault with the new key — your seed phrase and wallet addresses remain the same.',
+        a: 'Yes. Go to Settings to change your PIN. You\'ll need to enter your current PIN first, then set a new one (minimum 8 digits). Changing your PIN re-encrypts the vault with the new key — your seed phrase and wallet addresses remain the same.',
       },
       {
         q: 'What is biometric authentication?',
@@ -274,7 +274,7 @@ export const KNOWLEDGE_BASE = {
     entries: [
       {
         q: 'How do I keep my wallet safe?',
-        a: 'Key practices: (1) Never share your seed phrase with anyone. (2) Use a strong PIN (12+ digits). (3) Enable hardware key encryption (automatic on supported devices). (4) Verify addresses carefully before sending. (5) Be skeptical of unsolicited messages about crypto. (6) Keep your device\'s OS updated. (7) Set up deniability mode if physical coercion is a concern. (8) Back up your seed phrase offline on paper.',
+        a: 'Key practices: (1) Never share your seed phrase with anyone. (2) Use a strong PIN (8+ digits). (3) Enable hardware key encryption (automatic on supported devices). (4) Verify addresses carefully before sending. (5) Be skeptical of unsolicited messages about crypto. (6) Keep your device\'s OS updated. (7) Set up deniability mode if physical coercion is a concern. (8) Back up your seed phrase offline on paper.',
       },
       {
         q: 'What makes Veyrnox different?',

@@ -82,7 +82,7 @@ Security is critical here: address poisoning, wrong address, wrong chain, excess
 The user may worry about sharing their address publicly. Reassure them that public addresses are safe to share — they cannot be used to steal funds. Warn about address poisoning attacks and fake airdrop scams.`,
 
   settings: `The user is on the SETTINGS screen. Available options include:
-- PIN management (change PIN, minimum 12 digits)
+- PIN management (change PIN, minimum 8 digits)
 - Biometric authentication toggle
 - Hardware key encryption (KEK) status and enrollment
 - Backup/export seed phrase
