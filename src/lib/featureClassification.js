@@ -14,7 +14,7 @@
 
 // Must remain de-duplicated — the completeness/phantom tests rely on it.
 export const ALL_ROUTE_PATHS = [
-  '/', '/send', '/receive', '/settings', '/connect', '/alerts', '/calculator',
+  '/', '/send', '/receive', '/buy', '/settings', '/connect', '/alerts', '/calculator',
   '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects',
   '/terms-legal', '/nft',
   '/snapshots', '/onchain', '/spending',
@@ -91,6 +91,10 @@ export const CLASSIFICATION = {
   '/receive': {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'Derives the correct receive address from the unlocked HD accounts (accounts[0].address for EVM, btcAccount/solAccount) via resolveReceive(); renders QR and copy. Purely on-device — no external call, no fabrication.',
+  },
+  '/buy': {
+    verdict: 'live', dataSource: 'external',
+    note: 'Fiat on-ramp via Transak. createBuySession (api/edgeApi.js) sends asset/network/the user\'s own on-device receive address (via resolveReceive) to a server-side edge function that creates the widget session; Transak secrets never reach the client. Egress is the receive address + chosen asset/network only — no holdings data. Suppressed in deniability/demo (I3: createBuySession throws I3_DENIABILITY_ACTIVE).',
   },
   '/tx-history': {
     verdict: 'live', dataSource: 'wallet-core',
