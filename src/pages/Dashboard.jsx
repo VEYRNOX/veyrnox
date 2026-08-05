@@ -5,7 +5,7 @@ import FiatCurrencySelector, { formatFiat } from "../components/FiatCurrencySele
 import { useLocalePreferences } from "@/lib/useLocale";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock } from "lucide-react";
+import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock, ShoppingCart } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import AnimatedFiat from "@/components/AnimatedFiat";
 import EmptyState from "@/components/EmptyState";
@@ -257,7 +257,11 @@ function DemoDashboard() {
       )}
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
+        <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/buy")}>
+          <ShoppingCart className="h-5 w-5" />
+          <span className="text-xs">{t("dashboard.actions.buy", "Buy")}</span>
+        </Button>
         <Button variant="secondary" className="flex-col h-16 gap-1" onClick={() => navigate("/send")}>
           <ArrowUpRight className="h-5 w-5" />
           <span className="text-xs">{t("dashboard.actions.send")}</span>
@@ -399,6 +403,7 @@ function DemoDashboard() {
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">{t("dashboard.quickAccess")}</p>
           <div className="grid grid-cols-4 gap-2">
             {[
+              { label: t("dashboard.quickAccessItems.buy", "Buy"),  icon: ShoppingCart,  path: "/buy",             color: "text-[hsl(var(--chart-4))]", bg: "bg-[hsl(var(--chart-4))]/10" },
               { label: t("dashboard.quickAccessItems.receive"),     icon: ArrowDownLeft, path: "/receive",         color: "text-[hsl(var(--chart-2))]", bg: "bg-[hsl(var(--chart-2))]/10" },
               { label: t("dashboard.quickAccessItems.security"),    icon: ShieldAlert,   path: "/security",        color: "text-[hsl(var(--chart-3))]", bg: "bg-[hsl(var(--chart-3))]/10" },
               { label: t("dashboard.quickAccessItems.approvals"),   icon: Lock,          path: "/token-approvals", color: "text-[hsl(var(--chart-1))]", bg: "bg-[hsl(var(--chart-1))]/10" },
