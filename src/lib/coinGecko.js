@@ -151,10 +151,15 @@ export async function fetchMarketChanges24hCG() {
 // the smallest `days` value that produces a DIFFERENT candle set. The old code
 // mapped hour/limit=24 to days=1 — identical to minute — which made 1H, 4H,
 // and 1D charts show the same data.
+const CG_VALID_DAYS = [1, 7, 14, 30, 90, 180, 365];
+
 function toCgDays(resolution, limit) {
   if (resolution === 'minute') return 1;
   if (resolution === 'hour')   return 7;
-  return Math.min(365, Math.max(31, limit));
+  for (let i = CG_VALID_DAYS.length - 1; i >= 0; i--) {
+    if (limit >= CG_VALID_DAYS[i]) return CG_VALID_DAYS[i];
+  }
+  return 30;
 }
 
 /**

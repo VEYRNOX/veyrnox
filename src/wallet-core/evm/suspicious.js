@@ -73,6 +73,43 @@ export const DEFAULT_BLOCKLIST = [
     source: 'poison.js LOCAL_FLAGGED (universal burn/null sinks)',
     note: 'Funds sent here are destroyed and unrecoverable.',
   })),
+
+  // ── OFAC SDN sanctioned addresses (EVM) ────────────────────────────────
+  // Source: US Treasury OFAC SDN List. These are the most widely cited
+  // sanctioned crypto addresses. The list is NOT exhaustive — TIP remote
+  // screening covers the full, maintained feed. This local set provides
+  // INSTANT, zero-latency screening before TIP results arrive.
+
+  // Tornado Cash (sanctioned 2022-08-08, delisted 2025-03-21, re-listed various)
+  { address: '0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash deposit contract.' },
+  { address: '0xd4e8a7c32bDd20741bFa5206fe8A0EcaD53E6AF9', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash router.' },
+  { address: '0x12D66f87A04A9E220743712cE6d9bB1B5616B8Fc', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 0.1 ETH pool.' },
+  { address: '0x47CE0C6eD5B0Ce3d3A51fdb1C52DC66a7c3c2936', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 1 ETH pool.' },
+  { address: '0x910Cbd523D972eb0a6f4cAe4618aD62622b39DbF', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 10 ETH pool.' },
+  { address: '0xA160cdAB225685dA1d56aa342Ad8841c3b53f291', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 100 ETH pool.' },
+  { address: '0xFD8610d20aA15b7B2E3Be39B396a1bC3516c7144', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 100 DAI pool.' },
+  { address: '0x07687e702b410Fa43f4cB4Af7FA097918ffD2730', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 1000 DAI pool.' },
+  { address: '0x23773E65ed146A459791799d01336DB287f25334', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 10000 DAI pool.' },
+  { address: '0x22aaA7720ddd5388A3c0A3333430953C68f1849b', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 5000 USDC pool.' },
+  { address: '0xBA214C1c1928a32Bffe790263E38B4Af9bFCD659', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 50000 USDC pool.' },
+  { address: '0xb1C8094B234DcE6e03f10a5b673c1d8C69739A00', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 500 USDT pool.' },
+  { address: '0x527653eA119F3E6a1F5BD18fbF4714081D7B31ce', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash 5000 USDT pool.' },
+  { address: '0x58E8dCC13BE9780fC42E8723D8EaD4CF46943dF2', category: 'sanctioned', source: 'OFAC SDN', note: 'Tornado Cash relayer registry.' },
+
+  // Lazarus Group / DPRK-linked (OFAC SDN)
+  { address: '0x098B716B8Aaf21512996dC57EB0615e2383E2f96', category: 'sanctioned', source: 'OFAC SDN', note: 'Lazarus Group (DPRK). Ronin Bridge exploit.' },
+  { address: '0xa0e1c89Ef1a489c9C7dE96311eD5Ce5D32c20E4B', category: 'sanctioned', source: 'OFAC SDN', note: 'Lazarus Group (DPRK). Ronin Bridge exploit.' },
+  { address: '0x3Cffd56B47B7b41c56258D9C7731ABaDc360E460', category: 'sanctioned', source: 'OFAC SDN', note: 'Lazarus Group (DPRK). Ronin Bridge exploit.' },
+  { address: '0x53b6936513e738f44FB50d2b9476730C0Ab3Bfc1', category: 'sanctioned', source: 'OFAC SDN', note: 'Lazarus Group (DPRK). Harmony Horizon Bridge exploit.' },
+
+  // Garantex (Russian exchange, sanctioned 2022-04-05)
+  { address: '0x6F1cA141A28907F78Ebaa64f83B168E76F32b6Ba', category: 'sanctioned', source: 'OFAC SDN', note: 'Garantex exchange.' },
+
+  // Blender.io (sanctioned 2022-05-06)
+  { address: '0x57E767405b65d2d05afDCA5Fb1EaA67d4C84dC45', category: 'sanctioned', source: 'OFAC SDN', note: 'Blender.io mixer.' },
+
+  // Chatex (sanctioned 2021-11-08)
+  { address: '0x8589427373D6D84E98730D7795D8f6f8731FDA16', category: 'sanctioned', source: 'OFAC SDN', note: 'Chatex exchange.' },
 ];
 
 /**

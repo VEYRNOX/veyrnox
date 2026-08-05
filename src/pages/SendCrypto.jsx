@@ -58,6 +58,7 @@ import { presignGate } from "@/sign-gate/presign";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
+import SecurityAdvisorBanner from "@/components/SecurityAdvisorBanner";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { sendAddressErrorKind } from "@/lib/sendAddressError";
 import { sendAmountErrorKind } from "@/lib/sendAmountError";
@@ -715,6 +716,14 @@ export default function SendCrypto() {
     staleTime: 30_000,
     retry: false,
   });
+
+  // Cache TIP screening results in the local threat intel store so future
+  // lookups of the same address are instant (Sentinel picks them up).
+  useEffect(() => {
+    if (tipQuery.data && toAddress && tipQuery.data.verdict !== 'allow') {
+      import('@/lib/threatIntelStore').then(m => m.cacheTipResult(toAddress, tipQuery.data)).catch(() => {});
+    }
+  }, [tipQuery.data, toAddress]);
 
   // SPEND-LIMIT ENFORCEMENT (Security Center → Tx Limits). Evaluates this send
   // against the user's per-transaction AND daily caps. The daily cap was
@@ -1631,6 +1640,12 @@ export default function SendCrypto() {
         {/* Address-poisoning / look-alike warning (local screen against history). */}
         {toAddress && addressFormatValid && (
           <div className="-mt-2"><PoisonWarning screen={poisonScreen} /></div>
+        )}
+
+        {/* Sentinel — instant local threat intel screening. Fires on every
+            keystroke, before TIP or simulation. Shows nothing when clean. */}
+        {toAddress && toAddress.length >= 10 && (
+          <div className="-mt-2"><SecurityAdvisorBanner address={toAddress} /></div>
         )}
 
         {/* Local-first screening disclosure + the off-by-default remote opt-in.
