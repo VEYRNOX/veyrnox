@@ -24,6 +24,15 @@ const ADVISOR_KEY = 'veyrnox-advisor-remote-consent';
 
 async function mountAdvisor() {
   vi.resetModules();
+  // SecurityAdvisor only builds TIP_CHAT_URL (and therefore only asks for
+  // consent) when Supabase URL + anon key are ALSO present alongside
+  // VITE_TIP_BASE_URL — see SecurityAdvisor.jsx's TIP_CHAT_URL computation.
+  // vitest.config.js deliberately blanks the Supabase vars globally (PR #1328,
+  // to stop the test suite writing to production Supabase), so this suite
+  // must re-stub them locally the same way tipScreen.test.js does, or the
+  // consent panel this file exists to test never renders.
+  vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
+  vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
   vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
   const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
   render(
