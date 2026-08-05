@@ -142,12 +142,19 @@ export async function fetchMarketChanges24hCG() {
 
 // ── OHLCV ─────────────────────────────────────────────────────────────────
 
-// Map CryptoCompare (resolution, limit) → CoinGecko days param.
+// CoinGecko OHLC granularity is determined by the `days` param:
+//   days=1      → 30-min candles (intraday)
+//   days=7–30   → 4-hour candles (multi-day)
+//   days=31–365 → 4-day candles (long-range)
+//
+// We cannot choose granularity independently, so each resolution band maps to
+// the smallest `days` value that produces a DIFFERENT candle set. The old code
+// mapped hour/limit=24 to days=1 — identical to minute — which made 1H, 4H,
+// and 1D charts show the same data.
 function toCgDays(resolution, limit) {
   if (resolution === 'minute') return 1;
-  if (resolution === 'hour')   return Math.max(1, Math.ceil(limit / 24));
-  // day
-  return Math.min(365, Math.max(1, limit));
+  if (resolution === 'hour')   return 7;
+  return Math.min(365, Math.max(31, limit));
 }
 
 /**
@@ -169,9 +176,12 @@ export async function fetchOHLCVCG(fsym, resolution = 'hour', limit = 24) {
     days: String(days),
   });
   // CoinGecko returns [[timestamp_ms, open, high, low, close], ...]
-  return raw.map(([ts, open, high, low, close]) => ({
+  const candles = raw.map(([ts, open, high, low, close]) => ({
     time:       Math.floor(ts / 1000),
     open, high, low, close,
     volumefrom: 0,
   }));
+  // toCgDays intentionally over-fetches to get the right granularity band,
+  // so trim to the most recent `limit` candles.
+  return candles.length > limit ? candles.slice(-limit) : candles;
 }

@@ -82,7 +82,7 @@ Security is critical here: address poisoning, wrong address, wrong chain, excess
 The user may worry about sharing their address publicly. Reassure them that public addresses are safe to share — they cannot be used to steal funds. Warn about address poisoning attacks and fake airdrop scams.`,
 
   settings: `The user is on the SETTINGS screen. Available options include:
-- PIN management (change PIN, minimum 12 digits)
+- PIN management (change PIN, minimum 8 digits)
 - Biometric authentication toggle
 - Hardware key encryption (KEK) status and enrollment
 - Backup/export seed phrase
@@ -103,21 +103,21 @@ The advisor should help the user understand what permissions dApps have, how to 
 - Stealth wallet configuration
 - Panic wipe settings
 - Demo mode for testing
-This is Veyrnox's most distinctive security feature. The advisor should explain how deniability works, the difference between decoy and stealth wallets, what panic wipe does, and the I3 invariant (zero network calls in deniability mode).`,
+This is Veyrnox's most distinctive security feature (requires Safety Plus subscription). The advisor should explain how deniability works, the difference between decoy and stealth wallets, what panic wipe does, and the I3 invariant (zero network calls in deniability mode).`,
 
   subscription: `The user is on the SAFETY PLUS subscription screen. It shows:
 - Monthly ($5.99) and Annual ($49.99) plan options
 - Feature comparison (free vs Safety Plus)
 - Current subscription status
 - Referral programme details
-The advisor should explain what Safety Plus adds (enhanced threat screening, advanced alerts) and reassure that core security features are free.`,
+The advisor should explain what Safety Plus adds (deniability features, encrypted backup, advanced alerts) and reassure that core security and threat screening are free.`,
 
   security: `The user is on the SECURITY DASHBOARD — an overview of their security posture. It shows:
 - RASP tamper detection status
 - Hardware key encryption (KEK) status
 - Vault encryption status
 - Device integrity checks
-- Overall security score/rating
+- Per-category review items (not a numeric score — the dashboard never asserts "safe")
 The advisor should explain each security layer, what the statuses mean, and how to improve their security posture.`,
 
   asset_detail: `The user is viewing a specific ASSET DETAIL page. It shows:
