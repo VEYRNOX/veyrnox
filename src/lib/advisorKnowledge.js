@@ -20,7 +20,7 @@ export const KNOWLEDGE_BASE = {
       },
       {
         q: 'How do I back up my wallet?',
-        a: 'Go to Settings and find the backup option. You can export an encrypted backup file protected by your PIN. Store it on a USB drive or secure location — not in cloud storage. Your seed phrase is the ultimate backup; the file backup is a convenience layer on top.',
+        a: 'Your seed phrase is the ultimate backup — write it on paper and store it somewhere safe offline. Safety Plus subscribers can also export an encrypted backup file protected by their PIN; store it on a USB drive or secure location, not in cloud storage.',
       },
     ],
   },
@@ -168,7 +168,7 @@ export const KNOWLEDGE_BASE = {
     entries: [
       {
         q: 'How does deniability mode work?',
-        a: 'Deniability mode protects you if someone forces you to unlock your wallet (coercion). You can set up a separate "duress PIN" that unlocks a decoy wallet with a different balance. The attacker sees what looks like your real wallet, but your actual funds remain hidden. Veyrnox is designed so that an observer cannot tell whether deniability mode is active.',
+        a: 'Deniability mode protects you if someone forces you to unlock your wallet (coercion). You can set up a separate "duress PIN" that unlocks a decoy wallet with a different balance. The attacker sees what looks like your real wallet, but your actual funds remain hidden. Veyrnox is designed so that an observer cannot tell whether deniability mode is active. Deniability features (duress PIN, stealth wallets, panic wipe) require a Safety Plus subscription.',
       },
       {
         q: 'What is a duress PIN?',
@@ -264,7 +264,7 @@ export const KNOWLEDGE_BASE = {
       },
       {
         q: 'Do I need Safety Plus to be secure?',
-        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, RASP, deniability mode — is available to all users, and so is transaction threat screening, both on-device and the optional online check against sanctions lists and known scam databases. Nothing that protects a transaction is behind the paywall. Safety Plus adds advanced security alerts and advisory features. The free tier is already significantly more secure than most wallets.',
+        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, and RASP — is available to all users, and so is transaction threat screening. Safety Plus unlocks deniability features (duress PIN, stealth wallets, panic wipe) and encrypted personal backup, plus advanced security alerts. The free tier is already significantly more secure than most wallets.',
       },
     ],
   },
