@@ -8,7 +8,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router";
-import { ShieldCheck, Send, X, Loader2, WifiOff } from "lucide-react";
+import { ShieldCheck, Send, X, Loader2, WifiOff, AlertTriangle, CheckCircle2, ShieldAlert as ShieldAlertIcon } from "lucide-react";
+import { screenTransaction } from "@/api/tipScreen.js";
 import {
   Drawer,
   DrawerContent,
@@ -29,8 +30,12 @@ import {
   setAdvisorConsent,
 } from "@/lib/advisorConsent";
 
-const TIP_BASE_URL_RAW = import.meta.env.VITE_TIP_BASE_URL;
-const TIP_BASE_URL = TIP_BASE_URL_RAW?.startsWith('http') ? TIP_BASE_URL_RAW : null;
+const TIP_CONFIGURED = !!import.meta.env.VITE_TIP_BASE_URL;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const TIP_CHAT_URL = (SUPABASE_URL && SUPABASE_ANON_KEY && TIP_CONFIGURED)
+  ? `${String(SUPABASE_URL).replace(/\/$/, '')}/functions/v1/tip-screen`
+  : null;
 const SCREEN_MAP = {
   '/': 'dashboard',
   '/send': 'send',
@@ -246,6 +251,58 @@ function getSuggestedQuestions(screen) {
   return SUGGESTED_QUESTIONS_BY_SCREEN[screen] || SUGGESTED_QUESTIONS_BY_SCREEN.general;
 }
 
+const EVM_ADDRESS_RE = /\b(0x[a-fA-F0-9]{40})\b/;
+
+function extractAddress(text) {
+  const match = text.match(EVM_ADDRESS_RE);
+  return match ? match[1] : null;
+}
+
+function ScreeningVerdict({ result }) {
+  if (!result) return null;
+
+  const isBlock = result.verdict === 'block';
+  const isWarn = result.verdict === 'warn' || result.verdict === 'error';
+  const isClear = result.verdict === 'allow';
+
+  const Icon = isBlock ? ShieldAlertIcon : isWarn ? AlertTriangle : CheckCircle2;
+  const color = isBlock ? 'text-red-500' : isWarn ? 'text-amber-500' : 'text-emerald-500';
+  const bg = isBlock ? 'bg-red-500/10 border-red-500/30' : isWarn ? 'bg-amber-500/10 border-amber-500/30' : 'bg-emerald-500/10 border-emerald-500/30';
+  const label = isBlock ? 'BLOCKED' : isWarn ? 'CAUTION' : 'CLEAR';
+
+  return (
+    <div className={`rounded-lg border p-3 text-xs ${bg}`} data-testid="tip-screening-verdict">
+      <div className="flex items-center gap-2 font-semibold">
+        <Icon className={`h-4 w-4 ${color}`} />
+        <span className={color}>Threat Screening: {label}</span>
+      </div>
+      {result.sanctions && (
+        <p className="mt-1.5 font-medium text-red-400">
+          Sanctions match detected — this address appears on a government sanctions list (e.g. OFAC SDN).
+        </p>
+      )}
+      {result.risks.length > 0 && (
+        <ul className="mt-1.5 space-y-1">
+          {result.risks.map((r, i) => (
+            <li key={i} className="text-foreground/80">
+              <span className="font-medium">{r.title}</span>
+              {r.detail && <span className="text-muted-foreground"> — {r.detail}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {isClear && result.risks.length === 0 && (
+        <p className="mt-1.5 text-muted-foreground">
+          No threats, sanctions hits, or risk signals found for this address.
+        </p>
+      )}
+      <p className="mt-2 text-[10px] text-muted-foreground/60 italic">
+        from threat intelligence screening
+      </p>
+    </div>
+  );
+}
+
 export default function SecurityAdvisor({ walletChain }) {
   const location = useLocation();
   const currentScreen = resolveScreen(location.pathname);
@@ -271,7 +328,7 @@ export default function SecurityAdvisor({ walletChain }) {
   // Only ask when there is actually a remote endpoint to send to; an
   // unconfigured build is local-only anyway and a consent prompt there would be
   // asking permission for something that cannot happen.
-  const needsAdvisorConsent = !!TIP_BASE_URL && advisorConsent == null;
+  const needsAdvisorConsent = !!TIP_CHAT_URL && advisorConsent == null;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -308,6 +365,30 @@ export default function SecurityAdvisor({ walletChain }) {
     setInput("");
     setStreaming(true);
 
+    const detectedAddress = extractAddress(text);
+
+    if (detectedAddress) {
+      try {
+        const result = await screenTransaction({
+          chain: walletChain || 'ethereum',
+          actionType: 'address_lookup',
+          from: '0x0000000000000000000000000000000000000000',
+          to: detectedAddress,
+        });
+        if (result) {
+          setMessages((prev) => [...prev, {
+            role: "assistant",
+            content: "",
+            screening: result,
+          }]);
+          setStreaming(false);
+          return;
+        }
+      } catch {
+        // screening failed — fall through to normal chat/local
+      }
+    }
+
     const assistantIdx = history.length;
 
     // M-5 — free text the user typed must NEVER reach the remote endpoint
@@ -315,7 +396,7 @@ export default function SecurityAdvisor({ walletChain }) {
     // the local knowledge base answers instead, exactly as it does when no
     // endpoint is configured. Checked here, at the one place egress happens,
     // rather than at the input or the drawer.
-    if (!TIP_BASE_URL || !hasAdvisorConsent()) {
+    if (!TIP_CHAT_URL || !hasAdvisorConsent()) {
       answerLocally(text, history);
       return;
     }
@@ -326,10 +407,15 @@ export default function SecurityAdvisor({ walletChain }) {
     abortRef.current = controller;
 
     try {
-      const resp = await fetch(`${TIP_BASE_URL}/api/v1/chat`, {
+      const resp = await fetch(TIP_CHAT_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
         body: JSON.stringify({
+          action: "chat",
           messages: [
             {
               role: "system",
@@ -546,16 +632,20 @@ ${buildAdvisorSystemContext(currentScreen)}`,
                     className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${
                       msg.role === "user"
                         ? "bg-primary text-primary-foreground rounded-br-md"
-                        : "bg-secondary/60 text-foreground rounded-bl-md"
+                        : msg.screening ? "" : "bg-secondary/60 text-foreground rounded-bl-md"
                     }`}
                   >
-                    {msg.content || (
+                    {msg.screening ? (
+                      <ScreeningVerdict result={msg.screening} />
+                    ) : msg.content ? (
+                      msg.content
+                    ) : (
                       <span className="flex items-center gap-1.5 text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" />
                         Thinking...
                       </span>
                     )}
-                    {msg.local && msg.role === "assistant" && msg.content && (
+                    {msg.local && msg.role === "assistant" && msg.content && !msg.screening && (
                       <p className="mt-1.5 text-[10px] text-muted-foreground/60 italic">
                         from local knowledge base
                       </p>
