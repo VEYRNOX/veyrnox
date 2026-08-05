@@ -77,6 +77,11 @@ test.describe('staging preview smoke', () => {
     // server there is no bundle to inspect — Vite serves unbundled source and
     // injects env at runtime — so this would assert nothing there.
     test.skip(!process.env.BASE_URL, 'requires a deployed build (BASE_URL)');
+    // Production builds on main intentionally embed the Supabase URL — the app
+    // needs it for analytics, referrals, and TIP screening. This guard only
+    // applies to staging/PR builds where .env.staging blanks Supabase to
+    // prevent test traffic hitting the live database.
+    test.skip(!!process.env.IS_PRODUCTION_BUILD, 'production builds intentionally include Supabase URL');
 
     await page.goto(`${BASE}/?demo=0`, { waitUntil: 'domcontentloaded' });
 
