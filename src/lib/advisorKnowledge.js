@@ -20,7 +20,7 @@ export const KNOWLEDGE_BASE = {
       },
       {
         q: 'How do I back up my wallet?',
-        a: 'Go to Settings and find the backup option. You can export an encrypted backup file protected by your PIN. Store it on a USB drive or secure location — not in cloud storage. Your seed phrase is the ultimate backup; the file backup is a convenience layer on top.',
+        a: 'Your seed phrase is the ultimate backup — write it on paper and store it somewhere safe offline. Safety Plus subscribers can also export an encrypted backup file protected by their PIN; store it on a USB drive or secure location, not in cloud storage.',
       },
     ],
   },
@@ -110,7 +110,7 @@ export const KNOWLEDGE_BASE = {
     entries: [
       {
         q: 'How do I set up a strong PIN?',
-        a: 'Your PIN protects access to your wallet on this device. Use at least 12 digits (the minimum enforced by Veyrnox). Avoid patterns like 123456789012 or repeated digits. Your PIN encrypts the vault using Argon2id key derivation with 192 MiB of memory — making brute-force attacks extremely expensive.',
+        a: 'Your PIN protects access to your wallet on this device. Use at least 8 digits (the minimum enforced by Veyrnox). Avoid patterns like 123456789012 or repeated digits. Your PIN encrypts the vault using Argon2id key derivation with 192 MiB of memory — making brute-force attacks extremely expensive.',
       },
       {
         q: 'What does hardware key encryption do?',
@@ -126,7 +126,7 @@ export const KNOWLEDGE_BASE = {
       },
       {
         q: 'Can I change my PIN?',
-        a: 'Yes. Go to Settings to change your PIN. You\'ll need to enter your current PIN first, then set a new one (minimum 12 digits). Changing your PIN re-encrypts the vault with the new key — your seed phrase and wallet addresses remain the same.',
+        a: 'Yes. Go to Settings to change your PIN. You\'ll need to enter your current PIN first, then set a new one (minimum 8 digits). Changing your PIN re-encrypts the vault with the new key — your seed phrase and wallet addresses remain the same.',
       },
       {
         q: 'What is biometric authentication?',
@@ -168,7 +168,7 @@ export const KNOWLEDGE_BASE = {
     entries: [
       {
         q: 'How does deniability mode work?',
-        a: 'Deniability mode protects you if someone forces you to unlock your wallet (coercion). You can set up a separate "duress PIN" that unlocks a decoy wallet with a different balance. The attacker sees what looks like your real wallet, but your actual funds remain hidden. Veyrnox is designed so that an observer cannot tell whether deniability mode is active.',
+        a: 'Deniability mode protects you if someone forces you to unlock your wallet (coercion). You can set up a separate "duress PIN" that unlocks a decoy wallet with a different balance. The attacker sees what looks like your real wallet, but your actual funds remain hidden. Veyrnox is designed so that an observer cannot tell whether deniability mode is active. Deniability features (duress PIN, stealth wallets, panic wipe) require a Safety Plus subscription.',
       },
       {
         q: 'What is a duress PIN?',
@@ -264,7 +264,7 @@ export const KNOWLEDGE_BASE = {
       },
       {
         q: 'Do I need Safety Plus to be secure?',
-        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, RASP, deniability mode — is available to all users, and so is transaction threat screening, both on-device and the optional online check against sanctions lists and known scam databases. Nothing that protects a transaction is behind the paywall. Safety Plus adds advanced security alerts and advisory features. The free tier is already significantly more secure than most wallets.',
+        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, and RASP — is available to all users, and so is transaction threat screening. Safety Plus unlocks deniability features (duress PIN, stealth wallets, panic wipe) and encrypted personal backup, plus advanced security alerts. The free tier is already significantly more secure than most wallets.',
       },
     ],
   },
@@ -274,7 +274,7 @@ export const KNOWLEDGE_BASE = {
     entries: [
       {
         q: 'How do I keep my wallet safe?',
-        a: 'Key practices: (1) Never share your seed phrase with anyone. (2) Use a strong PIN (12+ digits). (3) Enable hardware key encryption (automatic on supported devices). (4) Verify addresses carefully before sending. (5) Be skeptical of unsolicited messages about crypto. (6) Keep your device\'s OS updated. (7) Set up deniability mode if physical coercion is a concern. (8) Back up your seed phrase offline on paper.',
+        a: 'Key practices: (1) Never share your seed phrase with anyone. (2) Use a strong PIN (8+ digits). (3) Enable hardware key encryption (automatic on supported devices). (4) Verify addresses carefully before sending. (5) Be skeptical of unsolicited messages about crypto. (6) Keep your device\'s OS updated. (7) Set up deniability mode if physical coercion is a concern. (8) Back up your seed phrase offline on paper.',
       },
       {
         q: 'What makes Veyrnox different?',
