@@ -14,7 +14,7 @@
 
 // Must remain de-duplicated — the completeness/phantom tests rely on it.
 export const ALL_ROUTE_PATHS = [
-  '/', '/send', '/receive', '/buy', '/settings', '/connect', '/alerts', '/calculator',
+  '/', '/send', '/receive', '/buy', '/buy/in-progress', '/settings', '/connect', '/alerts', '/calculator',
   '/analytics', '/tax', '/security', '/security-dashboard', '/what-this-protects',
   '/terms-legal', '/nft',
   '/snapshots', '/onchain', '/spending',
@@ -93,8 +93,12 @@ export const CLASSIFICATION = {
     note: 'Derives the correct receive address from the unlocked HD accounts (accounts[0].address for EVM, btcAccount/solAccount) via resolveReceive(); renders QR and copy. Purely on-device — no external call, no fabrication.',
   },
   '/buy': {
-    verdict: 'live', dataSource: 'external',
-    note: 'Fiat on-ramp via Transak. createBuySession (api/edgeApi.js) sends asset/network/the user\'s own on-device receive address (via resolveReceive) to a server-side edge function that creates the widget session; Transak secrets never reach the client. Egress is the receive address + chosen asset/network only — no holdings data. Suppressed in deniability/demo (I3: createBuySession throws I3_DENIABILITY_ACTIVE).',
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Transak on-ramp entry. Amount + fiat + asset/network picker; on Continue, buildTransakUrl() reads the correct deposit address from the on-device wallet at press-time (never cached, never from URL param) and Browser.open() hands off to Transak\'s hosted widget in SFSafariViewController / Chrome Custom Tabs. Two-chokepoint deniability gate (render + URL builder throw BUY_DENIABILITY_BLOCKED). Ship gate: VITE_BUY_ENABLED defaults false. Precisely: the ENTRY TILES are dead-code-eliminated (SHIP_GATE is a load-time constant Vite folds), but this page and /buy/in-progress are NOT — their lazy imports and routes in App.jsx are unconditional, so both chunks ship in production and each needs its own render gate. No purchase has ever been completed on either store; BUILT (staging-gated), not verified.',
+  },
+  '/buy/in-progress': {
+    verdict: 'live', dataSource: 'wallet-core',
+    note: 'Neutral waiting screen for the Transak return. It POLLS NOTHING and shows no confirmation signal — earlier versions of this note claimed "confirmation comes from on-chain observation", which the file itself contradicts; it renders static copy plus links to Dashboard/Receive, which poll the addresses. The property that holds is negative and is the one that matters: nothing from the return-URL payload is read or displayed, so a spoofed return cannot fake a success. Gated at RENDER on both deniability and VITE_BUY_ENABLED — the route and its lazy chunk are registered unconditionally in App.jsx, so the ship gate does NOT dead-code-eliminate this page and a render check is the only thing standing between a production build and a fabricated "purchase in progress".',
   },
   '/tx-history': {
     verdict: 'live', dataSource: 'wallet-core',

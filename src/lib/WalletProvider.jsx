@@ -1273,14 +1273,28 @@ export function WalletProvider({ children }) {
   }, [isDecoy, isHidden, refreshWalletsState]);
 
   // Rename a wallet (cosmetic, non-secret localStorage; no password needed).
+  // L-3 (audit 2026-08-03) — these four write to SHARED localStorage
+  // (veyrnox-wallet-meta / the active-wallet id) and relied entirely on
+  // WalletPortfolioPage's `canManage` gate hiding the controls that call them.
+  // Every sibling mutator in this provider self-guards; these did not, so the
+  // rule was enforced in the UI for some and in the provider for others.
+  //
+  // Not a demonstrated exploit — no decoy-reachable UI path calls them, unlike
+  // H-3's confirmWalletBackup which WAS reachable via WalletSeedQR. This is
+  // defence in depth, and it removes the "which layer owns this rule?" ambiguity
+  // that let H-3 slip through in the first place.
   const renameWallet = useCallback((walletId, name) => {
+    if (isDecoy || isHidden) return;
     setWalletName(walletId, name);
     refreshWalletsState();
-  }, [refreshWalletsState]);
+  }, [isDecoy, isHidden, refreshWalletsState]);
 
   // Switch the ACTIVE wallet (what send/receive/derivation act on). Cheap —
   // re-derives the active accounts; no password, no vault read.
   const switchWallet = useCallback((walletId) => {
+    // persistActiveWalletId writes a wallet id to shared storage; a decoy/hidden
+    // session is single-wallet and has nothing to switch to anyway.
+    if (isDecoy || isHidden) return;
     const c = containerRef.current;
     if (!c || !mv.findWallet(c, walletId)) return;
     activeIdRef.current = walletId;
@@ -1288,17 +1302,19 @@ export function WalletProvider({ children }) {
     setActiveWalletIdState(walletId);
     touch();
     deriveActiveAndAll();
-  }, [deriveActiveAndAll, touch]);
+  }, [isDecoy, isHidden, deriveActiveAndAll, touch]);
 
   // Per-wallet asset visibility (non-secret localStorage; no password).
   const setWalletAssets = useCallback((walletId, symbols) => {
+    if (isDecoy || isHidden) return;
     setWalletEnabledAssets(walletId, symbols);
     refreshWalletsState();
-  }, [refreshWalletsState]);
+  }, [isDecoy, isHidden, refreshWalletsState]);
   const toggleWalletAsset = useCallback((walletId, symbol) => {
+    if (isDecoy || isHidden) return;
     toggleWalletAssetMeta(walletId, symbol);
     refreshWalletsState();
-  }, [refreshWalletsState]);
+  }, [isDecoy, isHidden, refreshWalletsState]);
 
   // ── POST-PIN EMPTY DASHBOARD (explore) ──────────────────────────────────────
   // The view-only empty dashboard shown AFTER Phase-1 PIN setup (not before — a
@@ -1761,6 +1777,20 @@ export function WalletProvider({ children }) {
     void ensureBiometric2faOnNative().catch(() => {});
     void ensureKekPinNoticeOnNative().catch(() => {}); // M-9: one-time offline-exhaustion notice for unenrolled native users
     void (async () => {
+      // M-3 (audit 2026-08-03) — this block used to run for EVERY session type,
+      // and its first action is clearPendingReferral(), a plain localStorage
+      // write. So a coerced decoy unlock silently deleted a referral the REAL
+      // user had applied at wallet creation, and it was gone the next time they
+      // unlocked properly.
+      //
+      // Not a deniability leak: redeemCode() is independently gated inside
+      // referralApi.js, so I3's "zero backend calls" always held and nothing
+      // observable left the device. The defect is a decoy session mutating real
+      // persisted state — the same class as the K-2 referral-tracker finding.
+      //
+      // Reuses unlock()'s own `isPrimary` (!decoy && !hidden) rather than
+      // introducing a second definition of "this is the real session".
+      if (!isPrimary) return;
       const pending = getPendingReferral();
       if (!pending) return;
       clearPendingReferral();

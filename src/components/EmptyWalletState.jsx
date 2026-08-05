@@ -16,7 +16,7 @@ const transakRoute = { key: 'card', icon: CreditCard, label: 'Buy with card', de
 // `receiveAddress` was accepted and never used — the screen shows no address
 // or QR of its own, it routes to Receive. Dropped rather than left as a prop
 // that implies this component renders something it does not.
-export default function EmptyWalletState({ onReceive, transakReady = false }) {
+export default function EmptyWalletState({ onReceive, onBuy, transakReady = false }) {
   useEffect(() => {
     Promise.resolve(emit(FunnelEvent.RECEIVE_ADDRESS_VIEWED, { source: 'empty_state' })).catch(() => {});
   }, []);
@@ -35,21 +35,35 @@ export default function EmptyWalletState({ onReceive, transakReady = false }) {
             Scan or share your address to receive crypto. Your keys never leave this device.
           </p>
         </div>
-        <Button className="w-full gap-2" onClick={onReceive}>
-          <Download className="h-4 w-4" /> Receive
-        </Button>
+        <div className={`grid gap-2 ${transakReady && onBuy ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <Button className="w-full gap-2" onClick={onReceive}>
+            <Download className="h-4 w-4" /> Receive
+          </Button>
+          {transakReady && onBuy && (
+            <Button variant="secondary" className="w-full gap-2" onClick={onBuy}>
+              <CreditCard className="h-4 w-4" /> Buy
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">
-        {allRoutes.map((r) => (
-          <div key={r.key} className="flex items-start gap-3 p-3 rounded-xl bg-card border border-border">
-            <r.icon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium">{r.label}</p>
-              <p className="text-xs text-muted-foreground">{r.desc}</p>
-            </div>
-          </div>
-        ))}
+        {allRoutes.map((r) => {
+          const clickable = r.key === 'card' && transakReady && onBuy;
+          const Wrapper = clickable ? 'button' : 'div';
+          const wrapperProps = clickable
+            ? { type: 'button', onClick: onBuy, className: 'w-full text-left flex items-start gap-3 p-3 rounded-xl bg-card border border-border hover:bg-secondary/50 transition-colors' }
+            : { className: 'flex items-start gap-3 p-3 rounded-xl bg-card border border-border' };
+          return (
+            <Wrapper key={r.key} {...wrapperProps}>
+              <r.icon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">{r.label}</p>
+                <p className="text-xs text-muted-foreground">{r.desc}</p>
+              </div>
+            </Wrapper>
+          );
+        })}
       </div>
     </div>
   );

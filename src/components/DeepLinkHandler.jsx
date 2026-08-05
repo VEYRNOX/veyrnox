@@ -1,13 +1,21 @@
-// App-root deep-link listener. Mounted once inside <Router>. When the OS launches
-// or foregrounds Veyrnox via a veyrnox:// or https://veyrnox.com/wc link carrying a
-// WalletConnect URI, it stashes the URI and routes to /walletconnect, where the
-// connector pre-fills it for the user to review + pair (never auto-pairs — see
-// deepLinkPairing.js). Renders nothing.
+// App-root deep-link listener. Mounted once inside <Router>. Handles two
+// universal-link surfaces:
+//   1. WalletConnect pairing (https://veyrnox.com/wc or veyrnox://…): stash the
+//      URI and route to /walletconnect for the user to review + pair (never
+//      auto-pairs — see deepLinkPairing.js).
+//   2. Transak on-ramp return (https://veyrnox.com/buy/return?tid=…): route to
+//      /buy/in-progress and let the polling screen wait for the on-chain
+//      confirmation. The return-URL payload is NOT trusted — see
+//      docs/transak-integration-spec.md §7.3. The `tid` is passed through only
+//      so a future support flow can look up the Transak transaction if the
+//      user reports it never landed.
+// Renders nothing.
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { extractWcUri, setPendingWcUri } from '@/lib/deepLinkPairing';
+import { isBuyEnabled } from '@/lib/buy/useBuyEnabled';
 
 export default function DeepLinkHandler() {
   const navigate = useNavigate();
@@ -19,6 +27,28 @@ export default function DeepLinkHandler() {
     let listener;
 
     const route = (rawUrl) => {
+      // Transak on-ramp return first — a WC extractor over a /buy/return URL
+      // would (correctly) return null, but doing the buy-check up front makes
+      // the intent obvious and shields against a future WC extractor that
+      // pattern-matches too eagerly on any veyrnox.com URL.
+      try {
+        const u = new URL(rawUrl);
+        if (u.hostname === 'veyrnox.com' && u.pathname === '/buy/return') {
+          // Gate the NAVIGATION, not just the destination's render. The
+          // association files claim /buy/return* on every install, including
+          // production builds with the ship gate off and decoy sessions — so
+          // without this check an inbound link would push a history entry and
+          // land the user on a blank in-shell page at a `buy/in-progress` URL.
+          // isBuyEnabled() is the non-React form of the same two gates the
+          // screen itself applies (ship gate AND deniability).
+          if (!isBuyEnabled()) return;
+          const tid = u.searchParams.get('tid') || '';
+          const qs = tid ? `?tid=${encodeURIComponent(tid)}` : '';
+          navigate(`/buy/in-progress${qs}`);
+          return;
+        }
+      } catch { /* not a parseable URL — fall through to WC path */ }
+
       const wc = extractWcUri(rawUrl);
       if (!wc) return; // not a pairing link — ignore, do not navigate
       setPendingWcUri(wc);
