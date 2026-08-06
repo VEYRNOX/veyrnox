@@ -73,6 +73,18 @@ export async function fetchKlines(symbol, interval = '1h', limit = 100) {
   return get(`/api/data/klines?${qs}`);
 }
 
+/**
+ * OKX spot candles via the edge proxy (functions/api/data/okx-candles.js).
+ * Routed through here — not called directly from lib/okx.js — so it inherits
+ * the i3Guard() above and the native-WebView CORS handling every other market
+ * data source gets.
+ */
+export async function fetchOkxCandles(instId, bar = '1H', limit = 100) {
+  i3Guard();
+  const qs = new URLSearchParams({ instId, bar, limit: String(limit) }).toString();
+  return get(`/api/data/okx-candles?${qs}`);
+}
+
 export async function fetchCoinGecko(endpoint, queryParams = {}) {
   const qs = new URLSearchParams({ endpoint, ...queryParams });
   return get(`/api/data/coingecko?${qs}`);

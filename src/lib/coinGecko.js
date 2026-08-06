@@ -151,10 +151,26 @@ export async function fetchMarketChanges24hCG() {
 // the smallest `days` value that produces a DIFFERENT candle set. The old code
 // mapped hour/limit=24 to days=1 — identical to minute — which made 1H, 4H,
 // and 1D charts show the same data.
+//
+// `days` is an ENUM, not a free number: /coins/{id}/ohlc accepts only these
+// values (plus 'max') and answers HTTP 400 to anything else — verified against
+// the live API, where days=31 returns 400 while 30 and 90 return 200. The old
+// day mapping computed Math.min(365, Math.max(31, limit)), i.e. days=31, so the
+// CoinGecko fallback was hard-failing outright for 1D/1M charts.
+const CG_VALID_DAYS = [1, 7, 14, 30, 90, 180, 365];
+
+// The day band must snap UP past 30, never down to it. Per the granularity table
+// above, 30 sits in the 4-HOUR band — the same candles the `hour` resolution
+// already gets from days=7 — so snapping down would silently reintroduce the
+// "1H, 4H and 1D all show the same data" bug this mapping exists to fix.
+const CG_DAY_BAND = CG_VALID_DAYS.filter((d) => d > 30); // [90, 180, 365]
+
 function toCgDays(resolution, limit) {
   if (resolution === 'minute') return 1;
   if (resolution === 'hour')   return 7;
-  return Math.min(365, Math.max(31, limit));
+  // Smallest 4-day-band value that still covers the requested span.
+  const wanted = Number.isFinite(limit) ? limit : 0;
+  return CG_DAY_BAND.find((d) => d >= wanted) ?? CG_DAY_BAND[CG_DAY_BAND.length - 1];
 }
 
 /**
