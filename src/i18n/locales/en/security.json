@@ -299,6 +299,23 @@
       "biometric": "Authorise this send with your PIN + biometrics",
       "passkey": "Authorise this send with your PIN + passkey",
       "password": "Authorise this send with your PIN + Action Password"
+    },
+    "sentinel": {
+      "speaker": "Sentinel:",
+      "detail": "{{note}} — Source: {{source}}.",
+      "note_fallback": "Flagged in the local threat-intelligence list",
+      "critical_footer": "This is flagged as critical. You can still proceed, but please understand the risk before you do.",
+      "headline": {
+        "sanctioned": "This address is on a sanctions list.",
+        "drainer": "This is a known wallet drainer.",
+        "phishing": "This address is linked to phishing.",
+        "exploit": "This address is linked to a known exploit.",
+        "scam": "This address is flagged as a scam.",
+        "malicious_contract": "This contract has been flagged as malicious.",
+        "mixer": "This is a mixing service.",
+        "burn": "This is a burn address.",
+        "default": "Sentinel has flagged this address."
+      }
     }
   }
 }

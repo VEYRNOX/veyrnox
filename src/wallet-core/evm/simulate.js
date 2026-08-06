@@ -391,9 +391,12 @@ export async function simulateEvmTransaction({
   // design), but callers must treat willRevert as advisory, not authoritative.
   let willRevert = false;
   let revertReason = null;
-  queries.push('eth_call');
-  if (callRes.status === 'rejected') {
-    willRevert = true;
+  let simulationFailed = false;
+  if (callRes.status === 'fulfilled') {
+    queries.push('eth_call');
+  } else {
+    // eth_call timed out or errored — simulation did not complete. I4: fail honest.
+    simulationFailed = true;
     revertReason = extractRevertReason(callRes.reason);
   }
 
@@ -413,7 +416,16 @@ export async function simulateEvmTransaction({
     knownCounterparties,
   });
 
-  if (willRevert) {
+  if (simulationFailed) {
+    // I4 (fail honest): eth_call did not complete; don't fake a simulation result.
+    // Surface the failure so the UI can degrade gracefully (e.g. "Could not simulate").
+    assessment.risks.unshift({
+      level: 'info',
+      code: 'simulation_unavailable',
+      title: 'Transaction simulation unavailable',
+      detail: `RPC simulation did not complete${revertReason ? `: ${revertReason}` : ''}. Proceeding without outcome preview.`,
+    });
+  } else if (willRevert) {
     // Lead with it — a predicted failure is the most actionable single fact.
     assessment.risks.unshift({
       level: 'high',
@@ -425,7 +437,7 @@ export async function simulateEvmTransaction({
 
   return {
     chain: 'evm',
-    simulated: true, // a real on-chain dry-run (eth_call) ran
+    simulated: !simulationFailed, // eth_call completed successfully
     recipientCode,    // raw eth_getCode hex of `to` (null if unfetchable) — risk S7 input
     willRevert,
     revertReason,
