@@ -70,7 +70,12 @@ function rawGet(address) {
       return;
     }
     // If the DB was deleted, open() recreates it EMPTY and with no object store.
-    req.onupgradeneeded = () => { /* fresh/empty — leave storeless */ };
+    // Do NOT let a read CREATE the database. open() with no existing DB fires
+    // onupgradeneeded and would leave an empty, STORELESS db at the same
+    // version — after which learnThreat()'s transaction(STORE_NAME) throws and
+    // is swallowed by its catch, silently disabling writes for the whole run.
+    // Aborting here keeps the read side-effect-free (same guard as panic.js).
+    req.onupgradeneeded = () => { try { req.transaction?.abort(); } catch { /* ignore */ } };
     req.onerror = () => resolve(null);
     req.onsuccess = () => {
       const db = req.result;
@@ -96,7 +101,12 @@ function rawHasStore() {
       resolve(false);
       return;
     }
-    req.onupgradeneeded = () => { /* did not exist — created empty, storeless */ };
+    // Do NOT let a read CREATE the database. open() with no existing DB fires
+    // onupgradeneeded and would leave an empty, STORELESS db at the same
+    // version — after which learnThreat()'s transaction(STORE_NAME) throws and
+    // is swallowed by its catch, silently disabling writes for the whole run.
+    // Aborting here keeps the read side-effect-free (same guard as panic.js).
+    req.onupgradeneeded = () => { try { req.transaction?.abort(); } catch { /* ignore */ } };
     req.onerror = () => resolve(false);
     req.onsuccess = () => {
       const db = req.result;

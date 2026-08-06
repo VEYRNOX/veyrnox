@@ -717,8 +717,15 @@ export default function SendCrypto() {
     retry: false,
   });
 
-  // Cache TIP screening results in the local threat intel store so future
-  // lookups of the same address are instant (Sentinel picks them up).
+  // Persist non-sanctions TIP signals to the local store.
+  //
+  // NOTE: Sentinel reads via lookupThreatSync(), which is SEED-ONLY — it never
+  // opens IndexedDB — so these rows are not yet read back anywhere. Kept as the
+  // write half of the flywheel; wiring a read path is a separate change, and it
+  // must NOT read sanctions (cacheTipResult refuses to store them, because a
+  // cached sanctions verdict cannot track a delisting — docs/OFAC-legal-gate.md).
+  // An earlier version of this comment claimed "Sentinel picks them up", which
+  // was false.
   useEffect(() => {
     if (tipQuery.data && toAddress && tipQuery.data.verdict !== 'allow') {
       import('@/lib/threatIntelStore').then(m => m.cacheTipResult(toAddress, tipQuery.data)).catch(() => {});

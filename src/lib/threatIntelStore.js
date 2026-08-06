@@ -195,17 +195,33 @@ export async function learnThreat(entry) {
 
   try {
     const db = /** @type {IDBDatabase} */ (await openDb());
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put(record);
+    // Await COMMIT, not just the put() call. The function is async and callers
+    // await it, so returning while the transaction is still open made the write
+    // fire-and-forget: a read issued straight afterwards could miss the row, and
+    // a reload racing the commit could lose it entirely.
+    /** @type {Promise<void>} */
+    const committed = new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put(record);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+    await committed;
   } catch {
     // Best-effort persistence.
   }
 }
 
 /**
- * Cache TIP screening results into the local threat intel store.
- * Called after a successful TIP screen so future lookups of the same
- * address are instant.
+ * Cache a TIP screening result into the local store.
+ *
+ * SANCTIONS ARE NEVER CACHED. A sanctions listing is a live legal fact and the
+ * only sanctioned-screening path this app permits is the TIP RUNTIME API (see
+ * docs/OFAC-legal-gate.md — a bundled or cached verdict cannot track a
+ * DELISTING, e.g. Tornado Cash on 2025-03-21, and a stale "sanctioned" flag is
+ * a false accusation). So a sanctions hit is re-fetched from TIP on every
+ * screen and never written to disk; only non-sanctions signals are cached.
  *
  * @param {string} address
  * @param {{ verdict: string, sanctions: boolean, signals: Array }} tipResult
@@ -213,12 +229,13 @@ export async function learnThreat(entry) {
 export async function cacheTipResult(address, tipResult) {
   if (!tipResult || tipResult.verdict === 'allow') return;
   if (!address) return;
+  // Sanctions verdicts stay runtime-only — see the note above.
+  if (tipResult.sanctions === true) return;
 
-  const severity = tipResult.verdict === 'block' ? 'critical'
-    : tipResult.sanctions ? 'critical' : 'high';
+  const severity = tipResult.verdict === 'block' ? 'critical' : 'high';
 
-  const category = tipResult.sanctions ? 'sanctioned'
-    : tipResult.signals?.[0]?.signal_type?.includes('scam') ? 'scam'
+  // No 'sanctioned' branch: sanctions returned above, so it cannot reach here.
+  const category = tipResult.signals?.[0]?.signal_type?.includes('scam') ? 'scam'
     : tipResult.signals?.[0]?.signal_type?.includes('drain') ? 'drainer'
     : 'malicious_contract';
 

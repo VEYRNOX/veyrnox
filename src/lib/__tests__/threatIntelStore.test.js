@@ -20,7 +20,7 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilitySessionActive: () => deniability.active,
 }));
 
-const { SEED_THREATS, lookupThreatSync, learnThreat } = await import('../threatIntelStore.js');
+const { SEED_THREATS, lookupThreatSync, learnThreat, cacheTipResult } = await import('../threatIntelStore.js');
 
 // Any real seed entry — picked at runtime so the test does not pin one address.
 const SEEDED = SEED_THREATS[0].address;
@@ -96,7 +96,12 @@ describe('threatIntelStore — I3 deniability gate', () => {
     deniability.active = false;
     const row = await new Promise((resolve) => {
       const req = indexedDB.open('veyrnox-threat-intel');
-      req.onupgradeneeded = () => { /* absent — nothing was ever written */ };
+      // Do NOT let a read CREATE the database. open() with no existing DB fires
+    // onupgradeneeded and would leave an empty, STORELESS db at the same
+    // version — after which learnThreat()'s transaction(STORE_NAME) throws and
+    // is swallowed by its catch, silently disabling writes for the whole run.
+    // Aborting here keeps the read side-effect-free (same guard as panic.js).
+    req.onupgradeneeded = () => { try { req.transaction?.abort(); } catch { /* ignore */ } };
       req.onerror = () => resolve(null);
       req.onsuccess = () => {
         const db = req.result;
@@ -107,5 +112,61 @@ describe('threatIntelStore — I3 deniability gate', () => {
       };
     });
     expect(row).toBeNull();
+  });
+});
+
+describe('cacheTipResult — sanctions are runtime-only, never persisted', () => {
+  // The owner decision is that OFAC/sanctions data comes from the TIP runtime
+  // API rather than a bundled list (docs/OFAC-legal-gate.md permits exactly
+  // that). The corollary this pins: "from TIP" has to mean EVERY time. A cached
+  // sanctions verdict is a bundled list with extra steps — it cannot track a
+  // DELISTING, so it decays into the same false accusation the gate exists to
+  // prevent. Non-sanctions signals have no equivalent legal hazard and cache
+  // normally.
+  const read = (addr) => new Promise((resolve) => {
+    const req = indexedDB.open('veyrnox-threat-intel');
+    // Do NOT let a read CREATE the database. open() with no existing DB fires
+    // onupgradeneeded and would leave an empty, STORELESS db at the same
+    // version — after which learnThreat()'s transaction(STORE_NAME) throws and
+    // is swallowed by its catch, silently disabling writes for the whole run.
+    // Aborting here keeps the read side-effect-free (same guard as panic.js).
+    req.onupgradeneeded = () => { try { req.transaction?.abort(); } catch { /* ignore */ } };
+    req.onerror = () => resolve(null);
+    req.onsuccess = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('threats')) { db.close(); resolve(null); return; }
+      const r = db.transaction('threats', 'readonly').objectStore('threats').get(addr);
+      r.onsuccess = () => { const v = r.result; db.close(); resolve(v ?? null); };
+      r.onerror = () => { db.close(); resolve(null); };
+    };
+  });
+
+  it('does NOT persist a sanctions hit', async () => {
+    const ADDR = '0xaaaa000000000000000000000000000000000001';
+    await cacheTipResult(ADDR, {
+      verdict: 'block',
+      sanctions: true,
+      signals: [{ signal_type: 'sanctions_hit', source: 'TIP', confidence: 1 }],
+    });
+    expect(await read(ADDR)).toBeNull();
+  });
+
+  it('DOES persist a non-sanctions signal (so the test above is not vacuous)', async () => {
+    const ADDR = '0xaaaa000000000000000000000000000000000002';
+    await cacheTipResult(ADDR, {
+      verdict: 'block',
+      sanctions: false,
+      signals: [{ signal_type: 'scam_report', source: 'chainabuse', confidence: 0.9 }],
+    });
+    const row = await read(ADDR);
+    expect(row).not.toBeNull();
+    expect(row.category).toBe('scam');
+    expect(row.category).not.toBe('sanctioned');
+  });
+
+  it('ignores an allow verdict entirely', async () => {
+    const ADDR = '0xaaaa000000000000000000000000000000000003';
+    await cacheTipResult(ADDR, { verdict: 'allow', sanctions: false, signals: [] });
+    expect(await read(ADDR)).toBeNull();
   });
 });
