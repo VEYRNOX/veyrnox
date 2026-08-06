@@ -186,6 +186,23 @@ describe('simulateEvmTransaction — input guard (no network)', () => {
       simulateEvmTransaction({ networkKey: 'sepolia', from: FRESH, to: 'not-an-address', valueWei: 1n })
     ).rejects.toThrow(/invalid/i);
   });
+
+  it('returns simulated: false when eth_call RPC fails (I4 fail honest)', async () => {
+    // When the core eth_call fails, we must NOT claim simulated: true
+    // and must NOT fake a "will_revert" verdict. This is I4 (fail honest).
+    const result = await simulateEvmTransaction({
+      networkKey: 'sepolia',
+      from: FRESH,
+      to: SPENDER,
+      valueWei: 1n,
+      // Will fail because no RPC is actually running; tests are network-free
+    });
+    expect(result.simulated).toBe(false);
+    expect(result.willRevert).toBe(false);
+    const simFailed = result.risks.find((r) => r.code === 'simulation_unavailable');
+    expect(simFailed).toBeTruthy();
+    expect(simFailed.level).toBe('info');
+  });
 });
 
 describe('describeBtcPlan — honest decode (no fake simulation)', () => {
