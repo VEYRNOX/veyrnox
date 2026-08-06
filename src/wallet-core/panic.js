@@ -26,9 +26,12 @@
 // structure is gone), best-effort DELETES the SEPARATE 'veyrnox-appdata' database
 // (app entity rows — wallets list, tx history, watchlists, approvals, address book,
 // alerts; NOT key material, but each row NAMES addresses/tx/labels, so a thorough
-// wipe removes it too — F-06), and clears the DEMO-only address-residue maps in
-// localStorage (decoy/hidden demo balances — not key material, but they name
-// addresses, so a thorough wipe removes them too).
+// wipe removes it too — F-06), best-effort ERASES the 'veyrnox-threat-intel'
+// database (learned TIP rows keyed by the addresses the USER tried to pay — again
+// not key material, but a direct record of who this device attempted to send to),
+// and clears the DEMO-only address-residue maps in localStorage (decoy/hidden demo
+// balances — not key material, but they name addresses, so a thorough wipe removes
+// them too).
 //
 // DOES NOT DESTROY — and we DO NOT CLAIM IT DOES:
 //   - A SEED BACKUP THE USER HOLDS ELSEWHERE. Panic wipe destroys the LOCAL
@@ -85,6 +88,10 @@ import { padToFixedLen, stripPad } from './multiVault.js';
 // BIO-05: biometric-2FA enabled tell. Imported (not hardcoded) so a rename in
 // biometric.js is caught at build time and the wipe list stays in sync.
 import { TWOFACTOR_BIOMETRIC_KEY } from '../lib/biometric.js';
+// Lets the wipe close threatIntelStore's module-level connection before deleting
+// its database. Imported (like TWOFACTOR_BIOMETRIC_KEY above) rather than
+// duplicated, so the store owns its own handle lifecycle.
+import { closeThreatIntelDb } from '../lib/threatIntelStore.js';
 
 // Same database + store as the primary vault (see evm/vaultStore.js), the duress
 // decoy ('secondary'), and the stealth pool ('vault:N'). The panic marker sits in
@@ -99,6 +106,18 @@ const STORE = 'vault';
 // ADDITIVE deletion of an unrelated DB (F-06 residue sweep); we do NOT touch its
 // contents structurally or import localClient — panic.js stays decoupled.
 const APPDATA_DB_NAME = 'veyrnox-appdata';
+// The threat-intel database (src/lib/threatIntelStore.js). The SEED list ships in
+// the JS bundle and is never written here, so this DB holds ONLY learned rows —
+// and the sole writer is cacheTipResult(toAddress, …) from the send flow, keyed
+// by the address the USER typed. It is therefore not a copy of the TIP feed but
+// the per-device subset of it that this user's own send attempts selected, plus
+// a `learnedAt` timestamp for each. Same residue class as APPDATA_DB_NAME.
+// Sharper: openDb() there is reached only from learnThreat() (the sync seed
+// lookup never opens IndexedDB), so the database exists only once a flagged
+// address has been entered — its PRESENCE alone is the tell. Deleting it costs
+// nothing functionally: screening still works from the in-bundle seed list.
+const THREATINTEL_DB_NAME = 'veyrnox-threat-intel';
+const THREATINTEL_STORE = 'threats';
 // Neutral, non-incriminating key (follows 'primary'/'secondary'); a forensic dump
 // sees one more vault-shaped blob, not a key literally named "panic". The marker
 // is byte-shaped like every other vault blob, so it does not stand out.
@@ -685,6 +704,83 @@ function deleteAppDataDatabase() {
   });
 }
 
+// Best-effort: erase the threat-intel database (THREATINTEL_DB_NAME). Deliberately
+// CLEAR-THEN-DELETE, mirroring clearVaultStore() + deleteVaultDatabase() rather
+// than deleteAppDataDatabase()'s delete-only shape, because threatIntelStore.js
+// keeps a module-level connection open (its `_dbPromise` is never closed). With a
+// live connection, deleteDatabase() fires `onblocked` and does not complete until
+// that handle closes — typically the post-wipe reload. Delete-only would therefore
+// leave the learned rows READABLE for the rest of the session, and the rows here
+// name addresses the user tried to pay. clear() runs as an ordinary transaction on
+// the open connection, so it takes effect immediately and does not depend on the
+// delete landing; the delete is belt-and-braces on top, exactly as for the vault.
+// Resolves on success, error, OR blocked — a wipe must never hang.
+/** @returns {Promise<void>} */
+async function eraseThreatIntelDatabase() {
+  // 1. Clear the rows through a normal transaction (works with the handle open).
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    let req;
+    try {
+      req = indexedDB.open(THREATINTEL_DB_NAME);
+    } catch {
+      finish();
+      return;
+    }
+    // A wipe must not CREATE the store: opening a non-existent DB would otherwise
+    // leave an empty one behind, which is itself a (weaker) tell. If the upgrade
+    // path fires, the DB did not exist — abort and let the delete below tidy up.
+    req.onupgradeneeded = () => { try { req.transaction?.abort(); } catch { /* ignore */ } };
+    req.onerror = finish;
+    req.onblocked = finish;
+    req.onsuccess = () => {
+      const db = req.result;
+      try {
+        if (!db.objectStoreNames.contains(THREATINTEL_STORE)) { db.close(); finish(); return; }
+        const tx = db.transaction(THREATINTEL_STORE, 'readwrite');
+        tx.objectStore(THREATINTEL_STORE).clear();
+        tx.oncomplete = () => { db.close(); finish(); };
+        tx.onerror = () => { db.close(); finish(); };
+        tx.onabort = () => { db.close(); finish(); };
+      } catch {
+        try { db.close(); } catch { /* ignore */ }
+        finish();
+      }
+    };
+  });
+
+  // 2. Close threatIntelStore's cached connection. Without this the delete below
+  // fires `onblocked` and stays PENDING forever — and a pending delete blocks
+  // every subsequent open() on this database for the rest of the session, so a
+  // post-wipe lookup would hang. (deleteAppDataDatabase has the same live-handle
+  // situation with localClient.js and accepts a delete that only lands on the next
+  // reload; here we can do better because the store exposes a close.)
+  try {
+    await closeThreatIntelDb();
+  } catch {
+    // Best-effort: fall through to the delete regardless.
+  }
+
+  // 3. Delete the database so even the empty store structure is gone.
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    let req;
+    try {
+      req = indexedDB.deleteDatabase(THREATINTEL_DB_NAME);
+    } catch {
+      finish();
+      return;
+    }
+    req.onsuccess = finish;
+    req.onerror = finish;
+    // Should not fire now that the handle is closed, but a wipe must never hang.
+    // Rows were already cleared in step 1, so resolving here overstates nothing.
+    req.onblocked = finish;
+  });
+}
+
 /**
  * NON-DESTRUCTIVE inspection of what local key material currently exists. Used
  * BEFORE a wipe (to show what is there) and AFTER (to prove nothing recoverable
@@ -732,10 +828,12 @@ export async function inspectKeyMaterial() {
  *   2. best-effort delete the vault database;
  *   3. best-effort delete the SEPARATE app-data database (veyrnox-appdata) — no key
  *      material, but forensic residue (addresses, tx history, names, alerts);
- *   4. clear the DEMO-only address-residue maps + the deniability/metadata tells;
- *   5. clear the sessionStorage residue keys (C-1 — sessionStorage is per-tab and
+ *   4. best-effort erase the threat-intel database (veyrnox-threat-intel) — no key
+ *      material, but it names the flagged addresses this user tried to pay;
+ *   5. clear the DEMO-only address-residue maps + the deniability/metadata tells;
+ *   6. clear the sessionStorage residue keys (C-1 — sessionStorage is per-tab and
  *      otherwise survives the post-wipe reload);
- *   6. return a post-wipe inspection report proving nothing recoverable remains.
+ *   7. return a post-wipe inspection report proving nothing recoverable remains.
  *
  * On NATIVE (M2b) the primary vault is hardware-backed and lives outside this
  * IndexedDB; WalletProvider.panicWipe ALSO calls keyStore.clearVault() to destroy
@@ -748,6 +846,7 @@ export async function panicWipeLocal() {
   await clearVaultStore();
   await deleteVaultDatabase();
   await deleteAppDataDatabase();
+  await eraseThreatIntelDatabase();
   clearLocalAddressResidue();
   clearSessionResidue();  // C-1: sessionStorage tells (More-drawer recents)
   clearBrowserCookies(); // PW-02: expire known browser cookies (sidebar_state)
