@@ -12,11 +12,11 @@
 // EITHER host — rather than relying solely on callers' `enabled` gates.
 
 import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
-import { fetchOHLCVBinance, hasBinanceMapping } from '@/lib/binance.js';
+import { fetchOHLCVOkx, hasOkxMapping } from '@/lib/okx.js';
 import { fetchOHLCVCG } from '@/lib/coinGecko.js';
 
 /**
- * OHLCV candles for a single symbol, Binance-first with CoinGecko fallback.
+ * OHLCV candles for a single symbol, OKX-first with CoinGecko fallback.
  * Returns [{ time, open, high, low, close, volumefrom }].
  *
  * @param {string} fsym       Veyrnox ticker (BTC, ETH, …)
@@ -26,9 +26,9 @@ import { fetchOHLCVCG } from '@/lib/coinGecko.js';
 export async function fetchOHLCV(fsym, resolution = 'hour', limit = 24) {
   if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
 
-  if (hasBinanceMapping(fsym)) {
+  if (hasOkxMapping(fsym)) {
     try {
-      return await fetchOHLCVBinance(fsym, resolution, limit);
+      return await fetchOHLCVOkx(fsym, resolution, limit);
     } catch {
       // Fall through to CoinGecko (rate limit, geo-block, stale pair, outage).
     }
