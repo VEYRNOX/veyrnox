@@ -69,6 +69,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
 const TIP_TIMEOUT_MS = 10_000;
+const TIP_CHAT_TIMEOUT_MS = 60_000; // LLM streaming needs longer
 
 // Mirrors first-referral-bonus. Capacitor's native HTTP stack sends no Origin
 // header at all, which is why a missing Origin is allowed.
@@ -79,6 +80,9 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'capacitor://localhost',
   'https://localhost',
   'http://localhost',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
 ];
 
 function allowedOrigins(): Set<string> {
@@ -136,7 +140,40 @@ const MAX_STRING = 4096;          // calldata is the long one
 const MAX_COUNTERPARTIES = 20;    // matches what the client sends
 const MAX_BODY_BYTES = 64 * 1024;
 
+const MAX_CHAT_MESSAGES = 40;
+const MAX_CHAT_CONTENT = 8192;
+
 function buildUpstreamBody(input: Record<string, unknown>, requestId: string) {
+  // Chat request: validate messages array + optional context.
+  if (input.action === 'chat') {
+    const out: Record<string, unknown> = { request_id: requestId, action: 'chat' };
+    const msgs = input.messages;
+    if (!Array.isArray(msgs) || msgs.length === 0 || msgs.length > MAX_CHAT_MESSAGES) return null;
+    const cleanMsgs = [];
+    for (const m of msgs) {
+      if (!m || typeof m !== 'object') continue;
+      const role = (m as Record<string, unknown>).role;
+      const content = (m as Record<string, unknown>).content;
+      if (role !== 'system' && role !== 'user' && role !== 'assistant') continue;
+      if (typeof content !== 'string' || content.length === 0) continue;
+      if (content.length > MAX_CHAT_CONTENT) return null;
+      cleanMsgs.push({ role, content });
+    }
+    if (cleanMsgs.length === 0) return null;
+    out.messages = cleanMsgs;
+    const ctx = input.context;
+    if (ctx && typeof ctx === 'object' && !Array.isArray(ctx)) {
+      const c = ctx as Record<string, unknown>;
+      const outCtx: Record<string, unknown> = {};
+      if (typeof c.current_screen === 'string' && c.current_screen.length <= 64) outCtx.current_screen = c.current_screen;
+      if (typeof c.wallet_chain === 'string' && c.wallet_chain.length <= 32) outCtx.wallet_chain = c.wallet_chain;
+      if (typeof c.session_token === 'string' && c.session_token.length <= 128) outCtx.session_token = c.session_token;
+      if (Object.keys(outCtx).length) out.context = outCtx;
+    }
+    return out;
+  }
+
+  // Screening request (default).
   const out: Record<string, unknown> = { request_id: requestId };
   for (const f of STRING_FIELDS) {
     const v = input[f];
@@ -212,15 +249,14 @@ serve(async (req: Request) => {
   const keySecret = await hmacHex(await sha256Hex(tipApiKey), tipSigningSecret);
   const sig = await hmacHex(`${ts}.${bodyStr}`, keySecret);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIP_TIMEOUT_MS);
-  try {
-    // Route based on action: "chat" or "screen" (default screening)
-    const action = input.action ?? 'screen';
-    const endpoint = action === 'chat'
-      ? '/api/v1/agents/security-advisor/chat'
-      : '/api/v1/screen';
+  // Route based on action: "chat" or "screen" (default screening)
+  const action = input.action ?? 'screen';
+  const endpoint = action === 'chat' ? '/api/v1/chat' : '/api/v1/screen';
+  const timeoutMs = action === 'chat' ? TIP_CHAT_TIMEOUT_MS : TIP_TIMEOUT_MS;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
     const upstream = await fetch(`${tipBaseUrl.replace(/\/$/, '')}${endpoint}`, {
       method: 'POST',
       headers: {
@@ -233,27 +269,29 @@ serve(async (req: Request) => {
       signal: controller.signal,
     });
 
-    const text = await upstream.text();
-    if (!upstream.ok) {
-      // Do NOT relay the upstream error body: it may carry internal detail, and
-      // the client only needs "screening did not give a usable answer".
-      return json({ error: 'tip_upstream_error' }, 502, origin);
-    }
-
-    // For chat, stream the response; for screening, return JSON
-    if (action === 'chat' && upstream.body) {
+    // For chat, stream the response body directly (don't read it as text —
+    // that would drain the SSE stream and block until upstream completes).
+    if (action === 'chat') {
+      if (!upstream.ok || !upstream.body) {
+        return json({ error: 'tip_upstream_error' }, 502, origin);
+      }
+      clearTimeout(timer);
       return new Response(upstream.body, {
         status: 200,
         headers: { ...corsHeaders(origin), 'Content-Type': 'text/event-stream' },
       });
     }
 
+    // Screening: buffer the response and forward as JSON.
+    const text = await upstream.text();
+    if (!upstream.ok) {
+      return json({ error: 'tip_upstream_error' }, 502, origin);
+    }
     return new Response(text, {
       status: 200,
       headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
     });
   } catch {
-    // Timeout or transport failure. 504 → the client's CAUTION path.
     return json({ error: 'tip_unavailable' }, 504, origin);
   } finally {
     clearTimeout(timer);

@@ -340,6 +340,13 @@ export default function SecurityAdvisor({ walletChain }) {
     if (open && inputRef.current) {
       setTimeout(() => inputRef.current?.focus(), 200);
     }
+    // Reset offline state and clear any stale local-fallback messages when
+    // opening; a stale flag or stuck "I'm currently offline" message from a
+    // previous session should not paint the badge on a fresh drawer view.
+    if (open) {
+      setOffline(false);
+      setMessages((prev) => prev.filter(m => !m.local));
+    }
   }, [open]);
 
   const answerLocally = useCallback((text, history) => {
@@ -416,25 +423,23 @@ export default function SecurityAdvisor({ walletChain }) {
         },
         body: JSON.stringify({
           action: "chat",
+          // The TIP backend (llm.ts ADVISOR_SYSTEM_PROMPT) already supplies the
+          // full Security Advisor persona and rules. Sending a second, larger
+          // system prompt from the client blew past Llama-3.3-70B's 24K token
+          // context and produced a 400 from Workers AI. Send only the current
+          // page as a short user-visible context line, and let the server-side
+          // prompt do its job.
           messages: [
             {
               role: "system",
-              content: `You are the Veyrnox Security Advisor — an expert security guide embedded in the Veyrnox self-custody crypto wallet. You give clear, actionable security advice tailored to what the user is doing right now.
-
-Current page: ${currentScreen} (chain: ${walletChain || "evm"})
-${PAGE_CONTEXT[currentScreen] || PAGE_CONTEXT.general}
-
-Rules:
-- Give expert advice specific to THIS page and what the user can see/do here
-- Be concise but thorough — explain risks and how to mitigate them
-- If the user asks about something on a different page, guide them there
-- Never reveal seed phrases, private keys, or PINs
-- If you don't know something, say so honestly
-
-App knowledge:
-${buildAdvisorSystemContext(currentScreen)}`,
+              content: `Current page: ${currentScreen} (chain: ${walletChain || "evm"}). ${PAGE_CONTEXT[currentScreen] || PAGE_CONTEXT.general}`.slice(0, 800),
             },
-            ...history.map((m) => ({ role: m.role, content: m.content })),
+            // Skip screening-card messages (content:"") — the Edge Function
+            // rejects empty content, which was returning 400 bad_request and
+            // pushing the drawer to the "offline" fallback path.
+            ...history
+              .filter((m) => typeof m.content === "string" && m.content.trim().length > 0)
+              .map((m) => ({ role: m.role, content: m.content })),
           ],
           context: {
             current_screen: currentScreen,
@@ -489,9 +494,9 @@ ${buildAdvisorSystemContext(currentScreen)}`,
         return;
       }
 
-      setOffline(true);
       // I4: fall back to local knowledge instead of showing an error
       const localAnswer = findLocalAnswer(text);
+      setOffline(!localAnswer); // Only offline if local knowledge also has nothing
       setMessages((prev) => {
         const updated = [...prev];
         updated[assistantIdx] = {
@@ -533,7 +538,7 @@ ${buildAdvisorSystemContext(currentScreen)}`,
       </button>
 
       <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent className="max-h-[85dvh]">
+        <DrawerContent className="max-h-[70dvh]">
           <DrawerHeader className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary" />
@@ -601,7 +606,7 @@ ${buildAdvisorSystemContext(currentScreen)}`,
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3"
-            style={{ minHeight: "200px", maxHeight: "calc(85dvh - 130px)" }}
+            style={{ minHeight: "150px", maxHeight: "calc(70dvh - 130px)" }}
           >
             {messages.length === 0 && (
               <div className="space-y-3 pt-1">
