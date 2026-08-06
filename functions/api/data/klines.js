@@ -60,9 +60,13 @@ const BINANCE_TO_OKX_BAR = {
   '1d': '1D', '1w': '1W', '1M': '1M',
 };
 
+// Same three hosts okx-candles.js uses. OKX rate-limits at 40 req/2s per IP,
+// and a shared Cloudflare egress IP can hit that, so a single host makes the
+// fallback flaky exactly when it is most needed.
 const OKX_ENDPOINTS = [
   'https://www.okx.com/api/v5/market/candles',
   'https://aws.okx.com/api/v5/market/candles',
+  'https://app.okx.com/api/v5/market/candles',
 ];
 
 /**

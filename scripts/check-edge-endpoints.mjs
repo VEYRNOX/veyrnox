@@ -26,6 +26,36 @@ if (!base) {
 }
 
 const TIMEOUT_MS = 20_000;
+// A Cloudflare Pages deployment is not routable the instant `wrangler pages
+// deploy` returns: the static assets answer first and the Functions bind a
+// moment later. Checking immediately produced a 404 on EVERY endpoint —
+// including ones known-good on other URLs — and failed the deploy job for no
+// real reason. Wait for the deployment to come up before asserting anything.
+const READY_TIMEOUT_MS = 120_000;
+const READY_POLL_MS = 5_000;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Poll until the Functions layer answers at all (any status other than 404).
+ * Returns false if it never does — a genuine "functions did not deploy".
+ */
+async function waitForFunctions(probePath) {
+  const deadline = Date.now() + READY_TIMEOUT_MS;
+  let last = 0;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${base}${probePath}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+      last = res.status;
+      if (res.status !== 404) return true;
+    } catch {
+      // Not resolvable yet — keep waiting.
+    }
+    await sleep(READY_POLL_MS);
+  }
+  console.error(`Functions never became routable (last status ${last || 'no response'}) after ${READY_TIMEOUT_MS / 1000}s`);
+  return false;
+}
 
 /** @type {Array<{name:string,path:string,required:boolean,check:(body:any,res:Response)=>string|null}>} */
 const CHECKS = [
@@ -78,28 +108,46 @@ async function run() {
   let failed = 0;
   let advisory = 0;
 
+  const ready = await waitForFunctions(CHECKS[0].path);
+  if (!ready) {
+    console.error(`
+FAIL  deployment never served /api/* — ${base}`);
+    process.exit(1);
+  }
+
   for (const c of CHECKS) {
     const url = `${base}${c.path}`;
     const expect = c.expectStatus ?? 200;
     let res, body, problem = null;
 
-    try {
-      res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-    } catch (e) {
-      problem = `request failed: ${e.message}`;
-    }
-
-    if (!problem) {
-      if (res.status !== expect) {
-        problem = `HTTP ${res.status} (expected ${expect})`;
-      } else if (expect === 200) {
-        try {
-          body = await res.json();
-        } catch {
-          problem = 'response was not JSON';
-        }
-        if (!problem) problem = c.check(body, res);
+    // Upstream exchanges rate-limit (OKX is 40 req/2s per IP, shared across a
+    // Cloudflare egress address), so a single blip must not read as an outage.
+    // Retry before declaring failure — but never retry away a persistent fault:
+    // ATTEMPTS is small and the last problem is what gets reported.
+    const ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+      res = undefined; body = undefined; problem = null;
+      try {
+        res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+      } catch (e) {
+        problem = `request failed: ${e.message}`;
       }
+
+      if (!problem) {
+        if (res.status !== expect) {
+          problem = `HTTP ${res.status} (expected ${expect})`;
+        } else if (expect === 200) {
+          try {
+            body = await res.json();
+          } catch {
+            problem = 'response was not JSON';
+          }
+          if (!problem) problem = c.check(body, res);
+        }
+      }
+
+      if (!problem) break;
+      if (attempt < ATTEMPTS) await sleep(3_000);
     }
 
     const source = res?.headers?.get?.('X-Veyrnox-Source');
