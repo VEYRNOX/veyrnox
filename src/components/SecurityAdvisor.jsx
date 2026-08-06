@@ -21,7 +21,6 @@ import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
 import { DEMO } from "@/api/demoClient";
 import {
   findLocalAnswer,
-  buildAdvisorSystemContext,
   getFollowUpQuestions,
 } from "@/lib/advisorKnowledge";
 import {

@@ -225,7 +225,7 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
   });
 
   describe('Local fallback correlation: offline degrades gracefully', () => {
-    it('falls back to local knowledge when TIP chat is offline', async () => {
+    it('falls back to local knowledge when TIP chat is offline (no misleading offline badge when local answers)', async () => {
       await mountAdvisor();
       await grantAdvisorConsent();
 
@@ -234,14 +234,15 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
 
       await askQuestion('what is deniability mode?');
 
-      // Should show offline indicator and still answer from local KB
+      // Local answer should appear
       await waitFor(() => {
-        expect(screen.getByText(/offline/i)).toBeTruthy();
+        const messages = screen.getAllByText(/deniability/i, { ignore: '.hidden' });
+        expect(messages.length).toBeGreaterThan(0);
       });
 
-      // Local answer should appear
-      const messages = screen.getAllByText(/deniability/i, { ignore: '.hidden' });
-      expect(messages.length).toBeGreaterThan(0);
+      // Offline badge must NOT paint when local KB successfully answered —
+      // it would misrepresent a successful answer as a failure.
+      expect(screen.queryByText(/offline/i)).toBeNull();
     });
 
     it('shows local answer when consent is denied (not an error state)', async () => {
