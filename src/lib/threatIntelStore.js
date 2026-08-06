@@ -124,6 +124,30 @@ function openDb() {
 }
 
 /**
+ * Close the cached IndexedDB connection and drop the handle, so a subsequent
+ * indexedDB.deleteDatabase() is not left permanently BLOCKED behind it.
+ *
+ * Without this, panic wipe cannot delete this database: the module-level
+ * `_dbPromise` above is never closed, a delete request against a live connection
+ * fires `onblocked` and stays PENDING, and a pending delete then blocks every
+ * later open() on the database for the rest of the session. Callers that need
+ * the store again simply call it — the next lookup reopens lazily via openDb().
+ *
+ * @returns {Promise<void>}
+ */
+export async function closeThreatIntelDb() {
+  const pending = _dbPromise;
+  _dbPromise = null;
+  if (!pending) return;
+  try {
+    const db = await pending;
+    db.close();
+  } catch {
+    // Never opened successfully — nothing to close.
+  }
+}
+
+/**
  * Look up an address in the local threat intel store.
  * Returns matches from BOTH the seed list AND learned (IndexedDB) threats.
  * Returns [] if not found or in deniability mode.
