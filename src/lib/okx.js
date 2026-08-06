@@ -4,9 +4,19 @@
 // Rate limit: 40 req/2s per IP — far more generous than CoinGecko's ~5/min.
 // True USDT quotes (same ≲0.2% peg caveat as Binance).
 //
-// I2 note: the symbol map is fixed and never derived from the user's holdings.
-// Callers gate egress behind isLivePricesEnabled() and the I3 deniability
-// guard in lib/ohlcv.js.
+// Egress goes through the EDGE PROXY (functions/api/data/okx-candles.js) via
+// edgeApi.fetchOkxCandles — never a direct browser fetch to www.okx.com. Two
+// reasons, both load-bearing:
+//   1. I3 — edgeApi.js is the deniability chokepoint and guards
+//      `DEMO || isDeniabilityOrDemoActive()`. lib/ohlcv.js's own guard checks
+//      only isDeniabilitySessionActive(), so a DEMO session would egress if this
+//      module called fetch() itself.
+//   2. Native — functions/api/data/klines.js exists because a direct call breaks
+//      CORS in the iOS/Android Capacitor WebViews. Same applies here.
+// I2: the symbol map is fixed and never derived from the user's holdings, and
+// the edge function re-validates instId against its own allowlist.
+
+import { fetchOkxCandles } from '@/api/edgeApi';
 
 const TICKER_TO_OKX = {
   BTC:   'BTC-USDT',
@@ -47,12 +57,9 @@ export async function fetchOHLCVOkx(fsym, resolution = 'hour', limit = 24, nowMs
   if (!bar) throw new Error(`okx: unsupported resolution ${resolution}`);
 
   const capped = Math.max(1, Math.min(300, Math.floor(limit)));
-  const url = `https://www.okx.com/api/v5/market/candles?instId=${instId}&bar=${bar}&limit=${capped}`;
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`okx: HTTP ${res.status}`);
-
-  const json = await res.json();
+  // Throws on non-2xx (edgeApi.get) — no fetch() here by design, see header.
+  const json = await fetchOkxCandles(instId, bar, capped);
   if (json.code !== '0') throw new Error(`okx: API error ${json.code} — ${json.msg}`);
 
   const data = json.data;
