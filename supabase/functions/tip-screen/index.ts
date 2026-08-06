@@ -78,6 +78,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://veyrnox-prod.pages.dev',
   'capacitor://localhost',
   'https://localhost',
+  'http://localhost',
 ];
 
 function allowedOrigins(): Set<string> {
@@ -214,7 +215,13 @@ serve(async (req: Request) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIP_TIMEOUT_MS);
   try {
-    const upstream = await fetch(`${tipBaseUrl.replace(/\/$/, '')}/api/v1/screen`, {
+    // Route based on action: "chat" or "screen" (default screening)
+    const action = input.action ?? 'screen';
+    const endpoint = action === 'chat'
+      ? '/api/v1/agents/security-advisor/chat'
+      : '/api/v1/screen';
+
+    const upstream = await fetch(`${tipBaseUrl.replace(/\/$/, '')}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -232,6 +239,15 @@ serve(async (req: Request) => {
       // the client only needs "screening did not give a usable answer".
       return json({ error: 'tip_upstream_error' }, 502, origin);
     }
+
+    // For chat, stream the response; for screening, return JSON
+    if (action === 'chat' && upstream.body) {
+      return new Response(upstream.body, {
+        status: 200,
+        headers: { ...corsHeaders(origin), 'Content-Type': 'text/event-stream' },
+      });
+    }
+
     return new Response(text, {
       status: 200,
       headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
