@@ -270,7 +270,7 @@ function timingSafeEqual(a, b, aOffset = 0) {
  * @param {Uint8Array} secret - The secret to split (must be SECRET_SIZE bytes)
  * @param {number} n - Number of shares to generate (default 3)
  * @param {number} k - Threshold for reconstruction (default 2)
- * @returns {Uint8Array[]} Array of n shares, each SHARE_SIZE bytes (envelope v1)
+ * @returns {Uint8Array[]} Array of n shares, each SHARE_SIZE bytes (envelope v2)
  */
 export function split(secret, n = 3, k = 2) {
   if (!(secret instanceof Uint8Array) || secret.length !== SECRET_SIZE) {
@@ -346,18 +346,24 @@ export function split(secret, n = 3, k = 2) {
  * interpolation; any extra shares are verified against the reconstructed
  * polynomial — a single inconsistent extra share is a hard reject.
  *
- * AUTHENTICATION BOUNDARY: with exactly k shares, integrity rests on CRC32
- * (corruption detection only — not cryptographic authentication). A
- * deliberate attacker who can recompute the CRC can produce a share that
- * reconstructs to a different DEK. The caller MUST authenticate the
- * reconstructed DEK against the vault's AES-256-GCM AAD before using it.
- * This is by design: adding a keyed MAC or commitment to the shares would
- * require key material that doesn't exist at combine time, and a hash
- * commitment would leak information about the secret.
+ * AUTHENTICATION: the reconstruction is authenticated HERE, not by the caller.
+ * After interpolating, combine() recomputes
+ * SHA-256(DOMAIN || setId || k || n || secret) over the value it just rebuilt
+ * and requires it to equal the commitment carried in the envelope (audit
+ * 2026-08-03 H-6). Forging a share that survives that needs a SHA-256 preimage,
+ * so CRC-32 — unkeyed, linear, trivially recomputable by a forger — is relied on
+ * for CORRUPTION detection only, never for authentication.
  *
- * NOT constant-time: gfMul branches on zero, table lookups are cache-visible.
+ * A caller that ALSO authenticates the DEK against the vault's AES-256-GCM AAD
+ * is still correct; that is defence in depth, not a requirement this function
+ * delegates upward.
  *
- * @param {Uint8Array[]} shares - Array of shares (each SHARE_SIZE bytes, envelope v1)
+ * GF arithmetic is branch-free and table-free (audit 2026-08-03 M-7): no
+ * secret-dependent branches, no secret-indexed memory access. That is NOT a
+ * claim of end-to-end constant-time execution, which JavaScript cannot provide
+ * — see the note above gfMul.
+ *
+ * @param {Uint8Array[]} shares - Array of shares (each SHARE_SIZE bytes, envelope v2)
  * @returns {Uint8Array} Reconstructed secret (SECRET_SIZE bytes)
  */
 export function combine(shares) {
