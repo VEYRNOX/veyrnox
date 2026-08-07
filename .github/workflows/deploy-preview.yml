@@ -156,8 +156,24 @@ jobs:
 
       - name: Build
         env:
-          VITE_BUY_ENABLED: ${{ github.ref == 'refs/heads/main' && 'true' || 'true' }}
-          VITE_TRANSAK_API_KEY: ${{ vars.VITE_TRANSAK_API_KEY }}
+          # Buy ships on every branch. Written flat on purpose: this was
+          # `github.ref == 'refs/heads/main' && 'true' || 'true'`, which reads
+          # like a production/preview gate and is a tautology — both arms are
+          # 'true'. A reviewer skimming the file would take it for a control.
+          #
+          # This env value, NOT wrangler.toml's [vars], is what enables Buy in
+          # the shipped bundle: this job builds with `npm run build` here and
+          # then publishes the built `dist` via `wrangler pages deploy`, so the
+          # flag has to be set at build time to reach import.meta.env. Deleting
+          # it turns the ship gate in src/lib/buy/useBuyEnabled.js back off.
+          VITE_BUY_ENABLED: 'true'
+          # VITE_TRANSAK_API_KEY deliberately NOT passed. Nothing under src/
+          # reads it (`git grep VITE_TRANSAK_API_KEY -- src` is empty) — the
+          # Transak credentials are server-side only, read from context.env by
+          # functions/api/buy/session.js, which is where they must stay. Passing
+          # an unread VITE_-prefixed key into the build is the state in which the
+          # first `import.meta.env.VITE_TRANSAK_API_KEY` reference silently
+          # embeds it in the client bundle.
           VITE_SUPABASE_URL: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_URL || '' }}
           VITE_SUPABASE_ANON_KEY: ${{ github.ref == 'refs/heads/main' && vars.VITE_SUPABASE_ANON_KEY || '' }}
         run: |
