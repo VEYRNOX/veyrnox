@@ -265,12 +265,26 @@ $$;
 -- threaded through the RPC signature, collapse duplicates at rest with a
 -- UNIQUE partial index on the natural key of an attribution within an hour
 -- bucket, and dedup at read time so historical duplicates cannot skew payouts.
+--
+-- `AT TIME ZONE 'UTC'` is NOT cosmetic — without it this statement cannot run.
+-- `created_at` is timestamptz, and date_trunc(text, timestamptz) is STABLE, not
+-- IMMUTABLE, because its result depends on the session TimeZone. PostgreSQL
+-- rejects a non-IMMUTABLE function in an index expression:
+--
+--   ERROR: 42P17: functions in index expression must be marked IMMUTABLE
+--
+-- Verified against veyrnox-prod on 2026-08-07 (run in a transaction and rolled
+-- back): the original form errors, this form succeeds. So L-8 had never been
+-- applied to any database and could not have been — the statement was dead on
+-- arrival. Pinning the zone makes the expression immutable AND removes a
+-- correctness trap: an hour bucket that shifted with the reader's session
+-- timezone would silently change which rows count as duplicates.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_referral_attributions_hour_dedup
   ON referral_attributions (
     referral_code,
     plan,
     revenue_cents,
-    date_trunc('hour', created_at)
+    date_trunc('hour', created_at AT TIME ZONE 'UTC')
   );
 
 -- Read-only functions for referral owner to query their own data.
@@ -284,13 +298,20 @@ BEGIN
   -- L-8: dedup by (plan, revenue_cents, hour) so a duplicate attribution
   -- that slipped in before uq_referral_attributions_hour_dedup existed
   -- (or via a future signature change) cannot double-count earnings.
+  --
+  -- AT TIME ZONE 'UTC' must match uq_referral_attributions_hour_dedup exactly.
+  -- It is not required here (a query has no IMMUTABLE constraint), but if the
+  -- read path bucketed by session timezone while the index bucketed by UTC, the
+  -- two would disagree about which rows are "the same hour" for any session not
+  -- on UTC — the write-side constraint and the read-side dedup would enforce
+  -- different things. Change one, change all four sites in this file.
   RETURN QUERY
     WITH deduped AS (
-      SELECT DISTINCT ON (ra.plan, ra.revenue_cents, date_trunc('hour', ra.created_at))
+      SELECT DISTINCT ON (ra.plan, ra.revenue_cents, date_trunc('hour', ra.created_at AT TIME ZONE 'UTC'))
              ra.plan, ra.revenue_cents, ra.discount_cents, ra.created_at
         FROM referral_attributions ra
        WHERE ra.referral_code = p_code
-       ORDER BY ra.plan, ra.revenue_cents, date_trunc('hour', ra.created_at),
+       ORDER BY ra.plan, ra.revenue_cents, date_trunc('hour', ra.created_at AT TIME ZONE 'UTC'),
                 ra.created_at ASC
     )
     SELECT d.plan, d.revenue_cents, d.discount_cents, d.created_at
@@ -311,9 +332,12 @@ DECLARE
 BEGIN
   -- L-8: count distinct (plan, revenue_cents, hour) tuples so a duplicate
   -- attribution cannot inflate the paid count that drives tier upgrades.
+  -- AT TIME ZONE 'UTC' must match uq_referral_attributions_hour_dedup — see the
+  -- note in get_referral_earnings. This count drives TIER UPGRADES, so a bucket
+  -- that disagreed with the index would hand out discounts on miscounted sales.
   SELECT count(*)::integer INTO c
     FROM (
-      SELECT DISTINCT plan, revenue_cents, date_trunc('hour', created_at) AS hr
+      SELECT DISTINCT plan, revenue_cents, date_trunc('hour', created_at AT TIME ZONE 'UTC') AS hr
         FROM referral_attributions
        WHERE referral_code = p_code
     ) dedup;
