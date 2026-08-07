@@ -68,7 +68,15 @@ export default function TransactionPreview({ result, loading = undefined, error 
   const risks = result.risks || [];
   const actionable = risks.filter((r) => r.level !== "info");
   const infos = risks.filter((r) => r.level === "info");
-  const noKnownRisks = actionable.length === 0 && !result.willRevert;
+  // "No known risk patterns detected" asserts that the checks RAN and found
+  // nothing. `result.degraded` means one of them did not run (EVM: the eth_call
+  // dry-run never answered), so the summary must not appear — it would read as
+  // a clean bill of health for a transaction nobody checked, which is the same
+  // mistake the `error && !result` branch above exists to avoid. That branch
+  // does NOT cover this case: a degraded simulation RESOLVES, it does not throw.
+  // Gated on `degraded` and not on `!simulated`, because BTC and SOL return
+  // simulated: false by design (decode-only) with their risk assessment intact.
+  const noKnownRisks = actionable.length === 0 && !result.willRevert && !result.degraded;
 
   return (
     <div className="p-3 rounded-lg bg-secondary/30 border border-border space-y-3">
