@@ -72,13 +72,27 @@ const TIP_TIMEOUT_MS = 10_000;
 
 // Mirrors first-referral-bonus. Capacitor's native HTTP stack sends no Origin
 // header at all, which is why a missing Origin is allowed.
+//
+// `http://localhost` is deliberately NOT here. It was added on 2026-08-06
+// alongside the chat routing change, which re-introduced the pattern the
+// 2026-07-28 internal audit removed from first-referral-bonus as finding L-9.
+// This allowlist is the only origin-level control this function has — the
+// anon-key check below is explicitly NOT authentication — so a plaintext-HTTP
+// origin compiled into every deployment lets any process serving on localhost
+// drive it cross-origin and burn our TIP quota, on production as much as on a
+// developer's machine.
+//
+// Local development sets it per-deployment instead, via the ALLOWED_ORIGINS
+// env var this function already merges in below:
+//   supabase secrets set ALLOWED_ORIGINS=http://localhost:5173
+// That keeps the dev affordance without shipping it to production, and makes
+// each grant a deliberate, reviewable act rather than a compiled-in default.
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://veyrnox.com',
   'https://www.veyrnox.com',
   'https://veyrnox-prod.pages.dev',
   'capacitor://localhost',
   'https://localhost',
-  'http://localhost',
 ];
 
 function allowedOrigins(): Set<string> {

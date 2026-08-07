@@ -155,6 +155,30 @@ describe('H-4 — the Edge Function keeps the secrets server-side', () => {
     expect(fnSrc).not.toMatch(/Math\.random/);
   });
 
+  it('L-9 — no plaintext-http origin is compiled into the CORS allowlist', () => {
+    // The 2026-07-28 internal audit removed `http://localhost` from
+    // first-referral-bonus (finding L-9); it reappeared here on 2026-08-06
+    // alongside the chat-routing change, with nothing to catch it. This
+    // allowlist is the function's ONLY origin-level control — the anon-key
+    // check is possession of a public key, not authentication — so a
+    // compiled-in http:// origin is reachable from every deployment including
+    // production.
+    //
+    // Reads the COMMENT-STRIPPED source on purpose: the comment above the
+    // allowlist names the string it is banning, so asserting over the raw file
+    // would fail on the explanation itself.
+    //
+    // Local development grants it per-deployment through the ALLOWED_ORIGINS
+    // env var instead, which this function already merges in — so widening the
+    // compiled defaults is never the fix if this goes red.
+    const list = fnSrc.match(/DEFAULT_ALLOWED_ORIGINS\s*=\s*\[([\s\S]*?)\]/)?.[1];
+    expect(list).toBeTruthy();
+    expect(list).not.toMatch(/['"]http:\/\//);
+    // Guard the guard: the regex must actually be looking at the origin list.
+    expect(list).toMatch(/https:\/\/veyrnox\.com/);
+    expect(fnSrc).toMatch(/ALLOWED_ORIGINS/);
+  });
+
   it('documents that it is NOT deployed with --no-verify-jwt', () => {
     // This one deliberately reads the RAW file: it is a claim about the deploy
     // instructions, which live in the header comment.
