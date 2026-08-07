@@ -187,22 +187,21 @@ describe('simulateEvmTransaction — input guard (no network)', () => {
     ).rejects.toThrow(/invalid/i);
   });
 
-  it('returns simulated: false when eth_call RPC fails (I4 fail honest)', async () => {
-    // When the core eth_call fails, we must NOT claim simulated: true
-    // and must NOT fake a "will_revert" verdict. This is I4 (fail honest).
-    const result = await simulateEvmTransaction({
-      networkKey: 'sepolia',
-      from: FRESH,
-      to: SPENDER,
-      valueWei: 1n,
-      // Will fail because no RPC is actually running; tests are network-free
-    });
-    expect(result.simulated).toBe(false);
-    expect(result.willRevert).toBe(false);
-    const simFailed = result.risks.find((r) => r.code === 'simulation_unavailable');
-    expect(simFailed).toBeTruthy();
-    expect(simFailed.level).toBe('info');
-  });
+  // The "returns simulated: false when eth_call RPC fails" case that used to sit
+  // here has MOVED to simulate-revert.test.js, which mocks the provider.
+  //
+  // It called the real simulateEvmTransaction with no mock and passed only
+  // because the Sepolia endpoint was unreachable from the runner — its own
+  // comment said so ("Will fail because no RPC is actually running"). That made
+  // the one describe block labelled "no network" the only network-DEPENDENT test
+  // in the file, and it became load-bearing once #1597 made the eth_call
+  // rejection three-valued: an endpoint that answered with revert data would now
+  // classify as willRevert and flip `expect(result.willRevert).toBe(false)` red
+  // for a reason having nothing to do with the code under test.
+  //
+  // simulate-revert.test.js covers the same contract deterministically, and more
+  // of it — timeout, network error, CALL_EXCEPTION-without-data, bare revert,
+  // and success — all against a mocked provider.
 });
 
 describe('describeBtcPlan — honest decode (no fake simulation)', () => {

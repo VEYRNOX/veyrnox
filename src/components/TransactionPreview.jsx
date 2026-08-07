@@ -66,7 +66,14 @@ export default function TransactionPreview({ result, loading = undefined, error 
   if (!result) return null;
 
   const risks = result.risks || [];
-  const actionable = risks.filter((r) => r.level !== "info");
+  // `will_revert` is excluded here because the dedicated block below already
+  // states it — evm/simulate.js unshifts a level:'high' `will_revert` entry into
+  // `risks` AND this component renders its own banner, so leaving it in the
+  // generic list prints "Transaction predicted to FAIL" twice, in identical
+  // styling. Both paths were unreachable while `willRevert` had no assignment in
+  // simulate.js, which is why restoring it surfaced the duplicate for the first
+  // time. Scoped to that ONE code — every other risk must still render.
+  const actionable = risks.filter((r) => r.level !== "info" && r.code !== "will_revert");
   const infos = risks.filter((r) => r.level === "info");
   // "No known risk patterns detected" asserts that the checks RAN and found
   // nothing. `result.degraded` means one of them did not run (EVM: the eth_call
@@ -76,7 +83,13 @@ export default function TransactionPreview({ result, loading = undefined, error 
   // does NOT cover this case: a degraded simulation RESOLVES, it does not throw.
   // Gated on `degraded` and not on `!simulated`, because BTC and SOL return
   // simulated: false by design (decode-only) with their risk assessment intact.
-  const noKnownRisks = actionable.length === 0 && !result.willRevert && !result.degraded;
+  // Keyed off the UNFILTERED set on purpose. `actionable` has `will_revert`
+  // removed for rendering only; if a result ever carried that risk without the
+  // `willRevert` flag, keying on `actionable.length` would flip this summary to
+  // true and print a clean bill of health over a predicted failure. The display
+  // filter must not be able to buy its way into a reassurance.
+  const hasActionableRisk = risks.some((r) => r.level !== "info");
+  const noKnownRisks = !hasActionableRisk && !result.willRevert && !result.degraded;
 
   return (
     <div className="p-3 rounded-lg bg-secondary/30 border border-border space-y-3">
@@ -85,9 +98,14 @@ export default function TransactionPreview({ result, loading = undefined, error 
         {result.simulated ? "Transaction simulation" : "Decoded transaction"}
       </p>
 
-      {/* Predicted FAILURE leads everything — most actionable single fact. */}
+      {/* Predicted FAILURE leads everything — most actionable single fact.
+          role="alert" because this replaces the "Simulating…" spinner
+          ASYNCHRONOUSLY, while the user is deciding whether to sign: without a
+          live region a screen-reader user is never told the transaction is
+          predicted to fail. Assertive is right here and nowhere else on the
+          panel — it is the one finding that makes signing pointless. */}
       {result.willRevert && (
-        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/40 text-xs text-destructive">
+        <div role="alert" className="flex items-start gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/40 text-xs text-destructive">
           <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <div className="space-y-0.5 min-w-0">
             <p className="font-semibold">Transaction predicted to FAIL</p>
@@ -154,9 +172,13 @@ export default function TransactionPreview({ result, loading = undefined, error 
         </div>
       )}
 
-      {/* Risk flags (high/medium), then info notes. */}
+      {/* Risk flags (high/medium), then info notes. Polite, not assertive: these
+          arrive with the same async swap as the banner above and would otherwise
+          go unannounced, but they must not talk over it. This region is also what
+          announces the DEGRADED state, since `simulation_unavailable` is a
+          medium-level risk and lands here. */}
       {actionable.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5" aria-live="polite">
           {actionable.map((r, i) => <RiskRow key={i} risk={r} />)}
         </div>
       )}

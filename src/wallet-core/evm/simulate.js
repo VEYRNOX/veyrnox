@@ -409,6 +409,14 @@ export async function simulateEvmTransaction({
   // Ambiguity resolves toward `simulationFailed`, never toward willRevert —
   // claiming no verdict when we had one is a smaller harm than inventing a
   // verdict we never got. Pinned by simulate-revert.test.js.
+  //
+  // KNOWN COVERAGE GAP, accepted deliberately: some providers answer a reverting
+  // eth_call with a bare `{"error":{"message":"execution reverted"}}` and no
+  // `data` member. That is indistinguishable here from a node that never
+  // answered, so it lands on the degraded side and the user is told the outcome
+  // was not checked rather than that it will fail. Under-claiming, which is the
+  // direction this file always errs in — but it does mean a predicted revert can
+  // be missed on such an RPC, not merely reported late.
   let willRevert = false;
   let revertReason = null;
   let simulationFailed = false;
@@ -428,8 +436,14 @@ export async function simulateEvmTransaction({
     // did not complete. I4: report no outcome rather than inventing one. Note
     // eth_call is deliberately NOT pushed to `queries`: the source disclosure
     // lists what we actually managed to read.
+    //
+    // `revertReason` stays NULL here. Nothing reverted, so there is no revert
+    // reason to report — and the raw value would be `extractRevertReason()`'s
+    // fallback to `e.message`, an ethers string that can carry the RPC endpoint
+    // and internal payload detail straight into user-facing copy below
+    // (CLAUDE.md A10: never surface internal error detail). The failure is
+    // already fully described by `degraded` + the risk entry.
     simulationFailed = true;
-    revertReason = extractRevertReason(callRes.reason);
   }
 
   const assessment = assessEvmTransaction({
@@ -451,11 +465,22 @@ export async function simulateEvmTransaction({
   if (simulationFailed) {
     // I4 (fail honest): eth_call did not complete; don't fake a simulation result.
     // Surface the failure so the UI can degrade gracefully (e.g. "Could not simulate").
+    //
+    // `medium`, not `info`. "We could not check this transaction" is a caution,
+    // not a footnote: at `info` it renders in `text-muted-foreground`, the
+    // dimmest treatment on the panel, for the single most important thing the
+    // user could be told about a transaction they are about to sign. It is the
+    // same situation the component's `error && !result` branch already styles as
+    // caution. Raising it also moves it ABOVE the fold in TransactionPreview,
+    // which renders actionable risks before info notes.
+    //
+    // No raw error text: whatever ethers said about the transport is a debugging
+    // detail, not something to print to someone deciding whether to sign.
     assessment.risks.unshift({
-      level: 'info',
+      level: 'medium',
       code: 'simulation_unavailable',
       title: 'Transaction simulation unavailable',
-      detail: `RPC simulation did not complete${revertReason ? `: ${revertReason}` : ''}. Proceeding without outcome preview.`,
+      detail: 'Your RPC did not complete the dry-run, so this transaction\'s outcome was not checked. That is not a green light — verify the recipient, amount and contract yourself.',
     });
   } else if (willRevert) {
     // Lead with it — a predicted failure is the most actionable single fact.
