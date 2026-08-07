@@ -166,6 +166,41 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
   SQL without a matching client refactor will break referral + telemetry
   writes at runtime. Owner must review before executing. Only
   `record_attribution` and `get_referral_leaderboard` are safe-immediate.
+  - **CORRECTED 2026-08-07 — the "client refactor" above is DONE, and the
+    remaining prerequisite is one env var, not a rewrite.** Those two modules no
+    longer touch PostgREST: both `import { rpc } from '@/api/edgeApi'`, and
+    `edgeApi.rpc()` is `post('/api/rpc/' + encodeURIComponent(fn), params)`.
+    Nothing under `src/` contains `supabase.rpc(` or `/rest/v1/rpc`. The
+    refactor landed with the Pages Functions layer in `e99dd422`; this bullet
+    was written before it and was never revisited. Calls still arrive as role
+    `anon` for one reason only — `functions/api/rpc/[fn].js` injected
+    `SUPABASE_ANON_KEY`. **That file was the last anon caller.**
+  - PR #1606 makes that proxy prefer `SUPABASE_SERVICE_ROLE_KEY` with an anon
+    fallback, so it is a NO-OP until the secret is set. **Ordering is
+    load-bearing:** (1) merge #1606, (2) set `SUPABASE_SERVICE_ROLE_KEY` on the
+    `veyrnox-prod` Pages project, (3) verify it is set and deployed, (4) THEN
+    run the REVOKEs. Running (4) first still breaks every referral and
+    telemetry write — symptom is `permission denied for function <name>` from
+    `/api/rpc/*`. Full runbook, including rollback:
+    `docs/rpc-service-role-migration.md`.
+  - **This does not close H-3, and must not be written up as if it does.**
+    `record_attribution` stays in the proxy allowlist, so attribution remains
+    client-INITIATED — just no longer anon-callable via PostgREST. H-3's intent
+    is server-AUTHORED attribution via the RC webhook
+    (`sql/referral-rc-webhook.sql`, still a skeleton). Removing it from the
+    allowlist before that webhook exists would silently stop attribution being
+    recorded at all.
+  - **New standing rule:** once the service-role key is set, `ALLOWED_RPCS` in
+    `functions/api/rpc/[fn].js` is the ONLY boundary in front of it, because
+    service_role bypasses RLS. Never add a table-proxy route, a passthrough
+    path segment, or a wildcard to any file that can read that key — with RLS
+    bypassed, one such route is full database access.
+  - **Process lesson, general:** this bullet described a blocker that had been
+    resolved by unrelated work weeks earlier, and every subsequent session
+    treated it as current because it read as authoritative. A statement about
+    *another part of the codebase* decays silently — re-derive it from the code
+    before acting on it, the way the CORRECTED line above was
+    (`git grep 'supabase\.rpc(' -- src` returning nothing is the whole proof).
 
 **All 10 assets LIVE** — ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT.
 
