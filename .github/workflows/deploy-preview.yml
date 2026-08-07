@@ -192,6 +192,16 @@ jobs:
           wranglerVersion: ''
           command: pages deploy dist --project-name=veyrnox-prod --branch=${{ steps.slug.outputs.slug }}
 
+      # The /api/data/* functions are executed by NOTHING else in CI: vitest never
+      # loads them, and `vite` does not serve /api/* locally (no wrangler pages
+      # dev script). That blind spot is how /api/data/klines sat at HTTP 502 in
+      # production, on every request, without anyone noticing. This runs the same
+      # probes against the deployment that was just published.
+      - name: Check edge endpoints
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: node scripts/check-edge-endpoints.mjs "$DEPLOY_URL"
+
       - name: Comment preview URL on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
