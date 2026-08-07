@@ -120,7 +120,13 @@ describe('simulateEvmTransaction — eth_call outcome is three-valued', () => {
 
     const risk = r.risks.find((x) => x.code === 'simulation_unavailable');
     expect(risk).toBeTruthy();
-    expect(risk.level).toBe('info');
+    // `medium`, deliberately raised from `info`: at `info` this rendered in the
+    // panel's dimmest style, and TransactionPreview lists info notes BELOW the
+    // no-known-risks summary. "We could not check this" is a caution.
+    expect(risk.level).toBe('medium');
+    // And it must not carry raw transport error text into user-facing copy.
+    expect(risk.detail).not.toMatch(/rpc-timeout/);
+    expect(r.revertReason).toBeNull();   // nothing reverted, so no revert reason
     expect(r.risks.find((x) => x.code === 'will_revert')).toBeFalsy();
   });
 
