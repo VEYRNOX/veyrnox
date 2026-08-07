@@ -31,6 +31,15 @@ env:
   VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
   VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
   VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  # REQUIRED for any NATIVE build. Capacitor loads the bundle from webDir (no
+  # `server.url` in capacitor.config.json), so the document origin is
+  # capacitor://localhost / https://localhost and a relative /api/* resolves to
+  # the local bundle, which serves no /api/*. Without this, every edge call —
+  # prices, klines, news, gas, referrals, telemetry, Transak — fails in the
+  # webview. Empty is correct on WEB only, where /api/* is same-origin.
+  # src/api/edgeApi.js throws EDGE_BASE_UNSET on native rather than failing
+  # silently, so an unset var here surfaces as a loud test failure.
+  VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
 
 jobs:
   e2e-emulator-tests:

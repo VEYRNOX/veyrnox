@@ -48,6 +48,77 @@ function err(status, message) {
   throw e;
 }
 
+/**
+ * Upstream failure -> generic client error + a correlated server-side log.
+ *
+ * The two Transak failure paths used to do
+ *   err(502, `Transak session ${res.status}: ${text.slice(0, 300)}`)
+ * and `err` sets `expose = true`, which _middleware.js returns verbatim — so up
+ * to 300 characters of a third-party API's error body reached the client. The
+ * partner secret is sent in a request header and never echoed back, so no
+ * credential leaked, but this still violates the response-hygiene rule ("wrap
+ * errors in a generic envelope with a client-safe message; log the real error
+ * with a correlation ID") and hands out upstream diagnostics for free.
+ *
+ * The detail is not discarded — it goes to the Workers tail log, where
+ * operators can read it and callers cannot.
+ */
+function upstreamErr(stage, res, text) {
+  const ref = crypto.randomUUID().slice(0, 8);
+  console.error(`[buy/session] ${stage} failed ref=${ref} status=${res.status} body=${String(text).slice(0, 500)}`);
+  err(502, `Buy is temporarily unavailable (ref ${ref})`);
+}
+
+// Per-IP fixed-window cap on session creation.
+//
+// WHAT THIS IS: every POST here spends a real upstream
+// `POST /api/v2/auth/session` against the Veyrnox Transak partner account. The
+// endpoint is unauthenticated by design and had no cap of any kind, so a single
+// caller could burn partner quota at request rate. This bounds that.
+//
+// WHAT THIS IS NOT — do not upgrade the claim: `caches.default` is per-colo and
+// read-modify-write here is NOT atomic, so concurrent requests in the same
+// window can undercount, and an attacker spread across colos or IPs gets a
+// multiple of the limit. It raises the cost of casual and single-source abuse;
+// it is not a guarantee. The durable control is a Cloudflare Rate Limiting rule
+// at the zone level, which this does not replace.
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_S = 60;
+
+async function enforceRateLimit(clientIp) {
+  // An absent client IP must not share one bucket with every other unknown
+  // caller — that would let one abuser exhaust the quota for all of them.
+  // Unknown IP gets no allowance at all rather than a shared one (I4).
+  if (!clientIp || clientIp === '0.0.0.0') err(429, 'Too many requests');
+
+  const window = Math.floor(Date.now() / 1000 / RATE_LIMIT_WINDOW_S);
+  const key = new Request(
+    `https://edge-cache.internal/buy-session-rl/${encodeURIComponent(clientIp)}/${window}`,
+  );
+  const cache = caches.default;
+
+  let count = 0;
+  try {
+    const hit = await cache.match(key);
+    if (hit) count = Number(await hit.text()) || 0;
+  } catch {
+    // Cache unavailable: fail OPEN, deliberately. This limiter protects a
+    // spend quota, not key material or a signing path — turning a cache blip
+    // into a total Buy outage would be the worse failure. Stated explicitly
+    // because "fail closed" is the default rule in this codebase and this is a
+    // considered exception, not an oversight.
+    return;
+  }
+
+  if (count >= RATE_LIMIT_MAX) err(429, 'Too many requests');
+
+  try {
+    await cache.put(key, new Response(String(count + 1), {
+      headers: { 'Cache-Control': `max-age=${RATE_LIMIT_WINDOW_S}` },
+    }));
+  } catch { /* best-effort accounting */ }
+}
+
 async function getPartnerToken(env) {
   const environment = env.TRANSAK_ENVIRONMENT || 'STAGING';
   const urls = ENDPOINTS[environment];
@@ -77,7 +148,7 @@ async function getPartnerToken(env) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    err(502, `Transak refresh-token ${res.status}: ${text.slice(0, 300)}`);
+    upstreamErr('refresh-token', res, text);
   }
 
   const data = await res.json();
@@ -117,7 +188,10 @@ export async function onRequestPost(context) {
 
   const clientIp = request.headers.get('CF-Connecting-IP')
     || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
-    || '0.0.0.0';
+    || '';
+
+  // Before any upstream call — the whole point is to not spend partner quota.
+  await enforceRateLimit(clientIp);
 
   const widgetParams = {
     apiKey,
@@ -128,8 +202,20 @@ export async function onRequestPost(context) {
     productsAvailed: product,
     disableWalletAddressForm: true,
   };
-  if (fiatAmount != null) widgetParams.fiatAmount = Number(fiatAmount);
-  if (fiatCurrency) widgetParams.fiatCurrency = String(fiatCurrency).toUpperCase();
+  // Both are forwarded to a partner API, so they get validated rather than
+  // coerced. `Number(fiatAmount)` alone accepts NaN, Infinity and negatives —
+  // `Number('abc')` is NaN, which JSON.stringify then sends as `null`. Reject
+  // instead of forwarding a value we did not understand (I4).
+  if (fiatAmount != null) {
+    const amt = Number(fiatAmount);
+    if (!Number.isFinite(amt) || amt <= 0 || amt > 1_000_000) err(400, 'Invalid fiatAmount');
+    widgetParams.fiatAmount = amt;
+  }
+  if (fiatCurrency != null) {
+    const cur = String(fiatCurrency).toUpperCase();
+    if (!/^[A-Z]{3}$/.test(cur)) err(400, 'Invalid fiatCurrency');
+    widgetParams.fiatCurrency = cur;
+  }
 
   const sessionBody = {
     apiKey,
@@ -163,7 +249,7 @@ export async function onRequestPost(context) {
 
   if (!sessionRes.ok) {
     const text = await sessionRes.text().catch(() => '');
-    err(502, `Transak session ${sessionRes.status}: ${text.slice(0, 300)}`);
+    upstreamErr('create-session', sessionRes, text);
   }
 
   const sessionData = await sessionRes.json();
