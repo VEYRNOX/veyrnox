@@ -31,7 +31,23 @@
 
 
 -- =============================================================================
--- STAGE 1 — safe to run now. Nothing here has a working caller to break.
+-- STAGE 1 — ✅ APPLIED to jwstkrtslotnjyerzzsi on 2026-08-07. Idempotent; safe
+-- to re-run (CREATE INDEX IF NOT EXISTS, and REVOKE/GRANT are declarative).
+--
+-- Applied inside a single transaction so a partial failure would have rolled
+-- back. Verified immediately afterwards, against the LIVE endpoints, not just
+-- the catalog:
+--     record_attribution        -> postgres, service_role       (was PUBLIC)
+--     get_referral_leaderboard  -> postgres, service_role       (was PUBLIC)
+--     waitlist                  -> anon:INSERT only, 4 rows intact
+--     uq_referral_attributions_hour_dedup  -> present
+--     get_referral_count / get_referral_paid_count / track_event -> still 200
+--     record_attribution via /api/rpc -> permission denied  (H-3 CLOSED)
+--
+-- NOTE on that last line: `permission denied for function <name>` is ALSO the
+-- symptom of running STAGE 2 out of order. For record_attribution it is the
+-- intended end state; for the other six it means the proxy is still on the anon
+-- key. Check WHICH function before treating it as a fault.
 -- =============================================================================
 
 -- ── 1a. L-8 dedup index ──────────────────────────────────────────────────────
