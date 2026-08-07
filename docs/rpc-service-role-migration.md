@@ -47,6 +47,50 @@ greppable back to this document.
 
 ### Step 2
 
+> ## ⛔ CORRECTED 2026-08-07 — this step named the WRONG project
+>
+> The line below said the key comes from `veyrnox-prod` / `nszlbcmcysftwyudthjz`.
+> **That is the staging project.** It is named `veyrnox-prod`, and the Supabase
+> CLI reports it as `linked`, but `STAGING_HOSTS_ALLOW` names it as staging and
+> the shipped client never talks to it.
+>
+> **Production is `jwstkrtslotnjyerzzsi`** ("aljobson's Project"). Verified three
+> ways: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` both point there and
+> agree with each other; the deployed bundle references that host and no other;
+> and a live probe returns `200` plus a `P0003` from the telemetry allowlist.
+>
+> Following this step as originally written puts a **staging** service-role key
+> into production config. That was done on 2026-08-07 and produced
+> `401 Invalid API key` on every `/api/rpc/*` call until the key was deleted.
+>
+> **A prior, separate fault is also now confirmed.** With that key removed and a
+> fresh deploy (`801f424c` → `2c056b6f`), `/api/rpc/*` STILL returns
+> `401 Invalid API key`. So the Pages `SUPABASE_URL` and `SUPABASE_ANON_KEY` are
+> themselves a mismatched pair — that has been the real cause since the proxy
+> landed in `e99dd422` on 2026-08-04, and it is why nothing has written to
+> `events` since 2026-08-05.
+>
+> **Before any of the steps below, both must be reset from the SAME project:**
+>
+> ```bash
+> npx wrangler pages secret put SUPABASE_URL       --project-name veyrnox-prod
+> npx wrangler pages secret put SUPABASE_ANON_KEY  --project-name veyrnox-prod
+> ```
+>
+> `--project-name veyrnox-prod` here is the **Cloudflare Pages** project, which
+> is correctly named; only the Supabase project names are inverted. The values
+> must be `https://jwstkrtslotnjyerzzsi.supabase.co` and that project's anon key
+> (already public — it is the `VITE_SUPABASE_ANON_KEY` Actions variable).
+>
+> Redeploy, confirm `/api/rpc/get_referral_count` no longer 401s, and only then
+> continue. **Do not run the REVOKEs while the proxy is failing** — they would
+> remove the fallback and turn a misconfiguration into a hard outage.
+>
+> Everything below still applies, with `jwstkrtslotnjyerzzsi` substituted
+> throughout — unless the project-naming decision goes the other way and
+> production is migrated onto `nszlbcmcysftwyudthjz`, which is an open owner
+> decision at time of writing.
+
 The service-role key is in the Supabase dashboard under Project Settings → API
 (project `veyrnox-prod`, ref `nszlbcmcysftwyudthjz`).
 
