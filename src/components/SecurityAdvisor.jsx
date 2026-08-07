@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/drawer";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
 import { DEMO } from "@/api/demoClient";
+import { getOrCreateDeviceId } from "@/lib/deviceId";
 import {
   findLocalAnswer,
   buildAdvisorSystemContext,
@@ -33,8 +34,24 @@ import {
 const TIP_CONFIGURED = !!import.meta.env.VITE_TIP_BASE_URL;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Advisor calls the TIP Worker DIRECTLY, not via a Supabase proxy.
+//
+// The obvious symmetry with tip-screen would be a tip-chat edge function,
+// and we built one — but Cloudflare Bot Fight Mode fingerprints Supabase's
+// Deno IPs and returns a 403 challenge page ('Just a moment...') to any
+// server-to-server POST at .workers.dev. tip-screen slips through because
+// its HMAC-signed requests satisfy CF's API-traffic heuristic; tip-chat
+// carries no signature (Advisor is unauthenticated by design).
+//
+// The wallet, however, runs in a real browser (or Capacitor's WebView).
+// Cloudflare treats those requests as legitimate browser traffic — no
+// challenge. The Worker's CORS explicitly allows veyrnox.com,
+// veyrnox-prod.pages.dev, and capacitor://localhost.
+//
+// So: build a URL to the Worker directly. VITE_TIP_BASE_URL is the same
+// value tip-screen's proxy uses server-side.
 const TIP_CHAT_URL = (SUPABASE_URL && SUPABASE_ANON_KEY && TIP_CONFIGURED)
-  ? `${String(SUPABASE_URL).replace(/\/$/, '')}/functions/v1/tip-screen`
+  ? `${String(import.meta.env.VITE_TIP_BASE_URL).replace(/\/$/, '')}/api/v1/chat`
   : null;
 const SCREEN_MAP = {
   '/': 'dashboard',
@@ -409,11 +426,11 @@ export default function SecurityAdvisor({ walletChain }) {
     try {
       const resp = await fetch(TIP_CHAT_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+        // No apikey / Authorization — we hit the Worker directly, and its
+        // CORS allowlist doesn't include those headers, so the browser
+        // preflight would fail. The Advisor endpoint is protected by the
+        // per-device-ID cap on the Worker side, not by header auth.
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "chat",
           messages: [
@@ -440,6 +457,13 @@ ${buildAdvisorSystemContext(currentScreen)}`,
             current_screen: currentScreen,
             wallet_chain: walletChain,
           },
+          // Per-device Advisor cap on the TIP side (30 turns / 24h) is keyed
+          // on device_id. Without it every wallet installation shares the
+          // "anonymous" bucket globally — one user hits the cap for
+          // everyone. Consent has already been checked above, so it is safe
+          // to mint the persistent id here. Vault subscribers eventually
+          // prefix this with "vault:" to bypass the cap (see companion PR).
+          device_id: getOrCreateDeviceId() ?? undefined,
         }),
         signal: controller.signal,
       });
