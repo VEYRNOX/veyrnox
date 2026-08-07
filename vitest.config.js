@@ -74,7 +74,13 @@ export default defineConfig({
     // file". It runs as its own required CI step (`npm run check:source-scan`).
     // Any NEW test added under scripts/ needs the same treatment, or a port to
     // describe/it plus a deliberate widening of this glob.
-    include: ['src/**/*.test.{js,jsx}'],
+    // functions/** is the Cloudflare Pages Functions layer. It is included on
+    // purpose and is NOT the scripts/** case above: these are real describe/it
+    // suites. Until this line, nothing in CI executed those functions at all —
+    // vitest did not collect them and `vite` does not serve /api/* locally — and
+    // that blind spot is exactly how /api/data/klines sat at HTTP 502 in
+    // production on every request without anyone noticing.
+    include: ['src/**/*.test.{js,jsx}', 'functions/**/*.test.{js,jsx}'],
     globals: true, // Faster test execution
     // The at-rest Argon2id KDF was raised to 192 MiB / t=3 (SAST M3). The pure-JS
     // WASM build in the Node/jsdom test env runs that KDF much slower than the

@@ -11,7 +11,15 @@
 // endpoints because of it). OKX serves CF Workers directly, and its public
 // limit is 40 req/2s per IP against CoinGecko's ~5/min.
 
-const OKX_ENDPOINT = 'https://www.okx.com/api/v5/market/candles';
+// Multiple official OKX hosts, tried in order. Single-host was a real gap: the
+// whole reason klines.js scrambles across six Binance endpoints is that
+// exchanges block Cloudflare egress IPs, and www.okx.com is subject to exactly
+// the same risk. These are the documented public alternates for the same v5 API.
+const OKX_ENDPOINTS = [
+  'https://www.okx.com/api/v5/market/candles',
+  'https://aws.okx.com/api/v5/market/candles',
+  'https://app.okx.com/api/v5/market/candles',
+];
 
 // Fixed allowlist — never derived from the caller's holdings (I2).
 const ALLOWED_INST_IDS = new Set([
@@ -48,24 +56,41 @@ export async function onRequestGet(context) {
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
-  let res;
-  try {
-    res = await fetch(`${OKX_ENDPOINT}?instId=${instId}&bar=${bar}&limit=${limit}`);
-  } catch {
-    err(502, 'OKX network error');
-  }
-  if (!res.ok) err(502, `OKX returned ${res.status}`);
-
-  const body = await res.text();
+  const qs = `?instId=${instId}&bar=${bar}&limit=${limit}`;
   const ttl = bar === '1m' ? 15 : bar === '1H' ? 30 : 60;
 
-  const response = new Response(body, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': `public, max-age=${ttl}`,
-    },
-  });
+  let lastStatus = 0;
+  for (const base of OKX_ENDPOINTS) {
+    let res;
+    try {
+      res = await fetch(`${base}${qs}`);
+    } catch {
+      continue; // network error on this host — try the next
+    }
+    if (!res.ok) { lastStatus = res.status; continue; }
 
-  context.waitUntil(cache.put(cacheKey, response.clone()));
-  return response;
+    const body = await res.text();
+    // A 200 carrying a non-zero OKX code is an application-level failure (bad
+    // instId, rate limit). Treat it as this host failing rather than caching it
+    // — caching an error for 60s would turn a blip into a visible outage.
+    let parsed;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      lastStatus = 502;
+      continue;
+    }
+    if (parsed?.code !== '0') { lastStatus = 502; continue; }
+
+    const response = new Response(body, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': `public, max-age=${ttl}`,
+      },
+    });
+    context.waitUntil(cache.put(cacheKey, response.clone()));
+    return response;
+  }
+
+  err(502, `All OKX endpoints returned ${lastStatus || 'network error'}`);
 }
