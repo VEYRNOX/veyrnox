@@ -37,7 +37,43 @@ export async function onRequestPost(context) {
   if (!ALLOWED_RPCS.has(fn)) err(403, 'RPC not allowed');
 
   const supabaseUrl = env.SUPABASE_URL;
-  const supabaseKey = env.SUPABASE_ANON_KEY;
+  // Prefer the service-role key, fall back to anon.
+  //
+  // WHY: the 2026-07-28 audit's H-3 REVOKE batch (sql/api-security-hardening.sql)
+  // has been un-runnable because six of its functions "still have live anon
+  // callers". Those callers are no longer in the client — every RPC now routes
+  // src/api/edgeApi.js `rpc()` -> POST /api/rpc/<fn> -> here, and nothing under
+  // src/ reaches PostgREST directly. THIS FILE is the last anon caller, so
+  // switching it is the whole of the "matching client refactor" the SQL waits on.
+  //
+  // With this deployed and SUPABASE_SERVICE_ROLE_KEY set, the REVOKEs can run:
+  // anon loses direct PostgREST access to those functions entirely, while this
+  // allowlisted proxy keeps working.
+  //
+  // ORDERING IS LOAD-BEARING — do not run the REVOKEs first:
+  //   1. merge this,
+  //   2. set SUPABASE_SERVICE_ROLE_KEY on the Pages project,
+  //   3. verify it is set, THEN run the SQL.
+  // The anon fallback exists so steps 1 and 2 are independently safe: until the
+  // secret is set this behaves exactly as before. It is NOT a licence to skip the
+  // ordering — run the SQL with the secret unset and every referral and telemetry
+  // write starts failing.
+  //
+  // ⚠️ service_role BYPASSES RLS. ALLOWED_RPCS is then the only boundary between
+  // a caller and these functions, which is acceptable only because (a) it is a
+  // closed allowlist checked before any use, (b) it reaches ONLY
+  // /rest/v1/rpc/<name>, never a table, and (c) each function does its own
+  // validation and rate limiting. NEVER add a table-proxy route, a passthrough
+  // path segment, or a wildcard to a file holding this key.
+  //
+  // NOT closed by this change: `record_attribution` stays in the allowlist, so
+  // revenue attribution remains client-INITIATED — just no longer anon-callable
+  // via PostgREST. H-3's stated intent is that attribution be server-authored
+  // (RC webhook, sql/referral-rc-webhook.sql — still a skeleton). Removing it
+  // here before that webhook exists would silently stop attribution being
+  // recorded at all, so it is deliberately left. H-3 must not be described as
+  // fully closed on the strength of this commit.
+  const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) err(503, 'Database not configured');
 
   let body;
