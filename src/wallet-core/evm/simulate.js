@@ -389,13 +389,45 @@ export async function simulateEvmTransaction({
   // tx, or inject an inflammatory revertReason on a legitimate one. The risk is
   // acceptable because Veyrnox supports self-hostable RPCs (I5 untrusted-backend
   // design), but callers must treat willRevert as advisory, not authoritative.
+  //
+  // The rejection is THREE-valued, not two. `provider.call()` rejects both when
+  // the node ran the call and it REVERTED and when we never got an answer, and
+  // those mean opposite things to someone about to sign. Collapsing them has
+  // gone wrong in both directions: originally every rejection became
+  // willRevert (an RPC timeout reported as a confident "will FAIL"), then the
+  // fix for that routed every rejection to simulationFailed, which left
+  // willRevert with no assignment anywhere — permanently false, its branch
+  // below unreachable, and a genuine revert demoted from `high` to `info`.
+  // `code === 'CALL_EXCEPTION'` is NOT the discriminator, though it looks like
+  // one: ethers raises CALL_EXCEPTION for an unreachable RPC too, with
+  // shortMessage "missing revert data" and `data: null` (verified against a
+  // dead endpoint — it is what makes the network-free test in simulate.test.js
+  // fail if you gate on the code alone). What separates the two is whether the
+  // node ANSWERED: a real revert carries revert data (possibly bare '0x') and
+  // often a decoded reason; no answer leaves `data` null.
+  //
+  // Ambiguity resolves toward `simulationFailed`, never toward willRevert —
+  // claiming no verdict when we had one is a smaller harm than inventing a
+  // verdict we never got. Pinned by simulate-revert.test.js.
   let willRevert = false;
   let revertReason = null;
   let simulationFailed = false;
+  const callErr = callRes.status === 'rejected' ? callRes.reason : null;
+  const nodeReturnedRevert = callErr?.code === 'CALL_EXCEPTION'
+    && (callErr.data != null || (typeof callErr.reason === 'string' && callErr.reason.length > 0));
   if (callRes.status === 'fulfilled') {
     queries.push('eth_call');
+  } else if (nodeReturnedRevert) {
+    // The dry-run COMPLETED and the transaction reverts. That is a simulation
+    // result, not a simulation failure — `simulated` stays true.
+    queries.push('eth_call');
+    willRevert = true;
+    revertReason = extractRevertReason(callRes.reason);
   } else {
-    // eth_call timed out or errored — simulation did not complete. I4: fail honest.
+    // Timed out, network error, or a node that would not answer — the dry-run
+    // did not complete. I4: report no outcome rather than inventing one. Note
+    // eth_call is deliberately NOT pushed to `queries`: the source disclosure
+    // lists what we actually managed to read.
     simulationFailed = true;
     revertReason = extractRevertReason(callRes.reason);
   }
@@ -437,7 +469,13 @@ export async function simulateEvmTransaction({
 
   return {
     chain: 'evm',
-    simulated: !simulationFailed, // eth_call completed successfully
+    simulated: !simulationFailed, // eth_call completed (a revert IS a completed dry-run)
+    // A check we INTENDED to run did not run. Distinct from `simulated: false`,
+    // which BTC and SOL return by design (decode-only, nothing to dry-run) — so
+    // a consumer must not read `!simulated` as "degraded" or it would suppress
+    // the no-known-risks summary on every BTC/SOL preview. Consumed by
+    // TransactionPreview to keep that summary off a transaction we never checked.
+    degraded: simulationFailed,
     recipientCode,    // raw eth_getCode hex of `to` (null if unfetchable) — risk S7 input
     willRevert,
     revertReason,
