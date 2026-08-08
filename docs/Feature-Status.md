@@ -1499,8 +1499,10 @@ production Supabase. Client code: `trackEvent.js` + `referralApi.js` rewritten t
 BUILT, INTERNAL — not independently audited.
 
 All four merged PRs: BUILT / unit-tested only, INTERNAL — not device-verified, not
-independently audited, no on-chain txid. PR #1276 is additionally NOT YET MERGED — do not
-report H-1 as fixed until it lands on `main`.
+independently audited, no on-chain txid. H-1 fix (PR #1276) merged on 2026-07-20
+(commit `e907d648`) — this line previously said "NOT YET MERGED" and was left uncorrected
+after the merge; CLAUDE.md line 57 has recorded it correctly since. Still BUILT /
+INTERNAL / not device-verified.
 
 ## 2026-07-28 First-run tour RESTORED — ECC F-P3-3 re-remediated
 
