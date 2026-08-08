@@ -55,12 +55,29 @@ export default defineConfig({
     // — that is the module's documented contract, not a special test path. CI
     // was never affected (no .env.local there), so this only ever hit
     // developers running tests locally, silently.
+    // VITE_EDGE_BASE is here for a third reason again: not a dev-only flag and
+    // not a production credential, but a var this repo sets at CI WORKFLOW
+    // level. `src/api/edgeApi.js` reads it once at module load, and
+    // edgeApi.nativeBase.test.js asserts the two behaviours that only exist
+    // when it is UNSET — a relative /api/* on web, and the EDGE_BASE_UNSET
+    // throw on native. Those tests were passing on an accident: the var
+    // happened to be absent from CI. The moment ci.yml set it (this PR, so the
+    // shipped AAB stops resolving /api/* against the local bundle) all three
+    // went red — the suite was reading ambient CI config as if it were a
+    // fixture.
+    //
+    // Blanking it makes the default deterministic; the tests that WANT a base
+    // stub one explicitly with vi.stubEnv, which is the correct direction of
+    // control. Note VITE_TIP_BASE_URL directly above is the same story, so this
+    // is now the general rule: ANY VITE_ var added to a workflow-level `env:`
+    // block must be blanked here, or it silently changes what the suite tests.
     env: {
       VITE_FORCE_TIER: '',
       VITE_BYPASS_RASP: '',
       VITE_SUPABASE_URL: '',
       VITE_SUPABASE_ANON_KEY: '',
       VITE_TIP_BASE_URL: '',
+      VITE_EDGE_BASE: '',
     },
     setupFiles: ['fake-indexeddb/auto', './vitest.setup.js'],
     // Scoped to app source on purpose. The other suites in this repo have their
