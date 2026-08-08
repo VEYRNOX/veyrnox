@@ -38,6 +38,19 @@ function err(status, message) {
   throw e;
 }
 
+/**
+ * Bound an OKX `code` before it can reach a client-facing error message.
+ *
+ * OKX codes are short numeric strings ('0', '50011'). The field is upstream
+ * data, so its SHAPE is not ours to assume — a code is only pasted into the
+ * response when it looks like one. Anything else becomes a fixed token rather
+ * than an unbounded passthrough into our error envelope.
+ */
+function safeOkxCode(code) {
+  const s = String(code ?? '');
+  return /^[0-9]{1,8}$/.test(s) ? s : 'unrecognised';
+}
+
 export async function onRequestGet(context) {
   const { request } = context;
   const url = new URL(request.url);
@@ -59,15 +72,47 @@ export async function onRequestGet(context) {
   const qs = `?instId=${instId}&bar=${bar}&limit=${limit}`;
   const ttl = bar === '1m' ? 15 : bar === '1H' ? 30 : 60;
 
-  let lastStatus = 0;
+  // The failure reason is recorded in TWO forms, deliberately:
+  //
+  //   `lastDetail` — bounded and client-safe, ends up in the 502 message.
+  //   console.error — everything, including upstream prose, for the Workers
+  //                   tail log where operators can read it and callers cannot.
+  //
+  // WHY. This used to be a single `lastStatus`, and the two application-level
+  // branches below both assigned the literal 502 — so an OKX rate limit
+  // (HTTP 200 + code 50011) and a malformed body collapsed into the same
+  // `All OKX endpoints returned 502`, with OKX's own code discarded. That cost
+  // two undiagnosable CI failures: the `deploy` job's edge check went red on
+  // 52e3e05f (2026-08-07) and again on 35d85509 (2026-08-08), each time failing
+  // `staging-gate` — a REQUIRED merge check — and each time the endpoint served
+  // 200 again minutes later, so nothing was left to inspect. OKX allows
+  // 40 req/2s per IP and Cloudflare Workers share egress addresses, which makes
+  // a rate limit the leading hypothesis; it stayed a hypothesis precisely
+  // because the code was thrown away.
+  //
+  // The client gets the CODE and not the `msg`: a code is a bounded token
+  // (see safeOkxCode), upstream prose is not, and echoing it verbatim would
+  // make this error envelope a passthrough for third-party text — the same
+  // response-hygiene rule functions/api/buy/session.js `upstreamErr()` applies
+  // to Transak.
+  let lastDetail = 'network error';
+
   for (const base of OKX_ENDPOINTS) {
+    const host = new URL(base).host;
     let res;
     try {
       res = await fetch(`${base}${qs}`);
-    } catch {
-      continue; // network error on this host — try the next
+    } catch (e) {
+      // Network error on this host — try the next.
+      lastDetail = 'network error';
+      console.error(`[okx-candles] ${host} network error: ${String(e?.message ?? e).slice(0, 200)}`);
+      continue;
     }
-    if (!res.ok) { lastStatus = res.status; continue; }
+    if (!res.ok) {
+      lastDetail = `HTTP ${res.status}`;
+      console.error(`[okx-candles] ${host} ${lastDetail}`);
+      continue;
+    }
 
     const body = await res.text();
     // A 200 carrying a non-zero OKX code is an application-level failure (bad
@@ -77,10 +122,18 @@ export async function onRequestGet(context) {
     try {
       parsed = JSON.parse(body);
     } catch {
-      lastStatus = 502;
+      lastDetail = 'unparseable response';
+      console.error(`[okx-candles] ${host} unparseable response: ${body.slice(0, 200)}`);
       continue;
     }
-    if (parsed?.code !== '0') { lastStatus = 502; continue; }
+    if (parsed?.code !== '0') {
+      lastDetail = `OKX code ${safeOkxCode(parsed?.code)}`;
+      console.error(
+        `[okx-candles] ${host} OKX code=${String(parsed?.code ?? '').slice(0, 32)} `
+        + `msg=${String(parsed?.msg ?? '').slice(0, 200)}`,
+      );
+      continue;
+    }
 
     const response = new Response(body, {
       headers: {
@@ -92,5 +145,5 @@ export async function onRequestGet(context) {
     return response;
   }
 
-  err(502, `All OKX endpoints returned ${lastStatus || 'network error'}`);
+  err(502, `All OKX endpoints failed (last: ${lastDetail})`);
 }
