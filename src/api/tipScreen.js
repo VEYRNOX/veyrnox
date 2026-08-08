@@ -91,13 +91,23 @@ export async function screenTransaction(params) {
       ? result.risk_data.threat_signals
       : [];
 
+    // TIP now returns a per-source trace (sources_consulted[]) so the UI can
+    // show WHICH threat sources answered vs. errored/skipped. Absence of a
+    // source ≠ clean — see I4.
+    const sourcesConsulted = Array.isArray(result.risk_data?.sources_consulted)
+      ? result.risk_data.sources_consulted.filter(isWellFormedSource)
+      : [];
+
     return {
       verdict: result.verdict,
       level: verdictToRiskLevel(result.verdict),
       risks: signalsToRiskRows(signals),
       signals,
-      // Strict boolean: a truthy non-boolean must not become a sanctions hit,
-      // and a non-boolean must never be carried through as-is.
+      sourcesConsulted,
+      // The engine's own "we couldn't screen this at all" message — carried
+      // through verbatim so the UI can reason without inventing wording.
+      verdictReason: typeof result.verdict_reason === 'string' ? result.verdict_reason : null,
+      // Strict boolean: a truthy non-boolean must not become a sanctions hit.
       sanctions: result.risk_data?.sanctions_hit === true,
       raw: result,
     };
@@ -110,7 +120,22 @@ export async function screenTransaction(params) {
 
 // The only verdicts the client will act on. Anything else — absent, renamed,
 // a future value this build predates, or attacker-supplied — is not trusted.
-const KNOWN_VERDICTS = Object.freeze(['allow', 'warn', 'block']);
+// 'unknown' is the honest default when no threat source could screen the
+// address (all skipped / errored). It renders as a CAUTION card telling the
+// user to verify independently — never a green CLEAR tick (I4).
+const KNOWN_VERDICTS = Object.freeze(['allow', 'warn', 'block', 'unknown']);
+
+// SourceResult shape from TIP — one row per external source consulted. Kept
+// strict because these render directly in the Advisor UI without further
+// sanitisation.
+const KNOWN_SOURCE_STATUSES = Object.freeze(['hit', 'clean', 'error', 'skipped']);
+function isWellFormedSource(row) {
+  if (!row || typeof row !== 'object' || Array.isArray(row)) return false;
+  if (typeof row.source !== 'string' || row.source.length === 0) return false;
+  if (!KNOWN_SOURCE_STATUSES.includes(row.status)) return false;
+  if (typeof row.latency_ms !== 'number') return false;
+  return true;
+}
 
 function isWellFormedScreenResult(result) {
   if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
