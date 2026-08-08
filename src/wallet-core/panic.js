@@ -118,6 +118,12 @@ const APPDATA_DB_NAME = 'veyrnox-appdata';
 // nothing functionally: screening still works from the in-bundle seed list.
 const THREATINTEL_DB_NAME = 'veyrnox-threat-intel';
 const THREATINTEL_STORE = 'threats';
+// Local IOC cache (src/lib/localIocCache.js) — signed manifest snapshot from
+// TIP with lists of sanctioned/phishing/hack addresses. Wiped for the same
+// reasons as the legacy threat-intel DB: the DB's PRESENCE is a tell that
+// this device has done screening, and its ROWS name addresses (public but
+// still linkable to on-device wallet history).
+const IOC_CACHE_DB_NAME = 'veyrnox-ioc-cache';
 // Neutral, non-incriminating key (follows 'primary'/'secondary'); a forensic dump
 // sees one more vault-shaped blob, not a key literally named "panic". The marker
 // is byte-shaped like every other vault blob, so it does not stand out.
@@ -781,6 +787,39 @@ async function eraseThreatIntelDatabase() {
   });
 }
 
+// Best-effort erase of the local IOC cache database. The database exists
+// only once refreshManifestIfDue() has run at least once, so on a fresh
+// install this is a no-op — the delete request either succeeds instantly
+// or errors on "no such database", both of which we accept.
+async function eraseIocCacheDatabase() {
+  // Route through the module's clear function to also drop the in-memory
+  // index. Failure is swallowed — the deleteDatabase below is the
+  // authoritative wipe.
+  try {
+    const mod = await import('../lib/localIocCache.js');
+    if (typeof mod.clearLocalIocCache === 'function') {
+      await mod.clearLocalIocCache();
+    }
+  } catch {
+    // Best-effort; fall through.
+  }
+
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    let req;
+    try {
+      req = indexedDB.deleteDatabase(IOC_CACHE_DB_NAME);
+    } catch {
+      finish();
+      return;
+    }
+    req.onsuccess = finish;
+    req.onerror = finish;
+    req.onblocked = finish;
+  });
+}
+
 /**
  * NON-DESTRUCTIVE inspection of what local key material currently exists. Used
  * BEFORE a wipe (to show what is there) and AFTER (to prove nothing recoverable
@@ -847,6 +886,7 @@ export async function panicWipeLocal() {
   await deleteVaultDatabase();
   await deleteAppDataDatabase();
   await eraseThreatIntelDatabase();
+  await eraseIocCacheDatabase();
   clearLocalAddressResidue();
   clearSessionResidue();  // C-1: sessionStorage tells (More-drawer recents)
   clearBrowserCookies(); // PW-02: expire known browser cookies (sidebar_state)

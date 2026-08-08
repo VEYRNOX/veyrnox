@@ -577,6 +577,28 @@ export function WalletProvider({ children }) {
     }
   }, [isUnlocked, lock]);
 
+  // On unlock, background-refresh the local IOC cache. Best-effort, never
+  // blocks unlock UI. Deniability check is inside refreshManifestIfDue via
+  // the caller-supplied predicate below — we only fire the network fetch
+  // from a real (non-decoy, non-hidden) session so I3 stays intact.
+  //
+  // The Advisor's screenTransaction still checks isDeniabilityOrDemoActive
+  // at call time; this effect just makes sure the local cache is fresh
+  // for legitimate sessions so subsequent decoy/duress screens can hit it.
+  useEffect(() => {
+    if (!isUnlocked) return;
+    if (decoyRef.current || hiddenRef.current) return;
+    const tipBaseUrl = import.meta.env.VITE_TIP_BASE_URL;
+    if (!tipBaseUrl) return;
+    // Fire-and-forget. Import dynamically so the ~4KB module + Web-Crypto
+    // path doesn't sit in the login-critical bundle.
+    import('@/lib/localIocCache.js')
+      .then(({ refreshManifestIfDue }) => refreshManifestIfDue(tipBaseUrl))
+      .catch((err) => {
+        if (import.meta.env.DEV) console.error('[IOC cache] refresh trigger failed:', err);
+      });
+  }, [isUnlocked]);
+
   // touch() = "user did something, reset the idle countdown". Kept as the name
   // the wallet operations already call (create/import/unlock/withPrivateKey).
   const touch = useCallback(() => { armTimer(); }, [armTimer]);
