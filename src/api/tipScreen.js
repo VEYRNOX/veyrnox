@@ -9,6 +9,7 @@
 
 import { createTipClient, verdictToRiskLevel, signalsToRiskRows } from './tipClient.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
+import { hydrateFromCache, lookupLocal } from '@/lib/localIocCache.js';
 
 let _client = null;
 
@@ -58,7 +59,22 @@ function getClient() {
  *   null when screening is unavailable or suppressed (deniability/demo/unconfigured).
  */
 export async function screenTransaction(params) {
-  if (isDeniabilityOrDemoActive()) return null;
+  const inDeniability = isDeniabilityOrDemoActive();
+
+  // Local IOC cache — checked FIRST (before any network egress). If we
+  // have a signed manifest cached, an address hit here shortcuts the
+  // network call entirely. In deniability mode, this is the ONLY path we
+  // take — I3 forbids network egress but reading local IndexedDB does
+  // not leak. Previously deniability mode meant zero screening; now known-
+  // bad addresses still get flagged.
+  const localHit = await tryLocalScreen(params, inDeniability);
+  if (localHit) return localHit;
+
+  // Deniability mode: no network fallback. Local-only. Absent local
+  // match means "we couldn't screen this at all" — return null so the
+  // caller's UI stays consistent with the pre-cache behaviour (Advisor
+  // falls through to its local KB response path).
+  if (inDeniability) return null;
 
   const client = getClient();
   if (!client) return null;
@@ -162,6 +178,69 @@ function unavailableResult() {
     }],
     signals: [],
     sanctions: false,
+    raw: null,
+  };
+}
+
+// Local-cache screening. Returns a full screening result object matching
+// the network path's shape when the cached manifest has a hit for the
+// address; returns null when the cache is empty, not hydrated, or the
+// address isn't present.
+//
+// Called ahead of the network path in normal mode (fast-path shortcut) and
+// as the ONLY path in deniability mode (I3 preserves zero network egress
+// while still delivering useful screening for known-bad addresses).
+async function tryLocalScreen(params, inDeniability) {
+  // Hydrate on first call. In deniability mode this MUST be a local-only
+  // op — hydrateFromCache reads IndexedDB, never the network.
+  try {
+    await hydrateFromCache();
+  } catch {
+    return null;
+  }
+  const entry = lookupLocal(params.to);
+  if (!entry) return null;
+
+  // Category → verdict + reason string. Matches the server-side
+  // composeVerdict priority for the same categories: sanctions and hack
+  // are hard-block; phishing is high-confidence block. We deliberately
+  // don't emit a "warn" from local cache — the server-side aggregator
+  // owns nuance decisions; we're just replaying its own conclusions.
+  let reason;
+  if (entry.cat === 'sanctions') {
+    reason = `OFAC/sanctions match on list: ${entry.reason ?? 'OFAC-SDN'}`;
+  } else if (entry.cat === 'hack') {
+    reason = `Reported as ${entry.reason ?? 'hack participant'}`;
+  } else {
+    reason = `Reported by ${entry.src ?? 'phishing feed'}`;
+  }
+
+  // Single-source trace so the UI's Sources-consulted panel still renders.
+  // The `[local]` prefix makes it visually distinct from the network
+  // sources — the user can see the verdict came from the cached manifest,
+  // not a live query. Especially important in deniability mode where the
+  // network sources would otherwise be conspicuously absent.
+  const sourcesConsulted = [{
+    source: `${entry.src ?? 'local-cache'} [local]`,
+    status: 'hit',
+    latency_ms: 0,
+    detail: reason,
+  }];
+
+  return {
+    verdict: 'block',
+    level: verdictToRiskLevel('block'),
+    risks: [{
+      level: 'high',
+      title: reason,
+      detail: inDeniability
+        ? 'From local threat cache (offline / deniability mode).'
+        : 'From local threat cache.',
+    }],
+    signals: [],
+    sourcesConsulted,
+    verdictReason: reason,
+    sanctions: entry.cat === 'sanctions',
     raw: null,
   };
 }
