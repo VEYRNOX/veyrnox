@@ -155,3 +155,37 @@ describe('tip-chat does not hand upstream diagnostics to the caller', () => {
     expect(chatCode).toMatch(/status: 402/);
   });
 });
+
+describe('tip-chat header describes the wiring that actually exists', () => {
+  // #1614 shipped this file with "STATUS: BUILT, NEEDS DEPLOY. Companion PR to
+  // SecurityAdvisor.jsx points the wallet at this function instead of
+  // tip-screen." The same PR pointed the wallet at the TIP Worker DIRECTLY
+  // instead, because Cloudflare Bot Fight Mode 403s Supabase's Deno egress. So
+  // the header asserted a wiring that had never existed, and #1619 later
+  // confirmed in writing that nothing under src/ calls this function.
+  //
+  // Asserted on the RAW source, not the comment-stripped copy the tests above
+  // use: the claim under test IS a comment, so stripping comments would make
+  // this vacuous.
+  const advisorSrc = readFileSync(
+    join(root, 'src', 'components', 'SecurityAdvisor.jsx'), 'utf8');
+
+  it('read the advisor source', () => {
+    expect(advisorSrc.length).toBeGreaterThan(1000);
+  });
+
+  it('the wallet really does bypass this function', () => {
+    // The fact the header has to reflect. If this ever flips, the header must
+    // change with it — which is the whole point of pairing the two assertions.
+    expect(advisorSrc).toMatch(/VITE_TIP_BASE_URL/);
+    expect(advisorSrc).not.toMatch(/functions\/v1\/tip-chat/);
+  });
+
+  it('the header states it has no caller', () => {
+    // A marker rather than a prose match: prose gets reworded, and a negative
+    // match on the old sentence would be satisfied by deleting the header
+    // entirely. Re-wiring the wallet to this function means removing this
+    // marker, which is a deliberate act rather than an oversight.
+    expect(chatSrc).toMatch(/NOT WIRED/);
+  });
+});

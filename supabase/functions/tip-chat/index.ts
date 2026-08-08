@@ -13,7 +13,12 @@
 // which is the ADDRESS SCREENING proxy — different shape, different response.
 // Every Advisor turn was hitting that endpoint and getting rejected with
 // "Missing required fields: request_id, chain, action_type, from_address,
-// to_address". This function is the missing counterpart to `tip-screen`.
+// to_address". This function was written as the missing counterpart to
+// `tip-screen`.
+//
+// That is why it was WRITTEN. It is not how the Advisor works — the proxy
+// approach was abandoned in the same PR that built it. See the STATUS block at
+// the bottom of this header before assuming anything here is on a live path.
 //
 // ─── AUTH POSTURE, HONESTLY ─────────────────────────────────────────────────
 //
@@ -39,8 +44,34 @@
 //   TIP_BASE_URL     — same value tip-screen uses (e.g. https://veyrnox-tip.al-jobson.workers.dev)
 //   ALLOWED_ORIGINS  — optional, comma-separated extra browser origins
 //
-// STATUS: BUILT, NEEDS DEPLOY. Companion PR to SecurityAdvisor.jsx points
-// the wallet at this function instead of tip-screen.
+// ─── STATUS: BUILT, NOT WIRED, NOT DEPLOYED ─────────────────────────────────
+//
+// NOTHING CALLS THIS FUNCTION. `git grep tip-chat -- src` is not empty, but
+// every hit is a comment explaining the bypass or a test asserting it — there
+// is no fetch, no import, no route. Check for a CALL, not a mention.
+//
+// This header used to read "Companion PR to SecurityAdvisor.jsx points the
+// wallet at this function instead of tip-screen." That was never true. The same
+// PR that wrote it (#1614) pointed the wallet at the TIP Worker DIRECTLY —
+// `${VITE_TIP_BASE_URL}/api/v1/chat` — because Cloudflare Bot Fight Mode
+// fingerprints Supabase's Deno egress IPs and answers a server-to-server POST
+// to .workers.dev with a 403 challenge page. tip-screen slips through only
+// because its requests are HMAC-signed; this proxy is unsigned by design, so it
+// cannot. See the note in SecurityAdvisor.jsx above TIP_CHAT_URL.
+//
+// #1619 confirmed the same thing from the other side while removing
+// tip-screen's dead chat route: "nothing under src/ has called it since".
+//
+// KEPT ANYWAY, deliberately: this is where a server-side chat proxy belongs if
+// one is ever wanted again, and being unsigned it cannot launder Bot Fight Mode
+// the way tip-screen's removed route did. It carries real request validation
+// (#1619) and no upstream-diagnostic leak (#1628), so it is safe to leave in
+// the tree — but do not mistake it for something on the request path.
+//
+// Re-wiring it means deleting the "NOT WIRED" marker above, which
+// src/api/__tests__/tipEdge.chatRoute.test.js asserts is present while
+// SecurityAdvisor.jsx still bypasses this function. That pairing is what stops
+// this header drifting from reality a second time.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
