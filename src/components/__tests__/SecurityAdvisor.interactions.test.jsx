@@ -154,7 +154,10 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
       await waitFor(() => {
         const verdict = screen.getByTestId('tip-screening-verdict');
         expect(verdict.textContent).toContain('CLEAR');
-        expect(verdict.textContent).toContain('No threats, sanctions hits, or risk signals found');
+        // Copy updated as part of multi-source aggregator (PR #1615): a green
+        // CLEAR badge now reads as "no hits from consulted sources" — an honest
+        // statement about which sources answered, not a claim of absolute safety.
+        expect(verdict.textContent).toContain('No hits from consulted sources');
       });
     });
   });
