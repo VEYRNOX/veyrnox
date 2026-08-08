@@ -334,6 +334,28 @@ export default function SecurityAdvisor({ walletChain }) {
 
   const hidden = isDeniabilityOrDemoActive() || DEMO;
 
+  // I3 — kill any in-flight turn the moment the session becomes deniable.
+  //
+  // `if (hidden) return null` at the bottom of this component stops a
+  // deniability session STARTING a request, and that is where I3 was assumed
+  // to end. It is not: rendering null does not unmount the component, so
+  // effects stay alive AND, more importantly, an already-open connection keeps
+  // going. #1614 made the chat a direct SSE stream to the TIP Worker, so a
+  // single turn can stay open for many seconds.
+  //
+  // abort() is otherwise only reachable from handleClose — the user manually
+  // closing the drawer — which is exactly the thing that does not happen when
+  // duress or panic is triggered. Mid-action is when someone flips modes, so
+  // the in-flight case is the one that matters, not an edge.
+  useEffect(() => {
+    if (hidden) abortRef.current?.abort();
+  }, [hidden]);
+
+  // Plain unmount (navigating away) should not leave a stream running either.
+  // Separate from the guard above because rendering null does NOT unmount, so
+  // this one would never fire for the deniability case.
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
+
   // M-5 — remote answers require an explicit, separate grant. Seeded from the
   // stored answer at mount so a device that has already decided is never
   // re-asked (the mistake PR #1409/#1410 had to fix for telemetry consent).
