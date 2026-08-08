@@ -63,9 +63,52 @@ function isKnownTokenAddress(networkKey, addr) {
   return Object.values(t).some((x) => String(x.address).toLowerCase() === a);
 }
 
-// Pull a human-ish revert reason out of an ethers error without throwing.
+// Upper bound on revert-reason text we will render. A real Error(string)
+// revert is a short developer message ("ERC20: transfer amount exceeds
+// balance"); anything longer is not more informative, it is just more surface.
+const MAX_REVERT_REASON = 140;
+
+/**
+ * Bound and flatten a revert reason before it reaches the signing screen.
+ *
+ * THE REASON IS ATTACKER-CONTROLLED. It arrives in the RPC's response, and the
+ * threat is named at the top of this file: a hostile or compromised endpoint
+ * "can inject an inflammatory revertReason on a legitimate [transaction]".
+ * That text is interpolated into `level: 'high'` copy and rendered by
+ * TransactionPreview on the screen where someone decides whether to sign —
+ * so it is untrusted input rendered as our own voice.
+ *
+ * React escapes markup, so this is not XSS. It is CONTENT injection, and the
+ * two things that make it convincing are LENGTH (room for a plausible
+ * instruction) and STRUCTURE (newlines that fake a separate paragraph, ANSI or
+ * control characters that alter how it renders). Both are removed here; the
+ * short factual case a reader actually benefits from survives untouched.
+ */
+function sanitiseRevertReason(raw) {
+  if (typeof raw !== 'string') return null;
+  // Control chars first (they include \n and \r), then collapse runs of
+  // whitespace, so multi-line prose becomes one line rather than one word.
+  const flat = raw.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!flat) return null;
+  return flat.length > MAX_REVERT_REASON
+    ? `${flat.slice(0, MAX_REVERT_REASON - 1)}…`
+    : flat;
+}
+
+/**
+ * Pull a human-ish revert reason out of an ethers error without throwing.
+ *
+ * DECODED SOURCES ONLY. `e.reason` is the decoded Error(string) payload and
+ * `e.shortMessage` is ethers' own summary of it. `e.info.error.message` and
+ * `e.message` were also consulted here, and they are the JSON-RPC TRANSPORT
+ * talking, not the contract — they can carry the endpoint URL (including a
+ * keyed RPC path) and internal payload detail straight into user-facing copy,
+ * which CLAUDE.md A10 forbids. Dropping them costs nothing a user could act
+ * on: when neither decoded field is present we render the revert with no
+ * reason, which is honest rather than chatty (I4).
+ */
 function extractRevertReason(e) {
-  return e?.reason || e?.shortMessage || e?.info?.error?.message || e?.message || null;
+  return sanitiseRevertReason(e?.reason ?? e?.shortMessage ?? null);
 }
 
 // Large-outflow heuristic. Returns a risk object or null.
