@@ -254,14 +254,45 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
 - Data Safety: all 9 owner-decisions resolved (`docs/play-launch/data-safety-form.md`).
 - **Apple account is now an Organization (Veyrnox LTD, Team R54268MWFV)** — Guideline
   3.1.5(b) satisfied. First App Store submission still to do.
-- **iOS build 1.0 (2) uploaded 2026-07-23** (source: PR #1329). Contains the iOS
-  promotional-offer path, the offer-price fix, and the inlined privacy policy.
+- **iOS build history — corrected 2026-08-08 by querying ASC directly.** This file
+  previously said "1.0 (2) uploaded 2026-07-23" and stopped there; the actual state
+  is longer and the 1.0 train is now retired.
+  - 1.0 (1) uploaded 2026-07-21 — READY_FOR_BETA_TESTING
+  - 1.0 (2) uploaded 2026-07-23 (PR #1329, promotional-offer path + offer-price fix +
+    inlined privacy policy) — sat at MISSING_EXPORT_COMPLIANCE, which is why (3) and
+    (4) followed on the same day
+  - 1.0 (3) uploaded 2026-07-23 — READY_FOR_BETA_TESTING
+  - 1.0 (4) uploaded 2026-07-23 — READY_FOR_BETA_TESTING
+  - **1.0 train then closed by ASC** for new build submissions (error 90186), so no
+    further `1.0 (n)` upload is possible regardless of build number
+  - **1.0.1 (1) uploaded 2026-08-08** (PR #1639) — processing VALID,
+    READY_FOR_BETA_TESTING internally, READY_FOR_BETA_SUBMISSION externally. New
+    train opened. INTERNAL evidence only; no real-device RASP verification yet.
 - **CLI upload works — Xcode GUI is NOT required.** Earlier notes said the
   `xcodebuild` CLI failed on signing auth; that applied to device *runs*. With an
-  App Store Connect **API key** the whole chain runs unattended:
-  `archive` → `-exportArchive` (`destination: upload`) → delivered. Key lives at
+  App Store Connect API key the whole chain runs unattended:
+  `archive` → `-exportArchive` → `xcrun altool --upload-app`. Key lives at
   `~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`, Issuer ID
-  `2d4c5bd7-1de3-4953-b203-a92e788c2d7c`. Team Key, App Manager role is sufficient.
+  `2d4c5bd7-1de3-4953-b203-a92e788c2d7c`.
+- **App Manager role is NOT sufficient for the "cloud signing" path — corrected
+  2026-08-08.** This file used to claim it was; the 2026-08-08 upload session proved
+  otherwise. Concretely: an App Manager key CAN mint provisioning profiles and
+  certificates via direct API calls (`POST /v1/certificates`, `POST /v1/profiles`),
+  but xcodebuild's `-exportArchive` "cloud signing" mode (triggered by passing
+  `-authenticationKey*` args together with `signingStyle: automatic`) tries to have
+  Apple mint the Distribution CERT server-side, and that step requires **Admin**.
+  Symptom is `Cloud signing permission error / No signing certificate "iOS
+  Distribution" found` even when a valid cert already exists in the keychain.
+  Two working paths:
+  - **Admin API key** → single-step `exportArchive` with `destination: upload`, done.
+  - **App Manager key (current)** → provision cert + profile out-of-band via API
+    (`/tmp/veyrnox-dist/create-cert.mjs` and `create-profile.mjs` in the 2026-08-08
+    session; not committed), set `ExportOptions.plist` to `signingStyle: manual`
+    + `destination: export` naming the profile explicitly, then upload the resulting
+    `.ipa` with `xcrun altool --upload-app`. `ios/App/ExportOptions.plist` is
+    already pinned to this shape (PR #1639).
+  Only escalate the key to Admin if the manual path becomes a bottleneck; keeping
+  it at App Manager preserves the least-privilege posture for the checked-in `.p8`.
 - **The export-compliance "blocker" was stale.** The locked French declaration was
   NOT blocking submission — uploads and submission were fine. The real gap was
   **Model Reporting Rules for Digital Platforms (MRDP)** sitting at "Missing Info"
