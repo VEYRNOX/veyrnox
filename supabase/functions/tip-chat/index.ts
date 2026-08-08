@@ -197,15 +197,31 @@ serve(async (req) => {
     }
 
     if (!upstream.ok) {
-      // TEMP DEBUG: relay upstream body so we can see what the Worker rejected.
-      // Revert to generic 502 once diagnosed.
-      const upstreamBody = await upstream.text().catch(() => '');
-      return json({
-        error: 'tip_upstream_error',
-        status: upstream.status,
-        upstream_body: upstreamBody.slice(0, 500),
-        upstream_ct: upstream.headers.get('content-type'),
-      }, 502, origin);
+      // Generic to the caller, full detail to the Deno log.
+      //
+      // This branch shipped relaying upstream's status, content-type and 500
+      // chars of its body to whoever called, under a comment that called itself
+      // temporary ("Revert to generic 502 once diagnosed"). A `// TEMP` comment
+      // is not a control: nothing expires it, and no check fails while it
+      // survives. It outlived the diagnosis it was added for.
+      //
+      // The detail is not lost — `ref` correlates a user-visible error with the
+      // log line holding everything. Same shape as
+      // functions/api/buy/session.js `upstreamErr()`, which removed this exact
+      // pattern in #1605 five commits before it was introduced here in #1614.
+      //
+      // Note the 402 branch ABOVE deliberately still relays its body: that is
+      // the Advisor cap, whose JSON drives the upgrade prompt, so the client
+      // genuinely needs it. Pinned by a test so a future sweep does not take
+      // the cap UX with it.
+      const ref = crypto.randomUUID().slice(0, 8);
+      const detail = await upstream.text().catch(() => '');
+      console.error(
+        `[tip-chat] upstream ${upstream.status} ref=${ref} `
+        + `ct=${upstream.headers.get('content-type') ?? ''} `
+        + `body=${detail.slice(0, 500)}`,
+      );
+      return json({ error: 'tip_upstream_error', ref }, 502, origin);
     }
 
     // Stream the SSE body straight through. Preserve Content-Type so the

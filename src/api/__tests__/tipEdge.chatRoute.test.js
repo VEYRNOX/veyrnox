@@ -116,3 +116,42 @@ describe('tip-chat validates messages per entry', () => {
     expect(chatCode).not.toMatch(/messages\s*\.\s*filter\s*\(/);
   });
 });
+
+describe('tip-chat does not hand upstream diagnostics to the caller', () => {
+  // The `!upstream.ok` branch shipped carrying a comment that labelled itself
+  // temporary — "TEMP DEBUG: relay upstream body ... Revert to generic 502 once
+  // diagnosed" — and returned upstream's status, content-type and 500 chars of
+  // its body straight to whoever called. Flagged in
+  // docs/security-diffs/diff-2026-08-08.md.
+  //
+  // A `// TEMP` comment is not a control. Nothing expires it, no check fails
+  // when it survives, and the same repo removed exactly this pattern from
+  // functions/api/buy/session.js five commits earlier (#1605) while adding it
+  // here (#1614). These assertions are what makes the removal stick.
+
+  it('does not return the upstream body to the caller', () => {
+    expect(chatCode).not.toMatch(/upstream_body/);
+  });
+
+  it('does not return the upstream content-type to the caller', () => {
+    expect(chatCode).not.toMatch(/upstream_ct/);
+  });
+
+  it('logs the upstream detail server-side instead', () => {
+    // The detail is not discarded — it goes where operators can read it and
+    // callers cannot. Same shape as buy/session.js `upstreamErr()`.
+    expect(chatCode).toMatch(/console\.error/);
+  });
+
+  it('gives the caller a correlation ref so a report can be tied to a log line', () => {
+    expect(chatCode).toMatch(/\bref\b/);
+  });
+
+  it('KEEPS the deliberate 402 body relay — that one is a contract, not a leak', () => {
+    // 402 is the Advisor cap. Its JSON body drives the upgrade prompt, so the
+    // client genuinely needs it. This test exists so a later "stop relaying
+    // upstream bodies" sweep does not take the cap UX with it.
+    expect(chatCode).toMatch(/upstream\.status === 402/);
+    expect(chatCode).toMatch(/status: 402/);
+  });
+});
