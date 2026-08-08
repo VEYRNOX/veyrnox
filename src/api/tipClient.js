@@ -96,6 +96,10 @@ export function verdictToRiskLevel(verdict) {
     case 'block': return 'high';
     case 'warn': return 'medium';
     case 'allow': return 'info';
+    // I4 — 'unknown' means no source could screen (all skipped or errored).
+    // This is the honest fix for the previous default-to-CLEAR bug: absent
+    // data now surfaces as CAUTION, not benign.
+    case 'unknown': return 'medium';
     // M-4 — an unrecognised verdict is NOT informational. This defaulted to
     // 'info', so a renamed/absent/unknown verdict rendered as benign in the UI
     // while s9 separately scored it OK. Both defaults are now cautionary.
@@ -114,5 +118,7 @@ export function signalsToRiskRows(signals) {
 }
 
 export function requiresAcknowledgment(verdict) {
-  return verdict === 'block' || verdict === 'warn';
+  // 'unknown' also requires an ack — user must positively acknowledge that
+  // TIP could not screen this address before proceeding.
+  return verdict === 'block' || verdict === 'warn' || verdict === 'unknown';
 }
