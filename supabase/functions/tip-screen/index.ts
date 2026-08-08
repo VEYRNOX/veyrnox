@@ -229,11 +229,32 @@ serve(async (req: Request) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIP_TIMEOUT_MS);
   try {
-    // Route based on action: "chat" or "screen" (default screening)
-    const action = input.action ?? 'screen';
-    const endpoint = action === 'chat'
-      ? '/api/v1/agents/security-advisor/chat'
-      : '/api/v1/screen';
+    // SCREENING ONLY. There used to be an `action: 'chat'` branch here that
+    // forwarded to /api/v1/agents/security-advisor/chat. It is removed, not
+    // fixed, because it was a worse liability than it looked:
+    //
+    //   - Dead client-side. #1614 repointed SecurityAdvisor at the TIP Worker's
+    //     /api/v1/chat directly; nothing under src/ has sent action:'chat' here
+    //     since.
+    //   - Live server-side. This function stays deployed and anon-reachable, so
+    //     the route remained callable by anyone holding the public anon key.
+    //   - Unvalidated. `messages` was forwarded upstream verbatim — no role
+    //     allowlist, no per-message length cap, no message count cap.
+    //   - And it laundered the two controls that protect the real endpoint.
+    //     Requests from here are HMAC-signed with TIP_API_KEY, which is
+    //     PRECISELY why Cloudflare Bot Fight Mode lets them through (#1614
+    //     established that the unsigned tip-chat function gets a 403 challenge).
+    //     It also carries no device_id, so the per-device 30-turns/24h cap on
+    //     the Worker never applied. A caller who could not reach the LLM
+    //     directly, and would have been rate-limited if they could, got a
+    //     signed uncapped path to it through here.
+    //
+    // Hardening it would have kept a signed bypass alive to protect a route
+    // with no callers. Deleting it removes the surface instead. If a
+    // server-side chat proxy is ever wanted again, supabase/functions/tip-chat
+    // is the place — it is unsigned by design, so it cannot launder Bot Fight
+    // Mode, and it now carries the message validation this route never had.
+    const endpoint = '/api/v1/screen';
 
     const upstream = await fetch(`${tipBaseUrl.replace(/\/$/, '')}${endpoint}`, {
       method: 'POST',
@@ -254,14 +275,8 @@ serve(async (req: Request) => {
       return json({ error: 'tip_upstream_error' }, 502, origin);
     }
 
-    // For chat, stream the response; for screening, return JSON
-    if (action === 'chat' && upstream.body) {
-      return new Response(upstream.body, {
-        status: 200,
-        headers: { ...corsHeaders(origin), 'Content-Type': 'text/event-stream' },
-      });
-    }
-
+    // Screening is JSON only. The SSE passthrough that used to live here went
+    // with the chat route above.
     return new Response(text, {
       status: 200,
       headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
