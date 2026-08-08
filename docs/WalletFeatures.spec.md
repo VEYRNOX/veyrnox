@@ -180,7 +180,8 @@ self-custody utilities + more chains. Candidate additions, triaged per the rules
 > to the wedge · [breaks-self-custody] would move value without a user signature ·
 > [audit-blocked-and-not-advertised] cryptographically sensitive, never shipped, no
 > longer advertised · [out-of-scope-regulated] custodial/regulated, never in scope.
-> - **Social Recovery** (guardian / Shamir SSS) — [audit-blocked-and-not-advertised] never built; removed from UI/catalogue.
+> - **Social Recovery — guardian / multi-party approval** — [audit-blocked-and-not-advertised] never built; removed from UI/catalogue.
+> - **Shamir DEK sharding (2-of-3)** — 📋 PLANNED, pre-audit design. Primitive IS built and audit-hardened (`src/wallet-core/shamir.js`, v2 envelope with SHA-256 commitment — audit 2026-08-03 H-6 fix — 4 test files); NO caller in `src/` outside tests, no cloud/local recovery flow wired. Spec: `docs/cloud-recovery-shard-spec.md`. Not advertised. Prerequisite: vault AAD v:3 (#1111).
 > - **Crypto Will / inheritance** — [audit-blocked-and-not-advertised] never built; removed from roadmap 2026-06. No code exists.
 > - **Multi-Sig wallets** (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
 > - **Rebalance** + **Rebalance History** — [breaks-self-custody] autonomous value movement; removed (PR #47).
