@@ -268,12 +268,37 @@ function getSuggestedQuestions(screen) {
   return SUGGESTED_QUESTIONS_BY_SCREEN[screen] || SUGGESTED_QUESTIONS_BY_SCREEN.general;
 }
 
-const EVM_ADDRESS_RE = /\b(0x[a-fA-F0-9]{40})\b/;
+// Per-chain address regexes. Order-of-check matters: EVM's `0x…` pattern is
+// unambiguous, so try that first. Bitcoin bech32 (`bc1…`) is next — it can't
+// be confused with legacy BTC. Legacy BTC (`1…`/`3…`) then Solana overlap on
+// Base58 alphabet: SOL addresses are 32–44 chars, legacy BTC 26–35, so we
+// range-gate to disambiguate. The tuple order below IS the resolution order.
+const CHAIN_ADDRESS_PATTERNS = [
+  { chain: 'ethereum', re: /\b(0x[a-fA-F0-9]{40})\b/ },
+  { chain: 'bitcoin',  re: /\b(bc1[a-z0-9]{39,59})\b/ },
+  { chain: 'bitcoin',  re: /\b([13][a-km-zA-HJ-NP-Z1-9]{25,34})\b/ },
+  { chain: 'solana',   re: /\b([1-9A-HJ-NP-Za-km-z]{32,44})\b/ },
+];
 
+// Returns { address, chain } for the first pattern that matches, or null.
+// Called once per user message; we do NOT try to extract multiple addresses
+// from the same input — the UI screens one address at a time.
 function extractAddress(text) {
-  const match = text.match(EVM_ADDRESS_RE);
-  return match ? match[1] : null;
+  for (const { chain, re } of CHAIN_ADDRESS_PATTERNS) {
+    const match = text.match(re);
+    if (match) return { address: match[1], chain };
+  }
+  return null;
 }
+
+// Per-chain "empty from-address" — TIP requires from_address as a non-empty
+// string but the sanctions lookup only checks to_address in practice. We use
+// the on-chain "burn address" for each chain as a valid-format placeholder.
+const ZERO_FROM_ADDRESS = {
+  ethereum: '0x0000000000000000000000000000000000000000',
+  bitcoin:  '1111111111111111111114oLvT2',                    // 1x1…111 collapsed to a P2PKH-shaped literal
+  solana:   '11111111111111111111111111111111',                // Solana System Program pubkey (canonical zero)
+};
 
 function ScreeningVerdict({ result }) {
   if (!result) return null;
@@ -464,15 +489,18 @@ export default function SecurityAdvisor({ walletChain }) {
     setInput("");
     setStreaming(true);
 
-    const detectedAddress = extractAddress(text);
+    // Address extraction now returns both the address AND the chain inferred
+    // from its format — so a BTC address in the prompt gets screened as BTC,
+    // not as whatever chain the user happens to be viewing in walletChain.
+    const detected = extractAddress(text);
 
-    if (detectedAddress) {
+    if (detected) {
       try {
         const result = await screenTransaction({
-          chain: walletChain || 'ethereum',
+          chain: detected.chain,
           actionType: 'address_lookup',
-          from: '0x0000000000000000000000000000000000000000',
-          to: detectedAddress,
+          from: ZERO_FROM_ADDRESS[detected.chain],
+          to: detected.address,
         });
         if (result) {
           setMessages((prev) => [...prev, {
