@@ -278,14 +278,32 @@ function extractAddress(text) {
 function ScreeningVerdict({ result }) {
   if (!result) return null;
 
+  // 'unknown' — TIP could not screen (all sources skipped/errored). Distinct
+  // from 'warn': warn = we found signals; unknown = we found NOTHING because
+  // we couldn't ask. I4 forbids collapsing this into a green tick.
   const isBlock = result.verdict === 'block';
+  const isUnknown = result.verdict === 'unknown';
   const isWarn = result.verdict === 'warn' || result.verdict === 'error';
   const isClear = result.verdict === 'allow';
 
-  const Icon = isBlock ? ShieldAlertIcon : isWarn ? AlertTriangle : CheckCircle2;
-  const color = isBlock ? 'text-red-500' : isWarn ? 'text-amber-500' : 'text-emerald-500';
-  const bg = isBlock ? 'bg-red-500/10 border-red-500/30' : isWarn ? 'bg-amber-500/10 border-amber-500/30' : 'bg-emerald-500/10 border-emerald-500/30';
-  const label = isBlock ? 'BLOCKED' : isWarn ? 'CAUTION' : 'CLEAR';
+  const Icon = isBlock ? ShieldAlertIcon
+             : (isUnknown || isWarn) ? AlertTriangle
+             : CheckCircle2;
+  const color = isBlock ? 'text-red-500'
+              : (isUnknown || isWarn) ? 'text-amber-500'
+              : 'text-emerald-500';
+  const bg = isBlock ? 'bg-red-500/10 border-red-500/30'
+           : (isUnknown || isWarn) ? 'bg-amber-500/10 border-amber-500/30'
+           : 'bg-emerald-500/10 border-emerald-500/30';
+  const label = isBlock ? 'BLOCKED'
+              : isUnknown ? 'UNKNOWN'
+              : isWarn ? 'CAUTION'
+              : 'CLEAR';
+
+  // Per-source trace: rendered even on a clean verdict so users can VERIFY
+  // which sources actually answered. A CLEAR badge backed by zero live
+  // sources reads as suspicious rather than reassuring.
+  const sources = Array.isArray(result.sourcesConsulted) ? result.sourcesConsulted : [];
 
   return (
     <div className={`rounded-lg border p-3 text-xs ${bg}`} data-testid="tip-screening-verdict">
@@ -293,11 +311,23 @@ function ScreeningVerdict({ result }) {
         <Icon className={`h-4 w-4 ${color}`} />
         <span className={color}>Threat Screening: {label}</span>
       </div>
+
       {result.sanctions && (
         <p className="mt-1.5 font-medium text-red-400">
           Sanctions match detected — this address appears on a government sanctions list (e.g. OFAC SDN).
         </p>
       )}
+
+      {/* Unknown-verdict copy is deliberately specific: it names what went
+          wrong (no source could screen) and points to independent verification.
+          Never phrased as safety. */}
+      {isUnknown && (
+        <p className="mt-1.5 font-medium text-amber-400">
+          No threat source could screen this address. Verify independently
+          before proceeding — check OFAC, OpenSanctions, or Chainalysis directly.
+        </p>
+      )}
+
       {result.risks.length > 0 && (
         <ul className="mt-1.5 space-y-1">
           {result.risks.map((r, i) => (
@@ -308,11 +338,41 @@ function ScreeningVerdict({ result }) {
           ))}
         </ul>
       )}
+
       {isClear && result.risks.length === 0 && (
         <p className="mt-1.5 text-muted-foreground">
-          No threats, sanctions hits, or risk signals found for this address.
+          No hits from consulted sources. Address is not on any list this build screens against.
         </p>
       )}
+
+      {/* Per-source verifiable trace. Absent sources tell the honest story:
+          "OpenSanctions: not configured" reads very differently from
+          "OpenSanctions: clean", and both differ from silence. */}
+      {sources.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-[11px] text-muted-foreground/80 hover:text-muted-foreground">
+            Sources consulted ({sources.length})
+          </summary>
+          <ul className="mt-1.5 space-y-0.5 text-[11px] font-mono">
+            {sources.map((s, i) => {
+              const statusColor = s.status === 'hit' ? 'text-red-400'
+                                : s.status === 'clean' ? 'text-emerald-400'
+                                : s.status === 'skipped' ? 'text-muted-foreground/70'
+                                : 'text-amber-400';
+              return (
+                <li key={i} className="flex justify-between gap-2">
+                  <span className="text-foreground/70">{s.source}</span>
+                  <span className={statusColor}>
+                    {s.status}
+                    {s.latency_ms > 0 && <span className="text-muted-foreground/60"> ({s.latency_ms}ms)</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      )}
+
       <p className="mt-2 text-[10px] text-muted-foreground/60 italic">
         from threat intelligence screening
       </p>
