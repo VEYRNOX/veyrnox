@@ -48,6 +48,23 @@ identity; the app never holds keys server-side.
   mainnet. (An independent audit is also performed for depth, but does not gate.) RASP,
   hardware KEK, device attestation, network hardening, and cloud recovery are
   TARGET/PLANNED — do not build them blind; they need real-device verification and the audit.
+  - **Personal Backup override (2026-08-08, owner-authorized):** the "Personal
+    Backup" feature — 2-of-3 Shamir DEK sharding per
+    `docs/cloud-recovery-shard-spec.md`, with share-A on device, share-B in
+    cloud, share-C physical — is authorized to proceed to implementation
+    ahead of the independent audit. This is a deliberate override of the
+    cloud-recovery clause of this rule, made after Codex flagged PR #1635 as
+    [P1] and the owner reviewed the finding and elected to proceed. The
+    override does NOT waive: (a) the internal-audit review of the completed
+    architecture, (b) real-device verification of the recovery flow before
+    any user is invited to enroll, (c) the I1 invariant (keys never leave
+    the device in cleartext — the ciphertext under the DEK share must be
+    the only thing that travels), (d) I3 deniability (decoy sessions do
+    NOT create real shard sets, per spec §7), or (e) the standing
+    honesty tags — nothing here is "verified" until an on-device recovery
+    trip is completed and an independent audit passes. Session records of
+    Codex findings and owner sign-offs live in each PR body verbatim per
+    `docs/codex-review-runbook.md`.
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
 
