@@ -23,6 +23,26 @@ const ALLOWED_RPCS = new Set([
   'get_referral_earnings',
 ]);
 
+// SQLSTATEs our own SECURITY DEFINER functions RAISE on purpose. Only an error
+// carrying one of these has a message written by us, for a user to read — every
+// other code is Postgres describing its own internals, and is withheld (see the
+// !res.ok branch).
+//
+// Sourced from `RAISE EXCEPTION ... USING errcode` in
+// sql/api-security-hardening.sql:
+//   P0001  'Code not found: %'        P0003  'Unknown event'
+//   P0006  'device_id required'       P0007  'Invalid plan'
+//   P0008  'Invalid revenue'          22004  'device_id required'
+//
+// ADD TO THIS LIST when the SQL adds a new deliberate RAISE, or its message
+// will be replaced by the generic one. That direction of failure is chosen: a
+// missing entry degrades a message, a wrong entry leaks database internals.
+//
+// 22004 is a standard Postgres code (null_value_not_allowed) that our SQL
+// reuses deliberately, so in principle Postgres could raise it itself. Kept
+// because our own use is live and PG's own 22004 text names a column at worst.
+const APP_ERRCODES = new Set(['P0001', 'P0003', 'P0006', 'P0007', 'P0008', '22004']);
+
 function err(status, message) {
   const e = new Error(message);
   e.status = status;
@@ -98,12 +118,52 @@ export async function onRequestPost(context) {
   const responseBody = await res.text();
 
   if (!res.ok) {
-    let errorMsg = `RPC ${fn} failed`;
+    // An error the SQL AUTHOR wrote is for the client. An error POSTGRES wrote
+    // is not.
+    //
+    // This branch used to forward `parsed.message` whatever it was, which meant
+    // 'permission denied for function track_event' (42501) and
+    // 'duplicate key value violates unique constraint "uq_..."' (23505) went
+    // straight to the caller — constraint names, function names, PG error text.
+    // That was already against the response-hygiene rule, and #1606 sharpened
+    // it by putting this proxy on the service_role key: RLS is bypassed, so a
+    // failure now surfaces the underlying database error instead of a uniform
+    // permission denial.
+    //
+    // Blanket-genericising would have broken two real things, so it is a split
+    // rather than a sweep: src/api/referralApi.js matches
+    // `e.message?.includes('not found')` to turn a bad referral code into a
+    // 404, and the operational canary below depends on the text surviving
+    // SOMEWHERE.
+    const ref = crypto.randomUUID().slice(0, 8);
+    let clientMsg = null;
+    let code = '';
     try {
       const parsed = JSON.parse(responseBody);
-      errorMsg = parsed.message || parsed.error || errorMsg;
-    } catch {}
-    return new Response(JSON.stringify({ error: errorMsg }), {
+      code = String(parsed.code ?? '');
+      const msg = parsed.message ?? parsed.error;
+      if (APP_ERRCODES.has(code) && typeof msg === 'string' && msg) clientMsg = msg;
+    } catch { /* non-JSON upstream body — nothing forwardable in it */ }
+
+    if (clientMsg) {
+      return new Response(JSON.stringify({ error: clientMsg }), {
+        status: res.status,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Not ours: generic to the caller, everything to the tail log.
+    //
+    // The H-3 canary is not lost, it MOVES. 'permission denied for function X'
+    // is exactly what appears if the REVOKEs in sql/api-security-hardening.sql
+    // are run before SUPABASE_SERVICE_ROLE_KEY is set on the Pages project, and
+    // it stays greppable here — tied to the `ref` the caller was handed —
+    // rather than being disclosed to every client to keep it visible.
+    console.error(
+      `[rpc/${fn}] upstream ${res.status} ref=${ref} code=${code} `
+      + `body=${responseBody.slice(0, 500)}`,
+    );
+    return new Response(JSON.stringify({ error: `RPC ${fn} failed`, ref }), {
       status: res.status,
       headers: { 'Content-Type': 'application/json' },
     });
