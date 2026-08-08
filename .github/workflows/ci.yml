@@ -23,6 +23,27 @@ env:
   VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
   VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
   VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  # REQUIRED for any NATIVE build, and `android-release` below is one.
+  #
+  # Capacitor loads the bundle from `webDir` (capacitor.config.json sets no
+  # `server.url`), so the document origin on device is capacitor://localhost /
+  # https://localhost. A relative `/api/*` resolves against THAT — the local
+  # bundle, which serves no /api/* — so without an absolute base every edge call
+  # fails in the webview: prices, klines, news, gas, referrals, telemetry, and
+  # the Transak buy session. Empty is correct on WEB only, where the Pages
+  # project serving the app also serves the Functions same-origin.
+  #
+  # #1610 introduced the runtime EDGE_BASE_UNSET throw in src/api/edgeApi.js and
+  # set this var in android-e2e-emulator.yml — but NOT here, so the job that
+  # actually builds the shipped AAB (`android-release`: npm run build ->
+  # npx cap sync android -> bundleRelease) kept building with an empty base. The
+  # throw made the breakage loud instead of silent; it did not make it go away.
+  # Flagged as a NEEDS-REVIEW finding in docs/security-diffs/diff-2026-08-08.md.
+  #
+  # Same reason this whole block is workflow-level rather than per-step: `verify`
+  # and `android-release` each run their own `npm run build`, and a var set on
+  # only one of them is the exact shape of the bug this comment describes.
+  VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
 
 jobs:
   # Diff-based mainnet activation flag change gate (Critical Blocker #3,
