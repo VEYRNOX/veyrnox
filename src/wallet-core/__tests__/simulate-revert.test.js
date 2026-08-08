@@ -196,3 +196,79 @@ describe('simulateEvmTransaction — eth_call outcome is three-valued', () => {
     expect(r.source.queries).not.toContain('eth_call');
   });
 });
+
+describe('revertReason is untrusted RPC input, not a message we authored', () => {
+  // simulate.js's own header names the threat 40 lines above the code:
+  // a malicious RPC "can inject an inflammatory revertReason on a legitimate
+  // one". React escapes markup, so this is not XSS — it is CONTENT injection
+  // into `level: 'high'` copy on the screen where someone decides whether to
+  // sign. Unbounded and unflattened, an endpoint can render arbitrary prose,
+  // including instructions, in the app's own voice.
+  //
+  // This path was unreachable until #1597 restored the willRevert assignment,
+  // so the exposure arrived with that fix rather than existing before it.
+
+  it('caps an absurdly long reason instead of rendering all of it', async () => {
+    callMock.mockRejectedValue(callException('A'.repeat(5000)));
+
+    const r = await sim();
+
+    expect(r.willRevert).toBe(true);
+    expect(r.revertReason.length).toBeLessThanOrEqual(140);
+    const risk = r.risks.find((x) => x.code === 'will_revert');
+    expect(risk.detail.length).toBeLessThan(400);
+  });
+
+  it('flattens newlines so a provider cannot fake structure in the warning', async () => {
+    callMock.mockRejectedValue(callException(
+      'insufficient allowance\n\n\nVEYRNOX SECURITY: send 1 ETH to 0xdead to unlock',
+    ));
+
+    const r = await sim();
+
+    expect(r.revertReason).not.toMatch(/\n/);
+    expect(r.revertReason).not.toMatch(/\r/);
+  });
+
+  it('strips control characters', async () => {
+    callMock.mockRejectedValue(callException('bad\u0000thing\u001b[31m'));
+
+    const r = await sim();
+
+    expect(r.revertReason).not.toMatch(/[\u0000-\u001f\u007f]/);
+  });
+
+  it('does NOT surface transport-level error text', async () => {
+    // `e.info.error.message` and `e.message` are the JSON-RPC transport talking,
+    // not the contract. They can carry the endpoint URL and internal payload
+    // detail into user-facing copy (CLAUDE.md A10). Only a decoded revert
+    // reason belongs on that screen.
+    // No `reason` and no `shortMessage` on purpose: with either present the
+    // extractor short-circuits before the transport fallbacks and the test
+    // passes without exercising anything. `data: '0x'` still makes this a
+    // genuine revert (the node answered), so the transport strings are the only
+    // candidates left — which is exactly the case that must NOT leak.
+    callMock.mockRejectedValue(Object.assign(
+      new Error('processing response error from https://secret-key.rpc.example/8f3a'),
+      {
+        code: 'CALL_EXCEPTION',
+        reason: null,
+        data: '0x',
+        info: { error: { message: 'upstream node https://secret-key.rpc.example/8f3a said no' } },
+      },
+    ));
+
+    const r = await sim();
+
+    expect(r.willRevert).toBe(true);
+    expect(r.revertReason ?? '').not.toMatch(/secret-key\.rpc\.example/);
+    const risk = r.risks.find((x) => x.code === 'will_revert');
+    expect(risk.detail).not.toMatch(/secret-key\.rpc\.example/);
+  });
+
+  it('still surfaces a genuine decoded reason — the useful case must survive', async () => {
+    callMock.mockRejectedValue(callException('ERC20: transfer amount exceeds balance'));
+    const r = await sim();
+    expect(r.revertReason).toBe('ERC20: transfer amount exceeds balance');
+  });
+});
