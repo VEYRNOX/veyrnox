@@ -31,6 +31,13 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
 - **Audit gate (§24).** The internal audit gates mainnet. RASP, hardware KEK, device
   attestation, network hardening, and cloud recovery are TARGET/PLANNED — need real-device
   verification and the audit.
+  - **Personal Backup override (2026-08-08, owner-authorized):** Personal Backup
+    (2-of-3 Shamir DEK sharding per `docs/cloud-recovery-shard-spec.md`) may
+    proceed to implementation ahead of the independent audit. Full record in
+    AGENTS.md's Audit-gate bullet — carveouts unchanged: internal-audit review
+    of the completed architecture is still required, real-device verification
+    before enrollment, I1/I3 invariants preserved. Nothing here is "verified"
+    until an on-device recovery trip completes and an independent audit passes.
 - **No fake security.** Never mock a security control to look real. If something can't be
   delivered honestly, honest-disable it (I4: fail honest, fail closed).
 
