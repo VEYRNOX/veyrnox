@@ -105,12 +105,31 @@ GF(2^8), with threshold k=2:
   security, not computational — this is a property of the math, not an assumption
   about attacker resources).
 
-Each share is 33 bytes: 1 byte x-coordinate (share index, 1–3) + 32 bytes
-y-values. The x-coordinate is non-secret (it identifies which share this is).
+**Share envelope (as shipped, v2 — 88 bytes).** The original design called for a
+bare 33-byte share (x-coord + y-values); the shipped envelope in
+`src/wallet-core/shamir.js` is wider and authenticated:
 
-**Library:** `@noble/shamir` (if available) or a hand-rolled GF(2^8) implementation
-(~200 lines). The same `@noble` / `@scure` audit lineage as the rest of the crypto
-stack.
+```
+[0]       version    = 0x02
+[1]       k          threshold required for reconstruction
+[2]       n          total shares in this set
+[3..18]   setId      16-byte random identifier (identical across a split)
+[19]      x          evaluation point (1-indexed)
+[20..51]  y[32]      evaluated polynomial bytes
+[52..83]  commitment SHA-256(DOMAIN || setId || k || n || secret)
+[84..87]  crc32      IEEE CRC-32 of bytes [0..83]
+```
+
+The SHA-256 commitment (audit 2026-08-03 H-6) authenticates the reconstructed
+secret AND binds `setId/k/n` — a coordinated tamper of headers with recomputed
+CRCs is rejected. CRC32 is corruption detection only (unkeyed, linear, not
+authentication). x-coordinate and setId are non-secret. v1 (56 bytes, no
+commitment) is REJECTED, not migrated — no v1 shares were ever issued.
+
+**Library:** hand-rolled GF(2^8) implementation (`src/wallet-core/shamir.js`,
+533 LOC). `@noble/shamir` was considered but the hand-rolled path was taken to
+keep the envelope, commitment, zeroization, and constant-time properties under
+in-tree control.
 
 **Timing requirement (reworded 2026-08-03, audit M-7).** This previously read
 "MUST be constant-time on the share bytes". That bar is not achievable in
