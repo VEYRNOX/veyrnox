@@ -910,6 +910,10 @@ ONE message for concurrency.
 Codex is read-only (`codex review` or `codex exec -s read-only`). Claude reads the report,
 then implements. Codex output is INTERNAL — never the outstanding independent audit.
 
+Runbook: `docs/codex-review-runbook.md` — CLI install, one-line invocation
+(`codex review --base main`), when to use it, when it does NOT substitute for
+the independent audit gate.
+
 ### Orchestration — pick automatically
 
 | Signal | Pattern | Apply |
