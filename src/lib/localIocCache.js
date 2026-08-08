@@ -65,8 +65,9 @@ function openDb() {
 }
 
 async function idbGet(key) {
+  let db;
   try {
-    const db = await openDb();
+    db = await openDb();
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const req = tx.objectStore(STORE_NAME).get(key);
@@ -75,12 +76,15 @@ async function idbGet(key) {
     });
   } catch {
     return null;
+  } finally {
+    if (db) try { db.close(); } catch { /* noop */ }
   }
 }
 
 async function idbPut(key, value) {
+  let db;
   try {
-    const db = await openDb();
+    db = await openDb();
     await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       tx.objectStore(STORE_NAME).put(value, key);
@@ -90,6 +94,8 @@ async function idbPut(key, value) {
   } catch {
     // Best-effort — a failing IDB write should not crash the wallet. Next
     // refresh will retry; meanwhile the in-memory lookup still works.
+  } finally {
+    if (db) try { db.close(); } catch { /* noop */ }
   }
 }
 
@@ -271,8 +277,9 @@ export function getCacheMeta() {
 export async function clearLocalIocCache() {
   _memoryIndex = null;
   _memoryMeta = null;
+  let db;
   try {
-    const db = await openDb();
+    db = await openDb();
     await new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       tx.objectStore(STORE_NAME).delete(MANIFEST_KEY);
@@ -281,5 +288,7 @@ export async function clearLocalIocCache() {
     });
   } catch {
     // Best-effort
+  } finally {
+    if (db) try { db.close(); } catch { /* noop */ }
   }
 }
