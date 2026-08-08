@@ -47,6 +47,17 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 const TIP_TIMEOUT_MS = 60_000; // longer than tip-screen (chat can stream for a while)
 const MAX_BODY_BYTES = 128 * 1024; // Advisor prompts + history can grow past screen's 64K cap
 
+// Per-message bounds, salvaged from PR #1592 (closed as superseded — its
+// premise about why the Advisor went offline was wrong, but this part was right
+// and had no equivalent anywhere in the tree).
+//
+// MAX_BODY_BYTES alone is not sufficient. 128 KB is one body, but it can be
+// 128 KB of ten thousand tiny messages, or one message with a role the upstream
+// model treats as an instruction. The body cap bounds bandwidth; these bound
+// what the LLM is actually asked to do.
+const MAX_CHAT_MESSAGES = 40;
+const MAX_CHAT_CONTENT = 8192;
+
 // Kept identical to tip-screen so both proxies accept the same set of origins.
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://veyrnox.com',
@@ -120,6 +131,33 @@ serve(async (req) => {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('shape');
     if (!Array.isArray(parsed.messages) || parsed.messages.length === 0) {
       return json({ error: 'messages_required' }, 400, origin);
+    }
+
+    // Rejects the whole request rather than filtering bad entries out. Silently
+    // dropping messages would change the conversation the caller believes it
+    // sent, and a truncated history is a worse input to a security advisor than
+    // an honest 400 (I4).
+    if (parsed.messages.length > MAX_CHAT_MESSAGES) {
+      return json({ error: 'too_many_messages' }, 400, origin);
+    }
+    for (const m of parsed.messages) {
+      if (!m || typeof m !== 'object' || Array.isArray(m)) {
+        return json({ error: 'bad_message' }, 400, origin);
+      }
+      const { role, content } = m as Record<string, unknown>;
+      // Allowlist, not denylist: an unrecognised role is the interesting case,
+      // since upstream may assign meaning to one this build has never heard of.
+      if (role !== 'system' && role !== 'user' && role !== 'assistant') {
+        return json({ error: 'bad_message_role' }, 400, origin);
+      }
+      // Empty content is rejected upstream with a 400 anyway; catching it here
+      // turns a confusing upstream failure into a precise one.
+      if (typeof content !== 'string' || content.length === 0) {
+        return json({ error: 'bad_message_content' }, 400, origin);
+      }
+      if (content.length > MAX_CHAT_CONTENT) {
+        return json({ error: 'message_too_long' }, 400, origin);
+      }
     }
   } catch {
     return json({ error: 'bad_request' }, 400, origin);
