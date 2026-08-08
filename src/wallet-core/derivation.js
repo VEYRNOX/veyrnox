@@ -97,11 +97,21 @@ export function deriveEvmAddress(mnemonic, accountIndex = 0, passphrase = '') {
  * @returns {{ privateKey: Uint8Array, publicKey: Uint8Array, path: string }}
  */
 export function deriveSecp256k1AtPath(mnemonic, path, passphrase = '') {
+  // Mirrors BTC/SOL M-1/M-2 hygiene (PRs #1441/#1445): seed + master
+  // private key can re-derive every child on every chain. Zero on all
+  // exits. child.privateKey is the LIVE SECRET the caller signs with —
+  // caller is responsible for wiping it.
   const seed = mnemonicToSeed(mnemonic, passphrase); // 64-byte seed
-  const root = HDKey.fromMasterSeed(seed);
-  const child = root.derive(path);
-  if (!child.privateKey) throw new Error(`No private key at path ${path}`);
-  return { privateKey: child.privateKey, publicKey: child.publicKey, path };
+  let root = null;
+  try {
+    root = HDKey.fromMasterSeed(seed);
+    const child = root.derive(path);
+    if (!child.privateKey) throw new Error(`No private key at path ${path}`);
+    return { privateKey: child.privateKey, publicKey: child.publicKey, path };
+  } finally {
+    if (root && root.privateKey) root.privateKey.fill(0);
+    seed.fill(0);
+  }
 }
 
 // ---------------------------------------------------------------------------

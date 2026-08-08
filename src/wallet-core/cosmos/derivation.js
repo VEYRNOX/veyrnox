@@ -66,24 +66,36 @@ export function cosmosPath(index = 0) {
 export function deriveCosmosAccount(mnemonic, opts = {}) {
   const { hrp = 'cosmos', index = 0, passphrase = '' } = opts;
 
+  // Mirrors BTC/SOL M-1/M-2 hygiene (PRs #1441/#1445): the BIP-39 seed and
+  // the HD master private key can each re-derive every child key on every
+  // chain. Zero them as soon as the leaf child has been derived, even if
+  // derivation or address encoding throws. child.privateKey is the LIVE
+  // SECRET the caller signs with and cannot be wiped here; caller handles
+  // that (see the EVM/BTC signing paths).
   const seed = mnemonicToSeed(mnemonic, passphrase);
-  const root = HDKey.fromMasterSeed(seed);
-  const path = cosmosPath(index);
-  const child = root.derive(path);
-  if (!child.privateKey) throw new Error(`No private key at path ${path}`);
+  let root = null;
+  try {
+    root = HDKey.fromMasterSeed(seed);
+    const path = cosmosPath(index);
+    const child = root.derive(path);
+    if (!child.privateKey) throw new Error(`No private key at path ${path}`);
 
-  // Cosmos SDK address: SHA-256 then RIPEMD-160 of the compressed public key.
-  const pubkeyHash = ripemd160(sha256(child.publicKey));
-  const words = bech32.toWords(pubkeyHash);
-  const address = bech32.encode(hrp, words);
+    // Cosmos SDK address: SHA-256 then RIPEMD-160 of the compressed public key.
+    const pubkeyHash = ripemd160(sha256(child.publicKey));
+    const words = bech32.toWords(pubkeyHash);
+    const address = bech32.encode(hrp, words);
 
-  return {
-    address,
-    publicKey: child.publicKey,
-    privateKey: child.privateKey,
-    path,
-    hrp,
-  };
+    return {
+      address,
+      publicKey: child.publicKey,
+      privateKey: child.privateKey,
+      path,
+      hrp,
+    };
+  } finally {
+    if (root && root.privateKey) root.privateKey.fill(0);
+    seed.fill(0);
+  }
 }
 
 /**
