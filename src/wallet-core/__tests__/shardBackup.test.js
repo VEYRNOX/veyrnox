@@ -54,9 +54,26 @@ describe('shardBackup — hard-off gate', () => {
     // The design principle from docs/cloud-recovery-shard-spec.md is "touch
     // the KEK zero" — that is enforced here by inspecting the source, so a
     // silent regression can't slip past unit-tests-green.
+    //
+    // Resolve the source path via `fileURLToPath` + `path.resolve` rather
+    // than passing a `URL` to `fs.readFile`. Under vitest's Vite-served
+    // module graph `import.meta.url` can resolve to `http://…` (not
+    // `file://…`), which makes `fs.readFile(URL)` throw
+    // `ERR_INVALID_URL_SCHEME` before any assertion runs. `fileURLToPath`
+    // handles both schemes gracefully via the shared path fallback.
     const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    let hereDir;
+    try {
+      hereDir = path.dirname(fileURLToPath(import.meta.url));
+    } catch {
+      // Non-file scheme (Vite dev-server) — fall back to a repo-relative
+      // resolution off cwd. Vitest always runs with cwd at the repo root.
+      hereDir = path.resolve(process.cwd(), 'src/wallet-core/__tests__');
+    }
     const src = await fs.readFile(
-      new URL('../shardBackup.js', import.meta.url),
+      path.resolve(hereDir, '..', 'shardBackup.js'),
       'utf8'
     );
     const importLines = src.split('\n').filter(l => /^\s*import\s/.test(l));
