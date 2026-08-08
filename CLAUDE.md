@@ -279,11 +279,19 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
 The `code_scanning` rule was **removed** from ruleset `Veyrnox Code Review` (`17946638`).
 CodeQL still scans all six languages on every PR and still files alerts to the Security
 tab; they no longer block merges. Swift stays covered by push-to-main and the weekly scan.
-Everything else on the ruleset is unchanged — `required_status_checks` (`verify`,
-`mainnet-flag-gate`, `unit-tests`), `pull_request` (0 required approvals — **on the
-ruleset only**; classic branch protection is a separate, tighter layer, see the two-layer
-note below), `copilot_code_review`, `deletion`, `non_fast_forward`. Exact rule JSON for
-restoring it is in issue #1375.
+Everything else on the ruleset is unchanged — `required_status_checks` (**five** contexts,
+tabulated in the two-layer note below — this file said three until 2026-08-08),
+`pull_request` (0 required approvals — **on the ruleset only**; classic branch protection
+is a separate layer, see that note), `deletion`, `non_fast_forward`. Exact rule JSON for
+restoring the removed rule is in issue #1375.
+- **`copilot_code_review` is NOT a rule on `17946638`** (verified 2026-08-08 by reading
+  `gh api repos/VEYRNOX/veyrnox/rulesets/17946638`; its four rules are `deletion`,
+  `non_fast_forward`, `pull_request`, `required_status_checks`). It lives on a SECOND
+  ruleset — `Code Quality Copilot review for default branch` (`19500012`) — whose
+  `enforcement` is **`disabled`**, so it gates nothing. Copilot still comments on PRs; it
+  has never blocked one. This file listed it as an active rule here for months.
+  `gh api repos/VEYRNOX/veyrnox/rulesets` lists BOTH; querying only `17946638` hides the
+  second one's existence.
 - **Why.** #1368 scoped the Swift scan (60–90 min: scarce macOS runner + full
   Capacitor/xcodebuild compile) to PRs touching iOS/Swift. But the rule gates on the CodeQL
   **TOOL** with no per-language granularity, so a typical PR uploaded 5 of 6 languages, the
@@ -308,10 +316,38 @@ restoring it is in issue #1375.
 
 **`main` is gated by TWO layers, not one — and the second one was broken (fixed
 2026-08-03).** Everything above describes ruleset `Veyrnox Code Review` (`17946638`).
-There is ALSO **classic branch protection** on `main`, which this file never mentioned,
-and which is strictly the tighter of the two. Read both before concluding anything about
-what gates a merge — `gh api repos/VEYRNOX/veyrnox/branches/main/protection` is the half
-that `gh api repos/.../rulesets/17946638` does not show you.
+There is ALSO **classic branch protection** on `main`, which this file never mentioned.
+**Neither layer is uniformly the tighter one** — that framing was true only while classic
+held `strict: true`, and it stopped being true on 2026-08-08. Today the RULESET requires
+more contexts (five vs three) and classic requires none the ruleset does not. Read both
+before concluding anything about what gates a merge —
+`gh api repos/VEYRNOX/veyrnox/branches/main/protection` is the half that
+`gh api repos/.../rulesets/17946638` does not show you, and vice versa.
+- **The two layers require DIFFERENT check sets. The effective gate is the UNION — five
+  contexts, not three** (verified 2026-08-08):
+
+  | context | ruleset `17946638` | classic protection |
+  |---|---|---|
+  | `verify` | yes | yes |
+  | `unit-tests` | yes | yes |
+  | `Release-cert guard rejects wrong fingerprints` | yes | yes |
+  | `mainnet-flag-gate` | yes | — |
+  | `staging-gate` | yes | — |
+
+  `staging-gate` is the one most likely to surprise you: it is defined in
+  `deploy-preview.yml`, NOT `ci.yml`; it is a pure reporter whose verdict comes from its
+  `deploy` + `e2e` dependencies; and it carries a docs-only escape hatch
+  (`docs_only == true` AND `deploy == skipped` → pass). That hatch is why report-only PRs
+  sail through it while a code PR gets the full deploy + smoke test. It also means
+  `staging-gate` inherits every flake in the deployed-preview path — see the
+  `okx-candles` note below.
+- **A third-party outage can red a required gate.** `deploy`'s "Check edge endpoints"
+  step probes the live preview, so an upstream exchange hiccup fails `staging-gate`. It
+  did on `52e3e05f` (2026-08-07) and `35d85509` (2026-08-08) — 2 of 20 runs — both times
+  `/api/data/okx-candles` returning 502. Neither was diagnosable, because the proxy
+  collapsed every failure mode to a bare 502; fixed in #1622, which preserves OKX's own
+  code (`OKX code 50011`) client-side and logs the full upstream detail server-side. The
+  flake itself is NOT fixed — the next occurrence is merely legible.
 - **It made every PR unmergeable, and that is why the history is full of `--admin`.**
   Two independent blockers: (a) `required_approving_review_count: 1` +
   `require_code_owner_reviews: true`, on a repo where one account authors every PR —
@@ -330,9 +366,27 @@ that `gh api repos/.../rulesets/17946638` does not show you.
   `--admin` should no longer be needed for a green PR. **If you find yourself reaching
   for `--admin`, that is a signal the config regressed — diagnose it, do not habituate.**
   Verified by merging PR #1546 with a plain `gh pr merge --squash`, no override.
-- `strict: true` (branch must be current with `main`) is retained and NOT part of the
-  fix. With `main` moving 10+ commits/day it forces frequent rebases; left alone
-  deliberately rather than quietly loosened.
+- **`strict` is now `false` — changed 2026-08-08.** It was `true` (branch must be current
+  with `main`) and was deliberately retained on 2026-08-03 as "forces frequent rebases,
+  left alone rather than quietly loosened". That reasoning missed the mechanism:
+  **GitHub's auto-merge does NOT update a behind branch — it only waits.** So on a repo
+  merging 10+ times a day, any merge landing inside a PR's check cycle re-blocked it, and
+  `unit-tests` alone is ~14 min. The failure is SILENT and reads as success: the PR shows
+  every check green and simply never merges, with no red anywhere to explain it.
+  PR #1620 needed three manual `gh pr update-branch` calls and still lost the race to its
+  own follow-up PR merging first. Turned off to match the ruleset, which was ALREADY
+  `strict: false` — so the two layers now agree rather than a new posture being invented.
+  **Honest cost, stated plainly:** a PR can now merge having passed checks against an
+  older base, so a semantic (non-textual) conflict can land untested. `verify` and
+  `unit-tests` still gate every merge, and the classic layer's other settings are
+  unchanged. Prior protection JSON backed up under
+  `%TEMP%\veyrnox-protection-backup\main-protection-before.json`; restore with
+  `gh api --method PATCH repos/VEYRNOX/veyrnox/branches/main/protection/required_status_checks`
+  sending `strict` AND the `checks` array (send the array — `strict` alone risks dropping
+  the required-check list).
+- **If a PR is green everywhere and still will not merge, check `mergeStateStatus`
+  first.** `BEHIND` means the up-to-date rule; `BLOCKED` means a required context has not
+  reported yet. Neither shows up as a failure.
 - `enforce_admins` is `false`, which is the only reason the three `--admin` merges on
   2026-08-03 (#1542, #1544, #1545) were possible at all. All three were green on every
   check that actually reported; nothing red was bypassed.
