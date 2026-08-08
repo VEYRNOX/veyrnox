@@ -106,7 +106,39 @@ describe('RPC allowlist — the only boundary once service_role is in play', () 
 });
 
 describe('response hygiene', () => {
-  it('does not pass a raw PostgREST error through verbatim', async () => {
+  // The rule this suite pins: an error the SQL AUTHOR wrote is for the client;
+  // an error POSTGRES wrote is not.
+  //
+  // Our SECURITY DEFINER functions raise deliberate, user-facing errors with
+  // their own SQLSTATEs (sql/api-security-hardening.sql):
+  //     P0001 'Code not found: %'   P0003 'Unknown event'
+  //     P0006 'device_id required'  P0007 'Invalid plan'
+  //     P0008 'Invalid revenue'     22004 'device_id required'
+  // Those must reach the caller — src/api/referralApi.js matches
+  // `e.message?.includes('not found')` to turn a bad referral code into a 404
+  // "Code not found", so genericising everything would silently break that.
+  //
+  // Everything else is Postgres talking about itself — 'permission denied for
+  // function X' (42501), constraint names on 23505, internal detail/hint — and
+  // is now generic + logged. That matters more since #1606 put the proxy on the
+  // service_role key: RLS is bypassed, so failures surface the underlying
+  // database error rather than a uniform permission denial.
+
+  it('forwards an application error the SQL author wrote (P0001)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({ message: 'Code not found: ABC123', code: 'P0001' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    )));
+
+    const res = await onRequestPost(ctx('increment_referral'));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe('Code not found: ABC123');
+    expect(body.code).toBeUndefined();
+  });
+
+  it('does NOT forward a Postgres permission error (42501)', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(
       JSON.stringify({ message: 'permission denied for function track_event', code: '42501' }),
       { status: 403, headers: { 'Content-Type': 'application/json' } },
@@ -115,13 +147,66 @@ describe('response hygiene', () => {
     const res = await onRequestPost(ctx('track_event'));
     const body = await res.json();
 
-    // Documents CURRENT behaviour: the upstream `message` is surfaced and the
-    // PostgREST error `code` is not. Pinned because "permission denied for
-    // function X" is exactly what a client would start seeing if the H-3
-    // REVOKEs were run before SUPABASE_SERVICE_ROLE_KEY was set — this is the
-    // symptom to grep for if that ordering is ever got wrong.
     expect(res.status).toBe(403);
-    expect(body.error).toBe('permission denied for function track_event');
+    expect(body.error).not.toMatch(/permission denied/);
     expect(body.code).toBeUndefined();
+    // The RPC NAME is fine to echo and is deliberately not asserted against:
+    // the caller put it in the request path (/api/rpc/track_event) and
+    // ALLOWED_RPCS gates it, so `RPC track_event failed` discloses nothing the
+    // caller did not supply. What must not come back is Postgres describing
+    // itself — the permission text above, constraint names, detail/hint.
+    expect(body.error).toBe('RPC track_event failed');
+  });
+
+  it('does NOT forward a constraint-violation message (23505)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({
+        message: 'duplicate key value violates unique constraint "uq_referral_attributions_hour_dedup"',
+        code: '23505',
+        details: 'Key (referral_code, plan)=(ABC, annual) already exists.',
+      }),
+      { status: 409, headers: { 'Content-Type': 'application/json' } },
+    )));
+
+    const res = await onRequestPost(ctx('record_attribution'));
+    const body = await res.json();
+
+    expect(body.error).not.toMatch(/uq_referral_attributions/);
+    expect(body.error).not.toMatch(/duplicate key/);
+    expect(JSON.stringify(body)).not.toMatch(/already exists/);
+  });
+
+  it('gives the caller a correlation ref and logs the real error', async () => {
+    // The H-3 canary is NOT lost, it MOVES. "permission denied for function X"
+    // is exactly what appears if the REVOKEs are run before
+    // SUPABASE_SERVICE_ROLE_KEY is set, and it stays greppable — in the Workers
+    // tail log, tied to the ref the caller was given, instead of being handed
+    // to every client.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({ message: 'permission denied for function track_event', code: '42501' }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } },
+    )));
+
+    const res = await onRequestPost(ctx('track_event'));
+    const body = await res.json();
+
+    expect(body.ref).toMatch(/^[0-9a-f]{8}$/);
+    const logged = spy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(logged).toMatch(/permission denied for function track_event/);
+    expect(logged).toMatch(body.ref);
+  });
+
+  it('does not leak upstream text when the body is not JSON at all', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      '<html>gateway exploded at /var/lib/postgres</html>',
+      { status: 502, headers: { 'Content-Type': 'text/html' } },
+    )));
+
+    const res = await onRequestPost(ctx('track_event'));
+    const body = await res.json();
+
+    expect(JSON.stringify(body)).not.toMatch(/var\/lib\/postgres/);
+    expect(res.status).toBe(502);
   });
 });
