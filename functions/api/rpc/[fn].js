@@ -138,11 +138,15 @@ export async function onRequestPost(context) {
     const ref = crypto.randomUUID().slice(0, 8);
     let clientMsg = null;
     let code = '';
+    let logMsg = null;
+    let parsedOk = false;
     try {
       const parsed = JSON.parse(responseBody);
+      parsedOk = true;
       code = String(parsed.code ?? '');
       const msg = parsed.message ?? parsed.error;
-      if (APP_ERRCODES.has(code) && typeof msg === 'string' && msg) clientMsg = msg;
+      if (typeof msg === 'string' && msg) logMsg = msg;
+      if (APP_ERRCODES.has(code) && logMsg) clientMsg = logMsg;
     } catch { /* non-JSON upstream body — nothing forwardable in it */ }
 
     if (clientMsg) {
@@ -159,9 +163,37 @@ export async function onRequestPost(context) {
     // are run before SUPABASE_SERVICE_ROLE_KEY is set on the Pages project, and
     // it stays greppable here — tied to the `ref` the caller was handed —
     // rather than being disclosed to every client to keep it visible.
+    // WHAT GOES IN THE LOG: `code` and `message`, never `details`/`hint`, and
+    // never the raw body when we could parse one.
+    //
+    // This used to log `responseBody.slice(0, 500)` — the whole PostgREST error
+    // object. PostgREST splits its errors across four fields, and only one of
+    // them carries user VALUES:
+    //   message  'duplicate key value violates unique constraint "uq_..."'
+    //            — names the constraint. No values. This is the canary.
+    //   details  'Key (referral_code, plan)=(ABC, annual) already exists.'
+    //            — the conflicting values. On our dedup tables that is a
+    //            device_id or a referral code.
+    //   hint     free text, may quote input.
+    // Logging the raw body swept all four in, so a unique-violation on
+    // `increment_referral` or `record_attribution` wrote a device_id into the
+    // tail log. CLAUDE.md's logging rule is "never log sensitive data ...
+    // truncate or hash identifiers", and `veyrnox-device-id` is treated as
+    // residue-grade elsewhere in this codebase (DIFF-0723).
+    //
+    // Dropping details/hint costs nothing operationally: `code` says what class
+    // of failure it was and `message` names the constraint or function, which
+    // is what you actually grep for. The H-3 canary lives in `message`
+    // ('permission denied for function X'), so it is untouched.
+    //
+    // Unparseable bodies still get a short slice — an HTML challenge page or a
+    // gateway error has no field structure to be selective about, and 200 chars
+    // is enough to recognise one.
     console.error(
       `[rpc/${fn}] upstream ${res.status} ref=${ref} code=${code} `
-      + `body=${responseBody.slice(0, 500)}`,
+      + (parsedOk
+        ? `message=${String(logMsg ?? '').slice(0, 300)}`
+        : `unparsed=${responseBody.slice(0, 200)}`),
     );
     return new Response(JSON.stringify({ error: `RPC ${fn} failed`, ref }), {
       status: res.status,
