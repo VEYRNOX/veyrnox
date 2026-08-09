@@ -71,6 +71,12 @@ import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
+import {
+  ENABLE_PERSONAL_BACKUP_SHARDS,
+  PERSONAL_BACKUP_SHARDS_DISABLED,
+  splitDekForPersonalBackup,
+  combineDekForPersonalBackup,
+} from '../shardBackup.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
 // ── M2c (Secure Enclave key-wrap) — F-2 closure scaffold ─────────────────────
 // Lazy-loaded so that registerPlugin() in veyrnoxEnclave.js does NOT execute at
@@ -969,6 +975,238 @@ export const nativeKeyStore = {
         }
       }
       return secret;
+    });
+  },
+
+  // Personal Backup Phase 1/2 — read the inner KEK-vault blob regardless of
+  // whether SecureStorage holds a bare vault (M2b) or an Enclave-wrapped
+  // outer record (M2c: `{ wrap: 'enclave-v1', hw }`). On iOS after M2c
+  // migration, VAULT_KEY holds the enclave record and a raw parseVaultBlob()
+  // would fail before reaching the DEK (Codex P1, 2026-08-09). Mirrors the
+  // peek-and-hwUnwrap pattern from `unlock()` at native.js:924-947.
+  //
+  // Returns { blob, wasEnclaveWrapped } — the caller uses `wasEnclaveWrapped`
+  // to decide whether to re-apply the outer wrap after any safeWriteVault.
+  //
+  // hwUnwrap presents an OS biometric sheet. That's the SAME sheet unlock()
+  // presents; it is acceptable here because both new methods run behind
+  // withLockSuppressed and the caller already established intent (e.g. a
+  // Restore button click). This is the M2c biometric prompt, NOT the KEK
+  // getHardwareFactor prompt — a KEK-enrolled M2c vault will therefore
+  // prompt TWICE on the happy path (once to unwrap the outer enclave record,
+  // once for the KEK H). Same behaviour as _unlockInner on M2c vaults.
+  async _readInnerVaultBlob() {
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    if (raw === null || raw === undefined) {
+      throw new Error('No wallet found on this device');
+    }
+    // Peek the outer shape. If it fails to parse, fall through — the direct
+    // parse below will surface MALFORMED_VAULT with the real error.
+    let outer;
+    try { outer = parseVaultBlob(raw); } catch { /* not enclave-wrapped */ }
+    if (outer && outer.wrap === WRAP_VERSION_ENCLAVE) {
+      let blobJson;
+      try {
+        const { hwUnwrap } = await enclavePlugin();
+        blobJson = utf8FromBase64(await hwUnwrap(outer.hw));
+      } catch (err) {
+        // Same tagging as unlock() so the caller can fail-closed on a
+        // biometric cancel rather than falling through as a "no vault".
+        if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
+        throw err;
+      }
+      return { blob: parseVaultBlob(blobJson), wasEnclaveWrapped: true };
+    }
+    return { blob: parseVaultBlob(raw), wasEnclaveWrapped: false };
+  },
+
+  // Personal Backup Phase 2 — after a successful safeWriteVault of the inner
+  // blob, if the vault was originally enclave-wrapped, re-apply the outer
+  // wrap so we do NOT silently downgrade the vault from M2c to M2b (Codex
+  // P1, 2026-08-09). Mirrors the migration wrap at native.js:955-970.
+  async _reapplyEnclaveWrapIfNeeded(wasEnclaveWrapped) {
+    if (!wasEnclaveWrapped) return;
+    // Only re-wrap if the device still supports it. If capability disappeared
+    // between read and write (e.g. biometrics unenrolled mid-operation), the
+    // vault is left as M2b — non-fatal, unlock still works via password.
+    if (!(await useHardwareWrap())) return;
+    const raw2 = await SecureStorage.get(VAULT_KEY, false);
+    if (raw2 === null || raw2 === undefined) return;
+    const { createWrappingKey, hwWrap } = await enclavePlugin();
+    await createWrappingKey();
+    const ct = await hwWrap(base64FromUtf8(typeof raw2 === 'string' ? raw2 : JSON.stringify(raw2)));
+    await safeWriteVault({ wrap: WRAP_VERSION_ENCLAVE, hw: ct });
+  },
+
+  // Personal Backup Phase 1 — export 3 shamir shares of the DEK for the user
+  // to save via the native share sheet. Runs the SAME KEK unlock chain the
+  // primary unlock path uses (getHF → deriveKekC → combineKek → unwrapDek),
+  // then splits the DEK inside the finally-zero boundary. The DEK never
+  // crosses this method's boundary — the caller receives 3 opaque 88-byte
+  // share envelopes.
+  //
+  // Deliberately does NOT run the AAD-v:3 migration or the DEK cache write
+  // that the hot-path _unlockInner does — those are unlock-hot-path
+  // optimisations, not shard export. Keeping this method side-effect-free on
+  // stored state means Phase 1 changes zero bytes on disk.
+  //
+  // Gated by ENABLE_PERSONAL_BACKUP_SHARDS (build-time flag). Throws
+  // PERSONAL_BACKUP_SHARDS_DISABLED when off — do NOT catch this in the UI
+  // and pretend it worked (I4).
+  async exportPersonalBackupShares(password, opts = {}) {
+    if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
+      throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
+    }
+    await init();
+    return withLockSuppressed(async () => {
+      // Handles both bare (M2b) and Enclave-wrapped (M2c) vaults — the
+      // former direct parseVaultBlob would fail on iOS after M2c migration.
+      const { blob } = await this._readInnerVaultBlob();
+      if (!blob.kekWrap) {
+        // Non-KEK vaults have no DEK to split — the full seed is derived
+        // from the password alone. Personal Backup requires KEK enrollment
+        // (spec §12.4). Surface a clear error rather than silently degrading.
+        throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      }
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+
+      // Same lifetime discipline as _unlockInner's KEK branch: everything
+      // sensitive lives inside try/finally so a throw between derivation and
+      // split still zeroes on the way out.
+      let saltBytes;
+      let H;
+      let C;
+      let kek;
+      let dek;
+      try {
+        saltBytes = decodeKekSalt(blob.kekSalt);
+        H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
+        C = await deriveKekC(password, saltBytes);
+        kek = await combineKek(H, C);
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        dek = await unwrapDek(kek, blob.kekWrap);
+        // splitDekForPersonalBackup does its own defensive copy and its own
+        // round-trip verification. It throws PERSONAL_BACKUP_ROUND_TRIP_FAILED
+        // on a self-check mismatch — do not swallow that; the caller must see
+        // the fail-closed signal (I4).
+        return splitDekForPersonalBackup(dek);
+      } finally {
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        if (kek) kek.fill(0);
+        if (dek) dek.fill(0);
+        if (saltBytes) saltBytes.fill(0);
+      }
+    });
+  },
+
+  // Personal Backup Phase 2 — restore-from-shares (same-device only).
+  //
+  // Given any 2 of the 3 shamir shares the user exported in Phase 1, plus a
+  // NEW password, this reconstructs the DEK, decrypts the on-device vault to
+  // verify the shares match the vault (fail-closed on mismatch), then re-wraps
+  // the same DEK under a fresh KEK derived from the new password. The seed and
+  // the DEK are unchanged; only the KEK rotates. Old shares REMAIN VALID
+  // (they still encode the same DEK) — invalidation requires a re-split, which
+  // is an explicit user action in the UI, not a side effect here.
+  //
+  // Does NOT hydrate any React state or transition the app to unlocked. The
+  // caller (WalletProvider) is expected to lock and route to the unlock screen;
+  // the user then unlocks with the new password through the normal chain,
+  // which populates containerRef.current at _unlockInner. This mirrors
+  // finalisePinRestore's post-restore contract in vaultBackup.js.
+  //
+  // Fail modes surfaced to the caller:
+  //   - PERSONAL_BACKUP_SHARDS_DISABLED  → build flag off
+  //   - shamir commitment mismatch       → combine() throws before decrypt
+  //   - vault decrypt fails              → shares are from a different vault
+  //                                        or a different DEK generation
+  //                                        (shamir returns a wrong-DEK output,
+  //                                        AES-GCM auth tag rejects it)
+  //   - KEK_ERR.NO_HARDWARE_FACTOR       → getHardwareFactor missing / vault
+  //                                        not KEK-enrolled
+  //
+  // The vault is only touched if BOTH the shamir combine AND the vault
+  // decrypt succeed — the safeWriteVault happens after both pass, so a
+  // partial failure leaves the on-disk blob unchanged.
+  async restoreFromPersonalBackupShares(shares, newPassword, opts = {}) {
+    if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
+      throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
+    }
+    await init();
+    return withLockSuppressed(async () => {
+      // Reads the inner KEK blob regardless of M2b vs M2c wrap. On M2c this
+      // also fires the OS biometric sheet to unwrap the outer enclave record
+      // — see _readInnerVaultBlob for the two-prompt caveat.
+      const { blob, wasEnclaveWrapped } = await this._readInnerVaultBlob();
+      if (!blob.kekWrap) {
+        // Non-KEK vaults have no DEK layer to restore — the seed decrypts
+        // directly from the password. Personal Backup shares only make sense
+        // when the vault is KEK-enrolled.
+        throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      }
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+
+      let newSaltBytes;
+      let newKekSalt;
+      let H2;
+      let newC;
+      let newKek;
+      let dek;
+      let seed;
+      try {
+        // Combine BEFORE touching hardware — a mismatched share set should
+        // fail fast without prompting biometric.
+        dek = combineDekForPersonalBackup(shares);
+        // Verify the reconstructed DEK actually opens THIS vault. If the
+        // shares are from a different wallet or a different DEK generation,
+        // the AES-GCM auth tag will reject. This is the primary fail-closed
+        // check — do NOT rewrite any state before it passes.
+        seed = await decryptVaultWithDek(blob, dek);
+
+        // Fresh KEK under the new password. Same-shape as changePassword's
+        // KEK branch (single getHardwareFactor call because there is no old
+        // KEK to derive from).
+        newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+        newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+        H2 = await getHardwareFactorWithLockoutFallback(getHF, { kekSalt: newSaltBytes.slice() });
+        newC = await deriveKekC(newPassword, newSaltBytes);
+        newKek = await combineKek(H2, newC);
+        if (H2 && H2.fill) H2.fill(0);
+        if (newC) newC.fill(0);
+
+        const newKekWrap = await wrapDek(newKek, dek);
+        const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 };
+        // v:3 forces reseal of blob.ct with new AAD binding, same as
+        // changePassword. Pre-v3 blobs can accept a header-only rewrite.
+        const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
+        if (writeV3) {
+          const sealed = await encryptVaultWithDekV3(seed, dek, newBinding);
+          await safeWriteVault({ ...blob, ...sealed });
+        } else {
+          await safeWriteVault({ ...blob, ...newBinding });
+        }
+        // If the vault was Enclave-wrapped on read (M2c), re-apply the outer
+        // wrap now so we do not silently downgrade to M2b. Best-effort —
+        // capability disappearing between read and write leaves M2b, which
+        // still unlocks (see _reapplyEnclaveWrapIfNeeded).
+        await this._reapplyEnclaveWrapIfNeeded(wasEnclaveWrapped);
+        // Cache is stale — new KEK cannot unwrap the old cache blob.
+        await clearDekCache();
+        return;
+      } finally {
+        if (H2 && H2.fill) H2.fill(0);
+        if (newC) newC.fill(0);
+        if (newKek) newKek.fill(0);
+        if (dek) dek.fill(0);
+        if (newSaltBytes) newSaltBytes.fill(0);
+        // seed is a string — cannot zero, only drop the reference so GC can
+        // collect it. Same architectural residual as elsewhere (iOS-F5).
+        seed = null;
+      }
     });
   },
 
