@@ -190,3 +190,65 @@ WAF origin probe: see the `curl -X OPTIONS` snippet above.
 - TIP hotfixes:        [#18](https://github.com/aljobson/veyrnox-tip/pull/18) `sanctions_list` contract restore, [#20](https://github.com/aljobson/veyrnox-tip/pull/20) `ENGINE_VERSION` revert
 - WAF rule #4 edit:    live change 2026-08-08 (added `"https://localhost"`)
 - KV backfill:         716 unique OFAC SDN addresses, `wrangler kv bulk put`
+
+## Follow-up 2026-08-09 — Tornado Cash / mixer coverage + Send Preview parity
+
+This 2026-08-08 report certified the Advisor path against the OFAC SDN mirror.
+It did NOT catch two adjacent gaps that surfaced the next day when
+regression-testing the Tornado Cash router `0x8589427373D6D84E98730D7795D8f6f8731FDA16`
+(an OFAC-sanctioned ETHEREUM entity whose ROUTER address is not on the SDN
+mirror, and whose Etherscan community label was fetched but never scored).
+
+Ordered chain of defects + fixes, all shipped 2026-08-09 and re-verified live:
+
+**D1 — Advisor CLEAR on the Tornado router** — `etherscan-labels` returned
+`Labelled: Tornado.Cash: Donate` and the aggregator scored the source as
+"clean". Fix: `SANCTIONED_LABEL_NAMESPACES` (`tornado.cash` / `lazarus` /
+`blender.io` / `sinbad`) — a namespace match upgrades `sanctionsResult.hit`.
+[aljobson/veyrnox-tip#36](https://github.com/aljobson/veyrnox-tip/issues/36)
+→ [#37](https://github.com/aljobson/veyrnox-tip/pull/37).
+
+**D2 — Send Preview sent `chain: 'evm'`** — the placeholder skipped
+`etherscan-labels` and `goplus` on every EVM Send. The Advisor path (which
+correctly sent `'ethereum'`) rendered BLOCKED for the SAME address while the
+Send Preview rendered CLEAR. Fix: `src/pages/sendCryptoTipChain.js#resolveTipChain`
+maps every wallet EVM key to the Worker's per-source slug — notably `bnb → bsc`,
+and every testnet → its mainnet slug (address-based lookups are chain-agnostic).
+[VEYRNOX/veyrnox#1645](https://github.com/VEYRNOX/veyrnox/issues/1645)
+→ [#1646](https://github.com/VEYRNOX/veyrnox/pull/1646).
+
+**D3 — D1 was ETH-only, so cross-chain sends silently allowed** — once the
+wallet sent the right per-chain slug, Polygon / Arbitrum / BSC / Optimism /
+Avalanche / Base sends to the same sanctioned address returned ALLOW
+(`etherscan-labels skipped [chain]`, no other lane caught it). OFAC sanctions
+apply to the address, not the chain. Fix: split the label KV into two lanes off
+the SAME rows — `kvLabelLookup` ('etherscan-labels') stays ETH-only for
+attribution; new `kvSanctionedAddressLookup` ('sanctioned-address') runs on
+every EVM chain and emits `hit` iff the namespace is on the curated list.
+Non-EVM (btc/solana) skipped.
+[aljobson/veyrnox-tip#38](https://github.com/aljobson/veyrnox-tip/issues/38)
+→ [#39](https://github.com/aljobson/veyrnox-tip/pull/39).
+
+Cross-chain regression matrix (curl against deployed Supabase edge → prod
+Worker, 2026-08-09):
+
+| chain    | to Tornado router      | Verdict |
+| -------- | ---------------------- | ------- |
+| ethereum | via labels + sanctioned-address | BLOCK |
+| polygon  | via sanctioned-address only     | BLOCK |
+| arbitrum | via sanctioned-address only     | BLOCK |
+| bsc      | via sanctioned-address only     | BLOCK |
+| polygon → Vitalik (clean) | sanctioned-address clean | ALLOW |
+
+Docs updated:
+- `docs/Feature-Status.md` — new dated bullet under the 2026-08-08 aggregator entry.
+- `docs/SecurityAdvisor-TIP-integration.md` — status table refreshed, cross-chain matrix added.
+- [VEYRNOX/veyrnox#1650](https://github.com/VEYRNOX/veyrnox/pull/1650) — combined docs PR.
+
+Honest gaps carried forward: three sanction-grade Worker sources (Chainalysis,
+OpenSanctions, Alchemy tx-sim) remain unfunded on staging (`*_API_KEY not
+configured`). Not independently audited. Not on-chain-txid verified (this is
+screening, not signing). `Ronin Bridge Exploiter` (Lazarus attribution seen
+during the regression sweep) is NOT on `SANCTIONED_LABEL_NAMESPACES` — OFAC-GitHub
++ GoPlus caught it, but the curated list could be extended with a citable
+sanctioning-authority reference.
