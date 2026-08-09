@@ -349,8 +349,14 @@ const ALL_RESIDUE_KEYS = Object.freeze([
 //   veyrnox-recent-pages — hooks/useRecentPages.js KEY (More-drawer recents; NAMES
 //                          '/duress-pin', '/stealth-wallets', '/panic-wipe' — a
 //                          direct deniability tell that the coercion stack existed)
+//   veyrnox-kek-onboarding-skip-warned — components/KekEnrollmentGate.jsx KEY
+//                          (mode='onboarding' one-time skip warning flag; PRESENCE
+//                          asserts a fresh-onboarding session occurred here AND
+//                          hardware-KEK was skipped. Same C-1 class as
+//                          veyrnox-recent-pages — tell is the presence, not the value.)
 const SESSION_RESIDUE_KEYS = Object.freeze([
   'veyrnox-recent-pages',
+  'veyrnox-kek-onboarding-skip-warned',
 ]);
 
 // Clear every sessionStorage residue key. Guarded for non-browser/test envs.

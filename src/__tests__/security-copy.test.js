@@ -26,20 +26,32 @@ const here = dirname(fileURLToPath(import.meta.url));
 const read = (rel) => readFileSync(resolve(here, '..', rel), 'utf8');
 
 describe('Part D — PIN-create copy reduction', () => {
-  const src = read('components/WalletEntry.jsx');
+  // Slice B (2026-08-09): the PIN-create screen copy now lives in the
+  // extracted PinSetup component, not in WalletEntry.jsx. Guard reads both:
+  // the positive copy assertion looks in PinSetup where the render lives,
+  // and the jargon-absence guards check both files so nothing sneaks back
+  // in via either the extracted component or the outer view scaffold.
+  const walletEntry = read('components/WalletEntry.jsx');
+  const pinSetup = read('components/PinSetup.jsx');
 
   it('renders the owner-set short line on the PIN-create screen', () => {
-    expect(src).toContain(
+    expect(pinSetup).toContain(
       "This unlocks your wallet. An 8-digit PIN. Always guard your device."
     );
   });
 
   it('drops the encryption-spec jargon from the PIN-create copy', () => {
-    // The exact create-screen jargon clause must be gone. (Scoped to this clause
-    // so password-cohort vault-password screens, out of Part D scope, are
-    // unaffected — the brief only trims the PIN-create + PIN-recover screens.)
-    expect(src).not.toContain('Your PIN encrypts the wallet on this device (Argon2id + AES-256-GCM)');
-    expect(src).not.toContain('It is 6 digits — strong against a quick grab');
+    // The exact create-screen jargon clause must be gone from both the
+    // extracted PIN component AND the outer view scaffold. (Scoped to this
+    // clause so password-cohort vault-password screens, out of Part D scope,
+    // are unaffected — the brief only trims the PIN-create + PIN-recover
+    // screens.)
+    const jargon1 = 'Your PIN encrypts the wallet on this device (Argon2id + AES-256-GCM)';
+    const jargon2 = 'It is 6 digits — strong against a quick grab';
+    expect(walletEntry).not.toContain(jargon1);
+    expect(walletEntry).not.toContain(jargon2);
+    expect(pinSetup).not.toContain(jargon1);
+    expect(pinSetup).not.toContain(jargon2);
   });
 });
 

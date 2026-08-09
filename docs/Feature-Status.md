@@ -1725,6 +1725,61 @@ who skipped KEK enrollment and silently overwriting a stored "denied" (removed
 Status: HONEST-DISABLED (removed on principle of not shipping dead code, NOT because the
 feature was wrong). INTERNAL, no device verification, no on-chain txid — UI scope only.
 
+## 2026-08-09 PinSetup component extraction + KekEnrollmentGate `mode="onboarding"` (Slice B)
+
+> ✅ BUILT (code + 29 targeted tests + 47 panic tests green, `npm run build` clean,
+> `eslint` 0 errors). **NOT verified** — no on-chain receive via the extracted PIN/KEK
+> path, no real-device verification.
+
+Branch `claude/pin-setup-slice-b`, single commit `ee2f3e86` (post-rebase onto
+`origin/main`; confirm current SHA with
+`git log --oneline origin/main..claude/pin-setup-slice-b`). Plan:
+`docs/superpowers/plans/2026-08-09-pin-setup-slice-b.md`.
+
+**What shipped.** Two independent extractions, both pure UI refactors — no wallet-core,
+no crypto, no KEK-derivation change:
+1. `src/components/PinSetup.jsx` — new component owning the two-step PIN entry
+   (new PIN → confirm PIN) that was previously duplicated inline in
+   `WalletEntry.jsx`'s `pin-create` and `pin-recover` views. Fires `onDone(pin)` on
+   success, `onCancel` at either step.
+2. `KekEnrollmentGate` gains a `mode="auto"|"onboarding"` prop (new axis, not a rename
+   of the existing copy-only `origin` prop). `onboarding` mode shows the skip warning
+   once per session instead of re-nagging on every unlock cycle.
+
+**Deliberately unchanged:** `PinPad.jsx` (including its numeric-only keypad UI),
+`useKekEnrollmentGate.js`, wallet-core, PIN policy (`MIN_PIN_LENGTH = 8`,
+`checkPinStrength`), KEK auto-enroll/derivation logic, `origin='fresh'|'restored'` copy
+behavior.
+
+**Three P2 fixes caught in review, recorded here for honesty:**
+1. **Mismatch semantics regression** — an early draft let a step-2 mismatch retry
+   indefinitely against the same step-1 PIN. Fixed to match original `WalletEntry`
+   behavior: a mismatch resets BOTH pins and returns to step 1, closing a
+   shoulder-surfed-PIN unlimited-retry gap.
+2. **Panic-wipe residue-key gap** — the new one-time skip-warning flag
+   (`veyrnox-kek-onboarding-skip-warned`, `sessionStorage`) was not in the panic-wipe
+   sweep. Added to `SESSION_RESIDUE_KEYS` in `src/wallet-core/panic.js` — same
+   PRESENCE-tell class as `veyrnox-first-run-tour-seen` / `veyrnox-device-id` (its
+   existence would assert a fresh-onboarding session occurred and hardware KEK was
+   skipped).
+3. **I3 write-gate added at source** — writes to that same session flag are gated by
+   `isDeniabilityOrDemoActive()` at the point of write (two-chokepoint pattern, matching
+   `src/lib/consent.js`), not left to callers to remember; reads stay ungated.
+
+Also preserved without regression: constant-time `pinsEqual` (F-11).
+
+**Test scope:** 29 new targeted tests (component-level, mocked collaborators) + 47
+panic-wipe regression tests. Build and lint clean. **What was NOT done:** no preview
+render was performed (the UI/orchestrator agents in this pass lacked a browser tool),
+so the fresh-create and import flows have not been visually confirmed to step through
+correctly end to end — an honest gap, not a blocker for BUILT, but not yet closed
+either. No on-chain send/receive exercised the extracted path, and there is no
+real-device (native KEK hardware) verification of this slice.
+
+No existing entry in the "PIN Security & Hardware Key Encryption (KEK)" section above
+(§4) claimed the PinSetup/KEK-mode extraction was already complete prior to this PR —
+this is a new record, not a correction of a prior overstatement.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split

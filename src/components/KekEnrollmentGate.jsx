@@ -33,6 +33,15 @@
 //   onEnroll: (pin: string) => Promise<{ ok: boolean, msg?: string, isInsecureTier?: boolean, isWrongPin?: boolean }>
 //   onSkip:   () => void
 //   origin?:  'fresh' | 'restored'  (default: 'restored' — matches historical copy)
+//   mode?:    'auto' | 'onboarding'  (default: 'auto' — current behavior, unchanged)
+//
+// mode='onboarding' (new axis, NOT a rename of origin, which is copy-only):
+// enforces the FR-7 contract — single screen, skip allowed, the security-
+// tradeoff warning shown ONCE per session, not re-nagged on every subsequent
+// mount of this gate within the same tab. Tracked via a sessionStorage flag
+// that IS in SESSION_RESIDUE_KEYS (wallet-core/panic.js) — presence-tell class,
+// same as veyrnox-recent-pages. Writes gated via isDeniabilityOrDemoActive
+// (two-chokepoint pattern, matches lib/consent.js).
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, useReducedMotion } from "motion/react";
@@ -41,6 +50,19 @@ import { Button } from '@/components/ui/button';
 import PinPad from '@/components/security/PinPad';
 import VaultIllustration from '@/components/VaultIllustration';
 import ShakeOnKey from '@/components/ShakeOnKey';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+
+const ONBOARDING_SKIP_WARNED_KEY = 'veyrnox-kek-onboarding-skip-warned';
+
+// Two-chokepoint I3 pattern (matches lib/consent.js): reads are ungated
+// (reading leaves no trace), writes are gated at the source so no future caller
+// can accidentally ship a shared-storage writer without a decoy check.
+// Panic-wipe still sweeps this key via SESSION_RESIDUE_KEYS in wallet-core/panic.js.
+function writeSkipWarnedFlag(v) {
+  if (isDeniabilityOrDemoActive()) return;
+  if (v) sessionStorage.setItem(ONBOARDING_SKIP_WARNED_KEY, '1');
+  else sessionStorage.removeItem(ONBOARDING_SKIP_WARNED_KEY);
+}
 
 const COPY = {
   fresh: {
@@ -66,7 +88,7 @@ const COPY = {
   },
 };
 
-export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored', autoEnrollPin = null }) {
+export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored', autoEnrollPin = null, mode = 'auto' }) {
   const reduce = useReducedMotion();
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
@@ -80,7 +102,33 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
   // True while auto-enrollment is running (show progress, not the PIN pad).
   const [autoEnrolling, setAutoEnrolling] = useState(!!autoEnrollPin?.trim());
 
+  // mode='onboarding' only: has this browser session already seen the skip
+  // warning? Seeded from sessionStorage so a remount (e.g. the gate re-firing
+  // on a later unlock within the same tab) does not re-show it.
+  const [skipWarned, setSkipWarned] = useState(
+    () => mode === 'onboarding' && sessionStorage.getItem(ONBOARDING_SKIP_WARNED_KEY) === '1',
+  );
+  // Whether to render the warning banner THIS render — only flips true the
+  // moment the user actually skips, never just from a stored flag at mount.
+  const [showSkipWarning, setShowSkipWarning] = useState(false);
+
   const copy = COPY[origin] || COPY.restored;
+
+  const clearOnboardingSkipWarning = () => {
+    if (mode !== 'onboarding') return;
+    writeSkipWarnedFlag(false);
+    setSkipWarned(false);
+    setShowSkipWarning(false);
+  };
+
+  const handleSkip = () => {
+    if (mode === 'onboarding' && !skipWarned) {
+      writeSkipWarnedFlag(true);
+      setSkipWarned(true);
+      setShowSkipWarning(true);
+    }
+    onSkip?.();
+  };
 
   const handleEnroll = async (testPin) => {
     const pinToUse = testPin || pin;
@@ -92,6 +140,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
       const result = await onEnroll(pinToUse);
       if (result.ok) {
         setPin('');
+        clearOnboardingSkipWarning();
         return; // caller (WalletEntry) clears the gate via dismiss()
       }
       if (result.isInsecureTier) {
@@ -119,7 +168,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
     (async () => {
       const result = await onEnroll(autoEnrollPin);
       if (!live) return;
-      if (result.ok) return; // caller clears the gate
+      if (result.ok) { clearOnboardingSkipWarning(); return; } // caller clears the gate
       // Auto-enroll failed — fall back to manual gate.
       setAutoEnrolling(false);
       if (result.isInsecureTier) {
@@ -251,12 +300,27 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => onSkip?.()}
+            onClick={handleSkip}
             disabled={busy}
           >
             Skip for now
           </Button>
         </motion.div>
+
+        {/* mode='onboarding' only: one-time-per-session warning shown the moment
+            the user skips. Does not re-render on a later mount within the same
+            session (skipWarned is seeded from sessionStorage) — see FR-7. */}
+        {mode === 'onboarding' && showSkipWarning && (
+          <motion.p
+            variants={item}
+            role="alert"
+            data-testid="kek-skip-warning"
+            className="text-xs text-caution text-center"
+          >
+            You can turn this on later in Settings — until then, a stolen seed can
+            unlock the wallet here.
+          </motion.p>
+        )}
       </motion.div>
     </div>
   );
