@@ -28,6 +28,9 @@ const vaultMock = {
   // save site propagates the encrypt-time `v` or leaks the pre-existing blob.v.
   encryptVaultWithDek: vi.fn(async () => ({ v: 999, kdf: 'kek-dek', iv: 'newiv', ct: 'newct' })),
   decryptVaultWithDek: vi.fn(async () => 'seed'),
+  encryptVaultWithDekV3: vi.fn(async () => ({ v: 3, kdf: 'kek-dek', iv: 'v3iv', ct: 'v3ct' })),
+  VAULT_VERSION_V3: 3,
+  AAD_V3_MIGRATION_ENABLED: false,
 };
 const store = new Map();
 const VAULT_KEY = 'primary';

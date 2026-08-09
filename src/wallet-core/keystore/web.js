@@ -8,7 +8,7 @@
 // transparent KDF-parameter MIGRATION on unlock (see unlock()).
 
 import { Capacitor } from '@capacitor/core';
-import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
+import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt } from './kek.js';
 import { ALLOW_MAINNET } from '../evm/networks.js';
@@ -529,7 +529,27 @@ export const webKeyStore = {
         C.fill(0);
         dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
         // Seed CT was encrypted with the DEK (not the PIN), so PIN rotation doesn't change it.
-        return await decryptVaultWithDek(blob, dek);
+        const plaintext = await decryptVaultWithDek(blob, dek);
+        // AAD v:3 migration (#1111): silently reseal a v:2 kek-dek blob
+        // under the v:3 AAD. See native.js:_unlockInner for the sibling
+        // hook + rationale. Web has no `hardwareKekVersion` — coerce
+        // undefined to explicit `null` so the v:3 AAD is well-defined
+        // for web vaults (mirrors the rotation-path guard in
+        // changePassword's KEK branch above).
+        if (AAD_V3_MIGRATION_ENABLED && blob.v !== VAULT_VERSION_V3 && blob.kdf === 'kek-dek') {
+          try {
+            const resealed = await encryptVaultWithDekV3(plaintext, dek, {
+              kekWrap: blob.kekWrap,
+              kekSalt: blob.kekSalt,
+              hardwareKekVersion: blob.hardwareKekVersion ?? null,
+            });
+            await saveVault({ ...blob, ...resealed });
+          } catch {
+            // Best-effort — a failed write leaves v:2 on disk; retry on
+            // next unlock. Never fail the unlock over the migration.
+          }
+        }
+        return plaintext;
       } finally {
         // H-NEW-4: wipe the derived KEK and the recovered DEK — never leave the key
         // that wraps the DEK or the key that decrypts the seed in the heap (I4).
@@ -742,16 +762,41 @@ export const webKeyStore = {
         H2.fill(0);
         newC.fill(0);
         const newKekWrap = await wrapDek(newKek, dek);
-        // I-1 (intentional preserve, NOT the enrollKek/saveVaultContents fix):
-        // this branch rotates the DEK wrap only — the seed CT (blob.iv/blob.ct)
-        // is NOT re-encrypted (§3: PIN rotation without touching seed CT). The
-        // seed CT's GCM auth-tag was sealed with vaultAad({v:blob.v, kdf:'kek-dek'}),
-        // so preserving blob.v (via `...blob`) is REQUIRED — bumping v here
-        // without re-sealing the seed CT would break next unlock's AAD match
-        // and permanently lock the vault. If a future VAULT_VERSION bump ever
-        // needs to lift the seed CT, that must be a separate rekey path (like
-        // vaultNeedsRekey on unlock), not a silent header-only version bump.
-        await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
+        // v:2 branch (existing): the seed CT (blob.iv/blob.ct) is NOT
+        // re-encrypted — v:2 AAD binds only {v, kdf}, both unchanged
+        // by a PIN rotation, so the header-only rewrite is safe.
+        //
+        // v:3 branch (#1111, Codex [P1] 2026-08-09): the seed CT's GCM AAD
+        // additionally binds kekWrap/kekSalt/hardwareKekVersion. A
+        // header-only rewrite would break the tag and permanently lock the
+        // vault. Reseal the seed CT under the new binding using the SAME
+        // DEK.
+        //
+        // Web has no `hardwareKekVersion` concept — WebAuthn PRF is
+        // version-inline, and `enrollKek` never stores that native-only
+        // field. Bind an explicit `null` here so the v:3 AAD is
+        // well-defined for web vaults and `encryptVaultWithDekV3`'s
+        // "present" check passes. `null` and any native version number
+        // are all valid canonical JSON, and are distinguishable in the
+        // bound AAD (null-web ≠ 3-native), which is what we want.
+        const newBinding = {
+          kekWrap: newKekWrap,
+          kekSalt: newKekSalt,
+          hardwareKekVersion: blob.hardwareKekVersion ?? null,
+        };
+        const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
+        if (writeV3) {
+          let seed;
+          try {
+            seed = await decryptVaultWithDek(blob, dek);
+            const sealed = await encryptVaultWithDekV3(seed, dek, newBinding);
+            await saveVault({ ...blob, ...sealed });
+          } finally {
+            if (typeof seed === 'string') seed = null;
+          }
+        } else {
+          await saveVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt });
+        }
       } finally {
         // F-06 (audit, I4): H is captured before the try block (needed to make the
         // H2 copy). If ANY step between its capture and its in-try zeroing throws

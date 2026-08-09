@@ -68,7 +68,7 @@ import {
 } from '@aparajita/capacitor-secure-storage';
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { App } from '@capacitor/app';
-import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
+import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
@@ -468,6 +468,28 @@ async function _unlockInner(password, opts = {}) {
       // unlocks skip unwrapDek. Best-effort — kek and dek are still live
       // here (finally zeros them AFTER return runs).
       await tryWriteDekCache(kek, dek);
+      // AAD v:3 migration (#1111, docs/vault-aad-v3-plan.md): silently
+      // reseal a v:2 kek-dek blob under the v:3 AAD (which additionally
+      // binds kekWrap/kekSalt/hardwareKekVersion). Same DEK — no new key
+      // derivation, no biometric prompt, no user-visible step. Gated by
+      // AAD_V3_MIGRATION_ENABLED so this PR ships inert; the flag flip
+      // is Phase 0b after internal-cohort verification. Best-effort: a
+      // failed write leaves the v:2 blob untouched on disk; next unlock
+      // retries.
+      if (AAD_V3_MIGRATION_ENABLED && blob.v !== VAULT_VERSION_V3 && blob.kdf === 'kek-dek') {
+        try {
+          const resealed = await encryptVaultWithDekV3(plaintext, dek, {
+            kekWrap: blob.kekWrap,
+            kekSalt: blob.kekSalt,
+            hardwareKekVersion: blob.hardwareKekVersion,
+          });
+          await safeWriteVault({ ...blob, ...resealed });
+        } catch {
+          // Best-effort — see finally-block DEK zeroing. A rethrow here
+          // would fail an otherwise-successful unlock, which is a much
+          // worse regression than a delayed migration.
+        }
+      }
       // C-1 (v2→v3): the v2→v3 salt-binding upgrade deliberately does NOT run on the
       // unlock hot path. Re-deriving H under a fresh salt requires a SECOND biometric
       // prompt, which (on top of the biometricUnlock cache-gate + this unlock's own H
@@ -750,9 +772,30 @@ export const nativeKeyStore = {
         if (H2 && H2.fill) H2.fill(0);
         if (newC) newC.fill(0);
         const newKekWrap = await wrapDek(newKek, dek);
-        // ...blob spread preserves hardwareKekTier and the seed's iv/ct (seed CT UNCHANGED
-        // — only the wrap and salt rotate; §3). safeWriteVault verifies the write (I4).
-        await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
+        // ...blob spread preserves hardwareKekTier. For a v:2 blob the seed's
+        // iv/ct is UNCHANGED — only the wrap and salt rotate; §3. safeWriteVault
+        // verifies the write (I4).
+        //
+        // For a v:3 blob (or when the AAD-v:3 migration is armed and the
+        // current blob is v:2) the seed's GCM AAD binds kekWrap/kekSalt/
+        // hardwareKekVersion (#1111), so a header-only rewrite would corrupt
+        // the tag and lock the vault permanently (Codex [P1], 2026-08-09).
+        // The seed CT must be re-sealed against the new binding under the
+        // SAME DEK.
+        const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 };
+        const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
+        if (writeV3) {
+          let seed;
+          try {
+            seed = await decryptVaultWithDek(blob, dek);
+            const sealed = await encryptVaultWithDekV3(seed, dek, newBinding);
+            await safeWriteVault({ ...blob, ...sealed });
+          } finally {
+            if (typeof seed === 'string') seed = null; // JS: no zero, drop ref
+          }
+        } else {
+          await safeWriteVault({ ...blob, ...newBinding });
+        }
         // Fast-path DEK cache: the KEK rotated, so any cached wrap is now
         // stale. Clear rather than rely on the DEK_CACHE_UNWRAP_FAILED
         // fallback — explicit is faster and leaves no dead cache blob.
@@ -996,7 +1039,25 @@ export const nativeKeyStore = {
           if (H2 && H2.fill) H2.fill(0);
           if (newC) newC.fill(0);
           const newKekWrap = await wrapDek(newKek, dek);
-          await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
+          // v:3 AAD binds kekWrap/kekSalt/hardwareKekVersion — a header-only
+          // rewrite on a v:3 blob would break the tag and permanently lock
+          // the vault (Codex [P1], 2026-08-09). Reseal the seed CT under
+          // the new binding with the SAME DEK. See upgradeKekToV3 above
+          // for the sibling site.
+          const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 };
+          const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
+          if (writeV3) {
+            let seed;
+            try {
+              seed = await decryptVaultWithDek(blob, dek);
+              const sealed = await encryptVaultWithDekV3(seed, dek, newBinding);
+              await safeWriteVault({ ...blob, ...sealed });
+            } finally {
+              if (typeof seed === 'string') seed = null;
+            }
+          } else {
+            await safeWriteVault({ ...blob, ...newBinding });
+          }
           // Fast-path DEK cache: PIN rotated → KEK rotated → cached wrap
           // is stale. Clear explicitly.
           await clearDekCache();
