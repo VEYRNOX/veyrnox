@@ -3,7 +3,7 @@
 // TDD RED first: the component does not exist yet. These tests pin the
 // externally-observable contract per Slice B plan.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
 // Framer Motion — stub to avoid animation timing issues in tests.
