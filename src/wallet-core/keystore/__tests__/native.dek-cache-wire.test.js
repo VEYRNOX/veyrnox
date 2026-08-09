@@ -87,8 +87,10 @@ let keyStore;
 beforeEach(async () => {
   vi.resetModules();
   store.clear();
-  Object.values(secureStoreMock).forEach(fn => fn.mockClear());
-  Object.values(vaultMock).forEach(fn => fn.mockClear());
+  // Guarded — vaultMock now carries non-function values (VAULT_VERSION_V3,
+  // AAD_V3_MIGRATION_ENABLED) that have no `.mockClear`.
+  Object.values(secureStoreMock).forEach(fn => fn.mockClear && fn.mockClear());
+  Object.values(vaultMock).forEach(fn => fn.mockClear && fn.mockClear());
   Object.values(kekMock).forEach(fn => fn.mockClear && fn.mockClear());
   // Re-return the deterministic KEK/DEK after clear:
   kekMock.combineKek.mockImplementation(async () => new Uint8Array(FIXED_KEK));
