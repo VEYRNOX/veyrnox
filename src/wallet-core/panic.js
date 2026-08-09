@@ -323,6 +323,12 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-first-run-tour-seen',    // FirstRunTour.jsx TOUR_SEEN_KEY
   'veyrnox-posture-dismissed',      // SecurityPosture.jsx dismiss state
   'veyrnox-advisor-remote-consent', // lib/advisorConsent.js ADVISOR_CONSENT_KEY
+  // Personal Backup Phase 5 — presence proves this device ran through the
+  // shard-export flow (Phases 1/3) at least once. Same tell class as
+  // 'veyrnox-first-run-tour-seen'. See lib/personalBackupState.js for the
+  // writer + I3 discipline.
+  'veyrnox-personal-backup-exported',       // lib/personalBackupState.js PERSONAL_BACKUP_EXPORTED_KEY
+  'veyrnox-personal-backup-passphrase-set', // lib/personalBackupState.js PERSONAL_BACKUP_PASSPHRASE_KEY
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
