@@ -815,6 +815,32 @@ value / mutate balances without a user signature through wallet-core signing).
     WIRED** — the module has zero non-test callers, so nothing in the app can
     reach it. The guardian/social/multi-party form above remains correctly
     absent.
+  - **Personal Backup — DEK cache infrastructure (Phase 1a + 1b, 2026-08-08/09).**
+    ✅ BUILT (unit-tested only). Two PRs landed:
+    - **Phase 1a — dekCache primitive (PR #1642, `0886965d`).**
+      `src/wallet-core/keystore/dekCache.js` — AES-256-GCM wrap/unwrap of the
+      unlocked DEK for a bounded warm-cache slot, distinct AAD from the primary
+      KEK-wrap so a cache-slot bit-flip can never be confused with the primary
+      vault wrap. Tests: 18/18.
+    - **Phase 1b — wire into unlock hot path (PR #1644, `b27ec1bb`).**
+      `nativeKeyStore` writes `vault_dek_v1` on successful KEK unlock; subsequent
+      unlocks consult the cache before calling `unwrapDek`; cache is cleared at
+      every KEK-rotating / vault-invalidating site (`clearVault`, `unenrollKek`,
+      both `changePassword` branches, `upgradeKekToV3`). Tests: 9/9 wire
+      contract pins (write on unlock, cache-hit skips `unwrapDek`, cache-miss +
+      cache-tampered fall through cleanly, five clear sites).
+    - **Honest scope.** BUILT + tests-only across both PRs (27/27 relevant to
+      the DEK cache surface, 76/76 across the wider Shamir/shard/PersonalBackup
+      test set). NOT device-verified; NOT independently audited. The primary
+      motivation is Personal Backup latency (avoid a biometric prompt on every
+      warm unlock during a shard round-trip), but the wire itself is generic
+      and applies to any KEK-enrolled unlock — no shard code has landed yet
+      and no user-visible surface changed. The Personal Backup shard flow
+      (Shamir 2-of-3 per the spec above) is still PLANNED / pre-audit / NOT
+      WIRED; Phase 1a/1b is the plumbing that Phase 2+ will call. Owner-
+      authorised (2026-08-08) to proceed with implementation ahead of the
+      independent audit; internal-audit review of the completed architecture
+      is still required before any release-facing claim of "verified".
 - ❌ **Crypto Will / Inheritance** — [audit-blocked-and-not-advertised] never built; removed from roadmap 2026-06. No code exists.
 - ❌ Multi-Sig wallets (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
 - ❌ Rebalance + Rebalance History — [breaks-self-custody] autonomous value movement; removed (PR #47).
