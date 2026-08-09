@@ -88,6 +88,11 @@ export async function screenTransaction(params) {
       ...(params.contractAddress && { contract_address: params.contractAddress }),
       ...(params.calldata && { calldata: params.calldata }),
       ...(params.valueWei && { value_wei: params.valueWei }),
+      // Solana + Bitcoin lanes on the Worker consume a base64/hex serialized
+      // transaction; SendCrypto passes it here for chains that can build one
+      // pre-sign (SOL today; BTC deferred — testmempoolaccept needs a
+      // fully signed raw tx which we do not have pre-sign).
+      ...(params.serializedTx && { serialized_tx: params.serializedTx }),
       ...(params.recentCounterparties?.length && { recent_counterparties: params.recentCounterparties }),
     });
 

@@ -67,6 +67,9 @@ export function createTipClient({ proxyUrl, anonKey, timeout = 10_000 }) {
       ...(params.token_address && { token_address: params.token_address }),
       ...(params.calldata && { calldata: params.calldata }),
       ...(params.metadata && { metadata: params.metadata }),
+      // Serialized-tx payload for the Worker's solana-sim / btc-sim lanes.
+      // Wallet passes it only for chains where a pre-sign build is possible.
+      ...(params.serialized_tx && { serialized_tx: params.serialized_tx }),
       ...(params.recent_counterparties && { recent_counterparties: params.recent_counterparties }),
     };
 
