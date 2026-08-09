@@ -704,8 +704,48 @@ export default function SendCrypto() {
   const tipScreenApplies = remoteScreen && step === 'verify' && !!toAddress
     && !!selectedWallet?.address && addressFormatValid;
 
+  // Unsigned SOL transaction for the TIP `solana-sim` lane. The Worker's
+  // solana-sim source needs a base64-serialized Message/Transaction to feed
+  // Solana's `simulateTransaction` RPC; without it the lane emits skipped.
+  // Built at verify step, refreshed every 20s (blockhash drifts) — the Worker
+  // still passes replaceRecentBlockhash: true so a slightly stale blockhash
+  // is fine. requireAllSignatures: false already inside buildUnsignedSolTx
+  // (see src/wallet-core/sol/send.js:222).
+  //
+  // I2/I3 gate: buildUnsignedSolTx performs a getLatestBlockhash RPC. That
+  // egress must NOT fire when remote screening is off, in demo, or in a
+  // decoy/hidden session — mirrors the same suppression the other simulation
+  // queries apply. Codex 2nd-review flagged this as [P1] in the first pass.
+  const solUnsignedTxApplies = isSolana && remoteScreen && step === 'verify'
+    && !!toAddress && !!selectedWallet?.address && addressFormatValid
+    && !!canonicalAmount && parseFloat(canonicalAmount) > 0
+    && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive();
+  const solUnsignedTxQuery = useQuery({
+    queryKey: ['sol-unsigned', selectedWallet?.address, toAddress, canonicalAmount, networkKey],
+    queryFn: async () => {
+      const lamports = toBaseUnits(canonicalAmount, 9);
+      return buildUnsignedSolTx({
+        fromAddress: selectedWallet.address,
+        toAddress,
+        lamports,
+        networkKey,
+      });
+    },
+    enabled: solUnsignedTxApplies,
+    staleTime: 20_000,
+    retry: false,
+  });
+  // Serialized-tx string passed to TIP. For Solana we hand over the base64
+  // unsigned tx if the build succeeded; on build error we DO NOT hold TIP
+  // hostage — every other TIP lane (sanctions, phishing, hack, contract-risk,
+  // etherscan-labels, sanctioned-address) still runs, solana-sim just emits
+  // its honest skipped row. Codex 2nd-review flagged the previous gating as
+  // a denial-of-screening [P1]. BTC deferred: testmempoolaccept needs a
+  // fully signed raw tx we do not have pre-sign.
+  const serializedTxForTip = isSolana ? solUnsignedTxQuery.data?.unsignedTxBase64 : undefined;
+
   const tipQuery = useQuery({
-    queryKey: ['tip-screen', toAddress, selectedWallet?.address, tipChain, canonicalAmount],
+    queryKey: ['tip-screen', toAddress, selectedWallet?.address, tipChain, canonicalAmount, serializedTxForTip],
     queryFn: () => screenTransaction({
       chain: tipChain,
       actionType: isErc20 ? 'token_transfer' : 'transfer',
@@ -714,6 +754,7 @@ export default function SendCrypto() {
       ...(isErc20 && selectedAsset?.contractAddress && { contractAddress: selectedAsset.contractAddress }),
       ...(riskCalldata && { calldata: riskCalldata }),
       ...(canonicalAmount && { valueWei: canonicalAmount }),
+      ...(serializedTxForTip && { serializedTx: serializedTxForTip }),
       recentCounterparties: knownAddresses.slice(0, 20).map(k => k.address),
     }),
     enabled: tipScreenApplies,

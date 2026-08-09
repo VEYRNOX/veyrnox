@@ -149,6 +149,20 @@ const STRING_FIELDS = [
 const MAX_STRING = 4096;          // calldata is the long one
 const MAX_COUNTERPARTIES = 20;    // matches what the client sends
 const MAX_BODY_BYTES = 64 * 1024;
+// serialized_tx is larger than the calldata cap: a Solana transaction with
+// several priority-fee + system-transfer instructions comes in base64-encoded
+// at around 300–500 bytes, but the Worker's solana-sim contract lets the
+// upstream simulate any reasonably-sized tx. Cap at 8 KiB — enough for real
+// multi-ix transactions, small enough that a caller cannot use the field to
+// smuggle bulk data through our Alchemy account.
+const MAX_SERIALIZED_TX = 8 * 1024;
+// serialized_tx is chain-scoped: only forward it when the request is for a
+// chain whose Worker lane actually consumes it. Anything else is dropped so a
+// caller cannot use this field to funnel arbitrary bytes to TIP.
+const CHAINS_ACCEPTING_SERIALIZED_TX = new Set(['solana', 'bitcoin']);
+// Base64 alphabet (Solana). Bitcoin serialized_tx is hex — a separate check.
+const BASE64_RE = /^[A-Za-z0-9+/=]+$/;
+const HEX_RE = /^(0x)?[0-9a-fA-F]+$/;
 
 function buildUpstreamBody(input: Record<string, unknown>, requestId: string) {
   const out: Record<string, unknown> = { request_id: requestId };
@@ -162,6 +176,22 @@ function buildUpstreamBody(input: Record<string, unknown>, requestId: string) {
     const list = rc.filter((x) => typeof x === 'string' && x.length > 0 && x.length <= 128)
       .slice(0, MAX_COUNTERPARTIES);
     if (list.length) out.recent_counterparties = list;
+  }
+  // serialized_tx passthrough — chain-gated, size-capped, encoding-validated.
+  // Wallet-side (SendCrypto.jsx) builds unsigned Solana tx pre-sign for the
+  // Worker's solana-sim lane. Bitcoin support requires a signed raw tx (btc-sim
+  // consumes testmempoolaccept), so is deferred but the shape is ready.
+  const st = input.serialized_tx;
+  if (
+    typeof st === 'string' &&
+    st.length > 0 &&
+    st.length <= MAX_SERIALIZED_TX &&
+    CHAINS_ACCEPTING_SERIALIZED_TX.has(out.chain as string)
+  ) {
+    const encodingOk =
+      (out.chain === 'solana' && BASE64_RE.test(st)) ||
+      (out.chain === 'bitcoin' && HEX_RE.test(st));
+    if (encodingOk) out.serialized_tx = st;
   }
   return out;
 }
