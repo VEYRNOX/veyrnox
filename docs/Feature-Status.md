@@ -836,13 +836,93 @@ value / mutate balances without a user signature through wallet-core signing).
       test set). NOT device-verified; NOT independently audited. The primary
       motivation is Personal Backup latency (avoid a biometric prompt on every
       warm unlock during a shard round-trip), but the wire itself is generic
-      and applies to any KEK-enrolled unlock — no shard code has landed yet
-      and no user-visible surface changed. The Personal Backup shard flow
-      (Shamir 2-of-3 per the spec above) is still PLANNED / pre-audit / NOT
-      WIRED; Phase 1a/1b is the plumbing that Phase 2+ will call. Owner-
-      authorised (2026-08-08) to proceed with implementation ahead of the
-      independent audit; internal-audit review of the completed architecture
-      is still required before any release-facing claim of "verified".
+      and applies to any KEK-enrolled unlock — no user-visible surface changed
+      by this pair. Owner-authorised (2026-08-08) to proceed with implementation
+      ahead of the independent audit; internal-audit review of the completed
+      architecture is still required before any release-facing claim of
+      "verified".
+  - **Personal Backup — shard flow Phases 1/2/3 (2026-08-09).** ✅ BUILT
+    behind `VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1` build flag (defaults false;
+    dead-code-eliminated in prod bundles until the flag is set). All three
+    phases pass full regression (208 test files / 1658 tests) plus Codex
+    second-pass review with all findings fixed pre-commit.
+    - **Phase 1 (PR #1666)** — 2-of-3 Shamir DEK split + export-only UI. New
+      "Recovery shares" tab in Personal Backup. `nativeKeyStore.exportPersonal
+      BackupShares` runs KEK unlock chain and splits the DEK inside its own
+      finally-zero block so the DEK never crosses the WalletProvider boundary.
+      Facade forward pinned by regression test. Fail-closed `PERSONAL_BACKUP_
+      ROUND_TRIP_FAILED` on shamir mismatch (I4). I3-gated at
+      `exportRecoveryShares` provider hook. Codex fixed pre-commit: missing
+      facade forward (feature would have been dead-on-arrival), gate used
+      `MIN_PASSWORD_LENGTH=12` locking out native 8-digit PIN cohort,
+      zeroization skipped on save error. Also fixes M2c enclave-wrapped-vault
+      handling that Phase 1 originally missed on iOS.
+    - **Phase 2 (PR #1673)** — same-device restore-from-shares. Import any 2
+      shares + new PIN → combine → decrypt vault (AES-GCM tag rejects
+      wrong-vault / wrong-generation shares) → re-wrap DEK under fresh KEK
+      derived from new PIN → v:3 reseal → clear cache. Same DEK preserved —
+      old shares STILL VALID until user explicitly re-exports. Cross-device
+      restore explicitly NOT shipped (requires vault-ciphertext transport, a
+      later phase). Post-restore does NOT auto-hydrate — locks and routes to
+      unlock screen, standard chain hydrates. Codex fixed pre-commit: M2c
+      enclave read + `_reapplyEnclaveWrapIfNeeded` after write (else silent
+      M2c→M2b downgrade), PIN validation via `checkPinStrength` (else non-
+      numeric or short values silently lock user out).
+    - **Phase 3 (PR #1677)** — optional passphrase-encrypted share for cloud
+      storage. New `src/wallet-core/recoveryShare.js` — Argon2id (192 MiB,
+      shared `KDF_PARAMS`) + AES-256-GCM, AAD-bound header (shareIndex tamper
+      detected), strict KDF-params equality on unwrap (pre-auth OOM guard).
+      Export UI adds "Encrypt one share with a passphrase" checkbox — share 2
+      saves as `.veyrnox-recovery.json`; shares 1 and 3 stay raw. Restore UI
+      detects JSON envelopes and prompts for the passphrase; wrong passphrase
+      is retryable without re-picking files. Fail-closed
+      `RECOVERY_SHARE_UNWRAP_FAILED` (no oracle vs tampered ct). Codex fixed
+      pre-commit: `shares[]` finally-block aliased `pickedFiles` buffers
+      (retry after failure fed zeroed shares); single-entry PIN silently
+      locked user out on typo (added Confirm PIN gate).
+    - **Phase 4 — SKIPPED (2026-08-09 owner decision).** The DEK-cache
+      "fast-path" half of spec §4.1 is already wired (Phase 1a+1b above); the
+      other half (swapping `blob.kekWrap` from full-DEK to Share A) was
+      declined. Rationale: cache-miss with only Share A on device requires a
+      second share to reconstruct, so any user who has not exported shares
+      would be permanently locked out on cache-miss (panic-wipe of cache,
+      M2c re-wrap mid-flow, disk corruption). That is a regression from
+      today's cache-miss-falls-through-to-full-DEK behaviour. Deferred until
+      after cross-device restore ships and can serve as the fall-back path
+      for cache-miss users — then and only then can Share A safely replace
+      the full-DEK wrap.
+    - **Phase 5 (PR #1680)** — Recovery-dimension posture inputs. Wires
+      Personal Backup state into the existing `SecurityPosture` card
+      (spec §9.0.1a Recovery: 30 pts) so the shard cohort stops rendering
+      Recovery = 0/30. New `src/lib/personalBackupState.js` persists two
+      localStorage flags (`exported`, `passphraseSet`) with schema version +
+      timestamp validation; `markPersonalBackupExported()` fires when all 3
+      shares save. `WalletPortfolioPage` passes them into
+      `<SecurityPosture state={...}/>`; `shareCVerified` stays honestly
+      false (spec §9 gates it on a real recovery round-trip Phase 2 does not
+      yet log — I4). Panic-residue keys added to
+      `wallet-core/panic.js METADATA_RESIDUE_KEYS`; regression pins the
+      sweep list AND `inspectKeyMaterial().clean`. Two I3 chokepoints —
+      both writes AND reads gated by `isDeniabilityOrDemoActive()`; reads
+      gated (unlike `lib/consent.js`) because the score is a visible
+      indicator, so a decoy could otherwise leak primary export state via a
+      Recovery-dimension delta (Codex P1 pre-commit). Codex fixed
+      pre-commit: file picker accept filter was missing
+      `.veyrnox-recovery.json` → users could not restore encrypted shares
+      Phase 3 produced.
+    - **Full spec §9 5-dimension scoring rewrite — NOT DONE (not needed).**
+      The existing `SecurityPosture` component already scores all five
+      dimensions (auth 20, RASP 25, hardware 15, recovery 30, session 10).
+      Phase 5 only wired the Recovery-dimension inputs; the other four
+      dimensions were already fed by the existing hooks. No new banner /
+      trigger conditions / cycling were added — surface stays as
+      `SecurityPosture` on the dashboard.
+    - **Not shipped / not verified across all phases.** Cross-device restore
+      (needs vault-ciphertext transport). Platform-native cloud silent sync
+      (iCloud Keychain / Google Backup — plugin work). Real-device wrap /
+      unwrap round-trip on iOS 17 + Android StrongBox. Independent third-
+      party audit. Nothing is "verified" until a real on-device recovery
+      trip completes AND an independent audit passes.
 - ❌ **Crypto Will / Inheritance** — [audit-blocked-and-not-advertised] never built; removed from roadmap 2026-06. No code exists.
 - ❌ Multi-Sig wallets (personal + treasury) — [audit-blocked-and-not-advertised] UI shell w/ fake addresses only; page/route/nav/catalogue removed.
 - ❌ Rebalance + Rebalance History — [breaks-self-custody] autonomous value movement; removed (PR #47).
