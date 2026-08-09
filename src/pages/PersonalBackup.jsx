@@ -18,6 +18,7 @@ import {
   checkRecoveryPassphrase,
   RECOVERY_PASSPHRASE_MIN_LENGTH,
 } from "@/wallet-core/recoveryShare";
+import { markPersonalBackupExported } from "@/lib/personalBackupState";
 import { toast } from "@/lib/toast";
 import BackButton from "@/components/BackButton";
 import { useActionGuard } from "@/components/security/useActionGuard";
@@ -333,7 +334,12 @@ async function pickShareFiles(minCount, maxCount) {
   return await new Promise((resolve, reject) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".veyrnox-share,application/octet-stream";
+    // Phase 3 introduced passphrase-encrypted envelopes saved as
+    // `.veyrnox-recovery.json` — an accept filter that only lists
+    // `.veyrnox-share` would hide those files from the OS picker on iOS/web
+    // and block restore of the very files this same flow produced (Codex P1,
+    // 2026-08-09). Include both extensions and their MIME types.
+    input.accept = ".veyrnox-share,.veyrnox-recovery.json,.json,application/octet-stream,application/json";
     input.multiple = true;
     input.style.display = "none";
     input.onchange = async () => {
@@ -623,6 +629,7 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
       // stay raw. Exactly one encrypted file so user has a clear cloud-safe
       // file to save separately from the raw ones (spec §5).
       const CLOUD_INDEX = 1; // shares[1] = x-coord 2 in the shamir set
+      let completedAll = true;
       for (let i = 0; i < shares.length; i++) {
         let bytesToSave;
         let filename;
@@ -643,8 +650,15 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
           setSavedCount(i + 1);
         } else {
           toast("Share sheet was dismissed — some shares were not saved.");
+          completedAll = false;
           break;
         }
+      }
+      // Phase 5: only record "exported" when ALL 3 files landed. Partial save
+      // cannot recover a vault, so it must not lift the posture score. Helper
+      // is I3-suppressed at its write site — no-op in decoy.
+      if (completedAll) {
+        markPersonalBackupExported({ withPassphrase: encryptOne });
       }
       setDone(true);
       setPassword("");
