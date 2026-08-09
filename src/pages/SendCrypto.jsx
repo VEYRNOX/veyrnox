@@ -80,6 +80,7 @@ import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notif
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import { screenTransaction } from "@/api/tipScreen";
+import { resolveTipChain } from "./sendCryptoTipChain";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
@@ -691,7 +692,10 @@ export default function SendCrypto() {
   // TIP REMOTE SCREENING (opt-in, off by default). I2: only fires when the user
   // has explicitly enabled remoteScreen. I3: screenTransaction returns null in
   // deniability/demo. Runs at the verify step so the form step makes no call.
-  const tipChain = isBtc ? 'btc' : isSolana ? 'solana' : 'evm';
+  //
+  // resolveTipChain lives in a separate helper so the mapping can be
+  // unit-tested without mounting SendCrypto (issue #1645 regression coverage).
+  const tipChain = resolveTipChain(isBtc ? 'btc' : isSolana ? 'solana' : null, networkKey);
 
   // H-1 — the readiness gate must be derived from the SAME condition that
   // enables each query. Previously the gate was written independently of the
