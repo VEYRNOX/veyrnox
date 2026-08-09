@@ -239,6 +239,7 @@ export async function combineKek(H, C) {
   ikm.set(H, 0);
   ikm.set(C, H_LEN);
 
+  /** @type {ArrayBuffer | null} */
   let bits = null;
   try {
     const baseKey = await crypto.subtle.importKey('raw', ikm, { name: 'HKDF' }, false, ['deriveBits']);
