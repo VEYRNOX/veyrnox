@@ -88,6 +88,13 @@ function makeNativeFacade() {
     async exportPersonalBackupShares(password, opts) {
       return (await load()).nativeKeyStore.exportPersonalBackupShares(password, opts);
     },
+    // Personal Backup Phase 2 restore — see nativeKeyStore.restoreFromPersonalBackupShares.
+    // Same facade-forwarding pattern as its Phase 1 sibling; absent from
+    // webKeyStore intentionally (native-only until the web KeyStore grows a
+    // matching KEK-wrapped vault path).
+    async restoreFromPersonalBackupShares(shares, newPassword, opts) {
+      return (await load()).nativeKeyStore.restoreFromPersonalBackupShares(shares, newPassword, opts);
+    },
     async changePassword(currentPassword, newPassword, opts) {
       return (await load()).nativeKeyStore.changePassword(currentPassword, newPassword, opts);
     },

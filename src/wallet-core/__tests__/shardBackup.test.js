@@ -181,6 +181,31 @@ describe('shardBackup — Personal Backup behaviour with flag stubbed on', () =>
     expect(mod.combineDekForPersonalBackup([shares[1], shares[2]])).toEqual(dek);
   });
 
+  it('combine rejects two shares with the same index', async () => {
+    const mod = await loadShardBackupEnabled();
+    const dek = randomDek();
+    const shares = mod.splitDekForPersonalBackup(dek);
+    // Duplicate-index (both from the same slot) — shamir.combine catches this
+    // via its envelope shape check; matches spec §10.4.4.
+    expect(() => mod.combineDekForPersonalBackup([shares[0], shares[0]])).toThrow();
+  });
+
+  it('shares from different generations produce a different DEK', async () => {
+    // Same wallet, two independent splits (e.g. the user re-split after a
+    // paper loss per spec §10.5.2). Mixing shares across generations returns
+    // a well-shaped 32-byte value that decrypts NOTHING — the fail-closed
+    // signal is the downstream vault decrypt, not combine() itself.
+    const mod = await loadShardBackupEnabled();
+    const dek = randomDek();
+    const genA = mod.splitDekForPersonalBackup(dek);
+    const genB = mod.splitDekForPersonalBackup(dek);
+    // Cross-generation combine yields something that's neither dek nor throws
+    // (shamir has no cross-set awareness beyond the commitment inside a set,
+    // which uses different setIds across generations so a MIXED pair with
+    // distinct setIds should throw the commitment mismatch).
+    expect(() => mod.combineDekForPersonalBackup([genA[0], genB[1]])).toThrow();
+  });
+
   it('rejects a DEK of the wrong length with SHARD_INVALID_DEK', async () => {
     const mod = await loadShardBackupEnabled();
     expect(() => mod.splitDekForPersonalBackup(new Uint8Array(31))).toThrow('SHARD_INVALID_DEK');

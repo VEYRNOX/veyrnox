@@ -24,6 +24,7 @@ beforeEach(() => {
   vi.doMock('../native.js', () => ({
     nativeKeyStore: {
       exportPersonalBackupShares: vi.fn(async () => []),
+      restoreFromPersonalBackupShares: vi.fn(async () => undefined),
     },
   }));
   vi.doMock('../web.js', () => ({ webKeyStore: {} }));
@@ -43,6 +44,25 @@ describe('keystore facade — Personal Backup Phase 1', () => {
     await store.exportPersonalBackupShares('the-password', { getHardwareFactor: () => {} });
     expect(nativeMod.nativeKeyStore.exportPersonalBackupShares).toHaveBeenCalledWith(
       'the-password',
+      expect.objectContaining({ getHardwareFactor: expect.any(Function) }),
+    );
+  });
+
+  it('exposes restoreFromPersonalBackupShares as a function on the native facade', async () => {
+    const { getKeyStore } = await import('../index.js');
+    const store = getKeyStore();
+    expect(typeof store.restoreFromPersonalBackupShares).toBe('function');
+  });
+
+  it('forwards restoreFromPersonalBackupShares to nativeKeyStore', async () => {
+    const nativeMod = await import('../native.js');
+    const { getKeyStore } = await import('../index.js');
+    const store = getKeyStore();
+    const fakeShares = [new Uint8Array(88), new Uint8Array(88)];
+    await store.restoreFromPersonalBackupShares(fakeShares, 'new-pin-9876', { getHardwareFactor: () => {} });
+    expect(nativeMod.nativeKeyStore.restoreFromPersonalBackupShares).toHaveBeenCalledWith(
+      fakeShares,
+      'new-pin-9876',
       expect.objectContaining({ getHardwareFactor: expect.any(Function) }),
     );
   });

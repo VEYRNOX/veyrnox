@@ -2272,6 +2272,26 @@ export function WalletProvider({ children }) {
     });
   }, [isDecoy, isHidden]);
 
+  // Personal Backup Phase 2 — restore an existing on-device vault by supplying
+  // any 2 of 3 shamir shares plus a new password. The vault is re-wrapped under
+  // a fresh KEK; the seed is unchanged. Does NOT hydrate container state —
+  // caller locks + routes to the unlock screen, then the standard unlock chain
+  // populates containerRef on the next entry.
+  //
+  // Same I3 gate as exportRecoveryShares: decoy/hidden sessions cannot invoke.
+  // Restore is a pre-unlock operation on the primary vault; running it from a
+  // decoy session would either be meaningless (decoy has its own vault) or a
+  // deniability leak (touching primary state from a coerced session).
+  const restoreFromRecoveryShares = useCallback(async (shares, newPassword) => {
+    if (isDecoy || isHidden) throw new Error('Recovery is only available in the primary session');
+    if (typeof keyStore.restoreFromPersonalBackupShares !== 'function') {
+      throw new Error('Recovery shares are not available on this platform yet.');
+    }
+    return keyStore.restoreFromPersonalBackupShares(shares, newPassword, {
+      getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
+    });
+  }, [isDecoy, isHidden]);
+
   // Audit log opt-in state (React-tracked; localStorage is the persistent source).
   const [auditLogEnabled, setAuditLogEnabledState] = useState(() => {
     try { return isAuditLogEnabled(); } catch { return false; }
@@ -2468,6 +2488,8 @@ export function WalletProvider({ children }) {
     createBackup,
     // Personal Backup Phase 1 — 2-of-3 shamir DEK sharding, export-only.
     exportRecoveryShares,
+    // Personal Backup Phase 2 — same-device restore from any 2 shares.
+    restoreFromRecoveryShares,
     // AUDIT LOG (opt-in, S4). All access to auditLog.js is routed through here.
     recordAudit,
     auditLogEnabled,

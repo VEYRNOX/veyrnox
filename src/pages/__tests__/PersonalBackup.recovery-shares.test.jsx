@@ -157,3 +157,129 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     expect(screen.queryByText(/all 3 recovery shares saved/i)).toBeNull();
   });
 });
+
+describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
+  // Restore is a mode INSIDE the Recovery Shares tab. Tests below open that
+  // tab first, click Restore, and drive from there.
+
+  it('renders the Restore panel copy when the Restore mode is selected', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    // Two Restore buttons exist once the tab is open — top-level TABS bar and
+    // the in-tab mode toggle. Pick the mode toggle inside the sub-panel.
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+    expect(screen.getByText(/restore from 2 recovery shares/i)).toBeTruthy();
+    expect(screen.getByText(/same-device only/i)).toBeTruthy();
+    // Restore button disabled until 2 files picked AND password entered.
+    const submit = screen.getByRole('button', { name: /restore wallet/i });
+    expect(submit.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('rejects a non-numeric new PIN and keeps Restore disabled (Codex P1 2026-08-09)', async () => {
+    // Regression: prior version accepted any non-empty string. Native cohort
+    // is PIN-only; a non-numeric value would lock the user out post-restore.
+    const restoreFromRecoveryShares = vi.fn();
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares,
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+    fireEvent.change(screen.getByPlaceholderText(/new pin/i), {
+      target: { value: 'not-numeric' },
+    });
+    expect(screen.getByText(/enter a numeric pin/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /restore wallet/i }).hasAttribute('disabled')).toBe(true);
+    expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
+  });
+
+  it('rejects a short numeric PIN and keeps Restore disabled', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+    fireEvent.change(screen.getByPlaceholderText(/new pin/i), {
+      target: { value: '123' },
+    });
+    expect(screen.getByRole('button', { name: /restore wallet/i }).hasAttribute('disabled')).toBe(true);
+  });
+
+  it('disables the Restore button until both shares and a new password are provided', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+    // Enter a password with no shares picked — still disabled.
+    fireEvent.change(screen.getByPlaceholderText(/new pin/i), {
+      target: { value: '98765432' },
+    });
+    expect(screen.getByRole('button', { name: /restore wallet/i }).hasAttribute('disabled')).toBe(true);
+  });
+
+  it('suppresses the whole tab (export AND restore) in a decoy session', async () => {
+    // Sanity: the deniability gate is on the tab root, so both modes are
+    // hidden — a decoy examiner cannot even see the Restore UI, let alone
+    // trigger it.
+    const restoreFromRecoveryShares = vi.fn();
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares,
+        lock: vi.fn(),
+        isDecoy: true,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    // The tab renders a neutral suppression notice, not a mode toggle.
+    expect(screen.getByText(/unavailable in this session/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /restore wallet/i })).toBeNull();
+    expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
+  });
+});
