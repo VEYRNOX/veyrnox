@@ -176,6 +176,40 @@ describe('response hygiene', () => {
     expect(JSON.stringify(body)).not.toMatch(/already exists/);
   });
 
+  it('does not write the conflicting VALUES to the log either (23505 details)', async () => {
+    // From the 2026-08-09 daily security diff. The response was already clean;
+    // the LOG was not. It wrote `responseBody.slice(0, 500)` — the whole
+    // PostgREST object — and PostgREST puts the constraint name in `message`
+    // but the conflicting VALUES in `details`. On our dedup tables those values
+    // are a device_id or a referral code, and `veyrnox-device-id` is treated as
+    // residue-grade elsewhere in this codebase (DIFF-0723).
+    //
+    // The split is deliberate: `message` stays (it is the H-3 canary and names
+    // the constraint), `details`/`hint` go.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify({
+        message: 'duplicate key value violates unique constraint "uq_referral_attributions_hour_dedup"',
+        code: '23505',
+        details: 'Key (device_id, referral_code)=(dev-abc123, GOLD42) already exists.',
+        hint: 'Retry with a different device_id.',
+      }),
+      { status: 409, headers: { 'Content-Type': 'application/json' } },
+    )));
+
+    await onRequestPost(ctx('record_attribution'));
+
+    const logged = spy.mock.calls.map((c) => c.join(' ')).join('\n');
+    // Kept — this is what an operator greps for.
+    expect(logged).toMatch(/uq_referral_attributions_hour_dedup/);
+    expect(logged).toMatch(/23505/);
+    // Dropped — these are user values.
+    expect(logged).not.toMatch(/dev-abc123/);
+    expect(logged).not.toMatch(/GOLD42/);
+    expect(logged).not.toMatch(/already exists/);
+    expect(logged).not.toMatch(/Retry with a different/);
+  });
+
   it('gives the caller a correlation ref and logs the real error', async () => {
     // The H-3 canary is NOT lost, it MOVES. "permission denied for function X"
     // is exactly what appears if the REVOKEs are run before
