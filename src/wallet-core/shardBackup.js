@@ -1,33 +1,48 @@
 /**
- * Shamir DEK sharding — flagged-off wrapper.
+ * Shamir DEK sharding — flagged-off wrapper + Personal Backup Phase 1 export.
  *
- * PLANNED per docs/cloud-recovery-shard-spec.md. Pre-audit. Not shippable.
+ * Personal Backup implementation per owner override 2026-08-08 (see CLAUDE.md).
+ * Pre-audit. Nothing here is "verified" until an on-device recovery trip
+ * completes and an independent audit passes.
  *
- * This module exists only to prove the shamir.js primitive integrates at the
- * DEK boundary and to give the AAD v:3 migration (#1111) a concrete caller to
- * design against. It does NOT:
- *   - persist any share anywhere
- *   - talk to any cloud provider
- *   - render any UI
- *   - hook into the vault write path
- *   - change how any existing wallet unlocks
+ * Two gates live in this file, deliberately separate:
  *
- * ALLOW_SHARD_BACKUP defaults FALSE and there is no production import of this
- * file — the only callers live under __tests__. Flipping the flag on its own
- * does nothing user-facing; the recovery flow, cloud share upload, and
- * deniability-aware decoy shard sets are all still TARGET/PLANNED and require
- * the independent audit before shipping.
+ *   - ALLOW_SHARD_BACKUP (unchanged, still false) — the general-purpose sharding
+ *     API. This gate stays off; do NOT wire it to any runtime toggle. It is here
+ *     so shamir.js has an integration test surface and so #1111 has a concrete
+ *     caller shape to design against.
+ *
+ *   - ENABLE_PERSONAL_BACKUP_SHARDS (new, still false) — the specific,
+ *     Personal-Backup-only surface used by src/pages/PersonalBackup.jsx. Flipped
+ *     via VITE_ENABLE_PERSONAL_BACKUP_SHARDS at build time; dead-code-eliminated
+ *     from production bundles until intentionally set. Even when true it does
+ *     NOT: persist anything, talk to a cloud provider, wire into the vault write
+ *     path, or change how any existing wallet unlocks. Phase 1 is export-only —
+ *     the caller receives 3 share byte arrays and is responsible for delivering
+ *     them (native share sheet in Phase 1; cloud + posture in later phases).
  */
 
 import { split, combine, SECRET_SIZE, SHARE_SIZE } from './shamir.js';
 
-// Hard-off gate. Do NOT wire this to an env var, a build flag, or a runtime
-// toggle. Callers that need the primitive for a test must import it directly
-// from shamir.js; this file's presence in production code paths is a bug.
+// Hard-off gate for the generic split/combine wrappers. Do NOT wire this to an
+// env var, a build flag, or a runtime toggle. Callers that need the primitive
+// for a test must import it directly from shamir.js; this pair's presence in
+// production code paths is a bug. Personal Backup uses the dedicated pair below
+// (splitDekForPersonalBackup / combineDekForPersonalBackup), NOT these.
 export const ALLOW_SHARD_BACKUP = false;
+
+// Personal Backup Phase 1 gate. Read once at module load; a runtime flip has
+// no effect (Vite inlines import.meta.env at build time). Defaults false so an
+// accidental prod build never surfaces the new UI.
+export const ENABLE_PERSONAL_BACKUP_SHARDS =
+  typeof import.meta !== 'undefined' &&
+  import.meta.env &&
+  import.meta.env.VITE_ENABLE_PERSONAL_BACKUP_SHARDS === '1';
 
 export const SHARD_BACKUP_DISABLED = 'SHARD_BACKUP_DISABLED';
 export const SHARD_INVALID_DEK = 'SHARD_INVALID_DEK';
+export const PERSONAL_BACKUP_SHARDS_DISABLED = 'PERSONAL_BACKUP_SHARDS_DISABLED';
+export const PERSONAL_BACKUP_ROUND_TRIP_FAILED = 'PERSONAL_BACKUP_ROUND_TRIP_FAILED';
 
 /**
  * Split a DEK into 3 shares with a 2-of-3 threshold, per the design in
@@ -86,6 +101,100 @@ export function splitDekForBackup(dek, opts) {
 export function combineDekFromBackup(shares, opts) {
   if (!ALLOW_SHARD_BACKUP || !opts || opts.allow !== true) {
     throw new Error(SHARD_BACKUP_DISABLED);
+  }
+  return combine(shares);
+}
+
+// ── Personal Backup Phase 1 ────────────────────────────────────────────────
+//
+// The functions below are the ONLY shard surface authorised for use from
+// src/pages/PersonalBackup.jsx. They gate on ENABLE_PERSONAL_BACKUP_SHARDS,
+// not ALLOW_SHARD_BACKUP — the two flags are kept independent so a future
+// flip of ALLOW_SHARD_BACKUP cannot accidentally enable Personal Backup and
+// vice versa.
+//
+// Phase 1 constraint (do NOT weaken without owner sign-off): the split runs,
+// a round-trip is verified against the ORIGINAL DEK bytes in-memory, and the
+// 3 share envelopes are returned. Nothing is persisted; the DEK is zeroed on
+// every path before return. No cloud, no Share-A swap, no fast-path cache.
+//
+// The round-trip check is defence-in-depth against a shamir.js regression
+// silently producing shares that don't reconstruct. A caller that receives
+// 3 shares from this function has a cryptographic guarantee (subject to the
+// v2 commitment) that ANY 2 of them reconstruct the DEK they were derived
+// from — even if the caller never verifies again.
+
+/**
+ * Split a DEK into 3 shares for Personal Backup export. Verifies the
+ * round-trip against the original DEK before returning; on mismatch, throws
+ * PERSONAL_BACKUP_ROUND_TRIP_FAILED and returns nothing (fail-closed, I4).
+ *
+ * @param {Uint8Array} dek 32-byte DEK. Caller retains ownership; this
+ *   function makes its own defensive copy and does not mutate the caller's
+ *   buffer. Caller is still responsible for zeroing their copy.
+ * @returns {Uint8Array[]} 3 shares of SHARE_SIZE bytes each.
+ * @throws {Error} PERSONAL_BACKUP_SHARDS_DISABLED if the flag is off.
+ * @throws {Error} SHARD_INVALID_DEK on wrong-shape input.
+ * @throws {Error} PERSONAL_BACKUP_ROUND_TRIP_FAILED if any 2-of-3 combine
+ *   does not reproduce the DEK bytes.
+ */
+export function splitDekForPersonalBackup(dek) {
+  if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
+    throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
+  }
+  if (!(dek instanceof Uint8Array) || dek.length !== SECRET_SIZE) {
+    throw new Error(SHARD_INVALID_DEK);
+  }
+  const local = new Uint8Array(dek);
+  let shares = null;
+  let recon = null;
+  try {
+    shares = split(local, 3, 2);
+    // Verify all three 2-of-3 pair combinations reconstruct the DEK.
+    // combine() itself validates the SHA-256 commitment; the extra byte
+    // compare here catches an in-memory shape drift between split and
+    // combine that a commitment-only check would let through if both sides
+    // agreed on a subtly wrong secret.
+    for (const [i, j] of [
+      [0, 1],
+      [0, 2],
+      [1, 2],
+    ]) {
+      recon = combine([shares[i], shares[j]]);
+      let equal = recon.length === local.length;
+      let diff = 0;
+      for (let k = 0; k < local.length; k++) diff |= recon[k] ^ local[k];
+      if (diff !== 0 || !equal) {
+        throw new Error(PERSONAL_BACKUP_ROUND_TRIP_FAILED);
+      }
+      recon.fill(0);
+      recon = null;
+    }
+    return shares;
+  } catch (err) {
+    // Best-effort share cleanup on failure. Caller will not receive them.
+    if (shares) for (const s of shares) s.fill(0);
+    throw err;
+  } finally {
+    local.fill(0);
+    if (recon) recon.fill(0);
+  }
+}
+
+/**
+ * Reconstruct a DEK from any 2 Personal Backup shares. Provided for Phase 2
+ * (restore flow) and so tests can round-trip through the same code path a
+ * future restore will use. Same flag gate as split; shamir.combine already
+ * verifies the v2 commitment and rejects tampered / mismatched-set shares.
+ *
+ * @param {Uint8Array[]} shares any 2 of the 3 shares produced by
+ *   splitDekForPersonalBackup, in any order.
+ * @returns {Uint8Array} the reconstructed 32-byte DEK. Caller MUST zero.
+ * @throws {Error} PERSONAL_BACKUP_SHARDS_DISABLED if the flag is off.
+ */
+export function combineDekForPersonalBackup(shares) {
+  if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
+    throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
   }
   return combine(shares);
 }

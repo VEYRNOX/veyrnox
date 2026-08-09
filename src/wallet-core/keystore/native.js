@@ -71,6 +71,11 @@ import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
+import {
+  ENABLE_PERSONAL_BACKUP_SHARDS,
+  PERSONAL_BACKUP_SHARDS_DISABLED,
+  splitDekForPersonalBackup,
+} from '../shardBackup.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
 // ── M2c (Secure Enclave key-wrap) — F-2 closure scaffold ─────────────────────
 // Lazy-loaded so that registerPlugin() in veyrnoxEnclave.js does NOT execute at
@@ -969,6 +974,72 @@ export const nativeKeyStore = {
         }
       }
       return secret;
+    });
+  },
+
+  // Personal Backup Phase 1 — export 3 shamir shares of the DEK for the user
+  // to save via the native share sheet. Runs the SAME KEK unlock chain the
+  // primary unlock path uses (getHF → deriveKekC → combineKek → unwrapDek),
+  // then splits the DEK inside the finally-zero boundary. The DEK never
+  // crosses this method's boundary — the caller receives 3 opaque 88-byte
+  // share envelopes.
+  //
+  // Deliberately does NOT run the AAD-v:3 migration or the DEK cache write
+  // that the hot-path _unlockInner does — those are unlock-hot-path
+  // optimisations, not shard export. Keeping this method side-effect-free on
+  // stored state means Phase 1 changes zero bytes on disk.
+  //
+  // Gated by ENABLE_PERSONAL_BACKUP_SHARDS (build-time flag). Throws
+  // PERSONAL_BACKUP_SHARDS_DISABLED when off — do NOT catch this in the UI
+  // and pretend it worked (I4).
+  async exportPersonalBackupShares(password, opts = {}) {
+    if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
+      throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
+    }
+    await init();
+    return withLockSuppressed(async () => {
+      const raw = await SecureStorage.get(VAULT_KEY, false);
+      if (raw === null || raw === undefined) {
+        throw new Error('No wallet found on this device');
+      }
+      const blob = parseVaultBlob(raw);
+      if (!blob.kekWrap) {
+        // Non-KEK vaults have no DEK to split — the full seed is derived
+        // from the password alone. Personal Backup requires KEK enrollment
+        // (spec §12.4). Surface a clear error rather than silently degrading.
+        throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+      }
+      const getHF = opts && opts.getHardwareFactor;
+      if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+
+      // Same lifetime discipline as _unlockInner's KEK branch: everything
+      // sensitive lives inside try/finally so a throw between derivation and
+      // split still zeroes on the way out.
+      let saltBytes;
+      let H;
+      let C;
+      let kek;
+      let dek;
+      try {
+        saltBytes = decodeKekSalt(blob.kekSalt);
+        H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
+        C = await deriveKekC(password, saltBytes);
+        kek = await combineKek(H, C);
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        dek = await unwrapDek(kek, blob.kekWrap);
+        // splitDekForPersonalBackup does its own defensive copy and its own
+        // round-trip verification. It throws PERSONAL_BACKUP_ROUND_TRIP_FAILED
+        // on a self-check mismatch — do not swallow that; the caller must see
+        // the fail-closed signal (I4).
+        return splitDekForPersonalBackup(dek);
+      } finally {
+        if (H && H.fill) H.fill(0);
+        if (C) C.fill(0);
+        if (kek) kek.fill(0);
+        if (dek) dek.fill(0);
+        if (saltBytes) saltBytes.fill(0);
+      }
     });
   },
 

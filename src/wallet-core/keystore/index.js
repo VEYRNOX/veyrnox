@@ -81,6 +81,13 @@ function makeNativeFacade() {
     async unlock(password, opts) {
       return (await load()).nativeKeyStore.unlock(password, opts);
     },
+    // Personal Backup Phase 1 — forwarded through the facade so WalletProvider's
+    // `typeof keyStore.exportPersonalBackupShares === 'function'` gate resolves
+    // synchronously against the facade shape (native.js is loaded lazily on
+    // first call). Absent from webKeyStore intentionally — Phase 1 is native.
+    async exportPersonalBackupShares(password, opts) {
+      return (await load()).nativeKeyStore.exportPersonalBackupShares(password, opts);
+    },
     async changePassword(currentPassword, newPassword, opts) {
       return (await load()).nativeKeyStore.changePassword(currentPassword, newPassword, opts);
     },
