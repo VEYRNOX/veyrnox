@@ -78,6 +78,9 @@ vi.mock('../../vault.js', () => ({
   deriveKekC: vi.fn(async () => fixedBytes(0xcc)),
   encryptVaultWithDek: vi.fn(async () => ({ iv: 'iv', ct: 'ct' })),
   decryptVaultWithDek: vi.fn(async () => 'test-secret'),
+  encryptVaultWithDekV3: vi.fn(async () => ({ v: 3, kdf: 'kek-dek', iv: 'v3iv', ct: 'v3ct' })),
+  VAULT_VERSION_V3: 3,
+  AAD_V3_MIGRATION_ENABLED: false,
 }));
 
 vi.mock('../kek.js', () => ({
