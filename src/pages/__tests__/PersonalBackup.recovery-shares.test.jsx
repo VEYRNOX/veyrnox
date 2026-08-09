@@ -158,6 +158,58 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
   });
 });
 
+describe('PersonalBackup — Export encrypt-one option (Phase 3, flag on)', () => {
+  it('reveals the recovery-passphrase input when the checkbox is ticked', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
+    fireEvent.click(screen.getByLabelText(/encrypt one share with a recovery passphrase/i));
+    expect(screen.getByPlaceholderText(/recovery passphrase/i)).toBeTruthy();
+  });
+
+  it('keeps the Split button disabled while the checkbox is on but passphrase is too short', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
+      target: { value: 'wallet-password-123' },
+    });
+    expect(screen.getByRole('button', { name: /split & save 3 shares/i }).hasAttribute('disabled')).toBe(false);
+    fireEvent.click(screen.getByLabelText(/encrypt one share with a recovery passphrase/i));
+    expect(screen.getByRole('button', { name: /split & save 3 shares/i }).hasAttribute('disabled')).toBe(true);
+    fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
+      target: { value: 'too-short' },
+    });
+    expect(screen.getByText(/use at least 16 characters/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /split & save 3 shares/i }).hasAttribute('disabled')).toBe(true);
+    fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
+      target: { value: 'a-nice-and-long-passphrase' },
+    });
+    expect(screen.getByRole('button', { name: /split & save 3 shares/i }).hasAttribute('disabled')).toBe(false);
+  });
+});
+
 describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
   // Restore is a mode INSIDE the Recovery Shares tab. Tests below open that
   // tab first, click Restore, and drive from there.
@@ -206,7 +258,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
-    fireEvent.change(screen.getByPlaceholderText(/new pin/i), {
+    fireEvent.change(screen.getByPlaceholderText("New PIN (digits only)"), {
       target: { value: 'not-numeric' },
     });
     expect(screen.getByText(/enter a numeric pin/i)).toBeTruthy();
@@ -230,7 +282,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
-    fireEvent.change(screen.getByPlaceholderText(/new pin/i), {
+    fireEvent.change(screen.getByPlaceholderText("New PIN (digits only)"), {
       target: { value: '123' },
     });
     expect(screen.getByRole('button', { name: /restore wallet/i }).hasAttribute('disabled')).toBe(true);
@@ -253,10 +305,65 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     // Enter a password with no shares picked — still disabled.
-    fireEvent.change(screen.getByPlaceholderText(/new pin/i), {
+    fireEvent.change(screen.getByPlaceholderText("New PIN (digits only)"), {
       target: { value: '98765432' },
     });
     expect(screen.getByRole('button', { name: /restore wallet/i }).hasAttribute('disabled')).toBe(true);
+  });
+
+  it('keeps Restore disabled until the confirm-PIN matches (Codex P2 2026-08-09)', async () => {
+    // Regression: prior version re-wrapped vault under a single-entry PIN; a
+    // typo silently locked the user out. Now requires matching confirmation.
+    const restoreFromRecoveryShares = vi.fn();
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares,
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+    fireEvent.change(screen.getByPlaceholderText('New PIN (digits only)'), {
+      target: { value: '98765432' },
+    });
+    // Mismatch keeps it disabled + shows error.
+    fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), {
+      target: { value: '98765431' },
+    });
+    expect(screen.getByText(/pins do not match/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /restore wallet/i }).hasAttribute('disabled')).toBe(true);
+    // Match — still disabled because no files picked, but no mismatch error.
+    fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), {
+      target: { value: '98765432' },
+    });
+    expect(screen.queryByText(/pins do not match/i)).toBeNull();
+  });
+
+  it('does not show the recovery-passphrase input when both picked files are raw shares', async () => {
+    // No files picked yet ⇒ no encrypted count ⇒ no passphrase field.
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+    expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
   });
 
   it('suppresses the whole tab (export AND restore) in a decoy session', async () => {
