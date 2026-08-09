@@ -154,7 +154,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.5.2",
     "ethers": "6.17.0",
-    "framer-motion": "12.43.0",
+    "framer-motion": "13.0.0",
     "hash-wasm": "^4.12.0",
     "i18next": "^26.3.6",
     "input-otp": "^1.4.2",
