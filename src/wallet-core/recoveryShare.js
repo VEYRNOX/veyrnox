@@ -133,7 +133,7 @@ async function deriveRecoveryKey(passphrase, salt) {
     // still zero `raw` so a leak of process memory does not surface the key.
     const key = await crypto.subtle.importKey(
       'raw',
-      raw,
+      /** @type {BufferSource} */ (raw),
       { name: 'AES-GCM' },
       false,
       ['encrypt', 'decrypt'],
@@ -176,7 +176,7 @@ export async function wrapShareWithPassphrase(share, passphrase, shareIndex) {
     await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 },
       key,
-      share,
+      /** @type {BufferSource} */ (share),
     ),
   );
   return JSON.stringify({
@@ -286,7 +286,7 @@ export async function unwrapShareWithPassphrase(envelope, passphrase) {
       await crypto.subtle.decrypt(
         { name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 },
         key,
-        ct,
+        /** @type {BufferSource} */ (ct),
       ),
     );
   } catch {
