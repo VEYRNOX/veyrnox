@@ -50,14 +50,16 @@ function NewsCard({ article }) {
           attacker-influenced. `safeNewsThumbUrl` narrows the render to the
           publisher CDNs in ALLOWED_NEWS_THUMB_HOSTS (or a data: placeholder);
           anything else falls back to the neutral placeholder so no request
-          leaves the device. `no-referrer` + `crossOrigin=anonymous` also
-          strip URL/state from the fetch for the allowlisted case. */}
+          leaves the device. `no-referrer` strips URL state; we intentionally
+          do NOT set crossOrigin, because the publisher CDNs (s3-images.ctmedia.io,
+          img.decrypt.co) don't return CORS headers, so anonymous mode makes every
+          image fail to load. Cookies aren't a concern — these are fresh third-party
+          origins with no cookies set. */}
       {thumbnail && (
         <img
           src={safeNewsThumbUrl(thumbnail)}
           alt=""
           referrerPolicy="no-referrer"
-          crossOrigin="anonymous"
           className="h-14 w-14 rounded-lg object-cover shrink-0 bg-secondary"
           onError={e => { (/** @type {any} */ (e.target)).style.display = "none"; }}
         />
