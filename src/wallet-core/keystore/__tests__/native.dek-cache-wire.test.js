@@ -92,7 +92,7 @@ beforeEach(async () => {
   kekMock.unwrapDek.mockImplementation(async () => new Uint8Array(FIXED_DEK));
   kekMock.decodeKekSalt.mockImplementation(() => new Uint8Array(32).fill(1));
   kekMock.parseVaultBlob.mockImplementation((raw) => JSON.parse(raw));
-  ({ default: keyStore } = await import('../native.js'));
+  ({ nativeKeyStore: keyStore } = await import('../native.js'));
   await keyStore.init?.();
 });
 
