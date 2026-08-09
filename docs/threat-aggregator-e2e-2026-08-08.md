@@ -248,7 +248,12 @@ Docs updated:
 Honest gaps carried forward: three sanction-grade Worker sources (Chainalysis,
 OpenSanctions, Alchemy tx-sim) remain unfunded on staging (`*_API_KEY not
 configured`). Not independently audited. Not on-chain-txid verified (this is
-screening, not signing). `Ronin Bridge Exploiter` (Lazarus attribution seen
-during the regression sweep) is NOT on `SANCTIONED_LABEL_NAMESPACES` — OFAC-GitHub
-+ GoPlus caught it, but the curated list could be extended with a citable
-sanctioning-authority reference.
+screening, not signing).
+
+**Update 2026-08-09 (tip PR #40 merged + deployed):** `Ronin Bridge Exploiter`
+added to `SANCTIONED_LABEL_NAMESPACES`. Curl-verified against the deployed
+prod Worker across ethereum / polygon / arbitrum / bsc — `sanctioned-address`
+lane hits the Ronin address (`0x098B716B…F2f96`) directly on every EVM chain,
+alongside the existing OFAC-GitHub + GoPlus catches. One transient Polygon
+`clean` observed on the first request after deploy was Cloudflare KV
+eventual-consistency (5/5 hit on re-runs after cache warm), not a code path.
