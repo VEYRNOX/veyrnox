@@ -891,6 +891,32 @@ value / mutate balances without a user signature through wallet-core signing).
       after cross-device restore ships and can serve as the fall-back path
       for cache-miss users — then and only then can Share A safely replace
       the full-DEK wrap.
+    - **Phase 5 (PR #1680)** — Recovery-dimension posture inputs. Wires
+      Personal Backup state into the existing `SecurityPosture` card
+      (spec §9.0.1a Recovery: 30 pts) so the shard cohort stops rendering
+      Recovery = 0/30. New `src/lib/personalBackupState.js` persists two
+      localStorage flags (`exported`, `passphraseSet`) with schema version +
+      timestamp validation; `markPersonalBackupExported()` fires when all 3
+      shares save. `WalletPortfolioPage` passes them into
+      `<SecurityPosture state={...}/>`; `shareCVerified` stays honestly
+      false (spec §9 gates it on a real recovery round-trip Phase 2 does not
+      yet log — I4). Panic-residue keys added to
+      `wallet-core/panic.js METADATA_RESIDUE_KEYS`; regression pins the
+      sweep list AND `inspectKeyMaterial().clean`. Two I3 chokepoints —
+      both writes AND reads gated by `isDeniabilityOrDemoActive()`; reads
+      gated (unlike `lib/consent.js`) because the score is a visible
+      indicator, so a decoy could otherwise leak primary export state via a
+      Recovery-dimension delta (Codex P1 pre-commit). Codex fixed
+      pre-commit: file picker accept filter was missing
+      `.veyrnox-recovery.json` → users could not restore encrypted shares
+      Phase 3 produced.
+    - **Full spec §9 5-dimension scoring rewrite — NOT DONE (not needed).**
+      The existing `SecurityPosture` component already scores all five
+      dimensions (auth 20, RASP 25, hardware 15, recovery 30, session 10).
+      Phase 5 only wired the Recovery-dimension inputs; the other four
+      dimensions were already fed by the existing hooks. No new banner /
+      trigger conditions / cycling were added — surface stays as
+      `SecurityPosture` on the dashboard.
     - **Not shipped / not verified across all phases.** Cross-device restore
       (needs vault-ciphertext transport). Platform-native cloud silent sync
       (iCloud Keychain / Google Backup — plugin work). Real-device wrap /
