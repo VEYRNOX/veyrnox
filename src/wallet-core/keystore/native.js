@@ -70,6 +70,7 @@ import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, decryptVaultWithDek } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
+import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
 // ── M2c (Secure Enclave key-wrap) — F-2 closure scaffold ─────────────────────
 // Lazy-loaded so that registerPlugin() in veyrnoxEnclave.js does NOT execute at
@@ -292,6 +293,52 @@ async function getHardwareFactorWithLockoutFallback(getHF, hfOpts) {
   }
 }
 
+// ── Fast-path DEK cache (Personal Backup spec §4.1) ──────────────────────────
+//
+// The cache is a KEK-wrapped copy of the DEK stored under a SEPARATE Keystore
+// key from the primary vault. All three helpers are SILENT on failure — the
+// cache is a hint, not a source of truth. A read-miss falls back to the
+// primary vault unwrap; a write-miss means next unlock will repopulate; a
+// clear-miss leaves a stale entry that the next unwrap rejects via distinct
+// AAD (dekCache.js DEK_CACHE_UNWRAP_FAILED) and falls back correctly.
+//
+// Silent-swallow is safe here BECAUSE the cache carries no security
+// authority: correctness always routes through the primary vault. Any real
+// KEK/PIN/salt mismatch surfaces via the primary path's genuine errors, not
+// via a swallowed cache exception.
+//
+// Pre-Phase 2 the read saving is one AES-GCM decrypt (`unwrapDek`) — small.
+// The infrastructure lands now because Phase 2 (Shamir split) makes cache
+// read the ONLY way to avoid a per-unlock Lagrange interpolation.
+
+async function tryReadDekCache(kek) {
+  try {
+    const raw = await SecureStorage.get(DEK_CACHE_STORAGE_KEY, false);
+    if (raw === null || raw === undefined) return null;
+    const blob = JSON.parse(raw);
+    return await unwrapDekFromCache(kek, blob);
+  } catch {
+    return null;
+  }
+}
+
+async function tryWriteDekCache(kek, dek) {
+  try {
+    const blob = await wrapDekForCache(kek, dek);
+    await SecureStorage.set(DEK_CACHE_STORAGE_KEY, JSON.stringify(blob));
+  } catch {
+    // Best-effort — a cache-write failure never fails the unlock.
+  }
+}
+
+async function clearDekCache() {
+  try {
+    await SecureStorage.remove(DEK_CACHE_STORAGE_KEY);
+  } catch {
+    // Best-effort — see silent-swallow rationale above.
+  }
+}
+
 // Prompt for biometric auth (with a deliberate device-credential fallback).
 // Throws BiometryError on user cancel / failure / lockout — propagated so the
 // unlock UI can surface it, exactly like a wrong-password throw on web.
@@ -407,8 +454,20 @@ async function _unlockInner(password, opts = {}) {
       // survives any refactor of combineKek (defense in depth, I4).
       if (H && H.fill) H.fill(0);
       if (C) C.fill(0);
-      dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+      // Fast-path DEK cache read (Personal Backup §4.1): try the cache first;
+      // on miss/stale/tampered/KEK-mismatch, fall through to the primary
+      // unwrap. Silent on failure — see tryReadDekCache. Does NOT skip a
+      // biometric prompt (H was already fetched above); the win is skipping
+      // the AES-GCM unwrapDek call (small pre-Shamir, load-bearing later).
+      dek = await tryReadDekCache(kek);
+      if (!dek) {
+        dek = await unwrapDek(kek, blob.kekWrap); // throws KEK_ERR.UNWRAP_FAILED on wrong PIN/device
+      }
       const plaintext = await decryptVaultWithDek(blob, dek);
+      // Populate the cache after a successful primary decrypt so subsequent
+      // unlocks skip unwrapDek. Best-effort — kek and dek are still live
+      // here (finally zeros them AFTER return runs).
+      await tryWriteDekCache(kek, dek);
       // C-1 (v2→v3): the v2→v3 salt-binding upgrade deliberately does NOT run on the
       // unlock hot path. Re-deriving H under a fresh salt requires a SECOND biometric
       // prompt, which (on top of the biometricUnlock cache-gate + this unlock's own H
@@ -694,6 +753,10 @@ export const nativeKeyStore = {
         // ...blob spread preserves hardwareKekTier and the seed's iv/ct (seed CT UNCHANGED
         // — only the wrap and salt rotate; §3). safeWriteVault verifies the write (I4).
         await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
+        // Fast-path DEK cache: the KEK rotated, so any cached wrap is now
+        // stale. Clear rather than rely on the DEK_CACHE_UNWRAP_FAILED
+        // fallback — explicit is faster and leaves no dead cache blob.
+        await clearDekCache();
       } finally {
         if (H && H.fill) H.fill(0);
         if (H2 && H2.fill) H2.fill(0);
@@ -934,6 +997,9 @@ export const nativeKeyStore = {
           if (newC) newC.fill(0);
           const newKekWrap = await wrapDek(newKek, dek);
           await safeWriteVault({ ...blob, kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: 3 });
+          // Fast-path DEK cache: PIN rotated → KEK rotated → cached wrap
+          // is stale. Clear explicitly.
+          await clearDekCache();
         } finally {
           if (H && H.fill) H.fill(0);
           if (H2 && H2.fill) H2.fill(0);
@@ -960,6 +1026,11 @@ export const nativeKeyStore = {
       const secret = await decryptVault(blob, currentPassword); // ../vault.js — unchanged
       const rewrapped = await encryptVault(secret, newPassword); // ../vault.js — unchanged
       await safeWriteVault(rewrapped);
+      // Bare-vault re-wrap: cache is only meaningful for KEK-enrolled vaults,
+      // but if a prior enrollment left a cache blob, this bare-branch rewrap
+      // does not overwrite it — clear so the stale wrap is not read by a
+      // subsequent re-enrollment under a differently-derived KEK.
+      await clearDekCache();
     });
   },
 
@@ -1078,6 +1149,9 @@ export const nativeKeyStore = {
         const bareBlob = await encryptVault(secret, password);
         await safeWriteVault(bareBlob);
         await clearHardwareCredential();
+        // Fast-path DEK cache: going bare, the KEK is gone — cache is
+        // meaningless and its wrap can never be unwrapped again.
+        await clearDekCache();
       } finally {
         if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
@@ -1109,6 +1183,9 @@ export const nativeKeyStore = {
     await SecureStorage.remove(VAULT_KEY);
     // Also drop any leftover legacy journal key so a re-import starts truly fresh.
     await SecureStorage.remove(VAULT_NEXT_KEY);
+    // Fast-path DEK cache — a re-import under a fresh KEK must not inherit
+    // an old cache blob.
+    await clearDekCache();
     // M-4: best-effort — an absent hardware key (or plugin quirk) is not an error during
     // a wipe; the vault is already gone, so never propagate and abort the clear.
     try { await clearHardwareCredential(); } catch { /* best-effort — absent key is not an error during wipe */ }
