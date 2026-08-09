@@ -246,9 +246,12 @@ Docs updated:
 - [VEYRNOX/veyrnox#1650](https://github.com/VEYRNOX/veyrnox/pull/1650) — combined docs PR.
 
 Honest gaps carried forward: three sanction-grade Worker sources (Chainalysis,
-OpenSanctions, Alchemy tx-sim) remain unfunded on staging (`*_API_KEY not
-configured`). Not independently audited. Not on-chain-txid verified (this is
-screening, not signing).
+OpenSanctions, Alchemy tx-sim) remain unset on BOTH staging and production
+(verified 2026-08-09 by curl against each Worker — every response returns
+`status: skipped` with `*_API_KEY not configured` for these three; the keys
+have never been provisioned on the veyrnox-tip project).
+Not independently audited. Not on-chain-txid verified (this is screening,
+not signing).
 
 **Update 2026-08-09 (tip PR #40 merged + deployed):** `Ronin Bridge Exploiter`
 added to `SANCTIONED_LABEL_NAMESPACES`. Curl-verified against the deployed
