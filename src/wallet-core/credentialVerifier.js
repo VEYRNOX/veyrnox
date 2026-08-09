@@ -94,7 +94,16 @@ export async function verifyCredential(verifier, entered) {
   const wellFormed = [params.parallelism, params.iterations, params.memorySize, params.hashLength]
     .every((n) => Number.isInteger(n) && n > 0);
   if (!wellFormed) return false;
-  const h = await deriveRaw(entered, verifier.salt, params);
+  // Audit 2026-08-08: honour the docstring's "never throws" contract. Under
+  // memory pressure at step-up time (two concurrent 192 MiB Argon2id allocs,
+  // Defect-A) deriveRaw can throw RangeError; propagating it broke callers
+  // wired to "false = deny" (I4). Fail closed on any throw.
+  let h;
+  try {
+    h = await deriveRaw(entered, verifier.salt, params);
+  } catch {
+    return false;
+  }
   const match = constantTimeEqual(h, verifier.hash);
   h.fill(0); // best-effort zeroize the transient hash of the entered secret (mirrors vault.js zero())
   return match;
@@ -116,7 +125,16 @@ export async function verifyCredentialDetailed(verifier, entered) {
   if (!verifier || !verifier.hash || !verifier.salt) {
     return { ok: false, bricked: true, reason: 'VERIFIER_OOM' };
   }
-  const ok = await verifyCredential(verifier, entered);
+  // Audit 2026-08-08: verifyCredential now catches its own deriveRaw throw
+  // (fail closed → false). This wrapper's try/catch is belt+suspenders — any
+  // future non-OOM throw path here also maps to bricked rather than
+  // propagating past a caller wired to "false = deny".
+  let ok = false;
+  try {
+    ok = await verifyCredential(verifier, entered);
+  } catch {
+    return { ok: false, bricked: true, reason: 'VERIFIER_OOM' };
+  }
   return { ok, bricked: false };
 }
 
