@@ -132,3 +132,7 @@ android/keystore.properties
 
 # Wrangler (Cloudflare Pages CLI)
 .wrangler/
+
+# Caveman skills (installed per-repo)
+.agents/skills/
+skills-lock.json
