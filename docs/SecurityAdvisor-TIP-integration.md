@@ -328,7 +328,7 @@ Next steps:
 
 ---
 
-## Current Status
+## Current Status (2026-08-09)
 
 | Component | Status | Evidence |
 |-----------|--------|----------|
@@ -337,7 +337,22 @@ Next steps:
 | Address extraction | ✅ BUILT | Regex tested |
 | Screening verdict display | ✅ BUILT | UI tested |
 | M-5 consent gate | ✅ BUILT | Gate tested |
-| Supabase Edge Function | ? | Needs credentials |
-| TIP backend integration | ? | 0 counts on TIP |
+| Supabase Edge Function `tip-screen` | ✅ LIVE | Credentials set on `veyrnox-tip-production`; curl-verified |
+| TIP backend integration (Advisor path) | ✅ LIVE | Sim: Tornado router → BLOCKED, Vitalik → CLEAR (2026-08-09) |
+| TIP backend integration (Send Preview) | ✅ LIVE | Fixed chain-slug mapping (`resolveTipChain`, wallet PR #1646) |
+| Sanctioned-namespace lane (Tornado/Lazarus/Blender.io/Sinbad) | ✅ LIVE | Every EVM chain (tip PR #39) |
 
-Next: Wire up real TIP backend and verify end-to-end communication.
+Cross-chain regression matrix (deployed prod Worker, curl-verified 2026-08-09):
+
+| From chain | To Tornado router `0x8589…FDA16` | Verdict |
+|---|---|---|
+| ethereum | `sanctioned-address hit + etherscan-labels clean [Labelled: Tornado.Cash: Donate]` | 🔴 BLOCK |
+| polygon | `etherscan-labels skipped [chain] + sanctioned-address hit` | 🔴 BLOCK |
+| arbitrum | `etherscan-labels skipped [chain] + sanctioned-address hit` | 🔴 BLOCK |
+| bsc (BNB) | `etherscan-labels skipped [chain] + sanctioned-address hit` | 🔴 BLOCK |
+| polygon → Vitalik (clean) | `sanctioned-address clean` | 🟢 ALLOW |
+
+**Still open:** three sanction-grade Worker sources unfunded on staging
+(`CHAINALYSIS_API_KEY`, `OPENSANCTIONS_API_KEY`, `ALCHEMY_API_KEY`). Independent
+of address-space coverage. Not independently audited. Not on-chain-txid verified
+in the strict sense (this is screening, not signing).
