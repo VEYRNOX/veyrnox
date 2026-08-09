@@ -257,6 +257,22 @@ function paramsFromVault(vault) {
 // not re-encrypt can no longer produce a valid v:2 blob.
 const VAULT_VERSION = 2;
 
+// Version 3 kek-dek AAD additionally binds `kekWrap`, `kekSalt`, and
+// `hardwareKekVersion` (see docs/vault-aad-v3-plan.md, #1111). The READER
+// path in `decryptVaultWithDek` handles both v:2 and v:3 automatically via
+// `vaultAad`'s version-branching — dropping this constant into the module
+// activates the reader immediately. New WRITES stay at v:2 until the
+// migration ships (see AAD_V3_MIGRATION_ENABLED + Phase 0b), so this
+// commit is round-trip-safe with the pre-#1647 world: a v:3 blob has
+// nowhere to come from yet.
+export const VAULT_VERSION_V3 = 3;
+
+// Feature flag: whether new/migrated vault WRITES stamp v:3. Reader is
+// always active. Default `false` per the plan's "ship writer behind a
+// flag (default off)" rollout. Phase 0b flips this on after the migration
+// hook lands + internal-cohort verification.
+export const AAD_V3_MIGRATION_ENABLED = false;
+
 /**
  * Stable machine codes thrown by this module for STRUCTURAL failures — a blob that
  * is not a vault at all, as opposed to a credential mismatch. Callers switch on
@@ -349,11 +365,48 @@ export function vaultAad(blob) {
 
   const includeSalt = blob.salt !== undefined && kdf !== 'kek-dek';
 
-  // Canonical top-level order: v, kdf, salt (when present).
-  const fields = includeSalt
-    ? { v: blob.v, kdf: kdfCanonical, salt: blob.salt }
-    : { v: blob.v, kdf: kdfCanonical };
+  // v:3 for kek-dek additionally binds kekWrap, kekSalt, hardwareKekVersion
+  // — the residual v:2 leaves unauthenticated (#1111). Argon2id blobs
+  // never carry these fields, so v:3 for kdf!==kek-dek is identical to
+  // v:2 (kept for a clean future path if the Argon2id side ever needs
+  // its own header binding).
+  const isV3KekDek = blob.v === VAULT_VERSION_V3 && kdf === 'kek-dek';
+
+  let fields;
+  if (isV3KekDek) {
+    // Canonical top-level order for v:3 kek-dek: v, kdf, kekWrap, kekSalt,
+    // hardwareKekVersion. `kekWrap` is a nested object; canonicalize its
+    // fields too so JSON iteration order can't desync encrypt/decrypt
+    // (same discipline as the kdf canonicalization above).
+    fields = {
+      v: blob.v,
+      kdf: kdfCanonical,
+      kekWrap: canonicalKekWrap(blob.kekWrap),
+      kekSalt: blob.kekSalt,
+      hardwareKekVersion: blob.hardwareKekVersion,
+    };
+  } else if (includeSalt) {
+    // Canonical top-level order: v, kdf, salt (when present).
+    fields = { v: blob.v, kdf: kdfCanonical, salt: blob.salt };
+  } else {
+    fields = { v: blob.v, kdf: kdfCanonical };
+  }
   return /** @type {Uint8Array<ArrayBuffer>} */ (enc.encode(JSON.stringify(fields)));
+}
+
+/**
+ * Canonicalize a `kekWrap` sub-object into explicit field order (v, iv, ct)
+ * so its serialisation into v:3 AAD is byte-identical regardless of the
+ * input property insertion order. If the input is not a plain object,
+ * pass it through unchanged so a caller bug surfaces as an AAD mismatch
+ * at decrypt (fail-closed) rather than a silent wrong-shape wrap.
+ * @param {unknown} wrap
+ * @returns {unknown}
+ */
+function canonicalKekWrap(wrap) {
+  if (!wrap || typeof wrap !== 'object' || Array.isArray(wrap)) return wrap;
+  const w = /** @type {{v?:unknown, iv?:unknown, ct?:unknown}} */ (wrap);
+  return { v: w.v, iv: w.iv, ct: w.ct };
 }
 
 /**
@@ -474,6 +527,66 @@ export async function encryptVaultWithDek(secret, dek) {
   );
   zero(ptBytes);
   return { ...blob, ct: b64(new Uint8Array(ctBuf)) };
+}
+
+/**
+ * Encrypt a secret under an existing DEK, stamping v:3 and binding
+ * `kekWrap`, `kekSalt`, and `hardwareKekVersion` into the AAD.
+ *
+ * The caller passes a `binding` object containing the KEK-layer fields
+ * that the resulting blob will carry — these MUST match what's written
+ * to disk under the same `safeWriteVault` call, or decrypt will fail
+ * (which is the point: an in-place field swap can no longer produce a
+ * valid v:3 blob).
+ *
+ * Deliberately narrow: no `v:3` Argon2id path (Argon2id vaults already
+ * bind `salt`; v:3 for them is a no-op). No content re-derivation, no
+ * KEK change — same DEK in, same DEK out. This function IS the
+ * migration primitive; the migration hook lives in the keystore
+ * (Phase 0b) and is guarded by `AAD_V3_MIGRATION_ENABLED`.
+ *
+ * @param {string} secret
+ * @param {Uint8Array} dek 32-byte DEK
+ * @param {{kekWrap:unknown, kekSalt:unknown, hardwareKekVersion:unknown}} binding
+ * @returns {Promise<{v:number, kdf:string, iv:string, ct:string}>}
+ */
+export async function encryptVaultWithDekV3(secret, dek, binding) {
+  if (!binding || typeof binding !== 'object') {
+    throw malformedVault();
+  }
+  const { kekWrap, kekSalt, hardwareKekVersion } = binding;
+  // Structural rejection: all three fields must be present for a v:3
+  // write. A caller with an incomplete binding is a bug we surface
+  // fail-closed rather than silently producing a v:3 blob whose AAD
+  // includes `undefined` fields.
+  //
+  // `hardwareKekVersion` may be `null` (web has no hardware-version
+  // concept — WebAuthn PRF is version-inline) but MUST NOT be
+  // `undefined`. `null` and any native number bind cleanly in JSON
+  // and are distinguishable in the AAD; `undefined` serialises to
+  // absence, which would silently drop the field from the AAD.
+  if (kekWrap === undefined || kekSalt === undefined || hardwareKekVersion === undefined) {
+    throw malformedVault();
+  }
+  const iv = randomBytes(12);
+  const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (dek), { name: 'AES-GCM' }, false, ['encrypt']);
+  const ptBytes = enc.encode(secret);
+  const blob = { v: VAULT_VERSION_V3, kdf: 'kek-dek', iv: b64(iv), kekWrap, kekSalt, hardwareKekVersion };
+  // I1/I4: zero the plaintext seed bytes on EVERY path, including when
+  // crypto.subtle.encrypt rejects (runtime crypto failure). Codex [P2],
+  // 2026-08-09. The sibling `encryptVaultWithDek` has the same shape and
+  // would benefit from the same guard, but it is pre-existing and out of
+  // scope here — a follow-up can lift it.
+  try {
+    const ctBuf = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv, additionalData: vaultAad(blob) },
+      key,
+      ptBytes,
+    );
+    return { ...blob, ct: b64(new Uint8Array(ctBuf)) };
+  } finally {
+    zero(ptBytes);
+  }
 }
 
 /**
