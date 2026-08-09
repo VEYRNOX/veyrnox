@@ -130,6 +130,53 @@ export function useKekEnrollmentGate({ isUnlocked }) {
         let secure;
         try { secure = await ks.isSecureHardwareAvailable(); } catch { return; }
         if (!secure) return;
+
+        // #1664 (2026-08-09): a device passcode alone (deviceIsSecure=true) is
+        // NOT enough to actually enroll a hardware-KEK — iOS Face ID / Touch
+        // ID or Android biometric must be ENROLLED on the OS. Without an
+        // enrolled biometric, enrollHardwareCredential rejects with an
+        // unclassified native error, classifyEnrollError falls through to
+        // GENERIC_MSG ("Something went wrong. Please try again."), and the
+        // gate re-prompts every unlock forever. iOS Simulator without Face ID
+        // set up is the canonical reproduction — a real user who hasn't
+        // configured Face ID hits the same wall.
+        //
+        // Fail policy (I4-aware, per Codex 2nd review):
+        //   - EXPLICIT "not enrolled" (biometryNotEnrolled reason, OR available
+        //     type is none)  → skip the gate. Enrolment cannot succeed; forcing
+        //     the retry loop is user-hostile and offers no security benefit.
+        //   - AMBIGUOUS failure (probe throws, lockout, transient) → KEEP the
+        //     gate active. Retrying later may succeed; skipping on ambiguous
+        //     signals would let a capable device silently downgrade to
+        //     PIN-only for the session.
+        try {
+          const { BiometricAuth, BiometryType } = await import('@aparajita/capacitor-biometric-auth');
+          const bio = await BiometricAuth.checkBiometry();
+          // Reason strings from @aparajita/capacitor-biometric-auth's typed
+          // BiometryReason enum. Only these two indicate the capability is
+          // ABSENT (not merely temporarily unusable), so only these are safe
+          // to fail-open.
+          const notEnrolled =
+            bio?.reason === 'biometryNotEnrolled' ||
+            bio?.reason === 'biometryNotAvailable' ||
+            bio?.biometryType === BiometryType.none;
+          if (notEnrolled) return; // capability absent → skip gate
+          // Explicit "biometric is enrolled and usable" — proceed to the
+          // has-vault-wrap check + gate activation. Everything else
+          // (lockout, ambiguous probe outcome) falls through to KEEP the
+          // gate; retry-in-a-moment is the correct next behaviour, not
+          // silent PIN-only downgrade.
+          if (bio?.isAvailable !== true) {
+            // Ambiguous — keep gate active by default (I4). Do not `return`.
+            // Fall through so the has-vault-wrap check runs and the gate
+            // activates. The user sees the KEK screen; on retry once
+            // biometric lockout clears, enrollment will succeed.
+          }
+        } catch {
+          // Probe threw — ambiguous. Keep the gate active (I4 fail-closed).
+          // Do not `return` — fall through to the has-vault-wrap check.
+        }
+
         let wrapped = true;
         if (typeof ks.hasVaultKekWrap === 'function') {
           try { wrapped = await ks.hasVaultKekWrap(); } catch { wrapped = true; }
