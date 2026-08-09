@@ -103,7 +103,6 @@ import { enforceDuressBiometricInvariant, isDuressConfigured } from "@/lib/dures
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel, setAuthModel, shouldAutoCacheTypedPin } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
-import { checkPinStrength } from "@/lib/pinStrength";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
 import { WEB_VAULT_ERR } from "@/lib/vaultErrors";
 import { Capacitor } from "@capacitor/core";
@@ -116,21 +115,11 @@ import { setPendingReferral } from "@/lib/referral";
 import { copySecret } from "@/lib/copySecret";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
+import PinSetup from "@/components/PinSetup";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
 import FirstRunTour, { armTour } from "@/components/FirstRunTour";
 import { errorHaptic } from "@/lib/haptics";
-
-// Constant-time PIN equality for setup/recovery confirm (F-11).
-// Both operands are local strings with no remote attacker; this is a codebase
-// consistency fix. XOR-accumulate over encoded bytes, same pattern as credentialVerifier.
-const _enc = new TextEncoder();
-function pinsEqual(a, b) {
-  const ab = _enc.encode(a), bb = _enc.encode(b);
-  if (ab.length !== bb.length) return false;
-  let d = 0; for (let i = 0; i < ab.length; i++) d |= ab[i] ^ bb[i];
-  return d === 0;
-}
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
@@ -925,9 +914,9 @@ export default function WalletEntry() {
   // could CREATE a 12+ char alphanumeric vault password but could only UNLOCK via a
   // numeric-only PinPad, which cannot accept it). Web is a testing-only surface —
   // never production — so full parity with native's PIN cohort is correct here.
-  const finishPinSetup = () => {
-    autoEnrollPinRef.current = realPin;
-    setupPin(realPin);               // authModel='pin' + salt + pendingPin + enter explore
+  const finishPinSetup = (pin) => {
+    autoEnrollPinRef.current = pin;
+    setupPin(pin);                   // authModel='pin' + salt + pendingPin + enter explore
     setAuthModelState("pin");
     setRealPin(""); setRealPinConfirm(""); setError(""); setPinStep("real");
     setView("choose");                 // post-Phase-1: leaving explore lands on the create/import choice
@@ -1005,14 +994,14 @@ export default function WalletEntry() {
   // unlocks in one fail-closed block. No seed-backup screen — the user supplied the seed.
   // Fail-closed: a bad phrase throws inside the import, leaving the existing vault
   // untouched; we clear the bridged pendingPin so no stale PIN lingers.
-  const finishPinRecover = async () => {
+  const finishPinRecover = async (pin) => {
     const gate = sensitiveGate(raspArtifact, 'import');
     if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setBusy(true); setProvisioning(true); setError("");
     try {
       setKekOrigin('restored');
-      autoEnrollPinRef.current = realPin;
-      setupPin(realPin);               // bridge the new PIN as pendingPin (markers + salt)
+      autoEnrollPinRef.current = pin;
+      setupPin(pin);                   // bridge the new PIN as pendingPin (markers + salt)
       await importWalletForPendingPin(recoverySeed);
       setAuthModelState("pin");
       setRecoverySeed(""); setRealPin(""); setRealPinConfirm("");
@@ -1161,6 +1150,7 @@ export default function WalletEntry() {
     return (
       <KekEnrollmentGate
         origin={kekOrigin}
+        mode={kekOrigin === 'fresh' ? 'onboarding' : 'auto'}
         autoEnrollPin={autoEnrollPinRef.current}
         onEnroll={handleKekEnroll}
         onSkip={handleKekSkip}
@@ -1646,27 +1636,10 @@ export default function WalletEntry() {
               only reachable AFTER the PIN is set. */}
           <button type="button" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
 
-          {pinStep === "real" && (
-            <div className="space-y-3 text-center">
-              <p className="text-sm font-medium">Choose an 8-digit PIN</p>
-              <p className="text-xs text-muted-foreground">This unlocks your wallet. An 8-digit PIN. Always guard your device.</p>
-              <PinPad value={realPin} onChange={(v) => { setRealPin(v); if (error) setError(""); }} onComplete={(p) => {
-                const s = checkPinStrength(p);
-                if (!s.ok) { setError(s.reason); setRealPin(""); setPinStep("real"); return; }
-                setError(""); setRealPinConfirm(""); setPinStep("real-confirm");
-              }} />
-            </div>
-          )}
-
-          {pinStep === "real-confirm" && (
-            <div className="space-y-3 text-center">
-              <p className="text-sm font-medium">Confirm your PIN</p>
-              <PinPad value={realPinConfirm} onChange={(v) => { setRealPinConfirm(v); if (error) setError(""); }} onComplete={(p) => {
-                if (!pinsEqual(p, realPin)) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
-                finishPinSetup();
-              }} />
-            </div>
-          )}
+          <PinSetup
+            onDone={finishPinSetup}
+            onCancel={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }}
+          />
         </div>
       </EntryShell>
     );
@@ -1706,26 +1679,11 @@ export default function WalletEntry() {
             </div>
           )}
 
-          {pinStep === "real" && (
-            <div className="space-y-3 text-center">
-              <p className="text-sm font-medium">Choose a new 8-digit PIN</p>
-              <p className="text-xs text-muted-foreground">This unlocks your restored wallet. Your seed stays encrypted on this device.</p>
-              <PinPad value={realPin} onChange={(v) => { setRealPin(v); if (error) setError(""); }} onComplete={(p) => {
-                const s = checkPinStrength(p);
-                if (!s.ok) { setError(s.reason); setRealPin(""); setPinStep("real"); return; }
-                setError(""); setRealPinConfirm(""); setPinStep("real-confirm");
-              }} />
-            </div>
-          )}
-
-          {pinStep === "real-confirm" && (
-            <div className="space-y-3 text-center">
-              <p className="text-sm font-medium">Confirm your new PIN</p>
-              <PinPad value={realPinConfirm} onChange={(v) => { setRealPinConfirm(v); if (error) setError(""); }} onComplete={(p) => {
-                if (!pinsEqual(p, realPin)) { setError("PINs didn't match. Choose again."); setRealPin(""); setRealPinConfirm(""); setPinStep("real"); return; }
-                setError(""); finishPinRecover();
-              }} />
-            </div>
+          {pinStep !== "seed" && (
+            <PinSetup
+              onDone={(pin) => { setError(""); finishPinRecover(pin); }}
+              onCancel={() => { setError(""); setRecovering(false); setView("unlock"); }}
+            />
           )}
         </div>
       </EntryShell>
