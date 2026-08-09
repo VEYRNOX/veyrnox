@@ -245,11 +245,13 @@ Docs updated:
 - `docs/SecurityAdvisor-TIP-integration.md` — status table refreshed, cross-chain matrix added.
 - [VEYRNOX/veyrnox#1650](https://github.com/VEYRNOX/veyrnox/pull/1650) — combined docs PR.
 
-Honest gaps carried forward: three sanction-grade Worker sources (Chainalysis,
-OpenSanctions, Alchemy tx-sim) remain unset on BOTH staging and production
-(verified 2026-08-09 by curl against each Worker — every response returns
-`status: skipped` with `*_API_KEY not configured` for these three; the keys
-have never been provisioned on the veyrnox-tip project).
+Source-key triage locked 2026-08-09 (see Feature-Status.md + SecurityAdvisor-TIP-integration.md
+for the table): Alchemy tx-sim now LIVE on both staging and production;
+Chainalysis and OpenSanctions are PERMANENT SKIPS — Chainalysis discontinued
+its free API tier and only offers paid enterprise contracts (redundant with
+OFAC-GitHub + our sanctioned-address lane for the entities the wallet targets);
+OpenSanctions' API is 30-day trial only, though its bulk dataset is CC-BY 4.0
+and self-hostable if PEP screening becomes in-scope.
 Not independently audited. Not on-chain-txid verified (this is screening,
 not signing).
 
