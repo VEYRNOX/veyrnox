@@ -235,7 +235,7 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
-      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v4
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v4
         with:
           distribution: temurin
           java-version: 21
@@ -267,7 +267,7 @@ jobs:
       - run: npm run build
       - name: Sync Capacitor
         run: npx cap sync android
-      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           # Capacitor 8 / the Android Gradle build target Java 21; JDK 17 fails the
@@ -471,7 +471,7 @@ jobs:
       - name: Sync Capacitor
         if: env.NEEDED == 'true'
         run: npx cap sync android
-      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         if: env.NEEDED == 'true'
         with:
           distribution: temurin
