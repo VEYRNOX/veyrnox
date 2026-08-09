@@ -27,9 +27,10 @@ Deferring paste-distribution has one real cost: crypto-natives who paste a whole
 |---|---|---|
 | `src/components/SeedInputGrid.jsx` | Component: word-count selector + N per-word inputs + submit button. Props: `onSubmit(mnemonic: string)`, `disabled`, `submitLabel`. | NEW |
 | `src/components/__tests__/SeedInputGrid.test.jsx` | Unit tests (TDD RED first). | NEW |
-| `src/components/WalletEntry.jsx` | Replace `<textarea id="wallet-seed-import">` block (~L1806) with `<SeedInputGrid onSubmit={setImportPhrase + handleImport}>`. `handleImport` unchanged. Password field unchanged. | EDIT |
+| `src/components/WalletEntry.jsx` | Replace `<textarea id="wallet-seed-import">` block (~L1806) with `<SeedInputGrid onSubmit={...}>`. **`handleImport` gained an optional `mnemonicOverride` param** — needed because `setImportPhrase(mnemonic)` doesn't flush before a same-tick read. Local var renamed `importPhrase` → `phrase`. Password field, error banner, Cancel button, `BiometricOffer`, view-state transitions untouched. PIN-cohort textarea at ~L1594 untouched. | EDIT |
+| `src/rasp/__tests__/g4-callsite-pins.test.js` | **Pin literal updated** from `importWallet(importPhrase` → `importWallet(phrase` at L115 to match the arg rename above. Still asserts call-site ordering (sensitiveGate index < importWallet index), same guarantee as before. | EDIT |
 
-**Not touched:** `WalletProvider.jsx`, `App.jsx`, `WalletGate.jsx`, `SeedGrid.jsx`, RASP call-site pin (`g4-callsite-pins.test.js:115` — `importWallet(importPhrase` call site at `WalletEntry.jsx:1108` stays put; only the input surface upstream of that variable changes).
+**Not touched:** `WalletProvider.jsx`, `App.jsx`, `WalletGate.jsx`, `SeedGrid.jsx`, `importWallet` itself, `importWalletForPendingPin`, all PIN-cohort code paths.
 
 ## Security invariants involved
 
