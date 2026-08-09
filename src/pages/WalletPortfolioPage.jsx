@@ -55,6 +55,7 @@ import PortfolioHealthScore from "@/components/PortfolioHealthScore";
 import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
 import WatchlistWidget from "@/components/WatchlistWidget";
 import SecurityPosture from "@/components/SecurityPosture";
+import { readPersonalBackupState } from "@/lib/personalBackupState";
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
@@ -888,7 +889,21 @@ export default function WalletPortfolioPage() {
         isDeniability={healthInputs.isDeniability}
       />
       <WatchlistWidget />
-      <SecurityPosture />
+      {/* Personal Backup Phase 5 — feed the Recovery-dimension inputs into
+          SecurityPosture. Read at render time; the values change infrequently
+          (only after a Phase 1/3 export completes) and the user leaves this
+          page to run one, so remount-on-return picks up fresh state. Bare
+          <SecurityPosture /> scored Recovery = 0/30 for the shard cohort,
+          hiding the whole point of the posture card. shareCVerified stays
+          honestly false — spec §9 gates it on a real recovery round-trip,
+          which Phase 2 does not yet log (I4: no fabricated "verified"). */}
+      {(() => {
+        const pb = readPersonalBackupState();
+        return <SecurityPosture state={{
+          recoveryPassphraseSet: pb.passphrase,
+          shareCExported: pb.exported,
+        }} />;
+      })()}
 
       {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">
