@@ -918,6 +918,33 @@ export default function SendCrypto() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toAddress, canonicalAmount, addressFormatValid, selectedAsset, isErc20, riskCalldata, ensResolved, activeNetwork, selectedWallet, history, knownAddresses, whitelist, riskReady, txSim.data, tipQuery.data]);
 
+  // #1664 diagnostic (DEV-only, dead-code-eliminated in production builds).
+  // Traces the tipQuery lifecycle + riskVerdict outcome around Send Preview so
+  // a "silent-CLEAR" regression like the one filed 2026-08-09 can be diagnosed
+  // from Xcode/Chrome console without needing Safari Remote Debug attached to
+  // the exact moment of Continue-tap. Only logs when tipScreenApplies is true
+  // (a call is expected) OR when the state actually changed — avoids spamming
+  // the console on every unrelated render.
+  const prevDiagRef = useRef({ status: null, verdict: null, level: null });
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!tipScreenApplies && !prevDiagRef.current.status) return;
+    const status = tipQuery.status;                              // 'idle' | 'pending' | 'success' | 'error'
+    const verdict = tipQuery.data?.verdict ?? null;              // 'allow' | 'warn' | 'block' | 'unknown' | 'error' | null (suppressed)
+    const level = riskVerdict?.level ?? null;
+    const prev = prevDiagRef.current;
+    if (prev.status === status && prev.verdict === verdict && prev.level === level) return;
+    prevDiagRef.current = { status, verdict, level };
+    // eslint-disable-next-line no-console
+    console.error('[TIP-DEBUG]', JSON.stringify({
+      tipScreenApplies,
+      tipQuery: { status, verdict, sanctions_hit: tipQuery.data?.sanctions ?? null },
+      riskReady,
+      riskVerdict: { level, sentence: riskVerdict?.sentence ?? null },
+      presign_owner: presign?.owner ?? null,
+    }));
+  }, [tipScreenApplies, tipQuery.status, tipQuery.data, riskReady, riskVerdict, presign]);
+
   // RISK acknowledgement ("Sign anyway"). Reset whenever the breach could change —
   // amount, asset, or recipient — so a stale ack never carries into a changed send
   // (same freshness discipline as limitAck above).
