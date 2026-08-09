@@ -578,9 +578,20 @@ export function WalletProvider({ children }) {
   }, [isUnlocked, lock]);
 
   // On unlock, background-refresh the local IOC cache. Best-effort, never
-  // blocks unlock UI. Deniability check is inside refreshManifestIfDue via
-  // the caller-supplied predicate below — we only fire the network fetch
-  // from a real (non-decoy, non-hidden) session so I3 stays intact.
+  // blocks unlock UI.
+  //
+  // THE I3 GATE IS NOT HERE. It lives inside `refreshManifest()`, the module's
+  // single egress point, which refuses on `isDeniabilityOrDemoActive()`.
+  // This early return is a cheap skip so a decoy session does not pay for a
+  // dynamic import it cannot use — it is NOT the control, and removing it
+  // would not open a leak.
+  //
+  // (Until the 2026-08-09 audit this comment claimed the check was "inside
+  // refreshManifestIfDue via the caller-supplied predicate below". There was no
+  // such predicate — the function takes a URL and nothing else — and this
+  // condition, which is `isDeniabilitySessionActive()` spelled out, was the only
+  // gate. It does not read the persisted `veyrnox-demo` flag, so demo sessions
+  // fetched. Fixed by moving the real gate into the module.)
   //
   // The Advisor's screenTransaction still checks isDeniabilityOrDemoActive
   // at call time; this effect just makes sure the local cache is fresh
