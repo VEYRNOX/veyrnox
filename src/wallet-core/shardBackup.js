@@ -146,7 +146,9 @@ export function splitDekForPersonalBackup(dek) {
     throw new Error(SHARD_INVALID_DEK);
   }
   const local = new Uint8Array(dek);
+  /** @type {Uint8Array[] | null} */
   let shares = null;
+  /** @type {Uint8Array | null} */
   let recon = null;
   try {
     shares = split(local, 3, 2);
