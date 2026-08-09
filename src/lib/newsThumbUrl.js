@@ -36,6 +36,7 @@ export const ALLOWED_NEWS_THUMB_HOSTS = new Set([
   // CoinTelegraph
   'images.cointelegraph.com',
   's3.cointelegraph.com',
+  's3-images.ctmedia.io',
   // Decrypt
   'cdn.decrypt.co',
   'img.decrypt.co',

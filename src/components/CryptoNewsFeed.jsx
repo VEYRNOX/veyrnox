@@ -22,8 +22,22 @@ async function fetchCryptoNews() {
   return articles;
 }
 
+// rss2json returns `description` as an HTML fragment (tags + entities). Rendered
+// as text it shows raw markup like `<p style="float:right;…` and `&#39;`.
+// Strip to plain text via DOMParser — decodes entities and drops tags in one go.
+// Safe: the result is dropped in a text node, never innerHTML.
+function htmlToText(s) {
+  if (!s) return '';
+  try {
+    return (new DOMParser().parseFromString(s, 'text/html').body.textContent || '').trim();
+  } catch {
+    return s.replace(/<[^>]*>/g, '').trim();
+  }
+}
+
 function NewsCard({ article }) {
   const thumbnail = article.enclosure?.link || article.thumbnail || null;
+  const description = htmlToText(article.description);
 
   return (
     <a
@@ -55,8 +69,8 @@ function NewsCard({ article }) {
           </p>
           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
-        {article.description && (
-          <p className="text-xs text-muted-foreground line-clamp-1">{article.description}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
         )}
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground ms-auto">

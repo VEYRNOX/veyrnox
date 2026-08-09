@@ -18,6 +18,9 @@ const vaultMock = {
   deriveKekC: vi.fn(async () => new Uint8Array(32).fill(7)),
   encryptVaultWithDek: vi.fn(async () => ({ iv: 'iv', ct: 'ct' })),
   decryptVaultWithDek: vi.fn(),
+  encryptVaultWithDekV3: vi.fn(async () => ({ v: 3, kdf: 'kek-dek', iv: 'v3iv', ct: 'v3ct' })),
+  VAULT_VERSION_V3: 3,
+  AAD_V3_MIGRATION_ENABLED: false,
 };
 const storeMock = {
   saveVault: vi.fn(async () => {}),
