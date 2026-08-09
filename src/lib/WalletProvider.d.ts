@@ -94,6 +94,7 @@ export interface WalletContextValue {
   autoLockValue: any;
   setAutoLockTimeout: any;
   createBackup: any;
+  exportRecoveryShares: any;
   recordAudit: any;
   auditLogEnabled: any;
   getAuditLogEnabled: any;
