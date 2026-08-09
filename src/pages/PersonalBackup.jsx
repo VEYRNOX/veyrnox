@@ -11,6 +11,13 @@ import {
   verifyBackupEnvelope,
 } from "@/wallet-core/vaultBackup";
 import { ENABLE_PERSONAL_BACKUP_SHARDS } from "@/wallet-core/shardBackup";
+import {
+  wrapShareWithPassphrase,
+  unwrapShareWithPassphrase,
+  tryParseRecoveryEnvelope,
+  checkRecoveryPassphrase,
+  RECOVERY_PASSPHRASE_MIN_LENGTH,
+} from "@/wallet-core/recoveryShare";
 import { toast } from "@/lib/toast";
 import BackButton from "@/components/BackButton";
 import { useActionGuard } from "@/components/security/useActionGuard";
@@ -23,7 +30,7 @@ import { checkPinStrength } from "@/lib/pinStrength";
 import {
   CloudUpload, Download, Upload,
   AlertTriangle, Shield, CheckCircle2, Loader2,
-  KeyRound,
+  KeyRound, Lock,
 } from "lucide-react";
 
 // ── Local helpers ────────────────────────────────────────────────────────────
@@ -356,29 +363,36 @@ async function pickShareFiles(minCount, maxCount) {
 }
 
 function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
-  const [shares, setShares] = useState(null); // Uint8Array[] once picked
+  // pickedFiles carries raw bytes as picked from disk — either 88-byte raw
+  // shares or JSON recovery envelopes. Envelopes are unwrapped only at submit
+  // time, so a wrong passphrase can be re-entered without re-picking files.
+  const [pickedFiles, setPickedFiles] = useState(null);
   const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [recoveryPassphrase, setRecoveryPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
   const [pickErr, setPickErr] = useState("");
   const raspArtifact = useRaspArtifact();
+
+  // Cheap detection — tryParseRecoveryEnvelope does length check + JSON.parse.
+  const encryptedCount = pickedFiles
+    ? pickedFiles.reduce((n, f) => (tryParseRecoveryEnvelope(f) ? n + 1 : n), 0)
+    : 0;
+  const needsPassphrase = encryptedCount > 0;
 
   const runPick = async () => {
     setPickErr("");
     try {
       const picked = await pickShareFiles(2, 2);
-      // We do not validate the envelope shape here — shamir.combine() inside
-      // the native layer does that (v2 header check + SHA-256 commitment).
-      // Surfacing early would require duplicating the parser; letting the
-      // real code path reject bad bytes keeps this UI dumb and honest.
-      setShares(picked);
+      setPickedFiles(picked);
     } catch (err) {
       setPickErr(err?.message || "File pick failed.");
     }
   };
 
-  const clearShares = () => {
-    if (shares) for (const s of shares) if (s && s.fill) s.fill(0);
-    setShares(null);
+  const clearPickedFiles = () => {
+    if (pickedFiles) for (const f of pickedFiles) if (f && f.fill) f.fill(0);
+    setPickedFiles(null);
   };
 
   // Native is a PIN-only cohort: the unlock UI uses PinPad and only accepts a
@@ -386,7 +400,18 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
   // would rewrite the vault under a credential the normal unlock cannot type
   // back in — locking the user out (Codex P1, 2026-08-09).
   const pinCheck = checkPinStrength(newPassword);
-  const canRestore = shares && shares.length === 2 && pinCheck.ok && !busy;
+  const passphraseCheck = checkRecoveryPassphrase(recoveryPassphrase);
+  // Codex P2 2026-08-09 — a typo in the new PIN silently locks the user out
+  // (vault rewrites under mistyped credential, unlock fails, only fix is to
+  // restore again). Require confirm field to match before enabling Restore.
+  const pinConfirmed = newPassword === newPasswordConfirm && newPasswordConfirm.length > 0;
+  const canRestore =
+    pickedFiles &&
+    pickedFiles.length === 2 &&
+    pinCheck.ok &&
+    pinConfirmed &&
+    (!needsPassphrase || passphraseCheck.ok) &&
+    !busy;
 
   const runRestore = async () => {
     const gate = sensitiveGate(raspArtifact, "export"); // reuse the same RASP surface as export
@@ -395,20 +420,50 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
       return;
     }
     setBusy(true);
+    // Hoisted so finally reaches on any throw from unwrap or restore — same
+    // discipline as export's runSplit (Codex P2, 2026-08-09).
+    // ownedByShares tracks which entries in `shares` are OURS to zero — an
+    // envelope unwrap returns a fresh buffer (owned), a raw pick aliases the
+    // pickedFiles buffer (NOT owned; zeroing would destroy the retry state).
+    // Codex P2 2026-08-09: prior version zeroed all entries, corrupting raw
+    // shares in pickedFiles after any failure — every retry then fed zeroed
+    // bytes until user re-picked files.
+    let shares = null;
+    let ownedByShares = null;
     try {
+      shares = [];
+      ownedByShares = [];
+      for (const f of pickedFiles) {
+        const envelope = tryParseRecoveryEnvelope(f);
+        if (envelope) {
+          shares.push(await unwrapShareWithPassphrase(envelope, recoveryPassphrase));
+          ownedByShares.push(true);
+        } else {
+          shares.push(f);
+          ownedByShares.push(false);
+        }
+      }
       await restoreFromRecoveryShares(shares, newPassword);
-      // Do NOT auto-hydrate. Zero the shares, lock, and hand off to the
-      // caller which will route to the unlock screen. The next unlock
-      // populates containerRef via the standard chain.
-      clearShares();
+      clearPickedFiles();
       setNewPassword("");
+      setNewPasswordConfirm("");
+      setRecoveryPassphrase("");
       toast.success("Wallet recovered. Unlock with your new PIN.");
       onFinish();
     } catch (err) {
       // fail-closed: surface the raw error so the user learns whether it was
-      // a bad share set, wrong-generation shares, or a KEK/hardware error.
+      // a bad share set, wrong passphrase, wrong-generation shares, or a
+      // KEK/hardware error.
       toast.error(err?.message || "Recovery failed.");
     } finally {
+      // Zero ONLY freshly unwrapped share bytes. Raw picks alias pickedFiles
+      // and must stay intact for retry — clearPickedFiles zeros them on
+      // successful clear-out only.
+      if (shares) {
+        for (let i = 0; i < shares.length; i++) {
+          if (ownedByShares[i] && shares[i] && shares[i].fill) shares[i].fill(0);
+        }
+      }
       setBusy(false);
     }
   };
@@ -427,10 +482,10 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
       </div>
 
       <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
-        <p className="font-semibold text-warning">Same-device only (Phase 2)</p>
+        <p className="font-semibold text-warning">Same-device only</p>
         <p>
           Restore only works on a device that still has the encrypted vault. Recovering onto a brand-new device
-          (device lost or reset) needs Phase 3 (cloud transport of the vault ciphertext). Not shipped yet.
+          (device lost or reset) needs vault-ciphertext transport, which is a later phase.
         </p>
       </div>
 
@@ -441,13 +496,32 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
           className="w-full py-2 rounded-lg border border-border text-sm hover:bg-secondary/40 flex items-center justify-center gap-2"
         >
           <Upload className="h-4 w-4" />
-          {shares ? `Change files (${shares.length} of 2 chosen)` : "Choose 2 share files"}
+          {pickedFiles ? `Change files (${pickedFiles.length} of 2 chosen)` : "Choose 2 share files"}
         </button>
         {pickErr && <p className="text-xs text-destructive">{pickErr}</p>}
-        {shares && shares.length === 2 && (
-          <p className="text-xs text-muted-foreground">2 files loaded. Set a new PIN below to complete recovery.</p>
+        {pickedFiles && pickedFiles.length === 2 && (
+          <p className="text-xs text-muted-foreground">
+            2 files loaded{encryptedCount > 0 ? ` — ${encryptedCount} is passphrase-encrypted` : ""}. Fill in the fields below to complete recovery.
+          </p>
         )}
       </div>
+
+      {needsPassphrase && (
+        <div className="space-y-1">
+          <PasswordInput
+            value={recoveryPassphrase}
+            onChange={(e) => setRecoveryPassphrase(e.target.value)}
+            placeholder={`Recovery passphrase (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
+            autoComplete="current-password"
+          />
+          {recoveryPassphrase.length > 0 && !passphraseCheck.ok && (
+            <p className="text-xs text-destructive">{passphraseCheck.reason}</p>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            The passphrase you set when exporting the encrypted share.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-1">
         <PasswordInput
@@ -459,6 +533,19 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
         />
         {newPassword.length > 0 && !pinCheck.ok && (
           <p className="text-xs text-destructive">{pinCheck.reason}</p>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <PasswordInput
+          value={newPasswordConfirm}
+          onChange={(e) => setNewPasswordConfirm(e.target.value)}
+          placeholder="Confirm new PIN"
+          autoComplete="new-password"
+          inputMode="numeric"
+        />
+        {newPasswordConfirm.length > 0 && newPassword !== newPasswordConfirm && (
+          <p className="text-xs text-destructive">PINs do not match.</p>
         )}
       </div>
 
@@ -481,6 +568,14 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
   const [busy, setBusy] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [done, setDone] = useState(false);
+  // Phase 3 — encrypt one share with a recovery passphrase before save. When
+  // on, share 2 is wrapped and saved as .veyrnox-recovery.json; shares 1 and
+  // 3 stay raw. Rationale for wrapping ONE (not all): the value is
+  // defence-in-depth on the cloud-hosted share; wrapping the on-device share
+  // adds nothing over the KEK it already sits under, and wrapping the paper
+  // share adds nothing over the user's physical control.
+  const [encryptOne, setEncryptOne] = useState(false);
+  const [recoveryPassphrase, setRecoveryPassphrase] = useState("");
   const raspArtifact = useRaspArtifact();
 
   if (isDecoy || isHidden) {
@@ -498,7 +593,9 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
   // MIN_PASSWORD_LENGTH here would gate out the native PIN cohort (8+ digits)
   // since MIN_PASSWORD_LENGTH is the new-password floor (12), not an unlock
   // floor. Phase 2 should replace this input with PinPad on native.
-  const canExport = password.length > 0;
+  const passphraseCheck = checkRecoveryPassphrase(recoveryPassphrase);
+  const canExport =
+    password.length > 0 && (!encryptOne || passphraseCheck.ok);
 
   const runSplit = async () => {
     const gate = sensitiveGate(raspArtifact, "export");
@@ -519,11 +616,29 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
       // native.js and returns only the split output.
       shares = await exportRecoveryShares(password);
       // Save each share as its own file. If the user cancels the share sheet
-      // on iOS mid-way through, we stop and report which shares landed. The
-      // shares themselves are in memory only until then; no persistence.
+      // on iOS mid-way through, we stop and report which shares landed.
+      //
+      // Phase 3: when encryptOne is on, share index 2 (CLOUD_INDEX) goes
+      // through Argon2id + AES-GCM wrap and saves as JSON envelope. Others
+      // stay raw. Exactly one encrypted file so user has a clear cloud-safe
+      // file to save separately from the raw ones (spec §5).
+      const CLOUD_INDEX = 1; // shares[1] = x-coord 2 in the shamir set
       for (let i = 0; i < shares.length; i++) {
-        const filename = `veyrnox-recovery-${i + 1}-of-3.veyrnox-share`;
-        const result = await saveShareFile(shares[i], filename);
+        let bytesToSave;
+        let filename;
+        if (encryptOne && i === CLOUD_INDEX) {
+          const envelopeJson = await wrapShareWithPassphrase(
+            shares[i],
+            recoveryPassphrase,
+            i + 1,
+          );
+          bytesToSave = new TextEncoder().encode(envelopeJson);
+          filename = `veyrnox-recovery-${i + 1}-of-3.veyrnox-recovery.json`;
+        } else {
+          bytesToSave = shares[i];
+          filename = `veyrnox-recovery-${i + 1}-of-3.veyrnox-share`;
+        }
+        const result = await saveShareFile(bytesToSave, filename);
         if (result && result.saved) {
           setSavedCount(i + 1);
         } else {
@@ -533,6 +648,7 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
       }
       setDone(true);
       setPassword("");
+      setRecoveryPassphrase("");
     } catch (err) {
       // fail-closed: surface the raw error code so a round-trip failure or
       // KEK issue is visible, not silently masked (I4).
@@ -625,8 +741,8 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
       <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
         <p className="font-semibold text-warning">Pre-audit preview</p>
         <p>
-          Restore is same-device only (Phase 2). Cross-device (device lost) recovery is Phase 3. Keep an .enc backup
-          alongside these shares.
+          Same-device restore ships in this build; cross-device (device lost) recovery is a later phase. Keep an
+          .enc backup alongside these shares.
         </p>
       </div>
 
@@ -637,13 +753,51 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
         autoComplete="current-password"
       />
 
+      <div className="p-3 rounded-xl border border-border bg-card/40 space-y-2">
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={encryptOne}
+            onChange={(e) => setEncryptOne(e.target.checked)}
+            className="mt-0.5"
+            aria-label="Encrypt one share with a recovery passphrase"
+          />
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5" />
+              Encrypt one share with a passphrase
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Wraps share 2 in Argon2id + AES-GCM so it&apos;s safe to save in cloud storage. Recommended if
+              you plan to keep a share in iCloud Drive, Google Drive or Dropbox.
+            </p>
+          </div>
+        </label>
+        {encryptOne && (
+          <div className="space-y-1 pl-6">
+            <PasswordInput
+              value={recoveryPassphrase}
+              onChange={(e) => setRecoveryPassphrase(e.target.value)}
+              placeholder={`Recovery passphrase (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
+              autoComplete="new-password"
+            />
+            {recoveryPassphrase.length > 0 && !passphraseCheck.ok && (
+              <p className="text-xs text-destructive">{passphraseCheck.reason}</p>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Long, memorable, written down separately. Losing this passphrase makes the encrypted share unusable.
+            </p>
+          </div>
+        )}
+      </div>
+
       <button
         onClick={runSplit}
         disabled={!canExport || busy}
         className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-40 flex items-center justify-center gap-2"
       >
         {busy
-          ? <><Loader2 className="h-4 w-4 animate-spin" /> Splitting…</>
+          ? <><Loader2 className="h-4 w-4 animate-spin" /> {encryptOne ? "Encrypting…" : "Splitting…"}</>
           : <><Download className="h-4 w-4" /> Split & save 3 shares</>}
       </button>
     </div>
