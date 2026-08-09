@@ -116,6 +116,105 @@ describe('shardBackup — primitive behaviour under {allow:true} (documentation-
   });
 });
 
+// ── Personal Backup Phase 1 ────────────────────────────────────────────────
+// Two separate gates in this module: ALLOW_SHARD_BACKUP (unchanged, off) for
+// the generic wrappers, and ENABLE_PERSONAL_BACKUP_SHARDS (also off by
+// default) for the Personal Backup export path used by src/pages/PersonalBackup.
+// Tests below cover BOTH flag-off (throws) and flag-on (round-trip) behaviour.
+
+describe('shardBackup — Personal Backup gate defaults off', () => {
+  it('ENABLE_PERSONAL_BACKUP_SHARDS is false by default (build flag off)', async () => {
+    // Same fail-the-build reasoning as ALLOW_SHARD_BACKUP above. If this
+    // flips to true without the audit + restore flow + cloud transport, the
+    // pre-audit gate has been silently opened.
+    const mod = await import('../shardBackup.js');
+    expect(mod.ENABLE_PERSONAL_BACKUP_SHARDS).toBe(false);
+  });
+
+  it('splitDekForPersonalBackup throws PERSONAL_BACKUP_SHARDS_DISABLED when flag off', async () => {
+    const mod = await import('../shardBackup.js');
+    const dek = randomDek();
+    expect(() => mod.splitDekForPersonalBackup(dek)).toThrow(mod.PERSONAL_BACKUP_SHARDS_DISABLED);
+  });
+
+  it('combineDekForPersonalBackup throws PERSONAL_BACKUP_SHARDS_DISABLED when flag off', async () => {
+    const mod = await import('../shardBackup.js');
+    const s = new Uint8Array(SHARE_SIZE);
+    expect(() => mod.combineDekForPersonalBackup([s, s])).toThrow(mod.PERSONAL_BACKUP_SHARDS_DISABLED);
+  });
+
+  it('exports PERSONAL_BACKUP_ROUND_TRIP_FAILED as a stable error code', async () => {
+    const mod = await import('../shardBackup.js');
+    expect(mod.PERSONAL_BACKUP_ROUND_TRIP_FAILED).toBe('PERSONAL_BACKUP_ROUND_TRIP_FAILED');
+  });
+});
+
+describe('shardBackup — Personal Backup behaviour with flag stubbed on', () => {
+  // Load a fresh copy of shardBackup.js with the flag stubbed on. The module
+  // reads import.meta.env at module load — vi.stubEnv + vi.resetModules gives
+  // us a second instance with the flag flipped, without ever mutating the
+  // real production module the rest of the suite imported at the top.
+  async function loadShardBackupEnabled() {
+    const { vi: viInst } = await import('vitest');
+    viInst.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
+    viInst.resetModules();
+    return await import('../shardBackup.js');
+  }
+
+  it('splitDekForPersonalBackup returns 3 shares of SHARE_SIZE bytes', async () => {
+    const mod = await loadShardBackupEnabled();
+    const dek = randomDek();
+    const shares = mod.splitDekForPersonalBackup(dek);
+    expect(shares).toHaveLength(3);
+    for (const s of shares) expect(s.length).toBe(SHARE_SIZE);
+  });
+
+  it('any 2 of 3 shares reconstruct the original DEK', async () => {
+    const mod = await loadShardBackupEnabled();
+    const dek = randomDek();
+    const dekCopy = new Uint8Array(dek);
+    const shares = mod.splitDekForPersonalBackup(dek);
+    // Verify caller's DEK was not mutated (defensive-copy contract).
+    expect(dek).toEqual(dekCopy);
+    expect(mod.combineDekForPersonalBackup([shares[0], shares[1]])).toEqual(dek);
+    expect(mod.combineDekForPersonalBackup([shares[0], shares[2]])).toEqual(dek);
+    expect(mod.combineDekForPersonalBackup([shares[1], shares[2]])).toEqual(dek);
+  });
+
+  it('rejects a DEK of the wrong length with SHARD_INVALID_DEK', async () => {
+    const mod = await loadShardBackupEnabled();
+    expect(() => mod.splitDekForPersonalBackup(new Uint8Array(31))).toThrow('SHARD_INVALID_DEK');
+    expect(() => mod.splitDekForPersonalBackup(new Uint8Array(33))).toThrow('SHARD_INVALID_DEK');
+    expect(() => mod.splitDekForPersonalBackup('not-bytes')).toThrow('SHARD_INVALID_DEK');
+  });
+
+  it('splitDek re-verifies the round-trip and throws on a shamir regression', async () => {
+    // Sanity: the built-in round-trip check has to actually run. Prove it by
+    // mocking shamir.combine to return the WRONG bytes and confirming split
+    // throws PERSONAL_BACKUP_ROUND_TRIP_FAILED (rather than silently returning
+    // the shares). Uses vi.doMock to override just for this test's dynamic
+    // import; the mock is cleared for the next case.
+    const { vi: viInst } = await import('vitest');
+    viInst.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
+    viInst.doMock('../shamir.js', async () => {
+      const actual = await viInst.importActual('../shamir.js');
+      return {
+        ...actual,
+        combine: () => new Uint8Array(actual.SECRET_SIZE), // wrong result
+      };
+    });
+    viInst.resetModules();
+    try {
+      const mod = await import('../shardBackup.js');
+      expect(() => mod.splitDekForPersonalBackup(randomDek()))
+        .toThrow('PERSONAL_BACKUP_ROUND_TRIP_FAILED');
+    } finally {
+      viInst.doUnmock('../shamir.js');
+      viInst.resetModules();
+    }
+  });
+});
+
 describe('shardBackup — DEK-shape validation would trigger on a bad call', () => {
   // We can only test the gate here (SHARD_INVALID_DEK is unreachable while
   // the module flag is off, because the gate check runs first). Asserting

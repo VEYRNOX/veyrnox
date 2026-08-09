@@ -1,13 +1,16 @@
 // @ts-nocheck
 import { useState, useId } from "react";
 import { useNavigate } from "react-router";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import { useWallet } from "@/lib/WalletProvider";
 import {
   downloadBackupFile,
   downloadBackupFilePicker,
   verifyBackupEnvelope,
 } from "@/wallet-core/vaultBackup";
+import { ENABLE_PERSONAL_BACKUP_SHARDS } from "@/wallet-core/shardBackup";
 import { toast } from "@/lib/toast";
 import BackButton from "@/components/BackButton";
 import { useActionGuard } from "@/components/security/useActionGuard";
@@ -19,6 +22,7 @@ import { MIN_PASSWORD_LENGTH } from "@/lib/passwordStrength";
 import {
   CloudUpload, Download, Upload,
   AlertTriangle, Shield, CheckCircle2, Loader2,
+  KeyRound,
 } from "lucide-react";
 
 // ── Local helpers ────────────────────────────────────────────────────────────
@@ -245,15 +249,211 @@ function ExportTab({ createBackup, isDecoy, isHidden }) {
 }
 
 
+// ── Recovery Shares tab (Personal Backup Phase 1) ───────────────────────────
+// Splits the DEK into 3 shamir shares (2-of-3) and hands each to the user via
+// the native share sheet. NO cloud upload, NO device Share-A persistence swap,
+// NO restore flow — Phase 1 is export-only. See docs/cloud-recovery-shard-spec.md.
+// Only rendered when ENABLE_PERSONAL_BACKUP_SHARDS build flag is on.
+
+async function saveShareFile(bytes, filename) {
+  const platform = Capacitor.getPlatform();
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(bytes)));
+
+  if (platform === "android") {
+    const FileSaver = registerPlugin("FileSaver");
+    const result = await FileSaver.saveToDownloads({ data: base64, filename });
+    return { saved: true, path: result.path };
+  }
+
+  if (platform === "ios") {
+    const tmp = await Filesystem.writeFile({
+      path: filename,
+      data: base64,
+      directory: Directory.Cache,
+    });
+    try {
+      const result = await Share.share({
+        title: filename,
+        url: tmp.uri,
+        dialogTitle: "Save recovery share",
+      });
+      return { saved: true, path: result.activityType ? `Shared via ${result.activityType}` : "Saved via share sheet" };
+    } catch (err) {
+      if (err?.message?.includes("cancelled") || err?.message?.includes("dismiss")) {
+        return { saved: false, path: "" };
+      }
+      throw err;
+    } finally {
+      Filesystem.deleteFile({ path: filename, directory: Directory.Cache }).catch(() => {});
+    }
+  }
+
+  // Web / desktop
+  const blob = new Blob([bytes], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return { saved: true, path: `Downloaded ${filename}` };
+}
+
+function RecoveryShareTab({ exportRecoveryShares, isDecoy, isHidden }) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [savedCount, setSavedCount] = useState(0);
+  const [done, setDone] = useState(false);
+  const raspArtifact = useRaspArtifact();
+
+  if (isDecoy || isHidden) {
+    return (
+      <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 flex items-start gap-3">
+        <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+        <p className="text-sm">Recovery shares are unavailable in this session.</p>
+      </div>
+    );
+  }
+
+  // The button just gates on non-empty input. Actual credential validation
+  // happens inside native.js's KEK unlock chain — wrong PIN/password throws
+  // KEK_ERR.UNWRAP_FAILED, caught below and surfaced as a toast. Using
+  // MIN_PASSWORD_LENGTH here would gate out the native PIN cohort (8+ digits)
+  // since MIN_PASSWORD_LENGTH is the new-password floor (12), not an unlock
+  // floor. Phase 2 should replace this input with PinPad on native.
+  const canExport = password.length > 0;
+
+  const runSplit = async () => {
+    const gate = sensitiveGate(raspArtifact, "export");
+    if (gate.blocked) {
+      toast.error(gate.sentence || "Recovery share export is disabled on this device right now.");
+      return;
+    }
+    setBusy(true);
+    setSavedCount(0);
+    // Hoisted so the finally block below reaches them on both success and
+    // any throw from saveShareFile — Codex P2, 2026-08-09. A save-path
+    // exception leaves the shares live on the suspended frame until GC
+    // otherwise, and any 2 of them reconstruct the DEK.
+    let shares = null;
+    try {
+      // shares are Uint8Array[3] × 88 bytes. The DEK never crossed the
+      // WalletProvider boundary — this call runs the KEK unlock chain in
+      // native.js and returns only the split output.
+      shares = await exportRecoveryShares(password);
+      // Save each share as its own file. If the user cancels the share sheet
+      // on iOS mid-way through, we stop and report which shares landed. The
+      // shares themselves are in memory only until then; no persistence.
+      for (let i = 0; i < shares.length; i++) {
+        const filename = `veyrnox-recovery-${i + 1}-of-3.veyrnox-share`;
+        const result = await saveShareFile(shares[i], filename);
+        if (result && result.saved) {
+          setSavedCount(i + 1);
+        } else {
+          toast("Share sheet was dismissed — some shares were not saved.");
+          break;
+        }
+      }
+      setDone(true);
+      setPassword("");
+    } catch (err) {
+      // fail-closed: surface the raw error code so a round-trip failure or
+      // KEK issue is visible, not silently masked (I4).
+      toast.error(err?.message || "Recovery share export failed.");
+    } finally {
+      // Best-effort zero of the in-memory shares regardless of path.
+      if (shares) for (const s of shares) if (s && s.fill) s.fill(0);
+      setBusy(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <div className="space-y-4">
+        <div className="p-5 rounded-xl border border-success/30 bg-success/5 flex items-start gap-3">
+          <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold">
+              {savedCount === 3 ? "All 3 recovery shares saved" : `${savedCount} of 3 shares saved`}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Save each share in a different location — device, one cloud, another cloud. Any 2 of 3 can recover your wallet.
+            </p>
+          </div>
+        </div>
+        <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
+          <p className="font-semibold text-warning">Pre-audit preview</p>
+          <p>
+            This is Phase 1 of Personal Backup. There is no restore flow yet — the shares you just exported cannot
+            be used to recover a wallet until Phase 2 ships. Independent audit outstanding.
+          </p>
+        </div>
+        <button
+          onClick={() => { setDone(false); setSavedCount(0); }}
+          className="w-full py-2 rounded-lg border border-border text-sm hover:bg-secondary/40"
+        >
+          Export another set
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+        <div className="flex items-center gap-2">
+          <KeyRound className="h-4 w-4 text-primary" />
+          <p className="text-sm font-semibold">2-of-3 recovery shares (preview)</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Splits your vault key into 3 pieces. Any 2 pieces can rebuild it; 1 alone reveals nothing. Save each in a
+          different place (this device, one cloud, another cloud).
+        </p>
+      </div>
+
+      <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
+        <p className="font-semibold text-warning">Pre-audit, export-only preview</p>
+        <p>
+          Restore is not built yet — files saved here cannot rebuild a wallet until Phase 2. Do NOT rely on this
+          for real recovery. Keep using Create backup for now.
+        </p>
+      </div>
+
+      <PasswordInput
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Your wallet password"
+        autoComplete="current-password"
+      />
+
+      <button
+        onClick={runSplit}
+        disabled={!canExport || busy}
+        className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-40 flex items-center justify-center gap-2"
+      >
+        {busy
+          ? <><Loader2 className="h-4 w-4 animate-spin" /> Splitting…</>
+          : <><Download className="h-4 w-4" /> Split & save 3 shares</>}
+      </button>
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-const TABS = [
+const BASE_TABS = [
   { id: "export", label: "Create backup", Icon: CloudUpload },
   { id: "restore", label: "Restore", Icon: Upload },
 ];
 
+const TABS = ENABLE_PERSONAL_BACKUP_SHARDS
+  ? [...BASE_TABS, { id: "shares", label: "Recovery shares", Icon: KeyRound }]
+  : BASE_TABS;
+
 export default function PersonalBackup() {
-  const { createBackup, lock, isDecoy, isHidden } = useWallet();
+  const { createBackup, exportRecoveryShares, lock, isDecoy, isHidden } = useWallet();
   const navigate = useNavigate();
   const [tab, setTab] = useState("export");
 
@@ -290,13 +490,23 @@ export default function PersonalBackup() {
       </div>
 
       {/* Tab content */}
-      {tab === "export"
-        ? <ExportTab createBackup={createBackup} isDecoy={isDecoy} isHidden={isHidden} />
-        : <RestoreFromFile
-            onBack={() => setTab("export")}
-            onFinish={() => { lock(); navigate("/"); }}
-            backLabel="Back to Create backup"
-          />}
+      {tab === "export" && (
+        <ExportTab createBackup={createBackup} isDecoy={isDecoy} isHidden={isHidden} />
+      )}
+      {tab === "restore" && (
+        <RestoreFromFile
+          onBack={() => setTab("export")}
+          onFinish={() => { lock(); navigate("/"); }}
+          backLabel="Back to Create backup"
+        />
+      )}
+      {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && (
+        <RecoveryShareTab
+          exportRecoveryShares={exportRecoveryShares}
+          isDecoy={isDecoy}
+          isHidden={isHidden}
+        />
+      )}
 
       {/* Footer note */}
       <p className="text-[10px] text-muted-foreground text-center pb-4">
