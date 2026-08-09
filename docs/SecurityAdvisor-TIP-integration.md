@@ -340,7 +340,9 @@ Next steps:
 | Supabase Edge Function `tip-screen` | ✅ LIVE | Credentials set on `veyrnox-tip-production`; curl-verified |
 | TIP backend integration (Advisor path) | ✅ LIVE | Sim: Tornado router → BLOCKED, Vitalik → CLEAR (2026-08-09) |
 | TIP backend integration (Send Preview) | ✅ LIVE | Fixed chain-slug mapping (`resolveTipChain`, wallet PR #1646) |
-| Sanctioned-namespace lane (Tornado/Lazarus/Blender.io/Sinbad) | ✅ LIVE | Every EVM chain (tip PR #39) |
+| Sanctioned-namespace lane (Tornado/Lazarus/Blender.io/Sinbad/Ronin/Garantex/Hydra/Suex/Chatex + `blocked,ofac-sanctions-lists`) | ✅ LIVE | Every EVM chain (tip PRs #39, #40, #41, #42) |
+| Tx-simulation — Alchemy lane | ✅ LIVE | ETH / POLY / ARB / OP / BASE. **Whole API family deprecated 30 Sept 2026** — schedule a replacement |
+| Tx-simulation — public-RPC lane (`rpc-sim`) | ✅ LIVE | AVAX + BSC via `eth_estimateGas` on `bsc-rpc.publicnode.com` / `avalanche-c-chain-rpc.publicnode.com`. Deliberately scoped to alchemy-uncovered chains (tip PRs #45 + #46 hotfix) |
 
 Cross-chain regression matrix (deployed prod Worker, curl-verified 2026-08-09):
 

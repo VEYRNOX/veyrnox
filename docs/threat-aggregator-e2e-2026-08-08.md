@@ -262,3 +262,23 @@ lane hits the Ronin address (`0x098B716B…F2f96`) directly on every EVM chain,
 alongside the existing OFAC-GitHub + GoPlus catches. One transient Polygon
 `clean` observed on the first request after deploy was Cloudflare KV
 eventual-consistency (5/5 hit on re-runs after cache warm), not a code path.
+
+**Update 2026-08-09 (tip PRs #45 + #46 hotfix merged + deployed) — `rpc-sim`
+public-RPC simulate lane for AVAX + BSC.** Alchemy's `alchemy_simulateAssetChanges`
+does not cover AVAX or BSC at any tier, and the whole Alchemy Transaction
+Simulation API family is being **deprecated 30 September 2026** (verified in
+Alchemy docs — 52 days out from today). Triaged all affordable alternatives:
+GoPlus (free-tier `is_simulated: false` on ETH/BSC even for well-formed calls,
+AVAX chain_id rejected outright, paid tiers $199/mo+), Tenderly (free tier has
+no API access, paid Console is quote-only), Chainalysis (sales-led enterprise,
+$8-15k/yr minimum). Landed on `eth_estimateGas` via public JSON-RPC endpoints
+already trusted by the wallet's CSP (`bsc-rpc.publicnode.com`,
+`avalanche-c-chain-rpc.publicnode.com`). New source `rpc-sim` deliberately
+scoped to alchemy-uncovered chains only — skips ETH/POLY/ARB/OP/BASE to avoid
+duplicate load. Live-verified: AVAX + BSC → `rpc-sim clean — Estimated gas
+21000, no revert`; Arbitrum → `rpc-sim skipped, alchemy-sim clean`. **Honest
+gap:** not decoded-asset-change simulation; users on AVAX/BSC see estimated
+gas + no revert, not itemised asset changes. **Tx-sim coverage: 8/10 assets**
+(was 6/10; SOL needs a different simulate primitive, BTC uses local `btcSim`).
+Also self-healing for the Alchemy deprecation — the scope guard is a
+one-line lift away from covering ETH/POLY/ARB/OP/BASE as a hard fallback.
