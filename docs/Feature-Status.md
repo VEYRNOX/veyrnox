@@ -243,6 +243,25 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 ## 2. Wallet core — ✅ built
 - HD wallet generate (BIP-39), import (seed / private key), multi-account derivation — ✅
+- **`SeedInputGrid` component (Slice A of onboarding fast-path) — BUILT, NOT verified.**
+  Landed commit `9f743830` on branch `claude/seed-input-grid-slice-a`. Extracts a
+  per-word BIP-39 input grid (`src/components/SeedInputGrid.jsx`) and swaps it into
+  `WalletEntry`'s `view === "import"` state in place of the raw
+  `<textarea id="wallet-seed-import">`, on the **password-cohort import path**
+  (`importWallet`) only. Unit tests (`src/components/__tests__/SeedInputGrid.test.jsx`)
+  cover: per-word box rendering at word-count 12/24, submit concatenates words with a
+  single space, submit disabled while any box is empty, no-oracle error display (exact
+  string from `importWallet` rendered verbatim, no per-word red/invalid state, no
+  "word N" / "position" substrings on failure), per-word whitespace trim, and zero
+  `localStorage.setItem` calls during the full interaction. Build clean, existing
+  `WalletEntry.*` tests and `g4-callsite-pins.test.js` (call-site ordering pin, updated
+  for the `phrase` rename) still green. **NOT verified** — no on-chain import has been
+  driven through the new grid UI, and no real-device (iOS/Android) run has occurred.
+  **Explicitly unchanged by this slice:** the PIN-cohort import path
+  (`importWalletForPendingPin`, still the raw textarea at `WalletEntry.jsx:~1594`) and
+  the WelcomeHero inline seed-import affordance both remain as they were — this slice
+  touches only the password-cohort `view === "import"` textarea. Not independently
+  audited. Plan: `docs/superpowers/plans/2026-08-09-seed-input-grid-component.md`.
 - Encrypted vault (Argon2id + AES-256-GCM) — ✅ (KDF work factor **192 MiB / t=3** as of 2026-07-05, commit `d0522bfb`, PR #604, with bidirectional param migration — SAST M3. History: raised 192→64 MiB for device latency 2026-06-28, commit `1226085e` [PR #465]; raised back 64→192 MiB 2026-07-05 on the premise that device-exercised Face ID/biometric unlock now gives enrolled users a fast path around the slow password KDF. Backward compatible — 64 MiB vaults unlock under their own recorded params; `LEGACY_KDF_PARAMS` stays 64 MiB; lazy re-wrap to 192 MiB on next unlock/password change. BUILT, unit-tested (wallet-core 937/937), NOT independently audited, NOT verified. Latency premise (originally unmeasured) MEASURED 2026-07-05 on one flagship Android device — Pixel 10 Pro XL, Android 16, `com.veyrnox.app.debug`, production argon2 worker in the installed APK via CDP: 192 MiB warm-worker median 603 ms (582–617 ms, n=5), cold-worker median 668 ms (657–678 ms, n=3); 64 MiB warm median 182 ms (177–208 ms, n=5); the PR #465 4-8s figure did NOT reproduce (full report: PR #604 comment `issuecomment-4887451367`). Honest remaining caveats: (1) users without biometric enrollment — including the Safari password-only web fallback — still pay the full 192 MiB password-KDF cost on every unlock (~0.6-0.7s on this flagship; mid/low-end Android NOT cleared); (2) single flagship datapoint; (3) pure KDF cost, not full unlock UX; (4) iOS/web/Safari-fallback unmeasured; (5) INTERNAL evidence, not independent. **PR #638 (MERGED 2026-07-06)** added an automated repeatable harness for this measurement, `tests/android/specs/kdf-performance-e2e.spec.js` — it does not change the figures above or extend them past the single flagship device; mid/low-end Android remains unmeasured.)
 - Backup / reveal seed — ✅
 - Send native coin — ✅ for ETH (Sepolia), ARB (Arbitrum Sepolia), OP (OP Sepolia) — each full UI path verified on-chain (ETH `0x2d4d5d…` 2026-06-11; ARB `0x797928…`, OP `0xc3fd1e…` 2026-06-14); other natives ✅ live (AVAX Fuji `0x3697e0d…` + BNB testnet `0x1a6ee75…`, full UI path)

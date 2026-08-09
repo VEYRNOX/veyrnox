@@ -112,7 +112,7 @@ describe('WalletEntry — G4 import gate on seed import paths', () => {
     const handleImportRegion = entry.slice(handleImportIdx, handleImportIdx + 500);
     expect(handleImportRegion).toMatch(/sensitiveGate/);
     const gateIdx = handleImportIdx + handleImportRegion.indexOf('sensitiveGate');
-    const importWalletIdx = entry.indexOf('importWallet(importPhrase');
+    const importWalletIdx = entry.indexOf('importWallet(phrase');
     expect(gateIdx).toBeLessThan(importWalletIdx);
   });
 
