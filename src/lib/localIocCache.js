@@ -27,6 +27,8 @@
 // - Cache age > TTL (24h) → still usable, but marked stale. We refresh on
 //   next non-deniability unlock.
 
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
+
 const DB_NAME = 'veyrnox-ioc-cache';
 const DB_VERSION = 1;
 const STORE_NAME = 'manifest';
@@ -46,14 +48,44 @@ const IOC_MANIFEST_PUBLIC_KEY_ID = 'veyrnox-ioc-v1';
 // deniability mode, not offline). Matches the server's ttl_seconds.
 const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
+// Hard cap on the manifest body we will parse, verify and store.
+//
+// HONEST SCOPE: this bounds what we PARSE and PERSIST, not what we download —
+// the body is already buffered by the time we can measure it. A streaming cap
+// would need a reader loop; this is the cheap 90% that stops an oversized or
+// hostile manifest from being expanded into a Map and written to IndexedDB.
+// 8 MiB is ~25x the current manifest (roughly 35k entries) so it is not a
+// ceiling anyone will hit by adding feeds.
+const MAX_MANIFEST_BYTES = 8 * 1024 * 1024;
+
 // ─── IndexedDB helpers ─────────────────────────────────────────────────────
 // Tiny promise wrapper — no idb library dep. Only stores the one manifest
 // row, so complexity is minimal.
 
-function openDb() {
+/**
+ * @param {{createIfMissing?: boolean}} [opts]
+ *   `createIfMissing: false` opens the database ONLY if it already exists.
+ */
+function openDb({ createIfMissing = true } = {}) {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
+      if (!createIfMissing) {
+        // I3 (audit 2026-08-09): `indexedDB.open()` CREATES the database when it
+        // is absent, so a plain read brought `veyrnox-ioc-cache` into existence.
+        // `screenTransaction` hydrates before its deniability early-return, which
+        // meant a decoy/duress/demo session wrote a new store to disk — and could
+        // recreate it after a panic wipe had erased it. The DB's presence is a
+        // tell (see panic.js: it is wiped for exactly that reason), and a session
+        // that is supposed to leave no trace must not mint one by reading.
+        //
+        // `onupgradeneeded` firing means version 0 → the database did not exist.
+        // Aborting the versionchange transaction rolls the creation back per
+        // spec, so nothing is left behind; the open then fails and the caller
+        // treats it as an empty cache, which is the honest answer.
+        try { req.transaction.abort(); } catch { /* the open still fails below */ }
+        return;
+      }
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME);
@@ -61,13 +93,15 @@ function openDb() {
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
+    req.onblocked = () => reject(new Error('IOC cache open blocked'));
   });
 }
 
 async function idbGet(key) {
   let db;
   try {
-    db = await openDb();
+    // Read-only: never create the store. See openDb's I3 note.
+    db = await openDb({ createIfMissing: false });
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const req = tx.objectStore(STORE_NAME).get(key);
@@ -191,12 +225,32 @@ export async function hydrateFromCache() {
  * @param {string} tipBaseUrl - e.g. https://tip.veyrnox.com
  */
 export async function refreshManifest(tipBaseUrl) {
+  // I3 CHOKEPOINT (audit 2026-08-09). This is the module's ONLY egress, so the
+  // gate belongs here — not at the caller.
+  //
+  // It previously lived solely in WalletProvider's unlock effect, which checked
+  // `decoyRef || hiddenRef` (== isDeniabilitySessionActive) and therefore MISSED
+  // demo sessions: a persisted `veyrnox-demo=1` survives reloads silently, so a
+  // device left in demo fired a live fetch on every unlock. `lib/consent.js`
+  // (PR #1410) and `btc/provider.js` both learned the same lesson — a gate at
+  // the call sites is a gate the next caller forgets. Use the OR-demo predicate,
+  // which fails closed if either read throws.
+  if (isDeniabilityOrDemoActive()) {
+    throw new Error('I3: no manifest fetch in a deniability or demo session');
+  }
+
   const url = `${String(tipBaseUrl).replace(/\/$/, '')}/api/v1/manifest`;
   const resp = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!resp.ok) {
     throw new Error(`manifest fetch failed: HTTP ${resp.status}`);
   }
-  const body = await resp.json();
+
+  // Cap before parse — see MAX_MANIFEST_BYTES.
+  const raw = await resp.text();
+  if (raw.length > MAX_MANIFEST_BYTES) {
+    throw new Error('manifest too large — refusing to parse');
+  }
+  const body = JSON.parse(raw);
 
   if (!body || typeof body !== 'object') throw new Error('malformed manifest');
   if (body.public_key_id !== IOC_MANIFEST_PUBLIC_KEY_ID) {
@@ -214,6 +268,33 @@ export async function refreshManifest(tipBaseUrl) {
   const ok = await verifySignature(bytes, body.signature);
   if (!ok) {
     throw new Error('manifest signature verification failed');
+  }
+
+  // ROLLBACK / REPLAY (audit 2026-08-09). A valid signature proves the manifest
+  // is OURS. It does NOT prove it is CURRENT — every manifest we ever published
+  // stays validly signed forever, so anyone able to serve a stale-but-authentic
+  // response (network position, an intermediary cache, a captive network) could
+  // roll screening back to before a given address was listed, and every check
+  // above would still pass.
+  //
+  // Refuse to move backwards. Impact is bounded in normal mode, where a local
+  // miss still falls through to the live TIP call — but in deniability and
+  // offline the cache is the ONLY path (tipScreen.js returns null rather than
+  // reaching the network), so a rollback there is a silent, total screening
+  // blind spot in exactly the coercion case this cache was added to serve.
+  //
+  // Equal timestamps are accepted: re-fetching the same manifest is a harmless
+  // no-op refresh, and rejecting it would break the TTL path. Only STRICTLY
+  // older is refused. An unparseable/absent incoming date is refused too — we
+  // cannot show it is not a rollback, so we fail closed (I4).
+  const stored = await idbGet(MANIFEST_KEY);
+  const incomingAt = Date.parse(body.payload?.generated_at ?? '');
+  const storedAt = Date.parse(stored?.payload?.generated_at ?? '');
+  if (Number.isNaN(incomingAt)) {
+    throw new Error('manifest has no usable generated_at — refusing to trust');
+  }
+  if (!Number.isNaN(storedAt) && incomingAt < storedAt) {
+    throw new Error('manifest is older than the cached one — refusing rollback');
   }
 
   buildIndex(body.payload);
@@ -260,6 +341,10 @@ export async function refreshManifestIfDue(tipBaseUrl) {
  */
 export function lookupLocal(address) {
   if (_memoryIndex === null) return null;
+  // A non-string `address` used to throw out of here, past tryLocalScreen's
+  // try (which wraps only hydrateFromCache) and out of screenTransaction.
+  // A screening helper must never be the thing that breaks the send flow.
+  if (typeof address !== 'string' || !address) return null;
   return _memoryIndex.get(address.toLowerCase()) ?? null;
 }
 
@@ -279,7 +364,10 @@ export async function clearLocalIocCache() {
   _memoryMeta = null;
   let db;
   try {
-    db = await openDb();
+    // A clear must never CREATE the store it is clearing. Panic-wipe calls this
+    // first and then deletes the database outright (panic.js), so an absent DB
+    // is already the desired end state — opening one here would undo the wipe.
+    db = await openDb({ createIfMissing: false });
     await new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       tx.objectStore(STORE_NAME).delete(MANIFEST_KEY);
