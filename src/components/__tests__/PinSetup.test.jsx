@@ -43,8 +43,8 @@ describe('PinSetup', () => {
   it('1. mounts on step 1, advances to step 2 after a valid PIN', () => {
     render(<PinSetup onDone={vi.fn()} onCancel={vi.fn()} />);
 
-    // Step 1 heading (plan: "Set a PIN").
-    expect(screen.getByRole('heading', { name: /set.*pin/i })).toBeTruthy();
+    // Step 1 heading matches the pinned owner-set copy: "Choose an 8-digit PIN".
+    expect(screen.getByRole('heading', { name: /choose an 8-digit pin/i })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /confirm/i })).toBeNull();
 
     typePin('19283746'); // 8 digits, not sequential, not common
@@ -61,7 +61,7 @@ describe('PinSetup', () => {
     typePin('00000000');
     expect(screen.getByRole('alert')).toBeTruthy();
     // Still on step 1.
-    expect(screen.getByRole('heading', { name: /set.*pin/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /choose an 8-digit pin/i })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /confirm/i })).toBeNull();
     expect(onDone).not.toHaveBeenCalled();
 
@@ -78,7 +78,7 @@ describe('PinSetup', () => {
     // Reviewer P2: mismatch bounces user back to step 1 and resets BOTH pins,
     // matching the original WalletEntry semantics. Prevents unlimited retry on
     // the confirm step after a shoulder-surfed first entry.
-    expect(screen.getByRole('heading', { name: /set.*pin/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /choose an 8-digit pin/i })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /confirm/i })).toBeNull();
     // PIN pad reset — PinPad's dot-count status reports 0 of 8.
     expect(screen.getByRole('status', { name: /0 of 8 digits entered/i })).toBeTruthy();
@@ -127,7 +127,7 @@ describe('PinSetup', () => {
 
     render(<PinSetup onDone={vi.fn()} onCancel={vi.fn()} />);
     // Fresh mount lands on step 1, no lingering state.
-    expect(screen.getByRole('heading', { name: /set.*pin/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /choose an 8-digit pin/i })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /confirm/i })).toBeNull();
     expect(screen.getByRole('status', { name: /0 of 8 digits entered/i })).toBeTruthy();
   });

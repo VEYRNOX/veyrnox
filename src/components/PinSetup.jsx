@@ -50,8 +50,8 @@ export default function PinSetup({ onDone, onCancel }) {
     <div className="space-y-5">
       {pinStep === "real" && (
         <div className="space-y-3 text-center">
-          <h2 className="text-sm font-medium">Set a PIN</h2>
-          <p className="text-xs text-muted-foreground">Choose an 8-digit PIN. This unlocks your wallet. Always guard your device.</p>
+          <h2 className="text-sm font-medium">Choose an 8-digit PIN</h2>
+          <p className="text-xs text-muted-foreground">This unlocks your wallet. An 8-digit PIN. Always guard your device.</p>
           {error && (
             <p role="alert" className="text-xs text-destructive">{error}</p>
           )}
