@@ -60,7 +60,7 @@ Deferring paste-distribution has one real cost: crypto-natives who paste a whole
 - WalletEntry `view === "import"` renders SeedInputGrid; password field still adjacent; `handleImport` unchanged.
 - `g4-callsite-pins.test.js` still green (call site at WalletEntry.jsx:1108 untouched).
 - Lint clean.
-- Preview-verified in dev server: 12-word input works end-to-end against a testnet seed (real seed, no submission — user's decision whether to actually import).
+- Preview-rendered in dev server: 12-word input UI renders and interacts (no submission, no import). This is a render check, NOT verification. Per Veyrnox rules, "verified" is reserved for on-chain-txid evidence the user supplies.
 
 ## Honest scope
 
