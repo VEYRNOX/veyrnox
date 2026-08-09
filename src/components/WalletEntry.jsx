@@ -85,6 +85,7 @@ import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
 import VaultIllustration from "@/components/VaultIllustration";
 import Spinner from "@/components/Spinner";
 import SeedGrid from "@/components/SeedGrid";
+import SeedInputGrid from "@/components/SeedInputGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
 import TelemetryConsent from "@/components/TelemetryConsent";
 import { getConsentState, clearConsent } from "@/lib/consent";
@@ -1096,7 +1097,7 @@ export default function WalletEntry() {
   };
 
   // ---- Import an existing seed (vault password mandatory) ----
-  const handleImport = async () => {
+  const handleImport = async (mnemonicOverride) => {
     const gate = sensitiveGate(raspArtifact, 'import');
     if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setError("");
@@ -1105,7 +1106,11 @@ export default function WalletEntry() {
     setBusy(true);
     try {
       setKekOrigin('restored');
-      await importWallet(importPhrase.trim(), importPassword); // validates BIP-39 + unlocks
+      // mnemonicOverride: SeedInputGrid passes the freshly-concatenated mnemonic
+      // directly, since setImportPhrase() below would not be flushed in time for
+      // this same call. Falls back to state for the legacy call path.
+      const phrase = (mnemonicOverride ?? importPhrase).trim();
+      await importWallet(phrase, importPassword); // validates BIP-39 + unlocks
       // A restored/imported wallet is password-encrypted. If this device was in the
       // PIN cohort (e.g. PIN forgotten → "Restore from seed phrase"), leave the PIN
       // cohort so the returning surface matches the vault — otherwise the stale 'pin'
@@ -1801,10 +1806,11 @@ export default function WalletEntry() {
         <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution">
           Never share your seed phrase. It is validated and encrypted locally with your password — it is never sent to a server.
         </div>
-        <div>
-          <Label htmlFor="wallet-seed-import">12 or 24-word BIP-39 Seed Phrase</Label>
-          <textarea id="wallet-seed-import" value={importPhrase} onChange={e => setImportPhrase(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
-        </div>
+        <SeedInputGrid
+          onSubmit={async (mnemonic) => { setImportPhrase(mnemonic); await handleImport(mnemonic); }}
+          disabled={busy}
+          submitLabel={recovering ? "Restore Wallet" : "Validate & Import"}
+        />
         <div>
           <Label htmlFor="wallet-vault-password-create">{recovering ? "New Vault Password" : "Vault Password"}</Label>
           <PasswordInput id="wallet-vault-password-create" className="mt-1.5" value={importPassword} onChange={e => setImportPassword(e.target.value)} placeholder="Encrypts your seed on this device" aria-label="Vault password for imported seed" />
@@ -1813,10 +1819,6 @@ export default function WalletEntry() {
 
         {/* Optional Face ID offer folded onto the SAME screen (skippable). */}
         <BiometricOffer status={bioStatus} enabled={bioEnabled} onToggle={setBioEnabled} />
-
-        <Button className="w-full gap-2" disabled={!importPhrase.trim() || !importPassword || busy} onClick={handleImport}>
-          {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Download className="h-4 w-4" />} {recovering ? "Restore Wallet" : "Validate & Import"}
-        </Button>
       </div>
     </EntryShell>
   );
