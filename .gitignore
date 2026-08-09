@@ -135,3 +135,4 @@ android/keystore.properties
 
 # Caveman skills (installed per-repo)
 .agents/skills/
+skills-lock.json
