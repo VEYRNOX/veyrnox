@@ -239,39 +239,49 @@ export async function combineKek(H, C) {
   ikm.set(H, 0);
   ikm.set(C, H_LEN);
 
-  const baseKey = await crypto.subtle.importKey('raw', ikm, { name: 'HKDF' }, false, ['deriveBits']);
-  // F-06: zero(ikm) wipes the JS-visible copy; the CryptoKey retains an opaque internal buffer until GC.
-  zero(ikm);
+  /** @type {ArrayBuffer | null} */
+  let bits = null;
+  try {
+    const baseKey = await crypto.subtle.importKey('raw', ikm, { name: 'HKDF' }, false, ['deriveBits']);
+    // F-06: zero(ikm) wipes the JS-visible copy as soon as importKey has consumed it;
+    // the CryptoKey retains an opaque internal buffer until GC.
+    zero(ikm);
 
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: 'HKDF',
-      hash: 'SHA-256',
-      salt: KEK_HKDF_SALT,
-      info: enc.encode(KEK_DOMAIN),
-    },
-    baseKey,
-    KEK_LEN * 8,
-  );
+    bits = await crypto.subtle.deriveBits(
+      {
+        name: 'HKDF',
+        hash: 'SHA-256',
+        salt: KEK_HKDF_SALT,
+        info: enc.encode(KEK_DOMAIN),
+      },
+      baseKey,
+      KEK_LEN * 8,
+    );
 
-  // M20: zero the highest-sensitivity intermediates in place before returning.
-  // H is the hardware binding key and C is the FULL Argon2id(PIN, salt) output;
-  // both are wiped so they do not linger in the JS heap until GC (I4, fail
-  // closed). NOTE: this mutates the caller's arrays — every production caller
-  // (keystore/web.js, keystore/native.js) derives a FRESH H (getHardwareFactor)
-  // and a FRESH C (deriveKekC) per combineKek and does NOT read H/C afterwards.
-  // A caller that needs the SAME H/C for a second combineKek (e.g. PIN rotation)
-  // must derive/copy them per call rather than relying on these arrays surviving.
-  zero(H);
-  zero(C);
-
-  // Copy the derived key material out, then wipe the raw deriveBits ArrayBuffer so
-  // no KEK bytes linger in a buffer the caller never sees. `kek` owns its own
-  // backing buffer; zeroing the `bits` view does not touch it.
-  const kek = new Uint8Array(KEK_LEN);
-  kek.set(new Uint8Array(bits));
-  zero(new Uint8Array(bits));
-  return kek;
+    // Copy the derived key material out; the raw deriveBits buffer is zeroed in
+    // finally alongside every other intermediate. `kek` owns its own backing
+    // buffer, so zeroing the `bits` view does not touch it.
+    const kek = new Uint8Array(KEK_LEN);
+    kek.set(new Uint8Array(bits));
+    return kek;
+  } finally {
+    // M20 / audit 2026-08-08: zero the highest-sensitivity intermediates on
+    // EVERY exit, including importKey/deriveBits throws (I4, fail closed).
+    // Previously the wipes only ran on the happy path, so a transient WebCrypto
+    // error left `ikm` (H‖C — full KEK precursor), H (hardware factor), and C
+    // (Argon2id output) in the JS heap. .fill(0) is idempotent, so re-zeroing
+    // the happy-path arrays is safe.
+    //
+    // H and C mutate the CALLER's arrays. Every production caller
+    // (keystore/web.js, keystore/native.js) derives a FRESH H (getHardwareFactor)
+    // and a FRESH C (deriveKekC) per combineKek and does NOT read H/C afterwards.
+    // A caller that needs the SAME H/C for a second combineKek (e.g. PIN rotation)
+    // must derive/copy them per call rather than relying on these arrays surviving.
+    zero(ikm);
+    zero(H);
+    zero(C);
+    if (bits) zero(new Uint8Array(bits));
+  }
 }
 
 /** Fresh random 256-bit DEK (the key that actually encrypts the seed in vault.js). */

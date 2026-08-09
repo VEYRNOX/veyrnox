@@ -142,6 +142,10 @@ export function clampFeeRate(raw) {
  * @returns {Promise<number>} sat/vByte (integer, 1 <= rate <= MAX_FEE_RATE)
  */
 export async function getFeeRate(networkKey, targetBlocks = 6) {
+  // I3: fee estimate is an egress read that also signals "wallet is preparing
+  // to spend". Gate at the exported function so a future caller can't leak
+  // (matches getUtxos/getAddressTxs/getBalanceSats posture).
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   let estimates;
   try {
     estimates = await getJson(`${baseUrl(networkKey)}/fee-estimates`);
@@ -171,6 +175,10 @@ export function isBroadcastTxid(text) {
  * @returns {Promise<string>} the broadcast txid (validated 64-hex)
  */
 export async function broadcastTx(networkKey, rawHex) {
+  // I3: broadcast is the IRREVERSIBLE egress. Fail closed on the exported
+  // function so a decoy session can never push a tx even if a future caller
+  // bypasses upstream gates (matches getUtxos/getAddressTxs posture).
+  if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   getBtcNetwork(networkKey); // throws if mainnet gated / disabled
   const url = `${baseUrl(networkKey)}/tx`;
   const res = await fetch(url, { method: 'POST', body: rawHex });
