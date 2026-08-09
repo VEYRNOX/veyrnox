@@ -352,11 +352,13 @@ Cross-chain regression matrix (deployed prod Worker, curl-verified 2026-08-09):
 | bsc (BNB) | `etherscan-labels skipped [chain] + sanctioned-address hit` | 🔴 BLOCK |
 | polygon → Vitalik (clean) | `sanctioned-address clean` | 🟢 ALLOW |
 
-**Still open:** three sanction-grade Worker sources unset on BOTH environments
-(staging and production) — `CHAINALYSIS_API_KEY`, `OPENSANCTIONS_API_KEY`,
-`ALCHEMY_API_KEY`. Verified 2026-08-09 by curl against both Workers: every
-response returns `status: skipped` with `*_API_KEY not configured` for these
-three. All three are free-tier signup APIs; no keys have ever been provisioned
-on the veyrnox-tip project. Independent of address-space coverage.
-Not independently audited. Not on-chain-txid verified
-in the strict sense (this is screening, not signing).
+**Source-key decisions (locked 2026-08-09):**
+
+| Source | Status | Reason |
+|---|---|---|
+| `ALCHEMY_API_KEY` | ✅ **LIVE on production + staging** | Free tier (30M CU/mo). Verified via `wrangler secret list --env {production,staging}` and functional curl → `alchemy-sim clean — Simulation succeeded, N asset change(s), no drain detected`. |
+| `CHAINALYSIS_API_KEY` | ⏭ **Permanent skip** | Free Sanctions Screening API tier discontinued; only paid enterprise contract (5-figure/yr minimum, quote-only). Redundant with OFAC-GitHub + our `sanctioned-address` lane for the entities the wallet targets (Tornado / Lazarus / Blender.io / Sinbad / Ronin). |
+| `OPENSANCTIONS_API_KEY` | ⏭ **Permanent skip (API)** | 30-day trial only, then paid. Bulk dataset is CC-BY 4.0 downloadable — self-hosting on the Worker is a future call if PEP screening becomes in-scope. |
+
+Not independently audited. Not on-chain-txid verified in the strict sense (this
+is screening, not signing).
