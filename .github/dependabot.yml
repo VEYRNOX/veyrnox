@@ -11,6 +11,15 @@ updates:
     groups:
       npm-minor-patch:
         update-types: ["minor", "patch"]
+        # @capacitor/* ships with patches under patches/ that pin the
+        # native SDK version by filename (patches/@capacitor+android+X.Y.Z.patch).
+        # A grouped bump silently invalidates the patch, and the
+        # bridge-log-redaction tests then red for a filename mismatch that
+        # looks unrelated. Force Capacitor into its own PR so the patch
+        # regen is reviewed together with the version change.
+        exclude-patterns:
+          - "@capacitor/*"
+          - "@capacitor-community/*"
     # H-4: signing-path crypto packages are pinned to exact versions in package.json.
     # Dependabot must not silently open PRs bumping these — a supply-chain compromise
     # of any of them would sit directly under EVM/BTC/SOL signing. Version changes
