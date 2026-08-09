@@ -11,6 +11,7 @@
 // UNMOCKED (pure primitive — real crypto, real AAD binding).
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 const VAULT_KEY = 'vault_v1';
 const DEK_CACHE_STORAGE_KEY = 'vault_dek_v1';
@@ -213,5 +214,42 @@ describe('dekCache wire — CLEAR at invalidation sites', () => {
       // this assertion. Skip cleanly.
       expect(true).toBe(true);
     }
+  });
+
+  it('enrollKek removes the cache slot', async () => {
+    // The site this block was missing (audit 2026-08-09). enrollKek mints a
+    // brand-new DEK, so a leftover cache blob is stale the moment it returns.
+    //
+    // A bare (non-KEK) vault is the precondition — enrollKek throws
+    // KEK_ALREADY_ENROLLED on a blob that already has a kekWrap.
+    setVault(JSON.stringify({ v: 1, kdf: 'argon2id', salt: 's', iv: 'i', ct: 'c' }));
+    setCache();
+    await keyStore.enrollKek('87654321', { getHardwareFactor: getHF });
+    expect(store.has(DEK_CACHE_STORAGE_KEY)).toBe(false);
+  });
+
+  it('only ONE site mints a DEK — a second one needs its own cache-clear', () => {
+    // The bug here was a MISSING clear, and a per-site suite cannot fail for a
+    // site nobody wrote a case for. So pin the assumption the fix rests on
+    // instead: exactly one place in native.js calls randomDek(), and it is the
+    // one the test above covers.
+    //
+    // If this goes red, a new DEK-minting path was added. Do not just bump the
+    // number — give the new site a clearDekCache() and its own case above,
+    // because a fresh DEK with a stale cache blob is the permanent-lockout
+    // scenario described at the enrollKek call site.
+    // Resolved from the vitest root, not import.meta.url — the aliased test
+    // environment does not give this module a file: URL.
+    const src = readFileSync('src/wallet-core/keystore/native.js', 'utf8');
+    const mintSites = src.match(/randomDek\s*\(/g) ?? [];
+    expect(mintSites).toHaveLength(1);
+    // ...and it is inside enrollKek, whose clear is asserted above.
+    const enrollStart = src.indexOf('async enrollKek(');
+    const enrollEnd = src.indexOf('async unenrollKek(');
+    expect(enrollStart).toBeGreaterThan(-1);
+    expect(enrollEnd).toBeGreaterThan(enrollStart);
+    const enrollBody = src.slice(enrollStart, enrollEnd);
+    expect(enrollBody).toMatch(/randomDek\s*\(/);
+    expect(enrollBody).toMatch(/clearDekCache\s*\(/);
   });
 });

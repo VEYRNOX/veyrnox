@@ -1150,6 +1150,26 @@ export const nativeKeyStore = {
             ? { hardwareKekTier: opts.hardwareKekTier }
             : {};
           await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 3, ...tierEntry });
+          // Fast-path DEK cache: enrollment mints a BRAND-NEW DEK (randomDek
+          // above), so any pre-existing cache blob is stale by definition.
+          // This was the one DEK-rotating write path that did not clear it
+          // (audit 2026-08-09) — every sibling site does.
+          //
+          // It was not exploitable, and the reason is worth stating because it
+          // is incidental rather than designed: enrollKek always mints a fresh
+          // 32-byte kekSalt, so the new KEK cannot unwrap an old cache blob,
+          // the read misses, and _unlockInner falls back to unwrapDek. Safety
+          // rested on salt freshness, not on the cache being cleared.
+          //
+          // Why that is not good enough to leave: if any future path ever
+          // produces the SAME KEK over a DIFFERENT DEK, tryReadDekCache
+          // succeeds, unwrapDek is skipped, and decryptVaultWithDek throws —
+          // and the fallback covers a cache that fails to UNWRAP, not one that
+          // unwraps cleanly to the wrong DEK. Nothing clears the cache on that
+          // error, so every later unlock repeats it: a permanent lockout with
+          // the correct PIN. One line here makes the invariant "every
+          // DEK-rotating write clears the cache" true without exception.
+          await clearDekCache();
         } finally {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
