@@ -897,10 +897,13 @@ export default function WalletPortfolioPage() {
           hiding the whole point of the posture card. shareCVerified stays
           honestly false — spec §9 gates it on a real recovery round-trip,
           which Phase 2 does not yet log (I4: no fabricated "verified"). */}
-      <SecurityPosture state={{
-        recoveryPassphraseSet: readPersonalBackupState().passphrase,
-        shareCExported: readPersonalBackupState().exported,
-      }} />
+      {(() => {
+        const pb = readPersonalBackupState();
+        return <SecurityPosture state={{
+          recoveryPassphraseSet: pb.passphrase,
+          shareCExported: pb.exported,
+        }} />;
+      })()}
 
       {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">

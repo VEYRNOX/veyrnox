@@ -10,12 +10,13 @@
 // can reuse the same envelope to avoid repeated derivations.
 
 import { describe, it, expect, beforeAll } from 'vitest';
+import { SHARE_SIZE } from '../shamir.js';
 
 function randomShare(index = 1) {
   // Build a shamir v2-shaped envelope: version byte + k + n + setId + x + y + commitment + crc.
   // The wrap layer does not validate shamir structure — it only checks SHARE_SIZE — so a
-  // random 88-byte buffer with the version byte set is fine as a test fixture.
-  const s = new Uint8Array(88);
+  // random SHARE_SIZE buffer with the version byte set is fine as a test fixture.
+  const s = new Uint8Array(SHARE_SIZE);
   crypto.getRandomValues(s);
   s[0] = 0x02; // version
   s[19] = index;
