@@ -352,7 +352,11 @@ Cross-chain regression matrix (deployed prod Worker, curl-verified 2026-08-09):
 | bsc (BNB) | `etherscan-labels skipped [chain] + sanctioned-address hit` | 🔴 BLOCK |
 | polygon → Vitalik (clean) | `sanctioned-address clean` | 🟢 ALLOW |
 
-**Still open:** three sanction-grade Worker sources unfunded on staging
-(`CHAINALYSIS_API_KEY`, `OPENSANCTIONS_API_KEY`, `ALCHEMY_API_KEY`). Independent
-of address-space coverage. Not independently audited. Not on-chain-txid verified
+**Still open:** three sanction-grade Worker sources unset on BOTH environments
+(staging and production) — `CHAINALYSIS_API_KEY`, `OPENSANCTIONS_API_KEY`,
+`ALCHEMY_API_KEY`. Verified 2026-08-09 by curl against both Workers: every
+response returns `status: skipped` with `*_API_KEY not configured` for these
+three. All three are free-tier signup APIs; no keys have ever been provisioned
+on the veyrnox-tip project. Independent of address-space coverage.
+Not independently audited. Not on-chain-txid verified
 in the strict sense (this is screening, not signing).
