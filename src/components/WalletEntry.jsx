@@ -1335,11 +1335,11 @@ export default function WalletEntry() {
   // the slot WelcomeHero used to occupy. New/Have advance to PIN-create; Advanced
   // goes straight to restore-file (its own backup credential, no PIN-first).
   if (view === "entry-tiles") {
-    return (
-      <EntryShell error={error}>
-        <EntryTiles onSelect={handleTileSelect} />
-      </EntryShell>
-    );
+    // No EntryShell wrapper: EntryTiles renders its own logo/wordmark/subtitle,
+    // so wrapping it in EntryShell (which also renders logo+wordmark+tagline)
+    // produced two stacked hero blocks. Matches WelcomeHero's standalone pattern.
+    // Tiles are pure navigation — no submit path here can populate `error`.
+    return <EntryTiles onSelect={handleTileSelect} />;
   }
 
   // ---- View: Welcome (fresh-device landing, AHEAD of the PIN) ----
