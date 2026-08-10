@@ -90,11 +90,11 @@ Play closed-testing opt-in URLs are NOT public join links — an account must be
 - Kick this story off day 0 and move on. S1.2 tracks the wall-clock.
 - Meanwhile Epic 2 (release artifact + listing + declarations) and Epic 3 (RC webhook — S3.3 done — + IAP + referral E2E on production) all parallelize on the same 14-day window.
 
-### Reuse the existing internal-testing AAB if possible
+### Build a fresh AAB — do NOT reuse the internal-testing bundle
 
-- The internal-testing release is already device-verified (RASP clean on Pixel 10, IAP sandbox-verified).
-- Reusing that AAB avoids a fresh build variance risk.
-- If `main` has moved since, take the fresh build — do not ship stale.
+- AC-2 and the verification checklist require versionCode ≥6. Internal-testing consumed 1-5; reusing that AAB regresses versionCode and Play rejects it.
+- Cut a fresh signed AAB from current `main` at versionCode ≥6.
+- The internal-testing device-verification (RASP clean on Pixel 10, IAP sandbox) informs confidence in the codebase, not a licence to skip the build.
 
 ## Verification (owner-facing)
 
