@@ -42,6 +42,15 @@ NON_DOC=$(echo "$CHANGED" | awk '{
 }' | grep -Ev '(^|/)(docs/|.*\.md$|CLAUDE\.md$|MEMORY\.md$)' || true)
 [ -z "$NON_DOC" ] && exit 0
 
+# Second filter: pre-existing untracked session baggage (bmad artifacts,
+# serena state, installed skill packs, etc.). If ALL remaining non-doc
+# changes fall in these paths, skip — Codex would review noise that
+# predates this turn's work and block on stale findings forever.
+# Override with CODEX_REVIEW_EXCLUDE='' to review everything.
+EXCLUDE="${CODEX_REVIEW_EXCLUDE:-^(_bmad|_bmad-output|\.serena|\.claude/skills|\.agents/skills)/}"
+IN_SCOPE=$(echo "$NON_DOC" | grep -Ev "$EXCLUDE" || true)
+[ -z "$IN_SCOPE" ] && exit 0
+
 TIMEOUT="${CODEX_REVIEW_TIMEOUT:-180}"
 # Match markers Codex uses to LABEL a finding, not raw keyword mentions.
 # Covers: `[HIGH]`, `**HIGH**`, `## HIGH`, `Severity: HIGH`, `- HIGH:`.
