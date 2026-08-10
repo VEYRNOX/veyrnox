@@ -19,8 +19,12 @@
 // interstitial during onboarding either (native never had one; see WalletEntry.jsx
 // finishPinSetup / doCreateWallet).
 //
-// SELECTOR PROVENANCE (DISCOVER, NEVER INVENT) — all read from src/ on 2026-07-06:
-//   * "Get Started"                    — WalletEntry.jsx (WelcomeHero CTA).
+// SELECTOR PROVENANCE (DISCOVER, NEVER INVENT) — refreshed 2026-08-10 for Slice D1
+// (PR #1696, EntryTiles). Original read from src/ on 2026-07-06.
+//   * "New wallet" / "Have a wallet" / "Advanced" tiles — EntryTiles.jsx, rendered
+//     by WalletEntry.jsx's view === "entry-tiles" branch (replaces the old
+//     WelcomeHero single "Get Started" CTA — WelcomeHero is now dead code kept
+//     for reference, per the Slice D1 commit message).
 //   * "Choose an 8-digit PIN" + PinPad  — WalletEntry.jsx pin-create, step 1 (unified).
 //   * "Submit PIN" (PinPad's aria-label — NOT its visible "Continue" text; ARIA
 //     accessible-name resolution prefers aria-label) — components/security/PinPad.jsx.
@@ -28,7 +32,10 @@
 //   * "PINs didn't match. Choose again." — WalletEntry.jsx (stays on confirm).
 //   * "Exploring — view only" + "Create or import" CTA — WalletEntry.jsx ExploreShell
 //     (post-Phase-1 landing: real app view-only behind a persistent bottom bar).
-//   * "Create Wallet" / "Import an existing seed" — WalletEntry.jsx (choose view).
+//   * "Create Wallet" / "Import an existing seed" — WalletEntry.jsx (choose view) —
+//     ONLY shown when chosenPath is unset (e.g. reload resumption). Picking "New
+//     wallet"/"Have a wallet" on entry-tiles sets chosenPath and the choose view
+//     skips straight to auto-create ('new') or the import form ('have').
 //   * Authed-shell marker: nav link "Send" — Layout.jsx ({ path: "/send", label: "Send" }).
 //     ("in this portfolio" no longer exists — deniability.)
 //   * Unlock gate (PIN cohort): role="group" name /PIN entry/i — WalletEntry.jsx.
@@ -62,9 +69,13 @@ async function enterPin(page, pin) {
   await pad.getByRole('button', { name: 'Submit PIN' }).click();
 }
 
-// Phase 1 (unified PIN cohort): Get Started → choose PIN → confirm → choose view.
-async function completePasswordSetup(page, pin = VAULT_PIN) {
-  await page.getByRole('button', { name: 'Get Started' }).click();
+// Phase 1 (unified PIN cohort): entry-tiles pick → choose PIN → confirm → choose
+// view. `tile` selects which EntryTiles button to click — 'new' (default) or
+// 'have'; both are PIN-first (Slice D1). Regex matches the unit tests'
+// selector pattern (src/components/__tests__/EntryTiles.test.jsx).
+async function completePasswordSetup(page, pin = VAULT_PIN, tile = 'new') {
+  const tileName = tile === 'have' ? /have.*wallet|import|existing/i : /new wallet/i;
+  await page.getByRole('button', { name: tileName }).click();
   await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible();
   await enterPin(page, pin);
   await expect(page.getByText('Confirm your PIN')).toBeVisible();
@@ -82,13 +93,30 @@ async function leaveExploreToChoose(page) {
   await page.getByRole('button', { name: 'Create or import', exact: true }).click();
 }
 
-// Phase 2: choose view → Create Wallet → authed shell. Unified with native: creation
-// runs through createWalletFromPendingPin, which does NOT show a seed-backup
-// interstitial during onboarding (native never has — see WalletEntry.jsx). Vault
-// creation runs real crypto (seed gen + KDF) — allow a generous window.
+// Both fresh-create AND fresh-import land on Slice C's FirstReceiveCard ("Your
+// wallet is ready" / "You're set" — justOnboarded is set by both doCreateWallet and
+// doImportWallet paths) before the authed shell. Dismiss it if present, then wait
+// for the shell. Race both locators — isVisible() does not auto-wait, so checking
+// only "You're set" before it paints would miss it.
+async function waitForAuthedShell(page) {
+  const dismissReceiveCard = page.getByRole('button', { name: "You're set" });
+  const sendLink = page.getByRole('link', { name: 'Send', exact: true });
+  await expect(dismissReceiveCard.or(sendLink)).toBeVisible({ timeout: 30000 });
+  if (await dismissReceiveCard.isVisible()) {
+    await dismissReceiveCard.click();
+  }
+  await expect(sendLink).toBeVisible({ timeout: 30000 });
+}
+
+// Phase 2: PIN confirm → authed shell. Slice D1: chosenPath === 'new' (set by the
+// entry-tiles pick in completePasswordSetup) auto-fires wallet creation as soon as
+// hasPendingPin flips true — this typically wins the race against the explore
+// screen's paint, so it must NOT be reached via leaveExploreToChoose (that "Exploring
+// — view only" text may never appear on this path; confirmed empirically 2026-08-10).
+// Vault creation runs real crypto (seed gen + KDF) — allow a generous window
+// (waitForAuthedShell's 30s).
 async function createWalletThroughBackup(page) {
-  await page.getByRole('button', { name: /Create Wallet/i }).click();
-  await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 30000 });
+  await waitForAuthedShell(page);
 }
 
 // Throwaway BIP-39 UAT fixture seed (TESTNET-ONLY, never real value — see project
@@ -101,32 +129,32 @@ const IMPORT_SEED = process.env.VITE_TEST_THROWAWAY_SEED;
 // all ten and reported "0 tests in 0 files". The `test.skip(!IMPORT_SEED, …)` guard
 // below handles the unset case correctly: those tests skip, everything else still runs.
 
-// Phase 2 (import variant): choose view → "Import an existing seed" → paste phrase →
-// Restore / Import. No seed-backup screen (the user supplied the seed) — imports
-// land straight on the authed shell.
+// Phase 2 (import variant): choose view → paste phrase → Restore / Import → authed
+// shell (via waitForAuthedShell — the import path also lands on Slice C's
+// FirstReceiveCard first). Slice D1: chosenPath === 'have' (set by
+// completePasswordSetup(page, pin, 'have')) skips straight to the import form — no
+// separate "Import an existing seed" button click needed (that button only shows
+// when chosenPath is unset).
 async function importWalletThroughRestore(page, seed = IMPORT_SEED) {
-  await page.getByRole('button', { name: /Import an existing seed/i }).click();
   await page.getByLabel('Recovery seed phrase').fill(seed);
   await page.getByRole('button', { name: /Restore \/ Import/i }).click();
+  await waitForAuthedShell(page);
 }
 
 test.describe('onboarding state machine — authoritative order (PIN cohort, web/native unified)', () => {
-  test('fresh open shows the welcome hero, NOT a dashboard and NOT a credential prompt', async ({ page }) => {
+  test('fresh open shows the entry-tiles picker, NOT a dashboard and NOT a credential prompt', async ({ page }) => {
     await freshLocalBuild(page);
-    await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /new wallet/i })).toBeVisible();
     // Illegal: no authed app shell on first paint.
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toHaveCount(0);
   });
 
-  test('Get Started → choose PIN → confirm → explore → Create Wallet → authed shell', async ({ page }) => {
+  test('New wallet tile → choose PIN → confirm → auto-create → authed shell', async ({ page }) => {
     await freshLocalBuild(page);
     await completePasswordSetup(page);
-    await leaveExploreToChoose(page);
-
-    // Phase 2 → the "choose" view. Create Wallet is a SEPARATE atomic action.
-    await expect(page.getByRole('button', { name: /Create Wallet/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Import an existing seed/i })).toBeVisible();
-
+    // Slice D1: chosenPath === 'new' auto-fires creation as soon as the PIN is
+    // confirmed — no separate "Create Wallet" click, no two-button picker, and
+    // (empirically) no reliable "Exploring — view only" paint to wait on either.
     await createWalletThroughBackup(page);
     // Fully authed shell: the nav owns "Send" AND the explore (view-only) bar is
     // gone. The dashboard deliberately shows no wallet count / portfolio copy
@@ -137,7 +165,7 @@ test.describe('onboarding state machine — authoritative order (PIN cohort, web
 
   test('confirm-mismatch shows an error and does NOT provision a vault', async ({ page }) => {
     await freshLocalBuild(page);
-    await page.getByRole('button', { name: 'Get Started' }).click();
+    await page.getByRole('button', { name: /new wallet/i }).click();
     await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible();
     await enterPin(page, VAULT_PIN);
     await expect(page.getByText('Confirm your PIN')).toBeVisible();
@@ -156,13 +184,14 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     await page.goto(`${BASE}/send?demo=0`);
     // The gate (WalletEntry) owns the screen; the Send form's recipient field must NOT appear.
     await expect(page.getByPlaceholder(/0x\.\.\. or .*\.eth/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /new wallet/i })).toBeVisible();
   });
 
   test('reload AFTER wallet creation returns to the unlock gate, and the original PIN actually unlocks it', async ({ page }) => {
     await freshLocalBuild(page);
     await completePasswordSetup(page);
-    await leaveExploreToChoose(page);
+    // Slice D1: chosenPath === 'new' auto-fires creation on PIN confirm — no
+    // explore step to leave (see createWalletThroughBackup).
     await createWalletThroughBackup(page);
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
 
@@ -188,7 +217,7 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     // device in the PIN cohort, and reload must show the SAME PinPad, not a stale
     // password field.
     await freshLocalBuild(page);
-    await completePasswordSetup(page);
+    await completePasswordSetup(page, VAULT_PIN, 'have');
     await leaveExploreToChoose(page);
     await importWalletThroughRestore(page);
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });

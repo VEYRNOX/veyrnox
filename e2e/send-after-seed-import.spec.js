@@ -23,10 +23,12 @@
 // SELECTOR PROVENANCE (DISCOVER, NEVER INVENT) — read from src/ on 2026-07-06. Web
 // now shares native's PIN cohort end to end (lockout-bug fix; see onboarding.spec.js
 // header for the full history):
-//   * "Get Started" / "Choose an 8-digit PIN" / "Confirm your PIN" — WalletEntry.jsx
-//     (see onboarding.spec.js for the PinPad-driving helper).
+//   * "Have a wallet" tile (EntryTiles.jsx) / "Choose an 8-digit PIN" / "Confirm
+//     your PIN" — WalletEntry.jsx (see onboarding.spec.js for the PinPad-driving
+//     helper and the Slice D1 EntryTiles selector provenance note).
 //   * "Create or import" CTA (leave explore) — WalletEntry.jsx ExploreShell.
-//   * "Import an existing seed" button — WalletEntry.jsx (choose view).
+//   * chosenPath === 'have' (set by the tile pick) skips the choose view's
+//     "Import an existing seed" button and shows the import form directly.
 //   * Recovery seed textarea (aria-label "Recovery seed phrase") — WalletEntry.jsx.
 //   * "Restore / Import" button — WalletEntry.jsx.
 //   * Authed-shell marker + sidebar nav link "Send" — Layout.jsx (navGroups, ~line 223).
@@ -63,8 +65,13 @@ async function enterPin(page, pin) {
   await pad.getByRole('button', { name: 'Submit PIN' }).click();
 }
 
+// Slice D1 (PR #1696, EntryTiles): entry-tiles replaced WelcomeHero's single
+// "Get Started" CTA with 3 tiles. This spec always exercises the import flow, so
+// it clicks "Have a wallet" — chosenPath === 'have' then skips the choose view's
+// "Import an existing seed" button and goes straight to the import form (see
+// WalletEntry.jsx's showImportForm branch).
 async function completePasswordSetup(page, pin = VAULT_PIN) {
-  await page.getByRole('button', { name: 'Get Started' }).click();
+  await page.getByRole('button', { name: /have.*wallet|import|existing/i }).click();
   await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible();
   await enterPin(page, pin);
   await expect(page.getByText('Confirm your PIN')).toBeVisible();
@@ -76,11 +83,21 @@ async function leaveExploreToChoose(page) {
   await page.getByRole('button', { name: 'Create or import', exact: true }).click();
 }
 
-// Phase 2 (import): choose view -> "Import an existing seed" -> paste phrase -> Restore.
+// Phase 2 (import): choose view -> paste phrase -> Restore. No "Import an existing
+// seed" click — chosenPath === 'have' already shows the import form directly. A
+// fresh import (like a fresh create) lands on Slice C's FirstReceiveCard ("Your
+// wallet is ready" / "You're set") before the authed shell — dismiss it if present.
 async function importSeedThroughChoose(page, seed = THROWAWAY_SEED) {
-  await page.getByRole('button', { name: /Import an existing seed/i }).click();
   await page.getByLabel('Recovery seed phrase').fill(seed);
   await page.getByRole('button', { name: /Restore \/ Import/i }).click();
+  const dismissReceiveCard = page.getByRole('button', { name: "You're set" });
+  const sendLink = page.getByRole('link', { name: 'Send', exact: true });
+  // isVisible() does not auto-wait — race both locators so we don't miss the
+  // card by checking before it paints.
+  await expect(dismissReceiveCard.or(sendLink)).toBeVisible({ timeout: 30000 });
+  if (await dismissReceiveCard.isVisible()) {
+    await dismissReceiveCard.click();
+  }
 }
 
 test.describe('Send after same-session seed import (no reload)', () => {

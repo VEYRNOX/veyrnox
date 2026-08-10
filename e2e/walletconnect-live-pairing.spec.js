@@ -125,14 +125,16 @@ async function enterPin(page, pin) {
  */
 async function unlockWallet(page) {
   await freshLocalBuild(page);
-  await page.getByRole('button', { name: 'Get Started' }).click();
+  // Slice D1 (PR #1696): entry-tiles "New wallet" replaces the old "Get Started"
+  // CTA; chosenPath === 'new' auto-fires creation on reaching the choose view,
+  // so no separate "Create Wallet" button click is needed anymore.
+  await page.getByRole('button', { name: /new wallet/i }).click();
   await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible();
   await enterPin(page, VAULT_PIN);
   await expect(page.getByText('Confirm your PIN')).toBeVisible();
   await enterPin(page, VAULT_PIN);
   await expect(page.getByText('Exploring — view only', { exact: true })).toBeVisible({ timeout: 15000 });
   await page.getByRole('button', { name: 'Create or import', exact: true }).click();
-  await page.getByRole('button', { name: /Create Wallet/i }).click();
   await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 30000 });
 }
 
