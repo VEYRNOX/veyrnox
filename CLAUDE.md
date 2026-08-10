@@ -194,9 +194,12 @@ Suppressed entirely in deniability/demo (I3). Consequences worked through 2026-0
     `record_attribution` stays in the proxy allowlist, so attribution remains
     client-INITIATED — just no longer anon-callable via PostgREST. H-3's intent
     is server-AUTHORED attribution via the RC webhook
-    (`sql/referral-rc-webhook.sql`, still a skeleton). Removing it from the
-    allowlist before that webhook exists would silently stop attribution being
-    recorded at all.
+    (`sql/referral-rc-webhook.sql`, **deployed 2026-08-10 evening; the SQL
+    setter and the webhook function are both live on both envs**, but nothing
+    yet CALLS the setter until the RC dashboard is configured to POST to it
+    and #1703 + #1704 are resolved). Removing `record_attribution` from the
+    allowlist before that end-to-end chain works would silently stop
+    attribution being recorded at all.
   - **New standing rule:** once the service-role key is set, `ALLOWED_RPCS` in
     `functions/api/rpc/[fn].js` is the ONLY boundary in front of it, because
     service_role bypasses RLS. Never add a table-proxy route, a passthrough
@@ -569,7 +572,11 @@ today via PRs #1435..#1461 plus #1462 (M-10) stacked-merged via #1442 (M-4).
   only — nothing has run against the live DB. `p_rc_user_id` removed from
   `generate_referral_code`/`register_referral_code` (H-1); server binding deferred to a
   RC webhook (skeleton in `sql/referral-rc-webhook.sql`, wiring is a TODO — chain does
-  not function end-to-end until it lands). `register_referral_code` requires
+  not function end-to-end until it lands). **UPDATED 2026-08-10 evening:** SQL landed
+  and both Edge Functions (`first-referral-bonus`, `rc-webhook`) deployed on both envs.
+  Chain still inert end-to-end due to two open bugs (#1703 P0, #1704 P1) — see the
+  "First-referral bonus + RC webhook chain — DEPLOYED both envs 2026-08-10" section
+  below for the full state. `register_referral_code` requires
   `p_device_id` with rate-limit hoisted above the NULL check (H-2). `record_attribution`
   gets `REVOKE ALL FROM PUBLIC, anon, authenticated` + service_role GRANT, applied to
   every function in the STILL-OPEN section of
@@ -648,28 +655,74 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
   `increment_referral` renamed from `ref_code` to `p_code` (DROP+recreate in
   `sql/api-security-hardening.sql`, client updated in `referralApi.js`). Run the
   updated SQL in Supabase before deploying the matching client build.
-- **First-referral bonus Edge Function — BUILT, NOT DEPLOYED (updated 2026-07-28).**
-  `supabase/functions/first-referral-bonus/index.ts` + `sql/first-referral-bonus.sql`.
-  Requires: (a) run the SQL migrations in this order —
-  `first-referral-bonus.sql`, `check-first-referral-bonus-hardening.sql`,
-  `bonus-claim-rate-limit.sql`, re-run `definer-search-path-pin.sql`, then the
-  2026-07-28 audit-wave additions: the updated `api-security-hardening.sql` (H-2/H-3
-  changes to `register_referral_code` + REVOKE batch on `record_attribution`), the
-  updated `first-referral-bonus.sql` (H-1 rc_user_id removal, M-6 per-IP + global
-  rate-limit dimension), the new `sql/referral-rc-webhook.sql` skeleton (H-1
-  server-side RC binding), M-7 track_event IP+global caps, M-8 attempts table,
-  L-8 UNIQUE dedup index, L-10 per-IP bonus-claim rate-limit table; (b) **wire the
-  RevenueCat webhook that H-1 depends on** — the client no longer sends `rc_user_id`,
-  so the referral bonus chain does not function end-to-end until the webhook lands
-  and writes `rc_user_id` server-side with signature verification; (c) `supabase
-  functions deploy first-referral-bonus` — **NOT `--no-verify-jwt`**, that flag told
-  the platform to skip JWT verification and accept anonymous requests, and dropping
-  it is part of the 2026-07-26 hardening; (d) set `REVENUECAT_V1_SECRET_KEY` in
-  Edge Function secrets, and optionally `ALLOWED_ORIGINS` for preview deployments.
-  Client wired in Subscription.jsx (fires after `record_attribution`).
-  Auth note: the bearer check is possession of the PUBLIC anon key, not user
-  authentication — this app has no accounts. Containment comes from the atomic
-  single-grant claim, service_role-only RPCs, and the 5/hour/code rate limit.
+- **First-referral bonus + RC webhook chain — DEPLOYED both envs 2026-08-10, LOGICALLY INERT because of 2 known bugs (#1703 P0, #1704 P1).** Full history in
+  `docs/Feature-Status.md` 2026-08-10 H-1 chain entry. Snapshot:
+  - **SQL:** 9 migrations landed on Staging EU (`nszlbcmcysftwyudthjz`) and Production
+    (`jwstkrtslotnjyerzzsi`) via Supabase MCP `apply_migration` — `first_referral_bonus`,
+    `check_first_referral_bonus_hardening`, `bonus_claim_rate_limit`,
+    `definer_search_path_pin_re_run`, `referral_rc_webhook_set_referral_rc_user`,
+    `first_referral_bonus_attempts` (H-1 chain) plus `track_event_ip_rate_limit_*` and
+    `definer_search_path_pin_post_track_event_replace` (Slice C, earlier the same day).
+  - **Edge Functions:** `first-referral-bonus` and `rc-webhook` both v1 ACTIVE on both
+    envs, `verify_jwt=true`, **comment-stripped source** (trimmed to fit MCP
+    call-payload ceiling; runtime identical to commits `6488d7c7` and `4d29d6c1`
+    respectively). Recommend a terminal redeploy via `npx supabase@latest functions
+    deploy <name> --project-ref <ref>` to restore the commentary when convenient.
+  - **Secrets:** `REVENUECAT_V1_SECRET_KEY` set on both Supabase Edge Function stores
+    (identical digest — v2-generation `sk_` key working against the v1 REST endpoint;
+    v1 issuance is no longer available in the RC UI).
+    `REVENUECAT_WEBHOOK_AUTHORIZATION` **NOT SET** — owner action needed via
+    `npx supabase@latest secrets set REVENUECAT_WEBHOOK_AUTHORIZATION=<value>
+    --project-ref <ref>` on both projects, same value.
+  - **Cloudflare Pages:** `SUPABASE_ANON_KEY` aligned to publishable
+    (`sb_publishable_…`) on both `veyrnox-prod` and `veyrnox-staging` via
+    `wrangler pages secret put`. Necessary because Supabase Edge auto-injects
+    `Deno.env.get('SUPABASE_ANON_KEY')` as the publishable key, and the function's
+    in-code bearer check compares against that.
+  - **Standing lesson:** Cloudflare Pages secret updates DO NOT hot-propagate to
+    running Pages Functions. They take effect only on the next fresh deployment. Today's
+    smoke test caught this on the transition (401/401/429 across three 30s retries,
+    resolved by a coincidental unrelated CI merge to main). On any secret rotation
+    that must take effect immediately: trigger a manual redeploy
+    (`wrangler pages deploy dist --project-name veyrnox-prod --branch main`).
+  - **RC dashboard webhook:** NOT configured (owner action). Point RC's webhook at
+    the Edge Function URL (`https://<project>.supabase.co/functions/v1/rc-webhook`),
+    subscribe to `INITIAL_PURCHASE` + `NON_RENEWING_PURCHASE`, set the same value
+    as `REVENUECAT_WEBHOOK_AUTHORIZATION` in the Authorization field.
+  - **⚠️ [#1703 P0 wrong-recipient bug.](https://github.com/VEYRNOX/veyrnox/issues/1703)**
+    `Subscription.jsx:321` sets the REFERRER'S code as an RC attribute on the
+    REFEREE'S subscriber. Webhook (if it read the attribute) would bind referee's
+    `rc_user_id` to referrer's `referrals` row and grant the promotional entitlement
+    to the REFEREE, not the REFERRER. Contradicts `sql/first-referral-bonus.sql:6-7`
+    intent. Owner ruling required on three options (A: fix client to send OWN
+    code + add referrer-side binding path; B: reinterpret intent as "referee gets
+    bonus"; C: schema change to track both rc_ids). See issue for full trace.
+  - **⚠️ [#1704 P1 attribute-name mismatch.](https://github.com/VEYRNOX/veyrnox/issues/1704)**
+    Client writes attribute key `referralCode` (`purchases.js:299`); webhook reads
+    `veyrnox_referral_code` (`rc-webhook/index.ts:131`). Every event returns 200
+    `no_code`, binds nothing. **This is why #1703 has never fired in production
+    despite the code shipping 8 hours before the deploy.**
+  - **Interaction:** DO NOT fix #1704 in isolation — that ACTIVATES the wrong-recipient
+    grant path. Fix #1703 first, then land #1704 + client attribute change in the same
+    coordinated release. Today's shipped state — inert because of #1704 — is
+    intentional and safe (I4 fail-closed by construction).
+  - **Ceremonial notes worth retaining for the next reader:**
+    - The client sends `edgeFn('first-referral-bonus', …)` via the Cloudflare Pages
+      proxy at `functions/api/edge/[fn].js` — the app never talks to Supabase Edge
+      directly. Pages forwards `env.SUPABASE_ANON_KEY` as both `Authorization: Bearer`
+      and `apikey`. The function's in-code check compares bearer against
+      `Deno.env.get('SUPABASE_ANON_KEY')` (publishable, per above).
+    - `verify_jwt=true` on the Edge Function platform gate accepts BOTH legacy JWT
+      anon (`eyJ…`) AND publishable (`sb_publishable_…`) — empirically confirmed by
+      smoke test on staging.
+    - `set_referral_rc_user` uses `SET search_path = public, pg_temp` (no `extensions`)
+      because it calls no pgcrypto primitives — deliberate per the file header,
+      narrower than the catalog-driven `public, extensions, pg_temp` pin used by
+      `definer-search-path-pin.sql`.
+  - **Auth note (unchanged, applies to first-referral-bonus specifically):** the bearer
+    check is possession of a PUBLIC anon key, not user authentication — this app has
+    no accounts. Real containment: atomic single-grant claim, service_role-only RPCs,
+    5/hour/code + 20/hour/IP rate limit.
 
 ## Security invariants
 
