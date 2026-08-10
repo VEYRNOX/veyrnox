@@ -24,6 +24,8 @@
 // in this app reads past index 5 (see src/lib/binance.js, which maps indices
 // 0-5 only), so the unused tail is zero-filled rather than guessed.
 
+import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+
 const BINANCE_ENDPOINTS = [
   'https://data-api.binance.vision/api/v3/klines',
   'https://api1.binance.com/api/v3/klines',
@@ -141,6 +143,10 @@ export async function onRequestGet(context) {
 
   if (!ALLOWED_SYMBOLS.has(symbol)) err(400, 'Invalid symbol');
   if (!ALLOWED_INTERVALS.has(interval)) err(400, 'Invalid interval');
+
+  // Per-IP cap: this proxy fans out over Binance/OKX public endpoints, and OKX
+  // rate-limits at 40 req/2s per IP on shared CF egress.
+  await enforceRateLimit({ bucket: 'data-klines', clientIp: clientIpOf(request) });
 
   const qs = `?symbol=${symbol}&interval=${interval}&limit=${limit}`;
 
