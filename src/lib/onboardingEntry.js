@@ -10,21 +10,28 @@
 // (dashboard, then PIN) before; this helper + its test pin the invariant down.
 //
 // Returns the WalletEntry `view` to land on:
-//   'unlock'  — a vault exists on this device → returning-user unlock surface
-//               (PIN pad for the PIN cohort, password for the legacy cohort).
-//   'welcome' — fresh device (no vault) → the branded VEYRNOX welcome hero, which
-//               sits AHEAD of PIN-create. Its single "Get Started" action advances
-//               to PIN-create (Phase 1). It is a pure branding screen — it holds no
-//               wallet, no balances, no dashboard — so the PIN-first order is intact.
+//   'unlock'      — a vault exists on this device → returning-user unlock surface
+//                   (PIN pad for the PIN cohort, password for the legacy cohort).
+//   'entry-tiles' — fresh device (no vault) → the 3-tile entry picker (New / Have /
+//                   Advanced, Slice D1: docs/superpowers/plans/2026-08-10-entry-tiles-slice-d1.md),
+//                   which sits AHEAD of PIN-create. New/Have both advance to
+//                   PIN-create (Phase 1); Advanced goes straight to the .enc
+//                   restore-file flow. It is a pure branding/picker screen — it
+//                   holds no wallet, no balances, no dashboard — so the PIN-first
+//                   order is intact. WelcomeHero (the single "Get Started" screen
+//                   this replaced as the default landing) is preserved in code and
+//                   still reachable via the 'welcome' view state, but no live path
+//                   sets that view any more.
 //
 // HARD INVARIANT: with NO vault the answer is NEVER an explore/dashboard/wallet
-// view ('choose' / 'explore'). It is 'welcome' (which only leads onward to
-// 'pin-create'); a PIN is still required before any wallet exists. The post-PIN
-// empty dashboard remains a separate, in-session state (exploreMode + pendingPin),
-// never produced here from a cold mount.
+// view ('choose' / 'explore'). It is 'entry-tiles' (which only leads onward to
+// 'pin-create' or 'restore-file'); a PIN is still required before any wallet
+// exists (Advanced's backup file carries its own credential instead). The
+// post-PIN empty dashboard remains a separate, in-session state (exploreMode +
+// pendingPin), never produced here from a cold mount.
 //
 // @param {{ hasVault: boolean }} state  whether a vault exists on this device
-// @returns {'unlock' | 'welcome'}
+// @returns {'unlock' | 'entry-tiles'}
 export function resolveOnboardingEntry({ hasVault }) {
-  return hasVault ? 'unlock' : 'welcome';
+  return hasVault ? 'unlock' : 'entry-tiles';
 }

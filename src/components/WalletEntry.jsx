@@ -111,6 +111,7 @@ import {
 import { hasStoredUnlockSecret, clearUnlockSecret } from "@/lib/biometricUnlock";
 import { enforceDuressBiometricInvariant, isDuressConfigured } from "@/lib/duressBiometricGuard";
 import PinPad from "@/components/security/PinPad";
+import EntryTiles from "@/components/EntryTiles";
 import { getAuthModel, setAuthModel, shouldAutoCacheTypedPin } from "@/lib/authModel";
 import { resolveOnboardingEntry } from "@/lib/onboardingEntry";
 import { checkVaultPasswordStrength } from "@/lib/passwordStrength";
@@ -554,6 +555,12 @@ export default function WalletEntry() {
   // block. The PIN is the credential here — there is NO vault-password field.
   const [importPhrasePin, setImportPhrasePin] = useState("");
   const [choosePinImport, setChoosePinImport] = useState(false);
+  // Slice D1 (EntryTiles): which pre-vault tile the user picked ('new' | 'have' |
+  // 'advanced' | null). Carries the intent through PIN-create so the post-PIN
+  // "choose" view can auto-select create/import instead of asking again. In-memory
+  // only — never persisted (I3 no residue). Cleared on any back/error/cancel path
+  // so a retry re-picks rather than leaking a stale hint.
+  const [chosenPath, setChosenPath] = useState(null);
   const [referralInput, setReferralInput] = useState("");
   // True while a PIN wallet is being ATOMICALLY provisioned (create + both chaff
   // slots + cohort + salt). Holds the dashboard back until everything is committed;
@@ -960,6 +967,20 @@ export default function WalletEntry() {
     setJustOnboarded(true);            // fresh onboarding pass — see FirstReceiveCard branch below
   };
 
+  // Slice D1 (EntryTiles): routes the tile pick. New/Have both stay PIN-first
+  // (pin-create); Advanced carries its own backup-file credential so it skips
+  // straight to restore-file, matching WelcomeHero's existing secondary link.
+  const handleTileSelect = useCallback((path) => {
+    setError("");
+    setChosenPath(path);
+    if (path === "advanced") {
+      setView("restore-file");
+    } else {
+      setRealPin(""); setRealPinConfirm(""); setPinStep("real");
+      setView("pin-create");
+    }
+  }, []);
+
   // PHASE 2 (create): leave Phase 1's markers in place and atomically materialize the
   // real wallet + both chaff slots under the in-memory pendingPin (provider method,
   // fail-closed). The provisioning gate below holds the dashboard back until it commits.
@@ -969,6 +990,11 @@ export default function WalletEntry() {
     catch (e) {
       autoEnrollPinRef.current = null;
       setProvisioning(false);
+      // Slice D1: an auto-fired create (chosenPath==='new') failed — clear the
+      // hint so the choose view falls back to the two-button picker (with the
+      // error shown) instead of being stuck on an infinite spinner that never
+      // retries itself.
+      setChosenPath(null);
       if (e?.code === WEB_VAULT_ERR.PASSWORD_TOO_SHORT) {
         // Recoverable input constraint: the pending PIN is still valid — don't wipe it.
         // Web mainnet vaults require a ≥12-char password; the user needs to go back
@@ -984,6 +1010,23 @@ export default function WalletEntry() {
       toast.error(msg);
     } finally { setBusy(false); }
   };
+
+  // Slice D1: chosenPath==='new' auto-fires wallet creation once the Phase-2
+  // "choose" view is reached — skips the two-button picker for a user who
+  // already picked "New wallet" on the entry-tiles screen. Ref-guarded so a
+  // re-render (e.g. `busy` toggling during creation) never double-fires.
+  const autoCreateFiredRef = useRef(false);
+  useEffect(() => {
+    const shouldAutoCreate = view === "choose" && hasPendingPin && chosenPath === "new";
+    if (shouldAutoCreate && !autoCreateFiredRef.current) {
+      autoCreateFiredRef.current = true;
+      doCreateWallet();
+    }
+    if (!shouldAutoCreate) autoCreateFiredRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- doCreateWallet is
+    // recreated every render; the ref guard makes re-running it on those
+    // renders a no-op, so it is intentionally excluded from the dep list.
+  }, [view, hasPendingPin, chosenPath]);
 
   // PHASE 2 (import): import an existing seed under the in-memory pendingPin via the
   // provider method (PIN-cohort re-provision, so the device stays PIN cohort, never
@@ -1308,9 +1351,23 @@ export default function WalletEntry() {
     );
   }
 
+  // ---- View: Entry tiles (fresh-device landing, AHEAD of the PIN) ----
+  // Slice D1: no vault exists; show the 3-tile picker (New / Have / Advanced) in
+  // the slot WelcomeHero used to occupy. New/Have advance to PIN-create; Advanced
+  // goes straight to restore-file (its own backup credential, no PIN-first).
+  if (view === "entry-tiles") {
+    return (
+      <EntryShell error={error}>
+        <EntryTiles onSelect={handleTileSelect} />
+      </EntryShell>
+    );
+  }
+
   // ---- View: Welcome (fresh-device landing, AHEAD of the PIN) ----
   // No vault exists; show the branded hero. "Get Started" advances to PIN-create,
-  // resetting the PIN sub-state exactly as the cold-mount path used to.
+  // resetting the PIN sub-state exactly as the cold-mount path used to. Dead but
+  // safe: no live path sets this view any more (Slice D1 replaced it as the
+  // default landing with 'entry-tiles'), kept in code per the D1 plan.
   if (view === "welcome") {
     return (
       <WelcomeHero
@@ -1333,7 +1390,7 @@ export default function WalletEntry() {
     return (
       <EntryShell error={error}>
         <RestoreFromFile
-          onBack={() => { setError(""); setView(vaultExists ? "unlock" : "welcome"); }}
+          onBack={() => { setError(""); setChosenPath(null); setView(vaultExists ? "unlock" : "entry-tiles"); }}
           onFinish={handleFileRestored}
           backLabel="Back"
         />
@@ -1600,10 +1657,24 @@ export default function WalletEntry() {
     // hasPendingPin = PIN cohort Phase-1 done (web and native share this cohort now).
     // Means the credential is set and the user is at the Phase-2 Create/Import choice.
     if (hasPendingPin) {
+      // Slice D1: chosenPath === 'new' means the effect above is already firing
+      // doCreateWallet() — show a spinner, not the two-button picker, for the
+      // brief instant before the `provisioning` gate (above this ladder) takes
+      // over. No separate "Create Wallet" click needed.
+      if (chosenPath === "new") {
+        return (
+          <EntryShell error={error}>
+            <div className="flex justify-center py-10"><Spinner size="lg" /></div>
+          </EntryShell>
+        );
+      }
+      // Slice D1: chosenPath === 'have' skips straight to the import form — the
+      // user already chose "Have a wallet" on the entry-tiles screen.
+      const showImportForm = choosePinImport || chosenPath === "have";
       return (
         <EntryShell error={error}>
           <div className="p-6 rounded-xl border border-dashed border-border bg-card space-y-4">
-            {!choosePinImport ? (
+            {!showImportForm ? (
               <>
                 <div className="text-center space-y-2">
                   <Wallet className="h-8 w-8 text-primary mx-auto" />
@@ -1637,7 +1708,7 @@ export default function WalletEntry() {
               </>
             ) : (
               <>
-                <button type="button" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
+                <button type="button" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); setChosenPath(null); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
                 <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally under your PIN — it never leaves this device.</span>
@@ -1689,14 +1760,14 @@ export default function WalletEntry() {
     return (
       <EntryShell error={error}>
         <div className="space-y-5">
-          {/* PIN-FIRST: Back returns to the branded welcome hero (the fresh-device
+          {/* PIN-FIRST: Back returns to the entry-tiles picker (the fresh-device
               landing ahead of the PIN), NOT a dashboard — the empty dashboard is
               only reachable AFTER the PIN is set. */}
-          <button type="button" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
+          <button type="button" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setChosenPath(null); setView("entry-tiles"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
 
           <PinSetup
             onDone={finishPinSetup}
-            onCancel={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setView("welcome"); }}
+            onCancel={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setChosenPath(null); setView("entry-tiles"); }}
           />
         </div>
       </EntryShell>
