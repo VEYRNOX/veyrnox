@@ -315,12 +315,32 @@ export function assessEvmTransaction({
   //    Complements the checks above: unusual amount vs your typical send, a large
   //    amount to a first-time recipient, and the approve-then-transferFrom shape.
   //    Pure + local — operates only over passed-in history/balances, no network.
+  //
+  // PRECISION: pass bigint outflow/balance to anomaly.js in addition to the
+  // display floats. Number(formatEther(wei)) silently loses precision above
+  // ~9007 ETH (2^53 wei), which also affects any 18-decimal token balance in
+  // that range; the same is true of parseFloat on a token-balance decimal
+  // string. anomaly.js prefers the bigint path for the balance-fraction check
+  // and only falls back to the display float when bigints are absent (native
+  // path for demo/test callers that pass no balance).
   let outflowAmount = 0;       // outflow in DISPLAY units, for the history comparison
   let balanceNum = null;       // current balance in DISPLAY units, for the fraction check
+  let outflowWei = null;
+  let balanceWei = null;
+  let unitDecimals = null;
   if (kind === 'native') {
-    outflowAmount = Number(formatEther(toBig(valueWei)));
-    if (nativeBalanceWei != null) balanceNum = Number(formatEther(toBig(nativeBalanceWei)));
+    const v = toBig(valueWei);
+    outflowWei = v;
+    outflowAmount = Number(formatEther(v));
+    if (nativeBalanceWei != null) {
+      balanceWei = toBig(nativeBalanceWei);
+      balanceNum = Number(formatEther(balanceWei));
+    }
+    unitDecimals = 18;
   } else if (kind === 'transfer') {
+    // decoded.amount is a display-unit decimal string; tokenBalance same. We
+    // don't have decimals here explicitly, so we normalise both to a shared
+    // scale inside anomaly.js by comparing them as scaled bigints.
     outflowAmount = parseFloat(decoded?.amount);
     if (tokenBalance != null) balanceNum = parseFloat(tokenBalance);
   }
@@ -328,8 +348,13 @@ export function assessEvmTransaction({
     kind,
     effectiveRecipient,
     amount: outflowAmount,
+    amountWei: outflowWei,
+    amountDecimalStr: kind === 'transfer' ? (decoded?.amount ?? null) : null,
+    balanceDecimalStr: kind === 'transfer' && tokenBalance != null ? String(tokenBalance) : null,
     symbol: kind === 'native' ? nativeSymbol : tokenSymbol,
     balanceNum,
+    balanceWei,
+    decimals: unitDecimals,
     priorSends,
     knownCounterparties,
   });

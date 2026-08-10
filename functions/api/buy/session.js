@@ -102,12 +102,14 @@ async function enforceRateLimit(clientIp) {
     const hit = await cache.match(key);
     if (hit) count = Number(await hit.text()) || 0;
   } catch {
-    // Cache unavailable: fail OPEN, deliberately. This limiter protects a
-    // spend quota, not key material or a signing path — turning a cache blip
-    // into a total Buy outage would be the worse failure. Stated explicitly
-    // because "fail closed" is the default rule in this codebase and this is a
-    // considered exception, not an oversight.
-    return;
+    // FAIL CLOSED. If the limiter cannot decide, do NOT proceed to spend partner
+    // quota. Previously this failed open on the theory that a cache blip should
+    // not break Buy; but the 2026-08 audit rules that a cache outage silently
+    // exposing the paid vendor account is the worse failure, and matches the
+    // "fail closed on limiter error" rule now applied uniformly across
+    // functions/api/_lib/rate-limit.js. Buy briefly returning 429 during a
+    // Cache API incident is preferable to unmetered spend.
+    err(429, 'Too many requests');
   }
 
   if (count >= RATE_LIMIT_MAX) err(429, 'Too many requests');

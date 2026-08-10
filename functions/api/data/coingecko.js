@@ -7,6 +7,8 @@
 // Allowed endpoints (allowlist):
 //   simple/price, coins/markets, coins/:id/ohlc
 
+import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+
 const CG_BASE = 'https://api.coingecko.com/api/v3';
 
 const ALLOWED_CG_IDS = new Set([
@@ -56,6 +58,9 @@ export async function onRequestGet(context) {
   if (!endpoint || !ALLOWED_ENDPOINTS.has(endpoint)) {
     err(400, 'Invalid or missing endpoint');
   }
+
+  // Per-IP cap: this proxy injects the CoinGecko demo API key server-side.
+  await enforceRateLimit({ bucket: 'data-coingecko', clientIp: clientIpOf(request) });
 
   const upstreamParams = new URLSearchParams();
   for (const [key, val] of url.searchParams.entries()) {

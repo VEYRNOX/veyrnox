@@ -45,11 +45,16 @@ import { CONDITION } from './conditions.js';
 // Dead-code-eliminated in production builds (env var never set in CI/release).
 const BYPASS_RASP = import.meta.env.VITE_BYPASS_RASP === '1';
 
-// #1107: runtime guard -- if BYPASS_RASP leaks into a production build, emit an
-// auditable console.error on module load. Does NOT disable sending (that would be
-// a UX change beyond the issue scope); the error provides a signal for monitoring.
+// #1107 (hardened 2026-08 audit): if BYPASS_RASP leaks into a production build,
+// HARD-FAIL at module init. A prior version only logged; the audit ruled that
+// a bypass-in-prod configuration is a build defect the app must not run under,
+// because a silent bypass in a shipped build disables every environment gate
+// (Frida/root/hook detection) without any UI signal.
+// Dev is unaffected: import.meta.env.PROD is false, and the bypass remains
+// dead-code-eliminated in a normal production build (the env var is not set in
+// CI/release), so this throw is only reachable under a broken build config.
 if (BYPASS_RASP && import.meta.env.PROD) {
-  console.error('[RASP] BYPASS_RASP is enabled in a production build -- this is a configuration error');
+  throw new Error('[RASP] BYPASS_RASP is enabled in a production build -- refusing to load. Fix build configuration.');
 }
 
 const HEARTBEAT_MS = 60_000;

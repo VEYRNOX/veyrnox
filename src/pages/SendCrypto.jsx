@@ -1,4 +1,16 @@
 // @ts-nocheck
+//
+// ponytail: 2288 LOC deliberately NOT split into src/pages/send/ sub-modules
+// per the 2026-08 audit. This page is the pre-sign chokepoint: RASP artifact
+// composition -> action-password re-auth -> gas / nonce / recipient screening
+// -> Trezor branch (hw-send.js) vs software branch. Any structural move risks
+// reordering the pre-sign gates (P2-7, #746 recovery check, #961 audited
+// helpers) the SEND signing correctness depends on. Extracted candidates for
+// a future audited pass (byte-identical, no reorder):
+//   1. amount/rate formatting helpers (pure functions)
+//   2. per-network fee-preset lookup tables
+//   3. TrezorConnectModal state machine (already isolated)
+// The signing/broadcast branch stays here until independently re-audited.
 import BackButton from "@/components/BackButton";
 import SuccessBeacon from "@/components/SuccessBeacon";
 import RiskShield from "@/components/RiskShield";

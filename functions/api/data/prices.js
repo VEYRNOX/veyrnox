@@ -7,6 +7,8 @@
 // Allowed endpoints (allowlist, not passthrough):
 //   pricemulti, pricemultifull, v2/histoday, v2/histohour, v2/histominute
 
+import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+
 const CC_BASE = 'https://min-api.cryptocompare.com/data';
 
 const ALLOWED_ENDPOINTS = new Set([
@@ -40,6 +42,10 @@ export async function onRequestGet(context) {
   if (!endpoint || !ALLOWED_ENDPOINTS.has(endpoint)) {
     err(400, 'Invalid or missing endpoint');
   }
+
+  // Per-IP cap: this proxy injects a paid CryptoCompare key server-side; without
+  // a cap a single caller can burn the whole vendor quota.
+  await enforceRateLimit({ bucket: 'data-prices', clientIp: clientIpOf(request) });
 
   const upstream = new URL(`${CC_BASE}/${endpoint}`);
 

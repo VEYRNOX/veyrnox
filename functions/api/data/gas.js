@@ -5,6 +5,8 @@
 // sources are public (no API key). Edge caching keeps upstream rate limits
 // happy and gives the client a single round-trip instead of three.
 
+import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+
 const BTC_FEES_URL = 'https://mempool.space/api/v1/fees/recommended';
 const ETH_GAS_URL = 'https://api.etherscan.io/api?module=gastracker&action=gasoracle';
 const SOL_DEVNET_RPC = 'https://api.devnet.solana.com';
@@ -72,6 +74,10 @@ export async function onRequestGet(context) {
   const { request } = context;
   const url = new URL(request.url);
   const useMainnet = url.searchParams.get('mainnet') === 'true';
+
+  // Per-IP cap: aggregates three upstream public APIs (mempool.space, Etherscan,
+  // Solana RPC). Uncapped, a single caller multiplies our egress.
+  await enforceRateLimit({ bucket: 'data-gas', clientIp: clientIpOf(request) });
 
   const cacheKey = new Request(`https://edge-cache.internal/gas-fees-${useMainnet ? 'mainnet' : 'devnet'}`);
   const cache = caches.default;
