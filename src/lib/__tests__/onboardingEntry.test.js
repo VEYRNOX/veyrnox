@@ -2,11 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { resolveOnboardingEntry } from '../onboardingEntry.js';
 
 describe('resolveOnboardingEntry (PIN-first onboarding order)', () => {
-  it('fresh device (no vault) lands on the welcome screen — NEVER the dashboard', () => {
-    // The welcome hero sits AHEAD of PIN-create as the fresh-device landing; from
-    // it "Get Started" advances to the PIN. It is a branding screen, not a
-    // dashboard, so the PIN-first security order is preserved.
-    expect(resolveOnboardingEntry({ hasVault: false })).toBe('welcome');
+  it('fresh device (no vault) lands on the entry-tiles picker — NEVER the dashboard', () => {
+    // Slice D1 (docs/superpowers/plans/2026-08-10-entry-tiles-slice-d1.md)
+    // replaces the single WelcomeHero landing with a 3-tile picker
+    // (New / Have / Advanced). The tile screen sits AHEAD of PIN-create in the
+    // same slot WelcomeHero used to occupy — it is still a pre-PIN, pre-vault,
+    // branding-only surface with no wallet reads, so PIN-first is preserved.
+    // Previous assertion (kept for reference in this comment): expected 'welcome'.
+    expect(resolveOnboardingEntry({ hasVault: false })).toBe('entry-tiles');
   });
 
   it('existing vault lands on the unlock surface', () => {
@@ -19,6 +22,6 @@ describe('resolveOnboardingEntry (PIN-first onboarding order)', () => {
     const view = resolveOnboardingEntry({ hasVault: false });
     expect(view).not.toBe('choose');
     expect(view).not.toBe('explore');
-    expect(view).not.toBe('pin-create'); // welcome comes first now
+    expect(view).not.toBe('pin-create'); // entry-tiles comes first now, pin-create is Phase 1 after tile pick
   });
 });

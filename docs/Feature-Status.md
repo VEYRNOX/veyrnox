@@ -1848,6 +1848,64 @@ verification.
 No existing entry in this file claimed a first-receive onboarding screen already
 existed prior to this slice — this is a new record.
 
+## 2026-08-10 EntryTiles + `chosenPath` hint threading (Slice D1)
+
+> ✅ BUILT (8 test files, 40+ tests GREEN, `npm run build` clean, `eslint` 0 errors).
+> **NOT verified** — no on-chain onboarding walkthrough on device.
+
+Branch `claude/entry-tiles-slice-d1`, worktree
+`/var/folders/l3/4f36t9jn439c8fk_1zqgx8pc0000gn/T/veyrnox-entry-tiles/`. Plan:
+`docs/superpowers/plans/2026-08-10-entry-tiles-slice-d1.md`. Branch carries 2 commits
+per `.git/logs/refs/heads/claude/entry-tiles-slice-d1` (this pass had no Bash/shell
+tool access to run `git log` itself, same disclosed gap as Slice C): feat commit
+**`feat(onboarding): EntryTiles + chosenPath hint through PIN (Slice D1)`**, followed
+by a `chore(tests): apply reviewer P3 nits (Slice D1)` commit. Current branch tip
+`cae20de9` after a rebase onto `origin/main`; the reflog shows only pre-rebase SHAs for
+the two commits themselves, so this entry cites the reflog's commit messages rather
+than asserting a specific post-rebase feat SHA.
+
+**What shipped.** A 3-tile pre-vault entry picker (`src/components/EntryTiles.jsx`:
+New / Have / Advanced) replaces `WelcomeHero`'s single "Get Started" screen as the
+default for `resolveOnboardingEntry({ hasVault: false })` (`src/lib/onboardingEntry.js`,
+now returns `'entry-tiles'` instead of `'welcome'`). A new in-memory `chosenPath` React
+state in `WalletEntry.jsx` threads the tile choice through PIN entry: the post-PIN
+`"choose"` view auto-selects the correct branch (auto-fires `doCreateWallet()` for
+`'new'`, renders the import textarea directly for `'have'`) instead of asking the user
+to pick again. Advanced routes to the existing `.enc` restore-file flow unchanged
+(matches WelcomeHero's prior secondary link — no new recovery surface).
+
+**Invariants preserved:**
+- **PIN-FIRST unchanged.** Both New and Have still route through `pin-create` before
+  any seed handling; only the entry screen ahead of PIN changed.
+- **I3 no residue.** `chosenPath` is in-memory React state only — no localStorage, no
+  panic-wipe surface added. `doCreateWallet()` auto-fire is guarded by a ref to prevent
+  double-fire.
+- `WelcomeHero` and its `view === 'welcome'` branch are left in code as dead-but-safe
+  (grep confirms zero live `setView('welcome')` callers) — pruning deferred to a
+  follow-up after device verification, matching the plan's rollback note.
+
+**Reviewer + codex findings, recorded here for honesty:**
+1. UI-agent deviation from plan — added a defensive `setChosenPath(null)` in
+   `doCreateWallet`'s catch branch to prevent an infinite-spinner UX bug if creation
+   fails mid-flight. Kept; matches the plan's own "clear `chosenPath` on error" intent
+   even though the plan didn't spell out this exact branch.
+2. Honest-reviewer — 2 P3 nits (a stale test comment reworded; a structural I3 grep
+   check added asserting `EntryTiles.jsx` doesn't import `WalletContext`). Applied.
+3. Codex review — clean, no P1s.
+
+**Test scope:** 8 test files / 40+ tests green, including the new
+`EntryTiles.test.jsx` (5 tests: 3-tile render + accessible names, `onSelect` per tile,
+single-fire, zero localStorage writes, structural I3 no-`WalletContext`-import check)
+and an extended `onboardingEntry.test.js` assertion. Build and lint clean. **What was
+NOT done:** no preview render — the UI agent in this pass lacked a browser tool (same
+known gap as Slice A/B/C), so the fresh-device tile → PIN → auto-create/import flow has
+not been visually confirmed end to end. No on-chain onboarding walkthrough was
+exercised, and there is no real-device verification.
+
+No existing entry in this file claimed a 3-tile entry picker or `chosenPath` hint
+threading already existed prior to this slice — this is a new record, not a correction
+of a prior overstatement.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
