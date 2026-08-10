@@ -73,5 +73,6 @@ describe('EntryTiles', () => {
     );
     expect(source).not.toMatch(/useWallet\b/);
     expect(source).not.toMatch(/WalletProvider\b/);
+    expect(source).not.toMatch(/WalletContext\b/); // reviewer P3: also catch a direct useContext(WalletContext) that skips the hook alias
   });
 });

@@ -22,6 +22,6 @@ describe('resolveOnboardingEntry (PIN-first onboarding order)', () => {
     const view = resolveOnboardingEntry({ hasVault: false });
     expect(view).not.toBe('choose');
     expect(view).not.toBe('explore');
-    expect(view).not.toBe('pin-create'); // welcome comes first now
+    expect(view).not.toBe('pin-create'); // entry-tiles comes first now, pin-create is Phase 1 after tile pick
   });
 });
