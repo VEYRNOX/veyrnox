@@ -234,11 +234,10 @@ export default function TermsLegal() {
                 pixels. Our website uses no advertising or third-party tracking cookies.
               </p>
               <p className="font-semibold text-foreground">
-                These events are opt-in. We ask once, when you first set up or unlock a wallet, and
-                nothing is sent unless you choose &ldquo;Help improve Veyrnox&rdquo;. If you decline,
-                no event is sent and no install identifier is even created. You can change your mind
-                at any time in <b>Settings &rarr; Privacy</b>; switching it off stops all of it
-                immediately.
+                These events are opt-in and OFF by default. Unless you explicitly turn on{' '}
+                <b>Help improve Veyrnox</b> under <b>Settings &rarr; Privacy</b>, no event is sent
+                and no install identifier is even created. You can turn it off again at any time
+                from the same screen; switching it off stops all of it immediately.
               </p>
               <p>
                 If you opt in, the app records a small number of anonymous usage events on our own

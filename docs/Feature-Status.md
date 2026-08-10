@@ -1825,17 +1825,40 @@ newly-created wallet's primary EVM receive address as a QR code + copy-to-clipbo
 4. Codex P2 — clipboard copy failed silently. Added a toast on failure with a
    manual-copy hint.
 
-> **⚠️ SQL RUN STILL PENDING — live gap, could silently break the metric.** The
-> `sql/telemetry-events-allowlist.sql` and `sql/track-event-ip-rate-limit.sql` edits
-> that add `first_receive_shown` to the server allowlist are CODE ONLY — they have not
-> been run against Supabase. Until they are run, `first_receive_shown` reaches the
-> server-side allowlist check and is rejected as an unknown event, and because
-> `fireOnce`'s `veyrnox-first-receive-shown-fired` marker is written client-side
-> regardless of whether the server accepted the event, that device's metric is
-> permanently lost — no retry, silent forever for that user. Same shape as the
-> "first-referral-bonus Edge Function — BUILT, NOT DEPLOYED" gap already tracked
-> elsewhere in this file (CODE landed, SQL run pending). **Must be run in Supabase
-   before any user-facing rollout of this slice.**
+> **✅ SQL RUN 2026-08-10 — server-side allowlist gap CLOSED on Staging EU and
+> Production.** Applied via Supabase MCP `apply_migration`:
+> - **Staging EU** (project `nszlbcmcysftwyudthjz`) — success
+> - **Production** (project `jwstkrtslotnjyerzzsi`) — success
+>
+> Two migrations recorded in each project's Supabase migration history:
+> `track_event_ip_rate_limit_with_first_receive_shown` (superset of the two
+> `sql/*.sql` files' function definitions) and
+> `definer_search_path_pin_post_track_event_replace` (re-pins `search_path` on
+> every SECURITY DEFINER function in `public`, because `CREATE OR REPLACE
+> FUNCTION` silently drops the `SET` clauses).
+>
+> **Verified on prod (3-for-3 sniff tests, same set run on staging first):**
+> 1. `SELECT public.track_event(gen_random_uuid(), 'first_receive_shown', '{}'::jsonb)`
+>    returned void — event accepted, not rejected as unknown.
+> 2. `search_path = public, extensions, pg_temp` pinned on `track_event` and every
+>    other SECURITY DEFINER function in `public` (catalog-driven check).
+> 3. Test event landed in the `events` table.
+>
+> Test rows written by (1)/(3) were cleaned up on both environments after
+> verification. No production user data was written by this pass. The
+> `first_receive_shown` metric now round-trips; the client-side
+> `fireOnce`-drops-on-server-reject data-loss trap this bullet warned about no
+> longer applies to devices reaching prod once they run a build that emits the
+> event.
+>
+> **Still not "verified" in the Veyrnox sense.** No on-chain first-receive
+> walkthrough has been done on a device, and this SQL run is INTERNAL (Claude ran
+> the MCP migration) — not the outstanding independent third-party audit. The
+> `sql/*.sql` files in the repo remain the source of truth; the recorded
+> migration names above simply prove they were applied. The
+> "first-referral-bonus Edge Function — BUILT, NOT DEPLOYED" bullet in CLAUDE.md
+> is the same *shape* of gap but a DIFFERENT gap — do not read this SQL run as
+> having closed that one. Check its status separately before claiming otherwise.
 
 **Test scope:** 10 test suites / 105 tests green (FirstReceiveCard unit tests +
 panic-residue regression + existing WalletEntry/panic suites unaffected). Build and
@@ -2170,6 +2193,78 @@ third-party audit. Nothing here is "verified" in the Veyrnox sense until
 an end-to-end referral bonus grant round-trips against real RevenueCat
 with an attributed test purchase FOR THE INTENDED RECIPIENT (which
 requires #1703 + #1704 fixed first).
+
+## 2026-08-10 Default-deny telemetry + first-run consent modal removal (Slice F)
+
+> ✅ BUILT (139/139 tests + 36/36 telemetry-disclosure tests, `npm run build` clean,
+> `eslint` 0 errors).
+> **NOT verified** — no real-device onboarding trip has confirmed that a fresh install
+> which never opens Settings → Privacy sends zero telemetry rows to Supabase.
+
+Branch `claude/tap-reduction-slice-f`, worktree
+`/var/folders/l3/4f36t9jn439c8fk_1zqgx8pc0000gn/T/veyrnox-tap-reduction/`. Two commits on
+the branch (may be squashed on merge): initial `790778ad` feat, followed by an amend that
+added the TermsLegal §9 copy fix.
+
+**Plan history.** Codex plan-review killed the original three-part plan
+((a) tap reduction + (b) + (c)) with 2 P1s before any code was written: (b) would have
+undone Slice C's wrong-network fund-safety warning, and the original (c) would have
+violated GDPR's unambiguous-opt-in requirement via consent-by-proximity (treating a tap
+elsewhere in the flow as an implicit telemetry opt-in). Revised scope — (a) tap reduction
++ (c) as default-deny telemetry — was approved and is what shipped. **(b) was dropped
+entirely and is not part of this slice.**
+
+**What shipped.**
+- Removed the `TelemetryConsent` render branch from `WalletEntry.jsx` (~7 lines) and the
+  now-dead `consentDone` state (~2 lines). There is no first-run consent modal any more.
+- No consent-logic change was needed: `hasConsent()` (`src/lib/consent.js:39`) does a
+  strict `=== 'granted'` check, which already returns `false` when the
+  `veyrnox-telemetry-consent` localStorage key is absent — so removing the modal leaves
+  the wallet in the correct default-deny state with zero new code in `consent.js`.
+- The I2 no-silent-egress chokepoint is unchanged and still holds:
+  `api/trackEvent.js:41` already no-ops silently when `hasConsent()` is false, and that
+  file remains the single egress gate (per CLAUDE.md's "two chokepoints, not one" note).
+- Settings → Privacy toggle (the sole remaining consent writer) is untouched.
+- `src/pages/TermsLegal.jsx` §9 copy rewritten to describe telemetry as default-off with
+  opt-in only via Settings → Privacy, replacing language that described the removed
+  first-entry screen. The invariant test substring *"no event is sent and no install
+  identifier is even created"* is preserved.
+- 4 new regression tests in `WalletEntry.consent-default-deny.test.jsx` covering: no
+  consent modal renders on fresh entry, `hasConsent()` defaults false with no stored key,
+  no telemetry call fires pre-opt-in, and the Settings toggle remains the only writer.
+
+**Tap-count effect.** Fresh-create path: 4 → 3 explicit taps (New tile → PIN → PIN →
+FirstReceiveCard "You're set"). The KEK gate was already auto-dismissing on the happy
+path before this slice — an earlier tap count in planning included a KEK-gate tap that
+recon corrected before implementation; it never existed as a real step.
+
+**Review passes.**
+1. Codex plan-review — killed the original plan, approved the revised
+   (a)+(c-default-deny) scope (see Plan history above).
+2. Honest-reviewer — clean pass, 2 Minors recorded (test-mock tightness; a silent-reset
+   edge case in `finishCreate`). Neither required a fix.
+3. Codex 2nd pass (post-code) — clean, 1 P2 (TermsLegal §9 described telemetry
+   inconsistently with the new default-deny behaviour) — fixed inline before landing.
+
+**Two open honest gaps, not closed by this slice:**
+1. `veyrnox.com/privacy` still describes the first-entry consent screen this slice
+   removed. Site-copy fix is drafted at
+   `docs/veyrnox-com-privacy-corrections-2026-07-26.md` but the site source lives outside
+   this repo — out of scope for Slice F.
+2. Settings → Privacy discoverability is unaddressed: removing the first-run prompt means
+   opt-in adoption will trend toward near-zero unless the toggle is surfaced more
+   prominently. This is a product decision, not a code defect, and is not resolved here.
+
+**Flag for the owner — stale prior-state descriptions elsewhere in this file.** The
+"2026-07-28 First-run tour RESTORED" section above (roughly lines 1641–1698 as of this
+edit) narrates PR history that repeatedly describes `WalletEntry.jsx`'s "consent branch"
+as returning before the router outlet and winning on a never-answered device — i.e. it
+documents the first-run consent modal Slice F just removed. Those lines are accurate as a
+record of what was true at the time they were written and are PR history, not a live
+status claim, so they are left as-is here; flagging so the owner can decide whether a
+forward-pointer to this Slice F entry is warranted. No other entry in this file asserted
+default-deny telemetry was already in place — this is a new record, not a correction of
+an existing overstatement.
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses

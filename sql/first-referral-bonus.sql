@@ -264,7 +264,19 @@ $$;
 -- codes. Rate-limit runs BEFORE any nullable guard; NULL is rejected. Do
 -- not add a DEFAULT back — every caller must pass a device id from
 -- lib/deviceId.js (which itself fails closed when no CSPRNG is available).
-CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid)
+--
+-- DROP + CREATE, not CREATE OR REPLACE (learned 2026-08-10 applying to prod):
+-- earlier revisions of this file shipped the same (text, uuid) signature with
+-- `p_device_id uuid DEFAULT NULL`. CREATE OR REPLACE cannot strip a default —
+-- it fails with 42P13 "cannot remove parameter defaults from existing function"
+-- — so an environment that ran the older file blocks the new one at exactly
+-- the point that removes the H-2 bypass. The DROP is IF EXISTS so a fresh
+-- environment (or a re-run of this file) still works: it becomes a no-op there
+-- and the CREATE runs. Signature is stable and every caller passes
+-- p_device_id already (referralApi.js), so this is not a client-visible change.
+DROP FUNCTION IF EXISTS public.register_referral_code(text, uuid);
+
+CREATE FUNCTION register_referral_code(p_code text, p_device_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
