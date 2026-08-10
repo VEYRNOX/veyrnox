@@ -333,7 +333,9 @@ async function scheduleReminders(ids, delaysHours, title, body) {
         schedule: { at: new Date(Date.now() + delaysHours[i] * 60 * 60 * 1000) },
       })),
     });
-  } catch {}
+  } catch (e) {
+    console.warn('[tracking] schedule notifications failed:', e);
+  }
 }
 
 // NOT gated on suppressed(), unlike scheduleReminders — deliberately, and it
@@ -348,7 +350,9 @@ async function cancelReminders(ids) {
     await LocalNotifications.cancel({
       notifications: ids.map((id) => ({ id })),
     });
-  } catch {}
+  } catch (e) {
+    console.warn('[tracking] cancel notifications failed:', e);
+  }
 }
 
 export function scheduleFundingReminders() {

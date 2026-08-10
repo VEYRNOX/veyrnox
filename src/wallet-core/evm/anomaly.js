@@ -65,6 +65,31 @@ function fmt(n) {
   return parseFloat(n.toFixed(6)).toString();
 }
 
+// Parse a decimal string like "12345.6789" into { value: BigInt, decimals: number }
+// PRESERVING every digit. This avoids the Number()/parseFloat() precision loss on
+// wallet-scale amounts. Trailing zeros in the fraction are preserved so two
+// values with different literal decimal representations still compare correctly
+// after alignment. Returns null on non-numeric input.
+function parseDecimalToBig(s) {
+  if (s == null) return null;
+  const str = String(s).trim();
+  if (!/^-?\d+(\.\d+)?$/.test(str)) return null;
+  const neg = str.startsWith('-');
+  const body = neg ? str.slice(1) : str;
+  const [intPart, fracPart = ''] = body.split('.');
+  const value = BigInt(intPart + fracPart);
+  return { value: neg ? -value : value, decimals: fracPart.length };
+}
+
+// Align two { value, decimals } bigint-decimals to the same scale so they can
+// be compared and ratioed as pure integers.
+function alignBig(a, b) {
+  const dec = Math.max(a.decimals, b.decimals);
+  const scaleA = 10n ** BigInt(dec - a.decimals);
+  const scaleB = 10n ** BigInt(dec - b.decimals);
+  return { a: a.value * scaleA, b: b.value * scaleB, decimals: dec };
+}
+
 /**
  * PURE history-aware anomaly assessment — NO network, NO keys. Given a decoded
  * outflow and the user's OWN local history, return the deviation flags. Designed
@@ -86,6 +111,17 @@ export function assessHistoryAnomalies({
   kind = 'native',
   effectiveRecipient = null,
   amount = 0,
+  // OPTIONAL bigint inputs (2026-08 audit). When present, the balance-fraction
+  // check uses full-precision bigint arithmetic; otherwise the legacy
+  // amt/balanceNum float ratio is used unchanged. Callers that pass wei must
+  // also pass `decimals` (18 for native ETH). Token callers can instead pass
+  // `amountDecimalStr` / `balanceDecimalStr` which are scaled and compared as
+  // aligned bigints without needing a shared decimals value.
+  amountWei = null,
+  balanceWei = null,
+  decimals = null,
+  amountDecimalStr = null,
+  balanceDecimalStr = null,
   symbol = null,
   balanceNum = null,
   priorSends = [],
@@ -101,6 +137,30 @@ export function assessHistoryAnomalies({
   const amt = typeof amount === 'number' ? amount : parseFloat(amount);
   const baseline = median(priorSends);
   const hasBaseline = baseline != null && priorSends.length >= minHistory;
+
+  // Bigint-precise "amt >= FRACTION * balance" test. Returns true when a
+  // precision-preserving comparison confirms the fraction; returns null when
+  // no bigint inputs are available (caller should fall back to the float
+  // check). Never returns false as "definitely below" — it always defers to
+  // the caller's float path when it lacks bigint inputs, so no silent
+  // downgrade of the pre-existing behaviour.
+  const bigLargeVsBalance = (fraction) => {
+    // Native / wei path.
+    if (typeof amountWei === 'bigint' && typeof balanceWei === 'bigint' && balanceWei > 0n) {
+      // amt/bal >= fraction  <=>  amt * 1000 >= bal * (fraction*1000)
+      const permille = BigInt(Math.round(fraction * 1000));
+      return amountWei * 1000n >= balanceWei * permille;
+    }
+    // Token decimal-string path.
+    const a = parseDecimalToBig(amountDecimalStr);
+    const b = parseDecimalToBig(balanceDecimalStr);
+    if (a && b && b.value > 0n) {
+      const aligned = alignBig(a, b);
+      const permille = BigInt(Math.round(fraction * 1000));
+      return aligned.a * 1000n >= aligned.b * permille;
+    }
+    return null;
+  };
 
   // --- approve: the two-step ("second tx is the exploit") drain shape ---
   // Approving a spender is leg ONE: a later transferFrom can move up to the
@@ -126,8 +186,13 @@ export function assessHistoryAnomalies({
 
   const isNewRecipient = recipient && !known.has(recipient);
   const largeVsHistory = hasBaseline && amt >= multiple * baseline;
-  const largeVsBalance =
-    Number.isFinite(balanceNum) && balanceNum > 0 && amt / balanceNum >= NEW_RECIPIENT_BALANCE_FRACTION;
+  // Prefer the bigint-precise check when we have the inputs (see comment on
+  // bigLargeVsBalance). Fall back to the float ratio only when bigint inputs
+  // are absent — pre-existing behaviour for callers not yet updated.
+  const bigVerdict = bigLargeVsBalance(NEW_RECIPIENT_BALANCE_FRACTION);
+  const largeVsBalance = bigVerdict !== null
+    ? bigVerdict
+    : (Number.isFinite(balanceNum) && balanceNum > 0 && amt / balanceNum >= NEW_RECIPIENT_BALANCE_FRACTION);
 
   // --- unusual amount vs the user's OWN history ---
   // Distinct from simulate.js's large-outflow check (which is vs BALANCE): this is

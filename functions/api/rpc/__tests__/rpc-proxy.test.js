@@ -96,6 +96,36 @@ describe('RPC allowlist — the only boundary once service_role is in play', () 
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
+  // 2026-08 audit: an unlisted RPC must be rejected BEFORE the service-role
+  // key is even read from env. The 403 above already proves nothing hits
+  // Supabase, but this pins the ORDER — a future refactor that read the key
+  // first (say for a diagnostic log line) would silently regress.
+  it('rejects unlisted RPCs before touching the service-role key', async () => {
+    const env = new Proxy({
+      SUPABASE_URL: URL_BASE,
+      SUPABASE_ANON_KEY: 'anon-key',
+      SUPABASE_SERVICE_ROLE_KEY: 'service-key',
+    }, {
+      get(target, prop) {
+        if (prop === 'SUPABASE_SERVICE_ROLE_KEY' || prop === 'SUPABASE_ANON_KEY') {
+          throw new Error(`env.${String(prop)} read before allowlist check`);
+        }
+        return target[prop];
+      },
+    });
+    const e = await thrown(() => onRequestPost({
+      request: new Request('https://veyrnox.com/api/rpc/drop_everything', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      }),
+      env,
+      params: { fn: 'drop_everything' },
+    }));
+    expect(e.status).toBe(403);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
   it('never lets the function name escape the /rest/v1/rpc/ path', async () => {
     await onRequestPost(ctx('track_event'));
     const [url] = globalThis.fetch.mock.calls[0];

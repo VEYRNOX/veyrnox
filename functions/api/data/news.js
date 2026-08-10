@@ -4,6 +4,8 @@
 // worker — no third-party intermediary (rss2json blocked CF Workers' UA).
 // Cached at the edge for 5 minutes.
 
+import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+
 const RSS_FEEDS = [
   { url: 'https://cointelegraph.com/rss', source: 'CoinTelegraph' },
   { url: 'https://decrypt.co/feed', source: 'Decrypt' },
@@ -43,6 +45,9 @@ function parseRssItems(xml, source) {
 }
 
 export async function onRequestGet(context) {
+  // Per-IP cap: unauthenticated proxy fanning out to upstream RSS.
+  await enforceRateLimit({ bucket: 'data-news', clientIp: clientIpOf(context.request) });
+
   const cacheKey = new Request('https://edge-cache.internal/crypto-news-feed');
   const cache = caches.default;
   const cached = await cache.match(cacheKey);

@@ -1,4 +1,12 @@
 // @ts-nocheck
+//
+// ponytail: 899 LOC deliberately NOT split per the 2026-08 audit. Panic wipe
+// destroys keystore + IndexedDB + Capacitor Preferences + deniability decoys
+// atomically; the sequence of best-effort wipes and the swallowed errors
+// between them are a safety property, not a shape to be refactored. Any
+// extract-to-helper is an audit trigger, not a cleanup. Wait for the
+// pending independent audit.
+//
 // wallet-core/panic.js
 //
 // PANIC WIPE  (S3 — Direction-C individual security).  PROVISIONAL.

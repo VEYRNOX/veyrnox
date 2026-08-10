@@ -15,7 +15,9 @@ async function sendNotification(title, body, deepLink = "/") {
       await LocalNotifications.schedule({
         notifications: [{ title, body, id: _localNotifId++, extra: { deepLink } }],
       });
-    } catch {}
+    } catch (e) {
+      console.warn('[priceAlertNotifier] native schedule failed:', e);
+    }
     return;
   }
   // Web: tap the notification to focus the tab and navigate to deepLink.
@@ -27,7 +29,9 @@ async function sendNotification(title, body, deepLink = "/") {
       window.focus();
       window.location.href = deepLink;
     };
-  } catch {}
+  } catch (e) {
+    console.warn('[priceAlertNotifier] web notification failed:', e);
+  }
 }
 
 export function usePriceAlertNotifier() {
@@ -133,7 +137,9 @@ export function usePriceAlertNotifier() {
         }
 
         prevPricesRef.current = current;
-      } catch {}
+      } catch (e) {
+        console.warn('[priceAlertNotifier] pollAlerts failed:', e);
+      }
     };
 
     // Poll every 60 seconds

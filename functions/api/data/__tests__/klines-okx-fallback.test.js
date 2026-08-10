@@ -15,8 +15,10 @@ import { onRequestGet } from '../klines.js';
 // Minimal Cloudflare Pages Functions context. caches.default is a no-op so the
 // handler always takes the live path.
 function makeContext(url) {
+  // The rate limiter refuses requests without a CF-Connecting-IP (fail closed).
+  // In prod every request carries one; in this synthetic test we set one.
   return {
-    request: new Request(url),
+    request: new Request(url, { headers: { 'CF-Connecting-IP': '203.0.113.1' } }),
     waitUntil: () => {},
   };
 }

@@ -6,6 +6,8 @@
     "accepted": "documented accepted deviation (won't-fix by decision); must NOT be described as an open finding",
     "evidence-gap": "code-fixed but a device/on-chain trace is still outstanding; treat like fixed for the openness check"
   },
+  "_verified_at": "2026-08-10",
+  "_verified_note": "2026-08 audit sweep: re-checked each `fixed` entry against its cited `source` doc and the `resolvedBy` PR. All four remain accurately marked fixed and are still referenced by scripts/check-finding-id-consistency.mjs + src/lib/featureCatalogue.js — none deleted. Update this timestamp on the next audit pass.",
   "findings": {
     "C-1": {
       "severity": "CRITICAL",
