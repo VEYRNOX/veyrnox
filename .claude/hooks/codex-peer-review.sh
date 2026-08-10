@@ -39,7 +39,7 @@ NON_DOC=$(echo "$CHANGED" | awk '{
     sub(/^.. /, "");
     print;
   }
-}' | grep -Ev '(^|/)(docs/|.*\.md$|CLAUDE\.md$|MEMORY\.md$)' || true)
+}' | grep -Ev '(^|/)(docs/|.*\.md$|CLAUDE\.md$|MEMORY\.md$|_bmad/|_bmad-output/|\.serena/|\.claude/skills/)' || true)
 [ -z "$NON_DOC" ] && exit 0
 
 TIMEOUT="${CODEX_REVIEW_TIMEOUT:-180}"

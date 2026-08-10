@@ -139,3 +139,13 @@ skills-lock.json
 
 # Supabase CLI local link metadata — pins CWD to a remote project
 supabase/.temp/
+
+# BMAD install scaffolding (vendored per-repo, not project code)
+_bmad/
+_bmad-output/
+
+# Serena project metadata (per-repo tool config)
+.serena/
+
+# Additional per-repo skill installs (BMAD, taste-skill, etc.)
+.claude/skills/
