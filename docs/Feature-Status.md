@@ -2085,26 +2085,91 @@ short-circuit in `record_bonus_claim_attempt` (the per-code table's FK
 prevented an insert there for the invented code). The 1-hour window will
 reset it; no manual cleanup required.
 
-**Still open before H-1 closes end-to-end:**
-1. Wire an RC webhook against RevenueCat that verifies the signature and
-   calls `set_referral_rc_user(p_code, p_rc_user_id)` with the service
-   role. The setter exists on both environments (Block 5 above) and the
-   Edge Function is live to consume it, but nothing ever calls the setter
-   — so `rc_user_id` stays NULL on every row and every real Edge
-   Function call short-circuits at `not_eligible` (I4 fail-closed).
-2. **Once the webhook lands, exercise a real end-to-end grant on
-   staging** — mint a referral code, attribute a real sandbox purchase,
-   trigger the client's post-attribution `edgeFn('first-referral-bonus',
-   …)` call, confirm the RC dashboard shows a promotional entitlement on
-   the referrer's `app_user_id`, and check
-   `first_referral_bonus_attempts` for a `granted` row. That is the on-
-   chain-txid-equivalent verification bar for this feature.
+**`supabase/functions/rc-webhook/index.ts` deployed to both envs the
+same evening (2026-08-10, ~5pm GMT+1).** Version 1 ACTIVE on both,
+`verify_jwt=true`, comment-stripped source (same MCP-payload trim as
+first-referral-bonus; runtime identical to commit `4d29d6c1`). Function
+IDs: staging `566593e3-9233-4db1-807b-9f0ed71879d2`, prod
+`e3bf1c9d-5620-45db-a116-0251a1e50bbc`.
+
+**Two H-1 bugs were found reading the code prior to deploy — both open,
+both filed, deploy proceeded anyway because the two bugs INTERACT and
+today's shipped state is the safe one.** Do NOT resolve one without the
+other.
+
+- **[#1703 — P0 wrong-recipient bonus (semantic).](
+  https://github.com/VEYRNOX/veyrnox/issues/1703)** `Subscription.jsx
+  :321` sets the REFERRER'S code as an RC attribute on the REFEREE'S
+  subscriber, so the webhook (if it read the attribute) would write
+  `rc_user_id = referees_rc_id` onto the REFERRER'S row, and
+  `check_first_referral_bonus` would then grant a promotional
+  entitlement to the REFEREE, not the REFERRER. Contradicts
+  `sql/first-referral-bonus.sql:6-7` ("Grants the REFERRER a 1-month
+  free Safety Plus entitlement when their first referee converts to
+  paid"). Owner ruling needed on intent (A: fix client to send OWN
+  code, then referrer-side binding; B: reinterpret as "referee gets
+  bonus" and rewrite docs; C: schema change to track both
+  rc_ids). Full trace in the issue.
+- **[#1704 — P1 attribute-name mismatch (functional, currently masking
+  the P0).](https://github.com/VEYRNOX/veyrnox/issues/1704)** Client
+  writes attribute key `referralCode` (`purchases.js:299`); webhook
+  reads `veyrnox_referral_code` (`rc-webhook/index.ts:131`). Every RC
+  event logs `no_code`, binds nothing. **This is why the P0 has never
+  fired in production despite the code shipping 8 hours before the
+  deploy.**
+
+**Practical state today:** rc-webhook is live, will 500 with
+`server_config_missing` on every event until owner sets
+`REVENUECAT_WEBHOOK_AUTHORIZATION` (see next section). Even after the
+secret is set, every event returns 200 `no_code` because of #1704 — no
+`rc_user_id` binding ever happens. Every downstream
+`claimFirstReferralBonus` call short-circuits at `not_eligible` (I4
+fail-closed). NO WRONG-RECIPIENT BONUSES CAN BE GRANTED IN THIS STATE.
+Fixing #1704 in isolation would ACTIVATE the #1703 path immediately —
+resolve #1703 first.
+
+**Still open before H-1 closes end-to-end (owner action needed):**
+
+1. **Owner rules on #1703 intent** (three options in the issue). Nothing
+   downstream should be touched until this is decided — a client
+   attribute change without the semantic fix ships wrong-recipient
+   grants.
+2. **Set `REVENUECAT_WEBHOOK_AUTHORIZATION` on both Supabase Edge
+   Function stores** with a shared bearer value the RC dashboard will
+   send. Suggested: generate 32 bytes via
+   `openssl rand -hex 32` (or wallet-side CSPRNG per project rules,
+   though this secret has no wallet-security exposure). Same value on
+   both projects:
+   ```bash
+   npx supabase@latest secrets set REVENUECAT_WEBHOOK_AUTHORIZATION=<value> \
+     --project-ref nszlbcmcysftwyudthjz
+   npx supabase@latest secrets set REVENUECAT_WEBHOOK_AUTHORIZATION=<value> \
+     --project-ref jwstkrtslotnjyerzzsi
+   ```
+3. **Configure RC dashboard webhook** to POST to the Edge Function URLs
+   with the same value as its `Authorization` header:
+   - Prod: `https://jwstkrtslotnjyerzzsi.supabase.co/functions/v1/rc-webhook`
+   - Staging (if separate RC project): same URL pattern with
+     `nszlbcmcysftwyudthjz`.
+   RC's webhook config lives under Project settings → Integrations →
+   Webhooks in the RC dashboard. Set the URL, paste the same Authorization
+   value, subscribe to at least `INITIAL_PURCHASE` and
+   `NON_RENEWING_PURCHASE` (the two event types the function accepts).
+4. **Once #1703 + #1704 resolved AND the webhook is live**, exercise a
+   real end-to-end grant on staging — mint a referral code, attribute a
+   real sandbox purchase, trigger the client's post-attribution
+   `edgeFn('first-referral-bonus', …)` call, confirm the RC dashboard
+   shows a promotional entitlement on the CORRECT recipient's
+   `app_user_id`, and check `first_referral_bonus_attempts` for a
+   `granted` row. That is the on-chain-txid-equivalent verification bar
+   for this feature.
 
 INTERNAL — Claude ran the MCP migrations, the wrangler secret updates,
 and the Edge Function deploys; this is not the outstanding independent
 third-party audit. Nothing here is "verified" in the Veyrnox sense until
 an end-to-end referral bonus grant round-trips against real RevenueCat
-with an attributed test purchase.
+with an attributed test purchase FOR THE INTENDED RECIPIENT (which
+requires #1703 + #1704 fixed first).
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
