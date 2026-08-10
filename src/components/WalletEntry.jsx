@@ -1,3 +1,13 @@
+// ponytail: 1823 LOC deliberately NOT split per the 2026-08 audit. This is
+// the auth front door: first-run seed handling, biometric unlock, vault
+// password fallback, and stealth/hidden-wallet reveal. Splitting risks
+// reordering the deniability gate (real vs decoy vs hidden set) and the
+// biometric-fallback path. Extracted candidates for a later audited pass:
+//   1. Copy/i18n strings (pure data)
+//   2. Progress-indicator sub-components (no auth state)
+//   3. Backup-confirmation quiz (self-contained, pre-vault)
+// The unlock/reveal path stays here until independently re-audited.
+//
 // components/WalletEntry.jsx — the on-device auth front door.
 // This is THE entry point for the local build:
 // there is no hosted account, so the user's seed/vault is their identity. It

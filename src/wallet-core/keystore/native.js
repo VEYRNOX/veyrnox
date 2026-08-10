@@ -1,4 +1,13 @@
 // @ts-nocheck
+//
+// ponytail: 1324 LOC deliberately NOT split per the 2026-08 audit. The KEK
+// unwrap sequence (biometric prompt -> Keychain/Keystore fetch -> hardware
+// attestation -> Argon2id + AES-GCM) is byte-order load-bearing across web
+// and native. Extracting even "pure helpers" would inevitably restack the
+// error-throw order and change which failure the caller sees at which step,
+// which is the exact "crypto call sequence" the audit warns against. Wait
+// for the pending independent audit before splitting.
+//
 // wallet-core/keystore/native.js — the NATIVE KeyStore implementation (M2b).
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐

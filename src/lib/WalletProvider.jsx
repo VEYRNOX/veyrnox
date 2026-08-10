@@ -21,6 +21,20 @@
 // are unrecoverable from memory after clearing. This minimizes, not
 // eliminates, the window. Device-keystore wrapping is the stronger control
 // and is the recommended next step.
+//
+// ponytail: 2492 LOC deliberately NOT split into src/lib/wallet/ sub-modules
+// per the 2026-08 audit. This file composes deniability gating, unlock flow,
+// action-password re-auth, panic wipe, and multi-seed vault — all touching
+// the audited signing envelope. A mechanical extraction risks reordering the
+// gate composition (composeConditions -> deniability -> lock/unlock -> reauth
+// -> keystore write) that the audit explicitly warns against. Upgrade path
+// when audit resource is available: extract the following NON-critical
+// helpers first as a byte-identical move, no behaviour change:
+//   1. `ensureWalletMeta` / metadata plumbing (already lives in @/wallet-core)
+//   2. autoLock timer scheduling (pure timer math)
+//   3. hydration of ui prefs (locale, currency)
+// The signing / re-auth / vault-write path stays here until independently
+// re-audited.
 
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
