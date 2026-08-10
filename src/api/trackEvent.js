@@ -87,6 +87,7 @@ export const EVENT = {
   WALLET_READY: 'wallet_ready',
   RECEIVE_ADDRESS_VIEWED: 'receive_address_viewed',
   FIRST_INBOUND_DETECTED: 'first_inbound_detected',
+  FIRST_RECEIVE_SHOWN: 'first_receive_shown',
   SEND_FLOW_STARTED: 'send_flow_started',
   SEND_STEP_REACHED: 'send_step_reached',
   SEND_ABANDONED: 'send_abandoned',

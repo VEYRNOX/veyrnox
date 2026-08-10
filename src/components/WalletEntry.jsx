@@ -120,6 +120,26 @@ import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
 import FirstRunTour, { armTour } from "@/components/FirstRunTour";
 import { errorHaptic } from "@/lib/haptics";
+import FirstReceiveCard from "@/components/FirstReceiveCard";
+import { resolveReceive } from "@/lib/receiveAddress";
+import { emit, FunnelEvent } from "@/lib/analytics";
+import { useFirstReceiveShown } from "@/lib/tracking-integration";
+
+// Tiny wrapper so useFirstReceiveShown's useEffect fires on the render that
+// actually shows the card (component mount), not on every WalletEntry
+// render — WalletEntry's own hooks run unconditionally regardless of which
+// branch it returns, so the fire-once hook cannot live there directly.
+//
+// Reviewer P2: emit()/trackEvent() return a Promise that can reject on
+// fetch/parse errors. Catch here so a rejected telemetry emit doesn't
+// become an unhandled rejection. Sibling fire-once hooks route through
+// safeEmit for the same reason.
+function FirstReceiveCardWithTelemetry(props) {
+  useFirstReceiveShown(() => {
+    Promise.resolve(emit(FunnelEvent.FIRST_RECEIVE_SHOWN)).catch(() => {});
+  });
+  return <FirstReceiveCard {...props} />;
+}
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
@@ -428,6 +448,7 @@ export default function WalletEntry() {
     clearPendingPin, hasPendingPin, panicWipe,
     wasWiped, acknowledgeWipe,
     clearVault, validateMnemonic,
+    accounts, btcAccount, solAccount,
   } = useWallet();
 
   // null until we know whether a vault exists; drives unlock vs first-run.
@@ -459,6 +480,11 @@ export default function WalletEntry() {
   // this device. Evaluated once at mount (getConsentState is a synchronous
   // localStorage read) so the screen renders at most once per onboarding pass.
   const [consentDone, setConsentDone] = useState(() => getConsentState() !== null);
+  // True only across a fresh onboarding pass (finishPinSetup → Phase-2 create/import
+  // → KEK gate → consent). Drives the one-time FirstReceiveCard branch below. NOT set
+  // on the PIN-recovery path (finishPinRecover) — restore flows don't get this card
+  // this slice. Cleared on the card's "You're set" dismissal.
+  const [justOnboarded, setJustOnboarded] = useState(false);
   // SAST M-3 escape hatch: null until the passkey gate has actually FAILED on an
   // unlock attempt; then { reason } so we can offer a signposted password-only
   // unlock for a broken/deleted passkey. Never a default-visible "skip" button.
@@ -921,6 +947,7 @@ export default function WalletEntry() {
     setRealPin(""); setRealPinConfirm(""); setError(""); setPinStep("real");
     setView("choose");                 // post-Phase-1: leaving explore lands on the create/import choice
     setChoosePinImport(false);         // reset the Phase-2 import sub-toggle
+    setJustOnboarded(true);            // fresh onboarding pass — see FirstReceiveCard branch below
   };
 
   // PHASE 2 (create): leave Phase 1's markers in place and atomically materialize the
@@ -1173,6 +1200,27 @@ export default function WalletEntry() {
     return (
       <EntryShell error={error}>
         <TelemetryConsent onChoice={() => setConsentDone(true)} />
+      </EntryShell>
+    );
+  }
+
+  // ONE-TIME FIRST-RECEIVE CARD — fresh onboarding only (justOnboarded, set in
+  // finishPinSetup, never in handlePinRecover), after consent and past the KEK
+  // gate, before FirstRunTour/<Outlet>. Shows the newly-created wallet's EVM
+  // receive address + QR so a new user's fastest path is funding it. EVM only
+  // this slice (see plan's non-goals); resolveReceive owns the address lookup
+  // so a future accounts-shape refactor is one edit, not a hand-rolled
+  // accounts?.[0]?.address here. Gated on !isDeniabilityOrDemoActive() (I3) —
+  // structurally unreachable in decoy anyway (post-KEK ladder order), but
+  // defensive-in-depth matches the consent/FirstRunTour branches around it.
+  if (isUnlocked && !generatedSeed && !kekGatePending && justOnboarded && !isDeniabilityOrDemoActive()) {
+    const receive = resolveReceive('ETH', { accounts, btcAccount, solAccount });
+    return (
+      <EntryShell>
+        <FirstReceiveCardWithTelemetry
+          address={receive?.address ?? null}
+          onDismiss={() => setJustOnboarded(false)}
+        />
       </EntryShell>
     );
   }
