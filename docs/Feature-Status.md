@@ -1929,6 +1929,271 @@ No existing entry in this file claimed a 3-tile entry picker or `chosenPath` hin
 threading already existed prior to this slice — this is a new record, not a correction
 of a prior overstatement.
 
+## 2026-08-10 H-1 referral SQL chain landed on Staging EU + Production
+
+> ✅ SCHEMA-ALIGNED — the five `sql/` files that make up the H-1 referral
+> hardening surface were applied to both environments today via Supabase MCP
+> `apply_migration`, recorded in each project's migration history, and
+> catalog-verified. **H-1 REMAINS OPEN end-to-end** — the Edge Function that
+> consumes this surface is still not deployed, and no RC webhook is yet
+> wired against RevenueCat to actually CALL `set_referral_rc_user`. Until
+> both land, `rc_user_id` stays NULL on every row and the bonus path stays
+> inert by design (I4).
+
+Applied in order to Staging EU (`nszlbcmcysftwyudthjz`) then Production
+(`jwstkrtslotnjyerzzsi`) — same names in each history:
+
+1. **`first_referral_bonus`** — adds `referrals.rc_user_id`,
+   `first_bonus_granted_at`, `client_ip`; installs `check_first_referral_bonus`,
+   `generate_referral_code`, `register_referral_code` with the H-1/H-2/M-6
+   post-2026-07-28 signatures (no `p_rc_user_id`, `p_device_id` required,
+   per-IP + global rate-limit dimensions).
+2. **`check_first_referral_bonus_hardening`** — replaces the check-then-act
+   body with a single `UPDATE … RETURNING`, pins `search_path = ''`, and
+   REVOKEs from `PUBLIC`/`anon`/`authenticated` with GRANT to `service_role`
+   only (closes the anon-callable bonus-burn + rc_user_id disclosure).
+3. **`bonus_claim_rate_limit`** — creates `bonus_claim_attempts` (5/hr/code)
+   and `bonus_claim_attempts_by_ip` (20/hr/IP), both RLS-on with zero
+   policies; installs `record_bonus_claim_attempt(text, inet)` restricted to
+   `service_role`. Old single-arg overload dropped.
+4. **`definer_search_path_pin_re_run`** — catalog-driven re-pin of every
+   SECURITY DEFINER function in `public` that CREATE OR REPLACE stripped
+   (including the three functions Block 1 above just replaced), with an
+   in-transaction verification `RAISE EXCEPTION` if any survive unpinned.
+5. **`referral_rc_webhook_set_referral_rc_user`** — installs
+   `set_referral_rc_user(text, text)` (SECURITY DEFINER, `search_path =
+   public, pg_temp`, REVOKE from `PUBLIC`/`anon`/`authenticated`, GRANT to
+   `service_role`). First-writer-wins UPDATE (`WHERE rc_user_id IS NULL`)
+   so a duplicate webhook fire is a no-op. `p_rc_user_id` length capped at
+   128 chars. This is the server-only setter the RC webhook handler will
+   call once it's built — nothing exercises it yet, and until an RC
+   webhook is wired against RevenueCat, `rc_user_id` stays NULL on every
+   row (I4). Different pin (`public, pg_temp`, not the catalog-driven
+   `public, extensions, pg_temp`) — deliberate per the file's header,
+   this function calls no pgcrypto primitives.
+   - **Staging EU** — the function existed there off-migration from an
+     earlier raw `execute_sql`; the migration recreates it via CREATE OR
+     REPLACE (same body, same pin, same grants) and formally records it in
+     history, closing the audit-trail gap the raw path opened.
+   - **Production** — the function was absent; installed fresh.
+
+**One deviation from the file, ported back in PR #1699.** Prod's existing
+`register_referral_code(text, uuid)` was created with `p_device_id uuid
+DEFAULT NULL` from an earlier revision. Postgres cannot strip a default via
+CREATE OR REPLACE (`42P13: cannot remove parameter defaults from existing
+function`), so Block 4 of `sql/first-referral-bonus.sql` fails against any
+environment that ran that older revision — exactly the statement that closes
+the H-2 bypass. Recovered in the prod migration by `DROP FUNCTION IF EXISTS
+public.register_referral_code(text, uuid); CREATE FUNCTION …` (signature
+stable; `referralApi.js` always passes `p_device_id`, so no client-visible
+change). PR #1699 lands the same shape back in the source file so the next
+environment does not hit the same wall.
+
+**Verified on prod (one query, six facts):**
+- `referrals` new columns present: 3/3 (`rc_user_id`, `first_bonus_granted_at`,
+  `client_ip`)
+- `anon` EXECUTE on `check_first_referral_bonus(text)`: **false** ✅
+- `service_role` EXECUTE on same: **true** ✅
+- `anon` EXECUTE on `record_bonus_claim_attempt(text, inet)`: **false** ✅
+- `service_role` EXECUTE on same: **true** ✅
+- SECURITY DEFINER functions in `public` still unpinned: **0** ✅
+
+Same set on Staging EU + `relrowsecurity = true` on both new rate-limit
+tables (0 policies) confirmed there.
+
+**What was NOT tested here.** The atomic-claim behaviour and per-code /
+per-IP rate-limit bites are behavioural checks that need a real referral
+code with a paid attribution and a non-null `rc_user_id`. Neither exists on
+either environment (the RC webhook that would set `rc_user_id` has not
+landed on prod at all and only exists off-migration on staging), so those
+tests were deliberately deferred rather than faked against empty tables
+(verify, don't assert).
+
+**Edge Function deployed later the same day (2026-08-10, ~4pm–5pm GMT+1)
+on both environments.** Same trimmed source on both — see the caveat two
+paragraphs down.
+
+Prerequisites landed in this order before deploy:
+- **Attempts audit table** — `sql/first-referral-bonus-attempts.sql` (which
+  ALREADY EXISTED in the repo — this pass initially missed it by only
+  checking Supabase for the table, not `ls sql/`, and briefly reported it
+  as absent-in-source; corrected before the migration ran) applied to
+  Staging EU and Production as migration
+  `first_referral_bonus_attempts`. RLS on, `service_role`-only INSERT,
+  three indexes (PK, `code_time_idx`, partial `held_idx` for RC-side
+  reconciliation).
+- **RC v1 secret set** on both Supabase Edge Function stores (owner-side,
+  via `npx supabase@latest secrets set REVENUECAT_V1_SECRET_KEY=…`),
+  identical digest `c9134df9…6866dc` on both projects. RC v1 secret keys
+  are no longer issuable — this is a v2-generation `sk_` key working
+  against the v1 REST endpoint the function uses; empirically confirmed
+  reachable when the smoke test on prod returned 429 rather than the
+  function's own `server_config_missing` 500.
+- **Cloudflare Pages `SUPABASE_ANON_KEY` aligned to the PUBLISHABLE key**
+  (`sb_publishable_…`) on both `veyrnox-prod` and `veyrnox-staging` Pages
+  projects via `wrangler pages secret put` piped from stdin. Necessary
+  because Supabase Edge Functions auto-inject
+  `Deno.env.get('SUPABASE_ANON_KEY')` as the PUBLISHABLE key on modern
+  projects (proven by the direct-curl smoke on staging: legacy JWT →
+  function's own 401, publishable → past the check), and the function's
+  in-code bearer check compares against that env var — so the Pages proxy
+  had to send publishable, not legacy JWT, to match.
+
+**Standing lesson on Cloudflare Pages secret propagation (worth its own
+line so the next reader doesn't lose an hour to it).** A `wrangler pages
+secret put` DOES NOT hot-propagate to running Pages Functions. Existing
+running deployments continue to use the old value until a fresh Pages
+deployment lands. Today's smoke test caught this on the transition — three
+retries 30s apart returned `401 / 401 / 429` while an unrelated CI merge
+(commit `9894f24` on `main`) landed a fresh production deploy 41 seconds
+into the sequence. Without that coincidental merge, the fix would have
+stayed silently 401-broken for real users until the next deploy. On any
+future secret rotation that must take effect immediately: trigger a
+manual redeploy (`wrangler pages deploy dist --project-name veyrnox-prod
+--branch main`) instead of relying on hot-propagation.
+
+**Prod Supabase deploy exposed a shell-parsing footgun the same day.**
+Prod's `secrets list` output showed a secret whose NAME was the literal
+string `supabase secrets set VEYRNOX_ANON_KEY` — an earlier `supabase
+secrets set` command had been typo'd (missing `=` between the intended
+secret name and value) and Supabase had parsed the middle as the name.
+Harmless (no code reads a secret with that name), but a real tell that
+something got mis-run. Cleaned up via
+`npx supabase secrets unset "supabase secrets set VEYRNOX_ANON_KEY"
+--project-ref jwstkrtslotnjyerzzsi`. Same class as the
+`sk_…AaRb--project-ref` parsing bug from a couple of hours earlier (RC
+key + `--project-ref` glommed together with no space) — flag this shape
+of typo when reviewing anyone's `supabase secrets set` or
+`--project-ref …` line.
+
+**Function deployment shape:** Version 1 ACTIVE on both projects,
+`verify_jwt=true` (matches the file header's stated intent — "NOTE the
+missing --no-verify-jwt"). Runtime behaviour identical to the file at
+`supabase/functions/first-referral-bonus/index.ts` at commit `6488d7c7`.
+Function IDs — staging `8b0b7937-56d8-40b9-bb9a-b0edc8689f50`, prod
+`47d6aa9a-be5f-4eb9-a9c9-1d55e9c9de75`.
+
+> ⚠️ **The deployed source was comment-stripped** to fit under the MCP
+> `deploy_edge_function` call-payload ceiling. All ~90 lines of load-bearing
+> header commentary (H-1 prerequisite, "on authentication honestly",
+> deploy-flag rationale, env var list) were removed and replaced with a
+> single pointer comment to `supabase/functions/first-referral-bonus/
+> index.ts` in the repo. RUNTIME BEHAVIOUR IS IDENTICAL — same imports,
+> same constants, same logic paths, same fail-closed semantics. Recommend
+> a follow-up redeploy from a terminal that has `supabase` CLI
+> (`npx supabase@latest functions deploy first-referral-bonus
+> --project-ref <ref>`) to restore the commentary alongside the code;
+> that ships the file byte-identical to the repo. Both deploys' Version
+> numbers stay `1` until such a redeploy bumps them.
+
+**Smoke tests, verbatim outcomes:**
+- **Staging direct curl** (Supabase Edge URL, bypassing Pages): 4 tests
+  through the function's decision tree — legacy-JWT bearer → 401 (in-code
+  check rejects, proves auto-inject = publishable); publishable bearer +
+  malformed code → 400 (past all auth, hits `CODE_RE` regex); publishable
+  bearer + valid-shape non-existent code → 429 `rate_limited` (proves
+  `record_bonus_claim_attempt` runs, FK reject on invented code returns
+  false); no bearer → platform `UNAUTHORIZED_NO_AUTH_HEADER` 401 (proves
+  `verify_jwt=true` is enforced).
+- **Prod end-to-end via real Pages proxy** (client → `veyrnox-prod.pages
+  .dev/api/edge/first-referral-bonus` → Supabase Edge → RC path unreached
+  because no `rc_user_id` set anywhere): three retries 30s apart, `401 /
+  401 / 429` — the transition confirms both the Pages secret update
+  needed a redeploy to propagate AND the full 4-gate chain passes once
+  it did.
+
+**Test-row cleanup (light).** The valid-shape smoke tests inserted one
+row into `bonus_claim_attempts_by_ip` on staging via the FK-reject
+short-circuit in `record_bonus_claim_attempt` (the per-code table's FK
+prevented an insert there for the invented code). The 1-hour window will
+reset it; no manual cleanup required.
+
+**`supabase/functions/rc-webhook/index.ts` deployed to both envs the
+same evening (2026-08-10, ~5pm GMT+1).** Version 1 ACTIVE on both,
+`verify_jwt=true`, comment-stripped source (same MCP-payload trim as
+first-referral-bonus; runtime identical to commit `4d29d6c1`). Function
+IDs: staging `566593e3-9233-4db1-807b-9f0ed71879d2`, prod
+`e3bf1c9d-5620-45db-a116-0251a1e50bbc`.
+
+**Two H-1 bugs were found reading the code prior to deploy — both open,
+both filed, deploy proceeded anyway because the two bugs INTERACT and
+today's shipped state is the safe one.** Do NOT resolve one without the
+other.
+
+- **[#1703 — P0 wrong-recipient bonus (semantic).](
+  https://github.com/VEYRNOX/veyrnox/issues/1703)** `Subscription.jsx
+  :321` sets the REFERRER'S code as an RC attribute on the REFEREE'S
+  subscriber, so the webhook (if it read the attribute) would write
+  `rc_user_id = referees_rc_id` onto the REFERRER'S row, and
+  `check_first_referral_bonus` would then grant a promotional
+  entitlement to the REFEREE, not the REFERRER. Contradicts
+  `sql/first-referral-bonus.sql:6-7` ("Grants the REFERRER a 1-month
+  free Safety Plus entitlement when their first referee converts to
+  paid"). Owner ruling needed on intent (A: fix client to send OWN
+  code, then referrer-side binding; B: reinterpret as "referee gets
+  bonus" and rewrite docs; C: schema change to track both
+  rc_ids). Full trace in the issue.
+- **[#1704 — P1 attribute-name mismatch (functional, currently masking
+  the P0).](https://github.com/VEYRNOX/veyrnox/issues/1704)** Client
+  writes attribute key `referralCode` (`purchases.js:299`); webhook
+  reads `veyrnox_referral_code` (`rc-webhook/index.ts:131`). Every RC
+  event logs `no_code`, binds nothing. **This is why the P0 has never
+  fired in production despite the code shipping 8 hours before the
+  deploy.**
+
+**Practical state today:** rc-webhook is live, will 500 with
+`server_config_missing` on every event until owner sets
+`REVENUECAT_WEBHOOK_AUTHORIZATION` (see next section). Even after the
+secret is set, every event returns 200 `no_code` because of #1704 — no
+`rc_user_id` binding ever happens. Every downstream
+`claimFirstReferralBonus` call short-circuits at `not_eligible` (I4
+fail-closed). NO WRONG-RECIPIENT BONUSES CAN BE GRANTED IN THIS STATE.
+Fixing #1704 in isolation would ACTIVATE the #1703 path immediately —
+resolve #1703 first.
+
+**Still open before H-1 closes end-to-end (owner action needed):**
+
+1. **Owner rules on #1703 intent** (three options in the issue). Nothing
+   downstream should be touched until this is decided — a client
+   attribute change without the semantic fix ships wrong-recipient
+   grants.
+2. **Set `REVENUECAT_WEBHOOK_AUTHORIZATION` on both Supabase Edge
+   Function stores** with a shared bearer value the RC dashboard will
+   send. Suggested: generate 32 bytes via
+   `openssl rand -hex 32` (or wallet-side CSPRNG per project rules,
+   though this secret has no wallet-security exposure). Same value on
+   both projects:
+   ```bash
+   npx supabase@latest secrets set REVENUECAT_WEBHOOK_AUTHORIZATION=<value> \
+     --project-ref nszlbcmcysftwyudthjz
+   npx supabase@latest secrets set REVENUECAT_WEBHOOK_AUTHORIZATION=<value> \
+     --project-ref jwstkrtslotnjyerzzsi
+   ```
+3. **Configure RC dashboard webhook** to POST to the Edge Function URLs
+   with the same value as its `Authorization` header:
+   - Prod: `https://jwstkrtslotnjyerzzsi.supabase.co/functions/v1/rc-webhook`
+   - Staging (if separate RC project): same URL pattern with
+     `nszlbcmcysftwyudthjz`.
+   RC's webhook config lives under Project settings → Integrations →
+   Webhooks in the RC dashboard. Set the URL, paste the same Authorization
+   value, subscribe to at least `INITIAL_PURCHASE` and
+   `NON_RENEWING_PURCHASE` (the two event types the function accepts).
+4. **Once #1703 + #1704 resolved AND the webhook is live**, exercise a
+   real end-to-end grant on staging — mint a referral code, attribute a
+   real sandbox purchase, trigger the client's post-attribution
+   `edgeFn('first-referral-bonus', …)` call, confirm the RC dashboard
+   shows a promotional entitlement on the CORRECT recipient's
+   `app_user_id`, and check `first_referral_bonus_attempts` for a
+   `granted` row. That is the on-chain-txid-equivalent verification bar
+   for this feature.
+
+INTERNAL — Claude ran the MCP migrations, the wrangler secret updates,
+and the Edge Function deploys; this is not the outstanding independent
+third-party audit. Nothing here is "verified" in the Veyrnox sense until
+an end-to-end referral bonus grant round-trips against real RevenueCat
+with an attributed test purchase FOR THE INTENDED RECIPIENT (which
+requires #1703 + #1704 fixed first).
+
 ## 2026-08-10 Default-deny telemetry + first-run consent modal removal (Slice F)
 
 > ✅ BUILT (139/139 tests + 36/36 telemetry-disclosure tests, `npm run build` clean,
