@@ -1906,6 +1906,85 @@ No existing entry in this file claimed a 3-tile entry picker or `chosenPath` hin
 threading already existed prior to this slice — this is a new record, not a correction
 of a prior overstatement.
 
+## 2026-08-10 H-1 referral SQL chain landed on Staging EU + Production
+
+> ✅ SCHEMA-ALIGNED — the four `sql/` files that make up the H-1 referral
+> hardening surface were applied to both environments today via Supabase MCP
+> `apply_migration`, recorded in each project's migration history, and
+> catalog-verified. **H-1 REMAINS OPEN end-to-end** — the Edge Function that
+> consumes this surface is still not deployed, and the RC webhook that binds
+> `rc_user_id` server-authoritatively (`sql/referral-rc-webhook.sql`
+> `set_referral_rc_user`) is present only on Staging EU as an off-migration
+> raw `execute_sql` and is absent on production. Until both land, the bonus
+> path is inert by design (I4).
+
+Applied in order to Staging EU (`nszlbcmcysftwyudthjz`) then Production
+(`jwstkrtslotnjyerzzsi`) — same names in each history:
+
+1. **`first_referral_bonus`** — adds `referrals.rc_user_id`,
+   `first_bonus_granted_at`, `client_ip`; installs `check_first_referral_bonus`,
+   `generate_referral_code`, `register_referral_code` with the H-1/H-2/M-6
+   post-2026-07-28 signatures (no `p_rc_user_id`, `p_device_id` required,
+   per-IP + global rate-limit dimensions).
+2. **`check_first_referral_bonus_hardening`** — replaces the check-then-act
+   body with a single `UPDATE … RETURNING`, pins `search_path = ''`, and
+   REVOKEs from `PUBLIC`/`anon`/`authenticated` with GRANT to `service_role`
+   only (closes the anon-callable bonus-burn + rc_user_id disclosure).
+3. **`bonus_claim_rate_limit`** — creates `bonus_claim_attempts` (5/hr/code)
+   and `bonus_claim_attempts_by_ip` (20/hr/IP), both RLS-on with zero
+   policies; installs `record_bonus_claim_attempt(text, inet)` restricted to
+   `service_role`. Old single-arg overload dropped.
+4. **`definer_search_path_pin_re_run`** — catalog-driven re-pin of every
+   SECURITY DEFINER function in `public` that CREATE OR REPLACE stripped
+   (including the three functions Block 1 above just replaced), with an
+   in-transaction verification `RAISE EXCEPTION` if any survive unpinned.
+
+**One deviation from the file, ported back in PR #1699.** Prod's existing
+`register_referral_code(text, uuid)` was created with `p_device_id uuid
+DEFAULT NULL` from an earlier revision. Postgres cannot strip a default via
+CREATE OR REPLACE (`42P13: cannot remove parameter defaults from existing
+function`), so Block 4 of `sql/first-referral-bonus.sql` fails against any
+environment that ran that older revision — exactly the statement that closes
+the H-2 bypass. Recovered in the prod migration by `DROP FUNCTION IF EXISTS
+public.register_referral_code(text, uuid); CREATE FUNCTION …` (signature
+stable; `referralApi.js` always passes `p_device_id`, so no client-visible
+change). PR #1699 lands the same shape back in the source file so the next
+environment does not hit the same wall.
+
+**Verified on prod (one query, six facts):**
+- `referrals` new columns present: 3/3 (`rc_user_id`, `first_bonus_granted_at`,
+  `client_ip`)
+- `anon` EXECUTE on `check_first_referral_bonus(text)`: **false** ✅
+- `service_role` EXECUTE on same: **true** ✅
+- `anon` EXECUTE on `record_bonus_claim_attempt(text, inet)`: **false** ✅
+- `service_role` EXECUTE on same: **true** ✅
+- SECURITY DEFINER functions in `public` still unpinned: **0** ✅
+
+Same set on Staging EU + `relrowsecurity = true` on both new rate-limit
+tables (0 policies) confirmed there.
+
+**What was NOT tested here.** The atomic-claim behaviour and per-code /
+per-IP rate-limit bites are behavioural checks that need a real referral
+code with a paid attribution and a non-null `rc_user_id`. Neither exists on
+either environment (the RC webhook that would set `rc_user_id` has not
+landed on prod at all and only exists off-migration on staging), so those
+tests were deliberately deferred rather than faked against empty tables
+(verify, don't assert).
+
+**Still open before H-1 closes end-to-end:**
+1. `sql/referral-rc-webhook.sql` (`set_referral_rc_user`) applied via
+   `apply_migration` on Staging EU (currently off-migration) and applied
+   from scratch on Production (currently absent).
+2. `supabase/functions/first-referral-bonus/index.ts` deployed with
+   `REVENUECAT_V1_SECRET_KEY` (WITHOUT `--no-verify-jwt` — dropping that
+   flag is part of the 2026-07-26 hardening).
+3. Wire the RC webhook itself against RevenueCat.
+
+INTERNAL — Claude ran the MCP migrations; this is not the outstanding
+independent third-party audit. Nothing here is "verified" until an
+end-to-end referral bonus grant round-trips against real RevenueCat with an
+attributed test purchase.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
