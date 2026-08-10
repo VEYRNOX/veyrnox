@@ -66,7 +66,8 @@
 // print is the artifact that matters; this script's exit code is not verification.
 //
 // SELECTOR PROVENANCE (DISCOVER, NEVER INVENT)
-//   * "Get Started" / "Choose a 6-digit PIN" / "Confirm your PIN" / "Create Wallet" /
+//   * "New wallet" / "Have a wallet" / "Advanced" entry-tiles (Slice D1, PR #1696;
+//     EntryTiles.jsx) / "Choose a 6-digit PIN" / "Confirm your PIN" / "Create Wallet" /
 //     "Import an existing seed" / "Enter your PIN" — WalletEntry.jsx (and confirmed
 //     by the sibling e2e/onboarding.spec.js, which drives the same flow).
 //   * PIN digit buttons "0".."9" (button text) — PinPad.jsx:65-74.
@@ -143,7 +144,8 @@ test.describe('Harness B · pre-flight — re-run A\'s gates before touching the
     await page.goto(`${BASE}/?demo=0`);
 
     // Demo off ⇒ the onboarding gate owns first paint (no seeded DemoDashboard).
-    await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible();
+    // Slice D1 (PR #1696): entry-tiles "New wallet" replaced the old "Get Started" CTA.
+    await expect(page.getByRole('button', { name: /new wallet/i })).toBeVisible();
 
     // The DEV-UNGATE banner check requires an unlocked wallet to reach /send, so it
     // is asserted AFTER unlock in the broadcast test below — here we only confirm
@@ -169,8 +171,8 @@ test.describe('Harness B · broadcast (supervised — emits a real testnet txid)
 
     // ── HUMAN STEP 1 — create/import + unlock a FUNDED throwaway wallet ──────────
     // The human does ALL credential entry here, on-device, in this browser:
-    //   • "Get Started" → PIN-create → confirm → "Create Wallet"  (fresh throwaway), OR
-    //   • "Import an existing seed" → enter the funded throwaway seed → set PIN.
+    //   • "New wallet" tile → PIN-create → confirm → auto-creates (fresh throwaway), OR
+    //   • "Have a wallet" tile → PIN-create → confirm → paste the funded throwaway seed.
     // Then fund the wallet's receive address from a testnet faucet (e.g. Sepolia ETH,
     // or the target token). The script never sees the seed or PIN.
     await waitForHuman(page, {
