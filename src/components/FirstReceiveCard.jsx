@@ -36,7 +36,7 @@ export default function FirstReceiveCard({ address, onDismiss }) {
       <div>
         <h1 className="text-xl font-bold tracking-tight">Your wallet is ready</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          This is your receive address. Send funds here to get started.
+          This is your Ethereum receive address.
         </p>
       </div>
 
@@ -86,6 +86,17 @@ export default function FirstReceiveCard({ address, onDismiss }) {
         <div className="flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-start">
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
           <p className="text-xs text-destructive">Address unavailable — refresh.</p>
+        </div>
+      )}
+
+      {address && (
+        <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-400/30 bg-amber-400/5 text-start">
+          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground">
+            Only send <strong>ETH</strong> on the <strong>Ethereum Mainnet</strong>. The same address also
+            receives assets on Arbitrum, Optimism, Polygon, Avalanche, and BNB — pick the right network in
+            your sending app or funds may be unrecoverable.
+          </p>
         </div>
       )}
 
