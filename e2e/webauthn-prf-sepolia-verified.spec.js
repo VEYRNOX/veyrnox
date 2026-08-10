@@ -134,11 +134,13 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     const cdpClient = await setupVirtualAuthenticator(page);
     console.log('✓ Fresh state + CDP virtual authenticator');
 
-    // ── ONBOARDING ───────────────────────────────────────────────────────────
-    await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible({
+    // ── ONBOARDING ─── entry-tiles "Have a wallet" (Slice D1, PR #1696; replaces
+    // the old single "Get Started" CTA) — PIN-first, then skips to the import
+    // form directly (chosenPath === 'have') ────────────────────────────────────
+    await expect(page.getByRole('button', { name: /have.*wallet|import|existing/i })).toBeVisible({
       timeout: 10000,
     });
-    await page.getByRole('button', { name: 'Get Started' }).click();
+    await page.getByRole('button', { name: /have.*wallet|import|existing/i }).click();
     console.log('✓ Onboarding started');
 
     // PIN entry (web shares native's 8-digit PIN cohort)
@@ -155,16 +157,12 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     await enterPin(page, TEST_PIN);
     console.log('✓ PIN confirmed');
 
-    // Create or Import Wallet
+    // Leave explore (ExploreShell CTA) — lands on the choose view, which skips
+    // straight to the import form since chosenPath === 'have' (Slice D1).
     const createWalletBtn = page.getByRole('button', { name: /Create or import/i }).first();
     await expect(createWalletBtn).toBeVisible({ timeout: 10000 });
     await createWalletBtn.click();
     console.log('✓ Wallet creation screen');
-
-    // Click "Import Seed" (for throwaway testnet seed)
-    const importSeedBtn = page.getByRole('button', { name: /Import/i }).first();
-    await importSeedBtn.click();
-    console.log('✓ Import seed selected');
 
     // Enter the throwaway BIP-39 mnemonic
     const seedInput = page.locator('textarea, input[placeholder*="seed" i]').first();

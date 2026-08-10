@@ -6,7 +6,7 @@
 // authenticator to simulate platform biometric + PRF evaluation.
 //
 // Test Sequence:
-//   1. Start onboarding (Get Started)
+//   1. Start onboarding (entry-tiles "New wallet" — Slice D1, PR #1696)
 //   2. Choose an 8-digit PIN (web and native share the same PIN cohort)
 //   3. Enroll WebAuthn PRF hardware factor
 //   4. Create wallet
@@ -84,11 +84,12 @@ test.describe('WebAuthn PRF Tier 2 — CDP Virtual Authenticator + Sepolia Send'
     const cdpClient = await setupVirtualAuthenticator(page);
     console.log('✓ CDP virtual authenticator configured (CTAP2, internal, hasUserVerification)');
 
-    // ── STEP 1: Start onboarding ───────────────────────────────────────────
-    await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible({
+    // ── STEP 1: Start onboarding — entry-tiles "New wallet" (Slice D1, PR #1696;
+    // replaces the old single "Get Started" CTA) ───────────────────────────────
+    await expect(page.getByRole('button', { name: /new wallet/i })).toBeVisible({
       timeout: 10000,
     });
-    await page.getByRole('button', { name: 'Get Started' }).click();
+    await page.getByRole('button', { name: /new wallet/i }).click();
     console.log('✓ Started onboarding');
     await page.waitForTimeout(500); // transition
 
