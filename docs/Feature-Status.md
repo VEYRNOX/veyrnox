@@ -1908,15 +1908,14 @@ of a prior overstatement.
 
 ## 2026-08-10 H-1 referral SQL chain landed on Staging EU + Production
 
-> ✅ SCHEMA-ALIGNED — the four `sql/` files that make up the H-1 referral
+> ✅ SCHEMA-ALIGNED — the five `sql/` files that make up the H-1 referral
 > hardening surface were applied to both environments today via Supabase MCP
 > `apply_migration`, recorded in each project's migration history, and
 > catalog-verified. **H-1 REMAINS OPEN end-to-end** — the Edge Function that
-> consumes this surface is still not deployed, and the RC webhook that binds
-> `rc_user_id` server-authoritatively (`sql/referral-rc-webhook.sql`
-> `set_referral_rc_user`) is present only on Staging EU as an off-migration
-> raw `execute_sql` and is absent on production. Until both land, the bonus
-> path is inert by design (I4).
+> consumes this surface is still not deployed, and no RC webhook is yet
+> wired against RevenueCat to actually CALL `set_referral_rc_user`. Until
+> both land, `rc_user_id` stays NULL on every row and the bonus path stays
+> inert by design (I4).
 
 Applied in order to Staging EU (`nszlbcmcysftwyudthjz`) then Production
 (`jwstkrtslotnjyerzzsi`) — same names in each history:
@@ -1938,6 +1937,22 @@ Applied in order to Staging EU (`nszlbcmcysftwyudthjz`) then Production
    SECURITY DEFINER function in `public` that CREATE OR REPLACE stripped
    (including the three functions Block 1 above just replaced), with an
    in-transaction verification `RAISE EXCEPTION` if any survive unpinned.
+5. **`referral_rc_webhook_set_referral_rc_user`** — installs
+   `set_referral_rc_user(text, text)` (SECURITY DEFINER, `search_path =
+   public, pg_temp`, REVOKE from `PUBLIC`/`anon`/`authenticated`, GRANT to
+   `service_role`). First-writer-wins UPDATE (`WHERE rc_user_id IS NULL`)
+   so a duplicate webhook fire is a no-op. `p_rc_user_id` length capped at
+   128 chars. This is the server-only setter the RC webhook handler will
+   call once it's built — nothing exercises it yet, and until an RC
+   webhook is wired against RevenueCat, `rc_user_id` stays NULL on every
+   row (I4). Different pin (`public, pg_temp`, not the catalog-driven
+   `public, extensions, pg_temp`) — deliberate per the file's header,
+   this function calls no pgcrypto primitives.
+   - **Staging EU** — the function existed there off-migration from an
+     earlier raw `execute_sql`; the migration recreates it via CREATE OR
+     REPLACE (same body, same pin, same grants) and formally records it in
+     history, closing the audit-trail gap the raw path opened.
+   - **Production** — the function was absent; installed fresh.
 
 **One deviation from the file, ported back in PR #1699.** Prod's existing
 `register_referral_code(text, uuid)` was created with `p_device_id uuid
@@ -1972,13 +1987,13 @@ tests were deliberately deferred rather than faked against empty tables
 (verify, don't assert).
 
 **Still open before H-1 closes end-to-end:**
-1. `sql/referral-rc-webhook.sql` (`set_referral_rc_user`) applied via
-   `apply_migration` on Staging EU (currently off-migration) and applied
-   from scratch on Production (currently absent).
-2. `supabase/functions/first-referral-bonus/index.ts` deployed with
+1. `supabase/functions/first-referral-bonus/index.ts` deployed with
    `REVENUECAT_V1_SECRET_KEY` (WITHOUT `--no-verify-jwt` — dropping that
    flag is part of the 2026-07-26 hardening).
-3. Wire the RC webhook itself against RevenueCat.
+2. Wire an RC webhook against RevenueCat that verifies the signature and
+   calls `set_referral_rc_user(p_code, p_rc_user_id)` with the service
+   role. The setter now exists on both environments (Block 5 above) but
+   nothing ever calls it.
 
 INTERNAL — Claude ran the MCP migrations; this is not the outstanding
 independent third-party audit. Nothing here is "verified" until an
