@@ -136,3 +136,6 @@ android/keystore.properties
 # Caveman skills (installed per-repo)
 .agents/skills/
 skills-lock.json
+
+# Supabase CLI local link metadata — pins CWD to a remote project
+supabase/.temp/
