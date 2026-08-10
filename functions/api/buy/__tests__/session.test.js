@@ -169,10 +169,11 @@ describe('per-IP rate limit', () => {
     expect(e.status).toBe(429);
   });
 
-  it('fails OPEN if the rate-limit cache read throws', async () => {
-    // Deliberate exception to this codebase's fail-closed default: the limiter
-    // protects a spend quota, not key material, and turning a cache blip into a
-    // total Buy outage is the worse failure. Pinned so the choice stays visible.
+  it('fails CLOSED (429) when the rate-limit cache read throws', async () => {
+    // 2026-08 audit reversed the prior fail-OPEN policy: an undetected cache
+    // outage silently exposing the paid partner account is the worse failure.
+    // Pinned so the choice stays visible and matches functions/api/_lib/
+    // rate-limit.js which fails closed for the data proxies too.
     //
     // Only the rate-limit key throws. `getPartnerToken` reads its own key from
     // the same cache WITHOUT a try/catch (pre-existing, unchanged here), so a
@@ -187,7 +188,8 @@ describe('per-IP rate limit', () => {
         async put() {},
       },
     });
-    expect((await onRequestPost(ctx(VALID))).status).toBe(200);
+    const e = await thrown(() => onRequestPost(ctx(VALID)));
+    expect(e.status).toBe(429);
   });
 });
 
