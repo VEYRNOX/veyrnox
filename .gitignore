@@ -139,3 +139,22 @@ skills-lock.json
 
 # Supabase CLI local link metadata — pins CWD to a remote project
 supabase/.temp/
+
+# BMad tooling: installer-managed, contains personal config
+_bmad/
+
+# Taste-skill + BMad skills (installed per-dev, not shared)
+.claude/skills/bmad-*/
+.claude/skills/taste-skill/
+.claude/skills/taste-skill-v1/
+.claude/skills/brandkit/
+.claude/skills/brutalist-skill/
+.claude/skills/gpt-tasteskill/
+.claude/skills/image-to-code-skill/
+.claude/skills/imagegen-frontend-web/
+.claude/skills/imagegen-frontend-mobile/
+.claude/skills/minimalist-skill/
+.claude/skills/output-skill/
+.claude/skills/redesign-skill/
+.claude/skills/soft-skill/
+.claude/skills/stitch-skill/

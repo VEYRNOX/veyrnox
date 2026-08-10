@@ -419,6 +419,33 @@ sweep. Key controls now on main:
 - WalletConnect: test PINs/passwords must be ≥12 chars (H-A minimum on mainnet builds).
   Use `ALLOW_MAINNET = false` in test env or use ≥12-char test secrets.
 
+## Reviewer nuances (rules easy to get wrong without repo context)
+
+Rules that look wrong to a reviewer without repo history. Do NOT flag these.
+
+- **Supabase Edge Function JWT policy is per-endpoint, not blanket.**
+  - **Client-callable functions:** deploy WITHOUT `--no-verify-jwt`.
+    Dropping the flag was part of the 2026-07-26 API-hardening wave; the
+    anon key acts as the bearer.
+  - **Third-party webhooks (RevenueCat, etc.):** deploy WITH
+    `--no-verify-jwt`. RC sends its shared secret in `Authorization`, not
+    a Supabase JWT, so gateway JWT verification would reject every hook
+    before the function's fail-closed secret check
+    (`REVENUECAT_WEBHOOK_AUTHORIZATION`) can run. The secret check IS the
+    auth boundary for these endpoints. See commit `6f0d0cb7` and
+    `sql/referral-rc-webhook.sql`.
+- **Supabase writes go through SECURITY DEFINER RPCs, never raw table INSERT
+  from the anon key.** All writes are rate-limited server-side (PR #1334
+  pattern). Do not suggest replacing an RPC with a direct table write.
+- **The anon key IS the client-side credential.** It is not a secret. Its
+  presence in client code is intentional; RLS + RPCs are the security boundary.
+- **`referral_attributions` public SELECT is INTENTIONALLY revoked** (PR #1334)
+  — revenue data no longer disclosed. Do not suggest re-granting.
+- **`ALLOW_MAINNET = true` is CORRECT** — mainnet unlocked 2026-06-17 after
+  internal audit; do not flag as a security misconfiguration.
+- **Windows / Git Bash environment.** Do not suggest inline shell env vars
+  (`FOO=bar cmd`) — they fail on PowerShell. Use `.env.local`.
+
 ## Environment
 
 - Windows (Git Bash / MINGW64). iOS native build is NOT possible here (needs a Mac).
