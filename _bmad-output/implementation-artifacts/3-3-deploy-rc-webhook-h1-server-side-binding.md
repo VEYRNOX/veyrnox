@@ -49,7 +49,7 @@ RC event shape: `{ event: { type, app_user_id, subscriber_attributes, ... } }`.
 - Accept only events where `event.type ∈ { "INITIAL_PURCHASE", "NON_RENEWING_PURCHASE" }` — every other type (RENEWAL, CANCELLATION, BILLING_ISSUE, ...) returns `200 ignored` and writes nothing
 - Extract referrer code from `event.subscriber_attributes.referralCode.value`. This matches the existing client, which writes `referralCode` via `setReferralAttributes` in `src/lib/purchases.js:299`. Do NOT rename to `$referral_code` or `veyrnox_referral_code` without a matching client change in the same story — a mismatch silently routes every real purchase through the `no_code` path and referral bonuses never fire.
 - If no code present → `200 no_code` (this is the majority of purchases; it is not an error)
-- If code present but does not match `/^[A-Z0-9]{6,12}$/` → `400 bad_code`
+- If code present but does not match `CODE_RE` (`/^VYX-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/`, Crockford base32, hyphen required — canonical format enforced in `supabase/functions/rc-webhook/index.ts:62`) → `400 bad_code`
 
 ### AC-4 — Call the SQL setter with `service_role`
 
