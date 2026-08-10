@@ -1986,19 +1986,125 @@ landed on prod at all and only exists off-migration on staging), so those
 tests were deliberately deferred rather than faked against empty tables
 (verify, don't assert).
 
-**Still open before H-1 closes end-to-end:**
-1. `supabase/functions/first-referral-bonus/index.ts` deployed with
-   `REVENUECAT_V1_SECRET_KEY` (WITHOUT `--no-verify-jwt` — dropping that
-   flag is part of the 2026-07-26 hardening).
-2. Wire an RC webhook against RevenueCat that verifies the signature and
-   calls `set_referral_rc_user(p_code, p_rc_user_id)` with the service
-   role. The setter now exists on both environments (Block 5 above) but
-   nothing ever calls it.
+**Edge Function deployed later the same day (2026-08-10, ~4pm–5pm GMT+1)
+on both environments.** Same trimmed source on both — see the caveat two
+paragraphs down.
 
-INTERNAL — Claude ran the MCP migrations; this is not the outstanding
-independent third-party audit. Nothing here is "verified" until an
-end-to-end referral bonus grant round-trips against real RevenueCat with an
-attributed test purchase.
+Prerequisites landed in this order before deploy:
+- **Attempts audit table** — `sql/first-referral-bonus-attempts.sql` (which
+  ALREADY EXISTED in the repo — this pass initially missed it by only
+  checking Supabase for the table, not `ls sql/`, and briefly reported it
+  as absent-in-source; corrected before the migration ran) applied to
+  Staging EU and Production as migration
+  `first_referral_bonus_attempts`. RLS on, `service_role`-only INSERT,
+  three indexes (PK, `code_time_idx`, partial `held_idx` for RC-side
+  reconciliation).
+- **RC v1 secret set** on both Supabase Edge Function stores (owner-side,
+  via `npx supabase@latest secrets set REVENUECAT_V1_SECRET_KEY=…`),
+  identical digest `c9134df9…6866dc` on both projects. RC v1 secret keys
+  are no longer issuable — this is a v2-generation `sk_` key working
+  against the v1 REST endpoint the function uses; empirically confirmed
+  reachable when the smoke test on prod returned 429 rather than the
+  function's own `server_config_missing` 500.
+- **Cloudflare Pages `SUPABASE_ANON_KEY` aligned to the PUBLISHABLE key**
+  (`sb_publishable_…`) on both `veyrnox-prod` and `veyrnox-staging` Pages
+  projects via `wrangler pages secret put` piped from stdin. Necessary
+  because Supabase Edge Functions auto-inject
+  `Deno.env.get('SUPABASE_ANON_KEY')` as the PUBLISHABLE key on modern
+  projects (proven by the direct-curl smoke on staging: legacy JWT →
+  function's own 401, publishable → past the check), and the function's
+  in-code bearer check compares against that env var — so the Pages proxy
+  had to send publishable, not legacy JWT, to match.
+
+**Standing lesson on Cloudflare Pages secret propagation (worth its own
+line so the next reader doesn't lose an hour to it).** A `wrangler pages
+secret put` DOES NOT hot-propagate to running Pages Functions. Existing
+running deployments continue to use the old value until a fresh Pages
+deployment lands. Today's smoke test caught this on the transition — three
+retries 30s apart returned `401 / 401 / 429` while an unrelated CI merge
+(commit `9894f24` on `main`) landed a fresh production deploy 41 seconds
+into the sequence. Without that coincidental merge, the fix would have
+stayed silently 401-broken for real users until the next deploy. On any
+future secret rotation that must take effect immediately: trigger a
+manual redeploy (`wrangler pages deploy dist --project-name veyrnox-prod
+--branch main`) instead of relying on hot-propagation.
+
+**Prod Supabase deploy exposed a shell-parsing footgun the same day.**
+Prod's `secrets list` output showed a secret whose NAME was the literal
+string `supabase secrets set VEYRNOX_ANON_KEY` — an earlier `supabase
+secrets set` command had been typo'd (missing `=` between the intended
+secret name and value) and Supabase had parsed the middle as the name.
+Harmless (no code reads a secret with that name), but a real tell that
+something got mis-run. Cleaned up via
+`npx supabase secrets unset "supabase secrets set VEYRNOX_ANON_KEY"
+--project-ref jwstkrtslotnjyerzzsi`. Same class as the
+`sk_…AaRb--project-ref` parsing bug from a couple of hours earlier (RC
+key + `--project-ref` glommed together with no space) — flag this shape
+of typo when reviewing anyone's `supabase secrets set` or
+`--project-ref …` line.
+
+**Function deployment shape:** Version 1 ACTIVE on both projects,
+`verify_jwt=true` (matches the file header's stated intent — "NOTE the
+missing --no-verify-jwt"). Runtime behaviour identical to the file at
+`supabase/functions/first-referral-bonus/index.ts` at commit `6488d7c7`.
+Function IDs — staging `8b0b7937-56d8-40b9-bb9a-b0edc8689f50`, prod
+`47d6aa9a-be5f-4eb9-a9c9-1d55e9c9de75`.
+
+> ⚠️ **The deployed source was comment-stripped** to fit under the MCP
+> `deploy_edge_function` call-payload ceiling. All ~90 lines of load-bearing
+> header commentary (H-1 prerequisite, "on authentication honestly",
+> deploy-flag rationale, env var list) were removed and replaced with a
+> single pointer comment to `supabase/functions/first-referral-bonus/
+> index.ts` in the repo. RUNTIME BEHAVIOUR IS IDENTICAL — same imports,
+> same constants, same logic paths, same fail-closed semantics. Recommend
+> a follow-up redeploy from a terminal that has `supabase` CLI
+> (`npx supabase@latest functions deploy first-referral-bonus
+> --project-ref <ref>`) to restore the commentary alongside the code;
+> that ships the file byte-identical to the repo. Both deploys' Version
+> numbers stay `1` until such a redeploy bumps them.
+
+**Smoke tests, verbatim outcomes:**
+- **Staging direct curl** (Supabase Edge URL, bypassing Pages): 4 tests
+  through the function's decision tree — legacy-JWT bearer → 401 (in-code
+  check rejects, proves auto-inject = publishable); publishable bearer +
+  malformed code → 400 (past all auth, hits `CODE_RE` regex); publishable
+  bearer + valid-shape non-existent code → 429 `rate_limited` (proves
+  `record_bonus_claim_attempt` runs, FK reject on invented code returns
+  false); no bearer → platform `UNAUTHORIZED_NO_AUTH_HEADER` 401 (proves
+  `verify_jwt=true` is enforced).
+- **Prod end-to-end via real Pages proxy** (client → `veyrnox-prod.pages
+  .dev/api/edge/first-referral-bonus` → Supabase Edge → RC path unreached
+  because no `rc_user_id` set anywhere): three retries 30s apart, `401 /
+  401 / 429` — the transition confirms both the Pages secret update
+  needed a redeploy to propagate AND the full 4-gate chain passes once
+  it did.
+
+**Test-row cleanup (light).** The valid-shape smoke tests inserted one
+row into `bonus_claim_attempts_by_ip` on staging via the FK-reject
+short-circuit in `record_bonus_claim_attempt` (the per-code table's FK
+prevented an insert there for the invented code). The 1-hour window will
+reset it; no manual cleanup required.
+
+**Still open before H-1 closes end-to-end:**
+1. Wire an RC webhook against RevenueCat that verifies the signature and
+   calls `set_referral_rc_user(p_code, p_rc_user_id)` with the service
+   role. The setter exists on both environments (Block 5 above) and the
+   Edge Function is live to consume it, but nothing ever calls the setter
+   — so `rc_user_id` stays NULL on every row and every real Edge
+   Function call short-circuits at `not_eligible` (I4 fail-closed).
+2. **Once the webhook lands, exercise a real end-to-end grant on
+   staging** — mint a referral code, attribute a real sandbox purchase,
+   trigger the client's post-attribution `edgeFn('first-referral-bonus',
+   …)` call, confirm the RC dashboard shows a promotional entitlement on
+   the referrer's `app_user_id`, and check
+   `first_referral_bonus_attempts` for a `granted` row. That is the on-
+   chain-txid-equivalent verification bar for this feature.
+
+INTERNAL — Claude ran the MCP migrations, the wrangler secret updates,
+and the Edge Function deploys; this is not the outstanding independent
+third-party audit. Nothing here is "verified" in the Veyrnox sense until
+an end-to-end referral bonus grant round-trips against real RevenueCat
+with an attributed test purchase.
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
