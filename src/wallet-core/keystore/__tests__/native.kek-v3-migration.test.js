@@ -271,3 +271,28 @@ describe('(E) degenerate salt still rejected on the v3 path', () => {
     ).rejects.toThrow('MALFORMED_VAULT');
   });
 });
+
+// ---------------------------------------------------------------------------
+// TRIPWIRE — do not delete, do not relax. See the twin in
+// web-kek-v-propagation.test.js for the full rationale.
+//
+// This file pins `AAD_V3_MIGRATION_ENABLED: false` in a literal mock factory,
+// so the keystore under test never sees the real constant. Section (C)/(D)
+// assertions that the seed CT is UNTOUCHED across a KEK rotation
+// (`written.iv === 'oldiv'` / `written.ct === 'oldct'`) are inverted by the
+// v:3 reseal branch — and would stay green, because that branch calls a
+// different mock.
+//
+// WHEN THIS GOES RED: the real flag has flipped. Rewrite those assertions to
+// expect a RE-SEALED seed CT under the new binding (see
+// native.aad-v3-write-sites.test.js for the flag-on shape). Do NOT change this
+// expectation to `true`.
+describe('AAD v:3 flag tripwire', () => {
+  it('the REAL AAD_V3_MIGRATION_ENABLED is still false (see comment above)', async () => {
+    const actual = /** @type {any} */ (await vi.importActual('../../vault.js'));
+    expect(
+      actual.AAD_V3_MIGRATION_ENABLED,
+      'Real flag flipped — the seed-CT-untouched assertions in this file now describe behaviour that no longer occurs. Rewrite them, do not relax this.',
+    ).toBe(false);
+  });
+});

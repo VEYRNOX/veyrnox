@@ -10,6 +10,7 @@
 import { Capacitor } from '@capacitor/core';
 import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
+import { logAadV3MigrationFailure } from './migrationLog.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt } from './kek.js';
 import { ALLOW_MAINNET } from '../evm/networks.js';
 import { bufferToB64u, b64uToBuffer } from './web-base64url.js';
@@ -361,9 +362,27 @@ export const webKeyStore = {
       // fails GCM auth. Today v is stably 2 on both sides so leaking blob.v
       // via `...blob` is benign — a future VAULT_VERSION bump would make it
       // permanently unlockable. Mirror native.js (PR #1079).
-      const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
       // Preserve kek-dek format: same kekWrap/kekSalt, only content v/ct/iv change.
-      await saveVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek' });
+      //
+      // VERSION-PRESERVING (#1111): the note above is exactly right that a
+      // VAULT_VERSION bump would make a mismatched header fatal — v:3 IS that
+      // bump. `encryptVaultWithDek` always stamps v:2 and `v: newV` sits after
+      // the spread, so on a v:3 blob this silently downgraded the vault and
+      // stripped the kekWrap/kekSalt/hardwareKekVersion binding. Not a lockout
+      // (self-consistent, decrypts fine) but it defeats the feature: with the
+      // flag on, every content write undid the previous unlock's migration.
+      const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
+      if (writeV3) {
+        const sealed = await encryptVaultWithDekV3(secret, dek, {
+          kekWrap: blob.kekWrap,
+          kekSalt: blob.kekSalt,
+          hardwareKekVersion: blob.hardwareKekVersion ?? null,
+        });
+        await saveVault({ ...blob, ...sealed });
+      } else {
+        const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
+        await saveVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek' });
+      }
     } finally {
       if (H) H.fill(0);
       if (C) C.fill(0);
@@ -544,9 +563,12 @@ export const webKeyStore = {
               hardwareKekVersion: blob.hardwareKekVersion ?? null,
             });
             await saveVault({ ...blob, ...resealed });
-          } catch {
+          } catch (e) {
             // Best-effort — a failed write leaves v:2 on disk; retry on
-            // next unlock. Never fail the unlock over the migration.
+            // next unlock. Never fail the unlock over the migration. But
+            // never swallow it silently either: a vault that can never
+            // migrate must not look identical to one already migrated.
+            logAadV3MigrationFailure(e);
           }
         }
         return plaintext;
@@ -633,8 +655,20 @@ export const webKeyStore = {
       // GCM AAD over {v, kdf}; the saved header `v` must match or next decrypt
       // fails GCM auth. Benign today (both v:2), fatal if VAULT_VERSION bumps.
       // Mirrors native.js (PR #1079).
-      const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
-      await saveVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
+      // #1111: a fresh enrolment stamps v:3 directly when the flag is on, so
+      // the flag's contract ("new/migrated vault WRITES stamp v:3") holds for
+      // BOTH halves. Web has no hardwareKekVersion (WebAuthn PRF is
+      // version-inline) — bind explicit `null`, as the migration and rotation
+      // paths in this file already do.
+      if (AAD_V3_MIGRATION_ENABLED) {
+        const sealed = await encryptVaultWithDekV3(secret, dek, {
+          kekWrap, kekSalt, hardwareKekVersion: null,
+        });
+        await saveVault({ ...blob, ...sealed });
+      } else {
+        const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
+        await saveVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt });
+      }
     } finally {
       // H-NEW-4 / F-01: wipe H, C, the derived KEK and the DEK on every path (I4).
       if (H && H.fill) H.fill(0);

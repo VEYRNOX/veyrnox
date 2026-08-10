@@ -545,10 +545,16 @@ export async function encryptVaultWithDek(secret, dek) {
  * migration primitive; the migration hook lives in the keystore
  * (Phase 0b) and is guarded by `AAD_V3_MIGRATION_ENABLED`.
  *
+ * The three binding fields are part of the RETURN CONTRACT, not incidental
+ * pass-through: the caller persists them verbatim and the next decrypt
+ * recomputes the AAD from them. Strip them and the very next unlock fails GCM
+ * auth — pinned by vault-aad-v3.test.js ("carries the binding fields the AAD
+ * authenticated").
+ *
  * @param {string} secret
  * @param {Uint8Array} dek 32-byte DEK
  * @param {{kekWrap:unknown, kekSalt:unknown, hardwareKekVersion:unknown}} binding
- * @returns {Promise<{v:number, kdf:string, iv:string, ct:string}>}
+ * @returns {Promise<{v:number, kdf:string, iv:string, ct:string, kekWrap:unknown, kekSalt:unknown, hardwareKekVersion:unknown}>}
  */
 export async function encryptVaultWithDekV3(secret, dek, binding) {
   if (!binding || typeof binding !== 'object') {

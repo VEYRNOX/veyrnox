@@ -19,6 +19,9 @@
 // scripts/csp-injection-probe.* and is driven on the simulator.
 
 import { describe, it, expect } from 'vitest';
+import { ALLOWED_ICON_HOSTS } from '../../lib/wcIconUrl.js';
+import { ALLOWED_NEWS_THUMB_HOSTS } from '../../lib/newsThumbUrl.js';
+import { ALLOWED_NFT_IMAGE_HOSTS, ALLOWED_NFT_IMAGE_HOST_SUFFIXES } from '../../lib/nftImageUrl.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -137,17 +140,25 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
         );
       }
       // Union must cover every host the three sink allowlists render from.
+      //
+      // DERIVED, NOT HARDCODED. This list used to be a hand-copied snapshot,
+      // which made the invariant it claims to enforce unenforceable: adding a
+      // host to a sink helper without adding it to img-src left the test green
+      // while the browser blocked the image (found on PR #1649 —
+      // `s3-images.ctmedia.io` was allowlisted in newsThumbUrl.js and absent
+      // here, so the change was inert). Importing the real Sets means a new
+      // sink host CANNOT be added without this test going red.
       const requiredHosts = [
-        'https://explorer-api.walletconnect.com',
-        'https://registry.walletconnect.com',
-        'https://images.cointelegraph.com',
-        'https://cdn.decrypt.co',
-        'https://cloudflare-ipfs.com',
-        'https://gateway.pinata.cloud',
-        'https://*.mypinata.cloud',
-        'https://nft-cdn.alchemy.com',
-        'https://i.seadn.io',
+        ...[...ALLOWED_ICON_HOSTS].map((h) => `https://${h}`),
+        ...[...ALLOWED_NEWS_THUMB_HOSTS].map((h) => `https://${h}`),
+        ...[...ALLOWED_NFT_IMAGE_HOSTS].map((h) => `https://${h}`),
+        // Suffix matches (e.g. '.mypinata.cloud') render as a CSP wildcard.
+        ...ALLOWED_NFT_IMAGE_HOST_SUFFIXES.map((s) => `https://*${s}`),
       ];
+      // Guard the guard: if a helper is ever refactored to export an empty Set,
+      // the loop below would vacuously pass and this whole assertion would go
+      // quiet. Same failure mode as the hardcoded list, one level up.
+      expect(requiredHosts.length, 'sink allowlists resolved to nothing').toBeGreaterThan(8);
       for (const h of requiredHosts) {
         expect(imgSrc, `img-src must allowlist ${h} (required by sink helper)`).toContain(h);
       }

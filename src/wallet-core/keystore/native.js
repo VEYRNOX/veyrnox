@@ -71,6 +71,7 @@ import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
+import { logAadV3MigrationFailure } from './migrationLog.js';
 import { clearHardwareCredential, getHardwareFactor } from './hardware.js';
 // ── M2c (Secure Enclave key-wrap) — F-2 closure scaffold ─────────────────────
 // Lazy-loaded so that registerPlugin() in veyrnoxEnclave.js does NOT execute at
@@ -481,13 +482,26 @@ async function _unlockInner(password, opts = {}) {
           const resealed = await encryptVaultWithDekV3(plaintext, dek, {
             kekWrap: blob.kekWrap,
             kekSalt: blob.kekSalt,
-            hardwareKekVersion: blob.hardwareKekVersion,
+            // `?? null` is REQUIRED, not cosmetic: hardwareKekVersion is
+            // legitimately ABSENT on legacy KEK blobs (see hfOptsForBlob's
+            // "v1 (no hardwareKekVersion) → undefined" and getKekInfo's
+            // `?? 1`). Passing raw `undefined` makes encryptVaultWithDekV3
+            // reject structurally, so those vaults — the legacy fixed-salt
+            // ones that most need the binding — could NEVER migrate, and the
+            // failure was invisible. Mirrors web.js's identical coercion.
+            // `null` is safe downstream: `null ?? 1` is 1 in getKekInfo, and
+            // hfOptsForBlob only branches on `=== 3`.
+            hardwareKekVersion: blob.hardwareKekVersion ?? null,
           });
           await safeWriteVault({ ...blob, ...resealed });
-        } catch {
+        } catch (e) {
           // Best-effort — see finally-block DEK zeroing. A rethrow here
           // would fail an otherwise-successful unlock, which is a much
-          // worse regression than a delayed migration.
+          // worse regression than a delayed migration. But it must not be
+          // SILENT either: without this report, a device that can never
+          // migrate is indistinguishable from one that already has. Same
+          // policy this file states for the M2c up-migration below.
+          logAadV3MigrationFailure(e);
         }
       }
       // C-1 (v2→v3): the v2→v3 salt-binding upgrade deliberately does NOT run on the
@@ -896,9 +910,28 @@ export const nativeKeyStore = {
         if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
         dek = await unwrapDek(kek, blob.kekWrap); // throws on wrong PIN/device — fail-closed
-        const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
-        // Preserve kek-dek format: same kekWrap/kekSalt, only content ct/iv/v change.
-        await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek' });
+        // Preserve kek-dek format: same kekWrap/kekSalt, only content ct/iv change.
+        //
+        // VERSION-PRESERVING (#1111). `encryptVaultWithDek` always stamps v:2,
+        // and `v: newV` sits AFTER the spread — so on a v:3 blob this used to
+        // overwrite v:3 with v:2 and reseal under the v:2 AAD. That is not a
+        // lockout (the result is self-consistent and decrypts) but it SILENTLY
+        // strips the kekWrap/kekSalt/hardwareKekVersion binding this whole
+        // feature exists to add. saveVaultContents runs on every seed
+        // add/import/remove, so with the flag on the vault would oscillate
+        // 3→2 on each content write and 2→3 on each unlock, never converging.
+        const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
+        if (writeV3) {
+          const sealed = await encryptVaultWithDekV3(secret, dek, {
+            kekWrap: blob.kekWrap,
+            kekSalt: blob.kekSalt,
+            hardwareKekVersion: blob.hardwareKekVersion ?? null,
+          });
+          await safeWriteVault({ ...blob, ...sealed });
+        } else {
+          const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
+          await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek' });
+        }
       } finally {
         if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
@@ -1145,11 +1178,23 @@ export const nativeKeyStore = {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
           const kekWrap = await wrapDek(kek, dek);
-          const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
           const tierEntry = opts && opts.hardwareKekTier
             ? { hardwareKekTier: opts.hardwareKekTier }
             : {};
-          await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 3, ...tierEntry });
+          // #1111: a FRESH enrolment must stamp v:3 directly when the flag is
+          // on — otherwise `AAD_V3_MIGRATION_ENABLED`'s own contract ("whether
+          // new/migrated vault WRITES stamp v:3") was only half true: the
+          // migrated half was honoured, the new half never was, and every new
+          // enrolment took an extra 2→3 write cycle on the following unlock.
+          if (AAD_V3_MIGRATION_ENABLED) {
+            const sealed = await encryptVaultWithDekV3(secret, dek, {
+              kekWrap, kekSalt, hardwareKekVersion: 3,
+            });
+            await safeWriteVault({ ...blob, ...sealed, ...tierEntry });
+          } else {
+            const { v: newV, iv, ct } = await encryptVaultWithDek(secret, dek);
+            await safeWriteVault({ ...blob, v: newV, iv, ct, kdf: 'kek-dek', kekWrap, kekSalt, hardwareKekVersion: 3, ...tierEntry });
+          }
         } finally {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);

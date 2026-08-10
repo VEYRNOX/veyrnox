@@ -23,7 +23,7 @@ export const PLACEHOLDER_ICON =
 // Hosts we already contact for the WalletConnect protocol itself. Adding a new
 // host means the pre-consent modal will fetch from it — think twice before
 // widening this list.
-const ALLOWED_ICON_HOSTS = new Set([
+export const ALLOWED_ICON_HOSTS = new Set([
   'explorer-api.walletconnect.com',
   'registry.walletconnect.com',
   'explorer-api.walletconnect.org',

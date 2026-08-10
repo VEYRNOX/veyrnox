@@ -150,3 +150,35 @@ describe('I-1: changePassword KEK branch preserves original blob.v (seed CT not 
     expect(vaultMock.encryptVaultWithDek).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// TRIPWIRE — do not delete, do not relax.
+//
+// This file mocks '../../vault.js' with a LITERAL factory that pins
+// `AAD_V3_MIGRATION_ENABLED: false`. The keystore therefore reads the MOCK's
+// value, never the real constant, so flipping the real flag in vault.js changes
+// NOTHING here. That matters because the I-1 test above asserts the flag-OFF
+// behaviour (`written.v === 2`, seed CT untouched, `encryptVaultWithDek` used).
+// Every one of those assertions is INVERTED by the v:3 write path — and it
+// would keep passing anyway, because the v:3 path calls a DIFFERENT mock
+// (`encryptVaultWithDekV3`). That is coverage that reads as present and is not:
+// the same failure mode as the OUTCOME_PREAMBLE_ENABLED block recorded in
+// CLAUDE.md.
+//
+// So the un-skip condition lives HERE, in the file, rather than in a PR
+// description (the handoff lesson from #1418 → #1422).
+//
+// WHEN THIS GOES RED: the real flag has flipped. Rewrite the I-1 test above to
+// assert the v:3 behaviour — `written.v === 3`, seed CT RE-SEALED, and
+// `encryptVaultWithDekV3` called with { kekWrap, kekSalt, hardwareKekVersion:
+// null }. See web.aad-v3-write-sites.test.js for the flag-on shape. Do NOT
+// simply change this expectation to `true`.
+describe('AAD v:3 flag tripwire', () => {
+  it('the REAL AAD_V3_MIGRATION_ENABLED is still false (see comment above)', async () => {
+    const actual = /** @type {any} */ (await vi.importActual('../../vault.js'));
+    expect(
+      actual.AAD_V3_MIGRATION_ENABLED,
+      'Real flag flipped — the I-1 test in this file now asserts the OPPOSITE of shipped behaviour. Rewrite it, do not relax this.',
+    ).toBe(false);
+  });
+});
