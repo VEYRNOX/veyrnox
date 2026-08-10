@@ -51,6 +51,7 @@
 //   useFirstInbound       → WalletPortfolioPage.jsx
 //   useSendFlowTracking   → SendCrypto.jsx
 //   useFirstSend          → SendCrypto.jsx
+//   useFirstReceiveShown  → WalletEntry.jsx (via FirstReceiveCardWithTelemetry)
 //   cancelVerificationReminders → SeedVerificationPage.jsx
 //
 // NOT WIRED — exported but no call site anywhere in src/. These do not
@@ -165,6 +166,18 @@ export function useFirstSend() {
       safeEmit(FunnelEvent.FIRST_SEND);
     });
   };
+}
+
+// Mirrors useFirstOpen's shape (useEffect + fireOnce), parameterised on `fn`
+// so the caller supplies the event to emit. Must be called from a component
+// that only mounts on the render that shows the card (e.g. a small wrapper
+// around FirstReceiveCard in WalletEntry's render branch) — NOT from
+// WalletEntry itself, whose top-level hooks run on every render regardless
+// of which branch it returns.
+export function useFirstReceiveShown(fn) {
+  useEffect(() => {
+    fireOnce("veyrnox-first-receive-shown-fired", fn);
+  }, []);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

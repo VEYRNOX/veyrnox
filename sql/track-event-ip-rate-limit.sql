@@ -110,7 +110,7 @@ BEGIN
     'seed_verify_deferred', 'seed_verify_resumed',
     'lock_method_set', 'wallet_ready',
     -- Funding
-    'receive_address_viewed', 'first_inbound_detected',
+    'receive_address_viewed', 'first_inbound_detected', 'first_receive_shown',
     -- Send flow
     'send_flow_started', 'send_step_reached', 'send_abandoned', 'first_send',
     -- Unlock

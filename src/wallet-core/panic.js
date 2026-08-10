@@ -287,6 +287,10 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-wallet-ready-fired',
   'veyrnox-first-inbound-fired',
   'veyrnox-first-send-fired',
+  // veyrnox-first-receive-shown-fired — components/FirstReceiveCard.jsx via
+  // useFirstReceiveShown. PRESENCE asserts fresh onboarding reached the
+  // first-receive screen here (same fire-once class as its siblings above).
+  'veyrnox-first-receive-shown-fired',
   // Seed-backup verification state (single blob; see lib/seedVerifyState.js).
   // Presence proves a real wallet was created and its backup quiz started.
   'veyrnox-seed-verify',

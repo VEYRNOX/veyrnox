@@ -1780,6 +1780,74 @@ No existing entry in the "PIN Security & Hardware Key Encryption (KEK)" section 
 (§4) claimed the PinSetup/KEK-mode extraction was already complete prior to this PR —
 this is a new record, not a correction of a prior overstatement.
 
+## 2026-08-09 FirstReceiveCard + `first_receive_shown` telemetry (Slice C)
+
+> ✅ BUILT (10 test suites, 105 tests GREEN, `npm run build` clean, `eslint` 0 errors).
+> **NOT verified** — no on-chain first-receive walkthrough on device, no real-device
+> verification.
+
+Branch `claude/first-receive-slice-c`, worktree
+`/var/folders/l3/4f36t9jn439c8fk_1zqgx8pc0000gn/T/veyrnox-first-receive/`. Plan:
+`docs/superpowers/plans/2026-08-09-first-receive-card-slice-c.md`. Branch carries 4
+commits per the orchestrating task (initial implementation, then three review-driven
+fixes — see below); this entry cites that commit count as reported rather than
+independently confirmed, since this pass had no shell access to run
+`git log --oneline origin/main..HEAD` itself.
+
+**What shipped.** One-time post-onboarding screen shown after PIN + KEK resolve, before
+the main wallet `Outlet` takes over: `src/components/FirstReceiveCard.jsx` renders the
+newly-created wallet's primary EVM receive address as a QR code + copy-to-clipboard +
+"You're set" CTA. Built on existing primitives, not new plumbing:
+- `fireOnce` (already in `src/lib/tracking-integration.jsx`, shared with
+  `useFirstInbound`/`useFirstSend`) backs a new `useFirstReceiveShown` hook that fires
+  `first_receive_shown` once per device via `localStorage` key
+  `veyrnox-first-receive-shown-fired`.
+- `resolveReceive` supplies the EVM address (no new address-derivation code).
+- `QRCodeDisplay` generates the QR locally (no new QR dependency).
+- A new `justOnboarded` React state (set in `finishPinSetup`, NOT in
+  `handlePinRecover`) gates the render branch in `WalletEntry.jsx` — deliberately not
+  reusing `autoEnrollPinRef`, which is a transient-PIN-holding ref that doesn't
+  distinguish fresh-create from PIN-recovery.
+- `veyrnox-first-receive-shown-fired` added to `METADATA_RESIDUE_KEYS` in
+  `src/wallet-core/panic.js`, with a regression test
+  (`src/wallet-core/__tests__/panic-residue-first-receive.test.js`) — same
+  PRESENCE-tell class as `veyrnox-first-run-tour-seen` and `veyrnox-device-id`.
+
+**Reviewer/codex findings, fixed and recorded here for honesty:**
+1. Honest-reviewer P2 — the telemetry emit could throw an unhandled rejection. Routed
+   through the existing `emit()` wrapper with a `.catch()`.
+2. Codex P1 — a bare address with no network label is a wrong-network fund-loss risk
+   (a user could send to the address on the wrong chain). Added an explicit "ETH ·
+   Ethereum Mainnet" label plus a multi-chain warning on the card.
+3. Codex P1 — server-side allowlist gap: `first_receive_shown` was added to the client
+   `EVENT`/`FunnelEvent` allowlists but not to the server-side ones. Added to
+   `sql/telemetry-events-allowlist.sql` and `sql/track-event-ip-rate-limit.sql`.
+4. Codex P2 — clipboard copy failed silently. Added a toast on failure with a
+   manual-copy hint.
+
+> **⚠️ SQL RUN STILL PENDING — live gap, could silently break the metric.** The
+> `sql/telemetry-events-allowlist.sql` and `sql/track-event-ip-rate-limit.sql` edits
+> that add `first_receive_shown` to the server allowlist are CODE ONLY — they have not
+> been run against Supabase. Until they are run, `first_receive_shown` reaches the
+> server-side allowlist check and is rejected as an unknown event, and because
+> `fireOnce`'s `veyrnox-first-receive-shown-fired` marker is written client-side
+> regardless of whether the server accepted the event, that device's metric is
+> permanently lost — no retry, silent forever for that user. Same shape as the
+> "first-referral-bonus Edge Function — BUILT, NOT DEPLOYED" gap already tracked
+> elsewhere in this file (CODE landed, SQL run pending). **Must be run in Supabase
+   before any user-facing rollout of this slice.**
+
+**Test scope:** 10 test suites / 105 tests green (FirstReceiveCard unit tests +
+panic-residue regression + existing WalletEntry/panic suites unaffected). Build and
+lint clean. **What was NOT done:** no preview render — the UI agent in this pass lacked
+a browser tool, so the fresh-create → first-receive-card → dismiss → main-wallet flow
+has not been visually confirmed end to end. Same known gap as Slice A and Slice B. No
+on-chain receive was exercised through this path, and there is no real-device
+verification.
+
+No existing entry in this file claimed a first-receive onboarding screen already
+existed prior to this slice — this is a new record.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
