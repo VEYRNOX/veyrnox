@@ -15,6 +15,7 @@ import { Copy, CheckCircle2, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
+import { toast } from "@/lib/toast";
 
 export default function FirstReceiveCard({ address, onDismiss }) {
   const [copied, setCopied] = useState(false);
@@ -27,7 +28,12 @@ export default function FirstReceiveCard({ address, onDismiss }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Best-effort — clipboard permission denial is not a security event here.
+      // Reviewer P2 fund-safety: DO NOT silently swallow. If the clipboard write
+      // failed, the user may believe the address was copied and paste a stale
+      // destination into their sending app. Surface the failure so they retry
+      // (or copy manually from the visible address string). Matches
+      // ReceiveCrypto.jsx:73 shape.
+      toast.error("Couldn't copy — tap the address to select and copy manually.");
     }
   };
 
