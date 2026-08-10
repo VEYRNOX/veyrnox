@@ -97,8 +97,7 @@ import Spinner from "@/components/Spinner";
 import SeedGrid from "@/components/SeedGrid";
 import SeedInputGrid from "@/components/SeedInputGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
-import TelemetryConsent from "@/components/TelemetryConsent";
-import { getConsentState, clearConsent } from "@/lib/consent";
+import { clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
@@ -487,10 +486,11 @@ export default function WalletEntry() {
   const [generatedSeed, setGeneratedSeed] = useState("");
   const [showSeed, setShowSeed] = useState(false);
   const [copied, setCopied] = useState(false);
-  // Telemetry consent gate: only shown when consent has never been answered on
-  // this device. Evaluated once at mount (getConsentState is a synchronous
-  // localStorage read) so the screen renders at most once per onboarding pass.
-  const [consentDone, setConsentDone] = useState(() => getConsentState() !== null);
+  // Telemetry consent: no longer prompted at onboarding (Slice F tap reduction).
+  // hasConsent()/trackEvent() default-deny keeps telemetry OFF unless the user
+  // explicitly opts in via Settings → Privacy. clearConsent() is still called
+  // in finishCreate so a new wallet identity does not inherit a prior grant.
+  //
   // True only across a fresh onboarding pass (finishPinSetup → Phase-2 create/import
   // → KEK gate → consent). Drives the one-time FirstReceiveCard branch below. NOT set
   // on the PIN-recovery path (finishPinRecover) — restore flows don't get this card
@@ -682,13 +682,6 @@ export default function WalletEntry() {
 
   // Stable callbacks for KekEnrollmentGate — avoids re-firing the auto-enroll
   // useEffect on every parent render (P2-1).
-  // NOTE: neither handler touches `consentDone`. The KEK gate re-fires on every
-  // unlock (the skip is in-memory only — see useKekEnrollmentGate), so resetting
-  // consent here re-showed the "one-time" screen on every single unlock for anyone
-  // who skipped enrollment, and TelemetryConsent.choose() writes unconditionally —
-  // silently overwriting a stored "denied". A device that has already answered must
-  // never be re-asked. The fresh-create path resets consent on its own in
-  // finishCreate; consentDone is otherwise seeded from getConsentState() at mount.
   const handleKekEnroll = useCallback(async (pin) => {
     const result = await kekEnroll(pin);
     if (result.ok) {
@@ -1151,7 +1144,6 @@ export default function WalletEntry() {
       // clearConsent() self-suppresses in a decoy/demo session — the I3 guard for
       // this shared key lives in lib/consent.js, the single writer chokepoint.
       clearConsent();
-      setConsentDone(false); // re-ask on the next render
       if (bioEnabled && bioStatus?.available && createdPasswordRef.current) {
         const ok = await enableBiometricUnlock(createdPasswordRef.current);
         if (!ok) toast.warning("Biometric unlock wasn't enabled — your vault password is always your way in. You can enable it later in Security settings.");
@@ -1238,25 +1230,12 @@ export default function WalletEntry() {
     );
   }
 
-  // One-time telemetry consent screen: after backup confirmation (create path)
-  // and hardware-KEK enrollment/skip, but before the app renders. Runs for
-  // BOTH create and import (both land here once unlocked + past the KEK gate).
-  // consentDone is seeded from getConsentState() at mount, so this only ever
-  // shows when the device has never answered before.
+  // Telemetry-consent screen removed (Slice F tap reduction). Consent is
+  // default-deny in lib/consent.js (hasConsent() strict-equals 'granted')
+  // and api/trackEvent.js short-circuits before any egress or device-id
+  // mint, so removing the prompt does not enable telemetry. Opt-in path is
+  // Settings → Privacy.
   //
-  // NEVER in a decoy/demo session (I3, and the K-2 pattern from PR #1262).
-  // A duress unlock must not surface a consent prompt, and — more importantly
-  // — must not let a coerced tap write veyrnox-telemetry-consent into the
-  // SHARED localStorage that the real session reads. The real session asks on
-  // its own next entry.
-  if (isUnlocked && !generatedSeed && !consentDone && !isDeniabilityOrDemoActive()) {
-    return (
-      <EntryShell error={error}>
-        <TelemetryConsent onChoice={() => setConsentDone(true)} />
-      </EntryShell>
-    );
-  }
-
   // ONE-TIME FIRST-RECEIVE CARD — fresh onboarding only (justOnboarded, set in
   // finishPinSetup, never in handlePinRecover), after consent and past the KEK
   // gate, before FirstRunTour/<Outlet>. Shows the newly-created wallet's EVM
@@ -1285,12 +1264,11 @@ export default function WalletEntry() {
   // create/import decision. It is once-per-device via its own localStorage
   // marker, so placing it here does not make it re-fire.
   //
-  // It CANNOT pre-empt the telemetry-consent screen: the consent branch above
-  // returns first on a device that has never answered. PR #1403 deleted this
-  // component on the theory that it was blocking consent — it was not (consent
-  // was absent because `consentDone` is seeded from a stored answer at mount),
-  // and the deletion reopened ECC F-P3-3 (#1160). Do not remove it again
-  // without an owner decision recorded against that issue.
+  // PR #1403 deleted this component on the theory that it was blocking
+  // consent — it was not, and the deletion reopened ECC F-P3-3 (#1160). Do
+  // not remove it again without an owner decision recorded against that
+  // issue. (The telemetry-consent screen itself was removed in Slice F; the
+  // tour is unrelated and stays.)
   //
   // Keep this comment ABOVE the branch: FirstRunTour.placement.test.js asserts
   // the render appears within 900 chars of the `if`, which is what stops it
