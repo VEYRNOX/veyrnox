@@ -82,9 +82,10 @@ describe('WalletEntry — web joins the PIN cohort (parity with native, lockout 
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
-    // Fresh device lands on the welcome hero → Get Started → pin-create.
-    await waitFor(() => expect(screen.getByRole('button', { name: /get started/i })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /get started/i }));
+    // Fresh device lands on the entry-tiles picker → "New wallet" tile → pin-create
+    // (both New and Have tiles are PIN-first; see lib/onboardingEntry.js).
+    await waitFor(() => expect(screen.getByRole('button', { name: /new wallet/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /new wallet/i }));
 
     // Web pin-create now renders the SAME numeric PinPad as native (no password Input).
     await waitFor(() => expect(screen.getByText(/choose an 8-digit pin/i)).toBeTruthy());
@@ -115,8 +116,8 @@ describe('WalletEntry — web joins the PIN cohort (parity with native, lockout 
 
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /get started/i })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /get started/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /new wallet/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /new wallet/i }));
 
     await waitFor(() => expect(screen.getByText(/choose an 8-digit pin/i)).toBeTruthy());
     enterPinPad(document, WEB_PIN.split(''));
@@ -126,10 +127,8 @@ describe('WalletEntry — web joins the PIN cohort (parity with native, lockout 
     enterPinPad(document, WEB_PIN.split(''));
     fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
 
-    // Phase 2 (choose screen): Create Wallet button now visible.
-    const createBtn = await screen.findByRole('button', { name: /create wallet/i });
-    fireEvent.click(createBtn);
-
+    // Phase 2 (choose screen): the "New wallet" tile pick auto-fires creation —
+    // no second "Create Wallet" button click needed (Slice D1 chosenPath hint).
     await waitFor(() => expect(ctx.createWalletFromPendingPin).toHaveBeenCalled());
   });
 });
