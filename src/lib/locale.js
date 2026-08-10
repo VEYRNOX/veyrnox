@@ -81,13 +81,20 @@ export function isRtlLocale(locale) {
 
 // Best-effort read; localStorage throws on some Safari private-mode paths.
 function safeGet(key) {
-  try { return localStorage.getItem(key); } catch { return null; }
+  try { return localStorage.getItem(key); } catch (e) {
+    console.warn('[locale] localStorage read failed for', key, e);
+    return null;
+  }
 }
 function safeSet(key, value) {
-  try { localStorage.setItem(key, value); } catch {}
+  try { localStorage.setItem(key, value); } catch (e) {
+    console.warn('[locale] localStorage write failed for', key, e);
+  }
 }
 function safeRemove(key) {
-  try { localStorage.removeItem(key); } catch {}
+  try { localStorage.removeItem(key); } catch (e) {
+    console.warn('[locale] localStorage remove failed for', key, e);
+  }
 }
 
 // ── Decimal / grouping helpers (send-amount canonicalisation) ─────────────
