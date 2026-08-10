@@ -85,7 +85,7 @@ import { isLowEndDevice } from "@/hooks/useLowEndDevice";
 import { toast } from "@/lib/toast";
 import {
   Shield, Wallet, Lock, KeyRound, Download, RefreshCw,
-  Eye, Check, AlertTriangle, AlertOctagon, ArrowLeft, Fingerprint, ScanFace, Zap,
+  Eye, Check, AlertTriangle, AlertOctagon, ArrowLeft, Fingerprint, ScanFace,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,12 +286,6 @@ function WelcomeHero({ onGetStarted, onRestore }) {
         hidden: { opacity: 0, y: 14 },
         show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
       };
-  const features = [
-    { icon: Fingerprint, label: "Biometric + PIN unlock" },
-    { icon: Eye, label: "Pre-sign screening" },
-    { icon: Zap, label: "Multi-chain receive & balances" },
-    { icon: Lock, label: "On-device encrypted vault" },
-  ];
   return (
     <div className="relative min-h-[100dvh] flex flex-col items-center justify-center p-6 bg-background overflow-hidden">
       {/* Ambient aurora backdrop — two teal blobs that drift asymmetrically.
@@ -343,18 +337,6 @@ function WelcomeHero({ onGetStarted, onRestore }) {
           Self-custody, coercion-resistant. Your keys never leave this device.
         </motion.p>
 
-        {/* Honest feature bullets — provisional/testnet framing, no overclaims. */}
-        <motion.ul variants={item} className="mt-8 w-full space-y-3 text-start">
-          {features.map(({ icon: Icon, label }) => (
-            <li key={label} className="flex items-center gap-3 text-sm text-foreground/90">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
-                <Icon className="h-4 w-4 text-primary" />
-              </span>
-              {label}
-            </li>
-          ))}
-        </motion.ul>
-
         {/* The ONLY action: hand off to PIN-create. Create vs import is chosen later. */}
         <motion.div variants={item} className="mt-9 w-full">
           <motion.div whileTap={reduce ? undefined : { scale: 0.97 }} whileHover={reduce ? undefined : { scale: 1.01 }}>
@@ -378,9 +360,6 @@ function WelcomeHero({ onGetStarted, onRestore }) {
           </motion.button>
         )}
 
-        <motion.p variants={item} className="mt-6 text-[11px] text-muted-foreground">
-          v1.0 · keys stay on-device
-        </motion.p>
       </motion.div>
     </div>
   );
