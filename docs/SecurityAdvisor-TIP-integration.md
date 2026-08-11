@@ -175,8 +175,8 @@ SecurityAdvisor streams response
 5. TIP BACKEND CALL
    POST https://tip.veyrnox.com/api/v1/agents/security-advisor/screen
    {
-     api_key: vtip_82524a703712279fc6affac1320575d6,
-     signing_secret: decfc6fb20b48b159509eba02f2ff98f71f2e2dee34ab1519140fbd5fdb5bc8a,
+     api_key: <TIP_API_KEY>,
+     signing_secret: <TIP_SIGNING_SECRET>,
      address: 0xdead000000000000000000000000000000000000,
      chain: ethereum
    }
@@ -305,8 +305,8 @@ SecurityAdvisor streams response
 ```
 Next steps:
 [ ] Set TIP credentials in Supabase Edge Function Secrets
-    - TIP_API_KEY = vtip_82524a703712279fc6affac1320575d6
-    - TIP_SIGNING_SECRET = decfc6fb20b48b159509eba02f2ff98f71f2e2dee34ab1519140fbd5fdb5bc8a
+    - TIP_API_KEY = <retrieve from ops password store; rotate via wrangler d1 UPDATE on prod key id>
+    - TIP_SIGNING_SECRET = <env-wide master; retrieve from ops password store, never commit>
     
 [ ] Set .env.local flags
     - VITE_TIP_BASE_URL = https://tip.veyrnox.com (or your deployment)
