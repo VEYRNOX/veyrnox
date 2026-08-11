@@ -3,13 +3,14 @@
 // Security-critical invariant (I4, fail honest): NO ORACLE. This component must NOT
 // reveal which word(s) are wrong on a failed import. Errors surface only as the
 // verbatim string returned by the caller's onSubmit rejection — never as per-word
-// highlighting, aria-invalid flags, "checksum" language, or "word N" pointers.
+// highlighting, aria-invalid flags, or wordlist-validity language.
 //
 // Plan: docs/superpowers/plans/2026-08-09-seed-input-grid-component.md
 //
 // Isolation: presentation only. No wallet-core imports, no localStorage.
 
 import { useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -46,6 +47,48 @@ export default function SeedInputGrid({
       const next = [...prev];
       next[index] = value;
       return next;
+    });
+  };
+
+  // Slice I: fail-closed paste-split. Always preventDefault first (kills the
+  // default one-box paste). Tokenizes on whitespace; auto-resizes the grid
+  // only when a full phrase (12/15/18/21/24 words) lands in box 0, otherwise
+  // fills forward from the target box if it fits, else fails closed with a
+  // generic error — no per-word oracle (I4).
+  const handlePaste = (event, index) => {
+    event.preventDefault();
+    const text = event.clipboardData?.getData('text') || '';
+    const tokens = text.split(/\s+/).map((t) => t.trim().toLowerCase()).filter(Boolean);
+    if (tokens.length === 0) return;
+
+    // Slice I: flushSync applies the state update before the handler returns.
+    // React 18+ auto-batches both synthetic and native events, so any
+    // synchronous DOM-reading caller (unit tests without act(), and some
+    // multi-line UI paths that read the input value right after paste) would
+    // see stale values otherwise. flushSync opts this specific update out.
+    if (index === 0 && WORD_COUNTS.includes(tokens.length)) {
+      flushSync(() => {
+        setCount(tokens.length);
+        setWords(Array(tokens.length).fill('').map((_, i) => tokens[i]));
+        setError('');
+      });
+      return;
+    }
+
+    if (index + tokens.length <= count) {
+      flushSync(() => {
+        setWords((prev) => {
+          const next = [...prev];
+          tokens.forEach((t, i) => { next[index + i] = t; });
+          return next;
+        });
+        setError('');
+      });
+      return;
+    }
+
+    flushSync(() => {
+      setError('Pasted phrase does not fit — pick 12/15/18/21/24 words or paste again.');
     });
   };
 
@@ -113,6 +156,7 @@ export default function SeedInputGrid({
               aria-label={`Recovery phrase entry ${i + 1}`}
               value={words[i] || ''}
               onChange={(e) => handleWordChange(i, e.target.value)}
+              onPaste={(e) => handlePaste(e, i)}
               disabled={disabled}
               autoComplete="off"
               autoCapitalize="off"

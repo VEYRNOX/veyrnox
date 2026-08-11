@@ -94,35 +94,35 @@ export default function EntryTiles({ onSelect }) {
 
         {/* Outer beam */}
         <div
-          className={`vx-lamp-beam absolute -top-20 left-1/2 -translate-x-1/2 opacity-[0.85] blur-[32px] ${animateLamp ? "vx-animated" : ""}`}
+          className={`vx-lamp-beam absolute -top-20 left-1/2 -translate-x-1/2 opacity-100 blur-[24px] ${animateLamp ? "vx-animated" : ""}`}
           style={{
             width: 620,
             height: 620,
             clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
             background:
-              "linear-gradient(180deg, rgba(74,218,194,0.55) 0%, rgba(74,218,194,0.08) 45%, transparent 75%)",
+              "linear-gradient(180deg, rgba(74,218,194,0.9) 0%, rgba(74,218,194,0.35) 40%, rgba(74,218,194,0.08) 70%, transparent 90%)",
           }}
         />
         {/* Inner beam */}
         <div
-          className={`vx-lamp-beam-inner absolute -top-16 left-1/2 -translate-x-1/2 opacity-70 blur-[14px] ${animateLamp ? "vx-animated" : ""}`}
+          className={`vx-lamp-beam-inner absolute -top-16 left-1/2 -translate-x-1/2 opacity-90 blur-[10px] ${animateLamp ? "vx-animated" : ""}`}
           style={{
             width: 320,
             height: 480,
             clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
             background:
-              "linear-gradient(180deg, rgba(120,240,216,0.85) 0%, rgba(74,218,194,0.25) 30%, transparent 70%)",
+              "linear-gradient(180deg, rgba(123,235,215,0.85) 0%, rgba(74,218,194,0.25) 45%, transparent 80%)",
             transformOrigin: "50% 0%",
           }}
         />
         {/* Emitter */}
         <div
-          className={`vx-lamp-emitter absolute -top-16 left-1/2 -translate-x-1/2 opacity-75 blur-[24px] ${animateLamp ? "vx-animated" : ""}`}
+          className={`vx-lamp-emitter absolute -top-16 left-1/2 -translate-x-1/2 opacity-100 blur-[16px] ${animateLamp ? "vx-animated" : ""}`}
           style={{
             width: 380,
             height: 240,
             background:
-              "radial-gradient(ellipse at center top, rgba(160,250,224,0.9) 0%, rgba(74,218,194,0.4) 20%, transparent 55%)",
+              "radial-gradient(ellipse at top, rgba(123,235,215,0.9) 0%, rgba(74,218,194,0.4) 40%, transparent 70%)",
           }}
         />
       </div>
@@ -138,7 +138,23 @@ export default function EntryTiles({ onSelect }) {
             aria-hidden
             className="absolute inset-0 -z-10 rounded-full bg-primary/25 blur-3xl motion-safe:animate-pulse"
           />
-          <VeyrnoxLogo size={76} />
+          {/* Slice I: logo halo — relative wrapper so the halo can sit behind
+              the hex logo (z-0) while the logo itself renders above (z-10). */}
+          <div className="relative">
+            <div
+              data-testid="logo-halo"
+              aria-hidden
+              className="vx-logo-halo absolute inset-0 -z-0 pointer-events-none blur-[12px]"
+              style={{
+                pointerEvents: "none",
+                background:
+                  "radial-gradient(circle, rgba(74,218,194,0.5) 0%, rgba(74,218,194,0.12) 45%, transparent 70%)",
+              }}
+            />
+            <div className="relative z-10">
+              <VeyrnoxLogo size={76} />
+            </div>
+          </div>
         </motion.div>
 
         <motion.div variants={item}>
@@ -146,7 +162,7 @@ export default function EntryTiles({ onSelect }) {
         </motion.div>
 
         <motion.p variants={item} className="mt-2 text-sm leading-relaxed text-muted-foreground max-w-[18rem]">
-          Self-custody, coercion-resistant. Your keys stay on this device.
+          Self-custody, Coercion-Resistant, AI Security Advisor. Your keys stay on this device.
         </motion.p>
 
         <motion.div variants={item} className="mt-8 w-full space-y-3">

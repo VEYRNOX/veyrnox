@@ -39,7 +39,7 @@
 // <RestoreProgress /> component (phase === 'restoring') — the animation follow-up
 // target. See components/backup/RestoreProgress.jsx.
 
-import { useState, useRef, useId } from 'react';
+import { useState, useRef, useId, useEffect } from 'react';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import {
   withLockSuppressed,
@@ -115,6 +115,19 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const [restoredVia, setRestoredVia] = useState('password');
   const [backups, setBackups] = useState([]);
   const [listBusy, setListBusy] = useState(false);
+  // Slice I: Recovery Bay drop-zone state — decorative hover + fail-closed
+  // extension error, independent of the pick/browse/unlock state machine.
+  const [dropHover, setDropHover] = useState(false);
+  const [dropError, setDropError] = useState('');
+  // Slice I: reads prefers-reduced-motion directly (same query EntryTiles
+  // gates its lamp-cone animation on) rather than via motion/react's hook —
+  // read at mount so a jsdom matchMedia stub set before render is honoured.
+  const [reduceMotion, setReduceMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
+  useEffect(() => {
+    setReduceMotion(Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches));
+  }, []);
   // excludeAttestation: restore is local seed-material (import). It must NOT be
   // gated on the REMOTE Play-Integrity leg — unavailable by design on any
   // sideloaded/non-Play-Store build (Google 404 → INTEGRITY_UNAVAILABLE → restore
@@ -138,14 +151,39 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
     }
   };
 
-  // Web (and iOS) path: <input type="file"> → FileReader.
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Shared web-path file read: <input type="file"> AND the Recovery Bay
+  // dropzone both funnel here so both reach the exact same envelope handler.
+  const readFileAndIngest = (file) => {
     const reader = new FileReader();
     reader.onload = (ev) => ingestBytes(/** @type {ArrayBuffer} */ (ev.target.result), file.name);
     reader.readAsArrayBuffer(file);
+  };
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    readFileAndIngest(file);
     e.target.value = '';
+  };
+
+  // Drop handler: fail closed on anything that isn't a `.enc` file (I4) — no
+  // envelope parse is even attempted for a rejected extension.
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDropHover(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith('.enc')) {
+      setDropError('Only .enc backup files are accepted.');
+      toast.error('Only .enc backup files are accepted.');
+      return;
+    }
+    setDropError('');
+    readFileAndIngest(file);
+  };
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setDropHover(true);
   };
 
   // Native Android path: open the system document picker via the FileSaver plugin so
@@ -479,9 +517,37 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
       </div>
     );
   } else {
-    // phase === 'pick'
+    // phase === 'pick' — Recovery Bay (Slice I). Same startSelect/handleFile
+    // wiring as before; the dropzone is an additional entry point onto the
+    // exact same ingestBytes() path.
+    const animateSafe = !reduceMotion;
     content = (
-      <div className="space-y-4">
+      <div className="relative space-y-4">
+        <style>{`
+          @keyframes vx-safe-door-open { 0%, 55% { transform: rotateY(0deg); } 65%, 75% { transform: rotateY(-55deg); } 100% { transform: rotateY(0deg); } }
+          @keyframes vx-safe-dial-spin { 0%, 50% { transform: rotate(0deg); } 70% { transform: rotate(360deg); } 100% { transform: rotate(360deg); } }
+          @keyframes vx-safe-handle-turn { 0%, 55% { transform: rotate(0deg); } 70%, 100% { transform: rotate(-35deg); } }
+          @keyframes vx-safe-glow-flash { 0%, 60%, 100% { opacity: 0; } 68% { opacity: 1; } 80% { opacity: 0; } }
+          .vx-safe-door.vx-animated { animation: vx-safe-door-open 3.8s ease-in-out infinite; }
+          .vx-safe-dial.vx-animated { animation: vx-safe-dial-spin 3.8s ease-in-out infinite; }
+          .vx-safe-handle.vx-animated { animation: vx-safe-handle-turn 3.8s ease-in-out infinite; }
+          .vx-safe-glow.vx-animated { animation: vx-safe-glow-flash 3.8s ease-in-out infinite; }
+        `}</style>
+
+        {/* Aurora + scan-grid backdrop, decorative only. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ zIndex: -1 }}>
+          <div className="absolute -top-10 -start-10 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
+          <div className="absolute -bottom-10 -end-10 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+          <div
+            className="absolute inset-0 opacity-[0.06]"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(74,218,194,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(74,218,194,0.6) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+            }}
+          />
+        </div>
+
         <button
           onClick={onBack}
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -489,24 +555,70 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
           <Upload className="h-3 w-3 rotate-180" />
           {backLabel}
         </button>
-        <div className="p-4 rounded-xl border border-border bg-card/50 space-y-1 text-xs text-muted-foreground">
-          <p className="font-medium text-foreground text-sm">Restoring from backup</p>
-          <ul className="list-disc list-inside space-y-0.5 mt-1">
-            <li>Pick your <span className="font-mono">.enc</span> backup file.</li>
-            <li>Open with its password or PIN.</li>
-            <li>Set a new device PIN for this app.</li>
-            <li>Replaces the current wallet on this device.</li>
-          </ul>
+
+        <p className="text-center text-[11px] font-semibold tracking-[0.2em] text-primary mono-value">
+          RECOVERY BAY
+        </p>
+
+        <div
+          data-testid="restore-dropzone"
+          onDragOver={handleDragOver}
+          onDragLeave={() => setDropHover(false)}
+          onDrop={handleDrop}
+          className={`p-6 rounded-2xl border-2 border-dashed transition-colors space-y-4 ${
+            dropHover ? 'border-primary bg-primary/5' : 'border-border bg-card/50'
+          }`}
+        >
+          {/* Animated safe — pure decoration, keyed off prefers-reduced-motion
+              the same way EntryTiles gates its lamp-cone animation. */}
+          <div className="flex justify-center py-2" style={{ perspective: 400 }}>
+            <div
+              data-testid="safe-body"
+              className="relative rounded-lg border-2 border-amber-400/70 bg-secondary/60"
+              style={{ width: 110, height: 100 }}
+            >
+              <div
+                data-testid="safe-glow"
+                className={`vx-safe-glow absolute inset-0 rounded-lg bg-primary/40 blur-md ${animateSafe ? 'vx-animated' : ''}`}
+              />
+              <div
+                data-testid="safe-door"
+                className={`vx-safe-door absolute inset-1 rounded-md border border-amber-400/50 bg-secondary ${animateSafe ? 'vx-animated' : ''}`}
+                style={{ transformOrigin: 'left center' }}
+              >
+                <div
+                  data-testid="safe-dial"
+                  className={`vx-safe-dial absolute top-2 start-2 h-5 w-5 rounded-full border-2 border-amber-400/80 ${animateSafe ? 'vx-animated' : ''}`}
+                />
+                <div
+                  data-testid="safe-handle"
+                  className={`vx-safe-handle absolute bottom-2 end-2 h-6 w-2 rounded-full bg-amber-400/80 ${animateSafe ? 'vx-animated' : ''}`}
+                  style={{ transformOrigin: 'center' }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <p className="text-center text-sm font-medium">Drag your .enc backup here, or</p>
+
+          <button
+            onClick={startSelect}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-border hover:border-primary/40 bg-card/70 hover:bg-secondary/40 text-sm text-muted-foreground transition-colors"
+          >
+            <Upload className="h-4 w-4" />
+            Select backup file
+          </button>
+          {dropError && <p className="text-xs text-destructive text-center">{dropError}</p>}
         </div>
 
-        <button
-          onClick={startSelect}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border hover:border-primary/40 bg-card/50 hover:bg-secondary/40 text-sm text-muted-foreground transition-colors"
-        >
-          <Upload className="h-4 w-4" />
-          Select backup file
-        </button>
-        <input ref={fileRef} type="file" accept=".enc,.json" onChange={handleFile} className="hidden" />
+        <ul className="space-y-1.5 text-xs text-muted-foreground">
+          <li>Read your .enc file locally — nothing uploaded.</li>
+          <li>Unlock with the file's password or backup PIN.</li>
+          <li>Set a fresh device PIN for this app.</li>
+          <li>Replaces any current wallet on this device.</li>
+        </ul>
+
+        <input ref={fileRef} type="file" accept=".enc" onChange={handleFile} className="hidden" />
       </div>
     );
   }

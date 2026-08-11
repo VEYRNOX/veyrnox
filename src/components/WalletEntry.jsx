@@ -1039,8 +1039,10 @@ export default function WalletEntry() {
   // PHASE 2 (import): import an existing seed under the in-memory pendingPin via the
   // provider method (PIN-cohort re-provision, so the device stays PIN cohort, never
   // 'password').
-  const doImportWallet = async () => {
-    const phrase = importPhrasePin.trim().replace(/\s+/g, " ");
+  const doImportWallet = async (mnemonicOverride) => {
+    const phrase = (typeof mnemonicOverride === 'string' && mnemonicOverride.length > 0
+      ? mnemonicOverride
+      : importPhrasePin).trim().replace(/\s+/g, " ");
     if (!phrase) return;
     setBusy(true); setProvisioning(true); setError("");
     try { setKekOrigin('restored'); await importWalletForPendingPin(phrase); setImportPhrasePin(""); setProvisioning(false); }
@@ -1326,12 +1328,16 @@ export default function WalletEntry() {
   // EXPLORE MODE: no vault on this device and the user is browsing view-only.
   // Render the real app behind a persistent create/import CTA. Tapping it (or any
   // wallet-requiring action via requireWallet()) leaves explore → the choose view.
-  if (vaultExists === false && exploreMode && !generatedSeed) {
+  if (vaultExists === false && exploreMode && !generatedSeed && !chosenPath) {
     // Leaving explore lands on the choose block, which branches on hasPendingPin
     // (pre-PIN → pin-create CTA; post-PIN → Phase-2 Create/Import). Reset view +
     // the Phase-2 import sub-toggle so the branch reliably takes over.
     const onCreate = () => { setError(""); setChoosePinImport(false); setView("choose"); leaveExplore(); };
-    return <ExploreShell onCreate={onCreate}><Outlet /></ExploreShell>;
+    return (
+      <div data-testid="explore-shell">
+        <ExploreShell onCreate={onCreate}><Outlet /></ExploreShell>
+      </div>
+    );
   }
 
   // Initial probe in flight (only relevant while still locked).
@@ -1736,13 +1742,14 @@ export default function WalletEntry() {
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally under your PIN — it never leaves this device.</span>
                 </div>
-                <div>
-                  <Label htmlFor="wallet-seed-import-pin">12 or 24-word BIP-39 Seed Phrase</Label>
-                  <textarea id="wallet-seed-import-pin" value={importPhrasePin} onChange={e => setImportPhrasePin(e.target.value)} rows={3} autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false} placeholder="word1 word2 word3 ... word12" aria-label="Recovery seed phrase" className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm mono-value resize-none focus:outline-none focus:ring-1 focus:ring-ring" />
-                </div>
-                <Button className="w-full gap-2" disabled={!importPhrasePin.trim() || busy} onClick={() => { if (referralInput.trim()) setPendingReferral(referralInput.trim().toUpperCase()); doImportWallet(); }}>
-                  {busy ? <RefreshCw className="h-4 w-4 motion-safe:animate-spin" /> : <Download className="h-4 w-4" />} Restore / Import
-                </Button>
+                <SeedInputGrid
+                  submitLabel="Restore / Import"
+                  disabled={busy}
+                  onSubmit={async (mnemonic) => {
+                    if (referralInput.trim()) setPendingReferral(referralInput.trim().toUpperCase());
+                    await doImportWallet(mnemonic);
+                  }}
+                />
               </>
             )}
           </div>
