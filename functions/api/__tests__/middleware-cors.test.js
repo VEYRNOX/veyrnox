@@ -42,6 +42,7 @@ describe('/api CORS — allowlisted origins are reflected', () => {
     'https://www.veyrnox.com',
     'capacitor://localhost',
     'https://localhost',
+    'http://localhost:5173',
   ])('reflects %s', async (origin) => {
     expect(await acao(origin)).toBe(origin);
   });

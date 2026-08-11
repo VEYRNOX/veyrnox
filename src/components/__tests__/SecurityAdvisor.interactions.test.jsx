@@ -265,15 +265,15 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
 
     it('continues using local KB when TIP chat is unconfigured', async () => {
       vi.unstubAllEnvs();
-      vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
-      // TIP_BASE_URL is not set — disables chat, not screening
+      // TIP chat is now gated on SUPABASE_URL + ANON_KEY (not TIP_BASE_URL).
+      // Blanking both disables the tip-chat proxy endpoint entirely.
+      vi.stubEnv('VITE_SUPABASE_URL', '');
+      vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
       vi.stubEnv('VITE_TIP_BASE_URL', '');
 
-      // Re-mount with unconfigured TIP
       vi.resetModules();
-      vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
+      vi.stubEnv('VITE_SUPABASE_URL', '');
+      vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
       vi.stubEnv('VITE_TIP_BASE_URL', '');
 
       const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
