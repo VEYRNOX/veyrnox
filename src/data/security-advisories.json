@@ -1,0 +1,7 @@
+{
+  "generated": null,
+  "window_days": 90,
+  "cvss_floor": 7.0,
+  "vendors": ["coldcard", "ledger", "trezor", "ellipal", "keystone", "metamask", "phantom", "walletconnect"],
+  "entries": []
+}
