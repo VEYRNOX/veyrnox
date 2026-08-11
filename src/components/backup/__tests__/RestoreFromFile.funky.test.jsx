@@ -20,7 +20,7 @@
 // "Only .enc backup files are accepted." (no envelope handler dispatched).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, act, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
 let raspArtifact = { tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false };
@@ -148,13 +148,11 @@ describe('RestoreFromFile — Recovery Bay (Slice I)', () => {
     expect(dropzone).toBeTruthy();
     const bytes = new Uint8Array([1, 2, 3]);
     const encFile = new File([bytes], 'veyrnox.enc', { type: 'application/octet-stream' });
-    // FileReader in jsdom is async; wrap the drop in act + a tick to let the
-    // reader resolve before we assert on the envelope handler.
-    await act(async () => {
-      fireDrop(dropzone, encFile);
-      await new Promise((r) => setTimeout(r, 0));
-    });
-    expect(parseBackupFile).toHaveBeenCalled();
+    fireDrop(dropzone, encFile);
+    // FileReader.readAsArrayBuffer resolves via microtask on jsdom; CI's shared
+    // runner sometimes needs a longer wait than a single setTimeout(0) tick.
+    // waitFor polls up to 2s, which is deterministic across environments.
+    await waitFor(() => expect(parseBackupFile).toHaveBeenCalled(), { timeout: 2000 });
     expect(toastError).not.toHaveBeenCalledWith('Only .enc backup files are accepted.');
   });
 
@@ -162,11 +160,11 @@ describe('RestoreFromFile — Recovery Bay (Slice I)', () => {
     const { container } = renderShared();
     const dropzone = container.querySelector('[data-testid="restore-dropzone"]');
     const txtFile = new File(['hello'], 'notes.txt', { type: 'text/plain' });
-    await act(async () => {
-      fireDrop(dropzone, txtFile);
-      await new Promise((r) => setTimeout(r, 0));
-    });
-    expect(toastError).toHaveBeenCalledWith('Only .enc backup files are accepted.');
+    fireDrop(dropzone, txtFile);
+    // The rejection is synchronous (extension check before FileReader), so
+    // waitFor's first poll should already see the toast; use a short timeout
+    // to keep the negative envelope-not-called assertion honest.
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Only .enc backup files are accepted.'), { timeout: 1000 });
     expect(parseBackupFile).not.toHaveBeenCalled();
   });
 
