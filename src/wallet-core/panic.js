@@ -341,6 +341,11 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // writer + I3 discipline.
   'veyrnox-personal-backup-exported',       // lib/personalBackupState.js PERSONAL_BACKUP_EXPORTED_KEY
   'veyrnox-personal-backup-passphrase-set', // lib/personalBackupState.js PERSONAL_BACKUP_PASSPHRASE_KEY
+  // Slice G+H backup-nag markers (lib/backupNag.js). PRESENCE proves a real
+  // Veyrnox install existed here AND either completed a personal backup or
+  // dismissed the recurring reminder — same tell class as the two lines above.
+  'veyrnox-backup-state-v1',
+  'veyrnox-backup-nag-v1',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
@@ -369,6 +374,10 @@ const ALL_RESIDUE_KEYS = Object.freeze([
 const SESSION_RESIDUE_KEYS = Object.freeze([
   'veyrnox-recent-pages',
   'veyrnox-kek-onboarding-skip-warned',
+  // Slice G+H per-tab "not right now" skip for the backup-nag sheet
+  // (lib/backupNag.js). Same C-1 class as the two lines above — tell is
+  // presence, not value.
+  'veyrnox-backup-nag-session-skip',
 ]);
 
 // Clear every sessionStorage residue key. Guarded for non-browser/test envs.

@@ -2266,6 +2266,84 @@ forward-pointer to this Slice F entry is warranted. No other entry in this file 
 default-deny telemetry was already in place — this is a new record, not a correction of
 an existing overstatement.
 
+## 2026-08-11 WalletCreatedFlash + backup-nag scheduler (Slice G+H)
+
+> ✅ BUILT (5274/5274 tests green including 78 new tests for Slice G+H, npm run build clean, eslint 0 errors).
+> **NOT verified** — no real-device trip has confirmed the platform-branched completion states (Android/iOS SaveToFiles/iOS ambiguous/web) fire correctly against actual OS share sheets, and no independent audit has reviewed the cross-cutting changes to WalletProvider chokepoints.
+
+Branch: `claude/slice-g-wallet-created-flash`, worktree `/var/folders/l3/.../veyrnox-slice-g`.
+Plan history: 14 Codex plan-review passes to CLEAN (findings + fixes summarised in the plan doc).
+
+**What shipped:**
+- `src/components/WalletCreatedFlash.jsx` (new) — full-screen celebration on CREATE
+  post-onboard, replacing `FirstReceiveCardWithTelemetry`. Copy locked; no
+  Shamir/2-of-3/three-shards language (that's spec-future per
+  `docs/cloud-recovery-shard-spec.md`, NOT shipped). Reveals: WALLET / Created. →
+  "Your keys were generated and encrypted on this device. Your seed never leaves it."
+  → backup callout → primary "Set up Personal Backup" → secondary "Skip for now —
+  take me to my wallet". IMPORT path unchanged (still lands on FirstReceiveCard).
+- `src/components/BackupNagSheet.jsx` (new) — compact re-mount of the flash as a
+  post-unlock nag sheet when `shouldShowBackupNag()` is true.
+- `src/lib/backupNag.js` (new) — pure state machine:
+  `pending_confirmation → completed`, container-fingerprint-scoped
+  (`getVaultFingerprint(publicAddresses)`), cadence 5-unlocks-or-3-days, I3
+  two-chokepoint (read AND write no-op in decoy/demo per the K-2 pattern).
+- `src/lib/useBackupNag.js` (new) — React hook via `useSyncExternalStore` so writer
+  notifications trigger re-render.
+- `src/lib/WalletProvider.jsx` — added `getBackupPublicAddresses()` context helper
+  (single source of truth for the fingerprint address list); wired
+  `backupNag.onVaultKeySetChanged(...)` at 5 mutation chokepoints: `createWallet`,
+  `importWallet`, `addWallet`, `importAdditionalWallet`, `removeWallet`.
+- `src/pages/PersonalBackup.jsx` — platform-branched completion state machine:
+  Android → `markBackupCompleted`, iOS SaveToFiles/DocumentManager →
+  `markBackupCompleted`, iOS ambiguous/absent activityType →
+  `markBackupPendingConfirmation`, web/desktop → `markBackupPendingConfirmation`.
+  Added "I saved it" / "Not yet — remind me" confirmation card; green "Backup saved"
+  banner suppressed when state is pending (honest).
+- `src/wallet-core/vaultBackup.js` — `downloadBackupFile` iOS branch now returns
+  `{saved, activityType, path}` so `PersonalBackup` can distinguish
+  save-verified vs ambiguous.
+- `src/wallet-core/panic.js` — added `veyrnox-backup-state-v1` and
+  `veyrnox-backup-nag-v1` to `METADATA_RESIDUE_KEYS`; added
+  `veyrnox-backup-nag-session-skip` to `SESSION_RESIDUE_KEYS`.
+- `src/components/WalletEntry.jsx` — `EntryShell` gained a `chromeless` prop;
+  entry-tiles view passes it (kills a duplicate hero). CREATE post-onboard swaps to
+  `WalletCreatedFlash`. Extracted a local `<BackButton>` component with the chip
+  class at 5 sites. Added an unlock-transition ref calling
+  `backupNag.recordUnlock()` exactly once per transition. Mounted
+  `<BackupNagSheet>` gated by `!justOnboarded && !isDeniabilityOrDemoActive()`.
+
+**Review passes:**
+- **Plan-review:** 14 Codex passes to CLEAN. Killed 8 P1 defects before
+  implementation (dishonest copy, wrong-scope completion, browser download ≠
+  verified, race-prone scheduler, missing `removeWallet` wiring,
+  `useSyncExternalStore` self-unmount race, secondary CTA flash→nag loop, "nothing
+  left your phone" contradicting referral egress).
+- **Honest reviewer post-implement:** flagged P0 (nag never turns off — ExportTab
+  missing `publicAddresses`) + P1 (fingerprint scope mismatch: WalletProvider
+  all-wallet vs consumer active-only) + 4 P2s. All fixed inline via
+  `getBackupPublicAddresses()` unification.
+- **Codex code review post-implement:** independently flagged the same P0/P1 plus 2
+  more P2s (`dismissForSession` cadence, `vaultBackup-ios` test conflict). All
+  fixed. One re-verify pass caught a lint directive on a nonexistent rule (P1) —
+  fixed by removing the disable. Final pass caught the green "Backup saved" banner
+  contradicting an "I'll do it later" dismiss (P1) — banner now gated on
+  non-pending state.
+- **Full regression:** 608 test files / 5274 tests green after all fixes.
+
+**Tap-count effect:** fresh CREATE now lands on the flash (still 3 taps: tile → PIN
+→ confirm PIN), and the flash's Skip goes straight to the dashboard. The nag re-fires
+after 5 unlocks OR 3 days if the user skipped without backing up.
+
+**Two open honest gaps (documented in the plan, v14):**
+1. Copy assumes today's `.enc` file model. The Shamir 2-of-3 spec exists
+   (`docs/cloud-recovery-shard-spec.md`) but is not shipped. When Shamir ships,
+   revisit `WalletCreatedFlash` + Personal Backup copy.
+2. Nag cadence (5 unlocks OR 3 days) is a first guess, not tuned against user data
+   — `ponytail:` comment on the constant names the ceiling.
+
+No earlier Slice A–F entries were touched or overwritten by this entry.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split

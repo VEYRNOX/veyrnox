@@ -39,6 +39,7 @@
 import React, { createContext, useContext, useRef, useState, useCallback, useEffect } from 'react';
 import { generateMnemonic, validateMnemonic } from '@/wallet-core/mnemonic';
 import { deriveEvmAccount, deriveEvmAddress } from '@/wallet-core/derivation';
+import * as backupNag from '@/lib/backupNag';
 import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { ACTIVE_BTC_NETWORK_KEY } from '@/wallet-core/btc/networks';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
@@ -789,6 +790,20 @@ export function WalletProvider({ children }) {
     return map;
   }, []);
 
+  // Slice G+H: return the sorted first-EVM-address of EVERY wallet in the
+  // container. Single source of truth for backupNag fingerprinting — the same
+  // shape used by the 5 mutation chokepoints (createWallet/importWallet/
+  // addWallet/importAdditionalWallet/removeWallet). Consumers (WalletEntry,
+  // PersonalBackup) call this so the reader fingerprint matches the writer's.
+  const getBackupPublicAddresses = useCallback(() => {
+    try {
+      return (containerRef.current?.wallets || [])
+        .map((w) => { try { return deriveEvmAddress(w.mnemonic, 0); } catch { return null; } })
+        .filter(Boolean)
+        .sort();
+    } catch { return []; }
+  }, []);
+
   // Derive a set of public accounts from the in-memory mnemonic.
   const deriveAccounts = useCallback((count = 1) => {
     const active = getActiveMnemonic();
@@ -954,6 +969,9 @@ export function WalletProvider({ children }) {
     deriveActiveAndAll();
     lastAuthAtRef.current = Date.now();
     verifierRef.current = await captureVerifierSafe(password); // never throws; null degrades safely
+    // Slice G+H: fingerprint the resulting vault key-set for the backup-nag
+    // module. Sorted for deterministic hashing across mutation order.
+    try { backupNag.onVaultKeySetChanged(getBackupPublicAddresses()); } catch { /* best-effort */ }
     // Return mnemonic ONCE for the user to back up; caller must not persist it.
     return mnemonic;
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
@@ -999,6 +1017,8 @@ export function WalletProvider({ children }) {
     deriveActiveAndAll();
     lastAuthAtRef.current = Date.now();
     verifierRef.current = await captureVerifierSafe(password); // never throws; null degrades safely
+    // Slice G+H: fingerprint the vault key-set post-import for backupNag.
+    try { backupNag.onVaultKeySetChanged(getBackupPublicAddresses()); } catch { /* best-effort */ }
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
   // ── MULTI-WALLET MANAGEMENT (re-prompt password to mutate the SEED SET) ──────
@@ -1066,6 +1086,8 @@ export function WalletProvider({ children }) {
     refreshPortfoliosState();
     touch();
     deriveActiveAndAll();
+    // Slice G+H: fingerprint the vault key-set post-add for backupNag.
+    try { backupNag.onVaultKeySetChanged(getBackupPublicAddresses()); } catch { /* best-effort */ }
     return { walletId, mnemonic };
   }, [isDecoy, isHidden, decryptPrimaryContainer, persistPrimaryContents, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
@@ -1087,6 +1109,8 @@ export function WalletProvider({ children }) {
     refreshPortfoliosState();
     touch();
     deriveActiveAndAll();
+    // Slice G+H: fingerprint the vault key-set post-import-additional for backupNag.
+    try { backupNag.onVaultKeySetChanged(getBackupPublicAddresses()); } catch { /* best-effort */ }
     return { walletId };
   }, [isDecoy, isHidden, decryptPrimaryContainer, persistPrimaryContents, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
@@ -1109,6 +1133,8 @@ export function WalletProvider({ children }) {
     refreshPortfoliosState();
     touch();
     deriveActiveAndAll();
+    // Slice G+H: fingerprint the vault key-set post-remove for backupNag.
+    try { backupNag.onVaultKeySetChanged(getBackupPublicAddresses()); } catch { /* best-effort */ }
   }, [isDecoy, isHidden, decryptPrimaryContainer, persistPrimaryContents, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
   // ── ACTION PASSWORD (2FA second factor) — PRIMARY SET (this phase) ──────────────
@@ -2471,6 +2497,7 @@ export function WalletProvider({ children }) {
     changePassword,
     lock,
     deriveAccounts,
+    getBackupPublicAddresses,
     withPrivateKey,
     clearVault: keyStore.clearVault,
     // BIP-39 mnemonic validation facade (R2). Re-exposed so UI (WalletEntry seed-
