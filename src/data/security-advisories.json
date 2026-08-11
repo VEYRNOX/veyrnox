@@ -1,0 +1,16 @@
+{
+  "generated": null,
+  "window_days": 90,
+  "cvss_floor": 7.0,
+  "vendors": [
+    "Coldcard (Coinkite)",
+    "Ledger (Nano S/S Plus/X, Ledger Live)",
+    "Trezor (Model One/T/Safe 3/Safe 5, Trezor Suite)",
+    "Ellipal",
+    "Keystone",
+    "MetaMask (extension + mobile)",
+    "Phantom (Solana wallet)",
+    "WalletConnect / Reown (WalletKit, AppKit)"
+  ],
+  "entries": []
+}
