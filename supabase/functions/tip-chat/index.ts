@@ -205,7 +205,9 @@ serve(async (req) => {
   }
   const ts = Math.floor(Date.now() / 1000).toString();
   const keySecret = await hmacHex(await sha256Hex(tipApiKey), tipSigningSecret);
-  const sig = await hmacHex(`${ts}.${raw}`, keySecret);
+  // Canonical string is ts.METHOD.pathname.body — matches Worker auth.ts
+  // (veyrnox-tip PR #48, 2026-08-10). Legacy ts.body form no longer accepted.
+  const sig = await hmacHex(`${ts}.POST./api/v1/chat.${raw}`, keySecret);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIP_TIMEOUT_MS);
@@ -214,7 +216,6 @@ serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'veyrnox-tip-chat-proxy/1.0',
         'X-Api-Key': tipApiKey,
         'X-Timestamp': ts,
         'X-Signature': sig,
