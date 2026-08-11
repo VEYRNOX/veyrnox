@@ -56,6 +56,21 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
+const enc = new TextEncoder();
+
+async function sha256Hex(input: string): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', enc.encode(input));
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hmacHex(message: string, secret: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 const TIP_TIMEOUT_MS = 60_000; // longer than tip-screen (chat can stream for a while)
 const MAX_BODY_BYTES = 128 * 1024; // Advisor prompts + history can grow past screen's 64K cap
 
@@ -178,15 +193,20 @@ serve(async (req) => {
     return json({ error: 'bad_request' }, 400, origin);
   }
 
-  // Cloudflare Bot Fight Mode challenges plain server-to-server POSTs to the
-  // .workers.dev origin with an HTML interstitial (returns 403 to non-browser
-  // callers). tip-screen bypasses this because it carries HMAC headers CF
-  // recognises as API traffic. /api/v1/chat is unauthenticated so we don't
-  // have a signature, but adding X-Api-Key (which the Worker ignores on this
-  // route) + a real-looking User-Agent makes CF treat the request as API and
-  // pass it through. If the API key isn't configured, the request still goes
-  // — CF's rule keys on header PRESENCE, not validation.
-  const tipApiKey = Deno.env.get('TIP_API_KEY') ?? '';
+  // The Worker's /api/v1/chat now requires HMAC-signed headers (Missing
+  // authentication headers -> 401 otherwise). Same signing scheme tip-screen
+  // uses. The per-device 30-turns/24h cap on the Worker keys on device_id
+  // in the body, which validation above preserved — signing here does not
+  // launder the rate limit because the cap still applies.
+  const tipApiKey = Deno.env.get('TIP_API_KEY');
+  const tipSigningSecret = Deno.env.get('TIP_SIGNING_SECRET');
+  if (!tipApiKey || !tipSigningSecret) {
+    return json({ error: 'tip_not_configured' }, 503, origin);
+  }
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const keySecret = await hmacHex(await sha256Hex(tipApiKey), tipSigningSecret);
+  const sig = await hmacHex(`${ts}.${raw}`, keySecret);
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIP_TIMEOUT_MS);
   try {
@@ -195,7 +215,9 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'veyrnox-tip-chat-proxy/1.0',
-        ...(tipApiKey ? { 'X-Api-Key': tipApiKey } : {}),
+        'X-Api-Key': tipApiKey,
+        'X-Timestamp': ts,
+        'X-Signature': sig,
       },
       body: raw,
       signal: controller.signal,
