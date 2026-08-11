@@ -99,7 +99,8 @@ import Spinner from "@/components/Spinner";
 import SeedGrid from "@/components/SeedGrid";
 import SeedInputGrid from "@/components/SeedInputGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
-import { clearConsent } from "@/lib/consent";
+import TelemetryConsent from "@/components/TelemetryConsent";
+import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError } from "@/lib/passkey";
@@ -130,7 +131,6 @@ import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import PinSetup from "@/components/PinSetup";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
-import FirstRunTour, { armTour } from "@/components/FirstRunTour";
 import { errorHaptic } from "@/lib/haptics";
 import FirstReceiveCard from "@/components/FirstReceiveCard";
 import WalletCreatedFlash from "@/components/WalletCreatedFlash";
@@ -509,11 +509,10 @@ export default function WalletEntry() {
   const [generatedSeed, setGeneratedSeed] = useState("");
   const [showSeed, setShowSeed] = useState(false);
   const [copied, setCopied] = useState(false);
-  // Telemetry consent: no longer prompted at onboarding (Slice F tap reduction).
-  // hasConsent()/trackEvent() default-deny keeps telemetry OFF unless the user
-  // explicitly opts in via Settings → Privacy. clearConsent() is still called
-  // in finishCreate so a new wallet identity does not inherit a prior grant.
-  //
+  // Telemetry consent gate: only shown when consent has never been answered on
+  // this device. Evaluated once at mount (getConsentState is a synchronous
+  // localStorage read) so the screen renders at most once per onboarding pass.
+  const [consentDone, setConsentDone] = useState(() => getConsentState() !== null);
   // True only across a fresh onboarding pass (finishPinSetup → Phase-2 create/import
   // → KEK gate → consent). Drives the one-time FirstReceiveCard branch below. NOT set
   // on the PIN-recovery path (finishPinRecover) — restore flows don't get this card
@@ -1002,7 +1001,7 @@ export default function WalletEntry() {
   // fail-closed). The provisioning gate below holds the dashboard back until it commits.
   const doCreateWallet = async () => {
     setBusy(true); setProvisioning(true); setError("");
-    try { setKekOrigin('fresh'); await createWalletFromPendingPin(); armTour(); setProvisioning(false); }
+    try { setKekOrigin('fresh'); await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
       autoEnrollPinRef.current = null;
       setProvisioning(false);
@@ -1156,7 +1155,6 @@ export default function WalletEntry() {
       createdPasswordRef.current = genPassword;
       setKekOrigin('fresh');
       const seed = await createWallet(genPassword); // returns mnemonic ONCE for backup
-      armTour();
       setGeneratedSeed(seed);
       setShowSeed(false);
       setBioEnabled(false);
@@ -1179,6 +1177,7 @@ export default function WalletEntry() {
       // clearConsent() self-suppresses in a decoy/demo session — the I3 guard for
       // this shared key lives in lib/consent.js, the single writer chokepoint.
       clearConsent();
+      setConsentDone(false); // re-ask on the next render
       if (bioEnabled && bioStatus?.available && createdPasswordRef.current) {
         const ok = await enableBiometricUnlock(createdPasswordRef.current);
         if (!ok) toast.warning("Biometric unlock wasn't enabled — your vault password is always your way in. You can enable it later in Security settings.");
@@ -1314,27 +1313,30 @@ export default function WalletEntry() {
     return renderImportFirstReceive();
   }
 
-  // FirstRunTour sits on the unlocked wallet — not on the pre-creation choose
-  // screen. The tour describes what to do with a wallet you have (duress PIN,
-  // stealth wallets, backup, hardware binding); shown before the wallet exists
-  // it advertised features the user could not yet act on, in front of the
-  // create/import decision. It is once-per-device via its own localStorage
-  // marker, so placing it here does not make it re-fire.
+  // One-time telemetry consent screen: after backup confirmation (create path)
+  // and hardware-KEK enrollment/skip, but before the app renders. Runs for
+  // BOTH create and import (both land here once unlocked + past the KEK gate).
+  // consentDone is seeded from getConsentState() at mount, so this only ever
+  // shows when the device has never answered before.
   //
-  // PR #1403 deleted this component on the theory that it was blocking
-  // consent — it was not, and the deletion reopened ECC F-P3-3 (#1160). Do
-  // not remove it again without an owner decision recorded against that
-  // issue. (The telemetry-consent screen itself was removed in Slice F; the
-  // tour is unrelated and stays.)
-  //
-  // Keep this comment ABOVE the branch: FirstRunTour.placement.test.js asserts
-  // the render appears within 900 chars of the `if`, which is what stops it
-  // drifting out of this branch into a later one.
+  // NEVER in a decoy/demo session (I3, K-2 pattern from PR #1262): a duress
+  // unlock must not surface consent, and a coerced tap must not write
+  // veyrnox-telemetry-consent into the SHARED localStorage the real session reads.
+  if (isUnlocked && !generatedSeed && !consentDone && !isDeniabilityOrDemoActive()) {
+    return (
+      <EntryShell error={error}>
+        <TelemetryConsent onChoice={() => setConsentDone(true)} />
+      </EntryShell>
+    );
+  }
+
+  // FirstRunTour removed 2026-08-11 (owner decision, tap-reduction). Reopens
+  // ECC F-P3-3 (#1160). Panic-residue scrub for the old tour keys stays in
+  // wallet-core/panic.js so legacy installs still get wiped.
   if (isUnlocked && !generatedSeed && !kekGatePending) {
     autoEnrollPinRef.current = null;
     return (
       <>
-        {!isDeniabilityOrDemoActive() && <FirstRunTour />}
         {!justOnboarded && !isDeniabilityOrDemoActive() && (
           <BackupNagSheet publicAddresses={getBackupPublicAddresses ? getBackupPublicAddresses() : []} />
         )}
