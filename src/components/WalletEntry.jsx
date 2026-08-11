@@ -93,6 +93,7 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
 import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
 import VeyrnoxHero from "@/components/VeyrnoxHero";
+import VeyrnoxAmbient from "@/components/VeyrnoxAmbient";
 import VaultIllustration from "@/components/VaultIllustration";
 import Spinner from "@/components/Spinner";
 import SeedGrid from "@/components/SeedGrid";
@@ -160,8 +161,9 @@ function FirstReceiveCardWithTelemetry(props) {
 // dropping focus from the password/seed inputs.
 function EntryShell({ error, children, chromeless = false }) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-sm space-y-6">
+    <div className="relative min-h-screen flex items-center justify-center p-4 bg-background overflow-hidden">
+      <VeyrnoxAmbient />
+      <div className="relative w-full max-w-sm space-y-6" style={{ zIndex: 1 }}>
         {/* Slice K: single shared <VeyrnoxHero> for every pre-vault surface.
             chromeless still supported (entry-tiles view passes it because
             EntryTiles renders its own <VeyrnoxHero> inside — avoids stacking
