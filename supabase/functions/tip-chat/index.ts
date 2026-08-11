@@ -142,7 +142,12 @@ serve(async (req) => {
     return json({ error: 'unauthorized' }, 401, origin);
   }
 
-  const tipBaseUrl = Deno.env.get('TIP_BASE_URL');
+  // TIP_CHAT_BASE_URL overrides TIP_BASE_URL for the chat route only.
+  // Prod uses this to route /api/v1/chat via the workers.dev bypass URL —
+  // CF Bot Fight on the veyrnox.com zone challenges /api/v1/chat calls from
+  // Supabase Deno IPs specifically on that path. tip-screen keeps using
+  // TIP_BASE_URL and the zone WAF.
+  const tipBaseUrl = Deno.env.get('TIP_CHAT_BASE_URL') || Deno.env.get('TIP_BASE_URL');
   if (!tipBaseUrl) {
     // I4: a misconfigured proxy must not look like a healthy Advisor. The
     // client renders "AI advisor unavailable" on a non-2xx.
