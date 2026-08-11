@@ -82,6 +82,7 @@ export interface WalletContextValue {
   changePassword: any;
   lock: any;
   deriveAccounts: any;
+  getBackupPublicAddresses: any;
   withPrivateKey: any;
   clearVault: any;
   validateMnemonic: any;
