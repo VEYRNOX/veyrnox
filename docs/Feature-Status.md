@@ -2344,6 +2344,43 @@ after 5 unlocks OR 3 days if the user skipped without backing up.
 
 No earlier Slice A–F entries were touched or overwritten by this entry.
 
+## 2026-08-11 Halo bump + explore-dashboard kill + SeedInputGrid on Have + Recovery Bay + AI-Advisor tagline (Slice I)
+
+> ✅ BUILT (5301/5301 tests + 32 new Slice I tests green, `npm run build` clean, `eslint` 0 errors).
+> **NOT verified** — no real-device trip has confirmed the safe-open animation reads correctly across viewports, the drag-and-drop `.enc` ingestion works on the actual macOS/Windows browsers, or that the Have flow's SeedInputGrid paste-split behaves against real clipboard variance. Independent audit outstanding.
+
+Branch: `claude/slice-i-halo-explore-seedgrid`. Plan history: 5 Codex plan-review passes to CLEAN.
+
+**What shipped:**
+- **Halo bump** — `EntryTiles.jsx` lamp beam/emitter gradient stops brightened (0.55→0.9 at 0%), blur reduced (32px→24px), opacity 100. New logo halo element (`data-testid="logo-halo"`) — radial mint glow behind the hex, `pointer-events-none`, respects `isLowEndDevice` + `prefers-reduced-motion` gates unchanged.
+- **Explore-dashboard skip** — `WalletEntry.jsx:1329` condition gained `&& !chosenPath` guard. Tile-driven flow (New / Have) no longer flashes the empty ExploreShell mid-onboarding. Legacy `enterExplore()` path from other surfaces still hits the branch (chosenPath null → guard passes).
+- **SeedInputGrid on Have** — raw `<textarea>` in Have import form replaced with `<SeedInputGrid submitLabel="Restore / Import">`. `doImportWallet` signature changed to `doImportWallet(mnemonicOverride)` — uses override if provided, falls back to state read for legacy callers. `setPendingReferral` side-effect preserved in the new `onSubmit`.
+- **SeedInputGrid paste-split** — new `handlePaste(event, index)` with fail-closed overflow:
+  - `event.preventDefault()` first, always.
+  - Tokenize on `/\s+/`, lowercase, trim.
+  - `index === 0` + token count ∈ {12,15,18,21,24} → auto-resize + fill.
+  - `index + N <= count` → forward-fill from index.
+  - Otherwise → fail-closed error "Pasted phrase does not fit — pick 12/15/18/21/24 words or paste again." No fill. No-oracle preserved (no per-word info).
+  - `flushSync` opts this specific update out of React 18+ auto-batching so DOM-reading callers (tests + some UI code paths) see the update synchronously.
+- **Recovery Bay Advanced screen** — `RestoreFromFile.jsx` `pick` phase redesigned: "RECOVERY BAY" mono uppercase kicker, aurora + faint scan-grid backdrop, animated safe (110×100 body + door swings `rotateY(-55deg)` at 55-75% of 3.8s cycle + dial spins gold + handle turns + glow flash), dashed dropzone with `data-testid="restore-dropzone"`. **Drag-and-drop added**: `onDragOver` prevents default + toggles hover, `onDrop` reads `dataTransfer.files[0]`, rejects non-`.enc` with visible error, passes valid file to existing `readFileAndIngest` (same envelope-load path as the browse button). File input `accept` tightened from `.enc,.json` to `.enc` for symmetry. All existing platform paths (Android `startSelect`, iOS picker, click-select, unlock, setpin, done) untouched.
+- **Tagline** — `EntryTiles.jsx:149`: `Self-custody, Coercion-Resistant, AI Security Advisor. Your keys stay on this device.` Names the shipped AI Security Advisor component (`src/components/SecurityAdvisor.jsx`, 29 tests, `docs/SecurityAdvisor-TIP-integration.md`).
+- **e2e** — `onboarding.spec.js` updated to fill `SeedInputGrid` per-word boxes (with word-count tab selection) instead of the removed textarea; added `[data-testid="explore-shell"]` `toHaveCount(0)` negative assertion during Have flow.
+
+**Review passes:**
+- **Plan-review:** 5 Codex passes to CLEAN. Killed 8 P1s pre-implement (doImportWallet no-arg, paste-split absent, referral drop, chosenPath internal state / e2e wait, paste overflow, explore test mount sequence, paste fix contradiction, drop copy without handler, index=0 auto-resize prerequisite).
+- **Honest reviewer post-implement:** CLEAN on P0/P1. Two P2s (accept="`.enc,.json`" browse vs `.enc`-only drop asymmetry; flushSync comment misdescribed React semantics). Both fixed inline.
+- **Codex code review post-implement:** CLEAN (no P0/P1/P2).
+
+Slice I tests: **32/32 green (7 files)**. 1 intentionally `.skip`ped (mount-level Have flow walk deferred to reduce mock surface — source-scan primary contract is exact).
+
+Full regression: **614 files, 5301 tests green**.
+
+**Two open honest gaps:**
+1. Halo/safe visibility values are aesthetic — no golden target. May need tuning after real-device viewing.
+2. Drag-and-drop is web-only; native mobile builds continue to use platform pickers (asymmetric by design, not a regression).
+
+Places flagged but NOT overwritten: none — Slice I is a self-contained UX/copy layer; does not contradict prior narrative. No earlier Slice A–H entries were touched or overwritten by this entry.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split

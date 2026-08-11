@@ -136,7 +136,18 @@ const IMPORT_SEED = process.env.VITE_TEST_THROWAWAY_SEED;
 // separate "Import an existing seed" button click needed (that button only shows
 // when chosenPath is unset).
 async function importWalletThroughRestore(page, seed = IMPORT_SEED) {
-  await page.getByLabel('Recovery seed phrase').fill(seed);
+  // Slice I: the Have import sub-form is <SeedInputGrid> (per-word boxes),
+  // not a single textarea — select the matching word-count tab first if the
+  // fixture seed isn't 12 words (the grid's default), then fill each box.
+  const words = seed.trim().split(/\s+/);
+  if (words.length !== 12) {
+    await page.getByRole('button', { name: String(words.length), exact: true }).click();
+  }
+  const boxes = page.locator('input[id^="seed-word-"]');
+  await expect(boxes).toHaveCount(words.length);
+  for (let i = 0; i < words.length; i++) {
+    await boxes.nth(i).fill(words[i]);
+  }
   await page.getByRole('button', { name: /Restore \/ Import/i }).click();
   await waitForAuthedShell(page);
 }
@@ -218,7 +229,13 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     // password field.
     await freshLocalBuild(page);
     await completePasswordSetup(page, VAULT_PIN, 'have');
-    await leaveExploreToChoose(page);
+    // Slice I: the explore-intercept guard gained `&& !chosenPath`, so
+    // chosenPath === 'have' now skips ExploreShell entirely — PIN confirm
+    // lands directly on the Have import form, with no "Exploring — view
+    // only" screen to leave via leaveExploreToChoose(). Assert the skip
+    // holds (not just that the import form eventually appears) so a
+    // regression that reopens the explore-flash bug fails here.
+    await expect(page.locator('[data-testid="explore-shell"]')).toHaveCount(0);
     await importWalletThroughRestore(page);
     await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
 
