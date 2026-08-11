@@ -34,24 +34,15 @@ import {
 const TIP_CONFIGURED = !!import.meta.env.VITE_TIP_BASE_URL;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-// Advisor calls the TIP Worker DIRECTLY, not via a Supabase proxy.
-//
-// The obvious symmetry with tip-screen would be a tip-chat edge function,
-// and we built one — but Cloudflare Bot Fight Mode fingerprints Supabase's
-// Deno IPs and returns a 403 challenge page ('Just a moment...') to any
-// server-to-server POST at .workers.dev. tip-screen slips through because
-// its HMAC-signed requests satisfy CF's API-traffic heuristic; tip-chat
-// carries no signature (Advisor is unauthenticated by design).
-//
-// The wallet, however, runs in a real browser (or Capacitor's WebView).
-// Cloudflare treats those requests as legitimate browser traffic — no
-// challenge. The Worker's CORS explicitly allows veyrnox.com,
-// veyrnox-prod.pages.dev, and capacitor://localhost.
-//
-// So: build a URL to the Worker directly. VITE_TIP_BASE_URL is the same
-// value tip-screen's proxy uses server-side.
+// Advisor calls the tip-chat Supabase Edge Function, which proxies to the
+// TIP Worker with the X-Api-Key header that satisfies Cloudflare's Bot
+// Fight heuristic. Direct browser -> Worker calls returned 401 because
+// the Worker now requires header presence to distinguish API from bot
+// traffic. Fix: route via the Edge Function that already carries it.
+// VITE_TIP_BASE_URL stays as the "is TIP backend configured" gate —
+// tip-chat proxies to it server-side.
 const TIP_CHAT_URL = (SUPABASE_URL && SUPABASE_ANON_KEY && TIP_CONFIGURED)
-  ? `${String(import.meta.env.VITE_TIP_BASE_URL).replace(/\/$/, '')}/api/v1/chat`
+  ? `${String(SUPABASE_URL).replace(/\/$/, '')}/functions/v1/tip-chat`
   : null;
 const SCREEN_MAP = {
   '/': 'dashboard',
@@ -536,11 +527,11 @@ export default function SecurityAdvisor({ walletChain }) {
     try {
       const resp = await fetch(TIP_CHAT_URL, {
         method: "POST",
-        // No apikey / Authorization — we hit the Worker directly, and its
-        // CORS allowlist doesn't include those headers, so the browser
-        // preflight would fail. The Advisor endpoint is protected by the
-        // per-device-ID cap on the Worker side, not by header auth.
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
         body: JSON.stringify({
           action: "chat",
           messages: [

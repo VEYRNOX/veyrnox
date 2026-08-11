@@ -44,34 +44,15 @@
 //   TIP_BASE_URL     — same value tip-screen uses (e.g. https://veyrnox-tip.al-jobson.workers.dev)
 //   ALLOWED_ORIGINS  — optional, comma-separated extra browser origins
 //
-// ─── STATUS: BUILT, NOT WIRED, NOT DEPLOYED ─────────────────────────────────
+// ─── STATUS: BUILT, WIRED, DEPLOY REQUIRED ──────────────────────────────────
 //
-// NOTHING CALLS THIS FUNCTION. `git grep tip-chat -- src` is not empty, but
-// every hit is a comment explaining the bypass or a test asserting it — there
-// is no fetch, no import, no route. Check for a CALL, not a mention.
-//
-// This header used to read "Companion PR to SecurityAdvisor.jsx points the
-// wallet at this function instead of tip-screen." That was never true. The same
-// PR that wrote it (#1614) pointed the wallet at the TIP Worker DIRECTLY —
-// `${VITE_TIP_BASE_URL}/api/v1/chat` — because Cloudflare Bot Fight Mode
-// fingerprints Supabase's Deno egress IPs and answers a server-to-server POST
-// to .workers.dev with a 403 challenge page. tip-screen slips through only
-// because its requests are HMAC-signed; this proxy is unsigned by design, so it
-// cannot. See the note in SecurityAdvisor.jsx above TIP_CHAT_URL.
-//
-// #1619 confirmed the same thing from the other side while removing
-// tip-screen's dead chat route: "nothing under src/ has called it since".
-//
-// KEPT ANYWAY, deliberately: this is where a server-side chat proxy belongs if
-// one is ever wanted again, and being unsigned it cannot launder Bot Fight Mode
-// the way tip-screen's removed route did. It carries real request validation
-// (#1619) and no upstream-diagnostic leak (#1628), so it is safe to leave in
-// the tree — but do not mistake it for something on the request path.
-//
-// Re-wiring it means deleting the "NOT WIRED" marker above, which
-// src/api/__tests__/tipEdge.chatRoute.test.js asserts is present while
-// SecurityAdvisor.jsx still bypasses this function. That pairing is what stops
-// this header drifting from reality a second time.
+// SecurityAdvisor.jsx calls this function. Direct browser -> Worker calls
+// stopped working when the Worker began requiring header presence to
+// distinguish API from bot traffic (401 to plain fetches). This proxy
+// injects X-Api-Key server-side so Cloudflare treats requests as API,
+// not bot. tipEdge.chatRoute.test.js pins the wiring both ways: this
+// header must state WIRED, and SecurityAdvisor.jsx must reference
+// functions/v1/tip-chat.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
@@ -94,8 +75,11 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://veyrnox.com',
   'https://www.veyrnox.com',
   'https://veyrnox-prod.pages.dev',
+  'https://veyrnox-staging.pages.dev',
   'capacitor://localhost',
   'https://localhost',
+  'http://localhost:5173',
+  'http://localhost:5199',
 ];
 
 function allowedOrigins(): Set<string> {
