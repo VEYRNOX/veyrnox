@@ -80,13 +80,13 @@ describe('iOS backup via share sheet', () => {
       directory: 'CACHE',
     });
 
-    expect(result).toEqual({ saved: true, path: 'Shared via com.apple.UIKit.activity.SaveToFiles' });
+    expect(result).toEqual({ saved: true, activityType: 'com.apple.UIKit.activity.SaveToFiles', path: 'Shared via com.apple.UIKit.activity.SaveToFiles' });
   });
 
   it('returns {saved: true} even when activityType is absent', async () => {
     mockShare.mockResolvedValue({});
     const result = await downloadBackupFile(ENVELOPE);
-    expect(result).toEqual({ saved: true, path: 'Saved via share sheet' });
+    expect(result).toEqual({ saved: true, activityType: undefined, path: 'Saved via share sheet' });
   });
 
   it('returns {saved: false} when user dismisses the share sheet', async () => {
@@ -114,7 +114,7 @@ describe('iOS backup via share sheet', () => {
     mockDeleteFile.mockRejectedValue(new Error('delete failed'));
     const result = await downloadBackupFile(ENVELOPE);
     // Should not throw — deleteFile failure is swallowed
-    expect(result).toEqual({ saved: true, path: 'Shared via com.apple.UIKit.activity.SaveToFiles' });
+    expect(result).toEqual({ saved: true, activityType: 'com.apple.UIKit.activity.SaveToFiles', path: 'Shared via com.apple.UIKit.activity.SaveToFiles' });
   });
 
   it('wraps Share.share in withLockSuppressed', async () => {

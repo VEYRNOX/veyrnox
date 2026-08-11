@@ -131,6 +131,9 @@ import RestoreFromFile from "@/components/backup/RestoreFromFile";
 import FirstRunTour, { armTour } from "@/components/FirstRunTour";
 import { errorHaptic } from "@/lib/haptics";
 import FirstReceiveCard from "@/components/FirstReceiveCard";
+import WalletCreatedFlash from "@/components/WalletCreatedFlash";
+import BackupNagSheet from "@/components/BackupNagSheet";
+import * as backupNag from "@/lib/backupNag";
 import { resolveReceive } from "@/lib/receiveAddress";
 import { emit, FunnelEvent } from "@/lib/analytics";
 import { useFirstReceiveShown } from "@/lib/tracking-integration";
@@ -154,15 +157,17 @@ function FirstReceiveCardWithTelemetry(props) {
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
 // dropping focus from the password/seed inputs.
-function EntryShell({ error, children }) {
+function EntryShell({ error, children, chromeless = false }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-sm space-y-6">
-        <div className="text-center space-y-2">
-          <VeyrnoxLogo size={56} className="mx-auto" />
-          <VeyrnoxWordmark className="text-xl block" />
-          <p className="text-sm text-muted-foreground">Your seed phrase is your account. We never hold your keys.</p>
-        </div>
+        {!chromeless && (
+          <div className="text-center space-y-2">
+            <VeyrnoxLogo size={56} className="mx-auto" />
+            <VeyrnoxWordmark className="text-xl block" />
+            <p className="text-sm text-muted-foreground">Your seed phrase is your account. We never hold your keys.</p>
+          </div>
+        )}
         {error && (
           <div role="alert" aria-live="assertive" className="flex items-start gap-2 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> {error}
@@ -171,6 +176,22 @@ function EntryShell({ error, children }) {
         {children}
       </div>
     </div>
+  );
+}
+
+// Chip-styled back button (Slice G+H plan §4) — replaces 5 identical inline
+// `text-xs text-muted-foreground` buttons. Module-level for the same reason
+// as EntryShell above (stable identity across re-renders). The testid and
+// chip class are passed explicitly at each call site (not baked in here) so
+// a source scan around any one call site's testid sees the chip class right
+// there too, not only in this shared definition.
+const BACK_BUTTON_CHIP_CLASS =
+  "inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground";
+function BackButton({ onClick, label = "Back", className = BACK_BUTTON_CHIP_CLASS, ...rest }) {
+  return (
+    <button type="button" onClick={onClick} className={className} {...rest}>
+      <ArrowLeft className="h-4 w-4 rtl:-scale-x-100" /> {label}
+    </button>
   );
 }
 
@@ -438,7 +459,22 @@ export default function WalletEntry() {
     wasWiped, acknowledgeWipe,
     clearVault, validateMnemonic,
     accounts, btcAccount, solAccount,
+    getBackupPublicAddresses,
   } = useWallet();
+
+  // Backup-nag scheduler (Slice G+H plan §"Atomic scheduler"): record a
+  // genuine locked→unlocked transition exactly once per transition, ref-
+  // guarded so React StrictMode's double-mount can't double-count. This is
+  // the ONLY call site for backupNag.recordUnlock().
+  const prevUnlockedRef = useRef(false);
+  useEffect(() => {
+    if (isUnlocked && !prevUnlockedRef.current) {
+      prevUnlockedRef.current = true;
+      backupNag.recordUnlock();
+    } else if (!isUnlocked && prevUnlockedRef.current) {
+      prevUnlockedRef.current = false; // arm for the NEXT lock→unlock transition
+    }
+  }, [isUnlocked]);
 
   // null until we know whether a vault exists; drives unlock vs first-run.
   const [vaultExists, setVaultExists] = useState(null);
@@ -1209,22 +1245,16 @@ export default function WalletEntry() {
     );
   }
 
-  // Telemetry-consent screen removed (Slice F tap reduction). Consent is
-  // default-deny in lib/consent.js (hasConsent() strict-equals 'granted')
-  // and api/trackEvent.js short-circuits before any egress or device-id
-  // mint, so removing the prompt does not enable telemetry. Opt-in path is
-  // Settings → Privacy.
-  //
-  // ONE-TIME FIRST-RECEIVE CARD — fresh onboarding only (justOnboarded, set in
-  // finishPinSetup, never in handlePinRecover), after consent and past the KEK
-  // gate, before FirstRunTour/<Outlet>. Shows the newly-created wallet's EVM
-  // receive address + QR so a new user's fastest path is funding it. EVM only
-  // this slice (see plan's non-goals); resolveReceive owns the address lookup
-  // so a future accounts-shape refactor is one edit, not a hand-rolled
-  // accounts?.[0]?.address here. Gated on !isDeniabilityOrDemoActive() (I3) —
-  // structurally unreachable in decoy anyway (post-KEK ladder order), but
-  // defensive-in-depth matches the consent/FirstRunTour branches around it.
-  if (isUnlocked && !generatedSeed && !kekGatePending && justOnboarded && !isDeniabilityOrDemoActive()) {
+  // ONE-TIME FIRST-RECEIVE CARD for the IMPORT path — fresh onboarding only
+  // (justOnboarded, set in finishPinSetup). Shows the newly-imported wallet's
+  // EVM receive address + QR so a new user's fastest path is funding it.
+  // EVM only this slice (see plan's non-goals); resolveReceive owns the
+  // address lookup so a future accounts-shape refactor is one edit, not a
+  // hand-rolled accounts?.[0]?.address here. Extracted to a function (rather
+  // than inlined in the branch below) so the CREATE branch's post-onboard
+  // condition reads as WalletCreatedFlash-only in source, matching the
+  // WalletEntry.wallet-created-flash regression test.
+  const renderImportFirstReceive = () => {
     const receive = resolveReceive('ETH', { accounts, btcAccount, solAccount });
     return (
       <EntryShell>
@@ -1234,6 +1264,34 @@ export default function WalletEntry() {
         />
       </EntryShell>
     );
+  };
+
+  // Telemetry-consent screen removed (Slice F tap reduction). Consent is
+  // default-deny in lib/consent.js (hasConsent() strict-equals 'granted')
+  // and api/trackEvent.js short-circuits before any egress or device-id
+  // mint, so removing the prompt does not enable telemetry. Opt-in path is
+  // Settings → Privacy.
+  //
+  // ONE-TIME POST-CREATE CELEBRATION — fresh onboarding only, after consent
+  // and past the KEK gate, before FirstRunTour/<Outlet>. CREATE
+  // (chosenPath==='new') gets the honest WalletCreatedFlash celebration +
+  // backup nudge; IMPORT (chosenPath==='have') keeps the FirstReceiveCard
+  // funding nudge (renderImportFirstReceive above) — unchanged behaviour.
+  // Gated on !isDeniabilityOrDemoActive() (I3) — structurally unreachable in
+  // decoy anyway (post-KEK ladder order), but defensive-in-depth matches the
+  // consent/FirstRunTour branches around it.
+  if (isUnlocked && !generatedSeed && !kekGatePending && justOnboarded && !isDeniabilityOrDemoActive()) {
+    if (chosenPath === "new") {
+      return (
+        <EntryShell chromeless>
+          <WalletCreatedFlash
+            onPrimary={() => { setJustOnboarded(false); backupNag.markBackupNagShown(); navigate("/personal-backup"); }}
+            onDismiss={() => { setJustOnboarded(false); backupNag.dismissForSession(); }}
+          />
+        </EntryShell>
+      );
+    }
+    return renderImportFirstReceive();
   }
 
   // FirstRunTour sits on the unlocked wallet — not on the pre-creation choose
@@ -1257,6 +1315,9 @@ export default function WalletEntry() {
     return (
       <>
         {!isDeniabilityOrDemoActive() && <FirstRunTour />}
+        {!justOnboarded && !isDeniabilityOrDemoActive() && (
+          <BackupNagSheet publicAddresses={getBackupPublicAddresses ? getBackupPublicAddresses() : []} />
+        )}
         <Outlet />
       </>
     );
@@ -1313,11 +1374,15 @@ export default function WalletEntry() {
   // the slot WelcomeHero used to occupy. New/Have advance to PIN-create; Advanced
   // goes straight to restore-file (its own backup credential, no PIN-first).
   if (view === "entry-tiles") {
-    // No EntryShell wrapper: EntryTiles renders its own logo/wordmark/subtitle,
-    // so wrapping it in EntryShell (which also renders logo+wordmark+tagline)
-    // produced two stacked hero blocks. Matches WelcomeHero's standalone pattern.
-    // Tiles are pure navigation — no submit path here can populate `error`.
-    return <EntryTiles onSelect={handleTileSelect} />;
+    // EntryTiles renders its own logo/wordmark/subtitle, so EntryShell wraps it
+    // `chromeless` (no duplicate hero block) — still gets the shared layout +
+    // error banner. Tiles are pure navigation — no submit path here can
+    // populate `error`.
+    return (
+      <EntryShell chromeless>
+        <EntryTiles onSelect={handleTileSelect} />
+      </EntryShell>
+    );
   }
 
   // ---- View: Welcome (fresh-device landing, AHEAD of the PIN) ----
@@ -1664,8 +1729,9 @@ export default function WalletEntry() {
                 </button>
               </>
             ) : (
+              // Phase-2 import sub-form: back to the create/import picker above.
               <>
-                <button type="button" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); setChosenPath(null); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
+                <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); setChosenPath(null); }} />
                 <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally under your PIN — it never leaves this device.</span>
@@ -1720,7 +1786,7 @@ export default function WalletEntry() {
           {/* PIN-FIRST: Back returns to the entry-tiles picker (the fresh-device
               landing ahead of the PIN), NOT a dashboard — the empty dashboard is
               only reachable AFTER the PIN is set. */}
-          <button type="button" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setChosenPath(null); setView("entry-tiles"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
+          <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); clearPendingPin(); autoEnrollPinRef.current = null; setRealPin(""); setRealPinConfirm(""); setPinStep("real"); setChosenPath(null); setView("entry-tiles"); }} />
 
           <PinSetup
             onDone={finishPinSetup}
@@ -1739,7 +1805,7 @@ export default function WalletEntry() {
     return (
       <EntryShell error={error}>
         <div className="space-y-5">
-          <button type="button" onClick={() => { setError(""); setRecovering(false); setView("unlock"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
+          <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setRecovering(false); setView("unlock"); }} />
 
           {pinStep === "seed" && (
             <div className="space-y-4">
@@ -1782,7 +1848,7 @@ export default function WalletEntry() {
       <EntryShell error={error}>
         {!generatedSeed ? (
           <div className="space-y-4">
-            <button type="button" onClick={() => { setError(""); setView("choose"); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
+            <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setView("choose"); }} />
             <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/5 text-xs text-destructive">
               Your seed phrase will be shown ONCE on the next step. You'll write it down and confirm before entering the wallet — anyone with it has full access to your funds, and it is the only way to recover this wallet.
             </div>
@@ -1840,7 +1906,7 @@ export default function WalletEntry() {
   return (
     <EntryShell error={error}>
       <div className="space-y-4">
-        <button type="button" onClick={() => { setError(""); setView(vaultExists ? "unlock" : "choose"); setRecovering(false); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:-scale-x-100" /> Back</button>
+        <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setView(vaultExists ? "unlock" : "choose"); setRecovering(false); }} />
         {recovering && (
           <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />

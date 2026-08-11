@@ -318,10 +318,13 @@ export async function downloadBackupFile(envelope) {
       const result = await withLockSuppressed(() =>
         Share.share({ title: filename, url: fileUri, dialogTitle: 'Save backup file' })
       );
+      // Slice G+H P1: preserve the raw activityType alongside the human path so
+      // PersonalBackup can distinguish SaveToFiles (definitively landed) from
+      // Mail / Message / an absent activityType (assume pending confirmation).
       if (result.activityType) {
-        return { saved: true, path: 'Shared via ' + result.activityType };
+        return { saved: true, activityType: result.activityType, path: 'Shared via ' + result.activityType };
       }
-      return { saved: true, path: 'Saved via share sheet' };
+      return { saved: true, activityType: undefined, path: 'Saved via share sheet' };
     } catch (err) {
       if (err?.message?.includes('cancelled') || err?.message?.includes('dismiss')) {
         return { saved: false, path: '' };
