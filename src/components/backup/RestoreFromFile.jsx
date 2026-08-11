@@ -548,11 +548,15 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
           />
         </div>
 
+        {/* Slice L: match the chip-style Back button used across the onboarding
+            surfaces (WalletEntry.jsx via <BackButton>). Was a bare 12px muted-
+            text button with an inverted Upload glyph (rendered visually as ↓),
+            which drew the eye wrong and didn't match any other back site. */}
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground transition-colors"
         >
-          <Upload className="h-3 w-3 rotate-180" />
+          <ChevronLeft className="h-4 w-4 rtl:-scale-x-100" />
           {backLabel}
         </button>
 

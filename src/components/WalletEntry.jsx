@@ -475,6 +475,13 @@ export default function WalletEntry() {
     }
   }, [isUnlocked]);
 
+  // Slice L (2026-08-11): auto-heal exploreMode leaking into the pre-vault tile
+  // flow. setupPin unconditionally flips exploreMode=true (WalletProvider.jsx:
+  // 1385); if the user then backs out of any Phase-2 screen and chosenPath is
+  // cleared, the pre-vault-explore intercept below would render the empty
+  // dashboard. Force leaveExplore + setView('entry-tiles') the moment we
+  // detect that state — the render returns null one frame while this fires.
+
   // null until we know whether a vault exists; drives unlock vs first-run.
   const [vaultExists, setVaultExists] = useState(null);
   // Local panic-wipe flag: set true in the isPanicWipe catch path so WipedNotice
@@ -1035,6 +1042,16 @@ export default function WalletEntry() {
     // renders a no-op, so it is intentionally excluded from the dep list.
   }, [view, hasPendingPin, chosenPath]);
 
+  // Slice L (2026-08-11): auto-heal pre-vault explore leak (see comment above
+  // the render-time null-return below). Fires only when the leak-condition
+  // matches; leaveExplore + setView run once, then re-render lands correctly.
+  useEffect(() => {
+    if (vaultExists === false && exploreMode && !generatedSeed && !chosenPath) {
+      leaveExplore();
+      setView("entry-tiles");
+    }
+  }, [vaultExists, exploreMode, generatedSeed, chosenPath, leaveExplore]);
+
   // PHASE 2 (import): import an existing seed under the in-memory pendingPin via the
   // provider method (PIN-cohort re-provision, so the device stays PIN cohort, never
   // 'password').
@@ -1324,19 +1341,16 @@ export default function WalletEntry() {
     );
   }
 
-  // EXPLORE MODE: no vault on this device and the user is browsing view-only.
-  // Render the real app behind a persistent create/import CTA. Tapping it (or any
-  // wallet-requiring action via requireWallet()) leaves explore → the choose view.
+  // Slice L (2026-08-11): the pre-vault explore-dashboard render is fully
+  // suppressed. Slice D1 made entry-tiles the fresh-device landing; Slice J
+  // patched ONE Back handler that leaked into explore; but every OTHER path
+  // (auto-create in-flight, pin-create Back, unlock cancel, any state-reset
+  // that clears chosenPath while exploreMode is still true from setupPin) can
+  // still land here. Kill it wholesale — pre-vault users route to entry-tiles;
+  // the useEffect above forces leaveExplore + setView on the transition.
+  // Render null this frame so the empty explore dashboard never shows.
   if (vaultExists === false && exploreMode && !generatedSeed && !chosenPath) {
-    // Leaving explore lands on the choose block, which branches on hasPendingPin
-    // (pre-PIN → pin-create CTA; post-PIN → Phase-2 Create/Import). Reset view +
-    // the Phase-2 import sub-toggle so the branch reliably takes over.
-    const onCreate = () => { setError(""); setChoosePinImport(false); setView("choose"); leaveExplore(); };
-    return (
-      <div data-testid="explore-shell">
-        <ExploreShell onCreate={onCreate}><Outlet /></ExploreShell>
-      </div>
-    );
+    return null;
   }
 
   // Initial probe in flight (only relevant while still locked).
