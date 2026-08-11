@@ -2,6 +2,8 @@
 // Provides app-specific education content regardless of TIP connection.
 // Organised by screen/topic so the advisor can give contextual answers.
 
+import advisories from '../data/security-advisories.json';
+
 export const KNOWLEDGE_BASE = {
   wallet_basics: {
     title: 'Self-Custody Basics',
@@ -361,6 +363,20 @@ export function getFollowUpQuestions(asked, screen) {
   return sorted.slice(0, 3);
 }
 
+export function buildAdvisoriesBlock(data = advisories, max = 15) {
+  const entries = Array.isArray(data?.entries) ? data.entries.slice(0, max) : [];
+  if (entries.length === 0) return '';
+  const lines = [`## Recent Vendor Security Advisories (last ${data.window_days ?? 90}d, CVSS >= ${data.cvss_floor ?? 7.0})`];
+  lines.push(`Source: NVD, refreshed ${data.generated ?? 'unknown'}. Use these when the user asks about hardware wallets, browser wallets, or WalletConnect security.`);
+  lines.push('');
+  for (const e of entries) {
+    const sev = e.severity ? ` ${e.severity}` : '';
+    lines.push(`- [${e.vendor}] ${e.cve} (${e.published ?? '?'}, CVSS ${e.cvss}${sev}): ${e.summary}`);
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
 export function buildAdvisorSystemContext(screen) {
   const topics = getKnowledgeForScreen(screen);
   const lines = [];
@@ -372,5 +388,7 @@ export function buildAdvisorSystemContext(screen) {
       lines.push('');
     }
   }
+  const advisoriesBlock = buildAdvisoriesBlock();
+  if (advisoriesBlock) lines.push(advisoriesBlock);
   return lines.join('\n');
 }
