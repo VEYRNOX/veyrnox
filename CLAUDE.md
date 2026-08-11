@@ -17,6 +17,58 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
 
 ## Hard rules (do not violate)
 
+- **DO NOT TOUCH THE CORE INFRA WIRING — locked 2026-08-11.** The chain
+  {Client → Supabase Edge Function → Cloudflare Worker → Workers AI / RevenueCat}
+  is load-bearing and every piece was broken and re-fixed today across ~7 PRs
+  (see 2026-08-11 log below). It is now GREEN on prod, staging, and
+  localhost:5211. Do not "improve", "simplify", "refactor", "rotate", or
+  "align" any of the following without an explicit user request naming the
+  specific change:
+
+  - **TIP Worker (`veyrnox-tip` repo)** — `wrangler.toml` prod block
+    (especially `workers_dev = true` on `env.production`, kept as the CF Bot
+    Fight bypass), D1 `chat_cap_counters` table, `api_keys` capabilities,
+    `src/lib/auth.ts` HMAC scheme (`ts.METHOD.pathname.body`), CF WAF rule
+    "Challenge /chat requests from unknown origins" (path-scoped; changing
+    scope re-breaks server-to-server chat).
+  - **Supabase Edge Function `tip-chat`** — signing helpers (`sha256Hex`,
+    `hmacHex`), header set (`X-Api-Key`, `X-Timestamp`, `X-Signature`),
+    `TIP_CHAT_BASE_URL` env override, `MAX_SYSTEM_CONTENT = 32768` cap,
+    `DEFAULT_ALLOWED_ORIGINS` (localhost:5173/5199/5211 stay because they
+    are how devs test), and the `STATUS: BUILT, WIRED` header comment which
+    is paired to a test (`src/api/__tests__/tipEdge.chatRoute.test.js`).
+  - **Supabase Edge Function `tip-screen`** — signing helpers, endpoint
+    binding (`/api/v1/screen` only; the historical `action:'chat'` branch
+    is deliberately removed and must stay removed).
+  - **Supabase secrets** on both projects — `TIP_API_KEY`, `TIP_BASE_URL`,
+    `TIP_CHAT_BASE_URL`, `TIP_SIGNING_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,
+    `REVENUECAT_V1_SECRET_KEY`, `REVENUECAT_WEBHOOK_AUTHORIZATION`. Rotate
+    ONLY when explicitly asked; a rotation without matching Worker-side
+    D1 update kills prod chat (this happened once — see log).
+  - **Cloudflare Pages** `SUPABASE_ANON_KEY` env on `veyrnox-prod` /
+    `veyrnox-staging` — must remain the publishable key that matches what
+    Supabase auto-injects into Edge Functions.
+  - **RevenueCat** offer identifiers (`APPLE_OFFER_IDS`, Play offer tags),
+    entitlement `safety_plus`, and the `rc-webhook` Edge Function's shared
+    secret with the RC dashboard.
+  - **Client `SecurityAdvisor.jsx`** — `TIP_CHAT_URL` composition (must be
+    `${VITE_SUPABASE_URL}/functions/v1/tip-chat`), `VITE_TIP_CONFIGURED`
+    gate, HMAC-signing-headers absence (client never signs; the proxy does
+    server-side).
+
+  **Before changing anything in the list above:** read `docs/Feature-Status.md`
+  2026-08-11 entry (or the git log for that date) so you know what the
+  current shape exists to prevent, then confirm the change with the user by
+  quoting the specific line you want to touch and why. NEVER "clean up"
+  these files as part of unrelated work.
+
+  The chain touches four external systems (Cloudflare Workers, Cloudflare
+  Pages, Supabase Edge Functions + D1 secrets, RevenueCat). Silent
+  changes to any one of them cascade — the 2026-08-11 outage was five
+  stacked bugs, each masking the next: signing scheme, CF Bot Fight,
+  workers_dev flag, D1 missing table, and MAX_SYSTEM_CONTENT cap. A
+  "small refactor" in one place can re-open any of these.
+
 - **Mainnet unlocked 2026-06-17.** `ALLOW_MAINNET = true`, `ALLOW_BTC_MAINNET = true`,
   `ALLOW_SOL_MAINNET = true`. Both the internal audit (2026-06-17, the mainnet gate) and
   the independent ECC third-party audit (2026-06-23) are complete. "Internal" is never
