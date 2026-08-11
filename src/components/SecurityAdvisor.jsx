@@ -34,14 +34,17 @@ import {
 const TIP_CONFIGURED = !!import.meta.env.VITE_TIP_BASE_URL;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-// Advisor calls the tip-chat Supabase Edge Function, which proxies to the
-// TIP Worker with the X-Api-Key header that satisfies Cloudflare's Bot
-// Fight heuristic. Direct browser -> Worker calls returned 401 because
-// the Worker now requires header presence to distinguish API from bot
-// traffic. Fix: route via the Edge Function that already carries it.
-// VITE_TIP_BASE_URL stays as the "is TIP backend configured" gate —
-// tip-chat proxies to it server-side.
-const TIP_CHAT_URL = (SUPABASE_URL && SUPABASE_ANON_KEY && TIP_CONFIGURED)
+// Advisor now goes through the tip-chat Supabase Edge Function proxy.
+//
+// PR #48 (veyrnox-tip 57c9bed) made `/api/v1/chat` HMAC-required. A
+// direct-from-browser call would either need to ship TIP_API_KEY +
+// TIP_SIGNING_SECRET to every wallet build (I1 violation — credentials
+// leave the device) or fail 401. tip-chat holds the secrets server-side
+// and signs the outbound request; the wallet only needs the Supabase
+// anon key to reach the proxy. Cloudflare Bot Fight Mode is no longer a
+// concern because the proxy now presents valid HMAC headers, which CF
+// treats as API traffic.
+const TIP_CHAT_URL = (SUPABASE_URL && SUPABASE_ANON_KEY)
   ? `${String(SUPABASE_URL).replace(/\/$/, '')}/functions/v1/tip-chat`
   : null;
 const SCREEN_MAP = {
@@ -527,6 +530,8 @@ export default function SecurityAdvisor({ walletChain }) {
     try {
       const resp = await fetch(TIP_CHAT_URL, {
         method: "POST",
+        // Supabase edge function requires apikey + bearer (anon). Auth on
+        // the TIP Worker itself is handled inside the proxy via HMAC.
         headers: {
           "Content-Type": "application/json",
           "apikey": SUPABASE_ANON_KEY,

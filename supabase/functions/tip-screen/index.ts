@@ -254,7 +254,10 @@ serve(async (req: Request) => {
   const bodyStr = JSON.stringify(body);
   const ts = Math.floor(Date.now() / 1000).toString();
   const keySecret = await hmacHex(await sha256Hex(tipApiKey), tipSigningSecret);
-  const sig = await hmacHex(`${ts}.${bodyStr}`, keySecret);
+  // Canonical string is ts.METHOD.pathname.body per veyrnox-tip PR #48
+  // (57c9bed). Legacy ts.body form no longer accepted upstream.
+  const endpoint = '/api/v1/screen';
+  const sig = await hmacHex(`${ts}.POST.${endpoint}.${bodyStr}`, keySecret);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIP_TIMEOUT_MS);
@@ -284,8 +287,6 @@ serve(async (req: Request) => {
     // server-side chat proxy is ever wanted again, supabase/functions/tip-chat
     // is the place — it is unsigned by design, so it cannot launder Bot Fight
     // Mode, and it now carries the message validation this route never had.
-    const endpoint = '/api/v1/screen';
-
     const upstream = await fetch(`${tipBaseUrl.replace(/\/$/, '')}${endpoint}`, {
       method: 'POST',
       headers: {
