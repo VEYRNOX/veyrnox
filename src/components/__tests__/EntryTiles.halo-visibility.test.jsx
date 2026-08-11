@@ -16,6 +16,12 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import EntryTiles from '@/components/EntryTiles';
+import VeyrnoxAmbient from '@/components/VeyrnoxAmbient';
+
+// Slice M (2026-08-11): lamp/aurora extracted from VeyrnoxHero → VeyrnoxAmbient
+// so it mounts at viewport scale on EntryShell (spans the whole screen instead
+// of getting clipped by max-w-sm). The lamp assertions now target VeyrnoxAmbient
+// directly since EntryTiles no longer renders the beam itself.
 
 afterEach(() => cleanup());
 
@@ -26,7 +32,7 @@ describe('EntryTiles — halo visibility (Slice I bump)', () => {
     // uses `opacity-[0.85]`; the Slice-I bump swaps to `opacity-100` (or an
     // equivalent >= 0.95 arbitrary-value class). Fail on either side of the
     // contract: presence of the pre-Slice-I value, or absence of the bumped one.
-    const { container } = render(<EntryTiles onSelect={() => {}} />);
+    const { container } = render(<VeyrnoxAmbient />);
     const beam = container.querySelector('.vx-lamp-beam');
     expect(beam).toBeTruthy();
     const cls = beam.className || '';
@@ -39,7 +45,7 @@ describe('EntryTiles — halo visibility (Slice I bump)', () => {
   });
 
   it('.vx-lamp-beam blur class is <= 28px (Slice-I bump from 32px)', () => {
-    const { container } = render(<EntryTiles onSelect={() => {}} />);
+    const { container } = render(<VeyrnoxAmbient />);
     const beam = container.querySelector('.vx-lamp-beam');
     const cls = beam.className || '';
     const m = cls.match(/blur-\[(\d+)px\]/);
@@ -48,7 +54,7 @@ describe('EntryTiles — halo visibility (Slice I bump)', () => {
   });
 
   it('.vx-lamp-beam background gradient contains the stronger 0% stop rgba(74, 218, 194, 0.9)', () => {
-    const { container } = render(<EntryTiles onSelect={() => {}} />);
+    const { container } = render(<VeyrnoxAmbient />);
     const beam = container.querySelector('.vx-lamp-beam');
     const bg = beam.style.background || getComputedStyle(beam).background || '';
     // Tolerate whitespace variance (`rgba(74,218,194,0.9)` vs `rgba(74, 218, 194, 0.9)`).
