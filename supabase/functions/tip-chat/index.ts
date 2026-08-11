@@ -198,29 +198,26 @@ serve(async (req) => {
     return json({ error: 'bad_request' }, 400, origin);
   }
 
-  // The Worker's /api/v1/chat now requires HMAC-signed headers (Missing
-  // authentication headers -> 401 otherwise). Same signing scheme tip-screen
-  // uses. The per-device 30-turns/24h cap on the Worker keys on device_id
-  // in the body, which validation above preserved — signing here does not
-  // launder the rate limit because the cap still applies.
-  const tipApiKey = Deno.env.get('TIP_API_KEY');
-  const tipSigningSecret = Deno.env.get('TIP_SIGNING_SECRET');
+  // /api/v1/chat now requires HMAC per veyrnox-tip PR #48 (57c9bed) — the
+  // unauthenticated posture noted in the header above is obsolete. Canonical
+  // string is ts.METHOD.pathname.body per the same PR.
+  const tipApiKey = Deno.env.get('TIP_API_KEY') ?? '';
+  const tipSigningSecret = Deno.env.get('TIP_SIGNING_SECRET') ?? '';
   if (!tipApiKey || !tipSigningSecret) {
     return json({ error: 'tip_not_configured' }, 503, origin);
   }
+  const endpoint = '/api/v1/chat';
   const ts = Math.floor(Date.now() / 1000).toString();
   const keySecret = await hmacHex(await sha256Hex(tipApiKey), tipSigningSecret);
-  // Canonical string is ts.METHOD.pathname.body — matches Worker auth.ts
-  // (veyrnox-tip PR #48, 2026-08-10). Legacy ts.body form no longer accepted.
-  const sig = await hmacHex(`${ts}.POST./api/v1/chat.${raw}`, keySecret);
-
+  const sig = await hmacHex(`${ts}.POST.${endpoint}.${raw}`, keySecret);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIP_TIMEOUT_MS);
   try {
-    const upstream = await fetch(`${tipBaseUrl.replace(/\/$/, '')}/api/v1/chat`, {
+    const upstream = await fetch(`${tipBaseUrl.replace(/\/$/, '')}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'veyrnox-tip-chat-proxy/1.0',
         'X-Api-Key': tipApiKey,
         'X-Timestamp': ts,
         'X-Signature': sig,
