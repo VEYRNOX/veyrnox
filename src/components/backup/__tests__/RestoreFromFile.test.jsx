@@ -209,7 +209,10 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     // Enter the backup PIN on the keypad (this unlocks the .enc file — NOT the
     // device PIN) then restore. The backup PIN pad has no auto-complete; the
     // "Restore wallet" button drives the unlock once the pad holds a valid PIN.
-    await screen.findByText(/backup pin/i);
+    // Wait for the unlock-phase specific copy — /backup pin/i alone also matches
+    // the pick-phase readout ("Unlock with the file's password or backup PIN.")
+    // added in Slice I, which would race the click into pick phase.
+    await screen.findByText(/backup password or PIN you created with this file/i);
     typePinDigits('12345678');
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 

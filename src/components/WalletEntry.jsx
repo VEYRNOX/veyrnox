@@ -163,7 +163,19 @@ function EntryShell({ error, children, chromeless = false }) {
       <div className="w-full max-w-sm space-y-6">
         {!chromeless && (
           <div className="text-center space-y-2">
-            <VeyrnoxLogo size={56} className="mx-auto" />
+            <div className="relative inline-block mx-auto">
+              <div
+                data-testid="entryshell-logo-halo"
+                aria-hidden="true"
+                className="absolute inset-0 -m-6 rounded-full pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle, rgba(74,218,194,0.5) 0%, rgba(74,218,194,0.12) 45%, transparent 70%)',
+                  filter: 'blur(12px)',
+                  zIndex: 0,
+                }}
+              />
+              <VeyrnoxLogo size={56} className="relative z-[1]" />
+            </div>
             <VeyrnoxWordmark className="text-xl block" />
             <p className="text-sm text-muted-foreground">Your seed phrase is your account. We never hold your keys.</p>
           </div>
@@ -1737,7 +1749,7 @@ export default function WalletEntry() {
             ) : (
               // Phase-2 import sub-form: back to the create/import picker above.
               <>
-                <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); setChosenPath(null); }} />
+                <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setImportPhrasePin(""); setChoosePinImport(false); setChosenPath(null); leaveExplore(); setView("entry-tiles"); }} />
                 <div className="p-3 rounded-xl border border-caution/30 bg-caution/10 text-xs text-caution flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>Never type your seed phrase anywhere you don't trust. It is validated and encrypted locally under your PIN — it never leaves this device.</span>
