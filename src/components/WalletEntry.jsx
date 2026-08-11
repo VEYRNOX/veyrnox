@@ -92,6 +92,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
 import VeyrnoxLogo, { VeyrnoxWordmark } from "@/components/VeyrnoxLogo";
+import VeyrnoxHero from "@/components/VeyrnoxHero";
 import VaultIllustration from "@/components/VaultIllustration";
 import Spinner from "@/components/Spinner";
 import SeedGrid from "@/components/SeedGrid";
@@ -161,25 +162,11 @@ function EntryShell({ error, children, chromeless = false }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-sm space-y-6">
-        {!chromeless && (
-          <div className="text-center space-y-2">
-            <div className="relative inline-block mx-auto">
-              <div
-                data-testid="entryshell-logo-halo"
-                aria-hidden="true"
-                className="absolute inset-0 -m-6 rounded-full pointer-events-none"
-                style={{
-                  background: 'radial-gradient(circle, rgba(74,218,194,0.5) 0%, rgba(74,218,194,0.12) 45%, transparent 70%)',
-                  filter: 'blur(12px)',
-                  zIndex: 0,
-                }}
-              />
-              <VeyrnoxLogo size={56} className="relative z-[1]" />
-            </div>
-            <VeyrnoxWordmark className="text-xl block" />
-            <p className="text-sm text-muted-foreground">Your seed phrase is your account. We never hold your keys.</p>
-          </div>
-        )}
+        {/* Slice K: single shared <VeyrnoxHero> for every pre-vault surface.
+            chromeless still supported (entry-tiles view passes it because
+            EntryTiles renders its own <VeyrnoxHero> inside — avoids stacking
+            two heros as pre-Slice-G+H did). */}
+        {!chromeless && <VeyrnoxHero />}
         {error && (
           <div role="alert" aria-live="assertive" className="flex items-start gap-2 p-3 rounded-xl border border-destructive/30 bg-destructive/5 text-xs text-destructive">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> {error}
