@@ -4,13 +4,17 @@
  *
  * Weekly refresh of src/data/security-advisories.json.
  *
- * Sources NVD (CVE 2.0 API), keyword-searches each vendor, filters to the last
- * `window_days` and CVSS >= `cvss_floor`, and rewrites the JSON.
+ * Data source: OpenRouter -> perplexity/sonar (web-search-capable). Vendor
+ * blogs + GHSA + NVD do not give consistent coverage for hardware and
+ * browser-extension wallets (Coldcard, Ledger, Trezor, etc.), so we ask a
+ * search-augmented LLM for the digest and PR it for human review.
  *
- * NVD unauth rate limit: 5 req / 30s. With ~8 vendors and one request each,
- * we stay under it. Set NVD_API_KEY env var to raise the limit if needed.
+ * Trust envelope: NEVER merge without human review of the PR diff. The
+ * model can hallucinate CVE numbers. Reviewer must spot-check entries
+ * against the linked vendor page before merging. This is why the workflow
+ * always PRs and never pushes directly to main.
  *
- * Run:   node scripts/refresh-advisories.mjs
+ * Run:   OPENROUTER_API_KEY=sk-... node scripts/refresh-advisories.mjs
  * Wired: .github/workflows/advisories-refresh.yml (cron: Mon 03:00 UTC)
  */
 
@@ -20,79 +24,116 @@ import path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const JSON_PATH = path.resolve(__dirname, '..', 'src', 'data', 'security-advisories.json');
-const NVD_URL = 'https://services.nvd.nist.gov/rest/json/cves/2.0';
-const REQ_GAP_MS = 6500; // NVD asks for ~6s between unauth requests
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const MODEL = process.env.ADVISORIES_MODEL || 'perplexity/sonar';
+
+const apiKey = process.env.OPENROUTER_API_KEY;
+if (!apiKey) {
+  console.error('OPENROUTER_API_KEY not set — refusing to run');
+  process.exit(1);
+}
 
 const cfg = JSON.parse(readFileSync(JSON_PATH, 'utf8'));
 const vendors = cfg.vendors;
 const windowDays = cfg.window_days ?? 90;
 const cvssFloor = cfg.cvss_floor ?? 7.0;
 
-const now = new Date();
-const start = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000);
+const prompt = `You are a security-advisory curator for a self-custody crypto wallet.
 
-function iso(d) {
-  return d.toISOString().replace(/\.\d{3}Z$/, '.000');
+Return the security advisories, CVEs, and vendor-published vulnerability disclosures affecting these wallets published in the LAST ${windowDays} DAYS (from ${new Date(Date.now() - windowDays * 86400000).toISOString().slice(0, 10)} to ${new Date().toISOString().slice(0, 10)}):
+
+${vendors.map((v, i) => `${i + 1}. ${v}`).join('\n')}
+
+Rules:
+- Include ONLY items with CVSS >= ${cvssFloor}, or clearly high/critical severity if no CVSS is published.
+- Include vendor security bulletins even without a CVE number (use the vendor's advisory ID or URL as identifier).
+- One entry per issue. Deduplicate.
+- If you find nothing for a vendor, that is a valid result — do not fabricate.
+- Never invent CVE numbers or vendor IDs. If uncertain, omit the entry.
+
+Return ONLY a JSON object matching this schema, nothing else:
+{
+  "entries": [
+    {
+      "vendor": "string (which vendor from the list)",
+      "cve": "string (CVE-YYYY-NNNN or GHSA id or vendor advisory id)",
+      "published": "YYYY-MM-DD",
+      "cvss": number or null,
+      "severity": "CRITICAL" | "HIGH" | null,
+      "summary": "string (max 300 chars, one sentence describing impact)",
+      "source_url": "string (vendor advisory URL or NVD URL)"
+    }
+  ]
+}`;
+
+const resp = await fetch(OPENROUTER_URL, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+    'HTTP-Referer': 'https://veyrnox.com',
+    'X-Title': 'Veyrnox Advisories Refresh',
+  },
+  body: JSON.stringify({
+    model: MODEL,
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0,
+    response_format: { type: 'json_object' },
+  }),
+});
+
+if (!resp.ok) {
+  console.error(`OpenRouter ${resp.status}: ${await resp.text()}`);
+  process.exit(1);
 }
 
-async function fetchVendor(vendor) {
-  const url = new URL(NVD_URL);
-  url.searchParams.set('keywordSearch', vendor);
-  url.searchParams.set('pubStartDate', iso(start));
-  url.searchParams.set('pubEndDate', iso(now));
-  const headers = { 'User-Agent': 'veyrnox-advisories/1.0' };
-  if (process.env.NVD_API_KEY) headers['apiKey'] = process.env.NVD_API_KEY;
-  const resp = await fetch(url, { headers });
-  if (!resp.ok) throw new Error(`NVD ${vendor} ${resp.status}`);
-  return resp.json();
+const data = await resp.json();
+const raw = data.choices?.[0]?.message?.content;
+if (!raw) {
+  console.error('No content in model response');
+  process.exit(1);
 }
 
-function extract(vendor, payload) {
-  const out = [];
-  for (const item of payload.vulnerabilities ?? []) {
-    const cve = item.cve;
-    if (!cve?.id) continue;
-    const metric =
-      cve.metrics?.cvssMetricV31?.[0]?.cvssData ??
-      cve.metrics?.cvssMetricV30?.[0]?.cvssData ??
-      cve.metrics?.cvssMetricV2?.[0]?.cvssData;
-    const score = metric?.baseScore;
-    if (score == null || score < cvssFloor) continue;
-    const desc =
-      cve.descriptions?.find(d => d.lang === 'en')?.value ??
-      cve.descriptions?.[0]?.value ??
-      '';
-    out.push({
-      vendor,
-      cve: cve.id,
-      published: cve.published?.slice(0, 10) ?? null,
-      cvss: score,
-      severity: metric.baseSeverity ?? null,
-      summary: desc.length > 300 ? desc.slice(0, 297) + '...' : desc,
-    });
+let parsed;
+try {
+  // Sonar sometimes wraps JSON in ```json fences even under response_format.
+  const cleaned = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+  parsed = JSON.parse(cleaned);
+} catch (err) {
+  console.error(`Model returned non-JSON: ${err.message}\n--raw--\n${raw}`);
+  process.exit(1);
+}
+
+const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+
+// Schema validation. Reject the whole payload if any entry is malformed —
+// safer than silently dropping bad rows.
+for (const e of entries) {
+  const bad =
+    typeof e.vendor !== 'string' ||
+    typeof e.cve !== 'string' ||
+    typeof e.published !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(e.published) ||
+    (e.cvss != null && typeof e.cvss !== 'number') ||
+    (e.severity != null && !['CRITICAL', 'HIGH'].includes(e.severity)) ||
+    typeof e.summary !== 'string' ||
+    e.summary.length > 500 ||
+    typeof e.source_url !== 'string' ||
+    !e.source_url.startsWith('https://');
+  if (bad) {
+    console.error('Malformed entry, aborting:', JSON.stringify(e));
+    process.exit(1);
   }
-  return out;
-}
-
-const entries = [];
-for (const vendor of vendors) {
-  try {
-    const payload = await fetchVendor(vendor);
-    entries.push(...extract(vendor, payload));
-  } catch (err) {
-    console.error(`skip ${vendor}: ${err.message}`);
+  if (e.cvss != null && e.cvss < cvssFloor) {
+    console.error(`Entry below cvss_floor=${cvssFloor}, aborting:`, JSON.stringify(e));
+    process.exit(1);
   }
-  await new Promise(r => setTimeout(r, REQ_GAP_MS));
 }
 
-// Dedup by CVE id (a CVE can hit multiple vendor keywords).
-const seen = new Set();
-const deduped = entries
-  .filter(e => (seen.has(e.cve) ? false : (seen.add(e.cve), true)))
-  .sort((a, b) => (b.published ?? '').localeCompare(a.published ?? ''));
+const sorted = entries.sort((a, b) => b.published.localeCompare(a.published));
 
 cfg.generated = new Date().toISOString();
-cfg.entries = deduped;
+cfg.entries = sorted;
 
 writeFileSync(JSON_PATH, JSON.stringify(cfg, null, 2) + '\n');
-console.log(`wrote ${deduped.length} advisories`);
+console.log(`wrote ${sorted.length} advisories (model: ${MODEL})`);
