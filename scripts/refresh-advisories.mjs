@@ -78,6 +78,7 @@ const resp = await fetch(OPENROUTER_URL, {
     model: MODEL,
     messages: [{ role: 'user', content: prompt }],
     temperature: 0,
+    max_tokens: 4000,
     response_format: { type: 'json_object' },
   }),
 });
