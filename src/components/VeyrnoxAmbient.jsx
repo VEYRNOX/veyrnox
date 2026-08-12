@@ -20,9 +20,9 @@ export default function VeyrnoxAmbient() {
         @keyframes vx-beam-breathe { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
         @keyframes vx-beam-sway { 0%, 100% { transform: translateX(-50%) rotate(-1.5deg); } 50% { transform: translateX(-50%) rotate(1.5deg); } }
         @keyframes vx-emitter-pulse { 0%, 100% { opacity: 0.65; transform: translateX(-50%) scale(1); } 50% { opacity: 0.95; transform: translateX(-50%) scale(1.08); } }
-        .vx-lamp-beam.vx-animated { animation: vx-beam-breathe 6s ease-in-out infinite; }
-        .vx-lamp-beam-inner.vx-animated { animation: vx-beam-sway 8s ease-in-out infinite; }
-        .vx-lamp-emitter.vx-animated { animation: vx-emitter-pulse 3.2s ease-in-out infinite; }
+        .vx-lamp-beam.vx-animated { animation: vx-beam-breathe 4s ease-in-out infinite; }
+        .vx-lamp-beam-inner.vx-animated { animation: vx-beam-sway 5s ease-in-out infinite; }
+        .vx-lamp-emitter.vx-animated { animation: vx-emitter-pulse 2s ease-in-out infinite; }
       `}</style>
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
         {!isLowEndDevice && (
@@ -46,7 +46,7 @@ export default function VeyrnoxAmbient() {
             height: 620,
             clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
             background:
-              "linear-gradient(180deg, rgba(74,218,194,0.9) 0%, rgba(74,218,194,0.35) 40%, rgba(74,218,194,0.08) 70%, transparent 90%)",
+              "linear-gradient(180deg, rgba(255,176,40,0.9) 0%, rgba(255,176,40,0.35) 40%, rgba(255,176,40,0.08) 70%, transparent 90%)",
           }}
         />
         <div
@@ -56,7 +56,7 @@ export default function VeyrnoxAmbient() {
             height: 480,
             clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
             background:
-              "linear-gradient(180deg, rgba(123,235,215,0.85) 0%, rgba(74,218,194,0.25) 45%, transparent 80%)",
+              "linear-gradient(180deg, rgba(255,220,110,0.85) 0%, rgba(255,176,40,0.25) 45%, transparent 80%)",
             transformOrigin: "50% 0%",
           }}
         />
@@ -66,7 +66,7 @@ export default function VeyrnoxAmbient() {
             width: 380,
             height: 240,
             background:
-              "radial-gradient(ellipse at top, rgba(123,235,215,0.9) 0%, rgba(74,218,194,0.4) 40%, transparent 70%)",
+              "radial-gradient(ellipse at top, rgba(255,240,180,0.95) 0%, rgba(255,200,80,0.45) 40%, transparent 70%)",
           }}
         />
       </div>
