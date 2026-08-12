@@ -2020,8 +2020,12 @@ export default function SendCrypto() {
             className={`w-full ${(!toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid || (balanceKnown && parseFloat(canonicalAmount) > effectiveBalance) || (limitEval.blocked && !limitAck)) ? "opacity-70" : ""}`}
             disabled={!walletId || !assetSymbol || !flowSendEnabled || (flowSendEnabled && !isUnlocked && !demoActive)}
             onClick={() => {
+              // ponytail: sim-testing patch — VITE_SIM_BYPASS_BALANCE=1 lets an empty
+              // sim wallet reach the verify step so TIP screening can be exercised.
+              // DEV-only: fail-closed in release builds even if .env.local leaks the flag.
+              const _simBypassBalance = import.meta.env.DEV && import.meta.env.VITE_SIM_BYPASS_BALANCE === '1';
               const invalid = !toAddress || !isFormAmountWellFormed(canonicalAmount) || !addressFormatValid
-                || (!devUngated && balanceKnown && parseFloat(canonicalAmount) > effectiveBalance)
+                || (!devUngated && !_simBypassBalance && balanceKnown && parseFloat(canonicalAmount) > effectiveBalance)
                 || (limitEval.blocked && !limitAck);
               if (invalid) { setShowErrors(true); return; }
               setShowErrors(false);

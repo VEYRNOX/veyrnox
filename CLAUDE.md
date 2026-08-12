@@ -368,6 +368,61 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
 - `veyrnox.com` is a client-rendered SPA — `curl` gives **false negatives** when checking
   page content; verify by rendering the page.
 
+**1.0.1 SUBMISSION HOLD — BOTH stores (owner-locked 2026-08-12).** No submission to
+Play OR App Store review until every check in this section passes. Owner-decided
+after the build-5/6 Play rejection; do not attempt "just one more submit" reasoning.
+Pre-submission verification below is the gate.
+
+**Pre-submission verification for 1.0.1 (BOTH stores) — MUST run before any human
+review submission.** Added 2026-08-12 after Play rejected build 5 under Broken
+Functionality policy: reviewer tapped Create Wallet on a stock device and the setup
+failed with `"Wallet setup couldn't finish securely, so nothing was saved. Please set
+your PIN and try again."` — an unresponsive-UI outcome from our KEK/RASP path failing
+closed on hardware we never tested. Neither store's automated tools caught it because
+neither had been run against build 5 (Play Pre-launch report showed
+"Upload artifacts to generate pre-launch reports"; iOS has no equivalent auto-tool).
+- **Play (mandatory):** upload the AAB to Internal testing → open **Test and release →
+  Testing → Pre-launch report → Overview** and confirm a report exists for the new
+  versionCode. Fix every crash/ANR/error dialog it reports before promoting to review.
+  If Overview still says "Upload artifacts to generate pre-launch reports" after
+  ~30 min, enable it in **Pre-launch report → Settings** (auto-run must be ON) and
+  reupload. Do NOT submit for review without a clean report — this is the same tool
+  Google's reviewer would have used, and its absence is why build 5 shipped a fatal
+  Create-Wallet path.
+- **iOS (mandatory — no equivalent auto-tool):** upload to TestFlight, install on at
+  least one **physical iPhone that is NOT the dev machine's paired device** (a stock
+  iPhone with no dev certs / no Xcode-installed KEK state), and walk the full
+  first-run: fresh install → PIN → Create Wallet → seed reveal → import round-trip
+  → send/receive on testnet. This is the closest analogue to Google's reviewer
+  actually running the app; Apple's review has the same shape and same failure mode.
+- **Both stores — hard rule:** the golden path (Create Wallet + Import Seed +
+  Send/Receive) must succeed on a device the developer has never touched with a
+  debug build. If it fails, the KEK/RASP fail-closed path is the first place to look
+  — that path is designed to reject, and "reject silently on a device we never
+  tested" reads to a reviewer as an unresponsive button.
+- **Play — Android Vitals watch (mandatory, post-install telemetry):** during the
+  Internal-testing window, open **Monitor and improve → Android vitals → Crashes
+  and ANRs** for the new versionCode. Zero crashes AND zero ANRs required before
+  promoting to review. Vitals only fills from installs that opted into usage +
+  diagnostics sharing, so every internal tester must toggle **Settings → Google →
+  Usage & diagnostics → ON** on their device before installing. Vitals is
+  complementary to Pre-launch report, NOT redundant: Pre-launch is one Robo crawl
+  on ~10 devices; Vitals is every real install over time. A clean Pre-launch report
+  with a red Vitals crash cluster still blocks submission.
+- **iOS — TestFlight crash + Xcode Organizer watch (mandatory equivalent):** Apple
+  has NO Pre-launch-style Robo crawl. Post-install telemetry lives in two places:
+  **App Store Connect → TestFlight → Crashes** (per build, opt-in via tester
+  device's Settings → Privacy → Analytics & Improvements → Share with App
+  Developers → ON) and **Xcode → Window → Organizer → Crashes / Metrics / Hangs**
+  tabs for the shipped build. Zero crashes AND zero hangs on the new build across
+  the TestFlight window required before promoting to App Store review. Read
+  Organizer's **Metrics → Hangs** in particular — an unresponsive UI without a
+  crash still reads to Apple's reviewer exactly like Play's Broken Functionality
+  finding.
+- **Both stores — telemetry-opt-in rule:** any internal tester whose device is not
+  set to share diagnostics is invisible to Vitals/Organizer. Confirm the opt-in on
+  each test device before install, or the "clean" verdict is a false negative.
+
 **CI merge gating — there is NO code-scanning gate (decided 2026-07-26, issue #1375).**
 The `code_scanning` rule was **removed** from ruleset `Veyrnox Code Review` (`17946638`).
 CodeQL still scans all six languages on every PR and still files alerts to the Security
