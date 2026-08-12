@@ -19,6 +19,14 @@ vi.mock('@/components/security/useActionGuard', () => ({
   useActionGuard: () => ({ requireTwoFactor: (fn) => fn(), gateModal: null }),
 }));
 
+// PersonalBackup now consumes useTier() (Advanced tab is Safety-Plus-gated).
+// This test doesn't exercise the shards tab — safety_plus keeps the paid
+// branch alive as a benign side-effect and prevents the real TierProvider's
+// "useTier must be used within TierProvider" throw.
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'safety_plus', tiers: {}, loading: false, refreshTier: vi.fn() }),
+}));
+
 vi.mock('@/rasp', async (importOriginal) => {
   const actual = /** @type {any} */ (await importOriginal());
   return { ...actual, useRaspArtifact: () => ({ tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false }) };
