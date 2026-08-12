@@ -19,11 +19,6 @@ import {
   RECOVERY_PASSPHRASE_MIN_LENGTH,
 } from "@/wallet-core/recoveryShare";
 import { markPersonalBackupExported } from "@/lib/personalBackupState";
-import {
-  markBackupCompleted,
-  markBackupPendingConfirmation,
-  markBackupCompletedFromConfirmation,
-} from "@/lib/backupNag";
 import { toast } from "@/lib/toast";
 import BackButton from "@/components/BackButton";
 import { useActionGuard } from "@/components/security/useActionGuard";
@@ -61,7 +56,7 @@ function Field({ label, type = "text", value, onChange, placeholder, maxLength =
 
 // ── Export tab ───────────────────────────────────────────────────────────────
 
-function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
+function ExportTab({ createBackup, isDecoy, isHidden }) {
   const [password, setPassword] = useState("");
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
@@ -70,7 +65,6 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
   const [busy, setBusy] = useState(false);
   const [savedPath, setSavedPath] = useState(null);   // set after successful Downloads save
   const [envelope, setEnvelope] = useState(null);     // held so user can re-save without re-encrypting
-  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false); // Slice G+H: "I saved it" card
   const { gateModal } = useActionGuard();
   // excludeAttestation: local seed backup/export/import must not be gated on the
   // REMOTE Play-Integrity leg (unavailable on any sideloaded build → would block
@@ -102,42 +96,15 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
       await verifyBackupEnvelope(env, password, pin);
       const result = await downloadBackupFile(env);
       setEnvelope(env);
-      const addrs = Array.isArray(publicAddresses) ? publicAddresses : [];
-      // Slice G+H state-machine decision (see plan §5). Two chokepoints for the
-      // completion classes: SaveToFiles/DocumentManager on iOS is a definitive
-      // landing; anything else (Mail/Message/absent activityType) or the
-      // web/desktop anchor download requires the user to click "I saved it".
-      const IOS_DEFINITIVE_ACTIVITY = /^com\.apple\.(UIKit\.activity\.SaveToFiles|DocumentManager\.)/;
       if (result && typeof result === "object" && result.saved) {
-        const platform = Capacitor.getPlatform();
-        if (platform === "android") {
-          markBackupCompleted(addrs);
-        } else if (platform === "ios") {
-          if (result.activityType && IOS_DEFINITIVE_ACTIVITY.test(result.activityType)) {
-            markBackupCompleted(addrs);
-          } else {
-            markBackupPendingConfirmation(addrs);
-            setAwaitingConfirmation(true);
-          }
-        } else {
-          markBackupPendingConfirmation(addrs);
-          setAwaitingConfirmation(true);
-        }
         setSavedPath(result.path);
         setPassword(""); setPin(""); setPinConfirm(""); setPinStep("choose"); setPinErr("");
       } else if (result && typeof result === "object" && !result.saved) {
-        // iOS: share sheet was dismissed without saving — no backupNag mutation.
+        // iOS: share sheet was dismissed without saving
         toast("Backup created but not saved — tap the button to try again.");
       } else {
-        // Web / desktop: anchor download triggered — pending until confirmed.
-        // We DON'T set savedPath (there's no filesystem path to display) but we
-        // still need to flip screens so the confirmation card renders — that
-        // card lives inside the savedPath branch, and web has no other path
-        // to reach "Yes, I saved it". Use a sentinel string.
-        markBackupPendingConfirmation(addrs);
-        setAwaitingConfirmation(true);
-        setSavedPath("(downloaded)");
-        toast("Backup file downloaded — confirm you saved it below.");
+        // Web / desktop: anchor download triggered
+        toast.success("Backup verified and saved — it opens with this password or PIN.");
         setPassword(""); setPin(""); setPinConfirm(""); setPinStep("choose"); setPinErr("");
       }
     } catch (err) {
@@ -168,32 +135,6 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
   if (savedPath) {
     return (
       <div className="space-y-4">
-        {awaitingConfirmation && (
-          <div className="p-5 rounded-xl border border-caution/30 bg-caution/5 flex items-start gap-3" data-testid="backup-confirmation-card">
-            <AlertTriangle className="h-5 w-5 text-caution shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold">Did you save the backup file?</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Open the file where you saved it, unlock with your backup password or backup PIN, then tap "I saved it" below.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => { markBackupCompletedFromConfirmation(); setAwaitingConfirmation(false); toast.success("Backup confirmed."); }}
-                  className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-                >
-                  Yes, I saved it
-                </button>
-                <button
-                  onClick={() => setAwaitingConfirmation(false)}
-                  className="flex-1 py-2 rounded-xl border border-border bg-card text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Not yet — remind me
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {savedPath !== "(downloaded)" && (
         <div className="p-5 rounded-xl border border-success/30 bg-success/5 flex items-start gap-3">
           <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" />
           <div>
@@ -206,9 +147,7 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
             </p>
           </div>
         </div>
-        )}
 
-        {savedPath !== "(downloaded)" && (
         <button
           onClick={runPickerSave}
           disabled={busy}
@@ -217,10 +156,9 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
           <CloudUpload className="h-4 w-4" />
           {busy ? "Opening…" : "Also save to a different location"}
         </button>
-        )}
 
         <button
-          onClick={() => { setSavedPath(null); setEnvelope(null); setAwaitingConfirmation(false); }}
+          onClick={() => { setSavedPath(null); setEnvelope(null); }}
           className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           Create another backup
@@ -888,11 +826,11 @@ const BASE_TABS = [
 ];
 
 const TABS = ENABLE_PERSONAL_BACKUP_SHARDS
-  ? [...BASE_TABS, { id: "shares", label: "Recovery shares", Icon: KeyRound }]
+  ? [...BASE_TABS, { id: "shares", label: "Advanced (2-of-3)", Icon: KeyRound }]
   : BASE_TABS;
 
 export default function PersonalBackup() {
-  const { createBackup, exportRecoveryShares, restoreFromRecoveryShares, lock, isDecoy, isHidden, getBackupPublicAddresses } = useWallet();
+  const { createBackup, exportRecoveryShares, restoreFromRecoveryShares, lock, isDecoy, isHidden } = useWallet();
   const navigate = useNavigate();
   const [tab, setTab] = useState("export");
 
@@ -930,7 +868,7 @@ export default function PersonalBackup() {
 
       {/* Tab content */}
       {tab === "export" && (
-        <ExportTab createBackup={createBackup} isDecoy={isDecoy} isHidden={isHidden} publicAddresses={getBackupPublicAddresses ? getBackupPublicAddresses() : []} />
+        <ExportTab createBackup={createBackup} isDecoy={isDecoy} isHidden={isHidden} />
       )}
       {tab === "restore" && (
         <RestoreFromFile

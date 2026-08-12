@@ -84,14 +84,13 @@ function makeNativeFacade() {
     // Personal Backup Phase 1 — forwarded through the facade so WalletProvider's
     // `typeof keyStore.exportPersonalBackupShares === 'function'` gate resolves
     // synchronously against the facade shape (native.js is loaded lazily on
-    // first call). Absent from webKeyStore intentionally — Phase 1 is native.
+    // first call). Web now has its own implementation on webKeyStore — see
+    // web.js:exportPersonalBackupShares — so both platforms answer the gate.
     async exportPersonalBackupShares(password, opts) {
       return (await load()).nativeKeyStore.exportPersonalBackupShares(password, opts);
     },
     // Personal Backup Phase 2 restore — see nativeKeyStore.restoreFromPersonalBackupShares.
-    // Same facade-forwarding pattern as its Phase 1 sibling; absent from
-    // webKeyStore intentionally (native-only until the web KeyStore grows a
-    // matching KEK-wrapped vault path).
+    // Web sibling lives on webKeyStore (web.js:restoreFromPersonalBackupShares).
     async restoreFromPersonalBackupShares(shares, newPassword, opts) {
       return (await load()).nativeKeyStore.restoreFromPersonalBackupShares(shares, newPassword, opts);
     },

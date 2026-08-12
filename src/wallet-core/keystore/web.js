@@ -11,6 +11,12 @@ import { Capacitor } from '@capacitor/core';
 import { encryptVault, decryptVault, vaultNeedsRekey, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
 import { saveVault, loadVault, hasVault, clearVault } from '../evm/vaultStore.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt } from './kek.js';
+import {
+  splitDekForPersonalBackup,
+  combineDekForPersonalBackup,
+  ENABLE_PERSONAL_BACKUP_SHARDS,
+  PERSONAL_BACKUP_SHARDS_DISABLED,
+} from '../shardBackup.js';
 import { ALLOW_MAINNET } from '../evm/networks.js';
 import { bufferToB64u, b64uToBuffer } from './web-base64url.js';
 
@@ -843,6 +849,117 @@ export const webKeyStore = {
   // eslint-disable-next-line no-unused-vars
   async upgradeKekToV3(_password, _opts) {
     return { upgraded: false, version: null };
+  },
+
+  // Personal Backup Phase 1 (web) — mirrors native.js:1065 exportPersonalBackupShares.
+  //
+  // Web is a testing-only surface (see unlock's KDF-rekey caveat), so this
+  // exists so headless E2E can exercise the same code path native ships. Same
+  // fail-closed contract: gate off → PERSONAL_BACKUP_SHARDS_DISABLED; non-KEK
+  // vault or missing getHardwareFactor → KEK_ERR.NO_HARDWARE_FACTOR; DEK
+  // zeroed on every path. splitDekForPersonalBackup runs its own 2-of-3
+  // round-trip verification and throws PERSONAL_BACKUP_ROUND_TRIP_FAILED on
+  // mismatch — do NOT swallow.
+  //
+  // No _readInnerVaultBlob wrapper (web has no Enclave outer wrap) and no
+  // withLockSuppressed (web has no concurrent-lock model). Reads via
+  // loadVault(); the on-disk blob is not mutated.
+  async exportPersonalBackupShares(password, opts = {}) {
+    if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
+      throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
+    }
+    assertNotNativePlatform();
+    const blob = await loadVault();
+    if (!blob) throw new Error('No wallet found on this device');
+    if (!blob.kekWrap) throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    const getHF = opts && opts.getHardwareFactor;
+    if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+
+    let saltBytes;
+    let H;
+    let C;
+    let kek;
+    let dek;
+    try {
+      saltBytes = decodeKekSalt(blob.kekSalt);
+      H = await getHF();
+      C = await deriveKekC(password, saltBytes);
+      kek = await combineKek(H, C);
+      if (H && H.fill) H.fill(0);
+      if (C) C.fill(0);
+      dek = await unwrapDek(kek, blob.kekWrap);
+      return splitDekForPersonalBackup(dek);
+    } finally {
+      if (H && H.fill) H.fill(0);
+      if (C) C.fill(0);
+      if (kek) kek.fill(0);
+      if (dek) dek.fill(0);
+      if (saltBytes) saltBytes.fill(0);
+    }
+  },
+
+  // Personal Backup Phase 2 (web) — mirrors native.js:1143 restoreFromPersonalBackupShares.
+  //
+  // Same-device restore: combine 2-of-3 shares → verify by decrypting the
+  // on-disk vault → re-wrap the SAME DEK under a fresh KEK derived from the
+  // new password. Seed unchanged. Old shares stay valid (they still encode
+  // the DEK — invalidation requires an explicit re-split from the UI).
+  //
+  // Fail-closed order (do NOT reorder): combine → decrypt → derive-new-KEK →
+  // wrap → write. The vault is written only after every prior step passes,
+  // so a shamir mismatch, wrong-vault shares, or wrong new password leaves
+  // the on-disk blob unchanged.
+  async restoreFromPersonalBackupShares(shares, newPassword, opts = {}) {
+    if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
+      throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
+    }
+    assertNotNativePlatform();
+    const blob = await loadVault();
+    if (!blob) throw new Error('No wallet found on this device');
+    if (!blob.kekWrap) throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+    const getHF = opts && opts.getHardwareFactor;
+    if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+
+    let newSaltBytes;
+    let newKekSalt;
+    let H2;
+    let newC;
+    let newKek;
+    let dek;
+    let seed;
+    try {
+      // Combine BEFORE touching hardware — a bad share set fails without
+      // prompting the WebAuthn ceremony.
+      dek = combineDekForPersonalBackup(shares);
+      // Verify the DEK actually opens THIS vault. AES-GCM auth tag rejects
+      // a wrong-DEK combine. This is the primary fail-closed check.
+      seed = await decryptVaultWithDek(blob, dek);
+
+      newSaltBytes = crypto.getRandomValues(new Uint8Array(32));
+      newKekSalt = btoa(String.fromCharCode(...newSaltBytes));
+      H2 = await getHF();
+      newC = await deriveKekC(newPassword, newSaltBytes);
+      newKek = await combineKek(H2, newC);
+      if (H2 && H2.fill) H2.fill(0);
+      if (newC) newC.fill(0);
+
+      const newKekWrap = await wrapDek(newKek, dek);
+      const newBinding = { kekWrap: newKekWrap, kekSalt: newKekSalt, hardwareKekVersion: null };
+      const writeV3 = blob.v === VAULT_VERSION_V3 || AAD_V3_MIGRATION_ENABLED;
+      if (writeV3) {
+        const sealed = await encryptVaultWithDekV3(seed, dek, newBinding);
+        await saveVault({ ...blob, ...sealed });
+      } else {
+        await saveVault({ ...blob, ...newBinding });
+      }
+      return;
+    } finally {
+      if (H2 && H2.fill) H2.fill(0);
+      if (newC) newC.fill(0);
+      if (newKek) newKek.fill(0);
+      if (dek) dek.fill(0);
+      if (newSaltBytes) newSaltBytes.fill(0);
+    }
   },
 
   // The unlocked secret lives in WalletProvider's in-memory ref on web, so the
