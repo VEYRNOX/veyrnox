@@ -1,0 +1,184 @@
+name: Firebase Test Lab (Android + iOS smoke)
+# ------------------------------------------------------------------
+# Runs the same Robo crawler Google Play Pre-launch report uses,
+# on physical devices in Google's data center — BEFORE the AAB is
+# ever uploaded to Play. Rejection-shaped defects (crash on Create
+# Wallet, unresponsive UI, KEK fail-closed on untested hardware)
+# surface here, not from a human reviewer.
+#
+# Cost: ~$2/run on Blaze (5 devices × 5 min).
+# Auth: workload-identity federation to Firebase, or a service-account
+# JSON stored as GCP_SA_KEY. Setup: docs/firebase-test-lab-setup.md.
+#
+# iOS side: no Robo equivalent exists. This runs XCUITest smoke
+# instead. See notes below.
+# ------------------------------------------------------------------
+
+on:
+  workflow_dispatch:
+    inputs:
+      timeout:
+        description: 'Per-device timeout (e.g. 5m, 10m)'
+        default: '5m'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'android/**'
+      - 'ios/**'
+      - 'capacitor.config.json'
+      - 'package-lock.json'
+
+concurrency:
+  group: firebase-test-lab-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  # --------------------------------------------------------------
+  # Android — Robo crawler on 5 real devices. Same infra as Play
+  # Pre-launch report. Output: crashes, ANRs, screenshots, video,
+  # logcat per device.
+  # --------------------------------------------------------------
+  android-robo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Download release AAB from ci.yml
+        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+        with:
+          workflow: ci.yml
+          workflow_conclusion: success
+          name: veyrnox-release-aab
+          path: artifacts
+          branch: main
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Robo crawl (5 devices, mixed API levels)
+        # --num-flaky-test-attempts 0 means no retry: any crash is a crash.
+        # Devices span Pixel/Samsung and API 30/33/34 — matches Play's default
+        # Pre-launch report mix. --robo-directives seeds the PIN screen so
+        # the crawler can pass the first gate (otherwise it stalls at PIN).
+        # TIMEOUT and RESULTS_BUCKET come via env: workflow-dispatch input goes
+        # through a regex allowlist to block shell metachars (injection guard).
+        env:
+          RAW_TIMEOUT: ${{ inputs.timeout }}
+          RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # Allowlist: digits followed by s/m/h. Reject anything else, fall back to 5m.
+          if [[ "${RAW_TIMEOUT:-}" =~ ^[0-9]+[smh]$ ]]; then
+            TIMEOUT="$RAW_TIMEOUT"
+          else
+            TIMEOUT="5m"
+          fi
+          gcloud firebase test android run \
+            --type robo \
+            --app artifacts/app-release.aab \
+            --device model=oriole,version=33,locale=en,orientation=portrait \
+            --device model=redfin,version=30,locale=en,orientation=portrait \
+            --device model=a13,version=33,locale=en,orientation=portrait \
+            --device model=husky,version=34,locale=en,orientation=portrait \
+            --device model=raven,version=33,locale=en,orientation=portrait \
+            --timeout "$TIMEOUT" \
+            --num-flaky-test-attempts 0 \
+            --robo-directives text:pin_input=246810,text:pin_confirm=246810 \
+            --results-bucket "$RESULTS_BUCKET" \
+            --results-dir "robo-$SHA"
+
+      - name: Post results link to job summary
+        if: always()
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
+          SHA: ${{ github.sha }}
+        run: |
+          {
+            echo "### Firebase Test Lab — Robo crawl"
+            echo "Results: https://console.firebase.google.com/project/${PROJECT_ID}/testlab/histories/"
+            echo "Bucket:  gs://${RESULTS_BUCKET}/robo-${SHA}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------
+  # iOS — Firebase Test Lab for iOS does NOT support Robo. Only
+  # XCUITest. So this runs a minimal XCUITest smoke bundle that
+  # walks the same golden path a Play reviewer would: fresh
+  # install → PIN → Create Wallet → seed reveal.
+  #
+  # First run: needs macOS runner (Apple-only Xcode). Blocked
+  # until we add the XCUITest target — see
+  # ios/App/AppUITests/README.md for the ~30-line smoke suite.
+  # --------------------------------------------------------------
+  ios-smoke:
+    runs-on: macos-14
+    if: false  # flip to true once XCUITest target lands
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Build IPA + test bundle
+        run: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build/ \
+            build-for-testing
+          # Zip products for Test Lab:
+          cd build/Build/Products
+          zip -r ios-tests.zip Release-iphoneos App.app *.xctestrun
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: XCUITest smoke on real iPhones
+        env:
+          RAW_TIMEOUT: ${{ inputs.timeout }}
+          RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${RAW_TIMEOUT:-}" =~ ^[0-9]+[smh]$ ]]; then
+            TIMEOUT="$RAW_TIMEOUT"
+          else
+            TIMEOUT="5m"
+          fi
+          gcloud firebase test ios run \
+            --test ios/App/build/Build/Products/ios-tests.zip \
+            --device model=iphone13pro,version=16.6,locale=en_US,orientation=portrait \
+            --device model=iphone14,version=17.5,locale=en_US,orientation=portrait \
+            --timeout "$TIMEOUT" \
+            --results-bucket "$RESULTS_BUCKET" \
+            --results-dir "ios-smoke-$SHA"
+
+      - name: Post results link
+        if: always()
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          {
+            echo "### Firebase Test Lab — iOS smoke"
+            echo "Results: https://console.firebase.google.com/project/${PROJECT_ID}/testlab/histories/"
+          } >> "$GITHUB_STEP_SUMMARY"
