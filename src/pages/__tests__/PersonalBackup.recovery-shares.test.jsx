@@ -54,11 +54,19 @@ afterEach(() => {
   cleanup();
 });
 
-async function loadPage({ enableShards, useWalletValue }) {
+async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus' }) {
   if (enableShards) vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
   vi.resetModules();
   vi.doMock('@/lib/WalletProvider', () => ({
     useWallet: () => useWalletValue,
+  }));
+  // Tier is now consumed inside PersonalBackup — the shard tab renders the
+  // export panel only when currentTier === 'safety_plus', otherwise an
+  // upsell. Every existing test in this suite asserts flow-shape behaviour
+  // that presumes shards are reachable, so default to Safety Plus; the
+  // free-tier upsell path gets its own explicit test below.
+  vi.doMock('@/lib/TierProvider', () => ({
+    useTier: () => ({ currentTier: tier, tiers: {}, loading: false, refreshTier: vi.fn() }),
   }));
   const mod = await import('@/pages/PersonalBackup');
   return mod.default;
@@ -77,7 +85,7 @@ describe('PersonalBackup — Recovery Shares tab (flag off)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    expect(screen.queryByRole('button', { name: /recovery shares/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /advanced.*2-of-3/i })).toBeNull();
   });
 });
 
@@ -95,7 +103,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     // Tab exists, so a decoy examiner sees a plausible flow shape.
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     expect(screen.getByText(/unavailable in this session/i)).toBeTruthy();
     // No password field, no split button — no way to trigger the real path.
     expect(screen.queryByPlaceholderText(/wallet password/i)).toBeNull();
@@ -122,7 +130,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
       target: { value: 'a-strong-password-16' },
     });
@@ -146,7 +154,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
       target: { value: 'a-strong-password-16' },
     });
@@ -172,7 +180,7 @@ describe('PersonalBackup — Export encrypt-one option (Phase 3, flag on)', () =
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
     fireEvent.click(screen.getByLabelText(/encrypt one share with a recovery passphrase/i));
     expect(screen.getByPlaceholderText(/recovery passphrase/i)).toBeTruthy();
@@ -191,7 +199,7 @@ describe('PersonalBackup — Export encrypt-one option (Phase 3, flag on)', () =
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
       target: { value: 'wallet-password-123' },
     });
@@ -227,7 +235,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     // Two Restore buttons exist once the tab is open — top-level TABS bar and
     // the in-tab mode toggle. Pick the mode toggle inside the sub-panel.
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
@@ -255,7 +263,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     fireEvent.change(screen.getByPlaceholderText("New PIN (digits only)"), {
@@ -279,7 +287,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     fireEvent.change(screen.getByPlaceholderText("New PIN (digits only)"), {
@@ -301,7 +309,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     // Enter a password with no shares picked — still disabled.
@@ -327,7 +335,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     fireEvent.change(screen.getByPlaceholderText('New PIN (digits only)'), {
@@ -360,7 +368,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
@@ -383,10 +391,59 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     // The tab renders a neutral suppression notice, not a mode toggle.
     expect(screen.getByText(/unavailable in this session/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /restore wallet/i })).toBeNull();
     expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
+  });
+});
+
+describe('PersonalBackup — Advanced tab entitlement (free tier)', () => {
+  it('free tier: tab is visible but content is the upsell, not the export panel', async () => {
+    const exportRecoveryShares = vi.fn();
+    const Page = await loadPage({
+      enableShards: true,
+      tier: 'free',
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares,
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    // Discovery matters — the tab still shows so free users see the feature exists.
+    const tab = screen.getByRole('button', { name: /advanced.*2-of-3/i });
+    expect(tab).toBeTruthy();
+    fireEvent.click(tab);
+    // Upsell renders; export path does NOT.
+    expect(screen.getByTestId('shares-tab-upsell')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /see safety plus/i })).toHaveAttribute('href', '/plans');
+    expect(screen.queryByRole('button', { name: /split & save 3 shares/i })).toBeNull();
+    expect(screen.queryByPlaceholderText(/wallet password/i)).toBeNull();
+    // No accidental call — the export function must not fire from the upsell.
+    expect(exportRecoveryShares).not.toHaveBeenCalled();
+  });
+
+  it('safety_plus tier: tab renders the real export panel (regression guard)', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      tier: 'safety_plus',
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    expect(screen.queryByTestId('shares-tab-upsell')).toBeNull();
+    expect(screen.getByRole('button', { name: /split & save 3 shares/i })).toBeTruthy();
   });
 });

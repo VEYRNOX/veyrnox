@@ -44,6 +44,9 @@ secrets.json
 # ...and the staging build config (public config only, no secrets — see
 # .env.staging itself and Task 5 of the staging environment CI pipeline plan).
 !.env.staging
+# ...and the production build config (client-exposed build flags only, no
+# secrets — Vite bakes VITE_* vars into the shipped bundle regardless).
+!.env.production
 
 # Logs
 *.log

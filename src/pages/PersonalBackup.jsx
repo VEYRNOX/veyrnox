@@ -25,7 +25,9 @@ import {
   markBackupCompletedFromConfirmation,
 } from "@/lib/backupNag";
 import { toast } from "@/lib/toast";
+import { useTier } from "@/lib/TierProvider";
 import BackButton from "@/components/BackButton";
+import { Link } from "react-router";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
@@ -888,13 +890,19 @@ const BASE_TABS = [
 ];
 
 const TABS = ENABLE_PERSONAL_BACKUP_SHARDS
-  ? [...BASE_TABS, { id: "shares", label: "Recovery shares", Icon: KeyRound }]
+  ? [...BASE_TABS, { id: "shares", label: "Advanced (2-of-3)", Icon: KeyRound }]
   : BASE_TABS;
 
 export default function PersonalBackup() {
   const { createBackup, exportRecoveryShares, restoreFromRecoveryShares, lock, isDecoy, isHidden, getBackupPublicAddresses } = useWallet();
+  const { currentTier } = useTier();
   const navigate = useNavigate();
   const [tab, setTab] = useState("export");
+  // Vault backup ("Create backup" + "Restore") is free. Shard-based
+  // "Advanced (2-of-3)" is Safety Plus only — tab stays visible so free
+  // users can discover the feature; clicking it renders an upsell card
+  // instead of the export/restore panel.
+  const hasSafetyPlus = currentTier === "safety_plus";
 
   return (
     <div className="max-w-lg mx-auto space-y-5">
@@ -939,7 +947,7 @@ export default function PersonalBackup() {
           backLabel="Back to Create backup"
         />
       )}
-      {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && (
+      {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && hasSafetyPlus && (
         <RecoveryShareTab
           exportRecoveryShares={exportRecoveryShares}
           restoreFromRecoveryShares={restoreFromRecoveryShares}
@@ -947,6 +955,35 @@ export default function PersonalBackup() {
           isDecoy={isDecoy}
           isHidden={isHidden}
         />
+      )}
+      {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && !hasSafetyPlus && (
+        <div className="space-y-4" data-testid="shares-tab-upsell">
+          <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">Advanced 2-of-3 backup — Safety Plus</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Splits your vault key into 3 shares — any 2 rebuild it, 1 alone reveals nothing.
+              Save one on this device, one in each of two clouds. Recover even if a single copy
+              is lost or coerced. Included with Safety Plus.
+            </p>
+          </div>
+          <div className="p-4 rounded-xl border border-border bg-card/40 text-xs space-y-2">
+            <p className="font-semibold">Personal Backup is free — this is the advanced tier.</p>
+            <p className="text-muted-foreground">
+              "Create backup" and "Restore" stay free for everyone. The 2-of-3 shard flow adds
+              coercion resistance and single-copy loss tolerance on top.
+            </p>
+          </div>
+          <Link
+            to="/plans"
+            className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2"
+          >
+            <KeyRound className="h-4 w-4" />
+            See Safety Plus
+          </Link>
+        </div>
       )}
 
       {/* Footer note */}
