@@ -54,11 +54,19 @@ afterEach(() => {
   cleanup();
 });
 
-async function loadPage({ enableShards, useWalletValue }) {
+async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus' }) {
   if (enableShards) vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
   vi.resetModules();
   vi.doMock('@/lib/WalletProvider', () => ({
     useWallet: () => useWalletValue,
+  }));
+  // Tier is now consumed inside PersonalBackup — the shard tab renders the
+  // export panel only when currentTier === 'safety_plus', otherwise an
+  // upsell. Every existing test in this suite asserts flow-shape behaviour
+  // that presumes shards are reachable, so default to Safety Plus; the
+  // free-tier upsell path gets its own explicit test below.
+  vi.doMock('@/lib/TierProvider', () => ({
+    useTier: () => ({ currentTier: tier, tiers: {}, loading: false, refreshTier: vi.fn() }),
   }));
   const mod = await import('@/pages/PersonalBackup');
   return mod.default;
@@ -388,5 +396,54 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     expect(screen.getByText(/unavailable in this session/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /restore wallet/i })).toBeNull();
     expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
+  });
+});
+
+describe('PersonalBackup — Advanced tab entitlement (free tier)', () => {
+  it('free tier: tab is visible but content is the upsell, not the export panel', async () => {
+    const exportRecoveryShares = vi.fn();
+    const Page = await loadPage({
+      enableShards: true,
+      tier: 'free',
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares,
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    // Discovery matters — the tab still shows so free users see the feature exists.
+    const tab = screen.getByRole('button', { name: /advanced.*2-of-3/i });
+    expect(tab).toBeTruthy();
+    fireEvent.click(tab);
+    // Upsell renders; export path does NOT.
+    expect(screen.getByTestId('shares-tab-upsell')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /see safety plus/i })).toHaveAttribute('href', '/plans');
+    expect(screen.queryByRole('button', { name: /split & save 3 shares/i })).toBeNull();
+    expect(screen.queryByPlaceholderText(/wallet password/i)).toBeNull();
+    // No accidental call — the export function must not fire from the upsell.
+    expect(exportRecoveryShares).not.toHaveBeenCalled();
+  });
+
+  it('safety_plus tier: tab renders the real export panel (regression guard)', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      tier: 'safety_plus',
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    expect(screen.queryByTestId('shares-tab-upsell')).toBeNull();
+    expect(screen.getByRole('button', { name: /split & save 3 shares/i })).toBeTruthy();
   });
 });
