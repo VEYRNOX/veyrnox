@@ -1,6 +1,14 @@
 # Cloudflare Pages deployment config.
 name = "veyrnox-prod"
 pages_build_output_dir = "dist"
+# nodejs_compat required so Pages Functions can import `node:*` builtins.
+# The bundled Functions worker references `node:stream` (via a transitive
+# dependency); without this flag Cloudflare rejects the deploy with
+# `Uncaught Error: No such module "node:stream"`. Prior deploys passed
+# because Cloudflare auto-polyfilled `node:stream`; that behaviour changed
+# 2026-08-12, so the flag is now required to publish Functions.
+compatibility_date = "2026-08-12"
+compatibility_flags = ["nodejs_compat"]
 
 [vars]
 VITE_BUY_ENABLED = "true"
