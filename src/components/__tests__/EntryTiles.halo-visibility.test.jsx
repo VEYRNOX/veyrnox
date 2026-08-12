@@ -53,12 +53,13 @@ describe('EntryTiles — halo visibility (Slice I bump)', () => {
     expect(parseInt(m[1], 10)).toBeLessThanOrEqual(28);
   });
 
-  it('.vx-lamp-beam background gradient contains the stronger 0% stop rgba(74, 218, 194, 0.9)', () => {
+  it('.vx-lamp-beam background gradient contains the stronger 0% stop rgba(255, 176, 40, 0.9)', () => {
+    // Recolored amber/gold in the "flip and ship" prod build. Same alpha (0.9) so
+    // beam legibility on near-black is unchanged; only the hue swapped.
     const { container } = render(<VeyrnoxAmbient />);
     const beam = container.querySelector('.vx-lamp-beam');
     const bg = beam.style.background || getComputedStyle(beam).background || '';
-    // Tolerate whitespace variance (`rgba(74,218,194,0.9)` vs `rgba(74, 218, 194, 0.9)`).
-    expect(bg.replace(/\s+/g, '')).toContain('rgba(74,218,194,0.9)');
+    expect(bg.replace(/\s+/g, '')).toContain('rgba(255,176,40,0.9)');
   });
 
   it('a logo halo element is present and non-interactive (pointer-events: none)', () => {

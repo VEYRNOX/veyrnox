@@ -928,11 +928,7 @@ export const webKeyStore = {
     let dek;
     let seed;
     try {
-      // Combine BEFORE touching hardware — a bad share set fails without
-      // prompting the WebAuthn ceremony.
       dek = combineDekForPersonalBackup(shares);
-      // Verify the DEK actually opens THIS vault. AES-GCM auth tag rejects
-      // a wrong-DEK combine. This is the primary fail-closed check.
       seed = await decryptVaultWithDek(blob, dek);
 
       newSaltBytes = crypto.getRandomValues(new Uint8Array(32));

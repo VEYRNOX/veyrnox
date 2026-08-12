@@ -77,7 +77,7 @@ describe('PersonalBackup — Recovery Shares tab (flag off)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    expect(screen.queryByRole('button', { name: /recovery shares/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /advanced.*2-of-3/i })).toBeNull();
   });
 });
 
@@ -95,7 +95,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     // Tab exists, so a decoy examiner sees a plausible flow shape.
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     expect(screen.getByText(/unavailable in this session/i)).toBeTruthy();
     // No password field, no split button — no way to trigger the real path.
     expect(screen.queryByPlaceholderText(/wallet password/i)).toBeNull();
@@ -122,7 +122,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
       target: { value: 'a-strong-password-16' },
     });
@@ -146,7 +146,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
       target: { value: 'a-strong-password-16' },
     });
@@ -172,7 +172,7 @@ describe('PersonalBackup — Export encrypt-one option (Phase 3, flag on)', () =
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
     fireEvent.click(screen.getByLabelText(/encrypt one share with a recovery passphrase/i));
     expect(screen.getByPlaceholderText(/recovery passphrase/i)).toBeTruthy();
@@ -191,7 +191,7 @@ describe('PersonalBackup — Export encrypt-one option (Phase 3, flag on)', () =
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
       target: { value: 'wallet-password-123' },
     });
@@ -227,7 +227,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     // Two Restore buttons exist once the tab is open — top-level TABS bar and
     // the in-tab mode toggle. Pick the mode toggle inside the sub-panel.
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
@@ -255,7 +255,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     fireEvent.change(screen.getByPlaceholderText("New PIN (digits only)"), {
@@ -279,7 +279,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     fireEvent.change(screen.getByPlaceholderText("New PIN (digits only)"), {
@@ -301,7 +301,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     // Enter a password with no shares picked — still disabled.
@@ -327,7 +327,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     fireEvent.change(screen.getByPlaceholderText('New PIN (digits only)'), {
@@ -360,7 +360,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
@@ -383,7 +383,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
       },
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: /recovery shares/i }));
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
     // The tab renders a neutral suppression notice, not a mode toggle.
     expect(screen.getByText(/unavailable in this session/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /restore wallet/i })).toBeNull();
