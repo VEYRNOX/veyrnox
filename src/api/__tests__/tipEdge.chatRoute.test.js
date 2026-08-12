@@ -97,7 +97,10 @@ describe('tip-chat validates messages per entry', () => {
   });
 
   it('caps the length of any single message', () => {
-    expect(chatCode).toMatch(/MAX_CHAT_CONTENT/);
+    // Split into MAX_USER_CONTENT (8K) + MAX_SYSTEM_CONTENT (32K) so Advisor's
+    // KB+advisories system prompt fits without lifting the user-input cap.
+    expect(chatCode).toMatch(/MAX_USER_CONTENT/);
+    expect(chatCode).toMatch(/MAX_SYSTEM_CONTENT/);
     expect(chatCode).toMatch(/message_too_long/);
   });
 

@@ -83,7 +83,13 @@ const MAX_BODY_BYTES = 128 * 1024; // Advisor prompts + history can grow past sc
 // model treats as an instruction. The body cap bounds bandwidth; these bound
 // what the LLM is actually asked to do.
 const MAX_CHAT_MESSAGES = 40;
-const MAX_CHAT_CONTENT = 8192;
+// User/assistant messages stay tight — those come from the input box or the
+// LLM response and rarely need more than a few KB.
+const MAX_USER_CONTENT = 8192;
+// System messages carry the Advisor's contextual knowledge base + weekly
+// vendor advisories block, which routinely runs 12-20 KB. Cap high enough to
+// fit that but well under the Llama-3.1-8B ~24K-token context window.
+const MAX_SYSTEM_CONTENT = 32768;
 
 // Kept identical to tip-screen so both proxies accept the same set of origins.
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -190,7 +196,8 @@ serve(async (req) => {
       if (typeof content !== 'string' || content.length === 0) {
         return json({ error: 'bad_message_content' }, 400, origin);
       }
-      if (content.length > MAX_CHAT_CONTENT) {
+      const cap = role === 'system' ? MAX_SYSTEM_CONTENT : MAX_USER_CONTENT;
+      if (content.length > cap) {
         return json({ error: 'message_too_long' }, 400, origin);
       }
     }
