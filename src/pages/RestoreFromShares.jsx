@@ -45,7 +45,7 @@ export default function RestoreFromShares() {
       setPinConfirm("");
       navigate("/");
     } catch (err) {
-      setError(err?.message || "Restore failed.");
+      setError((err instanceof Error && err.message) || "Restore failed.");
       setPhase("pin");
     }
   }, [pin, pinConfirm, shareA, shareB, restoreFromRecoveryBundles, navigate]);
