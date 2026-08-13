@@ -83,6 +83,7 @@ const NetworkManager = lazy(() => import('./pages/NetworkManager'));
 const WatchWallets = lazy(() => import('./pages/WatchWallets'));
 const PriceCharts = lazy(() => import('./pages/PriceCharts'));
 const PersonalBackup = lazy(() => import('./pages/PersonalBackup'));
+const RestoreFromShares = lazy(() => import('./pages/RestoreFromShares'));
 const GasFeeControl = lazy(() => import('./pages/GasFeeControl'));
 const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
 const TrustScore = lazy(() => import('./pages/TrustScore'));
@@ -130,6 +131,7 @@ const AuthenticatedApp = () => {
     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center"><Spinner size="lg" /></div>}>
     <Routes>
       <Route path="/landing" element={<LandingGuard />} />
+      <Route path="/onboarding/restore-shares" element={<RestoreFromShares />} />
       {/* Hosted-account auth routes are gone.
           There is no hosted account — the seed/vault is the identity — so any
           stale /login, /register, /forgot-password, /reset-password or
