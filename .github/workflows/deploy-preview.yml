@@ -184,7 +184,16 @@ jobs:
           fi
 
       - name: Install Wrangler
-        run: npm install -g wrangler
+        # PINNED. Wrangler 4.122.0 (published 2026-08-12 afternoon) started
+        # bundling something under functions/ that pulls `node:stream` at
+        # publish time, breaking every Pages Function deploy with
+        # `Failed to publish your Function. Got error: Uncaught Error:
+        # No such module "node:stream".`
+        # 4.121.0 (the last version that ran successfully on main —
+        # deploy job 94130595248 for a8880080 at 13:31 UTC 2026-08-12) is
+        # unaffected. Unpin only once the root cause is fixed upstream OR
+        # __tests__/ under functions/ is excluded from bundling.
+        run: npm install -g wrangler@4.121.0
 
       # Branch names reach us from PR heads and can contain shell metacharacters,
       # so they must never be interpolated straight into a command string.
