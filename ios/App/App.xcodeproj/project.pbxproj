@@ -10,43 +10,59 @@
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
-		BBCCDD011FED79650016851F /* HardwareKekPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD001FED79650016851F /* HardwareKekPlugin.m */; };
-		BBCCDD041FED79650016851F /* HardwareKekPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */; };
-		BBCCDD111FED79650016851F /* RaspIntegrityPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD101FED79650016851F /* RaspIntegrityPlugin.m */; };
-		BBCCDD141FED79650016851F /* RaspIntegrityPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD131FED79650016851F /* RaspIntegrityPluginBridge.m */; };
-		BBCCDD311FED79650016851F /* AppAttestPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD301FED79650016851F /* AppAttestPlugin.m */; };
-		BBCCDD341FED79650016851F /* AppAttestPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD331FED79650016851F /* AppAttestPluginBridge.m */; };
-		BBCCDD211FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */; };
-		BBCCDD231FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		8CB0DD8EA82AD863C8E406B6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 90C3FEC3D4EFB7CCB1E4453E /* Foundation.framework */; };
+		B7CF2649724BB5E77EFD0E40 /* AppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9231AE55115CADB50557A136 /* AppUITests.swift */; };
+		BBCCDD011FED79650016851F /* HardwareKekPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD001FED79650016851F /* HardwareKekPlugin.m */; };
+		BBCCDD041FED79650016851F /* HardwareKekPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */; };
+		BBCCDD111FED79650016851F /* RaspIntegrityPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD101FED79650016851F /* RaspIntegrityPlugin.m */; };
+		BBCCDD141FED79650016851F /* RaspIntegrityPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD131FED79650016851F /* RaspIntegrityPluginBridge.m */; };
+		BBCCDD211FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */; };
+		BBCCDD231FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */; };
+		BBCCDD311FED79650016851F /* AppAttestPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD301FED79650016851F /* AppAttestPlugin.m */; };
+		BBCCDD341FED79650016851F /* AppAttestPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD331FED79650016851F /* AppAttestPluginBridge.m */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		371AD7A76D5F90E7DBEE6541 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 504EC3031FED79650016851F;
+			remoteInfo = App;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BBCCDD001FED79650016851F /* HardwareKekPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HardwareKekPlugin.m; sourceTree = "<group>"; };
-		BBCCDD021FED79650016851F /* HardwareKekPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HardwareKekPlugin.h; sourceTree = "<group>"; };
-		BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HardwareKekPluginBridge.m; sourceTree = "<group>"; };
-		BBCCDD101FED79650016851F /* RaspIntegrityPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RaspIntegrityPlugin.m; sourceTree = "<group>"; };
-		BBCCDD121FED79650016851F /* RaspIntegrityPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RaspIntegrityPlugin.h; sourceTree = "<group>"; };
-		BBCCDD131FED79650016851F /* RaspIntegrityPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RaspIntegrityPluginBridge.m; sourceTree = "<group>"; };
-		BBCCDD301FED79650016851F /* AppAttestPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppAttestPlugin.m; sourceTree = "<group>"; };
-		BBCCDD321FED79650016851F /* AppAttestPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppAttestPlugin.h; sourceTree = "<group>"; };
-		BBCCDD331FED79650016851F /* AppAttestPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppAttestPluginBridge.m; sourceTree = "<group>"; };
-		BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VeyrnoxSpeechRecognitionPlugin.swift; sourceTree = "<group>"; };
-		BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VeyrnoxSpeechRecognitionPluginBridge.m; sourceTree = "<group>"; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		71480926541331B0C80A6D35 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		754BF5DA648E318696FF0E87 /* AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		90C3FEC3D4EFB7CCB1E4453E /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		9231AE55115CADB50557A136 /* AppUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppUITests.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		BBCCDD001FED79650016851F /* HardwareKekPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HardwareKekPlugin.m; sourceTree = "<group>"; };
+		BBCCDD021FED79650016851F /* HardwareKekPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HardwareKekPlugin.h; sourceTree = "<group>"; };
+		BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HardwareKekPluginBridge.m; sourceTree = "<group>"; };
+		BBCCDD101FED79650016851F /* RaspIntegrityPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RaspIntegrityPlugin.m; sourceTree = "<group>"; };
+		BBCCDD121FED79650016851F /* RaspIntegrityPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RaspIntegrityPlugin.h; sourceTree = "<group>"; };
+		BBCCDD131FED79650016851F /* RaspIntegrityPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RaspIntegrityPluginBridge.m; sourceTree = "<group>"; };
+		BBCCDD201FED79650016851F /* VeyrnoxSpeechRecognitionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VeyrnoxSpeechRecognitionPlugin.swift; sourceTree = "<group>"; };
+		BBCCDD221FED79650016851F /* VeyrnoxSpeechRecognitionPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VeyrnoxSpeechRecognitionPluginBridge.m; sourceTree = "<group>"; };
+		BBCCDD301FED79650016851F /* AppAttestPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppAttestPlugin.m; sourceTree = "<group>"; };
+		BBCCDD321FED79650016851F /* AppAttestPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppAttestPlugin.h; sourceTree = "<group>"; };
+		BBCCDD331FED79650016851F /* AppAttestPluginBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppAttestPluginBridge.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,15 +74,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8D1924444FAF9843B21DE5B3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8CB0DD8EA82AD863C8E406B6 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0CD52E730F081B872978A1DF /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				90C3FEC3D4EFB7CCB1E4453E /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				8632F2ED0BE678DBCC67FA84 /* AppUITests */,
+				C34601A01AD954865AC97B4D /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -74,6 +108,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				754BF5DA648E318696FF0E87 /* AppUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -104,6 +139,24 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		8632F2ED0BE678DBCC67FA84 /* AppUITests */ = {
+			isa = PBXGroup;
+			children = (
+				9231AE55115CADB50557A136 /* AppUITests.swift */,
+				71480926541331B0C80A6D35 /* Info.plist */,
+			);
+			name = AppUITests;
+			path = AppUITests;
+			sourceTree = "<group>";
+		};
+		C34601A01AD954865AC97B4D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				0CD52E730F081B872978A1DF /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -126,6 +179,24 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		8DBBCDFB1A259BF8F47B78FF /* AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8275D037067513E5F61F4E2A /* Build configuration list for PBXNativeTarget "AppUITests" */;
+			buildPhases = (
+				01356C0B7674C080CA0C62E6 /* Sources */,
+				8D1924444FAF9843B21DE5B3 /* Frameworks */,
+				C13FDA8E32440F6AABDC9EBD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CAE6E8DFCC817F46CB564A5E /* PBXTargetDependency */,
+			);
+			name = AppUITests;
+			productName = AppUITests;
+			productReference = 754BF5DA648E318696FF0E87 /* AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
@@ -160,6 +231,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				8DBBCDFB1A259BF8F47B78FF /* AppUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -178,9 +250,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C13FDA8E32440F6AABDC9EBD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		01356C0B7674C080CA0C62E6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7CF2649724BB5E77EFD0E40 /* AppUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3001FED79650016851F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -198,6 +285,15 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CAE6E8DFCC817F46CB564A5E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = App;
+			target = 504EC3031FED79650016851F /* App */;
+			targetProxy = 371AD7A76D5F90E7DBEE6541 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -219,11 +315,36 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		15D9B955DAA0FF1FA9974BDF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = R54268MWFV;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AppUITests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.veyrnox.app.AppUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = App;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		504EC3141FED79650016851F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -268,7 +389,6 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -282,6 +402,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -320,7 +441,6 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
@@ -335,11 +455,11 @@
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = R54268MWFV;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -354,7 +474,7 @@
 					"-weak_framework",
 					SwiftUICore,
 					"-weak_framework",
-					"_StoreKit_SwiftUI",
+					_StoreKit_SwiftUI,
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.veyrnox.app;
@@ -370,11 +490,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = R54268MWFV;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -389,7 +509,7 @@
 					"-weak_framework",
 					SwiftUICore,
 					"-weak_framework",
-					"_StoreKit_SwiftUI",
+					_StoreKit_SwiftUI,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.veyrnox.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -399,6 +519,29 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		5C1C6CF5FD917A06A8951B24 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = R54268MWFV;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AppUITests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.veyrnox.app.AppUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = App;
+			};
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
@@ -417,6 +560,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8275D037067513E5F61F4E2A /* Build configuration list for PBXNativeTarget "AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				15D9B955DAA0FF1FA9974BDF /* Release */,
+				5C1C6CF5FD917A06A8951B24 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
