@@ -93,16 +93,28 @@ async function leaveExploreToChoose(page) {
   await page.getByRole('button', { name: 'Create or import', exact: true }).click();
 }
 
-// Both fresh-create AND fresh-import land on Slice C's FirstReceiveCard ("Your
-// wallet is ready" / "You're set" — justOnboarded is set by both doCreateWallet and
-// doImportWallet paths) before the authed shell. Dismiss it if present, then wait
-// for the shell. Race both locators — isVisible() does not auto-wait, so checking
-// only "You're set" before it paints would miss it.
+// Post-onboarding gate before the authed shell:
+//   * fresh CREATE (chosenPath==='new') → <WalletCreatedFlash> — primary is
+//     "Set up Personal Backup" (navigates AWAY, not what we want in this spec);
+//     dismiss is "Skip for now — take me to my wallet".
+//   * fresh IMPORT (chosenPath==='have') → <FirstReceiveCard> — dismiss is
+//     "You're set".
+// Race all three locators — isVisible() does not auto-wait, so a single-locator
+// wait would miss whichever card the path actually rendered.
+// (Was "You're set"-only before PR #1724 replaced the CREATE-path card with
+// WalletCreatedFlash — the "You're set" button no longer exists on that path.)
 async function waitForAuthedShell(page) {
+  const dismissCreatedFlash = page.getByRole('button', {
+    name: 'Skip for now — take me to my wallet',
+  });
   const dismissReceiveCard = page.getByRole('button', { name: "You're set" });
   const sendLink = page.getByRole('link', { name: 'Send', exact: true });
-  await expect(dismissReceiveCard.or(sendLink)).toBeVisible({ timeout: 30000 });
-  if (await dismissReceiveCard.isVisible()) {
+  await expect(
+    dismissCreatedFlash.or(dismissReceiveCard).or(sendLink),
+  ).toBeVisible({ timeout: 30000 });
+  if (await dismissCreatedFlash.isVisible()) {
+    await dismissCreatedFlash.click();
+  } else if (await dismissReceiveCard.isVisible()) {
     await dismissReceiveCard.click();
   }
   await expect(sendLink).toBeVisible({ timeout: 30000 });
