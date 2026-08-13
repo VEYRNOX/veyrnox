@@ -151,6 +151,16 @@ jobs:
       - name: Resolve Swift Package dependencies
         working-directory: ios/App
         run: |
+          # Resolve for BOTH schemes so the AppUITests build graph gets the
+          # same Capacitor module instance the App target uses. Previously we
+          # only resolved for -scheme App; xcodebuild then re-resolved on
+          # first use of -scheme AppUITests and picked a stale/split
+          # capacitor-swift-pm graph, which made SharePlugin.swift compile
+          # against a Capacitor without CAPPluginCall.reject.
+          rm -f App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved || true
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme AppUITests 2>&1 | tail -5
           xcodebuild -resolvePackageDependencies \
             -project App.xcodeproj \
             -scheme App 2>&1 | tail -5
