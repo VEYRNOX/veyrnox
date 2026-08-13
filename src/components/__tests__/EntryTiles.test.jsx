@@ -16,13 +16,14 @@ import EntryTiles from '@/components/EntryTiles';
 afterEach(() => cleanup());
 
 describe('EntryTiles', () => {
-  it('renders 3 tiles with distinct accessible names', () => {
+  it('renders 4 tiles with distinct accessible names', () => {
     render(<EntryTiles onSelect={vi.fn()} />);
     expect(screen.getByRole('button', { name: /new wallet/i })).toBeTruthy();
     expect(
       screen.getByRole('button', { name: /have.*wallet|import|existing/i }),
     ).toBeTruthy();
-    expect(screen.getByRole('button', { name: /advanced/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /file backup/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /recovery shares/i })).toBeTruthy();
   });
 
   it('each tile invokes onSelect with its path', () => {
@@ -32,7 +33,7 @@ describe('EntryTiles', () => {
     fireEvent.click(
       screen.getByRole('button', { name: /have.*wallet|import|existing/i }),
     );
-    fireEvent.click(screen.getByRole('button', { name: /advanced/i }));
+    fireEvent.click(screen.getByRole('button', { name: /file backup/i }));
     expect(onSelect).toHaveBeenNthCalledWith(1, 'new');
     expect(onSelect).toHaveBeenNthCalledWith(2, 'have');
     expect(onSelect).toHaveBeenNthCalledWith(3, 'advanced');
@@ -56,7 +57,7 @@ describe('EntryTiles', () => {
     fireEvent.click(
       screen.getByRole('button', { name: /have.*wallet|import|existing/i }),
     );
-    fireEvent.click(screen.getByRole('button', { name: /advanced/i }));
+    fireEvent.click(screen.getByRole('button', { name: /file backup/i }));
     expect(setItem).not.toHaveBeenCalled();
     setItem.mockRestore();
   });
