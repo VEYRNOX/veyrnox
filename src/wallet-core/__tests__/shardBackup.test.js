@@ -77,8 +77,20 @@ describe('shardBackup — hard-off gate', () => {
       'utf8'
     );
     const importLines = src.split('\n').filter(l => /^\s*import\s/.test(l));
-    expect(importLines).toHaveLength(1);
-    expect(importLines[0]).toContain('./shamir.js');
+    // Allowed imports for shardBackup: shamir.js plus the noble hashing
+    // primitives used by the cross-device bundle codec (Phase 3). Any
+    // OTHER import — especially KEK/hardware — is a bug.
+    const ALLOWED_IMPORT_PATTERNS = [
+      /['"]\.\/shamir\.js['"]/,
+      /['"]@noble\/hashes\/sha256['"]/,
+      /['"]@noble\/hashes\/utils['"]/,
+    ];
+    for (const line of importLines) {
+      expect(
+        ALLOWED_IMPORT_PATTERNS.some((re) => re.test(line)),
+        `unexpected import in shardBackup.js: ${line}`
+      ).toBe(true);
+    }
     // Belt: no textual reference to KEK/hardware machinery even in comments
     // that would suggest wiring is intended without an audit.
     expect(/getHardwareFactor|combineKek|from ['"].\/kek/i.test(src)).toBe(false);
