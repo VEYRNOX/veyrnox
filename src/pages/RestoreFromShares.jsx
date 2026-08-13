@@ -10,42 +10,24 @@ import { useNavigate, Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
 import PinPad from "@/components/security/PinPad";
 import { useWallet } from "@/lib/WalletProvider";
-import { combineFromBundles, ENABLE_PERSONAL_BACKUP_SHARDS } from "@/wallet-core/shardBackup.js";
-import { decryptVaultWithDek } from "@/wallet-core/vault.js";
-import { parseVault } from "@/wallet-core/multiVault.js";
 
 export default function RestoreFromShares() {
   const navigate = useNavigate();
-  const { importWallet } = useWallet();
+  const { restoreFromRecoveryBundles } = useWallet();
   const [shareA, setShareA] = useState("");
   const [shareB, setShareB] = useState("");
-  const [phase, setPhase] = useState("input"); // input | pin | confirm | busy
-  const [mnemonic, setMnemonic] = useState(""); // held briefly; cleared on unmount / success
+  const [phase, setPhase] = useState("input"); // input | pin | busy
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
   const [error, setError] = useState("");
 
-  const parseAndDecrypt = useCallback(async () => {
+  const advanceToPin = useCallback(() => {
     setError("");
-    if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
-      setError("Shard restore is not enabled in this build.");
+    if (!shareA.trim() || !shareB.trim()) {
+      setError("Paste both recovery bundles.");
       return;
     }
-    let dek = null;
-    try {
-      const { dek: d, vault } = combineFromBundles([shareA.trim(), shareB.trim()]);
-      dek = d;
-      const plaintext = await decryptVaultWithDek(vault, dek);
-      const { container } = parseVault(plaintext);
-      const w0 = container.wallets && container.wallets[0];
-      if (!w0 || !w0.mnemonic) throw new Error("Vault has no wallet.");
-      setMnemonic(w0.mnemonic);
-      setPhase("pin");
-    } catch (err) {
-      setError(err?.message || "Could not combine shares.");
-    } finally {
-      if (dek && dek.fill) dek.fill(0);
-    }
+    setPhase("pin");
   }, [shareA, shareB]);
 
   const submitPin = useCallback(async () => {
@@ -56,17 +38,17 @@ export default function RestoreFromShares() {
     }
     setPhase("busy");
     try {
-      await importWallet(mnemonic, pin);
-      // Zero secrets before nav
-      setMnemonic("");
+      await restoreFromRecoveryBundles([shareA.trim(), shareB.trim()], pin);
+      setShareA("");
+      setShareB("");
       setPin("");
       setPinConfirm("");
       navigate("/");
     } catch (err) {
-      setError(err?.message || "Import failed.");
+      setError(err?.message || "Restore failed.");
       setPhase("pin");
     }
-  }, [pin, pinConfirm, mnemonic, importWallet, navigate]);
+  }, [pin, pinConfirm, shareA, shareB, restoreFromRecoveryBundles, navigate]);
 
   return (
     <div className="min-h-screen bg-background p-4 space-y-4">
@@ -96,11 +78,11 @@ export default function RestoreFromShares() {
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
           <button
-            onClick={parseAndDecrypt}
+            onClick={advanceToPin}
             disabled={!shareA.trim() || !shareB.trim()}
             className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50"
           >
-            Reconstruct wallet
+            Continue
           </button>
         </div>
       )}

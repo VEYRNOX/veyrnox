@@ -113,6 +113,7 @@ import { APP_LOCK_EVENT } from '@/lib/copySecret';
 // module flag wallet-core can read synchronously.
 import { setDeniabilitySession } from '@/wallet-core/deniabilitySession';
 import { createBackupEnvelope } from '@/wallet-core/vaultBackup';
+import { decryptVaultWithDek } from '@/wallet-core/vault';
 import { provisionDeniabilityChaff } from '@/wallet-core/provisionChaff';
 import {
   recordAuditEvent,
@@ -2342,6 +2343,33 @@ export function WalletProvider({ children }) {
     return bundles;
   }, [isDecoy, isHidden]);
 
+  // Personal Backup Phase 3 — cross-device restore. Fresh phone with no vault;
+  // caller supplies 2 recovery BUNDLES (which carry the encrypted vault blob
+  // alongside each shamir share) plus a new PIN. Combine shares → decrypt vault
+  // → import the seed under a fresh PIN. This is the R2 facade the UI calls;
+  // the R0/R1 crypto (shardBackup + vault + multiVault) never leaves this file.
+  const restoreFromRecoveryBundles = useCallback(async (bundles, newPin) => {
+    if (isDecoy || isHidden) throw new Error('Restore is only available in the primary session');
+    if (!Array.isArray(bundles) || bundles.length !== 2) {
+      throw new Error('Need exactly 2 recovery bundles.');
+    }
+    const { combineFromBundles } = await import('@/wallet-core/shardBackup');
+    let dek = null;
+    let plaintext = null;
+    try {
+      const combined = combineFromBundles(bundles);
+      dek = combined.dek;
+      plaintext = await decryptVaultWithDek(combined.vault, dek);
+      const parsed = mv.parseVault(plaintext);
+      const w0 = parsed.container.wallets && parsed.container.wallets[0];
+      if (!w0 || !w0.mnemonic) throw new Error('Recovered vault has no wallet.');
+      await importWallet(w0.mnemonic, newPin);
+    } finally {
+      if (dek && dek.fill) dek.fill(0);
+      plaintext = null;
+    }
+  }, [isDecoy, isHidden, importWallet]);
+
   // Personal Backup Phase 2 — restore an existing on-device vault by supplying
   // any 2 of 3 shamir shares plus a new password. The vault is re-wrapped under
   // a fresh KEK; the seed is unchanged. Does NOT hydrate container state —
@@ -2560,6 +2588,7 @@ export function WalletProvider({ children }) {
     // Personal Backup Phase 1 — 2-of-3 shamir DEK sharding, export-only.
     exportRecoveryShares,
     exportRecoveryBundles,
+    restoreFromRecoveryBundles,
     // Personal Backup Phase 2 — same-device restore from any 2 shares.
     restoreFromRecoveryShares,
     // AUDIT LOG (opt-in, S4). All access to auditLog.js is routed through here.

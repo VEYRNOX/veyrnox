@@ -245,14 +245,16 @@ function hashVault(vault) {
  *
  * @param {Uint8Array} share one 33-byte share from splitDekForPersonalBackup
  * @param {number} index 1..3 — human-facing share number
- * @param {object} vault the { v, kdf, salt, iv, ct } object saveVault writes
+ * @param {{v?: number, kdf: any, salt: string, iv: string, ct: string}} vault the object saveVault writes
  * @returns {object} a JSON-safe bundle
  */
 export function encodeShareBundle(share, index, vault) {
   if (!ENABLE_PERSONAL_BACKUP_SHARDS) throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
   if (!(share instanceof Uint8Array) || share.length !== SHARE_SIZE) throw new Error(SHARD_BUNDLE_INVALID);
   if (!Number.isInteger(index) || index < 1 || index > 3) throw new Error(SHARD_BUNDLE_INVALID);
-  if (!vault || typeof vault !== 'object' || !vault.ct || !vault.salt || !vault.iv || !vault.kdf) {
+  if (!vault || typeof vault !== 'object') throw new Error(SHARD_BUNDLE_INVALID);
+  const v = /** @type {any} */ (vault);
+  if (!v.ct || !v.salt || !v.iv || !v.kdf) {
     throw new Error(SHARD_BUNDLE_INVALID);
   }
   return {

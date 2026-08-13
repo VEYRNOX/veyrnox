@@ -12,7 +12,6 @@ import {
 } from "@/wallet-core/vaultBackup";
 import { ENABLE_PERSONAL_BACKUP_SHARDS } from "@/wallet-core/shardBackup";
 import {
-  wrapShareWithPassphrase,
   unwrapShareWithPassphrase,
   tryParseRecoveryEnvelope,
   checkRecoveryPassphrase,
