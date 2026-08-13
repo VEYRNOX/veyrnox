@@ -110,20 +110,20 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     expect(screen.queryByRole('button', { name: /split & save 3 shares/i })).toBeNull();
   });
 
-  it('calls exportRecoveryShares and reports 3/3 saved on the happy path', async () => {
-    // 3 non-zero 88-byte "shares" — the tab does not validate contents, only
-    // hands them to saveShareFile. Web platform path writes via an anchor.
-    const fakeShares = [1, 2, 3].map((n) => {
-      const s = new Uint8Array(88);
-      s.fill(n);
-      return s;
-    });
-    const exportRecoveryShares = vi.fn(async () => fakeShares);
+  it('calls exportRecoveryBundles and reports 3/3 saved on the happy path', async () => {
+    // Phase 3 (cross-device restore): CREATE now emits self-contained bundle
+    // JSON strings (share bytes + vault ciphertext + hash). saveShareFile
+    // receives the UTF-8-encoded bundle, not raw share bytes.
+    const fakeBundles = [1, 2, 3].map((n) =>
+      JSON.stringify({ v: 1, shareIndex: n, shareBytes: 'AA==', vault: {}, vaultHash: 'x', meta: {} })
+    );
+    const exportRecoveryBundles = vi.fn(async () => fakeBundles);
     const Page = await loadPage({
       enableShards: true,
       useWalletValue: {
         createBackup: vi.fn(),
-        exportRecoveryShares,
+        exportRecoveryShares: vi.fn(),
+        exportRecoveryBundles,
         lock: vi.fn(),
         isDecoy: false,
         isHidden: false,
@@ -136,18 +136,19 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
     await waitFor(() => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy());
-    expect(exportRecoveryShares).toHaveBeenCalledWith('a-strong-password-16');
+    expect(exportRecoveryBundles).toHaveBeenCalledWith('a-strong-password-16');
   });
 
-  it('surfaces a fail-closed error when exportRecoveryShares throws', async () => {
-    const exportRecoveryShares = vi.fn(async () => {
+  it('surfaces a fail-closed error when exportRecoveryBundles throws', async () => {
+    const exportRecoveryBundles = vi.fn(async () => {
       throw new Error('PERSONAL_BACKUP_ROUND_TRIP_FAILED');
     });
     const Page = await loadPage({
       enableShards: true,
       useWalletValue: {
         createBackup: vi.fn(),
-        exportRecoveryShares,
+        exportRecoveryShares: vi.fn(),
+        exportRecoveryBundles,
         lock: vi.fn(),
         isDecoy: false,
         isHidden: false,
@@ -161,7 +162,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
     // Success screen must NOT appear on a failure — user sees a toast (mocked
     // globally elsewhere) rather than a false "shares saved" confirmation.
-    await waitFor(() => expect(exportRecoveryShares).toHaveBeenCalled());
+    await waitFor(() => expect(exportRecoveryBundles).toHaveBeenCalled());
     expect(screen.queryByText(/all 3 recovery shares saved/i)).toBeNull();
   });
 });
