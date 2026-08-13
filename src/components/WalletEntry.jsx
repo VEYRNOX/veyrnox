@@ -295,6 +295,7 @@ function ProvisioningView() {
 // across WalletEntry re-renders. The Framer Motion entrance + looping logo glow
 // degrade to an instant, static render under prefers-reduced-motion.
 function WelcomeHero({ onGetStarted, onRestore }) {
+  const navigate = useNavigate();
   const reduce = useReducedMotion();
   const visible = useInfiniteAnimation();
   const container = {
@@ -380,6 +381,15 @@ function WelcomeHero({ onGetStarted, onRestore }) {
             Have an encrypted backup? <span className="text-primary">Restore from a backup file</span>
           </motion.button>
         )}
+
+        <motion.button
+          variants={item}
+          type="button"
+          onClick={() => navigate("/onboarding/restore-shares")}
+          className="mt-2 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Have 2 of 3 recovery shares? <span className="text-primary">Restore from recovery shares</span>
+        </motion.button>
 
       </motion.div>
     </div>

@@ -551,6 +551,14 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
         </p>
       </div>
 
+      <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
+        <p className="font-semibold text-warning">Same-device only</p>
+        <p>
+          Restore only works on a device that still has the encrypted vault. Recovering onto a brand-new device
+          (device lost or reset) needs vault-ciphertext transport, which is a later phase.
+        </p>
+      </div>
+
       <div className="space-y-2">
         <button
           onClick={runPick}
@@ -624,7 +632,7 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
   );
 }
 
-function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onRestoreFinish, isDecoy, isHidden }) {
+function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restoreFromRecoveryShares, onRestoreFinish, isDecoy, isHidden }) {
   const [mode, setMode] = useState("export"); // 'export' | 'restore'
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -676,31 +684,17 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
       // shares are Uint8Array[3] × 88 bytes. The DEK never crossed the
       // WalletProvider boundary — this call runs the KEK unlock chain in
       // native.js and returns only the split output.
-      shares = await exportRecoveryShares(password);
-      // Save each share as its own file. If the user cancels the share sheet
-      // on iOS mid-way through, we stop and report which shares landed.
-      //
-      // Phase 3: when encryptOne is on, share index 2 (CLOUD_INDEX) goes
-      // through Argon2id + AES-GCM wrap and saves as JSON envelope. Others
-      // stay raw. Exactly one encrypted file so user has a clear cloud-safe
-      // file to save separately from the raw ones (spec §5).
-      const CLOUD_INDEX = 1; // shares[1] = x-coord 2 in the shamir set
+      // Phase 3 (cross-device restore): each saved file is a self-contained
+      // bundle carrying a shamir share PLUS the encrypted vault blob and
+      // its hash. Any 2 bundles rebuild the wallet on a fresh device via
+      // the "Restore from recovery shares" hero entry. Old raw-share saves
+      // still work through same-device restore for existing users.
+      const bundles = await exportRecoveryBundles(password);
+      shares = bundles.map(() => null); // placeholder for the finally-zero loop
       let completedAll = true;
-      for (let i = 0; i < shares.length; i++) {
-        let bytesToSave;
-        let filename;
-        if (encryptOne && i === CLOUD_INDEX) {
-          const envelopeJson = await wrapShareWithPassphrase(
-            shares[i],
-            recoveryPassphrase,
-            i + 1,
-          );
-          bytesToSave = new TextEncoder().encode(envelopeJson);
-          filename = `veyrnox-recovery-${i + 1}-of-3.veyrnox-recovery.json`;
-        } else {
-          bytesToSave = shares[i];
-          filename = `veyrnox-recovery-${i + 1}-of-3.veyrnox-share`;
-        }
+      for (let i = 0; i < bundles.length; i++) {
+        const bytesToSave = new TextEncoder().encode(bundles[i]);
+        const filename = `veyrnox-recovery-${i + 1}-of-3.veyrnox-bundle.json`;
         const result = await saveShareFile(bytesToSave, filename);
         if (result && result.saved) {
           setSavedCount(i + 1);
@@ -765,6 +759,11 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
             </p>
           </div>
         </div>
+        <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
+          <p>
+            Restore is same-device only for now. Cross-device recovery is coming. Keep an .enc file alongside as your primary backup.
+          </p>
+        </div>
         <button
           onClick={() => { setDone(false); setSavedCount(0); }}
           className="w-full py-2 rounded-lg border border-border text-sm hover:bg-secondary/40"
@@ -793,11 +792,18 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
       <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
         <div className="flex items-center gap-2">
           <KeyRound className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">2-of-3 recovery shares</p>
+          <p className="text-sm font-semibold">2-of-3 recovery shares (preview)</p>
         </div>
         <p className="text-xs text-muted-foreground">
           Splits your vault key into 3 pieces. Any 2 pieces can rebuild it; 1 alone reveals nothing. Save each in a
           different place (this device, one cloud, another cloud).
+        </p>
+      </div>
+
+      <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
+        <p>
+          Same-device restore ships in this build; cross-device (device lost) recovery is a later phase. Keep an
+          .enc backup alongside these shares.
         </p>
       </div>
 
@@ -871,7 +877,7 @@ const TABS = ENABLE_PERSONAL_BACKUP_SHARDS
   : BASE_TABS;
 
 export default function PersonalBackup() {
-  const { createBackup, exportRecoveryShares, restoreFromRecoveryShares, lock, isDecoy, isHidden, getBackupPublicAddresses } = useWallet();
+  const { createBackup, exportRecoveryShares, exportRecoveryBundles, restoreFromRecoveryShares, lock, isDecoy, isHidden, getBackupPublicAddresses } = useWallet();
   const { currentTier } = useTier();
   const navigate = useNavigate();
   const [tab, setTab] = useState("export");
@@ -927,6 +933,7 @@ export default function PersonalBackup() {
       {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && hasSafetyPlus && (
         <RecoveryShareTab
           exportRecoveryShares={exportRecoveryShares}
+          exportRecoveryBundles={exportRecoveryBundles}
           restoreFromRecoveryShares={restoreFromRecoveryShares}
           onRestoreFinish={() => { lock(); navigate("/"); }}
           isDecoy={isDecoy}

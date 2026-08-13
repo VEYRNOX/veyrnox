@@ -23,6 +23,8 @@
  */
 
 import { split, combine, SECRET_SIZE, SHARE_SIZE } from './shamir.js';
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex } from '@noble/hashes/utils';
 
 // Hard-off gate for the generic split/combine wrappers. Do NOT wire this to an
 // env var, a build flag, or a runtime toggle. Callers that need the primitive
@@ -202,3 +204,110 @@ export function combineDekForPersonalBackup(shares) {
 }
 
 export { SECRET_SIZE, SHARE_SIZE };
+
+// ── Cross-device restore (Phase 3) ────────────────────────────────────
+// A raw Shamir share is 33 bytes of DEK slice — useless on a fresh phone
+// that has no vault ciphertext. A "bundle" wraps the share with the
+// encrypted vault blob and a hash of that blob so any 2 bundles can
+// self-restore the wallet without the original device.
+//
+// vaultBlob is the SAME object saveVaultContents writes to disk
+// (see wallet-core/vault.js — { v, kdf, salt, iv, ct }). The bundle
+// carries it verbatim so restore == decrypt(vault, DEK) with the same
+// KDF params the origin device used.
+
+export const SHARD_BUNDLE_VERSION = 1;
+export const SHARD_BUNDLE_MISMATCH = 'SHARD_BUNDLE_MISMATCH';
+export const SHARD_BUNDLE_INVALID = 'SHARD_BUNDLE_INVALID';
+
+const b64 = {
+  enc(bytes) {
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return typeof btoa === 'function' ? btoa(s) : Buffer.from(bytes).toString('base64');
+  },
+  dec(str) {
+    const bin = typeof atob === 'function' ? atob(str) : Buffer.from(str, 'base64').toString('binary');
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  },
+};
+
+function hashVault(vault) {
+  const canonical = JSON.stringify(vault, Object.keys(vault).sort());
+  return bytesToHex(sha256(new TextEncoder().encode(canonical)));
+}
+
+/**
+ * Wrap one shamir share + the full encrypted vault blob into a self-
+ * contained bundle safe to store off-device (paper, cloud, another phone).
+ *
+ * @param {Uint8Array} share one 33-byte share from splitDekForPersonalBackup
+ * @param {number} index 1..3 — human-facing share number
+ * @param {object} vault the { v, kdf, salt, iv, ct } object saveVault writes
+ * @returns {object} a JSON-safe bundle
+ */
+export function encodeShareBundle(share, index, vault) {
+  if (!ENABLE_PERSONAL_BACKUP_SHARDS) throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
+  if (!(share instanceof Uint8Array) || share.length !== SHARE_SIZE) throw new Error(SHARD_BUNDLE_INVALID);
+  if (!Number.isInteger(index) || index < 1 || index > 3) throw new Error(SHARD_BUNDLE_INVALID);
+  if (!vault || typeof vault !== 'object' || !vault.ct || !vault.salt || !vault.iv || !vault.kdf) {
+    throw new Error(SHARD_BUNDLE_INVALID);
+  }
+  return {
+    v: SHARD_BUNDLE_VERSION,
+    shareIndex: index,
+    shareBytes: b64.enc(share),
+    vault,
+    vaultHash: hashVault(vault),
+    meta: { createdAt: new Date(0).toISOString() }, // caller may overwrite before serialising
+  };
+}
+
+/**
+ * Parse a bundle string OR object. Validates shape and hash-vs-vault
+ * integrity. Returns { share: Uint8Array, index, vault, vaultHash }.
+ *
+ * @param {string|object} input bundle JSON string or already-parsed object
+ */
+export function decodeShareBundle(input) {
+  if (!ENABLE_PERSONAL_BACKUP_SHARDS) throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
+  let obj;
+  if (typeof input === 'string') {
+    try { obj = JSON.parse(input); } catch { throw new Error(SHARD_BUNDLE_INVALID); }
+  } else {
+    obj = input;
+  }
+  if (!obj || typeof obj !== 'object') throw new Error(SHARD_BUNDLE_INVALID);
+  if (obj.v !== SHARD_BUNDLE_VERSION) throw new Error(SHARD_BUNDLE_INVALID);
+  if (!Number.isInteger(obj.shareIndex) || obj.shareIndex < 1 || obj.shareIndex > 3) throw new Error(SHARD_BUNDLE_INVALID);
+  if (typeof obj.shareBytes !== 'string') throw new Error(SHARD_BUNDLE_INVALID);
+  if (!obj.vault || typeof obj.vault !== 'object') throw new Error(SHARD_BUNDLE_INVALID);
+  if (typeof obj.vaultHash !== 'string') throw new Error(SHARD_BUNDLE_INVALID);
+
+  const share = b64.dec(obj.shareBytes);
+  if (share.length !== SHARE_SIZE) throw new Error(SHARD_BUNDLE_INVALID);
+  if (hashVault(obj.vault) !== obj.vaultHash) throw new Error(SHARD_BUNDLE_MISMATCH);
+
+  return { share, index: obj.shareIndex, vault: obj.vault, vaultHash: obj.vaultHash };
+}
+
+/**
+ * Combine 2 bundles into a reconstructed DEK + the vault they both point to.
+ * Throws if the two bundles were made from DIFFERENT vaults (hash mismatch)
+ * or if the shamir combine fails (tampered / mismatched-set shares).
+ *
+ * @param {(string|object)[]} bundles exactly 2 bundles
+ * @returns {{ dek: Uint8Array, vault: object }} caller MUST zero dek after use
+ */
+export function combineFromBundles(bundles) {
+  if (!ENABLE_PERSONAL_BACKUP_SHARDS) throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
+  if (!Array.isArray(bundles) || bundles.length !== 2) throw new Error(SHARD_BUNDLE_INVALID);
+  const a = decodeShareBundle(bundles[0]);
+  const b = decodeShareBundle(bundles[1]);
+  if (a.vaultHash !== b.vaultHash) throw new Error(SHARD_BUNDLE_MISMATCH);
+  if (a.index === b.index) throw new Error(SHARD_BUNDLE_MISMATCH);
+  const dek = combine([a.share, b.share]);
+  return { dek, vault: a.vault };
+}

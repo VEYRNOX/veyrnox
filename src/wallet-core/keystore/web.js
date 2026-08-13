@@ -279,6 +279,12 @@ export const webKeyStore = {
   // Delegated straight to the unchanged IndexedDB store (ciphertext only).
   hasVault,
 
+  // Raw persisted vault blob for cross-device shard restore (Phase 3).
+  // Metadata-only — the blob is already encrypted, no decryption happens here.
+  async getPersistedVault() {
+    return loadVault();
+  },
+
   // Encrypt -> persist ciphertext. Mirrors the prior WalletProvider sequence
   // (encryptVault + saveVault) exactly; saveVault still enforces its
   // plaintext-blob guard.

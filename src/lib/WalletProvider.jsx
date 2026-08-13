@@ -2312,6 +2312,36 @@ export function WalletProvider({ children }) {
     });
   }, [isDecoy, isHidden]);
 
+  // Phase 3 — cross-device restore. Returns 3 self-contained bundle JSON
+  // strings; each carries a shamir share PLUS the encrypted vault blob and
+  // its hash, so any 2 can restore the wallet on a fresh device.
+  const exportRecoveryBundles = useCallback(async (password) => {
+    if (isDecoy || isHidden) throw new Error('Backup is only available in the primary session');
+    if (typeof keyStore.exportPersonalBackupShares !== 'function') {
+      throw new Error('Recovery shares are not available on this platform yet.');
+    }
+    if (typeof keyStore.getPersistedVault !== 'function') {
+      throw new Error('Vault export not available on this platform.');
+    }
+    const [{ encodeShareBundle }, shares, vault] = await Promise.all([
+      import('@/wallet-core/shardBackup.js'),
+      keyStore.exportPersonalBackupShares(password, {
+        getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
+      }),
+      keyStore.getPersistedVault(),
+    ]);
+    if (!vault) throw new Error('No vault to bundle.');
+    const now = new Date(Date.now()).toISOString();
+    const bundles = shares.map((s, i) => {
+      const b = encodeShareBundle(s, i + 1, vault);
+      b.meta = { createdAt: now };
+      return JSON.stringify(b, null, 2);
+    });
+    // Caller zeroes the raw share bytes; bundles carry base64 copies.
+    for (const s of shares) if (s && s.fill) s.fill(0);
+    return bundles;
+  }, [isDecoy, isHidden]);
+
   // Personal Backup Phase 2 — restore an existing on-device vault by supplying
   // any 2 of 3 shamir shares plus a new password. The vault is re-wrapped under
   // a fresh KEK; the seed is unchanged. Does NOT hydrate container state —
@@ -2529,6 +2559,7 @@ export function WalletProvider({ children }) {
     createBackup,
     // Personal Backup Phase 1 — 2-of-3 shamir DEK sharding, export-only.
     exportRecoveryShares,
+    exportRecoveryBundles,
     // Personal Backup Phase 2 — same-device restore from any 2 shares.
     restoreFromRecoveryShares,
     // AUDIT LOG (opt-in, S4). All access to auditLog.js is routed through here.

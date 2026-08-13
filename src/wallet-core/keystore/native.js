@@ -623,6 +623,21 @@ export const nativeKeyStore = {
     return raw !== null && raw !== undefined;
   },
 
+  // Raw persisted vault blob — the { v, kdf, salt, iv, ct } object saveVault
+  // writes. Used by cross-device shard restore (Phase 3) which needs to bundle
+  // the ciphertext with each share so a fresh phone can decrypt. Reads
+  // metadata that is already-encrypted; no decryption, no prompt.
+  async getPersistedVault() {
+    await init();
+    const raw = await SecureStorage.get(VAULT_KEY, false);
+    if (raw === null || raw === undefined) return null;
+    try {
+      return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch {
+      return null;
+    }
+  },
+
   // Reconciliation accessor (I4 honest enrolled-state): reports whether the
   // stored vault is actually KEK-wrapped. Reads metadata ONLY — never the secret,
   // never a biometric prompt (passcode-gated read of the vault blob). The badge
