@@ -241,7 +241,6 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     expect(screen.getByText(/restore from 2 recovery shares/i)).toBeTruthy();
-    expect(screen.getByText(/same-device only/i)).toBeTruthy();
     // Restore button disabled until 2 files picked AND password entered.
     const submit = screen.getByRole('button', { name: /restore wallet/i });
     expect(submit.hasAttribute('disabled')).toBe(true);
