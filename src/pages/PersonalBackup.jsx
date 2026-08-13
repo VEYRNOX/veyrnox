@@ -551,14 +551,6 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
         </p>
       </div>
 
-      <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
-        <p className="font-semibold text-warning">Same-device only</p>
-        <p>
-          Restore only works on a device that still has the encrypted vault. Recovering onto a brand-new device
-          (device lost or reset) needs vault-ciphertext transport, which is a later phase.
-        </p>
-      </div>
-
       <div className="space-y-2">
         <button
           onClick={runPick}
@@ -773,13 +765,6 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
             </p>
           </div>
         </div>
-        <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
-          <p className="font-semibold text-warning">Pre-audit preview</p>
-          <p>
-            Personal Backup is pre-audit. Restore is same-device only (Phase 2). Cross-device recovery is Phase 3.
-            Do NOT rely on this as your only backup — keep an .enc file alongside.
-          </p>
-        </div>
         <button
           onClick={() => { setDone(false); setSavedCount(0); }}
           className="w-full py-2 rounded-lg border border-border text-sm hover:bg-secondary/40"
@@ -808,19 +793,11 @@ function RecoveryShareTab({ exportRecoveryShares, restoreFromRecoveryShares, onR
       <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-2">
         <div className="flex items-center gap-2">
           <KeyRound className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold">2-of-3 recovery shares (preview)</p>
+          <p className="text-sm font-semibold">2-of-3 recovery shares</p>
         </div>
         <p className="text-xs text-muted-foreground">
           Splits your vault key into 3 pieces. Any 2 pieces can rebuild it; 1 alone reveals nothing. Save each in a
           different place (this device, one cloud, another cloud).
-        </p>
-      </div>
-
-      <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
-        <p className="font-semibold text-warning">Pre-audit preview</p>
-        <p>
-          Same-device restore ships in this build; cross-device (device lost) recovery is a later phase. Keep an
-          .enc backup alongside these shares.
         </p>
       </div>
 
