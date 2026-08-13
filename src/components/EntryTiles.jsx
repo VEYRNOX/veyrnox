@@ -10,7 +10,7 @@
 // owns only the tile buttons; VeyrnoxHero owns the aurora + lamp + halo + logo
 // + wordmark + tagline. Same DOM shape from the user's perspective.
 
-import { Wallet, Download, Shield } from "lucide-react";
+import { Wallet, Download, FileArchive, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import VeyrnoxHero from "@/components/VeyrnoxHero";
 
@@ -20,18 +20,28 @@ const TILES = [
     icon: Wallet,
     label: "New wallet",
     subtitle: "Create a fresh wallet",
+    tone: "text-primary",
   },
   {
     path: "have",
     icon: Download,
     label: "Have a wallet",
     subtitle: "Import a seed phrase",
+    tone: "text-primary",
   },
   {
     path: "advanced",
-    icon: Shield,
-    label: "Advanced",
-    subtitle: "Restore from a backup file",
+    icon: FileArchive,
+    label: "File backup",
+    subtitle: "Restore from a .enc backup file",
+    tone: "text-sky-400",
+  },
+  {
+    path: "shares",
+    icon: KeyRound,
+    label: "Recovery Shares",
+    subtitle: "Restore from 2 of 3 shares",
+    tone: "text-amber-400",
   },
 ];
 
@@ -39,7 +49,7 @@ export default function EntryTiles({ onSelect }) {
   return (
     <VeyrnoxHero>
       <div className="space-y-3">
-        {TILES.map(({ path, icon: Icon, label, subtitle }) => (
+        {TILES.map(({ path, icon: Icon, label, subtitle, tone }) => (
           <Button
             key={path}
             type="button"
@@ -48,7 +58,7 @@ export default function EntryTiles({ onSelect }) {
             onClick={() => onSelect(path)}
           >
             <span className="flex items-center gap-2 text-sm font-medium">
-              <Icon className="h-4 w-4 text-primary" /> {label}
+              <Icon className={`h-4 w-4 ${tone || 'text-primary'}`} /> {label}
             </span>
             <span className="text-xs font-normal text-muted-foreground">{subtitle}</span>
           </Button>

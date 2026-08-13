@@ -84,8 +84,8 @@ describe('WalletEntry — Restore from backup file onboarding entry', () => {
     vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /advanced/i })).toBeTruthy());
-    const restoreEntry = screen.getByRole('button', { name: /advanced/i });
+    await waitFor(() => expect(screen.getByRole('button', { name: /file backup/i })).toBeTruthy());
+    const restoreEntry = screen.getByRole('button', { name: /file backup/i });
     fireEvent.click(restoreEntry);
 
     await waitFor(() => expect(screen.getByTestId('restore-from-file-stub')).toBeTruthy());
@@ -95,8 +95,8 @@ describe('WalletEntry — Restore from backup file onboarding entry', () => {
     vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /advanced/i })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /advanced/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /file backup/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /file backup/i }));
 
     await waitFor(() => expect(screen.getByTestId('restore-from-file-stub')).toBeTruthy());
     // The restore surface is NOT the numeric pin-create screen.
@@ -107,8 +107,8 @@ describe('WalletEntry — Restore from backup file onboarding entry', () => {
     vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /advanced/i })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /advanced/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /file backup/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /file backup/i }));
     await waitFor(() => expect(screen.getByTestId('restore-from-file-stub')).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: 'stub-finish' }));
@@ -124,8 +124,8 @@ describe('WalletEntry — Restore from backup file onboarding entry', () => {
     vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /advanced/i })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: /advanced/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /file backup/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /file backup/i }));
     await waitFor(() => expect(screen.getByTestId('restore-from-file-stub')).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: 'stub-back' }));

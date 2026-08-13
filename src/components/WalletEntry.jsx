@@ -1000,11 +1000,13 @@ export default function WalletEntry() {
     setChosenPath(path);
     if (path === "advanced") {
       setView("restore-file");
+    } else if (path === "shares") {
+      navigate("/onboarding/restore-shares");
     } else {
       setRealPin(""); setRealPinConfirm(""); setPinStep("real");
       setView("pin-create");
     }
-  }, []);
+  }, [navigate]);
 
   // PHASE 2 (create): leave Phase 1's markers in place and atomically materialize the
   // real wallet + both chaff slots under the in-memory pendingPin (provider method,
