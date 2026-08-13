@@ -25,13 +25,23 @@ async function fetchCryptoNews() {
 // rss2json returns `description` as an HTML fragment (tags + entities). Rendered
 // as text it shows raw markup like `<p style="float:right;…` and `&#39;`.
 // Strip to plain text via DOMParser — decodes entities and drops tags in one go.
-// Safe: the result is dropped in a text node, never innerHTML.
+// Output is dropped in a text node (see line 73 <p>{description}</p>), never
+// innerHTML, so the fallback can't cause XSS even if it under-strips.
 function htmlToText(s) {
   if (!s) return '';
   try {
     return (new DOMParser().parseFromString(s, 'text/html').body.textContent || '').trim();
   } catch {
-    return s.replace(/<[^>]*>/g, '').trim();
+    // Loop until stable so nested/overlapping tags like `<scr<script>ipt>` can't
+    // survive a single-pass replace. Belt-and-braces given the text-node render
+    // above already neutralises what does survive.
+    let out = s;
+    let prev;
+    do {
+      prev = out;
+      out = out.replace(/<[^>]*>/g, '');
+    } while (out !== prev);
+    return out.trim();
   }
 }
 
