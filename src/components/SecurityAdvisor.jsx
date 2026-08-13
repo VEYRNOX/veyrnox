@@ -594,9 +594,8 @@ Threat intelligence — the following addresses are KNOWN BAD. If the user menti
 ${SEED_THREATS.map(t => `- ${t.address} — ${t.note} (${t.category}, severity ${t.severity}, source ${t.source})`).join('\n')}
 
 Additional public knowledge you should apply:
-- Tornado Cash mixer contracts (e.g. 0x8589427373D6D84E98730D7795D8f6f8731FDA16, 0x722122dF12D4e14e13Ac3b6895a86e84145b6967, 0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b, 0xa160cdAB225685dA1d56aa342Ad8841c3b53f291) are OFAC-sanctioned (SDN list, Aug 2022). Interaction may violate US sanctions.
-- Lazarus Group (DPRK state-sponsored, OFAC-sanctioned) — e.g. 0x098B716B8Aaf21512996dC57EB0615e2383E2f96, 0xa7e5d5A720f06526557c513402f2e6B5fA20b008. Never send.
-- Drainer families (Inferno, Angel, Pink, Pussy, Monkey) impersonate legitimate dApps to steal funds via malicious approvals.`,
+- Drainer families (Inferno, Angel, Pink, Pussy, Monkey) impersonate legitimate dApps to steal funds via malicious approvals.
+- For sanctions questions (OFAC/SDN and equivalents), Veyrnox does NOT ship a bundled sanctions list — the app relies on a live compliance API at signing time. Do NOT claim any specific address is or is not sanctioned. Direct the user to check OFAC / OpenSanctions / Chainalysis directly for a live verdict.`,
             },
             ...history.map((m) => ({ role: m.role, content: m.content })),
           ],
