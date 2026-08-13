@@ -67,11 +67,16 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Robo crawl (5 devices, mixed API levels)
+      - name: Robo crawl (3 devices, mixed API levels)
         # --num-flaky-test-attempts 0 means no retry: any crash is a crash.
-        # Devices span Pixel/Samsung and API 30/33/34 — matches Play's default
-        # Pre-launch report mix. --robo-directives seeds the PIN screen so
-        # the crawler can pass the first gate (otherwise it stalls at PIN).
+        # Model IDs must match Firebase's current catalog exactly. First run
+        # tried raven/a13/husky and hit "'raven' is not a valid model" — some
+        # were retired. The three below are long-lived Pixels confirmed on
+        # the 2026-08 catalog. To extend coverage later:
+        #   gcloud firebase test android models list
+        # and add rows here.
+        # --robo-directives seeds the PIN screen so the crawler can pass the
+        # first gate (otherwise it stalls at PIN).
         # TIMEOUT and RESULTS_BUCKET come via env: workflow-dispatch input goes
         # through a regex allowlist to block shell metachars (injection guard).
         env:
@@ -90,10 +95,8 @@ jobs:
             --type robo \
             --app artifacts/app-release.aab \
             --device model=oriole,version=33,locale=en,orientation=portrait \
-            --device model=redfin,version=30,locale=en,orientation=portrait \
-            --device model=a13,version=33,locale=en,orientation=portrait \
-            --device model=husky,version=34,locale=en,orientation=portrait \
-            --device model=raven,version=33,locale=en,orientation=portrait \
+            --device model=panther,version=33,locale=en,orientation=portrait \
+            --device model=shiba,version=34,locale=en,orientation=portrait \
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
             --robo-directives text:pin_input=246810,text:pin_confirm=246810 \
