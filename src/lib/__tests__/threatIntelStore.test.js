@@ -29,18 +29,15 @@ beforeEach(() => {
   deniability.active = false;
 });
 
-describe('threatIntelStore — sanctions gate (docs/OFAC-legal-gate.md)', () => {
-  it('bundles ZERO sanctioned entries in the seed list', () => {
-    // suspicious.ofac-honest.test.js pins DEFAULT_BLOCKLIST and does not import
-    // this module, so without this assertion a sanctions list could be
-    // re-introduced here and the existing honesty gate would stay green.
-    const sanctioned = SEED_THREATS.filter((e) => e?.category === 'sanctioned');
-    expect(sanctioned).toHaveLength(0);
-  });
-
-  it('cites no OFAC/SDN source in any seed entry', () => {
+describe('threatIntelStore — OFAC seed (owner override 2026-08-13)', () => {
+  // docs/OFAC-legal-gate.md "Owner override" section re-opened the gate.
+  // The prior tests ("bundles ZERO sanctioned entries" / "cites no OFAC/SDN
+  // source") pinned the closed state; both were deleted with the override.
+  // This test now asserts the opposite property so a silent removal of the
+  // OFAC entries in a later PR fails loudly.
+  it('bundles at least one OFAC-sourced entry', () => {
     const ofacSourced = SEED_THREATS.filter((e) => /ofac|sdn/i.test(e?.source || ''));
-    expect(ofacSourced).toHaveLength(0);
+    expect(ofacSourced.length).toBeGreaterThan(0);
   });
 });
 

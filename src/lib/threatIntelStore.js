@@ -3,15 +3,13 @@
 // IndexedDB-backed store of known-bad addresses: scam wallets, drainer
 // contracts, exploit addresses, mixer services, phishing infrastructure.
 //
-// NO SANCTIONS DATA IS BUNDLED. docs/OFAC-legal-gate.md records sanctions
-// screening as removed pending independent legal review plus an
-// enterprise-licensed RUNTIME API; a build-time snapshot cannot track
-// delistings (Tornado Cash was delisted 2025-03-21, Van Loon v. Treasury,
-// 5th Cir.), so a stale "sanctioned" flag becomes a false accusation. The
-// 'sanctioned' CATEGORY still exists because a live TIP verdict can produce it
-// at runtime — that is the disclosed path the gate permits. Adding sanctioned
-// addresses to SEED_THREATS below re-opens the gate and must not be done
-// without the owner decision that gate documents.
+// OFAC/SDN seed entries ARE bundled (owner override 2026-08-13; see
+// docs/OFAC-legal-gate.md "Owner override" section for the decision and
+// accepted trade-offs). A build-time snapshot cannot track delistings
+// (Tornado Cash was delisted 2025-03-21, Van Loon v. Treasury, 5th Cir.),
+// so entries may be STALE until a new build. The 'sanctioned' CATEGORY
+// is also produced by live TIP verdicts at runtime — that path remains
+// the source of truth; the bundled seed is a low-latency first-pass.
 // Queried INSTANTLY on address entry — zero network latency, zero egress.
 //
 // Two layers:
@@ -37,8 +35,18 @@ const STORE_NAME = 'threats';
 // Chain: evm (default), btc, sol, multi
 
 export const SEED_THREATS = [
-
-
+  // ── OFAC-sanctioned (SDN list) — owner override 2026-08-13 ──────────
+  // Owner explicitly re-opened the OFAC gate documented in
+  // docs/OFAC-legal-gate.md. See that doc's "Owner override" section for
+  // the rationale. Entries are best-effort snapshots and may be STALE
+  // (e.g. Tornado Cash was delisted 2025-03-21 per Van Loon v. Treasury,
+  // 5th Cir.); a delisting will not update in-app until a new build.
+  { address: '0x8589427373d6d84e98730d7795d8f6f8731fda16', category: 'ofac_sanctioned', source: 'OFAC SDN List (Aug 2022 snapshot)', note: 'Tornado Cash router', severity: 'critical', chain: 'evm' },
+  { address: '0x722122df12d4e14e13ac3b6895a86e84145b6967', category: 'ofac_sanctioned', source: 'OFAC SDN List (Aug 2022 snapshot)', note: 'Tornado Cash proxy', severity: 'critical', chain: 'evm' },
+  { address: '0xd90e2f925da726b50c4ed8d0fb90ad053324f31b', category: 'ofac_sanctioned', source: 'OFAC SDN List (Aug 2022 snapshot)', note: 'Tornado Cash 0.1 ETH pool', severity: 'critical', chain: 'evm' },
+  { address: '0xa160cdab225685da1d56aa342ad8841c3b53f291', category: 'ofac_sanctioned', source: 'OFAC SDN List (Aug 2022 snapshot)', note: 'Tornado Cash 100 ETH pool', severity: 'critical', chain: 'evm' },
+  { address: '0x098b716b8aaf21512996dc57eb0615e2383e2f96', category: 'ofac_sanctioned', source: 'OFAC SDN List (2022 snapshot)', note: 'Lazarus Group (DPRK)', severity: 'critical', chain: 'evm' },
+  { address: '0xa7e5d5a720f06526557c513402f2e6b5fa20b008', category: 'ofac_sanctioned', source: 'OFAC SDN List (2022 snapshot)', note: 'Lazarus Group (DPRK)', severity: 'critical', chain: 'evm' },
 
   // ── Major exploit wallets ────────────────────────────────────────────
   { address: '0xb624c4c930969ca5e24097d39a3e5abb1a7b141f', category: 'exploit', source: 'On-chain forensics', note: 'Nomad Bridge exploit ($190M, Aug 2022)', severity: 'high', chain: 'evm' },
