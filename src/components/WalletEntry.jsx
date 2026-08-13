@@ -1806,6 +1806,13 @@ export default function WalletEntry() {
             >
               Have an encrypted backup? <span className="text-primary">Restore from a backup file</span>
             </button>
+            <button
+              type="button"
+              onClick={() => { setError(""); navigate("/onboarding/restore-shares"); }}
+              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Have 2 of 3 recovery shares? <span className="text-primary">Restore from recovery shares</span>
+            </button>
           </div>
         </div>
       </EntryShell>
