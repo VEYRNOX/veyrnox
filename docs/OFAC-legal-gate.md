@@ -1,7 +1,53 @@
-# OFAC Sanctions Screening — Removed
+# OFAC Sanctions Screening — Owner override (2026-08-13)
 
-**Status:** COMPLETELY REMOVED from the app. No OFAC screening (bulk SDN or
-individual entries) is shipped.
+**Status:** Owner has explicitly re-opened this gate. A hand-curated snapshot of
+high-profile OFAC/SDN-listed addresses (Tornado Cash router + 3 pools, 2 Lazarus
+Group wallets) is now bundled in `src/lib/threatIntelStore.js` `SEED_THREATS`.
+
+## Owner override
+
+The owner authorised bundling a bounded OFAC/SDN seed on 2026-08-13 despite the
+staleness risk documented below. Trade-offs the owner accepted:
+
+- **Snapshot may go stale between builds.** A delisting (e.g. Tornado Cash,
+  delisted 2025-03-21 per *Van Loon v. Treasury*, 5th Cir.) will not update
+  in-app until a new build ships. The Security Advisor system prompt discloses
+  this and directs users to OFAC / OpenSanctions / Chainalysis for a live
+  verdict.
+- **Ships as a first-pass, NOT the source of truth.** A live TIP verdict from
+  `screenTransaction` still overrides at runtime; the seed is a low-latency
+  local check for the six pinned entries above.
+- **Legal risk of a false accusation** on a since-delisted address is accepted
+  because (a) the set is small and hand-curated, (b) each entry's `note` names
+  the source snapshot rather than asserting current status, and (c) the Advisor
+  paragraph naming Tornado Cash explicitly says the app cannot track delistings.
+
+## What is bundled
+
+`SEED_THREATS` entries with `category: 'ofac_sanctioned'`:
+
+- Tornado Cash: router + 0.1 ETH pool + 100 ETH pool + proxy
+- Lazarus Group (DPRK): 2 wallets
+
+Every entry cites `source: 'OFAC SDN List (... snapshot)'` so the origin is
+inspectable in the UI + in `docs/audit`.
+
+## Historical rationale (retained for context)
+
+The gate was originally closed for these reasons, which the owner has now
+overridden:
+
+1. **Bundled snapshots are stale-by-design.** A sanctions list is a live legal
+   fact. A file baked into a build cannot track OFAC **delistings** (e.g. Tornado
+   Cash was delisted 2025-03-21 after *Van Loon v. Treasury*, 5th Cir.). A stale
+   "sanctioned" flag becomes a false accusation.
+2. **ToS constraints.** Automated bulk pulls from `treasury.gov` / mirrors carry
+   commercial terms-of-service constraints; a CI cron that re-bundles them is not
+   a clean basis to ship on. (The override ships a hand-curated snapshot, NOT a
+   scheduled bulk refresh.)
+3. **Honesty (I4 — fail honest, fail closed).** OFAC screening requires live
+   compliance data, not local heuristics. The Advisor now discloses the seed's
+   snapshot nature and directs users to live sources.
 
 This document is the audit record for the finding *"OFAC screening — legal review
 gate still open before shipping."* The code closes that finding by completely

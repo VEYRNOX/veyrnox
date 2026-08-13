@@ -10,6 +10,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router";
 import { ShieldCheck, Send, X, Loader2, WifiOff, AlertTriangle, CheckCircle2, ShieldAlert as ShieldAlertIcon } from "lucide-react";
 import { screenTransaction } from "@/api/tipScreen.js";
+import { lookupThreatSync, SEED_THREATS } from "@/lib/threatIntelStore";
 import {
   Drawer,
   DrawerContent,
@@ -489,24 +490,56 @@ export default function SecurityAdvisor({ walletChain }) {
     const detected = extractAddress(text);
 
     if (detected) {
+      // Seed threat-intel FIRST — local, fast, works when tip-screen
+      // returns unknown/error. A known-bad address must never be masked
+      // by a remote "unavailable" verdict (I4: fail honest).
+      const seedHits = lookupThreatSync(detected.address);
+      let remoteResult = null;
       try {
-        const result = await screenTransaction({
+        remoteResult = await screenTransaction({
           chain: detected.chain,
           actionType: 'address_lookup',
           from: ZERO_FROM_ADDRESS[detected.chain],
           to: detected.address,
         });
-        if (result) {
+      } catch {
+        // remote failed — seed still applies below
+      }
+
+      // If seed knows this address, prefer it whenever remote is not a
+      // stronger signal (remote 'block' wins over seed 'warn').
+      if (seedHits && seedHits.length) {
+        const top = seedHits[0];
+        const seedVerdict = top.severity === 'critical' ? 'block' : 'warn';
+        const remoteWins = remoteResult
+          && remoteResult.verdict === 'block'
+          && seedVerdict !== 'block';
+        if (!remoteWins) {
           setMessages((prev) => [...prev, {
             role: "assistant",
             content: "",
-            screening: result,
+            screening: {
+              verdict: seedVerdict,
+              reason: `${top.note} (${top.category}) — source: ${top.source}`,
+              source: 'local_seed',
+              address: detected.address,
+              chain: detected.chain,
+              sourcesConsulted: [{ id: 'local_seed', ok: true }],
+            },
           }]);
           setStreaming(false);
           return;
         }
-      } catch {
-        // screening failed — fall through to normal chat/local
+      }
+
+      if (remoteResult) {
+        setMessages((prev) => [...prev, {
+          role: "assistant",
+          content: "",
+          screening: remoteResult,
+        }]);
+        setStreaming(false);
+        return;
       }
     }
 
@@ -555,7 +588,15 @@ Rules:
 - If you don't know something, say so honestly
 
 App knowledge:
-${buildAdvisorSystemContext(currentScreen)}`,
+${buildAdvisorSystemContext(currentScreen)}
+
+Threat intelligence — the following addresses are KNOWN BAD. If the user mentions any of them (or any entity/exploit they name below), warn explicitly and recommend NEVER sending funds to them:
+${SEED_THREATS.map(t => `- ${t.address} — ${t.note} (${t.category}, severity ${t.severity}, source ${t.source})`).join('\n')}
+
+Additional public knowledge you should apply:
+- Tornado Cash mixer contracts (e.g. 0x8589427373D6D84E98730D7795D8f6f8731FDA16, 0x722122dF12D4e14e13Ac3b6895a86e84145b6967, 0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b, 0xa160cdAB225685dA1d56aa342Ad8841c3b53f291) were added to the OFAC SDN List (Aug 2022). Note: the app ships a snapshot and cannot track delistings between builds (Tornado Cash was delisted 2025-03-21 per Van Loon v. Treasury, 5th Cir.); for a live verdict, direct the user to OFAC / OpenSanctions / Chainalysis.
+- Lazarus Group (DPRK state-sponsored) OFAC-listed wallets — e.g. 0x098B716B8Aaf21512996dC57EB0615e2383E2f96, 0xa7e5d5A720f06526557c513402f2e6B5fA20b008.
+- Drainer families (Inferno, Angel, Pink, Pussy, Monkey) impersonate legitimate dApps to steal funds via malicious approvals.`,
             },
             ...history.map((m) => ({ role: m.role, content: m.content })),
           ],
