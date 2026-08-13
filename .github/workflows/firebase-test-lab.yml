@@ -131,19 +131,52 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - name: Build IPA + test bundle
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+
+      # Same npm/node/build/sync chain as ios-compile-check.yml — Capacitor's
+      # iOS project only exists as a real xcode-buildable thing after
+      # `npm run build && npx cap sync ios` has run. The .xcodeproj on disk
+      # is a template; sync populates it with the built web bundle.
+      - name: Pin npm to 11
+        run: npm install -g npm@11
+      - run: npm ci
+      - name: Build web assets + sync Capacitor iOS
         run: |
-          cd ios/App
+          npm run build
+          npx cap sync ios
+
+      - name: Resolve Swift Package dependencies
+        working-directory: ios/App
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme App 2>&1 | tail -5
+
+      - name: Build IPA + test bundle
+        working-directory: ios/App
+        run: |
+          set -o pipefail
+          # SPM project (CapApp-SPM — no Podfile/CocoaPods, no .xcworkspace).
+          # Use -project, not -workspace.
+          # CODE_SIGN_IDENTITY="" — unsigned build. Test Lab NORMALLY requires
+          # a signed IPA for real-device runs; this pass will likely surface a
+          # signing gap as the next honest error. That's the next PR.
           xcodebuild \
-            -workspace App.xcworkspace \
-            -scheme App \
+            -project App.xcodeproj \
+            -scheme AppUITests \
             -sdk iphoneos \
-            -configuration Release \
+            -configuration Debug \
             -derivedDataPath build/ \
-            build-for-testing
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build-for-testing 2>&1 | tail -30
           # Zip products for Test Lab:
           cd build/Build/Products
-          zip -r ios-tests.zip Release-iphoneos App.app *.xctestrun
+          zip -r ios-tests.zip Debug-iphoneos *.xctestrun
 
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
