@@ -39,7 +39,7 @@ const TILES = [
   {
     path: "shares",
     icon: KeyRound,
-    label: "Recovery Shards",
+    label: "Recovery Shares",
     subtitle: "Restore from 2 of 3 shares",
     tone: "text-amber-400",
   },
