@@ -63,7 +63,9 @@ async function onboard(page) {
   await expect(page.getByText('Confirm your PIN')).toBeVisible();
   await enterPin(page, PIN);
 
-  const dismiss = page.getByRole('button', { name: "You're set" });
+  const dismiss = page
+    .getByRole('button', { name: /skip for now/i })
+    .or(page.getByRole('button', { name: "You're set" }));
   const sendLink = page.getByRole('link', { name: 'Send', exact: true });
   await expect(dismiss.or(sendLink)).toBeVisible({ timeout: 30000 });
   if (await dismiss.isVisible()) await dismiss.click();

@@ -38,26 +38,33 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(VeyrnoxEnclavePlugin.class);
         super.onCreate(savedInstanceState);
 
-        // Synthetic, fixed-value observability probe for the non-publishable
-        // Firebase Test Lab APK only. Never attach wallet state, addresses,
-        // balances, PINs, seeds, URLs, or user identifiers to Crashlytics.
-        if (BuildConfig.FIREBASE_OBSERVABILITY_SMOKE
+        // Staging/Test Lab observability. Never attach wallet state, addresses,
+        // balances, PINs, seeds, URLs, or user identifiers to Firebase.
+        if (BuildConfig.FIREBASE_OBSERVABILITY_ENABLED
                 && !FirebaseApp.getApps(this).isEmpty()) {
             FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
             crashlytics.setCrashlyticsCollectionEnabled(true);
-            crashlytics.setCustomKey("build_channel", "firebase_test_lab");
-            crashlytics.log("Firebase Test Lab observability smoke started");
-            crashlytics.recordException(new IllegalStateException(
-                "VEYRNOX_FIREBASE_NONFATAL_SMOKE"
-            ));
-            crashlytics.sendUnsentReports();
+            crashlytics.setCustomKey(
+                "build_channel",
+                BuildConfig.FIREBASE_OBSERVABILITY_SMOKE ? "firebase_test_lab" : "staging"
+            );
 
             FirebasePerformance performance = FirebasePerformance.getInstance();
             performance.setPerformanceCollectionEnabled(true);
-            Trace trace = performance.newTrace("staging_launch_smoke");
-            trace.start();
-            trace.putMetric("completed", 1L);
-            trace.stop();
+
+            // Synthetic fixed-value events belong only to the isolated Test Lab APK.
+            if (BuildConfig.FIREBASE_OBSERVABILITY_SMOKE) {
+                crashlytics.log("Firebase Test Lab observability smoke started");
+                crashlytics.recordException(new IllegalStateException(
+                    "VEYRNOX_FIREBASE_NONFATAL_SMOKE"
+                ));
+                crashlytics.sendUnsentReports();
+
+                Trace trace = performance.newTrace("staging_launch_smoke");
+                trace.start();
+                trace.putMetric("completed", 1L);
+                trace.stop();
+            }
         }
 
         // FLAG_SECURE — block screenshots, screen recording, and the recents /

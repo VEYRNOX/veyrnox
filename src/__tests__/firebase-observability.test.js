@@ -31,7 +31,11 @@ describe('Firebase staging observability', () => {
     expect(androidApp).not.toContain('firebase-analytics');
   });
 
-  it('keeps collection disabled by default and enables only firebaseTest', () => {
+  it('keeps production disabled and explicitly enables staging/Test Lab', () => {
+    expect(androidApp).toContain("project.findProperty('FIREBASE_OBSERVABILITY_ENABLED')");
+    expect(androidApp).toContain(
+      'buildConfigField "boolean", "FIREBASE_OBSERVABILITY_ENABLED", "${firebaseObservabilityEnabled}"',
+    );
     expect(androidApp).toContain(
       'buildConfigField "boolean", "FIREBASE_OBSERVABILITY_SMOKE", "false"',
     );
@@ -40,22 +44,25 @@ describe('Firebase staging observability', () => {
     );
     expect(androidManifest).toContain('firebase_crashlytics_collection_enabled');
     expect(androidManifest).toContain('firebase_performance_collection_enabled');
-    expect(androidActivity).toContain('BuildConfig.FIREBASE_OBSERVABILITY_SMOKE');
+    expect(androidActivity).toContain('BuildConfig.FIREBASE_OBSERVABILITY_ENABLED');
+    expect(androidActivity).toContain('? "firebase_test_lab" : "staging"');
     expect(androidActivity).toContain('VEYRNOX_FIREBASE_NONFATAL_SMOKE');
     expect(androidActivity).toContain('newTrace("staging_launch_smoke")');
     expect(androidActivity).not.toContain('setUserId');
   });
 
-  it('adds iOS Crashlytics + Performance with an explicit Test Lab launch gate', () => {
+  it('adds iOS staging collection with a separate Test Lab smoke gate', () => {
     expect(iosPackage).toContain('firebase-ios-sdk.git", exact: "12.12.1"');
     expect(iosPackage).toContain('FirebaseCrashlytics');
     expect(iosPackage).toContain('FirebasePerformance');
     expect(iosPackage).not.toContain('FirebaseAnalytics');
     expect(iosBootstrap).toContain('--firebase-observability-smoke');
+    expect(iosBootstrap).toContain('VeyrnoxFirebaseObservabilityEnabled');
+    expect(iosBootstrap).toContain('isTestLab ? "firebase_test_lab" : "staging"');
     expect(iosBootstrap).toContain('VEYRNOX_FIREBASE_NONFATAL_SMOKE');
     expect(iosBootstrap).toContain('startTrace(name: "staging_launch_smoke")');
     expect(iosBootstrap).not.toContain('setUserID');
-    expect(iosDelegate).toContain('configureTestLabSmokeIfRequested()');
+    expect(iosDelegate).toContain('configureIfEnabled()');
     expect(iosTests).toContain('--firebase-observability-smoke');
     expect(xcodeProject).toContain('Install Firebase config if supplied');
     expect(packageJson).toContain('"capacitor:sync:after"');
@@ -64,12 +71,15 @@ describe('Firebase staging observability', () => {
     expect(packagePatcher).toContain('FirebasePerformance');
   });
 
-  it('fetches exact Firebase configs only for isolated Test Lab builds', () => {
+  it('fetches exact Firebase configs for Test Lab and explicitly gated staging builds', () => {
     expect(configFetcher).toContain('gcloud auth print-access-token');
     expect(configFetcher).toContain('configFileContents');
     expect(ci).toContain('1:567659013773:android:166961ac09b49c5f8864c4');
     expect(ci).toContain('com.veyrnox.app.firebase.testlab');
+    expect(ci).toContain('1:567659013773:android:2f04cc2942faba1f8864c4');
+    expect(ci).toContain('-PFIREBASE_OBSERVABILITY_ENABLED=');
     expect(firebaseWorkflow).toContain('1:567659013773:ios:dcdda7378e804f388864c4');
+    expect(firebaseWorkflow).toContain('VEYRNOX_FIREBASE_OBSERVABILITY=YES');
     expect(firebaseWorkflow).toContain('DEBUG_INFORMATION_FORMAT=dwarf-with-dsym');
     expect(firebaseWorkflow).toContain('Crashlytics/upload-symbols');
 
@@ -80,8 +90,9 @@ describe('Firebase staging observability', () => {
     const iosStoreJob = firebaseWorkflow.slice(
       firebaseWorkflow.indexOf('  publish-ios-staging:'),
     );
-    expect(androidStoreJob).not.toContain('fetch-firebase-config.sh');
-    expect(iosStoreJob).not.toContain('fetch-firebase-config.sh');
+    expect(androidStoreJob).toContain('inputs.build_staging_release == true');
+    expect(androidStoreJob).toContain('fetch-firebase-config.sh');
+    expect(iosStoreJob).toContain('fetch-firebase-config.sh');
     expect(iosStoreJob).not.toContain('--firebase-observability-smoke');
   });
 });

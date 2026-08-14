@@ -18,10 +18,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return true
         }
 
-        // A fixed-value, non-fatal Crashlytics + Performance probe runs only
-        // when Firebase Test Lab supplies the explicit launch argument and CI
-        // has embedded the staging config. Store/production builds do neither.
-        FirebaseObservability.configureTestLabSmokeIfRequested()
+        // Crashlytics + Performance are opt-in for staging and Test Lab. The
+        // production archive has neither the build flag nor Firebase config.
+        FirebaseObservability.configureIfEnabled()
 
         // First-launch Keychain cleanup: UserDefaults is wiped on app delete,
         // Keychain is not. If the flag is missing → fresh install → wipe stale

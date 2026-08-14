@@ -3,14 +3,18 @@ import FirebaseCore
 import FirebaseCrashlytics
 import FirebasePerformance
 
-/// Test-only Firebase observability bootstrap.
+/// Staging-only Firebase observability bootstrap.
 ///
-/// Normal and store builds never pass the launch argument and do not receive a
-/// GoogleService-Info.plist, so Firebase is neither configured nor permitted to
-/// collect. The fixed smoke event contains no wallet or user data.
+/// Production builds receive neither the build flag nor GoogleService-Info.plist,
+/// so Firebase is not configured. The fixed smoke event contains no wallet or
+/// user data and is emitted only by Firebase Test Lab.
 public enum FirebaseObservability {
-    public static func configureTestLabSmokeIfRequested() {
-        guard CommandLine.arguments.contains("--firebase-observability-smoke") else {
+    public static func configureIfEnabled() {
+        let isTestLab = CommandLine.arguments.contains("--firebase-observability-smoke")
+        let isStaging = (Bundle.main.object(
+            forInfoDictionaryKey: "VeyrnoxFirebaseObservabilityEnabled"
+        ) as? String)?.uppercased() == "YES"
+        guard isTestLab || isStaging else {
             return
         }
         guard FirebaseApp.app() == nil,
@@ -26,20 +30,27 @@ public enum FirebaseObservability {
 
         let crashlytics = Crashlytics.crashlytics()
         crashlytics.setCrashlyticsCollectionEnabled(true)
-        crashlytics.setCustomValue("firebase_test_lab", forKey: "build_channel")
-        crashlytics.log("Firebase Test Lab observability smoke started")
-        crashlytics.record(error: NSError(
-            domain: "com.veyrnox.firebase-smoke",
-            code: 1,
-            userInfo: [NSLocalizedDescriptionKey: "VEYRNOX_FIREBASE_NONFATAL_SMOKE"]
-        ))
-        crashlytics.sendUnsentReports()
+        crashlytics.setCustomValue(
+            isTestLab ? "firebase_test_lab" : "staging",
+            forKey: "build_channel"
+        )
 
         let performance = Performance.sharedInstance()
         performance.isDataCollectionEnabled = true
         performance.isInstrumentationEnabled = true
-        let trace = Performance.startTrace(name: "staging_launch_smoke")
-        trace?.incrementMetric("completed", by: 1)
-        trace?.stop()
+
+        if isTestLab {
+            crashlytics.log("Firebase Test Lab observability smoke started")
+            crashlytics.record(error: NSError(
+                domain: "com.veyrnox.firebase-smoke",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "VEYRNOX_FIREBASE_NONFATAL_SMOKE"]
+            ))
+            crashlytics.sendUnsentReports()
+
+            let trace = Performance.startTrace(name: "staging_launch_smoke")
+            trace?.incrementMetric("completed", by: 1)
+            trace?.stop()
+        }
     }
 }
