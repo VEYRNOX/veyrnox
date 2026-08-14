@@ -12,18 +12,16 @@
 //      recovery passphrase → new PIN 30081977 twice → "Restore wallet"
 //   6. Assert success toast + re-unlock at / with 30081977
 //
-// Requires: dev server started with VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1
-// and BASE_URL pointed at it (Playwright config skips its own webServer when
-// BASE_URL is set). Run with:
-//   VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 npm run dev -- --port 5199 --strictPort &
-//   BASE_URL=http://localhost:5199 npx playwright test e2e/personal-backup-ui-roundtrip.spec.js --project=chromium
+// Requires: the Playwright-managed dev server to inherit
+// VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 (the CI job sets it). Run locally with:
+//   VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 npx playwright test e2e/personal-backup-ui-roundtrip.spec.js --project=chromium
 
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-const BASE = process.env.BASE_URL || 'http://localhost:5199';
+const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const PIN = '30081977';
 const PASSPHRASE = 'S0cR4Te530081977!'; // 17 chars, ≥16 required
 

@@ -84,7 +84,17 @@ async function completePasswordSetup(page, pin = VAULT_PIN) {
 // fresh import (like a fresh create) lands on Slice C's FirstReceiveCard ("Your
 // wallet is ready" / "You're set") before the authed shell — dismiss it if present.
 async function importSeedThroughChoose(page, seed = THROWAWAY_SEED) {
-  await page.getByLabel('Recovery seed phrase').fill(seed);
+  // The current import UI is SeedInputGrid (one input per word), not the
+  // removed legacy textarea. Match the word-count tab before filling.
+  const words = seed.trim().split(/\s+/);
+  if (words.length !== 12) {
+    await page.getByRole('button', { name: String(words.length), exact: true }).click();
+  }
+  const boxes = page.locator('input[id^="seed-word-"]');
+  await expect(boxes).toHaveCount(words.length);
+  for (let i = 0; i < words.length; i++) {
+    await boxes.nth(i).fill(words[i]);
+  }
   await page.getByRole('button', { name: /Restore \/ Import/i }).click();
   const dismissReceiveCard = page.getByRole('button', { name: "You're set" });
   const sendLink = page.getByRole('link', { name: 'Send', exact: true });
