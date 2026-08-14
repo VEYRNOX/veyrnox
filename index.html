@@ -48,6 +48,13 @@
          @font-face in src/index.css) — no Google-Fonts CDN fetch at runtime,
          so first-screen text LCP gates on a local file and no font request
          leaves the device (I2). -->
+    <link
+      rel="preload"
+      href="/src/assets/fonts/ibm-plex-mono-latin-600-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <title>Veyrnox</title>
   </head>
   <body>

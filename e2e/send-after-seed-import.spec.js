@@ -78,17 +78,23 @@ async function completePasswordSetup(page, pin = VAULT_PIN) {
   await enterPin(page, pin);
 }
 
-async function leaveExploreToChoose(page) {
-  await expect(page.getByText('Exploring — view only', { exact: true })).toBeVisible({ timeout: 15000 });
-  await page.getByRole('button', { name: 'Create or import', exact: true }).click();
-}
-
-// Phase 2 (import): choose view -> paste phrase -> Restore. No "Import an existing
-// seed" click — chosenPath === 'have' already shows the import form directly. A
+// Phase 2 (import): the Have-a-wallet tile preserves chosenPath === 'have', so
+// confirming the PIN opens the import form directly. No explore-shell detour and
+// no "Import an existing seed" click are expected. A
 // fresh import (like a fresh create) lands on Slice C's FirstReceiveCard ("Your
 // wallet is ready" / "You're set") before the authed shell — dismiss it if present.
 async function importSeedThroughChoose(page, seed = THROWAWAY_SEED) {
-  await page.getByLabel('Recovery seed phrase').fill(seed);
+  // The current import UI is SeedInputGrid (one input per word), not the
+  // removed legacy textarea. Match the word-count tab before filling.
+  const words = seed.trim().split(/\s+/);
+  if (words.length !== 12) {
+    await page.getByRole('button', { name: String(words.length), exact: true }).click();
+  }
+  const boxes = page.locator('input[id^="seed-word-"]');
+  await expect(boxes).toHaveCount(words.length);
+  for (let i = 0; i < words.length; i++) {
+    await boxes.nth(i).fill(words[i]);
+  }
   await page.getByRole('button', { name: /Restore \/ Import/i }).click();
   const dismissReceiveCard = page.getByRole('button', { name: "You're set" });
   const sendLink = page.getByRole('link', { name: 'Send', exact: true });
@@ -105,7 +111,6 @@ test.describe('Send after same-session seed import (no reload)', () => {
   test('Send link navigates to /send and the Send form stays rendered (no bounce to /)', async ({ page }) => {
     await freshLocalBuild(page);
     await completePasswordSetup(page);
-    await leaveExploreToChoose(page);
     await importSeedThroughChoose(page);
 
     // Fully authed shell, same session, NO reload.

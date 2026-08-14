@@ -1,6 +1,11 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
+// Opt-in only: CI passes this property for Firebase Test Lab and the explicitly
+// labelled staging store packages. Ordinary production builds leave it false.
+def firebaseObservabilityEnabled =
+    (project.findProperty('FIREBASE_OBSERVABILITY_ENABLED') ?: 'false').toBoolean()
+
 android {
     namespace = "com.veyrnox.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -27,6 +32,11 @@ android {
         // RASP APK tamper detection — inject via -PRELEASE_CERT_SHA256=<hash>.
         // Blank = fail-closed (I4). Release builds validate format at task start.
         buildConfigField "String", "RELEASE_CERT_SHA256", "\"${project.findProperty('RELEASE_CERT_SHA256') ?: ''}\""
+        // Firebase observability is enabled only by an explicit CI build property.
+        // Production stays disabled even if a config file is present accidentally.
+        buildConfigField "boolean", "FIREBASE_OBSERVABILITY_ENABLED", "${firebaseObservabilityEnabled}"
+        buildConfigField "boolean", "FIREBASE_OBSERVABILITY_SMOKE", "false"
+        manifestPlaceholders.firebaseObservabilityCollectionEnabled = firebaseObservabilityEnabled
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -93,6 +103,24 @@ android {
             debuggable false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        // Firebase Robo re-signs APKs by default. That is incompatible with the
+        // pre-WebView RASP certificate gate, which intentionally blocks any APK
+        // whose installed signer differs from the fingerprint embedded here.
+        //
+        // This is therefore a separate, APK-only test variant: it inherits every
+        // release hardening setting, has a distinct package ID so it cannot replace
+        // the production app, and embeds the same upload-key fingerprint that signs
+        // the CI artifact. The Firebase workflow must pair it with --no-resign.
+        firebaseTest {
+            initWith release
+            applicationIdSuffix ".firebase.testlab"
+            versionNameSuffix "-firebase-test"
+            matchingFallbacks = ['release']
+            buildConfigField "String", "RELEASE_CERT_SHA256", "\"${project.findProperty('FIREBASE_TEST_CERT_SHA256') ?: ''}\""
+            buildConfigField "boolean", "FIREBASE_OBSERVABILITY_ENABLED", "true"
+            buildConfigField "boolean", "FIREBASE_OBSERVABILITY_SMOKE", "true"
+            manifestPlaceholders.firebaseObservabilityCollectionEnabled = true
+        }
     }
 }
 
@@ -133,9 +161,68 @@ dependencies {
     // with Capacitor by default; without this, :app:compileDebugKotlin fails with
     // "Unresolved reference 'okhttp3'" on the CertPinManager import.
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // Collection remains false unless CI explicitly builds a Firebase-observed
+    // staging artifact. No Analytics dependency is included.
+    implementation platform('com.google.firebase:firebase-bom:34.16.0')
+    implementation 'com.google.firebase:firebase-crashlytics'
+    implementation 'com.google.firebase:firebase-perf'
 }
 
 apply from: 'capacitor.build.gradle'
+
+// A Firebase Test Lab artifact is deliberately APK-only. Disabling its bundle
+// task and using a non-production applicationId keep it out of every Play upload
+// path even if somebody invokes the task by mistake.
+tasks.matching { it.name == 'bundleFirebaseTest' }.configureEach {
+    enabled = false
+}
+
+tasks.matching { it.name == 'assembleFirebaseTest' }.configureEach {
+    doFirst {
+        def cert = project.findProperty('FIREBASE_TEST_CERT_SHA256') ?: ''
+        if (!cert.matches(/^([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$/)) {
+            throw new GradleException(
+                'FIREBASE_TEST_CERT_SHA256 must be 32 colon-separated hex pairs.\n' +
+                'Derive it from the same upload keystore that signs this APK.')
+        }
+
+        def sc = android.signingConfigs.release
+        if (sc.storeFile == null || !sc.storeFile.exists()) {
+            throw new GradleException(
+                'Firebase Test Lab signing is not configured. Expected the release ' +
+                'upload keystore via KEYSTORE_PATH and its credential environment variables.')
+        }
+
+        def uploadSha
+        try {
+            def ks = java.security.KeyStore.getInstance('JKS')
+            sc.storeFile.withInputStream {
+                ks.load(it, sc.storePassword == null ? null : sc.storePassword.toCharArray())
+            }
+            def signingCert = ks.getCertificate(sc.keyAlias)
+            if (signingCert == null) {
+                throw new GradleException("No signing certificate found for alias '${sc.keyAlias}'.")
+            }
+            uploadSha = java.security.MessageDigest.getInstance('SHA-256')
+                .digest(signingCert.encoded)
+                .collect { String.format('%02X', it) }
+                .join(':')
+        } catch (GradleException e) {
+            throw e
+        } catch (Exception e) {
+            throw new GradleException(
+                "Could not derive the Firebase Test Lab signing fingerprint: ${e.message}", e)
+        }
+
+        if (!cert.equalsIgnoreCase(uploadSha)) {
+            throw new GradleException(
+                'FIREBASE_TEST_CERT_SHA256 does not match the keystore signing this APK.\n' +
+                'Refusing to create a Firebase artifact that RASP will block at launch.')
+        }
+        logger.lifecycle('firebase-test signing guard: embedded fingerprint matches APK signer')
+    }
+}
 
 tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.configureEach {
     doFirst {
@@ -326,8 +413,9 @@ try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
         apply plugin: 'com.google.gms.google-services'
+        apply plugin: 'com.google.firebase.crashlytics'
+        apply plugin: 'com.google.firebase.firebase-perf'
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
-

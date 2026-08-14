@@ -38,7 +38,6 @@ package com.veyrnox.app
 // change to the KeyGenParameterSpec MUST bump the suffix.
 
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
@@ -58,6 +57,12 @@ import javax.crypto.SecretKeyFactory
 
 class EnclaveKeyService {
 
+    private companion object {
+        // Dedicated, disposable alias used only to discover the real backing tier.
+        // It must never overlap the production wrapping-key alias.
+        const val CAPABILITY_PROBE_ALIAS = "com.veyrnox.app.enclaveCapabilityProbe.v1"
+    }
+
     data class Capability(
         // "strongBox" | "tee" | "software" | "none" | "unknown". Extended from
         // the M2d-1a scaffold's 3-value enum to accommodate M2d-1b's post-key
@@ -65,8 +70,8 @@ class EnclaveKeyService {
         // KeyInfo securityLevel and legitimately report "software" when the
         // OS falls back — an emulator, a misconfigured device — I4 honesty:
         // never label a software-backed key "tee"). capability() itself is
-        // still a PRE-key OS-feature probe and returns "strongBox" | "tee" |
-        // "none"; the wider enum surfaces via CreateResult.backing.
+        // is based on a disposable key's real KeyInfo, using the same ACL as
+        // the production wrapping key. It may therefore return every value.
         val backing: String,
         // BiometricManager.canAuthenticate(BIOMETRIC_STRONG) == SUCCESS.
         // Class 3 biometric only (matches HardwareKekPlugin H16 discipline).
@@ -89,30 +94,57 @@ class EnclaveKeyService {
     )
 
     /**
-     * Report OS-level capability WITHOUT touching AndroidKeyStore.
+     * Probe actual key backing without touching the production wrapping key.
      *
-     * StrongBox tier: PackageManager.FEATURE_STRONGBOX_KEYSTORE (added in API
-     * 28). This is the OS's own claim — a StrongBox-backed key allocation may
-     * still fail with StrongBoxUnavailableException at KeyGenerator.init()
-     * time (handled by createWrappingKey's TEE fallback).
-     * TEE tier: AndroidKeyStore is API 23+ and is TEE-backed on virtually
-     * every real device; we report "tee" for API 23+ without a StrongBox
-     * feature declaration. On API <23 (unreachable today, minSdk 24) we
-     * report "none".
+     * A package-manager feature flag is not proof that an allocation succeeds,
+     * and API level alone is not proof that AndroidKeyStore uses a TEE. Generate
+     * a disposable AES key under the same ACL as the real key, read KeyInfo, and
+     * delete the probe alias in `finally`. Key generation does not present a
+     * biometric prompt; only use of the auth-bound key does.
      */
     fun capability(context: Context): Capability {
-        val hasStrongBox = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
-            context.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)
-        val backing = when {
-            hasStrongBox -> "strongBox"
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> "tee"
-            else -> "none"
-        }
         val biometricManager = BiometricManager.from(context)
         val biometryEnrolled = biometricManager.canAuthenticate(
             BiometricManager.Authenticators.BIOMETRIC_STRONG
         ) == BiometricManager.BIOMETRIC_SUCCESS
-        return Capability(backing = backing, biometryEnrolled = biometryEnrolled)
+        if (Build.VERSION.SDK_INT < EnclaveKeySpecConfig.MIN_API || !biometryEnrolled) {
+            return Capability(backing = "none", biometryEnrolled = biometryEnrolled)
+        }
+
+        val ks = KeyStore.getInstance("AndroidKeyStore").also { it.load(null) }
+        return try {
+            deleteAliasIfPresent(ks, CAPABILITY_PROBE_ALIAS)
+            val generatedWithStrongBox = tryGenerateKey(
+                alias = CAPABILITY_PROBE_ALIAS,
+                useStrongBox = true,
+            )
+            if (!generatedWithStrongBox) {
+                // Defensive cleanup in case a provider partially created an
+                // entry before reporting StrongBox unavailable.
+                deleteAliasIfPresent(ks, CAPABILITY_PROBE_ALIAS)
+                tryGenerateKey(alias = CAPABILITY_PROBE_ALIAS, useStrongBox = false)
+            }
+
+            val tier = readSecurityLevel(ks, CAPABILITY_PROBE_ALIAS)
+            val backing = if (
+                Build.VERSION.SDK_INT < 31 &&
+                generatedWithStrongBox &&
+                tier.first != KeyProperties.SECURITY_LEVEL_SOFTWARE
+            ) {
+                // API 30 exposes only isInsideSecureHardware. A successful
+                // setIsStrongBoxBacked(true) allocation is the additional
+                // evidence that distinguishes StrongBox from the TEE there.
+                "strongBox"
+            } else {
+                backingFromLevel(tier.first)
+            }
+            Capability(backing = backing, biometryEnrolled = true)
+        } catch (_: Exception) {
+            // A failed or unclassifiable probe is not evidence of secure hardware.
+            Capability(backing = "none", biometryEnrolled = biometryEnrolled)
+        } finally {
+            deleteAliasIfPresent(ks, CAPABILITY_PROBE_ALIAS)
+        }
     }
 
     /**
@@ -148,8 +180,14 @@ class EnclaveKeyService {
             )
         }
         // StrongBox-preferred; fall through to TEE on StrongBoxUnavailableException.
-        val strongBoxOk = tryEnrollKey(useStrongBox = true)
-        val enrolled = strongBoxOk || tryEnrollKey(useStrongBox = false)
+        val strongBoxOk = tryGenerateKey(
+            alias = EnclaveKeySpecConfig.KEY_ALIAS,
+            useStrongBox = true,
+        )
+        val enrolled = strongBoxOk || tryGenerateKey(
+            alias = EnclaveKeySpecConfig.KEY_ALIAS,
+            useStrongBox = false,
+        )
         if (!enrolled) {
             throw IllegalStateException("Enclave key generation failed on both StrongBox and TEE attempts")
         }
@@ -628,10 +666,10 @@ class EnclaveKeyService {
      * StrongBox was requested but unavailable (caller retries with useStrongBox
      * = false). Any other exception propagates.
      */
-    private fun tryEnrollKey(useStrongBox: Boolean): Boolean {
+    private fun tryGenerateKey(alias: String, useStrongBox: Boolean): Boolean {
         return try {
             val specBuilder = KeyGenParameterSpec.Builder(
-                EnclaveKeySpecConfig.KEY_ALIAS,
+                alias,
                 KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
             )
                 .setKeySize(EnclaveKeySpecConfig.KEY_SIZE)
@@ -664,8 +702,11 @@ class EnclaveKeyService {
      * On API < 31 (unreachable per MIN_API=30 gate but defensive) falls back
      * to isInsideSecureHardware. Never fabricates — reports what KeyInfo says.
      */
-    private fun readSecurityLevel(ks: KeyStore): Pair<Int, String> {
-        val key = ks.getKey(EnclaveKeySpecConfig.KEY_ALIAS, null) as? SecretKey
+    private fun readSecurityLevel(
+        ks: KeyStore,
+        alias: String = EnclaveKeySpecConfig.KEY_ALIAS,
+    ): Pair<Int, String> {
+        val key = ks.getKey(alias, null) as? SecretKey
             ?: return Pair(-99, "NO_KEY")
         val factory = SecretKeyFactory.getInstance(key.algorithm, "AndroidKeyStore")
         val info = factory.getKeySpec(key, KeyInfo::class.java) as KeyInfo
@@ -717,4 +758,8 @@ class EnclaveKeyService {
     // (Kotlin compile-fails on duplicate literal branch values — Codex 2026-07-17 P1).
     // The pre-31 secure-hardware bit CANNOT distinguish TEE from StrongBox, so it
     // conservatively lands on "tee" — never a fabricated "strongBox" claim (I4).
+
+    private fun deleteAliasIfPresent(ks: KeyStore, alias: String) {
+        if (ks.containsAlias(alias)) ks.deleteEntry(alias)
+    }
 }

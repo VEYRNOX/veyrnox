@@ -97,6 +97,25 @@ async function enclavePlugin() {
   if (!_enclavePlugin) _enclavePlugin = await import('../../plugins/veyrnoxEnclave.js');
   return _enclavePlugin;
 }
+
+// Capability is stable enough for one foreground app process. Caching prevents
+// an unsupported phone from re-running enrollment discovery after every lock;
+// the next cold launch probes again so OS/biometric changes are picked up.
+let _secureHardwareAvailablePromise = null;
+export function isEligibleHardwareCapability(capability) {
+  const backing = capability?.backing;
+  return capability?.biometryEnrolled === true
+    && (backing === 'secureEnclave' || backing === 'strongBox' || backing === 'tee');
+}
+
+async function detectSecureHardwareAvailable() {
+  try {
+    const { isHardwareKeyAvailable } = await enclavePlugin();
+    return isEligibleHardwareCapability(await isHardwareKeyAvailable());
+  } catch {
+    return false;
+  }
+}
 // Hardware-wrap path. Capability-detected AND gated behind M2C_HARDWARE_WRAP_ENABLED.
 // Ungated after device verification (PR #1152 / commit f518ba57, 2026-07-18) —
 // all four flags (JS×2, Swift, Kotlin) flipped in lockstep. Independent audit
@@ -600,19 +619,16 @@ export function logM2cMigrationFailure(e) {
 
 /** @type {import('./keyStore.js').KeyStore} */
 export const nativeKeyStore = {
-  // True when a device credential (passcode/biometrics) is set, which is the
-  // precondition for the OS to protect the stored item (passcode-gated Keychain
-  // on iOS (NOT Secure-Enclave-wrapped — see header, H14); Keystore-backed
-  // storage on Android). NOTE: this is a proxy — these plugins do not expose a
-  // direct StrongBox/Enclave probe, so we cannot assert StrongBox specifically.
-  // Treated as an audit/device-test item.
+  // True only when the native Enclave plugin reports an enrolled biometric AND
+  // an actual accepted backing tier: Secure Enclave, StrongBox, or TEE. Android
+  // derives this from a disposable key's KeyInfo, not an API/version/feature
+  // proxy. Unsupported/software-only phones proceed with PIN protection without
+  // entering the enrollment gate.
   async isSecureHardwareAvailable() {
-    try {
-      const info = await BiometricAuth.checkBiometry();
-      return !!info.deviceIsSecure;
-    } catch {
-      return false;
+    if (!_secureHardwareAvailablePromise) {
+      _secureHardwareAvailablePromise = detectSecureHardwareAvailable();
     }
+    return _secureHardwareAvailablePromise;
   },
 
   // Presence check only — reads metadata, never the secret, and does NOT prompt

@@ -5,6 +5,22 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      build_release:
+        description: 'Build signed production Android release artifacts'
+        type: boolean
+        required: false
+        default: false
+      build_firebase_test:
+        description: 'Build the isolated signed APK used only by Firebase Test Lab'
+        type: boolean
+        required: false
+        default: false
+      build_staging_release:
+        description: 'Build signed Android 1.0.1 staging artifacts for Firebase-gated Internal Testing'
+        type: boolean
+        required: false
+        default: false
 
 # Cancel superseded runs on the same ref to save minutes.
 concurrency:
@@ -253,8 +269,13 @@ jobs:
 
   android-release:
     runs-on: ubuntu-latest
-    # Only build the release APK on main-branch pushes (not every PR).
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Build production artifacts on main as before, or explicitly for a manual
+    # release build. Firebase uses the isolated job below; it never consumes the
+    # production AAB or its Play app-signing certificate expectation.
+    if: >-
+      (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
+      || (github.event_name == 'workflow_dispatch'
+      && (inputs.build_release == true || inputs.build_staging_release == true))
     needs: verify
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -264,9 +285,44 @@ jobs:
           cache: npm
       - run: npm install -g npm@11
       - run: npm ci
-      - run: npm run build
+      - name: Refuse ambiguous production + staging dispatch
+        if: inputs.build_release == true && inputs.build_staging_release == true
+        run: |
+          echo "::error::Choose either build_release or build_staging_release, never both."
+          exit 1
+      - name: Build web assets for the selected release channel
+        run: |
+          if [ "${{ inputs.build_staging_release }}" = "true" ]; then
+            npm run build:staging
+          else
+            npm run build
+          fi
       - name: Sync Capacitor
         run: npx cap sync android
+      - name: Auth to Google Cloud for staging Firebase config
+        if: github.event_name == 'workflow_dispatch' && inputs.build_staging_release == true
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Setup gcloud for staging Firebase config
+        if: github.event_name == 'workflow_dispatch' && inputs.build_staging_release == true
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+      - name: Fetch Android staging Firebase config
+        if: github.event_name == 'workflow_dispatch' && inputs.build_staging_release == true
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          FIREBASE_ANDROID_APP_ID: 1:567659013773:android:2f04cc2942faba1f8864c4
+        run: |
+          set -euo pipefail
+          chmod +x .github/scripts/fetch-firebase-config.sh
+          .github/scripts/fetch-firebase-config.sh \
+            android "$FIREBASE_PROJECT_ID" "$FIREBASE_ANDROID_APP_ID" \
+            android/app/google-services.json
+          jq -e \
+            '.client | any(.client_info.android_client_info.package_name == "com.veyrnox.app")' \
+            android/app/google-services.json >/dev/null
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -303,7 +359,9 @@ jobs:
       - name: Build release APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+          ./gradlew assembleRelease \
+            -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}" \
+            -PFIREBASE_OBSERVABILITY_ENABLED="${{ inputs.build_staging_release || false }}"
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -318,7 +376,10 @@ jobs:
       # billing to a build installed FROM a track. So the APK proves the app
       # runs; only this AAB can prove a purchase works.
       - name: Build release AAB (Play upload artifact)
-        run: ./gradlew bundleRelease -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
+        run: |
+          ./gradlew bundleRelease \
+            -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}" \
+            -PFIREBASE_OBSERVABILITY_ENABLED="${{ inputs.build_staging_release || false }}"
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -327,7 +388,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: veyrnox-release-apk
+          name: ${{ inputs.build_staging_release && 'veyrnox-staging-apk' || 'veyrnox-release-apk' }}
           path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
       # The Play upload artifact. Download this, upload to the internal track,
@@ -336,7 +397,7 @@ jobs:
       - name: Upload AAB artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: veyrnox-release-aab
+          name: ${{ inputs.build_staging_release && 'veyrnox-staging-aab' || 'veyrnox-release-aab' }}
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
       # Surfaces the versionCode actually built, so it can be checked against
@@ -344,14 +405,127 @@ jobs:
       # a duplicate versionCode outright, and that is a slow thing to discover
       # at the end of an upload.
       - name: Report built versionCode
+        env:
+          RELEASE_CHANNEL: ${{ inputs.build_staging_release && 'staging' || 'production' }}
         run: |
           VC=$(grep -m1 'versionCode' app/build.gradle | tr -dc '0-9')
           echo "Built versionCode: ${VC}"
-          echo "### Android release artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Android ${RELEASE_CHANNEL} release artifacts" >> "$GITHUB_STEP_SUMMARY"
           echo "- versionCode: \`${VC}\` — must exceed every versionCode already uploaded to Play" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`veyrnox-release-aab\` → Play internal track (required for Play Billing)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`veyrnox-release-apk\` → sideload smoke test only (Play Billing will NOT work)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- channel: \`${RELEASE_CHANNEL}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- AAB → Play internal track after both Firebase device suites pass" >> "$GITHUB_STEP_SUMMARY"
+          echo "- APK → sideload smoke test only (Play Billing will NOT work)" >> "$GITHUB_STEP_SUMMARY"
         working-directory: android
+
+  # Firebase Robo normally re-signs the app. Veyrnox's RASP gate correctly
+  # rejects that, while the production AAB expects Google's Play app-signing
+  # certificate rather than the upload certificate available in CI. Build a
+  # separate release-hardened APK whose unique package ID and disabled bundle
+  # task make it non-publishable, and whose embedded RASP fingerprint matches
+  # the same upload key that signs the APK.
+  android-firebase-test:
+    runs-on: ubuntu-latest
+    if: >-
+      (github.ref == 'refs/heads/main' && github.event_name == 'push')
+      || (github.event_name == 'workflow_dispatch' && inputs.build_firebase_test == true)
+    needs: verify
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install -g npm@11
+      - run: npm ci
+      - name: Auth to Google Cloud for Firebase config
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Setup gcloud for Firebase config
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+      - name: Fetch Test Lab-only Android Firebase config
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          FIREBASE_ANDROID_APP_ID: 1:567659013773:android:166961ac09b49c5f8864c4
+        run: |
+          set -euo pipefail
+          chmod +x .github/scripts/fetch-firebase-config.sh
+          .github/scripts/fetch-firebase-config.sh \
+            android "$FIREBASE_PROJECT_ID" "$FIREBASE_ANDROID_APP_ID" \
+            android/app/google-services.json
+          jq -e \
+            '.client | any(.client_info.android_client_info.package_name == "com.veyrnox.app.firebase.testlab")' \
+            android/app/google-services.json >/dev/null
+      - name: Build web assets for Firebase
+        run: |
+          if [ "${{ inputs.build_staging_release }}" = "true" ]; then
+            npm run build:staging
+          else
+            npm run build
+          fi
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Decode upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::KEYSTORE_BASE64 is required for the Firebase Test Lab APK."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/keystore.jks
+          echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> "$GITHUB_ENV"
+      - name: Derive the APK signing certificate for the RASP gate
+        id: firebase_cert
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          FIREBASE_SHA=$(keytool -list -v \
+            -keystore android/keystore.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            | awk '/SHA256:/{sha=$2} END{print sha}')
+          if [[ ! "$FIREBASE_SHA" =~ ^([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$ ]]; then
+            echo "::error::Could not derive a valid SHA-256 fingerprint from the upload keystore."
+            exit 1
+          fi
+          echo "sha256=$FIREBASE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Build non-publishable Firebase Test Lab APK
+        env:
+          FIREBASE_TEST_CERT_SHA256: ${{ steps.firebase_cert.outputs.sha256 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        working-directory: android
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew assembleFirebaseTest \
+            -PFIREBASE_TEST_CERT_SHA256="$FIREBASE_TEST_CERT_SHA256"
+      - name: Upload isolated Firebase APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: veyrnox-firebase-test-apk
+          path: android/app/build/outputs/apk/firebaseTest/app-firebaseTest.apk
+          retention-days: 14
+      - name: Report Firebase artifact isolation
+        run: |
+          {
+            echo "### Android Firebase Test Lab artifact"
+            echo "- package: \`com.veyrnox.app.firebase.testlab\`"
+            echo "- build: release-hardened, signed with the CI upload key"
+            echo "- output: APK only; \`bundleFirebaseTest\` is disabled"
+            echo "- Play publication: not permitted"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # --------------------------------------------------------------------------
   # Publish the signed release AAB to Play's INTERNAL track.

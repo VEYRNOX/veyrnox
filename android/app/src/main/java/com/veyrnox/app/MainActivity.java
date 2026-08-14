@@ -6,6 +6,10 @@ import android.view.WindowManager;
 import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+import com.google.firebase.perf.FirebasePerformance;
+import com.google.firebase.perf.metrics.Trace;
 import com.veyrnox.app.FileSaverPlugin;
 import com.veyrnox.app.HardwareKekPlugin;
 import com.veyrnox.app.RaspIntegrityPlugin;
@@ -33,6 +37,35 @@ public class MainActivity extends BridgeActivity {
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         super.onCreate(savedInstanceState);
+
+        // Staging/Test Lab observability. Never attach wallet state, addresses,
+        // balances, PINs, seeds, URLs, or user identifiers to Firebase.
+        if (BuildConfig.FIREBASE_OBSERVABILITY_ENABLED
+                && !FirebaseApp.getApps(this).isEmpty()) {
+            FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
+            crashlytics.setCrashlyticsCollectionEnabled(true);
+            crashlytics.setCustomKey(
+                "build_channel",
+                BuildConfig.FIREBASE_OBSERVABILITY_SMOKE ? "firebase_test_lab" : "staging"
+            );
+
+            FirebasePerformance performance = FirebasePerformance.getInstance();
+            performance.setPerformanceCollectionEnabled(true);
+
+            // Synthetic fixed-value events belong only to the isolated Test Lab APK.
+            if (BuildConfig.FIREBASE_OBSERVABILITY_SMOKE) {
+                crashlytics.log("Firebase Test Lab observability smoke started");
+                crashlytics.recordException(new IllegalStateException(
+                    "VEYRNOX_FIREBASE_NONFATAL_SMOKE"
+                ));
+                crashlytics.sendUnsentReports();
+
+                Trace trace = performance.newTrace("staging_launch_smoke");
+                trace.start();
+                trace.putMetric("completed", 1L);
+                trace.stop();
+            }
+        }
 
         // FLAG_SECURE — block screenshots, screen recording, and the recents /
         // app-switcher thumbnail for the whole window. The wallet's threat model

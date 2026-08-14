@@ -1,7 +1,7 @@
 // AppUITests.swift
 //
 // Minimal XCUITest smoke — the iOS analogue to Firebase Test Lab's Android
-// Robo crawl. Walks fresh install → PIN → Create Wallet → seed reveal, and
+// Robo crawl. Walks fresh install → New wallet → PIN → wallet created, and
 // hard-fails if the KEK/RASP fail-closed banner ever appears (that banner is
 // what got Play build 5 rejected under Broken Functionality).
 //
@@ -17,23 +17,31 @@ final class AppUITests: XCTestCase {
 
     /// Golden path a reviewer would walk on first launch.
     /// If this test ever fails on a stock device the app is NOT ready to submit.
-    func test_freshInstall_reachesSeedScreen() throws {
+    func test_freshInstall_createsWalletWithoutFailureBanner() throws {
         let app = XCUIApplication()
-        app.launchArguments += ["--uitest-fresh-install"]
+        app.launchArguments += [
+            "--uitest-fresh-install",
+            "--firebase-observability-smoke",
+        ]
         app.launch()
 
-        // 1. PIN entry — set + confirm.
-        let pin = "246810"
-        enterPin(app: app, digits: pin, stage: "set")
-        enterPin(app: app, digits: pin, stage: "confirm")
-
-        // 2. Create Wallet must appear on the entry screen.
-        let createButton = app.buttons["Create Wallet"]
+        // 1. Fresh installs land on the entry tiles. Pick the new-wallet path;
+        //    it auto-creates after PIN confirmation, so there is no later
+        //    "Create Wallet" button on this path.
+        let newWalletButton = app.buttons["New wallet"]
         XCTAssertTrue(
-            createButton.waitForExistence(timeout: 10),
-            "Create Wallet button never appeared — same screen Play reviewer saw."
+            newWalletButton.waitForExistence(timeout: 10),
+            "New wallet entry tile never appeared on a fresh install."
         )
-        createButton.tap()
+        newWalletButton.tap()
+
+        // 2. PIN entry — the app requires exactly eight digits and PinPad
+        //    completion is explicit, never auto-submitted by digit count.
+        let pin = "24681024"
+        enterPin(app: app, digits: pin, stage: "set")
+        submitPin(app: app, stage: "set")
+        enterPin(app: app, digits: pin, stage: "confirm")
+        submitPin(app: app, stage: "confirm")
 
         // 3. The fail-closed banner MUST NOT appear. This is the exact string
         //    Play rejected build 5 for. Assert absence, not silence.
@@ -45,15 +53,13 @@ final class AppUITests: XCTestCase {
             "KEK/RASP fail-closed banner appeared — this is the exact defect Play rejected on Android."
         )
 
-        // 4. Seed reveal screen must appear within a reasonable window.
-        //    Matches any header containing 'seed' (case-insensitive) so a
-        //    copy tweak doesn't break the smoke — only a broken flow does.
-        let seedHeader = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] 'seed'")
-        ).firstMatch
+        // 4. The current new-wallet path auto-creates after PIN confirmation
+        //    and lands on WalletCreatedFlash. Raw seed reveal was deliberately
+        //    moved out of onboarding, so waiting for a seed header is stale.
+        let createdHeader = app.staticTexts["Created."]
         XCTAssertTrue(
-            seedHeader.waitForExistence(timeout: 15),
-            "Seed reveal screen never appeared — Create Wallet path is broken."
+            createdHeader.waitForExistence(timeout: 30),
+            "Wallet-created screen never appeared — fresh-create path is broken."
         )
     }
 
@@ -75,5 +81,16 @@ final class AppUITests: XCTestCase {
             XCTFail("PIN \(stage): no keypad button '\(ch)' and no secure field.")
             return
         }
+    }
+
+    /// PinPad deliberately does not auto-submit at eight digits. Tap its
+    /// accessibility-labelled submit button after both setup stages.
+    private func submitPin(app: XCUIApplication, stage: String) {
+        let submit = app.buttons["Submit PIN"]
+        XCTAssertTrue(
+            submit.waitForExistence(timeout: 3),
+            "PIN \(stage): Submit PIN button never appeared."
+        )
+        submit.tap()
     }
 }

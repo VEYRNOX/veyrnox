@@ -12,18 +12,23 @@
 //      recovery passphrase → new PIN 30081977 twice → "Restore wallet"
 //   6. Assert success toast + re-unlock at / with 30081977
 //
-// Requires: dev server started with VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1
-// and BASE_URL pointed at it (Playwright config skips its own webServer when
-// BASE_URL is set). Run with:
-//   VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 npm run dev -- --port 5199 --strictPort &
-//   BASE_URL=http://localhost:5199 npx playwright test e2e/personal-backup-ui-roundtrip.spec.js --project=chromium
+// Requires: the Playwright-managed dev server to inherit
+// VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 (the CI job sets it). Run locally with:
+//   RUN_PERSONAL_BACKUP_PAID_E2E=1 VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 \
+//     npx playwright test e2e/personal-backup-ui-roundtrip.spec.js --project=chromium
+//
+// The default web surface deliberately resolves RevenueCat entitlement to Free
+// and must not expose Safety Plus routes. Run this full UI round-trip only in a
+// native harness with a real active Safety Plus test entitlement. The always-on
+// provider/keystore recovery boundary remains covered by
+// src/pages/__tests__/RestoreFromShares.integration.test.jsx.
 
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 
-const BASE = process.env.BASE_URL || 'http://localhost:5199';
+const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const PIN = '30081977';
 const PASSPHRASE = 'S0cR4Te530081977!'; // 17 chars, ≥16 required
 
@@ -63,7 +68,9 @@ async function onboard(page) {
   await expect(page.getByText('Confirm your PIN')).toBeVisible();
   await enterPin(page, PIN);
 
-  const dismiss = page.getByRole('button', { name: "You're set" });
+  const dismiss = page
+    .getByRole('button', { name: /skip for now/i })
+    .or(page.getByRole('button', { name: "You're set" }));
   const sendLink = page.getByRole('link', { name: 'Send', exact: true });
   await expect(dismiss.or(sendLink)).toBeVisible({ timeout: 30000 });
   if (await dismiss.isVisible()) await dismiss.click();
@@ -71,6 +78,10 @@ async function onboard(page) {
 }
 
 test.describe('Personal Backup — UI round-trip with PIN 30081977', () => {
+  test.skip(
+    !process.env.RUN_PERSONAL_BACKUP_PAID_E2E,
+    'requires a native active Safety Plus entitlement; web intentionally resolves Free',
+  );
   test.setTimeout(180_000);
 
   test('export 3 shares → restore from 2 → new PIN unlocks', async ({ page }) => {
