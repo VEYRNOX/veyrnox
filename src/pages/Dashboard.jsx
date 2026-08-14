@@ -140,7 +140,10 @@ function DemoDashboard() {
   });
 
   const [lastSynced, setLastSynced] = useState(new Date());
-  const [displayValue, setDisplayValue] = useState(0);
+  // Paint the first resolved balance immediately. Animating from zero on initial
+  // load kept changing the page's largest text for another 600ms, which made
+  // the count-up itself the LCP bottleneck. Later balance changes still animate.
+  const [displayValue, setDisplayValue] = useState(null);
   const animRef = useRef(null);
 
   useEffect(() => {
@@ -154,6 +157,11 @@ function DemoDashboard() {
 
   useEffect(() => {
     cancelAnimationFrame(animRef.current);
+    if (isLoading) return;
+    if (displayValue === null) {
+      setDisplayValue(totalUSD);
+      return;
+    }
     const start = displayValue;
     const end = totalUSD;
     const duration = 600;
@@ -166,7 +174,7 @@ function DemoDashboard() {
     };
     animRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(animRef.current);
-  }, [totalUSD]);
+  }, [totalUSD, isLoading]);
 
   const change24h = wallets.length > 0 ? ((totalUSD * 0.0234) / 100 * 97).toFixed(2) : 0;
   const changePercent = wallets.length > 0 ? 2.34 : 0;
@@ -219,7 +227,7 @@ function DemoDashboard() {
           <FiatCurrencySelector value={fiatCurrency} onChange={setFiatCurrency} />
         </div>
         <p className={`text-4xl font-bold mono-value transition-all duration-300 ${isLocked ? 'blur-md select-none' : ''}`}>
-          <AnimatedFiat value={displayValue} format={(v) => formatFiat(v, fiatCurrency, locale)} />
+          <AnimatedFiat value={displayValue ?? totalUSD} format={(v) => formatFiat(v, fiatCurrency, locale)} />
         </p>
         <ReferenceRateNote />
         {!isLocked && wallets.length > 0 && (

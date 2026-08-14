@@ -86,10 +86,6 @@ export default function Settings() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["wallets"] }),
   });
 
-  if (isLoading) {
-    return <Spinner className="h-64" label="Loading settings…" />;
-  }
-
   return (
     <div className="max-w-lg mx-auto space-y-8">
       <BackButton />
@@ -265,7 +261,9 @@ export default function Settings() {
             <Fingerprint className="h-4 w-4 text-primary" />
             Wallet Passkeys
           </h2>
-          {wallets.length === 0 ? (
+          {isLoading ? (
+            <Spinner className="h-16" label="Loading wallet passkeys…" />
+          ) : wallets.length === 0 ? (
             <p className="text-sm text-muted-foreground">Create a wallet first</p>
           ) : (
             wallets.map(wallet => (
