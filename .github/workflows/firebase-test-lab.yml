@@ -28,6 +28,9 @@ on:
       - 'ios/**'
       - 'capacitor.config.json'
       - 'package-lock.json'
+      - '.github/testlab/**'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/firebase-test-lab.yml'
 
 concurrency:
   group: firebase-test-lab-${{ github.ref }}
@@ -35,6 +38,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
   id-token: write
 
 jobs:
@@ -48,14 +52,52 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - name: Download release AAB from ci.yml
-        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+      # This workflow and ci.yml start independently on the same main push.
+      # Wait for CI's run for THIS SHA, then download by run ID. The old
+      # branch=main lookup could silently test the previous successful AAB.
+      - name: Wait for this commit's successful CI artifact
+        id: ci_run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 100); do
+            RUN_JSON=$(gh run list \
+              --workflow ci.yml \
+              --commit "$SHA" \
+              --event push \
+              --limit 1 \
+              --json databaseId,status,conclusion \
+              --jq '.[0] // {}')
+            RUN_ID=$(jq -r '.databaseId // empty' <<<"$RUN_JSON")
+            STATUS=$(jq -r '.status // empty' <<<"$RUN_JSON")
+            CONCLUSION=$(jq -r '.conclusion // empty' <<<"$RUN_JSON")
+
+            if [[ "$STATUS" == "completed" ]]; then
+              if [[ "$CONCLUSION" != "success" ]]; then
+                echo "::error::CI run ${RUN_ID} for ${SHA} concluded ${CONCLUSION}; refusing to test another commit's AAB."
+                exit 1
+              fi
+              echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if (( attempt % 8 == 1 )); then
+              echo "Waiting for CI on ${SHA} (status=${STATUS:-not-started})..."
+            fi
+            sleep 15
+          done
+          echo "::error::Timed out waiting for a successful CI run for ${SHA}; refusing to fall back to an older AAB."
+          exit 1
+
+      - name: Download this commit's release AAB from ci.yml
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          workflow: ci.yml
-          workflow_conclusion: success
           name: veyrnox-release-aab
           path: artifacts
-          branch: main
+          run-id: ${{ steps.ci_run.outputs.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
@@ -75,8 +117,10 @@ jobs:
         # the 2026-08 catalog. To extend coverage later:
         #   gcloud firebase test android models list
         # and add rows here.
-        # --robo-directives seeds the PIN screen so the crawler can pass the
-        # first gate (otherwise it stalls at PIN).
+        # The Capacitor PinPad is a grid of WebView buttons, not EditText
+        # fields. A Robo Script uses OCR-backed button clicks to choose the
+        # new-wallet path, enter + explicitly submit the eight-digit PIN twice,
+        # then hands control back to the crawler.
         # TIMEOUT and RESULTS_BUCKET come via env: workflow-dispatch input goes
         # through a regex allowlist to block shell metachars (injection guard).
         env:
@@ -99,7 +143,7 @@ jobs:
             --device model=shiba,version=34,locale=en,orientation=portrait \
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
-            --robo-directives text:pin_input=246810,text:pin_confirm=246810 \
+            --robo-script .github/testlab/android-pin-onboarding-robo-script.json \
             --results-bucket "$RESULTS_BUCKET" \
             --results-dir "robo-$SHA"
 
@@ -120,11 +164,11 @@ jobs:
   # iOS — Firebase Test Lab for iOS does NOT support Robo. Only
   # XCUITest. So this runs a minimal XCUITest smoke bundle that
   # walks the same golden path a Play reviewer would: fresh
-  # install → PIN → Create Wallet → seed reveal.
+  # install → New wallet → set + confirm 8-digit PIN → Created.
   #
-  # First run: needs macOS runner (Apple-only Xcode). Blocked
-  # until we add the XCUITest target — see
-  # ios/App/AppUITests/README.md for the ~30-line smoke suite.
+  # The XCUITest target exists. The remaining cloud blocker is signing:
+  # Firebase requires the app and XCUITest runner to be signed before
+  # upload, but no CI certificate/provisioning setup exists in this repo.
   # --------------------------------------------------------------
   ios-smoke:
     runs-on: macos-14
@@ -165,15 +209,16 @@ jobs:
             -project App.xcodeproj \
             -scheme App 2>&1 | tail -5
 
-      - name: Build IPA + test bundle
+      - name: Build unsigned app + test bundle
         working-directory: ios/App
         run: |
           set -o pipefail
           # SPM project (CapApp-SPM — no Podfile/CocoaPods, no .xcworkspace).
           # Use -project, not -workspace.
-          # CODE_SIGN_IDENTITY="" — unsigned build. Test Lab NORMALLY requires
-          # a signed IPA for real-device runs; this pass will likely surface a
-          # signing gap as the next honest error. That's the next PR.
+          # CODE_SIGN_IDENTITY="" — compile-only unsigned build. Firebase Test
+          # Lab requires both the app and XCUITest runner to be signed before
+          # upload. Keep this honest blocker explicit until CI has a certificate
+          # and provisioning profile; Test Lab re-signing happens only afterward.
           xcodebuild \
             -project App.xcodeproj \
             -scheme AppUITests \

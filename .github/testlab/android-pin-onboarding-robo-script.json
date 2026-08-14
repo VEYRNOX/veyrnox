@@ -1,0 +1,123 @@
+[
+  {
+    "description": "Wait for the fresh-install entry tiles",
+    "eventType": "WAIT",
+    "delayTime": 1500
+  },
+  {
+    "description": "Choose the fresh wallet path",
+    "eventType": "VIEW_CLICKED",
+    "visionText": "New wallet"
+  },
+  {
+    "description": "Wait for the custom PinPad",
+    "eventType": "WAIT",
+    "delayTime": 1000
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "2"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "4"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "6"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "8"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "1"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "0"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "2"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "4"
+  },
+  {
+    "description": "Explicitly submit the eight-digit PIN",
+    "eventType": "VIEW_CLICKED",
+    "visionText": "Continue"
+  },
+  {
+    "description": "Wait for the confirmation PinPad",
+    "eventType": "WAIT",
+    "delayTime": 750
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "2"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "4"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "6"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "8"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "1"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "0"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "2"
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "visionText": "4"
+  },
+  {
+    "description": "Explicitly submit PIN confirmation",
+    "eventType": "VIEW_CLICKED",
+    "visionText": "Continue"
+  },
+  {
+    "description": "Allow Argon2id and deniability-slot provisioning to finish",
+    "eventType": "WAIT",
+    "delayTime": 30000
+  },
+  {
+    "description": "The Play-rejection fail-closed banner must remain absent",
+    "eventType": "ASSERTION",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "negateCondition": true,
+      "visionText": "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
+    }
+  },
+  {
+    "description": "Fresh create must reach the wallet-created screen",
+    "eventType": "ASSERTION",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "visionText": "Created."
+    }
+  },
+  {
+    "description": "Capture the post-onboarding state before Robo continues crawling",
+    "eventType": "TAKE_SCREENSHOT",
+    "screenshotName": "post-pin-onboarding"
+  }
+]
