@@ -14,7 +14,14 @@
 //
 // Requires: the Playwright-managed dev server to inherit
 // VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 (the CI job sets it). Run locally with:
-//   VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 npx playwright test e2e/personal-backup-ui-roundtrip.spec.js --project=chromium
+//   RUN_PERSONAL_BACKUP_PAID_E2E=1 VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 \
+//     npx playwright test e2e/personal-backup-ui-roundtrip.spec.js --project=chromium
+//
+// The default web surface deliberately resolves RevenueCat entitlement to Free
+// and must not expose Safety Plus routes. Run this full UI round-trip only in a
+// native harness with a real active Safety Plus test entitlement. The always-on
+// provider/keystore recovery boundary remains covered by
+// src/pages/__tests__/RestoreFromShares.integration.test.jsx.
 
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
@@ -71,6 +78,10 @@ async function onboard(page) {
 }
 
 test.describe('Personal Backup — UI round-trip with PIN 30081977', () => {
+  test.skip(
+    !process.env.RUN_PERSONAL_BACKUP_PAID_E2E,
+    'requires a native active Safety Plus entitlement; web intentionally resolves Free',
+  );
   test.setTimeout(180_000);
 
   test('export 3 shares → restore from 2 → new PIN unlocks', async ({ page }) => {
