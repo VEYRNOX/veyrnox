@@ -69,11 +69,12 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
   });
 
   it('downloads the isolated Android Firebase artifact from CI for this exact commit', () => {
-    expect(workflow).toContain('actions: read');
+    expect(workflow).toContain('actions: write');
     expect(workflow).toContain('--commit "$SHA"');
     expect(workflow).toContain('run-id: ${{ steps.ci_run.outputs.run_id }}');
     expect(workflow).toContain('github-token: ${{ github.token }}');
-    expect(workflow).toContain('.event == "workflow_dispatch"');
+    expect(workflow).toContain("EXPECTED_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || 'push' }}");
+    expect(workflow).toContain('select(.event == \\"$EXPECTED_EVENT\\")');
     expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
     expect(workflow).toContain('name: veyrnox-firebase-test-apk');
