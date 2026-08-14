@@ -210,6 +210,8 @@ jobs:
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:5173
           VITE_TEST_THROWAWAY_SEED: ${{ secrets.VITE_TEST_THROWAWAY_SEED }}
+          # Exercise the same recovery-share surface enabled in staging builds.
+          VITE_ENABLE_PERSONAL_BACKUP_SHARDS: '1'
 
       - name: Upload Web Test Results
         if: always()

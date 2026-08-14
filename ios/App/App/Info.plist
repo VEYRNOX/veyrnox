@@ -16,6 +16,9 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
+	<!-- Empty/NO in production. The staging archive command explicitly supplies YES. -->
+	<key>VeyrnoxFirebaseObservabilityEnabled</key>
+	<string>$(VEYRNOX_FIREBASE_OBSERVABILITY)</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

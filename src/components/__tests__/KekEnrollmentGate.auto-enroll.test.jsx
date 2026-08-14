@@ -133,7 +133,9 @@ describe('KekEnrollmentGate — auto-enrollment', () => {
     // After insecure-tier failure, should show the manual gate with skip option.
     await waitFor(() => expect(screen.getByTestId(GATE_TESTID)).toBeTruthy());
     expect(screen.getByText(/doesn't meet the hardware security requirement/i)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /skip for now/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /continue with pin protection/i })).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('status')).toBeTruthy();
   });
 
   it('5. no autoEnrollPin → shows manual gate immediately (no auto-enroll attempt)', async () => {

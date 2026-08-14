@@ -6,10 +6,14 @@
 // no wallet/set count, no multi-set hint, no "decoy" wording (brief §7) — so its
 // mere presence discloses nothing about cardinality.
 
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck, ChevronRight } from 'lucide-react';
-import RehearsalView from './RehearsalView.jsx';
+
+// The rehearsal mounts the complete production portfolio (including charts).
+// Load that graph only after the user opens the overlay so the ordinary Settings
+// first paint is not coupled to Dashboard code.
+const RehearsalView = lazy(() => import('./RehearsalView.jsx'));
 
 export default function RehearsalSettingsRow() {
   const { t } = useTranslation('wallet');
@@ -34,7 +38,17 @@ export default function RehearsalSettingsRow() {
         {/* Icon mirrors under dir="rtl" — list-row disclosure chevron. */}
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 rtl:-scale-x-100" />
       </button>
-      {open && <RehearsalView onClose={() => setOpen(false)} />}
+      {open && (
+        <Suspense
+          fallback={(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+              <p className="text-sm text-muted-foreground">Loading rehearsal…</p>
+            </div>
+          )}
+        >
+          <RehearsalView onClose={() => setOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 }

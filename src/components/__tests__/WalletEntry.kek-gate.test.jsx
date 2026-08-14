@@ -54,24 +54,9 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilitySessionActive: vi.fn(() => false),
 }));
 
-// Biometric preflight (PR #1676 / commit c43c7933) — useKekEnrollmentGate now
-// probes BiometricAuth.checkBiometry() BEFORE activating the gate and skips
-// when the capability is absent (biometryNotEnrolled / biometryNotAvailable /
-// BiometryType.none). Tests exercise the happy-path where biometric IS
-// enrolled and usable, so mock the module to report that. Without this mock
-// the dynamic import resolves the real @aparajita/capacitor-biometric-auth
-// stub in jsdom, which returns `notEnrolled` → the hook `return`s → the gate
-// never activates → 3 tests fail on "Unable to find kek-enrollment-gate"
-// (cases 1, 6, 7). Individual tests that need the absent-biometric branch
-// can override checkBiometry via mockResolvedValueOnce.
-const checkBiometry = vi.fn(async () => ({ isAvailable: true, reason: '' }));
-vi.mock('@aparajita/capacitor-biometric-auth', () => ({
-  BiometricAuth: { checkBiometry: (...a) => checkBiometry(...a) },
-  BiometryType: { none: 0 },
-}));
-
 // Keystore facade — the local read surface the gate uses. Realistic stub behaviour:
-// isSecureHardwareAvailable() reports whether the device has a usable secure element,
+// isSecureHardwareAvailable() reports the shared native capability decision (actual
+// Secure Enclave/StrongBox/TEE tier plus enrolled strong biometric),
 // hasVaultKekWrap() reports whether the current vault is already KEK-wrapped, and
 // enrollKek() writes the wrap. No fake "success" — enrollKek only resolves when
 // called with a real PIN + a getHardwareFactor.

@@ -61,9 +61,12 @@ test.describe('Personal Backup — onboarding with owner PIN 30081977', () => {
     await expect(page.getByText('Confirm your PIN')).toBeVisible();
     await enterPin(page, PIN);
 
-    // Slice C FirstReceiveCard may appear ("You're set") before the authed
-    // shell. Race both locators — same pattern as onboarding.spec.js.
-    const dismiss = page.getByRole('button', { name: "You're set" });
+    // Fresh CREATE now lands on WalletCreatedFlash; dismiss its backup nudge
+    // to reach the authenticated shell. Keep the older card selector so the
+    // helper remains valid across an in-flight UI rollout.
+    const dismiss = page
+      .getByRole('button', { name: /skip for now/i })
+      .or(page.getByRole('button', { name: "You're set" }));
     const sendLink = page.getByRole('link', { name: 'Send', exact: true });
     await expect(dismiss.or(sendLink)).toBeVisible({ timeout: 30000 });
     if (await dismiss.isVisible()) await dismiss.click();
