@@ -31,6 +31,11 @@ on:
         type: string
         required: false
         default: '5m'
+      publish_staging:
+        description: 'After BOTH Firebase suites pass, upload staging packages to TestFlight and Play Internal Testing'
+        type: boolean
+        required: false
+        default: false
   push:
     branches: [main]
     paths:
@@ -52,6 +57,17 @@ permissions:
   actions: read
   id-token: write
 
+# These are public client identifiers/endpoints already baked into native
+# packages by ci.yml. The staging mode adds the visible Staging label and turns
+# on the Transak entry point; the Transak partner credentials remain server-side
+# on the edge endpoint and are never exposed as VITE_* values.
+env:
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+  VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
+
 jobs:
   # --------------------------------------------------------------
   # Android — Robo crawler on 3 real devices. Same infra as Play
@@ -64,6 +80,8 @@ jobs:
       || inputs.platform == 'android'
       || inputs.platform == 'both'
     runs-on: ubuntu-latest
+    outputs:
+      ci_run_id: ${{ steps.ci_run.outputs.run_id }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
@@ -134,9 +152,10 @@ jobs:
         #   gcloud firebase test android models list
         # and add rows here.
         # The Capacitor PinPad is a grid of WebView buttons, not EditText
-        # fields. A Robo Script uses OCR-backed button clicks to choose the
-        # new-wallet path, enter + explicitly submit the eight-digit PIN twice,
-        # then hands control back to the crawler.
+        # fields. MainActivity sets FLAG_SECURE, so screenshots/OCR are blank by
+        # design. The Robo Script therefore targets the WebView accessibility
+        # tree (text/contentDescription), enters + explicitly submits the
+        # eight-digit PIN twice, then hands control back to the crawler.
         # TIMEOUT and RESULTS_BUCKET come via env: workflow-dispatch input goes
         # through a regex allowlist to block shell metachars (injection guard).
         env:
@@ -197,6 +216,9 @@ jobs:
                 state,
                 environment: .environment.androidDevice,
                 testDetails,
+                toolResultsStep: .toolExecution.toolResultsStep,
+                toolLogs: (.toolExecution.toolLogs // []),
+                toolOutputs: (.toolExecution.toolOutputs // []),
                 outcome: .toolExecution.outcome,
                 infrastructureFailure: (
                   .toolExecution.infrastructureFailure
@@ -206,6 +228,21 @@ jobs:
               }
             ]
           }' firebase-matrix.json
+
+      # Print only relative object names. Content such as logcat, screenshots,
+      # and UI dumps is deliberately not emitted because it can contain wallet
+      # state. The inventory still shows exactly which per-axis diagnostics are
+      # available for a private follow-up inspection.
+      - name: Surface sanitized Firebase result inventory
+        if: always() && steps.robo.outputs.results_dir != ''
+        env:
+          RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
+          RESULTS_DIR: ${{ steps.robo.outputs.results_dir }}
+        run: |
+          set -euo pipefail
+          gcloud storage ls --recursive "gs://${RESULTS_BUCKET}/${RESULTS_DIR}/**" \
+            | sed "s#^gs://${RESULTS_BUCKET}/${RESULTS_DIR}/##" \
+            | LC_ALL=C sort
 
       - name: Post results link to job summary
         if: always()
@@ -228,14 +265,13 @@ jobs:
   # walks the same golden path a Play reviewer would: fresh
   # install → New wallet → set + confirm 8-digit PIN → Created.
   #
-  # The XCUITest target exists. The remaining cloud blocker is signing:
-  # Firebase requires the app and XCUITest runner to be signed before
-  # upload, but no CI certificate/provisioning setup exists in this repo.
+  # The XCUITest target exists. Firebase requires both the app and runner to be
+  # signed before upload; App Store Connect API authentication lets Xcode
+  # automatically resolve the development signing assets on the clean runner.
   # --------------------------------------------------------------
   ios-smoke:
-    # Firebase requires the app and XCUITest runner to be signed before upload.
-    # Keep iOS explicitly disabled until the Apple certificate/provisioning
-    # handoff is installed; an unsigned upload is not an app test.
+    # The variable is an explicit owner-controlled readiness gate. The job also
+    # validates all three signing secrets and codesign-verifies both products.
     if: >-
       vars.IOS_FIREBASE_SIGNING_READY == 'true'
       && (github.event_name != 'workflow_dispatch'
@@ -257,13 +293,33 @@ jobs:
       - name: Pin npm to 11
         run: npm install -g npm@11
       - run: npm ci
-      - name: Build web assets + sync Capacitor iOS
+      - name: Build staging web assets + sync Capacitor iOS
         run: |
-          npm run build
+          npm run build:staging
           npx cap sync ios
+
+      - name: Install App Store Connect signing key
+        id: asc_key
+        env:
+          IOS_ASC_PRIVATE_KEY: ${{ secrets.IOS_ASC_PRIVATE_KEY }}
+          IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          : "${IOS_ASC_PRIVATE_KEY:?IOS_ASC_PRIVATE_KEY is required}"
+          : "${IOS_ASC_KEY_ID:?IOS_ASC_KEY_ID is required}"
+          : "${IOS_ASC_ISSUER_ID:?IOS_ASC_ISSUER_ID is required}"
+          ASC_KEY_PATH="$RUNNER_TEMP/AuthKey_${IOS_ASC_KEY_ID}.p8"
+          printf '%s' "$IOS_ASC_PRIVATE_KEY" > "$ASC_KEY_PATH"
+          chmod 600 "$ASC_KEY_PATH"
+          echo "path=$ASC_KEY_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Resolve Swift Package dependencies
         working-directory: ios/App
+        env:
+          ASC_KEY_PATH: ${{ steps.asc_key.outputs.path }}
+          ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
         run: |
           # Resolve for BOTH schemes so the AppUITests build graph gets the
           # same Capacitor module instance the App target uses. Previously we
@@ -274,32 +330,51 @@ jobs:
           rm -f App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved || true
           xcodebuild -resolvePackageDependencies \
             -project App.xcodeproj \
-            -scheme AppUITests 2>&1 | tail -5
+            -scheme AppUITests \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tail -5
           xcodebuild -resolvePackageDependencies \
             -project App.xcodeproj \
-            -scheme App 2>&1 | tail -5
+            -scheme App \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tail -5
 
-      - name: Build unsigned app + test bundle
+      - name: Build and verify signed app + test runner
         working-directory: ios/App
+        env:
+          ASC_KEY_PATH: ${{ steps.asc_key.outputs.path }}
+          ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
         run: |
-          set -o pipefail
+          set -euo pipefail
           # SPM project (CapApp-SPM — no Podfile/CocoaPods, no .xcworkspace).
-          # Use -project, not -workspace.
-          # CODE_SIGN_IDENTITY="" — compile-only unsigned build. Firebase Test
-          # Lab requires both the app and XCUITest runner to be signed before
-          # upload. Keep this honest blocker explicit until CI has a certificate
-          # and provisioning profile; Test Lab re-signing happens only afterward.
+          # Use -project, not -workspace. Test Lab re-signs only after accepting
+          # these already-signed products, so verify both locally first.
           xcodebuild \
             -project App.xcodeproj \
             -scheme AppUITests \
             -sdk iphoneos \
             -configuration Debug \
             -derivedDataPath build/ \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM=R54268MWFV \
+            CODE_SIGN_STYLE=Automatic \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             build-for-testing 2>&1 | tail -30
-          # Zip products for Test Lab:
+
+          APP_PATH="$PWD/build/Build/Products/Debug-iphoneos/App.app"
+          RUNNER_PATH="$(find "$PWD/build/Build/Products/Debug-iphoneos" -maxdepth 2 -type d -name '*UITests-Runner.app' -print -quit)"
+          test -d "$APP_PATH"
+          test -n "$RUNNER_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$RUNNER_PATH"
+
           cd build/Build/Products
           zip -r ios-tests.zip Debug-iphoneos *.xctestrun
 
@@ -314,6 +389,7 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: XCUITest smoke on real iPhones
+        id: ios_test
         env:
           RAW_TIMEOUT: ${{ inputs.timeout }}
           RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
@@ -325,13 +401,55 @@ jobs:
           else
             TIMEOUT="5m"
           fi
+          set +e
           gcloud firebase test ios run \
             --test ios/App/build/Build/Products/ios-tests.zip \
             --device model=iphone13pro,version=16.6,locale=en_US,orientation=portrait \
             --device model=iphone14,version=17.5,locale=en_US,orientation=portrait \
             --timeout "$TIMEOUT" \
             --results-bucket "$RESULTS_BUCKET" \
-            --results-dir "ios-smoke-$SHA"
+            --results-dir "ios-smoke-$SHA-${{ github.run_id }}-${{ github.run_attempt }}" 2>&1 \
+            | tee firebase-ios-test-lab.log
+          TEST_STATUS=${PIPESTATUS[0]}
+          set -e
+          MATRIX_ID=$(sed -n 's/.*Test \[\(matrix-[^]]*\)\].*/\1/p' firebase-ios-test-lab.log | tail -1)
+          echo "matrix_id=$MATRIX_ID" >> "$GITHUB_OUTPUT"
+          exit "$TEST_STATUS"
+
+      - name: Surface sanitized iOS per-device diagnostics
+        if: always() && steps.ios_test.outputs.matrix_id != ''
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          MATRIX_ID: ${{ steps.ios_test.outputs.matrix_id }}
+        run: |
+          set -euo pipefail
+          ACCESS_TOKEN=$(gcloud auth print-access-token)
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://testing.googleapis.com/v1/projects/${PROJECT_ID}/testMatrices/${MATRIX_ID}" \
+            --output firebase-ios-matrix.json
+          jq '{
+            state,
+            invalidMatrixDetails,
+            outcomeSummary,
+            testExecutions: [
+              .testExecutions[]? | {
+                id,
+                state,
+                environment: .environment.iosDevice,
+                testDetails,
+                toolResultsStep: .toolExecution.toolResultsStep,
+                toolLogs: (.toolExecution.toolLogs // []),
+                toolOutputs: (.toolExecution.toolOutputs // []),
+                outcome: .toolExecution.outcome,
+                infrastructureFailure: (
+                  .toolExecution.infrastructureFailure
+                  // .infrastructureFailure
+                  // null
+                )
+              }
+            ]
+          }' firebase-ios-matrix.json
 
       - name: Post results link
         if: always()
@@ -341,4 +459,121 @@ jobs:
           {
             echo "### Firebase Test Lab — iOS smoke"
             echo "Results: https://console.firebase.google.com/project/${PROJECT_ID}/testlab/histories/"
+            echo "Matrix: \`${{ steps.ios_test.outputs.matrix_id || 'unavailable' }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------
+  # Store distribution is deliberately downstream of BOTH device suites. A
+  # staging upload can never race ahead of a red Android or iOS matrix.
+  # --------------------------------------------------------------
+  publish-android-staging:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.platform == 'both'
+      && inputs.publish_staging == true
+    needs: [android-robo, ios-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Firebase-gated staging AAB
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: veyrnox-staging-aab
+          path: aab-artifact
+          run-id: ${{ needs.android-robo.outputs.ci_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify staging AAB
+        run: test -s aab-artifact/app-release.aab
+      - name: Upload Android 1.0.1 staging to Play Internal Testing
+        uses: r0adkll/upload-google-play@935ef9c68bfaeb5c8b5c0f9bc8b6a2f7b2fce4d3 # v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.veyrnox.app
+          releaseFiles: aab-artifact/app-release.aab
+          track: internal
+          status: completed
+
+  publish-ios-staging:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.platform == 'both'
+      && inputs.publish_staging == true
+    needs: [android-robo, ios-smoke]
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install -g npm@11
+      - run: npm ci
+      - name: Build staging web assets + sync Capacitor iOS
+        run: |
+          npm run build:staging
+          npx cap sync ios
+      - name: Install App Store Connect key
+        id: asc_upload_key
+        env:
+          IOS_ASC_PRIVATE_KEY: ${{ secrets.IOS_ASC_PRIVATE_KEY }}
+          IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          : "${IOS_ASC_PRIVATE_KEY:?IOS_ASC_PRIVATE_KEY is required}"
+          : "${IOS_ASC_KEY_ID:?IOS_ASC_KEY_ID is required}"
+          : "${IOS_ASC_ISSUER_ID:?IOS_ASC_ISSUER_ID is required}"
+          KEY_DIR="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$KEY_DIR"
+          ASC_KEY_PATH="$KEY_DIR/AuthKey_${IOS_ASC_KEY_ID}.p8"
+          printf '%s' "$IOS_ASC_PRIVATE_KEY" > "$ASC_KEY_PATH"
+          chmod 600 "$ASC_KEY_PATH"
+          echo "path=$ASC_KEY_PATH" >> "$GITHUB_OUTPUT"
+      - name: Archive, verify, and export iOS 1.0.1 staging
+        working-directory: ios/App
+        env:
+          ASC_KEY_PATH: ${{ steps.asc_upload_key.outputs.path }}
+          ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj \
+            -scheme App \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          xcodebuild archive \
+            -project App.xcodeproj \
+            -scheme App \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/Veyrnox-Staging.xcarchive" \
+            DEVELOPMENT_TEAM=R54268MWFV \
+            CODE_SIGN_STYLE=Automatic \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          codesign --verify --deep --strict --verbose=2 \
+            "$RUNNER_TEMP/Veyrnox-Staging.xcarchive/Products/Applications/App.app"
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Veyrnox-Staging.xcarchive" \
+            -exportOptionsPlist ExportOptionsCI.plist \
+            -exportPath "$RUNNER_TEMP/Veyrnox-Staging" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          test -s "$RUNNER_TEMP/Veyrnox-Staging/App.ipa"
+      - name: Upload iOS 1.0.1 staging to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$RUNNER_TEMP/Veyrnox-Staging/App.ipa" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"

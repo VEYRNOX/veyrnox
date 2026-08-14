@@ -7,7 +7,11 @@
   {
     "description": "Choose the fresh wallet path",
     "eventType": "VIEW_CLICKED",
-    "visionText": "New wallet"
+    "elementDescriptors": [
+      {
+        "text": "New wallet"
+      }
+    ]
   },
   {
     "description": "Wait for the custom PinPad",
@@ -16,40 +20,44 @@
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "2"
+    "elementDescriptors": [{ "text": "2" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "4"
+    "elementDescriptors": [{ "text": "4" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "6"
+    "elementDescriptors": [{ "text": "6" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "8"
+    "elementDescriptors": [{ "text": "8" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "1"
+    "elementDescriptors": [{ "text": "1" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "0"
+    "elementDescriptors": [{ "text": "0" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "2"
+    "elementDescriptors": [{ "text": "2" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "4"
+    "elementDescriptors": [{ "text": "4" }]
   },
   {
     "description": "Explicitly submit the eight-digit PIN",
     "eventType": "VIEW_CLICKED",
-    "visionText": "Continue"
+    "elementDescriptors": [
+      {
+        "contentDescription": "Submit PIN"
+      }
+    ]
   },
   {
     "description": "Wait for the confirmation PinPad",
@@ -58,40 +66,44 @@
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "2"
+    "elementDescriptors": [{ "text": "2" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "4"
+    "elementDescriptors": [{ "text": "4" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "6"
+    "elementDescriptors": [{ "text": "6" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "8"
+    "elementDescriptors": [{ "text": "8" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "1"
+    "elementDescriptors": [{ "text": "1" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "0"
+    "elementDescriptors": [{ "text": "0" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "2"
+    "elementDescriptors": [{ "text": "2" }]
   },
   {
     "eventType": "VIEW_CLICKED",
-    "visionText": "4"
+    "elementDescriptors": [{ "text": "4" }]
   },
   {
     "description": "Explicitly submit PIN confirmation",
     "eventType": "VIEW_CLICKED",
-    "visionText": "Continue"
+    "elementDescriptors": [
+      {
+        "contentDescription": "Submit PIN"
+      }
+    ]
   },
   {
     "description": "Allow Argon2id and deniability-slot provisioning to finish",
@@ -104,7 +116,11 @@
     "contextDescriptor": {
       "condition": "element_present",
       "negateCondition": true,
-      "visionText": "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
+      "elementDescriptors": [
+        {
+          "text": "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
+        }
+      ]
     }
   },
   {
@@ -112,12 +128,11 @@
     "eventType": "ASSERTION",
     "contextDescriptor": {
       "condition": "element_present",
-      "visionText": "Created."
+      "elementDescriptors": [
+        {
+          "text": "Created."
+        }
+      ]
     }
-  },
-  {
-    "description": "Capture the post-onboarding state before Robo continues crawling",
-    "eventType": "TAKE_SCREENSHOT",
-    "screenshotName": "post-pin-onboarding"
   }
 ]

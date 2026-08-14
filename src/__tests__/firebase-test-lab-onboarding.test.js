@@ -49,19 +49,22 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
 
     const clicks = roboScript
       .filter(({ eventType }) => eventType === 'VIEW_CLICKED')
-      .map(({ visionText }) => visionText);
+      .map(({ elementDescriptors }) => elementDescriptors?.[0]);
     const pin = '24681024';
     expect(clicks).toEqual([
-      'New wallet',
-      ...pin,
-      'Continue',
-      ...pin,
-      'Continue',
+      { text: 'New wallet' },
+      ...[...pin].map(text => ({ text })),
+      { contentDescription: 'Submit PIN' },
+      ...[...pin].map(text => ({ text })),
+      { contentDescription: 'Submit PIN' },
     ]);
+    expect(roboScript.every(({ visionText }) => visionText == null)).toBe(true);
     expect(roboScript.some(({ eventType }) => eventType === 'VIEW_TEXT_CHANGED')).toBe(false);
     expect(roboScript).toContainEqual(expect.objectContaining({
       eventType: 'ASSERTION',
-      contextDescriptor: expect.objectContaining({ visionText: 'Created.' }),
+      contextDescriptor: expect.objectContaining({
+        elementDescriptors: [{ text: 'Created.' }],
+      }),
     }));
   });
 
@@ -103,6 +106,8 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).toContain('testing.googleapis.com/v1/projects/${PROJECT_ID}/testMatrices/${MATRIX_ID}');
     expect(workflow).toContain('invalidMatrixDetails');
     expect(workflow).toContain('infrastructureFailure');
+    expect(workflow).toContain('toolResultsStep');
+    expect(workflow).toContain('toolLogs');
     expect(workflow).toContain('${{ github.run_id }}-${{ github.run_attempt }}');
   });
 
@@ -110,5 +115,31 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).toContain('platform:');
     expect(workflow).toContain("inputs.platform == 'android'");
     expect(workflow).toContain("vars.IOS_FIREBASE_SIGNING_READY == 'true'");
+  });
+
+  it('builds and verifies Apple-signed app and XCUITest runner artifacts before Firebase upload', () => {
+    expect(workflow).toContain('secrets.IOS_ASC_PRIVATE_KEY');
+    expect(workflow).toContain('secrets.IOS_ASC_KEY_ID');
+    expect(workflow).toContain('secrets.IOS_ASC_ISSUER_ID');
+    expect(workflow).toContain('-allowProvisioningUpdates');
+    expect(workflow).toContain('-authenticationKeyPath "$ASC_KEY_PATH"');
+    expect(workflow).toContain('DEVELOPMENT_TEAM=R54268MWFV');
+    expect(workflow).toContain('codesign --verify --deep --strict --verbose=2 "$APP_PATH"');
+    expect(workflow).toContain('codesign --verify --deep --strict --verbose=2 "$RUNNER_PATH"');
+    expect(workflow).not.toContain('CODE_SIGNING_ALLOWED=NO');
+    expect(workflow).not.toContain('Build unsigned app + test bundle');
+  });
+
+  it('gates both staging store uploads on both Firebase device suites', () => {
+    expect(workflow).toContain('publish_staging:');
+    expect(workflow).toContain('publish-android-staging:');
+    expect(workflow).toContain('publish-ios-staging:');
+    expect(workflow.match(/needs: \[android-robo, ios-smoke\]/g)).toHaveLength(2);
+    expect(workflow).toContain('name: veyrnox-staging-aab');
+    expect(workflow).toContain('track: internal');
+    expect(workflow).toContain('xcrun altool --upload-app');
+    expect(workflow).toContain('npm run build:staging');
+    expect(ciWorkflow).toContain('build_staging_release:');
+    expect(ciWorkflow).toContain("'veyrnox-staging-aab'");
   });
 });

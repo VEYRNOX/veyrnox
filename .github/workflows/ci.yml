@@ -16,6 +16,11 @@ on:
         type: boolean
         required: false
         default: false
+      build_staging_release:
+        description: 'Build signed Android 1.0.1 staging artifacts for Firebase-gated Internal Testing'
+        type: boolean
+        required: false
+        default: false
 
 # Cancel superseded runs on the same ref to save minutes.
 concurrency:
@@ -269,7 +274,8 @@ jobs:
     # production AAB or its Play app-signing certificate expectation.
     if: >-
       (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
-      || (github.event_name == 'workflow_dispatch' && inputs.build_release == true)
+      || (github.event_name == 'workflow_dispatch'
+      && (inputs.build_release == true || inputs.build_staging_release == true))
     needs: verify
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -279,7 +285,18 @@ jobs:
           cache: npm
       - run: npm install -g npm@11
       - run: npm ci
-      - run: npm run build
+      - name: Refuse ambiguous production + staging dispatch
+        if: inputs.build_release == true && inputs.build_staging_release == true
+        run: |
+          echo "::error::Choose either build_release or build_staging_release, never both."
+          exit 1
+      - name: Build web assets for the selected release channel
+        run: |
+          if [ "${{ inputs.build_staging_release }}" = "true" ]; then
+            npm run build:staging
+          else
+            npm run build
+          fi
       - name: Sync Capacitor
         run: npx cap sync android
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -342,7 +359,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: veyrnox-release-apk
+          name: ${{ inputs.build_staging_release && 'veyrnox-staging-apk' || 'veyrnox-release-apk' }}
           path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
       # The Play upload artifact. Download this, upload to the internal track,
@@ -351,7 +368,7 @@ jobs:
       - name: Upload AAB artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: veyrnox-release-aab
+          name: ${{ inputs.build_staging_release && 'veyrnox-staging-aab' || 'veyrnox-release-aab' }}
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
       # Surfaces the versionCode actually built, so it can be checked against
@@ -359,13 +376,16 @@ jobs:
       # a duplicate versionCode outright, and that is a slow thing to discover
       # at the end of an upload.
       - name: Report built versionCode
+        env:
+          RELEASE_CHANNEL: ${{ inputs.build_staging_release && 'staging' || 'production' }}
         run: |
           VC=$(grep -m1 'versionCode' app/build.gradle | tr -dc '0-9')
           echo "Built versionCode: ${VC}"
-          echo "### Android release artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Android ${RELEASE_CHANNEL} release artifacts" >> "$GITHUB_STEP_SUMMARY"
           echo "- versionCode: \`${VC}\` — must exceed every versionCode already uploaded to Play" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`veyrnox-release-aab\` → Play internal track (required for Play Billing)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`veyrnox-release-apk\` → sideload smoke test only (Play Billing will NOT work)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- channel: \`${RELEASE_CHANNEL}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- AAB → Play internal track after both Firebase device suites pass" >> "$GITHUB_STEP_SUMMARY"
+          echo "- APK → sideload smoke test only (Play Billing will NOT work)" >> "$GITHUB_STEP_SUMMARY"
         working-directory: android
 
   # Firebase Robo normally re-signs the app. Veyrnox's RASP gate correctly
@@ -388,7 +408,13 @@ jobs:
           cache: npm
       - run: npm install -g npm@11
       - run: npm ci
-      - run: npm run build
+      - name: Build web assets for Firebase
+        run: |
+          if [ "${{ inputs.build_staging_release }}" = "true" ]; then
+            npm run build:staging
+          else
+            npm run build
+          fi
       - name: Sync Capacitor
         run: npx cap sync android
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
