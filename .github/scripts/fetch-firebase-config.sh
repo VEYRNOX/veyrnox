@@ -39,10 +39,28 @@ response_file="$(mktemp)"
 decoded_file="$(mktemp)"
 trap 'rm -f "$response_file" "$decoded_file"' EXIT
 
-curl --fail --silent --show-error \
-  -H "Authorization: Bearer ${access_token}" \
-  "https://firebase.googleapis.com/v1beta1/projects/${project_id}/${collection}/${firebase_app_id}/config" \
-  --output "$response_file"
+fetch_config() {
+  local resource_path="$1"
+  local status
+  status="$(curl --silent --show-error \
+    -H "Authorization: Bearer ${access_token}" \
+    -w '%{http_code}' \
+    "https://firebase.googleapis.com/v1beta1/${resource_path}" \
+    --output "$response_file")" || return 1
+  [[ "$status" == "200" ]]
+}
+
+# Firebase documents a unique-resource fallback that addresses an app directly
+# without requiring the project identifier in the resource name. Some service
+# account / project combinations can read the app config via the app-scoped path
+# even when the project-scoped path is denied.
+if ! fetch_config "projects/${project_id}/${collection}/${firebase_app_id}/config"; then
+  fetch_config "projects/-/${collection}/${firebase_app_id}/config" \
+    || {
+      echo "Failed to fetch Firebase ${platform} config for ${firebase_app_id} via project-scoped and app-scoped resource paths." >&2
+      exit 1
+    }
+fi
 
 jq -er '.configFileContents' "$response_file" \
   | openssl base64 -d -A > "$decoded_file"

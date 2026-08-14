@@ -74,6 +74,8 @@ describe('Firebase staging observability', () => {
   it('fetches exact Firebase configs for Test Lab and explicitly gated staging builds', () => {
     expect(configFetcher).toContain('gcloud auth print-access-token');
     expect(configFetcher).toContain('configFileContents');
+    expect(configFetcher).toContain('projects/${project_id}/${collection}/${firebase_app_id}/config');
+    expect(configFetcher).toContain('projects/-/${collection}/${firebase_app_id}/config');
     expect(ci).toContain('1:567659013773:android:166961ac09b49c5f8864c4');
     expect(ci).toContain('com.veyrnox.app.firebase.testlab');
     expect(ci).toContain('1:567659013773:android:2f04cc2942faba1f8864c4');
