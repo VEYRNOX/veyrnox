@@ -17,8 +17,19 @@ name: Firebase Test Lab (Android + iOS smoke)
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: 'Device matrix to run'
+        type: choice
+        required: true
+        default: 'android'
+        options:
+          - android
+          - ios
+          - both
       timeout:
         description: 'Per-device timeout (e.g. 5m, 10m)'
+        type: string
+        required: false
         default: '5m'
   push:
     branches: [main]
@@ -48,13 +59,18 @@ jobs:
   # logcat per device.
   # --------------------------------------------------------------
   android-robo:
+    if: >-
+      github.event_name != 'workflow_dispatch'
+      || inputs.platform == 'android'
+      || inputs.platform == 'both'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      # This workflow and ci.yml start independently on the same main push.
-      # Wait for CI's run for THIS SHA, then download by run ID. The old
-      # branch=main lookup could silently test the previous successful AAB.
+      # This workflow and ci.yml start independently on the same main push. A
+      # manual branch run first dispatches ci.yml with build_release=true.
+      # Accept only push/workflow_dispatch CI runs for THIS SHA, then download
+      # by run ID. A PR run cannot produce the signed release AAB.
       - name: Wait for this commit's successful CI artifact
         id: ci_run
         env:
@@ -66,10 +82,9 @@ jobs:
             RUN_JSON=$(gh run list \
               --workflow ci.yml \
               --commit "$SHA" \
-              --event push \
-              --limit 1 \
-              --json databaseId,status,conclusion \
-              --jq '.[0] // {}')
+              --limit 20 \
+              --json databaseId,status,conclusion,event,createdAt \
+              --jq '[.[] | select(.event == "push" or .event == "workflow_dispatch")] | sort_by(.createdAt) | reverse | .[0] // {}')
             RUN_ID=$(jq -r '.databaseId // empty' <<<"$RUN_JSON")
             STATUS=$(jq -r '.status // empty' <<<"$RUN_JSON")
             CONCLUSION=$(jq -r '.conclusion // empty' <<<"$RUN_JSON")
@@ -171,6 +186,14 @@ jobs:
   # upload, but no CI certificate/provisioning setup exists in this repo.
   # --------------------------------------------------------------
   ios-smoke:
+    # Firebase requires the app and XCUITest runner to be signed before upload.
+    # Keep iOS explicitly disabled until the Apple certificate/provisioning
+    # handoff is installed; an unsigned upload is not an app test.
+    if: >-
+      vars.IOS_FIREBASE_SIGNING_READY == 'true'
+      && (github.event_name != 'workflow_dispatch'
+      || inputs.platform == 'ios'
+      || inputs.platform == 'both')
     runs-on: macos-14
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

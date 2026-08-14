@@ -14,6 +14,7 @@ const read = (path) => readFileSync(resolve(root, path), 'utf8');
 
 const swift = read('ios/App/AppUITests/AppUITests.swift');
 const workflow = read('.github/workflows/firebase-test-lab.yml');
+const ciWorkflow = read('.github/workflows/ci.yml');
 const roboScriptPath = '.github/testlab/android-pin-onboarding-robo-script.json';
 const roboScript = JSON.parse(read(roboScriptPath));
 
@@ -68,6 +69,16 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).toContain('--commit "$SHA"');
     expect(workflow).toContain('run-id: ${{ steps.ci_run.outputs.run_id }}');
     expect(workflow).toContain('github-token: ${{ github.token }}');
+    expect(workflow).toContain('.event == "workflow_dispatch"');
+    expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
+  });
+
+  it('supports a manual exact-SHA Android Firebase run without enabling Play publication', () => {
+    expect(ciWorkflow).toContain('build_release:');
+    expect(ciWorkflow).toContain("github.event_name == 'workflow_dispatch' && inputs.build_release == true");
+    expect(workflow).toContain('platform:');
+    expect(workflow).toContain("inputs.platform == 'android'");
+    expect(workflow).toContain("vars.IOS_FIREBASE_SIGNING_READY == 'true'");
   });
 });

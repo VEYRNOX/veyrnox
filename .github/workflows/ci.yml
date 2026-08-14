@@ -5,6 +5,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      build_release:
+        description: 'Build signed Android release artifacts for an exact-SHA Firebase run'
+        type: boolean
+        required: false
+        default: false
 
 # Cancel superseded runs on the same ref to save minutes.
 concurrency:
@@ -253,8 +259,12 @@ jobs:
 
   android-release:
     runs-on: ubuntu-latest
-    # Only build the release APK on main-branch pushes (not every PR).
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Build on main as before, or explicitly for a manually dispatched branch
+    # run. The manual path creates an exact-SHA AAB for Firebase Test Lab but
+    # cannot publish to Play because publish-to-play-internal remains main-only.
+    if: >-
+      (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
+      || (github.event_name == 'workflow_dispatch' && inputs.build_release == true)
     needs: verify
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
