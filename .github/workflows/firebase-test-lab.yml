@@ -255,9 +255,11 @@ jobs:
           RESULTS_DIR: ${{ steps.robo.outputs.results_dir }}
         run: |
           set -euo pipefail
-          gcloud storage ls --recursive "gs://${RESULTS_BUCKET}/${RESULTS_DIR}/**" \
+          if ! gcloud storage ls --recursive "gs://${RESULTS_BUCKET}/${RESULTS_DIR}/**" \
             | sed "s#^gs://${RESULTS_BUCKET}/${RESULTS_DIR}/##" \
-            | LC_ALL=C sort
+            | LC_ALL=C sort; then
+            echo "::warning::Firebase result inventory unavailable. The configured GitHub Actions service account lacks read/list access on gs://${RESULTS_BUCKET}/${RESULTS_DIR}. Grant Cloud Storage Storage Object Viewer on the results bucket if private inventory output is required."
+          fi
 
       - name: Post results link to job summary
         if: always()
