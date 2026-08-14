@@ -7,7 +7,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, ShieldAlert, ArrowUpRight, ArrowDownLeft, ArrowUp, CheckCircle2, Clock, XCircle, Lock, BarChart2, Newspaper, ShieldCheck, Search, CalendarClock, ShoppingCart } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import AnimatedFiat from "@/components/AnimatedFiat";
 import EmptyState from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -227,7 +226,7 @@ function DemoDashboard() {
           <FiatCurrencySelector value={fiatCurrency} onChange={setFiatCurrency} />
         </div>
         <p className={`text-4xl font-bold mono-value transition-all duration-300 ${isLocked ? 'blur-md select-none' : ''}`}>
-          <AnimatedFiat value={displayValue ?? totalUSD} format={(v) => formatFiat(v, fiatCurrency, locale)} />
+          {formatFiat(displayValue ?? totalUSD, fiatCurrency, locale)}
         </p>
         <ReferenceRateNote />
         {!isLocked && wallets.length > 0 && (
