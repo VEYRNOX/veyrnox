@@ -93,6 +93,21 @@ android {
             debuggable false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        // Firebase Robo re-signs APKs by default. That is incompatible with the
+        // pre-WebView RASP certificate gate, which intentionally blocks any APK
+        // whose installed signer differs from the fingerprint embedded here.
+        //
+        // This is therefore a separate, APK-only test variant: it inherits every
+        // release hardening setting, has a distinct package ID so it cannot replace
+        // the production app, and embeds the same upload-key fingerprint that signs
+        // the CI artifact. The Firebase workflow must pair it with --no-resign.
+        firebaseTest {
+            initWith release
+            applicationIdSuffix ".firebase.testlab"
+            versionNameSuffix "-firebase-test"
+            matchingFallbacks = ['release']
+            buildConfigField "String", "RELEASE_CERT_SHA256", "\"${project.findProperty('FIREBASE_TEST_CERT_SHA256') ?: ''}\""
+        }
     }
 }
 
@@ -136,6 +151,59 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// A Firebase Test Lab artifact is deliberately APK-only. Disabling its bundle
+// task and using a non-production applicationId keep it out of every Play upload
+// path even if somebody invokes the task by mistake.
+tasks.matching { it.name == 'bundleFirebaseTest' }.configureEach {
+    enabled = false
+}
+
+tasks.matching { it.name == 'assembleFirebaseTest' }.configureEach {
+    doFirst {
+        def cert = project.findProperty('FIREBASE_TEST_CERT_SHA256') ?: ''
+        if (!cert.matches(/^([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$/)) {
+            throw new GradleException(
+                'FIREBASE_TEST_CERT_SHA256 must be 32 colon-separated hex pairs.\n' +
+                'Derive it from the same upload keystore that signs this APK.')
+        }
+
+        def sc = android.signingConfigs.release
+        if (sc.storeFile == null || !sc.storeFile.exists()) {
+            throw new GradleException(
+                'Firebase Test Lab signing is not configured. Expected the release ' +
+                'upload keystore via KEYSTORE_PATH and its credential environment variables.')
+        }
+
+        def uploadSha
+        try {
+            def ks = java.security.KeyStore.getInstance('JKS')
+            sc.storeFile.withInputStream {
+                ks.load(it, sc.storePassword == null ? null : sc.storePassword.toCharArray())
+            }
+            def signingCert = ks.getCertificate(sc.keyAlias)
+            if (signingCert == null) {
+                throw new GradleException("No signing certificate found for alias '${sc.keyAlias}'.")
+            }
+            uploadSha = java.security.MessageDigest.getInstance('SHA-256')
+                .digest(signingCert.encoded)
+                .collect { String.format('%02X', it) }
+                .join(':')
+        } catch (GradleException e) {
+            throw e
+        } catch (Exception e) {
+            throw new GradleException(
+                "Could not derive the Firebase Test Lab signing fingerprint: ${e.message}", e)
+        }
+
+        if (!cert.equalsIgnoreCase(uploadSha)) {
+            throw new GradleException(
+                'FIREBASE_TEST_CERT_SHA256 does not match the keystore signing this APK.\n' +
+                'Refusing to create a Firebase artifact that RASP will block at launch.')
+        }
+        logger.lifecycle('firebase-test signing guard: embedded fingerprint matches APK signer')
+    }
+}
 
 tasks.matching { it.name == 'bundleRelease' || it.name == 'assembleRelease' }.configureEach {
     doFirst {
@@ -330,4 +398,3 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
-

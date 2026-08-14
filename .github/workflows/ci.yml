@@ -7,7 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       build_release:
-        description: 'Build signed Android release artifacts for an exact-SHA Firebase run'
+        description: 'Build signed production Android release artifacts'
+        type: boolean
+        required: false
+        default: false
+      build_firebase_test:
+        description: 'Build the isolated signed APK used only by Firebase Test Lab'
         type: boolean
         required: false
         default: false
@@ -259,9 +264,9 @@ jobs:
 
   android-release:
     runs-on: ubuntu-latest
-    # Build on main as before, or explicitly for a manually dispatched branch
-    # run. The manual path creates an exact-SHA AAB for Firebase Test Lab but
-    # cannot publish to Play because publish-to-play-internal remains main-only.
+    # Build production artifacts on main as before, or explicitly for a manual
+    # release build. Firebase uses the isolated job below; it never consumes the
+    # production AAB or its Play app-signing certificate expectation.
     if: >-
       (github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
       || (github.event_name == 'workflow_dispatch' && inputs.build_release == true)
@@ -362,6 +367,89 @@ jobs:
           echo "- \`veyrnox-release-aab\` → Play internal track (required for Play Billing)" >> "$GITHUB_STEP_SUMMARY"
           echo "- \`veyrnox-release-apk\` → sideload smoke test only (Play Billing will NOT work)" >> "$GITHUB_STEP_SUMMARY"
         working-directory: android
+
+  # Firebase Robo normally re-signs the app. Veyrnox's RASP gate correctly
+  # rejects that, while the production AAB expects Google's Play app-signing
+  # certificate rather than the upload certificate available in CI. Build a
+  # separate release-hardened APK whose unique package ID and disabled bundle
+  # task make it non-publishable, and whose embedded RASP fingerprint matches
+  # the same upload key that signs the APK.
+  android-firebase-test:
+    runs-on: ubuntu-latest
+    if: >-
+      (github.ref == 'refs/heads/main' && github.event_name == 'push')
+      || (github.event_name == 'workflow_dispatch' && inputs.build_firebase_test == true)
+    needs: verify
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install -g npm@11
+      - run: npm ci
+      - run: npm run build
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Decode upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::KEYSTORE_BASE64 is required for the Firebase Test Lab APK."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/keystore.jks
+          echo "KEYSTORE_PATH=$PWD/android/keystore.jks" >> "$GITHUB_ENV"
+      - name: Derive the APK signing certificate for the RASP gate
+        id: firebase_cert
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          FIREBASE_SHA=$(keytool -list -v \
+            -keystore android/keystore.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            | awk '/SHA256:/{sha=$2} END{print sha}')
+          if [[ ! "$FIREBASE_SHA" =~ ^([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$ ]]; then
+            echo "::error::Could not derive a valid SHA-256 fingerprint from the upload keystore."
+            exit 1
+          fi
+          echo "sha256=$FIREBASE_SHA" >> "$GITHUB_OUTPUT"
+      - name: Build non-publishable Firebase Test Lab APK
+        env:
+          FIREBASE_TEST_CERT_SHA256: ${{ steps.firebase_cert.outputs.sha256 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        working-directory: android
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew assembleFirebaseTest \
+            -PFIREBASE_TEST_CERT_SHA256="$FIREBASE_TEST_CERT_SHA256"
+      - name: Upload isolated Firebase APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: veyrnox-firebase-test-apk
+          path: android/app/build/outputs/apk/firebaseTest/app-firebaseTest.apk
+          retention-days: 14
+      - name: Report Firebase artifact isolation
+        run: |
+          {
+            echo "### Android Firebase Test Lab artifact"
+            echo "- package: \`com.veyrnox.app.firebase.testlab\`"
+            echo "- build: release-hardened, signed with the CI upload key"
+            echo "- output: APK only; \`bundleFirebaseTest\` is disabled"
+            echo "- Play publication: not permitted"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # --------------------------------------------------------------------------
   # Publish the signed release AAB to Play's INTERNAL track.

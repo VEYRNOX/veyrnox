@@ -1,12 +1,12 @@
 name: Firebase Test Lab (Android + iOS smoke)
 # ------------------------------------------------------------------
 # Runs the same Robo crawler Google Play Pre-launch report uses,
-# on physical devices in Google's data center — BEFORE the AAB is
+# on physical devices in Google's data center — BEFORE a production AAB is
 # ever uploaded to Play. Rejection-shaped defects (crash on Create
 # Wallet, unresponsive UI, KEK fail-closed on untested hardware)
 # surface here, not from a human reviewer.
 #
-# Cost: ~$2/run on Blaze (5 devices × 5 min).
+# Cost: billed by Firebase for the configured 3-device matrix.
 # Auth: workload-identity federation to Firebase, or a service-account
 # JSON stored as GCP_SA_KEY. Setup: docs/firebase-test-lab-setup.md.
 #
@@ -54,7 +54,7 @@ permissions:
 
 jobs:
   # --------------------------------------------------------------
-  # Android — Robo crawler on 5 real devices. Same infra as Play
+  # Android — Robo crawler on 3 real devices. Same infra as Play
   # Pre-launch report. Output: crashes, ANRs, screenshots, video,
   # logcat per device.
   # --------------------------------------------------------------
@@ -68,9 +68,9 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       # This workflow and ci.yml start independently on the same main push. A
-      # manual branch run first dispatches ci.yml with build_release=true.
+      # manual branch run first dispatches ci.yml with build_firebase_test=true.
       # Accept only push/workflow_dispatch CI runs for THIS SHA, then download
-      # by run ID. A PR run cannot produce the signed release AAB.
+      # by run ID. A PR run cannot produce the isolated signed Firebase APK.
       - name: Wait for this commit's successful CI artifact
         id: ci_run
         env:
@@ -91,7 +91,7 @@ jobs:
 
             if [[ "$STATUS" == "completed" ]]; then
               if [[ "$CONCLUSION" != "success" ]]; then
-                echo "::error::CI run ${RUN_ID} for ${SHA} concluded ${CONCLUSION}; refusing to test another commit's AAB."
+                echo "::error::CI run ${RUN_ID} for ${SHA} concluded ${CONCLUSION}; refusing to test another commit's APK."
                 exit 1
               fi
               echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
@@ -103,13 +103,13 @@ jobs:
             fi
             sleep 15
           done
-          echo "::error::Timed out waiting for a successful CI run for ${SHA}; refusing to fall back to an older AAB."
+          echo "::error::Timed out waiting for a successful CI run for ${SHA}; refusing to fall back to an older APK."
           exit 1
 
-      - name: Download this commit's release AAB from ci.yml
+      - name: Download this commit's isolated Firebase APK from ci.yml
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          name: veyrnox-release-aab
+          name: veyrnox-firebase-test-apk
           path: artifacts
           run-id: ${{ steps.ci_run.outputs.run_id }}
           github-token: ${{ github.token }}
@@ -125,6 +125,7 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Robo crawl (3 devices, mixed API levels)
+        id: robo
         # --num-flaky-test-attempts 0 means no retry: any crash is a crash.
         # Model IDs must match Firebase's current catalog exactly. First run
         # tried raven/a13/husky and hit "'raven' is not a valid model" — some
@@ -141,7 +142,7 @@ jobs:
         env:
           RAW_TIMEOUT: ${{ inputs.timeout }}
           RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
-          SHA: ${{ github.sha }}
+          RESULTS_DIR: robo-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           set -euo pipefail
           # Allowlist: digits followed by s/m/h. Reject anything else, fall back to 5m.
@@ -150,29 +151,75 @@ jobs:
           else
             TIMEOUT="5m"
           fi
+          echo "results_dir=$RESULTS_DIR" >> "$GITHUB_OUTPUT"
+          set +e
           gcloud firebase test android run \
             --type robo \
-            --app artifacts/app-release.aab \
+            --app artifacts/app-firebaseTest.apk \
             --device model=oriole,version=33,locale=en,orientation=portrait \
             --device model=panther,version=33,locale=en,orientation=portrait \
             --device model=shiba,version=34,locale=en,orientation=portrait \
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
+            --no-resign \
             --robo-script .github/testlab/android-pin-onboarding-robo-script.json \
             --results-bucket "$RESULTS_BUCKET" \
-            --results-dir "robo-$SHA"
+            --results-dir "$RESULTS_DIR" 2>&1 | tee firebase-test-lab.log
+          TEST_STATUS=${PIPESTATUS[0]}
+          set -e
+
+          MATRIX_ID=$(sed -n 's/.*Test \[\(matrix-[^]]*\)\].*/\1/p' firebase-test-lab.log | tail -1)
+          echo "matrix_id=$MATRIX_ID" >> "$GITHUB_OUTPUT"
+          exit "$TEST_STATUS"
+
+      # The normal gcloud table collapses device preparation and startup errors
+      # into "Test failed to run". Query only the matrix/execution status fields;
+      # never print logcat or app artifacts, which may contain wallet state.
+      - name: Surface sanitized per-device Firebase diagnostics
+        if: always() && steps.robo.outputs.matrix_id != ''
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          MATRIX_ID: ${{ steps.robo.outputs.matrix_id }}
+        run: |
+          set -euo pipefail
+          ACCESS_TOKEN=$(gcloud auth print-access-token)
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://testing.googleapis.com/v1/projects/${PROJECT_ID}/testMatrices/${MATRIX_ID}" \
+            --output firebase-matrix.json
+          jq '{
+            state,
+            invalidMatrixDetails,
+            outcomeSummary,
+            testExecutions: [
+              .testExecutions[]? | {
+                id,
+                state,
+                environment: .environment.androidDevice,
+                testDetails,
+                outcome: .toolExecution.outcome,
+                infrastructureFailure: (
+                  .toolExecution.infrastructureFailure
+                  // .infrastructureFailure
+                  // null
+                )
+              }
+            ]
+          }' firebase-matrix.json
 
       - name: Post results link to job summary
         if: always()
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
-          SHA: ${{ github.sha }}
+          RESULTS_DIR: ${{ steps.robo.outputs.results_dir }}
+          MATRIX_ID: ${{ steps.robo.outputs.matrix_id }}
         run: |
           {
             echo "### Firebase Test Lab — Robo crawl"
             echo "Results: https://console.firebase.google.com/project/${PROJECT_ID}/testlab/histories/"
-            echo "Bucket:  gs://${RESULTS_BUCKET}/robo-${SHA}"
+            echo "Matrix: \`${MATRIX_ID:-unavailable}\`"
+            echo "Bucket:  gs://${RESULTS_BUCKET}/${RESULTS_DIR}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # --------------------------------------------------------------

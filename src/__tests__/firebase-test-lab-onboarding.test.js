@@ -3,7 +3,7 @@
 // The device tests are authored in Swift / workflow YAML / Robo Script JSON, so
 // Vitest cannot execute them locally. This static guard pins the pieces that
 // previously drifted independently: Veyrnox's eight-digit explicit-submit
-// PinPad, the fresh-install "New wallet" route, and the exact-SHA AAB handoff.
+// PinPad, the fresh-install "New wallet" route, and the exact-SHA APK handoff.
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -15,6 +15,7 @@ const read = (path) => readFileSync(resolve(root, path), 'utf8');
 const swift = read('ios/App/AppUITests/AppUITests.swift');
 const workflow = read('.github/workflows/firebase-test-lab.yml');
 const ciWorkflow = read('.github/workflows/ci.yml');
+const androidBuild = read('android/app/build.gradle');
 const roboScriptPath = '.github/testlab/android-pin-onboarding-robo-script.json';
 const roboScript = JSON.parse(read(roboScriptPath));
 
@@ -64,7 +65,7 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     }));
   });
 
-  it('downloads the Android release artifact from CI for this exact commit', () => {
+  it('downloads the isolated Android Firebase artifact from CI for this exact commit', () => {
     expect(workflow).toContain('actions: read');
     expect(workflow).toContain('--commit "$SHA"');
     expect(workflow).toContain('run-id: ${{ steps.ci_run.outputs.run_id }}');
@@ -72,11 +73,40 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).toContain('.event == "workflow_dispatch"');
     expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
+    expect(workflow).toContain('name: veyrnox-firebase-test-apk');
+    expect(workflow).toContain('--app artifacts/app-firebaseTest.apk');
+    expect(workflow).not.toContain('--app artifacts/app-release.aab');
+  });
+
+  it('builds a non-publishable release-hardened Firebase APK with matching RASP signing', () => {
+    expect(ciWorkflow).toContain('build_firebase_test:');
+    expect(ciWorkflow).toContain("inputs.build_firebase_test == true");
+    expect(ciWorkflow).toContain("github.ref == 'refs/heads/main' && github.event_name == 'push'");
+    expect(ciWorkflow).toContain('android-firebase-test:');
+    expect(ciWorkflow).toContain('./gradlew assembleFirebaseTest');
+    expect(ciWorkflow).toContain('name: veyrnox-firebase-test-apk');
+    expect(ciWorkflow).not.toContain('./gradlew bundleFirebaseTest');
+
+    expect(androidBuild).toContain('firebaseTest {');
+    expect(androidBuild).toContain('initWith release');
+    expect(androidBuild).toContain('applicationIdSuffix ".firebase.testlab"');
+    expect(androidBuild).toContain("project.findProperty('FIREBASE_TEST_CERT_SHA256')");
+    expect(androidBuild).toContain("it.name == 'assembleFirebaseTest'");
+    expect(androidBuild).toContain('cert.equalsIgnoreCase(uploadSha)');
+    expect(androidBuild).toContain("it.name == 'bundleFirebaseTest'");
+    expect(androidBuild).toContain('enabled = false');
+  });
+
+  it('runs Firebase without re-signing and preserves useful per-axis diagnostics', () => {
+    expect(workflow).toContain('--no-resign');
+    expect(workflow).toContain('MATRIX_ID');
+    expect(workflow).toContain('testing.googleapis.com/v1/projects/${PROJECT_ID}/testMatrices/${MATRIX_ID}');
+    expect(workflow).toContain('invalidMatrixDetails');
+    expect(workflow).toContain('infrastructureFailure');
+    expect(workflow).toContain('${{ github.run_id }}-${{ github.run_attempt }}');
   });
 
   it('supports a manual exact-SHA Android Firebase run without enabling Play publication', () => {
-    expect(ciWorkflow).toContain('build_release:');
-    expect(ciWorkflow).toContain("github.event_name == 'workflow_dispatch' && inputs.build_release == true");
     expect(workflow).toContain('platform:');
     expect(workflow).toContain("inputs.platform == 'android'");
     expect(workflow).toContain("vars.IOS_FIREBASE_SIGNING_READY == 'true'");
