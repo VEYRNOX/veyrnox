@@ -54,7 +54,9 @@ concurrency:
 
 permissions:
   contents: read
-  actions: read
+  # Manual release gates dispatch ci.yml for this exact ref/SHA, then read its
+  # artifacts. Push-triggered smoke runs remain read-only in practice.
+  actions: write
   id-token: write
 
 # These are public client identifiers/endpoints already baked into native
@@ -85,6 +87,18 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
+      - name: Dispatch exact CI artifacts for this manual gate
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_STAGING: ${{ inputs.publish_staging }}
+        run: |
+          set -euo pipefail
+          gh workflow run ci.yml \
+            --ref "$GITHUB_REF_NAME" \
+            -f build_firebase_test=true \
+            -f build_staging_release="$PUBLISH_STAGING"
+
       # This workflow and ci.yml start independently on the same main push. A
       # manual branch run first dispatches ci.yml with build_firebase_test=true.
       # Accept only push/workflow_dispatch CI runs for THIS SHA, then download
@@ -94,6 +108,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.sha }}
+          EXPECTED_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || 'push' }}
         run: |
           set -euo pipefail
           for attempt in $(seq 1 100); do
@@ -102,7 +117,7 @@ jobs:
               --commit "$SHA" \
               --limit 20 \
               --json databaseId,status,conclusion,event,createdAt \
-              --jq '[.[] | select(.event == "push" or .event == "workflow_dispatch")] | sort_by(.createdAt) | reverse | .[0] // {}')
+              --jq "[.[] | select(.event == \"$EXPECTED_EVENT\")] | sort_by(.createdAt) | reverse | .[0] // {}")
             RUN_ID=$(jq -r '.databaseId // empty' <<<"$RUN_JSON")
             STATUS=$(jq -r '.status // empty' <<<"$RUN_JSON")
             CONCLUSION=$(jq -r '.conclusion // empty' <<<"$RUN_JSON")

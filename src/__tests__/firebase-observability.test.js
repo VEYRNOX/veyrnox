@@ -80,6 +80,11 @@ describe('Firebase staging observability', () => {
     expect(ci).toContain('-PFIREBASE_OBSERVABILITY_ENABLED=');
     expect(firebaseWorkflow).toContain('1:567659013773:ios:dcdda7378e804f388864c4');
     expect(firebaseWorkflow).toContain('VEYRNOX_FIREBASE_OBSERVABILITY=YES');
+    expect(firebaseWorkflow).toContain('actions: write');
+    expect(firebaseWorkflow).toContain('gh workflow run ci.yml');
+    expect(firebaseWorkflow).toContain('-f build_firebase_test=true');
+    expect(firebaseWorkflow).toContain('-f build_staging_release="$PUBLISH_STAGING"');
+    expect(firebaseWorkflow).toContain('EXPECTED_EVENT:');
     expect(firebaseWorkflow).toContain('DEBUG_INFORMATION_FORMAT=dwarf-with-dsym');
     expect(firebaseWorkflow).toContain('Crashlytics/upload-symbols');
 
