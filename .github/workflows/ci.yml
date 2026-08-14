@@ -299,27 +299,11 @@ jobs:
           fi
       - name: Sync Capacitor
         run: npx cap sync android
-      - name: Auth to Google Cloud for staging Firebase config
+      - name: Install Android staging Firebase config
         if: github.event_name == 'workflow_dispatch' && inputs.build_staging_release == true
-        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - name: Setup gcloud for staging Firebase config
-        if: github.event_name == 'workflow_dispatch' && inputs.build_staging_release == true
-        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - name: Fetch Android staging Firebase config
-        if: github.event_name == 'workflow_dispatch' && inputs.build_staging_release == true
-        env:
-          FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          FIREBASE_ANDROID_APP_ID: 1:567659013773:android:2f04cc2942faba1f8864c4
         run: |
           set -euo pipefail
-          chmod +x .github/scripts/fetch-firebase-config.sh
-          .github/scripts/fetch-firebase-config.sh \
-            android "$FIREBASE_PROJECT_ID" "$FIREBASE_ANDROID_APP_ID" \
-            android/app/google-services.json
+          cp .github/firebase/android/google-services.json android/app/google-services.json
           jq -e \
             '.client | any(.client_info.android_client_info.package_name == "com.veyrnox.app")' \
             android/app/google-services.json >/dev/null
@@ -437,24 +421,10 @@ jobs:
           cache: npm
       - run: npm install -g npm@11
       - run: npm ci
-      - name: Auth to Google Cloud for Firebase config
-        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - name: Setup gcloud for Firebase config
-        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - name: Fetch Test Lab-only Android Firebase config
-        env:
-          FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          FIREBASE_ANDROID_APP_ID: 1:567659013773:android:166961ac09b49c5f8864c4
+      - name: Install Test Lab Android Firebase config
         run: |
           set -euo pipefail
-          chmod +x .github/scripts/fetch-firebase-config.sh
-          .github/scripts/fetch-firebase-config.sh \
-            android "$FIREBASE_PROJECT_ID" "$FIREBASE_ANDROID_APP_ID" \
-            android/app/google-services.json
+          cp .github/firebase/android/google-services.json android/app/google-services.json
           jq -e \
             '.client | any(.client_info.android_client_info.package_name == "com.veyrnox.app.firebase.testlab")' \
             android/app/google-services.json >/dev/null

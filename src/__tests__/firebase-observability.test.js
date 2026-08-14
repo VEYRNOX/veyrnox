@@ -18,6 +18,8 @@ const xcodeProject = read('ios/App/App.xcodeproj/project.pbxproj');
 const ci = read('.github/workflows/ci.yml');
 const firebaseWorkflow = read('.github/workflows/firebase-test-lab.yml');
 const configFetcher = read('.github/scripts/fetch-firebase-config.sh');
+const androidFirebaseConfig = read('.github/firebase/android/google-services.json');
+const iosFirebaseConfig = read('.github/firebase/ios/com.veyrnox.app/GoogleService-Info.plist');
 const packagePatcher = read('scripts/patch-ios-firebase-observability.mjs');
 const packageJson = read('package.json');
 
@@ -76,11 +78,15 @@ describe('Firebase staging observability', () => {
     expect(configFetcher).toContain('configFileContents');
     expect(configFetcher).toContain('projects/${project_id}/${collection}/${firebase_app_id}/config');
     expect(configFetcher).toContain('projects/-/${collection}/${firebase_app_id}/config');
-    expect(ci).toContain('1:567659013773:android:166961ac09b49c5f8864c4');
+    expect(ci).toContain('.github/firebase/android/google-services.json');
     expect(ci).toContain('com.veyrnox.app.firebase.testlab');
-    expect(ci).toContain('1:567659013773:android:2f04cc2942faba1f8864c4');
     expect(ci).toContain('-PFIREBASE_OBSERVABILITY_ENABLED=');
-    expect(firebaseWorkflow).toContain('1:567659013773:ios:dcdda7378e804f388864c4');
+    expect(firebaseWorkflow).toContain('.github/firebase/ios/com.veyrnox.app/GoogleService-Info.plist');
+    expect(androidFirebaseConfig).toContain('1:567659013773:android:166961ac09b49c5f8864c4');
+    expect(androidFirebaseConfig).toContain('1:567659013773:android:2f04cc2942faba1f8864c4');
+    expect(androidFirebaseConfig).toContain('com.veyrnox.app.firebase.testlab');
+    expect(iosFirebaseConfig).toContain('1:567659013773:ios:dcdda7378e804f388864c4');
+    expect(iosFirebaseConfig).toContain('com.veyrnox.app');
     expect(firebaseWorkflow).toContain('VEYRNOX_FIREBASE_OBSERVABILITY=YES');
     expect(firebaseWorkflow).toContain('actions: write');
     expect(firebaseWorkflow).toContain('gh workflow run ci.yml');
@@ -98,8 +104,8 @@ describe('Firebase staging observability', () => {
       firebaseWorkflow.indexOf('  publish-ios-staging:'),
     );
     expect(androidStoreJob).toContain('inputs.build_staging_release == true');
-    expect(androidStoreJob).toContain('fetch-firebase-config.sh');
-    expect(iosStoreJob).toContain('fetch-firebase-config.sh');
+    expect(androidStoreJob).toContain('.github/firebase/android/google-services.json');
+    expect(iosStoreJob).toContain('.github/firebase/ios/com.veyrnox.app/GoogleService-Info.plist');
     expect(iosStoreJob).not.toContain('--firebase-observability-smoke');
   });
 });

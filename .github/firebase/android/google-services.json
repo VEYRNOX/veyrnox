@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "567659013773",
+    "project_id": "veyrnox-400ae",
+    "storage_bucket": "veyrnox-400ae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:567659013773:android:2f04cc2942faba1f8864c4",
+        "android_client_info": {
+          "package_name": "com.veyrnox.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLVue61IyGnSFp6pfiH7LTGApElZdR_uo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:567659013773:android:166961ac09b49c5f8864c4",
+        "android_client_info": {
+          "package_name": "com.veyrnox.app.firebase.testlab"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLVue61IyGnSFp6pfiH7LTGApElZdR_uo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:567659013773:android:9fdca1866f38668e8864c4",
+        "android_client_info": {
+          "package_name": "com.veyrnox.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLVue61IyGnSFp6pfiH7LTGApElZdR_uo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

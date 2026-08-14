@@ -312,25 +312,10 @@ jobs:
         run: |
           npm run build:staging
           npx cap sync ios
-      - name: Auth to Google Cloud
-        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Fetch Test Lab-only iOS Firebase config
-        env:
-          FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          FIREBASE_IOS_APP_ID: 1:567659013773:ios:dcdda7378e804f388864c4
+      - name: Install Test Lab iOS Firebase config
         run: |
           set -euo pipefail
-          chmod +x .github/scripts/fetch-firebase-config.sh
-          .github/scripts/fetch-firebase-config.sh \
-            ios "$FIREBASE_PROJECT_ID" "$FIREBASE_IOS_APP_ID" \
+          cp .github/firebase/ios/com.veyrnox.app/GoogleService-Info.plist \
             ios/App/App/GoogleService-Info.plist
           /usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' \
             ios/App/App/GoogleService-Info.plist \
@@ -550,23 +535,10 @@ jobs:
         run: |
           npm run build:staging
           npx cap sync ios
-      - name: Auth to Google Cloud for iOS staging Firebase config
-        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - name: Setup gcloud for iOS staging Firebase config
-        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - name: Fetch iOS staging Firebase config
-        env:
-          FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          FIREBASE_IOS_APP_ID: 1:567659013773:ios:dcdda7378e804f388864c4
+      - name: Install iOS staging Firebase config
         run: |
           set -euo pipefail
-          chmod +x .github/scripts/fetch-firebase-config.sh
-          .github/scripts/fetch-firebase-config.sh \
-            ios "$FIREBASE_PROJECT_ID" "$FIREBASE_IOS_APP_ID" \
+          cp .github/firebase/ios/com.veyrnox.app/GoogleService-Info.plist \
             ios/App/App/GoogleService-Info.plist
           /usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' \
             ios/App/App/GoogleService-Info.plist \
