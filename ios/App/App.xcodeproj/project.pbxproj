@@ -167,6 +167,7 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				F1B3BA902D00000100F1BA90 /* Install Firebase config if supplied */,
 			);
 			buildRules = (
 			);
@@ -258,6 +259,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		F1B3BA902D00000100F1BA90 /* Install Firebase config if supplied */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Install Firebase config if supplied";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\nCONFIG=\"${SRCROOT}/App/GoogleService-Info.plist\"\nif [ -f \"${CONFIG}\" ]; then\n  DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\n  mkdir -p \"${DEST}\"\n  cp \"${CONFIG}\" \"${DEST}/GoogleService-Info.plist\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		01356C0B7674C080CA0C62E6 /* Sources */ = {

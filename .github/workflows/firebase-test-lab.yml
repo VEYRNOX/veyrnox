@@ -298,6 +298,30 @@ jobs:
           npm run build:staging
           npx cap sync ios
 
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Fetch Test Lab-only iOS Firebase config
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          FIREBASE_IOS_APP_ID: 1:567659013773:ios:dcdda7378e804f388864c4
+        run: |
+          set -euo pipefail
+          chmod +x .github/scripts/fetch-firebase-config.sh
+          .github/scripts/fetch-firebase-config.sh \
+            ios "$FIREBASE_PROJECT_ID" "$FIREBASE_IOS_APP_ID" \
+            ios/App/App/GoogleService-Info.plist
+          /usr/libexec/PlistBuddy -c 'Print :BUNDLE_ID' \
+            ios/App/App/GoogleService-Info.plist \
+            | grep -Fx 'com.veyrnox.app'
+
       - name: Install App Store Connect signing key
         id: asc_key
         env:
@@ -362,6 +386,7 @@ jobs:
             -derivedDataPath build/ \
             DEVELOPMENT_TEAM=R54268MWFV \
             CODE_SIGN_STYLE=Automatic \
+            DEBUG_INFORMATION_FORMAT=dwarf-with-dsym \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$ASC_KEY_PATH" \
             -authenticationKeyID "$ASC_KEY_ID" \
@@ -372,21 +397,21 @@ jobs:
           RUNNER_PATH="$(find "$PWD/build/Build/Products/Debug-iphoneos" -maxdepth 2 -type d -name '*UITests-Runner.app' -print -quit)"
           test -d "$APP_PATH"
           test -n "$RUNNER_PATH"
+          test -s "$APP_PATH/GoogleService-Info.plist"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
           codesign --verify --deep --strict --verbose=2 "$RUNNER_PATH"
 
+          DSYM_PATH="$PWD/build/Build/Products/Debug-iphoneos/App.app.dSYM"
+          UPLOAD_SYMBOLS="$PWD/build/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols"
+          test -d "$DSYM_PATH"
+          test -x "$UPLOAD_SYMBOLS"
+          "$UPLOAD_SYMBOLS" \
+            -gsp "$APP_PATH/GoogleService-Info.plist" \
+            -p ios \
+            "$DSYM_PATH"
+
           cd build/Build/Products
           zip -r ios-tests.zip Debug-iphoneos *.xctestrun
-
-      - name: Auth to Google Cloud
-        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: XCUITest smoke on real iPhones
         id: ios_test

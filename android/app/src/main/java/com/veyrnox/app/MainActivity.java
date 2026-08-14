@@ -6,6 +6,10 @@ import android.view.WindowManager;
 import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+import com.google.firebase.perf.FirebasePerformance;
+import com.google.firebase.perf.metrics.Trace;
 import com.veyrnox.app.FileSaverPlugin;
 import com.veyrnox.app.HardwareKekPlugin;
 import com.veyrnox.app.RaspIntegrityPlugin;
@@ -33,6 +37,28 @@ public class MainActivity extends BridgeActivity {
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         super.onCreate(savedInstanceState);
+
+        // Synthetic, fixed-value observability probe for the non-publishable
+        // Firebase Test Lab APK only. Never attach wallet state, addresses,
+        // balances, PINs, seeds, URLs, or user identifiers to Crashlytics.
+        if (BuildConfig.FIREBASE_OBSERVABILITY_SMOKE
+                && !FirebaseApp.getApps(this).isEmpty()) {
+            FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
+            crashlytics.setCrashlyticsCollectionEnabled(true);
+            crashlytics.setCustomKey("build_channel", "firebase_test_lab");
+            crashlytics.log("Firebase Test Lab observability smoke started");
+            crashlytics.recordException(new IllegalStateException(
+                "VEYRNOX_FIREBASE_NONFATAL_SMOKE"
+            ));
+            crashlytics.sendUnsentReports();
+
+            FirebasePerformance performance = FirebasePerformance.getInstance();
+            performance.setPerformanceCollectionEnabled(true);
+            Trace trace = performance.newTrace("staging_launch_smoke");
+            trace.start();
+            trace.putMetric("completed", 1L);
+            trace.stop();
+        }
 
         // FLAG_SECURE — block screenshots, screen recording, and the recents /
         // app-switcher thumbnail for the whole window. The wallet's threat model

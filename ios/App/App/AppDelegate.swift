@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import CapApp_SPM
 import Security
 
 @UIApplicationMain
@@ -16,6 +17,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             showNativeBlockScreen()
             return true
         }
+
+        // A fixed-value, non-fatal Crashlytics + Performance probe runs only
+        // when Firebase Test Lab supplies the explicit launch argument and CI
+        // has embedded the staging config. Store/production builds do neither.
+        FirebaseObservability.configureTestLabSmokeIfRequested()
 
         // First-launch Keychain cleanup: UserDefaults is wiped on app delete,
         // Keychain is not. If the flag is missing → fresh install → wipe stale

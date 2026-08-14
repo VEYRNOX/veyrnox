@@ -244,9 +244,9 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
         {error && (
           <motion.p
             variants={item}
-            role="alert"
-            aria-live="assertive"
-            className="text-xs text-destructive text-center"
+            role={insecureDevice ? 'status' : 'alert'}
+            aria-live={insecureDevice ? 'polite' : 'assertive'}
+            className={`text-xs text-center ${insecureDevice ? 'text-muted-foreground' : 'text-destructive'}`}
           >
             {error}
           </motion.p>
@@ -303,7 +303,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
             onClick={handleSkip}
             disabled={busy}
           >
-            Skip for now
+            {insecureDevice ? 'Continue with PIN protection' : 'Skip for now'}
           </Button>
         </motion.div>
 

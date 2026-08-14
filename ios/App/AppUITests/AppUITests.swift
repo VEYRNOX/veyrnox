@@ -19,7 +19,10 @@ final class AppUITests: XCTestCase {
     /// If this test ever fails on a stock device the app is NOT ready to submit.
     func test_freshInstall_createsWalletWithoutFailureBanner() throws {
         let app = XCUIApplication()
-        app.launchArguments += ["--uitest-fresh-install"]
+        app.launchArguments += [
+            "--uitest-fresh-install",
+            "--firebase-observability-smoke",
+        ]
         app.launch()
 
         // 1. Fresh installs land on the entry tiles. Pick the new-wallet path;

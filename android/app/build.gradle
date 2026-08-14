@@ -27,6 +27,10 @@ android {
         // RASP APK tamper detection — inject via -PRELEASE_CERT_SHA256=<hash>.
         // Blank = fail-closed (I4). Release builds validate format at task start.
         buildConfigField "String", "RELEASE_CERT_SHA256", "\"${project.findProperty('RELEASE_CERT_SHA256') ?: ''}\""
+        // Firebase observability is a Test Lab-only probe. Store and production
+        // builds remain disabled even if a config file is accidentally present.
+        buildConfigField "boolean", "FIREBASE_OBSERVABILITY_SMOKE", "false"
+        manifestPlaceholders.firebaseObservabilityCollectionEnabled = false
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -107,6 +111,8 @@ android {
             versionNameSuffix "-firebase-test"
             matchingFallbacks = ['release']
             buildConfigField "String", "RELEASE_CERT_SHA256", "\"${project.findProperty('FIREBASE_TEST_CERT_SHA256') ?: ''}\""
+            buildConfigField "boolean", "FIREBASE_OBSERVABILITY_SMOKE", "true"
+            manifestPlaceholders.firebaseObservabilityCollectionEnabled = true
         }
     }
 }
@@ -148,6 +154,12 @@ dependencies {
     // with Capacitor by default; without this, :app:compileDebugKotlin fails with
     // "Unresolved reference 'okhttp3'" on the CertPinManager import.
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // Collection remains false in every normal/store build via manifest metadata.
+    // The isolated firebaseTest variant alone receives config and enables it.
+    implementation platform('com.google.firebase:firebase-bom:34.16.0')
+    implementation 'com.google.firebase:firebase-crashlytics'
+    implementation 'com.google.firebase:firebase-perf'
 }
 
 apply from: 'capacitor.build.gradle'
@@ -394,6 +406,8 @@ try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {
         apply plugin: 'com.google.gms.google-services'
+        apply plugin: 'com.google.firebase.crashlytics'
+        apply plugin: 'com.google.firebase.firebase-perf'
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
