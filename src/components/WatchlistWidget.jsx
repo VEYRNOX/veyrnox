@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
 import CoinLogo from "@/components/CoinLogo";
+import { useWallet } from "@/lib/WalletProvider";
 
 // Reference prices for the top 10 by market cap, from the canonical source.
 const MOCK_PRICES = Object.fromEntries(
@@ -15,21 +16,42 @@ const MOCK_PRICES = Object.fromEntries(
 
 export default function WatchlistWidget() {
   const queryClient = useQueryClient();
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden;
   const [adding, setAdding] = useState(false);
   const [symbol, setSymbol] = useState("");
 
-  const { data: items = [] } = useQuery({
+  // Codex P2 2026-08-15: PersonalWatchlist lives in the SHARED Base44 store
+  // (same K-2 class as AddressBook). A decoy/hidden session could BOTH read
+  // real watchlist entries AND mutate them (delete, or add a fake symbol
+  // that surfaces in the real session on next open). Two-chokepoint fix:
+  // query enabled on !deniable + local blank on the derived items array,
+  // AND each mutationFn throws DENIABILITY_BLOCKED before touching the
+  // store. Same shape as the address-book fix from PR #1810.
+  const { data: itemsRaw = [] } = useQuery({
     queryKey: ["watchlist"],
     queryFn: () => base44.entities.PersonalWatchlist.list(),
+    enabled: !deniable,
   });
+  const items = deniable ? [] : itemsRaw;
+
+  const denyInDeniable = () => {
+    throw Object.assign(new Error('Watchlist is not available in this session'), { code: 'DENIABILITY_BLOCKED' });
+  };
 
   const add = useMutation({
-    mutationFn: (/** @type {any} */ data) => base44.entities.PersonalWatchlist.create(data),
+    mutationFn: (/** @type {any} */ data) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.PersonalWatchlist.create(data);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["watchlist"] }); setAdding(false); setSymbol(""); },
   });
 
   const remove = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.PersonalWatchlist.delete(id),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.PersonalWatchlist.delete(id);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watchlist"] }),
   });
 
@@ -40,7 +62,7 @@ export default function WatchlistWidget() {
           <Star className="h-4 w-4 text-caution fill-caution" />
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Watchlist</p>
         </div>
-        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setAdding(v => !v)}>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" disabled={deniable} onClick={() => setAdding(v => !v)}>
           <Plus className="h-3.5 w-3.5 me-1" /> Add
         </Button>
       </div>
