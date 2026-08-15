@@ -10,6 +10,7 @@ const {
   decodeShareBundle,
   combineFromBundles,
   SHARD_BUNDLE_MISMATCH,
+  SHARD_BUNDLE_INVALID,
   SHARD_BUNDLE_VERSION,
   SECRET_SIZE,
   SHARE_SIZE,
@@ -83,7 +84,12 @@ describe('hashVault — canonical nested integrity (Codex P2)', () => {
     expect(() => decodeShareBundle(tampered)).toThrow(SHARD_BUNDLE_MISMATCH);
   });
 
-  it('a v1 bundle crafted with the old top-level-only hasher still decodes (backward compat)', () => {
+  // 2026-08-15: the v1 compatibility branch was REMOVED. `v` is read from the
+  // same file being validated, so accepting v1 let an attacker-supplied bundle
+  // select the weak top-level-only verifier for itself. Confirmed safe to drop:
+  // VITE_ENABLE_PERSONAL_BACKUP_SHARDS is set in no shipping build, so no user
+  // could hold a v1 bundle.
+  it('a v1 bundle is REJECTED even when its legacy hash is internally consistent', () => {
     const dek = randomDek();
     const shares = splitDekForPersonalBackup(dek);
     const vault = fakeVault();
@@ -95,9 +101,28 @@ describe('hashVault — canonical nested integrity (Codex P2)', () => {
       vaultHash: legacyHashVault(vault),
       meta: { createdAt: new Date(0).toISOString() },
     };
-    const decoded = decodeShareBundle(legacyBundle);
-    expect(decoded.index).toBe(1);
-    expect(decoded.share.length).toBe(SHARE_SIZE);
+    expect(() => decodeShareBundle(legacyBundle)).toThrow(SHARD_BUNDLE_INVALID);
+  });
+
+  // The case the removed branch actually accepted: under legacyHashVault a
+  // nested object serialises to '{}', so mutating vault.kdf leaves the hash
+  // unchanged. Rejecting on version closes it before the hash is ever compared.
+  it('a v1 bundle with a tampered nested vault.kdf is rejected (was accepted pre-removal)', () => {
+    const dek = randomDek();
+    const shares = splitDekForPersonalBackup(dek);
+    const vault = fakeVault();
+    const tamperedVault = fakeVault({ kdf: { ...vault.kdf, iterations: 1 } });
+    // Same legacy hash despite differing kdf — this is the bug, asserted directly.
+    expect(legacyHashVault(tamperedVault)).toBe(legacyHashVault(vault));
+    const legacyBundle = {
+      v: 1,
+      shareIndex: 1,
+      shareBytes: b64enc(shares[0]),
+      vault: tamperedVault,
+      vaultHash: legacyHashVault(vault),
+      meta: { createdAt: new Date(0).toISOString() },
+    };
+    expect(() => decodeShareBundle(legacyBundle)).toThrow(SHARD_BUNDLE_INVALID);
   });
 
   it('encodeShareBundle always emits v2', () => {
