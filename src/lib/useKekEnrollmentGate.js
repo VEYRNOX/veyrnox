@@ -24,15 +24,33 @@ import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 // or unmapped, Android<11, no plugin, etc.) so the gate does not re-prompt on
 // every unlock forever. Cleared by panic-wipe (see panic.js METADATA_RESIDUE_KEYS)
 // and by Security settings "re-enable hardware protection" (clearKekInsecureTier).
-// I3: never written from a deniability/demo session (the effect returns early).
+//
+// I3 — WRITES ARE THE CHOKEPOINT. veyrnox-kek-insecure-tier is SHARED: the
+// primary wallet reads back whatever any session wrote. A decoy/duress/stealth
+// or demo session must never mutate it — a coerced tap must not suppress the
+// real user's enrollment prompt, nor clear a valid suppression and restore the
+// every-unlock re-prompt loop this key exists to end.
+//
+// The guard lives HERE, in the writes, not at the call sites. Both current
+// callers happen to be unreachable in those sessions (the detect effect returns
+// early; HardwareKekSettings' enroll branch is behind `blocked`), but that is a
+// property of two other functions, and clearKekInsecureTier is exported. This is
+// the lib/consent.js lesson applied before it bites: there, three writers to a
+// shared key each carried their own guard, one shipped without it, and "a rule
+// enforced in three places is a rule that will be missed in a fourth."
+// Do NOT add matching guards at call sites — that duplication is the bug.
+//
+// Reads stay ungated: reading leaves no trace.
 export const KEK_INSECURE_TIER_KEY = 'veyrnox-kek-insecure-tier';
 function isKekInsecureTierPersisted() {
   try { return localStorage.getItem(KEK_INSECURE_TIER_KEY) === '1'; } catch { return false; }
 }
 function persistKekInsecureTier() {
+  if (isDeniabilityOrDemoActive()) return;
   try { localStorage.setItem(KEK_INSECURE_TIER_KEY, '1'); } catch { /* best-effort */ }
 }
 export function clearKekInsecureTier() {
+  if (isDeniabilityOrDemoActive()) return;
   try { localStorage.removeItem(KEK_INSECURE_TIER_KEY); } catch { /* best-effort */ }
 }
 
