@@ -187,13 +187,15 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
       hasText: /Hardware|WebAuthn|Biometric|Encryption/i,
     }).first();
 
-    if (await hwToggle.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await hwToggle.click();
-      console.log('✓ Clicked WebAuthn PRF toggle');
-      await page.waitForTimeout(2000);
-    } else {
-      console.log('⚠ WebAuthn toggle not found, skipping enrollment');
-    }
+    // Codex P1 2026-08-15: spec name is "Web Phase 1 KEK Sepolia Send
+    // Verification". A missing WebAuthn toggle means the primary contract of
+    // this spec (PRF enrollment) cannot be exercised — fail, do NOT continue
+    // and print "TEST PASSED / PRF Enroll: ✓". Previously a UI regression
+    // that removed the toggle would silently pass this spec.
+    await expect(hwToggle, 'WebAuthn PRF toggle must be present — spec verifies PRF enrollment path').toBeVisible({ timeout: 5000 });
+    await hwToggle.click();
+    console.log('✓ Clicked WebAuthn PRF toggle');
+    await page.waitForTimeout(2000);
 
     // ── NAVIGATE TO SEND ─────────────────────────────────────────────────────
     await page.goto(`${BASE}/send`);
@@ -266,12 +268,16 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     // Wait a few seconds for Sepolia to include the tx
     await page.waitForTimeout(3000);
 
+    // Codex P1 2026-08-15: the spec name is "…Sepolia Send Verification".
+    // Without an on-chain receipt, the "Verify" half of the name has not been
+    // proven — a warn-and-pass here made the whole test claim success while
+    // it had only submitted the tx, not confirmed inclusion.
     const receipt = await verifyTxidOnChain(txid);
-    if (receipt) {
-      console.log(`✓ txid verified on Sepolia: block ${receipt.blockNumber}, status ${receipt.status}`);
-    } else {
-      console.warn('⚠️  txid not yet confirmed on-chain (may be pending)');
-    }
+    expect(
+      receipt,
+      `Sepolia receipt lookup returned null for ${txid} — send was not confirmed on-chain within the wait window; retry with a longer wait or investigate RPC before treating this as verified.`,
+    ).not.toBeNull();
+    console.log(`✓ txid verified on Sepolia: block ${receipt.blockNumber}, status ${receipt.status}`);
 
     // ── REPORT ───────────────────────────────────────────────────────────────
     console.log('');
@@ -283,11 +289,9 @@ test.describe('Web Phase 1 KEK — Sepolia Txid Verification', () => {
     console.log(`Send Amount: ${SEND_AMOUNT} Sepolia ETH`);
     console.log(`Recipient:   ${SEPOLIA_RECIPIENT}`);
     console.log(`txid:        ${txid}`);
-    if (receipt) {
-      console.log(`Block:       ${receipt.blockNumber}`);
-      console.log(`Status:      ${receipt.status}`);
-      console.log(`Explorer:    https://sepolia.etherscan.io/tx/${txid}`);
-    }
+    console.log(`Block:       ${receipt.blockNumber}`);
+    console.log(`Status:      ${receipt.status}`);
+    console.log(`Explorer:    https://sepolia.etherscan.io/tx/${txid}`);
     console.log('━'.repeat(80));
     console.log('');
     console.log('Note: This txid was captured from a send flow with CDP virtual authenticator.');
