@@ -760,7 +760,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
         </div>
         <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
           <p>
-            Restore is same-device only for now. Cross-device recovery is coming. Keep an .enc file alongside as your primary backup.
+            To recover on a new device, load any 2 of your 3 bundles from “Restore from shares”. Keep an .enc file alongside as your primary backup.
           </p>
         </div>
         <button
