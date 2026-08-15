@@ -108,13 +108,24 @@ export default function RestoreFromShares() {
       return;
     }
     setPhase("busy");
+    // An encrypted share is unwrapped back to its raw bundle JSON here —
+    // restoreFromRecoveryBundles/combineFromBundles must never see the
+    // envelope shape. Fail-closed: unwrap throws on a wrong passphrase or
+    // tampered envelope. Kept in its own try/catch: on a wrong passphrase
+    // the user must land back on the input step (where passphraseA/B are
+    // editable), not the PIN step, which has no way to correct them.
+    let resolvedA, resolvedB;
     try {
-      // An encrypted share is unwrapped back to its raw bundle JSON here —
-      // restoreFromRecoveryBundles/combineFromBundles must never see the
-      // envelope shape. Fail-closed: unwrap throws on a wrong passphrase or
-      // tampered envelope, surfaced below rather than silently dropped.
-      const resolvedA = await resolveBundleText(shareA.trim(), envelopeA, passphraseA);
-      const resolvedB = await resolveBundleText(shareB.trim(), envelopeB, passphraseB);
+      resolvedA = await resolveBundleText(shareA.trim(), envelopeA, passphraseA);
+      resolvedB = await resolveBundleText(shareB.trim(), envelopeB, passphraseB);
+    } catch {
+      // Generic message — never say which share's passphrase was wrong,
+      // that would be an oracle.
+      setError("One of the recovery passphrases was wrong. Please re-enter it and try again.");
+      setPhase("input");
+      return;
+    }
+    try {
       await restoreFromRecoveryBundles([resolvedA, resolvedB], pin);
       setShareA(""); setShareB(""); setPin(""); setPinConfirm("");
       setPassphraseA(""); setPassphraseB("");

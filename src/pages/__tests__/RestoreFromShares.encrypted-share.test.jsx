@@ -103,4 +103,33 @@ describe('RestoreFromShares — encrypted bundle detection', () => {
     expect(await screen.findByRole('alert', {}, { timeout: 15_000 })).toBeTruthy();
     expect(restoreFromRecoveryBundles).not.toHaveBeenCalled();
   }, 30_000);
+
+  it('returns to the passphrase step on a wrong passphrase so the user can correct it and retry (Codex P2)', async () => {
+    const restoreFromRecoveryBundles = vi.fn(async () => {});
+    const Page = await loadPage(restoreFromRecoveryBundles);
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    pasteShares(RAW_BUNDLE_1, wrappedBundle2);
+    fireEvent.change(await screen.findByPlaceholderText(/recovery passphrase/i), {
+      target: { value: 'the-wrong-but-long-enough-passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    enterPinAndSubmit('24681024');
+
+    // Error shown, and the PIN screen must NOT be where the user is stuck —
+    // the passphrase field (only rendered on the input step) must be back
+    // and editable.
+    expect(await screen.findByRole('alert', {}, { timeout: 15_000 })).toBeTruthy();
+    const passphraseInput = await screen.findByPlaceholderText(/recovery passphrase/i);
+    expect(passphraseInput).toBeTruthy();
+    expect(screen.queryAllByRole('group', { name: /pin entry/i })).toHaveLength(0);
+
+    // Correct the passphrase and retry — should now succeed.
+    fireEvent.change(passphraseInput, { target: { value: PASSPHRASE } });
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    enterPinAndSubmit('24681024');
+
+    await waitFor(() => expect(restoreFromRecoveryBundles).toHaveBeenCalled(), { timeout: 15_000 });
+    const [bundles] = restoreFromRecoveryBundles.mock.calls[0];
+    expect(bundles).toEqual([RAW_BUNDLE_1, RAW_BUNDLE_2]);
+  }, 30_000);
 });
