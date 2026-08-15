@@ -376,6 +376,10 @@ export function WalletProvider({ children }) {
   // mnemonic; separate state so the EVM/BTC paths are untouched. null while locked.
   const [solAccount, setSolAccount] = useState(null);
   const lockTimer = useRef(null);
+  // Codex P1 2026-08-15: signing-operation generation counter — bumped on
+  // every lock() so withPrivateKey/withBtcPrivateKey/withSolPrivateKey can
+  // detect a mid-operation lock and abort the CALLER's post-await handling.
+  const signingGenerationRef = useRef(0);
   // Absolute session ceiling (VULN-18 fix). Even with 'Never' idle timeout, the
   // session expires after MAX_SESSION_MS (8 hours) from unlock. Cleared on lock.
   const absoluteLockTimer = useRef(null);
@@ -568,6 +572,22 @@ export function WalletProvider({ children }) {
     if (typeof window !== 'undefined') { window.dispatchEvent(new Event(APP_LOCK_EVENT)); }
     if (absoluteLockTimer.current) { clearTimeout(absoluteLockTimer.current); absoluteLockTimer.current = null; }
     if (bgLockTimer.current) { clearTimeout(bgLockTimer.current); bgLockTimer.current = null; }
+    // Codex P1 2026-08-15: the idle-lock timer was NEVER cleared here — only
+    // the absolute + background timers were. A prior session's setTimeout(lock,
+    // ms) could survive a manual lock and fire against the next session before
+    // touch() re-armed, re-locking a fresh unlock with no user inactivity.
+    if (lockTimer.current) { clearTimeout(lockTimer.current); lockTimer.current = null; }
+    // Codex P1 2026-08-15 (part 2): bump the signing generation so any
+    // in-flight withPrivateKey/withBtcPrivateKey/withSolPrivateKey call that
+    // is awaiting a network round-trip sees the generation change on resume
+    // and throws WALLET_LOCKED_MID_OPERATION instead of returning its result
+    // to the caller. Does not cancel a broadcast that already reached the
+    // wire (JS is single-threaded — the race is strictly between the
+    // background lock event firing and the caller's next resolve), but it
+    // stops the CALLER from acting on the return (recording a "sent" tx,
+    // updating UI as if unlocked) and forces re-auth before any subsequent
+    // signing. Non-locked paths do not see any change.
+    signingGenerationRef.current += 1;
   }, []);
 
   // (Re)arm the idle auto-lock timer for the CURRENT timeout preference. Safe to
@@ -2089,12 +2109,32 @@ export function WalletProvider({ children }) {
   // Provide the private key for a derivation index to a caller that needs to
   // sign, WITHOUT storing it. The caller (send flow) uses it immediately and
   // lets it go out of scope. Never log or persist the return value.
+  // Codex P1 2026-08-15: post-fn generation check. Captures the signing
+  // generation at entry; if lock() bumped it while fn was awaiting, throw
+  // WALLET_LOCKED_MID_OPERATION AFTER fn's promise settles so the caller
+  // does not treat the return value as a trusted signed result. JS is
+  // single-threaded — this cannot cancel a broadcast that already reached
+  // the wire, but it stops the caller from recording "sent" on a session
+  // that no longer exists.
+  const assertNotLockedSince = (gen) => {
+    if (signingGenerationRef.current !== gen) {
+      throw Object.assign(
+        new Error('Wallet was locked while the operation was in flight — cannot trust the result.'),
+        { code: 'WALLET_LOCKED_MID_OPERATION' },
+      );
+    }
+  };
+
   const withPrivateKey = useCallback((index, fn) => {
     const active = getActiveMnemonic();
     if (!active) throw new Error('Wallet is locked');
     touch();
+    const gen = signingGenerationRef.current;
     const { privateKey } = deriveEvmAccount(active, index);
-    return fn(privateKey);
+    return Promise.resolve(fn(privateKey)).then((res) => {
+      assertNotLockedSince(gen);
+      return res;
+    });
   }, [touch]);
 
   // BTC counterpart: provide the BIP-84 private+public key bytes for the BTC
@@ -2104,13 +2144,14 @@ export function WalletProvider({ children }) {
     const active = getActiveMnemonic();
     if (!active) throw new Error('Wallet is locked');
     touch();
+    const gen = signingGenerationRef.current;
     const { privateKey, publicKey, address } = deriveBtcAccount(active, { networkKey });
     // M-2: zero the Uint8Array key in .finally() so it doesn't outlive the callback
     // even on an async/throw path. Unlike EVM (JS string, architecturally unzeroable),
     // BTC keys are Uint8Array — zeroization is both possible and low-cost.
-    return Promise.resolve(fn({ privateKey, publicKey, address })).finally(() => {
-      privateKey.fill(0);
-    });
+    return Promise.resolve(fn({ privateKey, publicKey, address }))
+      .then((res) => { assertNotLockedSince(gen); return res; })
+      .finally(() => { privateKey.fill(0); });
   }, [touch]);
 
   // SOL counterpart: provide the ed25519 private+public key bytes for the Solana
@@ -2122,11 +2163,12 @@ export function WalletProvider({ children }) {
     const active = getActiveMnemonic();
     if (!active) throw new Error('Wallet is locked');
     touch();
+    const gen = signingGenerationRef.current;
     const { privateKey, publicKey, address } = deriveSolAccount(active);
     // M-2: zero the Uint8Array ed25519 seed in .finally() (mirrors BTC pattern above).
-    return Promise.resolve(fn({ privateKey, publicKey, address })).finally(() => {
-      privateKey.fill(0);
-    });
+    return Promise.resolve(fn({ privateKey, publicKey, address }))
+      .then((res) => { assertNotLockedSince(gen); return res; })
+      .finally(() => { privateKey.fill(0); });
   }, [touch]);
 
   // DURESS / DECOY management (S3). Configure or remove the decoy vault that the
