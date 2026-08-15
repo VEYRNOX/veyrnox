@@ -46,7 +46,8 @@ const getTierMock = vi.fn();
 const getTierInfoMock = vi.fn();
 const getOfferingIdForTierMock = vi.fn();
 const calculateDiscountCentsMock = vi.fn();
-vi.mock('@/lib/referral', () => ({
+vi.mock('@/lib/referral', async (importOriginal) => ({
+  ...(await importOriginal()),
   hasRedeemed: (...a) => hasRedeemedMock(...a),
   getRedeemedCode: (...a) => getRedeemedCodeMock(...a),
   hasAttributed: (...a) => hasAttributedMock(...a),
@@ -56,6 +57,13 @@ vi.mock('@/lib/referral', () => ({
   getOfferingIdForTier: (...a) => getOfferingIdForTierMock(...a),
   calculateDiscountCents: (...a) => calculateDiscountCentsMock(...a),
   PLAN_FULL_PRICE_CENTS: { monthly: 599, annual: 4999 },
+  // Branch review 2026-08-15 (C-1): spread importOriginal() so exports this
+  // suite does not stub — storeDiscountCents — resolve to the REAL function
+  // rather than undefined. Calling an undefined export throws into
+  // handleUpgrade's own catch, so attribution silently never happens and the
+  // suite reports "recordAttribution called 0 times" rather than a missing
+  // mock. Re-implementing it here would be a second copy free to drift from
+  // the one under test.
 }));
 
 const recordAttribution = vi.fn();

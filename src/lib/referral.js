@@ -194,6 +194,57 @@ export function calculateDiscountCents(fullPriceCents, tierCommission) {
   return Math.round(fullPriceCents * tierCommission / 100);
 }
 
+/**
+ * Discount actually granted by the store, as USD cents, derived from a RATIO.
+ *
+ * Branch review 2026-08-15 (C-1). #1808 replaced a tier-commission guess with a
+ * price DELTA — but subtracted the store's price (the user's local currency,
+ * from offerPriceInfo / product.price) from PLAN_FULL_PRICE_CENTS (hardcoded
+ * USD). That subtraction is only meaningful in USD territories: elsewhere a
+ * weaker currency makes the charged figure exceed the USD constant and the
+ * Math.max(0, …) clamp silently yields 0, while a stronger one yields a
+ * positive number that is not a discount.
+ *
+ * Both inputs here come from the SAME package, so the units cancel and the
+ * ratio is dimensionless — correct in every currency without needing a currency
+ * code (RevenueCat's offerPriceInfo does not return one). Applying it to the USD
+ * full price keeps the result in the same unit as recordAttribution's
+ * USD-denominated revenue_cents column.
+ *
+ * This also captures what a tier percentage cannot: Apple has no price point
+ * for small percentages, so a "2.5%" tier is the nearest point at or below
+ * target, and FX rounding erases it entirely in some territories (CLAUDE.md
+ * 2026-07-23 — Bronze is full price in Albania/Armenia). The ratio reports what
+ * the store actually did, including 0.
+ *
+ * Conservative on every unusable input: a missing, non-finite, zero or negative
+ * base price returns 0 rather than a guess. Under-attributing is recoverable;
+ * fabricating a discount that never happened inflates a referrer's earnings on
+ * paper and is not.
+ *
+ * @param {unknown} basePrice   the package's REGULAR price, store currency
+ * @param {unknown} offerPrice  the price actually charged for the same package
+ * @param {number}  fullPriceCents  USD list price for the plan
+ * @returns {number} USD cents, 0 <= result <= fullPriceCents
+ */
+export function storeDiscountCents(basePrice, offerPrice, fullPriceCents) {
+  // Reject null/undefined BEFORE coercion: Number(null) is 0, which is finite
+  // and non-negative, so a missing offer price would sail through as a 100%
+  // discount — the worst possible failure for a value that inflates a
+  // referrer's earnings. Caught by this function's own test.
+  if (basePrice == null || offerPrice == null) return 0;
+  const base = Number(basePrice);
+  const offer = Number(offerPrice);
+  if (!Number.isFinite(base) || base <= 0) return 0;
+  if (!Number.isFinite(offer) || offer < 0) return 0;
+  if (!Number.isFinite(fullPriceCents) || fullPriceCents <= 0) return 0;
+  // Clamp the ratio, not just the output: an offer price ABOVE base (bad store
+  // data) must read as "no discount", never as a negative that a later sum
+  // would treat as revenue.
+  const ratio = Math.min(1, Math.max(0, (base - offer) / base));
+  return Math.round(fullPriceCents * ratio);
+}
+
 export function calculateEarnings(attributions) {
   const totalDiscountCents = attributions.reduce((sum, a) => sum + (a.discount_cents || 0), 0);
   const totalRevenueCents = attributions.reduce((sum, a) => sum + (a.revenue_cents || 0), 0);

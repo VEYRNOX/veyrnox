@@ -37,6 +37,7 @@ import {
   getTier,
   getTierInfo,
   getOfferingIdForTier,
+  storeDiscountCents,
   PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
 import { annualSavingPercent } from "@/lib/annualSaving";
@@ -320,15 +321,15 @@ export default function Subscription() {
         // returned price DELTA (base priceString - offer priceString) so
         // the attribution matches the money that actually moved.
         const fullPrice = PLAN_FULL_PRICE_CENTS[effectiveBilling] || PLAN_FULL_PRICE_CENTS.monthly;
-        const chargedPriceNumber = effectiveBilling === 'annual' ? annualPriceNumber : monthlyPriceNumber;
-        const fullPriceNumber = fullPrice / 100;
-        // If the store didn't return a resolvable number, be conservative: no
-        // discount claimed. Better to under-attribute than to fabricate a delta.
-        const rawDelta = (typeof chargedPriceNumber === 'number' && Number.isFinite(chargedPriceNumber))
-          ? Math.max(0, Math.round((fullPriceNumber - chargedPriceNumber) * 100))
-          : 0;
-        // Cap at fullPrice so a bogus number can't produce >100% discount rows.
-        const discountCents = Math.min(rawDelta, fullPrice);
+        // Branch review 2026-08-15 (C-1): this subtracted the store's price (the
+        // USER'S currency) from PLAN_FULL_PRICE_CENTS (hardcoded USD), which is
+        // only meaningful in USD territories. Both inputs now come from the SAME
+        // package, so the units cancel and storeDiscountCents works from a
+        // dimensionless ratio. See lib/referral.js for the full rationale.
+        // selectedBasePrice / selectedOfferPrice already exist above for the
+        // on-screen percentage — reuse them rather than re-deriving, so the
+        // attribution and the banner can never disagree about what was charged.
+        const discountCents = storeDiscountCents(selectedBasePrice, selectedOfferPrice, fullPrice);
         try {
           await recordAttribution(refCode, effectiveBilling, fullPrice, discountCents);
           markAttributed();
