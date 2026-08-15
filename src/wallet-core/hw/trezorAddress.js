@@ -21,20 +21,35 @@ export const TREZOR_PATHS = Object.freeze({
   btcTestnet: BTC_TESTNET_PATH,
 });
 
+// Codex P1 2026-08-15: same resolveConnectSrc semantics as
+// wallet-core/hw/trezor.js — VITE_TREZOR_CONNECT_SRC (build-time opt-in for
+// the self-hosted bundle produced by scripts/bundle-trezor-connect.mjs),
+// localhost fallback in dev, CDN otherwise with a one-time console.warn so
+// operators can see they're on CDN. See the full comment block in trezor.js.
+function resolveConnectSrc() {
+  try {
+    const envSrc = typeof import.meta !== 'undefined' && import.meta.env?.VITE_TREZOR_CONNECT_SRC;
+    if (envSrc) return String(envSrc);
+    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+      return `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`;
+    }
+    if (!globalThis.__veyrnoxTrezorCdnWarned) {
+      globalThis.__veyrnoxTrezorCdnWarned = true;
+      try {
+        // eslint-disable-next-line no-console
+        console.warn('[trezor] Using CDN (connect.trezor.io) — set VITE_TREZOR_CONNECT_SRC=/trezor-connect/ after verifying scripts/bundle-trezor-connect.mjs works with the current @trezor/connect-web release.');
+      } catch { /* noop */ }
+    }
+    return null;
+  } catch { return null; }
+}
+
 // Fix 1 — memoize init. Real TrezorConnect throws on a second init() call, so the
 // promise is created at most once and every caller awaits the same one.
 let _initPromise = null;
 async function ensureInit() {
   if (!_initPromise) {
-    // connectSrc: @trezor/connect corsValidator only accepts *.trezor.io,
-    // localhost:5xxx/8xxx, and *.sldev.cz — bare paths are silently dropped.
-    // In dev we pass a full localhost URL so the self-hosted bundle loads (no CDN).
-    // In prod connectSrc is omitted; the CDN (connect.trezor.io/9/) is used, which
-    // is disclosed. The deniability guard above (checkDeniability) ensures zero
-    // network calls when I3 is active regardless of the connectSrc setting.
-    const connectSrc = (typeof import.meta !== 'undefined' && import.meta.env?.DEV)
-      ? `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`
-      : undefined;
+    const connectSrc = resolveConnectSrc();
     _initPromise = TrezorConnect.init({
       lazyLoad: true,
       ...(connectSrc ? { connectSrc } : {}),
@@ -108,7 +123,18 @@ export async function getTrezorBtcAddress(networkKey) {
     showOnTrezor: true,
   });
   if (!result.success) throw new Error(/** @type {any} */ (result.payload).error);
-  return /** @type {any} */ (result.payload).address;
+  const addr = String(/** @type {any} */ (result.payload).address || '');
+  // Codex P2 2026-08-15: shape check on the address the library returned.
+  // With showOnTrezor:true the user visually confirmed the address on the
+  // device screen, so a substituted iframe cannot silently swap it — but
+  // this format assertion is defense in depth against a library returning
+  // garbage on an unexpected code path. BIP-84 P2WPKH: bech32 with prefix
+  // bc1/tb1 (mainnet/testnet). Reject anything else.
+  const expectedPrefix = isMainnet ? 'bc1' : 'tb1';
+  if (!addr.toLowerCase().startsWith(expectedPrefix) || addr.length < 40 || addr.length > 90) {
+    throw new Error(`TREZOR_BAD_ADDRESS: expected ${expectedPrefix}… bech32, got ${addr.slice(0, 8)}…`);
+  }
+  return addr;
 }
 
 export async function getTrezorSolAddress() {
@@ -118,5 +144,12 @@ export async function getTrezorSolAddress() {
     showOnTrezor: true,
   });
   if (!result.success) throw new Error(/** @type {any} */ (result.payload).error);
-  return /** @type {any} */ (result.payload).address;
+  const addr = String(/** @type {any} */ (result.payload).address || '');
+  // Codex P2 2026-08-15: same rationale as getTrezorBtcAddress. Solana
+  // addresses are base58-encoded 32-byte ed25519 pubkeys, always 32-44
+  // chars, base58 alphabet only (no 0/O/I/l).
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(addr)) {
+    throw new Error(`TREZOR_BAD_ADDRESS: expected Solana base58 pubkey, got ${addr.slice(0, 8)}…`);
+  }
+  return addr;
 }
