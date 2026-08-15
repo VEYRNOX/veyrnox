@@ -8,6 +8,21 @@ import { FileDown, FileText, Table2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { USD_RATES } from "@/lib/cryptos";
 import Spinner from "@/components/Spinner";
+import { useWallet } from "@/lib/WalletProvider";
+
+// Codex P2 2026-08-15: CSV-injection-safe escape.
+//   - Prefix a leading '=', '+', '-', '@', '\t', or '\r' with a single quote
+//     so Excel/Sheets treats the cell as text, not a formula (e.g. a memo
+//     "=cmd|'/c calc'!A1" would otherwise execute on open).
+//   - Always wrap in double quotes so commas + newlines don't split rows.
+//   - Double any embedded double-quote per RFC 4180.
+// Applies to EVERY cell — including status/tx_hash/address, since indexer
+// output is untrusted (see the same-wave normalizeBtcTx participation check).
+export function csvCell(v) {
+  const s = v == null ? '' : String(v);
+  const withGuard = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  return `"${withGuard.replace(/"/g, '""')}"`;
+}
 
 function buildRows(transactions) {
   return transactions.map(tx => ({
@@ -27,12 +42,16 @@ function buildRows(transactions) {
 function downloadCSV(rows) {
   const headers = ["Date", "Type", "Asset", "Amount", "USD Value", "Status", "To Address", "From Address", "Tx Hash", "Note"];
   const lines = [
-    headers.join(","),
+    headers.map(csvCell).join(","),
     ...rows.map(r =>
-      [r.date, r.type, r.asset, r.amount, r.usd_value, r.status, r.to_address, r.from_address, r.tx_hash, `"${r.note}"`].join(",")
+      [r.date, r.type, r.asset, r.amount, r.usd_value, r.status, r.to_address, r.from_address, r.tx_hash, r.note]
+        .map(csvCell)
+        .join(",")
     ),
   ];
-  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  // RFC 4180 line-ending. \n alone would break older Excel importers and
+  // makes embedded-newline detection ambiguous.
+  const blob = new Blob([lines.join("\r\n")], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -104,14 +123,23 @@ async function downloadPDF(rows) {
 }
 
 export default function ExportTransactions({ transactions: propTransactions }) {
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden;
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState(null);
 
-  const { data: fetchedTransactions = [], isLoading } = useQuery({
+  // Codex P1 2026-08-15: fallback fetch used to run whenever the component
+  // opened without props — no deniability gate. Any future caller (or a
+  // reshuffled Dashboard render) would leak real-session history in decoy.
+  // Two-chokepoint gate: query enabled AND local blank on the derived
+  // shape, same pattern as TransactionReceipt / TransactionHistory /
+  // LoginActivity.
+  const { data: fetchedRaw = [], isLoading } = useQuery({
     queryKey: ["transactions-export"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 1000),
-    enabled: open && !propTransactions,
+    enabled: open && !propTransactions && !deniable,
   });
+  const fetchedTransactions = deniable ? [] : fetchedRaw;
 
   const transactions = propTransactions ?? fetchedTransactions;
 

@@ -88,11 +88,17 @@ export default function LoginActivity() {
   // render the same neutral empty/loading state — no UI tell that confirms a
   // decoy/hidden session.
   const sessionQueryEnabled = !isDecoy && !isHidden;
-  const { data: sessions = [], isLoading, isError } = useQuery({
+  const { data: sessionsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["user-sessions-activity"],
     queryFn: () => base44.entities.UserSession.list("-last_active", 20),
     enabled: sessionQueryEnabled,
   });
+  // Codex P1 2026-08-15: `enabled:false` stops refetches, not cached reads —
+  // a real session's device-record history would still render into a
+  // subsequent decoy/hidden session on mount. Blank locally so no cached
+  // row can render. Same pattern as TransactionHistory + TransactionReceipt
+  // in this wave.
+  const sessions = sessionQueryEnabled ? sessionsRaw : [];
 
   const activeSessions = sessions.filter((s) => s.status !== "revoked");
   const revokedSessions = sessions.filter((s) => s.status === "revoked");
@@ -143,9 +149,12 @@ export default function LoginActivity() {
               </span>
             )}
           </div>
-        ) : (isDecoy || isHidden) ? (
-          <p className="text-sm text-muted-foreground mt-1">Not available in this session.</p>
         ) : (
+          // Codex P2 2026-08-15: previously a distinct "Not available in this
+          // session." message ran under (isDecoy || isHidden) — a session-type
+          // tell (a coercer sees deniable copy vs empty copy). Collapsed into
+          // the same neutral "No prior session recorded" branch so a decoy
+          // renders identically to a fresh device.
           <p className="text-sm text-muted-foreground mt-1">
             No prior session recorded on this device.
           </p>
