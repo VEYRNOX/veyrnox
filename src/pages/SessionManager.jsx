@@ -5,6 +5,7 @@ import { Monitor, Smartphone, Globe, ShieldX, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/lib/WalletProvider";
 import Spinner from "@/components/Spinner";
+import { useActionGuard } from "@/components/security/useActionGuard";
 
 function getDeviceIcon(ua) {
   if (!ua) return <Globe className="h-4 w-4" />;
@@ -25,16 +26,22 @@ function parseUA(ua) {
 export default function SessionManager() {
   const queryClient = useQueryClient();
   const { isDecoy, isHidden } = useWallet();
+  const { requireTwoFactor, gateModal } = useActionGuard();
 
   // I3 (deniability): decoy/hidden sessions must not fire base44 entity queries.
   // Gate consistent with LoginActivity.jsx — no UI tell that confirms session type.
   const sessionQueryEnabled = !isDecoy && !isHidden;
 
-  const { data: sessions = [], isLoading, isError } = useQuery({
+  const { data: sessionsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["user-sessions"],
     queryFn: () => base44.entities.UserSession.list("-created_date", 20),
     enabled: sessionQueryEnabled,
   });
+  // Codex P2 2026-08-15 cache-bleed defence: enabled:false stops REFETCHES,
+  // not READS. Blank locally so a real-session cache under the same key
+  // cannot repopulate real device metadata (which is ALSO what the revoke
+  // buttons operate on) into a decoy render.
+  const sessions = sessionQueryEnabled ? sessionsRaw : [];
 
   const revoke = useMutation({
     mutationFn: (/** @type {any} */ id) => base44.entities.UserSession.update(id, { status: "revoked" }),
@@ -48,6 +55,21 @@ export default function SessionManager() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["user-sessions"] }),
   });
+
+  // Codex P2 2026-08-15: single-session AND bulk revocation are destructive
+  // (they sign devices out globally), and were reachable without step-up
+  // re-auth — an already-unlocked attacker / coercer could sign out the
+  // current device or revoke every other device without PIN/biometric
+  // reconfirmation. Route both through useActionGuard's requireTwoFactor,
+  // which is a no-op when no second factor is configured but presents the
+  // PIN/passkey gate when one is. Same wrapper the seed-reveal and duress-
+  // setup flows use.
+  const guardedRevoke = (id) => {
+    requireTwoFactor(() => revoke.mutate(id), { title: 'Revoke session' });
+  };
+  const guardedRevokeAll = () => {
+    requireTwoFactor(() => revokeAll.mutate(), { title: 'Revoke every session' });
+  };
 
   const activeSessions = sessions.filter(s => s.status !== "revoked");
   const revokedSessions = sessions.filter(s => s.status === "revoked");
@@ -64,7 +86,7 @@ export default function SessionManager() {
           <p className="text-sm text-muted-foreground">View and revoke device sessions</p>
         </div>
         {activeSessions.length > 0 && (
-          <Button variant="destructive" size="sm" disabled={revokeAll.isPending} onClick={() => revokeAll.mutate()}>
+          <Button variant="destructive" size="sm" disabled={revokeAll.isPending} onClick={guardedRevokeAll}>
             Revoke All
           </Button>
         )}
@@ -114,7 +136,7 @@ export default function SessionManager() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <CheckCircle2 className="h-4 w-4 text-success" />
-                <button onClick={() => revoke.mutate(s.id)} aria-label={`Revoke session on ${parseUA(s.user_agent)}`} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                <button onClick={() => guardedRevoke(s.id)} aria-label={`Revoke session on ${parseUA(s.user_agent)}`} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                   <ShieldX className="h-4 w-4" />
                 </button>
               </div>
@@ -140,6 +162,7 @@ export default function SessionManager() {
           )}
         </div>
       )}
+      {gateModal}
     </div>
   );
 }
