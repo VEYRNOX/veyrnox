@@ -86,26 +86,34 @@ describe('HiddenWallet2faGate', () => {
     expect(container.querySelector('[role="dialog"]')).toBeDefined();
   });
 
-  it('should show correct mode label in title', () => {
+  it('shows correct mode label in title (Codex P1 2026-08-15: neutral wording — no "hidden" tell)', () => {
     mockWalletContext.isHidden = true;
     mockWalletContext.hiddenWallet2faMode = 'password';
 
     render(<HiddenWallet2faGate />);
-    const allTexts = screen.getAllByText((content, node) => {
-      return content.includes('Unlock hidden wallet') && content.includes('PIN + Action Password');
+    // The gate no longer says "hidden wallet" anywhere in the visible copy —
+    // a coercer looking at the screen must not be able to distinguish this
+    // dialog from the primary send-time step-up gate. It DOES still surface
+    // the mode label (PIN + Action Password) so the user knows what they're
+    // being asked for.
+    const allTexts = screen.getAllByText((content) => {
+      return content.includes('Verify') && content.includes('PIN + Action Password');
     });
     expect(allTexts.length > 0).toBe(true);
   });
 
-  it('should display convenience message about on-chain visibility', () => {
+  it('does NOT render any "hidden wallet" tell-string (Codex P1 2026-08-15)', () => {
     mockWalletContext.isHidden = true;
     mockWalletContext.hiddenWallet2faMode = 'password';
 
-    render(<HiddenWallet2faGate />);
-    const allTexts = screen.getAllByText((content) => {
-      return content.includes('on-chain') && content.includes('public');
-    });
-    expect(allTexts.length > 0).toBe(true);
+    const { container } = render(<HiddenWallet2faGate />);
+    // Case-insensitive: "hidden wallet" / "Hidden Wallet" / "hidden-wallet"
+    // must not appear anywhere in the visible copy. On-chain-visibility line
+    // was also dropped as an implicit tell (only a hidden-wallet gate would
+    // reassure about on-chain public-ness).
+    const text = container.textContent || '';
+    expect(text.toLowerCase()).not.toContain('hidden wallet');
+    expect(text.toLowerCase()).not.toContain('on-chain');
   });
 
   it('should prevent dismissing the dialog', () => {
