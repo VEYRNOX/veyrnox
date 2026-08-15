@@ -346,6 +346,13 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // dismissed the recurring reminder — same tell class as the two lines above.
   'veyrnox-backup-state-v1',
   'veyrnox-backup-nag-v1',
+  // Persistent "hardware-KEK ineligible" verdict (lib/useKekEnrollmentGate.js
+  // KEK_INSECURE_TIER_KEY). Written when the enrollment gate confirms the
+  // device cannot pass the tier check (StrongBox/TEE absent, SOFTWARE-tier
+  // Keystore on some Chinese OEM ROMs, Android<11, plugin unavailable) so the
+  // gate stops re-prompting every unlock. Presence proves a real Veyrnox
+  // install existed here — same METADATA_RESIDUE tell class as the neighbours.
+  'veyrnox-kek-insecure-tier',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
