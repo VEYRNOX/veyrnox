@@ -12,12 +12,53 @@
 // egress), so the egress target is a controlled decision, not free-form input.
 //
 // Policy:
-//   - `https://` to any host (the normal case).
+//   - `https://` to a well-known RPC/indexer host (see WELL_KNOWN_RPC_HOSTS).
+//   - `https://` to ANY other host ONLY when the operator has explicitly opted
+//     in via VITE_ALLOW_CUSTOM_RPC=1 at build time or the runtime override
+//     `globalThis.__veyrnoxAllowCustomRpc === true` (settable by a
+//     future consent-gated NetworkManager flow). Fails closed otherwise —
+//     codex P2 2026-08-15: a compromised override/config path could
+//     otherwise redirect balance and history traffic to an arbitrary TLS
+//     endpoint. Cert pinning remains a TARGET-only follow-up.
 //   - `http://` ONLY to loopback, so an operator can point at a local node
 //     (http://localhost / 127.0.0.1 / [::1]).
 //   - no embedded credentials; no other schemes.
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1']);
+
+// Curated list of hosts / suffixes for RPC + indexer providers the app ships
+// with defaults from. Match is by exact host OR suffix (leading dot ensures
+// `evil.infura.io` is NOT accepted just because `infura.io` is a suffix
+// entry — a suffix must be preceded by a `.`). Trimmed to what the app
+// actually calls today; extend when a new default provider is added.
+const WELL_KNOWN_RPC_HOSTS = [
+  // EVM
+  '.infura.io', '.alchemy.com', '.g.alchemy.com', '.ankr.com', '.publicnode.com',
+  '.quiknode.pro', '.cloudflare-eth.com', '.llamarpc.com', '.blastapi.io',
+  '.drpc.org', '.gateway.tenderly.co', '.polygon-rpc.com', '.bnbchain.org',
+  '.binance.org', '.optimism.io', '.arbitrum.io', '.avax.network',
+  // Bitcoin (Esplora / Blockstream / mempool.space)
+  '.blockstream.info', '.mempool.space',
+  // Solana
+  '.solana.com', '.helius-rpc.com', '.projectserum.com',
+];
+
+function isWellKnownRpcHost(host) {
+  if (WELL_KNOWN_RPC_HOSTS.some((h) => h.startsWith('.') && (host === h.slice(1) || host.endsWith(h)))) return true;
+  return WELL_KNOWN_RPC_HOSTS.includes(host);
+}
+
+function customRpcAllowed() {
+  // Build-time opt-in (developer / CI decision).
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ALLOW_CUSTOM_RPC === '1') return true;
+  } catch { /* import.meta not available in some test contexts */ }
+  // Runtime opt-in (future consent-gated UI toggle).
+  try {
+    if (typeof globalThis !== 'undefined' && globalThis.__veyrnoxAllowCustomRpc === true) return true;
+  } catch { /* no globalThis */ }
+  return false;
+}
 
 /**
  * PURE: assert a user/operator-supplied RPC or indexer URL is safe to use as an
@@ -41,10 +82,16 @@ export function assertSafeRpcUrl(url) {
     throw new Error('RPC URL must not embed credentials');
   }
   const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
-  if (parsed.protocol === 'https:') return trimmed;
   if (parsed.protocol === 'http:' && LOOPBACK.has(host)) return trimmed;
+  if (parsed.protocol !== 'https:') {
+    throw new Error(
+      `RPC URL must use https (http allowed only for loopback); got ${parsed.protocol}`,
+    );
+  }
+  if (isWellKnownRpcHost(host)) return trimmed;
+  if (customRpcAllowed()) return trimmed;
   throw new Error(
-    `RPC URL must use https (http allowed only for loopback); got ${parsed.protocol}`,
+    `RPC host "${host}" is not in the well-known provider list. To use a custom RPC, set VITE_ALLOW_CUSTOM_RPC=1 at build time or set globalThis.__veyrnoxAllowCustomRpc = true at runtime.`,
   );
 }
 

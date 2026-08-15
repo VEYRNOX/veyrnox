@@ -45,8 +45,20 @@ function baseUrl(networkKey) {
 }
 
 async function getJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Indexer ${res.status} for ${url}`);
+  // AbortSignal.timeout caps zombie egress after a session lock / panic-wipe —
+  // without it, an in-flight balance read could complete minutes later
+  // (Codex P2 2026-08-15). 15s is enough for a slow indexer + not so long
+  // that a locked session leaks meaningfully afterwards. Full AbortController
+  // plumbing into React Query is deferred as YAGNI until refetch cancellation
+  // is user-observable.
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) {
+    // Error message must NOT embed the full URL — Esplora URLs contain
+    // `/address/<addr>/utxo`, which any log/console/devtools collector then
+    // captures verbatim as a real watched address (Codex P1 2026-08-15). Log
+    // only the status and the endpoint path shape, not the concrete address.
+    throw new Error(`Indexer ${res.status}`);
+  }
   return res.json();
 }
 
@@ -181,7 +193,8 @@ export async function broadcastTx(networkKey, rawHex) {
   if (isDeniabilitySessionActive()) throw new Error('I3: no egress in deniability session');
   getBtcNetwork(networkKey); // throws if mainnet gated / disabled
   const url = `${baseUrl(networkKey)}/tx`;
-  const res = await fetch(url, { method: 'POST', body: rawHex });
+  // Same timeout ceiling as read path (Codex P2 2026-08-15).
+  const res = await fetch(url, { method: 'POST', body: rawHex, signal: AbortSignal.timeout(15_000) });
   const text = (await res.text()).trim();
   if (!res.ok) throw new Error(`Broadcast failed (${res.status}): ${text}`);
   // A 200 with an empty/garbage body (seen on some Esplora forks) used to fall
