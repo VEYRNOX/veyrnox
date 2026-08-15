@@ -113,6 +113,14 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const [busy, setBusy] = useState(false);
   const [decryptedContainer, setDecryptedContainer] = useState(null);
   const [restoredVia, setRestoredVia] = useState('password');
+  // Attempt cap parity with useRevealWithReauth's seed-reveal gate (5). Prior
+  // behaviour let a caller retry passwords/PINs forever with only a generic
+  // toast — materially weaker than the paired reveal surface it protects.
+  // On exceeding the cap the envelope is dropped and the user must re-select
+  // the backup file, which serves as a natural rate-limit + forces context
+  // reload. (Codex P2 2026-08-15.)
+  const [unlockAttempts, setUnlockAttempts] = useState(0);
+  const MAX_UNLOCK_ATTEMPTS = 5;
   const [backups, setBackups] = useState([]);
   const [listBusy, setListBusy] = useState(false);
   // Slice I: Recovery Bay drop-zone state — decorative hover + fail-closed
@@ -143,6 +151,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
       const parsed = parseBackupFile(bytes);
       setFileName(name);
       setEnvelope(parsed);
+      setUnlockAttempts(0);
       setPhase('unlock');
     } catch (err) {
       toast.error(err.message || 'Invalid backup file.');
@@ -250,6 +259,11 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const handleUnlock = async () => {
     const gate = sensitiveGate(raspArtifact, 'import');
     if (gate.blocked) { toast.error(gate.sentence || 'Backup restore is disabled on this device right now.'); return; }
+    if (unlockAttempts >= MAX_UNLOCK_ATTEMPTS) {
+      // Guard against a re-entered stale render — the button is disabled
+      // below, but a keyboard-submit could still get here.
+      return;
+    }
     const usePassword = unlockPassword.length > 0;
     setRestoredVia(usePassword ? 'password' : 'pin');
     setBusy(true);
@@ -259,10 +273,27 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
         ? await decryptPasswordSeal(envelope, unlockPassword)
         : await decryptPinSeal(envelope, unlockPin);
       setDecryptedContainer(containerJson);
+      setUnlockAttempts(0);
       setPhase('setpin');
     } catch (err) {
-      setPhase('unlock');
-      toast.error('Wrong credential or corrupted backup.');
+      const next = unlockAttempts + 1;
+      setUnlockAttempts(next);
+      if (next >= MAX_UNLOCK_ATTEMPTS) {
+        // Drop the envelope + credentials so the user must re-select the
+        // file. Resets the counter naturally when a fresh envelope is loaded
+        // (see the `envelope` reset paths above). No fake lockout timer —
+        // this is a per-mount cap only; the honest ceiling is documented in
+        // the ponytail comment on unlockAttempts.
+        setEnvelope(null);
+        setFileName('');
+        setUnlockPassword('');
+        setUnlockPin('');
+        setPhase('pick');
+        toast.error('Too many attempts — re-select the backup file to try again.');
+      } else {
+        setPhase('unlock');
+        toast.error(`Wrong credential or corrupted backup. (${MAX_UNLOCK_ATTEMPTS - next} left)`);
+      }
     } finally {
       setBusy(false);
     }
@@ -428,12 +459,17 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
 
         <button
           onClick={handleUnlock}
-          disabled={!credOk || busy}
+          disabled={!credOk || busy || unlockAttempts >= MAX_UNLOCK_ATTEMPTS}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Upload className="h-4 w-4" />}
           {busy ? 'Restoring…' : 'Restore wallet'}
         </button>
+        {unlockAttempts > 0 && unlockAttempts < MAX_UNLOCK_ATTEMPTS && (
+          <p className="text-xs text-destructive">
+            {MAX_UNLOCK_ATTEMPTS - unlockAttempts} attempt{MAX_UNLOCK_ATTEMPTS - unlockAttempts === 1 ? '' : 's'} left before you must re-select the file.
+          </p>
+        )}
 
         <button
           onClick={() => { setEnvelope(null); setFileName(''); setUnlockPassword(''); setUnlockPin(''); setPhase('pick'); }}
