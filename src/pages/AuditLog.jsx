@@ -44,6 +44,11 @@ const EVENT_LABELS = {
 export default function AuditLog() {
   const {
     auditLogEnabled,
+    // Branch review 2026-08-15 (A-1). Default true so a caller that renders
+    // this page without the flag behaves as the primary session — this governs
+    // only the aria annotation, never the write itself. The real gate lives in
+    // WalletProvider.toggleAuditLog and cannot be bypassed from here.
+    auditLogWritable = true,
     toggleAuditLog,
     readAuditLogEntries,
     clearAuditLogEntries,
@@ -96,14 +101,26 @@ export default function AuditLog() {
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <p className="font-medium">Enable audit log</p>
-              <p className="text-sm text-muted-foreground max-w-sm">
+              <p id="audit-log-toggle-help" className="text-sm text-muted-foreground max-w-sm">
                 Off by default. Logs 100 events: type + time only, no amounts or addresses. Disabled in decoy/hidden sessions.
               </p>
             </div>
+            {/* A-1 (branch review 2026-08-15). In a decoy/hidden session
+                toggleAuditLog refuses and `auditLogEnabled` never changes, so
+                the switch simply does not move. Sighted users have the sentence
+                above; a screen-reader user tabbing straight to the control got
+                silence and no indication the action was refused.
+
+                aria-disabled, NOT disabled: a hard-disabled control is removed
+                from the tab order and reads as unavailable, which is a LOUDER
+                deniability tell than an unresponsive one. This keeps the
+                control reachable and announces the already-disclosed reason. */}
             <Switch
               checked={auditLogEnabled}
               onCheckedChange={toggleAuditLog}
               aria-label="Enable audit log"
+              aria-disabled={!auditLogWritable || undefined}
+              aria-describedby="audit-log-toggle-help"
             />
           </div>
 

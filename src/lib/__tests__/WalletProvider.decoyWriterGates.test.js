@@ -72,13 +72,13 @@ describe('toggleAuditLog — decoy/hidden must not touch the real audit log', ()
   });
 
   it('is gated on the session being decoy or hidden', () => {
-    expect(block).toMatch(/if\s*\(\s*isDecoy\s*\|\|\s*isHidden\s*\)\s*return\s*;/);
+    expect(block).toMatch(/if\s*\(\s*isDecoy\s*\|\|\s*isHidden\s*\)\s*return\s+false\s*;/);
   });
 
   it('the guard runs BEFORE clearAuditLogData erases the real blob', () => {
     // Presence is not enough: clearAuditLogData() is the destructive call and it
     // is reachable from a decoy session via both Settings.jsx and AuditLog.jsx.
-    const guardIdx = block.search(/if\s*\(\s*isDecoy\s*\|\|\s*isHidden\s*\)\s*return\s*;/);
+    const guardIdx = block.search(/if\s*\(\s*isDecoy\s*\|\|\s*isHidden\s*\)\s*return\s+false\s*;/);
     const clearIdx = block.indexOf('clearAuditLogData()');
     expect(guardIdx).toBeGreaterThan(-1);
     expect(clearIdx).toBeGreaterThan(-1);
@@ -86,7 +86,7 @@ describe('toggleAuditLog — decoy/hidden must not touch the real audit log', ()
   });
 
   it('the guard also precedes both preference writers', () => {
-    const guardIdx = block.search(/if\s*\(\s*isDecoy\s*\|\|\s*isHidden\s*\)\s*return\s*;/);
+    const guardIdx = block.search(/if\s*\(\s*isDecoy\s*\|\|\s*isHidden\s*\)\s*return\s+false\s*;/);
     for (const fn of ['setAuditLogPref(', 'setAuditLogEnabledState(']) {
       const idx = block.indexOf(fn);
       expect(idx, `${fn} should be present`).toBeGreaterThan(-1);
@@ -98,5 +98,42 @@ describe('toggleAuditLog — decoy/hidden must not touch the real audit log', ()
     // Without them the callback closes over a stale session type — the gate
     // would read the value from whichever session mounted the provider.
     expect(block).toMatch(/\}\s*,\s*\[\s*isDecoy\s*,\s*isHidden\s*\]\s*\)/);
+  });
+
+  // Branch review 2026-08-15 (S-2). Settings.jsx drives its optimistic local
+  // state off this return value, so the applied/refused contract is load-bearing
+  // in BOTH directions and neither half is covered elsewhere: the Settings test
+  // is a source scan and the AuditLog test mocks this provider away. Dropping
+  // `return true` alone makes `applied` undefined for a PRIMARY user, so the
+  // toggle silently stops working for exactly the people it should work for.
+  it('returns false on refusal and true on success (the applied/refused contract)', () => {
+    expect(block).toMatch(/if\s*\(\s*isDecoy\s*\|\|\s*isHidden\s*\)\s*return\s+false\s*;/);
+    expect(block).toMatch(/return\s+true\s*;/);
+  });
+
+  it('the success return comes AFTER the writes it reports on', () => {
+    const trueIdx = block.search(/return\s+true\s*;/);
+    for (const fn of ['setAuditLogPref(', 'setAuditLogEnabledState(', 'clearAuditLogData(']) {
+      const idx = block.indexOf(fn);
+      expect(idx, `${fn} should be present`).toBeGreaterThan(-1);
+      expect(idx, `${fn} should come before the success return`).toBeLessThan(trueIdx);
+    }
+  });
+});
+
+// auditLogWritable — the single render-time "can this session change the
+// setting" answer, read by AuditLog.jsx and Settings.jsx. Derived once in the
+// provider so neither page recomputes `!isDecoy && !isHidden` for itself; that
+// three-place duplication is how the third unguarded consent writer shipped.
+describe('auditLogWritable — one definition, exposed on the context', () => {
+  it('is derived from the same session predicate as the gate', () => {
+    expect(src).toMatch(/const\s+auditLogWritable\s*=\s*!isDecoy\s*&&\s*!isHidden\s*;/);
+  });
+
+  it('is actually exposed on the context value', () => {
+    // Derived but unexported is the silent-failure shape: both pages fall back
+    // to their `= true` default and the aria annotation never appears.
+    const valueIdx = src.lastIndexOf('auditLogEnabled,');
+    expect(src.slice(valueIdx, valueIdx + 200)).toMatch(/auditLogWritable,/);
   });
 });
