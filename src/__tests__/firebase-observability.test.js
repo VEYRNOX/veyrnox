@@ -83,7 +83,10 @@ describe('Firebase staging observability', () => {
     expect(firebaseWorkflow).toContain('actions: write');
     expect(firebaseWorkflow).toContain('gh workflow run ci.yml');
     expect(firebaseWorkflow).toContain('-f build_firebase_test=true');
-    expect(firebaseWorkflow).toContain('-f build_staging_release="$PUBLISH_STAGING"');
+    // 2026-08-15: staging is the only build variant Firebase Test Lab
+    // ever exercises, so build_staging_release is hardcoded true rather
+    // than forwarded from publish_staging.
+    expect(firebaseWorkflow).toContain('-f build_staging_release=true');
     expect(firebaseWorkflow).toContain('EXPECTED_EVENT:');
     expect(firebaseWorkflow).toContain('DEBUG_INFORMATION_FORMAT=dwarf-with-dsym');
     expect(firebaseWorkflow).toContain('Crashlytics/upload-symbols');
