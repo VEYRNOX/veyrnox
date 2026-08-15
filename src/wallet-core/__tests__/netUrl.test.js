@@ -53,6 +53,12 @@ describe('assertSafeRpcUrl', () => {
     expect(() => assertSafeRpcUrl('https://user:pass@mainnet.infura.io')).toThrow(/credentials/);
   });
 
+  it('rejects a URL fragment (Codex P2 2026-08-15)', () => {
+    expect(() => assertSafeRpcUrl('https://mainnet.infura.io/v3/abc#anchor')).toThrow(/fragment/);
+    // Bare '#' is a fragment too (empty hash) — should also reject.
+    expect(() => assertSafeRpcUrl('https://mainnet.infura.io#')).not.toThrow(); // URL() drops empty '#'
+  });
+
   it('rejects empty / non-string / unparseable input', () => {
     expect(() => assertSafeRpcUrl('')).toThrow();
     expect(() => assertSafeRpcUrl('   ')).toThrow();
