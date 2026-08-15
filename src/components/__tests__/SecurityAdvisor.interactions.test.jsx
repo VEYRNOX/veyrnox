@@ -190,11 +190,15 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
       });
     });
 
-    it('blocks chat after consent is explicitly denied, but screening still works', async () => {
+    it('blocks BOTH chat and remote screening after consent is explicitly denied (Codex P1 2026-08-15)', async () => {
       await mountAdvisor();
       await denyAdvisorConsent();
 
-      // Screening is independent of chat consent — it still works
+      // Remote address-lookup egress used to run REGARDLESS of the chat
+      // consent choice — a user who declined "your addresses are never
+      // included" still had their address sent to TIP the moment they
+      // asked "is 0x... safe?". Both channels are now gated on the same
+      // grant; local seed threat-intel still fires (unaffected).
       const mockScreening = {
         verdict: 'allow',
         sanctions: false,
@@ -202,15 +206,10 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
       };
       mockScreenTransaction.mockResolvedValueOnce(mockScreening);
 
-      // After denial, screening still happens but chat does not
       await askQuestion('0x0000000000000000000000000000000000000001');
 
-      // Screening was called (screening is not gated by chat consent)
-      await waitFor(() => {
-        expect(mockScreenTransaction).toHaveBeenCalled();
-      });
-
-      // But chat fetch should not have been called
+      // Neither remote screening nor chat fetch should fire after denial.
+      expect(mockScreenTransaction).not.toHaveBeenCalled();
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 

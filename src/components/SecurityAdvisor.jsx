@@ -10,6 +10,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router";
 import { ShieldCheck, Send, X, Loader2, WifiOff, AlertTriangle, CheckCircle2, ShieldAlert as ShieldAlertIcon } from "lucide-react";
 import { screenTransaction } from "@/api/tipScreen.js";
+import { scrubSecrets } from "@/lib/advisorScrubber.js";
+import { ZERO_FROM_ADDRESS } from "@/lib/tipZeroFrom.js";
 import { lookupThreatSync, SEED_THREATS } from "@/lib/threatIntelStore";
 import {
   Drawer,
@@ -286,14 +288,8 @@ function extractAddress(text) {
   return null;
 }
 
-// Per-chain "empty from-address" — TIP requires from_address as a non-empty
-// string but the sanctions lookup only checks to_address in practice. We use
-// the on-chain "burn address" for each chain as a valid-format placeholder.
-const ZERO_FROM_ADDRESS = {
-  ethereum: '0x0000000000000000000000000000000000000000',
-  bitcoin:  '1111111111111111111114oLvT2',                    // 1x1…111 collapsed to a P2PKH-shaped literal
-  solana:   '11111111111111111111111111111111',                // Solana System Program pubkey (canonical zero)
-};
+// Per-chain "empty from-address" is imported from src/lib/tipZeroFrom.js
+// so SendCrypto can share it (Codex P1 2026-08-15 privacy fix).
 
 function ScreeningVerdict({ result }) {
   if (!result) return null;
@@ -495,15 +491,23 @@ export default function SecurityAdvisor({ walletChain }) {
       // by a remote "unavailable" verdict (I4: fail honest).
       const seedHits = lookupThreatSync(detected.address);
       let remoteResult = null;
-      try {
-        remoteResult = await screenTransaction({
-          chain: detected.chain,
-          actionType: 'address_lookup',
-          from: ZERO_FROM_ADDRESS[detected.chain],
-          to: detected.address,
-        });
-      } catch {
-        // remote failed — seed still applies below
+      // Codex P1 2026-08-15: the consent prompt on this screen literally says
+      // "Your addresses ... are never included" without an explicit grant, but
+      // the remote address-lookup egress used to run BEFORE that gate. Skip
+      // the remote call unless the user has affirmatively granted advisor
+      // consent — local seed still fires either way, so a known-bad address
+      // is still surfaced honestly. Matches the sendMessage gate at :553.
+      if (TIP_CHAT_URL && hasAdvisorConsent()) {
+        try {
+          remoteResult = await screenTransaction({
+            chain: detected.chain,
+            actionType: 'address_lookup',
+            from: ZERO_FROM_ADDRESS[detected.chain],
+            to: detected.address,
+          });
+        } catch {
+          // remote failed — seed still applies below
+        }
       }
 
       // If seed knows this address, prefer it whenever remote is not a
@@ -598,7 +602,15 @@ Additional public knowledge you should apply:
 - Lazarus Group (DPRK state-sponsored) OFAC-listed wallets — e.g. 0x098B716B8Aaf21512996dC57EB0615e2383E2f96, 0xa7e5d5A720f06526557c513402f2e6B5fA20b008.
 - Drainer families (Inferno, Angel, Pink, Pussy, Monkey) impersonate legitimate dApps to steal funds via malicious approvals.`,
             },
-            ...history.map((m) => ({ role: m.role, content: m.content })),
+            // Codex P1 2026-08-15: scrub each message before forwarding to
+            // tip-chat. A system-prompt rule ("Never reveal seed phrases…")
+            // is a hint to the MODEL; it is NOT a control against the SECRET
+            // reaching the upstream over the wire. Client-side pattern match
+            // for BIP-39 word runs, hex private keys, PIN-length digit
+            // strings, and 4/8/16/24-word seeds; matches are replaced with
+            // a fixed sentinel that also nudges the model to warn the user
+            // that pasting secrets into the Advisor is unsafe.
+            ...history.map((m) => ({ role: m.role, content: scrubSecrets(m.content) })),
           ],
           context: {
             current_screen: currentScreen,
