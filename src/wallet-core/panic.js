@@ -137,9 +137,20 @@ const IOC_CACHE_DB_NAME = 'veyrnox-ioc-cache';
 // is byte-shaped like every other vault blob, so it does not stand out.
 const PANIC_KEY = 'tertiary';
 
-// Minimum panic-PIN length. Higher than duress's 4-char floor: this is
-// destructive, so we make accidental entry meaningfully harder.
-const MIN_PANIC_LEN = 6;
+// Codex P2 2026-08-16: enforce the UI's "exactly 8 digits" contract at the
+// CAPABILITY layer, not just at the page. Prior to this the page enforced
+// 8 digits but setPanicVault accepted any 6+ character string, so a
+// non-UI caller (test harness, future automation, JS console) could
+// provision a weaker or non-numeric panic secret than the UI promises —
+// which then unlocks a destructive path the user thought was 10^8-space.
+// Numeric-only + exactly 8 chars matches the PIN-cohort primary/duress
+// shape and the page copy at PanicWipe.jsx:154. This is a WRITE-time
+// gate; existing panic vaults still unlock via tryPanicUnlock which
+// checks decryptability only (no length check).
+const PANIC_PIN_LEN = 8;
+const PANIC_PIN_RE = /^\d{8}$/;
+// Kept for legacy tests / call sites that reference the old constant.
+const MIN_PANIC_LEN = PANIC_PIN_LEN;
 
 // DEMO-only address-residue maps in localStorage (decoyBalance.js /
 // hiddenBalance.js). NOT key material, but they name decoy/hidden addresses, so a
@@ -374,6 +385,25 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // by RESIDUE_KEY_PREFIXES. Writer is already gated on
   // isDeniabilityOrDemoActive(); this closes the residue gap only.
   'veyrnox-referral-prompt-dismissed',
+  // Codex P2 2026-08-16: additional METADATA_RESIDUE keys the previous
+  // sweep missed.
+  //   - veyrnox-locale / -timezone / -fiat-currency: PRESENCE proves the
+  //     user picked a non-default value on this device (writer:
+  //     lib/locale.js). A neutral install has these absent — so a wiped
+  //     device with them still set is distinguishable from a fresh one.
+  //   - veyrnox-paywall-outcome-seen: PRESENCE proves the subscription
+  //     paywall's outcome step ran on this device (writer:
+  //     components/subscription/OutcomeSteps.jsx OUTCOME_SEEN_KEY). Same
+  //     tell class as veyrnox-paywall-nudge-dismissed already listed.
+  //   - dashboard-widget-config: PRESENCE proves the user configured the
+  //     dashboard's custom-widget grid (writer:
+  //     pages/CustomDashboardWidgets.jsx). Same tell class as the tour
+  //     markers above.
+  'veyrnox-locale',
+  'veyrnox-timezone',
+  'veyrnox-fiat-currency',
+  'veyrnox-paywall-outcome-seen',
+  'dashboard-widget-config',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
@@ -574,8 +604,8 @@ export async function hasPanicVault() {
  * @param {string} panicPassword
  */
 export async function setPanicVault(panicPassword) {
-  if (typeof panicPassword !== 'string' || panicPassword.length < MIN_PANIC_LEN) {
-    throw new Error(`Panic/wipe PIN must be at least ${MIN_PANIC_LEN} characters`);
+  if (typeof panicPassword !== 'string' || !PANIC_PIN_RE.test(panicPassword)) {
+    throw new Error(`Panic/wipe PIN must be exactly ${PANIC_PIN_LEN} digits`);
   }
   const marker = generateMnemonic(128); // throwaway; only its decryptability matters
   // H2 (deniability uniformity): pad the marker plaintext to EXACTLY FIXED_LEN so the
@@ -907,17 +937,48 @@ export async function inspectKeyMaterial() {
   }
   const residue = readLocalAddressResidue();
   const sessionResidue = readSessionResidue(); // C-1 / P2-2
+  // Codex P1 2026-08-16: the three SIDE databases (appdata, threat-intel,
+  // ioc-cache) hold no key material but each names addresses / tx hashes /
+  // labels / flagged addresses — the forensic residue analogue of
+  // ALL_RESIDUE_KEYS in localStorage. Their delete paths above resolve on
+  // `onblocked` (a lingering handle in another module pends the delete
+  // until it closes), so the previous `clean` verdict was returning true
+  // WITHOUT proving those DBs were actually gone. Enumerate IndexedDB
+  // and treat any of the three names surviving as `sideDatabasesResidue`;
+  // `clean` becomes false when we can verify AND at least one survived.
+  // `sideDatabasesVerified` is false when the platform lacks
+  // indexedDB.databases() (Firefox pre-126 still doesn't ship it), so a
+  // failure to enumerate is reported honestly instead of falsely clean.
+  const SIDE_DB_NAMES = [APPDATA_DB_NAME, THREATINTEL_DB_NAME, IOC_CACHE_DB_NAME];
+  let sideDatabasesResidue = [];
+  let sideDatabasesVerified = false;
+  try {
+    if (typeof indexedDB !== 'undefined' && typeof indexedDB.databases === 'function') {
+      const list = await indexedDB.databases();
+      const present = new Set((list || []).map((d) => d && d.name).filter(Boolean));
+      sideDatabasesResidue = SIDE_DB_NAMES.filter((n) => present.has(n));
+      sideDatabasesVerified = true;
+    }
+  } catch {
+    // Enumeration threw — treat as unverified rather than pretending clean.
+    sideDatabasesResidue = [];
+    sideDatabasesVerified = false;
+  }
   return {
     indexedDbKeys: keys,
     vaultBlobCount: keys.length,
     localStorageResidue: residue,
     sessionStorageResidue: sessionResidue.keys,
     sessionStorageVerified: sessionResidue.verified,
+    sideDatabasesResidue,
+    sideDatabasesVerified,
     clean:
       keys.length === 0 &&
       residue.length === 0 &&
       sessionResidue.keys.length === 0 &&
-      sessionResidue.verified === true,
+      sessionResidue.verified === true &&
+      sideDatabasesResidue.length === 0 &&
+      sideDatabasesVerified === true,
   };
 }
 
