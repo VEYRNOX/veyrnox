@@ -94,8 +94,19 @@ export function useReceiveDetector() {
         }),
       );
 
-      for (const { amount } of detectDeltas(priorRef.current, current, enabledAssets)) {
+      // Codex P2 2026-08-15: coalesce multiple positive deltas from ONE poll
+      // into a single notification. Prior behaviour emitted N events for N
+      // assets that all moved in the same 60s window, which on a many-asset
+      // wallet or a flapping source could evict earlier higher-signal alerts
+      // out of the RING_CAP=20 queue. Same-tick receives on multiple assets
+      // are functionally one event ("your wallet moved"), not N unrelated
+      // ones — coalesce into one string.
+      const deltas = detectDeltas(priorRef.current, current, enabledAssets);
+      if (deltas.length > 0) {
         try {
+          const amount = deltas.length === 1
+            ? deltas[0].amount
+            : `${deltas.map((d) => d.amount).join(' + ')}`;
           emitReceiveDetected({ ts: Date.now(), amount });
         } catch { /* I4: a notification failure is never propagated */ }
       }
