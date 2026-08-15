@@ -42,6 +42,9 @@ vi.mock('@/components/backup/RestoreFromFile', () => ({
   default: () => <div data-testid="restore-from-file-stub" />,
 }));
 
+const toastError = vi.fn();
+vi.mock('@/lib/toast', () => ({ toast: { error: (...a) => toastError(...a), success: vi.fn(), warning: vi.fn() } }));
+
 // createObjectURL / anchor click stubs so the web save path runs in jsdom
 beforeEach(() => {
   if (!URL.createObjectURL) URL.createObjectURL = vi.fn(() => 'blob:stub');
@@ -51,6 +54,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
+  toastError.mockClear();
   cleanup();
 });
 
@@ -314,7 +318,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     // Enter a password with no shares picked — still disabled.
     fireEvent.change(screen.getByPlaceholderText("New PIN (digits only)"), {
-      target: { value: '98765432' },
+      target: { value: '24681024' },
     });
     expect(screen.getByRole('button', { name: /restore wallet/i }).hasAttribute('disabled')).toBe(true);
   });
@@ -339,7 +343,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
     fireEvent.click(restoreButtons[restoreButtons.length - 1]);
     fireEvent.change(screen.getByPlaceholderText('New PIN (digits only)'), {
-      target: { value: '98765432' },
+      target: { value: '24681024' },
     });
     // Mismatch keeps it disabled + shows error.
     fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), {
@@ -349,7 +353,7 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     expect(screen.getByRole('button', { name: /restore wallet/i }).hasAttribute('disabled')).toBe(true);
     // Match — still disabled because no files picked, but no mismatch error.
     fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), {
-      target: { value: '98765432' },
+      target: { value: '24681024' },
     });
     expect(screen.queryByText(/pins do not match/i)).toBeNull();
   });
@@ -395,6 +399,207 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     // The tab renders a neutral suppression notice, not a mode toggle.
     expect(screen.getByText(/unavailable in this session/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /restore wallet/i })).toBeNull();
+    expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
+  });
+});
+
+describe('PersonalBackup — encryptOne actually encrypts share #2 (Codex P1 fix, 2026-08-15)', () => {
+  // Prior bug: the checkbox + passphrase state were wired into the UI but
+  // NEVER consumed by runSplit — every export saved 3 raw bundles regardless
+  // of the checkbox. This suite captures the real bytes each save call
+  // receives (via the web download path's Blob) and asserts share #2 is an
+  // opaque envelope while shares #1 and #3 stay byte-identical to the raw
+  // bundle exportRecoveryBundles returned.
+  let savedBlobs;
+  let savedNames;
+  let origCreateObjectURL;
+  let origAnchorClick;
+
+  beforeEach(() => {
+    savedBlobs = [];
+    savedNames = [];
+    origCreateObjectURL = URL.createObjectURL;
+    URL.createObjectURL = vi.fn((blob) => {
+      savedBlobs.push(blob);
+      return 'blob:test';
+    });
+    origAnchorClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      savedNames.push(this.download);
+    };
+  });
+
+  afterEach(() => {
+    URL.createObjectURL = origCreateObjectURL;
+    HTMLAnchorElement.prototype.click = origAnchorClick;
+  });
+
+  it('encrypts only share #2 under the passphrase; shares #1 and #3 stay raw', async () => {
+    const fakeBundles = [1, 2, 3].map((n) =>
+      JSON.stringify({
+        v: 1,
+        shareIndex: n,
+        shareBytes: 'RAWMARKER123==',
+        vault: { ct: 'c', salt: 's', iv: 'i', kdf: {} },
+        vaultHash: `hash-${n}`,
+        meta: {},
+      }),
+    );
+    const exportRecoveryBundles = vi.fn(async () => fakeBundles);
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        exportRecoveryBundles,
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
+      target: { value: 'a-strong-password-16' },
+    });
+    fireEvent.click(screen.getByLabelText(/encrypt one share with a recovery passphrase/i));
+    fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
+      target: { value: 'a-very-long-recovery-passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
+    await waitFor(() => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(), {
+      timeout: 15_000,
+    });
+
+    expect(savedBlobs).toHaveLength(3);
+    const texts = await Promise.all(savedBlobs.map((b) => b.text()));
+
+    // Share #1 and #3 are the raw bundle, byte-for-byte.
+    expect(texts[0]).toBe(fakeBundles[0]);
+    expect(texts[2]).toBe(fakeBundles[2]);
+    expect(savedNames[0]).toBe('veyrnox-recovery-1-of-3.veyrnox-bundle.json');
+    expect(savedNames[2]).toBe('veyrnox-recovery-3-of-3.veyrnox-bundle.json');
+
+    // Share #2 is NOT the raw bundle — the honesty guard.
+    expect(texts[1]).not.toContain('RAWMARKER123==');
+    expect(texts[1]).not.toContain('shareBytes');
+    const envelope = JSON.parse(texts[1]);
+    expect(envelope.type).toBe('recovery-bundle-v1');
+    expect(savedNames[1]).toBe('veyrnox-recovery-2-of-3.veyrnox-recovery.json');
+
+    // Round-trip: unwrap share #2 and it must reproduce the exact raw bundle
+    // #2, which combineFromBundles can then use alongside share #1.
+    const { unwrapBundleWithPassphrase } = await import('@/wallet-core/recoveryShare');
+    const back = await unwrapBundleWithPassphrase(envelope, 'a-very-long-recovery-passphrase');
+    expect(new TextDecoder().decode(back)).toBe(fakeBundles[1]);
+  }, 30_000);
+
+  it('saves 3 raw bundles when the checkbox is left off (no behaviour change)', async () => {
+    const fakeBundles = [1, 2, 3].map((n) =>
+      JSON.stringify({ v: 1, shareIndex: n, shareBytes: 'AA==', vault: {}, vaultHash: 'x', meta: {} }),
+    );
+    const exportRecoveryBundles = vi.fn(async () => fakeBundles);
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        exportRecoveryBundles,
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
+      target: { value: 'a-strong-password-16' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
+    await waitFor(() => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy());
+
+    const texts = await Promise.all(savedBlobs.map((b) => b.text()));
+    expect(texts).toEqual(fakeBundles);
+    expect(savedNames.every((n) => n.endsWith('.veyrnox-bundle.json'))).toBe(true);
+  });
+});
+
+describe('PersonalBackup — same-device restore rejects a cross-device bundle envelope (Codex P2, 2026-08-15)', () => {
+  // tryParseRecoveryEnvelope now also matches recovery-bundle-v1 (the
+  // cross-device wrap RestoreFromShares.jsx unwraps). This same-device panel
+  // must not hand that shape to unwrapShareWithPassphrase — that throws the
+  // internal RECOVERY_SHARE_MALFORMED code, not a legible message pointing
+  // the user at the flow that actually accepts a bundle envelope.
+  function stubFilePick(buffers) {
+    const files = buffers.map(
+      (buf, i) => new File([buf], `share${i}.json`, { type: 'application/json' }),
+    );
+    const origClick = HTMLInputElement.prototype.click;
+    HTMLInputElement.prototype.click = function () {
+      if (this.type === 'file') {
+        Object.defineProperty(this, 'files', { value: files, configurable: true });
+        this.onchange && this.onchange(new Event('change'));
+      } else {
+        origClick.call(this);
+      }
+    };
+    return () => { HTMLInputElement.prototype.click = origClick; };
+  }
+
+  it('shows a clear cross-device message instead of throwing RECOVERY_SHARE_MALFORMED', async () => {
+    vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
+    vi.resetModules();
+    const { wrapBundleWithPassphrase } = await import('@/wallet-core/recoveryShare');
+    const bundleEnvelope = await wrapBundleWithPassphrase(
+      new TextEncoder().encode(JSON.stringify({ v: 1, shareIndex: 2 })),
+      'a-very-long-recovery-passphrase',
+      2,
+    );
+    const restoreFromRecoveryShares = vi.fn();
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares,
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+
+    const restoreFilePick = stubFilePick([
+      new TextEncoder().encode('\x02'.repeat(88)),
+      new TextEncoder().encode(bundleEnvelope),
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: /choose 2 share files/i }));
+    restoreFilePick();
+
+    // encryptedCount currently counts ANY parsed envelope — bundle included —
+    // so the passphrase field is required to unlock the Restore button too.
+    // Its value is irrelevant here: the fix must reject the bundle envelope
+    // BEFORE it ever reaches unwrapShareWithPassphrase.
+    fireEvent.change(await screen.findByPlaceholderText(/recovery passphrase/i), {
+      target: { value: 'a-very-long-recovery-passphrase' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('New PIN (digits only)'), {
+      target: { value: '24681024' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), {
+      target: { value: '24681024' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    const [message] = toastError.mock.calls[0];
+    expect(message).toMatch(/cross-device recovery file/i);
+    expect(message).not.toBe('RECOVERY_SHARE_MALFORMED');
     expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
   });
 });

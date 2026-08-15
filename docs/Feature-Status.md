@@ -887,18 +887,39 @@ value / mutate balances without a user signature through wallet-core signing).
       enclave read + `_reapplyEnclaveWrapIfNeeded` after write (else silent
       M2c→M2b downgrade), PIN validation via `checkPinStrength` (else non-
       numeric or short values silently lock user out).
-    - **Phase 3 (PR #1677)** — optional passphrase-encrypted share for cloud
-      storage. New `src/wallet-core/recoveryShare.js` — Argon2id (192 MiB,
-      shared `KDF_PARAMS`) + AES-256-GCM, AAD-bound header (shareIndex tamper
-      detected), strict KDF-params equality on unwrap (pre-auth OOM guard).
-      Export UI adds "Encrypt one share with a passphrase" checkbox — share 2
-      saves as `.veyrnox-recovery.json`; shares 1 and 3 stay raw. Restore UI
-      detects JSON envelopes and prompts for the passphrase; wrong passphrase
-      is retryable without re-picking files. Fail-closed
-      `RECOVERY_SHARE_UNWRAP_FAILED` (no oracle vs tampered ct). Codex fixed
-      pre-commit: `shares[]` finally-block aliased `pickedFiles` buffers
-      (retry after failure fed zeroed shares); single-entry PIN silently
-      locked user out on typo (added Confirm PIN gate).
+    - **Phase 3 (PR #1677 + PR #1752).** New `src/wallet-core/recoveryShare.js`
+      primitives — Argon2id (192 MiB, shared `KDF_PARAMS`) + AES-256-GCM,
+      AAD-bound header (shareIndex tamper detected), strict KDF-params
+      equality on unwrap (pre-auth OOM guard). Fail-closed
+      `RECOVERY_SHARE_UNWRAP_FAILED` (no oracle vs tampered ct).
+    - **⚠ Corrected 2026-08-15 — PR #1677 shipped the checkbox UNWIRED.**
+      This entry previously read "Export UI adds 'Encrypt one share with a
+      passphrase' checkbox — share 2 saves as `.veyrnox-recovery.json`;
+      shares 1 and 3 stay raw." That was FALSE from #1677's merge until
+      PR #1752 shipped on 2026-08-15. `runSplit` in `PersonalBackup.jsx`
+      never referenced `encryptOne` / `recoveryPassphrase`; every ticked-
+      checkbox export produced an unencrypted `.veyrnox-bundle.json`. Codex
+      flagged it as P1 fake-security (I4 violation). PR #1752 fixed the
+      wiring by adding `wrapBundleWithPassphrase`/`unwrapBundleWithPassphrase`
+      (whole-bundle wrap under distinct `recovery-bundle-v1` envelope type,
+      never cross-parseable with the 88-byte share wrap), wiring `runSplit`
+      (`wrapThisOne = i === 1 && encryptOne && passphraseCheck.ok`), and
+      teaching `RestoreFromShares.jsx` to detect and unwrap the envelope
+      with retryable passphrase entry. Regression test asserts share #2
+      bytes contain neither the raw share marker nor the string
+      `shareBytes`. Codex re-review after PR #1752 = PASS.
+      **The lesson:** the doc described the intended surface, not the
+      shipped surface — a "code-complete + tests green" claim that was
+      never verified by reading the saved bytes. Same class as the
+      `veyrnox-first-run-tour-*` residue mis-write and the `OUTCOME_
+      PREAMBLE_ENABLED` vacuous-test block (2026-07-28 log). Treat any
+      security-property claim in this file as unverified until a test
+      reads the OUTPUT bytes back and asserts the claim, not until the
+      code compiles.
+    - **Codex pre-commit fixes on PR #1677 (unchanged, still shipped):**
+      `shares[]` finally-block aliased `pickedFiles` buffers (retry after
+      failure fed zeroed shares); single-entry PIN silently locked user
+      out on typo (added Confirm PIN gate).
     - **Phase 4 — SKIPPED (2026-08-09 owner decision).** The DEK-cache
       "fast-path" half of spec §4.1 is already wired (Phase 1a+1b above); the
       other half (swapping `blob.kekWrap` from full-DEK to Share A) was
