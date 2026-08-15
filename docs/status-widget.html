@@ -92,7 +92,7 @@
       <div class="gatecard"><div class="flag">ALLOW_BTC_MAINNET</div><div class="val">true</div><div style="font-family:var(--mono);font-size:10px;margin-top:4px;color:var(--faint)">btc/networks.js:82</div></div>
       <div class="gatecard"><div class="flag">ALLOW_SOL_MAINNET</div><div class="val">true</div><div style="font-family:var(--mono);font-size:10px;margin-top:4px;color:var(--faint)">sol/networks.js:69</div></div>
     </div>
-    <div class="note ok"><b>Both audits complete.</b> Track 1 — internal (owner sign-off 2026-06-17): hard mainnet gate, COMPLETE. Track 2 — independent ECC (2026-06-23; 10 agents × 2 runs): §24 satisfied, 1 CRITICAL + 2 HIGH + 4 MEDIUM + 1 LOW resolved PR #340, recorded PR #341. featureCatalogue: 0 UNAUDITED-PROVISIONAL tags. "Internal" ≠ "independent" (I4).</div>
+    <div class="note ok"><b>Two audits complete AT THE MAINNET-GATE SCOPE.</b> Track 1 — internal (owner sign-off 2026-06-17): hard mainnet gate, COMPLETE. Track 2 — independent ECC (2026-06-23; 10 agents × 2 runs, source-level scope): §24 satisfied, 1 CRITICAL + 2 HIGH + 4 MEDIUM + 1 LOW resolved PR #340, recorded PR #341. <b>Independent third-party audit of the FULL stack (S1–S4 + crypto + hardware KEK + RASP) remains outstanding.</b> Several controls in the catalogue below (e.g. Native Secure Storage, Passkey Unlock, Hardware Wallet) are BUILT with INTERNAL evidence only — see each entry's explanation for the precise state. "Internal" ≠ "independent" (I4).</div>
   </section>
 
   <section>
@@ -210,8 +210,8 @@
         <div class="feat"><span class="nm">Educational Assistant (AI)</span><span class="b road">ROADMAP</span></div>
         <div class="feat"><span class="nm">Portfolio Q&amp;A (AI)</span><span class="b road">ROADMAP</span></div>
         <div class="feat"><span class="nm">Web3 Browser</span><span class="b road">ROADMAP</span></div>
-        <div class="feat"><span class="nm">iOS App</span><span class="b road">ROADMAP</span></div>
-        <div class="feat"><span class="nm">Android App</span><span class="b road">ROADMAP</span></div>
+        <div class="feat"><span class="nm">iOS App</span><span class="b built">BUILT</span></div>
+        <div class="feat"><span class="nm">Android App</span><span class="b built">BUILT</span></div>
       </div>
       <div class="cat"><h3>Audit-cleared — pending native build</h3>
         <div class="feat"><span class="nm">Hardware KEK real-device (PRF spike)</span><span class="b gate">NATIVE GATE</span></div>
