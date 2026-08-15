@@ -124,13 +124,19 @@ async function waitForAuthedShell(page) {
   const dismissReceiveCard = page.getByRole('button', { name: "You're set" });
   const sendLink = page.getByRole('link', { name: 'Send', exact: true });
 
+  // .first() is REQUIRED on these or-chains. The created-flash overlay renders
+  // ON TOP of an already-painted dashboard, so the flash button and the sidebar
+  // Send link are visible simultaneously and the chain resolves to 2 elements —
+  // a Playwright strict-mode violation, not a missing element. Pre-existing
+  // latent bug in this helper; it only surfaced once the import test started
+  // routing through it (CI run 31887145905).
   await expect(
-    consentDeny.or(dismissCreatedFlash).or(dismissReceiveCard).or(sendLink),
+    consentDeny.or(dismissCreatedFlash).or(dismissReceiveCard).or(sendLink).first(),
   ).toBeVisible({ timeout: 30000 });
   if (await consentDeny.isVisible()) {
     await consentDeny.click();
     await expect(
-      dismissCreatedFlash.or(dismissReceiveCard).or(sendLink),
+      dismissCreatedFlash.or(dismissReceiveCard).or(sendLink).first(),
     ).toBeVisible({ timeout: 30000 });
   }
 
