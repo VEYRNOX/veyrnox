@@ -442,10 +442,17 @@ function AnalyticsChartContent({ wallet, currentBalance }) {
 function ActivityTabContent({ wallet }) {
   const { t } = useTranslation("wallet");
   const address = wallet?.accounts?.[0]?.address || null;
+  // Codex P1 2026-08-15: mirror the outer dashboard tx query at :599 —
+  // ActivityTabContent was gated only on `!!address`, so opening the
+  // Activity tab in a decoy/hidden session phoned home fetchAssetHistory()
+  // with the real EVM address (I3 egress + address disclosure). Same
+  // `enabled` shape here; the outer isError/no-data branch below already
+  // renders the honest empty state.
+  const deniable = isDeniabilitySessionActive();
   const { data: txs, isLoading, isError } = useQuery({
     queryKey: ["history", "ETH", address],
     queryFn: () => fetchAssetHistory({ asset: ETH_ASSET, address, demo: DEMO }),
-    enabled: !!address,
+    enabled: !!address && !deniable,
     staleTime: 60_000,
   });
 
@@ -967,12 +974,15 @@ export default function WalletPortfolioPage() {
       {/* Quick access to genuinely BUILT features (see QuickAccessGrid). */}
       <QuickAccessGrid />
 
-      {/* Crypto news — I3 gated: zero egress in deniability/decoy sessions */}
-      {!isDeniabilitySessionActive() && (
-        <div className="border-t border-border pt-4">
-          <CryptoNewsFeed />
-        </div>
-      )}
+      {/* Crypto news — CryptoNewsFeed self-gates I3 (it renders a neutral
+          placeholder in deniability, see components/CryptoNewsFeed.jsx). The
+          outer wrapper used to hide the whole section in deniable, which
+          collapsed the dashboard's bottom border and created a visible
+          decoy/primary layout tell for no security gain (Codex P2 2026-08-15).
+          Trust the child gate and keep the border consistent. */}
+      <div className="border-t border-border pt-4">
+        <CryptoNewsFeed />
+      </div>
 
       {addOpen && <AddWalletDialog onClose={() => setAddOpen(false)} />}
       {manageWallet && <ManageAssetsDialog wallet={manageWallet} onClose={() => setManageWallet(null)} />}
