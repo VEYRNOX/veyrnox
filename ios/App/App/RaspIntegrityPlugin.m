@@ -115,6 +115,29 @@ extern int csops(pid_t pid, unsigned int ops, void *useraddr, size_t usersize);
         ptrace(PT_DENY_ATTACH, 0, 0, 0);
     });
 
+    // Probe canary (Codex P1 2026-08-15). Every detection helper below wraps
+    // its OS calls in @try/@catch that returns NO on any exception — so a
+    // Frida gadget hooking sysctl / getpid / dladdr forces a throw INSIDE the
+    // swallow and the helper emits NO, which the JS side accepts as a valid
+    // "clean" sample. This canary runs three primitives WITHOUT that swallow.
+    // If the runtime is hooked and one throws, reject the call: the JS bridge
+    // (nativeProbe.js:89) treats a reject as { available:false } → detect()
+    // maps to INTEGRITY_UNAVAILABLE (WARN/BLOCK), never a fabricated CLEAN.
+    @try {
+        volatile pid_t _p = getpid();
+        (void)_p;
+        int mib[2] = {CTL_KERN, KERN_OSRELEASE};
+        char buf[64] = {0};
+        size_t sz = sizeof(buf);
+        if (sysctl(mib, 2, buf, &sz, NULL, 0) != 0) {
+            [call reject:@"PROBE_CANARY_FAILED" :@"INTEGRITY_UNAVAILABLE" :nil :nil];
+            return;
+        }
+    } @catch (NSException *e) {
+        [call reject:@"PROBE_CANARY_FAILED" :@"INTEGRITY_UNAVAILABLE" :nil :nil];
+        return;
+    }
+
     BOOL jailbroken       = [self detectJailbreak];
     BOOL hookedProcess    = [self detectHook];
     BOOL emulator         = [self detectSimulator];

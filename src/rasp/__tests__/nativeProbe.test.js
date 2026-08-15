@@ -231,6 +231,26 @@ describe('nativeProbeSource — fail closed (I4)', () => {
     expect(src.available).toBe(false);
     expect(detect(src)).toBe(CONDITION.INTEGRITY_UNAVAILABLE);
   });
+
+  // Codex P1 2026-08-15. Every detection helper on both platforms wraps its OS
+  // calls in a swallow-to-false catch, so a Frida hook that forces Debug.
+  // isDebuggerConnected / sysctl / dyld primitives to throw historically drove
+  // the verdict to {hookedProcess:false, tampered:false, ...} — a fabricated
+  // clean. Native fix: a canary block INSIDE checkIntegrity calls those exact
+  // primitives WITHOUT the swallow and call.rejects on throw. This test pins
+  // the JS half of the contract: a canary-shaped reject from the plugin lands
+  // on the same UNAVAILABLE path as any other bridge throw.
+  it('probe canary rejection (Frida hook forces a native primitive to throw) → UNAVAILABLE', async () => {
+    h.isNative = true;
+    h.checkIntegrity = vi.fn(async () => {
+      const e = new Error('PROBE_CANARY_FAILED');
+      e.code = 'INTEGRITY_UNAVAILABLE';
+      throw e;
+    });
+    const src = await nativeProbeSource();
+    expect(src.available).toBe(false);
+    expect(detect(src)).toBe(CONDITION.INTEGRITY_UNAVAILABLE);
+  });
 });
 
 describe('nativeProbeSource — I3 deniability (no wallet-set oracle)', () => {
