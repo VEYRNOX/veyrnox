@@ -28,7 +28,7 @@ vi.mock('react-i18next', async () => {
     useTranslation: (ns) => ({ t: (k, o) => resolve(k, { ns, ...(o || {}) }) }),
   };
 });
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import { SessionProposalModal } from '@/components/walletconnect/SessionProposalModal.jsx';
 
 afterEach(cleanup);
@@ -80,14 +80,16 @@ describe('SessionProposalModal — M12: optional chains disclosure', () => {
 });
 
 describe('SessionProposalModal — known-bad dApp alert', () => {
-  it('flags a known-bad domain and disables Connect until acknowledged', () => {
+  it('hard-blocks a known-bad domain: no checkbox, Connect stays disabled (Codex P2 2026-08-15)', () => {
     render(<SessionProposalModal proposal={makeProposal('https://fakeswap-rewards.xyz')} onClose={vi.fn()} />);
     // M10: always-visible caveat also contains "known scam" — use getAllByText
     expect(screen.getAllByText(/known scam/i).length).toBeGreaterThan(0);
     const connect = screen.getByRole('button', { name: /^connect$/i });
     expect(connect.disabled).toBe(true);
-    fireEvent.click(screen.getByRole('checkbox'));
-    expect(connect.disabled).toBe(false);
+    // Previous "acknowledge and connect" checkbox was a dead UI path — the
+    // authoritative handler in session.js unconditionally throws
+    // DAPP_BLOCKED_KNOWN_BAD, so the modal must not offer a way past it.
+    expect(screen.queryByRole('checkbox')).toBeNull();
   });
 
   it('makes no per-domain scam claim for a domain absent from the local list, shows blocklist caveat, and leaves Connect enabled', () => {

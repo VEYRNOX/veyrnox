@@ -198,6 +198,7 @@
       "step_up_required": "Step-up re-auth required — unlock again to approve this connection",
       "risk_title": "⚠ Known scam / phishing site",
       "risk_ack": "I understand this site is flagged as a phishing risk and want to connect anyway.",
+      "risk_blocked": "Connection to this dApp is blocked. Reject and open a trusted URL instead.",
       "honesty_caveat": "Veyrnox checks against {{count}} known scam domains. A clean result does not confirm this site is safe — always verify the dApp URL independently.",
       "unknown_dapp": "Unknown dApp",
       "domain_caveat": "Domain check covers a limited blocklist — absence does not confirm safety.",
