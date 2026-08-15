@@ -188,9 +188,12 @@ export async function onRequestPost(context) {
 
   const product = productsAvailed === 'SELL' ? 'SELL' : 'BUY';
 
-  const clientIp = request.headers.get('CF-Connecting-IP')
-    || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
-    || '';
+  // Codex P3 2026-08-15: identical rationale to rate-limit.js clientIpOf —
+  // dropped the X-Forwarded-For fallback so a client cannot forge a rate-
+  // limit bucket by setting XFF. Missing CF-Connecting-IP now falls into
+  // the shared 'unknown' bucket, which is strictly more restrictive than
+  // an attacker-chosen private bucket.
+  const clientIp = request.headers.get('CF-Connecting-IP') || '';
 
   // Before any upstream call — the whole point is to not spend partner quota.
   await enforceRateLimit(clientIp);

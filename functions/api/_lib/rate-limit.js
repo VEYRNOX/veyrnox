@@ -24,11 +24,18 @@
 const DEFAULTS = { max: 60, windowSeconds: 60 };
 
 export function clientIpOf(request) {
-  return (
-    request.headers.get('CF-Connecting-IP')
-    || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
-    || ''
-  );
+  // Codex P3 2026-08-15: only trust CF-Connecting-IP. The prior
+  // X-Forwarded-For fallback was spoofable — a client can set that header
+  // freely, and if any deployment path (test harness, dev, misrouted
+  // Worker) ever served a request without CF stamping CF-Connecting-IP,
+  // the rate-limit key would come straight from the untrusted client.
+  // Falling back to '' (which the caller bucket-keys as "unknown") makes
+  // the identity DEGRADE INTO A SHARED BUCKET rather than into an
+  // attacker-chosen bucket — an attacker spamming from behind our own
+  // edge shares the bucket with every other missing-IP request, which is
+  // strictly more restrictive than granting them a private per-IP quota
+  // via a forged XFF header.
+  return request.headers.get('CF-Connecting-IP') || '';
 }
 
 /**
