@@ -25,7 +25,11 @@ import {
 const TierCtx = createContext(null);
 
 export function TierProvider({ children }) {
-  const FORCED_TIER = import.meta.env.VITE_FORCE_TIER || null;
+  // Codex P1 2026-08-15: DEV-only, mirrors src/lib/entitlement.js and
+  // src/lib/devSendOverride.js. Never honour the env in a release build.
+  const FORCED_TIER = import.meta.env.DEV
+    ? (import.meta.env.VITE_FORCE_TIER || null)
+    : null;
   const [currentTier, setCurrentTier] = useState(FORCED_TIER || 'free');
   const [loading, setLoading] = useState(true);
 

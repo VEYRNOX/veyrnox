@@ -176,7 +176,6 @@ export default [
     // the gate.
     //
     //   src/pages/PersonalBackup.jsx   -> @/wallet-core/keystore (withLockSuppressed, ...)
-    //   src/pages/ColdSign.jsx        -> @/wallet-core/coldkey/* (unsigned tx / psbt / qr)
     //   src/components/security/HardwareKekSettings.jsx
     //                                 -> @/wallet-core/keystore (getKeyStore, KEK_ERR, tierBadge)
     //
@@ -184,9 +183,13 @@ export default [
     // src/components/PasskeySetup.jsx now route lock-suppression through the R2
     // WalletProvider facade (useWallet().withLockSuppressed) instead of importing
     // @/wallet-core/keystore directly — removed from this baseline.
+    //
+    // BURNED DOWN (Codex 2026-08-15): src/pages/ColdSign.jsx was dead code (no
+    // route, no import) and carried live P1s (ERC-20 wrong shape + signed-QR
+    // trust without unsigned-tx binding). Deleted rather than fixed — a re-
+    // introduction should go through a fresh, ring-safe facade.
     files: [
       "src/pages/PersonalBackup.jsx",
-      "src/pages/ColdSign.jsx",
       "src/components/security/HardwareKekSettings.jsx",
     ],
     rules: {
