@@ -103,7 +103,7 @@ import TelemetryConsent from "@/components/TelemetryConsent";
 import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useWallet } from "@/lib/WalletProvider";
-import { isPasskeyGateError } from "@/lib/passkey";
+import { isPasskeyGateError, PASSKEY_GATE_MESSAGES } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
 import {
   isBiometricGateError,
@@ -787,21 +787,22 @@ export default function WalletEntry() {
       if (res?.biometricSkipped === "escape-hatch") {
         toast.warning("Unlocked with your vault password. Re-enable biometric unlock in Security settings when it's working again.");
       }
-      // M-K — advisory cloned-authenticator warning. The unlock succeeded (the
-      // password is the real control); this surfaces the signCount-stall heuristic
-      // without blocking. If you did not register a new device, treat your passkey
-      // as compromised and re-register it in Security settings.
-      if (res?.passkeyWarning?.code === "authenticator_cloned") {
-        toast.warning("Security check: your passkey's usage counter did not advance, which can mean it was copied to another device. If you didn't set up a new device, re-register your passkey in Security settings.");
-      }
+      // Branch review 2026-08-15 (C-2): the M-K advisory cloned-authenticator
+      // toast used to sit here. It became UNREACHABLE the moment the gate
+      // switched from returning PASSED-with-warning to throwing — passkeyWarning
+      // is hardcoded null — so the accurate explanation of the signCount stall
+      // was silently retired while the inaccurate "may have been removed"
+      // message stayed. Removed rather than left as dead code; its wording is
+      // now PASSKEY_GATE_MESSAGES.cloned, rendered by the catch below.
     } catch (e) {
       if (isPasskeyGateError(e)) {
         setPasskeyFailed({ reason: e.reason });
-        setError(
-          e.reason === "cancelled"
-            ? "Passkey cancelled or unavailable. Try again, or unlock with your password if your passkey was removed from this device."
-            : "Your passkey couldn't be used (it may have been removed from this device). Unlock with your password below."
-        );
+        // Branch review 2026-08-15 (C-1): was a cancelled-vs-else ternary, so a
+        // 'cloned' reason rendered as "may have been removed from this device"
+        // — the opposite of what a possible credential clone means, on the one
+        // screen where the user most needs to stop. Keyed lookup instead, from
+        // the shared map, so this screen and HDWalletManager cannot drift.
+        setError(PASSKEY_GATE_MESSAGES[e.reason] ?? PASSKEY_GATE_MESSAGES.error);
       } else if (isBiometricGateError(e)) {
         setBiometricFailed(true);
         setError("Biometric authentication failed or was cancelled. Unlock with your vault password below.");

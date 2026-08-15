@@ -1580,12 +1580,16 @@ export function WalletProvider({ children }) {
     // ONLY way past a failed gate, and it still requires the password below.
     let passkeySkipped = null;
     // M-K → Codex P1 2026-08-15: the ADVISORY-warning branch that used to
-    // populate this is gone (runPasskeyGate now THROWS on cloned-authenticator
-    // detection instead of returning PASSED). Kept as null for API
-    // compatibility with callers that still destructure passkeyWarning; the
-    // clone signal now surfaces as a PasskeyGateError('cloned') that the
-    // unlock UI handles via the same catch that classifies cancel/error.
-    let passkeyWarning = null;
+    // populate a `passkeyWarning` here is gone — runPasskeyGate now THROWS on
+    // cloned-authenticator detection instead of returning PASSED-with-warning,
+    // so the clone signal reaches the UI as a PasskeyGateError('cloned').
+    //
+    // Branch review 2026-08-15 (C-2): the field itself is REMOVED rather than
+    // kept as a null "for API compatibility". Nothing destructured it — the one
+    // consumer was WalletEntry's advisory toast, which the same change made
+    // unreachable. A permanently-null field on a security return shape reads as
+    // a supported signal a caller may still branch on, and would quietly answer
+    // "no warning" forever.
     if (opts.skipPasskey) {
       passkeySkipped = 'escape-hatch';
     } else {
@@ -1899,7 +1903,7 @@ export function WalletProvider({ children }) {
     // Signal (not secret): tell the caller whether either convenience factor was
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
-    return { passkeySkipped, biometricSkipped, passkeyWarning };
+    return { passkeySkipped, biometricSkipped };
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // BIOMETRIC ONE-TAP UNLOCK (convenience over the existing vault).

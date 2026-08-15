@@ -703,21 +703,58 @@ export function canSetPasskeyUnlock({ requestedOn, registered }) {
 }
 
 /**
+ * User-facing copy for each passkey-gate reason — the SINGLE source both unlock
+ * screens render (WalletEntry.jsx and HDWalletManager.jsx) and the error class
+ * carries.
+ *
+ * Branch review 2026-08-15 (C-1): those two screens each held their own
+ * hardcoded `reason === 'cancelled' ? … : …` ternary with byte-identical
+ * strings. When 'cloned' was added as a third reason, BOTH fell through to the
+ * "may have been removed from this device" else-branch — one defect that had to
+ * be fixed in two places precisely because the copy was duplicated. Keyed by
+ * reason here so a new reason is a compile-time-obvious gap in one map, not a
+ * silent fall-through in every consumer.
+ *
+ * The 'cloned' wording is deliberately the text that used to live in the
+ * now-removed advisory toast (C-2): it is the only copy in the codebase that
+ * accurately described the signCount stall, and it should not be lost.
+ * @type {Readonly<Record<'cancelled'|'error'|'cloned', string>>}
+ */
+export const PASSKEY_GATE_MESSAGES = Object.freeze({
+  cancelled:
+    'Passkey cancelled or unavailable. Try again, or unlock with your password '
+    + 'if your passkey was removed from this device.',
+  error:
+    "Your passkey couldn't be used (it may have been removed from this device). "
+    + 'Unlock with your password below.',
+  cloned:
+    "Security check: your passkey's usage counter did not advance, which can mean "
+    + 'it was copied to another device. If you did not set up a new device, treat '
+    + 'this passkey as compromised and re-register it in Security settings. You can '
+    + 'unlock with your password below.',
+});
+
+/**
  * Error thrown by the unlock flow's passkey gate when an attempted assertion
  * fails. Carries the classified `reason` so the unlock UI can distinguish
- * cancel-vs-broken and decide whether to surface the password-only escape hatch.
+ * cancel-vs-broken-vs-cloned and decide whether to surface the password-only
+ * escape hatch.
  * It is NOT thrown for the UNAVAILABLE/skip cases — those return a PASSKEY_GATE
  * status instead (no prompt was ever shown, so there is nothing to "fail").
  */
 export class PasskeyGateError extends Error {
   /**
-   * @param {'cancelled'|'error'} reason
+   * @param {'cancelled'|'error'|'cloned'} reason
+   *   'cloned' (branch review 2026-08-15, C-1) was passed by the gate from the
+   *   moment cloned-authenticator detection became blocking, but was never
+   *   DECLARED here — so it fell through every `cancelled`-vs-else ternary in
+   *   the class and in both consuming screens, and a possible credential clone
+   *   was reported to the user as a passkey that "may have been removed from
+   *   this device". It needs its own message everywhere it is branched on.
    * @param {unknown} [cause] the underlying assertion error, for diagnostics.
    */
   constructor(reason, cause) {
-    super(reason === 'cancelled'
-      ? 'Passkey was cancelled or could not be used.'
-      : 'Your passkey could not be used.');
+    super(PASSKEY_GATE_MESSAGES[reason] ?? PASSKEY_GATE_MESSAGES.error);
     this.name = 'PasskeyGateError';
     // Stable, minification-proof tag so the UI can detect a passkey-gate failure
     // (vs. a wrong-password error) without relying on the class identity.
