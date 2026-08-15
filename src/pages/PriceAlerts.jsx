@@ -80,10 +80,21 @@ export default function PriceAlerts() {
     }
   };
 
-  const { data: alerts = [] } = useQuery({
+  // Codex P1 2026-08-16: PriceAlert rows live in the shared veyrnox-appdata
+  // IndexedDB (same K-2 class as AddressBook / PersonalWatchlist / etc). A
+  // decoy/hidden session could BOTH read the real user's alert list + notes
+  // AND mutate them (dismiss / delete real alerts; create fake ones the
+  // real user sees on next unlock). Two-chokepoint fix:
+  //   (a) query enabled on !deniable + local blank of derived `alerts`;
+  //   (b) each mutationFn throws DENIABILITY_BLOCKED before touching store.
+  // Same shape as AddressBook / WatchlistWidget / NetworkManager fixes.
+  const deniable = isDecoy || isHidden;
+  const { data: alertsRaw = [] } = useQuery({
     queryKey: ["price-alerts"],
     queryFn: () => base44.entities.PriceAlert.list("-created_date"),
+    enabled: !deniable,
   });
+  const alerts = deniable ? [] : alertsRaw;
 
   const { data: prices = {} } = useQuery({
     queryKey: ["live-prices"],
@@ -92,23 +103,55 @@ export default function PriceAlerts() {
     enabled: pricesEnabled,
   });
 
+  const denyInDeniable = () => {
+    throw Object.assign(new Error('Price alerts are not available in this session'), { code: 'DENIABILITY_BLOCKED' });
+  };
+
+  // Codex P2 2026-08-16: cap total active alerts. Prior behaviour accepted
+  // unbounded PriceAlert.create calls, which meant a spam burst (dev tools
+  // console, malicious bookmarklet on a compromised session) could churn
+  // shared storage AND make the 60s poll in usePriceAlertNotifier walk a
+  // huge list every tick. 200 is generous — every real user's alerts fit,
+  // still bounded.
+  const MAX_ACTIVE_ALERTS = 200;
+
   const createAlert = useMutation({
-    mutationFn: (/** @type {any} */ data) => base44.entities.PriceAlert.create(data),
+    mutationFn: (/** @type {any} */ data) => {
+      if (deniable) denyInDeniable();
+      // Count only ACTIVE alerts against the cap; dismissed/triggered rows
+      // don't count so a legitimate long-term user isn't stranded.
+      const activeCount = alertsRaw.filter((a) => a.status === 'active').length;
+      if (activeCount >= MAX_ACTIVE_ALERTS) {
+        throw Object.assign(new Error(`Too many active alerts (${MAX_ACTIVE_ALERTS} max) — dismiss some first.`), { code: 'ALERT_CAP' });
+      }
+      return base44.entities.PriceAlert.create(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
       setOpen(false);
       setTargetPrice(""); setNote("");
       toast.success("Alert created");
     },
+    onError: (/** @type {any} */ err) => {
+      // Give the cap error a visible surface — a silent create-that-didn't
+      // is worse than the toast.
+      if (err?.code === 'ALERT_CAP') toast.error(err.message);
+    },
   });
 
   const deleteAlert = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.PriceAlert.delete(id),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.PriceAlert.delete(id);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-alerts"] }),
   });
 
   const dismissAlert = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.PriceAlert.update(id, { status: "dismissed" }),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.PriceAlert.update(id, { status: "dismissed" });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["price-alerts"] }),
   });
 
@@ -190,7 +233,7 @@ export default function PriceAlerts() {
           <Button variant="outline" size="sm" className="gap-1.5" onClick={checkNow} disabled={checking}>
             <RefreshCw className={`h-3.5 w-3.5 ${checking ? "motion-safe:animate-spin" : ""}`} /> Check Now
           </Button>
-          <Button size="sm" className="gap-1.5" onClick={() => setOpen(true)}>
+          <Button size="sm" className="gap-1.5" disabled={deniable} onClick={() => setOpen(true)}>
             <Plus className="h-4 w-4" /> Add Alert
           </Button>
         </div>
@@ -286,7 +329,7 @@ export default function PriceAlerts() {
             </div>
             <p className="font-semibold">No active alerts</p>
             <p className="text-sm text-muted-foreground">Set a target price and get notified when it's hit.</p>
-            <Button onClick={() => setOpen(true)} className="gap-1.5">
+            <Button disabled={deniable} onClick={() => setOpen(true)} className="gap-1.5">
               <Plus className="h-4 w-4" /> Add Your First Alert
             </Button>
           </div>

@@ -8,13 +8,22 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 import { DEMO } from "@/api/demoClient";
 
 let _localNotifId = 1;
+// Codex P2 2026-08-16: track every scheduled notification so lock/panic-wipe
+// can dismiss the tray. Prior behaviour left notifications sitting in the
+// OS notification centre after lock — a coercer reading the tray after a
+// panic-wipe could still see "BTC hit $X (note: rent money)" tying the
+// wiped device to real wallet activity.
+const _scheduledNativeIds = new Set();       // Capacitor LocalNotifications ids
+const _scheduledWebNotifications = new Set(); // Notification handles for close()
 
 async function sendNotification(title, body, deepLink = "/") {
   if (Capacitor.isNativePlatform()) {
     try {
+      const id = _localNotifId++;
       await LocalNotifications.schedule({
-        notifications: [{ title, body, id: _localNotifId++, extra: { deepLink } }],
+        notifications: [{ title, body, id, extra: { deepLink } }],
       });
+      _scheduledNativeIds.add(id);
     } catch (e) {
       console.warn('[priceAlertNotifier] native schedule failed:', e);
     }
@@ -24,6 +33,8 @@ async function sendNotification(title, body, deepLink = "/") {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   try {
     const n = new Notification(title, { body, icon: "/favicon.ico", badge: "/favicon.ico" });
+    _scheduledWebNotifications.add(n);
+    n.onclose = () => _scheduledWebNotifications.delete(n);
     n.onclick = (e) => {
       e.preventDefault();
       window.focus();
@@ -32,6 +43,47 @@ async function sendNotification(title, body, deepLink = "/") {
   } catch (e) {
     console.warn('[priceAlertNotifier] web notification failed:', e);
   }
+}
+
+// Codex P2 2026-08-16: dismiss every pending / delivered alert notification.
+// Called on APP_LOCK_EVENT (WalletProvider.lock dispatches it — see the
+// listener at the end of this file). Native path uses LocalNotifications
+// cancel+removeDeliveredNotifications to sweep both scheduled AND
+// already-in-tray items; web calls Notification.close() on tracked handles.
+async function dismissAllScheduledNotifications() {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const ids = Array.from(_scheduledNativeIds);
+      if (ids.length > 0) {
+        await LocalNotifications.cancel({ notifications: ids.map((id) => ({ id })) });
+      }
+      // Sweep anything delivered to the tray, including ids we may have lost
+      // across a hot reload — best-effort, ignore if the plugin lacks it.
+      if (typeof LocalNotifications.removeAllDeliveredNotifications === 'function') {
+        await LocalNotifications.removeAllDeliveredNotifications();
+      }
+    } catch (e) {
+      console.warn('[priceAlertNotifier] native dismiss failed:', e);
+    } finally {
+      _scheduledNativeIds.clear();
+    }
+    return;
+  }
+  for (const n of _scheduledWebNotifications) {
+    try { n.close(); } catch { /* noop */ }
+  }
+  _scheduledWebNotifications.clear();
+}
+
+// Install the lock-event listener ONCE per module load (module-scope guard
+// prevents duplicate handlers under HMR). APP_LOCK_EVENT is fired by
+// WalletProvider.lock() for every lock path (panic, duress, idle,
+// background, session ceiling) — one chokepoint covers them all.
+if (typeof window !== 'undefined' && !window.__veyrnoxPriceAlertLockHook) {
+  window.__veyrnoxPriceAlertLockHook = true;
+  window.addEventListener('veyrnox:app-lock', () => {
+    void dismissAllScheduledNotifications();
+  });
 }
 
 export function usePriceAlertNotifier() {
