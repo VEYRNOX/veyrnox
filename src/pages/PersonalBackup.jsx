@@ -17,6 +17,7 @@ import {
   tryParseRecoveryEnvelope,
   checkRecoveryPassphrase,
   RECOVERY_PASSPHRASE_MIN_LENGTH,
+  ENVELOPE_TYPE_BUNDLE,
 } from "@/wallet-core/recoveryShare";
 import { markPersonalBackupExported } from "@/lib/personalBackupState";
 import {
@@ -505,6 +506,16 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
       ownedByShares = [];
       for (const f of pickedFiles) {
         const envelope = tryParseRecoveryEnvelope(f);
+        // tryParseRecoveryEnvelope also matches recovery-bundle-v1 (the
+        // cross-device wrap RestoreFromShares.jsx unwraps) — this same-device
+        // panel only understands the single-share wrap. Reject it here with a
+        // legible message instead of handing it to unwrapShareWithPassphrase,
+        // which throws the internal RECOVERY_SHARE_MALFORMED code (Codex P2).
+        if (envelope && envelope.type === ENVELOPE_TYPE_BUNDLE) {
+          throw new Error(
+            "That file is a cross-device recovery file — use Restore from recovery bundles instead."
+          );
+        }
         if (envelope) {
           shares.push(await unwrapShareWithPassphrase(envelope, recoveryPassphrase));
           ownedByShares.push(true);

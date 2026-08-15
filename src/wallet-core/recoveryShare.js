@@ -52,14 +52,18 @@ export const RECOVERY_SHARE_UNWRAP_FAILED = 'RECOVERY_SHARE_UNWRAP_FAILED';
 export const RECOVERY_PASSPHRASE_TOO_SHORT = 'RECOVERY_PASSPHRASE_TOO_SHORT';
 
 const ENVELOPE_APP = 'veyrnox';
-const ENVELOPE_TYPE = 'recovery-share';
+// Exported so callers that branch on tryParseRecoveryEnvelope's now-broadened
+// return shape (Codex P2, 2026-08-15) can tell a single-share wrap apart from
+// a whole-bundle wrap without hardcoding the literal strings.
+export const ENVELOPE_TYPE_SHARE = 'recovery-share';
+const ENVELOPE_TYPE = ENVELOPE_TYPE_SHARE;
 // Distinct type for a whole-bundle wrap (Codex P1, 2026-08-15): PersonalBackup
 // runSplit's "encrypt one share" checkbox previously wired UI state that was
 // never consumed, so the export was always raw. wrapBundleWithPassphrase
 // below wraps the ENTIRE bundle #2 JSON string (share + vault + hash) as one
 // opaque blob. A distinct `type` keeps this un-parseable by the share-only
 // unwrap and vice versa — tryParseRecoveryEnvelope callers must switch on it.
-const ENVELOPE_TYPE_BUNDLE = 'recovery-bundle-v1';
+export const ENVELOPE_TYPE_BUNDLE = 'recovery-bundle-v1';
 
 /**
  * Validate a recovery passphrase against the spec §5.1 minimum. Length only;
