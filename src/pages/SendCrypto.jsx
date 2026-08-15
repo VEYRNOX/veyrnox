@@ -22,8 +22,9 @@ import { useTrezor } from '../context/TrezorContext.jsx';
 // NOT the raw device wrapper — those helpers apply the M-2/#746 recovery check,
 // the 'pending' block-tag nonce + sanity window, and estimated gas + headroom.
 // BTC + SOL Trezor branches still use their raw wrappers (unrelated to #961).
-import { trezorSignBtcTx, trezorSignSolTx } from '../wallet-core/hw/trezor.js';
+import { trezorSignBtcTx } from '../wallet-core/hw/trezor.js';
 import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wallet-core/evm/hw-send.js';
+import { signAndBroadcastSolTrezor } from '../wallet-core/sol/hw-send.js';
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
 import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
@@ -58,7 +59,7 @@ import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets
 import { isDevSendUngated } from "@/lib/devSendOverride";
 import { signAndBroadcastBtc, estimateBtcSend, broadcastBtcTx } from "@/wallet-core/btc/send";
 import { describeBtcPlan } from "@/wallet-core/btc/simulate";
-import { signAndBroadcastSol, buildUnsignedSolTx, broadcastSignedSolTx, attachSolSignature } from "@/wallet-core/sol/send";
+import { signAndBroadcastSol, buildUnsignedSolTx } from "@/wallet-core/sol/send";
 import { toBaseUnits, normalizeSendResult } from "@/lib/sendDispatch";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
@@ -1291,19 +1292,20 @@ export default function SendCrypto() {
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
           if (!trezorSolAddress) throw new Error('Trezor SOL address not available');
-          // SOL Trezor path: the key never leaves the device (I1). Build the
-          // unsigned transfer (fresh blockhash via the network provider), sign it
-          // on-device, reattach the device signature, then broadcast.
-          const lamports = toBaseUnits(canonicalAmount, 9);
-          const { unsignedTxBase64 } = await buildUnsignedSolTx({
+          // SOL Trezor path: the key never leaves the device (I1). Codex P1
+          // 2026-08-15: the previous raw buildUnsignedSolTx + trezorSignSolTx
+          // + attachSolSignature chain bypassed the audited planSolTransfer
+          // pre-flight — a transfer the planner would refuse for rent-
+          // exemption / sender-remainder reasons could still be signed and
+          // fail after broadcast. Route through the audited
+          // signAndBroadcastSolTrezor helper (src/wallet-core/sol/hw-send.js)
+          // which uses planSolTransfer internally, matching the Ledger path.
+          raw = await signAndBroadcastSolTrezor({
+            networkKey,
             fromAddress: trezorSolAddress,
             toAddress,
-            lamports,
-            networkKey,
+            amountLamports: toBaseUnits(canonicalAmount, 9),
           });
-          const signatureHex = await trezorSignSolTx({ serializedTxBase64: unsignedTxBase64 });
-          const signedTxBase64 = attachSolSignature(unsignedTxBase64, trezorSolAddress, signatureHex);
-          raw = await broadcastSignedSolTx(signedTxBase64, networkKey);
         } else {
           // SOL (ed25519). Base fee only this slice (no priority UI). SOL -> lamports.
           raw = await withSolPrivateKey(({ privateKey, address }) =>
