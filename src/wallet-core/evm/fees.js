@@ -51,6 +51,24 @@ export const EVM_TIERS = [
 // ~0) still pays a relayable, non-zero tip.
 export const MIN_TIP_WEI = 100_000_000n; // 0.1 gwei
 
+// Codex P1 2026-08-15: upper bound on the RPC-suggested priority tip. Prior
+// behaviour trusted `feeData.maxPriorityFeePerGas` unbounded, so a malicious
+// or misconfigured RPC could return a huge tip (e.g. 10_000 gwei) that flowed
+// unchanged into the signed tx — real overpayment. 500 gwei sits well above
+// every real tip observed on mainnet (~5-30 gwei baseline, ~50-200 gwei
+// under peak MEV auctions), and mirrors the `MAX_BASE_FEE_GWEI.mainnet`
+// order of magnitude. Applied before `buildEvmTiers` so both tier + custom
+// paths share the ceiling — see also `buildEvmCustomFee` below.
+export const MAX_TIP_GWEI = 500n;
+export const MAX_TIP_WEI = MAX_TIP_GWEI * 1_000_000_000n;
+
+// Codex P2 2026-08-15: upper bound on user-authored gasLimit at the custom-fee
+// construction site. The send path caps at 1_000_000 (preflight.js), but the
+// fee object itself was accepted with a gigantic value — which made the
+// on-screen "max fee" preview wildly wrong. Mirroring the preflight cap here
+// keeps the display honest AND fails at input time.
+export const MAX_CUSTOM_GAS_LIMIT = 1_000_000n;
+
 /**
  * PURE: build the three preset tiers from a live base fee, the network-suggested
  * tip, and a gas limit. All wei/gas values are BigInt. For each tier:
@@ -77,7 +95,15 @@ export function buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit, min
       );
     }
   }
-  const suggested = BigInt(suggestedTipWei);
+  // Codex P1 2026-08-15: clamp the RPC-suggested tip at MAX_TIP_WEI before
+  // scaling. A hostile RPC returning e.g. 10_000 gwei would otherwise flow
+  // through unchanged (the Trezor branch clamps; the software branch did
+  // not). Also reject a negative BigInt (BigInt(-1) is legal), which no
+  // real RPC returns but a stub / test / injected middleware could.
+  const suggestedRaw = BigInt(suggestedTipWei);
+  const suggested = suggestedRaw < 0n
+    ? 0n
+    : (suggestedRaw > MAX_TIP_WEI ? MAX_TIP_WEI : suggestedRaw);
   const limit = BigInt(gasLimit);
   const tipFloor = minGasPriceWei != null && BigInt(minGasPriceWei) > MIN_TIP_WEI
     ? BigInt(minGasPriceWei)
@@ -85,6 +111,7 @@ export function buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit, min
   return EVM_TIERS.map((t) => {
     let tip = (suggested * t.tipNum) / t.tipDen;
     if (tip < tipFloor) tip = tipFloor;
+    if (tip > MAX_TIP_WEI) tip = MAX_TIP_WEI; // defence in depth for a large multiplier
     const maxFeePerGas = base * 2n + tip;
     return {
       id: t.id,
@@ -114,9 +141,32 @@ export function buildEvmCustomFee({ maxBaseFeeGwei, priorityGwei, gasLimit, netw
       throw new Error(`Custom max base fee (${inputGwei} gwei) exceeds the ${networkKey} ceiling of ${capGwei} gwei.`);
     }
   }
-  const tip = parseUnits(String(priorityGwei || 0), 'gwei');
+  // Codex P2 2026-08-15: clamp the user-authored priority tip.
+  //   - Negative reject: parseUnits('-1', 'gwei') = -1_000_000_000n is legal
+  //     BigInt but produces a nonsense maxFeePerGas that could silently
+  //     underprice the tx; refuse rather than silently zero.
+  //   - Upper reject: same MAX_TIP_GWEI ceiling as the tier path — a user
+  //     fat-fingering "500000" gwei is refused with a clear message.
+  // Guard NaN explicitly rather than swallowing it via `|| 0`: an unparseable
+  // input (e.g. raw de-DE "1,5" reaching this function without
+  // normalizeDecimalInput running first) MUST throw so the caller cannot
+  // silently swap the user's intended fee for zero. parseUnits below already
+  // does this — the two-layer defence is the whole point.
+  const priorityRawNum = Number(priorityGwei);
+  const priorityRaw = Number.isNaN(priorityRawNum) ? priorityGwei : priorityRawNum;
+  if (typeof priorityRaw === 'number') {
+    if (priorityRaw < 0) throw new Error('Priority fee cannot be negative.');
+    if (BigInt(Math.round(priorityRaw)) > MAX_TIP_GWEI) {
+      throw new Error(`Priority fee (${Math.round(priorityRaw)} gwei) exceeds the ceiling of ${MAX_TIP_GWEI} gwei.`);
+    }
+  }
+  const tip = parseUnits(String(priorityRaw || 0), 'gwei');
   const maxBase = parseUnits(String(maxBaseFeeGwei || 0), 'gwei');
-  const limit = BigInt(Math.max(21000, Math.floor(Number(gasLimit) || 21000)));
+  // Codex P2 2026-08-15: same 1_000_000 gasLimit ceiling as preflight.js so
+  // the on-screen "max fee" preview cannot lie about what the send path
+  // would actually accept.
+  const limitRaw = BigInt(Math.max(21000, Math.floor(Number(gasLimit) || 21000)));
+  const limit = limitRaw > MAX_CUSTOM_GAS_LIMIT ? MAX_CUSTOM_GAS_LIMIT : limitRaw;
   const maxFeePerGas = maxBase + tip;
   if (maxFeePerGas <= 0n) throw new Error('Max fee must be greater than zero.');
   return {

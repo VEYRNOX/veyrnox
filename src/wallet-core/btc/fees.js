@@ -26,6 +26,16 @@ export const BTC_TIERS = [
 export const TYPICAL_INPUTS = 1;
 export const TYPICAL_OUTPUTS = 2; // recipient + change
 
+// Codex P2 2026-08-15: upper bound on any per-tier feeRate. Prior behaviour
+// only enforced monotonic ordering, so a hostile / misconfigured Esplora
+// endpoint could pin an absurd sat/vB (e.g. 100000) and the wallet would
+// silently overpay miner fees on the next send. Ceiling picked to sit well
+// above every real congestion regime observed on mainnet (~600 sat/vB was
+// the November-2023 ordinals peak) while still catching a broken oracle.
+// Applied at the raw-rate stage so `estFeeSats` also derives from the
+// clamped rate.
+export const MAX_FEE_RATE_SAT_VB = 2000;
+
 /**
  * PURE: assemble tiers from three sat/vB rates (slow, standard, fast), each with
  * a display fee estimate for a typical spend. The estimate uses the same
@@ -37,7 +47,14 @@ export function buildBtcTiers(tierRates) {
   const [slow, standard, fast] = tierRates;
   const rates = [slow, standard, fast];
   return BTC_TIERS.map((t, i) => {
-    const feeRate = rates[i];
+    // Codex P2 2026-08-15: clamp each rate before it flows into estimateFeeSats
+    // AND into the send path (send.js pulls `feeRate` from the selected tier).
+    // A NaN / Infinity / negative rate collapses to 1 (the relay floor); an
+    // absurd rate collapses to MAX_FEE_RATE_SAT_VB.
+    const raw = Number(rates[i]);
+    const feeRate = !Number.isFinite(raw) || raw < 1
+      ? 1
+      : Math.min(raw, MAX_FEE_RATE_SAT_VB);
     return {
       id: t.id,
       label: t.label,
