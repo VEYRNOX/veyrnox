@@ -17,6 +17,36 @@ vi.mock('../transport.js', () => ({
 
 import TrezorConnect from '@trezor/connect-web';
 import { ethers } from 'ethers';
+import { Transaction, p2wpkh, NETWORK, TEST_NETWORK } from '@scure/btc-signer';
+import { hex } from '@scure/base';
+import { secp256k1 } from '@noble/curves/secp256k1';
+
+// Codex P1 2026-08-15: trezorSignBtcTx now re-parses the device-returned
+// serializedTx and asserts every non-change plan output is present with the
+// exact address+amount, and the change amount matches by subtraction. That
+// verifier rejects the previous 'deadbeef01' / 'cafebabe' stub hex. Build a
+// REAL signed tx that matches the plan so the verifier accepts it. Uses a
+// fixed stub key — never touches the network, never a real vault.
+function buildStubSignedTxHex({ recipient, recipientSats, changeSats, inputSats, params }) {
+  const stubPriv = hex.decode('01'.repeat(32));
+  const stubPub = secp256k1.getPublicKey(stubPriv, true);
+  const owner = p2wpkh(stubPub, params);
+  const tx = new Transaction();
+  tx.addInput({
+    txid: hex.decode('02'.repeat(32)),
+    index: 0,
+    witnessUtxo: { script: owner.script, amount: BigInt(inputSats) },
+  });
+  tx.addOutputAddress(recipient, BigInt(recipientSats), params);
+  if (changeSats > 0n) {
+    // Change lands on the owner's own P2WPKH — mimics the device's derived
+    // change output. Verifier's subtraction match doesn't care about address.
+    tx.addOutputAddress(owner.address, BigInt(changeSats), params);
+  }
+  tx.sign(stubPriv);
+  tx.finalize();
+  return tx.hex;
+}
 
 afterEach(() => {
   try { localStorage.removeItem('veyrnox-demo'); } catch { /* ignore */ }
@@ -181,9 +211,17 @@ describe('trezorSignBtcTx', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('calls TrezorConnect.signTransaction with correct coin for testnet', async () => {
+    const recipient = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'; // BIP-350 vector, valid tb1
+    const signedHex = buildStubSignedTxHex({
+      recipient,
+      recipientSats: 90000n,
+      changeSats: 9000n,
+      inputSats: 100000n,
+      params: TEST_NETWORK,
+    });
     TrezorConnect.signTransaction.mockResolvedValue({
       success: true,
-      payload: { serializedTx: 'deadbeef01' },
+      payload: { serializedTx: signedHex },
     });
 
     const { trezorSignBtcTx } = await import('../trezor.js');
@@ -196,20 +234,20 @@ describe('trezorSignBtcTx', () => {
           amountSats: 100000n,
           scriptPubKey: '0014' + '00'.repeat(20),
         }],
-        outputs: [{ address: 'tb1qtest', amountSats: 90000n }],
+        outputs: [{ address: recipient, amountSats: 90000n }],
         changeAddress: 'tb1qchange',
         changeAmountSats: 9000n,
       },
       networkKey: 'btc-testnet',
     });
 
-    expect(result).toBe('deadbeef01');
+    expect(result).toBe(signedHex);
     const call = TrezorConnect.signTransaction.mock.calls[0][0];
     expect(call.coin).toBe('tbtc');
     expect(call.inputs[0].prev_hash).toBe('abc123');
     expect(call.inputs[0].amount).toBe('100000');
     expect(call.inputs[0].script_type).toBe('SPENDWITNESS');
-    expect(call.outputs[0].address).toBe('tb1qtest');
+    expect(call.outputs[0].address).toBe(recipient);
     expect(call.outputs[0].amount).toBe('90000');
     // Change output should be present and use native SegWit type
     expect(call.outputs[1]).toBeDefined();
@@ -219,9 +257,17 @@ describe('trezorSignBtcTx', () => {
   });
 
   it('uses btc coin for mainnet', async () => {
+    const recipient = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'; // BIP-350 vector, valid bc1
+    const signedHex = buildStubSignedTxHex({
+      recipient,
+      recipientSats: 49000n,
+      changeSats: 0n,
+      inputSats: 50000n,
+      params: NETWORK,
+    });
     TrezorConnect.signTransaction.mockResolvedValue({
       success: true,
-      payload: { serializedTx: 'cafebabe' },
+      payload: { serializedTx: signedHex },
     });
 
     const { trezorSignBtcTx } = await import('../trezor.js');
@@ -229,7 +275,7 @@ describe('trezorSignBtcTx', () => {
     await trezorSignBtcTx({
       plan: {
         inputs: [{ txid: 'abc', vout: 0, amountSats: 50000n, scriptPubKey: '0014' + '00'.repeat(20) }],
-        outputs: [{ address: 'bc1qtest', amountSats: 49000n }],
+        outputs: [{ address: recipient, amountSats: 49000n }],
         changeAddress: 'bc1qchange',
         changeAmountSats: 0n,
       },
@@ -239,6 +285,69 @@ describe('trezorSignBtcTx', () => {
     expect(TrezorConnect.signTransaction.mock.calls[0][0].coin).toBe('btc');
     // No change output when changeAmountSats is 0
     expect(TrezorConnect.signTransaction.mock.calls[0][0].outputs.length).toBe(1);
+  });
+
+  // Codex P1 2026-08-15: pin the verifier's negative branches so a future edit
+  // cannot silently reopen fund-burn on a mutated device response.
+  describe('signed-tx verifier — rejects mutated device output (BTC_TREZOR_TX_MISMATCH)', () => {
+    const RECIPIENT = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx';
+    // Derive a second valid P2WPKH from another stub key for the swap case.
+    const OTHER = (() => {
+      const priv = hex.decode('02'.repeat(32));
+      const pub = secp256k1.getPublicKey(priv, true);
+      return p2wpkh(pub, TEST_NETWORK).address;
+    })();
+
+    async function attempt(planOverrides, signedHexOverride) {
+      TrezorConnect.signTransaction.mockResolvedValue({
+        success: true,
+        payload: { serializedTx: signedHexOverride },
+      });
+      const { trezorSignBtcTx } = await import('../trezor.js');
+      return trezorSignBtcTx({
+        plan: {
+          inputs: [{ txid: 'aa', vout: 0, amountSats: 100000n, scriptPubKey: '0014' + '00'.repeat(20) }],
+          outputs: [{ address: RECIPIENT, amountSats: 90000n }],
+          changeAddress: 'tb1qchange',
+          changeAmountSats: 9000n,
+          ...planOverrides,
+        },
+        networkKey: 'btc-testnet',
+      });
+    }
+
+    it('rejects a signed tx where the recipient address was silently swapped', async () => {
+      const mutatedHex = buildStubSignedTxHex({
+        recipient: OTHER,
+        recipientSats: 90000n,
+        changeSats: 9000n,
+        inputSats: 100000n,
+        params: TEST_NETWORK,
+      });
+      await expect(attempt({}, mutatedHex)).rejects.toThrow(/BTC_TREZOR_TX_MISMATCH.*not present/i);
+    });
+
+    it('rejects a signed tx where the recipient amount was silently reduced', async () => {
+      const mutatedHex = buildStubSignedTxHex({
+        recipient: RECIPIENT,
+        recipientSats: 80000n,
+        changeSats: 19000n,
+        inputSats: 100000n,
+        params: TEST_NETWORK,
+      });
+      await expect(attempt({}, mutatedHex)).rejects.toThrow(/BTC_TREZOR_TX_MISMATCH.*not present/i);
+    });
+
+    it('rejects a signed tx where the change amount was silently reduced (redirected as extra fee)', async () => {
+      const mutatedHex = buildStubSignedTxHex({
+        recipient: RECIPIENT,
+        recipientSats: 90000n,
+        changeSats: 5000n,
+        inputSats: 100000n,
+        params: TEST_NETWORK,
+      });
+      await expect(attempt({}, mutatedHex)).rejects.toThrow(/BTC_TREZOR_TX_MISMATCH.*change amount/i);
+    });
   });
 
   it('throws on Trezor failure', async () => {

@@ -1,7 +1,10 @@
 // @ts-nocheck
 import TrezorConnect from '@trezor/connect-web';
 import { ethers } from 'ethers';
+import { Transaction, Address, OutScript } from '@scure/btc-signer';
+import { hex } from '@scure/base';
 import { getTransport } from './transport.js';
+import { BTC_NETWORKS } from '../btc/networks.js';
 import { isDeniabilitySessionActive } from '../deniabilitySession.js';
 
 const EVM_PATH = "m/44'/60'/0'/0/0";
@@ -146,6 +149,68 @@ function btcPathArray(networkKey) {
   return [0x80000054, coinType, 0x80000000, 0, 0];
 }
 
+// Codex P1 2026-08-15: parse the signed tx returned by the Trezor device and
+// assert it matches the plan the host asked for. Before this, a malicious /
+// buggy connector or device response with the change output dropped (or a
+// recipient amount mutated) would still be broadcast, and the remainder would
+// be burned as miner fee. Assertions:
+//   - every non-change plan output has an exact (address, amountSats) match
+//     in the signed tx (order-independent — Trezor may sort/relocate change)
+//   - if plan.changeAmountSats > 0, the total of ALL other outputs equals the
+//     sum of non-change plan outputs — anything else means the change amount
+//     was tampered with (address is device-derived and cannot be re-verified
+//     against a plan value, so we check the amount by subtraction, which is
+//     mutation-proof for the value the host asked to keep)
+// Fail closed (I4): throws BTC_TREZOR_TX_MISMATCH on any drift; the caller
+// never reaches broadcastBtcTx.
+function _verifyBtcSignedTxMatchesPlan(signedTxHex, plan, networkKey) {
+  const netInfo = BTC_NETWORKS[networkKey === 'btc-mainnet' ? 'mainnet' : 'testnet'];
+  if (!netInfo) throw new Error(`BTC_TREZOR_TX_MISMATCH: unknown networkKey ${networkKey}`);
+  const tx = Transaction.fromRaw(hex.decode(signedTxHex), { allowUnknownOutputs: true });
+
+  const wanted = plan.outputs
+    .filter((o) => !o.isChange)
+    .map((o) => ({ address: o.address, amount: BigInt(o.amountSats) }));
+
+  const actual = [];
+  for (let i = 0; i < tx.outputsLength; i++) {
+    const out = tx.getOutput(i);
+    let addr = null;
+    try {
+      // @scure/btc-signer Address.encode takes a decoded payment descriptor,
+      // not a raw script — pipe through OutScript.decode first.
+      const decoded = OutScript.decode(out.script);
+      addr = decoded ? Address(netInfo.params).encode(decoded) : null;
+    } catch { /* non-standard */ }
+    actual.push({ address: addr, amount: BigInt(out.amount) });
+  }
+
+  // Every wanted recipient must appear exactly once (address + amount match).
+  const usedActual = new Set();
+  for (const w of wanted) {
+    const idx = actual.findIndex((a, i) => !usedActual.has(i) && a.address === w.address && a.amount === w.amount);
+    if (idx === -1) {
+      throw new Error(`BTC_TREZOR_TX_MISMATCH: recipient ${w.address} amount ${w.amount} not present in signed tx`);
+    }
+    usedActual.add(idx);
+  }
+
+  // Change verification by amount only — the address is device-derived and
+  // cannot be re-derived here without the xpub. If the caller expected change
+  // > 0, the sum of "everything else" MUST equal what the plan expected.
+  if (plan.changeAmountSats > 0n) {
+    const remainder = actual.reduce((sum, a, i) => usedActual.has(i) ? sum : sum + a.amount, 0n);
+    if (remainder !== BigInt(plan.changeAmountSats)) {
+      throw new Error(`BTC_TREZOR_TX_MISMATCH: change amount ${remainder} does not match plan ${plan.changeAmountSats}`);
+    }
+  } else {
+    const leftover = actual.reduce((sum, a, i) => usedActual.has(i) ? sum : sum + a.amount, 0n);
+    if (leftover !== 0n) {
+      throw new Error(`BTC_TREZOR_TX_MISMATCH: signed tx has unexpected leftover output amount ${leftover} (plan had no change)`);
+    }
+  }
+}
+
 export async function trezorSignBtcTx({ plan, networkKey }) {
   await requireWebUsb();
 
@@ -177,8 +242,13 @@ export async function trezorSignBtcTx({ plan, networkKey }) {
 
   const result = await TrezorConnect.signTransaction({ inputs, outputs, coin });
   if (!result.success) throw new Error(/** @type {any} */ (result.payload).error);
-  return /** @type {any} */ (result.payload).serializedTx;
+  const serializedTx = /** @type {any} */ (result.payload).serializedTx;
+  _verifyBtcSignedTxMatchesPlan(serializedTx, plan, networkKey);
+  return serializedTx;
 }
+
+// Exported for tests only — pure verifier, no I/O.
+export const __test_verifyBtcSignedTxMatchesPlan = _verifyBtcSignedTxMatchesPlan;
 
 export async function trezorSignSolTx({ serializedTxBase64 }) {
   await requireWebUsb();
