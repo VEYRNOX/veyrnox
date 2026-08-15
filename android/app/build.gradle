@@ -37,6 +37,18 @@ android {
         buildConfigField "boolean", "FIREBASE_OBSERVABILITY_ENABLED", "${firebaseObservabilityEnabled}"
         buildConfigField "boolean", "FIREBASE_OBSERVABILITY_SMOKE", "false"
         manifestPlaceholders.firebaseObservabilityCollectionEnabled = firebaseObservabilityEnabled
+        // F-1 Gap 3 (2026-08-15). `firebase_performance_collection_enabled=false`
+        // is a SOFT switch — setPerformanceCollectionEnabled(true) overrides it at
+        // runtime. `..._deactivated=true` is the COMPILE-TIME kill switch and
+        // cannot be overridden at runtime. Everything except the Test Lab variant
+        // gets the hard form, so injected code in a shipped build cannot turn
+        // Performance collection back on. Deliberately layered on top of "no
+        // google-services.json ships" rather than replacing it.
+        //
+        // NOTE: Crashlytics has NO `_deactivated` equivalent —
+        // setCrashlyticsCollectionEnabled(true) can always override the manifest
+        // flag. For Crashlytics the absent config file remains the real control.
+        manifestPlaceholders.firebasePerformanceDeactivated = !firebaseObservabilityEnabled
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -120,6 +132,9 @@ android {
             buildConfigField "boolean", "FIREBASE_OBSERVABILITY_ENABLED", "true"
             buildConfigField "boolean", "FIREBASE_OBSERVABILITY_SMOKE", "true"
             manifestPlaceholders.firebaseObservabilityCollectionEnabled = true
+            // The ONLY variant that must not carry the hard kill switch — Test
+            // Lab needs Performance traces (see F-1 Gap 3 note in defaultConfig).
+            manifestPlaceholders.firebasePerformanceDeactivated = false
         }
     }
 }
