@@ -53,6 +53,13 @@ export const RECOVERY_PASSPHRASE_TOO_SHORT = 'RECOVERY_PASSPHRASE_TOO_SHORT';
 
 const ENVELOPE_APP = 'veyrnox';
 const ENVELOPE_TYPE = 'recovery-share';
+// Distinct type for a whole-bundle wrap (Codex P1, 2026-08-15): PersonalBackup
+// runSplit's "encrypt one share" checkbox previously wired UI state that was
+// never consumed, so the export was always raw. wrapBundleWithPassphrase
+// below wraps the ENTIRE bundle #2 JSON string (share + vault + hash) as one
+// opaque blob. A distinct `type` keeps this un-parseable by the share-only
+// unwrap and vice versa — tryParseRecoveryEnvelope callers must switch on it.
+const ENVELOPE_TYPE_BUNDLE = 'recovery-bundle-v1';
 
 /**
  * Validate a recovery passphrase against the spec §5.1 minimum. Length only;
@@ -104,11 +111,11 @@ function fromB64(str) {
  * this file came from) is otherwise indistinguishable from the original
  * document. Matches the pattern used by vault.js v:3 AAD binding.
  */
-function envelopeAad(shareIndex) {
+function envelopeAad(shareIndex, type = ENVELOPE_TYPE) {
   return enc.encode(
     JSON.stringify({
       app: ENVELOPE_APP,
-      type: ENVELOPE_TYPE,
+      type,
       version: RECOVERY_SHARE_ENVELOPE_VERSION,
       shareIndex,
     }),
@@ -197,6 +204,60 @@ export async function wrapShareWithPassphrase(share, passphrase, shareIndex) {
 }
 
 /**
+ * Wrap an arbitrary byte buffer — specifically, the UTF-8 encoding of a whole
+ * recovery BUNDLE JSON string (share + vault + hash, see shardBackup.js
+ * encodeShareBundle) — under a passphrase. Same KDF/cipher/AAD-binding shape
+ * as wrapShareWithPassphrase, but under ENVELOPE_TYPE_BUNDLE so the two are
+ * never cross-parseable, and unconstrained to SHARE_SIZE.
+ *
+ * @param {Uint8Array} bytes  Plaintext to wrap (a bundle's UTF-8 JSON bytes).
+ * @param {string} passphrase  Recovery passphrase, min 16 chars.
+ * @param {number} shareIndex  1..255, the shamir x-coord this file carries. Non-secret;
+ *   bound into AAD so a tamper flipping it is detected.
+ * @returns {Promise<string>}  JSON envelope string.
+ */
+export async function wrapBundleWithPassphrase(bytes, passphrase, shareIndex) {
+  if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
+    throw new Error(RECOVERY_SHARE_DISABLED);
+  }
+  if (!(bytes instanceof Uint8Array) || bytes.length === 0) {
+    throw new Error(RECOVERY_SHARE_MALFORMED);
+  }
+  if (!Number.isInteger(shareIndex) || shareIndex < 1 || shareIndex > 255) {
+    throw new Error(RECOVERY_SHARE_MALFORMED);
+  }
+  const pf = checkRecoveryPassphrase(passphrase);
+  if (!pf.ok) throw new Error(RECOVERY_PASSPHRASE_TOO_SHORT);
+
+  const salt = randomBytes(32);
+  const iv = randomBytes(12);
+  const key = await deriveRecoveryKey(passphrase, salt);
+  const aad = envelopeAad(shareIndex, ENVELOPE_TYPE_BUNDLE);
+  const ct = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 },
+      key,
+      /** @type {BufferSource} */ (bytes),
+    ),
+  );
+  return JSON.stringify({
+    app: ENVELOPE_APP,
+    type: ENVELOPE_TYPE_BUNDLE,
+    version: RECOVERY_SHARE_ENVELOPE_VERSION,
+    shareIndex,
+    kdf: {
+      parallelism: KDF_PARAMS.parallelism,
+      iterations: KDF_PARAMS.iterations,
+      memorySize: KDF_PARAMS.memorySize,
+      hashLength: KDF_PARAMS.hashLength,
+    },
+    salt: toB64(salt),
+    iv: toB64(iv),
+    ct: toB64(ct),
+  });
+}
+
+/**
  * Parse a byte buffer into a recovery envelope object. Returns null if the
  * buffer is not JSON or not shaped like a recovery envelope — used by the UI
  * to distinguish raw share files from encrypted ones on file pick.
@@ -221,7 +282,7 @@ export function tryParseRecoveryEnvelope(bytes) {
       parsed &&
       typeof parsed === 'object' &&
       parsed.app === ENVELOPE_APP &&
-      parsed.type === ENVELOPE_TYPE
+      (parsed.type === ENVELOPE_TYPE || parsed.type === ENVELOPE_TYPE_BUNDLE)
     ) {
       return parsed;
     }
@@ -300,6 +361,68 @@ export async function unwrapShareWithPassphrase(envelope, passphrase) {
     // in depth. AES-GCM should have rejected first, but the caller expects
     // exactly SHARE_SIZE bytes downstream.
     pt.fill(0);
+    throw new Error(RECOVERY_SHARE_UNWRAP_FAILED);
+  }
+  return pt;
+}
+
+/**
+ * Decrypt a bundle envelope back to the original plaintext bytes (the UTF-8
+ * bundle JSON string, undecoded — caller does `new TextDecoder().decode(...)`
+ * then `JSON.parse`). Fail-closed on wrong passphrase, tampered header,
+ * malformed input, or a SHARE-type envelope handed to the wrong unwrap.
+ *
+ * @param {object|string} envelope
+ * @param {string} passphrase
+ * @returns {Promise<Uint8Array>}
+ */
+export async function unwrapBundleWithPassphrase(envelope, passphrase) {
+  if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
+    throw new Error(RECOVERY_SHARE_DISABLED);
+  }
+  const obj = typeof envelope === 'string' ? tryParseObject(envelope) : envelope;
+  if (!obj || typeof obj !== 'object') throw new Error(RECOVERY_SHARE_MALFORMED);
+  if (obj.app !== ENVELOPE_APP || obj.type !== ENVELOPE_TYPE_BUNDLE) {
+    throw new Error(RECOVERY_SHARE_MALFORMED);
+  }
+  if (obj.version !== RECOVERY_SHARE_ENVELOPE_VERSION) {
+    throw new Error(RECOVERY_SHARE_MALFORMED);
+  }
+  if (!Number.isInteger(obj.shareIndex) || obj.shareIndex < 1 || obj.shareIndex > 255) {
+    throw new Error(RECOVERY_SHARE_MALFORMED);
+  }
+  if (
+    !obj.kdf ||
+    obj.kdf.parallelism !== KDF_PARAMS.parallelism ||
+    obj.kdf.iterations !== KDF_PARAMS.iterations ||
+    obj.kdf.memorySize !== KDF_PARAMS.memorySize ||
+    obj.kdf.hashLength !== KDF_PARAMS.hashLength
+  ) {
+    throw new Error(RECOVERY_SHARE_MALFORMED);
+  }
+
+  const salt = fromB64(obj.salt);
+  const iv = fromB64(obj.iv);
+  const ct = fromB64(obj.ct);
+  if (salt.length !== 32) throw new Error(RECOVERY_SHARE_MALFORMED);
+  if (iv.length !== 12) throw new Error(RECOVERY_SHARE_MALFORMED);
+  if (ct.length <= 16) throw new Error(RECOVERY_SHARE_MALFORMED);
+
+  const key = await deriveRecoveryKey(passphrase, salt);
+  const aad = envelopeAad(obj.shareIndex, ENVELOPE_TYPE_BUNDLE);
+  let pt;
+  try {
+    pt = new Uint8Array(
+      await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv, additionalData: aad, tagLength: 128 },
+        key,
+        /** @type {BufferSource} */ (ct),
+      ),
+    );
+  } catch {
+    // Generic wrong-passphrase-or-tampered — same no-oracle contract as the
+    // share unwrap, including a flipped shareIndex (AAD mismatch surfaces
+    // here, not as a distinct error).
     throw new Error(RECOVERY_SHARE_UNWRAP_FAILED);
   }
   return pt;
