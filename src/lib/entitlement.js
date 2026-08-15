@@ -11,8 +11,15 @@ import { getCustomerInfo, SAFETY_PLUS_ENTITLEMENT } from './purchases';
 import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 
 // DEV override: VITE_FORCE_TIER=safety_plus bypasses RevenueCat for on-device
-// testing of paid features. Dead-code-eliminated in release builds (no env var set).
-const FORCED_TIER = import.meta.env.VITE_FORCE_TIER || null;
+// testing of paid features. Codex P1 2026-08-15: previously accepted in ANY
+// build. A release cut with VITE_FORCE_TIER=safety_plus in the env would ship
+// every install self-upgraded to the paid tier and skip RevenueCat entirely.
+// Gate on import.meta.env.DEV — same pattern as VITE_DEV_UNGATE_SEND
+// (src/lib/devSendOverride.js). Production evaluates FORCED_TIER to null;
+// dead-code-eliminated in release builds regardless of the env string.
+const FORCED_TIER = import.meta.env.DEV
+  ? (import.meta.env.VITE_FORCE_TIER || null)
+  : null;
 
 export async function resolveTier() {
   // I3 (deniability = ZERO backend calls): a decoy/hidden session must never make
