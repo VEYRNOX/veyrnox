@@ -68,7 +68,10 @@ test.describe('Personal Backup — onboarding with owner PIN 30081977', () => {
       .getByRole('button', { name: /skip for now/i })
       .or(page.getByRole('button', { name: "You're set" }));
     const sendLink = page.getByRole('link', { name: 'Send', exact: true });
-    await expect(dismiss.or(sendLink)).toBeVisible({ timeout: 30000 });
+    // .first(): the created-flash overlay renders on top of an already-painted
+    // dashboard, so the dismiss button and the sidebar Send link can both be
+    // visible — without it the chain resolves to 2 elements and strict mode throws.
+    await expect(dismiss.or(sendLink).first()).toBeVisible({ timeout: 30000 });
     if (await dismiss.isVisible()) await dismiss.click();
     await expect(sendLink).toBeVisible({ timeout: 30000 });
 
@@ -76,6 +79,14 @@ test.describe('Personal Backup — onboarding with owner PIN 30081977', () => {
     await page.reload();
     await expect(page.getByRole('group', { name: /PIN entry/i })).toBeVisible();
     await enterPin(page, PIN);
+    // #1783 (cac2e0b6) clears stored consent during wallet creation, so this
+    // first post-creation entry meets the one-time telemetry screen before the
+    // dashboard. freshLocalBuild()'s pre-seed of veyrnox-telemetry-consent
+    // cannot cover it — the in-flow clearConsent() wipes the seeded value.
+    // DENY, never grant: a test must not switch real telemetry egress on.
+    const consentDeny = page.getByRole('button', { name: 'No thanks' });
+    await expect(consentDeny.or(sendLink).first()).toBeVisible({ timeout: 30000 });
+    if (await consentDeny.isVisible()) await consentDeny.click();
     await expect(sendLink).toBeVisible({ timeout: 30000 });
   });
 });
