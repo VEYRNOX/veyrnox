@@ -40,7 +40,12 @@ export function queueReducer(state, action) {
   switch (action.type) {
     case 'push': {
       const items = [action.notification, ...state.items].slice(0, RING_CAP);
-      return { items, unseenCount: state.unseenCount + 1, latest: action.notification };
+      // Codex P2 2026-08-15: cap unseenCount at RING_CAP. Prior behaviour
+      // grew the badge unbounded even as the ring evicted older items — a
+      // flapping source could show "247 unseen" while only 20 items exist.
+      // Meaningless to show a count larger than the ring can hold.
+      const unseenCount = Math.min(state.unseenCount + 1, RING_CAP);
+      return { items, unseenCount, latest: action.notification };
     }
     case 'markAllSeen':
       if (state.unseenCount === 0) return state;
