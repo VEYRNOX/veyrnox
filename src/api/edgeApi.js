@@ -79,7 +79,20 @@ async function get(path) {
 export async function createBuySession({ asset, network, address, fiatAmount, fiatCurrency }) {
   i3Guard();
   if (!address || typeof address !== 'string') throw new Error('ADDRESS_REQUIRED');
-  return post('/api/buy/session', { asset, network, address, fiatAmount, fiatCurrency });
+  const res = await post('/api/buy/session', { asset, network, address, fiatAmount, fiatCurrency });
+  // Codex P2 2026-08-15: the returned URL is loaded straight into the Buy
+  // iframe. Without validation, a backend bug/misroute (or a compromised edge
+  // function) that returns { url: "https://attacker.example/..." } would land
+  // an arbitrary page inside the Buy flow — in-app phishing surface. Assert
+  // the URL is on a Transak origin. Matches the postMessage allowlist in
+  // BuyCrypto.jsx and the URL bases in src/lib/buy/transakUrl.js.
+  const urlStr = typeof res?.url === 'string' ? res.url : '';
+  let host = '';
+  try { host = new URL(urlStr).host; } catch { host = ''; }
+  if (host !== 'global.transak.com' && host !== 'global-stg.transak.com') {
+    throw Object.assign(new Error('BUY_URL_UNTRUSTED_ORIGIN'), { code: 'BUY_URL_UNTRUSTED_ORIGIN' });
+  }
+  return res;
 }
 
 // ── Supabase RPCs ─────────────────────────────────────────────────────
@@ -97,22 +110,34 @@ export async function edgeFn(fn, body = {}) {
 }
 
 // ── Market Data ───────────────────────────────────────────────────────
+//
+// Codex P1 2026-08-15: every /api/data/* helper needs i3Guard() — I3 requires
+// ZERO backend calls in decoy/hidden/demo sessions, and a read-only price
+// endpoint still leaks network activity that can be observed. Only
+// fetchOkxCandles (below) had the guard; prices/klines/coingecko/gas/news did
+// not, so a direct import from any UI path (or a mid-session mutate to a decoy
+// session with a hot query cache) would still egress. The single UI consumers
+// today all pass `enabled: !decoy` to react-query, but the module-level gate
+// is the authoritative chokepoint — a UI regression that drops the enabled
+// flag must not re-open the egress.
 
 export async function fetchPrices(endpoint, queryParams = {}) {
+  i3Guard();
   const qs = new URLSearchParams({ endpoint, ...queryParams });
   return get(`/api/data/prices?${qs}`);
 }
 
 export async function fetchKlines(symbol, interval = '1h', limit = 100) {
+  i3Guard();
   const qs = new URLSearchParams({ symbol, interval, limit: String(limit) });
   return get(`/api/data/klines?${qs}`);
 }
 
 /**
  * OKX spot candles via the edge proxy (functions/api/data/okx-candles.js).
- * Routed through here — not called directly from lib/okx.js — so it inherits
- * the i3Guard() above and the native-WebView CORS handling every other market
- * data source gets.
+ * Routed through here — not called directly from lib/okx.js — so it gets the
+ * i3Guard() explicitly (every /api/data/* helper does; nothing is inherited)
+ * and the native-WebView CORS handling every other market data source gets.
  */
 export async function fetchOkxCandles(instId, bar = '1H', limit = 100) {
   i3Guard();
@@ -121,15 +146,18 @@ export async function fetchOkxCandles(instId, bar = '1H', limit = 100) {
 }
 
 export async function fetchCoinGecko(endpoint, queryParams = {}) {
+  i3Guard();
   const qs = new URLSearchParams({ endpoint, ...queryParams });
   return get(`/api/data/coingecko?${qs}`);
 }
 
 export async function fetchGasFees(mainnet = false) {
+  i3Guard();
   const qs = mainnet ? '?mainnet=true' : '';
   return get(`/api/data/gas${qs}`);
 }
 
 export async function fetchNews() {
+  i3Guard();
   return get('/api/data/news');
 }
