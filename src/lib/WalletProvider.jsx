@@ -136,6 +136,7 @@ import {
 } from '@/lib/biometric';
 import { ensureKekPinNoticeOnNative } from '@/lib/kekPinNotice';
 import { clearConsent } from '@/lib/consent';
+import { clearPendingWcUri } from '@/lib/deepLinkPairing';
 import { setLivePricesEnabled } from '@/lib/priceFeed';
 import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRedeemed, applyRedemption, getLocalState as getReferralState } from '@/lib/referral';
 import { generateServerCode, redeemCode } from '@/api/referralApi';
@@ -564,6 +565,12 @@ export function WalletProvider({ children }) {
     setBtcAccount(null);
     setSolAccount(null);
     keyStore.lock(); // no-op on web; drops the hardware grant on native (M2b)
+    // Codex P2 2026-08-15: drop any pending WC pairing URI on lock so a link
+    // delivered during THIS session cannot survive into the NEXT session and
+    // appear pre-filled on /walletconnect after the user unlocks again. In-
+    // memory only (never persisted); this is defence-in-depth alongside the
+    // TTL guard in takePendingWcUri.
+    try { clearPendingWcUri(); } catch { /* noop */ }
     // Brief A Lane 2: clipboard wipe on lock — covers every lock path (panic,
     // duress, idle, background, session ceiling) through this one choke point.
     if (typeof window !== 'undefined') { window.dispatchEvent(new Event(APP_LOCK_EVENT)); }
