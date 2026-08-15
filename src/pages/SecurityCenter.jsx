@@ -46,14 +46,20 @@ export default function SecurityCenter() {
   // Two-factor (Action Password / passkey) now lives in Security Settings →
   // "Two-factor at critical actions". The Security Center is alerts/sessions/limits.
 
+  // Codex P1 2026-08-15: these two queries were unconditional even in a decoy
+  // or hidden session, violating the page's own "zero backend calls in
+  // deniability mode" contract right above and matching the `enabled:
+  // !deniable` gate the `history` query already uses. Gate both.
   const { data: sessions = [], isError: errorSessions } = useQuery({
     queryKey: ["sessions"],
     queryFn: () => base44.entities.UserSession.filter({ status: "active" }),
+    enabled: !deniable,
   });
 
   const { data: limits = [], isError: errorLimits } = useQuery({
     queryKey: ["tx-limits"],
     queryFn: () => base44.entities.TransactionLimit.list(),
+    enabled: !deniable,
   });
 
   // LOCAL tx-history records — the SAME source the Send flow uses to enforce the
