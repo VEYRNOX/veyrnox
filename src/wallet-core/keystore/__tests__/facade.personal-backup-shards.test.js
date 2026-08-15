@@ -25,6 +25,7 @@ beforeEach(() => {
     nativeKeyStore: {
       exportPersonalBackupShares: vi.fn(async () => []),
       restoreFromPersonalBackupShares: vi.fn(async () => undefined),
+      getPersistedVault: vi.fn(async () => ({ v: 2, ct: 'stub' })),
     },
   }));
   vi.doMock('../web.js', () => ({ webKeyStore: {} }));
@@ -52,6 +53,21 @@ describe('keystore facade — Personal Backup Phase 1', () => {
     const { getKeyStore } = await import('../index.js');
     const store = getKeyStore();
     expect(typeof store.restoreFromPersonalBackupShares).toBe('function');
+  });
+
+  it('exposes getPersistedVault as a function on the native facade', async () => {
+    const { getKeyStore } = await import('../index.js');
+    const store = getKeyStore();
+    expect(typeof store.getPersistedVault).toBe('function');
+  });
+
+  it('forwards getPersistedVault to nativeKeyStore (unblocks exportRecoveryBundles on native)', async () => {
+    const nativeMod = await import('../native.js');
+    const { getKeyStore } = await import('../index.js');
+    const store = getKeyStore();
+    const result = await store.getPersistedVault();
+    expect(nativeMod.nativeKeyStore.getPersistedVault).toHaveBeenCalled();
+    expect(result).toEqual({ v: 2, ct: 'stub' });
   });
 
   it('forwards restoreFromPersonalBackupShares to nativeKeyStore', async () => {
