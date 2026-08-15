@@ -10,22 +10,56 @@ import { isDeniabilitySessionActive } from '../deniabilitySession.js';
 const EVM_PATH = "m/44'/60'/0'/0/0";
 const SOL_PATH = "m/44'/501'/0'/0'";
 
+// Codex P1 2026-08-15: resolve the TrezorConnect iframe URL.
+//
+//   1. VITE_TREZOR_CONNECT_SRC (build-time)  — operator wires the self-hosted
+//      hash-pinned bundle produced by scripts/bundle-trezor-connect.mjs.
+//      Recommended value on a production deploy that has verified the local
+//      bundle boots against the current @trezor/connect-web:
+//        VITE_TREZOR_CONNECT_SRC=/trezor-connect/
+//      corsValidator lives inside @trezor/connect-web and rejects same-origin
+//      URLs by default, so setting this env is deliberately opt-in — the
+//      operator must confirm the library version accepts the local bundle
+//      (test on a staging deploy). When it fails, TrezorConnect.init throws
+//      and requireWebUsb() surfaces the error, so a bad wiring fails LOUDLY
+//      at first use rather than silently falling back to the CDN.
+//   2. Dev fallback — localhost bundle on `http://localhost:<VITE_PORT>/trezor-
+//      connect/`. This has always worked because the corsValidator explicitly
+//      allowlists localhost:5xxx/8xxx.
+//   3. Otherwise — omitted → @trezor/connect-web falls back to its CDN at
+//      connect.trezor.io. Console-warns at boot so a devtools-open operator
+//      knows CDN mode is active and can wire (1) once verified.
+//
+// Whichever URL is used, I3 is enforced upstream via checkDeniability() in
+// requireWebUsb(); a deniable session never even reaches this init.
+function resolveConnectSrc() {
+  try {
+    const envSrc = typeof import.meta !== 'undefined' && import.meta.env?.VITE_TREZOR_CONNECT_SRC;
+    if (envSrc) return String(envSrc);
+    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+      return `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`;
+    }
+    // Prod without VITE_TREZOR_CONNECT_SRC — warn once so operators see it.
+    if (!globalThis.__veyrnoxTrezorCdnWarned) {
+      globalThis.__veyrnoxTrezorCdnWarned = true;
+      try {
+        // eslint-disable-next-line no-console
+        console.warn('[trezor] Using CDN (connect.trezor.io) — set VITE_TREZOR_CONNECT_SRC=/trezor-connect/ after verifying scripts/bundle-trezor-connect.mjs works with the current @trezor/connect-web release.');
+      } catch { /* noop */ }
+    }
+    return null;
+  } catch { return null; }
+}
+
 // Gap C — memoize init (mirrors trezorAddress.js). Real TrezorConnect throws on a
 // second init() call, so the promise is created at most once and every caller awaits
 // the same one; concurrent sign calls no longer double-init.
 let _initPromise = null;
 async function ensureInit() {
   if (!_initPromise) {
-    // connectSrc: corsValidator only accepts *.trezor.io / localhost:5xxx/8xxx.
-    // In dev, pass localhost so the self-hosted bundle loads (no CDN call).
-    // In prod, omit — CDN (connect.trezor.io) is used and is disclosed.
-    // I3 is enforced upstream via checkDeniability() in requireWebUsb().
-    const connectSrc = (typeof import.meta !== 'undefined' && import.meta.env?.DEV)
-      ? `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`
-      : undefined;
     _initPromise = TrezorConnect.init({
       lazyLoad: true,
-      ...(connectSrc ? { connectSrc } : {}),
+      ...(resolveConnectSrc() ? { connectSrc: resolveConnectSrc() } : {}),
       manifest: {
         email: 'security@veyrnox.com',
         appUrl: 'https://veyrnox.app',

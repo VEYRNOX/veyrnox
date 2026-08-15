@@ -66,13 +66,13 @@ describe('getTrezorBtcAddress', () => {
   it('returns testnet bech32 address with coin tbtc', async () => {
     TrezorConnect.getAddress.mockResolvedValue({
       success: true,
-      payload: { address: 'tb1qtest123' },
+      payload: { address: 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx' },
     });
 
     const { getTrezorBtcAddress } = await import('../trezorAddress.js');
     const addr = await getTrezorBtcAddress('btc-testnet');
 
-    expect(addr).toBe('tb1qtest123');
+    expect(addr).toBe('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx');
     const call = TrezorConnect.getAddress.mock.calls[0][0];
     expect(call.coin).toBe('tbtc');
     expect(call.showOnTrezor).toBe(true);
@@ -82,7 +82,7 @@ describe('getTrezorBtcAddress', () => {
   it('uses btc coin for mainnet', async () => {
     TrezorConnect.getAddress.mockResolvedValue({
       success: true,
-      payload: { address: 'bc1qmainnet' },
+      payload: { address: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4' },
     });
 
     const { getTrezorBtcAddress } = await import('../trezorAddress.js');
@@ -108,13 +108,13 @@ describe('getTrezorSolAddress', () => {
   it('returns SOL public key with showOnTrezor', async () => {
     TrezorConnect.solanaGetAddress.mockResolvedValue({
       success: true,
-      payload: { address: 'SoLPubKey1234567890' },
+      payload: { address: 'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK' },
     });
 
     const { getTrezorSolAddress } = await import('../trezorAddress.js');
     const addr = await getTrezorSolAddress();
 
-    expect(addr).toBe('SoLPubKey1234567890');
+    expect(addr).toBe('DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK');
     const call = TrezorConnect.solanaGetAddress.mock.calls[0][0];
     expect(call.path).toBe("m/44'/501'/0'/0'");
     expect(call.showOnTrezor).toBe(true);
