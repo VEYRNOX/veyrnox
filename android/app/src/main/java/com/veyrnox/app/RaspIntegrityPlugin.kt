@@ -132,8 +132,14 @@ class RaspIntegrityPlugin : Plugin() {
             Debug.isDebuggerConnected()
             File("/proc/self/status").exists()
             android.os.SystemClock.elapsedRealtime()
-        } catch (t: Throwable) {
-            call.reject("PROBE_CANARY_FAILED", "INTEGRITY_UNAVAILABLE", t)
+        } catch (e: Exception) {
+            // Capacitor PluginCall.reject(message, code, exception) overload
+            // requires Exception, not Throwable — using Throwable fails
+            // compileDebugKotlin / compileReleaseKotlin (build regression on
+            // PR #1758). Exception covers every Frida-forced throw we care
+            // about; Error subclasses like OOM/StackOverflow surface via the
+            // uncaught-exception handler either way.
+            call.reject("PROBE_CANARY_FAILED", "INTEGRITY_UNAVAILABLE", e)
             return
         }
         val result = JSObject()
