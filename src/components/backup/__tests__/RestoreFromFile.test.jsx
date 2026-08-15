@@ -143,7 +143,11 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
 
     await waitFor(() => expect(decryptPasswordSeal).toHaveBeenCalled());
     // Generic message — must NOT distinguish "wrong password" from "corrupt file".
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Wrong credential or corrupted backup.'));
+    // Countdown suffix added 2026-08-15 (Codex P2, attempt cap). The generic
+    // wording — "Wrong credential OR corrupted backup" — is what preserves the
+    // no-oracle property; the "(N left)" only reveals attempt count, not which
+    // failure branch was hit.
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/^Wrong credential or corrupted backup\./)));
     // Still on the unlock phase so the user can retry (fail closed, not advanced).
     expect(screen.getByRole('button', { name: /restore wallet/i })).toBeTruthy();
   });

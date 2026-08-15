@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound, QrCode } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { Share } from "@capacitor/share";
 import CoinLogo from "@/components/CoinLogo";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 import { Button } from "@/components/ui/button";
@@ -14,16 +13,6 @@ import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import BackupPaywallNudge from "@/components/BackupPaywallNudge";
 import { useTier } from "@/lib/TierProvider";
 
-// Escape HTML metacharacters before interpolating into the print document.
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 export default function WalletSeedQR() {
   const { wallets, confirmWalletBackup } = useWallet();
   const { currentTier } = useTier();
@@ -32,7 +21,25 @@ export default function WalletSeedQR() {
   const [mnemonic, setMnemonic] = useState(null);
   const [showSeed, setShowSeed] = useState(false);
   const [printed, setPrinted] = useState(false);
+  const [savedConfirmed, setSavedConfirmed] = useState(false);
   const mnemonicRef = useRef(null);
+
+  // Print-only DOM container; hoisted so cleanup can find it on unmount / clear /
+  // afterprint. Prior version left the container in document.body indefinitely,
+  // so the plaintext mnemonic + QR outlived state clear and unmount (Codex
+  // P1 2026-08-15).
+  const PRINT_ID = "veyrnox-seed-print-container";
+  const removePrintContainer = () => {
+    try {
+      const el = document.getElementById(PRINT_ID);
+      if (el) {
+        // Blank textContent first so anything still holding the node ref (dev
+        // tools, addon printers) doesn't retain the phrase.
+        el.textContent = "";
+        el.remove();
+      }
+    } catch { /* SSR / detached DOM — nothing to clean */ }
+  };
 
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
 
@@ -51,10 +58,12 @@ export default function WalletSeedQR() {
     setMnemonic(null);
     setShowSeed(false);
     setPrinted(false);
+    setSavedConfirmed(false);
+    removePrintContainer();
   }, [selectedWalletId]);
 
   useEffect(() => {
-    return () => { setMnemonic(null); };
+    return () => { setMnemonic(null); removePrintContainer(); };
   }, []);
 
   const handleReveal = () => {
@@ -63,10 +72,24 @@ export default function WalletSeedQR() {
   };
 
   const handlePrint = async () => {
-    if (!mnemonic) return;
+    if (!mnemonic || !showSeed) return;
+
+    // Native branch removed 2026-08-15 (Codex P1): the prior implementation
+    // called Share.share({ text: mnemonic }), which piped the plaintext seed
+    // into whatever OS target the user picked (mail, cloud drive, chat). That
+    // is a direct seed-egress path — every recipient app treats the phrase as
+    // ordinary text and may sync / index / back it up. On mobile the on-screen
+    // reveal above IS the backup path: the user hand-copies the words to
+    // paper. Print itself is a desktop-web affordance.
+    if (Capacitor.isNativePlatform()) {
+      // Silently no-op is worse than saying so. Caller already renders the
+      // Print button only on non-native (see below), so this is a defence in
+      // depth against a future caller wiring it up.
+      return;
+    }
 
     // Encode the phrase to a QR locally (same `qrcode` lib, no network) so the
-    // printed/shared sheet carries both the words and a scannable backup.
+    // printed sheet carries both the words and a scannable backup.
     let qrDataUrl = "";
     try {
       qrDataUrl = await QRCode.toDataURL(mnemonic, { errorCorrectionLevel: "M", margin: 2, width: 240 });
@@ -76,44 +99,14 @@ export default function WalletSeedQR() {
 
     const nameText = selectedWallet?.name || "Wallet";
 
-    if (Capacitor.isNativePlatform()) {
-      // window.open("", "_blank") on Capacitor opens an orphaned WebView with no
-      // back navigation — the user gets stranded. Instead share the backup text
-      // via the OS share sheet so they can save/print through their own apps.
-      const shareText = [
-        `${nameText} — Recovery Backup`,
-        `${escapeHtml(selectedWallet?.currency || "")} · ${selectedWallet?.address?.slice(0, 16) || ""}...`,
-        "",
-        mnemonic,
-        "",
-        "KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.",
-        "The QR encodes the same recovery phrase — anyone who scans it controls this wallet.",
-      ].join("\n");
-
-      try {
-        await Share.share({
-          title: `${nameText} — Recovery Backup`,
-          text: shareText,
-          dialogTitle: "Print or Save Recovery Backup",
-        });
-      } catch {
-        // Share sheet dismissed — no action needed; user stays on the page.
-      }
-      setPrinted(true);
-      confirmWalletBackup(selectedWalletId);
-      return;
-    }
-
-    // Web path: inject a hidden print container into THIS document so the user
-    // stays on the page. @media print hides everything except the container, then
-    // we call window.print() on the current window — no popup, no orphaned tab.
-    const PRINT_ID = "veyrnox-seed-print-container";
-    let container = document.getElementById(PRINT_ID);
-    if (!container) {
-      container = document.createElement("div");
-      container.id = PRINT_ID;
-      document.body.appendChild(container);
-    }
+    // Web path: inject a print container into THIS document so the user stays
+    // on the page. @media print hides everything except the container, then we
+    // call window.print() on the current window — no popup, no orphaned tab.
+    // Cleaned up unconditionally in the finally block below (Codex P1 2026-08-15).
+    removePrintContainer();
+    const container = document.createElement("div");
+    container.id = PRINT_ID;
+    document.body.appendChild(container);
 
     // Build the print container with DOM methods — no innerHTML, no XSS surface.
     // All content is plain text set via textContent (wallet name, mnemonic, address)
@@ -177,17 +170,43 @@ export default function WalletSeedQR() {
       document.head.appendChild(style);
     }
 
-    window.print();
+    try {
+      window.print();
+    } finally {
+      // window.print() is synchronous — either the user's system print dialog
+      // has closed (accepted or cancelled) or the browser refused. Either way
+      // the container has done its job; leaving it in the DOM lets the seed
+      // outlive React state (Codex P1 2026-08-15). Delay 0 lets any pending
+      // layout tick complete before removal.
+      setTimeout(removePrintContainer, 0);
+    }
     setPrinted(true);
+    // NOTE: no confirmWalletBackup() here. window.print() cannot distinguish
+    // "user accepted the print / saved as PDF" from "user cancelled the
+    // dialog", so calling confirmWalletBackup on this line marks the wallet
+    // backed up even when the user bailed. The user now explicitly confirms
+    // via the "I saved this backup" button below (Codex P2 2026-08-15).
+  };
+
+  const handleConfirmSaved = () => {
+    setSavedConfirmed(true);
     confirmWalletBackup(selectedWalletId);
   };
 
-  const handleClear = () => {
+  const handleHide = () => {
+    // "Hide" is not "hide from screen" — it must fully drop the phrase from
+    // memory, or a shoulder-surfer / bystander with the still-unlocked
+    // session can re-reveal / re-print without another re-auth (Codex P2
+    // 2026-08-15). To see it again, the user re-authenticates via the reveal
+    // gate above. This also collapses handleClear into one path.
     setMnemonic(null);
     mnemonicRef.current = null;
     setShowSeed(false);
     setPrinted(false);
+    setSavedConfirmed(false);
+    removePrintContainer();
   };
+  const handleClear = handleHide;
 
   const words = mnemonic ? mnemonic.trim().split(/\s+/) : [];
 
@@ -263,7 +282,7 @@ export default function WalletSeedQR() {
               <p className="text-sm font-semibold">{selectedWallet?.name || "Wallet"} — Recovery Phrase</p>
             </div>
             <button
-              onClick={() => setShowSeed(s => !s)}
+              onClick={showSeed ? handleHide : () => setShowSeed(true)}
               className="text-muted-foreground hover:text-foreground transition-colors"
               aria-label={showSeed ? "Hide seed" : "Show seed"}
             >
@@ -310,12 +329,30 @@ export default function WalletSeedQR() {
             {selectedWallet && <span className="font-mono"> {selectedWallet.currency} · {selectedWallet.address?.slice(0, 20)}…</span>}
           </p>
 
-          <Button onClick={handlePrint} className="gap-2 w-full" variant="outline">
-            <Printer className="h-4 w-4" /> Print Secure Backup
-          </Button>
-          {printed && (
+          {/* Print button: web-only AND only while the phrase is visible.
+              Native shares are removed (Codex P1 2026-08-15) — mobile users
+              hand-copy the on-screen words. Requiring showSeed prevents the
+              "hidden but still exportable" gap (Codex P2 2026-08-15). */}
+          {showSeed && !Capacitor.isNativePlatform() && (
+            <Button onClick={handlePrint} className="gap-2 w-full" variant="outline">
+              <Printer className="h-4 w-4" /> Print Secure Backup
+            </Button>
+          )}
+
+          {/* Separate confirmation from the print action. window.print() can't
+              tell whether the user actually printed / saved as PDF; the
+              earlier flow marked the wallet backed up even on cancel (Codex
+              P2 2026-08-15). Native users get this button too since the
+              on-screen reveal + hand-copy IS the backup path there. */}
+          {(printed || Capacitor.isNativePlatform()) && showSeed && !savedConfirmed && (
+            <Button onClick={handleConfirmSaved} className="w-full" size="sm">
+              I saved this backup safely
+            </Button>
+          )}
+
+          {savedConfirmed && (
             <>
-              <p className="text-xs text-success">✓ Printed — backup confirmed.</p>
+              <p className="text-xs text-success">✓ Backup confirmed.</p>
               <BackupPaywallNudge currentTier={currentTier} />
             </>
           )}
