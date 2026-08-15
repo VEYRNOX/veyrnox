@@ -29,6 +29,7 @@ import { KEK_ERR } from '@/wallet-core/keystore/kek.js';
 import PinPad from '@/components/security/PinPad';
 import { tierToBadge } from '@/wallet-core/keystore/tierBadge.js';
 import Spinner from '@/components/Spinner';
+import { KEK_INSECURE_TIER_KEY, clearKekInsecureTier } from '@/lib/useKekEnrollmentGate';
 
 // Classify a thrown error by its STABLE machine CODE (not prose — copy is not a
 // contract and a raw message can leak internals). Returns the plain-language string
@@ -139,6 +140,13 @@ export default function HardwareKekSettings() {
   // A value < 3 surfaces the one-time consented "Upgrade protection" re-enroll (C-1).
   const [kekVersion, setKekVersion] = useState(null);
   const [upgrading, setUpgrading] = useState(false);
+  // Persisted "device previously failed the hardware-tier gate" verdict from
+  // useKekEnrollmentGate. Shown as a caution banner in the enroll branch so
+  // the user knows retrying is expected to fail again (Chinese OEM Keystore
+  // reporting SOFTWARE, no StrongBox/TEE, Android<11) — but they CAN retry.
+  const [previouslyIneligible, setPreviouslyIneligible] = useState(() => {
+    try { return localStorage.getItem(KEK_INSECURE_TIER_KEY) === '1'; } catch { return false; }
+  });
 
   useEffect(() => {
     let active = true;
@@ -234,6 +242,13 @@ export default function HardwareKekSettings() {
       // A fresh enrollment always writes a genuinely salt-bound v3 wrap, so the
       // upgrade prompt must never appear right after enabling.
       setKekVersion(3);
+      // Successful enrollment proves the device DOES meet the tier requirement
+      // (transient state, OS update, wallet reinstall on a capable device).
+      // Clear the persisted-ineligible verdict so the unlock gate stops
+      // suppressing itself. Safe from Settings: this handler is invoked by
+      // the user, and enrollment succeeded — the verdict was stale.
+      clearKekInsecureTier();
+      setPreviouslyIneligible(false);
       setPin('');
       recordAudit('settings_changed');
       toast.success(t('settings.hardware_kek.toast.enabled'));
@@ -529,6 +544,20 @@ export default function HardwareKekSettings() {
       {isNative && enrolled === false && !blocked && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">{t('settings.hardware_kek.enroll.prompt_native')}</p>
+
+          {previouslyIneligible && (
+            <div
+              className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2"
+              data-testid="kek-previously-ineligible"
+            >
+              <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-xs text-muted-foreground">
+                Hardware protection could not be enabled on this device before
+                (StrongBox or TEE was unavailable). You can try again — an OS
+                update or a change in device state may allow it now.
+              </p>
+            </div>
+          )}
 
           <PinStrengthNotice variant="pre-enroll" />
 
