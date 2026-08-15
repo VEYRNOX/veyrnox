@@ -36,17 +36,11 @@ on:
         type: boolean
         required: false
         default: false
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'android/**'
-      - 'ios/**'
-      - 'capacitor.config.json'
-      - 'package-lock.json'
-      - '.github/testlab/**'
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/firebase-test-lab.yml'
+  # Push trigger removed 2026-08-15 to stay under Spark free tier (10 virtual
+  # + 5 physical device-slots/day). Every main push touching src/android/ios
+  # was firing a 3-device Android matrix + 2-device iOS matrix, burning the
+  # daily quota within a couple of merges. Re-enable only if the project moves
+  # to Blaze billing.
 
 concurrency:
   group: firebase-test-lab-${{ github.ref }}
@@ -91,13 +85,19 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-          PUBLISH_STAGING: ${{ inputs.publish_staging }}
         run: |
           set -euo pipefail
+          # 2026-08-15: staging is the ONLY build variant we route through
+          # Firebase Test Lab. Force build_staging_release=true regardless of
+          # publish_staging so the Robo crawl always exercises the staging
+          # endpoints (nszlbcmcysftwyudthjz.supabase.co,
+          # veyrnox-staging.pages.dev), never production. publish_staging
+          # still gates whether that staging build gets uploaded to Play
+          # Internal / TestFlight afterwards.
           gh workflow run ci.yml \
             --ref "$GITHUB_REF_NAME" \
             -f build_firebase_test=true \
-            -f build_staging_release="$PUBLISH_STAGING"
+            -f build_staging_release=true
 
       # This workflow and ci.yml start independently on the same main push. A
       # manual branch run first dispatches ci.yml with build_firebase_test=true.
@@ -190,8 +190,9 @@ jobs:
           gcloud firebase test android run \
             --type robo \
             --app artifacts/app-firebaseTest.apk \
-            --device model=oriole,version=33,locale=en,orientation=portrait \
-            --device model=panther,version=33,locale=en,orientation=portrait \
+            # Trimmed from 3 devices (oriole/panther/shiba) to 1 on
+            # 2026-08-15 to stay under Spark's 10-virtual-slot daily cap.
+            # shiba (Pixel 8, API 34) chosen as the newest supported target.
             --device model=shiba,version=34,locale=en,orientation=portrait \
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
@@ -443,7 +444,9 @@ jobs:
           set +e
           gcloud firebase test ios run \
             --test ios/App/build/Build/Products/ios-tests.zip \
-            --device model=iphone13pro,version=16.6,locale=en_US,orientation=portrait \
+            # Trimmed from 2 devices (iphone13pro/iphone14) to 1 on
+            # 2026-08-15 to stay under Spark's 5-physical-slot daily cap.
+            # iphone14 kept as the more recent hardware.
             --device model=iphone14,version=17.5,locale=en_US,orientation=portrait \
             --timeout "$TIMEOUT" \
             --results-bucket "$RESULTS_BUCKET" \
