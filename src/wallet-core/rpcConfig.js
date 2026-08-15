@@ -18,7 +18,7 @@ export function applyRpcEnvOverrides() {
   for (const [key, val] of Object.entries(import.meta.env)) {
     if (key.startsWith(evmPrefix) && val) {
       const networkKey = key.slice(evmPrefix.length).toLowerCase();
-      try { setRpcUrl(networkKey, val); } catch (e) {
+      try { setRpcUrl(networkKey, val); } catch (/** @type {any} */ e) {
         // Codex P2 2026-08-15: was silently swallowing every setter
         // error, so a REJECTED override (bad URL, non-allowlisted
         // host, credentialed URL) left the default endpoint in use
@@ -38,7 +38,7 @@ export function applyRpcEnvOverrides() {
   for (const [key, val] of Object.entries(import.meta.env)) {
     if (key.startsWith(btcPrefix) && val) {
       const networkKey = key.slice(btcPrefix.length).toLowerCase();
-      try { setEsploraUrl(networkKey, val); } catch (e) {
+      try { setEsploraUrl(networkKey, val); } catch (/** @type {any} */ e) {
         console.error(`[rpcConfig] BTC override "${networkKey}" rejected:`, e?.message || e);
       }
     }
@@ -49,7 +49,7 @@ export function applyRpcEnvOverrides() {
   for (const [key, val] of Object.entries(import.meta.env)) {
     if (key.startsWith(solPrefix) && val) {
       const networkKey = key.slice(solPrefix.length).toLowerCase();
-      try { setSolRpcUrl(networkKey, val); } catch (e) {
+      try { setSolRpcUrl(networkKey, val); } catch (/** @type {any} */ e) {
         console.error(`[rpcConfig] SOL override "${networkKey}" rejected:`, e?.message || e);
       }
     }
