@@ -217,13 +217,20 @@ export { SECRET_SIZE, SHARE_SIZE };
 // KDF params the origin device used.
 
 export const SHARD_BUNDLE_VERSION = 2;
-// v1 bundles (pre Codex P2 fix) were hashed with a broken top-level-only
-// hasher — JSON.stringify's array replacer is a key FILTER applied at every
-// nesting level, so any nested object (e.g. vault.kdf) collapsed to '{}' and
-// changes inside it were invisible to the integrity check. Kept ONLY so a
-// pre-existing v1 bundle (none exist in production — Phase 1, pre-audit) can
-// still decode; encodeShareBundle never emits v1 again.
-export const LEGACY_SHARD_BUNDLE_VERSION = 1;
+// v1 is REJECTED, not merely superseded. Those bundles were hashed with a
+// broken top-level-only hasher — JSON.stringify's array replacer is a key
+// FILTER applied at every nesting level, so any nested object (e.g. vault.kdf)
+// collapsed to '{}' and changes inside it were invisible to the integrity
+// check. `v` is read from the same file being validated, so keeping a v1
+// branch let an attacker-supplied bundle select the weak verifier for itself.
+//
+// The compatibility branch was removed (2026-08-15) after confirming it served
+// zero real artifacts: VITE_ENABLE_PERSONAL_BACKUP_SHARDS gates the whole
+// feature, defaults false, and is set in NO shipping build — not ci.yml,
+// deploy-preview.yml, or firebase-test-lab.yml. Only local dev and the
+// android-e2e-emulator job ever turned it on, so no user could have produced a
+// v1 bundle. A developer holding a locally-generated v1 test bundle must
+// re-export it.
 export const SHARD_BUNDLE_MISMATCH = 'SHARD_BUNDLE_MISMATCH';
 export const SHARD_BUNDLE_INVALID = 'SHARD_BUNDLE_INVALID';
 
@@ -255,12 +262,6 @@ function canonicalStringify(v) {
 
 function hashVault(vault) {
   return bytesToHex(sha256(new TextEncoder().encode(canonicalStringify(vault))));
-}
-
-// Legacy v1 hasher, kept only for decodeShareBundle's backward-compat path.
-function legacyHashVault(vault) {
-  const canonical = JSON.stringify(vault, Object.keys(vault).sort());
-  return bytesToHex(sha256(new TextEncoder().encode(canonical)));
 }
 
 /**
@@ -306,9 +307,7 @@ export function decodeShareBundle(input) {
     obj = input;
   }
   if (!obj || typeof obj !== 'object') throw new Error(SHARD_BUNDLE_INVALID);
-  if (obj.v !== SHARD_BUNDLE_VERSION && obj.v !== LEGACY_SHARD_BUNDLE_VERSION) {
-    throw new Error(SHARD_BUNDLE_INVALID);
-  }
+  if (obj.v !== SHARD_BUNDLE_VERSION) throw new Error(SHARD_BUNDLE_INVALID);
   if (!Number.isInteger(obj.shareIndex) || obj.shareIndex < 1 || obj.shareIndex > 3) throw new Error(SHARD_BUNDLE_INVALID);
   if (typeof obj.shareBytes !== 'string') throw new Error(SHARD_BUNDLE_INVALID);
   if (!obj.vault || typeof obj.vault !== 'object') throw new Error(SHARD_BUNDLE_INVALID);
@@ -316,8 +315,7 @@ export function decodeShareBundle(input) {
 
   const share = b64.dec(obj.shareBytes);
   if (share.length !== SHARE_SIZE) throw new Error(SHARD_BUNDLE_INVALID);
-  const expectedHash = obj.v === LEGACY_SHARD_BUNDLE_VERSION ? legacyHashVault(obj.vault) : hashVault(obj.vault);
-  if (expectedHash !== obj.vaultHash) throw new Error(SHARD_BUNDLE_MISMATCH);
+  if (hashVault(obj.vault) !== obj.vaultHash) throw new Error(SHARD_BUNDLE_MISMATCH);
 
   return { share, index: obj.shareIndex, vault: obj.vault, vaultHash: obj.vaultHash };
 }

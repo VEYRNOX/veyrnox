@@ -967,12 +967,20 @@ value / mutate balances without a user signature through wallet-core signing).
       attacker-modified KDF params passed verification. Fix: recursive
       `canonicalStringify` (sort keys every level, arrays preserved,
       primitives via `JSON.stringify`). `SHARD_BUNDLE_VERSION` bumped
-      1→2; `legacyHashVault` retained solely for
-      `LEGACY_SHARD_BUNDLE_VERSION` decode compat; `encodeShareBundle`
-      always emits v2. Regression tests: kdf.iterations diff detected,
-      key-order canonicalisation invariant, nested array diff, v1 bundle
-      still decodes, v2 round-trip. Phase 1 pre-audit, gate off, no
-      production bundles exist — v1 compat path is precautionary.
+      1→2; `encodeShareBundle` always emits v2. **v1 is now REJECTED
+      (2026-08-15).** The `LEGACY_SHARD_BUNDLE_VERSION` / `legacyHashVault`
+      compat path was removed: `v` is read from the same file being
+      validated, so accepting v1 let an attacker-supplied bundle select the
+      weak top-level-only verifier for itself. Confirmed safe to drop —
+      `VITE_ENABLE_PERSONAL_BACKUP_SHARDS` gates the feature, defaults
+      false, and is set in NO shipping build (absent from `ci.yml`,
+      `deploy-preview.yml`, `firebase-test-lab.yml`; present only in local
+      dev and `android-e2e-emulator.yml`), so no user could hold a v1
+      bundle. A locally-generated v1 test bundle must be re-exported.
+      Regression tests: kdf.iterations diff detected, key-order
+      canonicalisation invariant, nested array diff, v1 rejected, v1 with
+      tampered nested `vault.kdf` rejected (the case the removed branch
+      accepted), v2 round-trip. Phase 1 pre-audit, gate off.
       INTERNAL. Not "verified" until an on-device recovery trip.
     - **Not shipped / not verified across all phases.** Cross-device restore
       (needs vault-ciphertext transport). Platform-native cloud silent sync
