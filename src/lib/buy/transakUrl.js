@@ -57,9 +57,64 @@ export const supportedAssetNetworks = Object.freeze([
   { asset: 'USDT',  network: 'ethereum',   transakCode: 'USDT',  transakNetwork: 'ethereum'   },
 ]);
 
+/**
+ * The ONLY hosts the Buy flow will ever talk to. Single source of truth for all
+ * three places that need it — the widget URL bases below, the returned-URL check
+ * in api/edgeApi.js createBuySession(), and the postMessage origin allowlist in
+ * pages/BuyCrypto.jsx.
+ *
+ * Branch review 2026-08-15 (C-1): these two hosts were hardcoded independently in
+ * all three files, in three different shapes (a Set of origins, a bare `!==`
+ * pair, and URL bases with a trailing slash). edgeApi.js's own comment noted it
+ * was keeping the other two in sync by hand.
+ *
+ * The drift is fail-CLOSED, not a bypass — a new Transak region domain added in
+ * two places out of three rejects a legitimate buy session, or drops the
+ * TRANSAK_ORDER_SUCCESSFUL / TRANSAK_WIDGET_CLOSE events so the widget never
+ * closes. Availability, not a hole. But it is the same duplicated-constant shape
+ * that turned one copy defect into two files on the passkey unlock screens the
+ * same day, so it is centralised before it drifts rather than after.
+ *
+ * ORIGINS (scheme + host) is what postMessage compares against — `event.origin`
+ * is always an origin, never a bare host. HOSTS is what URL validation compares
+ * against, because `new URL(...).host` carries no scheme. Deriving one from the
+ * other keeps them from disagreeing.
+ */
+export const TRANSAK_ORIGIN_PRODUCTION = 'https://global.transak.com';
+export const TRANSAK_ORIGIN_STAGING = 'https://global-stg.transak.com';
+
+/** @type {ReadonlySet<string>} */
+export const TRANSAK_ORIGINS = Object.freeze(new Set([
+  TRANSAK_ORIGIN_PRODUCTION,
+  TRANSAK_ORIGIN_STAGING,
+]));
+
+/** Hosts of TRANSAK_ORIGINS, for `new URL(...).host` comparisons. */
+export const TRANSAK_HOSTS = Object.freeze(
+  new Set([...TRANSAK_ORIGINS].map((o) => new URL(o).host)),
+);
+
+/**
+ * @param {string} urlStr
+ * @returns {boolean} true only for an https URL on a known Transak host.
+ */
+export function isTransakUrl(urlStr) {
+  // https REQUIRED, not just host: `new URL(...).host` ignores the scheme, so a
+  // host-only check passes http://global.transak.com. On an https app that is
+  // blocked as mixed content rather than exploited, but a Buy URL that can only
+  // ever be https is one less thing to reason about (review finding S-2).
+  try {
+    const u = new URL(urlStr);
+    return u.protocol === 'https:' && TRANSAK_HOSTS.has(u.host);
+  } catch {
+    return false; // unparseable, or a javascript:/data: URL — fail closed
+  }
+}
+
+// Trailing slash is load-bearing — these are URL BASES, concatenated below.
 const ENVIRONMENTS = {
-  STAGING:    'https://global-stg.transak.com/',
-  PRODUCTION: 'https://global.transak.com/',
+  STAGING:    `${TRANSAK_ORIGIN_STAGING}/`,
+  PRODUCTION: `${TRANSAK_ORIGIN_PRODUCTION}/`,
 };
 
 const PRODUCTS_AVAILED = new Set(['BUY', 'SELL']);

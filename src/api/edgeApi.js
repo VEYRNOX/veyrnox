@@ -9,6 +9,7 @@
 import { Capacitor } from '@capacitor/core';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { DEMO } from '@/api/demoClient';
+import { isTransakUrl } from '@/lib/buy/transakUrl.js';
 
 // Absolute origin of the Cloudflare Pages deployment that serves /api/*.
 //
@@ -86,10 +87,13 @@ export async function createBuySession({ asset, network, address, fiatAmount, fi
   // an arbitrary page inside the Buy flow — in-app phishing surface. Assert
   // the URL is on a Transak origin. Matches the postMessage allowlist in
   // BuyCrypto.jsx and the URL bases in src/lib/buy/transakUrl.js.
-  const urlStr = typeof res?.url === 'string' ? res.url : '';
-  let host = '';
-  try { host = new URL(urlStr).host; } catch { host = ''; }
-  if (host !== 'global.transak.com' && host !== 'global-stg.transak.com') {
+  //
+  // Branch review 2026-08-15 (C-1): the two hosts were spelled out here as a
+  // bare `!==` pair, a third independent copy of the same allowlist. Now shared
+  // with lib/buy/transakUrl.js, which also owns the URL bases the backend builds
+  // against and the postMessage origins BuyCrypto.jsx checks — one place to edit
+  // when a Transak domain changes. isTransakUrl also requires https (S-2).
+  if (!isTransakUrl(typeof res?.url === 'string' ? res.url : '')) {
     throw Object.assign(new Error('BUY_URL_UNTRUSTED_ORIGIN'), { code: 'BUY_URL_UNTRUSTED_ORIGIN' });
   }
   return res;
