@@ -1,0 +1,336 @@
+name: AWS Device Farm — weekly redundancy sweep
+# ------------------------------------------------------------------
+# Second-farm sanity check that runs ONCE A WEEK against the built-in
+# BUILTIN_FUZZ test (random UI events, no script bundle needed) on both
+# Android and iOS.
+#
+# WHY THIS EXISTS
+# Firebase Test Lab is our primary CI gate (fires on every push,
+# Spark free tier). This weekly sweep exists so a Firebase-side flake,
+# outage, or model-catalog change can't silently mask a real bug for
+# a whole week. It is INTENTIONALLY not a merge gate — treat any red
+# here as a "second opinion", investigate, decide if it invalidates
+# the Firebase green.
+#
+# COST
+# BUILTIN_FUZZ ~= 5 min/device. 3 devices/platform × 2 platforms =
+# ~30 device-minutes/week. AWS free trial covers ~33 weeks; after
+# that it's ~$5/week on pay-as-you-go. Cron pins to Sundays 06:00 UTC
+# to avoid weekday CI contention.
+#
+# REGION
+# AWS Device Farm is us-west-2 only.
+#
+# SIGNING
+# iOS uses the same ASC API key + automatic provisioning as the
+# Firebase ios-smoke job. Device Farm re-signs uploaded IPAs with
+# the profile embedded in the .ipa; no separate DF-side cert upload
+# needed.
+# ------------------------------------------------------------------
+
+on:
+  schedule:
+    # Sundays 06:00 UTC — off-peak, not competing with weekday CI.
+    - cron: '0 6 * * 0'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Which platform (android, ios, both)'
+        type: choice
+        options: [both, android, ios]
+        default: both
+
+concurrency:
+  group: aws-df-weekly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-west-2
+
+jobs:
+  # --------------------------------------------------------------
+  # ANDROID — download latest release AAB, upload to Device Farm,
+  # kick off BUILTIN_FUZZ on the device pool, poll for completion.
+  # --------------------------------------------------------------
+  android-fuzz:
+    if: >-
+      github.event_name == 'schedule'
+      || inputs.platform == 'android'
+      || inputs.platform == 'both'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Find latest successful ci.yml on main
+        id: ci_run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RUN_ID=$(gh run list \
+            --workflow=ci.yml \
+            --branch=main \
+            --status=success \
+            --limit=1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+          test -n "$RUN_ID"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Download latest release AAB
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: veyrnox-release-aab
+          path: artifacts
+          run-id: ${{ steps.ci_run.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload AAB to Device Farm + schedule Fuzz run
+        id: run
+        env:
+          PROJECT_ARN: ${{ secrets.AWS_DEVICE_FARM_PROJECT_ARN }}
+          DEVICE_POOL_ARN: ${{ secrets.AWS_DEVICE_FARM_ANDROID_DEVICE_POOL_ARN }}
+        run: |
+          set -euo pipefail
+          # 1. Create upload slot.
+          UPLOAD_JSON=$(aws devicefarm create-upload \
+            --project-arn "$PROJECT_ARN" \
+            --name "veyrnox-${GITHUB_SHA}.aab" \
+            --type ANDROID_APP)
+          UPLOAD_ARN=$(jq -r '.upload.arn' <<<"$UPLOAD_JSON")
+          UPLOAD_URL=$(jq -r '.upload.url'  <<<"$UPLOAD_JSON")
+
+          # 2. PUT the AAB to the pre-signed URL.
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/octet-stream' \
+            --upload-file artifacts/app-release.aab \
+            "$UPLOAD_URL"
+
+          # 3. Wait for Device Farm to accept + process the upload.
+          for _ in $(seq 1 40); do
+            STATUS=$(aws devicefarm get-upload --arn "$UPLOAD_ARN" \
+              --query 'upload.status' --output text)
+            case "$STATUS" in
+              SUCCEEDED) break ;;
+              FAILED)    echo "::error::Upload processing FAILED"; exit 1 ;;
+              *)         sleep 10 ;;
+            esac
+          done
+          test "$STATUS" = SUCCEEDED
+
+          # 4. Kick off BUILTIN_FUZZ.
+          RUN_JSON=$(aws devicefarm schedule-run \
+            --project-arn "$PROJECT_ARN" \
+            --app-arn "$UPLOAD_ARN" \
+            --device-pool-arn "$DEVICE_POOL_ARN" \
+            --name "weekly-android-${GITHUB_SHA:0:7}" \
+            --test type=BUILTIN_FUZZ)
+          RUN_ARN=$(jq -r '.run.arn' <<<"$RUN_JSON")
+          echo "run_arn=$RUN_ARN" >> "$GITHUB_OUTPUT"
+          echo "Scheduled: $RUN_ARN"
+
+      - name: Poll for completion
+        env:
+          RUN_ARN: ${{ steps.run.outputs.run_arn }}
+        run: |
+          set -euo pipefail
+          # BUILTIN_FUZZ takes ~5 min/device × 3 devices ~= 15 min; poll for 30.
+          for _ in $(seq 1 60); do
+            STATUS=$(aws devicefarm get-run --arn "$RUN_ARN" \
+              --query 'run.status' --output text)
+            if [[ "$STATUS" == "COMPLETED" ]]; then break; fi
+            sleep 30
+          done
+          RESULT=$(aws devicefarm get-run --arn "$RUN_ARN" \
+            --query 'run.result' --output text)
+          echo "Final status=$STATUS result=$RESULT"
+          # Result PASSED | WARNED | FAILED | SKIPPED | ERRORED | STOPPED
+          if [[ "$RESULT" != "PASSED" && "$RESULT" != "WARNED" ]]; then
+            echo "::error::Device Farm run $RESULT — see AWS console for artifacts"
+            exit 1
+          fi
+
+      - name: Post AWS console link
+        if: always()
+        env:
+          RUN_ARN: ${{ steps.run.outputs.run_arn }}
+        run: |
+          # ARN format: arn:aws:devicefarm:<region>:<acct>:run:<project>/<run>
+          RUN_ID=$(echo "$RUN_ARN" | awk -F/ '{print $NF}')
+          PROJECT_ID=$(echo "$RUN_ARN" | awk -F: '{print $6}' | awk -F/ '{print $2}')
+          {
+            echo "### AWS Device Farm — Android Fuzz (weekly)"
+            echo "Run: https://us-west-2.console.aws.amazon.com/devicefarm/home?region=us-west-2#/mobile/projects/${PROJECT_ID}/runs/${RUN_ID}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------
+  # iOS — the real reason to have AWS in the mix. BUILTIN_FUZZ on
+  # iOS needs only a signed .ipa (no XCUITest bundle, unlike
+  # Firebase). Reuses ASC signing pattern from ios-smoke.
+  # --------------------------------------------------------------
+  ios-fuzz:
+    if: >-
+      vars.IOS_FIREBASE_SIGNING_READY == 'true'
+      && (github.event_name == 'schedule'
+      || inputs.platform == 'ios'
+      || inputs.platform == 'both')
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Pin npm to 11
+        run: npm install -g npm@11
+      - run: npm ci
+      - name: Build web + sync Capacitor
+        run: |
+          npm run build:staging
+          npx cap sync ios
+
+      - name: Install App Store Connect signing key
+        id: asc_key
+        env:
+          IOS_ASC_PRIVATE_KEY: ${{ secrets.IOS_ASC_PRIVATE_KEY }}
+          IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          : "${IOS_ASC_PRIVATE_KEY:?}"
+          : "${IOS_ASC_KEY_ID:?}"
+          : "${IOS_ASC_ISSUER_ID:?}"
+          ASC_KEY_PATH="$RUNNER_TEMP/AuthKey_${IOS_ASC_KEY_ID}.p8"
+          printf '%s' "$IOS_ASC_PRIVATE_KEY" > "$ASC_KEY_PATH"
+          chmod 600 "$ASC_KEY_PATH"
+          echo "path=$ASC_KEY_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Archive + export signed IPA
+        working-directory: ios/App
+        env:
+          ASC_KEY_PATH: ${{ steps.asc_key.outputs.path }}
+          ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj -scheme App \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tail -3
+
+          xcodebuild archive \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/App.xcarchive \
+            DEVELOPMENT_TEAM=R54268MWFV \
+            CODE_SIGN_STYLE=Automatic \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tail -20
+
+          xcodebuild -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" 2>&1 | tail -10
+
+          IPA=$(find build/ipa -name '*.ipa' -print -quit)
+          test -f "$IPA"
+          echo "IPA=$IPA"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload IPA to Device Farm + schedule Fuzz run
+        id: run
+        working-directory: ios/App
+        env:
+          PROJECT_ARN: ${{ secrets.AWS_DEVICE_FARM_PROJECT_ARN }}
+          DEVICE_POOL_ARN: ${{ secrets.AWS_DEVICE_FARM_IOS_DEVICE_POOL_ARN }}
+        run: |
+          set -euo pipefail
+          IPA=$(find build/ipa -name '*.ipa' -print -quit)
+          UPLOAD_JSON=$(aws devicefarm create-upload \
+            --project-arn "$PROJECT_ARN" \
+            --name "veyrnox-${GITHUB_SHA}.ipa" \
+            --type IOS_APP)
+          UPLOAD_ARN=$(jq -r '.upload.arn' <<<"$UPLOAD_JSON")
+          UPLOAD_URL=$(jq -r '.upload.url'  <<<"$UPLOAD_JSON")
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/octet-stream' \
+            --upload-file "$IPA" \
+            "$UPLOAD_URL"
+          for _ in $(seq 1 40); do
+            STATUS=$(aws devicefarm get-upload --arn "$UPLOAD_ARN" \
+              --query 'upload.status' --output text)
+            case "$STATUS" in
+              SUCCEEDED) break ;;
+              FAILED)    echo "::error::Upload processing FAILED"; exit 1 ;;
+              *)         sleep 10 ;;
+            esac
+          done
+          test "$STATUS" = SUCCEEDED
+          RUN_JSON=$(aws devicefarm schedule-run \
+            --project-arn "$PROJECT_ARN" \
+            --app-arn "$UPLOAD_ARN" \
+            --device-pool-arn "$DEVICE_POOL_ARN" \
+            --name "weekly-ios-${GITHUB_SHA:0:7}" \
+            --test type=BUILTIN_FUZZ)
+          RUN_ARN=$(jq -r '.run.arn' <<<"$RUN_JSON")
+          echo "run_arn=$RUN_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Poll for completion
+        env:
+          RUN_ARN: ${{ steps.run.outputs.run_arn }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            STATUS=$(aws devicefarm get-run --arn "$RUN_ARN" \
+              --query 'run.status' --output text)
+            if [[ "$STATUS" == "COMPLETED" ]]; then break; fi
+            sleep 30
+          done
+          RESULT=$(aws devicefarm get-run --arn "$RUN_ARN" \
+            --query 'run.result' --output text)
+          echo "Final status=$STATUS result=$RESULT"
+          if [[ "$RESULT" != "PASSED" && "$RESULT" != "WARNED" ]]; then
+            echo "::error::Device Farm iOS run $RESULT — see AWS console"
+            exit 1
+          fi
+
+      - name: Post AWS console link
+        if: always()
+        env:
+          RUN_ARN: ${{ steps.run.outputs.run_arn }}
+        run: |
+          RUN_ID=$(echo "$RUN_ARN" | awk -F/ '{print $NF}')
+          PROJECT_ID=$(echo "$RUN_ARN" | awk -F: '{print $6}' | awk -F/ '{print $2}')
+          {
+            echo "### AWS Device Farm — iOS Fuzz (weekly)"
+            echo "Run: https://us-west-2.console.aws.amazon.com/devicefarm/home?region=us-west-2#/mobile/projects/${PROJECT_ID}/runs/${RUN_ID}"
+          } >> "$GITHUB_STEP_SUMMARY"
