@@ -136,6 +136,26 @@ export default function BuyCrypto() {
         <iframe
           ref={iframeRef}
           src={widgetUrl}
+          // Codex P2 2026-08-15: constrain the third-party frame to the
+          // minimum capability set the Transak KYC/payment flow needs.
+          // Without a sandbox, a compromised/mis-served Transak page would
+          // run with the full iframe capability surface PLUS the granted
+          // camera/microphone/payment permissions. Kept:
+          //   allow-scripts       — Transak is a JS app; without this it dies
+          //   allow-same-origin   — Transak needs its own storage (cookies,
+          //                         localStorage) to persist KYC session
+          //   allow-forms         — required for KYC form submission
+          //   allow-popups        — Transak opens an OAuth popup for some KYC
+          //                         paths (e.g. bank connections)
+          //   allow-popups-to-escape-sandbox — those popups need to load
+          //                         genuine external URLs (banks, ID checks)
+          //                         under their own security context
+          //   allow-modals        — required for Transak's confirm dialogs
+          // Explicitly withheld: allow-top-navigation (would let the frame
+          // navigate the whole app away — enables the class of exit-scam
+          // attacks a compromised widget could otherwise pull), and
+          // allow-downloads (Transak does not need to hand the user files).
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
           allow="camera;microphone;payment"
           className="flex-1 w-full border-none"
           style={{ minHeight: 'calc(100vh - 64px)' }}
