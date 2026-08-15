@@ -45,20 +45,24 @@ describe('Firebase staging observability', () => {
     expect(androidManifest).toContain('firebase_crashlytics_collection_enabled');
     expect(androidManifest).toContain('firebase_performance_collection_enabled');
     expect(androidActivity).toContain('BuildConfig.FIREBASE_OBSERVABILITY_ENABLED');
-    expect(androidActivity).toContain('? "firebase_test_lab" : "staging"');
+    // F-1: Test Lab is the only channel — no "staging" build_channel branch.
+    expect(androidActivity).toContain('"build_channel", "firebase_test_lab"');
+    expect(androidActivity).not.toContain(': "staging"');
     expect(androidActivity).toContain('VEYRNOX_FIREBASE_NONFATAL_SMOKE');
     expect(androidActivity).toContain('newTrace("staging_launch_smoke")');
     expect(androidActivity).not.toContain('setUserId');
   });
 
-  it('adds iOS staging collection with a separate Test Lab smoke gate', () => {
+  it('adds iOS Test Lab-only collection', () => {
     expect(iosPackage).toContain('firebase-ios-sdk.git", exact: "12.12.1"');
     expect(iosPackage).toContain('FirebaseCrashlytics');
     expect(iosPackage).toContain('FirebasePerformance');
     expect(iosPackage).not.toContain('FirebaseAnalytics');
     expect(iosBootstrap).toContain('--firebase-observability-smoke');
-    expect(iosBootstrap).toContain('VeyrnoxFirebaseObservabilityEnabled');
-    expect(iosBootstrap).toContain('isTestLab ? "firebase_test_lab" : "staging"');
+    // F-1: the Info.plist staging flag is gone; Test Lab CLI arg is the only gate.
+    expect(iosBootstrap).not.toContain('VeyrnoxFirebaseObservabilityEnabled');
+    expect(iosBootstrap).toContain('"firebase_test_lab"');
+    expect(iosBootstrap).not.toContain(': "staging"');
     expect(iosBootstrap).toContain('VEYRNOX_FIREBASE_NONFATAL_SMOKE');
     expect(iosBootstrap).toContain('startTrace(name: "staging_launch_smoke")');
     expect(iosBootstrap).not.toContain('setUserID');
@@ -71,26 +75,21 @@ describe('Firebase staging observability', () => {
     expect(packagePatcher).toContain('FirebasePerformance');
   });
 
-  it('fetches exact Firebase configs for Test Lab and explicitly gated staging builds', () => {
+  it('fetches a Firebase config ONLY for the isolated Test Lab builds', () => {
     expect(configFetcher).toContain('gcloud auth print-access-token');
     expect(configFetcher).toContain('configFileContents');
     expect(ci).toContain('1:567659013773:android:166961ac09b49c5f8864c4');
     expect(ci).toContain('com.veyrnox.app.firebase.testlab');
-    expect(ci).toContain('1:567659013773:android:2f04cc2942faba1f8864c4');
-    expect(ci).toContain('-PFIREBASE_OBSERVABILITY_ENABLED=');
     expect(firebaseWorkflow).toContain('1:567659013773:ios:dcdda7378e804f388864c4');
-    expect(firebaseWorkflow).toContain('VEYRNOX_FIREBASE_OBSERVABILITY=YES');
     expect(firebaseWorkflow).toContain('actions: write');
     expect(firebaseWorkflow).toContain('gh workflow run ci.yml');
     expect(firebaseWorkflow).toContain('-f build_firebase_test=true');
-    // 2026-08-15: staging is the only build variant Firebase Test Lab
-    // ever exercises, so build_staging_release is hardcoded true rather
-    // than forwarded from publish_staging.
-    expect(firebaseWorkflow).toContain('-f build_staging_release=true');
     expect(firebaseWorkflow).toContain('EXPECTED_EVENT:');
-    expect(firebaseWorkflow).toContain('DEBUG_INFORMATION_FORMAT=dwarf-with-dsym');
-    expect(firebaseWorkflow).toContain('Crashlytics/upload-symbols');
 
+    // ── F-1 (2026-08-15): Test Lab-only ──────────────────────────────────
+    // The store-bound jobs must NOT fetch a Firebase config or enable
+    // collection. Firebase ships only in the isolated firebaseTest APK
+    // (distinct applicationId, bundle task disabled) and the ios-smoke job.
     const androidStoreJob = ci.slice(
       ci.indexOf('  android-release:'),
       ci.indexOf('  android-firebase-test:'),
@@ -98,9 +97,32 @@ describe('Firebase staging observability', () => {
     const iosStoreJob = firebaseWorkflow.slice(
       firebaseWorkflow.indexOf('  publish-ios-staging:'),
     );
-    expect(androidStoreJob).toContain('inputs.build_staging_release == true');
-    expect(androidStoreJob).toContain('fetch-firebase-config.sh');
-    expect(iosStoreJob).toContain('fetch-firebase-config.sh');
+    expect(androidStoreJob).not.toContain('fetch-firebase-config.sh');
+    expect(androidStoreJob).not.toContain('-PFIREBASE_OBSERVABILITY_ENABLED=');
+    expect(iosStoreJob).not.toContain('fetch-firebase-config.sh');
+    expect(iosStoreJob).not.toContain('VEYRNOX_FIREBASE_OBSERVABILITY=YES');
     expect(iosStoreJob).not.toContain('--firebase-observability-smoke');
+    expect(iosStoreJob).not.toContain('Crashlytics/upload-symbols');
+
+    // The artifact-level tripwires (F-1 Gap 1). These inspect the BUILT
+    // output, which is the assertion that actually keeps a release clean —
+    // the string checks here only stop the tripwires being silently deleted,
+    // which is this repo's documented failure mode (release-cert guard, ×4).
+    expect(androidStoreJob).toContain('Firebase production-clean guard');
+    expect(androidStoreJob).toContain('android/app/google-services.json');
+    expect(iosStoreJob).toContain('GoogleService-Info.plist');
+    expect(iosStoreJob).toContain('Firebase must be Test Lab-only');
+
+    // Test Lab itself still fetches its config and uploads symbols.
+    const iosSmokeJob = firebaseWorkflow.slice(
+      firebaseWorkflow.indexOf('  ios-smoke:'),
+      firebaseWorkflow.indexOf('  publish-ios-staging:'),
+    );
+    expect(iosSmokeJob).toContain('fetch-firebase-config.sh');
+    // The smoke launch argument is supplied by the XCUITest, not the workflow
+    // (asserted against iosTests above) — which is exactly why the staging job
+    // above can be checked for its absence.
+    expect(iosSmokeJob).toContain('DEBUG_INFORMATION_FORMAT=dwarf-with-dsym');
+    expect(iosSmokeJob).toContain('Crashlytics/upload-symbols');
   });
 });
