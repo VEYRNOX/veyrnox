@@ -26,7 +26,7 @@ describe('resolveTier', () => {
 
   it('resolves safety_plus when the entitlement is active', async () => {
     isNativePlatform.mockReturnValue(true);
-    getCustomerInfo.mockResolvedValue({ entitlements: { active: { safety_plus: {} } } });
+    getCustomerInfo.mockResolvedValue({ entitlements: { active: { safety_plus: { isActive: true } } } });
     expect(await resolveTier()).toBe('safety_plus');
   });
 

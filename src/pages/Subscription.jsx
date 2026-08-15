@@ -37,7 +37,6 @@ import {
   getTier,
   getTierInfo,
   getOfferingIdForTier,
-  calculateDiscountCents,
   PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
 import { annualSavingPercent } from "@/lib/annualSaving";
@@ -310,9 +309,26 @@ export default function Subscription() {
       await refreshTier();
       const refCode = getRedeemedCode();
       if (refCode && !hasAttributed()) {
+        // Codex P2 2026-08-15: previously discountCents came from the
+        // REFERRER's tier commission percentage — a hardcoded "should be"
+        // number that ignored what the store actually charged. Apple's
+        // per-territory rounding + FX flattening frequently produce a
+        // smaller discount than the tier percentage (Bronze is full price
+        // in several territories per CLAUDE.md 07-23 log). Attribution
+        // rows then reported a discount that never happened, inflating
+        // downstream referrer earnings on paper. Derive from the store-
+        // returned price DELTA (base priceString - offer priceString) so
+        // the attribution matches the money that actually moved.
         const fullPrice = PLAN_FULL_PRICE_CENTS[effectiveBilling] || PLAN_FULL_PRICE_CENTS.monthly;
-        const commission = referrerTierInfo?.commission || 0;
-        const discountCents = calculateDiscountCents(fullPrice, commission);
+        const chargedPriceNumber = effectiveBilling === 'annual' ? annualPriceNumber : monthlyPriceNumber;
+        const fullPriceNumber = fullPrice / 100;
+        // If the store didn't return a resolvable number, be conservative: no
+        // discount claimed. Better to under-attribute than to fabricate a delta.
+        const rawDelta = (typeof chargedPriceNumber === 'number' && Number.isFinite(chargedPriceNumber))
+          ? Math.max(0, Math.round((fullPriceNumber - chargedPriceNumber) * 100))
+          : 0;
+        // Cap at fullPrice so a bogus number can't produce >100% discount rows.
+        const discountCents = Math.min(rawDelta, fullPrice);
         try {
           await recordAttribution(refCode, effectiveBilling, fullPrice, discountCents);
           markAttributed();

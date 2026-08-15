@@ -114,8 +114,11 @@ export function TierProvider({ children }) {
             setCurrentTier('free');
             return;
           }
+          // Codex P2 2026-08-15: own-property + shape check (see entitlement.js).
           const active = customerInfo?.entitlements?.active ?? {};
-          setCurrentTier(SAFETY_PLUS_ENTITLEMENT in active ? 'safety_plus' : 'free');
+          const owned = Object.prototype.hasOwnProperty.call(active, SAFETY_PLUS_ENTITLEMENT);
+          const ent = owned ? active[SAFETY_PLUS_ENTITLEMENT] : null;
+          setCurrentTier(ent && ent.isActive === true ? 'safety_plus' : 'free');
         });
         if (cancelled) {
           unsub();

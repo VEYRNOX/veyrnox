@@ -27,7 +27,14 @@ export async function resolveTier() {
   try {
     const customerInfo = await getCustomerInfo();
     const active = customerInfo?.entitlements?.active ?? {};
-    return SAFETY_PLUS_ENTITLEMENT in active ? 'safety_plus' : 'free';
+    // Codex P2 2026-08-15: `in` walks the prototype chain, so a malformed /
+    // prototype-polluted shape like Object.create({ safety_plus: {} }) would
+    // unlock the paid tier without a real receipt. Own-property check + a
+    // shape sanity check on the active entitlement object (RC returns
+    // { identifier, isActive: true, … } — treat missing isActive as false).
+    if (!Object.prototype.hasOwnProperty.call(active, SAFETY_PLUS_ENTITLEMENT)) return 'free';
+    const ent = active[SAFETY_PLUS_ENTITLEMENT];
+    return ent && ent.isActive === true ? 'safety_plus' : 'free';
   } catch {
     return 'free';
   }
