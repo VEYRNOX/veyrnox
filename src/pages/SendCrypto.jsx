@@ -470,10 +470,21 @@ export default function SendCrypto() {
   const { data: history = [] } = /** @type {{ data: any[] }} */ (useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
+    // Same reason as address-book below: shared IndexedDB store, real-session
+    // rows would surface as "your recent send to X" chips in a decoy session.
+    enabled: !isDecoy && !isHidden,
   }));
   const { data: addressBook = [] } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list(),
+    // Codex P1 2026-08-15: address-book rows live in a SHARED IndexedDB store
+    // (no per-session partition). Loading them in a decoy/hidden session would
+    // let a downstream renderer (e.g. the poison-warning chip that labels a
+    // matching address as "your saved contact X") leak real-session contact
+    // identity. Empty list in deniable sessions matches the AddressBook page's
+    // own render gate; the Send flow degrades cleanly (no saved-contact chip,
+    // still validates the raw address).
+    enabled: !isDecoy && !isHidden,
   });
 
   // Remote screening via the Veyrnox TIP. When TIP is configured
