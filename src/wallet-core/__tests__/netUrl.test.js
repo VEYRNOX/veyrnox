@@ -4,12 +4,33 @@
 // they become the egress target (I2: no silent egress). https to any host;
 // http only to loopback (local node); no embedded credentials; no other schemes.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { assertSafeRpcUrl, safeExternalUrl } from '../netUrl.js';
 
+afterEach(() => {
+  // Reset the runtime opt-in between tests so they don't leak state.
+  try { delete globalThis.__veyrnoxAllowCustomRpc; } catch { /* noop */ }
+});
+
 describe('assertSafeRpcUrl', () => {
-  it('accepts https to any host and returns the trimmed url', () => {
-    expect(assertSafeRpcUrl('  https://rpc.example.com/v1  ')).toBe('https://rpc.example.com/v1');
+  it('accepts https to a well-known RPC provider and returns the trimmed url', () => {
+    expect(assertSafeRpcUrl('  https://mainnet.infura.io/v3/abc  ')).toBe('https://mainnet.infura.io/v3/abc');
+    expect(assertSafeRpcUrl('https://api.mainnet-beta.solana.com')).toBe('https://api.mainnet-beta.solana.com');
+    expect(assertSafeRpcUrl('https://blockstream.info/api')).toBe('https://blockstream.info/api');
+  });
+
+  it('rejects https to an unknown host by default (I2 fail-closed, Codex P2 2026-08-15)', () => {
+    expect(() => assertSafeRpcUrl('https://rpc.example.com/v1')).toThrow(/not in the well-known/);
+  });
+
+  it('accepts https to an unknown host when the runtime opt-in flag is set', () => {
+    globalThis.__veyrnoxAllowCustomRpc = true;
+    expect(assertSafeRpcUrl('https://rpc.example.com/v1')).toBe('https://rpc.example.com/v1');
+  });
+
+  it('rejects a suffix collision that spoofs a well-known provider (evilinfura.io ≠ infura.io)', () => {
+    // Suffix matches require a leading '.' — no bare-substring bypasses.
+    expect(() => assertSafeRpcUrl('https://evilinfura.io')).toThrow(/not in the well-known/);
   });
 
   it('accepts http only for loopback (local operator node)', () => {
@@ -19,7 +40,7 @@ describe('assertSafeRpcUrl', () => {
   });
 
   it('rejects http to a remote host (plaintext downgrade / address leak)', () => {
-    expect(() => assertSafeRpcUrl('http://rpc.example.com')).toThrow();
+    expect(() => assertSafeRpcUrl('http://mainnet.infura.io')).toThrow();
   });
 
   it('rejects non-http(s) schemes', () => {
@@ -28,8 +49,8 @@ describe('assertSafeRpcUrl', () => {
     }
   });
 
-  it('rejects embedded credentials', () => {
-    expect(() => assertSafeRpcUrl('https://user:pass@rpc.example.com')).toThrow();
+  it('rejects embedded credentials (even on a well-known host)', () => {
+    expect(() => assertSafeRpcUrl('https://user:pass@mainnet.infura.io')).toThrow(/credentials/);
   });
 
   it('rejects empty / non-string / unparseable input', () => {
@@ -42,8 +63,11 @@ describe('assertSafeRpcUrl', () => {
 });
 
 describe('safeExternalUrl (non-throwing render guard, e.g. explorer_url)', () => {
-  it('returns the trimmed url for safe https', () => {
-    expect(safeExternalUrl('  https://etherscan.io  ')).toBe('https://etherscan.io');
+  it('returns the trimmed url for a well-known https host', () => {
+    // safeExternalUrl composes assertSafeRpcUrl, so the same allowlist applies.
+    // If a future caller renders an arbitrary explorer URL, gate at that render
+    // site — do NOT weaken the shared validator to make it pass silently.
+    expect(safeExternalUrl('  https://mainnet.infura.io  ')).toBe('https://mainnet.infura.io');
     expect(safeExternalUrl('http://localhost:4000')).toBe('http://localhost:4000');
   });
 

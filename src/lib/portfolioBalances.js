@@ -91,9 +91,15 @@ export async function fetchAssetAmount(asset, addr) {
     }
     return 0;
   } catch (err) {
-    // Surface the error so it is visible in the console (not silently swallowed),
-    // while still returning null so the UI can signal indeterminate rather than 0.
-    console.warn('[portfolioBalances] fetchAssetAmount failed for', asset?.symbol, ':', err?.message ?? err);
+    // Surface the failure without leaking the watched address. Upstream error
+    // messages (esp. BTC via Esplora) include the full request URL, which
+    // embeds `/address/<addr>/utxo` — so `err.message` is a wallet-address
+    // exfil channel via any collector reading console/logcat/devtools (Codex
+    // P1 2026-08-15). Log only the class name and a short truncated shape;
+    // if a caller needs the URL to diagnose, they still see it on the network
+    // panel, which is not aggregated to logcat.
+    const errName = err?.name || 'Error';
+    console.warn('[portfolioBalances] fetchAssetAmount failed for', asset?.symbol, ':', errName);
     return null; // read FAILED → indeterminate (I4 fail-closed), never a silent 0
   }
 }

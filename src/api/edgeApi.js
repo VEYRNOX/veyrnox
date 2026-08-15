@@ -53,11 +53,18 @@ function i3Guard() {
   }
 }
 
+// 15s cap on zombie egress after lock / panic-wipe (Codex P2 2026-08-15).
+// Same rationale as btc / sol providers — a bounded ceiling on in-flight
+// requests without threading AbortController through every hook. React
+// Query-driven cancellation is a follow-up; this is the floor.
+const EDGE_TIMEOUT_MS = 15_000;
+
 async function post(path, body) {
   const res = await fetch(edgeUrl(path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(EDGE_TIMEOUT_MS),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -67,7 +74,7 @@ async function post(path, body) {
 }
 
 async function get(path) {
-  const res = await fetch(edgeUrl(path));
+  const res = await fetch(edgeUrl(path), { signal: AbortSignal.timeout(EDGE_TIMEOUT_MS) });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw Object.assign(new Error(data.error || `Edge API ${res.status}`), { status: res.status });
