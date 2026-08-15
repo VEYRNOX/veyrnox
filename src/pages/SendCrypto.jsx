@@ -1088,8 +1088,46 @@ export default function SendCrypto() {
   // second factor is enforced at the chokepoint — not only by which JSX branch renders.
   const twoFactorVerifiedRef = useRef(false);
 
+  // Codex P2 2026-08-15: imperative in-flight latch. The three call sites of
+  // sendTx.mutate() (:1510 plain confirm, :2264 2FA success, :2314 direct)
+  // relied on `disabled={sendTx.isPending}` after a re-render, so a rapid
+  // double-tap could enqueue TWO concurrent broadcasts before isPending
+  // flipped — including self-sends. This ref flips synchronously inside
+  // mutationFn's first line and clears on settle, so a second entry throws
+  // an immediate reject rather than proceeding to sign/broadcast.
+  const broadcastInFlightRef = useRef(false);
+
   const sendTx = useMutation({
     mutationFn: async () => {
+      // Codex P2 2026-08-15: imperative in-flight latch. First line of the
+      // mutation body flips synchronously, so a concurrent second
+      // sendTx.mutate() reaches this branch and rejects before touching
+      // gates / RPCs / signer. Cleared in onSettled below.
+      if (broadcastInFlightRef.current) {
+        throw Object.assign(new Error('BROADCAST_IN_FLIGHT'), { code: 'BROADCAST_IN_FLIGHT' });
+      }
+      broadcastInFlightRef.current = true;
+
+      // Codex P2 2026-08-15: recipient + amount re-validation at the
+      // chokepoint. QR / clipboard / ENS / contact-tap paths write straight
+      // into `toAddress`, and evaluateSendGate below re-checks limits +
+      // risk + 2FA but does NOT revalidate the address/amount shape. If
+      // stale verify state or a direct mutate() reaches here, we must
+      // re-assert shape at signing time — never delegate the final check to
+      // downstream chain libraries where a malformed value could be
+      // interpreted differently (e.g. an EIP-55 case-mangled address that
+      // ethers happily lowercases). Fails closed with a distinct code so
+      // the UI can toast "recipient invalid, please re-enter".
+      const trimmedTo = String(toAddress || '').trim();
+      const _chainKey = selectedWallet?.currency;
+      const _network = activeNetwork?.name || '';
+      if (!trimmedTo || !isValidAddressForCurrency(trimmedTo, _chainKey, _network)) {
+        throw Object.assign(new Error('RECIPIENT_INVALID_AT_SIGN'), { code: 'RECIPIENT_INVALID_AT_SIGN' });
+      }
+      if (!isFormAmountWellFormed(canonicalAmount) || Number(canonicalAmount) <= 0) {
+        throw Object.assign(new Error('AMOUNT_INVALID_AT_SIGN'), { code: 'AMOUNT_INVALID_AT_SIGN' });
+      }
+
       // SEED-VERIFICATION GATE (Task 9, UI-level — distinct from evaluateSendGate()
       // in lib/sendGate.js, which stays untouched). If this wallet deferred its
       // seed-backup verification quiz and this send is at/above the safety
@@ -1364,13 +1402,24 @@ export default function SendCrypto() {
           // helper estimates + applies +20% headroom (issue #961: replaces the
           // old hardcoded 21000n/65000n that broke L2 native + USDT transfers).
           //
-          // TODO(#972 P2a): the confirmation screen's displayed fee is computed
-          // from the tier hint's 21000/65000 gasLimit, but the signed tx uses
-          // estimateGas + 20%. The Trezor device screen shows the actual value
-          // (so a careful user can catch the divergence) but in-app numbers and
-          // signed numbers diverge. Fix requires resolving gasLimit BEFORE the
-          // confirm screen renders and threading it through both the display and
-          // the signed tx. Deferred from the #972 hotfix — see follow-up.
+          // Codex P2 2026-08-15 (was TODO #972 P2a): the confirmation screen's
+          // displayed fee is computed from the tier hint's 21000/65000
+          // gasLimit, but the signed tx uses estimateGas + 20% (see
+          // preflight.js:applyEstimatedGasLimit, which always applies the
+          // MAX(userLimit, estimate*1.2)). So displayed fee is a FLOOR, not
+          // the actual signed fee — the Trezor device screen shows the real
+          // value (a careful user catches the divergence) but the in-app
+          // number can under-report by up to ~65% on L2s.
+          //
+          // Honest-note only in this PR — the properly-lazy fix is
+          // "estimateGas at verify-step render via useQuery, thread the
+          // resolved gasLimit through BOTH the display and fee.gasLimit
+          // handed to the signer here". That is a larger diff that needs
+          // its own PR (adds async state to a hot render path + touches
+          // the confirm-step fee-display JSX). Tracked with this comment
+          // so a reviewer can find it. Direction is safe: signed fee is
+          // always >= displayed fee; the user never underpays their
+          // display estimate at broadcast.
           const clampedFee = (cappedMaxFeePerGas != null)
             ? {
                 maxFeePerGasWei: cappedMaxFeePerGas.toString(),
@@ -1415,6 +1464,15 @@ export default function SendCrypto() {
 
       // Record the REAL chain hash/signature as 'pending'. Do NOT write balances —
       // the chain is the source of truth and is read live elsewhere.
+      // Codex P2 2026-08-15: DO NOT persist `note` plaintext into the local
+      // Transaction store. The Base44 store lands in shared IndexedDB and is
+      // readable across sessions / captured in device backups, so a memo
+      // like "rent" or "bribe" written by the user becomes an avoidable
+      // local forensic leak. Store a boolean tell for UX ("this send had a
+      // note attached, ask the user in a follow-up") instead of the string.
+      // The chain-side memo is unaffected — those live in the tx call data,
+      // never in this table. If encrypted-memo persistence is added later,
+      // wrap it under the vault DEK; do NOT reintroduce plaintext here.
       await base44.entities.Transaction.create({
         wallet_id: walletId,
         type: "send",
@@ -1425,7 +1483,7 @@ export default function SendCrypto() {
         status: "pending",
         tx_hash: hash,            // REAL chain txid / signature
         explorer_url: explorerUrl,
-        note,
+        has_note: !!(note && String(note).trim()),
       });
 
       // Refresh views. Only the EVM result exposes raw.wait(1) for a 1-conf receipt;
@@ -1456,6 +1514,7 @@ export default function SendCrypto() {
       return { hash, explorerUrl };
     },
     onSuccess: (result) => {
+      broadcastInFlightRef.current = false; // Codex P2 2026-08-15 latch release
       queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet?.address] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       setTxResult(result);
@@ -1466,6 +1525,13 @@ export default function SendCrypto() {
       markFirstSend();
     },
     onError: (err) => {
+      // Codex P2 2026-08-15 latch release. Do NOT release for the guard's own
+      // reject path (BROADCAST_IN_FLIGHT) — that means a concurrent broadcast
+      // is still in flight; releasing here would unlatch it and allow the
+      // real double-broadcast the guard blocks.
+      if (/** @type {Error & {code?: string}} */ (err)?.code !== 'BROADCAST_IN_FLIGHT') {
+        broadcastInFlightRef.current = false;
+      }
       // Seed-verification gate (Task 9): redirect to /verify rather than showing
       // an error toast — this isn't a failure, it's a required detour. Fires
       // before the haptic buzz used for real send failures below.
@@ -1474,6 +1540,25 @@ export default function SendCrypto() {
         // message reads as the send silently vanishing.
         toast.info(tw("send.toasts.verify_required"));
         navigate('/verify', { state: { returnTo: '/send' } });
+        return;
+      }
+      // Codex P2 2026-08-15: sign-time revalidation refusals surface as
+      // corrective toasts, not the generic "send failed" — the user needs to
+      // know WHY the confirm didn't broadcast (the form is fine to their eye).
+      const _c = /** @type {Error & {code?: string}} */ (err)?.code;
+      if (_c === 'BROADCAST_IN_FLIGHT') {
+        // Silent — the concurrent broadcast is either about to succeed or
+        // will surface its own error; a second toast would confuse the user.
+        return;
+      }
+      if (_c === 'RECIPIENT_INVALID_AT_SIGN') {
+        toast.error(tw("send.toasts.recipient_invalid") || 'Recipient address is not valid for this asset. Please re-enter.');
+        setStep("form");
+        return;
+      }
+      if (_c === 'AMOUNT_INVALID_AT_SIGN') {
+        toast.error(tw("send.toasts.amount_invalid") || 'Amount is not valid. Please re-enter.');
+        setStep("form");
         return;
       }
       errorHaptic();
