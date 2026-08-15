@@ -270,13 +270,36 @@ export default function Settings() {
           registration + verification through the OS biometric
           (BiometricAuth) and the UI honestly labels the control "Biometric
           unlock", never "Passkey". Web keeps the real WebAuthn path. */}
-      <BiometricUnlockSettings />
-      <PasskeyUnlockSettings />
-      <TwoFactorSettings />
+      {/* Codex P1 2026-08-15: device-global auth prefs (biometric-unlock,
+          passkey-unlock, two-factor, hardware KEK) read/write shared
+          localStorage AND touch native secure-storage. Rendering these
+          controls in a decoy/hidden session (a) tells the coercer what
+          the real user has configured (read-side leak) and (b) lets them
+          flip real device-global prefs (write-side leak, K-2 class). The
+          lib-layer setters were gated to no-op in deniable this same
+          wave (biometric.js, messageSigning.js, auditLog.js), but the
+          controls themselves should not render either — otherwise the
+          decoy sees a toggle whose state does not match what a click
+          produces, which is its own tell. Hide the whole security-
+          settings block in deniable, leaving a neutral one-liner. Same
+          pattern the /login-activity page uses. */}
+      {isDeniabilityOrDemoActive() ? (
+        <div className="p-5 rounded-xl border border-border bg-card">
+          <p className="text-sm text-muted-foreground">
+            Security settings are managed from your unlocked wallet.
+          </p>
+        </div>
+      ) : (
+        <>
+          <BiometricUnlockSettings />
+          <PasskeyUnlockSettings />
+          <TwoFactorSettings />
 
-      <HardwareKekSettings />
-      <SessionSettings />
-      <RehearsalSettingsRow />
+          <HardwareKekSettings />
+          <SessionSettings />
+          <RehearsalSettingsRow />
+        </>
+      )}
 
       {/* Wallet Passkeys (per-wallet — used for transaction verification in the Send flow) */}
       {!isNative && (

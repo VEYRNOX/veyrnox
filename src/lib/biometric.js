@@ -20,6 +20,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import { DEMO } from '@/api/demoClient';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 // localStorage key for the user's "require biometric unlock" preference. Mirrors
 // the app's existing localStorage-preference convention (see BiometricAuth.jsx,
@@ -185,8 +186,20 @@ export async function ensureBiometric2faOnNative() {
   } catch { /* best-effort */ }
 }
 
-/** Persist the "require biometric unlock" preference. */
+/**
+ * Persist the "require biometric unlock" preference.
+ *
+ * Codex P1 2026-08-15 — K-2 chokepoint: a deniable session must NOT
+ * mutate the real user's device-global biometric-unlock preference. No-op
+ * in deniable. Reads intentionally NOT gated here — a decoy unlock
+ * ceremony may need to read the real setting during the pre-decision
+ * window, and the render leak is fixed at the Settings surface (which
+ * shows a neutral "Not available in this session" tell-copy). Same
+ * pattern as consent.js: WRITES are the destructive class, READS leave
+ * no trace.
+ */
 export function setBiometricUnlockEnabled(on) {
+  if (isDeniabilityOrDemoActive()) return;
   try {
     if (on) localStorage.setItem(BIOMETRIC_PREF_KEY, '1');
     else localStorage.removeItem(BIOMETRIC_PREF_KEY);

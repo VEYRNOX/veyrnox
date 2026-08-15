@@ -9,6 +9,8 @@
 // same-tab custom event so a mounted page re-reads live (the native `storage`
 // event fires only in OTHER tabs).
 
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+
 // localStorage key for the preference. "1" = on; absent/anything-else = off.
 export const MESSAGE_SIGNING_KEY = 'veyrnox-message-signing-enabled';
 
@@ -16,8 +18,19 @@ export const MESSAGE_SIGNING_KEY = 'veyrnox-message-signing-enabled';
 // a mounted CryptoSigning page re-reads via useMessageSigningEnabled().
 export const MESSAGE_SIGNING_CHANGED_EVENT = 'veyrnox:message-signing-changed';
 
-/** @returns {boolean} has the user turned Message signing on? (false unless exactly "1") */
+/**
+ * @returns {boolean} has the user turned Message signing on? (false unless exactly "1")
+ *
+ * Codex P1 2026-08-15 — K-2 chokepoint: a decoy/hidden session must NOT see
+ * the real user's message-signing pref, because the pref state is a tell
+ * (a coercer reading the Settings toggle learns something about the real
+ * account). Fail-closed to `false` for deniable sessions — matches the
+ * pattern in `lib/consent.js`. Reading real localStorage under the hood
+ * would still leak via network-inspection tools, but that is a separate
+ * threat model; the JS-caller surface is safe.
+ */
 export function isMessageSigningEnabled() {
+  if (isDeniabilityOrDemoActive()) return false;
   try {
     return localStorage.getItem(MESSAGE_SIGNING_KEY) === '1';
   } catch {
@@ -25,8 +38,15 @@ export function isMessageSigningEnabled() {
   }
 }
 
-/** Persist the Message-signing preference and signal same-tab listeners. */
+/**
+ * Persist the Message-signing preference and signal same-tab listeners.
+ *
+ * Codex P1 2026-08-15 — K-2 chokepoint: a decoy/hidden session must NOT
+ * mutate the real user's stored preference. No-op in deniable sessions —
+ * the toggle in the decoy Settings page will click but never persist.
+ */
 export function setMessageSigningEnabled(on) {
+  if (isDeniabilityOrDemoActive()) return;
   try {
     if (on) localStorage.setItem(MESSAGE_SIGNING_KEY, '1');
     else localStorage.removeItem(MESSAGE_SIGNING_KEY);
