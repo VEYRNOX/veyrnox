@@ -17,7 +17,7 @@ if (!existsSync(packagePath)) {
 let source = readFileSync(packagePath, 'utf8');
 
 if (!source.includes('firebase-ios-sdk.git')) {
-  const anchor = '        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.4.2"),';
+  const anchor = '        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.5.0"),';
   if (!source.includes(anchor)) {
     console.error('[patch-ios-firebase-observability] Capacitor package anchor changed');
     process.exit(1);
