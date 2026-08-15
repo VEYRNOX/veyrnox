@@ -22,6 +22,17 @@ import { ASSETS } from '@/wallet-core/assets';
 import { resolveReceive } from '@/lib/receiveAddress';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { DEMO } from '@/api/demoClient';
+import { useBuyEnabled } from '@/lib/buy/useBuyEnabled';
+
+// Codex P2 2026-08-15: the Transak return message MUST come from Transak's
+// origin. Without this check any frame or injected same-page script can post
+// a spoofed TRANSAK_ORDER_SUCCESSFUL and force the wallet to close the widget
+// or navigate home even though no purchase completed. Allowlist both stg + prod
+// origins to match the URLs the server-side buy-session builds against.
+const TRANSAK_ORIGINS = new Set([
+  'https://global.transak.com',
+  'https://global-stg.transak.com',
+]);
 
 const TRANSAK_NETWORK_MAP = {
   ETH:   'ethereum',
@@ -52,7 +63,13 @@ export default function BuyCrypto() {
   const [error, setError] = useState(null);
   const iframeRef = useRef(null);
 
-  const suppressed = DEMO || isDeniabilityOrDemoActive();
+  // Codex P1 2026-08-15: previously gated only on deniability/demo. On a build
+  // where VITE_BUY_ENABLED !== 'true' the entry tiles are dead-code-eliminated
+  // but the /buy route and this page are unconditionally registered in App.jsx,
+  // so a user landing directly at /buy still reached the Transak flow. Gate at
+  // render on BOTH axes; useBuyEnabled() already composes SHIP_GATE + I3.
+  const buyEnabled = useBuyEnabled();
+  const suppressed = DEMO || isDeniabilityOrDemoActive() || !buyEnabled;
 
   const getAddress = useCallback((symbol) => {
     const r = resolveReceive(symbol, { accounts, btcAccount, solAccount });
@@ -87,6 +104,11 @@ export default function BuyCrypto() {
 
   useEffect(() => {
     function onMessage(event) {
+      // Codex P2 2026-08-15: reject any postMessage not from a Transak origin.
+      // Without this any frame or injected same-page script could post a
+      // TRANSAK_ORDER_SUCCESSFUL and force close/navigate. Origin check is the
+      // only reliable authenticity gate for postMessage.
+      if (!TRANSAK_ORIGINS.has(event.origin)) return;
       if (!event.data?.event_id) return;
       if (event.data.event_id === 'TRANSAK_ORDER_SUCCESSFUL') {
         setWidgetUrl(null);

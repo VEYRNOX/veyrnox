@@ -489,6 +489,11 @@ export default function SendCrypto() {
   });
   const toggleRemoteScreen = (v) => {
     setRemoteScreen(v);
+    // Codex P2 2026-08-15: never persist a decoy/hidden session's toggle to
+    // shared localStorage — a coercer flipping this in a coerced session would
+    // change the real user's default on the next primary unlock. In-memory
+    // state still updates so the current session behaves as chosen.
+    if (isDecoy || isHidden) return;
     try { localStorage.setItem("veyrnox-remote-screen", v ? "1" : "0"); } catch { /* ignore */ }
   };
 
@@ -500,6 +505,9 @@ export default function SendCrypto() {
   });
   const toggleSim = (v) => {
     setSimEnabled(v);
+    // Codex P2 2026-08-15 — same shared-localStorage residue class as
+    // toggleRemoteScreen above. In-memory only for decoy/hidden sessions.
+    if (isDecoy || isHidden) return;
     try { localStorage.setItem("veyrnox-sim-enabled", v ? "1" : "0"); } catch { /* ignore */ }
   };
 
