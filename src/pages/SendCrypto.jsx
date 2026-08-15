@@ -1775,16 +1775,14 @@ export default function SendCrypto() {
                 <p className="text-destructive/80">{tw("send.screening.remote_unavailable")}</p>
               )}
               {/* H-5 — the disclosure must name what actually leaves the device.
-                  It previously said only "the recipient address", while the
-                  payload also carries the user's own address, the amount,
-                  contract/calldata, and up to 20 historical counterparties. */}
+                  The historical-counterparties leak (up to 20 addresses per
+                  request, sold as look-alike detection) was dropped by the
+                  send-leak fix in this PR; the copy no longer needs to
+                  disclose it. `remote_enabled` still names every field the
+                  payload actually carries (recipient, own address, amount,
+                  contract/calldata for token transfers). */}
               {remoteScreen && import.meta.env.VITE_TIP_BASE_URL && (
-                <>
-                  <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
-                  <p className="text-muted-foreground" data-testid="tip-counterparties-note">
-                    {tw("send.screening.remote_counterparties_note")}
-                  </p>
-                </>
+                <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
               )}
               {DEMO && (
                 <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">
