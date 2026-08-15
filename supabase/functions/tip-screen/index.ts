@@ -236,7 +236,8 @@ serve(async (req: Request) => {
   let input: Record<string, unknown>;
   try {
     const raw = await req.text();
-    if (raw.length > MAX_BODY_BYTES) return json({ error: 'payload_too_large' }, 413, origin);
+    // Codex P2 2026-08-15: byte-count, not UTF-16-code-unit count.
+    if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return json({ error: 'payload_too_large' }, 413, origin);
     input = JSON.parse(raw);
     if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('shape');
   } catch {

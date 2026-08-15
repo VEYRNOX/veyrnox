@@ -164,12 +164,23 @@ serve(async (req) => {
   let raw: string;
   try {
     raw = await req.text();
-    if (raw.length > MAX_BODY_BYTES) return json({ error: 'payload_too_large' }, 413, origin);
-    // Shape-check: must be an object with a non-empty messages array. Do NOT
-    // touch device_id — the client controls whether it prefixes with 'vault:'
-    // to bypass the free-tier cap, and the proxy has no business overriding.
+    // Codex P2 2026-08-15: `.length` counts UTF-16 code units, not bytes. A
+    // multibyte-heavy body can slip past a byte-oriented cap. Measure bytes.
+    if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) return json({ error: 'payload_too_large' }, 413, origin);
+    // Shape-check: must be an object with a non-empty messages array.
+    // Codex P1 2026-08-15: device_id is caller-controlled, and upstream treats
+    // a 'vault:' prefix as a signal to bypass the free-tier cap. There is NO
+    // client-side entitlement proof today — the earlier "vault: subscribers
+    // eventually prefix this" plan (SecurityAdvisor.jsx comment) never shipped
+    // — so any 'vault:' prefix arriving here is unauthorised. Strip the
+    // privileged prefix at the proxy; force free tier until a real entitlement
+    // check (signed RC-webhook token) lands. Fail closed (I4).
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('shape');
+    if (typeof parsed.device_id === 'string' && parsed.device_id.startsWith('vault:')) {
+      parsed.device_id = parsed.device_id.slice('vault:'.length);
+      raw = JSON.stringify(parsed);
+    }
     if (!Array.isArray(parsed.messages) || parsed.messages.length === 0) {
       return json({ error: 'messages_required' }, 400, origin);
     }
