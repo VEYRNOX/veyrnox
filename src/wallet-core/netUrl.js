@@ -81,6 +81,17 @@ export function assertSafeRpcUrl(url) {
   if (parsed.username || parsed.password) {
     throw new Error('RPC URL must not embed credentials');
   }
+  // Codex P2 2026-08-15: reject URL fragments. Path and query are
+  // deliberately allowed (Infura / Alchemy / etc. carry the project key
+  // in the path, some providers in the query), but a `#…` fragment has
+  // no meaning on an RPC endpoint — its presence indicates either a
+  // paste error (browser-bar URL copied with an anchor) or an attempt
+  // to slip a value past the store that some downstream parser might
+  // reinterpret differently. Reject rather than silently strip so the
+  // operator sees the malformed input.
+  if (parsed.hash) {
+    throw new Error('RPC URL must not contain a fragment (#…)');
+  }
   const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
   if (parsed.protocol === 'http:' && LOOPBACK.has(host)) return trimmed;
   if (parsed.protocol !== 'https:') {

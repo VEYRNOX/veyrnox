@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { assertSafeRpcUrl, safeExternalUrl } from "@/wallet-core/netUrl.js";
 import CoinLogo from "@/components/CoinLogo";
+import { useWallet } from "@/lib/WalletProvider";
 
 const DEFAULTS = [
   { id: "d1", name: "Ethereum Mainnet", rpc_url: "https://mainnet.infura.io/v3/", chain_id: 1, symbol: "ETH", explorer_url: "https://etherscan.io", is_testnet: false, is_active: true, logo_color: "#627EEA" },
@@ -23,16 +24,37 @@ const DEFAULTS = [
 
 export default function NetworkManager() {
   const qc = useQueryClient();
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden;
   const [open, setOpen] = useState(false);
   const [showTestnets, setShowTestnets] = useState(false);
   const [form, setForm] = useState({ name: "", rpc_url: "", chain_id: "", symbol: "", explorer_url: "", is_testnet: false, logo_color: "#627EEA" });
   const [urlError, setUrlError] = useState(null);
 
-  const { data: dbNetworks = [] } = useQuery({ queryKey: ["networks"], queryFn: () => base44.entities.NetworkConfig.list() });
+  // Codex P2 2026-08-15: NetworkConfig lives in the shared Base44 local
+  // entity DB (same K-2 class as AddressBook / PersonalWatchlist). A
+  // decoy/hidden session could BOTH read the real user's custom RPC
+  // overrides AND mutate them (add an attacker-controlled endpoint that
+  // the primary session then routes signing traffic through — full
+  // I2/I5 escalation). Two-chokepoint gate: query enabled on !deniable
+  // AND local blank of the derived `dbNetworks` array, AND each
+  // mutationFn throws DENIABILITY_BLOCKED before touching the store.
+  // Same shape as AddressBook / WatchlistWidget fixes in this wave.
+  const { data: dbNetworksRaw = [] } = useQuery({
+    queryKey: ["networks"],
+    queryFn: () => base44.entities.NetworkConfig.list(),
+    enabled: !deniable,
+  });
+  const dbNetworks = deniable ? [] : dbNetworksRaw;
   const networks = dbNetworks.length > 0 ? dbNetworks : DEFAULTS;
+
+  const denyInDeniable = () => {
+    throw Object.assign(new Error('Network Manager is not available in this session'), { code: 'DENIABILITY_BLOCKED' });
+  };
 
   const activate = useMutation({
     mutationFn: async (id) => {
+      if (deniable) denyInDeniable();
       if (dbNetworks.length === 0) return;
       await Promise.all(networks.map(n => base44.entities.NetworkConfig.update(n.id, { is_active: n.id === id })));
     },
@@ -40,12 +62,18 @@ export default function NetworkManager() {
   });
 
   const create = useMutation({
-    mutationFn: (/** @type {any} */ d) => base44.entities.NetworkConfig.create({ ...d, chain_id: parseInt(d.chain_id) }),
+    mutationFn: (/** @type {any} */ d) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.NetworkConfig.create({ ...d, chain_id: parseInt(d.chain_id) });
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["networks"] }); setOpen(false); setForm({ name: "", rpc_url: "", chain_id: "", symbol: "", explorer_url: "", is_testnet: false, logo_color: "#627EEA" }); },
   });
 
   const remove = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.NetworkConfig.delete(id),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.NetworkConfig.delete(id);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["networks"] }),
   });
 
@@ -59,7 +87,7 @@ export default function NetworkManager() {
           <h1 className="text-xl font-bold">Network Manager</h1>
           <p className="text-sm text-muted-foreground">Switch networks or add a custom network</p>
         </div>
-        <Button onClick={() => setOpen(true)} className="gap-2"><Plus className="h-4 w-4" /> Add Network</Button>
+        <Button onClick={() => setOpen(true)} disabled={deniable} className="gap-2"><Plus className="h-4 w-4" /> Add Network</Button>
       </div>
 
       {active && (

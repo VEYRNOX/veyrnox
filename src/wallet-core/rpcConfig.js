@@ -18,7 +18,18 @@ export function applyRpcEnvOverrides() {
   for (const [key, val] of Object.entries(import.meta.env)) {
     if (key.startsWith(evmPrefix) && val) {
       const networkKey = key.slice(evmPrefix.length).toLowerCase();
-      try { setRpcUrl(networkKey, val); } catch { /* unknown key — ignore */ }
+      try { setRpcUrl(networkKey, val); } catch (/** @type {any} */ e) {
+        // Codex P2 2026-08-15: was silently swallowing every setter
+        // error, so a REJECTED override (bad URL, non-allowlisted
+        // host, credentialed URL) left the default endpoint in use
+        // with zero operator signal — a build-time misconfiguration
+        // that should surface at deploy time became invisible. Log
+        // to console.error at boot so a Cloudflare Pages tail /
+        // devtools open at startup catches it. Behaviour otherwise
+        // unchanged (default endpoint stays in effect — this is
+        // signal, not a runtime fail-open change).
+        console.error(`[rpcConfig] EVM override "${networkKey}" rejected:`, e?.message || e);
+      }
     }
   }
 
@@ -27,7 +38,9 @@ export function applyRpcEnvOverrides() {
   for (const [key, val] of Object.entries(import.meta.env)) {
     if (key.startsWith(btcPrefix) && val) {
       const networkKey = key.slice(btcPrefix.length).toLowerCase();
-      try { setEsploraUrl(networkKey, val); } catch { /* unknown key — ignore */ }
+      try { setEsploraUrl(networkKey, val); } catch (/** @type {any} */ e) {
+        console.error(`[rpcConfig] BTC override "${networkKey}" rejected:`, e?.message || e);
+      }
     }
   }
 
@@ -36,7 +49,9 @@ export function applyRpcEnvOverrides() {
   for (const [key, val] of Object.entries(import.meta.env)) {
     if (key.startsWith(solPrefix) && val) {
       const networkKey = key.slice(solPrefix.length).toLowerCase();
-      try { setSolRpcUrl(networkKey, val); } catch { /* unknown key — ignore */ }
+      try { setSolRpcUrl(networkKey, val); } catch (/** @type {any} */ e) {
+        console.error(`[rpcConfig] SOL override "${networkKey}" rejected:`, e?.message || e);
+      }
     }
   }
 }
