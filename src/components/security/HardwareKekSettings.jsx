@@ -150,6 +150,13 @@ export default function HardwareKekSettings() {
 
   useEffect(() => {
     let active = true;
+    // Codex P1 2026-08-15: don't run the native KEK probe (Keychain / Keystore
+    // touch + orphan cleanup) in a decoy/hidden session. The render is now
+    // early-returned above for the blocked branch, but the probe itself could
+    // still leave a native-storage side effect (cleaning up a stale alias)
+    // that the primary session then sees. Skip entirely — the enrolled
+    // state stays null, the render never reads it anyway.
+    if (isDecoy || isHidden) return () => { active = false; };
     if (isNative) {
       (async () => {
         try {
@@ -204,7 +211,8 @@ export default function HardwareKekSettings() {
       });
     }
     return () => { active = false; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDecoy, isHidden]);
 
   const handleEnroll = async (testPin) => {
     const pinToUse = testPin || pin;
@@ -352,6 +360,29 @@ export default function HardwareKekSettings() {
 
   // Show OFF badge only when we know enrollment state and PRF is available/native.
   const showOffBadge = enrolled === false && (isNative || webPrfAvailable);
+
+  // Codex P1 2026-08-15: previously `blocked` gated ONLY the not-enrolled
+  // enroll form. The enrolled/off/tier-badge/upgrade/remove UI still
+  // rendered from the mount probe's real KEK state — so a decoy/hidden
+  // session could observe the real device's enrollment status AND reach
+  // upgrade/remove buttons. Two-chokepoint fix: (a) Settings.jsx already
+  // hides the whole security-settings block in deniable (PR #1822), and
+  // (b) this early-return here fails closed for ANY other caller that
+  // might mount this component outside the Settings tree. Neutral copy
+  // matches the section header so nothing about the real posture leaks.
+  if (blocked) {
+    return (
+      <div className="p-5 rounded-xl border border-border bg-card space-y-4">
+        <div className="flex items-center gap-2">
+          <HardDrive className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold">{t('settings.hardware_kek.heading')}</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t('settings.hardware_kek.blocked')}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-5 rounded-xl border border-border bg-card space-y-4">
