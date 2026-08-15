@@ -62,7 +62,13 @@ export const WALLET_GATE = WALLET_AUTH || NATIVE;
 // Category A/B features (RPC balances, price-alert checks, PDF export) are NOT
 // gated here: they run on direct client-side / wallet-core paths in the local
 // build with no backend.
-export const LLM_AVAILABLE = BACKEND !== 'local' || !!import.meta.env.VITE_OPENROUTER_API_KEY;
+// Codex P1 2026-08-15: dropped the `|| !!import.meta.env.VITE_OPENROUTER_API_KEY`
+// branch. VITE_OPENROUTER_API_KEY was shipped in the client bundle (VITE_
+// prefixed = public) and any user could extract + spend the key against
+// Veyrnox's OpenRouter account. The openrouter client has been deleted;
+// the local build now reports LLM unavailable and surfaces render
+// "no live feed connected" honestly.
+export const LLM_AVAILABLE = BACKEND !== 'local';
 export const EMAIL_AVAILABLE = BACKEND !== 'local';
 
 // Every data-layer consumer imports `{ base44 }` from here. The implementation
