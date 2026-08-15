@@ -34,7 +34,7 @@ const features = [
     { name: "Multi-Account HD Wallet", desc: "Recovery phrase standard (BIP-39) seed with multi-account derivation; keys held locally", status: "built" },
     { name: "Import Wallet", desc: "Restore from seed phrase or private key", status: "built" },
     { name: "Encrypted Vault", desc: "Strong on-device encryption at rest; plaintext keys never leave device", status: "built" },
-    { name: "Backup & Reveal Seed", desc: "Seed phrase + encrypted QR backup behind explicit warnings", status: "built" },
+    { name: "Backup & Reveal Seed", desc: "Seed phrase display for manual write-down. Encrypted scannable backup is Personal Backup (2-of-3 shard export at /personal-backup, Argon2id-AES-GCM)", status: "built" },
     { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) on mainnet", status: "built" },
     { name: "Receive Crypto", desc: "Per-chain derived address + locally-generated QR", status: "built" },
     { name: "Live Balances", desc: "Read live from chain network connection / explorer providers", status: "built" },

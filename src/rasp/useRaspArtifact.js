@@ -9,7 +9,6 @@
 //   • src/pages/RaspSecurity.jsx         — environment dashboard (P2-8)
 //   • src/pages/SecurityDashboard.jsx    — top-level security surface
 //   • src/pages/CryptoSigning.jsx        — sign-flow re-confirm
-//   • src/pages/ColdSign.jsx             — cold-sign surface
 //   • src/pages/HDWalletManager.jsx      — key/seed management gate
 //   • src/pages/PersonalBackup.jsx       — backup/export gate
 //   • src/pages/WalletPortfolioPage.jsx  — portfolio surface

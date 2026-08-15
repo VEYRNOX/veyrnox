@@ -1,11 +1,8 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
-import QRCode from "qrcode";
-import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound, QrCode } from "lucide-react";
+import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { Share } from "@capacitor/share";
 import CoinLogo from "@/components/CoinLogo";
-import QRCodeDisplay from "@/components/QRCodeDisplay";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,16 +10,6 @@ import { useWallet } from "@/lib/WalletProvider";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import BackupPaywallNudge from "@/components/BackupPaywallNudge";
 import { useTier } from "@/lib/TierProvider";
-
-// Escape HTML metacharacters before interpolating into the print document.
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 export default function WalletSeedQR() {
   const { wallets, confirmWalletBackup } = useWallet();
@@ -65,40 +52,17 @@ export default function WalletSeedQR() {
   const handlePrint = async () => {
     if (!mnemonic) return;
 
-    // Encode the phrase to a QR locally (same `qrcode` lib, no network) so the
-    // printed/shared sheet carries both the words and a scannable backup.
-    let qrDataUrl = "";
-    try {
-      qrDataUrl = await QRCode.toDataURL(mnemonic, { errorCorrectionLevel: "M", margin: 2, width: 240 });
-    } catch {
-      /* QR is best-effort — the printed words remain a complete backup on their own. */
-    }
-
+    // Codex P1 2026-08-15: no more plaintext QR (the words below already ARE
+    // the backup; a QR of the same words just adds a shoulder-surf / camera-
+    // capture surface without any encryption). The printed sheet now carries
+    // words only; the native share path is disabled to stop raw seed leaving
+    // the app via OS share targets (email/cloud drives/messaging apps).
     const nameText = selectedWallet?.name || "Wallet";
 
     if (Capacitor.isNativePlatform()) {
-      // window.open("", "_blank") on Capacitor opens an orphaned WebView with no
-      // back navigation — the user gets stranded. Instead share the backup text
-      // via the OS share sheet so they can save/print through their own apps.
-      const shareText = [
-        `${nameText} — Recovery Backup`,
-        `${escapeHtml(selectedWallet?.currency || "")} · ${selectedWallet?.address?.slice(0, 16) || ""}...`,
-        "",
-        mnemonic,
-        "",
-        "KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.",
-        "The QR encodes the same recovery phrase — anyone who scans it controls this wallet.",
-      ].join("\n");
-
-      try {
-        await Share.share({
-          title: `${nameText} — Recovery Backup`,
-          text: shareText,
-          dialogTitle: "Print or Save Recovery Backup",
-        });
-      } catch {
-        // Share sheet dismissed — no action needed; user stays on the page.
-      }
+      // Native path: no OS-share of the seed. The user reads the words off the
+      // screen and writes them down. Encrypted scannable backup lives at
+      // /personal-backup (Personal Backup — 2-of-3 encrypted shard export).
       setPrinted(true);
       confirmWalletBackup(selectedWalletId);
       return;
@@ -133,27 +97,10 @@ export default function WalletSeedQR() {
     seedDiv.textContent = mnemonic;
     container.appendChild(seedDiv);
 
-    if (qrDataUrl) {
-      // qrDataUrl is a data:image/png;base64,... string produced locally by the
-      // qrcode library — no user-supplied value goes into the src attribute.
-      const img = document.createElement("img");
-      img.className = "qr";
-      img.src = qrDataUrl;
-      img.alt = "Recovery phrase QR";
-      img.width = 240;
-      img.height = 240;
-      container.appendChild(img);
-    }
-
     const warn1 = document.createElement("p");
     warn1.className = "warning";
     warn1.textContent = "KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.";
     container.appendChild(warn1);
-
-    const warn2 = document.createElement("p");
-    warn2.className = "warning";
-    warn2.textContent = "The QR encodes the same recovery phrase — anyone who scans it controls this wallet.";
-    container.appendChild(warn2);
 
     // Inject scoped print styles once (idempotent).
     const STYLE_ID = "veyrnox-seed-print-styles";
@@ -282,22 +229,15 @@ export default function WalletSeedQR() {
                 ))}
               </div>
 
-              {/* Seed QR — the SAME plaintext phrase encoded for scan-to-restore.
-                  Generated locally (qrcode lib, no network), shown only while the
-                  phrase itself is revealed, so it exposes nothing the words above
-                  don't already. Anyone who photographs it gets the whole wallet —
-                  hence the explicit warning and the reveal gate. */}
-              <div className="flex flex-col items-center gap-2 pt-1">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <QrCode className="h-3.5 w-3.5" /> Scan to restore on another device
-                </div>
-                <div className="rounded-xl bg-white p-3">
-                  <QRCodeDisplay address={mnemonic} size={200} />
-                </div>
-                <p className="text-[11px] text-destructive text-center max-w-[15rem]">
-                  Contains your recovery phrase. Treat the QR as carefully as the words — never photograph or screenshot.
-                </p>
-              </div>
+              {/* Codex P1 2026-08-15: removed the plaintext-mnemonic QR that used
+                  to render here. It contradicted the "encrypted QR backup" claim
+                  in Documentation.jsx and turned a photograph or screenshot into
+                  full wallet control with zero decryption step. Users who want a
+                  scannable backup should use Personal Backup (2-of-3 encrypted
+                  shard export at /personal-backup), which is the actual encrypted
+                  QR path (src/lib/seedQr.js + Argon2id-AES-GCM). Nothing about
+                  the seed-phrase display above is affected — the words stay for
+                  manual write-down, which is the safer offline backup anyway. */}
             </>
           ) : (
             <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-center">
