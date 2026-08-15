@@ -173,3 +173,81 @@ describe('BuyInProgress — never claims success from the return payload', () =>
     expect(note).toMatch(/shows no confirmation signal/);
   });
 });
+
+// ── Third-party iframe sandbox (branch review of PR #1801, finding S-1) ──────
+//
+// #1801 constrained the Transak frame with a `sandbox` attribute. It shipped
+// with no test, and a sandbox is exactly the kind of control that vanishes
+// silently: it is one JSX attribute, its absence looks identical to its presence
+// in every other test here, and nothing at runtime complains. A dropped sandbox
+// hands a compromised or mis-served third-party page the full iframe capability
+// surface PLUS the granted camera/microphone/payment permissions.
+//
+// Source-scan rather than render, matching the rest of this file: `sandbox` is a
+// static JSX attribute, so reading it from source proves as much as mounting the
+// component, without needing the provider stack the Buy page pulls in.
+//
+// Mutation checks (each turns exactly one case red):
+//   • delete the sandbox attribute                    → "declares a sandbox"
+//   • add allow-top-navigation to the token list      → "withholds the tokens…"
+//   • remove allow-scripts                            → "grants exactly…"
+describe('BuyCrypto — the Transak iframe is sandboxed', () => {
+  const src = read('../BuyCrypto.jsx');
+  const sandboxMatch = src.match(/sandbox="([^"]*)"/);
+
+  it('declares a sandbox on the third-party frame', () => {
+    expect(sandboxMatch, 'the Transak iframe must carry a sandbox attribute').toBeTruthy();
+  });
+
+  it('grants exactly the tokens the KYC/payment flow needs, and no more', () => {
+    const tokens = (sandboxMatch?.[1] ?? '').split(/\s+/).filter(Boolean).sort();
+    expect(tokens).toEqual([
+      'allow-forms',
+      'allow-modals',
+      'allow-popups',
+      'allow-popups-to-escape-sandbox',
+      'allow-same-origin',
+      'allow-scripts',
+    ].sort());
+  });
+
+  it('withholds the tokens that would let the frame take over the app', () => {
+    // allow-top-navigation lets the frame navigate the WHOLE app away — the
+    // exit-scam class a compromised widget could otherwise pull. allow-downloads
+    // would let it hand the user files. Neither is needed by Transak.
+    const value = sandboxMatch?.[1] ?? '';
+    for (const forbidden of [
+      'allow-top-navigation',
+      'allow-top-navigation-by-user-activation',
+      'allow-downloads',
+      'allow-pointer-lock',
+      'allow-orientation-lock',
+      'allow-presentation',
+    ]) {
+      expect(value, `${forbidden} must not be granted`).not.toContain(forbidden);
+    }
+  });
+
+  it('allow-same-origin is only safe because the frame src is a VALIDATED third-party origin', () => {
+    // allow-scripts + allow-same-origin together let a SAME-ORIGIN frame delete
+    // its own sandbox attribute and escape. That pair is safe here only because
+    // the src can never be same-origin: api/edgeApi.js validates the returned
+    // URL against the Transak allowlist before it is ever used. If that check is
+    // dropped, this token pair silently becomes an escape hatch — so pin it from
+    // this side too, where the risky pair is actually granted.
+    //
+    // Asserts the CONTRACT (the rejection exists and has a stable code), not the
+    // implementation: main currently inlines a host comparison, while #1804
+    // replaces it with a shared isTransakUrl() helper. Matching either specific
+    // form would make this test fail on an unrelated refactor rather than on the
+    // property it is guarding.
+    const value = sandboxMatch?.[1] ?? '';
+    if (value.includes('allow-scripts') && value.includes('allow-same-origin')) {
+      const edgeApi = read('../../api/edgeApi.js');
+      expect(edgeApi, 'createBuySession must reject a non-Transak Buy URL')
+        .toMatch(/BUY_URL_UNTRUSTED_ORIGIN/);
+      expect(edgeApi, 'the rejection must THROW, not just log')
+        .toMatch(/throw[\s\S]{0,120}BUY_URL_UNTRUSTED_ORIGIN/);
+    }
+  });
+});
