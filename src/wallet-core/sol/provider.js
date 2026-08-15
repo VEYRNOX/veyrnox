@@ -93,10 +93,12 @@ async function solRpcPost(url, method, params) {
     if (res.data.error) throw new Error(res.data.error.message || 'RPC error');
     return res.data.result;
   }
+  // 15s cap on zombie egress after lock / panic-wipe (Codex P2 2026-08-15).
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
