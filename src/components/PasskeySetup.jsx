@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Shield, ShieldCheck, Fingerprint, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast";
-import { isWebAuthnSupported } from "@/lib/passkey";
+import { isWebAuthnSupported, passkeyUserHandle } from "@/lib/passkey";
 import { useWallet } from "@/lib/WalletProvider";
 import { Capacitor } from "@capacitor/core";
 import Spinner from "@/components/Spinner";
@@ -90,10 +90,17 @@ export default function PasskeySetup({ wallet, onRegistered }) {
       // platform passkey managers (Apple/Google/Microsoft Passwords) and can
       // sync across the user's account. That leaks wallet identity into a
       // third-party surface the wallet has no control over. Use an opaque
-      // random 32-byte user.id (per WebAuthn §5.4.3 recommendation) and a
-      // generic display name that carries no wallet identity.
-      const anonUserId = new Uint8Array(32);
-      crypto.getRandomValues(anonUserId);
+      // user.id (per WebAuthn §5.4.3) and a generic display name.
+      //
+      // Branch review 2026-08-15 (S-3): the handle is DERIVED, not random.
+      // Platform managers key credentials on (rp.id, user.id), so a fresh
+      // random handle per registration is opaque but makes every
+      // re-registration ADD an entry rather than replace the old one — which
+      // collides with the clone flow telling the user to re-register after an
+      // anti-cloning failure. passkeyUserHandle() is a domain-separated hash of
+      // wallet.id (16 bytes CSPRNG, so 128 bits behind the preimage): opaque
+      // AND stable. See lib/passkey.js for the full rationale.
+      const anonUserId = passkeyUserHandle(wallet.id);
       const credential = await navigator.credentials.create({
         publicKey: {
           challenge: generateChallenge(),
