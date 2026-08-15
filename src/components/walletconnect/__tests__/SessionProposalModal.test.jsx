@@ -28,7 +28,7 @@ vi.mock('react-i18next', async () => {
     useTranslation: (ns) => ({ t: (k, o) => resolve(k, { ns, ...(o || {}) }) }),
   };
 });
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import { SessionProposalModal } from '@/components/walletconnect/SessionProposalModal.jsx';
 
 afterEach(cleanup);
