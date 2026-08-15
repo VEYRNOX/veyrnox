@@ -524,12 +524,22 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
           ownedByShares.push(false);
         }
       }
-      await restoreFromRecoveryShares(shares, newPassword);
+      const result = await restoreFromRecoveryShares(shares, newPassword);
       clearPickedFiles();
       setNewPassword("");
       setNewPasswordConfirm("");
       setRecoveryPassphrase("");
-      toast.success("Wallet recovered. Unlock with your new PIN.");
+      // I4 fail-honest: if hardware capability flipped mid-restore, the outer
+      // Enclave wrap could not be re-applied. Vault still unlocks via KEK +
+      // PIN, but the extra defense-in-depth layer is gone until the user
+      // re-enables biometrics. Do NOT swallow this — surface it explicitly.
+      if (result && result.downgradedFromEnclave) {
+        toast.warning(
+          "Wallet recovered, but hardware wrap could not be re-applied. Re-enable biometrics in Settings to restore full protection."
+        );
+      } else {
+        toast.success("Wallet recovered. Unlock with your new PIN.");
+      }
       onFinish();
     } catch (err) {
       // fail-closed: surface the raw error so the user learns whether it was

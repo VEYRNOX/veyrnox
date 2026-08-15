@@ -1063,19 +1063,21 @@ export const nativeKeyStore = {
   // Personal Backup Phase 2 — after a successful safeWriteVault of the inner
   // blob, if the vault was originally enclave-wrapped, re-apply the outer
   // wrap so we do NOT silently downgrade the vault from M2c to M2b (Codex
-  // P1, 2026-08-09). Mirrors the migration wrap at native.js:955-970.
+  // P1, 2026-08-09). Returns a status the caller MUST surface (I4 fail-honest,
+  // Codex P1 2026-08-15): 'reapplied' when re-wrapped, 'not-enclave' when
+  // nothing to do, 'downgraded' when the vault started M2c but capability
+  // disappeared between read and write (unlock still works via KEK+password,
+  // but the outer wrap is gone — UI should nudge user to re-enable biometrics).
   async _reapplyEnclaveWrapIfNeeded(wasEnclaveWrapped) {
-    if (!wasEnclaveWrapped) return;
-    // Only re-wrap if the device still supports it. If capability disappeared
-    // between read and write (e.g. biometrics unenrolled mid-operation), the
-    // vault is left as M2b — non-fatal, unlock still works via password.
-    if (!(await useHardwareWrap())) return;
+    if (!wasEnclaveWrapped) return 'not-enclave';
+    if (!(await useHardwareWrap())) return 'downgraded';
     const raw2 = await SecureStorage.get(VAULT_KEY, false);
-    if (raw2 === null || raw2 === undefined) return;
+    if (raw2 === null || raw2 === undefined) return 'downgraded';
     const { createWrappingKey, hwWrap } = await enclavePlugin();
     await createWrappingKey();
     const ct = await hwWrap(base64FromUtf8(typeof raw2 === 'string' ? raw2 : JSON.stringify(raw2)));
     await safeWriteVault({ wrap: WRAP_VERSION_ENCLAVE, hw: ct });
+    return 'reapplied';
   },
 
   // Personal Backup Phase 1 — export 3 shamir shares of the DEK for the user
@@ -1230,13 +1232,15 @@ export const nativeKeyStore = {
           await safeWriteVault({ ...blob, ...newBinding });
         }
         // If the vault was Enclave-wrapped on read (M2c), re-apply the outer
-        // wrap now so we do not silently downgrade to M2b. Best-effort —
-        // capability disappearing between read and write leaves M2b, which
-        // still unlocks (see _reapplyEnclaveWrapIfNeeded).
-        await this._reapplyEnclaveWrapIfNeeded(wasEnclaveWrapped);
+        // wrap now. On 'downgraded' the inner write has already succeeded and
+        // unlock still works via KEK+password, so we return the status rather
+        // than throw (throwing here would leave the vault restored but caller
+        // sees an error — worse UX than the honest flag). Caller surfaces the
+        // downgrade to the user (I4 fail-honest, Codex P1 2026-08-15).
+        const enclaveStatus = await this._reapplyEnclaveWrapIfNeeded(wasEnclaveWrapped);
         // Cache is stale — new KEK cannot unwrap the old cache blob.
         await clearDekCache();
-        return;
+        return { downgradedFromEnclave: enclaveStatus === 'downgraded' };
       } finally {
         if (H2 && H2.fill) H2.fill(0);
         if (newC) newC.fill(0);
