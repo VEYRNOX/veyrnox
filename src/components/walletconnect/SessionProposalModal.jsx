@@ -39,7 +39,6 @@ export function SessionProposalModal({ proposal, onClose }) {
   const optionalChains = optionalNs.eip155?.chains ?? [];
   const optionalMethods = optionalNs.eip155?.methods ?? [];
 
-  const [ackKnownBad, setAckKnownBad] = useState(false);
   const dapp = checkDappDomain(meta.url);
   const titleId = useId();
 
@@ -96,14 +95,11 @@ export function SessionProposalModal({ proposal, onClose }) {
             <p className={styles.riskTitle}>{t('wc.session_proposal.risk_title')}</p>
             <p className={styles.riskBody}>{dapp.reason}</p>
             <p className={styles.riskDomain}>{dapp.domain}</p>
-            <label className={styles.riskCheck}>
-              <input
-                type="checkbox"
-                checked={ackKnownBad}
-                onChange={(e) => setAckKnownBad(e.target.checked)}
-              />
-              {t('wc.session_proposal.risk_ack')}
-            </label>
+            {/* Codex P2 2026-08-15: approveSession() unconditionally throws
+                DAPP_BLOCKED_KNOWN_BAD for flagged domains, so the previous
+                "acknowledge and connect" checkbox was a dead UI path. Match the
+                authoritative handler: hard-block the connection here too. */}
+            <p className={styles.riskBody}>{t('wc.session_proposal.risk_blocked')}</p>
           </div>
         )}
 
@@ -202,7 +198,7 @@ export function SessionProposalModal({ proposal, onClose }) {
           <button className={styles.rejectBtn} onClick={handleReject} disabled={busy}>
             {t('wc.session_proposal.reject')}
           </button>
-          <button className={styles.approveBtn} onClick={handleApprove} disabled={busy || (dapp.flagged && !ackKnownBad)}>
+          <button className={styles.approveBtn} onClick={handleApprove} disabled={busy || dapp.flagged}>
             {busy ? t('wc.session_proposal.connect_busy') : t('wc.session_proposal.connect')}
           </button>
         </div>

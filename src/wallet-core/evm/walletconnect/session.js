@@ -201,6 +201,18 @@ export async function approveSession(proposalId, evmAddress, chainIds) {
   const entry = _pendingProposals.get(proposalId);
   if (!entry) throw new Error('Proposal not found — it may have expired');
   const proposal = entry.proposal;
+  // Codex P2 2026-08-15: cleanupExpiredProposals only checks insertedAt against
+  // the 5-min TTL. The proposal's OWN expiryTimestamp (WalletConnect protocol)
+  // can pass sooner if the app was backgrounded or timers were delayed. Re-check
+  // it explicitly so approveSession never runs on a proposal WC already treats
+  // as expired. Fail closed: evict + throw so the UI shows the same "expired"
+  // path as any other stale-proposal outcome.
+  const expiryEpochSeconds = proposal.params?.expiryTimestamp;
+  if (expiryEpochSeconds && expiryEpochSeconds * 1000 <= _now()) {
+    _clearProposalTimer(proposalId);
+    _pendingProposals.delete(proposalId);
+    throw new Error('Proposal not found — it may have expired');
+  }
   // I4 defense-in-depth: re-check the dApp domain in the handler itself so a
   // known-bad dApp is rejected even if the UI ackKnownBad gate is bypassed.
   // Fail closed — the key is never touched and client.approveSession is never
