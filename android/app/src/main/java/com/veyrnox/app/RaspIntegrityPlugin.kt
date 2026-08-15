@@ -118,6 +118,30 @@ class RaspIntegrityPlugin : Plugin() {
      */
     @PluginMethod
     fun checkIntegrity(call: PluginCall) {
+        // Probe canary (Codex P1 2026-08-15). Every detection helper wraps its
+        // OS calls in runCatching{...}.getOrDefault(false), so a Frida gadget
+        // hooking a common primitive (Debug.isDebuggerConnected, /proc reads,
+        // SystemClock) forces a throw INSIDE the swallow → the helper returns
+        // false → the verdict emits {hookedProcess:false, tampered:false, ...}
+        // that JS accepts as a valid clean sample. This canary calls three of
+        // those exact primitives WITHOUT the swallow. If the runtime is hooked
+        // and one throws, reject the call: the JS bridge catches the reject
+        // (nativeProbe.js:89) and returns { available:false } → detect() maps
+        // to INTEGRITY_UNAVAILABLE (WARN/BLOCK), never a fabricated CLEAN.
+        try {
+            Debug.isDebuggerConnected()
+            File("/proc/self/status").exists()
+            android.os.SystemClock.elapsedRealtime()
+        } catch (e: Exception) {
+            // Capacitor PluginCall.reject(message, code, exception) overload
+            // requires Exception, not Throwable — using Throwable fails
+            // compileDebugKotlin / compileReleaseKotlin (build regression on
+            // PR #1758). Exception covers every Frida-forced throw we care
+            // about; Error subclasses like OOM/StackOverflow surface via the
+            // uncaught-exception handler either way.
+            call.reject("PROBE_CANARY_FAILED", "INTEGRITY_UNAVAILABLE", e)
+            return
+        }
         val result = JSObject()
         result.put("rooted",            detectRoot())
         result.put("hookedProcess",     detectHook())
