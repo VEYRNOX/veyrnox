@@ -10,10 +10,13 @@ concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
+# Codex P1 2026-08-15: workflow-level pull-requests: write + deployments: write
+# were inherited by the `deploy` job that runs untrusted PR code (npm ci + build,
+# with any PR-authored postinstall/build script). Drop to read-only at the
+# workflow level; the only job that needs write is `preview-comment`, which
+# runs AFTER deploy, uses no PR code, and grants itself the narrow scope.
 permissions:
   contents: read
-  pull-requests: write
-  deployments: write
 
 env:
   VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
@@ -227,11 +230,26 @@ jobs:
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: node scripts/check-edge-endpoints.mjs "$DEPLOY_URL"
 
+      - name: Set deployment status
+        if: always()
+        run: echo "Deployed to ${{ steps.deploy.outputs.deployment-url }}"
+
+  # Codex P1 2026-08-15: post the preview URL comment from a SEPARATE job that
+  # does not check out or run any PR code. Only this job gets pull-requests:
+  # write, so a malicious postinstall/build script in a PR cannot reach the
+  # write-scoped token. Reads the deployment URL from the `deploy` job's output.
+  preview-comment:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && needs.deploy.outputs.deployment_url != ''
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
       - name: Comment preview URL on PR
-        if: github.event_name == 'pull_request'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
-          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          DEPLOY_URL: ${{ needs.deploy.outputs.deployment_url }}
         with:
           script: |
             const url = process.env.DEPLOY_URL;
@@ -264,10 +282,6 @@ jobs:
                 owner, repo, issue_number, body,
               });
             }
-
-      - name: Set deployment status
-        if: always()
-        run: echo "Deployed to ${{ steps.deploy.outputs.deployment-url }}"
 
   # E2E runs HERE, in the same PR-triggered workflow, rather than in a separate
   # `workflow_run` workflow. A workflow_run job executes in the BASE repo's
