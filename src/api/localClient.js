@@ -39,7 +39,16 @@
 // wallet-core and are unaffected.
 
 import { demoBase44 } from "@/api/demoClient";
-import { invokeLLM, OPENROUTER_AVAILABLE } from "@/api/openrouterClient";
+// Codex P1 2026-08-15: openrouterClient.js deleted. It read
+// VITE_OPENROUTER_API_KEY and sent it as `Authorization: Bearer …` from the
+// shipped bundle — VITE_-prefixed env vars are PUBLIC (embedded verbatim in
+// the client), so any user could extract the key from JS or app traffic and
+// spend Veyrnox's OpenRouter account. Rather than ship a leaked-by-design key
+// or race a server-side proxy, drop the client entirely; InvokeLLM now always
+// falls through to demoBase44's stub. The AI-news / AI-sentiment surfaces
+// already handle LLM_AVAILABLE === false (NewsSentimentPage.jsx renders a
+// static "no live feed connected" state), so the feature honestly reports
+// unavailable in the local build.
 
 const DB_NAME = "veyrnox-appdata";
 const STORE = "entities"; // one record per entity name, value = array of rows
@@ -152,9 +161,7 @@ export const localBase44 = {
     ...demoBase44.integrations,
     Core: {
       ...demoBase44.integrations.Core,
-      InvokeLLM: OPENROUTER_AVAILABLE
-        ? invokeLLM
-        : demoBase44.integrations.Core.InvokeLLM,
+      InvokeLLM: demoBase44.integrations.Core.InvokeLLM,
     },
   },
 };
