@@ -88,7 +88,7 @@ describe('TierProvider', () => {
     await waitFor(() => expect(capturedListener).not.toBeNull());
 
     act(() => {
-      capturedListener({ entitlements: { active: { safety_plus: {} } } });
+      capturedListener({ entitlements: { active: { safety_plus: { isActive: true } } } });
     });
 
     expect(screen.getByTestId('tier').textContent).toBe('safety_plus');

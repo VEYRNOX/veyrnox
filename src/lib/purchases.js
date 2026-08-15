@@ -7,6 +7,7 @@
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 export const SAFETY_PLUS_ENTITLEMENT = 'safety_plus';
 
@@ -177,14 +178,22 @@ export async function configurePurchases() {
   configured = true;
 }
 
+// Codex P1 2026-08-15: getOfferings + getTierOffering used to make a real
+// RevenueCat network call in decoy/hidden/demo sessions. resolveTier() +
+// getCustomerInfo() were correctly I3-gated, but the /plans page was still
+// emitting an offerings fetch — a coerced user opening plans in a decoy
+// session leaked a RevenueCat request. Chokepoint here rather than at every
+// UI call site so no future caller can silently reopen the leak.
 export async function getOfferings() {
   if (!isNative()) return null;
+  if (isDeniabilityOrDemoActive()) return null;
   const { current } = await Purchases.getOfferings();
   return current ?? null;
 }
 
 export async function getTierOffering(offeringId) {
   if (!isNative() || !offeringId) return null;
+  if (isDeniabilityOrDemoActive()) return null;
   try {
     const { all } = await Purchases.getOfferings();
     return all?.[offeringId] ?? null;
