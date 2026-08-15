@@ -30,7 +30,12 @@ import Spinner from "@/components/Spinner";
 export default function Settings() {
   const { t } = useTranslation("wallet");
   const queryClient = useQueryClient();
-  const { lock, recordAudit, getAuditLogEnabled, toggleAuditLog, fetchAuditEntries } = useWallet();
+  const {
+    lock, recordAudit, getAuditLogEnabled, toggleAuditLog, fetchAuditEntries,
+    // Branch review 2026-08-15 (S-2/A-1) — see AuditLog.jsx for why this
+    // defaults true: it governs the aria annotation only, never the write.
+    auditLogWritable = true,
+  } = useWallet();
   const { currentTier } = useTier();
   const isSafetyPlus = currentTier === "safety_plus";
   const [showDelete, setShowDelete] = useState(false);
@@ -129,11 +134,30 @@ export default function Settings() {
               <p className="text-xs text-muted-foreground">{t("settings.activity_log.description")}</p>
             </div>
           </div>
+          {/* S-2 (branch review 2026-08-15). `setAuditLog(checked)` used to run
+              unconditionally after the await, so in a decoy/hidden session — where
+              toggleAuditLog refuses — the switch still rendered ON and the entries
+              panel below opened on a log that was never enabled, until a remount
+              silently reverted it (the initial state re-reads getAuditLogEnabled()).
+              Drive local state off the APPLIED verdict, never off the argument.
+              A-1: same aria-disabled treatment as AuditLog.jsx — annotated, not
+              removed from the tab order, so the control still reads as present.
+
+              PARTIAL vs AuditLog.jsx, deliberately: that page carries a hardcoded
+              English sentence naming the decoy/hidden limitation, so it can point
+              aria-describedby at a real explanation. The only candidate here is
+              settings.activity_log.help, which describes the feature and says
+              nothing about decoy sessions — pointing at it would announce a
+              reason that is not there. Conveying the reason needs a new i18n key
+              across 44 locales; that is a separate change, not a silent machine
+              translation. A screen-reader user gets "dimmed" without the why. */}
           <Switch
             checked={auditLog}
             aria-label={auditLog ? t("settings.activity_log.disable_aria") : t("settings.activity_log.enable_aria")}
+            aria-disabled={!auditLogWritable || undefined}
             onCheckedChange={async (checked) => {
-              await toggleAuditLog(checked);
+              const applied = await toggleAuditLog(checked);
+              if (!applied) return;
               setAuditLog(checked);
               recordAudit('settings_changed');
             }}

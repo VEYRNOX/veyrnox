@@ -101,6 +101,7 @@ export interface WalletContextValue {
   restoreFromRecoveryBundles: any;
   recordAudit: any;
   auditLogEnabled: any;
+  auditLogWritable: any;
   getAuditLogEnabled: any;
   toggleAuditLog: any;
   fetchAuditEntries: any;

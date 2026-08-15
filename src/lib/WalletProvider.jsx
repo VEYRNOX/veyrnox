@@ -2416,6 +2416,13 @@ export function WalletProvider({ children }) {
     try { return isAuditLogEnabled(); } catch { return false; }
   });
   const getAuditLogEnabled = useCallback(() => isAuditLogEnabled(), []);
+  // Branch review 2026-08-15 (S-2/A-1): the single render-time answer to "can
+  // this session change the audit-log setting". Derived here, next to the gate
+  // it mirrors, rather than recomputed as `!isDecoy && !isHidden` inside each
+  // consuming page — that three-place duplication is exactly how the third
+  // unguarded consent writer shipped (see lib/consent.js). Both AuditLog.jsx
+  // and Settings.jsx read THIS.
+  const auditLogWritable = !isDecoy && !isHidden;
   const toggleAuditLog = useCallback(async (on) => {
     // Codex P1 2026-08-15: the toggle is exposed from Settings.jsx AND
     // AuditLog.jsx, both of which render in decoy/hidden sessions. Without
@@ -2423,10 +2430,18 @@ export function WalletProvider({ children }) {
     // localStorage) OR call clearAuditLogData() to erase the REAL session's
     // encrypted audit blob — without ever unlocking the primary wallet.
     // Same K-2 class as the other WalletProvider gates. Fail closed.
-    if (isDecoy || isHidden) return;
+    //
+    // Branch review 2026-08-15 (S-2): returns whether the change was APPLIED.
+    // Settings.jsx kept its own optimistic `auditLog` state and set it
+    // unconditionally after the await, so a refused toggle still rendered as ON
+    // — with the entries panel opening on a log that was never enabled — until
+    // a remount silently reverted it. Callers must drive their local state off
+    // this verdict, never off the argument they passed in (I4: fail honest).
+    if (isDecoy || isHidden) return false;
     setAuditLogPref(on);
     setAuditLogEnabledState(on);
     if (!on) await clearAuditLogData().catch(() => {});
+    return true;
   }, [isDecoy, isHidden]);
 
   // Read the encrypted audit log — returns [] in decoy/hidden/locked/empty.
@@ -2622,6 +2637,7 @@ export function WalletProvider({ children }) {
     // AUDIT LOG (opt-in, S4). All access to auditLog.js is routed through here.
     recordAudit,
     auditLogEnabled,
+    auditLogWritable,
     getAuditLogEnabled,
     toggleAuditLog,
     fetchAuditEntries,
