@@ -127,12 +127,26 @@ export function normalizeBtcTx(tx, address, networkKey) {
   if (!tx || !tx.txid) return null;
   let inFromUs = 0n;
   let outToUs = 0n;
+  let touchedByUs = false;
   for (const vin of tx.vin || []) {
-    if (vin?.prevout?.scriptpubkey_address === address) inFromUs += BigInt(vin.prevout.value || 0);
+    if (vin?.prevout?.scriptpubkey_address === address) {
+      inFromUs += BigInt(vin.prevout.value || 0);
+      touchedByUs = true;
+    }
   }
   for (const vout of tx.vout || []) {
-    if (vout?.scriptpubkey_address === address) outToUs += BigInt(vout.value || 0);
+    if (vout?.scriptpubkey_address === address) {
+      outToUs += BigInt(vout.value || 0);
+      touchedByUs = true;
+    }
   }
+  // Codex P2 2026-08-15: a poisoned / stale indexer can return tx rows the
+  // watched address never participated in. Without this guard those rows
+  // would fall through as `self` (net=0) and render as legitimate history
+  // entries. Reject any row where neither inputs nor outputs match this
+  // address — the indexer is being asked for txs FOR this address, so
+  // anything else is bogus.
+  if (!touchedByUs) return null;
   const net = outToUs - inFromUs; // >0 received, <0 sent
   const type = net > 0n ? 'receive' : net < 0n ? 'send' : 'self';
 
@@ -193,11 +207,13 @@ export function normalizeSolEntry(entry, address, networkKey) {
   let type = 'self';
   let lamports = 0;
   let counterparty = null;
+  let touchedByUs = false;
   const msg = parsed?.transaction?.message;
   const meta = parsed?.meta;
   if (msg?.accountKeys && meta?.preBalances && meta?.postBalances) {
     const idx = msg.accountKeys.findIndex((k) => (k.pubkey || k) === address);
     if (idx >= 0) {
+      touchedByUs = true;
       const delta = (meta.postBalances[idx] || 0) - (meta.preBalances[idx] || 0);
       lamports = Math.abs(delta);
       type = delta > 0 ? 'receive' : delta < 0 ? 'send' : 'self';
@@ -211,6 +227,10 @@ export function normalizeSolEntry(entry, address, networkKey) {
     }
   }
 
+  // Codex P2 2026-08-15: same participation check as normalizeBtcTx. If the
+  // parsed accountKeys don't include this address, the row isn't ours —
+  // reject rather than fall through as `self`.
+  if (!touchedByUs) return null;
   const blockTime = sig.blockTime ?? parsed?.blockTime ?? null;
   // Fee enrichment (native units). Solana charges the fee to the fee payer, which
   // is always the first account (accountKeys[0]); we paid it only if that account
