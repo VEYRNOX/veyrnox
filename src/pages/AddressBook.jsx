@@ -11,34 +11,64 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { isValidAddressForCurrency, addressKindLabel } from "@/lib/addressValidation";
 import PageState from "@/components/PageState";
+import { useWallet } from "@/lib/WalletProvider";
+
+// Codex P2 2026-08-15: cap user-authored strings before persistence. Prevents
+// a pasted multi-megabyte value from bloating IndexedDB and dragging every
+// subsequent Address Book / Send screen render that re-hydrates the row.
+const CONTACT_NAME_MAX = 100;
+const CONTACT_NOTE_MAX = 500;
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 const EMOJIS = ["👤", "🏢", "💼", "🏦", "👨‍👩‍👧", "🤝", "🌍", "⚡"];
 
 export default function AddressBook() {
   const queryClient = useQueryClient();
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden;
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(null);
   const [form, setForm] = useState({ name: "", address: "", currency: "ETH", network: "Ethereum", emoji: "👤", note: "", is_trusted: false });
 
+  // Codex P1 2026-08-15: address-book rows live in a SHARED IndexedDB store
+  // (base44 local backend has no per-session partitioning). Reading from a
+  // decoy/hidden session leaks the real user's contacts; writing corrupts
+  // them (delete Alice, mark attacker address trusted, add fake contact).
+  // Gate reads at the query and writes at each mutation; render a neutral
+  // empty state in deniable sessions matching the K-2 pattern used across
+  // WalletProvider / SecurityCenter.
   const { data: contacts = [], isLoading, isError } = useQuery({
     queryKey: ["address-book"],
     queryFn: () => base44.entities.AddressBook.list("-created_date"),
+    enabled: !deniable,
   });
 
+  const denyInDeniable = () => {
+    throw Object.assign(new Error('Address Book is not available in this session'), { code: 'DENIABILITY_BLOCKED' });
+  };
+
   const create = useMutation({
-    mutationFn: (/** @type {any} */ data) => base44.entities.AddressBook.create(data),
+    mutationFn: (/** @type {any} */ data) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.AddressBook.create(data);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["address-book"] }); setOpen(false); setForm({ name: "", address: "", currency: "ETH", network: "Ethereum", emoji: "👤", note: "", is_trusted: false }); },
   });
 
   const remove = useMutation({
-    mutationFn: (/** @type {any} */ id) => base44.entities.AddressBook.delete(id),
+    mutationFn: (/** @type {any} */ id) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.AddressBook.delete(id);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["address-book"] }),
   });
 
   const toggleTrust = useMutation({
-    mutationFn: (/** @type {any} */ vars) => base44.entities.AddressBook.update(vars.id, { is_trusted: vars.is_trusted }),
+    mutationFn: (/** @type {any} */ vars) => {
+      if (deniable) denyInDeniable();
+      return base44.entities.AddressBook.update(vars.id, { is_trusted: vars.is_trusted });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["address-book"] }),
   });
 
@@ -54,7 +84,12 @@ export default function AddressBook() {
   const trimmedAddress = form.address.trim();
   const addressValid = isValidAddressForCurrency(trimmedAddress, form.currency, form.network);
   const showAddressError = trimmedAddress.length > 0 && !addressValid;
-  const canSave = !!form.name && !!trimmedAddress && addressValid && !create.isPending;
+  // Codex P2 2026-08-15: enforce name/note caps at save time. maxLength on the
+  // input elements is the belt (blocks typing past N); this is the suspenders
+  // (blocks paste past N + any future programmatic mutation of form state).
+  const nameOk = form.name.length > 0 && form.name.length <= CONTACT_NAME_MAX;
+  const noteOk = (form.note?.length ?? 0) <= CONTACT_NOTE_MAX;
+  const canSave = nameOk && !!trimmedAddress && addressValid && noteOk && !deniable && !create.isPending;
 
   const filtered = contacts.filter(c =>
     c.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -137,7 +172,7 @@ export default function AddressBook() {
                 </div>
               </div>
             </div>
-            <div><Label htmlFor="contact-name">Name</Label><Input id="contact-name" className="mt-1.5" placeholder="Alice's ETH Wallet" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div><Label htmlFor="contact-name">Name</Label><Input id="contact-name" className="mt-1.5" placeholder="Alice's ETH Wallet" maxLength={CONTACT_NAME_MAX} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value.slice(0, CONTACT_NAME_MAX) }))} /></div>
             <div>
               <Label htmlFor="contact-address">Wallet Address</Label>
               <Input
@@ -168,7 +203,7 @@ export default function AddressBook() {
                 </Select>
               </div>
             </div>
-            <div><Label htmlFor="contact-note">Note (optional)</Label><Input id="contact-note" className="mt-1.5" placeholder="e.g. Business partner" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} /></div>
+            <div><Label htmlFor="contact-note">Note (optional)</Label><Input id="contact-note" className="mt-1.5" placeholder="e.g. Business partner" maxLength={CONTACT_NOTE_MAX} value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value.slice(0, CONTACT_NOTE_MAX) }))} /></div>
             <div className="flex items-center gap-3">
               <Switch checked={form.is_trusted} onCheckedChange={v => setForm(f => ({ ...f, is_trusted: v }))} />
               <Label>Mark as Trusted</Label>
