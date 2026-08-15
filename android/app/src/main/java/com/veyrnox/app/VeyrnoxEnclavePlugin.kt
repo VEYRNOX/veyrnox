@@ -138,6 +138,16 @@ class VeyrnoxEnclavePlugin : Plugin() {
             call.reject("Plugin context unavailable", "NO_CONTEXT")
             return
         }
+        // RASP BLOCK-tier gate — mirrors HardwareKekPlugin.getHardwareFactor.
+        // Codex P1 2026-08-15: the Enclave plugin was reachable from in-page JS
+        // (Capacitor.Plugins.VeyrnoxEnclave) with NO native RASP gate, so an
+        // injected script on a hooked device could mint / touch the Enclave key.
+        // Match the HardwareKekPlugin posture: BLOCK tier rejects at the native
+        // layer, JS-level presignGate bypass cannot reach the key operation.
+        if (RaspIntegrityPlugin.isBlockTier(ctx)) {
+            call.reject("RASP_BLOCK", "Device integrity check failed — Enclave key operation refused (I4)")
+            return
+        }
         try {
             val result = service.createWrappingKey(ctx)
             val response = JSObject().apply {
@@ -188,6 +198,12 @@ class VeyrnoxEnclavePlugin : Plugin() {
         val blobB64 = call.getString("blob")
         if (blobB64.isNullOrEmpty()) {
             call.reject("wrap requires a non-empty base64 'blob' argument", "M2D_MISSING_BLOB")
+            return
+        }
+        // RASP BLOCK-tier gate — see createWrappingKey. Codex P1 2026-08-15.
+        val ctxForRasp = context
+        if (ctxForRasp == null || RaspIntegrityPlugin.isBlockTier(ctxForRasp)) {
+            call.reject("RASP_BLOCK", "Device integrity check failed — Enclave key operation refused (I4)")
             return
         }
         // BiometricPrompt requires a FragmentActivity. Capacitor's activity
@@ -295,6 +311,16 @@ class VeyrnoxEnclavePlugin : Plugin() {
                 "unwrap requires a non-empty base64 'ciphertext' argument",
                 "M2D_MISSING_CIPHERTEXT",
             )
+            return
+        }
+        // RASP BLOCK-tier gate — the highest-value chokepoint on this plugin.
+        // Codex P1 2026-08-15: unwrap() returns the plaintext inner vault blob
+        // after a biometric prompt. Without a native RASP check an injected
+        // script on a hooked device could invoke it, satisfy biometry, and
+        // walk away with plaintext. Mirror HardwareKekPlugin.getHardwareFactor.
+        val ctxForRasp = context
+        if (ctxForRasp == null || RaspIntegrityPlugin.isBlockTier(ctxForRasp)) {
+            call.reject("RASP_BLOCK", "Device integrity check failed — Enclave key operation refused (I4)")
             return
         }
         // `reason` is optional; the service defaults to a generic subtitle
