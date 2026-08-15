@@ -24,6 +24,7 @@
 // UNAUDITED-PROVISIONAL until independent third-party audit (§24).
 
 #import "HardwareKekPlugin.h"
+#import "RaspIntegrityPlugin.h"
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 #import <LocalAuthentication/LocalAuthentication.h>
@@ -83,6 +84,15 @@ static os_log_t VeyrnoxKekLog(void) {
 #pragma mark - enroll
 
 - (void)enroll:(CAPPluginCall *)call {
+    // Codex P1 2026-08-15 — same RASP gate as getHardwareFactor below.
+    // enroll() mints the SE key + wraps H; on a compromised runtime the
+    // wrap could be observed / the fresh key bound to a hostile Enclave
+    // state. Match the Android HardwareKekPlugin posture: BLOCK tier
+    // refuses before biometric prompt fires.
+    if ([RaspIntegrityPlugin earlyCheck]) {
+        [call reject:@"RASP_BLOCK" :@"Device integrity check failed — hardware key access refused (I4)" :nil :nil];
+        return;
+    }
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         @try {
             // L4 (staleness sweep): iOS Keychain items and the Secure Enclave key
@@ -259,6 +269,17 @@ static os_log_t VeyrnoxKekLog(void) {
 #pragma mark - getHardwareFactor
 
 - (void)getHardwareFactor:(CAPPluginCall *)call {
+    // Codex P1 2026-08-15: parity with Android HardwareKekPlugin.getHardwareFactor
+    // which gates on RaspIntegrityPlugin.isBlockTier(context). Without this, a
+    // hooked iPhone with injected in-page JS could invoke
+    // Capacitor.Plugins.HardwareKek.getHardwareFactor(), satisfy Face ID / Touch
+    // ID, and walk away with the raw hardware factor H in the attacker's JS
+    // context. earlyCheck() runs the same dyld scan + CS_VALID + P_TRACED +
+    // isCaptured probes AppDelegate uses at launch — cheap and BLOCK-tier.
+    if ([RaspIntegrityPlugin earlyCheck]) {
+        [call reject:@"RASP_BLOCK" :@"Device integrity check failed — hardware key access refused (I4)" :nil :nil];
+        return;
+    }
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         @try {
             NSData *encH = [self loadKeychainItem:KEY_ENC_H];
