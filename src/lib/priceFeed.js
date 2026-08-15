@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchPortfolioPricesUsdCG as fetchPortfolioPricesUsd } from '@/lib/coinGecko.js';
 import { PORTFOLIO_SYMBOLS } from '@/lib/cryptoCompare.js';
 import { useWallet } from '@/lib/WalletProvider';
-import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
+import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { DEMO } from '@/api/demoClient';
 
 // localStorage opt-in pref. "1" = on / ABSENT = off (mirrors lib/biometric.js,
@@ -28,8 +28,22 @@ export function isLivePricesEnabled() {
   catch { return false; } // storage unavailable → treat as OFF (I2: fail closed)
 }
 
-/** Persist the preference. ON is stored as '1'; OFF is stored as ABSENCE of the key. */
+/**
+ * Persist the preference. ON is stored as '1'; OFF is stored as ABSENCE of the key.
+ *
+ * Branch review 2026-08-15 (C-1): gated HERE rather than at each call site.
+ * WalletProvider.unlock() was gated on isPrimary, but four UI buttons write this
+ * key too — PriceCharts.jsx, Calculator.jsx, AssetCorrelationTimeline.jsx,
+ * CandlestickChart.jsx — and every one of them renders SPECIFICALLY in a
+ * deniability session, because each computes
+ * `livePricesOn = isLivePricesEnabled() && !isDeniabilityOrDemoActive()` and
+ * falls into the "Live prices are disabled — Enable" branch when that is false.
+ * LIVE_PRICE_PREF_KEY is itself in panic.js ALL_RESIDUE_KEYS, so a decoy/demo
+ * session tapping Enable could MINT a key that panic.js classifies as proof of a
+ * real install. One guard at the shared writer covers all six callers (K-2 class).
+ */
 export function setLivePricesEnabled(on) {
+  if (isDeniabilityOrDemoActive()) return; // I3/K-2: decoy/hidden/demo never mutates real prefs
   try {
     if (on) localStorage.setItem(LIVE_PRICE_PREF_KEY, '1');
     else localStorage.removeItem(LIVE_PRICE_PREF_KEY);
