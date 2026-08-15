@@ -1,7 +1,8 @@
 // @ts-nocheck
 //
-// ponytail: 2288 LOC deliberately NOT split into src/pages/send/ sub-modules
-// per the 2026-08 audit. This page is the pre-sign chokepoint: RASP artifact
+// ponytail: 2459 LOC (updated 2026-08-16) deliberately NOT split into
+// src/pages/send/ sub-modules per the 2026-08 audit. This page is the
+// pre-sign chokepoint: RASP artifact
 // composition -> action-password re-auth -> gas / nonce / recipient screening
 // -> Trezor branch (hw-send.js) vs software branch. Any structural move risks
 // reordering the pre-sign gates (P2-7, #746 recovery check, #961 audited

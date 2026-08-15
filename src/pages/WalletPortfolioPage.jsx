@@ -1,4 +1,10 @@
 // @ts-nocheck
+// ponytail: 1008 LOC (as of 2026-08-16) intentionally NOT split. Kept unified
+// for security-critical review continuity — the dashboard composes the vault
+// portfolio partitioning, the seed-backup nag surface, and the explore-mode
+// no-vault fallback in one file so an audit can read the full render path
+// without chasing helper modules. Upgrade path: extract read-only balance/
+// price helpers first, only once an independent audit re-reviews the flow.
 // pages/WalletPortfolioPage.jsx — MULTI-WALLET + PORTFOLIOS view (real vault).
 //
 // Replaces the single-wallet/mock dashboard in the LOCAL/native build. Models:
