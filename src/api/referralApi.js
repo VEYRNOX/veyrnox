@@ -38,18 +38,26 @@ export async function generateServerCode() {
   }
 }
 
+// Codex P2 2026-08-15: returns the code the SERVER actually registered, so a
+// caller whose client-supplied code collided with an existing row (previously
+// silently dropped by ON CONFLICT DO NOTHING) can reconcile its local state
+// to whatever the server minted server-side. Returns null on rate-limit,
+// deniability, network failure, or an exhausted server-retry loop.
 export async function registerCode(code) {
-  if (!isValidCode(code)) return;
-  if (isDeniabilityOrDemoActive()) return;
+  if (!isValidCode(code)) return null;
+  if (isDeniabilityOrDemoActive()) return null;
   const deviceId = getOrCreateDeviceId();
-  if (!deviceId) return;
+  if (!deviceId) return null;
   try {
-    await rpc('register_referral_code', {
+    const data = await rpc('register_referral_code', {
       p_code: code,
       p_device_id: deviceId,
     });
+    // SQL now returns text (the working code) or null; keep string-only.
+    return typeof data === 'string' && isValidCode(data) ? data : null;
   } catch {
     // Best-effort: silently ignore network/db failures on register.
+    return null;
   }
 }
 
