@@ -19,6 +19,23 @@ import { getKeyStore } from '@/wallet-core/keystore';
 import { KEK_ERR } from '@/wallet-core/keystore/kek.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
+// Persistent "this device cannot pass the hardware-tier gate" verdict. Written
+// when enroll() returns isInsecureTier (Chinese OEM Keystore reporting SOFTWARE
+// or unmapped, Android<11, no plugin, etc.) so the gate does not re-prompt on
+// every unlock forever. Cleared by panic-wipe (see panic.js METADATA_RESIDUE_KEYS)
+// and by Security settings "re-enable hardware protection" (clearKekInsecureTier).
+// I3: never written from a deniability/demo session (the effect returns early).
+export const KEK_INSECURE_TIER_KEY = 'veyrnox-kek-insecure-tier';
+function isKekInsecureTierPersisted() {
+  try { return localStorage.getItem(KEK_INSECURE_TIER_KEY) === '1'; } catch { return false; }
+}
+function persistKekInsecureTier() {
+  try { localStorage.setItem(KEK_INSECURE_TIER_KEY, '1'); } catch { /* best-effort */ }
+}
+export function clearKekInsecureTier() {
+  try { localStorage.removeItem(KEK_INSECURE_TIER_KEY); } catch { /* best-effort */ }
+}
+
 const WRONG_PIN_MSG =
   "That PIN didn’t match. Enter the PIN you use to unlock your wallet.";
 const NO_HARDWARE_MSG =
@@ -128,6 +145,12 @@ export function useKekEnrollmentGate({ isUnlocked }) {
       try {
         if (!Capacitor.isNativePlatform()) return;
         if (isDeniabilityOrDemoActive()) return;
+        // Persistent verdict: this device already failed the hardware-tier gate
+        // (StrongBox/TEE absent or Keystore reports SOFTWARE/unmapped — common on
+        // Chinese OEM ROMs without GMS, older Android, or plugin-unavailable
+        // builds). Without this the gate re-fires every unlock forever.
+        // Re-enable via Security settings (clearKekInsecureTier) or panic-wipe.
+        if (isKekInsecureTierPersisted()) return;
         const ks = getKeyStore();
         let secure;
         try { secure = await ks.isSecureHardwareAvailable(); } catch { return; }
@@ -161,6 +184,9 @@ export function useKekEnrollmentGate({ isUnlocked }) {
     } catch (e) {
       const { msg, isInsecureTier, isWrongPin } = classifyEnrollError(e);
       if (!isInsecureTier) await bestEffortClearCredential();
+      // Persist the ineligible verdict so the next unlock does NOT re-prompt.
+      // Deterministic per device — no benefit to asking again.
+      if (isInsecureTier) persistKekInsecureTier();
       return { ok: false, msg, isInsecureTier, isWrongPin };
     }
   }, []);
