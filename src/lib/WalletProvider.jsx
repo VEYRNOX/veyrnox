@@ -510,23 +510,20 @@ export function WalletProvider({ children }) {
     try {
       await verifyPasskeyAssertion(); // fail closed on cancel/failure
     } catch (err) {
-      // M-K — cloned-authenticator detection is ADVISORY, not a hard block. The
-      // user DID complete a user-verifying assertion (the possession factor was
-      // satisfied); the signCount stall is a heuristic warning, not proof, and the
-      // password below is still the real control. So we PASS the gate but carry a
-      // structured warning so the unlock UI can surface it (consistent with the
-      // wallet's warn-not-block posture). The counter is intentionally NOT
-      // advanced (verifyPasskeyAssertion threw before persisting), so the warning
-      // keeps showing until a legitimately higher signCount overtakes it.
+      // Codex P1 2026-08-15 — reversed the earlier M-K "advisory not block"
+      // posture. WebAuthn's monotonic-signCount contract (spec §5.1.3) exists
+      // to detect a cloned/exfiltrated credential; treating detection as
+      // PASSED nullified the guarantee whenever a caller already held the
+      // vault password. The M-K argument (userVerification was satisfied →
+      // possession factor is real) was correct about UV but conflated it with
+      // credential authenticity — a synced/backed-up/cloned private key can
+      // still produce a UV-passing assertion. False-positive paths (device
+      // restore, iCloud/Google Passwords sync) still leave the wallet
+      // accessible via the SAST-M-3 password-only escape hatch, so blocking
+      // here does not brick access; it forces the user to acknowledge the
+      // authenticator drift before trusting the passkey factor again.
       if (isPasskeyClonedError(err)) {
-        return {
-          status: PASSKEY_GATE.PASSED,
-          warning: {
-            code: 'authenticator_cloned',
-            oldSignCount: err.oldSignCount,
-            newSignCount: err.newSignCount,
-          },
-        };
+        throw new PasskeyGateError('cloned', err);
       }
       // Classify cancel-vs-broken so the UI can decide whether to surface the
       // password-only escape hatch (SAST M-3). We still THROW here — the unlock
@@ -1615,16 +1612,22 @@ export function WalletProvider({ children }) {
     // vault. The deliberate password-only escape hatch (opts.skipPasskey) is the
     // ONLY way past a failed gate, and it still requires the password below.
     let passkeySkipped = null;
-    // M-K — advisory cloned-authenticator warning (code 'authenticator_cloned').
-    // Carried out to the caller so the unlock UI can surface it as a WARNING; it
-    // never blocks unlock (the password below is the real control).
-    let passkeyWarning = null;
+    // M-K → Codex P1 2026-08-15: the ADVISORY-warning branch that used to
+    // populate a `passkeyWarning` here is gone — runPasskeyGate now THROWS on
+    // cloned-authenticator detection instead of returning PASSED-with-warning,
+    // so the clone signal reaches the UI as a PasskeyGateError('cloned').
+    //
+    // Branch review 2026-08-15 (C-2): the field itself is REMOVED rather than
+    // kept as a null "for API compatibility". Nothing destructured it — the one
+    // consumer was WalletEntry's advisory toast, which the same change made
+    // unreachable. A permanently-null field on a security return shape reads as
+    // a supported signal a caller may still branch on, and would quietly answer
+    // "no warning" forever.
     if (opts.skipPasskey) {
       passkeySkipped = 'escape-hatch';
     } else {
       const gate = await runPasskeyGate();
       if (gate.status === PASSKEY_GATE.UNAVAILABLE) passkeySkipped = 'unavailable';
-      if (gate.warning) passkeyWarning = gate.warning;
     }
     // Signal (not secret) when the biometric convenience factor was bypassed via
     // the escape hatch, so the UI can disclose it rather than silently proceed.
@@ -1933,7 +1936,7 @@ export function WalletProvider({ children }) {
     // Signal (not secret): tell the caller whether either convenience factor was
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
-    return { passkeySkipped, biometricSkipped, passkeyWarning };
+    return { passkeySkipped, biometricSkipped };
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // BIOMETRIC ONE-TAP UNLOCK (convenience over the existing vault).

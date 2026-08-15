@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useWallet } from "@/lib/WalletProvider";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
-import { isPasskeyGateError } from "@/lib/passkey";
+import { isPasskeyGateError, PASSKEY_GATE_MESSAGES } from "@/lib/passkey";
 import { isBiometricGateError } from "@/lib/biometric";
 import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -319,11 +319,11 @@ export default function HDWalletManager() {
       // retries or deliberately chooses the password-only path.
       if (isPasskeyGateError(e)) {
         setPasskeyFailed({ reason: e.reason });
-        setError(
-          e.reason === "cancelled"
-            ? "Passkey cancelled or unavailable. Try again, or unlock with your password if your passkey was removed from this device."
-            : "Your passkey couldn't be used (it may have been removed from this device). Unlock with your password below."
-        );
+        // Branch review 2026-08-15 (C-1) — same defect as WalletEntry.jsx, and
+        // the reason it was TWO defects: the copy was duplicated here verbatim,
+        // so a 'cloned' reason fell through to "may have been removed" on both
+        // screens. Both now read the one shared map.
+        setError(PASSKEY_GATE_MESSAGES[e.reason] ?? PASSKEY_GATE_MESSAGES.error);
       } else if (isBiometricGateError(e)) {
         setBiometricFailed(true);
         setError("Biometric authentication failed or was cancelled. Unlock with your vault password below.");
