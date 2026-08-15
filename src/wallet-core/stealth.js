@@ -177,6 +177,15 @@ const STORE = 'vault';
 // uniform 'vault:N' key shape is unchanged, so this introduces no new storage
 // tell relative to the prior pool — it is the same artifact, just larger.
 const POOL_SIZE = 256;
+// Codex P2 2026-08-15: reveal-secret minimum length. Was 4 — a coercer
+// could guess `1234`/`abcd`/etc. and there is no rate-limit outside slot-
+// resolution KDF cost. Bumped to 12 to match the wallet PIN minimum
+// (H-A on mainnet builds — see CLAUDE.md "Hard rules"). Exported so the
+// UI can render the same floor. A user who ENROLLED with a 4-char secret
+// before this bump can still REVEAL — the reveal path (tryRevealHidden)
+// does not check length, only the CREATE paths do, which prevents new
+// weak secrets without stranding existing wallets.
+export const MIN_STEALTH_SECRET_LEN = 12;
 const SLOT_KEYS = Object.freeze(
   Array.from({ length: POOL_SIZE }, (_, i) => `vault:${i + 1}`)
 );
@@ -343,6 +352,19 @@ function makeChaff() {
  * storage hiccup here break unlock.
  */
 export async function ensureStealthPool() {
+  // Codex P2 2026-08-15: provision the per-device slot-mapping salt at the
+  // SAME time as chaff, so `veyrnox-stealth-slot-salt` presence tracks "has
+  // a wallet" (universal) rather than "has a hidden wallet" (the property
+  // we must hide). Before this, the salt was written only inside
+  // createHiddenWallet / moveWalletToHidden — so local inspection could
+  // distinguish "hidden wallet ever created" from baseline just by checking
+  // whether the key exists. Panic-wipe already lists this key in
+  // DENIABILITY_RESIDUE_KEYS (panic.js), so post-wipe it is cleared
+  // together with the chaff pool; the next ensureStealthPool call after a
+  // fresh primary vault re-provisions both together, keeping the wipe
+  // shape universal too. getOrCreateStealthSalt is idempotent — a
+  // pre-existing salt is returned unchanged.
+  try { getOrCreateStealthSalt(); } catch { /* best-effort — matches chaff loop */ }
   const db = await openDb();
   try {
     for (const key of SLOT_KEYS) {
@@ -391,8 +413,8 @@ export async function ensureStealthPool() {
  * @returns {Promise<{ mnemonic: string, address: string, evm: object, btc: object, sol: object, slot: string, existing: boolean }>}
  */
 export async function createHiddenWallet(secret, strength = 128) {
-  if (typeof secret !== 'string' || secret.length < 4) {
-    throw new Error('Reveal secret must be at least 4 characters');
+  if (typeof secret !== 'string' || secret.length < MIN_STEALTH_SECRET_LEN) {
+    throw new Error(`Reveal secret must be at least ${MIN_STEALTH_SECRET_LEN} characters`);
   }
   await ensureStealthPool();
   const slot = await slotForSecret(secret);
@@ -468,8 +490,8 @@ export async function moveWalletToHidden(mnemonic, secret) {
   if (!validateMnemonic(mnemonic)) {
     throw new Error('Invalid recovery phrase: failed BIP-39 checksum/wordlist check');
   }
-  if (typeof secret !== 'string' || secret.length < 4) {
-    throw new Error('Reveal secret must be at least 4 characters');
+  if (typeof secret !== 'string' || secret.length < MIN_STEALTH_SECRET_LEN) {
+    throw new Error(`Reveal secret must be at least ${MIN_STEALTH_SECRET_LEN} characters`);
   }
   await ensureStealthPool();
   const slot = await slotForSecret(secret);
@@ -538,6 +560,15 @@ export async function tryRevealHidden(secret) {
     // decryptVault on random ct always fails — this call exists purely for its KDF
     // cost — and crucially provisions NO salt, so a reveal can never re-create the
     // deniability tell a panic wipe removed (panic.js F-02).
+    //
+    // Codex P3 2026-08-15: also match the salted-path IO shape by opening and
+    // immediately closing the IndexedDB handle. Prior code KDF-matched only;
+    // opening a DB is measurably non-zero work, so a stopwatch at the prompt
+    // could still infer "has salt" from "no salt" by an IDB-open delta. The
+    // matching P2 fix (ensureStealthPool now provisions the salt universally)
+    // means real devices essentially never hit this branch, but keeping the
+    // IO shape identical closes the residual signal at zero user cost.
+    try { const db = await openDb(); db.close(); } catch { /* IO-cost only */ }
     try { await decryptVault(makeChaff(), secret); } catch { /* KDF-cost only */ }
     return null;
   }
@@ -592,8 +623,8 @@ async function revealHiddenMnemonic(secret) {
  * @returns {Promise<void>}
  */
 export async function setHiddenActionPasswordRecord(secret, mnemonic, record) {
-  if (typeof secret !== 'string' || secret.length < 4) {
-    throw new Error('Reveal secret must be at least 4 characters');
+  if (typeof secret !== 'string' || secret.length < MIN_STEALTH_SECRET_LEN) {
+    throw new Error(`Reveal secret must be at least ${MIN_STEALTH_SECRET_LEN} characters`);
   }
   if (!validateMnemonic(mnemonic)) {
     throw new Error('Invalid recovery phrase');
