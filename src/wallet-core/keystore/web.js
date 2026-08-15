@@ -963,6 +963,12 @@ export const webKeyStore = {
       if (newKek) newKek.fill(0);
       if (dek) dek.fill(0);
       if (newSaltBytes) newSaltBytes.fill(0);
+      // Codex P2 2026-08-15: seed is a JS string — can't zero its bytes (see
+      // the same architectural residual documented in native.js:1247), but at
+      // least drop the local reference so GC can reclaim it as soon as
+      // possible. Without this the recovered mnemonic stayed reachable in
+      // the closure longer than necessary, widening heap-snapshot exposure.
+      seed = null;
     }
   },
 
