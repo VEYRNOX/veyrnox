@@ -94,6 +94,14 @@ function makeNativeFacade() {
     async restoreFromPersonalBackupShares(shares, newPassword, opts) {
       return (await load()).nativeKeyStore.restoreFromPersonalBackupShares(shares, newPassword, opts);
     },
+    // Personal Backup Phase 3 — raw persisted vault blob for bundling alongside
+    // shamir shares in exportRecoveryBundles. Metadata-only, no decryption, no
+    // biometric prompt. Web sibling on webKeyStore (web.js:getPersistedVault).
+    // Missing forwarder here made every native "Split & save 3 shares" throw
+    // "Vault export not available on this platform." (Codex P1, 2026-08-15).
+    async getPersistedVault() {
+      return (await load()).nativeKeyStore.getPersistedVault();
+    },
     async changePassword(currentPassword, newPassword, opts) {
       return (await load()).nativeKeyStore.changePassword(currentPassword, newPassword, opts);
     },
