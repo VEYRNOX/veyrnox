@@ -53,6 +53,46 @@ Steps:
 4. Output a structured report with sections: Correctness, Security/Honesty, Design System, Accessibility
 5. For each finding include: file path + line number, severity (critical/major/minor), description, and recommended fix
 
+## Fixing findings (NOT part of a scheduled run) — always a NEW PR cut from main
+
+A scheduled run only reports. But when a session is asked to fix what the review found,
+the fixes go in a **new PR cut from `origin/main`** — **never** as extra commits pushed
+onto the branch of the PR that was reviewed.
+
+```bash
+git fetch origin main
+git branch --no-track fix/<slug> origin/main   # --no-track: a bare push must not target main
+git worktree add "$TEMP/<slug>" fix/<slug>
+# fix + test there, then open a PR referencing the reviewed PR and its finding IDs
+```
+
+**Why (two failures on 2026-08-15, in one session).** Reviewed PRs routinely carry
+auto-merge armed, and `main` moves 10+ times a day across many concurrent sessions:
+
+- PR #1774 auto-merged *before* the follow-up commits were pushed. The pushes succeeded —
+  pushing to the branch of an already-merged PR is not an error — so nothing looked wrong
+  until `main` was checked and contained none of the fixes.
+- PR #1789 was merged by another actor *after* its auto-merge had been explicitly disabled
+  and confirmed `DISABLED`. So disabling auto-merge is **not** sufficient protection, and
+  holding someone else's PR open to buy time interferes with their work.
+
+Recovery in both cases was identical — branch from `main`, cherry-pick, open a new PR — so
+going there first skips the detour entirely. Do NOT arm auto-merge on the follow-up PR
+unless the user explicitly asks for the merge.
+
+### Verification habits these failures produced (apply regardless of branch strategy)
+
+- **A PR's `headRefOid` FREEZES at merge time.** A head SHA that does not match the branch
+  ref is therefore *not* proof of API lag — it is equally the signature of a merged PR.
+  Read `state` and `mergedAt`; only those disambiguate:
+  `gh pr view <n> --json state,mergedAt,headRefOid`.
+- **A successful `git push` is not proof the change shipped.** Confirm by reading the
+  content back out of the ref — `git show origin/main:<path> | grep -qF '<marker>'` — not
+  from the push output, a green check, or a merge notification. Same rule for a background
+  watcher: if it announces a merge, it must verify content before calling it done.
+- If you write a pre-push state check, **gate on it** (`||` / early exit). An informational
+  `echo` chained with `&&` buys early detection, not prevention.
+
 Constraints:
 - Never flip an asset status to "live" or write "verified" without a real explorer-confirmed txid supplied by the user
 - Never mock a security control — if something can't be delivered honestly, flag it as HONEST-DISABLED
