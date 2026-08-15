@@ -165,7 +165,7 @@ describe('biometricUnlock — retrieveUnlockSecretDirect (KEK-only, no app-layer
   it('releases the cached password WITHOUT calling BiometricAuth.authenticate', async () => {
     await storeUnlockSecret('kek-cached-pin');
 
-    const pw = await retrieveUnlockSecretDirect();
+    const pw = await retrieveUnlockSecretDirect({ kekEnrolled: true });
     expect(pw).toBe('kek-cached-pin');
 
     // The invariant that distinguishes it from retrieveUnlockSecret: NO app-layer
@@ -175,7 +175,7 @@ describe('biometricUnlock — retrieveUnlockSecretDirect (KEK-only, no app-layer
   });
 
   it('returns null (no stale/undefined leak) when nothing is cached', async () => {
-    expect(await retrieveUnlockSecretDirect()).toBe(null);
+    expect(await retrieveUnlockSecretDirect({ kekEnrolled: true })).toBe(null);
     expect(h.calls).not.toContain('authenticate');
   });
 });

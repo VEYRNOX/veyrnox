@@ -108,6 +108,30 @@ export function shouldDisarmBiometricUnlock({ biometricEnabled, duressConfigured
 }
 
 /**
+ * Codex P2 2026-08-15 — user-triggered escape hatch for the legacy residual gap
+ * documented above (users who configured a duress PIN BEFORE PR #762 wrote
+ * `veyrnox-duress-configured`, and therefore cannot be detected by
+ * enforceDuressBiometricInvariant). Callable from a Settings screen or the
+ * Emergency-PIN screen so the affected cohort can force-disarm one-tap unlock
+ * WITHOUT having to remove-and-re-add the Emergency PIN.
+ *
+ * Unlike enforceDuressBiometricInvariant() this does NOT probe residual state —
+ * it is only called when the user explicitly asks. So no chaff-cohort
+ * false-positive: only the user who taps the button loses one-tap unlock, and
+ * they can re-arm it on the next cold path.
+ *
+ * @returns {Promise<boolean>} true if the device was armed and has been disarmed.
+ */
+export async function forceDisarmBiometricUnlock() {
+  let armed = false;
+  try { armed = isBiometricUnlockEnabled(); } catch { return false; }
+  if (!armed) return false;
+  try { setBiometricUnlockEnabled(false); } catch { /* best-effort preference */ }
+  try { await clearUnlockSecret(); } catch { /* residual: secret may remain at rest */ }
+  return true;
+}
+
+/**
  * Enforce the invariant on the live device. Idempotent (a second call is a no-op,
  * because the first turned the preference off) and safe to call on every lock-screen
  * mount / app start.
