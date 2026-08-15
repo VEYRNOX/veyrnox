@@ -85,14 +85,23 @@ export default function PasskeySetup({ wallet, onRegistered }) {
     }
     setLoading(true);
     try {
+      // Codex P2 2026-08-15: the previous form embedded the wallet's stable
+      // id + user-chosen name into WebAuthn user metadata, which persists in
+      // platform passkey managers (Apple/Google/Microsoft Passwords) and can
+      // sync across the user's account. That leaks wallet identity into a
+      // third-party surface the wallet has no control over. Use an opaque
+      // random 32-byte user.id (per WebAuthn §5.4.3 recommendation) and a
+      // generic display name that carries no wallet identity.
+      const anonUserId = new Uint8Array(32);
+      crypto.getRandomValues(anonUserId);
       const credential = await navigator.credentials.create({
         publicKey: {
           challenge: generateChallenge(),
           rp: { name: "Veyrnox", id: window.location.hostname },
           user: {
-            id: new TextEncoder().encode(wallet.id),
-            name: wallet.name,
-            displayName: wallet.name,
+            id: anonUserId,
+            name: "Veyrnox wallet",
+            displayName: "Veyrnox wallet",
           },
           pubKeyCredParams: [
             { alg: -7, type: "public-key" },
