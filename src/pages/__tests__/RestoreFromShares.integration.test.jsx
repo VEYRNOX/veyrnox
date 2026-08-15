@@ -7,11 +7,19 @@
 // under the chosen PIN; the persisted-vault assertions prove that boundary was
 // not replaced by a UI mock.
 //
-// Scope note: the production restore currently imports only
-// parsed.container.wallets[0] into a fresh container. Multi-wallet/container and
-// out-of-vault presentation metadata are intentionally NOT asserted here; that
-// known limitation must be resolved as a product decision rather than silently
-// encoded as successful full-container recovery in this test.
+// Scope note — CORRECTED 2026-08-15. This previously read: "the production
+// restore currently imports only parsed.container.wallets[0] into a fresh
+// container … that known limitation must be resolved as a product decision
+// rather than silently encoded as successful full-container recovery in this
+// test." That was right when written and is now WRONG: #1807 resolved the
+// limitation — restoreFromRecoveryBundles writes the FULL restored container.
+// Marked as having been wrong rather than quietly reworded, per CLAUDE.md.
+//
+// The fixtures here are still deliberately single-wallet, and this suite still
+// asserts wallets).toHaveLength(1) — that is the fixture's shape, NOT a claim
+// about what restore preserves. Full-container preservation (2 wallets +
+// set-level records) is covered by RestoreFromShares.fullContainer.test.jsx.
+// Do not read the length-1 assertion below as documenting a limitation.
 
 import React from 'react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
