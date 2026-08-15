@@ -240,6 +240,15 @@ BEGIN
     RAISE EXCEPTION 'Invalid revenue' USING errcode = 'P0008';
   END IF;
 
+  -- Codex P2 2026-08-15: previously p_discount_cents was trusted entirely.
+  -- A caller could submit p_revenue_cents=599 with p_discount_cents=1000000000
+  -- (or -5000) and the tracker would report impossible positive/negative
+  -- commission. Discount is money in the earnings view, so bound it the same
+  -- way as revenue: non-negative and no larger than what was actually paid.
+  IF p_discount_cents IS NULL OR p_discount_cents < 0 OR p_discount_cents > p_revenue_cents THEN
+    RAISE EXCEPTION 'Invalid discount' USING errcode = 'P0010';
+  END IF;
+
   IF NOT EXISTS (SELECT 1 FROM referrals WHERE code = p_code) THEN
     RAISE EXCEPTION 'Code not found: %', p_code USING errcode = 'P0001';
   END IF;
@@ -365,13 +374,28 @@ $$;
 -- The rate-limit block therefore runs BEFORE any nullable guard, and NULL is
 -- explicitly rejected. Do not add a DEFAULT back — every caller must pass a
 -- device id from lib/deviceId.js (which itself fails closed on no-CSPRNG).
+-- Codex P2 2026-08-15: `ON CONFLICT (code) DO NOTHING` silently dropped a
+-- client-supplied code that happened to collide with an existing row. The
+-- client kept displaying that code as its own even though every attribution
+-- accrued to the pre-existing owner. Now returns the code that was actually
+-- registered:
+--   - happy path (unique) — insert p_code, return p_code
+--   - collision — mint fresh Crockford-base32 codes server-side (same loop
+--     shape as generate_referral_code) up to 8 tries, return the successful
+--     code so the client can reconcile its local state
+--   - rate limited or out of tries — return NULL; caller treats as retryable
+-- Return type changes from void → text. Any caller (client or SQL) that
+-- ignored the return before still works; the ones that reconcile now use it.
 CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid)
-RETURNS void
+RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
   recent_count int;
+  alphabet     text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  attempt      text;
+  i            int;
 BEGIN
   IF p_device_id IS NULL THEN
     RAISE EXCEPTION 'device_id required' USING ERRCODE = '22004';
@@ -382,12 +406,37 @@ BEGIN
    WHERE device_id = p_device_id
      AND created_at > now() - interval '1 hour';
   IF recent_count >= 3 THEN
-    RETURN;
+    RETURN NULL;
   END IF;
 
-  INSERT INTO referrals (code, device_id)
-  VALUES (p_code, p_device_id)
-  ON CONFLICT (code) DO NOTHING;
+  BEGIN
+    INSERT INTO referrals (code, device_id) VALUES (p_code, p_device_id);
+    RETURN p_code;
+  EXCEPTION WHEN unique_violation THEN
+    -- Fall through to server-side retry loop below.
+    NULL;
+  END;
+
+  FOR i IN 1..8 LOOP
+    attempt := 'VYX-' ||
+      substr(alphabet, 1 + (floor(random() * 32))::int, 1) ||
+      substr(alphabet, 1 + (floor(random() * 32))::int, 1) ||
+      substr(alphabet, 1 + (floor(random() * 32))::int, 1) ||
+      substr(alphabet, 1 + (floor(random() * 32))::int, 1) ||
+      substr(alphabet, 1 + (floor(random() * 32))::int, 1) ||
+      substr(alphabet, 1 + (floor(random() * 32))::int, 1);
+    BEGIN
+      INSERT INTO referrals (code, device_id) VALUES (attempt, p_device_id);
+      RETURN attempt;
+    EXCEPTION WHEN unique_violation THEN
+      CONTINUE;
+    END;
+  END LOOP;
+
+  -- Extremely unlikely — a 32^6 (~10^9) code space would need to be
+  -- ~exhausted for 8 tries to all collide. Return NULL and let the client
+  -- decide (retry later, surface an error, etc.).
+  RETURN NULL;
 END;
 $$;
 
