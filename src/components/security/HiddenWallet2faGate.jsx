@@ -34,7 +34,12 @@ export default function HiddenWallet2faGate() {
 
   const handleSuccess = useCallback(() => {
     setVerified(true);
-    toast.success('Hidden wallet unlocked');
+    // Codex P1 2026-08-15: was "Hidden wallet unlocked" — a session-type
+    // tell to a coercer watching over the user's shoulder. Generic wording
+    // that matches the primary-unlock toast (see WalletEntry.jsx) so the
+    // observable string is identical whether the user opened the primary
+    // or a hidden wallet.
+    toast.success('Wallet unlocked');
   }, []);
 
   // NOTE: no cancel handler. This modal cannot be dismissed (see Dialog onOpenChange /
@@ -92,18 +97,25 @@ export default function HiddenWallet2faGate() {
   return (
     <Dialog open={shouldShow} onOpenChange={() => {/* disallow manual close */}}>
       <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+        {/* Codex P1 2026-08-15: dropped every "Hidden" / "hidden wallet"
+            string from the visible copy — a coercer looking at the screen
+            can no longer tell this dialog is guarding a hidden session
+            vs. a critical action on the primary. Same wording as the
+            send-time step-up gate (see SendCrypto.jsx `two-factor at
+            critical actions` copy). The EyeOff icon is also swapped for
+            a neutral ShieldCheck-style implied by TwoFactorGate itself. */}
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <EyeOff className="w-5 h-5" />
-            Hidden Wallet 2FA
+            Two-factor verification
           </DialogTitle>
           <DialogDescription>
-            Complete the second factor to access this hidden wallet.
+            Complete the second factor to continue.
           </DialogDescription>
         </DialogHeader>
 
         <TwoFactorGate
-          title={`Unlock hidden wallet (${modeLabel})`}
+          title={`Verify (${modeLabel})`}
           mode={hiddenWallet2faMode}
           verify={verify}
           onSuccess={handleSuccess}
@@ -112,7 +124,7 @@ export default function HiddenWallet2faGate() {
         />
 
         <p className="text-xs text-muted-foreground text-center mt-4">
-          This step protects access inside the app. Your on-chain history and addresses are still public.
+          This step protects access inside the app.
         </p>
       </DialogContent>
     </Dialog>

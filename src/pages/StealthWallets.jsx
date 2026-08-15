@@ -41,6 +41,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
 import { base44 } from "@/api/base44Client";
+import { MIN_STEALTH_SECRET_LEN } from "@/wallet-core/stealth";
 import {
   HIDDEN_CHAINS, resolveHiddenBalance, seedDemoHiddenBalance,
 } from "@/lib/hiddenBalance";
@@ -216,7 +217,7 @@ function MoveExistingWallet() {
     setError(""); setPeek(null);
     if (!selected) { setError(t("stealth.move.err_select")); return; }
     const m = phrase.trim().replace(/\s+/g, " ");
-    if (secret.length < 4) { setError(t("stealth.move.err_secret_length")); return; }
+    if (secret.length < MIN_STEALTH_SECRET_LEN) { setError(t("stealth.move.err_secret_length")); return; }
     if (secret !== confirm) { setError(t("stealth.move.err_secret_mismatch")); return; }
     // Address-match: you can only hide a wallet you actually hold the keys to (and
     // you're hiding the one you selected, not a different wallet).
@@ -432,7 +433,7 @@ export default function StealthWallets() {
   // ----- create handler -----
   const handleCreate = async () => {
     setError(""); setSavedPhrase(""); setSavedIdentity(null);
-    if (secret.length < 4) { setError(t("stealth.create.err_secret_length")); return; }
+    if (secret.length < MIN_STEALTH_SECRET_LEN) { setError(t("stealth.create.err_secret_length")); return; }
     if (secret !== confirm) { setError(t("stealth.create.err_secret_mismatch")); return; }
     // CRITICAL: creating a hidden wallet is gated behind the second factor when one
     // is set (no-op otherwise). Runs after local validation.

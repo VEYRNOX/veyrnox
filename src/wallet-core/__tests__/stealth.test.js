@@ -164,8 +164,10 @@ describe('stealth / hidden wallets', () => {
     expect(after).toBe(POOL_SIZE);
   });
 
-  it('rejects a too-short reveal secret', async () => {
-    await expect(createHiddenWallet('ab')).rejects.toThrow(/at least 4/i);
+  it('rejects a too-short reveal secret (Codex P2 2026-08-15: bumped 4 → 12)', async () => {
+    await expect(createHiddenWallet('ab')).rejects.toThrow(/at least 12/i);
+    // Boundary — the old 4-char floor is now also rejected.
+    await expect(createHiddenWallet('1234')).rejects.toThrow(/at least 12/i);
   });
 
   it('returns the full multi-chain identity (EVM+BTC+SOL) from the existing derivation', async () => {
