@@ -118,6 +118,24 @@ class RaspIntegrityPlugin : Plugin() {
      */
     @PluginMethod
     fun checkIntegrity(call: PluginCall) {
+        // Probe canary (Codex P1 2026-08-15). Every detection helper wraps its
+        // OS calls in runCatching{...}.getOrDefault(false), so a Frida gadget
+        // hooking a common primitive (Debug.isDebuggerConnected, /proc reads,
+        // SystemClock) forces a throw INSIDE the swallow → the helper returns
+        // false → the verdict emits {hookedProcess:false, tampered:false, ...}
+        // that JS accepts as a valid clean sample. This canary calls three of
+        // those exact primitives WITHOUT the swallow. If the runtime is hooked
+        // and one throws, reject the call: the JS bridge catches the reject
+        // (nativeProbe.js:89) and returns { available:false } → detect() maps
+        // to INTEGRITY_UNAVAILABLE (WARN/BLOCK), never a fabricated CLEAN.
+        try {
+            Debug.isDebuggerConnected()
+            File("/proc/self/status").exists()
+            android.os.SystemClock.elapsedRealtime()
+        } catch (t: Throwable) {
+            call.reject("PROBE_CANARY_FAILED", "INTEGRITY_UNAVAILABLE", t)
+            return
+        }
         val result = JSObject()
         result.put("rooted",            detectRoot())
         result.put("hookedProcess",     detectHook())
