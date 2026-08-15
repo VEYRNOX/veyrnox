@@ -104,14 +104,42 @@ async function leaveExploreToChoose(page) {
 // (Was "You're set"-only before PR #1724 replaced the CREATE-path card with
 // WalletCreatedFlash — the "You're set" button no longer exists on that path.)
 async function waitForAuthedShell(page) {
+  // Telemetry consent is an interstitial that gates the WHOLE shell, so it is
+  // handled first and the rest of the chain re-evaluated after.
+  //
+  // Why the beforeEach pre-seed is not enough: freshLocalBuild() sets
+  // veyrnox-telemetry-consent='granted', but #1783 (cac2e0b6) added
+  // clearConsent() to BOTH createWallet and the import path in
+  // WalletProvider.jsx — a new wallet identity must not inherit the previous
+  // one's consent. That in-flow clear wipes the seeded value, so the one-time
+  // screen renders on the NEXT entry, i.e. after the reload-and-unlock these
+  // tests perform. Seeding cannot cover it; the screen has to be dismissed.
+  //
+  // DENY, never grant: a test must not switch real telemetry egress on. See
+  // CLAUDE.md on the run that wrote 126 events to production Supabase.
+  const consentDeny = page.getByRole('button', { name: 'No thanks' });
   const dismissCreatedFlash = page.getByRole('button', {
     name: 'Skip for now — take me to my wallet',
   });
   const dismissReceiveCard = page.getByRole('button', { name: "You're set" });
   const sendLink = page.getByRole('link', { name: 'Send', exact: true });
+
+  // .first() is REQUIRED on these or-chains. The created-flash overlay renders
+  // ON TOP of an already-painted dashboard, so the flash button and the sidebar
+  // Send link are visible simultaneously and the chain resolves to 2 elements —
+  // a Playwright strict-mode violation, not a missing element. Pre-existing
+  // latent bug in this helper; it only surfaced once the import test started
+  // routing through it (CI run 31887145905).
   await expect(
-    dismissCreatedFlash.or(dismissReceiveCard).or(sendLink),
+    consentDeny.or(dismissCreatedFlash).or(dismissReceiveCard).or(sendLink).first(),
   ).toBeVisible({ timeout: 30000 });
+  if (await consentDeny.isVisible()) {
+    await consentDeny.click();
+    await expect(
+      dismissCreatedFlash.or(dismissReceiveCard).or(sendLink).first(),
+    ).toBeVisible({ timeout: 30000 });
+  }
+
   if (await dismissCreatedFlash.isVisible()) {
     await dismissCreatedFlash.click();
   } else if (await dismissReceiveCard.isVisible()) {
@@ -225,7 +253,11 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     // could still hide behind it), so also assert it actually unlocks.
     await expect(page.getByRole('group', { name: /PIN entry/i })).toBeVisible();
     await enterPin(page, VAULT_PIN);
-    await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
+    // Via waitForAuthedShell, not a bare Send assertion: creation cleared stored
+    // consent (#1783), so this first post-creation entry meets the one-time
+    // telemetry screen before the dashboard. The helper dismisses it and still
+    // ends on the same Send-link assertion, so the unlock claim is unweakened.
+    await waitForAuthedShell(page);
   });
 
   test('onboarding-lockout regression: reload after IMPORTING a seed still unlocks with the same 8-digit PIN', async ({ page }) => {
@@ -258,7 +290,9 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
     await expect(page.getByPlaceholder('Enter your vault password')).toHaveCount(0);
 
     await enterPin(page, VAULT_PIN);
-    await expect(page.getByRole('link', { name: 'Send', exact: true })).toBeVisible({ timeout: 15000 });
+    // Same reason as the creation test above — #1783 clears consent on IMPORT
+    // too, so this entry meets the one-time telemetry screen first.
+    await waitForAuthedShell(page);
   });
 });
 
