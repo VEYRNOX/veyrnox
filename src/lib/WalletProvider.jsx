@@ -396,6 +396,17 @@ export function WalletProvider({ children }) {
   const autoLockMsRef = useRef(autoLockMsFromValue(autoLockValue));
   const lastActivityRef = useRef(0);     // throttle stamp for activity listener
 
+  // Codex P1 2026-08-15: unlock() race guard. unlock() was fully unsynchronized
+  // — two concurrent calls, OR a lock() during an in-flight unlock, could
+  // interleave so a stale completion re-mounted containerRef and flipped
+  // isUnlocked=true against a session the user already locked (or a
+  // duress/hidden context the OTHER unlock resolved to). This ref is a
+  // monotonic generation stamp: lock() and every unlock() ENTRY bump it, and
+  // unlock() checks that its captured gen still matches before EACH state
+  // write. A superseded continuation throws UNLOCK_SUPERSEDED before touching
+  // containerRef/isUnlocked/wallets/etc.
+  const unlockGenRef = useRef(0);
+
   // PROVISIONAL biometric-unlock UI state (see lib/biometric.js header). Holds
   // the SIMULATED prompt's props while shown; null when hidden. The resolver
   // ref carries the in-flight Promise's resolve/reject so the overlay's result
@@ -535,6 +546,30 @@ export function WalletProvider({ children }) {
   }, [showSimulatedPasskeyPrompt]);
 
   const lock = useCallback(() => {
+    // Codex P1 2026-08-15: invalidate any in-flight unlock BEFORE we clear
+    // session state. An unlock() continuation resuming after this line will
+    // see unlockGenRef.current has moved past its captured gen and abort
+    // its post-await state writes — so a stale re-mount can never race the
+    // clear below.
+    unlockGenRef.current += 1;
+    // Codex P2 2026-08-15: reject any outstanding biometric / passkey demo
+    // prompt so a user tap that lands AFTER lock() cannot resolve into a
+    // stale unlock() continuation and drive it into the state-write block
+    // against a now-locked session. Real (native/web) prompts live inside
+    // the OS/browser sheet and close on their own — this covers the demo
+    // and app-layer gate paths. Done inline (not via resolveBioPrompt /
+    // resolvePasskeyPrompt useCallbacks) so lock()'s dep list stays [] as
+    // it was — introducing those closures as deps would rearm the useCallback
+    // on every render and quietly break other consumers.
+    const _bio = bioResolverRef.current;
+    bioResolverRef.current = null;
+    setBioPrompt(null);
+    if (_bio) { try { _bio.reject(new Error('Biometric authentication cancelled by lock')); } catch { /* noop */ } }
+    const _pk = passkeyResolverRef.current;
+    passkeyResolverRef.current = null;
+    setPasskeyPrompt(null);
+    if (_pk) { try { _pk.reject(new Error('Passkey authentication cancelled by lock')); } catch { /* noop */ } }
+
     const c = containerRef.current;
     if (c && Array.isArray(c.wallets)) {
       // best-effort overwrite of EVERY seed before dropping the container — the
@@ -1595,6 +1630,18 @@ export function WalletProvider({ children }) {
   // passkey factor was dropped (escape hatch taken, or no authenticator
   // available) instead of silently proceeding (SAST M-1/M-2).
   const unlock = useCallback(async (password, opts = {}) => {
+    // Codex P1 2026-08-15: claim a generation stamp for this attempt. Every
+    // ENTRY (including a second concurrent unlock) bumps the counter, and
+    // lock() also bumps. After each `await` boundary that yields to the JS
+    // scheduler, we compare gen to the CURRENT counter — if it moved, this
+    // attempt was superseded and we bail before any state write. See the
+    // three `assertUnlockCurrent` calls below.
+    const gen = ++unlockGenRef.current;
+    const assertUnlockCurrent = () => {
+      if (unlockGenRef.current !== gen) {
+        throw Object.assign(new Error('UNLOCK_SUPERSEDED'), { code: 'UNLOCK_SUPERSEDED' });
+      }
+    };
     // PROVISIONAL app-layer biometric gate. In demo this shows the simulated
     // prompt; on native the real OS prompt fires inside keyStore.unlock(). A
     // cancel here throws a BiometricGateError and aborts the unlock before any
@@ -1751,6 +1798,12 @@ export function WalletProvider({ children }) {
         throw primaryErr; // total miss (PIN or password): equalized cost, then error
       }
     }
+    // Codex P1 2026-08-15: race guard checkpoint A — right before any state
+    // escapes to the visible session. If lock() (or a concurrent unlock)
+    // fired while we were awaiting keyStore.unlock / resolveDeniabilityUnlock
+    // above, bail with UNLOCK_SUPERSEDED so we never re-mount containerRef
+    // against a locked session.
+    assertUnlockCurrent();
     // `mnemonic` here is the DECRYPTED payload: on the primary path it is a
     // multi-seed container JSON (or a legacy bare mnemonic to be migrated); on
     // the deniability path it is a single bare decoy/hidden mnemonic. parseVault
@@ -1855,6 +1908,12 @@ export function WalletProvider({ children }) {
         // stamp is instead refreshed by the next real content write (add/remove/etc.).
         void keyStore.saveVaultContents(mv.serializeContainer(stamped), password, repersistOpts).catch(() => {});
       }
+      // Codex P1 2026-08-15: race guard checkpoint B — a lock() between the
+      // checkpoint A above and here can fire during the isVaultKekEnrolledSafe
+      // + saveVaultContents awaits. Bail before writing UI state so a stale
+      // primary continuation cannot re-populate wallets / activeIdRef after
+      // the user already locked.
+      assertUnlockCurrent();
       const { activeWalletId: active } = reconcileWalletMeta(mv.listWalletIds(stamped));
       activeIdRef.current = active;
       setIsDecoy(false);
@@ -1882,6 +1941,13 @@ export function WalletProvider({ children }) {
       setActivePortfolioIdState(MAIN_PORTFOLIO_ID);
     }
 
+    // Codex P1 2026-08-15: race guard checkpoint C — final gate before the
+    // visible unlock flip. Even the decoy/hidden branch above runs synchronously
+    // (no awaits), so checkpoint B is enough for primary; this second gate
+    // catches any yield between B and here in a future refactor. Cheap and
+    // authoritative — nothing else needs to guard downstream because
+    // isUnlocked=true is the observable "we're mounted" signal.
+    assertUnlockCurrent();
     setUnlocked(true);
     setExploreMode(false);
     setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
@@ -2637,13 +2703,24 @@ export function WalletProvider({ children }) {
     solAccount,
     deriveSol,
     withSolPrivateKey,
-    hasVault: keyStore.hasVault,
+    // Codex P2 2026-08-15: existence-of-primary-vault probes were exported
+    // raw, so a decoy/hidden consumer could observe whether the REAL primary
+    // vault exists (a coerced session could poll `vaultExists` and learn a
+    // fact about a wallet it isn't opening). Gate all three to a false /
+    // "no vault" answer in deniable sessions — matches the pattern in
+    // LoginActivity / TransactionHistory where cached data is locally
+    // blanked. The raw keyStore.hasVault stays reachable for the caller-
+    // async path, but wrapped so `await hasVault()` returns false in
+    // deniable and never touches native storage.
+    hasVault: (isDecoy || isHidden)
+      ? (async () => false)
+      : keyStore.hasVault,
     // Resolved vault-existence for the synchronous /landing route guard (I4).
     // vaultExists: true | false | null(unknown); vaultChecking: true until first
     // resolution. See src/components/LandingGuard.jsx. The raw async hasVault
     // above is kept for callers that await it.
-    vaultExists,        // resolved boolean | null
-    vaultChecking,      // true until first resolution
+    vaultExists: (isDecoy || isHidden) ? false : vaultExists,
+    vaultChecking: (isDecoy || isHidden) ? false : vaultChecking,
     // Duress / decoy controls (see wallet-core/duress.js). Deliberately NO
     // configured-state accessor here (deniability v2): set/remove are the only
     // exposed operations, both idempotent, so no consumer can ask "is it set?".
