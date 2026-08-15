@@ -77,14 +77,15 @@ describe('H-5 — the TIP opt-in discloses what actually leaves the device', () 
       expect(call, `${f} should still be part of the screened payload this test reasons about`).toContain(f);
     }
     // chain/actionType are not user data; everything else above is disclosed by
-    // remote_enabled + remote_counterparties_note.
-    const disclosure = `${screening.remote_enabled} ${screening.remote_counterparties_note}`.toLowerCase();
+    // remote_enabled (remote_counterparties_note was deleted when the
+    // recentCounterparties send was dropped — see the counterparties test
+    // above).
+    const disclosure = screening.remote_enabled.toLowerCase();
     expect(disclosure).toMatch(/recipient address/);
     expect(disclosure).toMatch(/own sending address/);
     expect(disclosure).toMatch(/amount/);
     expect(disclosure).toMatch(/contract address/);
     expect(disclosure).toMatch(/call data/);
-    expect(disclosure).toMatch(/20 addresses/);
   });
 });
 
