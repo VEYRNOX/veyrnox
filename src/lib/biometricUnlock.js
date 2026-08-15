@@ -267,9 +267,23 @@ export async function retrieveUnlockSecret() {
  * caller (WalletProvider.unlockWithBiometric) MUST gate this behind a confirmed
  * hasVaultKekWrap() === true check. On web there is no cached secret → null.
  *
+ * Codex P1 2026-08-15 — the security contract is now enforced at RUNTIME as well as
+ * in the doc block. Callers must explicitly pass `{ kekEnrolled: true }` after
+ * evaluating `keyStore.hasVaultKekWrap()`. A missing or false assertion throws — so a
+ * future non-KEK caller cannot silently bypass the biometric gate.
+ *
+ * @param {{ kekEnrolled?: boolean }} [assert]
  * @returns {Promise<string|null>}
  */
-export async function retrieveUnlockSecretDirect() {
+export async function retrieveUnlockSecretDirect(assert) {
+  if (!assert || assert.kekEnrolled !== true) {
+    throw new Error(
+      'retrieveUnlockSecretDirect requires an explicit `{ kekEnrolled: true }` assertion '
+      + 'from a caller that has already checked keyStore.hasVaultKekWrap(). Without KEK the '
+      + 'app-layer biometric gate is the SOLE protection; calling this directly bypasses it. '
+      + 'See the security contract in the doc block above.',
+    );
+  }
   if (DEMO) return demoGet();
   if (Capacitor.isNativePlatform()) return nativeReadSecret();
   return null;
@@ -291,4 +305,33 @@ export async function hasStoredUnlockSecret() {
   if (DEMO) return demoGet() != null;
   if (Capacitor.isNativePlatform()) return nativeHasSecret();
   return false;
+}
+
+/**
+ * Codex P1 2026-08-15 — surface the CURRENT protection level to downstream UI /
+ * audit tools so honest disclosure is possible without re-reading the header
+ * comment above.
+ *
+ *   'app-gate'  — biometric requirement enforced at the JS chokepoint (the
+ *                 current retrieveUnlockSecret() / retrieveUnlockSecretDirect()
+ *                 gate). Keychain/Keystore accessibility is
+ *                 `whenPasscodeSetThisDeviceOnly`, NOT a biometry-ACL bound
+ *                 key. Biometric-enrollment change does NOT auto-invalidate.
+ *                 This is what ships today.
+ *   'key-bound' — Keychain item pinned to `kSecAccessControlBiometryCurrentSet`
+ *                 (iOS) / `setUserAuthenticationRequired`+
+ *                 `setInvalidatedByBiometricEnrollment` (Android). Biometric-
+ *                 enrollment change wipes the item at the OS. TARGET status —
+ *                 needs a native shim (@aparajita/capacitor-secure-storage
+ *                 does not expose these flags today).
+ *   'demo'      — non-native fallback: in-memory only, no cryptographic gate.
+ *   'unavailable' — web (no cache, no gate).
+ *
+ * @returns {'app-gate' | 'key-bound' | 'demo' | 'unavailable'}
+ */
+export function biometricUnlockSecurityMode() {
+  if (DEMO) return 'demo';
+  if (!Capacitor.isNativePlatform()) return 'unavailable';
+  // No `key-bound` shim shipped yet — see LIMITATION in the header comment.
+  return 'app-gate';
 }

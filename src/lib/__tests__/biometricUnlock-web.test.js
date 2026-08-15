@@ -49,9 +49,15 @@ describe('biometricUnlock — plain web (no platform biometric)', () => {
     await expect(clearUnlockSecret()).resolves.toBeUndefined();
   });
 
+  it('retrieveUnlockSecretDirect throws without an explicit `{ kekEnrolled: true }` assertion (Codex P1 2026-08-15)', async () => {
+    await expect(retrieveUnlockSecretDirect()).rejects.toThrow(/kekEnrolled/);
+    await expect(retrieveUnlockSecretDirect({})).rejects.toThrow(/kekEnrolled/);
+    await expect(retrieveUnlockSecretDirect({ kekEnrolled: false })).rejects.toThrow(/kekEnrolled/);
+  });
+
   it('retrieveUnlockSecretDirect also returns null on web (no cached secret to bypass)', async () => {
     // The KEK-only direct path is unreachable on web (no native KEK vault), and even
     // if called must never conjure a secret where none is cached.
-    expect(await retrieveUnlockSecretDirect()).toBe(null);
+    expect(await retrieveUnlockSecretDirect({ kekEnrolled: true })).toBe(null);
   });
 });
