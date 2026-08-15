@@ -112,7 +112,16 @@ export function deriveEd25519(seed, path) {
   const segments = parseSlip10Path(path);
   let node = masterKey(seed);
   for (const index of segments) {
-    node = deriveChild(node, (index >>> 0) + HARDENED_OFFSET);
+    const next = deriveChild(node, (index >>> 0) + HARDENED_OFFSET);
+    // Codex P2 2026-08-15: wipe the parent's key + chain-code bytes before
+    // dropping the reference. Without this, ancestor SLIP-0010 material
+    // (parent private scalars + chain codes — enough to derive sibling
+    // Solana accounts under the same branch) sits in heap until GC.
+    // matches the try/finally zeroization pattern used in sol/send.js and
+    // sol/hw-send.js around this call.
+    if (node.key && node.key.fill) node.key.fill(0);
+    if (node.chainCode && node.chainCode.fill) node.chainCode.fill(0);
+    node = next;
   }
   return node;
 }

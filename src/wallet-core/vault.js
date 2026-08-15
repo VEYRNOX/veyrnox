@@ -456,13 +456,20 @@ export async function encryptVault(secret, password) {
     salt: b64(salt),
     iv: b64(iv),
   };
-  const ctBuf = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv, additionalData: vaultAad(blob) },
-    key,
-    ptBytes,
-  );
-  zero(ptBytes);
-  return { ...blob, ct: b64(new Uint8Array(ctBuf)) };
+  // Codex P2 2026-08-15: mirror the encryptVaultWithDekV3 try/finally so
+  // a crypto.subtle.encrypt rejection also zeros the plaintext seed —
+  // previously an exception here left the mnemonic resident in heap
+  // memory until GC. Same fix class as the 2026-08-09 v3 patch.
+  try {
+    const ctBuf = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv, additionalData: vaultAad(blob) },
+      key,
+      ptBytes,
+    );
+    return { ...blob, ct: b64(new Uint8Array(ctBuf)) };
+  } finally {
+    zero(ptBytes);
+  }
 }
 
 /**
@@ -520,13 +527,18 @@ export async function encryptVaultWithDek(secret, dek) {
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (dek), { name: 'AES-GCM' }, false, ['encrypt']);
   const ptBytes = enc.encode(secret);
   const blob = { v: VAULT_VERSION, kdf: 'kek-dek', iv: b64(iv) };
-  const ctBuf = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv, additionalData: vaultAad(blob) },
-    key,
-    ptBytes,
-  );
-  zero(ptBytes);
-  return { ...blob, ct: b64(new Uint8Array(ctBuf)) };
+  // Codex P2 2026-08-15: mirror the v3 try/finally so a
+  // crypto.subtle.encrypt rejection also zeros the plaintext seed.
+  try {
+    const ctBuf = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv, additionalData: vaultAad(blob) },
+      key,
+      ptBytes,
+    );
+    return { ...blob, ct: b64(new Uint8Array(ctBuf)) };
+  } finally {
+    zero(ptBytes);
+  }
 }
 
 /**
@@ -574,9 +586,8 @@ export async function encryptVaultWithDekV3(secret, dek, binding) {
   const blob = { v: VAULT_VERSION_V3, kdf: 'kek-dek', iv: b64(iv), kekWrap, kekSalt, hardwareKekVersion };
   // I1/I4: zero the plaintext seed bytes on EVERY path, including when
   // crypto.subtle.encrypt rejects (runtime crypto failure). Codex [P2],
-  // 2026-08-09. The sibling `encryptVaultWithDek` has the same shape and
-  // would benefit from the same guard, but it is pre-existing and out of
-  // scope here — a follow-up can lift it.
+  // 2026-08-09. The siblings `encryptVault` and `encryptVaultWithDek`
+  // now carry the same try/finally guard (Codex P2 2026-08-15).
   try {
     const ctBuf = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv, additionalData: vaultAad(blob) },
