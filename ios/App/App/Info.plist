@@ -70,6 +70,15 @@
 	<string>Veyrnox uses speech recognition so you can navigate the app hands-free. Your speech is sent to Apple's speech service for transcription; it is never used to unlock your wallet or access keys.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Veyrnox needs the microphone only while Voice Commands are switched on, to hear navigation commands.</string>
+	<!-- Codex P1 2026-08-15: NSCameraUsageDescription was missing while the
+	     Send flow's "Scan QR" opens navigator.mediaDevices.getUserMedia
+	     ({video}) via src/components/QRScanner.jsx. iOS rejects the app at
+	     review AND crashes the first camera request on-device without this
+	     string. Copy is scoped to the actual use (recipient addresses on
+	     Send, cold-key backup artifacts); never mentions "background",
+	     "photos", "video calls" — none of which apply. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Veyrnox uses the camera only when you tap "Scan QR code" — to read a recipient wallet address (Send) or a signed cold-key backup. Frames are processed on-device and never uploaded.</string>
 	<!-- Custom URL scheme so dApps / WalletConnect can launch Veyrnox via
 	     veyrnox://wc?uri=<wc-uri>. Works on an installed app with no hosting or
 	     domain verification (unlike the universal link below). -->
