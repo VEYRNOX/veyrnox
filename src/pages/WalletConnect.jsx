@@ -122,7 +122,7 @@ function PopularDapps() {
 
 function WalletConnectInner() {
   const { initialized, error, pendingProposals, pendingRequests, pair } = useWalletConnect();
-  const { isUnlocked } = useWallet();
+  const { isUnlocked, isDecoy, isHidden } = useWallet();
 
   const [uri, setUri] = useState('');
   const [pairError, setPairError] = useState(null);
@@ -195,6 +195,23 @@ function WalletConnectInner() {
             browser manually — do not click links in the wallet UI).
           </p>
         </div>
+        <PopularDapps />
+      </div>
+    );
+  }
+
+  // Codex P1 2026-08-15: a decoy/hidden session must never see a WC pairing
+  // request even when it is unlocked. The old gate ran only on `!isUnlocked`,
+  // so an inbound `wc:` deep link (handled by DeepLinkHandler) would drive a
+  // decoy session to /walletconnect and surface an unsolicited pairing dialog
+  // — I3 violation. Fail closed with the same neutral copy the locked state
+  // uses; the deniable session must be indistinguishable from a coerced-open
+  // wallet that simply has no dApp connector configured.
+  if (isDecoy || isHidden) {
+    return (
+      <div className={styles.page}>
+        <h1 className={styles.heading}>dApp Connector</h1>
+        <p className={styles.locked}>Unlock your wallet to connect to dApps.</p>
         <PopularDapps />
       </div>
     );

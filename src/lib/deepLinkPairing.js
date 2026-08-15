@@ -19,11 +19,25 @@
 // calls clearPendingWcUri() to drop the URI on every lock/panic-wipe.
 const PENDING_TTL_MS = 5 * 60 * 1000;
 
+// Codex P2 2026-08-15: hard ceiling on any inbound WC URI. A well-formed
+// WalletConnect v2 pairing URI is ~180 chars (topic + relay + sym-key +
+// methods); 4096 leaves plenty of headroom for future relay/protocol growth
+// while blocking DoS payloads that would drive URL/decodeURIComponent /
+// URLSearchParams / SDK CPU + memory churn on the deep-link path before any
+// structural check runs. Applied at BOTH extractWcUri (before URL parse) AND
+// setPendingWcUri (defence in depth for any future caller).
+const MAX_WC_URI_LEN = 4096;
+
 let pendingWcUri = null;
 let pendingWcAt = 0;
 
 /** Stash a pending pairing URI for the connector to pick up on next mount. */
 export function setPendingWcUri(uri) {
+  if (typeof uri === 'string' && uri.length > MAX_WC_URI_LEN) {
+    pendingWcUri = null;
+    pendingWcAt = 0;
+    return;
+  }
   pendingWcUri = uri || null;
   pendingWcAt = uri ? Date.now() : 0;
 }
@@ -85,6 +99,7 @@ function isVeyrnoxPairingUrl(u) {
  */
 export function extractWcUri(rawUrl) {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
+  if (rawUrl.length > MAX_WC_URI_LEN) return null;
   if (rawUrl.startsWith('wc:')) return rawUrl;
   try {
     const u = new URL(rawUrl);
