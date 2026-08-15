@@ -93,6 +93,7 @@ import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notif
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import { screenTransaction } from "@/api/tipScreen";
+import { ZERO_FROM_ADDRESS } from "@/lib/tipZeroFrom.js";
 import { resolveTipChain } from "./sendCryptoTipChain";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
@@ -776,18 +777,26 @@ export default function SendCrypto() {
   // fully signed raw tx we do not have pre-sign.
   const serializedTxForTip = isSolana ? solUnsignedTxQuery.data?.unsignedTxBase64 : undefined;
 
+  // Codex P1 2026-08-15: the outbound TIP payload used to ship the wallet's
+  // OWN address (`from: selectedWallet?.address`) and up to 20 previous
+  // counterparties on EVERY send. The user asked us to screen ONE recipient;
+  // shipping their identity + historical graph turns each screen into an
+  // identity-cluster leak against TIP (and any log sink on the way). Drop
+  // both. The screening quality delta is small — TIP still gets the chain,
+  // action type, recipient, contract, calldata, value, and (SOL) serialized
+  // tx. The `from` field stays as the zero address so TIP's parsers that
+  // require it accept the shape.
   const tipQuery = useQuery({
-    queryKey: ['tip-screen', toAddress, selectedWallet?.address, tipChain, canonicalAmount, serializedTxForTip],
+    queryKey: ['tip-screen', toAddress, tipChain, canonicalAmount, serializedTxForTip],
     queryFn: () => screenTransaction({
       chain: tipChain,
       actionType: isErc20 ? 'token_transfer' : 'transfer',
-      from: selectedWallet?.address,
+      from: ZERO_FROM_ADDRESS[tipChain],
       to: toAddress,
       ...(isErc20 && selectedAsset?.contractAddress && { contractAddress: selectedAsset.contractAddress }),
       ...(riskCalldata && { calldata: riskCalldata }),
       ...(canonicalAmount && { valueWei: canonicalAmount }),
       ...(serializedTxForTip && { serializedTx: serializedTxForTip }),
-      recentCounterparties: knownAddresses.slice(0, 20).map(k => k.address),
     }),
     enabled: tipScreenApplies,
     staleTime: 30_000,
@@ -1862,16 +1871,14 @@ export default function SendCrypto() {
                 <p className="text-destructive/80">{tw("send.screening.remote_unavailable")}</p>
               )}
               {/* H-5 — the disclosure must name what actually leaves the device.
-                  It previously said only "the recipient address", while the
-                  payload also carries the user's own address, the amount,
-                  contract/calldata, and up to 20 historical counterparties. */}
+                  The historical-counterparties leak (up to 20 addresses per
+                  request, sold as look-alike detection) was dropped by the
+                  send-leak fix in this PR; the copy no longer needs to
+                  disclose it. `remote_enabled` still names every field the
+                  payload actually carries (recipient, own address, amount,
+                  contract/calldata for token transfers). */}
               {remoteScreen && import.meta.env.VITE_TIP_BASE_URL && (
-                <>
-                  <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
-                  <p className="text-muted-foreground" data-testid="tip-counterparties-note">
-                    {tw("send.screening.remote_counterparties_note")}
-                  </p>
-                </>
+                <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
               )}
               {DEMO && (
                 <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">

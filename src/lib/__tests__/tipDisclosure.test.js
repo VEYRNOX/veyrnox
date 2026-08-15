@@ -46,11 +46,13 @@ describe('H-5 — the TIP opt-in discloses what actually leaves the device', () 
     expect(screening.remote_enabled).toMatch(/call data/i);
   });
 
-  it('discloses the historical counterparties, with the count', () => {
-    expect(screening.remote_counterparties_note).toMatch(/20 addresses/i);
-    expect(screening.remote_counterparties_note).toMatch(/transacted with before/i);
-    // And says plainly what that means, rather than burying it in a field list.
-    expect(screening.remote_counterparties_note).toMatch(/transaction history leaving your device/i);
+  it('does not disclose historical counterparties (send-leak dropped)', () => {
+    // The recentCounterparties payload field was removed by the send-leak fix;
+    // the disclosure must not promise a portion of transaction history is
+    // being sent when the code no longer sends it (I4, both directions).
+    expect(screening).not.toHaveProperty('remote_counterparties_note');
+    expect(sendSrc).not.toMatch(/send\.screening\.remote_counterparties_note/);
+    expect(sendSrc).not.toMatch(/data-testid="tip-counterparties-note"/);
   });
 
   it('no longer claims only the recipient address is sent', () => {
@@ -59,33 +61,31 @@ describe('H-5 — the TIP opt-in discloses what actually leaves the device', () 
       .not.toMatch(/^Online threat intelligence screening is active\. The recipient address will be sent to the TIP service at the verify step\.$/);
   });
 
-  it('the counterparties note is actually rendered, not just defined', () => {
-    // A disclosure string nobody renders is not a disclosure.
-    expect(sendSrc).toMatch(/send\.screening\.remote_counterparties_note/);
-    expect(sendSrc).toMatch(/data-testid="tip-counterparties-note"/);
-  });
-
   it('every field the request actually sends is covered by the disclosure', () => {
     // Guard against the payload growing a field while the copy stands still.
     // If you add a field to the screenTransaction call, either disclose it here
-    // or justify why it needs no disclosure.
+    // or justify why it needs no disclosure. `recentCounterparties` was
+    // deliberately removed by the send-leak fix — do NOT add it back without
+    // adding a matching disclosure sentence.
     const call = sendSrc.slice(
       sendSrc.indexOf('queryFn: () => screenTransaction({'),
       sendSrc.indexOf('enabled: tipScreenApplies'),
     );
-    const sentFields = ['from:', 'to:', 'contractAddress', 'calldata', 'valueWei', 'recentCounterparties'];
+    const sentFields = ['from:', 'to:', 'contractAddress', 'calldata', 'valueWei'];
+    expect(call, 'recentCounterparties must NOT reappear in the payload without an equivalent disclosure').not.toContain('recentCounterparties');
     for (const f of sentFields) {
       expect(call, `${f} should still be part of the screened payload this test reasons about`).toContain(f);
     }
     // chain/actionType are not user data; everything else above is disclosed by
-    // remote_enabled + remote_counterparties_note.
-    const disclosure = `${screening.remote_enabled} ${screening.remote_counterparties_note}`.toLowerCase();
+    // remote_enabled (remote_counterparties_note was deleted when the
+    // recentCounterparties send was dropped — see the counterparties test
+    // above).
+    const disclosure = screening.remote_enabled.toLowerCase();
     expect(disclosure).toMatch(/recipient address/);
     expect(disclosure).toMatch(/own sending address/);
     expect(disclosure).toMatch(/amount/);
     expect(disclosure).toMatch(/contract address/);
     expect(disclosure).toMatch(/call data/);
-    expect(disclosure).toMatch(/20 addresses/);
   });
 });
 
