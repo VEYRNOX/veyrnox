@@ -12,14 +12,21 @@
         android:theme="@style/AppTheme"
         android:networkSecurityConfig="@xml/network_security_config">
 
-        <!-- Defaults false. CI substitutes true only for Firebase Test Lab and
-             explicitly labelled staging store packages. -->
+        <!-- Defaults false. CI substitutes true only for the Firebase Test Lab
+             build variant (F-1, 2026-08-15 — staging store packages no longer
+             enable Firebase at all). -->
         <meta-data
             android:name="firebase_crashlytics_collection_enabled"
             android:value="${firebaseObservabilityCollectionEnabled}" />
         <meta-data
             android:name="firebase_performance_collection_enabled"
             android:value="${firebaseObservabilityCollectionEnabled}" />
+        <!-- F-1 Gap 3: the HARD kill switch. Unlike ..._enabled above, this
+             cannot be undone by setPerformanceCollectionEnabled(true) at
+             runtime. True everywhere except the Test Lab variant. -->
+        <meta-data
+            android:name="firebase_performance_collection_deactivated"
+            android:value="${firebasePerformanceDeactivated}" />
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
