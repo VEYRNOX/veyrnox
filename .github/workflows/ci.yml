@@ -72,12 +72,19 @@ jobs:
   # it before merge. It does NOT fail the build and does NOT block merge by
   # itself — branch protection / required-reviewer policy is what actually
   # gates the merge, same as any other PR review.
-  mainnet-flag-gate:
+  # Codex P1 2026-08-15: previously a single job did checkout+run(PR script)
+  # AND label+comment with pull-requests: write. A PR-authored edit to
+  # scripts/detect-mainnet-flag-changes.js would have run with the write token.
+  # Split: this job runs the PR script under contents: read ONLY and publishes
+  # a report artifact. `mainnet-flag-gate` (below) consumes the artifact with
+  # no checkout, under pull-requests: write, and does the label + comment.
+  mainnet-flag-detect:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
-      pull-requests: write
+    outputs:
+      has_changes: ${{ steps.detect.outputs.has_changes }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -90,13 +97,40 @@ jobs:
           node-version: 22
       - name: Detect mainnet flag changes
         id: detect
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          node scripts/detect-mainnet-flag-changes.js --base "origin/${{ github.base_ref }}" > mainnet-flag-report.json
+          node scripts/detect-mainnet-flag-changes.js --base "origin/${BASE_REF}" > mainnet-flag-report.json
           cat mainnet-flag-report.json
           HAS_CHANGES=$(node -e "console.log(JSON.parse(require('fs').readFileSync('mainnet-flag-report.json','utf8')).hasMainnetChanges)")
           echo "has_changes=$HAS_CHANGES" >> "$GITHUB_OUTPUT"
-      - name: Label + comment on flagged PR
+      - name: Upload report
         if: steps.detect.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: mainnet-flag-report
+          path: mainnet-flag-report.json
+          retention-days: 7
+
+  # NAME PRESERVED — this is a required status check on `main`. Renaming or
+  # letting it skip would leave the check missing forever (see CLAUDE.md
+  # "required check that never runs" note). Job always runs on PR; the
+  # label+comment step is conditional on the detect job's has_changes output.
+  mainnet-flag-gate:
+    needs: mainnet-flag-detect
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download report
+        if: needs.mainnet-flag-detect.outputs.has_changes == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: mainnet-flag-report
+      - name: Label + comment on flagged PR
+        if: needs.mainnet-flag-detect.outputs.has_changes == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
