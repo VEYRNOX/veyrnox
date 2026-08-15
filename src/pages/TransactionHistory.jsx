@@ -24,6 +24,13 @@ const statusMeta = {
   pending: { icon: Clock, cls: "text-caution", label: "Pending" },
   confirmed: { icon: CheckCircle2, cls: "text-primary", label: "Confirmed" },
   failed: { icon: XCircle, cls: "text-destructive", label: "Failed" },
+  // Codex P2 2026-08-15: fallback for unknown / missing tx.status. Prior
+  // behaviour fell open to "Confirmed" via `statusMeta[tx.status] || statusMeta.confirmed`,
+  // so a poisoned/stale indexer row with no trustworthy status could show
+  // green-check + "Confirmed" to the user. Now: unknown → neutral clock icon
+  // + "Unknown". Reader can see the row exists but must not treat it as
+  // confirmed money.
+  unknown: { icon: AlertTriangle, cls: "text-muted-foreground", label: "Unknown" },
 };
 
 const short = (a) => (a && a.length > 16 ? `${a.slice(0, 10)}…${a.slice(-6)}` : a || "—");
@@ -38,7 +45,7 @@ function addressFor(asset, wallet) {
 
 function TxRow({ tx }) {
   const { t } = useTranslation("wallet");
-  const sMeta = statusMeta[tx.status] || statusMeta.confirmed;
+  const sMeta = statusMeta[tx.status] || statusMeta.unknown;
   const StatusIcon = sMeta.icon;
   const isSend = tx.type === "send";
   const isSelf = tx.type === "self";
@@ -106,9 +113,15 @@ export default function TransactionHistory() {
     retry: 1,
   });
 
-  const source = data?.source;
-  const txs = data?.transactions || [];
-  const lockedLive = !DEMO && data?.reason === "locked";
+  // Codex P1 2026-08-15: `enabled:false` stops refetches, NOT cached reads.
+  // A real-session cache under the same queryKey would still render into a
+  // decoy/hidden session on mount. Blank the derived shape so the neutral
+  // "no history" state renders even if a stale cache exists. Same defence
+  // repeated in TransactionReceipt + LoginActivity in this wave.
+  const denySession = isDeniabilitySessionActive();
+  const source = denySession ? undefined : data?.source;
+  const txs = denySession ? [] : (data?.transactions || []);
+  const lockedLive = !DEMO && !denySession && data?.reason === "locked";
   const evmNoIndexer = data?.supported === false && data?.reason === "evm-no-indexer";
 
   return (

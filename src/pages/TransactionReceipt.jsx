@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { base44 } from "@/api/base44Client";
+import { useWallet } from "@/lib/WalletProvider";
 import { Search, Printer, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,13 +12,25 @@ const STATUS_ICON = { completed: <CheckCircle2 className="h-4 w-4 text-success" 
 
 export default function TransactionReceipt() {
   const { t } = useTranslation("wallet");
+  const { isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden;
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
 
-  const { data: transactions = [], isLoading, isError } = useQuery({
+  // Codex P1 2026-08-15: previously unconditional — receipt search / print
+  // enumerated real-session tx metadata in decoy/hidden. Two chokepoints:
+  // gate the query so no backend hit happens, AND short-circuit cached
+  // renders below with `transactionsRaw` — see the fresh derived value.
+  const { data: transactionsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["transactions"],
     queryFn: () => base44.entities.Transaction.list("-created_date", 100),
+    enabled: !deniable,
   });
+  // Cache-bleed defence: even with enabled:false, React Query still serves a
+  // previously-populated cache on read. Blanking here ensures a real-session
+  // cache never renders into a decoy/hidden session (same pattern as
+  // TransactionHistory / LoginActivity in this wave).
+  const transactions = deniable ? [] : transactionsRaw;
 
   const filtered = transactions.filter(tx =>
     !search || tx.id?.toLowerCase().includes(search.toLowerCase()) ||
