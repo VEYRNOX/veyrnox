@@ -86,23 +86,24 @@ describe('HardwareKekSettings — previously-ineligible retry', () => {
     await waitFor(() => expect(screen.queryByTestId('pin-strength-pre-enroll')).toBeTruthy());
     // Trigger the enroll handler directly — PinPad interaction is out of scope
     // for this regression guard; we care about the flag-clear side effect.
-    const submit = container.querySelector('[data-testid="pinpad-submit"]');
-    if (submit) {
-      // Populate a PIN via the input if present, then submit.
-      const digitButtons = container.querySelectorAll('[data-testid^="pinpad-digit-"]');
-      for (let i = 0; i < 8 && digitButtons.length; i++) {
-        await act(async () => { (digitButtons[1]).click(); });
-      }
-      await act(async () => { submit.click(); });
-    } else {
-      // Fallback: call the module's enroll pathway through the mocked keystore.
-      // The component's handleEnroll requires a PIN; simulate by dispatching a
-      // synthetic submit isn't reliable across renderers, so this branch just
-      // asserts the export contract is what the component depends on.
-      const { clearKekInsecureTier } = await import('@/lib/useKekEnrollmentGate');
-      clearKekInsecureTier();
+    // Codex P1 2026-08-15: previous fallback branch imported
+    // clearKekInsecureTier() and called it directly, then asserted the flag
+    // was null — the test cleared the flag itself and then confirmed it had
+    // cleared, exercising ZERO component code. Worse, the `if (submit)` guard
+    // used a data-testid selector the PinPad has never exposed
+    // (src/components/security/PinPad.jsx uses aria-label, not data-testid),
+    // so the fallback was ALWAYS taken. Drive the real PinPad DOM instead.
+    const submit = screen.getByRole('button', { name: /^Submit PIN$/ });
+    // Digit buttons render as <button>N</button> with no aria-label — text is
+    // the accessible name. Pick "1" and press 8 times to satisfy the length.
+    const digitOne = screen.getByRole('button', { name: '1', exact: true });
+    for (let i = 0; i < 8; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => { digitOne.click(); });
     }
+    await act(async () => { submit.click(); });
     await waitFor(() => {
+      expect(enrollKek).toHaveBeenCalled();
       expect(localStorage.getItem(KEK_INSECURE_TIER_KEY)).toBe(null);
     });
   });

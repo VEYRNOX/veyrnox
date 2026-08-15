@@ -201,12 +201,25 @@ test.describe('WalletConnect live pairing — security controls (SUPERVISED)', (
   // Keeping a single client avoids the singleton collision: each test just calls
   // dapp.connect() which creates a fresh pairing topic + symmetric key on the live Core.
   let dapp = null;
+  let setupError = null;
 
   test.beforeAll(async () => {
     try {
       dapp = await createDApp();
-    } catch {
-      dapp = null; // tests will skip() on null dapp
+    } catch (err) {
+      // Codex P2 2026-08-15: previously ANY throw collapsed to dapp=null and
+      // every test skipped as "Relay unreachable" — a local SignClient init
+      // break, project-ID misconfig, or CSP-bypass regression would then look
+      // identical to a real relay outage. Only treat network-shaped errors as
+      // an infra skip; any other error surfaces on the first test.
+      const msg = String(err?.message || err);
+      const looksLikeNetwork = /ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|WebSocket|websocket|relay|timeout/i.test(msg);
+      if (looksLikeNetwork) {
+        dapp = null;
+      } else {
+        setupError = err;
+        dapp = null;
+      }
     }
   });
 
@@ -226,7 +239,7 @@ test.describe('WalletConnect live pairing — security controls (SUPERVISED)', (
   });
 
   test('H8: personal_sign with the wallet\'s own address returns a valid recoverable signature', async ({ page }) => {
-    if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
+    if (setupError) throw setupError; if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
 
     await unlockWallet(page);
     const { uri, approval } = await proposeConnection(dapp);
@@ -260,7 +273,7 @@ test.describe('WalletConnect live pairing — security controls (SUPERVISED)', (
   });
 
   test('H8: personal_sign with a mismatched signer address is rejected (no approval modal)', async ({ page }) => {
-    if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
+    if (setupError) throw setupError; if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
 
     await unlockWallet(page);
     const { uri, approval } = await proposeConnection(dapp);
@@ -284,7 +297,7 @@ test.describe('WalletConnect live pairing — security controls (SUPERVISED)', (
   });
 
   test('M11: a request on a disconnected/expired session is rejected (no approval modal)', async ({ page }) => {
-    if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
+    if (setupError) throw setupError; if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
 
     await unlockWallet(page);
     const { uri, approval } = await proposeConnection(dapp);
@@ -312,7 +325,7 @@ test.describe('WalletConnect live pairing — security controls (SUPERVISED)', (
   });
 
   test('H7: eth_signTypedData_v4 whose domain.chainId mismatches the session chain is rejected', async ({ page }) => {
-    if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
+    if (setupError) throw setupError; if (!dapp) { test.skip(true, `Relay unreachable — ${SKIP_REASON}`); return; }
 
     await unlockWallet(page);
     const { uri, approval } = await proposeConnection(dapp);
