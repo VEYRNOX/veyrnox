@@ -85,13 +85,19 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-          PUBLISH_STAGING: ${{ inputs.publish_staging }}
         run: |
           set -euo pipefail
+          # 2026-08-15: staging is the ONLY build variant we route through
+          # Firebase Test Lab. Force build_staging_release=true regardless of
+          # publish_staging so the Robo crawl always exercises the staging
+          # endpoints (nszlbcmcysftwyudthjz.supabase.co,
+          # veyrnox-staging.pages.dev), never production. publish_staging
+          # still gates whether that staging build gets uploaded to Play
+          # Internal / TestFlight afterwards.
           gh workflow run ci.yml \
             --ref "$GITHUB_REF_NAME" \
             -f build_firebase_test=true \
-            -f build_staging_release="$PUBLISH_STAGING"
+            -f build_staging_release=true
 
       # This workflow and ci.yml start independently on the same main push. A
       # manual branch run first dispatches ci.yml with build_firebase_test=true.
