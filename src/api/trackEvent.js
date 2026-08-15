@@ -26,7 +26,12 @@ export async function trackEvent(event, metadata = {}) {
   // and avoids unnecessary round-trips for invalid input.
   if (typeof event !== 'string' || !ALLOWED_EVENTS.has(event)) return;
   const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
-  if (JSON.stringify(safeMetadata).length > METADATA_BYTE_LIMIT) return;
+  // Codex P2 2026-08-15: `.length` counts UTF-16 code units, not bytes. A
+  // multibyte metadata field passed this preflight and then hit the SQL
+  // `octet_length > 4096` guard, which throws P0004 — swallowed by the
+  // try/catch below as a silent event loss the caller could not see.
+  // Match the server's byte count so preflight and server agree.
+  if (new TextEncoder().encode(JSON.stringify(safeMetadata)).byteLength > METADATA_BYTE_LIMIT) return;
   // CONSENT IS CHECKED HERE, NOT AT THE CALL SITE. Previously only
   // analytics.js emit() gated on consent, so the 11 pre-existing call sites
   // that invoke trackEvent() directly (WalletProvider, SendCrypto,
@@ -100,6 +105,12 @@ export const EVENT = {
   KEK_UNWRAP_FAILED: 'kek_unwrap_failed',
   DAPP_CONNECT_START: 'dapp_connect_start',
   DAPP_CONNECT_RESULT: 'dapp_connect_result',
+  // Codex P2 2026-08-15: emitted from src/wallet-core/evm/walletconnect/
+  // session.js rejectRequest, but was missing from both this allowlist AND
+  // the SQL allowlist — every reject was silently dropped despite the
+  // callsite being instrumented. Added here + in sql/telemetry-events-
+  // allowlist.sql to make the audit trail real.
+  DAPP_REQUEST_REJECTED: 'dapp_request_rejected',
 };
 
 // Set built after EVENT so TypeScript infers Set<string> with no null union.

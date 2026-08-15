@@ -51,6 +51,11 @@ BEGIN
     'kek_unwrap_failed',
     -- dApp
     'dapp_connect_start', 'dapp_connect_result',
+    -- Codex P2 2026-08-15: WC rejectRequest emits this from src/wallet-core/
+    -- evm/walletconnect/session.js. Missing here made every reject a silent
+    -- P0003 → trackEvent swallow. Added in the same commit as the client
+    -- ALLOWED_EVENTS entry in src/api/trackEvent.js.
+    'dapp_request_rejected',
     -- Growth / paywall (PR #1340)
     'referral_code_applied', 'paywall_shown',
     'paywall_dismissed', 'paywall_converted'
