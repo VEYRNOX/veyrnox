@@ -238,9 +238,10 @@ serve(async (req: Request) => {
     }
 
     // Content-Length can lie or be absent (chunked), so bound the actual read
-    // too rather than trusting the header.
+    // too rather than trusting the header. Codex P2 2026-08-15: measure bytes,
+    // not UTF-16 code units — multibyte UTF-8 slips past a `.length` cap.
     const raw = await req.text();
-    if (raw.length > MAX_BODY_BYTES) {
+    if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
       return json({ error: 'payload_too_large' }, 413, origin);
     }
 

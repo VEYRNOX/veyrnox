@@ -177,7 +177,8 @@ export async function handle(req: Request, deps?: {
   }
 
   const raw = await req.text();
-  if (raw.length > MAX_BODY_BYTES) {
+  // Codex P2 2026-08-15: byte-count, not UTF-16-code-unit count.
+  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
     return json({ error: 'payload_too_large' }, 413);
   }
 
