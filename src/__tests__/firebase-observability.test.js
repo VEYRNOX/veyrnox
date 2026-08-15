@@ -44,6 +44,20 @@ describe('Firebase staging observability', () => {
     );
     expect(androidManifest).toContain('firebase_crashlytics_collection_enabled');
     expect(androidManifest).toContain('firebase_performance_collection_enabled');
+    // F-1 Gap 3: the HARD Performance kill switch. `..._enabled=false` can be
+    // undone by setPerformanceCollectionEnabled(true) at runtime; `_deactivated`
+    // cannot. Must be true everywhere EXCEPT the Test Lab variant, so assert the
+    // placeholder is wired, negated from the opt-in flag, and overridden to
+    // false in firebaseTest only.
+    expect(androidManifest).toContain('firebase_performance_collection_deactivated');
+    expect(androidManifest).toContain('${firebasePerformanceDeactivated}');
+    expect(androidApp).toContain(
+      'manifestPlaceholders.firebasePerformanceDeactivated = !firebaseObservabilityEnabled',
+    );
+    const firebaseTestVariant = androidApp.slice(androidApp.indexOf('firebaseTest {'));
+    expect(firebaseTestVariant).toContain(
+      'manifestPlaceholders.firebasePerformanceDeactivated = false',
+    );
     expect(androidActivity).toContain('BuildConfig.FIREBASE_OBSERVABILITY_ENABLED');
     // F-1: Test Lab is the only channel — no "staging" build_channel branch.
     expect(androidActivity).toContain('"build_channel", "firebase_test_lab"');
