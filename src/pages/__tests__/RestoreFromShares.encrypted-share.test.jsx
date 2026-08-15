@@ -1,0 +1,106 @@
+// RestoreFromShares — passphrase-wrapped bundle detection (Codex P1 fix,
+// 2026-08-15 companion). PersonalBackup's export can now save share #2 as a
+// passphrase-encrypted `.veyrnox-recovery.json` bundle envelope
+// (recovery-bundle-v1). This restore page must detect that shape, prompt for
+// the passphrase, unwrap it, and feed the RECOVERED raw bundle JSON — not the
+// envelope — into restoreFromRecoveryBundles. Fails closed (surfaces the
+// error) on a wrong passphrase rather than silently dropping the share.
+//
+// useWallet is mocked so this suite isolates the page's own unwrap-then-call
+// wiring from the provider's shamir/vault/KEK chain (already covered by
+// RestoreFromShares.integration.test.jsx for the raw-bundle path).
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
+
+const RAW_BUNDLE_1 = JSON.stringify({
+  v: 1, shareIndex: 1, shareBytes: 'AAAA', vault: { ct: 'c', salt: 's', iv: 'i', kdf: {} }, vaultHash: 'h', meta: {},
+});
+const RAW_BUNDLE_2 = JSON.stringify({
+  v: 1, shareIndex: 2, shareBytes: 'BBBB', vault: { ct: 'c', salt: 's', iv: 'i', kdf: {} }, vaultHash: 'h', meta: {},
+});
+const PASSPHRASE = 'a-very-long-recovery-passphrase';
+
+let wrappedBundle2;
+
+beforeEach(async () => {
+  vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
+  vi.resetModules();
+  const { wrapBundleWithPassphrase } = await import('@/wallet-core/recoveryShare');
+  wrappedBundle2 = await wrapBundleWithPassphrase(
+    new TextEncoder().encode(RAW_BUNDLE_2),
+    PASSPHRASE,
+    2,
+  );
+}, 30_000);
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.resetModules();
+  cleanup();
+});
+
+async function loadPage(restoreFromRecoveryBundles) {
+  vi.doMock('@/lib/WalletProvider', () => ({
+    useWallet: () => ({ restoreFromRecoveryBundles }),
+  }));
+  const { default: RestoreFromShares } = await import('@/pages/RestoreFromShares');
+  return RestoreFromShares;
+}
+
+function pasteShares(a, b) {
+  let boxes = screen.getAllByPlaceholderText(/"shareIndex"/i);
+  fireEvent.change(boxes[0], { target: { value: a } });
+  boxes = screen.getAllByPlaceholderText(/"shareIndex"/i);
+  fireEvent.change(boxes[1], { target: { value: b } });
+}
+
+function enterPinAndSubmit(pin) {
+  const groups = screen.getAllByRole('group', { name: /pin entry/i });
+  for (const digit of pin) fireEvent.keyDown(groups[0], { key: digit });
+  for (const digit of pin) fireEvent.keyDown(groups[1], { key: digit });
+  fireEvent.keyDown(groups[1], { key: 'Enter' });
+}
+
+describe('RestoreFromShares — encrypted bundle detection', () => {
+  it('shows a passphrase field once an encrypted bundle is pasted in', async () => {
+    const restoreFromRecoveryBundles = vi.fn();
+    const Page = await loadPage(restoreFromRecoveryBundles);
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
+    pasteShares(RAW_BUNDLE_1, wrappedBundle2);
+    expect(await screen.findByPlaceholderText(/recovery passphrase/i)).toBeTruthy();
+  });
+
+  it('unwraps the encrypted share and calls restoreFromRecoveryBundles with the decoded raw bundle', async () => {
+    const restoreFromRecoveryBundles = vi.fn(async () => {});
+    const Page = await loadPage(restoreFromRecoveryBundles);
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    pasteShares(RAW_BUNDLE_1, wrappedBundle2);
+    fireEvent.change(await screen.findByPlaceholderText(/recovery passphrase/i), {
+      target: { value: PASSPHRASE },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    enterPinAndSubmit('24681024');
+
+    await waitFor(() => expect(restoreFromRecoveryBundles).toHaveBeenCalled(), { timeout: 15_000 });
+    const [bundles] = restoreFromRecoveryBundles.mock.calls[0];
+    expect(bundles).toEqual([RAW_BUNDLE_1, RAW_BUNDLE_2]);
+  }, 30_000);
+
+  it('surfaces a fail-closed error on a wrong passphrase and never calls restoreFromRecoveryBundles', async () => {
+    const restoreFromRecoveryBundles = vi.fn(async () => {});
+    const Page = await loadPage(restoreFromRecoveryBundles);
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    pasteShares(RAW_BUNDLE_1, wrappedBundle2);
+    fireEvent.change(await screen.findByPlaceholderText(/recovery passphrase/i), {
+      target: { value: 'the-wrong-but-long-enough-passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+    enterPinAndSubmit('24681024');
+
+    expect(await screen.findByRole('alert', {}, { timeout: 15_000 })).toBeTruthy();
+    expect(restoreFromRecoveryBundles).not.toHaveBeenCalled();
+  }, 30_000);
+});
