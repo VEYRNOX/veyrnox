@@ -395,6 +395,27 @@ neither had been run against build 5 (Play Pre-launch report showed
   first-run: fresh install → PIN → Create Wallet → seed reveal → import round-trip
   → send/receive on testnet. This is the closest analogue to Google's reviewer
   actually running the app; Apple's review has the same shape and same failure mode.
+- **iOS — rebuild the webview payload before archiving (mandatory).** Run
+  `npm run build && npx cap sync ios` immediately before any archive. `ios/App/App/public`
+  is the Capacitor webview payload and is **gitignored** (`ios/.gitignore:4`), so whatever
+  a previous local run left there is what Xcode packages — `xcodebuild archive` does NOT
+  rebuild the web bundle. A dev bundle left in that directory carries the flags a dev
+  build was made with. Verified on this machine 2026-08-15: the resident bundle was
+  `MODE:"production"` with `VITE_BYPASS_RASP:"1"` and `VITE_DEV_UNGATE_SEND:"1"` inlined.
+  Nothing shipped — it is untracked and absent from `origin/main`, and `cap sync`
+  overwrites it — but an archive taken without that rebuild would have submitted a
+  RASP-bypassed build to Apple. Cheap check on the built `.ipa` before uploading — must
+  print nothing:
+
+  ```
+  unzip -p App.ipa 'Payload/App.app/public/assets/index-*.js' \
+    | grep -oE 'VITE_(BYPASS_RASP|DEV_UNGATE_SEND|DEMO_MODE):"1"'
+  ```
+
+  Match the **value**, not just the name. Vite inlines the whole `import.meta.env` object,
+  so a build that legitimately sets these to `"0"` still contains the key — a bare
+  `grep VITE_BYPASS_RASP` would fire on a clean build. Verified against the resident
+  bundle: the name appears once, as `VITE_BYPASS_RASP:"1"`.
 - **Both stores — hard rule:** the golden path (Create Wallet + Import Seed +
   Send/Receive) must succeed on a device the developer has never touched with a
   debug build. If it fails, the KEK/RASP fail-closed path is the first place to look
