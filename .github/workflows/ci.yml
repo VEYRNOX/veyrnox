@@ -333,30 +333,24 @@ jobs:
           fi
       - name: Sync Capacitor
         run: npx cap sync android
-      - name: Auth to Google Cloud for staging Firebase config
-        if: github.event_name == 'workflow_dispatch' && inputs.build_staging_release == true
-        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - name: Setup gcloud for staging Firebase config
-        if: github.event_name == 'workflow_dispatch' && inputs.build_staging_release == true
-        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-      - name: Fetch Android staging Firebase config
-        if: github.event_name == 'workflow_dispatch' && inputs.build_staging_release == true
-        env:
-          FIREBASE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          FIREBASE_ANDROID_APP_ID: 1:567659013773:android:2f04cc2942faba1f8864c4
+      # F-1 (2026-08-15): the staging Firebase config fetch was REMOVED from
+      # this job. Firebase is Test Lab-only (android-firebase-test below) —
+      # see FirebaseObservability.swift for the reasoning. Release and staging
+      # store packages ship no google-services.json, so the google-services /
+      # crashlytics / perf Gradle plugins never apply and FirebaseApp is never
+      # initialised. The guard below enforces that on the built artifact.
+      - name: Firebase production-clean guard
         run: |
           set -euo pipefail
-          chmod +x .github/scripts/fetch-firebase-config.sh
-          .github/scripts/fetch-firebase-config.sh \
-            android "$FIREBASE_PROJECT_ID" "$FIREBASE_ANDROID_APP_ID" \
-            android/app/google-services.json
-          jq -e \
-            '.client | any(.client_info.android_client_info.package_name == "com.veyrnox.app")' \
-            android/app/google-services.json >/dev/null
+          # Artifact-level assertion (F-1 Gap 1). Without google-services.json
+          # the plugins do not apply and Firebase cannot auto-initialise, so
+          # its absence is the property that actually keeps a release clean.
+          if [ -e android/app/google-services.json ]; then
+            echo "::error::android/app/google-services.json present in a release build."
+            echo "Firebase must be Test Lab-only (F-1). Only android-firebase-test may fetch it."
+            exit 1
+          fi
+          echo "firebase guard: no google-services.json in release build ✓"
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -394,8 +388,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease \
-            -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}" \
-            -PFIREBASE_OBSERVABILITY_ENABLED="${{ inputs.build_staging_release || false }}"
+            -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -412,8 +405,7 @@ jobs:
       - name: Build release AAB (Play upload artifact)
         run: |
           ./gradlew bundleRelease \
-            -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}" \
-            -PFIREBASE_OBSERVABILITY_ENABLED="${{ inputs.build_staging_release || false }}"
+            -PRELEASE_CERT_SHA256="${{ secrets.RELEASE_CERT_SHA256 }}"
         working-directory: android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
