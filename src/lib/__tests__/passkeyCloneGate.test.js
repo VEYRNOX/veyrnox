@@ -28,7 +28,11 @@ import {
   isPasskeyClonedError,
   isPasskeyGateError,
   PASSKEY_GATE_MESSAGES,
+  PASSKEY_ESCAPE_HATCH_BLURBS,
+  passkeyUserHandle,
 } from '../passkey.js';
+import { sha256 } from '@noble/hashes/sha256';
+import { utf8ToBytes } from '@noble/hashes/utils';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (rel) => readFileSync(resolve(here, rel), 'utf8');
@@ -40,6 +44,7 @@ const stripComments = (s) =>
 const providerSrc = stripComments(read('../WalletProvider.jsx'));
 const walletEntrySrc = stripComments(read('../../components/WalletEntry.jsx'));
 const hdManagerSrc = stripComments(read('../../pages/HDWalletManager.jsx'));
+const passkeySetupSrc = stripComments(read('../../components/PasskeySetup.jsx'));
 
 describe('runPasskeyGate — clone detection BLOCKS (the M-K reversal)', () => {
   it('throws a PasskeyGateError with reason "cloned" on clone detection', () => {
@@ -163,5 +168,97 @@ describe('the password-only escape hatch stays reachable for a cloned passkey', 
         /if\s*\(\s*e\.reason\s*[!=]==?\s*['"]cloned['"]\s*\)/,
       );
     }
+  });
+});
+
+// ── C-3: the escape-hatch blurb must not reassure past a clone ──────────────
+describe('PASSKEY_ESCAPE_HATCH_BLURBS — framing varies, availability does not', () => {
+  it('covers every reason the gate can throw', () => {
+    for (const reason of ['cancelled', 'error', 'cloned']) {
+      expect(PASSKEY_ESCAPE_HATCH_BLURBS[reason], `${reason} needs a blurb`).toBeTruthy();
+    }
+  });
+
+  it('the cloned blurb warns instead of reassuring', () => {
+    const m = PASSKEY_ESCAPE_HATCH_BLURBS.cloned.toLowerCase();
+    expect(m).toMatch(/anti-cloning|cloning/);
+    expect(m).toMatch(/re-register/);
+    // The defect: the generic blurb invites the user past a possible compromise
+    // by attributing the failure to a removed/unavailable authenticator.
+    expect(m).not.toMatch(/if it was removed from this device/);
+  });
+
+  it('the cloned blurb still tells the user the password path works', () => {
+    // Framing changes; availability must not. A false positive (device restore,
+    // passkey sync) has to stay recoverable, or blocking bricks access.
+    expect(PASSKEY_ESCAPE_HATCH_BLURBS.cloned.toLowerCase()).toMatch(/password/);
+  });
+
+  it('both screens render the map rather than hardcoded prose', () => {
+    for (const [name, src] of [['WalletEntry', walletEntrySrc], ['HDWalletManager', hdManagerSrc]]) {
+      expect(src, `${name} should read the shared blurb map`).toMatch(
+        /PASSKEY_ESCAPE_HATCH_BLURBS\[\s*passkeyFailed\.reason\s*\]/,
+      );
+      expect(src, `${name} should not keep the old hardcoded blurb`).not.toMatch(
+        /Can't use your passkey\? If it was removed from this device/,
+      );
+    }
+  });
+});
+
+// ── S-3: the WebAuthn user handle must be opaque AND stable ────────────────
+describe('passkeyUserHandle — opaque and stable (S-3)', () => {
+  // Shaped like a real wallet id: 16 bytes of CSPRNG entropy, hex-encoded
+  // (wallet-core/multiVault.js).
+  const WALLET_A = 'a3f1c09e7b2d4856a1e0c7b5d9f28e64';
+  const WALLET_B = 'b41d77e2c0a95318fd6b2e4a80c17395';
+
+  it('returns a 32-byte handle', () => {
+    const h = passkeyUserHandle(WALLET_A);
+    expect(h).toBeInstanceOf(Uint8Array);
+    expect(h.length).toBe(32);
+  });
+
+  it('is STABLE — re-registering the same wallet reuses the entry, not duplicates it', () => {
+    // Platform managers key on (rp.id, user.id). This is the property a random
+    // handle lost, and the clone flow depends on it: it tells users to
+    // re-register, which must replace the superseded credential.
+    expect(Array.from(passkeyUserHandle(WALLET_A)))
+      .toEqual(Array.from(passkeyUserHandle(WALLET_A)));
+  });
+
+  it('is DISTINCT per wallet', () => {
+    expect(Array.from(passkeyUserHandle(WALLET_A)))
+      .not.toEqual(Array.from(passkeyUserHandle(WALLET_B)));
+  });
+
+  it('is OPAQUE — the wallet id does not appear in the handle', () => {
+    const hex = Array.from(passkeyUserHandle(WALLET_A))
+      .map((b) => b.toString(16).padStart(2, '0')).join('');
+    expect(hex).not.toContain(WALLET_A);
+    // Nor the bare hash of the id: the domain separator must be in the preimage,
+    // so the handle cannot be correlated with any other sha256(walletId) use.
+    expect(hex).not.toBe(
+      Array.from(sha256(utf8ToBytes(WALLET_A)))
+        .map((b) => b.toString(16).padStart(2, '0')).join(''),
+    );
+  });
+
+  it('fails closed on a missing wallet id rather than colliding across wallets', () => {
+    for (const bad of [undefined, null, '', 0, {}]) {
+      expect(() => passkeyUserHandle(/** @type {any} */ (bad))).toThrow(/walletId is required/);
+    }
+  });
+
+  it('PasskeySetup derives the handle instead of minting a random one', () => {
+    expect(passkeySetupSrc).toMatch(/passkeyUserHandle\(\s*wallet\.id\s*\)/);
+    expect(passkeySetupSrc).not.toMatch(/crypto\.getRandomValues\(\s*anonUserId\s*\)/);
+  });
+
+  it('PasskeySetup still sends a generic display name, not the wallet name', () => {
+    // The original leak this PR set out to close — do not regress it while
+    // making the handle stable.
+    expect(passkeySetupSrc).not.toMatch(/name:\s*wallet\.name/);
+    expect(passkeySetupSrc).not.toMatch(/displayName:\s*wallet\.name/);
   });
 });

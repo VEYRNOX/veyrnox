@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useWallet } from "@/lib/WalletProvider";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
-import { isPasskeyGateError, PASSKEY_GATE_MESSAGES } from "@/lib/passkey";
+import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS } from "@/lib/passkey";
 import { isBiometricGateError } from "@/lib/biometric";
 import { ASSETS, ASSET_STATUS, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -411,10 +411,10 @@ export default function HDWalletManager() {
                   can still unlock with their password. */}
               {passkeyFailed && (
                 <div className="pt-2 border-t border-border space-y-2">
+                  {/* C-3 — same shared map as WalletEntry.jsx; the duplicated
+                      blurb here is why C-3 was two defects, not one. */}
                   <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    Can't use your passkey? If it was removed from this device or your
-                    authenticator is unavailable, unlock with your vault password alone.
-                    Your password still protects the wallet.
+                    {PASSKEY_ESCAPE_HATCH_BLURBS[passkeyFailed.reason] ?? PASSKEY_ESCAPE_HATCH_BLURBS.error}
                   </p>
                   <Button
                     variant="outline"

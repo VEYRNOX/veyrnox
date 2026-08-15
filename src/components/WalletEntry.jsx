@@ -103,7 +103,7 @@ import TelemetryConsent from "@/components/TelemetryConsent";
 import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useWallet } from "@/lib/WalletProvider";
-import { isPasskeyGateError, PASSKEY_GATE_MESSAGES } from "@/lib/passkey";
+import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
 import {
   isBiometricGateError,
@@ -1665,10 +1665,12 @@ export default function WalletEntry() {
 
           {passkeyFailed && (
             <div className="pt-2 border-t border-border space-y-2">
+              {/* C-3 (branch review 2026-08-15): was a single reassuring
+                  sentence for every reason, which nudged the user straight past
+                  a possible clone. Keyed off the reason, from the shared map so
+                  this screen and HDWalletManager cannot drift again. */}
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Can't use your passkey? If it was removed from this device or your
-                authenticator is unavailable, unlock with your vault password alone.
-                Your password still protects the wallet.
+                {PASSKEY_ESCAPE_HATCH_BLURBS[passkeyFailed.reason] ?? PASSKEY_ESCAPE_HATCH_BLURBS.error}
               </p>
               <Button variant="outline" className="w-full gap-2" disabled={!unlockPassword || busy} onClick={() => runUnlock({ skipPasskey: true })}>
                 <KeyRound className="h-4 w-4" /> Unlock with password only
