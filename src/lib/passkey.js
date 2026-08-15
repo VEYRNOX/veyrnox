@@ -72,6 +72,8 @@
 //     the M2b/M2c keystore rework).
 
 import { Capacitor } from '@capacitor/core';
+import { sha256 } from '@noble/hashes/sha256';
+import { utf8ToBytes } from '@noble/hashes/utils';
 import { DEMO } from '@/api/demoClient';
 
 // localStorage keys. Mirrors the app's existing preference convention
@@ -732,6 +734,77 @@ export const PASSKEY_GATE_MESSAGES = Object.freeze({
     + 'it was copied to another device. If you did not set up a new device, treat '
     + 'this passkey as compromised and re-register it in Security settings. You can '
     + 'unlock with your password below.',
+});
+
+/**
+ * Domain separator for the WebAuthn user handle. Versioned so a future change
+ * to the derivation is a deliberate, greppable break rather than a silent one.
+ */
+const PASSKEY_USER_HANDLE_DOMAIN = 'veyrnox/passkey/user-handle/v1';
+
+/**
+ * Derive the opaque, STABLE WebAuthn `user.id` (user handle) for a wallet.
+ *
+ * Branch review 2026-08-15 (S-3). Two properties are needed and they pull in
+ * opposite directions if you pick either naive option:
+ *
+ *   - OPAQUE. The handle persists in platform passkey managers (Apple/Google/
+ *     Microsoft Passwords) and syncs across the user's account, so it must not
+ *     carry wallet identity. The pre-fix code sent `wallet.id` in plaintext.
+ *   - STABLE. Platform managers key credentials on (rp.id, user.id). A fresh
+ *     random handle per registration — the first attempt at the fix — is opaque
+ *     but makes every re-registration ADD another "Veyrnox wallet" entry instead
+ *     of replacing the old one. That collides head-on with the clone flow, which
+ *     tells the user to re-register after an anti-cloning failure: following the
+ *     security advice would litter their passkey manager with indistinguishable
+ *     duplicates, and leave the superseded credential sitting there.
+ *
+ * A domain-separated hash gives both. `wallet.id` is 16 bytes of CSPRNG entropy
+ * (multiVault.js), so 128 bits sit behind the preimage — the handle is not
+ * brute-forceable back to a wallet id, and it is identical every time for the
+ * same wallet.
+ *
+ * @param {string} walletId the wallet's internal id (never sent as-is).
+ * @returns {Uint8Array} 32-byte handle for `PublicKeyCredentialUserEntity.id`.
+ */
+export function passkeyUserHandle(walletId) {
+  if (typeof walletId !== 'string' || walletId.length === 0) {
+    // Fail closed: a caller without a wallet id must not silently register a
+    // credential under an empty/undefined handle that collides across wallets.
+    throw new Error('passkeyUserHandle: walletId is required');
+  }
+  return sha256(utf8ToBytes(`${PASSKEY_USER_HANDLE_DOMAIN}|${walletId}`));
+}
+
+/**
+ * Blurb shown ABOVE the password-only escape-hatch button, keyed by the reason
+ * the gate failed. Rendered by both unlock screens.
+ *
+ * Branch review 2026-08-15 (C-3): this copy was also duplicated verbatim across
+ * WalletEntry.jsx and HDWalletManager.jsx, and reassured in every case — "if it
+ * was removed from this device or your authenticator is unavailable…". For a
+ * clone signal that is the wrong nudge: it invites the user past a possible
+ * compromise without saying one might have happened. The hatch itself must stay
+ * available for all reasons (a device restore or iCloud/Google Passwords sync
+ * can trip the counter check, and blocking must never brick access) — what
+ * changes is the framing, not the availability.
+ * @type {Readonly<Record<'cancelled'|'error'|'cloned', string>>}
+ */
+export const PASSKEY_ESCAPE_HATCH_BLURBS = Object.freeze({
+  cancelled:
+    "Can't use your passkey? If it was removed from this device or your "
+    + 'authenticator is unavailable, unlock with your vault password alone. '
+    + 'Your password still protects the wallet.',
+  error:
+    "Can't use your passkey? If it was removed from this device or your "
+    + 'authenticator is unavailable, unlock with your vault password alone. '
+    + 'Your password still protects the wallet.',
+  cloned:
+    'Your vault password still works and is the control that actually protects '
+    + 'this wallet, so you can unlock below. But this passkey failed its '
+    + 'anti-cloning check — if you did not just restore a device or turn on '
+    + 'passkey sync, re-register it in Security settings before relying on it '
+    + 'again.',
 });
 
 /**
