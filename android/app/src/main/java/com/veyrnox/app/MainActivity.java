@@ -38,16 +38,18 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(VeyrnoxEnclavePlugin.class);
         super.onCreate(savedInstanceState);
 
-        // Staging/Test Lab observability. Never attach wallet state, addresses,
-        // balances, PINs, seeds, URLs, or user identifiers to Firebase.
+        // Firebase Test Lab-ONLY observability (F-1, 2026-08-15). The staging
+        // channel was removed: Crashlytics/Performance are native-layer and
+        // consult neither lib/consent.js nor isDeniabilityOrDemoActive(), so on
+        // any build a human installs, a crash inside a decoy/duress session
+        // would transmit to Google (I3). FIREBASE_OBSERVABILITY_ENABLED is now
+        // true only in the isolated `firebaseTest` variant. Never attach wallet
+        // state, addresses, balances, PINs, seeds, URLs, or user identifiers.
         if (BuildConfig.FIREBASE_OBSERVABILITY_ENABLED
                 && !FirebaseApp.getApps(this).isEmpty()) {
             FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
             crashlytics.setCrashlyticsCollectionEnabled(true);
-            crashlytics.setCustomKey(
-                "build_channel",
-                BuildConfig.FIREBASE_OBSERVABILITY_SMOKE ? "firebase_test_lab" : "staging"
-            );
+            crashlytics.setCustomKey("build_channel", "firebase_test_lab");
 
             FirebasePerformance performance = FirebasePerformance.getInstance();
             performance.setPerformanceCollectionEnabled(true);
