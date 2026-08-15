@@ -1,11 +1,12 @@
 // @ts-nocheck
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import BackButton from "@/components/BackButton";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS } from "@/wallet-core/assets";
 import { resolveReceive } from "@/lib/receiveAddress";
+import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO } from "@/api/demoClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,7 +31,8 @@ import { trackEvent, EVENT } from "@/api/trackEvent";
 // address to show, and we render the locked state.
 export default function ReceiveCrypto() {
   const { t } = useTranslation("wallet");
-  const { isUnlocked, accounts, btcAccount, solAccount } = useWallet();
+  const { isUnlocked, accounts, btcAccount, solAccount, isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden;
   const [searchParams] = useSearchParams();
   const urlAsset = searchParams.get("asset") ?? "ETH";
   const [symbol, setSymbol] = useState(urlAsset);
@@ -45,9 +47,15 @@ export default function ReceiveCrypto() {
   }, [urlAsset]);
 
   useEffect(() => {
+    // Codex P3 2026-08-15: local I3 chokepoint on the page itself. trackEvent
+    // already suppresses egress in deniability downstream (api/trackEvent.js),
+    // but relying only on the remote gate leaves this surface non-self-
+    // defensive — a future trackEvent refactor could regress silently. Two
+    // chokepoints is the K-2 pattern used across the app.
+    if (deniable) return;
     const known = ASSETS.some(a => a.symbol === urlAsset);
     void trackEvent(EVENT.RECEIVE_VIEWED, known ? { asset: urlAsset } : {}).catch(() => {});
-  }, [urlAsset]);
+  }, [urlAsset, deniable]);
 
   // DEMO address source. A backend-less walkthrough has no unlocked vault, so the
   // derived accounts are empty and EVERY asset would render the locked "unlock to
@@ -60,7 +68,58 @@ export default function ReceiveCrypto() {
   const btc = demo ? demo.btcAccount : btcAccount;
   const sol = demo ? demo.solAccount : solAccount;
 
-  const r = resolveReceive(symbol, { accounts: acc, btcAccount: btc, solAccount: sol });
+  const rRaw = resolveReceive(symbol, { accounts: acc, btcAccount: btc, solAccount: sol });
+  // Codex P2 2026-08-15: fund-safety guard. If a malformed/spoofed string ever
+  // reaches resolveReceive() (regression in address derivation, a mocked
+  // account, a corrupted state slot), the UI must NOT render / QR-encode /
+  // copy it as authoritative — the user would then hand a bad address to a
+  // sender and lose funds. Re-validate with the same family-aware validator
+  // the Send flow uses; on reject, strip the address and let the "locked /
+  // no address" branch below render the honest fallback.
+  const r = rRaw && rRaw.address && !isValidAddressForCurrency(rRaw.address, rRaw.asset?.symbol, rRaw.network?.name)
+    ? { ...rRaw, address: null }
+    : rRaw;
+
+  // Codex P2 2026-08-15: clipboard-hygiene plumbing for deniable sessions.
+  // The address the user copies IS a real address they need to share, so we
+  // can't refuse the copy. But in a decoy/hidden session that address (a
+  // real testnet or hidden-wallet address) would sit in OS clipboard
+  // history + cross-app paste indefinitely after the wallet relocks — a
+  // coercer can then read it. Bounded exposure: track the copied string and
+  // overwrite the clipboard with an empty string after a short TTL AND on
+  // unmount. Neither fully clears OS clipboard HISTORY (Android 13+ / iOS
+  // keep it regardless), but the CURRENT clipboard no longer holds the
+  // address once TTL fires. Honest ceiling — see the docs/ note if more is
+  // needed. ponytail: global timer, per-session token if this becomes hot.
+  const CLIPBOARD_CLEAR_MS = 60_000;
+  const clipboardTimerRef = useRef(null);
+  const lastCopiedRef = useRef(null);
+
+  const scheduleClipboardClear = () => {
+    if (clipboardTimerRef.current) clearTimeout(clipboardTimerRef.current);
+    clipboardTimerRef.current = setTimeout(async () => {
+      try {
+        // Only clear if the clipboard still holds what we wrote — we don't
+        // want to stomp on something the user copied elsewhere afterwards.
+        const cur = await navigator.clipboard.readText().catch(() => null);
+        if (cur && cur === lastCopiedRef.current) {
+          await navigator.clipboard.writeText('');
+        }
+      } catch { /* readText requires a user gesture in some browsers — skip */ }
+      lastCopiedRef.current = null;
+    }, CLIPBOARD_CLEAR_MS);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (clipboardTimerRef.current) clearTimeout(clipboardTimerRef.current);
+      // Best-effort synchronous clear on unmount — if the write is still
+      // there when we leave the page, blank it. No await — unmount is sync.
+      if (deniable && lastCopiedRef.current) {
+        try { navigator.clipboard.writeText(''); } catch { /* noop */ }
+      }
+    };
+  }, [deniable]);
 
   const copyAddress = async () => {
     if (!r?.address) return;
@@ -69,6 +128,13 @@ export default function ReceiveCrypto() {
       setCopied(true);
       toast.success(t("receive.copy.copied_toast"));
       setTimeout(() => setCopied(false), 2000);
+      // Only auto-clear in deniable sessions — a real-session user copying
+      // their own address expects the clipboard to persist until they paste
+      // it (Slack, email, etc.).
+      if (deniable) {
+        lastCopiedRef.current = r.address;
+        scheduleClipboardClear();
+      }
     } catch {
       toast.error(t("receive.copy.copy_failed_toast"));
     }

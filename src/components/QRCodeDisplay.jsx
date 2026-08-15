@@ -57,7 +57,15 @@ export default function QRCodeDisplay({ address, size = 200 }) {
       // Write the PNG to the cache directory then share/save via the OS sheet.
       try {
         const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
-        const fileName = `veyrnox-receive-${address.slice(0, 10)}.png`;
+        // Codex P1 2026-08-15: the filename must NOT embed any address bytes.
+        // The prior `veyrnox-receive-${address.slice(0,10)}.png` name was
+        // handed to Share.share() → arbitrary OS target, and share-sheet
+        // metadata / cache filenames / recipient app attachment names all
+        // preserve it verbatim. That leaks the address prefix through any
+        // sync target that scans filenames — same class as the earlier
+        // WalletSeedQR native-share fix. A generic name is enough; the QR
+        // pixels are what the user wants.
+        const fileName = `veyrnox-receive.png`;
         const result = await Filesystem.writeFile({
           path: fileName,
           data: base64Data,
@@ -83,7 +91,7 @@ export default function QRCodeDisplay({ address, size = 200 }) {
     // Web path: anchor-click download works in browsers.
     const a = document.createElement("a");
     a.href = dataUrl;
-    a.download = `veyrnox-receive-${address.slice(0, 10)}.png`;
+    a.download = `veyrnox-receive.png`;
     a.click();
   };
 
