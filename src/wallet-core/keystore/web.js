@@ -954,7 +954,9 @@ export const webKeyStore = {
       } else {
         await saveVault({ ...blob, ...newBinding });
       }
-      return;
+      // Web has no Enclave outer wrap — the M2c downgrade class doesn't apply.
+      // Return the same shape as native so callers stay platform-agnostic.
+      return { downgradedFromEnclave: false };
     } finally {
       if (H2 && H2.fill) H2.fill(0);
       if (newC) newC.fill(0);
