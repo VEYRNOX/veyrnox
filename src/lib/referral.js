@@ -45,12 +45,30 @@ function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+// Codex P2 2026-08-15: registerCode now returns the code the server actually
+// registered (or null). If it differs from the locally-minted attempt — a
+// collision the SQL layer resolved server-side — overwrite local state so
+// the user never displays a code that belongs to someone else. Runs async;
+// the return value below is the immediate optimistic value.
+function reconcileRegisteredCode(attempted) {
+  registerCode(attempted).then((working) => {
+    if (!working || working === attempted) return;
+    const cur = getLocalState();
+    // Only overwrite if the local state still holds the attempted code
+    // — a concurrent successful server-side flow may have already
+    // updated it, in which case do nothing.
+    if (cur.code === attempted) {
+      saveState({ ...cur, code: working });
+    }
+  }).catch(() => { /* best-effort */ });
+}
+
 export function generateCode() {
   const state = getLocalState();
   if (state.code) return state.code;
   const code = randomCode();
   saveState({ ...state, code });
-  void registerCode(code);
+  reconcileRegisteredCode(code);
   return code;
 }
 
@@ -66,7 +84,13 @@ export async function initCode(generateServerCode) {
   }
   const code = randomCode();
   saveState({ ...state, code });
-  void registerCode(code);
+  // Await here so the returned value already reflects any server-side
+  // reconciliation — initCode's callers (WalletProvider) already await it.
+  const registered = await registerCode(code);
+  if (registered && registered !== code) {
+    saveState({ ...getLocalState(), code: registered });
+    return registered;
+  }
   return code;
 }
 
