@@ -41,6 +41,7 @@ import { useTranslation } from "react-i18next";
 import { useWallet } from "@/lib/WalletProvider";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { DEMO } from "@/api/demoClient";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import {
   resolveDecoyBalance, seedDemoDecoyBalance, DECOY_NETWORK_KEY,
 } from "@/lib/decoyBalance";
@@ -81,6 +82,15 @@ function DecoyBalance({ address, refreshKey }) {
   useEffect(() => {
     let active = true;
     setState({ loading: true });
+    // Codex P2 2026-08-15: I3 chokepoint. resolveDecoyBalance issues a live
+    // network read against the decoy address. In a decoy/hidden session that
+    // is an avoidable egress — the caller already knows this is the decoy,
+    // so no read is needed. Fail closed to the "unavailable" branch, which
+    // the render below already handles neutrally.
+    if (isDeniabilityOrDemoActive()) {
+      setState({ loading: false, error: 'deniability' });
+      return () => { active = false; };
+    }
     resolveDecoyBalance(address)
       .then((r) => { if (active) setState({ loading: false, ...r }); })
       .catch((e) => { if (active) setState({ loading: false, error: e?.message || "read failed" }); });
@@ -107,10 +117,11 @@ export default function DuressPin() {
   const { t } = useTranslation("security");
   const wallet = useWallet();
   const {
-    isUnlocked, isDecoy, accounts,
+    isUnlocked, isDecoy, isHidden, accounts,
     hasVault, setDuressPin, removeDuressPin, enableDecoyBiometricUnlock,
     createWallet, unlock, lock, clearVault,
   } = wallet;
+  const deniable = isDecoy || isHidden;
   const { requireTwoFactor, gateModal } = useActionGuard();
 
   // ----- setup card state -----
@@ -204,6 +215,17 @@ export default function DuressPin() {
 
   // ----- setup handlers -----
   const handleSave = async () => {
+    // Codex P2 2026-08-15: duress setup from a decoy/hidden session must
+    // fail closed. Two reasons: (1) it makes no sense — the session is
+    // already deniable, setting a duress PIN inside a decoy would re-arm
+    // the decoy against itself; (2) the success panel below reads
+    // `resolveDecoyBalance(address)` which fires a network egress, and I3
+    // requires zero backend calls in decoy/hidden.
+    if (deniable) {
+      setError("Not available in this session.");
+      setPin(""); setConfirmPin("");
+      return;
+    }
     setError(""); setSavedPhrase(""); setSavedAddr("");
     setBioTurnedOff(false); setBioOptInFailed(false);
     if (pin.length < 8) { setError(t("duress.setup_err_length")); return; }
@@ -253,6 +275,9 @@ export default function DuressPin() {
         await refresh();
       } catch (e) {
         setError(e?.message || t("duress.setup_err_generic"));
+        // Blank the PIN buffers on failure so a re-render / screenshot
+        // doesn't retain the typed values (Codex P2 2026-08-15).
+        setPin(""); setConfirmPin(""); setDuressStep("enter");
       } finally {
         setSaving(false);
       }
