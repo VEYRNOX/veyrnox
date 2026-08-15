@@ -13,6 +13,7 @@ import {
 import { ENABLE_PERSONAL_BACKUP_SHARDS } from "@/wallet-core/shardBackup";
 import {
   unwrapShareWithPassphrase,
+  wrapBundleWithPassphrase,
   tryParseRecoveryEnvelope,
   checkRecoveryPassphrase,
   RECOVERY_PASSPHRASE_MIN_LENGTH,
@@ -692,8 +693,25 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
       shares = bundles.map(() => null); // placeholder for the finally-zero loop
       let completedAll = true;
       for (let i = 0; i < bundles.length; i++) {
-        const bytesToSave = new TextEncoder().encode(bundles[i]);
-        const filename = `veyrnox-recovery-${i + 1}-of-3.veyrnox-bundle.json`;
+        // Codex P1 (2026-08-15): the checkbox + passphrase were wired into
+        // this component's state but never consumed here, so "Encrypt one
+        // share with a passphrase" silently saved an unencrypted bundle.
+        // Share #2 (i === 1) now goes through wrapBundleWithPassphrase when
+        // the user opted in AND the passphrase passed the strength check —
+        // shares #1 and #3 stay raw bundles (spec: cloud share only).
+        const wrapThisOne = i === 1 && encryptOne && passphraseCheck.ok;
+        const bytesToSave = wrapThisOne
+          ? new TextEncoder().encode(
+              await wrapBundleWithPassphrase(
+                new TextEncoder().encode(bundles[i]),
+                recoveryPassphrase,
+                i + 1,
+              ),
+            )
+          : new TextEncoder().encode(bundles[i]);
+        const filename = wrapThisOne
+          ? `veyrnox-recovery-${i + 1}-of-3.veyrnox-recovery.json`
+          : `veyrnox-recovery-${i + 1}-of-3.veyrnox-bundle.json`;
         const result = await saveShareFile(bytesToSave, filename);
         if (result && result.saved) {
           setSavedCount(i + 1);
