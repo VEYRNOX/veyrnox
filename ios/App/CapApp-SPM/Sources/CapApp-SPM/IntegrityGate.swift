@@ -16,6 +16,10 @@
 import Foundation
 import UIKit
 import Darwin
+// _dyld_image_count / _dyld_get_image_name are declared in <mach-o/dyld.h>,
+// exposed to Swift via the MachO module. `import Darwin` alone doesn't pull
+// them in — compile failed with "cannot find '_dyld_image_count' in scope".
+import MachO
 
 // csops — same private libSystem symbol RaspIntegrityPlugin.m links against.
 // Not in the public iOS SDK headers; ABI has been stable for the CS_OPS_STATUS
