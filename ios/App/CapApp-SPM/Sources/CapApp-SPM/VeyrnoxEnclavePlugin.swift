@@ -63,6 +63,13 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("M2c hardware wrap is disabled", "M2C_DISABLED")
             return
         }
+        // Codex P1 2026-08-15 — parity with Android VeyrnoxEnclavePlugin.
+        // BLOCK tier refuses before minting the SE key, matching the RASP
+        // posture HardwareKekPlugin already carries on both platforms.
+        if IntegrityGate.isBlocked() {
+            call.reject("Device integrity check failed — Enclave key operation refused (I4)", "RASP_BLOCK")
+            return
+        }
         do {
             try service.createWrappingKey()
             call.resolve()
@@ -82,6 +89,11 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("Missing 'blob' parameter", "INVALID_PARAM")
             return
         }
+        // Codex P1 2026-08-15 — see createWrappingKey above.
+        if IntegrityGate.isBlocked() {
+            call.reject("Device integrity check failed — Enclave key operation refused (I4)", "RASP_BLOCK")
+            return
+        }
         do {
             let ciphertext = try service.wrap(blobB64: blob)
             call.resolve(["ciphertext": ciphertext])
@@ -99,6 +111,15 @@ public class VeyrnoxEnclavePlugin: CAPPlugin, CAPBridgedPlugin {
         }
         guard let ciphertext = call.getString("ciphertext") else {
             call.reject("Missing 'ciphertext' parameter", "INVALID_PARAM")
+            return
+        }
+        // Codex P1 2026-08-15 — highest-value chokepoint on this plugin.
+        // unwrap() returns the plaintext inner vault blob after biometry.
+        // Without this gate, injected JS on a hooked iPhone could satisfy
+        // Face ID / Touch ID and walk away with the plaintext vault. Parity
+        // with Android VeyrnoxEnclavePlugin.unwrap.
+        if IntegrityGate.isBlocked() {
+            call.reject("Device integrity check failed — Enclave key operation refused (I4)", "RASP_BLOCK")
             return
         }
         let reason = call.getString("reason") ?? "Unlock your VEYRNOX wallet"
