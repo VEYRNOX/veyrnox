@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
+import { useActionGuard } from "@/components/security/useActionGuard";
 import { Monitor, Trash2, Plus, DollarSign, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,15 @@ export default function SecurityCenter() {
   // I2/I3: decoy/hidden sessions must make zero backend calls and write no
   // trackable identifiers. Gate session registration + the tx-history query.
   const { isDecoy, isHidden } = useWallet();
+  const { requireTwoFactor, gateModal } = useActionGuard();
+  // Codex P2 2026-08-15: revoke was reachable without step-up re-auth.
+  // Route through requireTwoFactor (no-op when no 2FA configured; presents
+  // the PIN/passkey gate otherwise) — same wrapper the seed-reveal + duress
+  // setup flows use. Both the current-device Sign-out and the other-device
+  // revoke buttons below funnel here.
+  const guardedRevokeSession = (id, title = 'Revoke session') => {
+    requireTwoFactor(() => revokeSession.mutate(id), { title });
+  };
   const deniable = isDecoy || isHidden;
   const [showAddLimit, setShowAddLimit] = useState(false);
   const [limitCurrency, setLimitCurrency] = useState("ALL");
@@ -206,7 +216,7 @@ export default function SecurityCenter() {
                       title="Lock this device and require your PIN again"
                       onClick={() => {
                         if (window.confirm("Sign out this device? The wallet will lock and you'll need your PIN to continue.")) {
-                          revokeSession.mutate(s.id);
+                          guardedRevokeSession(s.id, 'Sign out this device');
                         }
                       }}
                     >
@@ -219,7 +229,7 @@ export default function SecurityCenter() {
                       className="text-destructive hover:bg-destructive/10 shrink-0"
                       title="Revoke this session"
                       aria-label="Revoke this session"
-                      onClick={() => revokeSession.mutate(s.id)}
+                      onClick={() => guardedRevokeSession(s.id, 'Revoke this session')}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -333,6 +343,7 @@ export default function SecurityCenter() {
           </div>
         </DialogContent>
       </Dialog>
+      {gateModal}
     </div>
   );
 }

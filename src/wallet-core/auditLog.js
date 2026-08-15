@@ -60,6 +60,7 @@ import { encryptVault, decryptVault } from './vault.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
+import { isDeniabilityOrDemoActive } from './deniabilitySession.js';
 
 // Same database + store as the primary vault (evm/vaultStore.js), the duress
 // decoy ('secondary'), the stealth pool ('vault:N'), and the panic marker
@@ -224,8 +225,16 @@ function putKey(db, key, value) {
 
 // ---- Enable switch (opt-in, OFF by default) ----
 
-/** @returns {boolean} whether the user has opted into the local audit log. */
+/**
+ * @returns {boolean} whether the user has opted into the local audit log.
+ *
+ * Codex P1 2026-08-15 — K-2 chokepoint. Fail-closed to `false` in
+ * deniable sessions so a coerced decoy Settings screen cannot read the
+ * real user's audit-log preference (which would be a tell) and the
+ * downstream `appendAuditEvent()` gate below correctly refuses to write.
+ */
 export function isAuditLogEnabled() {
+  if (isDeniabilityOrDemoActive()) return false;
   try {
     // Migration: move old readable pref key to opaque key on first access
     const legacyPref = localStorage.getItem(_AUDIT_LOG_PREF_KEY_OLD);
@@ -240,8 +249,15 @@ export function isAuditLogEnabled() {
   }
 }
 
-/** Persist the opt-in preference. OFF is stored as ABSENCE of the key. */
+/**
+ * Persist the opt-in preference. OFF is stored as ABSENCE of the key.
+ *
+ * Codex P1 2026-08-15 — K-2 chokepoint: a deniable session must NOT
+ * mutate the real user's stored preference. No-op in deniable. The
+ * Settings toggle in a decoy session will click but never persist.
+ */
 export function setAuditLogEnabled(on) {
+  if (isDeniabilityOrDemoActive()) return;
   try {
     if (on) localStorage.setItem(AUDIT_LOG_PREF_KEY, '1');
     else localStorage.removeItem(AUDIT_LOG_PREF_KEY);

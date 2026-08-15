@@ -25,16 +25,22 @@ function deviceIcon(ua) {
 
 export default function SessionSettings() {
   const { t } = useTranslation('wallet');
-  const { isUnlocked, lock, autoLockValue, setAutoLockTimeout, recordAudit } = useWallet();
+  const { isUnlocked, lock, autoLockValue, setAutoLockTimeout, recordAudit, isDecoy, isHidden } = useWallet();
+  const deniable = isDecoy || isHidden;
 
   // Recent session info — cheap, best-effort. Demo mode seeds one UserSession
   // (api/demoClient.js); a real backend returns the user's device sessions.
   // Failure is non-fatal: the card still shows lock status + the timeout picker.
-  const { data: sessions = [] } = useQuery({
+  // Codex P1 2026-08-15: two-chokepoint I3 gate — query enabled on !deniable
+  // AND local blank on `sessions` so a warmed React Query cache from a real
+  // session cannot re-populate real device metadata into a decoy render.
+  const { data: sessionsRaw = [] } = useQuery({
     queryKey: ['user-sessions'],
     queryFn: () => base44.entities.UserSession.list('-created_date', 5),
     retry: false,
+    enabled: !deniable,
   });
+  const sessions = deniable ? [] : sessionsRaw;
   const recent = sessions.filter((s) => s.status !== 'revoked');
 
   return (
