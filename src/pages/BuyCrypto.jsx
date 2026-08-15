@@ -23,16 +23,17 @@ import { resolveReceive } from '@/lib/receiveAddress';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { DEMO } from '@/api/demoClient';
 import { useBuyEnabled } from '@/lib/buy/useBuyEnabled';
+import { TRANSAK_ORIGINS } from '@/lib/buy/transakUrl.js';
 
 // Codex P2 2026-08-15: the Transak return message MUST come from Transak's
 // origin. Without this check any frame or injected same-page script can post
 // a spoofed TRANSAK_ORDER_SUCCESSFUL and force the wallet to close the widget
 // or navigate home even though no purchase completed. Allowlist both stg + prod
 // origins to match the URLs the server-side buy-session builds against.
-const TRANSAK_ORIGINS = new Set([
-  'https://global.transak.com',
-  'https://global-stg.transak.com',
-]);
+// Branch review 2026-08-15 (C-1): imported, not re-declared. This was the third
+// independent copy of the same two hosts; see lib/buy/transakUrl.js for why they
+// are centralised (drift here fails CLOSED — a missed domain silently drops
+// TRANSAK_ORDER_SUCCESSFUL / TRANSAK_WIDGET_CLOSE and the widget never closes).
 
 const TRANSAK_NETWORK_MAP = {
   ETH:   'ethereum',
