@@ -1840,7 +1840,6 @@ export function WalletProvider({ children }) {
     }
 
     setUnlocked(true);
-    setLivePricesEnabled(true); // Enable live prices after unlock (I2: user restored a real wallet, expect live data)
     setExploreMode(false);
     setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
     void trackEvent(EVENT.SESSION_START, { returning: true }).catch(() => {});
@@ -1848,7 +1847,16 @@ export function WalletProvider({ children }) {
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
     // real hidden-wallet slot). Best-effort. See createWallet for the rationale.
     void ensureStealthPool().catch(() => {});
-    void ensureBiometric2faOnNative().catch(() => {});
+    // Codex P1 2026-08-15: setLivePricesEnabled and ensureBiometric2faOnNative
+    // both persist to SHARED localStorage. Running them on decoy/hidden unlocks
+    // silently rewrote the real user's live-prices preference AND could enable
+    // biometric-2FA + leave a forensic marker on a device where the real user
+    // never enabled it. Gate on isPrimary — decoy/hidden sessions must never
+    // mutate real-session settings (K-2 class).
+    if (isPrimary) {
+      setLivePricesEnabled(true); // I2: user restored a real wallet, expect live data
+      void ensureBiometric2faOnNative().catch(() => {});
+    }
     void ensureKekPinNoticeOnNative().catch(() => {}); // M-9: one-time offline-exhaustion notice for unenrolled native users
     void (async () => {
       // M-3 (audit 2026-08-03) — this block used to run for EVERY session type,
@@ -2396,10 +2404,17 @@ export function WalletProvider({ children }) {
   });
   const getAuditLogEnabled = useCallback(() => isAuditLogEnabled(), []);
   const toggleAuditLog = useCallback(async (on) => {
+    // Codex P1 2026-08-15: the toggle is exposed from Settings.jsx AND
+    // AuditLog.jsx, both of which render in decoy/hidden sessions. Without
+    // this gate, a coerced decoy unlock could flip setAuditLogPref (shared
+    // localStorage) OR call clearAuditLogData() to erase the REAL session's
+    // encrypted audit blob — without ever unlocking the primary wallet.
+    // Same K-2 class as the other WalletProvider gates. Fail closed.
+    if (isDecoy || isHidden) return;
     setAuditLogPref(on);
     setAuditLogEnabledState(on);
     if (!on) await clearAuditLogData().catch(() => {});
-  }, []);
+  }, [isDecoy, isHidden]);
 
   // Read the encrypted audit log — returns [] in decoy/hidden/locked/empty.
   const readAuditLogEntries = useCallback(async () => {

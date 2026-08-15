@@ -353,6 +353,19 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // gate stops re-prompting every unlock. Presence proves a real Veyrnox
   // install existed here — same METADATA_RESIDUE tell class as the neighbours.
   'veyrnox-kek-insecure-tier',
+  // Codex P2 2026-08-15: paywall + session-day residue. Writers:
+  // components/PaywallNudge.jsx SESSION_COUNT_KEY / SESSION_LAST_DAY_KEY /
+  // NUDGE_DISMISSED_KEY, and components/BackupPaywallNudge.jsx. Each proves
+  // a real Veyrnox install accumulated multiple wallet-use days or dismissed
+  // an upgrade nag on this device — same tell class as veyrnox-first-open-
+  // fired above. Without these, panic wipe left a forensic trail tying the
+  // wiped device to prior real-wallet usage while inspectKeyMaterial()
+  // reported clean:true. Writers are already guarded on
+  // isDeniabilityOrDemoActive(), so this fix only closes the residue gap.
+  'veyrnox-session-day-count',
+  'veyrnox-session-last-day',
+  'veyrnox-paywall-nudge-dismissed',
+  'veyrnox-backup-nudge-dismissed',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
