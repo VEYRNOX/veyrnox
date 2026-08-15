@@ -22,7 +22,7 @@ import { useTrezor } from '../context/TrezorContext.jsx';
 // NOT the raw device wrapper — those helpers apply the M-2/#746 recovery check,
 // the 'pending' block-tag nonce + sanity window, and estimated gas + headroom.
 // BTC + SOL Trezor branches still use their raw wrappers (unrelated to #961).
-import { trezorSignBtcTx, trezorSignSolTx } from '../wallet-core/hw/trezor.js';
+import { trezorSignBtcTx } from '../wallet-core/hw/trezor.js';
 import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wallet-core/evm/hw-send.js';
 import { signAndBroadcastSolTrezor } from '../wallet-core/sol/hw-send.js';
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
@@ -59,7 +59,7 @@ import { getAsset, canSend, canReceive, isEvmFamily } from "@/wallet-core/assets
 import { isDevSendUngated } from "@/lib/devSendOverride";
 import { signAndBroadcastBtc, estimateBtcSend, broadcastBtcTx } from "@/wallet-core/btc/send";
 import { describeBtcPlan } from "@/wallet-core/btc/simulate";
-import { signAndBroadcastSol, buildUnsignedSolTx, broadcastSignedSolTx, attachSolSignature } from "@/wallet-core/sol/send";
+import { signAndBroadcastSol, buildUnsignedSolTx } from "@/wallet-core/sol/send";
 import { toBaseUnits, normalizeSendResult } from "@/lib/sendDispatch";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
