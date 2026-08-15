@@ -13,7 +13,6 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 
 import { buildUnsignedPsbt } from '../psbt.js';
 import { buildUnsignedEvmTx } from '../evmUnsigned.js';
-import { encodeColdPayload, decodeColdPayload, COLD_KIND } from '../qr.js';
 
 // A deterministic testnet keypair (TESTNET-ONLY fixture — never real value).
 const PRIV = hex.decode('1111111111111111111111111111111111111111111111111111111111111111');
@@ -89,26 +88,10 @@ describe('buildUnsignedEvmTx — EVM unsigned tx serialisation', () => {
   });
 });
 
-describe('cold QR envelope — encode/decode round-trip', () => {
-  it('round-trips an unsigned EVM payload through the QR envelope', () => {
-    const payload = {
-      kind: COLD_KIND.EVM_UNSIGNED,
-      networkKey: 'sepolia',
-      unsignedSerialized: '0x02abcdef',
-    };
-    const encoded = encodeColdPayload(payload);
-    expect(typeof encoded).toBe('string');
-    const decoded = decodeColdPayload(encoded);
-    expect(decoded).toEqual(payload);
-  });
-
-  it('decodeColdPayload returns null for a non-Veyrnox QR (never throws)', () => {
-    expect(decodeColdPayload('not json at all')).toBeNull();
-    expect(decodeColdPayload(JSON.stringify({ foo: 'bar' }))).toBeNull();
-  });
-
-  it('rejects an unknown kind (fail closed)', () => {
-    const encoded = JSON.stringify({ fmt: 'veyrnox-cold', v: 1, kind: 'EVIL', data: {} });
-    expect(decodeColdPayload(encoded)).toBeNull();
-  });
-});
+// The `cold QR envelope — encode/decode round-trip` describe block was removed
+// 2026-08-15 alongside src/wallet-core/coldkey/qr.js. The QR-envelope module was
+// only consumed by ColdSign.jsx (deleted in PR #1796); with the caller gone the
+// module was dead code AND a JSON.parse-on-arbitrary-QR-text surface (Codex P2
+// 2026-08-15). Deleting it closes the surface entirely. psbt.js + evmUnsigned.js
+// stay — they still back the hardware-wallet send path (see
+// src/wallet-core/evm/hw-send.js).
