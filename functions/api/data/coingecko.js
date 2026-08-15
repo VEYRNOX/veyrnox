@@ -28,7 +28,11 @@ const CACHE_TTL = {
 function resolveEndpoint(endpoint, params) {
   if (endpoint === 'coins/ohlc') {
     const coinId = params.get('coin_id');
-    if (!coinId || !ALLOWED_CG_IDS.has(coinId)) err(400, `Invalid coin_id for OHLC: ${coinId}`);
+    // Codex P3 2026-08-15: fixed-token error, do NOT reflect caller input.
+    // Matches the hygiene of every other error message in this surface —
+    // no reflected value means no JSON-injection / cache-poison / log-
+    // pollution vector, even the theoretical one.
+    if (!coinId || !ALLOWED_CG_IDS.has(coinId)) err(400, 'Invalid coin_id for OHLC');
     params.delete('coin_id');
     return `coins/${coinId}/ohlc`;
   }
@@ -46,7 +50,9 @@ function validateIds(idsParam) {
   if (!idsParam) return;
   const ids = idsParam.split(',');
   for (const id of ids) {
-    if (!ALLOWED_CG_IDS.has(id.trim())) err(400, `Coin id not allowed: ${id}`);
+    // Codex P3 2026-08-15: fixed-token error, do NOT reflect caller input
+    // (matching resolveEndpoint above).
+    if (!ALLOWED_CG_IDS.has(id.trim())) err(400, 'Coin id not allowed');
   }
 }
 
