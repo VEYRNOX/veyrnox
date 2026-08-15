@@ -936,6 +936,23 @@ value / mutate balances without a user signature through wallet-core signing).
       dimensions were already fed by the existing hooks. No new banner /
       trigger conditions / cycling were added — surface stays as
       `SecurityPosture` on the dashboard.
+    - **hashVault integrity fix — PR #1753 (2026-08-15).** ✅ BUILT.
+      Codex P2. `hashVault` in `src/wallet-core/shardBackup.js` used
+      `JSON.stringify(vault, Object.keys(vault).sort())`; the array
+      replacer is a key filter applied at every nesting level, so nested
+      `vault.kdf` (iterations, memorySize, salt, ...) serialised as `{}`
+      and any change inside it slipped `decodeShareBundle` /
+      `combineFromBundles` integrity check — a bundle with corrupted or
+      attacker-modified KDF params passed verification. Fix: recursive
+      `canonicalStringify` (sort keys every level, arrays preserved,
+      primitives via `JSON.stringify`). `SHARD_BUNDLE_VERSION` bumped
+      1→2; `legacyHashVault` retained solely for
+      `LEGACY_SHARD_BUNDLE_VERSION` decode compat; `encodeShareBundle`
+      always emits v2. Regression tests: kdf.iterations diff detected,
+      key-order canonicalisation invariant, nested array diff, v1 bundle
+      still decodes, v2 round-trip. Phase 1 pre-audit, gate off, no
+      production bundles exist — v1 compat path is precautionary.
+      INTERNAL. Not "verified" until an on-device recovery trip.
     - **Not shipped / not verified across all phases.** Cross-device restore
       (needs vault-ciphertext transport). Platform-native cloud silent sync
       (iCloud Keychain / Google Backup — plugin work). Real-device wrap /
