@@ -135,6 +135,7 @@ import {
   ensureBiometric2faOnNative,
 } from '@/lib/biometric';
 import { ensureKekPinNoticeOnNative } from '@/lib/kekPinNotice';
+import { clearConsent } from '@/lib/consent';
 import { setLivePricesEnabled } from '@/lib/priceFeed';
 import { initCode, getPendingReferral, clearPendingReferral, hasRedeemed, markRedeemed, applyRedemption, getLocalState as getReferralState } from '@/lib/referral';
 import { generateServerCode, redeemCode } from '@/api/referralApi';
@@ -963,6 +964,15 @@ export function WalletProvider({ children }) {
     // chaff via provisionPinWallet; this brings the password cohort to parity.
     void provisionDeniabilityChaff().catch(() => {});
     void initCode(generateServerCode).catch(() => {});
+    // Codex P1 2026-08-15: reset consent BEFORE emitting wallet_created for the
+    // new wallet identity. Previously WalletEntry.finishCreate() called
+    // clearConsent() AFTER the user completed backup, so a device with prior
+    // granted consent uploaded one wallet_created event under the OLD identity's
+    // consent before the promised fresh-decision reset took effect. Clearing
+    // here means the event is only sent if the user affirmatively re-grants
+    // consent for the new wallet — the honest default. clearConsent() self-
+    // suppresses in a decoy/demo session; the I3 guard lives in lib/consent.js.
+    try { clearConsent(); } catch { /* best-effort */ }
     void trackEvent(EVENT.WALLET_CREATED).catch(() => {});
     refreshWalletsState();
     refreshPortfoliosState();
@@ -1011,6 +1021,9 @@ export function WalletProvider({ children }) {
     void ensureStealthPool().catch(() => {}); // seed chaff pool (see createWallet)
     void provisionDeniabilityChaff().catch(() => {}); // M-5: duress/panic chaff parity (see createWallet)
     void initCode(generateServerCode).catch(() => {});
+    // Codex P1 2026-08-15: same fresh-consent reset as createWallet — an
+    // imported wallet is a new identity and must not inherit prior consent.
+    try { clearConsent(); } catch { /* best-effort */ }
     void trackEvent(EVENT.WALLET_IMPORTED).catch(() => {});
     refreshWalletsState();
     refreshPortfoliosState();
