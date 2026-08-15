@@ -44,7 +44,7 @@ import { deriveBtcAccount } from '@/wallet-core/btc/derivation';
 import { ACTIVE_BTC_NETWORK_KEY } from '@/wallet-core/btc/networks';
 import { deriveSolAccount } from '@/wallet-core/sol/derivation';
 import { captureVerifierSafe, verifyCredential, verifyCredentialDetailed, createCredentialVerifier } from '@/wallet-core/credentialVerifier';
-import { serializeActionPasswordRecord, deserializeActionPasswordRecord } from '@/wallet-core/actionPassword';
+import { serializeActionPasswordRecord, deserializeActionPasswordRecord, hasActionPasswordRecord } from '@/wallet-core/actionPassword';
 import { sendReauthRequired, REAUTH_WINDOW_MS } from '@/lib/sendReauth';
 import { getKeyStore, withLockSuppressed } from '@/wallet-core/keystore';
 import { Capacitor } from '@capacitor/core';
@@ -2434,14 +2434,60 @@ export function WalletProvider({ children }) {
       dek = combined.dek;
       plaintext = await decryptVaultWithDek(combined.vault, dek);
       const parsed = mv.parseVault(plaintext);
-      const w0 = parsed.container.wallets && parsed.container.wallets[0];
-      if (!w0 || !w0.mnemonic) throw new Error('Recovered vault has no wallet.');
-      await importWallet(w0.mnemonic, newPin);
+      const restoredContainer = parsed.container;
+      const walletsArr = Array.isArray(restoredContainer.wallets) ? restoredContainer.wallets : [];
+      if (!walletsArr.length || !walletsArr[0]?.mnemonic) {
+        throw new Error('Recovered vault has no wallet.');
+      }
+      // Codex P1 2026-08-15: previously called importWallet(w0.mnemonic, newPin)
+      // which throws away wallet 2+ and every set-level record
+      // (actionPassword, hiddenWallet2faMode, lastUnlockAt) that lives INSIDE
+      // the container. A user who exported bundles after adding more wallets
+      // saw the restore appear to succeed while silently losing everything
+      // beyond wallets[0]. Write the FULL restored container instead, then
+      // hydrate provider state so the app immediately reflects every
+      // recovered wallet + set-level record. walletMeta (names / backup flags
+      // / asset prefs) still ships in a separate localStorage key that is
+      // not in the bundle by design — those default on the new device.
+      await keyStore.createVault(mv.serializeContainer(restoredContainer), newPin);
+      const firstWalletId = walletsArr[0].id;
+      containerRef.current = restoredContainer;
+      activeIdRef.current = firstWalletId;
+      // Seed default walletMeta entries so multi-wallet views don't fail-
+      // closed on a missing name. Users who care about their old names can
+      // rename in Wallet Manager — the mnemonics are what matters.
+      walletsArr.forEach((w, i) => {
+        ensureWalletMeta(w.id, { name: `Wallet ${i + 1}`, backedUp: true });
+      });
+      persistActiveWalletId(firstWalletId);
+      setVaultExists(true);
+      setUnlocked(true);
+      setLivePricesEnabled(true);
+      setIsDecoy(false);
+      setIsHidden(false);
+      setLastUnlockAt(null);
+      setExploreMode(false);
+      setWasWiped(false);
+      setBiometricUnlockEnabled(false);
+      setActionPasswordConfigured(hasActionPasswordRecord(restoredContainer.actionPassword));
+      void clearUnlockSecret().catch(() => {});
+      void ensureStealthPool().catch(() => {});
+      void provisionDeniabilityChaff().catch(() => {});
+      void initCode(generateServerCode).catch(() => {});
+      try { clearConsent(); } catch { /* best-effort */ }
+      void trackEvent(EVENT.WALLET_IMPORTED).catch(() => {});
+      refreshWalletsState();
+      refreshPortfoliosState();
+      touch();
+      deriveActiveAndAll();
+      lastAuthAtRef.current = Date.now();
+      verifierRef.current = await captureVerifierSafe(newPin);
+      try { backupNag.onVaultKeySetChanged(getBackupPublicAddresses()); } catch { /* best-effort */ }
     } finally {
       if (dek && dek.fill) dek.fill(0);
       plaintext = null;
     }
-  }, [isDecoy, isHidden, importWallet]);
+  }, [isDecoy, isHidden, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
 
   // Personal Backup Phase 2 — restore an existing on-device vault by supplying
   // any 2 of 3 shamir shares plus a new password. The vault is re-wrapped under
