@@ -540,7 +540,7 @@ describe('PersonalBackup — same-device restore rejects a cross-device bundle e
     HTMLInputElement.prototype.click = function () {
       if (this.type === 'file') {
         Object.defineProperty(this, 'files', { value: files, configurable: true });
-        this.onchange && this.onchange();
+        this.onchange && this.onchange(new Event('change'));
       } else {
         origClick.call(this);
       }

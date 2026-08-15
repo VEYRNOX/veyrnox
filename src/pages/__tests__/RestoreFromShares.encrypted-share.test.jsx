@@ -74,7 +74,7 @@ describe('RestoreFromShares — encrypted bundle detection', () => {
   });
 
   it('unwraps the encrypted share and calls restoreFromRecoveryBundles with the decoded raw bundle', async () => {
-    const restoreFromRecoveryBundles = vi.fn(async () => {});
+    const restoreFromRecoveryBundles = vi.fn(async (/** @type {string[]} */ _bundles) => {});
     const Page = await loadPage(restoreFromRecoveryBundles);
     render(<MemoryRouter><Page /></MemoryRouter>);
     pasteShares(RAW_BUNDLE_1, wrappedBundle2);
@@ -105,7 +105,7 @@ describe('RestoreFromShares — encrypted bundle detection', () => {
   }, 30_000);
 
   it('returns to the passphrase step on a wrong passphrase so the user can correct it and retry (Codex P2)', async () => {
-    const restoreFromRecoveryBundles = vi.fn(async () => {});
+    const restoreFromRecoveryBundles = vi.fn(async (/** @type {string[]} */ _bundles) => {});
     const Page = await loadPage(restoreFromRecoveryBundles);
     render(<MemoryRouter><Page /></MemoryRouter>);
     pasteShares(RAW_BUNDLE_1, wrappedBundle2);

@@ -266,7 +266,7 @@ export async function wrapBundleWithPassphrase(bytes, passphrase, shareIndex) {
  * buffer is not JSON or not shaped like a recovery envelope — used by the UI
  * to distinguish raw share files from encrypted ones on file pick.
  * @param {Uint8Array} bytes
- * @returns {object | null}
+ * @returns {{ type: string, [key: string]: any } | null}
  */
 export function tryParseRecoveryEnvelope(bytes) {
   if (!(bytes instanceof Uint8Array)) return null;
