@@ -5,7 +5,7 @@
   "server": {
     "allowNavigation": []
   },
-  "loggingBehavior": "debug",
+  "loggingBehavior": "none",
   "plugins": {
     "LocalNotifications": {
       "smallIcon": "ic_launcher_foreground",
