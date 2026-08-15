@@ -16,6 +16,7 @@ import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
 import { extractWcUri, setPendingWcUri } from '@/lib/deepLinkPairing';
 import { isBuyEnabled } from '@/lib/buy/useBuyEnabled';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 export default function DeepLinkHandler() {
   const navigate = useNavigate();
@@ -51,6 +52,13 @@ export default function DeepLinkHandler() {
 
       const wc = extractWcUri(rawUrl);
       if (!wc) return; // not a pairing link — ignore, do not navigate
+      // Codex P1 2026-08-15: two-chokepoint I3 gate. A decoy/hidden session
+      // must never even push a nav to /walletconnect, let alone stash a
+      // pending URI — that stash + nav pair leaves observable timing +
+      // history-stack tells. WalletConnect.jsx also gates on
+      // isDecoy/isHidden, so this is defence in depth against a future
+      // caller that bypasses the render gate.
+      if (isDeniabilityOrDemoActive()) return;
       setPendingWcUri(wc);
       navigate('/walletconnect');
     };

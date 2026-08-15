@@ -4,12 +4,20 @@ import jsQR from "jsqr";
 import { X, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// Codex P2 2026-08-15: hard cap on any inbound QR payload before parsing.
+// A malicious QR can encode up to ~2953 bytes of arbitrary text; anything
+// beyond a generous ceiling is not a wallet URI and shouldn't drive parse /
+// regex work on the hot camera-tick path. 2048 covers every real bip21 / EIP-681
+// / bare-address use case, including chain-id and long memo params.
+const MAX_QR_PAYLOAD_LEN = 2048;
+
 // Extract the address from EIP-681 / BIP-21 / bare-address QR codes.
 // Returns the plain address string, or null if the scheme is unrecognised.
 // Any amount/value parameter in the URI is intentionally discarded — the user
 // must enter the amount explicitly in the send form.
-function parseQrData(raw) {
+export function parseQrData(raw) {
   const s = (raw || '').trim();
+  if (s.length > MAX_QR_PAYLOAD_LEN) return null;
   // EIP-681: ethereum:<address>[/@chainId][?params]
   if (/^ethereum:/i.test(s)) {
     const body = s.slice('ethereum:'.length).split('?')[0].split('@')[0];
@@ -37,6 +45,10 @@ export default function QRScanner({ onScan, onClose }) {
   const streamRef = useRef(null);
   const rafRef = useRef(null);
   const [error, setError] = useState(null);
+  // Codex P2 2026-08-15: transient parse-reject banner. Separate from `error`
+  // (which is a fatal camera failure and replaces the video). This overlays a
+  // dismissible warning while the camera keeps scanning so the user can re-aim.
+  const [warn, setWarn] = useState(null);
   const [scanning, setScanning] = useState(true);
 
   useEffect(() => {
@@ -77,13 +89,22 @@ export default function QRScanner({ onScan, onClose }) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR(imageData.data, imageData.width, imageData.height);
     if (code) {
+      // Codex P2 2026-08-15: don't fail-open on unknown-scheme / oversized /
+      // rejected payloads. Prior behaviour handed null to onScan and closed
+      // the scanner regardless, so the send form silently received "" and
+      // the user had no signal that the QR they scanned was rejected. Keep
+      // the camera live and show an inline error banner instead, so the
+      // user can re-aim at a real address QR without reopening the scanner.
+      const parsed = parseQrData(code.data);
+      if (!parsed) {
+        setWarn("This QR isn't a wallet address in a supported scheme.");
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      setWarn(null);
       setScanning(false);
       stopCamera();
-      // Parse EIP-681 (ethereum:) and BIP-21 (bitcoin:/solana:) URIs so only the
-      // address component reaches the send form (VULN-10 fix). A raw URI in the
-      // address field fails validation and silently discards any attacker-specified
-      // amount embedded in the QR. Unknown schemes are rejected outright.
-      onScan(parseQrData(code.data));
+      onScan(parsed);
       return;
     }
     rafRef.current = requestAnimationFrame(tick);
@@ -108,6 +129,11 @@ export default function QRScanner({ onScan, onClose }) {
           </div>
         ) : (
           <div className="relative rounded-2xl overflow-hidden border-2 border-primary shadow-[0_0_30px_hsl(28,95%,54%,0.3)]">
+            {warn && (
+              <div className="absolute inset-x-0 top-0 z-10 mx-3 mt-3 rounded-lg bg-destructive/90 px-3 py-2 text-xs text-white text-center">
+                {warn}
+              </div>
+            )}
             <video ref={videoRef} className="w-full aspect-square object-cover" playsInline muted />
             {/* Scanning overlay */}
             <div className="absolute inset-0 pointer-events-none">
