@@ -366,6 +366,14 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-session-last-day',
   'veyrnox-paywall-nudge-dismissed',
   'veyrnox-backup-nudge-dismissed',
+  // Branch review 2026-08-15 (S-1): the sibling dismissal marker the paywall
+  // sweep above missed. Writer: components/ReferralPrompt.jsx DISMISSED_KEY.
+  // A STRONGER tell than its two neighbours — the prompt only renders on the
+  // SendDoneView confirmation screen, so the key's presence proves not just a
+  // real install but at least one COMPLETED send from this device. Not covered
+  // by RESIDUE_KEY_PREFIXES. Writer is already gated on
+  // isDeniabilityOrDemoActive(); this closes the residue gap only.
+  'veyrnox-referral-prompt-dismissed',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
