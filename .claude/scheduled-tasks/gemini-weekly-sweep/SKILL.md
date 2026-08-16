@@ -1,6 +1,6 @@
 ---
 name: gemini-weekly-sweep
-description: Weekly Gemini 2.5 Pro long-context sweep of one safe subsystem. Rotates targets across src/components/, src/pages/, src/hooks/, src/api/ so every safe path gets reviewed monthly. Writes a dated report and opens a PR to main.
+description: Weekly Gemini 3.1 Pro long-context sweep of one safe subsystem. Rotates targets across src/components/, src/pages/, src/hooks/, src/api/ so every safe path gets reviewed monthly. Writes a dated report and opens a PR to main.
 ---
 
 You are running the weekly Gemini long-context sweep of the Veyrnox wallet
@@ -36,7 +36,7 @@ gemini --version
 # is built. Observed 2026-08-16: free-tier OAuth was retired mid-schedule
 # ("IneligibleTierError ... UNSUPPORTED_CLIENT", tierId free-tier) and the
 # CLI exited 1 with zero output.
-echo ping | gemini --skip-trust -m gemini-2.5-pro -p "reply with: ok" >/dev/null 2>&1 || {
+echo ping | gemini --skip-trust -m gemini-3.1-pro-preview -p "reply with: ok" >/dev/null 2>&1 || {
   echo "ERROR: gemini auth/model probe failed — check GEMINI_API_KEY or re-auth."
   exit 1
 }
@@ -105,7 +105,7 @@ COMMIT=$(git rev-parse origin/main)
 
 echo "Files: $COUNT   Bytes: $BYTES   Commit: $COMMIT"
 
-# Warn if approaching Gemini 2.5 Pro's ~1M-token window.
+# Warn if approaching Gemini 3.1 Pro's ~1M-token window.
 if [ "$BYTES" -gt 3000000 ]; then
   echo "ERROR: target too large ($BYTES bytes ≈ $((BYTES / 4)) tokens). Split it." >&2
   cd /Users/aljobson/Documents/GitHub/veyrnox
@@ -149,7 +149,7 @@ Severities: CRITICAL, HIGH, MEDIUM, LOW. No praise, no summary. If no findings, 
 FINDINGS=$(mktemp -t gemini-findings.XXXXXX)
 trap 'rm -f "$CORPUS" "$FINDINGS"' EXIT
 
-gemini --skip-trust -m gemini-2.5-pro -p "$PROMPT" < "$CORPUS" > "$FINDINGS" || {
+gemini --skip-trust -m gemini-3.1-pro-preview -p "$PROMPT" < "$CORPUS" > "$FINDINGS" || {
   echo "ERROR: gemini call failed (exit $?). No report written." >&2
   exit 1
 }
@@ -162,13 +162,13 @@ REPORT="docs/audit-gemini-sweep-$DATE.md"
 {
   echo "# Gemini weekly sweep — $DATE"
   echo
-  echo "> **Internal long-context pass.** Conducted by Gemini 2.5 Pro."
+  echo "> **Internal long-context pass.** Conducted by Gemini 3.1 Pro."
   echo "> INTERNAL only. Does NOT close the independent audit gate."
   echo
   echo "- Target: \`$TARGET\`"
   echo "- Files: $COUNT"
   echo "- Bytes: $BYTES (~$((BYTES / 4)) tokens)"
-  echo "- Model: gemini-2.5-pro"
+  echo "- Model: gemini-3.1-pro-preview"
   echo "- Base commit: \`$COMMIT\`"
   echo
   echo "## Findings"
@@ -192,9 +192,9 @@ git push -u origin "$BRANCH"
 
 PR_URL=$(gh pr create --base main --head "$BRANCH" \
   --title "docs(audit): weekly Gemini long-context sweep $DATE" \
-  --body "Automated weekly Gemini 2.5 Pro sweep of \`$TARGET\`. Static long-context read only — no dynamic testing, no on-device verification, no on-chain confirmation. INTERNAL: this is NOT the outstanding independent third-party audit.
+  --body "Automated weekly Gemini 3.1 Pro sweep of \`$TARGET\`. Static long-context read only — no dynamic testing, no on-device verification, no on-chain confirmation. INTERNAL: this is NOT the outstanding independent third-party audit.
 
-Model: gemini-2.5-pro
+Model: gemini-3.1-pro-preview
 Files: $COUNT | Bytes: $BYTES
 Base: $COMMIT")
 
@@ -237,10 +237,29 @@ cd /Users/aljobson/Documents/GitHub/veyrnox
 git worktree remove --force "$WT" 2>/dev/null || true
 ```
 
+## Spending cap — £10, owner-locked 2026-08-16
+
+This task runs against a **paid** Gemini API key. Spend is capped at **£10 at
+all times** by owner instruction. The cap is structural, not a policy note:
+
+- Billing account `0160CA-60AA7F-22D423` is **prepay** with a £10 credit
+  balance and **auto-reload OFF**. Credits are consumed before service; when
+  they hit zero the API returns `429 RESOURCE_EXHAUSTED` and the sweep fails
+  closed. The card is never charged beyond the credits already bought.
+- **NEVER buy credits, top up, raise the tier cap, or enable auto-reload**
+  from this task, or from any session acting on its behalf. A depleted balance
+  is a REPORT-AND-STOP condition, exactly like a missing CLI.
+- Measured burn for a full 4-week rotation is ~$3.25 (components $1.38,
+  pages $1.70, hooks $0.07, api $0.10 — `components` and `pages` cross the
+  200k-token threshold and bill at the higher input rate). £10 is therefore
+  roughly a year of sweeps. If it depletes much sooner than that, something is
+  wrong — investigate before asking the owner for more credit.
+
 ## Hard constraints
 
 - Do NOT sweep sensitive paths (`src/wallet-core/`, `src/lib/kek*`, etc.) —
-  free-tier Gemini trains on prompts. Rotation list is exhaustive.
+  the prompt leaves the machine and is retained by the provider. Rotation list
+  is exhaustive.
 - Do NOT mark anything "verified" — this is a static long-context read.
 - Do NOT flip any asset status or feature status.
 - Push ONLY the per-run `gemini-sweep/<DATE>` branch. NEVER push to `main`.
