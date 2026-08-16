@@ -66,7 +66,16 @@ It is never imported by `src/` and never bundled in the production wallet;
 - **SIGNAL 3 FIRED** (residual becomes moot) if the WebdriverIO E2E harness has been
   removed from `package.json`. Remediation: none — retire the residual entry instead.
 - Otherwise NO CHANGE.
-- **A candidate remediation exists TODAY and is deliberately not applied.** Because
+- **UPDATE 2026-08-16, same day as creation — the override WAS taken.** `overrides` now
+  pins `@puppeteer/browsers` to `^3`; it resolves to `3.2.0` under `@wdio/utils` and
+  `extract-zip` is gone from the lockfile (`npm audit`: 12 high → 0 high). This watcher is
+  therefore no longer watching for a way to clear the advisory — it is watching for the
+  point at which the **override can be dropped**, i.e. when `@wdio/utils` moves its own
+  pin to admit `>= 3.0.0` (SIGNAL 2 below). Until then the override is load-bearing: do
+  not remove it to "tidy" the overrides block. If the E2E jobs ever revert the override,
+  restore the original reading of this file. The paragraph below is kept as the record of
+  what was evaluated and why.
+- **The candidate remediation, as evaluated before it was taken.** Because
   `@puppeteer/browsers@3.2.0` has already dropped `extract-zip`, a `package.json`
   `overrides` entry forcing `@puppeteer/browsers` to `^3` would clear all 12 findings
   without waiting for `@wdio/utils`. It is a semver-MAJOR override of a transitive

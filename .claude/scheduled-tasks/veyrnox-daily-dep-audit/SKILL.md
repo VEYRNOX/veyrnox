@@ -209,7 +209,18 @@ its own.
   2026-08-16. Checks for a patched `extract-zip`, for `@wdio/utils` moving its
   `@puppeteer/browsers` pin to a range admitting `>= 3.0.0`, and for the E2E harness being
   retired.
-- **A candidate remediation exists today — evaluated, deliberately NOT applied.**
+- **PENDING RETIREMENT (2026-08-16) — the override below was taken, and the findings are
+  gone from the resolved tree.** `overrides` now pins `@puppeteer/browsers` to `^3`;
+  `npm install --package-lock-only` resolves it to `3.2.0` under `@wdio/utils`, and
+  `extract-zip` is absent from the lockfile entirely. `npm audit` drops from 12 high to
+  **0 high** (21 total: 18 low elliptic + 3 moderate uuid/xcode chain). The appium subtree
+  is byte-identical — no entries added or removed — so the `--legacy-peer-deps` collateral
+  hazard did not recur. **Do not retire this entry on that evidence alone.** The open
+  question is not whether the advisory clears — it does — but whether the harness still
+  launches its browser drivers under a semver-major `@puppeteer/browsers`. Retire only
+  once the E2E jobs have passed on the PR carrying the override. If they fail, the override
+  is reverted and this entry stands unchanged.
+- **The candidate remediation, as evaluated before it was taken:**
   `@puppeteer/browsers@3.2.0` has already DROPPED `extract-zip` (its dependencies are now
   `{yargs, modern-tar}`). The chain does not clear only because `@wdio/utils@9.30.1` —
   which is also `@latest` — pins `@puppeteer/browsers: ^2.2.0`, and `3.x` is outside that
