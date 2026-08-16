@@ -54,7 +54,7 @@ describe('provisionDeniabilityChaff', () => {
 
     // Device B: a user later personalized both slots (real credentials).
     await setDuressVault(generateMnemonic(128), 'real-duress-1357');
-    await setPanicVault('burn-everything-0000');
+    await setPanicVault('98765432');
     const realDuress = await getBlob('secondary');
     const realPanic = await getBlob('tertiary');
 
@@ -90,7 +90,7 @@ describe('provisionDeniabilityChaff', () => {
   it('is idempotent and NEVER overwrites a personalized blob', async () => {
     // Personalize first, then a later chaff pass must not clobber it.
     await setDuressVault(generateMnemonic(128), 'real-duress-1357');
-    await setPanicVault('burn-everything-0000');
+    await setPanicVault('98765432');
     const before = { d: await getBlob('secondary'), p: await getBlob('tertiary') };
 
     await provisionDeniabilityChaff(); // slots already filled → no-op
@@ -99,7 +99,7 @@ describe('provisionDeniabilityChaff', () => {
     expect(await getBlob('tertiary')).toEqual(before.p);
     // Personalized credentials still open their slots.
     expect(await tryDuressUnlock('real-duress-1357')).not.toBeNull();
-    expect(await tryPanicUnlock('burn-everything-0000')).toBe(true);
+    expect(await tryPanicUnlock('98765432')).toBe(true);
   });
 
   it('backfills only the missing slot', async () => {

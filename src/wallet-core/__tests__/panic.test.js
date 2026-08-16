@@ -29,7 +29,7 @@ import { clearVault } from '../evm/vaultStore.js';
 const REAL_PW = 'main-pass-2468';
 const DURESS_PW = 'duress-pass-1357';
 const HIDDEN_SECRET = 'hidden-key-9753';
-const PANIC_PW = 'burn-everything-0000';
+const PANIC_PW = '98765432';
 
 // Stand up a fully-populated device: primary vault + duress decoy + a hidden
 // wallet + a panic PIN — i.e. every kind of key material a wipe must destroy.
@@ -353,11 +353,16 @@ describe('panic wipe', () => {
     expect(written.some((w) => /^sidebar_state=/.test(w) && /max-age=0/.test(w))).toBe(true);
   });
 
-  it('PW-05: panicWipeLocal still resolves when the appdata delete is blocked', async () => {
-    // Hold the appdata DB open so deleteDatabase() fires onblocked. The contract
-    // under test is ONLY that panicWipeLocal resolves rather than hanging.
+  it('PW-05: a blocked appdata delete resolves, and is reported as NOT clean', async () => {
+    // Hold the appdata DB open so deleteDatabase() fires onblocked. Two things
+    // must hold, and the second is what this file used to get wrong:
+    //   1. panicWipeLocal resolves rather than hanging.
+    //   2. the surviving DB is REPORTED. The old assertion was
+    //      `expect(report.clean).toBe(true)` while veyrnox-appdata was still
+    //      right there — the exact false-clean the sideDatabasesResidue check
+    //      in this PR exists to remove. It passed only because nothing looked.
     //
-    // The title and comment here used to claim the code "attempts to break the
+    // The title and comment also used to claim the code "attempts to break the
     // blocker" by calling close() on the delete request. It does not, and must
     // not: per the IDB spec an IDBOpenDBRequest from deleteDatabase() has an
     // `undefined` result on every event, so that call was an unconditional
@@ -386,7 +391,9 @@ describe('panic wipe', () => {
     } finally {
       try { held.close(); } catch { /* noop */ }
     }
-    expect(report.clean).toBe(true);
+    expect(report.sideDatabasesVerified).toBe(true);
+    expect(report.sideDatabasesResidue).toContain('veyrnox-appdata');
+    expect(report.clean).toBe(false);
   });
 
   // ── H2 part B: deniability uniformity — FIXED_LEN padding of the panic marker ──
