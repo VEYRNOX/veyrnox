@@ -942,6 +942,10 @@ export default function WalletEntry() {
         setError("Unlock cancelled — try again when ready.");
         return;
       }
+      if (e?.code === 'UNLOCK_SUPERSEDED') {
+        setError("Unlock interrupted — please try again.");
+        return;
+      }
       // A real wrong-PIN miss. Register it and persist the new count; the pure guard
       // decides whether this miss is the wipe trigger and what to warn.
       const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());
