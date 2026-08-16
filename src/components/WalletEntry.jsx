@@ -942,6 +942,12 @@ export default function WalletEntry() {
         setError("Unlock cancelled — try again when ready.");
         return;
       }
+      // Race guard: a concurrent unlock (biometric auto-trigger or a second PIN tap)
+      // superseded this attempt. NOT a wrong PIN — do NOT increment the wipe counter.
+      if (e?.code === 'UNLOCK_SUPERSEDED') {
+        setError("Another unlock was in progress — try again.");
+        return;
+      }
       // A real wrong-PIN miss. Register it and persist the new count; the pure guard
       // decides whether this miss is the wipe trigger and what to warn.
       const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());
