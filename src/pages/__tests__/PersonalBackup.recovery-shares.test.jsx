@@ -138,6 +138,9 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
       target: { value: 'a-strong-password-16' },
     });
+    // 2026-08-16 audit remediation: encrypt-all now defaults ON. This test
+    // exercises the raw-bundle path, so opt out first.
+    fireEvent.click(screen.getByLabelText(/encrypt each share with a passphrase/i));
     fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
     await waitFor(() => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy());
     expect(exportRecoveryBundles).toHaveBeenCalledWith('a-strong-password-16');
@@ -163,6 +166,8 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
       target: { value: 'a-strong-password-16' },
     });
+    // Encrypt-all defaults ON — opt out to reach the exportRecoveryBundles call.
+    fireEvent.click(screen.getByLabelText(/encrypt each share with a passphrase/i));
     fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
     // Success screen must NOT appear on a failure — user sees a toast (mocked
     // globally elsewhere) rather than a false "shares saved" confirmation.
@@ -171,8 +176,11 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
   });
 });
 
-describe('PersonalBackup — Export encrypt-one option (Phase 3, flag on)', () => {
-  it('reveals the recovery-passphrase input when the checkbox is ticked', async () => {
+describe('PersonalBackup — Export encrypt-all option (Phase 3, flag on)', () => {
+  // 2026-08-16 audit remediation: the encrypt option now defaults ON and
+  // wraps ALL 3 shares (not just #2). Tests below reflect that new default
+  // + the renamed aria-label ("Encrypt each share with a passphrase").
+  it('shows the recovery-passphrase input by default (checkbox on) and hides it when the user opts out', async () => {
     const Page = await loadPage({
       enableShards: true,
       useWalletValue: {
@@ -186,12 +194,13 @@ describe('PersonalBackup — Export encrypt-one option (Phase 3, flag on)', () =
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
-    fireEvent.click(screen.getByLabelText(/encrypt one share with a recovery passphrase/i));
+    // Default ON — the passphrase field is visible immediately.
     expect(screen.getByPlaceholderText(/recovery passphrase/i)).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/encrypt each share with a passphrase/i));
+    expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
   });
 
-  it('keeps the Split button disabled while the checkbox is on but passphrase is too short', async () => {
+  it('keeps the Split button disabled while the checkbox is on (default) but passphrase is too short', async () => {
     const Page = await loadPage({
       enableShards: true,
       useWalletValue: {
@@ -208,8 +217,7 @@ describe('PersonalBackup — Export encrypt-one option (Phase 3, flag on)', () =
     fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
       target: { value: 'wallet-password-123' },
     });
-    expect(screen.getByRole('button', { name: /split & save 3 shares/i }).hasAttribute('disabled')).toBe(false);
-    fireEvent.click(screen.getByLabelText(/encrypt one share with a recovery passphrase/i));
+    // Default ON — no passphrase yet, so the split button starts DISABLED.
     expect(screen.getByRole('button', { name: /split & save 3 shares/i }).hasAttribute('disabled')).toBe(true);
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'too-short' },
@@ -434,7 +442,7 @@ describe('PersonalBackup — encryptOne actually encrypts share #2 (Codex P1 fix
     HTMLAnchorElement.prototype.click = origAnchorClick;
   });
 
-  it('encrypts only share #2 under the passphrase; shares #1 and #3 stay raw', async () => {
+  it('encrypts ALL 3 shares under the passphrase when encrypt-all is on (2026-08-16 audit remediation)', async () => {
     const fakeBundles = [1, 2, 3].map((n) =>
       JSON.stringify({
         v: 1,
@@ -463,7 +471,7 @@ describe('PersonalBackup — encryptOne actually encrypts share #2 (Codex P1 fix
     fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
       target: { value: 'a-strong-password-16' },
     });
-    fireEvent.click(screen.getByLabelText(/encrypt one share with a recovery passphrase/i));
+    // Encrypt-all defaults ON; just supply the passphrase.
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'a-very-long-recovery-passphrase' },
     });
@@ -475,27 +483,20 @@ describe('PersonalBackup — encryptOne actually encrypts share #2 (Codex P1 fix
     expect(savedBlobs).toHaveLength(3);
     const texts = await Promise.all(savedBlobs.map((b) => b.text()));
 
-    // Share #1 and #3 are the raw bundle, byte-for-byte.
-    expect(texts[0]).toBe(fakeBundles[0]);
-    expect(texts[2]).toBe(fakeBundles[2]);
-    expect(savedNames[0]).toBe('veyrnox-recovery-1-of-3.veyrnox-bundle.json');
-    expect(savedNames[2]).toBe('veyrnox-recovery-3-of-3.veyrnox-bundle.json');
-
-    // Share #2 is NOT the raw bundle — the honesty guard.
-    expect(texts[1]).not.toContain('RAWMARKER123==');
-    expect(texts[1]).not.toContain('shareBytes');
-    const envelope = JSON.parse(texts[1]);
-    expect(envelope.type).toBe('recovery-bundle-v1');
-    expect(savedNames[1]).toBe('veyrnox-recovery-2-of-3.veyrnox-recovery.json');
-
-    // Round-trip: unwrap share #2 and it must reproduce the exact raw bundle
-    // #2, which combineFromBundles can then use alongside share #1.
+    // Every share must be a passphrase-wrapped envelope, NOT the raw bundle.
     const { unwrapBundleWithPassphrase } = await import('@/wallet-core/recoveryShare');
-    const back = await unwrapBundleWithPassphrase(envelope, 'a-very-long-recovery-passphrase');
-    expect(new TextDecoder().decode(back)).toBe(fakeBundles[1]);
+    for (let i = 0; i < 3; i++) {
+      expect(texts[i]).not.toContain('RAWMARKER123==');
+      expect(texts[i]).not.toContain('shareBytes');
+      const envelope = JSON.parse(texts[i]);
+      expect(envelope.type).toBe('recovery-bundle-v1');
+      expect(savedNames[i]).toBe(`veyrnox-recovery-${i + 1}-of-3.veyrnox-recovery.json`);
+      const back = await unwrapBundleWithPassphrase(envelope, 'a-very-long-recovery-passphrase');
+      expect(new TextDecoder().decode(back)).toBe(fakeBundles[i]);
+    }
   }, 30_000);
 
-  it('saves 3 raw bundles when the checkbox is left off (no behaviour change)', async () => {
+  it('saves 3 raw bundles when the user opts out of the default encrypt-all checkbox', async () => {
     const fakeBundles = [1, 2, 3].map((n) =>
       JSON.stringify({ v: 1, shareIndex: n, shareBytes: 'AA==', vault: {}, vaultHash: 'x', meta: {} }),
     );
@@ -517,6 +518,8 @@ describe('PersonalBackup — encryptOne actually encrypts share #2 (Codex P1 fix
     fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
       target: { value: 'a-strong-password-16' },
     });
+    // Uncheck the default-on encrypt-all box.
+    fireEvent.click(screen.getByLabelText(/encrypt each share with a passphrase/i));
     fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
     await waitFor(() => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy());
 
