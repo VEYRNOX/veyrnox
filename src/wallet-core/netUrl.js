@@ -113,6 +113,12 @@ export function assertSafeRpcUrl(url) {
  * block-explorer URL). Returns the validated URL, or null if the scheme is unsafe
  * (`javascript:`/`data:`/`file:`/remote `http:`). Use this to decide whether to
  * render an `<a href>`, so an unsafe scheme can never reach the DOM and execute.
+ *
+ * NOTE: this delegates to `assertSafeRpcUrl`, which enforces the RPC-host
+ * allowlist. Callers rendering explorer URLs (not RPCs) should use
+ * `safeExplorerUrl` instead — the allowlist does not contain explorer hosts,
+ * so `safeExternalUrl` will reject every default network's explorer link
+ * (etherscan.io, bscscan.com, snowtrace.io, …).
  * @param {unknown} url
  * @returns {string|null}
  */
@@ -122,4 +128,39 @@ export function safeExternalUrl(url) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Non-throwing scheme + shape gate for RENDERED block-explorer URLs. Deliberately
+ * has NO host allowlist (issue #1848): explorers are per-network and the RPC
+ * allowlist doesn't (and shouldn't) enumerate them. Rejects everything the
+ * shared RPC gate rejects except the host check:
+ *   - non-string / empty
+ *   - unparseable
+ *   - embedded credentials (`user:pw@host`)
+ *   - fragments (`#…` — same paste-error / smuggling reasoning as RPCs)
+ *   - non-https except loopback http
+ * Returns the trimmed URL on success, null on any rejection.
+ *
+ * Use this at the RENDER SITE for explorer URLs. Do NOT weaken
+ * `assertSafeRpcUrl` to admit explorers — the shared validator's tight
+ * allowlist is what stops arbitrary egress from a user-set custom RPC.
+ * @param {unknown} url
+ * @returns {string|null}
+ */
+export function safeExplorerUrl(url) {
+  if (typeof url !== 'string' || !url.trim()) return null;
+  const trimmed = url.trim();
+  let parsed;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (parsed.username || parsed.password) return null;
+  if (parsed.hash) return null;
+  const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (parsed.protocol === 'http:' && LOOPBACK.has(host)) return trimmed;
+  if (parsed.protocol !== 'https:') return null;
+  return trimmed;
 }
