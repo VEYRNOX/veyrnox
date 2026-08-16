@@ -320,6 +320,7 @@ async function getHardwareFactorWithLockoutFallback(getHF, hfOpts) {
       if (fallbackErr && typeof fallbackErr === 'object') {
         if (!fallbackErr.cause) fallbackErr.cause = err;
         if (!fallbackErr.origCode) fallbackErr.origCode = err.code;
+        fallbackErr.code = err.code;
       }
       throw fallbackErr;
     }
