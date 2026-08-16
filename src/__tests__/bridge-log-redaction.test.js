@@ -73,8 +73,12 @@ describe.each([
 describe('capacitor.config.json logging policy', () => {
   const config = JSON.parse(readFileSync(resolve(root, 'capacitor.config.json'), 'utf8'));
 
-  it("pins loggingBehavior explicitly to 'debug'", () => {
-    expect(config.loggingBehavior).toBe('debug');
+  it("pins loggingBehavior to a safe value ('debug' or 'none')", () => {
+    // 'debug' means log-only-on-debuggable-builds (release stays silent via
+    // isLoggingEnabled:false). 'none' is strictly stronger — no bridge logs
+    // on ANY build. Either satisfies the LOG-1 invariant; the danger is
+    // 'production', which is caught by the sibling test below.
+    expect(['debug', 'none']).toContain(config.loggingBehavior);
   });
 
   it("never sets loggingBehavior 'production' (would enable bridge logs on release builds)", () => {

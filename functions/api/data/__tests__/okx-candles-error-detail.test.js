@@ -25,7 +25,14 @@ import { onRequestGet } from '../okx-candles.js';
 const URL_OK = 'https://x/api/data/okx-candles?instId=BTC-USDT&bar=1H&limit=5';
 
 function makeContext(url = URL_OK) {
-  return { request: new Request(url), waitUntil: () => {} };
+  // Codex P3 2026-08-15 hardened `clientIpOf()` to trust only
+  // CF-Connecting-IP (dropped the spoofable X-Forwarded-For fallback).
+  // A test Request with no headers now returns '' → enforceRateLimit
+  // throws "Too many requests" immediately, before the diagnostic paths
+  // this file exercises can run. Stamp a stable test IP so the limiter
+  // key is well-defined and the failure branches under test are reached.
+  const req = new Request(url, { headers: { 'CF-Connecting-IP': '203.0.113.7' } });
+  return { request: req, waitUntil: () => {} };
 }
 
 /** Every host answers identically. */
