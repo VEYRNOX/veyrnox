@@ -1,5 +1,11 @@
 // pages/StealthWallets.jsx
 //
+// ponytail: 777 LOC (as of 2026-08-16) intentionally NOT split. Kept unified
+// for security-critical review continuity — hidden-wallet creation, unlock-
+// prompt reveal, and I3 deniability suppression all touch the same audited
+// unlock chain. A split would fragment the state machine an auditor must read
+// straight-through to confirm no hidden-wallet existence tells leak.
+//
 // STEALTH / HIDDEN WALLETS  (S3 — Direction-C individual security).  PROVISIONAL.
 //
 // Lets the user create one or more HIDDEN wallets that never appear in the normal

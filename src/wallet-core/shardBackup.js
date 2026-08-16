@@ -205,6 +205,20 @@ export function combineDekForPersonalBackup(shares) {
 
 export { SECRET_SIZE, SHARE_SIZE };
 
+// ── KEK-BYPASS ARCHITECTURE (READ BEFORE EDITING) ─────────────────────
+// Cross-device restore deliberately bypasses the on-device KEK / hardware /
+// prior action-password chain: any 2 bundles + a user-supplied credential on
+// the new device reconstruct the seed with NO KEK, NO hardware factor, and
+// NO knowledge of the original wallet password. That IS the design — a lost
+// or destroyed device must be recoverable from the 2 surviving bundles alone.
+// The security consequence: OFFLINE strength of the recovered wallet is
+// bounded by (a) whether the bundles are passphrase-wrapped at export time
+// (PersonalBackup encrypt-all default, audit 2026-08-16) and (b) the
+// credential the user types on the restore screen (RestoreFromShares now
+// enforces a passphrase, not a PIN). Users MUST be told this; the design is
+// not "extra hardening on top of the existing chain", it is a SECOND path
+// that shares only the seed itself with the primary chain.
+//
 // ── Cross-device restore (Phase 3) ────────────────────────────────────
 // A raw Shamir share is 33 bytes of DEK slice — useless on a fresh phone
 // that has no vault ciphertext. A "bundle" wraps the share with the
@@ -295,6 +309,14 @@ export function encodeShareBundle(share, index, vault) {
 /**
  * Parse a bundle string OR object. Validates shape and hash-vs-vault
  * integrity. Returns { share: Uint8Array, index, vault, vaultHash }.
+ *
+ * ponytail: kept for backward compat — bundles produced BEFORE the
+ * 2026-08-16 audit remediation could be raw JSON of the shape below (share
+ * bytes + vault ct in the clear). Post-remediation the PersonalBackup UI
+ * wraps ALL exported bundles with a passphrase envelope by default (see
+ * recoveryShare.wrapBundleWithPassphrase), so raw-JSON bundles are a legacy
+ * shape only. Do not extend this path; new bundle carriers should go through
+ * the passphrase-wrap layer.
  *
  * @param {string|object} input bundle JSON string or already-parsed object
  */

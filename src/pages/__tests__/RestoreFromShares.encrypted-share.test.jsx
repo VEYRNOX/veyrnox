@@ -56,11 +56,14 @@ function pasteShares(a, b) {
   fireEvent.change(boxes[1], { target: { value: b } });
 }
 
-function enterPinAndSubmit(pin) {
-  const groups = screen.getAllByRole('group', { name: /pin entry/i });
-  for (const digit of pin) fireEvent.keyDown(groups[0], { key: digit });
-  for (const digit of pin) fireEvent.keyDown(groups[1], { key: digit });
-  fireEvent.keyDown(groups[1], { key: 'Enter' });
+// 2026-08-16 audit remediation: PinPad → passphrase input. The restore path
+// must not re-wrap with a numeric PIN (see KEK-bypass note in the page).
+const NEW_PASSPHRASE = 'restore-passphrase-with-enough-entropy';
+function enterPassphraseAndSubmit(pass = NEW_PASSPHRASE) {
+  const fields = screen.getAllByPlaceholderText(/new passphrase|confirm new passphrase/i);
+  fireEvent.change(fields[0], { target: { value: pass } });
+  fireEvent.change(fields[1], { target: { value: pass } });
+  fireEvent.click(screen.getByRole('button', { name: /^restore$/i }));
 }
 
 describe('RestoreFromShares — encrypted bundle detection', () => {
@@ -82,7 +85,7 @@ describe('RestoreFromShares — encrypted bundle detection', () => {
       target: { value: PASSPHRASE },
     });
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-    enterPinAndSubmit('24681024');
+    enterPassphraseAndSubmit();
 
     await waitFor(() => expect(restoreFromRecoveryBundles).toHaveBeenCalled(), { timeout: 15_000 });
     const [bundles] = restoreFromRecoveryBundles.mock.calls[0];
@@ -98,7 +101,7 @@ describe('RestoreFromShares — encrypted bundle detection', () => {
       target: { value: 'the-wrong-but-long-enough-passphrase' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-    enterPinAndSubmit('24681024');
+    enterPassphraseAndSubmit();
 
     expect(await screen.findByRole('alert', {}, { timeout: 15_000 })).toBeTruthy();
     expect(restoreFromRecoveryBundles).not.toHaveBeenCalled();
@@ -113,7 +116,7 @@ describe('RestoreFromShares — encrypted bundle detection', () => {
       target: { value: 'the-wrong-but-long-enough-passphrase' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-    enterPinAndSubmit('24681024');
+    enterPassphraseAndSubmit();
 
     // Error shown, and the PIN screen must NOT be where the user is stuck —
     // the passphrase field (only rendered on the input step) must be back
@@ -126,7 +129,7 @@ describe('RestoreFromShares — encrypted bundle detection', () => {
     // Correct the passphrase and retry — should now succeed.
     fireEvent.change(passphraseInput, { target: { value: PASSPHRASE } });
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-    enterPinAndSubmit('24681024');
+    enterPassphraseAndSubmit();
 
     await waitFor(() => expect(restoreFromRecoveryBundles).toHaveBeenCalled(), { timeout: 15_000 });
     const [bundles] = restoreFromRecoveryBundles.mock.calls[0];

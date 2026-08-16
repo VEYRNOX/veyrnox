@@ -2,18 +2,34 @@
 //
 // Cross-device (Phase 3) shard restore. Fresh phone, no vault on disk, user
 // supplies 2 of 3 recovery bundles → provider reconstructs → prompt for a NEW
-// PIN → importWallet re-encrypts under that PIN. See
+// passphrase → importWallet re-encrypts under that passphrase. See
 // docs/cloud-recovery-shard-spec.md and wallet-core/shardBackup.js.
+//
+// ─── KEK-BYPASS ARCHITECTURE (READ BEFORE EDITING) ─────────────────────────
+// This flow deliberately bypasses the on-device KEK / hardware / prior
+// action-password chain: any 2 recovery bundles + a new user-supplied
+// credential = full seed recovery on a brand-new device. That is the whole
+// POINT of cross-device recovery — a lost or destroyed device must be
+// recoverable from the 2 remaining bundles alone. The design consequence:
+// the OFFLINE strength of the recovered wallet on the new device is bounded
+// by whatever the user types here. A short numeric PIN would give an
+// attacker who obtains 2 bundles a ~10^8 offline crack surface — with no
+// hardware anchor to slow it down. This screen therefore enforces a
+// PASSPHRASE (via checkRecoveryPassphrase, min 16 chars) as the re-wrap
+// credential; do NOT relax that back to a numeric PIN without owner sign-off
+// and a compensating factor (hardware KEK re-enrolment before first sign,
+// old-vault password verification, etc.).
+// ────────────────────────────────────────────────────────────────────────────
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, Upload, FileText } from "lucide-react";
-import PinPad from "@/components/security/PinPad";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useWallet } from "@/lib/WalletProvider";
 import {
   tryParseRecoveryEnvelope,
   unwrapBundleWithPassphrase,
+  checkRecoveryPassphrase,
   RECOVERY_PASSPHRASE_MIN_LENGTH,
 } from "@/wallet-core/recoveryShare";
 
@@ -53,24 +69,38 @@ function readFileText(file) {
 export default function RestoreFromShares() {
   const navigate = useNavigate();
   const { restoreFromRecoveryBundles } = useWallet();
+  // ponytail: these strings sit in React state closure — String is immutable
+  // in JS, so we cannot literally zero the underlying bytes. We minimise the
+  // window by clearing on unmount + immediately after successful reconstruction
+  // (see cleanup effect below and the success branch). The residual is bounded
+  // by the GC's decision to reclaim the old snapshot string, which is the same
+  // ceiling every other password-typed field on the app hits.
   const [shareA, setShareA] = useState("");
   const [shareB, setShareB] = useState("");
-  const [phase, setPhase] = useState("input"); // input | pin | busy
-  const [pin, setPin] = useState("");
-  const [pinConfirm, setPinConfirm] = useState("");
+  const [phase, setPhase] = useState("input"); // input | passphrase | busy
+  const [newPassphrase, setNewPassphrase] = useState("");
+  const [newPassphraseConfirm, setNewPassphraseConfirm] = useState("");
   const [error, setError] = useState("");
   const fileRefA = useRef(null);
   const fileRefB = useRef(null);
-  // Codex P1 companion (2026-08-15): PersonalBackup's export can now save
-  // share #2 as a passphrase-encrypted `.veyrnox-recovery.json` envelope
-  // (recovery-bundle-v1), NOT the raw bundle this page previously assumed
-  // every pasted/loaded file to be. Detect that shape per-share and prompt
-  // for the passphrase that decrypts it before combining.
   const [passphraseA, setPassphraseA] = useState("");
   const [passphraseB, setPassphraseB] = useState("");
 
   const envelopeA = useMemo(() => detectBundleEnvelope(shareA), [shareA]);
   const envelopeB = useMemo(() => detectBundleEnvelope(shareB), [shareB]);
+
+  // Clear every credential-shaped state on unmount so navigating away doesn't
+  // leave a share/bundle passphrase/new-passphrase live on the React fiber.
+  useEffect(() => {
+    return () => {
+      setShareA("");
+      setShareB("");
+      setPassphraseA("");
+      setPassphraseB("");
+      setNewPassphrase("");
+      setNewPassphraseConfirm("");
+    };
+  }, []);
 
   const pickInto = useCallback(async (which, file) => {
     setError("");
@@ -84,7 +114,7 @@ export default function RestoreFromShares() {
     }
   }, []);
 
-  const advanceToPin = useCallback(() => {
+  const advanceToPassphrase = useCallback(() => {
     setError("");
     if (!shareA.trim() || !shareB.trim()) {
       setError("Provide both recovery bundles.");
@@ -98,13 +128,21 @@ export default function RestoreFromShares() {
       setError(`Enter the recovery passphrase for share 2 (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} characters).`);
       return;
     }
-    setPhase("pin");
+    setPhase("passphrase");
   }, [shareA, shareB, envelopeA, envelopeB, passphraseA, passphraseB]);
 
-  const submitPin = useCallback(async () => {
+  const submitPassphrase = useCallback(async () => {
     setError("");
-    if (pin.length < 8 || pin !== pinConfirm) {
-      setError("PINs do not match or are too short (8 digits).");
+    // 2026-08-16 audit: the re-wrap credential MUST be a passphrase, not a
+    // numeric PIN. See the KEK-bypass architecture note at the top of this
+    // file for the rationale.
+    const strength = checkRecoveryPassphrase(newPassphrase);
+    if (!strength.ok) {
+      setError(strength.reason || `Use at least ${RECOVERY_PASSPHRASE_MIN_LENGTH} characters.`);
+      return;
+    }
+    if (newPassphrase !== newPassphraseConfirm) {
+      setError("Passphrases do not match.");
       return;
     }
     setPhase("busy");
@@ -113,7 +151,7 @@ export default function RestoreFromShares() {
     // envelope shape. Fail-closed: unwrap throws on a wrong passphrase or
     // tampered envelope. Kept in its own try/catch: on a wrong passphrase
     // the user must land back on the input step (where passphraseA/B are
-    // editable), not the PIN step, which has no way to correct them.
+    // editable), not the passphrase step, which has no way to correct them.
     let resolvedA, resolvedB;
     try {
       resolvedA = await resolveBundleText(shareA.trim(), envelopeA, passphraseA);
@@ -126,15 +164,18 @@ export default function RestoreFromShares() {
       return;
     }
     try {
-      await restoreFromRecoveryBundles([resolvedA, resolvedB], pin);
-      setShareA(""); setShareB(""); setPin(""); setPinConfirm("");
+      await restoreFromRecoveryBundles([resolvedA, resolvedB], newPassphrase);
+      // Zero every credential-shaped state on success. String immutability
+      // means we replace the closure ref, not the bytes; the GC decides.
+      setShareA(""); setShareB("");
+      setNewPassphrase(""); setNewPassphraseConfirm("");
       setPassphraseA(""); setPassphraseB("");
       navigate("/");
     } catch (err) {
       setError((err instanceof Error && err.message) || "Restore failed.");
-      setPhase("pin");
+      setPhase("passphrase");
     }
-  }, [pin, pinConfirm, shareA, shareB, envelopeA, envelopeB, passphraseA, passphraseB, restoreFromRecoveryBundles, navigate]);
+  }, [newPassphrase, newPassphraseConfirm, shareA, shareB, envelopeA, envelopeB, passphraseA, passphraseB, restoreFromRecoveryBundles, navigate]);
 
   const ShareInput = ({ label, value, setValue, fileRef, which }) => (
     <div className="space-y-2">
@@ -180,7 +221,7 @@ export default function RestoreFromShares() {
       <h1 className="text-xl font-semibold">Restore from recovery shares</h1>
       <p className="text-sm text-muted-foreground">
         Load any 2 of your 3 <code>.veyrnox-bundle.json</code> files (from your device, cloud drive, USB, etc.).
-        This device rebuilds the wallet and locks it under a new PIN — the seed never leaves the device.
+        This device rebuilds the wallet and locks it under a new passphrase — the seed never leaves the device.
       </p>
 
       {phase === "input" && (
@@ -205,7 +246,7 @@ export default function RestoreFromShares() {
           )}
           {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
           <button
-            onClick={advanceToPin}
+            onClick={advanceToPassphrase}
             disabled={!shareA.trim() || !shareB.trim()}
             className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50"
           >
@@ -214,13 +255,33 @@ export default function RestoreFromShares() {
         </div>
       )}
 
-      {phase === "pin" && (
+      {phase === "passphrase" && (
         <div className="space-y-4">
-          <p className="text-sm">Choose a new 8-digit PIN for this device.</p>
-          <PinPad value={pin} onChange={setPin} onComplete={setPin} submitLabel="Next" />
-          <p className="text-sm">Confirm PIN.</p>
-          <PinPad value={pinConfirm} onChange={setPinConfirm} onComplete={submitPin} submitLabel="Restore" />
+          <p className="text-sm">
+            Choose a new passphrase for this device (min {RECOVERY_PASSPHRASE_MIN_LENGTH} characters).
+            This must be a PASSPHRASE, not a PIN — a short PIN is not enough entropy to protect a
+            cross-device restore.
+          </p>
+          <PasswordInput
+            value={newPassphrase}
+            onChange={(e) => setNewPassphrase(e.target.value)}
+            placeholder={`New passphrase (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
+            autoComplete="new-password"
+          />
+          <PasswordInput
+            value={newPassphraseConfirm}
+            onChange={(e) => setNewPassphraseConfirm(e.target.value)}
+            placeholder="Confirm new passphrase"
+            autoComplete="new-password"
+          />
           {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
+          <button
+            onClick={submitPassphrase}
+            disabled={!newPassphrase}
+            className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50"
+          >
+            Restore
+          </button>
         </div>
       )}
 

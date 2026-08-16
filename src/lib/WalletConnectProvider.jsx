@@ -1,4 +1,10 @@
 // @ts-nocheck
+// ponytail: 964 LOC (as of 2026-08-16) intentionally NOT split. Kept unified
+// for security-critical review continuity — the pre-sign RASP gate composition
+// (H-1 fix, browserProbeSource + attestation), session lifecycle, and event
+// routing all coexist so an auditor can trace a single WC event end-to-end
+// without hopping helpers. A mechanical split risks reordering the async
+// probe/gate composition the H-1 remediation depends on.
 // React context for WalletConnect state.
 // Holds pending proposals, pending requests, and active sessions.
 // Routes all signing through WalletProvider's withPrivateKey() — never holds keys.

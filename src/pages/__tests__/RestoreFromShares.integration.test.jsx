@@ -28,8 +28,10 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
-const RESTORE_PIN = '24681024';
-const WRONG_PIN = '13579135';
+// 2026-08-16 audit remediation: the restore path enforces a passphrase (not a
+// PIN) as the re-wrap credential. See the KEK-bypass note in RestoreFromShares.
+const RESTORE_PIN = 'restore-passphrase-with-enough-entropy';
+const WRONG_PIN = 'wrong-passphrase-with-enough-entropy';
 
 let WalletProvider;
 let useWallet;
@@ -74,15 +76,16 @@ function loadBundles(first = bundleOne, second = bundleThree) {
   inputs = screen.getAllByPlaceholderText(/"shareIndex"/i);
   fireEvent.change(inputs[1], { target: { value: second } });
   fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-  return screen.getAllByRole('group', { name: /pin entry/i });
+  return screen.getAllByPlaceholderText(/new passphrase|confirm new passphrase/i);
 }
 
-function enterPin(group, value) {
-  for (const digit of value) fireEvent.keyDown(group, { key: digit });
+function enterPassphrase(fields, primary, confirm = primary) {
+  fireEvent.change(fields[0], { target: { value: primary } });
+  fireEvent.change(fields[1], { target: { value: confirm } });
 }
 
-function submitPin(group) {
-  fireEvent.keyDown(group, { key: 'Enter' });
+function submitPassphrase() {
+  fireEvent.click(screen.getByRole('button', { name: /^restore$/i }));
 }
 
 async function expectNoVaultCreated() {
@@ -150,43 +153,40 @@ afterAll(() => {
 });
 
 describe.sequential('RestoreFromShares — real WalletProvider integration', () => {
-  it('fails closed for a short PIN before any vault is created', async () => {
+  it('fails closed for a short passphrase before any vault is created', async () => {
     renderRestorePage();
-    const [pinPad, confirmationPad] = loadBundles();
+    const fields = loadBundles();
 
-    enterPin(pinPad, '2468102');
-    enterPin(confirmationPad, '2468102');
-    submitPin(confirmationPad);
+    enterPassphrase(fields, 'short');
+    submitPassphrase();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/too short \(8 digits\)/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/at least .* characters/i);
     await expectNoVaultCreated();
   });
 
-  it('fails closed when the confirmation PIN does not match', async () => {
+  it('fails closed when the confirmation passphrase does not match', async () => {
     renderRestorePage();
-    const [pinPad, confirmationPad] = loadBundles();
+    const fields = loadBundles();
 
-    enterPin(pinPad, RESTORE_PIN);
-    enterPin(confirmationPad, '24681025');
-    submitPin(confirmationPad);
+    enterPassphrase(fields, RESTORE_PIN, `${RESTORE_PIN}-different`);
+    submitPassphrase();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/pins do not match/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/passphrases do not match/i);
     await expectNoVaultCreated();
   });
 
   it('rejects duplicate shares without creating or unlocking a vault', async () => {
     renderRestorePage();
-    const [pinPad, confirmationPad] = loadBundles(bundleOne, bundleOne);
+    const fields = loadBundles(bundleOne, bundleOne);
 
-    enterPin(pinPad, RESTORE_PIN);
-    enterPin(confirmationPad, RESTORE_PIN);
-    submitPin(confirmationPad);
+    enterPassphrase(fields, RESTORE_PIN);
+    submitPassphrase();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('SHARD_BUNDLE_MISMATCH');
     await expectNoVaultCreated();
   });
 
-  it('restores from two valid bundles through WalletProvider, routes home, and rejects a wrong PIN', async () => {
+  it('restores from two valid bundles through WalletProvider, routes home, and rejects a wrong passphrase', async () => {
     const consoleSpies = [
       vi.spyOn(console, 'log').mockImplementation(() => {}),
       vi.spyOn(console, 'info').mockImplementation(() => {}),
@@ -196,11 +196,10 @@ describe.sequential('RestoreFromShares — real WalletProvider integration', () 
 
     try {
       renderRestorePage();
-      const [pinPad, confirmationPad] = loadBundles();
+      const fields = loadBundles();
 
-      enterPin(pinPad, RESTORE_PIN);
-      enterPin(confirmationPad, RESTORE_PIN);
-      submitPin(confirmationPad);
+      enterPassphrase(fields, RESTORE_PIN);
+      submitPassphrase();
 
       expect(await screen.findByTestId('home-route', {}, { timeout: 120_000 })).toHaveTextContent('home:/');
       await waitFor(() => expect(walletContext.isUnlocked).toBe(true), { timeout: 120_000 });

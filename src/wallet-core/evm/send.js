@@ -49,12 +49,20 @@ export async function signAndBroadcast({ networkKey, privateKey, to, amountEth, 
   // VULN-19: sanity-check the pending nonce before signing. A malicious RPC could
   // return an inflated nonce to make the tx unreplayable, or a stale one to replay
   // an old tx. We trust the local counter only within a sane window (0–1 000 000).
+  //
+  // 2026-08-16 audit remediation: the checked value MUST be the one actually
+  // signed. Previously `pendingNonce` was read, sanity-checked, then discarded —
+  // sendTransaction() omitted `nonce`, so ethers re-fetched it. A malicious RPC
+  // could return a good nonce on call #1 (pass the check) and a poisoned nonce
+  // on call #2 (be what actually got signed). Pin the checked value here.
   const pendingNonce = await provider.getTransactionCount(wallet.address, 'pending');
   if (!Number.isInteger(pendingNonce) || pendingNonce < 0 || pendingNonce > 1_000_000) {
     throw new Error(`RPC returned implausible nonce ${pendingNonce} — refusing to sign`);
   }
 
-  const txResponse = await wallet.sendTransaction({ to, value, ...overrides });
+  // `nonce` after `...overrides` so a future overrides field cannot silently
+  // shadow the sanity-checked value.
+  const txResponse = await wallet.sendTransaction({ to, value, ...overrides, nonce: pendingNonce });
 
   return {
     hash: txResponse.hash,          // REAL hash from the network
