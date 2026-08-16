@@ -333,6 +333,19 @@ test.describe('Security Boundary: Key & Secret Exposure', () => {
   });
 
   test('API keys not sent to upstream services', async ({ page }) => {
+    // Intercept network BEFORE navigation
+    const thirdPartyRequests = [];
+    page.on('request', req => {
+      const url = new URL(req.url());
+      const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
+      if (!isLocal) {
+        thirdPartyRequests.push({
+          url: req.url(),
+          headers: req.headers(),
+        });
+      }
+    });
+
     await page.goto(`${BASE_URL}/dashboard`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');
@@ -340,18 +353,6 @@ test.describe('Security Boundary: Key & Secret Exposure', () => {
       await pinInput.fill('111111');
       await page.click('[data-testid="unlock-btn"]');
     }
-
-    // Intercept all network traffic to third-party services
-    const thirdPartyRequests = [];
-    page.on('request', req => {
-      const url = new URL(req.url());
-      if (!url.hostname.includes('localhost') && !url.hostname.includes('127.0.0.1')) {
-        thirdPartyRequests.push({
-          url: req.url(),
-          headers: req.headers(),
-        });
-      }
-    });
 
     await page.waitForLoadState('networkidle');
 
@@ -375,7 +376,8 @@ test.describe('Security Boundary: CSP & XSS Prevention', () => {
   test('content security policy headers present and enforced', async ({ page, context }) => {
     const response = await page.goto(`${BASE_URL}`);
 
-    const cspHeader = response.headers()['content-security-policy'];
+    expect(response).toBeTruthy();
+    const cspHeader = response?.headers()['content-security-policy'];
     expect(cspHeader).toBeDefined();
 
     // Should have strict CSP
@@ -401,15 +403,18 @@ test.describe('Security Boundary: CSP & XSS Prevention', () => {
     ];
 
     for (const payload of xssPayloads) {
-      await page.fill('[data-testid="recipient-address"]', payload);
-
-      // Check that script didn't execute
+      // Setup dialog listener BEFORE any interaction
       let alertFired = false;
-      page.once('dialog', () => {
+      const dialogHandler = () => {
         alertFired = true;
-      });
+      };
+      page.once('dialog', dialogHandler);
 
+      await page.fill('[data-testid="recipient-address"]', payload);
       await page.click('[data-testid="preview-send"]');
+
+      // Give page time to execute any payload
+      await page.waitForTimeout(500);
 
       expect(alertFired).toBeFalsy();
     }
