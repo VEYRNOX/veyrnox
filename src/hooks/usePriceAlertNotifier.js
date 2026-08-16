@@ -79,8 +79,8 @@ async function dismissAllScheduledNotifications() {
 // prevents duplicate handlers under HMR). APP_LOCK_EVENT is fired by
 // WalletProvider.lock() for every lock path (panic, duress, idle,
 // background, session ceiling) — one chokepoint covers them all.
-if (typeof window !== 'undefined' && !window.__veyrnoxPriceAlertLockHook) {
-  window.__veyrnoxPriceAlertLockHook = true;
+if (typeof window !== 'undefined' && !(/** @type {any} */ (window)).__veyrnoxPriceAlertLockHook) {
+  /** @type {any} */ (window).__veyrnoxPriceAlertLockHook = true;
   window.addEventListener('veyrnox:app-lock', () => {
     void dismissAllScheduledNotifications();
   });
