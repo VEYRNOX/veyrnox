@@ -213,8 +213,8 @@ export function detectAttestation(probeResult) {
 // BLOCK-tiered from a prior session's compromise). WalletProvider.lock()
 // dispatches APP_LOCK_EVENT on every lock path.
 let _sessionAttestationFailed = false;
-if (typeof window !== 'undefined' && !window.__veyrnoxRaspLatchHook) {
-  window.__veyrnoxRaspLatchHook = true;
+if (typeof window !== 'undefined' && !(/** @type {any} */ (window)).__veyrnoxRaspLatchHook) {
+  /** @type {any} */ (window).__veyrnoxRaspLatchHook = true;
   window.addEventListener('veyrnox:app-lock', () => { _sessionAttestationFailed = false; });
 }
 
