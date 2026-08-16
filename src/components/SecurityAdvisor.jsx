@@ -758,7 +758,7 @@ Additional public knowledge you should apply:
       </button>
 
       <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent className="max-h-[85dvh]">
+        <DrawerContent className="max-h-[92dvh] flex flex-col">
           <DrawerHeader className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary" />
@@ -826,7 +826,7 @@ Additional public knowledge you should apply:
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3"
-            style={{ minHeight: "200px", maxHeight: "calc(85dvh - 130px)" }}
+            style={{ minHeight: "200px", maxHeight: "calc(92dvh - 140px)" }}
           >
             {messages.length === 0 && (
               <div className="space-y-3 pt-1">

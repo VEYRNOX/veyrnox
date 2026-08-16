@@ -2,6 +2,24 @@ package com.veyrnox.app
 
 // VeyrnoxEnclavePlugin.kt — Android bridge for the M2d OS-ACL vault-blob wrap.
 //
+// CALLER-AUTH THREAT MODEL (Codex P2 2026-08-16, general): the reviewed
+// bridge methods do NOT call PluginCall.checkCallerPermissions or any
+// analogous JS-side auth check, and adding one would be fake security —
+// any injected JS in this WebView would run in the same origin/context
+// as the legitimate call site and would trivially forge whatever token
+// scheme we invented. The real defense is:
+//   (1) CSP + bundled-only scripts (index.html + public/_headers) so a
+//       remote attacker can never inject JS in the first place;
+//   (2) M2D_ENABLED / M2c feature flags gating whether the plugin runs;
+//   (3) RASP BLOCK-tier check inside every sensitive @PluginMethod;
+//   (4) Biometric ACL on the underlying Keystore key (see
+//       HardwareKekPlugin.kt setUserAuthenticationRequired + AUTH_BIOMETRIC_STRONG).
+// Layer (4) is the load-bearing one: even a hostile bridge invocation
+// cannot unwrap a vault without a live biometric prompt the user sees +
+// approves on-screen. Documented here so a future reviewer does not
+// re-raise the "missing checkCallerPermissions" flag and add a security-
+// theater token check.
+//
 // ┌─────────────────────────────────────────────────────────────────────────┐
 // │ DEVICE-VERIFIED (INTERNAL) — ungated after device verification           │
 // │ (PR #1152 / commit f518ba57, 2026-07-18). All four flags flipped in     │
@@ -145,7 +163,9 @@ class VeyrnoxEnclavePlugin : Plugin() {
         // Match the HardwareKekPlugin posture: BLOCK tier rejects at the native
         // layer, JS-level presignGate bypass cannot reach the key operation.
         if (RaspIntegrityPlugin.isBlockTier(ctx)) {
-            call.reject("RASP_BLOCK", "Device integrity check failed — Enclave key operation refused (I4)")
+            // Codex P2 2026-08-16: PluginCall.reject(msg, code) args reversed —
+            // see HardwareKekPlugin.getHardwareFactor for the full note.
+            call.reject("Device integrity check failed — Enclave key operation refused (I4)", "RASP_BLOCK")
             return
         }
         try {
@@ -203,7 +223,9 @@ class VeyrnoxEnclavePlugin : Plugin() {
         // RASP BLOCK-tier gate — see createWrappingKey. Codex P1 2026-08-15.
         val ctxForRasp = context
         if (ctxForRasp == null || RaspIntegrityPlugin.isBlockTier(ctxForRasp)) {
-            call.reject("RASP_BLOCK", "Device integrity check failed — Enclave key operation refused (I4)")
+            // Codex P2 2026-08-16: PluginCall.reject(msg, code) args reversed —
+            // see HardwareKekPlugin.getHardwareFactor for the full note.
+            call.reject("Device integrity check failed — Enclave key operation refused (I4)", "RASP_BLOCK")
             return
         }
         // BiometricPrompt requires a FragmentActivity. Capacitor's activity
@@ -320,7 +342,9 @@ class VeyrnoxEnclavePlugin : Plugin() {
         // walk away with plaintext. Mirror HardwareKekPlugin.getHardwareFactor.
         val ctxForRasp = context
         if (ctxForRasp == null || RaspIntegrityPlugin.isBlockTier(ctxForRasp)) {
-            call.reject("RASP_BLOCK", "Device integrity check failed — Enclave key operation refused (I4)")
+            // Codex P2 2026-08-16: PluginCall.reject(msg, code) args reversed —
+            // see HardwareKekPlugin.getHardwareFactor for the full note.
+            call.reject("Device integrity check failed — Enclave key operation refused (I4)", "RASP_BLOCK")
             return
         }
         // `reason` is optional; the service defaults to a generic subtitle

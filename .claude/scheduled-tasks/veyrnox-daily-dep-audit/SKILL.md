@@ -183,6 +183,58 @@ its own.
 - Dependabot alert #14 auto-dismissed (low-severity dev dependency). That dismissal is
   not itself a reason to suppress here; the rationale above is.
 
+### `extract-zip` — max severity: high — accepted 2026-08-16
+
+- **Advisory:** GHSA-jmr9-qjv8-65gv — unvalidated symlink path traversal in `extract-zip`
+  (CVSS 8.1, CWE-22, vulnerable `<= 2.0.1`).
+- **Why accepted:** no upstream fix exists at any version. `2.0.1` is the latest
+  published release (`npm view extract-zip dist-tags` → `latest: 2.0.1`) and the advisory
+  range covers it, so there is no version bump that clears this.
+- **Blast radius:** dev-only. Reaches the tree solely through the WebdriverIO E2E test
+  harness: `@wdio/*` devDependencies (`^9.30.1`) → `@wdio/utils` → `@puppeteer/browsers`
+  → `extract-zip`. Never imported by `src/`, never bundled in the production wallet.
+  `npm audit --omit=dev` reports 0 high / 0 critical. Exploitation requires the harness to
+  extract an attacker-controlled zip; in practice `@puppeteer/browsers` extracts browser
+  builds from Google's Chrome for Testing endpoints.
+- **Accounts for** 12 high findings — the root plus its transitive dependents:
+  `extract-zip`, `@puppeteer/browsers`, `@wdio/utils`, `@wdio/config`, `@wdio/globals`,
+  `@wdio/runner`, `@wdio/cli`, `@wdio/local-runner`, `@wdio/mocha-framework`,
+  `expect-webdriverio`, `webdriver`, `webdriverio`. Suppress the whole chain under this
+  root.
+- **Revisit trigger:** an `extract-zip` release ships outside the `<= 2.0.1` range; OR
+  `@puppeteer/browsers` drops `extract-zip`; OR the WebdriverIO E2E harness is retired;
+  OR `extract-zip` gains a path into a production dependency. Verify the resolved tree
+  before retiring — an npm `fixAvailable: true` is not evidence.
+- **Tracked:** watcher `veyrnox-extract-zip-watch` (weekly, Mondays ~11am), created
+  2026-08-16. Checks for a patched `extract-zip`, for `@wdio/utils` moving its
+  `@puppeteer/browsers` pin to a range admitting `>= 3.0.0`, and for the E2E harness being
+  retired.
+- **PENDING RETIREMENT (2026-08-16) — the override below was taken, and the findings are
+  gone from the resolved tree.** `overrides` now pins `@puppeteer/browsers` to `^3`;
+  `npm install --package-lock-only` resolves it to `3.2.0` under `@wdio/utils`, and
+  `extract-zip` is absent from the lockfile entirely. `npm audit` drops from 12 high to
+  **0 high** (21 total: 18 low elliptic + 3 moderate uuid/xcode chain). The appium subtree
+  is byte-identical — no entries added or removed — so the `--legacy-peer-deps` collateral
+  hazard did not recur. **Do not retire this entry on that evidence alone.** The open
+  question is not whether the advisory clears — it does — but whether the harness still
+  launches its browser drivers under a semver-major `@puppeteer/browsers`. Retire only
+  once the E2E jobs have passed on the PR carrying the override. If they fail, the override
+  is reverted and this entry stands unchanged.
+- **The candidate remediation, as evaluated before it was taken:**
+  `@puppeteer/browsers@3.2.0` has already DROPPED `extract-zip` (its dependencies are now
+  `{yargs, modern-tar}`). The chain does not clear only because `@wdio/utils@9.30.1` —
+  which is also `@latest` — pins `@puppeteer/browsers: ^2.2.0`, and `3.x` is outside that
+  caret. A `package.json` `overrides` entry forcing `@puppeteer/browsers` to `^3` would
+  clear all 12 findings without waiting for upstream. It is a semver-MAJOR override of a
+  transitive dependency inside the test harness, so it can break browser-driver launch in
+  a way `npm audit` will not show. It needs a real E2E run to validate, which is why this
+  is an accepted residual rather than a fix. Do not apply it from the audit task.
+- **Note:** npm's `fixAvailable` suggests `@wdio/cli@8.14.6`, a major *downgrade* from the
+  installed 9.30.1. `@wdio/utils@8.x` still depends on `@puppeteer/browsers` →
+  `extract-zip`, so it does not clear the advisory. Evaluated and rejected 2026-08-16.
+  Do not propose it again.
+- Tracked as issue #1851.
+
 ## Constraints
 - Do NOT run `npm audit fix` or modify any files — read-only audit only.
 - Suppression is a **reporting** decision only. Never edit `package.json`,

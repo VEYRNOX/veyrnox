@@ -1659,7 +1659,7 @@ export default function WalletEntry() {
             </div>
           ) : (
             <ShakeOnKey shakeKey={pinShakeKey}>
-              <PinPad value={unlockPassword} onChange={setUnlockPassword} onComplete={runUnlock} disabled={busy} submitLabel="Unlock" />
+              <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} submitLabel="Unlock" />
             </ShakeOnKey>
           )}
 

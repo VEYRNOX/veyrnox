@@ -366,10 +366,11 @@ describe('panic wipe', () => {
     // blocker" by calling close() on the delete request. It does not, and must
     // not: per the IDB spec an IDBOpenDBRequest from deleteDatabase() has an
     // `undefined` result on every event, so that call was an unconditional
-    // no-op and the 2026-07-14 audit removed it (panic.js:760-769). The
-    // instrumentation that wrapped held.close() was never asserted, so the
-    // stale claim read as covered. Dropped rather than asserted — asserting it
-    // would demand behaviour that was deliberately removed.
+    // no-op and was removed by the 2026-07-14 audit (panic.js:760-769). The
+    // blocking handle lives in another module and is unreachable from here.
+    // The instrumentation that wrapped held.close() was never asserted, so the
+    // stale claim read as covered for a year. Dropped rather than asserted —
+    // asserting it would demand behaviour that was deliberately removed.
     const held = await new Promise((resolve, reject) => {
       const req = indexedDB.open('veyrnox-appdata', 1);
       req.onupgradeneeded = () => {
@@ -381,7 +382,8 @@ describe('panic wipe', () => {
     });
     // The close MUST happen in a finally. Held open, this connection blocks
     // every later deleteDatabase() in the file, so an assertion failing here
-    // leaks the handle into the rest of the suite.
+    // leaked the handle and took the following 12 tests down with it as 60s
+    // hook timeouts — burying the one real failure under a wall of noise.
     let report;
     try {
       // Should resolve without hanging even though a connection is open.

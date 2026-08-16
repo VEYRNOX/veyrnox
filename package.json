@@ -34,6 +34,10 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
+    "test:post-audit": "node scripts/run-post-audit-qa.mjs",
+    "test:post-audit:validation": "playwright test e2e/post-audit-validation.spec.js",
+    "test:post-audit:boundaries": "playwright test e2e/post-audit-security-boundaries.spec.js",
+    "test:post-audit:unit": "vitest run src/wallet-core/post-audit-unit-tests.test.js",
     "android:test": "wdio tests/android/wdio.conf.js",
     "ios:test": "wdio tests/ios/wdio.conf.js",
     "ios:test:vault": "wdio tests/ios/wdio.conf.js --spec tests/ios/specs/vault.spec.js",
@@ -249,6 +253,7 @@
       "uuid": "^11.1.1"
     },
     "diff": ">=8.0.3",
-    "tar": "^7.5.20"
+    "tar": "^7.5.20",
+    "@puppeteer/browsers": "^3"
   }
 }

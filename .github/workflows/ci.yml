@@ -23,8 +23,17 @@ on:
         default: false
 
 # Cancel superseded runs on the same ref to save minutes.
+#
+# 2026-08-16: workflow_dispatch runs get their own single-run group. A manual
+# gate (firebase-test-lab.yml) dispatches this workflow for one exact SHA and
+# then waits ~15 min for THAT run's artifact. Under the old shared ref group,
+# any push landing to main during that window cancelled the dispatched run —
+# and, symmetrically, the dispatch cancelled main's own push-triggered CI.
+# Keyed on run_id, so a dispatched run is alone in its group and neither
+# cancels nor is cancelled. Push and pull_request keep the shared ref group,
+# so a newer push still supersedes an older one.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'shared' }}
   cancel-in-progress: true
 
 permissions:

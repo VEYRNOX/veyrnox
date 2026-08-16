@@ -94,6 +94,14 @@ jobs:
           # veyrnox-staging.pages.dev), never production. publish_staging
           # still gates whether that staging build gets uploaded to Play
           # Internal / TestFlight afterwards.
+          #
+          # 2026-08-16: --ref MUST be a branch or tag name. Pinning it to
+          # $GITHUB_SHA fails with "HTTP 422: No ref found" (run 31932385069),
+          # so the dispatched run cannot be isolated from this side. It is
+          # isolated on the ci.yml side instead: workflow_dispatch runs get a
+          # run_id-keyed concurrency group, so a push landing during the ~15
+          # min build no longer cancels this gate's run (and this gate no
+          # longer cancels main's push CI).
           gh workflow run ci.yml \
             --ref "$GITHUB_REF_NAME" \
             -f build_firebase_test=true \
@@ -123,12 +131,23 @@ jobs:
             CONCLUSION=$(jq -r '.conclusion // empty' <<<"$RUN_JSON")
 
             if [[ "$STATUS" == "completed" ]]; then
-              if [[ "$CONCLUSION" != "success" ]]; then
-                echo "::error::CI run ${RUN_ID} for ${SHA} concluded ${CONCLUSION}; refusing to test another commit's APK."
-                exit 1
+              if [[ "$CONCLUSION" == "success" ]]; then
+                echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+                exit 0
               fi
-              echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-              exit 0
+
+              # No redispatch on `cancelled`. It was tried (#1857) and could
+              # not work: `gh workflow run --ref` takes a branch name, so the
+              # redispatched run builds the branch TIP — and a cancellation
+              # means main has already moved past $SHA. The new run's head SHA
+              # therefore never matches this loop's `--commit "$SHA"` filter, the
+              # loop re-reads the same terminal cancelled run, and the whole
+              # retry budget burns in ~60s on builds of the wrong commit while
+              # each dispatch cancels main's own push CI. Root cause is fixed in
+              # ci.yml's concurrency group instead; a cancellation reaching here
+              # now means something genuinely cancelled it, which is a real red.
+              echo "::error::CI run ${RUN_ID} for ${SHA} concluded ${CONCLUSION}; refusing to test another commit's APK."
+              exit 1
             fi
 
             if (( attempt % 8 == 1 )); then

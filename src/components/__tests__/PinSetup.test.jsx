@@ -81,7 +81,11 @@ describe('PinSetup', () => {
     expect(screen.getByRole('heading', { name: /choose an 8-digit pin/i })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /confirm/i })).toBeNull();
     // PIN pad reset — PinPad's dot-count status reports 0 of 8.
-    expect(screen.getByRole('status', { name: /0 of 8 digits entered/i })).toBeTruthy();
+    // Codex P3 2026-08-15: PinPad dot row no longer exposes an
+    // aria-labelled status region (per-keystroke count was an AT-relay
+    // side channel). Assert PIN reset by counting filled-dot spans
+    // (bg-primary class) — 0 = fresh/reset.
+    expect(document.querySelectorAll('span.bg-primary').length).toBe(0);
     expect(onDone).not.toHaveBeenCalled();
   });
 
@@ -129,7 +133,11 @@ describe('PinSetup', () => {
     // Fresh mount lands on step 1, no lingering state.
     expect(screen.getByRole('heading', { name: /choose an 8-digit pin/i })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /confirm/i })).toBeNull();
-    expect(screen.getByRole('status', { name: /0 of 8 digits entered/i })).toBeTruthy();
+    // Codex P3 2026-08-15: PinPad dot row no longer exposes an
+    // aria-labelled status region (per-keystroke count was an AT-relay
+    // side channel). Assert PIN reset by counting filled-dot spans
+    // (bg-primary class) — 0 = fresh/reset.
+    expect(document.querySelectorAll('span.bg-primary').length).toBe(0);
   });
 
   it('6. never writes to localStorage', () => {
