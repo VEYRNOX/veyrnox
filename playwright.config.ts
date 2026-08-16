@@ -21,14 +21,15 @@ export default defineConfig({
         '**/webauthn-prf-sepolia-verified.spec.js',
         '**/walletconnect-live-pairing.spec.js',
       ],
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  timeout: 60000,
   // 73 tests on a single worker could not finish inside the 20-minute CI step budget —
   // and `retries: 2` means every failing test costs 3x, so failures made it worse, not
   // just slower. Files still run serially within a worker (fullyParallel: false), but
   // separate spec FILES can now run concurrently, which is where the wall-clock goes.
-  workers: process.env.CI ? 3 : 1,
+  workers: process.env.CI ? 6 : 1,
   reporter: 'html',
   use: {
     baseURL: 'http://localhost:5173',
