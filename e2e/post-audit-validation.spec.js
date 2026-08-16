@@ -175,9 +175,8 @@ test.describe('Post-Audit Validation: Rate Limiting & Endpoint Hardening', () =>
 });
 
 test.describe('Post-Audit Validation: Shard Hardening & Encryption', () => {
-  test('RestoreFromShares cleanup validates state before deletion', async ({ page, test: t }) => {
+  test.skip('RestoreFromShares cleanup validates state before deletion', async ({ page }) => {
     // TODO: Requires valid Shamir shares from backup flow, not hardcoded placeholders
-    t.skip();
 
     await page.goto(`${BASE_URL}/backup/restore`);
 
