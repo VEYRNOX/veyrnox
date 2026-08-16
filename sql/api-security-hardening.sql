@@ -386,6 +386,30 @@ $$;
 --   - rate limited or out of tries — return NULL; caller treats as retryable
 -- Return type changes from void → text. Any caller (client or SQL) that
 -- ignored the return before still works; the ones that reconcile now use it.
+--
+-- The DROP below is REQUIRED and is not optional tidiness. PostgreSQL cannot
+-- change a function's return type through CREATE OR REPLACE:
+--
+--   ERROR:  cannot change return type of existing function
+--   HINT:   Use DROP FUNCTION register_referral_code(text,uuid) first.
+--
+-- Without it this statement aborts on any database that still holds the old
+-- void-returning function — i.e. every environment that has not already run
+-- this file since the signature changed. Because the statements above have
+-- already committed by then, the run leaves the schema half-migrated. Verified
+-- 2026-08-16 while applying this file to Staging EU (nszlbcmcysftwyudthjz):
+-- both projects still had the void signature, and the file could not be run
+-- as written.
+--
+-- Dropping resets the function's privileges to the implicit default
+-- (PUBLIC EXECUTE), so the explicit grants are re-issued immediately after the
+-- body below — matching the shape its siblings carry (postgres | service_role |
+-- anon | authenticated). Do NOT delete that GRANT block thinking it redundant:
+-- without it the function ends up broader than its peers, and the H-3 REVOKE
+-- sweep at the end of this file would then be reasoning about a different
+-- starting state.
+DROP FUNCTION IF EXISTS public.register_referral_code(text, uuid);
+
 CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid)
 RETURNS text
 LANGUAGE plpgsql
@@ -439,6 +463,24 @@ BEGIN
   RETURN NULL;
 END;
 $$;
+
+-- Re-issue the grants the DROP above cleared. This restores the shape the
+-- function's siblings carry — an explicit grant to each real role rather than
+-- the implicit PUBLIC EXECUTE a freshly-created function inherits. Effective
+-- access for today's roles is identical either way (PUBLIC includes anon); the
+-- difference is that the implicit form would also grant EXECUTE to any role
+-- added later.
+--
+-- Section 6 contains a REVOKE for this same function in its STILL-OPEN batch.
+-- That is not a contradiction: per the header there, this file is a catalogue
+-- the owner runs SELECTIVELY, not a script to execute end-to-end — running
+-- section 6's still-open batch today breaks the live anon callers in
+-- src/api/referralApi.js and src/api/trackEvent.js. These grants describe the
+-- correct state for as long as those callers exist.
+REVOKE ALL ON FUNCTION public.register_referral_code(text, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.register_referral_code(text, uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.register_referral_code(text, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.register_referral_code(text, uuid) TO service_role;
 
 -- Remove direct INSERT — registration goes through register_referral_code().
 DROP POLICY IF EXISTS "public insert" ON referrals;
