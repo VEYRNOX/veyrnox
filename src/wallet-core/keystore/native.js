@@ -988,7 +988,33 @@ export const nativeKeyStore = {
           if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
           throw err;
         }
-        return decryptVault(parseVaultBlob(blobJson), password); // vault.js unchanged
+        const innerBlob = parseVaultBlob(blobJson);
+        if (innerBlob.kekWrap) {
+          // Dual-enrolled: Enclave-wrapped outer + KEK-DEK inner. The Enclave
+          // layer is already unwrapped; now do the same KEK unwrap _unlockInner
+          // does (line ~461). getHardwareFactor may be absent if the caller
+          // passed skipBiometric — fail closed (I4).
+          const getHF = opts && opts.getHardwareFactor;
+          if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+          let saltBytes, H, C, kek, dek;
+          try {
+            saltBytes = decodeKekSalt(innerBlob.kekSalt);
+            H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(innerBlob, saltBytes));
+            C = await deriveKekC(password, saltBytes);
+            kek = await combineKek(H, C);
+            if (H && H.fill) H.fill(0);
+            if (C) C.fill(0);
+            dek = await unwrapDek(kek, innerBlob.kekWrap);
+            return await decryptVaultWithDek(innerBlob, dek);
+          } finally {
+            if (saltBytes && saltBytes.fill) saltBytes.fill(0);
+            if (H && H.fill) H.fill(0);
+            if (C && C.fill) C.fill(0);
+            if (kek && kek.fill) kek.fill(0);
+            if (dek && dek.fill) dek.fill(0);
+          }
+        }
+        return decryptVault(innerBlob, password);
       }
     }
 
