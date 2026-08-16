@@ -21,6 +21,8 @@ const OKX_ENDPOINTS = [
   'https://app.okx.com/api/v5/market/candles',
 ];
 
+import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+
 // Fixed allowlist — never derived from the caller's holdings (I2).
 const ALLOWED_INST_IDS = new Set([
   'BTC-USDT', 'ETH-USDT', 'BNB-USDT', 'SOL-USDT', 'USDC-USDT',
@@ -62,6 +64,11 @@ export async function onRequestGet(context) {
 
   if (!ALLOWED_INST_IDS.has(instId)) err(400, 'Invalid instId');
   if (!ALLOWED_BARS.has(bar)) err(400, 'Invalid bar');
+
+  // Per-IP cap: same sibling-proxy class as prices.js — an OKX public endpoint
+  // still spends our egress. Fail-CLOSED on limiter error is the contract in
+  // _lib/rate-limit.js.
+  await enforceRateLimit({ bucket: 'data-okx-candles', clientIp: clientIpOf(request) });
 
   // Edge cache keyed on canonical params.
   const cacheKey = new Request(`https://okx-candles.internal/${instId}/${bar}/${limit}`);

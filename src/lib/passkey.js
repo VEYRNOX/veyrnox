@@ -1,4 +1,9 @@
 // @ts-nocheck
+// ponytail: 843 LOC (as of 2026-08-16) intentionally NOT split. Kept unified
+// for security-critical review continuity — the registration/assertion flow,
+// unlock-gate composition, and platform-specific WebAuthn quirks share one
+// file so a reviewer can trace a passkey unlock end-to-end without dispersing
+// the auth-factor guarantees across helpers.
 // lib/passkey.js — app-layer FIDO2 / WebAuthn passkey UNLOCK GATE helpers.
 //
 // ┌─────────────────────────────────────────────────────────────────────────┐

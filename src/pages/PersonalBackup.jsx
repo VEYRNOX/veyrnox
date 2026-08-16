@@ -94,7 +94,15 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
     );
   }
 
-  const canExport = password.length >= MIN_PASSWORD_LENGTH && pin.length >= 8 && pin === pinConfirm;
+  // 2026-08-16 audit remediation: backup file unlock via PIN branch used to
+  // accept 8 digits (~10^8 offline search). Raise the floor to 12 digits so
+  // the PIN branch of a stored backup has a meaningfully wider search space
+  // than a phone-unlock PIN. Full audit fix is to require an alphanumeric
+  // passphrase, but user copy commits to a numeric PIN — this is the smallest
+  // UX-preserving upgrade. ponytail: pinned at 12 digits; upgrade to
+  // alphanumeric passphrase-only when the copy can be reworked.
+  const BACKUP_PIN_MIN_LENGTH = 12;
+  const canExport = password.length >= MIN_PASSWORD_LENGTH && pin.length >= BACKUP_PIN_MIN_LENGTH && pin === pinConfirm;
 
   const runExport = async () => {
     const gate = sensitiveGate(raspArtifact, 'export');
@@ -268,7 +276,7 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
         )}
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">
-            {pinStep === "choose" ? "Choose a backup PIN (8–12 digits)" : "Confirm backup PIN"}
+            {pinStep === "choose" ? "Choose a backup PIN (12 digits)" : "Confirm backup PIN"}
           </label>
           <PinPad
             value={pinStep === "choose" ? pin : pinConfirm}
@@ -340,25 +348,41 @@ async function saveShareFile(bytes, filename) {
   }
 
   if (platform === "ios") {
-    const tmp = await Filesystem.writeFile({
-      path: filename,
-      data: base64,
-      directory: Directory.Cache,
-    });
+    // 2026-08-16 audit remediation: wrap writeFile + Share inside one try so
+    // the finally deletion ALWAYS runs, even if writeFile itself throws mid-
+    // write. Prior structure had writeFile outside the try, leaving a partial
+    // Cache-directory file if writeFile succeeded then something before Share
+    // threw. Swallowed-catch replaced with console.warn so a persistent delete
+    // failure is visible to the operator (residual cache-file risk otherwise
+    // invisible).
+    // ponytail: Directory.Cache is still iCloud-backed on some device configs.
+    // Upgrade path: Directory.Data + iOS .nobackup attribute via a Capacitor
+    // plugin when one is available (not one-line right now).
     try {
-      const result = await Share.share({
-        title: filename,
-        url: tmp.uri,
-        dialogTitle: "Save recovery share",
+      const tmp = await Filesystem.writeFile({
+        path: filename,
+        data: base64,
+        directory: Directory.Cache,
       });
-      return { saved: true, path: result.activityType ? `Shared via ${result.activityType}` : "Saved via share sheet" };
-    } catch (err) {
-      if (err?.message?.includes("cancelled") || err?.message?.includes("dismiss")) {
-        return { saved: false, path: "" };
+      try {
+        const result = await Share.share({
+          title: filename,
+          url: tmp.uri,
+          dialogTitle: "Save recovery share",
+        });
+        return { saved: true, path: result.activityType ? `Shared via ${result.activityType}` : "Saved via share sheet" };
+      } catch (err) {
+        if (err?.message?.includes("cancelled") || err?.message?.includes("dismiss")) {
+          return { saved: false, path: "" };
+        }
+        throw err;
       }
-      throw err;
     } finally {
-      Filesystem.deleteFile({ path: filename, directory: Directory.Cache }).catch(() => {});
+      try {
+        await Filesystem.deleteFile({ path: filename, directory: Directory.Cache });
+      } catch (err) {
+        console.warn('[PersonalBackup] cache delete failed', err);
+      }
     }
   }
 
@@ -659,13 +683,14 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
   const [busy, setBusy] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [done, setDone] = useState(false);
-  // Phase 3 — encrypt one share with a recovery passphrase before save. When
-  // on, share 2 is wrapped and saved as .veyrnox-recovery.json; shares 1 and
-  // 3 stay raw. Rationale for wrapping ONE (not all): the value is
-  // defence-in-depth on the cloud-hosted share; wrapping the on-device share
-  // adds nothing over the KEK it already sits under, and wrapping the paper
-  // share adds nothing over the user's physical control.
-  const [encryptOne, setEncryptOne] = useState(false);
+  // 2026-08-16 audit remediation: wrap ALL exported shares with a passphrase
+  // by default. The prior "encrypt just share #2" policy left shares #1 and #3
+  // as raw bundle JSON containing vault.ct — any two raw bundles = full
+  // offline crack surface with no KEK. Defaulting the whole set on removes the
+  // fastest-known offline path; the checkbox stays so a user who deliberately
+  // trades convenience for weaker offline resistance still can, but the safe
+  // default is on. Renamed encryptOne → encryptAll to match the new semantics.
+  const [encryptAll, setEncryptAll] = useState(true);
   const [recoveryPassphrase, setRecoveryPassphrase] = useState("");
   const raspArtifact = useRaspArtifact();
 
@@ -686,7 +711,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
   // floor. Phase 2 should replace this input with PinPad on native.
   const passphraseCheck = checkRecoveryPassphrase(recoveryPassphrase);
   const canExport =
-    password.length > 0 && (!encryptOne || passphraseCheck.ok);
+    password.length > 0 && (!encryptAll || passphraseCheck.ok);
 
   const runSplit = async () => {
     const gate = sensitiveGate(raspArtifact, "export");
@@ -714,13 +739,13 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
       shares = bundles.map(() => null); // placeholder for the finally-zero loop
       let completedAll = true;
       for (let i = 0; i < bundles.length; i++) {
-        // Codex P1 (2026-08-15): the checkbox + passphrase were wired into
-        // this component's state but never consumed here, so "Encrypt one
-        // share with a passphrase" silently saved an unencrypted bundle.
-        // Share #2 (i === 1) now goes through wrapBundleWithPassphrase when
-        // the user opted in AND the passphrase passed the strength check —
-        // shares #1 and #3 stay raw bundles (spec: cloud share only).
-        const wrapThisOne = i === 1 && encryptOne && passphraseCheck.ok;
+        // 2026-08-16 audit remediation: wrap ALL 3 bundles with the user's
+        // passphrase when encryptAll is on. Prior "share #2 only" policy left
+        // shares #1 and #3 as raw bundle JSON containing vault.ct — two raw
+        // bundles = full offline crack. Wrap-all removes that path; the
+        // per-share on-device / paper / cloud placement decision is now the
+        // USER'S alone, not something the code silently privileges.
+        const wrapThisOne = encryptAll && passphraseCheck.ok;
         const bytesToSave = wrapThisOne
           ? new TextEncoder().encode(
               await wrapBundleWithPassphrase(
@@ -746,7 +771,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
       // cannot recover a vault, so it must not lift the posture score. Helper
       // is I3-suppressed at its write site — no-op in decoy.
       if (completedAll) {
-        markPersonalBackupExported({ withPassphrase: encryptOne });
+        markPersonalBackupExported({ withPassphrase: encryptAll });
       }
       setDone(true);
       setPassword("");
@@ -856,23 +881,24 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
         <label className="flex items-start gap-2 cursor-pointer">
           <input
             type="checkbox"
-            checked={encryptOne}
-            onChange={(e) => setEncryptOne(e.target.checked)}
+            checked={encryptAll}
+            onChange={(e) => setEncryptAll(e.target.checked)}
             className="mt-0.5"
-            aria-label="Encrypt one share with a recovery passphrase"
+            aria-label="Encrypt each share with a passphrase (recommended)"
           />
           <div className="space-y-0.5">
             <p className="text-sm font-medium flex items-center gap-1.5">
               <Lock className="h-3.5 w-3.5" />
-              Encrypt one share with a passphrase
+              Encrypt each share with a passphrase (recommended)
             </p>
             <p className="text-xs text-muted-foreground">
-              Wraps share 2 in Argon2id + AES-GCM so it&apos;s safe to save in cloud storage. Recommended if
-              you plan to keep a share in iCloud Drive, Google Drive or Dropbox.
+              Wraps ALL 3 shares in Argon2id + AES-GCM. Two raw bundles alone
+              can be cracked offline; wrapping them removes that path. Keep
+              this on unless you understand the trade-off.
             </p>
           </div>
         </label>
-        {encryptOne && (
+        {encryptAll && (
           <div className="space-y-1 pl-6">
             <PasswordInput
               value={recoveryPassphrase}
@@ -896,7 +922,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
         className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-40 flex items-center justify-center gap-2"
       >
         {busy
-          ? <><Loader2 className="h-4 w-4 animate-spin" /> {encryptOne ? "Encrypting…" : "Splitting…"}</>
+          ? <><Loader2 className="h-4 w-4 animate-spin" /> {encryptAll ? "Encrypting…" : "Splitting…"}</>
           : <><Download className="h-4 w-4" /> Split & save 3 shares</>}
       </button>
     </div>

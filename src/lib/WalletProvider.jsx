@@ -22,8 +22,9 @@
 // eliminates, the window. Device-keystore wrapping is the stronger control
 // and is the recommended next step.
 //
-// ponytail: 2492 LOC deliberately NOT split into src/lib/wallet/ sub-modules
-// per the 2026-08 audit. This file composes deniability gating, unlock flow,
+// ponytail: 2853 LOC (updated 2026-08-16) deliberately NOT split into
+// src/lib/wallet/ sub-modules per the 2026-08 audit. This file composes
+// deniability gating, unlock flow,
 // action-password re-auth, panic wipe, and multi-seed vault — all touching
 // the audited signing envelope. A mechanical extraction risks reordering the
 // gate composition (composeConditions -> deniability -> lock/unlock -> reauth

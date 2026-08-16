@@ -7,6 +7,8 @@
 // Allowlist — only these edge functions are proxied:
 //   first-referral-bonus, tip-screen
 
+import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+
 const ALLOWED_FUNCTIONS = new Set([
   'first-referral-bonus',
   'tip-screen',
@@ -29,6 +31,11 @@ export async function onRequestPost(context) {
   const fn = params.fn;
 
   if (!ALLOWED_FUNCTIONS.has(fn)) err(403, 'Function not allowed');
+
+  // Per-IP cap: this POST proxy forwards with SUPABASE_ANON_KEY server-side
+  // and burns Supabase invocation quota. Same limiter class as the sibling
+  // data/* proxies; fail-CLOSED on limiter error per _lib/rate-limit.js.
+  await enforceRateLimit({ bucket: `edge-${fn}`, clientIp: clientIpOf(request) });
 
   const supabaseUrl = env.SUPABASE_URL;
   const supabaseKey = env.SUPABASE_ANON_KEY;

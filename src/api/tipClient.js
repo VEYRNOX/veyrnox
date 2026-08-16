@@ -32,9 +32,18 @@ export function createTipClient({ proxyUrl, anonKey, timeout = 10_000 }) {
 
   const url = proxyUrl.replace(/\/$/, '');
 
-  async function proxyFetch(body) {
+  // 2026-08-16 audit remediation: accept an external AbortSignal so callers
+  // (SecurityAdvisor) can cancel in-flight screening calls when deniability
+  // activates mid-flight. The internal timeout controller still fires on its
+  // own — the two abort sources compose (either aborts the request).
+  async function proxyFetch(body, { signal: externalSignal } = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
+    const onExternal = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else externalSignal.addEventListener('abort', onExternal, { once: true });
+    }
     try {
       return await fetch(url, {
         method: 'POST',
@@ -50,10 +59,11 @@ export function createTipClient({ proxyUrl, anonKey, timeout = 10_000 }) {
       });
     } finally {
       clearTimeout(timer);
+      if (externalSignal) externalSignal.removeEventListener('abort', onExternal);
     }
   }
 
-  async function screen(params) {
+  async function screen(params, options) {
     // request_id is assigned SERVER-side now. It used to be built here with
     // Math.random(), which this project's own rules forbid for anything
     // security-relevant, and it is one less caller-controlled field reaching TIP.
@@ -73,7 +83,7 @@ export function createTipClient({ proxyUrl, anonKey, timeout = 10_000 }) {
       ...(params.recent_counterparties && { recent_counterparties: params.recent_counterparties }),
     };
 
-    const resp = await proxyFetch(body);
+    const resp = await proxyFetch(body, options);
 
     if (!resp.ok) {
       const errBody = await resp.json().catch(() => ({ error: resp.statusText }));

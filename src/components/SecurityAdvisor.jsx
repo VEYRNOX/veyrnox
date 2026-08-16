@@ -21,6 +21,11 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
+// 2026-08-16 audit remediation: hard-code the event name to avoid coupling
+// the subscription to a mockable named export — existing test suites mock
+// deniabilitySession.js without exporting this constant. The string here
+// MUST match DENIABILITY_SESSION_CHANGED_EVENT in wallet-core/deniabilitySession.js.
+const DENIABILITY_SESSION_CHANGED_EVENT = 'veyrnox:deniability-session-changed';
 import { DEMO } from "@/api/demoClient";
 import { getOrCreateDeviceId } from "@/lib/deviceId";
 import {
@@ -407,6 +412,22 @@ export default function SecurityAdvisor({ walletChain }) {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const abortRef = useRef(null);
+  // Separate controller for the tipScreen call so it can be aborted
+  // independently of the chat SSE stream. 2026-08-16 audit remediation.
+  const screenAbortRef = useRef(null);
+
+  // 2026-08-16 audit remediation: `hidden` derives from
+  // isDeniabilityOrDemoActive() which was only re-evaluated on re-render —
+  // a mid-flight deniability flip left the effect below asleep. Subscribe
+  // to DENIABILITY_SESSION_CHANGED_EVENT and bump a tick so hidden is
+  // recomputed the moment the session changes.
+  const [, setDeniabilityTick] = useState(0);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onChange = () => setDeniabilityTick((t) => t + 1);
+    window.addEventListener(DENIABILITY_SESSION_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(DENIABILITY_SESSION_CHANGED_EVENT, onChange);
+  }, []);
 
   const hidden = isDeniabilityOrDemoActive() || DEMO;
 
@@ -424,13 +445,19 @@ export default function SecurityAdvisor({ walletChain }) {
   // duress or panic is triggered. Mid-action is when someone flips modes, so
   // the in-flight case is the one that matters, not an edge.
   useEffect(() => {
-    if (hidden) abortRef.current?.abort();
+    if (hidden) {
+      abortRef.current?.abort();
+      screenAbortRef.current?.abort();
+    }
   }, [hidden]);
 
   // Plain unmount (navigating away) should not leave a stream running either.
   // Separate from the guard above because rendering null does NOT unmount, so
   // this one would never fire for the deniability case.
-  useEffect(() => () => { abortRef.current?.abort(); }, []);
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    screenAbortRef.current?.abort();
+  }, []);
 
   // M-5 — remote answers require an explicit, separate grant. Seeded from the
   // stored answer at mount so a device that has already decided is never
@@ -498,15 +525,22 @@ export default function SecurityAdvisor({ walletChain }) {
       // consent — local seed still fires either way, so a known-bad address
       // is still surfaced honestly. Matches the sendMessage gate at :553.
       if (TIP_CHAT_URL && hasAdvisorConsent()) {
+        // 2026-08-16 audit remediation: wire an AbortController so a
+        // mid-flight deniability flip cancels this screen call rather than
+        // running to completion after the session has already been suppressed.
+        const screenController = new AbortController();
+        screenAbortRef.current = screenController;
         try {
           remoteResult = await screenTransaction({
             chain: detected.chain,
             actionType: 'address_lookup',
             from: ZERO_FROM_ADDRESS[detected.chain],
             to: detected.address,
-          });
+          }, { signal: screenController.signal });
         } catch {
           // remote failed — seed still applies below
+        } finally {
+          if (screenAbortRef.current === screenController) screenAbortRef.current = null;
         }
       }
 
@@ -610,7 +644,15 @@ Additional public knowledge you should apply:
             // strings, and 4/8/16/24-word seeds; matches are replaced with
             // a fixed sentinel that also nudges the model to warn the user
             // that pasting secrets into the Advisor is unsafe.
-            ...history.map((m) => ({ role: m.role, content: scrubSecrets(m.content) })),
+            //
+            // 2026-08-16 audit remediation: filter out any role that is not
+            // 'user' or 'assistant'. The only legitimate system prompt is the
+            // one authored above; any other role="system" reaching the wire
+            // would be a client-supplied prompt-injection surface. The server
+            // proxy also rejects, but defense-in-depth here.
+            ...history
+              .filter((m) => m.role === 'user' || m.role === 'assistant')
+              .map((m) => ({ role: m.role, content: scrubSecrets(m.content) })),
           ],
           context: {
             current_screen: currentScreen,

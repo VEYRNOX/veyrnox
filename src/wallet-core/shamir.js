@@ -1,3 +1,9 @@
+// ponytail: hand-rolled Shamir. Audit 2026-08-16 flagged replacement with an
+// audited library (@stablelib/sss or equivalent) as the correct upgrade path.
+// Full library swap deferred — too large for the remediation PR and needs its
+// own review. Tracking issue: see PR body of audit 2026-08-16 remediation for
+// the linked GitHub issue. Do NOT extend this file's algorithmic surface;
+// route new needs through the deferred library swap.
 /**
  * Shamir Secret Sharing over GF(2^8) — AES field (irreducible poly 0x11B).
  *
