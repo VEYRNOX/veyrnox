@@ -302,27 +302,32 @@ test.describe('illegal transitions / reload resumption (fail-closed)', () => {
 // blanket test.skip(true) with empty bodies left zero executable coverage for
 // the a11y contract the section named; the DOM-contract case now runs on web.
 test.describe('PIN pad a11y — web-exercisable DOM contract', () => {
-  test('the status dots expose a live aria-label that tracks entry length', async ({ page }) => {
+  test('the dot row is aria-hidden and does NOT leak digit-count into a11y tree', async ({ page }) => {
     await freshLocalBuild(page);
     // Slice D1: "New wallet" tile → auto-fires creation on the choose view.
     await page.getByRole('button', { name: /new wallet/i }).click();
     await expect(page.getByText('Choose an 8-digit PIN')).toBeVisible({ timeout: 15000 });
 
     const pad = page.getByRole('group', { name: /PIN entry/i });
-    // PinPad.jsx exposes the dot row as role="status" with a live aria-label
-    // "N of M digits entered" (src/components/security/PinPad.jsx:115). This
-    // is the assistive-tech signal a keyboard-only user relies on to track
-    // PIN entry progress; regressing it silently would ship an inaccessible
-    // pad. Assert the label shape and that it updates as digits are entered.
-    const status = pad.getByRole('status');
-    await expect(status).toBeVisible();
-    await expect(status).toHaveAttribute('aria-label', /^0 of \d+ digits entered$/);
 
+    // Codex P3 2026-08-15: the dot row used to be role="status" with a
+    // live aria-label "N of M digits entered". That announced every
+    // keystroke to any AT / screen-reader relay — a credential-entry side
+    // channel. Now the dot row is aria-hidden; the static input hint
+    // ("Use your keyboard to type your PIN, then press Enter or Submit.")
+    // is the sole AT affordance. Positive guard: the leak MUST NOT return.
+    await expect(pad.locator('[role="status"]')).toHaveCount(0);
+    await expect(pad.locator('[aria-label*="digits entered"]')).toHaveCount(0);
+    await expect(pad.locator('[aria-hidden="true"]').first()).toBeVisible();
+    await expect(pad.locator('#pin-hint')).toHaveText(/Use your keyboard to type your PIN/);
+
+    // Verify visual dot fill still tracks entry length for sighted users
+    // (bg-primary is the fill class in PinPad.jsx).
+    await expect(pad.locator('span.bg-primary')).toHaveCount(0);
     await pad.getByRole('button', { name: '4', exact: true }).click();
-    await expect(status).toHaveAttribute('aria-label', /^1 of \d+ digits entered$/);
-
+    await expect(pad.locator('span.bg-primary')).toHaveCount(1);
     await pad.getByRole('button', { name: '2', exact: true }).click();
-    await expect(status).toHaveAttribute('aria-label', /^2 of \d+ digits entered$/);
+    await expect(pad.locator('span.bg-primary')).toHaveCount(2);
   });
 });
 

@@ -80,6 +80,15 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
           disabled={disabled}
           aria-label={ariaLabel}
           maxLength={length > 8 ? undefined : length}
+          // Codex P2 2026-08-15: opt out of every browser + password-manager
+          // autofill / save prompt. The vault credential is deliberately NOT
+          // synced to any external credential store (I1 — keys never leave
+          // the device). Same set as WalletAccessReset password inputs.
+          autoComplete="off"
+          spellCheck={false}
+          autoCorrect="off"
+          data-1p-ignore
+          data-form-type="other"
           className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
         />
         <button
@@ -111,8 +120,16 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
           input flows to the single onKeyDown handler — this hint tells AT users
           how to interact without exposing that design detail visually. */}
       <p id="pin-hint" className="sr-only">Use your keyboard to type your PIN, then press Enter or Submit.</p>
-      {/* Six position dots — no value echoed, identical in every configuration. */}
-      <div className="flex justify-center gap-3" role="status" aria-label={`${value.length} of ${length} digits entered`}>
+      {/* Six position dots — no value echoed, identical in every configuration.
+          Codex P3 2026-08-15: the prior aria-label published exact per-keystroke
+          progress ("N of M digits entered") into the accessibility tree, which
+          is a credential-entry side channel (any AT / screen-reader relay
+          hears every dot fill). The `role="status"` on the same element
+          would ALSO trigger a polite announcement per re-render. Dropped
+          both — the visual dot pattern remains for sighted users; AT users
+          get the static aria-describedby="pin-hint" above ("Use your
+          keyboard to type your PIN, then press Enter or Submit."). */}
+      <div className="flex justify-center gap-3" aria-hidden="true">
         {Array.from({ length }, (_, i) => (
           <span
             key={i}
