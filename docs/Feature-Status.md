@@ -2427,6 +2427,69 @@ Full regression: **614 files, 5301 tests green**.
 
 Places flagged but NOT overwritten: none — Slice I is a self-contained UX/copy layer; does not contradict prior narrative. No earlier Slice A–H entries were touched or overwritten by this entry.
 
+## 2026-08-15 / 2026-08-16 audit-remediation + hardening sprint
+
+Two-day sweep — 104 commits, ~50 merged PRs. Every entry below is ✅ BUILT +
+merged to `main`; independent third-party audit outstanding (I4 honesty —
+none of this is "verified" in the strict on-chain / independent-audit sense).
+
+### Audit remediation rounds (multi-file, mixed-severity)
+- **#1834** audit remediation 2026-08-16 — rate limits, VULN-19 nonce, shard hardening, advisor abort
+- **#1837** audit round 3 — RPC rate-limit, shard hardening, trezor prod hard-fail, test theater
+- **#1841** audit round 4 — VULN-19 ERC-20 nonce pin, test-theater purge, netUrl dead branch
+
+### Panic / wipe hardening (issue #1094 class)
+- **#1831** honest wipe status + verify side DBs (appdata, threat-intel, ioc-cache) + extend residue keys + **numeric 8-digit PIN floor**. `setPanicVault` now enforces `PANIC_PIN_RE = /^\d{8}$/` at the capability layer (Codex P2) — a non-UI caller can no longer provision a weaker panic secret than the UI promises. Chaff panic PIN generator (`throwawayPanicPin()`) matches the new format so `provisionDeniabilityChaff` remains length-uniform. `inspectKeyMaterial` now enumerates side databases and returns `sideDatabasesVerified` — the previous `clean` verdict could return true without proving side-DBs were gone. `eraseThreatIntelDatabase` no-hang fix: `onupgradeneeded` now calls `finish()` after abort so fake-indexeddb doesn't leave the promise pending.
+- **#1860** wipe report must show every input to its own `clean` verdict
+- **#1866** M2c Enclave path routes KEK-DEK inner blobs through KEK unwrap
+- **#1865** propagate hardware-factor error code through lockout fallback
+- **#1861** disable M-9 kek-pin-notice toast on unlock (UX + I3)
+
+### RASP hardening
+- **#1838** session-scoped attestation-latch closes "block once, warn forever" oracle. `veyrnox:app-lock` resets the latch so a rebooted-clean device isn't permanently BLOCK-tiered from a prior session's compromise
+- **#1835** reverse RASP_BLOCK reject args + document caller-auth threat model
+- **#1840** iOS debugger-probe fail-closed + speech engine stops on background + deep-link native allowlist
+
+### Referral / SQL / subscription
+- **#1839** gate purchase side-effects on real grant + K-2 paywall dismiss + document tier UX model
+- **#1855** SQL: `register_referral_code` needs a DROP before the return-type change
+- **#1852** clear 12 high extract-zip findings via @puppeteer/browsers ^3 override
+
+### CI / infra
+- **#1857** redispatch ci.yml on cancellation, cap 3 retries
+- **#1858** scope dispatched ci.yml runs out of the push concurrency group
+- **#1856** gemini sweep model retired; owner-locked £10 spend cap
+- **#1845** gemini sweep corpus loop broke under zsh + untrusted /tmp
+- **#1846 → reverted #1853** SHA in `--ref` returned HTTP 422 (tried to pin dispatched CI to SHA; upstream API rejects, reverted)
+- **#1842** unblock unit-tests on main — Codex P3 fallout (CF-Connecting-IP required in okx-candles test; loggingBehavior flipped `debug` → `none` so test pin accepts either)
+
+### CSP / network gating
+- **#1848 → #1862** decouple explorer links from RPC allowlist — new `safeExplorerUrl` (issue closed by #1862)
+- **#1849 → #1863** CSP: allow staging Supabase in `connect-src`, drop stale `openrouter.ai` — Options 1+2 from the issue, `_headers` only, does not touch the locked TIP_CHAT_URL chain
+
+### Onboarding + PIN + hidden wallet
+- **#1816** close strength downgrade + I3 gaps + autofill/ARIA leaks. PinPad dot row is now `aria-hidden`; the prior `role="status"` + `aria-label="N of M digits entered"` was a per-keystroke side channel over the accessibility API. Three unit tests + one Playwright spec rewrote assertions to positive-guard against re-adding the leak.
+- **#1828** kill "hidden wallet" tell-copy + universal slot-salt + bump secret floor to 12
+- **#1832** K-2 gate PriceAlert CRUD + dismiss notifications on lock + cap active alerts
+
+### iOS build
+- **#1864** bump `CURRENT_PROJECT_VERSION` 10 → 16 (next unused App Store Connect slot)
+
+### Post-audit QA scaffolding
+- **#1843** PIN unlock + SecurityAdvisor chat + staging paywall (fix + `.spec.js.todo` defer for speculative post-audit e2e specs whose testids don't exist yet)
+- **#1859** post-audit test infrastructure hardening — 15 speculative post-audit e2e tests marked `test.skip()` pending UI instrumentation
+
+### Docs
+- **#1847** daily security-diff scan 2026-08-16
+- **#1836** activate native `HardwareKekPlugin` tests when Phase 2 lands (deferred, tracked)
+- **#1833** replace hand-rolled Shamir with audited library (`@stablelib/sss` — parking, needs its own PR + parity fixtures)
+
+### Known-open items after the sprint (issues, not defects on `main`)
+- **#1600** — `veyrnox` CF Worker is a Hello-World stub, still noisy on every PR (owner needs to Delete via CF dashboard)
+- **#1664** — TIP RiskVerdictBanner silent-CLEAR on Tornado router; suspect list posted; needs Safari Web Inspector on iOS Simulator to confirm which branch fires
+- **#1730** — Lighthouse LCP > 2500 ms on main; profiled via Chrome DevTools MCP; 3 fix levers named; needs owner call between fix (SPA bundle-split) and honest budget bump
+- **#1850** — tip-chat vault caps strip every Safety Plus subscriber; locked infra; needs owner-authored RC entitlement path
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
