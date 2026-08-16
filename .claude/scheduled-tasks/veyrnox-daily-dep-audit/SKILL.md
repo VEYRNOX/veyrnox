@@ -205,8 +205,19 @@ its own.
   `@puppeteer/browsers` drops `extract-zip`; OR the WebdriverIO E2E harness is retired;
   OR `extract-zip` gains a path into a production dependency. Verify the resolved tree
   before retiring — an npm `fixAvailable: true` is not evidence.
-- **Not tracked** — no watcher. This residual is carried by the daily audit only; nobody
-  is checking upstream between runs.
+- **Tracked:** watcher `veyrnox-extract-zip-watch` (weekly, Mondays ~11am), created
+  2026-08-16. Checks for a patched `extract-zip`, for `@wdio/utils` moving its
+  `@puppeteer/browsers` pin to a range admitting `>= 3.0.0`, and for the E2E harness being
+  retired.
+- **A candidate remediation exists today — evaluated, deliberately NOT applied.**
+  `@puppeteer/browsers@3.2.0` has already DROPPED `extract-zip` (its dependencies are now
+  `{yargs, modern-tar}`). The chain does not clear only because `@wdio/utils@9.30.1` —
+  which is also `@latest` — pins `@puppeteer/browsers: ^2.2.0`, and `3.x` is outside that
+  caret. A `package.json` `overrides` entry forcing `@puppeteer/browsers` to `^3` would
+  clear all 12 findings without waiting for upstream. It is a semver-MAJOR override of a
+  transitive dependency inside the test harness, so it can break browser-driver launch in
+  a way `npm audit` will not show. It needs a real E2E run to validate, which is why this
+  is an accepted residual rather than a fix. Do not apply it from the audit task.
 - **Note:** npm's `fixAvailable` suggests `@wdio/cli@8.14.6`, a major *downgrade* from the
   installed 9.30.1. `@wdio/utils@8.x` still depends on `@puppeteer/browsers` →
   `extract-zip`, so it does not clear the advisory. Evaluated and rejected 2026-08-16.
