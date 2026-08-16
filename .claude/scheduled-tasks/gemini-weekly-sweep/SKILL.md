@@ -31,10 +31,19 @@ command -v gemini >/dev/null || {
 }
 command -v gh >/dev/null || { echo "ERROR: gh CLI missing"; exit 1; }
 gemini --version
+
+# `--version` does NOT touch auth. Probe it, or the run dies after the corpus
+# is built. Observed 2026-08-16: free-tier OAuth was retired mid-schedule
+# ("IneligibleTierError ... UNSUPPORTED_CLIENT", tierId free-tier) and the
+# CLI exited 1 with zero output.
+echo ping | gemini --skip-trust -m gemini-2.5-pro -p "reply with: ok" >/dev/null 2>&1 || {
+  echo "ERROR: gemini auth/model probe failed — check GEMINI_API_KEY or re-auth."
+  exit 1
+}
 ```
 
-If `gemini` is missing, stop and report — do NOT attempt install from the
-scheduled task.
+If `gemini` is missing or the probe fails, stop and report — do NOT attempt
+install, re-auth, or a model swap from the scheduled task.
 
 ## Step 1 — Isolated worktree on a per-run branch
 
@@ -105,13 +114,23 @@ if [ "$BYTES" -gt 3000000 ]; then
 fi
 
 CORPUS=$(mktemp -t gemini-corpus.XXXXXX)
-trap 'rm -f "$CORPUS"' EXIT
 
-for f in $FILES; do
-  echo "=== $f ==="
+# NOTE: do NOT write `for f in $FILES` — this box's shell is zsh, which does
+# not word-split unquoted parameters, so `cat` receives all N paths as ONE
+# argument ("File name too long") and the corpus comes out empty-ish.
+find "$TARGET" -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' \) \
+  | sort | while IFS= read -r f; do
+  printf '=== %s ===\n' "$f"
   cat "$f"
-  echo
+  printf '\n'
 done > "$CORPUS"
+
+# Sanity-check the corpus actually contains every file before spending a call.
+HEADERS=$(grep -c '^=== ' "$CORPUS")
+[ "$HEADERS" -eq "$COUNT" ] || {
+  echo "ERROR: corpus has $HEADERS file headers, expected $COUNT — loop broke." >&2
+  exit 1
+}
 
 PROMPT="You are the weekly Veyrnox subsystem auditor. Every file under $TARGET is in this prompt. Look for:
 
@@ -123,6 +142,21 @@ PROMPT="You are the weekly Veyrnox subsystem auditor. Every file under $TARGET i
 Report findings only, in the format:
 [SEVERITY] file:line (cross-ref file:line if drift) — what breaks — how to fix
 Severities: CRITICAL, HIGH, MEDIUM, LOW. No praise, no summary. If no findings, say exactly: no defects found."
+
+# `--skip-trust` is REQUIRED: the worktree lives under /tmp, which is outside
+# any trusted-folder root, and gemini refuses to run headless in an untrusted
+# directory (exit 55). Safe here — the model only reads piped stdin.
+FINDINGS=$(mktemp -t gemini-findings.XXXXXX)
+trap 'rm -f "$CORPUS" "$FINDINGS"' EXIT
+
+gemini --skip-trust -m gemini-2.5-pro -p "$PROMPT" < "$CORPUS" > "$FINDINGS" || {
+  echo "ERROR: gemini call failed (exit $?). No report written." >&2
+  exit 1
+}
+[ -s "$FINDINGS" ] || {
+  echo "ERROR: gemini returned nothing. No report written." >&2
+  exit 1
+}
 
 REPORT="docs/audit-gemini-sweep-$DATE.md"
 {
@@ -139,7 +173,7 @@ REPORT="docs/audit-gemini-sweep-$DATE.md"
   echo
   echo "## Findings"
   echo
-  cat "$CORPUS" | gemini -m gemini-2.5-pro -p "$PROMPT"
+  cat "$FINDINGS"
 } > "$REPORT"
 
 echo "Report: $REPORT"
