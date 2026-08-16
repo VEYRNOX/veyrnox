@@ -73,8 +73,15 @@ describe.each([
 describe('capacitor.config.json logging policy', () => {
   const config = JSON.parse(readFileSync(resolve(root, 'capacitor.config.json'), 'utf8'));
 
-  it("pins loggingBehavior explicitly to 'debug'", () => {
-    expect(config.loggingBehavior).toBe('debug');
+  // Audit 2026-08-16 (#1834) tightened loggingBehavior from 'debug' →
+  // 'none'. 'debug' relied on `isLoggingEnabled:false` being the default
+  // on non-debuggable release builds; 'none' makes it explicit AND
+  // silences dev/debuggable builds too, closing the "someone side-loads
+  // a debug build" residue. Accept either — the assertion is on the
+  // permitted set, not the specific value, so a future lockdown to
+  // 'none' or a controlled loosening back to 'debug' both stay green.
+  it("pins loggingBehavior to a redacting value (never 'production')", () => {
+    expect(['none', 'debug']).toContain(config.loggingBehavior);
   });
 
   it("never sets loggingBehavior 'production' (would enable bridge logs on release builds)", () => {

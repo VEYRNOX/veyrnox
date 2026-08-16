@@ -25,7 +25,17 @@ import { onRequestGet } from '../okx-candles.js';
 const URL_OK = 'https://x/api/data/okx-candles?instId=BTC-USDT&bar=1H&limit=5';
 
 function makeContext(url = URL_OK) {
-  return { request: new Request(url), waitUntil: () => {} };
+  // Rate-limit added in PR #1834 requires a CF-Connecting-IP header on
+  // every request (post PR #1827 the XFF fallback is gone — a missing
+  // CF header shares one "unknown" bucket the limiter rejects on the
+  // first call to prevent a bypass). Stamp a per-test-run random IP so
+  // each test starts with a clean rate-limit bucket independent of the
+  // caches.default stub below.
+  const ip = `10.0.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`;
+  return {
+    request: new Request(url, { headers: { 'CF-Connecting-IP': ip } }),
+    waitUntil: () => {},
+  };
 }
 
 /** Every host answers identically. */
