@@ -44,8 +44,10 @@ const WELL_KNOWN_RPC_HOSTS = [
 ];
 
 function isWellKnownRpcHost(host) {
-  if (WELL_KNOWN_RPC_HOSTS.some((h) => h.startsWith('.') && (host === h.slice(1) || host.endsWith(h)))) return true;
-  return WELL_KNOWN_RPC_HOSTS.includes(host);
+  // Every entry starts with `.` — accept the bare host (suffix.slice(1)) or any
+  // subdomain (host.endsWith(suffix)). The old `includes(host)` branch was dead
+  // because no entry equals a bare host. Round-4 audit fix (2026-08-16).
+  return WELL_KNOWN_RPC_HOSTS.some((suffix) => host === suffix.slice(1) || host.endsWith(suffix));
 }
 
 function customRpcAllowed() {
