@@ -18,7 +18,12 @@ function ctx(fn, env = { SUPABASE_URL: URL_BASE, SUPABASE_ANON_KEY: 'anon-key' }
   return {
     request: new Request(`https://veyrnox.com/api/rpc/${fn}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        // enforceRateLimit refuses requests without a CF-Connecting-IP
+        // (fail-closed). Every prod request carries one; supply one here.
+        'CF-Connecting-IP': '203.0.113.1',
+      },
       body: JSON.stringify({ p_device_id: 'd' }),
     }),
     env,
@@ -35,6 +40,8 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response('{"ok":true}', {
     status: 200, headers: { 'Content-Type': 'application/json' },
   })));
+  // No-op cache so the rate limiter counts 0 per request and never trips.
+  vi.stubGlobal('caches', { default: { match: async () => undefined, put: async () => {} } });
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 

@@ -195,7 +195,16 @@ describe('dekCache wire — CLEAR at invalidation sites', () => {
     expect(store.has(DEK_CACHE_STORAGE_KEY)).toBe(false);
   });
 
-  it('upgradeKekToV3 removes the cache slot', async () => {
+  it('upgradeKekToV3 removes the cache slot', async (ctx) => {
+    // TODO: activate this assertion when keyStore.upgradeKekToV3 becomes
+    // publicly exported. Until then the KEK v2→v3 upgrade path is exercised
+    // via changePassword's KEK branch above; skipping keeps this suite honest
+    // instead of an unconditional expect(true). The check is INSIDE the
+    // callback because keyStore is loaded by beforeEach, not at file scope.
+    if (typeof keyStore.upgradeKekToV3 !== 'function') {
+      ctx.skip();
+      return;
+    }
     // v2 blob (hardwareKekVersion:2) triggers the upgrade branch.
     setVault(JSON.stringify({
       v: 1, kdf: 'kek-dek', iv: 'ct-iv', ct: 'ct-ct',
@@ -204,16 +213,8 @@ describe('dekCache wire — CLEAR at invalidation sites', () => {
       hardwareKekVersion: 2,
     }));
     setCache();
-    if (typeof keyStore.upgradeKekToV3 === 'function') {
-      await keyStore.upgradeKekToV3('87654321', { getHardwareFactor: getHF });
-      expect(store.has(DEK_CACHE_STORAGE_KEY)).toBe(false);
-    } else {
-      // Method not exported publicly; the guard fires via changePassword's
-      // KEK branch instead (already tested above). This branch is a
-      // documentation-only test: if the method ever becomes public, arm
-      // this assertion. Skip cleanly.
-      expect(true).toBe(true);
-    }
+    await keyStore.upgradeKekToV3('87654321', { getHardwareFactor: getHF });
+    expect(store.has(DEK_CACHE_STORAGE_KEY)).toBe(false);
   });
 
   it('enrollKek removes the cache slot', async () => {

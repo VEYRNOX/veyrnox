@@ -26,12 +26,27 @@ const SOL_PATH = "m/44'/501'/0'/0'";
 //   2. Dev fallback — localhost bundle on `http://localhost:<VITE_PORT>/trezor-
 //      connect/`. This has always worked because the corsValidator explicitly
 //      allowlists localhost:5xxx/8xxx.
-//   3. Otherwise — omitted → @trezor/connect-web falls back to its CDN at
-//      connect.trezor.io. Console-warns at boot so a devtools-open operator
-//      knows CDN mode is active and can wire (1) once verified.
+//   3. Otherwise — dev only falls back to a console.error; a PROD build hard-
+//      fails at module init so a shipped bundle never silently loads the
+//      connect.trezor.io CDN.
 //
 // Whichever URL is used, I3 is enforced upstream via checkDeniability() in
 // requireWebUsb(); a deniable session never even reaches this init.
+
+// 2026-08-16 audit remediation (LOW): if VITE_TREZOR_CONNECT_SRC is unset in a
+// production build, HARD-FAIL at module init — mirrors src/rasp/useRaspArtifact.js's
+// BYPASS_RASP-in-prod throw. Loading connect.trezor.io from a shipped bundle
+// silently ships a third-party iframe into every user's browser; that is a
+// build defect the app must not run under. Dev builds are unaffected: the
+// fallback to `http://localhost:<port>/trezor-connect/` still applies.
+if (
+  typeof import.meta !== 'undefined' &&
+  import.meta.env?.PROD &&
+  !import.meta.env?.VITE_TREZOR_CONNECT_SRC
+) {
+  throw new Error('[trezor] VITE_TREZOR_CONNECT_SRC is unset in a production build -- refusing to load. Wire the self-hosted bundle produced by scripts/bundle-trezor-connect.mjs (e.g. VITE_TREZOR_CONNECT_SRC=/trezor-connect/) before deploying.');
+}
+
 function resolveConnectSrc() {
   try {
     const envSrc = typeof import.meta !== 'undefined' && import.meta.env?.VITE_TREZOR_CONNECT_SRC;
@@ -39,12 +54,14 @@ function resolveConnectSrc() {
     if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
       return `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`;
     }
-    // Prod without VITE_TREZOR_CONNECT_SRC — warn once so operators see it.
+    // Unreachable in a normal PROD build (the module-init throw above catches
+    // this case). Kept as a defense-in-depth error log for test harnesses or
+    // any environment where PROD is false but VITE_TREZOR_CONNECT_SRC is also
+    // unset — surfacing loudly rather than silently loading the CDN.
     if (!globalThis.__veyrnoxTrezorCdnWarned) {
       globalThis.__veyrnoxTrezorCdnWarned = true;
       try {
-        // eslint-disable-next-line no-console
-        console.warn('[trezor] Using CDN (connect.trezor.io) — set VITE_TREZOR_CONNECT_SRC=/trezor-connect/ after verifying scripts/bundle-trezor-connect.mjs works with the current @trezor/connect-web release.');
+        console.error('[trezor] VITE_TREZOR_CONNECT_SRC unset — @trezor/connect-web would fall back to connect.trezor.io. Wire scripts/bundle-trezor-connect.mjs and set VITE_TREZOR_CONNECT_SRC=/trezor-connect/.');
       } catch { /* noop */ }
     }
     return null;
