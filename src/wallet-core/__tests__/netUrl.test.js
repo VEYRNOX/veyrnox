@@ -5,7 +5,7 @@
 // http only to loopback (local node); no embedded credentials; no other schemes.
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { assertSafeRpcUrl, safeExternalUrl } from '../netUrl.js';
+import { assertSafeRpcUrl, safeExternalUrl, safeExplorerUrl } from '../netUrl.js';
 
 afterEach(() => {
   // Reset the runtime opt-in between tests so they don't leak state.
@@ -87,5 +87,62 @@ describe('safeExternalUrl (non-throwing render guard, e.g. explorer_url)', () =>
     expect(safeExternalUrl('')).toBeNull();
     expect(safeExternalUrl(undefined)).toBeNull();
     expect(safeExternalUrl(null)).toBeNull();
+  });
+});
+
+describe('safeExplorerUrl (non-throwing render guard for block-explorer links)', () => {
+  it('accepts every default network explorer host (no RPC allowlist)', () => {
+    // Issue #1848: safeExternalUrl rejected these because it delegated to the
+    // RPC allowlist. safeExplorerUrl deliberately drops the host check.
+    for (const u of [
+      'https://etherscan.io',
+      'https://bscscan.com',
+      'https://polygonscan.com',
+      'https://arbiscan.io',
+      'https://optimistic.etherscan.io',
+      'https://snowtrace.io',
+      'https://sepolia.etherscan.io',
+    ]) {
+      expect(safeExplorerUrl(u)).toBe(u);
+    }
+  });
+
+  it('trims whitespace and preserves path/query on real explorer paths', () => {
+    expect(safeExplorerUrl('  https://etherscan.io/address/0xdead  ')).toBe(
+      'https://etherscan.io/address/0xdead',
+    );
+    expect(safeExplorerUrl('https://polygonscan.com/tx/0xabc?a=1')).toBe(
+      'https://polygonscan.com/tx/0xabc?a=1',
+    );
+  });
+
+  it('allows loopback http', () => {
+    expect(safeExplorerUrl('http://localhost:4000')).toBe('http://localhost:4000');
+    expect(safeExplorerUrl('http://127.0.0.1:4000')).toBe('http://127.0.0.1:4000');
+  });
+
+  it('rejects unsafe schemes so no href reaches the DOM', () => {
+    for (const u of [
+      'javascript:alert(1)',
+      'data:text/html,<script>1</script>',
+      'file:///etc/passwd',
+      'vbscript:msgbox(1)',
+      'http://evil.example.com',
+    ]) {
+      expect(safeExplorerUrl(u)).toBeNull();
+    }
+  });
+
+  it('rejects embedded credentials and fragments', () => {
+    expect(safeExplorerUrl('https://user:pw@etherscan.io')).toBeNull();
+    expect(safeExplorerUrl('https://etherscan.io#anchor')).toBeNull();
+  });
+
+  it('rejects empty / non-string input', () => {
+    expect(safeExplorerUrl('')).toBeNull();
+    expect(safeExplorerUrl('   ')).toBeNull();
+    expect(safeExplorerUrl(undefined)).toBeNull();
+    expect(safeExplorerUrl(null)).toBeNull();
+    expect(safeExplorerUrl('not a url')).toBeNull();
   });
 });
