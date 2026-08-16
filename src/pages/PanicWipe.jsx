@@ -56,12 +56,58 @@ const DEMO_PANIC_PW = "98765432";
 // The literal a user must type to arm the in-app guarded wipe.
 const CONFIRM_WORD = "WIPE";
 
+// One line of the report: a label, and either what survived or an explicit
+// "could not verify". `verified === false` means the platform did not let us
+// look (no sessionStorage, no indexedDB.databases()) — which is NOT the same
+// as "nothing there" and must never render as the clean dash. Reports that
+// omit the flag entirely are treated as verified, so an older report shape
+// still renders normally.
+function ResidueRow({ label, items, verified }) {
+  const list = items ?? [];
+  return (
+    <div>
+      <p className="text-muted-foreground">{label}</p>
+      {verified === false ? (
+        <p className="font-mono text-caution">— could not verify on this browser —</p>
+      ) : list.length === 0 ? (
+        <p className="font-mono text-success">— none —</p>
+      ) : (
+        <p className="font-mono break-all">{list.join(", ")}</p>
+      )}
+    </div>
+  );
+}
+
 // Renders an inspectKeyMaterial() report: what local key material currently
 // exists (vault blobs in IndexedDB + demo address-residue maps). Used to show
 // "before" (key material present) and "after" (clean) a wipe.
-function KeyMaterialReport({ report, title }) {
+//
+// Every input to `clean` must be RENDERED here. It previously showed two of
+// them (vault keys, localStorage residue) while `clean` was computed from
+// five, so a wipe that left a side database behind — or ran on a browser that
+// cannot enumerate them — painted this panel caution-coloured with every
+// visible line reading "— empty —" and no stated reason. The verdict was
+// honest; the explanation was missing, on the one screen where the user
+// decides whether their data is really gone. If a new field ever joins the
+// `clean` conjunction in inspectKeyMaterial(), it needs a row here too.
+// Exported for direct testing: the panel only renders behind the DEMO flow,
+// which runs real Argon2id, so driving it end-to-end just to assert what the
+// report says is far more machinery than the assertion is worth.
+export function KeyMaterialReport({ report, title }) {
   if (!report) return null;
   const clean = report.clean;
+  // A caution badge has to say WHY. "0 VAULT BLOBS" was actively misleading
+  // for the residue-only and could-not-verify cases.
+  const blobs = report.vaultBlobCount ?? 0;
+  const unverified =
+    report.sessionStorageVerified === false || report.sideDatabasesVerified === false;
+  const badge = clean
+    ? "NO KEY MATERIAL"
+    : blobs > 0
+      ? `${blobs} VAULT BLOB${blobs === 1 ? "" : "S"}`
+      : unverified
+        ? "NOT VERIFIED"
+        : "RESIDUE REMAINS";
   return (
     <div className={`rounded-lg border p-3 text-xs space-y-2 ${clean ? "border-success/30 bg-success/5" : "border-caution/30 bg-caution/5"}`}>
       <div className="flex items-center gap-2 font-semibold">
@@ -70,7 +116,7 @@ function KeyMaterialReport({ report, title }) {
           : <Database className="h-4 w-4 text-caution" />}
         <span>{title}</span>
         <span className={`ms-auto px-2 py-0.5 rounded text-[10px] font-bold ${clean ? "bg-success/20 text-success" : "bg-caution/20 text-caution"}`}>
-          {clean ? "NO KEY MATERIAL" : `${report.vaultBlobCount} VAULT BLOB${report.vaultBlobCount === 1 ? "" : "S"}`}
+          {badge}
         </span>
       </div>
       <div>
@@ -81,14 +127,20 @@ function KeyMaterialReport({ report, title }) {
           <p className="font-mono break-all">{report.indexedDbKeys.join(", ")}</p>
         )}
       </div>
-      <div>
-        <p className="text-muted-foreground">localStorage address residue:</p>
-        {report.localStorageResidue.length === 0 ? (
-          <p className="font-mono text-success">— none —</p>
-        ) : (
-          <p className="font-mono break-all">{report.localStorageResidue.join(", ")}</p>
-        )}
-      </div>
+      <ResidueRow
+        label="localStorage address residue:"
+        items={report.localStorageResidue}
+      />
+      <ResidueRow
+        label="sessionStorage residue:"
+        items={report.sessionStorageResidue}
+        verified={report.sessionStorageVerified}
+      />
+      <ResidueRow
+        label="Side databases (app data / threat-intel / IOC cache):"
+        items={report.sideDatabasesResidue}
+        verified={report.sideDatabasesVerified}
+      />
     </div>
   );
 }
