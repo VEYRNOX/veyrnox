@@ -195,6 +195,29 @@ export function detectAttestation(probeResult) {
  *   handle is ever accepted or passed (I3).
  * @returns {Promise<{ available: boolean, attestationFailed?: boolean }>}
  */
+// Codex P2 2026-08-16: session-scoped verdict latch. Prior behaviour let an
+// attestationFailed:true (→ INTEGRITY_FAIL → BLOCK) verdict be downgraded to
+// UNAVAILABLE (→ WARN) on the NEXT presign just by suppressing the attestation
+// response (bridge kill, WAF drop, plugin timeout). This is a "block once, warn
+// forever" oracle: an attacker that can silently drop attestation responses
+// after a real fail can flip a BLOCK into a re-confirm-and-continue prompt.
+//
+// Latch: once we see attestationFailed:true within this session, subsequent
+// UNAVAILABLE (from timeout/throw/partial shape) INHERITS the failed verdict
+// so the tier stays BLOCK. Only an explicit fresh attestationFailed:false
+// (a real, verified PASS) clears it — that requires the attacker to defeat
+// the WHOLE attestation chain, not merely mute it.
+//
+// Reset ON APP_LOCK_EVENT so a fresh user session starts with a clean latch
+// (a rebooted-to-clean device is legitimate and should not be permanently
+// BLOCK-tiered from a prior session's compromise). WalletProvider.lock()
+// dispatches APP_LOCK_EVENT on every lock path.
+let _sessionAttestationFailed = false;
+if (typeof window !== 'undefined' && !window.__veyrnoxRaspLatchHook) {
+  window.__veyrnoxRaspLatchHook = true;
+  window.addEventListener('veyrnox:app-lock', () => { _sessionAttestationFailed = false; });
+}
+
 export async function attestationProbeSource(_verdictFn = null) {
   // (1) I3 DENIABILITY GUARD — FIRST, before any platform check or bridge call.
   // Under a decoy/duress/hidden session this leg must make zero network calls, so
@@ -224,13 +247,18 @@ export async function attestationProbeSource(_verdictFn = null) {
       });
     verdict = await fetchVerdict();
   } catch {
-    return UNAVAILABLE;
+    // Codex P2 2026-08-16 latch: preserve prior fail across a mute.
+    return _sessionAttestationFailed
+      ? { available: true, attestationFailed: true }
+      : UNAVAILABLE;
   }
 
   // A non-object / null verdict, or one that did not genuinely attest, is "could
   // not evaluate" — never fabricate an available result.
   if (verdict == null || typeof verdict !== 'object' || verdict.available !== true) {
-    return UNAVAILABLE;
+    return _sessionAttestationFailed
+      ? { available: true, attestationFailed: true }
+      : UNAVAILABLE;
   }
 
   // P2-6c (audit batch, 2026-07-15): DEFENSE-IN-DEPTH against a compromised bridge.
@@ -239,9 +267,23 @@ export async function attestationProbeSource(_verdictFn = null) {
   // all) or a non-boolean would silently fabricate a passing attestation. Refuse
   // partial shapes and fail closed (I4). Honest producers always emit the boolean.
   if (typeof verdict.attestationFailed !== 'boolean') {
-    return UNAVAILABLE;
+    return _sessionAttestationFailed
+      ? { available: true, attestationFailed: true }
+      : UNAVAILABLE;
   }
+
+  // Fresh well-formed verdict — update the latch:
+  //   attestationFailed:true  → latch ON  (stays through subsequent mutes)
+  //   attestationFailed:false → latch OFF (a real PASS is the only legitimate way
+  //                                        to clear a prior FAIL; the attacker
+  //                                        must defeat the whole chain, not mute)
+  _sessionAttestationFailed = verdict.attestationFailed === true;
 
   // Normalise to the two-field ProbeSource shape detectAttestation consumes.
   return { available: true, attestationFailed: verdict.attestationFailed };
+}
+
+// Exported for tests only — reset the session latch without dispatching a lock.
+export function _resetAttestationLatchForTests() {
+  _sessionAttestationFailed = false;
 }
