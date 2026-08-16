@@ -245,9 +245,10 @@ function fireLockHook() {
   if (typeof _lockHook === 'function') _lockHook();
 }
 
-// Wrap a biometric-gated non-unlock operation so the lock hook is suppressed
-// while it is in flight. Safe: the operation itself requires biometric auth,
-// so the user already proved presence at the start of the call.
+// Wrap a biometric-gated operation so the lock hook is suppressed while it
+// is in flight. Used by unlock (M2c hwUnwrap + M2b KEK getHardwareFactor),
+// enrollKek, and changePassword — any path where Face ID momentarily
+// backgrounds the app and would otherwise fire lock() mid-operation.
 async function withLockSuppressed(fn) {
   _lockSuppressDepth++;
   try {
@@ -968,9 +969,13 @@ export const nativeKeyStore = {
   // transiently to the caller; nothing secret is cached here.
   async unlock(password, opts = {}) {
     await init();
-    // M2c: intercept Enclave-wrapped records BEFORE withLockSuppressed/_unlockInner,
-    // which calls parseVaultBlob() and would reject { wrap:'enclave-v1' } as malformed.
-    // Peek at the record shape — metadata-only read, never the secret.
+    // Suppress pause-driven lock hook for the full unlock body. Both the M2c
+    // (hwUnwrap) and M2b (getHardwareFactor) paths trigger Face ID, which
+    // momentarily backgrounds the app. Without suppression, appStateChange
+    // fires lock() and the in-flight WalletProvider unlock throws SUPERSEDED.
+    return withLockSuppressed(async () => {
+    // M2c: intercept Enclave-wrapped records before _unlockInner, which
+    // calls parseVaultBlob() and would reject { wrap:'enclave-v1' } as malformed.
     const rawPeek = await SecureStorage.get(VAULT_KEY, false);
     if (rawPeek !== null && rawPeek !== undefined) {
       let peekRecord;
@@ -1019,30 +1024,29 @@ export const nativeKeyStore = {
       }
     }
 
-    // Standard M2b / KEK path — suppress lock hook around biometric prompts.
-    return withLockSuppressed(async () => {
-      const secret = await _unlockInner(password, opts);
-      // M2c-2 opt-in up-migration: transparently re-wrap the M2b blob under the
-      // Enclave key after a successful biometric-enabled unlock. Best-effort +
-      // atomic-safe (safeWriteVault).
-      if (opts.requireBiometric && (await useHardwareWrap())) {
-        try {
-          const raw2 = await SecureStorage.get(VAULT_KEY, false);
-          if (raw2 !== null && raw2 !== undefined) {
-            const { createWrappingKey, hwWrap } = await enclavePlugin();
-            await createWrappingKey();
-            const ct = await hwWrap(base64FromUtf8(typeof raw2 === 'string' ? raw2 : JSON.stringify(raw2)));
-            await safeWriteVault({ wrap: WRAP_VERSION_ENCLAVE, hw: ct });
-          }
-        } catch (e) {
-          // Non-fatal: the secret is already recovered, so unlock still succeeds and
-          // migration is retried on a later unlock. But log the failure (code/message
-          // only, never key material — #725/LOG-1) instead of swallowing it silently.
-          logM2cMigrationFailure(e);
+    // Standard M2b / KEK path.
+    const secret = await _unlockInner(password, opts);
+    // M2c-2 opt-in up-migration: transparently re-wrap the M2b blob under the
+    // Enclave key after a successful biometric-enabled unlock. Best-effort +
+    // atomic-safe (safeWriteVault).
+    if (opts.requireBiometric && (await useHardwareWrap())) {
+      try {
+        const raw2 = await SecureStorage.get(VAULT_KEY, false);
+        if (raw2 !== null && raw2 !== undefined) {
+          const { createWrappingKey, hwWrap } = await enclavePlugin();
+          await createWrappingKey();
+          const ct = await hwWrap(base64FromUtf8(typeof raw2 === 'string' ? raw2 : JSON.stringify(raw2)));
+          await safeWriteVault({ wrap: WRAP_VERSION_ENCLAVE, hw: ct });
         }
+      } catch (e) {
+        // Non-fatal: the secret is already recovered, so unlock still succeeds and
+        // migration is retried on a later unlock. But log the failure (code/message
+        // only, never key material — #725/LOG-1) instead of swallowing it silently.
+        logM2cMigrationFailure(e);
       }
-      return secret;
-    });
+    }
+    return secret;
+    }); // withLockSuppressed — covers entire unlock body
   },
 
   // Personal Backup Phase 1/2 — read the inner KEK-vault blob regardless of
