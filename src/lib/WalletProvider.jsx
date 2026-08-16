@@ -1927,6 +1927,15 @@ export function WalletProvider({ children }) {
       // as those features wrote them (a single bare mnemonic), preserving their
       // plausible deniability. Build transient public state in-memory only, so the
       // coerced/observed view looks like an ordinary single-wallet wallet.
+      //
+      // 2026-08-16 audit remediation (LOW): guard BEFORE any state mutation.
+      // Previously activeIdRef / setIsDecoy / setWallets / setPortfolios ran
+      // first and the checkpoint-C gate below caught the flip too late — a
+      // superseded unlock could stamp decoy/hidden state onto a session the
+      // user had already locked or unlocked into a different wallet. Move the
+      // assert to the top so a stale continuation bails without ever touching
+      // state, mirroring checkpoint B in the primary branch above.
+      assertUnlockCurrent();
       const ids = mv.listWalletIds(container);
       activeIdRef.current = ids[0];
       setIsDecoy(decoy);

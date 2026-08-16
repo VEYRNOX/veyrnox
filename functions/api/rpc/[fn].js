@@ -12,6 +12,8 @@
 // Edge functions (first-referral-bonus, tip-screen) are proxied separately
 // via /api/edge/[fn].js if needed in the future.
 
+import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
+
 const ALLOWED_RPCS = new Set([
   'track_event',
   'generate_referral_code',
@@ -55,6 +57,27 @@ export async function onRequestPost(context) {
   const fn = params.fn;
 
   if (!ALLOWED_RPCS.has(fn)) err(403, 'RPC not allowed');
+
+  // Per-IP cap: every sibling data/* proxy already enforces one. Without it, a
+  // single caller can spam the RPC allowlist (track_event, increment_referral,
+  // record_attribution) uncapped, wasting Supabase quota and driving abuse
+  // through the service_role key path. Fails CLOSED on cache error, matching
+  // functions/api/_lib/rate-limit.js's stated contract.
+  await enforceRateLimit({ bucket: `rpc-${fn}`, clientIp: clientIpOf(request) });
+
+  // 2026-08-16 audit remediation (MED): fail LOUD on a PROD deploy that lacks
+  // SUPABASE_SERVICE_ROLE_KEY. The previous fallback to SUPABASE_ANON_KEY was
+  // silent, so an operator who ran the H-3 REVOKE batch after only setting one
+  // secret would see every referral / telemetry write start failing without any
+  // indication that the missing secret was the cause. `env.ENVIRONMENT === 'production'`
+  // matches the wrangler.toml var used by other server checks; when it is set
+  // and the service-role key is not, refuse to serve rather than silently
+  // downgrade auth. The anon fallback remains for non-prod so local/dev keep
+  // working before secrets are wired.
+  const isProd = env.ENVIRONMENT === 'production';
+  if (isProd && !env.SUPABASE_SERVICE_ROLE_KEY) {
+    err(503, 'Database not configured');
+  }
 
   const supabaseUrl = env.SUPABASE_URL;
   // Prefer the service-role key, fall back to anon.

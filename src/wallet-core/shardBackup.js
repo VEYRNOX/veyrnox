@@ -310,13 +310,18 @@ export function encodeShareBundle(share, index, vault) {
  * Parse a bundle string OR object. Validates shape and hash-vs-vault
  * integrity. Returns { share: Uint8Array, index, vault, vaultHash }.
  *
- * ponytail: kept for backward compat — bundles produced BEFORE the
- * 2026-08-16 audit remediation could be raw JSON of the shape below (share
- * bytes + vault ct in the clear). Post-remediation the PersonalBackup UI
- * wraps ALL exported bundles with a passphrase envelope by default (see
- * recoveryShare.wrapBundleWithPassphrase), so raw-JSON bundles are a legacy
- * shape only. Do not extend this path; new bundle carriers should go through
- * the passphrase-wrap layer.
+ * 2026-08-16 audit remediation (round 3): the PersonalBackup UI now
+ * unconditionally wraps every exported share with wrapBundleWithPassphrase —
+ * the raw-JSON share path is no longer produced by any code path.
+ *
+ * HISTORICAL NOTE: v=1 was an earlier, unversioned raw-JSON shape (share
+ * bytes + vault.ct in the clear). This function has ALWAYS rejected v!==2,
+ * so any pre-existing raw v=1 bundle a user might still hold on paper will
+ * fail SHARD_BUNDLE_INVALID here — that is the intended hard-fail. A migrator
+ * for v=1 bundles is not planned; the mitigation for anyone holding one is to
+ * restore on-device (their same-device .enc backup is unaffected) and export
+ * a fresh v=2 wrapped set. If someone actually has stranded v=1 bundles this
+ * comment is the audit trail.
  *
  * @param {string|object} input bundle JSON string or already-parsed object
  */
@@ -329,6 +334,8 @@ export function decodeShareBundle(input) {
     obj = input;
   }
   if (!obj || typeof obj !== 'object') throw new Error(SHARD_BUNDLE_INVALID);
+  // Hard error on anything that is not the current v=2 wrapped-inside shape.
+  // v=1 is unsupported — see HISTORICAL NOTE in the doc comment above.
   if (obj.v !== SHARD_BUNDLE_VERSION) throw new Error(SHARD_BUNDLE_INVALID);
   if (!Number.isInteger(obj.shareIndex) || obj.shareIndex < 1 || obj.shareIndex > 3) throw new Error(SHARD_BUNDLE_INVALID);
   if (typeof obj.shareBytes !== 'string') throw new Error(SHARD_BUNDLE_INVALID);

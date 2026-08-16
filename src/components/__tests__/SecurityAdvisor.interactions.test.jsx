@@ -459,9 +459,27 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
 
   describe('Deniability mode disables both AI advisor and screening', () => {
     it('hides FAB entirely in deniability mode (I3)', async () => {
-      // This test needs special setup since deniability affects the entire component
-      // Skip for now — the existing SecurityAdvisor.test.jsx already covers I3
-      expect(true).toBe(true);
+      // 2026-08-16 audit remediation (MED): real assertion. Mount with the
+      // deniability mock flipped ON and confirm the FAB never renders.
+      // SecurityAdvisor returns null when hidden === true (see the `if (hidden)
+      // return null` branch), so the aria-labeled button must not exist.
+      const { isDeniabilityOrDemoActive } = await import('@/wallet-core/deniabilitySession.js');
+      isDeniabilityOrDemoActive.mockReturnValue(true);
+      try {
+        vi.resetModules();
+        vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
+        vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
+        vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+        const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
+        render(
+          <MemoryRouter initialEntries={['/send']}>
+            <SecurityAdvisor walletChain="ethereum" />
+          </MemoryRouter>
+        );
+        expect(screen.queryByLabelText(/open security advisor/i)).toBeNull();
+      } finally {
+        isDeniabilityOrDemoActive.mockReturnValue(false);
+      }
     });
   });
 

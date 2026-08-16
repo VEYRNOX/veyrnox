@@ -45,7 +45,9 @@ describe('H-NEW-D — iOS HardwareKekPlugin is honest about SE-ECIES implementat
     : null;
 
   if (!iosPath) {
-    it.skip('skipped: neither HardwareKekPlugin.m nor .swift found (Phase 2)', () => {});
+    // TODO(VEYRNOX/veyrnox#1836): activate when Phase 2 native iOS
+    // HardwareKekPlugin (Obj-C .m or Swift) lands.
+    it.skip('skipped: neither HardwareKekPlugin.m nor .swift found (Phase 2 — VEYRNOX/veyrnox#1836)', () => {});
     return;
   }
   const src = read(iosPath);
@@ -99,7 +101,9 @@ describe('H-NEW-D — iOS HardwareKekPlugin is honest about SE-ECIES implementat
 describe('H15 — Android HardwareKekPlugin.kt does not claim enforced StrongBox/hardware backing', () => {
   // Phase 2: native plugins not yet implemented. Skip this test if the file doesn't exist.
   if (!existsSync(resolve(repoRoot, KT))) {
-    it.skip('skipped: HardwareKekPlugin.kt not yet implemented (Phase 2)', () => {});
+    // TODO(VEYRNOX/veyrnox#1836): activate when Phase 2 native Android
+    // HardwareKekPlugin.kt lands.
+    it.skip('skipped: HardwareKekPlugin.kt not yet implemented (Phase 2 — VEYRNOX/veyrnox#1836)', () => {});
     return;
   }
   const kt = read(KT);
