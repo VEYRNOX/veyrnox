@@ -69,7 +69,9 @@ export default function WalletAccessReset() {
   const {
     isUnlocked, accounts, hasVault, deriveAccounts,
     changePassword, importWallet, createWallet, unlock, lock, clearVault,
+    isDecoy, isHidden,
   } = useWallet();
+  const deniable = isDecoy || isHidden;
 
   // Auth cohort: 'pin' devices (every real vault post-PR #651) get a PIN pad;
   // 'password' is the legacy free-text fallback, kept intact below.
@@ -120,6 +122,16 @@ export default function WalletAccessReset() {
 
   // ----- change password (while unlocked) -----
   const handleChangePassword = async () => {
+    // Codex P2 2026-08-15: reset/recovery must not run from a decoy/hidden
+    // session — the downstream importWallet path turns on live prices and
+    // fires analytics / init side effects (see WalletProvider.jsx:~1002),
+    // which is an I3 egress hole. Fail closed with a neutral message.
+    if (deniable) {
+      setCpErr("Not available in this session.");
+      // Blank the secrets so a nav+return doesn't reveal what was typed.
+      setCurPw(""); setNewPw(""); setConfirmPw("");
+      return;
+    }
     setCpErr(""); setCpDone(false);
     if (newPw.length < MIN_PW) { setCpErr(`Choose a new password of at least ${MIN_PW} characters.`); return; }
     if (newPw !== confirmPw) { setCpErr("New passwords do not match."); return; }
@@ -135,8 +147,14 @@ export default function WalletAccessReset() {
       toast.success("Vault password changed. Your old password no longer works.");
     } catch (e) {
       // decryptVault throws a deliberately generic message on a wrong current
-      // password OR a tampered blob — surface it as-is (no oracle).
+      // password OR a tampered blob — surface it as-is (no oracle). Also
+      // zero the secret-bearing state on failure so it doesn't linger in a
+      // referenced React fiber (Codex P2 2026-08-15). String immutability
+      // means the old buffer stays live somewhere, but overwriting the
+      // reference at least prevents a subsequent render/screenshot from
+      // exposing it.
       setCpErr(e?.message || "Could not change password");
+      setCurPw(""); setNewPw(""); setConfirmPw("");
     } finally {
       setCpBusy(false);
     }
@@ -147,6 +165,12 @@ export default function WalletAccessReset() {
   // Only the final confirm calls changePassword(CUR_PIN, NEW_PIN). Fails closed:
   // a weak new PIN or a mismatched confirm never touches the vault.
   const handlePinComplete = async (p) => {
+    if (deniable) {
+      // Same I3 rationale as handleChangePassword above.
+      setPinErr("Not available in this session.");
+      setCurPin(""); setNewPin(""); setConfirmPin(""); setPinEntry("");
+      return;
+    }
     setPinErr("");
     if (pinStep === "current") {
       setCurPin(p);
@@ -184,6 +208,8 @@ export default function WalletAccessReset() {
         toast.success("PIN changed. Your old PIN no longer works.");
       } catch (e) {
         setPinErr(e?.message || "Could not change PIN");
+        // Blank all PIN state on failure (Codex P2 2026-08-15).
+        setCurPin(""); setNewPin(""); setConfirmPin(""); setPinEntry("");
         setPinStep("current");
       } finally {
         setPinBusy(false);
@@ -193,7 +219,20 @@ export default function WalletAccessReset() {
 
   // ----- seed recovery (PIN cohort) -> re-import under a new PIN -----
   const handleRecoverPin = async (p) => {
+    if (deniable) {
+      setRecErr("Not available in this session.");
+      setRecPhrase(""); setRecPinEntry("");
+      return;
+    }
     setRecErr("");
+    // Codex P1 2026-08-15: the change-PIN path (handlePinComplete) gates on
+    // checkPinStrength() before re-encrypting the vault, but the seed-recovery
+    // path re-imported under whatever 8-digit value the user typed. That is a
+    // real credential-strength downgrade during recovery — a user restoring
+    // after loss could end up with a weak PIN the normal flow would reject.
+    // Same gate here.
+    const s = checkPinStrength(p);
+    if (!s.ok) { setRecErr(s.reason); setRecPinEntry(""); return; }
     setRecBusy(true);
     try {
       await importWallet(recPhrase.trim(), p);
@@ -202,6 +241,8 @@ export default function WalletAccessReset() {
       toast.success("Wallet recovered from your seed phrase. A new PIN is set.");
     } catch (e) {
       setRecErr(e?.message || "Could not recover from that seed phrase");
+      // Blank secrets on failure (Codex P2 2026-08-15).
+      setRecPhrase(""); setRecPinEntry("");
     } finally {
       setRecBusy(false);
     }
@@ -209,6 +250,11 @@ export default function WalletAccessReset() {
 
   // ----- seed recovery (forgot password -> re-import) -----
   const handleRecover = async () => {
+    if (deniable) {
+      setRecErr("Not available in this session.");
+      setRecPhrase(""); setRecPw("");
+      return;
+    }
     setRecErr("");
     if (recPw.length < MIN_PW) { setRecErr(`Choose a new password of at least ${MIN_PW} characters.`); return; }
     setRecBusy(true);
@@ -222,6 +268,8 @@ export default function WalletAccessReset() {
       toast.success("Wallet recovered from your seed phrase. A new vault password is set.");
     } catch (e) {
       setRecErr(e?.message || "Could not recover from that seed phrase");
+      // Blank secrets on failure (Codex P2 2026-08-15).
+      setRecPhrase(""); setRecPw("");
     } finally {
       setRecBusy(false);
     }
@@ -397,6 +445,19 @@ export default function WalletAccessReset() {
                   onChange={(e) => setCurPw(e.target.value)}
                   placeholder="Your current vault password"
                   className="pe-10"
+                  // Codex P2 2026-08-15: opt out of every browser + password-
+                  // manager autofill / save prompt. The vault password is
+                  // deliberately NOT synced to any external credential store
+                  // (I1 — keys never leave the device); silent browser save
+                  // would defeat that. `autoComplete="off"` handles Chromium/
+                  // Firefox; `data-1p-ignore` + `data-form-type="other"`
+                  // handle 1Password / LastPass / Bitwarden which override
+                  // the autoComplete hint.
+                  autoComplete="off"
+                  spellCheck={false}
+                  autoCorrect="off"
+                  data-1p-ignore
+                  data-form-type="other"
                 />
                 <button
                   type="button"
@@ -417,6 +478,11 @@ export default function WalletAccessReset() {
                 value={newPw}
                 onChange={(e) => setNewPw(e.target.value)}
                 placeholder={`At least ${MIN_PW} characters`}
+                autoComplete="new-password"
+                spellCheck={false}
+                autoCorrect="off"
+                data-1p-ignore
+                data-form-type="other"
               />
               <p className="text-xs text-muted-foreground mt-1">At least 12 characters · any characters allowed</p>
             </div>
@@ -429,6 +495,11 @@ export default function WalletAccessReset() {
                 value={confirmPw}
                 onChange={(e) => setConfirmPw(e.target.value)}
                 placeholder="Re-enter the new password"
+                autoComplete="new-password"
+                spellCheck={false}
+                autoCorrect="off"
+                data-1p-ignore
+                data-form-type="other"
               />
               <p className="text-xs text-muted-foreground mt-1">Must match your new password</p>
             </div>

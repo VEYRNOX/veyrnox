@@ -22,15 +22,16 @@ afterEach(cleanup);
 
 describe('TwoFactorGate — PIN-model PinPad is wired as a controlled input', () => {
   it('a digit press advances the entered-digit count (controlled wiring, no crash)', () => {
-    render(<TwoFactorGate verify={vi.fn()} onSuccess={vi.fn()} />);
+    // Codex P3 2026-08-15: the dot row no longer exposes a status /
+    // digit-count aria-label (side channel — see PinPad.jsx). Detect
+    // controlled wiring by counting filled dots (bg-primary is the fill
+    // class). If onChange is missing, the click throws inside PinPad
+    // instead of advancing the count.
+    const { container } = render(<TwoFactorGate verify={vi.fn()} onSuccess={vi.fn()} />);
+    const filled = () => container.querySelectorAll('span.bg-primary').length;
 
-    // The dot row exposes "<n> of 8 digits entered" as its accessible name.
-    expect(screen.getByRole('status', { name: /0 of 8 digits entered/i })).toBeTruthy();
-
-    // Pressing "1" must flow onChange -> setPin -> back into PinPad's value prop.
-    // Without onChange wired this click would throw inside PinPad instead.
+    expect(filled()).toBe(0);
     fireEvent.click(screen.getByRole('button', { name: '1' }));
-
-    expect(screen.getByRole('status', { name: /1 of 8 digits entered/i })).toBeTruthy();
+    expect(filled()).toBe(1);
   });
 });

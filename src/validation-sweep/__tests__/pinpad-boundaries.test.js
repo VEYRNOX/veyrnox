@@ -44,20 +44,36 @@ describe('PIN pad — rendered keypad composition (numeric-only, no paste surfac
     expect(out).toContain('Re-enter');
   });
 
-  it('exposes ARIA on the entry surface (status dots, clear, delete)', () => {
+  it('does NOT leak per-keystroke progress into the accessibility tree', () => {
     const out = html({ value: '12' });
-    expect(out).toContain('role="status"');
-    expect(out).toContain('aria-label="2 of 8 digits entered"'); // live, value-derived
+    // Codex P3 2026-08-15: the dot container no longer publishes a
+    // status/live-region announcement of digit count. The prior
+    // `role="status"` + `aria-label="N of M digits entered"` combo
+    // announced every keystroke to any AT / screen-reader relay — a
+    // credential-entry side channel. Positive guard: the leak MUST NOT
+    // return in any state.
+    expect(out).not.toContain('role="status"');
+    expect(out).not.toMatch(/aria-label="\d+ of \d+ digits entered"/);
+    // The dot container is aria-hidden so AT skips it entirely.
+    expect(out).toMatch(/<div class="flex justify-center gap-3" aria-hidden="true">/);
+    // AT still gets a static instruction via the input's aria-describedby.
+    expect(out).toContain('id="pin-hint"');
+    expect(out).toContain('Use your keyboard to type your PIN');
+    // Key labels are unchanged (used by AT to identify the digit keys).
     expect(out).toContain('aria-label="Clear — re-enter PIN"');
     expect(out).toContain('aria-label="Delete last digit"');
   });
 
-  it('the status dots reflect the controlled value length (no value echoed)', () => {
-    // 0, partial, and full states — the dot fill count tracks value.length and the
-    // digits themselves are never rendered into the DOM (shoulder-surf resistant).
-    expect(html({ value: '' })).toContain('aria-label="0 of 8 digits entered"');
-    expect(html({ value: '123' })).toContain('aria-label="3 of 8 digits entered"');
-    expect(html({ value: '12345678' })).toContain('aria-label="8 of 8 digits entered"');
+  it('the dot fill count tracks the controlled value length (no value echoed)', () => {
+    // Since the accessibility tree no longer echoes N/M (Codex P3), the
+    // visual contract for sighted users is verified structurally: count
+    // filled-dot spans (bg-primary + border-primary is the fill class in
+    // PinPad.jsx). The digits themselves must still never render into the
+    // DOM — that is the shoulder-surf invariant, unchanged.
+    const countFilled = (out) => (out.match(/bg-primary border-primary/g) || []).length;
+    expect(countFilled(html({ value: '' }))).toBe(0);
+    expect(countFilled(html({ value: '123' }))).toBe(3);
+    expect(countFilled(html({ value: '12345678' }))).toBe(8);
     expect(html({ value: '12345678' })).not.toContain('12345678');
   });
 
