@@ -183,6 +183,36 @@ its own.
 - Dependabot alert #14 auto-dismissed (low-severity dev dependency). That dismissal is
   not itself a reason to suppress here; the rationale above is.
 
+### `extract-zip` — max severity: high — accepted 2026-08-16
+
+- **Advisory:** GHSA-jmr9-qjv8-65gv — unvalidated symlink path traversal in `extract-zip`
+  (CVSS 8.1, CWE-22, vulnerable `<= 2.0.1`).
+- **Why accepted:** no upstream fix exists at any version. `2.0.1` is the latest
+  published release (`npm view extract-zip dist-tags` → `latest: 2.0.1`) and the advisory
+  range covers it, so there is no version bump that clears this.
+- **Blast radius:** dev-only. Reaches the tree solely through the WebdriverIO E2E test
+  harness: `@wdio/*` devDependencies (`^9.30.1`) → `@wdio/utils` → `@puppeteer/browsers`
+  → `extract-zip`. Never imported by `src/`, never bundled in the production wallet.
+  `npm audit --omit=dev` reports 0 high / 0 critical. Exploitation requires the harness to
+  extract an attacker-controlled zip; in practice `@puppeteer/browsers` extracts browser
+  builds from Google's Chrome for Testing endpoints.
+- **Accounts for** 12 high findings — the root plus its transitive dependents:
+  `extract-zip`, `@puppeteer/browsers`, `@wdio/utils`, `@wdio/config`, `@wdio/globals`,
+  `@wdio/runner`, `@wdio/cli`, `@wdio/local-runner`, `@wdio/mocha-framework`,
+  `expect-webdriverio`, `webdriver`, `webdriverio`. Suppress the whole chain under this
+  root.
+- **Revisit trigger:** an `extract-zip` release ships outside the `<= 2.0.1` range; OR
+  `@puppeteer/browsers` drops `extract-zip`; OR the WebdriverIO E2E harness is retired;
+  OR `extract-zip` gains a path into a production dependency. Verify the resolved tree
+  before retiring — an npm `fixAvailable: true` is not evidence.
+- **Not tracked** — no watcher. This residual is carried by the daily audit only; nobody
+  is checking upstream between runs.
+- **Note:** npm's `fixAvailable` suggests `@wdio/cli@8.14.6`, a major *downgrade* from the
+  installed 9.30.1. `@wdio/utils@8.x` still depends on `@puppeteer/browsers` →
+  `extract-zip`, so it does not clear the advisory. Evaluated and rejected 2026-08-16.
+  Do not propose it again.
+- Tracked as issue #1851.
+
 ## Constraints
 - Do NOT run `npm audit fix` or modify any files — read-only audit only.
 - Suppression is a **reporting** decision only. Never edit `package.json`,
