@@ -85,7 +85,6 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           # 2026-08-15: staging is the ONLY build variant we route through
@@ -96,14 +95,16 @@ jobs:
           # still gates whether that staging build gets uploaded to Play
           # Internal / TestFlight afterwards.
           #
-          # 2026-08-16: dispatch is pinned to $SHA (not $GITHUB_REF_NAME) so
-          # ci.yml's concurrency group keys on the immutable commit rather
-          # than "main". Otherwise any push to main during the ~15 min build
-          # window cancels this dispatched CI run, which then trips the wait
-          # step below with "CI ... concluded cancelled". Observed on runs
-          # 31926190495, 31927267494, 31930380757.
+          # 2026-08-16: previous attempt pinned --ref to $GITHUB_SHA to keep
+          # this dispatched run in its own concurrency group. That failed
+          # with "HTTP 422: No ref found" because workflow_dispatch requires
+          # a branch or tag name, not a raw commit SHA (run 31932385069).
+          # Reverted to $GITHUB_REF_NAME; concurrency race remains a known
+          # limitation (dispatch during a quiet main window, or wait for a
+          # ci.yml-side concurrency fix that scopes dispatched runs out of
+          # the push-triggered group).
           gh workflow run ci.yml \
-            --ref "$SHA" \
+            --ref "$GITHUB_REF_NAME" \
             -f build_firebase_test=true \
             -f build_staging_release=true
 
