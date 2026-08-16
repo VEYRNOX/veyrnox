@@ -942,6 +942,15 @@ export default function WalletEntry() {
         setError("Unlock cancelled — try again when ready.");
         return;
       }
+      if (e?.code === KEK_UI_ERR.MALFORMED_VAULT) {
+        setError(
+          "Your wallet data appears corrupted and can't be read. " +
+          "Restore your wallet from your seed phrase to regain access."
+        );
+        setPinStep('seed');
+        setView('pin-recover');
+        return;
+      }
       // A real wrong-PIN miss. Register it and persist the new count; the pure guard
       // decides whether this miss is the wipe trigger and what to warn.
       const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());
