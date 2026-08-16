@@ -353,10 +353,23 @@ describe('panic wipe', () => {
     expect(written.some((w) => /^sidebar_state=/.test(w) && /max-age=0/.test(w))).toBe(true);
   });
 
-  it('PW-05: deleteAppDataDatabase still resolves when blocked, after attempting to break the blocker', async () => {
-    // Hold the appdata DB open so deleteDatabase() fires onblocked. panicWipeLocal
-    // must still resolve (it did before) AND the code must attempt to close the
-    // blocking connection (req.result?.close?.() on blocked) so deletion can proceed.
+  it('PW-05: a blocked appdata delete resolves, and is reported as NOT clean', async () => {
+    // Hold the appdata DB open so deleteDatabase() fires onblocked. Two things
+    // must hold, and the second is what this file used to get wrong:
+    //   1. panicWipeLocal resolves rather than hanging.
+    //   2. the surviving DB is REPORTED. The old assertion was
+    //      `expect(report.clean).toBe(true)` while veyrnox-appdata was still
+    //      right there — the exact false-clean the sideDatabasesResidue check
+    //      in this PR exists to remove. It passed only because nothing looked.
+    //
+    // The title and comment also used to claim the code "attempts to break the
+    // blocker" by calling close() on the delete request. It does not, and must
+    // not: per the IDB spec an IDBOpenDBRequest from deleteDatabase() has an
+    // `undefined` result on every event, so that call was an unconditional
+    // no-op and the 2026-07-14 audit removed it (panic.js:760-769). The
+    // instrumentation that wrapped held.close() was never asserted, so the
+    // stale claim read as covered. Dropped rather than asserted — asserting it
+    // would demand behaviour that was deliberately removed.
     const held = await new Promise((resolve, reject) => {
       const req = indexedDB.open('veyrnox-appdata', 1);
       req.onupgradeneeded = () => {
@@ -366,13 +379,19 @@ describe('panic wipe', () => {
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
-    let closeAttempted = false;
-    const origClose = held.close.bind(held);
-    held.close = () => { closeAttempted = true; return origClose(); };
-    // Should resolve without hanging even though a connection is open.
-    const report = await panicWipeLocal();
-    expect(report.clean).toBe(true);
-    try { held.close(); } catch { /* noop */ }
+    // The close MUST happen in a finally. Held open, this connection blocks
+    // every later deleteDatabase() in the file, so an assertion failing here
+    // leaks the handle into the rest of the suite.
+    let report;
+    try {
+      // Should resolve without hanging even though a connection is open.
+      report = await panicWipeLocal();
+    } finally {
+      try { held.close(); } catch { /* noop */ }
+    }
+    expect(report.sideDatabasesVerified).toBe(true);
+    expect(report.sideDatabasesResidue).toContain('veyrnox-appdata');
+    expect(report.clean).toBe(false);
   });
 
   // ── H2 part B: deniability uniformity — FIXED_LEN padding of the panic marker ──
