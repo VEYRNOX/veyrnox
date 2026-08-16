@@ -17,12 +17,13 @@ if (!existsSync(packagePath)) {
 let source = readFileSync(packagePath, 'utf8');
 
 if (!source.includes('firebase-ios-sdk.git')) {
-  const anchor = '        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.5.0"),';
-  if (!source.includes(anchor)) {
+  const anchorRegex = /        \.package\(url: "https:\/\/github\.com\/ionic-team\/capacitor-swift-pm\.git", exact: "\d+\.\d+\.\d+"\),/;
+  const match = source.match(anchorRegex);
+  if (!match) {
     console.error('[patch-ios-firebase-observability] Capacitor package anchor changed');
     process.exit(1);
   }
-  source = source.replace(anchor, `${anchor}\n${firebasePackage}`);
+  source = source.replace(match[0], `${match[0]}\n${firebasePackage}`);
 }
 
 if (!source.includes('product(name: "FirebaseCore"')) {
