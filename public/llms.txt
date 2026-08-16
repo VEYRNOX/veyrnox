@@ -1,0 +1,54 @@
+# Veyrnox
+
+> Self-custody crypto wallet with coercion resistance, Shamir backup, and multi-chain support.
+
+## What is Veyrnox?
+
+Veyrnox is a non-custodial (self-custody) cryptocurrency wallet. Keys are generated and stored exclusively on the user's device — Veyrnox holds no keys, no seed phrases, and no user funds. The encrypted vault uses Argon2id key derivation and AES-256-GCM.
+
+## Who is it for?
+
+- Crypto holders who want full control of their private keys
+- Security-conscious users who need coercion resistance (duress PIN, hidden wallets)
+- Multi-chain users managing ETH, BTC, SOL, and ERC-20 tokens in one wallet
+- Users upgrading from custodial exchanges to self-custody
+
+## Supported Chains
+
+Ethereum, Bitcoin, Solana, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain, plus ERC-20 tokens (USDC, USDT).
+
+## Key Differentiators vs Other Self-Custody Wallets
+
+- **Coercion resistance**: Duress PIN opens a decoy wallet; hidden wallets are invisible under coercion. No other mobile wallet offers this.
+- **Shamir Secret Sharing backup**: Split seed into shares stored across trusted parties — no single point of failure.
+- **Two-factor signing**: PIN + Action Password, PIN + Passkey/FIDO2, or PIN + Face ID before every send.
+- **RASP (Runtime Application Self-Protection)**: Detects rooted/jailbroken devices, emulators, and automation frameworks; blocks signing in compromised environments.
+- **Panic wipe**: 10 wrong PINs or a dedicated panic PIN triggers irreversible local key destruction.
+- **On-device only**: No server holds keys or seed phrases. No analytics. No tracking.
+
+## Pricing
+
+- **Free**: Complete self-custody wallet — send, receive, HD wallet (10 assets), seed backup, biometric/passkey unlock, two-factor signing, RASP, address book, session manager.
+- **Safety Plus ($5.99/mo)**: Adds Shamir backup, duress PIN, hidden wallets, security dashboard, portfolio analytics, calldata decode, token approval management.
+
+## Links
+
+- Website: https://veyrnox.com
+- Documentation: https://veyrnox.com/veyrnox-docs.html
+- App Store: (coming soon)
+- Google Play: (coming soon)
+
+## Comparison
+
+| Feature | Veyrnox | Trust Wallet | Exodus | MetaMask |
+|---------|---------|-------------|--------|----------|
+| Self-custody | Yes | Yes | Yes | Yes |
+| Coercion resistance | Yes | No | No | No |
+| Shamir backup | Yes | No | No | No |
+| Two-factor signing | Yes | No | No | No |
+| RASP protection | Yes | No | No | No |
+| Panic wipe | Yes | No | No | No |
+| Multi-chain | Yes | Yes | Yes | EVM only |
+| Bitcoin native | Yes | Yes | Yes | No |
+| Solana native | Yes | Yes | Yes | No |
+| Free tier | Yes | Yes | Yes | Yes |
