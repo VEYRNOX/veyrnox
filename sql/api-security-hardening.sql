@@ -10,6 +10,28 @@
 -- Approach: Postgres-level rate limiting via SECURITY DEFINER functions that
 -- replace direct table access. RLS policies are tightened so the anon role
 -- can only call these functions, never write rows directly.
+--
+-- EVERY function below carries `SET search_path = public, extensions, pg_temp`
+-- inline. Do not remove it, and add it to any function added here.
+--
+-- The pin was originally applied out-of-band by sql/definer-search-path-pin.sql,
+-- which ALTERs whatever definer functions it finds in the catalog. That works
+-- once, but it is not durable: `CREATE OR REPLACE` REPLACES a function's
+-- configuration wholesale, so re-running any definition from this file silently
+-- strips the pin and leaves a SECURITY DEFINER function resolving unqualified
+-- names through the caller's search_path — the hijack this pin exists to stop.
+--
+-- Not hypothetical. On 2026-08-16 the referral section of this file was applied
+-- to Staging EU and Production; afterwards `register_referral_code` and
+-- `record_attribution` were the ONLY definer functions in either schema without
+-- a pin, because these definitions did not carry one. Both were restored by a
+-- follow-up ALTER, and the pins are now inline here so the next run of this
+-- file cannot repeat it. A catalog-wide check:
+--
+--   SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--    WHERE n.nspname = 'public' AND p.prosecdef AND p.proconfig IS NULL;
+--
+-- should return zero rows on both projects.
 
 -- ============================================================================
 -- 1. EVENTS — rate-limited, validated INSERT via RPC
@@ -37,6 +59,7 @@ CREATE OR REPLACE FUNCTION track_event(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
   recent_count int;
@@ -99,6 +122,7 @@ CREATE OR REPLACE FUNCTION increment_referral(p_code text, p_device_id uuid DEFA
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
   new_count integer;
@@ -162,6 +186,7 @@ CREATE OR REPLACE FUNCTION generate_referral_code(p_device_id uuid DEFAULT NULL)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
   chars    text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -228,6 +253,7 @@ CREATE OR REPLACE FUNCTION record_attribution(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
   recent_count int;
@@ -302,6 +328,7 @@ RETURNS TABLE(plan text, revenue_cents integer, discount_cents integer, created_
 LANGUAGE plpgsql
 SECURITY DEFINER
 STABLE
+SET search_path = public, extensions, pg_temp
 AS $$
 BEGIN
   -- L-8: dedup by (plan, revenue_cents, hour) so a duplicate attribution
@@ -335,6 +362,7 @@ RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
 STABLE
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
   c integer;
@@ -386,10 +414,35 @@ $$;
 --   - rate limited or out of tries — return NULL; caller treats as retryable
 -- Return type changes from void → text. Any caller (client or SQL) that
 -- ignored the return before still works; the ones that reconcile now use it.
+--
+-- The DROP below is REQUIRED and is not optional tidiness. PostgreSQL cannot
+-- change a function's return type through CREATE OR REPLACE:
+--
+--   ERROR:  cannot change return type of existing function
+--   HINT:   Use DROP FUNCTION register_referral_code(text,uuid) first.
+--
+-- Without it this statement aborts on any database that still holds the old
+-- void-returning function — i.e. every environment that has not already run
+-- this file since the signature changed. Because the statements above have
+-- already committed by then, the run leaves the schema half-migrated. Verified
+-- 2026-08-16 while applying this file to Staging EU (nszlbcmcysftwyudthjz):
+-- both projects still had the void signature, and the file could not be run
+-- as written.
+--
+-- Dropping resets the function's privileges to the implicit default
+-- (PUBLIC EXECUTE), so the explicit grants are re-issued immediately after the
+-- body below — matching the shape its siblings carry (postgres | service_role |
+-- anon | authenticated). Do NOT delete that GRANT block thinking it redundant:
+-- without it the function ends up broader than its peers, and the H-3 REVOKE
+-- sweep at the end of this file would then be reasoning about a different
+-- starting state.
+DROP FUNCTION IF EXISTS public.register_referral_code(text, uuid);
+
 CREATE OR REPLACE FUNCTION register_referral_code(p_code text, p_device_id uuid)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
   recent_count int;
@@ -439,6 +492,24 @@ BEGIN
   RETURN NULL;
 END;
 $$;
+
+-- Re-issue the grants the DROP above cleared. This restores the shape the
+-- function's siblings carry — an explicit grant to each real role rather than
+-- the implicit PUBLIC EXECUTE a freshly-created function inherits. Effective
+-- access for today's roles is identical either way (PUBLIC includes anon); the
+-- difference is that the implicit form would also grant EXECUTE to any role
+-- added later.
+--
+-- Section 6 contains a REVOKE for this same function in its STILL-OPEN batch.
+-- That is not a contradiction: per the header there, this file is a catalogue
+-- the owner runs SELECTIVELY, not a script to execute end-to-end — running
+-- section 6's still-open batch today breaks the live anon callers in
+-- src/api/referralApi.js and src/api/trackEvent.js. These grants describe the
+-- correct state for as long as those callers exist.
+REVOKE ALL ON FUNCTION public.register_referral_code(text, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.register_referral_code(text, uuid) TO anon;
+GRANT EXECUTE ON FUNCTION public.register_referral_code(text, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.register_referral_code(text, uuid) TO service_role;
 
 -- Remove direct INSERT — registration goes through register_referral_code().
 DROP POLICY IF EXISTS "public insert" ON referrals;
