@@ -117,9 +117,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.sha }}
+          REF: ${{ github.ref_name }}
           EXPECTED_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || 'push' }}
+          # 2026-08-16: cap redispatches on cancellation. Main is active
+          # enough that a push often lands during the ~15 min CI build and
+          # ci.yml's ref-scoped concurrency group cancels our dispatched
+          # run. Failure ≠ cancellation: cancelled means "another run
+          # superseded us", so redispatch is safe; anything else (failure,
+          # timed_out) is a real red we must NOT paper over.
+          MAX_REDISPATCHES: 3
         run: |
           set -euo pipefail
+          REDISPATCHES=0
           for attempt in $(seq 1 100); do
             RUN_JSON=$(gh run list \
               --workflow ci.yml \
@@ -132,16 +141,28 @@ jobs:
             CONCLUSION=$(jq -r '.conclusion // empty' <<<"$RUN_JSON")
 
             if [[ "$STATUS" == "completed" ]]; then
-              if [[ "$CONCLUSION" != "success" ]]; then
-                echo "::error::CI run ${RUN_ID} for ${SHA} concluded ${CONCLUSION}; refusing to test another commit's APK."
-                exit 1
+              if [[ "$CONCLUSION" == "success" ]]; then
+                echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+                exit 0
               fi
-              echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
-              exit 0
+
+              if [[ "$CONCLUSION" == "cancelled" && "$EXPECTED_EVENT" == "workflow_dispatch" && $REDISPATCHES -lt $MAX_REDISPATCHES ]]; then
+                REDISPATCHES=$((REDISPATCHES + 1))
+                echo "::warning::CI run ${RUN_ID} for ${SHA} was cancelled (likely by a newer main push in the same concurrency group). Redispatching (attempt ${REDISPATCHES}/${MAX_REDISPATCHES})."
+                gh workflow run ci.yml \
+                  --ref "$REF" \
+                  -f build_firebase_test=true \
+                  -f build_staging_release=true
+                sleep 20
+                continue
+              fi
+
+              echo "::error::CI run ${RUN_ID} for ${SHA} concluded ${CONCLUSION}; refusing to test another commit's APK."
+              exit 1
             fi
 
             if (( attempt % 8 == 1 )); then
-              echo "Waiting for CI on ${SHA} (status=${STATUS:-not-started})..."
+              echo "Waiting for CI on ${SHA} (status=${STATUS:-not-started}, redispatches=${REDISPATCHES})..."
             fi
             sleep 15
           done
