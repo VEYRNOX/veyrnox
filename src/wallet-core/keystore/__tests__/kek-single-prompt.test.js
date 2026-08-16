@@ -270,6 +270,7 @@ describe('enrollKek — reviewer T1 coverage: rollback + already-enrolled + doub
     // some environments strip Error.cause across await boundaries).
     expect(caught.cause).toBe(lockout);
     expect(caught.origCode).toBe(NO_HARDWARE_FACTOR);
+    expect(caught.code).toBe(NO_HARDWARE_FACTOR);
     // The fallback authenticateOrThrow was attempted exactly ONCE; no getHF retry.
     expect(authenticateMock).toHaveBeenCalledTimes(1);
     expect(getHF).toHaveBeenCalledTimes(1);
@@ -430,7 +431,7 @@ describe('unlock (KEK vault) — lockout-fallback wrapper (B1)', () => {
     expect(getHF).toHaveBeenCalledTimes(1);
   });
 
-  it('authenticateOrThrow cancel inside wrapper: .cause + .origCode preserved', async () => {
+  it('authenticateOrThrow cancel inside wrapper: .cause + .origCode + .code preserved', async () => {
     setVault(v3blob());
     const lockout = lockoutErr();
     const getHF = vi.fn().mockRejectedValueOnce(lockout);
@@ -443,6 +444,7 @@ describe('unlock (KEK vault) — lockout-fallback wrapper (B1)', () => {
     expect(caught).toBeDefined();
     expect(caught.cause).toBe(lockout);
     expect(caught.origCode).toBe(NO_HARDWARE_FACTOR);
+    expect(caught.code).toBe(NO_HARDWARE_FACTOR);
     expect(authenticateMock).toHaveBeenCalledTimes(1);
     expect(getHF).toHaveBeenCalledTimes(1);
   });
@@ -499,7 +501,7 @@ describe('saveVaultContents (KEK vault) — lockout-fallback wrapper (B1)', () =
     expect(getHF).toHaveBeenCalledTimes(1);
   });
 
-  it('authenticateOrThrow cancel inside wrapper: .cause + .origCode preserved', async () => {
+  it('authenticateOrThrow cancel inside wrapper: .cause + .origCode + .code preserved', async () => {
     setVault(v3blob());
     const lockout = lockoutErr();
     const getHF = vi.fn().mockRejectedValueOnce(lockout);
@@ -512,6 +514,7 @@ describe('saveVaultContents (KEK vault) — lockout-fallback wrapper (B1)', () =
     expect(caught).toBeDefined();
     expect(caught.cause).toBe(lockout);
     expect(caught.origCode).toBe(NO_HARDWARE_FACTOR);
+    expect(caught.code).toBe(NO_HARDWARE_FACTOR);
     expect(authenticateMock).toHaveBeenCalledTimes(1);
     expect(getHF).toHaveBeenCalledTimes(1);
   });
@@ -585,6 +588,7 @@ describe('unenrollKek — lockout-fallback wrapper (B1)', () => {
     expect(caught).toBeDefined();
     expect(caught.cause).toBe(lockout);
     expect(caught.origCode).toBe(NO_HARDWARE_FACTOR);
+    expect(caught.code).toBe(NO_HARDWARE_FACTOR);
     expect(authenticateMock).toHaveBeenCalledTimes(1);
     expect(getHF).toHaveBeenCalledTimes(1);
     expect(clearHardwareCredentialMock).not.toHaveBeenCalled();
