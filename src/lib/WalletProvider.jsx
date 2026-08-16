@@ -1993,7 +1993,7 @@ export function WalletProvider({ children }) {
       setLivePricesEnabled(true); // I2: user restored a real wallet, expect live data
       void ensureBiometric2faOnNative().catch(() => {});
     }
-    void ensureKekPinNoticeOnNative().catch(() => {}); // M-9: one-time offline-exhaustion notice for unenrolled native users
+    // M-9 kekPinNotice disabled — owner decision 2026-08-16, users don't need it
     void (async () => {
       // M-3 (audit 2026-08-03) — this block used to run for EVERY session type,
       // and its first action is clearPendingReferral(), a plain localStorage
