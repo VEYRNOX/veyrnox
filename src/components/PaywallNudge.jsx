@@ -71,20 +71,37 @@ export default function PaywallNudge() {
     }
   }, [currentTier]);
 
+  // Codex P2 2026-08-16: shouldShowPaywallNudge is only re-evaluated when
+  // currentTier changes, so a nudge shown in a primary session stays
+  // visible after a mid-session flip into decoy/hidden. The persistent
+  // writes below were unconditional, so a deniable-session dismiss (or
+  // Upgrade click) would leave veyrnox-paywall-nudge-dismissed in shared
+  // localStorage — a K-2 tell that the paywall was interacted with. LIVE
+  // deniability re-check at every write site keeps the persistent
+  // marker owned exclusively by primary sessions. The one-render nudge
+  // itself is fine to close in decoy (setVisible is React state only).
   const handleDismiss = () => {
-    try { localStorage.setItem(NUDGE_DISMISSED_KEY, '1'); } catch {
-      // Best-effort: worst case the nudge re-shows next session.
+    if (!isDeniabilityOrDemoActive()) {
+      try { localStorage.setItem(NUDGE_DISMISSED_KEY, '1'); } catch {
+        // Best-effort: worst case the nudge re-shows next session.
+      }
     }
     setVisible(false);
-    void trackEvent(EVENT.PAYWALL_DISMISSED, { trigger: 'day_3' }).catch(() => {});
+    if (!isDeniabilityOrDemoActive()) {
+      void trackEvent(EVENT.PAYWALL_DISMISSED, { trigger: 'day_3' }).catch(() => {});
+    }
   };
 
   const handleUpgrade = () => {
-    try { localStorage.setItem(NUDGE_DISMISSED_KEY, '1'); } catch {
-      // Best-effort.
+    if (!isDeniabilityOrDemoActive()) {
+      try { localStorage.setItem(NUDGE_DISMISSED_KEY, '1'); } catch {
+        // Best-effort.
+      }
     }
     setVisible(false);
-    void trackEvent(EVENT.PAYWALL_CONVERTED, { trigger: 'day_3' }).catch(() => {});
+    if (!isDeniabilityOrDemoActive()) {
+      void trackEvent(EVENT.PAYWALL_CONVERTED, { trigger: 'day_3' }).catch(() => {});
+    }
     navigate('/plans');
   };
 
