@@ -85,6 +85,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           # 2026-08-15: staging is the ONLY build variant we route through
@@ -94,8 +95,15 @@ jobs:
           # veyrnox-staging.pages.dev), never production. publish_staging
           # still gates whether that staging build gets uploaded to Play
           # Internal / TestFlight afterwards.
+          #
+          # 2026-08-16: dispatch is pinned to $SHA (not $GITHUB_REF_NAME) so
+          # ci.yml's concurrency group keys on the immutable commit rather
+          # than "main". Otherwise any push to main during the ~15 min build
+          # window cancels this dispatched CI run, which then trips the wait
+          # step below with "CI ... concluded cancelled". Observed on runs
+          # 31926190495, 31927267494, 31930380757.
           gh workflow run ci.yml \
-            --ref "$GITHUB_REF_NAME" \
+            --ref "$SHA" \
             -f build_firebase_test=true \
             -f build_staging_release=true
 
