@@ -67,7 +67,13 @@ enum IntegrityGate {
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
         var size = MemoryLayout<kinfo_proc>.size
         let rc = sysctl(&mib, UInt32(mib.count), &info, &size, nil, 0)
-        if rc != 0 { return false }               // sysctl fail-open, matches Obj-C
+        // Codex P1 2026-08-16: was `return false` (fail-open) with a comment
+        // claiming "matches Obj-C". The file header contract (see checkTamper
+        // above, line 61) is "syscall failed — fail closed". This branch
+        // violated the contract and let an attacker who could force sysctl to
+        // error get a clean debugger verdict — the whole point of the probe
+        // was defeated. Match checkTamper's shape and return true.
+        if rc != 0 { return true }
         return (info.kp_proc.p_flag & P_TRACED) != 0
     }
 
