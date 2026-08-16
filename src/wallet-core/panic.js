@@ -828,7 +828,15 @@ async function eraseThreatIntelDatabase() {
     // A wipe must not CREATE the store: opening a non-existent DB would otherwise
     // leave an empty one behind, which is itself a (weaker) tell. If the upgrade
     // path fires, the DB did not exist — abort and let the delete below tidy up.
-    req.onupgradeneeded = () => { try { req.transaction?.abort(); } catch { /* ignore */ } };
+    req.onupgradeneeded = () => {
+      // A wipe must NOT create the store. Abort the open + resolve
+      // immediately: the abort may not trigger `onerror` in every
+      // IndexedDB implementation (fake-indexeddb in jsdom leaves the
+      // request pending — 60s hook timeouts in panic.test.js beforeEach
+      // came from here). Nothing to clear anyway if the DB didn't exist.
+      try { req.transaction?.abort(); } catch { /* ignore */ }
+      finish();
+    };
     req.onerror = finish;
     req.onblocked = finish;
     req.onsuccess = () => {
