@@ -48,6 +48,39 @@ public class VeyrnoxSpeechRecognitionPlugin: CAPPlugin {
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
 
+    // Codex P2 2026-08-16: stop the mic + recognition on backgrounding.
+    // Prior behaviour left AVAudioEngine and the SFSpeechRecognitionTask
+    // warm across commands and never bound them to app lifecycle, so if
+    // the user backgrounded / switched apps mid-listen the microphone
+    // kept capturing (streaming to Apple's speech service) until an
+    // explicit stop() reached the plugin — which never happens from a
+    // backgrounded app. Bind to didEnterBackgroundNotification +
+    // willTerminateNotification and tear down. Also stops on
+    // deinit for defence in depth against instance replacement.
+    override public func load() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppBackground),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleAppBackground() {
+        teardownEngine()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        teardownEngine()
+    }
+
     // Availability check — never requests permission, safe to call from the JS
     // availability probe. Returns false (not a throw) when the device has no
     // recognizer for the default locale.
