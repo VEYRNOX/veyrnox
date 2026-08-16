@@ -80,6 +80,28 @@ function HighlightChips({ features, max = 6 }) {
   );
 }
 
+// Codex P2 2026-08-16 — SECURITY-MODEL NOTE on currentTier.
+//
+// The `currentTier` state below drives the paywall render (upgrade vs.
+// "already subscribed" vs. cancel-retention). A client-side mutation of
+// this state (React DevTools, injected JS) would suppress the upgrade
+// surface and display "Safety Plus plan" without a real RC entitlement.
+// That is a UX misrepresentation, NOT an authority upgrade — every actual
+// paid feature (RC-signed promotional offers, StoreKit purchases,
+// server-verified entitlement in resolveTier()) re-validates against
+// RevenueCat's own SDK, which pulls the authoritative grant from Apple /
+// Google. A user who forges their own tier state locally sees a wrong
+// screen and gets zero premium capability; nobody else is affected.
+//
+// Adding a per-render `await getCustomerInfo()` here to "verify before
+// rendering" would (a) hammer RC on every render, (b) still be forgeable
+// (the same JS attacker can stub the SDK), and (c) not change the
+// authority model. So this file trusts `currentTier` for display and
+// relies on the authoritative gate at the point features are actually
+// consumed (see entitlement.js / TierProvider.js). Documented so a
+// future reviewer does not add security theater. If a REAL server-side
+// feature is added that gates on currentTier, THAT gate must re-verify
+// via resolveTier() at consumption time, not trust the client cache.
 export default function Subscription() {
   const { currentTier, refreshTier } = useTier();
   const { locale, fiatCurrency } = useLocalePreferences();
@@ -307,7 +329,23 @@ export default function Subscription() {
     setBusy(true);
     try {
       await purchasePackage(selectedPackage, { offerTag: activeOfferTag });
-      await refreshTier();
+      // Codex P1 2026-08-16: purchasePackage() returning is NOT the same as
+      // "entitlement granted". RC + StoreKit / Play Billing can delay,
+      // fail, or downgrade the grant after the call resolves (deferred
+      // parental-consent, sandbox-lag, price-change reconfirm, etc.). We
+      // used to fire referral attribution + bonus + "Safety Plus unlocked"
+      // toast unconditionally on that return — recording an attribution
+      // for a purchase that didn't actually confer the entitlement. The
+      // fix: refreshTier() RETURNS the resolved tier (see TierProvider),
+      // and every side effect below is gated on that === 'safety_plus'.
+      // If the grant hasn't landed yet the UI stays on the paywall — the
+      // user can retry / restore purchases; RC will eventually reconcile
+      // and the next refresh will flip currentTier for real.
+      const resolvedTier = await refreshTier();
+      if (resolvedTier !== 'safety_plus') {
+        toast.info('Purchase started — waiting for the store to confirm. Try Restore Purchases if it does not appear in a minute.');
+        return;
+      }
       const refCode = getRedeemedCode();
       if (refCode && !hasAttributed()) {
         // Codex P2 2026-08-15: previously discountCents came from the
