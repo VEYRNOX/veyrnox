@@ -969,84 +969,72 @@ export const nativeKeyStore = {
   // transiently to the caller; nothing secret is cached here.
   async unlock(password, opts = {}) {
     await init();
-    // Suppress pause-driven lock hook for the full unlock body. Both the M2c
-    // (hwUnwrap) and M2b (getHardwareFactor) paths trigger Face ID, which
-    // momentarily backgrounds the app. Without suppression, appStateChange
-    // fires lock() and the in-flight WalletProvider unlock throws SUPERSEDED.
-    return withLockSuppressed(async () => {
     // M2c: intercept Enclave-wrapped records before _unlockInner, which
     // calls parseVaultBlob() and would reject { wrap:'enclave-v1' } as malformed.
     const rawPeek = await SecureStorage.get(VAULT_KEY, false);
     if (rawPeek !== null && rawPeek !== undefined) {
       let peekRecord;
-      // parseVaultBlob gives the stable MALFORMED_VAULT throw on corrupt input; keep the
-      // try/catch so a non-enclave / unparseable record falls through to _unlockInner
-      // (which surfaces the proper error) instead of throwing from the metadata peek.
       try { peekRecord = parseVaultBlob(rawPeek); } catch { /* fall through */ }
       if (peekRecord && peekRecord.wrap === WRAP_VERSION_ENCLAVE) {
-        // OS biometric is enforced by the Enclave key ACL inside hwUnwrap — no
-        // separate app-layer gate. Tag cancel/lockout so the caller fails closed.
-        let blobJson;
-        try {
-          const { hwUnwrap } = await enclavePlugin();
-          blobJson = utf8FromBase64(await hwUnwrap(peekRecord.hw));
-        } catch (err) {
-          if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
-          throw err;
-        }
-        const innerBlob = parseVaultBlob(blobJson);
-        if (innerBlob.kekWrap) {
-          // Dual-enrolled: Enclave-wrapped outer + KEK-DEK inner. The Enclave
-          // layer is already unwrapped; now do the same KEK unwrap _unlockInner
-          // does (line ~461). getHardwareFactor may be absent if the caller
-          // passed skipBiometric — fail closed (I4).
-          const getHF = opts && opts.getHardwareFactor;
-          if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-          let saltBytes, H, C, kek, dek;
+        // Suppress pause-driven lock hook for M2c enclave path. hwUnwrap and
+        // getHardwareFactor trigger Face ID which backgrounds the app; without
+        // suppression appStateChange fires lock() and the in-flight
+        // WalletProvider unlock throws SUPERSEDED.
+        return withLockSuppressed(async () => {
+          let blobJson;
           try {
-            saltBytes = decodeKekSalt(innerBlob.kekSalt);
-            H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(innerBlob, saltBytes));
-            C = await deriveKekC(password, saltBytes);
-            kek = await combineKek(H, C);
-            if (H && H.fill) H.fill(0);
-            if (C) C.fill(0);
-            dek = await unwrapDek(kek, innerBlob.kekWrap);
-            return await decryptVaultWithDek(innerBlob, dek);
-          } finally {
-            if (saltBytes && saltBytes.fill) saltBytes.fill(0);
-            if (H && H.fill) H.fill(0);
-            if (C && C.fill) C.fill(0);
-            if (kek && kek.fill) kek.fill(0);
-            if (dek && dek.fill) dek.fill(0);
+            const { hwUnwrap } = await enclavePlugin();
+            blobJson = utf8FromBase64(await hwUnwrap(peekRecord.hw));
+          } catch (err) {
+            if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
+            throw err;
           }
-        }
-        return decryptVault(innerBlob, password);
+          const innerBlob = parseVaultBlob(blobJson);
+          if (innerBlob.kekWrap) {
+            const getHF = opts && opts.getHardwareFactor;
+            if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+            let saltBytes, H, C, kek, dek;
+            try {
+              saltBytes = decodeKekSalt(innerBlob.kekSalt);
+              H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(innerBlob, saltBytes));
+              C = await deriveKekC(password, saltBytes);
+              kek = await combineKek(H, C);
+              if (H && H.fill) H.fill(0);
+              if (C) C.fill(0);
+              dek = await unwrapDek(kek, innerBlob.kekWrap);
+              return await decryptVaultWithDek(innerBlob, dek);
+            } finally {
+              if (saltBytes && saltBytes.fill) saltBytes.fill(0);
+              if (H && H.fill) H.fill(0);
+              if (C && C.fill) C.fill(0);
+              if (kek && kek.fill) kek.fill(0);
+              if (dek && dek.fill) dek.fill(0);
+            }
+          }
+          return decryptVault(innerBlob, password);
+        });
       }
     }
 
-    // Standard M2b / KEK path.
-    const secret = await _unlockInner(password, opts);
-    // M2c-2 opt-in up-migration: transparently re-wrap the M2b blob under the
-    // Enclave key after a successful biometric-enabled unlock. Best-effort +
-    // atomic-safe (safeWriteVault).
-    if (opts.requireBiometric && (await useHardwareWrap())) {
-      try {
-        const raw2 = await SecureStorage.get(VAULT_KEY, false);
-        if (raw2 !== null && raw2 !== undefined) {
-          const { createWrappingKey, hwWrap } = await enclavePlugin();
-          await createWrappingKey();
-          const ct = await hwWrap(base64FromUtf8(typeof raw2 === 'string' ? raw2 : JSON.stringify(raw2)));
-          await safeWriteVault({ wrap: WRAP_VERSION_ENCLAVE, hw: ct });
+    // Standard M2b / KEK path — _unlockInner calls getHardwareFactor for KEK
+    // vaults, which triggers Face ID and needs the same lock suppression.
+    return withLockSuppressed(async () => {
+      const secret = await _unlockInner(password, opts);
+      if (opts.requireBiometric && (await useHardwareWrap())) {
+        try {
+          const raw2 = await SecureStorage.get(VAULT_KEY, false);
+          if (raw2 !== null && raw2 !== undefined) {
+            const { createWrappingKey, hwWrap } = await enclavePlugin();
+            await createWrappingKey();
+            const ct = await hwWrap(base64FromUtf8(typeof raw2 === 'string' ? raw2 : JSON.stringify(raw2)));
+            await safeWriteVault({ wrap: WRAP_VERSION_ENCLAVE, hw: ct });
+          }
+        } catch (e) {
+          logM2cMigrationFailure(e);
         }
-      } catch (e) {
-        // Non-fatal: the secret is already recovered, so unlock still succeeds and
-        // migration is retried on a later unlock. But log the failure (code/message
-        // only, never key material — #725/LOG-1) instead of swallowing it silently.
-        logM2cMigrationFailure(e);
       }
-    }
-    return secret;
-    }); // withLockSuppressed — covers entire unlock body
+      return secret;
+    });
   },
 
   // Personal Backup Phase 1/2 — read the inner KEK-vault blob regardless of
