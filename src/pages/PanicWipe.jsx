@@ -51,7 +51,7 @@ import { useActionGuard } from "@/components/security/useActionGuard";
 const DEMO_REAL_PW = "real-pin-2468";
 const DEMO_DURESS_PW = "duress-pin-1357";
 const DEMO_HIDDEN_SECRET = "hidden-key-9753";
-const DEMO_PANIC_PW = "burn-everything-0000";
+const DEMO_PANIC_PW = "98765432";
 
 // The literal a user must type to arm the in-app guarded wipe.
 const CONFIRM_WORD = "WIPE";

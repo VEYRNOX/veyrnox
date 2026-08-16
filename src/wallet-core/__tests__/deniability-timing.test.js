@@ -81,12 +81,12 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
     },
     {
       name: 'panic only',
-      setup: async () => { await setPanicVault('panic-pin-aaaa'); },
+      setup: async () => { await setPanicVault('11111111'); },
     },
     {
       name: 'panic + duress',
       setup: async () => {
-        await setPanicVault('panic-pin-bbbb');
+        await setPanicVault('22222222');
         await setDuressVault('legal winner thank year wave sausage worth useful legal winner thank yellow', 'duress-pw-bbbb');
       },
     },
@@ -97,7 +97,7 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
     {
       name: 'all features (panic + duress + hidden)',
       setup: async () => {
-        await setPanicVault('panic-pin-dddd');
+        await setPanicVault('44444444');
         await setDuressVault('legal winner thank year wave sausage worth useful legal winner thank yellow', 'duress-pw-dddd');
         await createHiddenWallet('hidden-secret-dddd');
       },
@@ -148,10 +148,10 @@ describe('SAST M2 — constant KDF count on wrong unlock', () => {
   });
 
   it('a PANIC hit costs the SAME KDF count as a wrong guess (resolution does not wipe)', async () => {
-    await setPanicVault('the-panic-pin');
+    await setPanicVault('87654321');
     await ensureStealthPool();
     kdf.count = 0;
-    const r = await resolveDeniabilityUnlock('the-panic-pin');
+    const r = await resolveDeniabilityUnlock('87654321');
     expect(kdf.count).toBe(EXPECTED_KDFS);
     expect(r.panic).toBe(true); // caller (WalletProvider) performs the wipe
   });
@@ -257,8 +257,8 @@ describe('PIN cohort (Option A REMOVED) — wrong PIN no longer opens a decoy', 
     },
     {
       name: 'panic hit',
-      setup: async () => { await setPanicVault('panic-pin-1'); },
-      pw: 'panic-pin-1',
+      setup: async () => { await setPanicVault('10000001'); },
+      pw: '10000001',
     },
     {
       name: 'hidden hit',

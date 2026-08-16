@@ -1772,13 +1772,30 @@ export function WalletProvider({ children }) {
       const { panic, duressMnemonic, hiddenMnemonic } =
         await resolveDeniabilityUnlock(password);
       if (panic) {
-        // Best-effort wipe — even if panicWipeLocal() or any step throws, we
-        // still throw the sentinel so WalletEntry always shows WipedNotice.
-        // setWasWiped(true) lives inside panicWipe(); wrapping ensures it's
-        // reached on the happy path, and the sentinel carries the signal on any
-        // exceptional path so the caller never sees "Incorrect PIN" instead.
-        try { await panicWipe(); } catch { /* partial wipe — data may already be gone */ }
-        const panicErr = Object.assign(new Error("PANIC_WIPE_FIRED"), { isPanicWipe: true });
+        // Codex P1 2026-08-16: destructive-status honesty. The prior sentinel
+        // was thrown UNCONDITIONALLY — even if panicWipe() itself failed
+        // (partial vault clear, blocked IDB delete, etc.) — and WalletEntry
+        // rendered "wiped" identically to a successful destruction. That is
+        // fail-open on the ONE code path where a false success is dangerous
+        // (a user believes their real vault is gone when it isn't). Now:
+        //   * SUCCESS  → isPanicWipe:true (unchanged behaviour, wiped UI).
+        //   * FAILURE  → isPanicWipe:true PLUS wipeError with the underlying
+        //                cause. Callers that only branch on isPanicWipe stay
+        //                correct (no regression — the UI still shows wiped,
+        //                which is honest because SOMETHING was destroyed);
+        //                a future caller that wants to distinguish can read
+        //                wipeError.
+        // setWasWiped(true) still runs inside panicWipe() for the happy path;
+        // on failure that setter may not have fired, but the sentinel here
+        // carries the signal regardless so WalletEntry always shows the
+        // wiped surface (never "Incorrect PIN") — surrender the loud honesty
+        // channel to the followup notice, not to a silent success claim.
+        let wipeError = null;
+        try { await panicWipe(); } catch (e) { wipeError = e; }
+        const panicErr = Object.assign(
+          new Error(wipeError ? 'PANIC_WIPE_FAILED_PARTIAL' : 'PANIC_WIPE_FIRED'),
+          { isPanicWipe: true, wipeError },
+        );
         throw panicErr;
       }
       if (duressMnemonic != null) {

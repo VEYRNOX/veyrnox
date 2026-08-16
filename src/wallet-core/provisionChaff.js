@@ -28,12 +28,26 @@ import { hasDuressVault, setDuressVault } from './duress.js';
 import { hasPanicVault, setPanicVault } from './panic.js';
 
 // 32 random bytes → base64. Generated and discarded; never persisted.
+// Used for the DURESS chaff, which accepts a free-form password.
 function throwawayPassword() {
   const b = new Uint8Array(32);
   crypto.getRandomValues(b);
   let s = '';
   for (const x of b) s += String.fromCharCode(x);
   return btoa(s);
+}
+
+// 8 random digits matching PANIC_PIN_RE (`/^\d{8}$/`) — setPanicVault
+// enforces the UI's "exactly 8 digits" contract at the capability layer
+// (Codex P2 2026-08-16), so a base64 throwaway no longer passes. Chaff
+// is never unlocked, so the modulo bias on Uint8 → digit does not matter
+// (the space is 10^8; nobody guesses this).
+function throwawayPanicPin() {
+  const b = new Uint8Array(8);
+  crypto.getRandomValues(b);
+  let s = '';
+  for (const x of b) s += String(x % 10);
+  return s;
 }
 
 /**
@@ -57,6 +71,6 @@ export async function provisionDeniabilityChaff() {
     await setDuressVault(generateMnemonic(128), throwawayPassword());
   }
   if (!(await hasPanicVault())) {
-    await setPanicVault(throwawayPassword());
+    await setPanicVault(throwawayPanicPin());
   }
 }
