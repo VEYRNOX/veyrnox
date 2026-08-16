@@ -6,7 +6,7 @@
  * Generates detailed report with findings, coverage, and risk assessment
  */
 
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -136,11 +136,12 @@ try {
   console.log('  Starting dev server...');
   // In CI, server should already be running; locally we start it
   if (process.env.CI !== 'true') {
-    serverProcess = execSync('npm run dev', {
+    serverProcess = spawn('npm', ['run', 'dev'], {
       cwd: projectRoot,
       detached: true,
       stdio: 'ignore',
     });
+    serverProcess.unref();
   }
   console.log('  ✓ Dev server ready (or already running)');
 } catch (e) {
@@ -202,13 +203,16 @@ for (const [finding, details] of Object.entries(AUDIT_FINDINGS)) {
     severity: details.severity,
     description: details.description,
     testsCovering: details.tests.length,
+    status: results.suites[`post-audit-validation`]?.status === 'completed' ? 'covered' : 'uncovered',
   };
 
   totalTests += details.tests.length;
-  coveredTests += details.tests.length; // Assume all are covered if tests ran
+  if (results.suites[`post-audit-validation`]?.status === 'completed') {
+    coveredTests += details.tests.length;
+  }
 }
 
-coverage.testCoverage = Math.round((coveredTests / totalTests) * 100);
+coverage.testCoverage = totalTests > 0 ? Math.round((coveredTests / totalTests) * 100) : 0;
 
 console.log(`  Total audit findings: ${Object.keys(AUDIT_FINDINGS).length}`);
 console.log(`  Test coverage: ${coverage.testCoverage}%`);
@@ -219,21 +223,24 @@ console.log(`  High findings: ${Object.values(AUDIT_FINDINGS).filter(f => f.seve
 console.log('\n🔒 Phase 5: Security Validation Checklist');
 console.log('---');
 
+// Determine security check status based on actual test execution
+const suitesPassed = Object.values(results.suites).every(s => s.status === 'completed');
+
 const securityChecks = [
-  { name: 'VULN-19 nonce pinning', status: 'passed' },
-  { name: 'Rate-limit enforcement', status: 'passed' },
-  { name: 'Query canonicalization', status: 'passed' },
-  { name: 'Shard encryption hardening', status: 'passed' },
-  { name: 'KEK enrollment gating', status: 'passed' },
-  { name: 'Network config access control', status: 'passed' },
-  { name: 'Header security binding', status: 'passed' },
-  { name: 'Session race guards', status: 'passed' },
-  { name: 'XSS prevention', status: 'passed' },
-  { name: 'Input sanitization', status: 'passed' },
+  { name: 'VULN-19 nonce pinning', status: suitesPassed ? 'passed' : 'unknown' },
+  { name: 'Rate-limit enforcement', status: suitesPassed ? 'passed' : 'unknown' },
+  { name: 'Query canonicalization', status: suitesPassed ? 'passed' : 'unknown' },
+  { name: 'Shard encryption hardening', status: suitesPassed ? 'passed' : 'unknown' },
+  { name: 'KEK enrollment gating', status: suitesPassed ? 'passed' : 'unknown' },
+  { name: 'Network config access control', status: suitesPassed ? 'passed' : 'unknown' },
+  { name: 'Header security binding', status: suitesPassed ? 'passed' : 'unknown' },
+  { name: 'Session race guards', status: suitesPassed ? 'passed' : 'unknown' },
+  { name: 'XSS prevention', status: suitesPassed ? 'passed' : 'unknown' },
+  { name: 'Input sanitization', status: suitesPassed ? 'passed' : 'unknown' },
 ];
 
 securityChecks.forEach(check => {
-  const icon = check.status === 'passed' ? '✓' : '✗';
+  const icon = check.status === 'passed' ? '✓' : (check.status === 'unknown' ? '?' : '✗');
   console.log(`  ${icon} ${check.name}`);
 });
 
@@ -326,9 +333,9 @@ console.log(`Report saved to: ${REPORT_DIR}`);
 console.log(`View results: open ${path.join(REPORT_DIR, 'POST-AUDIT-QA-REPORT.md')}`);
 
 // Cleanup server
-if (serverProcess) {
+if (serverProcess && serverProcess.pid) {
   try {
-    process.kill(-serverProcess);
+    process.kill(-serverProcess.pid);
   } catch (e) {
     // Server may have stopped
   }
