@@ -683,14 +683,11 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
   const [busy, setBusy] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [done, setDone] = useState(false);
-  // 2026-08-16 audit remediation: wrap ALL exported shares with a passphrase
-  // by default. The prior "encrypt just share #2" policy left shares #1 and #3
-  // as raw bundle JSON containing vault.ct — any two raw bundles = full
-  // offline crack surface with no KEK. Defaulting the whole set on removes the
-  // fastest-known offline path; the checkbox stays so a user who deliberately
-  // trades convenience for weaker offline resistance still can, but the safe
-  // default is on. Renamed encryptOne → encryptAll to match the new semantics.
-  const [encryptAll, setEncryptAll] = useState(true);
+  // 2026-08-16 audit remediation (round 3): the encryptAll toggle is REMOVED.
+  // Any raw-JSON share bundle contains vault.ct; two raw bundles = full offline
+  // crack surface with no KEK. The toggle let a user opt into that path; the
+  // safe answer is that there is no opt-out. All exported shares are now wrapped
+  // with the user's passphrase unconditionally.
   const [recoveryPassphrase, setRecoveryPassphrase] = useState("");
   const raspArtifact = useRaspArtifact();
 
@@ -710,8 +707,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
   // since MIN_PASSWORD_LENGTH is the new-password floor (12), not an unlock
   // floor. Phase 2 should replace this input with PinPad on native.
   const passphraseCheck = checkRecoveryPassphrase(recoveryPassphrase);
-  const canExport =
-    password.length > 0 && (!encryptAll || passphraseCheck.ok);
+  const canExport = password.length > 0 && passphraseCheck.ok;
 
   const runSplit = async () => {
     const gate = sensitiveGate(raspArtifact, "export");
@@ -739,25 +735,17 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
       shares = bundles.map(() => null); // placeholder for the finally-zero loop
       let completedAll = true;
       for (let i = 0; i < bundles.length; i++) {
-        // 2026-08-16 audit remediation: wrap ALL 3 bundles with the user's
-        // passphrase when encryptAll is on. Prior "share #2 only" policy left
-        // shares #1 and #3 as raw bundle JSON containing vault.ct — two raw
-        // bundles = full offline crack. Wrap-all removes that path; the
-        // per-share on-device / paper / cloud placement decision is now the
-        // USER'S alone, not something the code silently privileges.
-        const wrapThisOne = encryptAll && passphraseCheck.ok;
-        const bytesToSave = wrapThisOne
-          ? new TextEncoder().encode(
-              await wrapBundleWithPassphrase(
-                new TextEncoder().encode(bundles[i]),
-                recoveryPassphrase,
-                i + 1,
-              ),
-            )
-          : new TextEncoder().encode(bundles[i]);
-        const filename = wrapThisOne
-          ? `veyrnox-recovery-${i + 1}-of-3.veyrnox-recovery.json`
-          : `veyrnox-recovery-${i + 1}-of-3.veyrnox-bundle.json`;
+        // 2026-08-16 audit remediation (round 3): the toggle is gone; wrap
+        // every bundle unconditionally. Raw-bundle export is no longer a
+        // supported path — canExport already requires passphraseCheck.ok.
+        const bytesToSave = new TextEncoder().encode(
+          await wrapBundleWithPassphrase(
+            new TextEncoder().encode(bundles[i]),
+            recoveryPassphrase,
+            i + 1,
+          ),
+        );
+        const filename = `veyrnox-recovery-${i + 1}-of-3.veyrnox-recovery.json`;
         const result = await saveShareFile(bytesToSave, filename);
         if (result && result.saved) {
           setSavedCount(i + 1);
@@ -771,7 +759,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
       // cannot recover a vault, so it must not lift the posture score. Helper
       // is I3-suppressed at its write site — no-op in decoy.
       if (completedAll) {
-        markPersonalBackupExported({ withPassphrase: encryptAll });
+        markPersonalBackupExported({ withPassphrase: true });
       }
       setDone(true);
       setPassword("");
@@ -878,42 +866,30 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
       />
 
       <div className="p-3 rounded-xl border border-border bg-card/40 space-y-2">
-        <label className="flex items-start gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={encryptAll}
-            onChange={(e) => setEncryptAll(e.target.checked)}
-            className="mt-0.5"
-            aria-label="Encrypt each share with a passphrase (recommended)"
+        <div className="space-y-0.5">
+          <p className="text-sm font-medium flex items-center gap-1.5">
+            <Lock className="h-3.5 w-3.5" />
+            Recovery passphrase (required)
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Every share is wrapped with Argon2id + AES-GCM. Two raw bundles
+            alone can be cracked offline; wrapping removes that path.
+          </p>
+        </div>
+        <div className="space-y-1">
+          <PasswordInput
+            value={recoveryPassphrase}
+            onChange={(e) => setRecoveryPassphrase(e.target.value)}
+            placeholder={`Recovery passphrase (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
+            autoComplete="new-password"
           />
-          <div className="space-y-0.5">
-            <p className="text-sm font-medium flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5" />
-              Encrypt each share with a passphrase (recommended)
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Wraps ALL 3 shares in Argon2id + AES-GCM. Two raw bundles alone
-              can be cracked offline; wrapping them removes that path. Keep
-              this on unless you understand the trade-off.
-            </p>
-          </div>
-        </label>
-        {encryptAll && (
-          <div className="space-y-1 pl-6">
-            <PasswordInput
-              value={recoveryPassphrase}
-              onChange={(e) => setRecoveryPassphrase(e.target.value)}
-              placeholder={`Recovery passphrase (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
-              autoComplete="new-password"
-            />
-            {recoveryPassphrase.length > 0 && !passphraseCheck.ok && (
-              <p className="text-xs text-destructive">{passphraseCheck.reason}</p>
-            )}
-            <p className="text-[11px] text-muted-foreground">
-              Long, memorable, written down separately. Losing this passphrase makes the encrypted share unusable.
-            </p>
-          </div>
-        )}
+          {recoveryPassphrase.length > 0 && !passphraseCheck.ok && (
+            <p className="text-xs text-destructive">{passphraseCheck.reason}</p>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            Long, memorable, written down separately. Losing this passphrase makes the shares unusable.
+          </p>
+        </div>
       </div>
 
       <button
@@ -922,7 +898,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
         className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-40 flex items-center justify-center gap-2"
       >
         {busy
-          ? <><Loader2 className="h-4 w-4 animate-spin" /> {encryptAll ? "Encrypting…" : "Splitting…"}</>
+          ? <><Loader2 className="h-4 w-4 animate-spin" /> Encrypting…</>
           : <><Download className="h-4 w-4" /> Split & save 3 shares</>}
       </button>
     </div>
