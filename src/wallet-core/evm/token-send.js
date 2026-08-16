@@ -113,9 +113,21 @@ export async function sendToken({ networkKey, privateKey, symbol, to, amount, fe
   const overrides = await applyEstimatedGasLimit(
     provider, { from: wallet.address, to: t.address, data }, evmFeeOverrides(fee),
   );
-  // The trailing overrides object carries the user-selected EIP-1559 fee (if any)
-  // plus the estimated gasLimit; ethers treats the last arg as the tx overrides.
-  const txResponse = await c.transfer(to, value, overrides); // signed LOCALLY + broadcast
+
+  // VULN-19 propagation to ERC-20 (2026-08-16 round 4): mirror the native-ETH
+  // fix in send.js. Without a pinned nonce, ethers re-fetches inside
+  // c.transfer() — a malicious RPC could return a good nonce to the sanity
+  // check and a poisoned nonce on the internal re-fetch. Pin the checked value.
+  const pendingNonce = await provider.getTransactionCount(wallet.address, 'pending');
+  if (!Number.isInteger(pendingNonce) || pendingNonce < 0 || pendingNonce > 1_000_000) {
+    throw new Error(`RPC returned implausible nonce ${pendingNonce} — refusing to sign`);
+  }
+  // `nonce` after `...overrides` so a future overrides field cannot shadow it.
+  const overridesWithNonce = { ...overrides, nonce: pendingNonce };
+  // The trailing overrides object carries the user-selected EIP-1559 fee (if any),
+  // the estimated gasLimit, AND the pinned nonce; ethers treats the last arg as
+  // the tx overrides.
+  const txResponse = await c.transfer(to, value, overridesWithNonce); // signed LOCALLY + broadcast
 
   return {
     hash: txResponse.hash, // REAL hash from the network

@@ -6,8 +6,7 @@
 //   (c) shareA/shareB React state is cleared on unmount.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { cleanup } from '@testing-library/react';
 
 // Public BIP-39 test vector — never a user secret.
 const MNEMONIC =
@@ -77,30 +76,17 @@ describe('shardBackup — tampered bundle rejected (2026-08-16 audit)', () => {
 });
 
 describe('RestoreFromShares — shareA/shareB state cleared on unmount (2026-08-16 audit)', () => {
-  it('unmount clears both share textareas via the cleanup effect', async () => {
-    // Mock useWallet — we don't need the real provider for a state-lifecycle
-    // assertion.
-    vi.doMock('@/lib/WalletProvider', () => ({
-      useWallet: () => ({ restoreFromRecoveryBundles: vi.fn() }),
-    }));
-    const { default: RestoreFromShares } = await import('@/pages/RestoreFromShares');
-
-    const { unmount } = render(
-      <MemoryRouter><RestoreFromShares /></MemoryRouter>,
-    );
-    const boxes = screen.getAllByPlaceholderText(/"shareIndex"/i);
-    fireEvent.change(boxes[0], { target: { value: 'sentinelA-shareA-bytes' } });
-    fireEvent.change(screen.getAllByPlaceholderText(/"shareIndex"/i)[1], {
-      target: { value: 'sentinelB-shareB-bytes' },
-    });
-    expect(document.body.textContent).toContain('bundle loaded');
-
-    unmount();
-    // The React tree is gone (unmount removed it) — sentinels must NOT appear
-    // in any surviving DOM. This is the observable proxy for "React fiber
-    // state no longer holds them". String immutability means the underlying
-    // bytes may linger until GC — see the ponytail note in the page.
-    expect(document.body.textContent || '').not.toContain('sentinelA');
-    expect(document.body.textContent || '').not.toContain('sentinelB');
-  });
+  // Round 4 (2026-08-16) audit: the previous version asserted
+  // `document.body.textContent` after `unmount()` — always empty, so it proved
+  // nothing (test theater). The obvious rewrite (wrap React.useState via
+  // vi.spyOn to observe setter calls) is blocked by "Cannot spy on export
+  // 'useState'. Module namespace is not configurable in ESM." Vitest ESM
+  // limitation. `vi.mock('react', ...)` risks breaking React's internal hook
+  // dispatcher for the render itself.
+  //
+  // The cleanup effect in RestoreFromShares.jsx is 6 straight-line setters
+  // covered by code review; skip until we adopt a browser mode or a react
+  // internals shim that lets us observe the setter calls honestly. Do NOT
+  // reinstate the textContent-after-unmount assertion.
+  it.skip('unmount clears both share textareas via the cleanup effect (see r4 audit skip note)', () => {});
 });
