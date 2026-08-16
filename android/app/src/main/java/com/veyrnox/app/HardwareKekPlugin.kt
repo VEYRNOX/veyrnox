@@ -285,7 +285,12 @@ class HardwareKekPlugin : Plugin() {
         // bypass cannot reach the hardware H factor. Hook / tamper / screen-capture →
         // reject immediately; H is never returned; vault unlock is impossible (I4).
         if (RaspIntegrityPlugin.isBlockTier(context)) {
-            return call.reject("RASP_BLOCK", "Device integrity check failed — hardware key access refused (I4)")
+            // Codex P2 2026-08-16: Capacitor Android PluginCall.reject(msg, code)
+            // — args were reversed, so JS saw `e.code === "Device integrity …"`
+            // instead of "RASP_BLOCK", and any policy that keys off the code
+            // string missed the integrity block (misclassified as a generic
+            // failure). Swap to the correct (message, code) order.
+            return call.reject("Device integrity check failed — hardware key access refused (I4)", "RASP_BLOCK")
         }
         try {
             // C-1: resolve the MAC input. Present kekSalt → v2 per-enrollment binding;
