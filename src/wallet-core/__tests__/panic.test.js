@@ -29,7 +29,7 @@ import { clearVault } from '../evm/vaultStore.js';
 const REAL_PW = 'main-pass-2468';
 const DURESS_PW = 'duress-pass-1357';
 const HIDDEN_SECRET = 'hidden-key-9753';
-const PANIC_PW = 'burn-everything-0000';
+const PANIC_PW = '98765432';
 
 // Stand up a fully-populated device: primary vault + duress decoy + a hidden
 // wallet + a panic PIN — i.e. every kind of key material a wipe must destroy.
