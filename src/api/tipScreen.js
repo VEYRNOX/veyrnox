@@ -58,7 +58,7 @@ function getClient() {
  * @returns {Promise<{ verdict: string, level: string, risks: Array, signals: Array, sanctions: boolean, raw: object } | null>}
  *   null when screening is unavailable or suppressed (deniability/demo/unconfigured).
  */
-export async function screenTransaction(params) {
+export async function screenTransaction(params, { signal } = {}) {
   const inDeniability = isDeniabilityOrDemoActive();
 
   // Local IOC cache — checked FIRST (before any network egress). If we
@@ -82,6 +82,8 @@ export async function screenTransaction(params) {
   try {
     const result = await client.screen({
       chain: params.chain,
+      // 2026-08-16 audit remediation: thread the caller signal through to
+      // proxyFetch so a deniability activation can cancel this in flight.
       action_type: params.actionType,
       from_address: params.from,
       to_address: params.to,
@@ -94,7 +96,7 @@ export async function screenTransaction(params) {
       // fully signed raw tx which we do not have pre-sign).
       ...(params.serializedTx && { serialized_tx: params.serializedTx }),
       ...(params.recentCounterparties?.length && { recent_counterparties: params.recentCounterparties }),
-    });
+    }, { signal });
 
     // M-4 — I5, the backend is untrusted, and that includes its SHAPE. The catch
     // below only fires on thrown errors (network, non-2xx, abort, bad JSON
