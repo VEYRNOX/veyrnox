@@ -14,14 +14,31 @@
 //     higher local signal.
 
 import { LEVEL } from '../levels.js';
+import { isStaticSanctionedEvm } from './static-ofac-list.js';
 
 /**
- * @param {object} _unsignedTx   unused
+ * @param {{ to?: string }} unsignedTx  recipient address is the only field read here
  * @param {object} _localState   unused
  * @param {{ tipResult?: { verdict: string, sanctions: boolean, signals: Array } | null }} chainData
  * @returns {{ level: string, evidence: { reason: string, values?: object } }}
  */
-export function s9TipThreat(_unsignedTx, _localState, chainData) {
+export function s9TipThreat(unsignedTx, _localState, chainData) {
+  // Issue #1664 — belt-and-braces static OFAC fallback. TIP has drifted before
+  // (Advisor vs Send Preview called with different `actionType`, only one path
+  // set `sanctions_hit`), so we check a small hard-coded set of well-known
+  // sanctioned mixer contracts FIRST. If the recipient is on the static list,
+  // force RISK regardless of what TIP said (I5: backend untrusted). List is
+  // deliberately small — see static-ofac-list.js for scope + failure mode.
+  if (isStaticSanctionedEvm(unsignedTx?.to)) {
+    return {
+      level: LEVEL.RISK,
+      evidence: {
+        reason: 'This address appears on the OFAC sanctions list. Sending is strongly discouraged.',
+        values: { source: 'Static OFAC fallback (belt-and-braces to TIP)' },
+      },
+    };
+  }
+
   const tip = chainData?.tipResult;
   if (!tip) {
     return { level: LEVEL.OK, evidence: { reason: '' } };

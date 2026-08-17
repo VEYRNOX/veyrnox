@@ -66,3 +66,41 @@ describe('s9TipThreat', () => {
     expect(r.evidence.reason).toContain('Known threat detected');
   });
 });
+
+describe('s9TipThreat — static OFAC fallback (issue #1664)', () => {
+  const TORNADO_01_ETH = '0x8589427373D6D84E98730D7795D8f6f8731FDA16';
+
+  it('forces RISK on a Tornado Cash router regardless of tipResult', () => {
+    const r = s9TipThreat({ to: TORNADO_01_ETH }, {}, { tipResult: null });
+    expect(r.level).toBe('RISK');
+    expect(r.evidence.reason).toMatch(/OFAC sanctions list/i);
+  });
+
+  it('forces RISK even if TIP returned verdict=allow (the #1664 bug shape)', () => {
+    const r = s9TipThreat(
+      { to: TORNADO_01_ETH },
+      {},
+      { tipResult: { verdict: 'allow', sanctions: false, signals: [] } },
+    );
+    expect(r.level).toBe('RISK');
+    // Source string names the static fallback so the reader sees TIP was overridden.
+    expect(r.evidence.values.source).toMatch(/static ofac/i);
+  });
+
+  it('case-insensitive on the recipient address', () => {
+    const r = s9TipThreat({ to: TORNADO_01_ETH.toUpperCase() }, {}, {});
+    expect(r.level).toBe('RISK');
+  });
+
+  it('does NOT trigger on non-sanctioned recipients (regression guard)', () => {
+    const r = s9TipThreat({ to: '0x742d35Cc6634C0532925a3b844Bc834e7e6e336f' }, {}, {});
+    // Falls through to the TIP-result path; tipResult is missing, so OK.
+    expect(r.level).toBe('OK');
+  });
+
+  it('does NOT throw when unsignedTx is null / undefined', () => {
+    expect(() => s9TipThreat(null, {}, {})).not.toThrow();
+    expect(() => s9TipThreat(undefined, {}, {})).not.toThrow();
+    expect(s9TipThreat(null, {}, {}).level).toBe('OK');
+  });
+});
