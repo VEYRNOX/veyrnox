@@ -73,12 +73,32 @@ export default function VeyrnoxLogo({ size = 32, bg = false, className = "" }) {
 // Wordmark lockup — "VEYRNOX" in the brand voice: Schibsted Grotesk, bold,
 // tracked, uppercase, with a calm light→muted vertical gradient (theme-aware
 // via tokens, so it inverts correctly in light mode). Pair it with the mark.
-export function VeyrnoxWordmark({ className = "" }) {
+export function VeyrnoxWordmark({ className = "", animated = false }) {
+  if (!animated) {
+    return (
+      <span
+        className={`font-sans font-bold uppercase tracking-[0.14em] bg-gradient-to-b from-foreground to-muted-foreground bg-clip-text text-transparent ${className}`}
+      >
+        VEYRNOX
+      </span>
+    );
+  }
   return (
     <span
-      className={`font-sans font-bold uppercase tracking-[0.14em] bg-gradient-to-b from-foreground to-muted-foreground bg-clip-text text-transparent ${className}`}
+      className={`font-sans font-bold uppercase tracking-[0.14em] inline-flex ${className}`}
+      style={{ perspective: 600 }}
     >
-      VEYRNOX
+      {"VEYRNOX".split("").map((ch, i) => (
+        <span
+          key={i}
+          className="inline-block bg-gradient-to-b from-foreground to-muted-foreground bg-clip-text text-transparent motion-reduce:!opacity-100 motion-reduce:!transform-none"
+          style={{
+            animation: `vx-letter-flip 0.55s cubic-bezier(0.22,1,0.36,1) ${0.6 + (6 - i) * 0.07}s both`,
+          }}
+        >
+          {ch}
+        </span>
+      ))}
     </span>
   );
 }
