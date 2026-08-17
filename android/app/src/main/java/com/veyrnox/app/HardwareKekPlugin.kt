@@ -22,6 +22,25 @@ package com.veyrnox.app
 //   Both tiers use AUTH_BIOMETRIC_STRONG only (H16: no DEVICE_CREDENTIAL fallback).
 // H16: AUTH_DEVICE_CREDENTIAL removed. A PIN/pattern unlock bypasses biometric
 //   binding and undermines the possession-factor guarantee. BIOMETRIC_STRONG only.
+//
+// C-3 (native H zeroization) — PARTIAL, and the remainder is stated here rather
+//   than left for a fifth audit to rediscover. getHardwareFactor() holds three
+//   copies of H-adjacent bytes; only the first is now scrubbed:
+//     1. hmacResult (raw H, 32 bytes) — ZEROED in a finally at the doFinal site.
+//     2. b64 — H Base64-encoded into a java.lang.String to cross the Capacitor
+//        bridge. Strings are immutable, so this copy is NOT zeroable and survives
+//        in the heap and in the bridge's own serialisation. Scrubbing (1) does not
+//        cover it. This is architectural, identical in kind to the iOS `NSString
+//        hB64` residual already tracked as M-6 / iOS-F5-residual, and closing it
+//        needs a bridge that carries bytes rather than a string — not a fill().
+//     3. macInput — the decoded kekSalt. Deliberately NOT zeroed. It is not
+//        secret (the same salt is persisted in the vault blob as plaintext
+//        base64), and zeroing it is actively unsafe: on the v1 path macInput IS
+//        the shared PRF_EVAL_SALT instance (see :63), so a fill() there would
+//        corrupt the constant for every subsequent call in the process and
+//        silently change H. If this is ever revisited, guard on the branch.
+//   So: do not record C-3 as fully closed. The raw-H heap residue is gone; the
+//   string copy is an accepted, disclosed residual.
 
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
@@ -375,9 +394,20 @@ class HardwareKekPlugin : Plugin() {
                     try {
                         val authenticatedMac = result.cryptoObject?.mac
                             ?: return call.reject("BiometricPrompt returned no Mac object")
+                        // C-3 (weekly audits 2026-07-14 / 07-20 / 08-03 / 08-17): hmacResult
+                        // IS the raw hardware factor H. It was previously left to the GC, so
+                        // a 32-byte plaintext H sat in the Java heap until an unpredictable
+                        // collection — recoverable from a heap dump on a compromised device.
+                        // Scrubbed in a finally so a throw from encodeToString/resolve cannot
+                        // skip it. Matches EnclaveKeyService.kt:351,599, which already did
+                        // this correctly; the pattern existed and was simply never applied here.
                         val hmacResult = authenticatedMac.doFinal(macInput)
-                        val b64 = Base64.encodeToString(hmacResult, Base64.NO_WRAP)
-                        call.resolve(JSObject().put("h", b64))
+                        try {
+                            val b64 = Base64.encodeToString(hmacResult, Base64.NO_WRAP)
+                            call.resolve(JSObject().put("h", b64))
+                        } finally {
+                            java.util.Arrays.fill(hmacResult, 0.toByte())
+                        }
                     } catch (e: Exception) {
                         call.reject("HMAC computation failed: ${e.message}")
                     }
