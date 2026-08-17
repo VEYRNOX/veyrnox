@@ -225,7 +225,13 @@ function DemoDashboard() {
           <p className="text-xs text-muted-foreground uppercase tracking-widest">{t("dashboard.portfolioValue")}</p>
           <FiatCurrencySelector value={fiatCurrency} onChange={setFiatCurrency} />
         </div>
-        <p className={`text-4xl font-bold mono-value transition-all duration-300 ${isLocked ? 'blur-md select-none' : ''}`}>
+        {/* Issue #1730 — LCP element on `/`. `transition-all duration-300`
+            defers the paint commit and animates every prop change (isLocked
+            toggle, font metrics, layout shift), which reads to Lighthouse
+            as a delayed largest-contentful-paint. Narrow to `transition-[filter]`
+            so only the intentional blur toggle animates; size/font/colour
+            paint immediately. */}
+        <p className={`text-4xl font-bold mono-value transition-[filter] duration-300 ${isLocked ? 'blur-md select-none' : ''}`}>
           {formatFiat(displayValue ?? totalUSD, fiatCurrency, locale)}
         </p>
         <ReferenceRateNote />
