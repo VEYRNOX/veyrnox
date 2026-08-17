@@ -2490,6 +2490,63 @@ none of this is "verified" in the strict on-chain / independent-audit sense).
 - **#1730** — Lighthouse LCP > 2500 ms on main; profiled via Chrome DevTools MCP; 3 fix levers named; needs owner call between fix (SPA bundle-split) and honest budget bump
 - **#1850** — tip-chat vault caps strip every Safety Plus subscriber; locked infra; needs owner-authored RC entitlement path
 
+## 2026-08-17 — one-tap biometric prompt count (LOCKED — do not "optimise")
+
+**Settled shape: the app-layer biometric cache-gate fires for EVERY vault, KEK or not.
+A KEK one-tap unlock costs THREE OS biometric prompts. That is the accepted cost of a
+working unlock. Do not change it without new real-device evidence.**
+
+`unlockWithBiometric` takes ONE path for every vault shape:
+
+```js
+password = await withLockSuppressed(() => retrieveUnlockSecret());
+```
+
+`retrieveUnlockSecret()` calls `nativeAuthenticateOrThrow()` before it reads the cached
+PIN, so prompt #1 always fires; prompts #2/#3 are the Secure-Enclave / StrongBox
+evaluations inside `keyStore.unlock()` → `getHardwareFactor` (one biometric evaluation
+per ACL-gated SE operation — inherent to the SE design, and correct).
+
+### How it got here
+
+- **The optimisation (#694 / #1821 lineage, reverted).** For a KEK vault the cached PIN
+  is the C-factor only; DEK = HKDF(H ‖ C) and H comes solely from the hardware-enforced
+  SE gate, so reading C without H unwraps nothing and prompt #1 is redundant. A KEK
+  branch read the cache via `retrieveUnlockSecretDirect()`, skipping
+  `BiometricAuth.authenticate`, cutting three prompts to two.
+- **PR #1881 reverted it, device-confirmed insufficient on KEK vaults** (iPhone 17 Pro
+  Max / Pixel 10 Pro XL). #1881's primary change is the load-bearing one: wrapping the
+  whole `unlock()` body in `withLockSuppressed` so a queued
+  `appStateChange(isActive:false)` — fired by the FaceID sheet itself — cannot call
+  `lock()` mid-unlock, bump `unlockGenRef`, and throw `UNLOCK_SUPERSEDED` before
+  `keyStore.unlock()` even starts. That fix stays. **Do not revert #1881 to recover the
+  prompt count.**
+- **PR #1884 (this entry) cleaned up after the revert.** #1881 changed the behaviour but
+  left `WalletProvider.kekBiometricCacheGate.test.jsx` asserting the removed
+  optimisation, so `unit-tests` went red on `main` at `470ff315` and stayed red — every
+  PR blocked, including the weekly audit. The test now pins the CURRENT behaviour, and
+  `retrieveUnlockSecretDirect()` — which had no production caller after the revert — is
+  deleted rather than parked, because a dead security-adjacent bypass invites re-wiring
+  without the device evidence that removed it.
+
+### If you are here to reduce the prompt count
+
+1. Re-verify on real hardware FIRST — both an iPhone with a KEK-enrolled vault and an
+   Android StrongBox device. The paper argument was already correct and still lost to
+   the device.
+2. Restore the deleted helper from history if you need it:
+   `git show 470ff315^:src/lib/biometricUnlock.js`.
+3. Rewrite `src/lib/__tests__/WalletProvider.kekBiometricCacheGate.test.jsx` with that
+   evidence. It currently fails if a KEK branch reappears, and that failure is the point
+   — **relaxing the assertion to make CI green deletes the record of a security-relevant
+   prompt-count change.** Same smell as "align tests with the new flow" (2026-07-27).
+4. Never reintroduce a cache read that skips `nativeAuthenticateOrThrow()` for a NON-KEK
+   vault. There the cache-gate is the sole biometric protection over the cached password
+   (I4).
+
+Status: ✅ BUILT, INTERNAL. Prompt count device-confirmed; nothing here is independently
+audited. Open, not fixed: the 3-prompt KEK unlock is a UX cost carried deliberately.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split

@@ -14,7 +14,6 @@ import {
   biometricUnlockSupported,
   storeUnlockSecret,
   retrieveUnlockSecret,
-  retrieveUnlockSecretDirect,
   hasStoredUnlockSecret,
   clearUnlockSecret,
 } from '@/lib/biometricUnlock';
@@ -49,15 +48,12 @@ describe('biometricUnlock — plain web (no platform biometric)', () => {
     await expect(clearUnlockSecret()).resolves.toBeUndefined();
   });
 
-  it('retrieveUnlockSecretDirect throws without an explicit `{ kekEnrolled: true }` assertion (Codex P1 2026-08-15)', async () => {
-    await expect(retrieveUnlockSecretDirect()).rejects.toThrow(/kekEnrolled/);
-    await expect(retrieveUnlockSecretDirect({})).rejects.toThrow(/kekEnrolled/);
-    await expect(retrieveUnlockSecretDirect({ kekEnrolled: false })).rejects.toThrow(/kekEnrolled/);
-  });
-
-  it('retrieveUnlockSecretDirect also returns null on web (no cached secret to bypass)', async () => {
-    // The KEK-only direct path is unreachable on web (no native KEK vault), and even
-    // if called must never conjure a secret where none is cached.
-    expect(await retrieveUnlockSecretDirect({ kekEnrolled: true })).toBe(null);
+  it('exposes no un-gated cache-read bypass (retrieveUnlockSecretDirect removed 2026-08-17)', async () => {
+    // The KEK-only direct path was removed when PR #1881 reverted its only caller
+    // (device-confirmed insufficient on KEK vaults). Web never had a cached secret to
+    // release, so nothing is lost here — this case exists so a re-introduction is
+    // noticed rather than silently re-exported.
+    const mod = await import('@/lib/biometricUnlock');
+    expect(mod.retrieveUnlockSecretDirect).toBeUndefined();
   });
 });

@@ -69,6 +69,20 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
   workers_dev flag, D1 missing table, and MAX_SYSTEM_CONTENT cap. A
   "small refactor" in one place can re-open any of these.
 
+- **DO NOT touch the one-tap biometric prompt count — locked 2026-08-17.** The app-layer
+  cache-gate (`retrieveUnlockSecret()` → `nativeAuthenticateOrThrow()`) fires for EVERY
+  vault shape, so a KEK one-tap unlock costs THREE OS prompts (1 cache-gate + 2 Secure
+  Enclave / StrongBox evaluations). The two-prompt optimisation was tried
+  (`retrieveUnlockSecretDirect`, #694/#1821 lineage), was **device-confirmed
+  insufficient on KEK vaults**, and was reverted by PR #1881 — whose primary fix
+  (wrapping `unlock()` in `withLockSuppressed` so a FaceID-triggered `appStateChange`
+  cannot throw `UNLOCK_SUPERSEDED` mid-unlock) is load-bearing and must not be reverted
+  to win the prompt back. `retrieveUnlockSecretDirect` was deleted in PR #1884; do not
+  reintroduce any cache read that skips `nativeAuthenticateOrThrow()`. Re-verify on real
+  hardware before proposing a change, and rewrite
+  `src/lib/__tests__/WalletProvider.kekBiometricCacheGate.test.jsx` with that evidence —
+  never by relaxing its assertions. Full record: `docs/Feature-Status.md` "2026-08-17 —
+  one-tap biometric prompt count".
 - **Mainnet unlocked 2026-06-17.** `ALLOW_MAINNET = true`, `ALLOW_BTC_MAINNET = true`,
   `ALLOW_SOL_MAINNET = true`. Both the internal audit (2026-06-17, the mainnet gate) and
   the independent ECC third-party audit (2026-06-23) are complete. "Internal" is never

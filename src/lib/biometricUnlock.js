@@ -250,44 +250,24 @@ export async function retrieveUnlockSecret() {
   return null;
 }
 
-/**
- * Retrieve the cached vault password WITHOUT the app-layer OS biometric cache-gate.
- *
- * ⚠️ SECURITY CONTRACT — READ THIS. Unlike retrieveUnlockSecret(), this does NOT call
- * nativeAuthenticateOrThrow() first. It is ONLY safe to call from the KEK-enrolled
- * native unlock path, where the Secure Enclave / StrongBox hardware gate (fired inside
- * keyStore.unlock() → getHardwareFactor, one biometric evaluation per ACL-gated SE
- * operation) is the sole, hardware-enforced biometric protection. On a KEK vault the
- * cached PIN is the C-factor ONLY; the DEK = HKDF(H ‖ C) and H is producible ONLY by
- * passing that SE gate — so the cached C alone is useless and the app-layer cache-gate
- * is redundant (it only added a THIRD biometric prompt per unlock).
- *
- * Calling this on a NON-KEK vault (web password vault, bare native vault) would BYPASS
- * the SOLE biometric gate protecting the cached password — a security downgrade. The
- * caller (WalletProvider.unlockWithBiometric) MUST gate this behind a confirmed
- * hasVaultKekWrap() === true check. On web there is no cached secret → null.
- *
- * Codex P1 2026-08-15 — the security contract is now enforced at RUNTIME as well as
- * in the doc block. Callers must explicitly pass `{ kekEnrolled: true }` after
- * evaluating `keyStore.hasVaultKekWrap()`. A missing or false assertion throws — so a
- * future non-KEK caller cannot silently bypass the biometric gate.
- *
- * @param {{ kekEnrolled?: boolean }} [assert]
- * @returns {Promise<string|null>}
- */
-export async function retrieveUnlockSecretDirect(assert) {
-  if (!assert || assert.kekEnrolled !== true) {
-    throw new Error(
-      'retrieveUnlockSecretDirect requires an explicit `{ kekEnrolled: true }` assertion '
-      + 'from a caller that has already checked keyStore.hasVaultKekWrap(). Without KEK the '
-      + 'app-layer biometric gate is the SOLE protection; calling this directly bypasses it. '
-      + 'See the security contract in the doc block above.',
-    );
-  }
-  if (DEMO) return demoGet();
-  if (Capacitor.isNativePlatform()) return nativeReadSecret();
-  return null;
-}
+// REMOVED 2026-08-17 — `retrieveUnlockSecretDirect()`, the KEK-only path that read the
+// cached PIN WITHOUT firing the app-layer biometric gate.
+//
+// It existed to drop the redundant THIRD biometric prompt on a KEK one-tap unlock: for a
+// KEK vault the cached PIN is the C-factor only, DEK = HKDF(H ‖ C), and H comes solely
+// from the hardware-enforced Secure-Enclave / StrongBox gate inside keyStore.unlock() —
+// so reading C without H unwraps nothing. Sound on paper, and it was device-confirmed
+// INSUFFICIENT on KEK vaults; PR #1881 reverted the caller to the single
+// `retrieveUnlockSecret()` path for every vault shape, leaving this export with no
+// production caller.
+//
+// Deleted rather than parked: a dead security-adjacent bypass is an invitation to
+// re-wire it without the device evidence that removed it. Do NOT reintroduce a
+// cache-read that skips `nativeAuthenticateOrThrow()`. If the prompt count is revisited,
+// re-verify on real hardware FIRST, then restore from git history (`git show
+// 470ff315^:src/lib/biometricUnlock.js`) with that evidence written down. See
+// docs/Feature-Status.md "2026-08-17 — one-tap biometric prompt count" and
+// src/lib/__tests__/WalletProvider.kekBiometricCacheGate.test.jsx.
 
 /** Remove the cached password from every store (called on disable/panic/reset). */
 export async function clearUnlockSecret() {
@@ -313,8 +293,8 @@ export async function hasStoredUnlockSecret() {
  * comment above.
  *
  *   'app-gate'  — biometric requirement enforced at the JS chokepoint (the
- *                 current retrieveUnlockSecret() / retrieveUnlockSecretDirect()
- *                 gate). Keychain/Keystore accessibility is
+ *                 current retrieveUnlockSecret() gate, which every vault shape
+ *                 now takes). Keychain/Keystore accessibility is
  *                 `whenPasscodeSetThisDeviceOnly`, NOT a biometry-ACL bound
  *                 key. Biometric-enrollment change does NOT auto-invalidate.
  *                 This is what ships today.

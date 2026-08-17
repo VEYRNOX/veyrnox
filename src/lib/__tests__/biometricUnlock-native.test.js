@@ -54,7 +54,6 @@ import {
   biometricUnlockSupported,
   storeUnlockSecret,
   retrieveUnlockSecret,
-  retrieveUnlockSecretDirect,
   hasStoredUnlockSecret,
   clearUnlockSecret,
 } from '@/lib/biometricUnlock';
@@ -153,29 +152,34 @@ describe('biometricUnlock — NATIVE (OS biometric-gated secure-store cache)', (
   });
 });
 
-// retrieveUnlockSecretDirect — the KEK-only path that INTENTIONALLY skips the app-layer
-// cache-gate. Its whole reason to exist is that on a KEK vault the Secure Enclave /
-// StrongBox gate inside keyStore.unlock() is the sole hardware-enforced biometric gate,
-// so the app-layer BiometricAuth.authenticate here is a redundant THIRD prompt. These
-// tests pin: (1) it reads the store WITHOUT authenticate() first, and (2) it still fails
-// safe (null, not a stale/undefined value) when nothing is cached. The security contract
-// — only ever call this on a hasVaultKekWrap()===true vault — is enforced by the CALLER
-// (WalletProvider.unlockWithBiometric), pinned in WalletProvider.kekBiometricCacheGate.test.jsx.
-describe('biometricUnlock — retrieveUnlockSecretDirect (KEK-only, no app-layer cache-gate)', () => {
-  it('releases the cached password WITHOUT calling BiometricAuth.authenticate', async () => {
-    await storeUnlockSecret('kek-cached-pin');
-
-    const pw = await retrieveUnlockSecretDirect({ kekEnrolled: true });
-    expect(pw).toBe('kek-cached-pin');
-
-    // The invariant that distinguishes it from retrieveUnlockSecret: NO app-layer
-    // biometric prompt fired — the store was read directly.
-    expect(h.calls).not.toContain('authenticate');
-    expect(h.calls).toContain('get');
+// The KEK-only `retrieveUnlockSecretDirect()` path — which read the cached PIN WITHOUT
+// firing BiometricAuth.authenticate — was REMOVED 2026-08-17 after PR #1881 reverted its
+// only caller (device-confirmed insufficient on KEK vaults). Its tests are removed with
+// it rather than left asserting a function that no longer exists.
+//
+// What replaces them is the invariant below: `retrieveUnlockSecret()` is the ONLY way to
+// release the cached password, and it authenticates first, for every vault shape. That
+// is now pinned in the existing native tests above (the authenticate-before-read cases)
+// and, at the provider level, in WalletProvider.kekBiometricCacheGate.test.jsx.
+describe('biometricUnlock — no un-gated cache-read path exists', () => {
+  it('exports no bypass that reads the cached secret without authenticating', async () => {
+    const mod = await import('@/lib/biometricUnlock');
+    // A future re-introduction under the old name turns this red on purpose. If the
+    // prompt-count optimisation is revisited, re-verify on a real device first and
+    // rewrite this case with that evidence — do not simply delete it.
+    expect(mod.retrieveUnlockSecretDirect).toBeUndefined();
   });
 
-  it('returns null (no stale/undefined leak) when nothing is cached', async () => {
-    expect(await retrieveUnlockSecretDirect({ kekEnrolled: true })).toBe(null);
-    expect(h.calls).not.toContain('authenticate');
+  it('retrieveUnlockSecret authenticates BEFORE touching the store, even back-to-back', async () => {
+    await storeUnlockSecret('kek-cached-pin');
+    h.calls.length = 0;
+
+    expect(await retrieveUnlockSecret()).toBe('kek-cached-pin');
+    expect(await retrieveUnlockSecret()).toBe('kek-cached-pin');
+
+    // Two releases → two OS prompts. No cached/"already authenticated this session"
+    // shortcut may creep in: the gate is per read, not per session.
+    expect(h.calls.filter((c) => c === 'authenticate')).toHaveLength(2);
+    expect(h.calls.indexOf('authenticate')).toBeLessThan(h.calls.indexOf('get'));
   });
 });
