@@ -307,7 +307,7 @@ jobs:
       - name: Run Android JVM unit tests (ES256 DER transcoder + RASP)
         run: |
           chmod +x gradlew
-          ./gradlew :app:testDebugUnitTest --info
+          ./gradlew :app:testGoogleDebugUnitTest --info
         working-directory: android
 
   android-release:
