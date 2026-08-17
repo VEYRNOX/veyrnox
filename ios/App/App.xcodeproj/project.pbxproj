@@ -17,6 +17,14 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		8CB0DD8EA82AD863C8E406B6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 90C3FEC3D4EFB7CCB1E4453E /* Foundation.framework */; };
 		B7CF2649724BB5E77EFD0E40 /* AppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9231AE55115CADB50557A136 /* AppUITests.swift */; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* TestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* TestHelpers.swift */; };
+		B2C3D4E5F6A7B8C9D0E1F2A3 /* VaultCreateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B3C4D5E6F7A8B9C0D1E2F3 /* VaultCreateTests.swift */; };
+		B3C4D5E6F7A8B9C0D1E2F3A4 /* UnlockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B4C5D6E7F8A9B0C1D2E3F4 /* UnlockTests.swift */; };
+		B4C5D6E7F8A9B0C1D2E3F4A5 /* SeedImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B5C6D7E8F9A0B1C2D3E4F5 /* SeedImportTests.swift */; };
+		B5C6D7E8F9A0B1C2D3E4F5A6 /* BackupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B6C7D8E9F0A1B2C3D4E5F6 /* BackupTests.swift */; };
+		B6C7D8E9F0A1B2C3D4E5F6A7 /* ShamirShareTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B7C8D9E0F1A2B3C4D5E6F7 /* ShamirShareTests.swift */; };
+		B7C8D9E0F1A2B3C4D5E6F7A8 /* RestoreFromFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B8C9D0E1F2A3B4C5D6E7F8 /* RestoreFromFileTests.swift */; };
+		B8C9D0E1F2A3B4C5D6E7F8A9 /* SeedRevealTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8B9C0D1E2F3A4B5C6D7E8F9 /* SeedRevealTests.swift */; };
 		BBCCDD011FED79650016851F /* HardwareKekPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD001FED79650016851F /* HardwareKekPlugin.m */; };
 		BBCCDD041FED79650016851F /* HardwareKekPluginBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD031FED79650016851F /* HardwareKekPluginBridge.m */; };
 		BBCCDD111FED79650016851F /* RaspIntegrityPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = BBCCDD101FED79650016851F /* RaspIntegrityPlugin.m */; };
@@ -51,6 +59,14 @@
 		754BF5DA648E318696FF0E87 /* AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		90C3FEC3D4EFB7CCB1E4453E /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		9231AE55115CADB50557A136 /* AppUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppUITests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* TestHelpers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestHelpers.swift; sourceTree = "<group>"; };
+		A2B3C4D5E6F7A8B9C0D1E2F3 /* VaultCreateTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VaultCreateTests.swift; sourceTree = "<group>"; };
+		A3B4C5D6E7F8A9B0C1D2E3F4 /* UnlockTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UnlockTests.swift; sourceTree = "<group>"; };
+		A4B5C6D7E8F9A0B1C2D3E4F5 /* SeedImportTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SeedImportTests.swift; sourceTree = "<group>"; };
+		A5B6C7D8E9F0A1B2C3D4E5F6 /* BackupTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackupTests.swift; sourceTree = "<group>"; };
+		A6B7C8D9E0F1A2B3C4D5E6F7 /* ShamirShareTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShamirShareTests.swift; sourceTree = "<group>"; };
+		A7B8C9D0E1F2A3B4C5D6E7F8 /* RestoreFromFileTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestoreFromFileTests.swift; sourceTree = "<group>"; };
+		A8B9C0D1E2F3A4B5C6D7E8F9 /* SeedRevealTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SeedRevealTests.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		BBCCDD001FED79650016851F /* HardwareKekPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HardwareKekPlugin.m; sourceTree = "<group>"; };
 		BBCCDD021FED79650016851F /* HardwareKekPlugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HardwareKekPlugin.h; sourceTree = "<group>"; };
@@ -143,6 +159,14 @@
 			isa = PBXGroup;
 			children = (
 				9231AE55115CADB50557A136 /* AppUITests.swift */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* TestHelpers.swift */,
+				A2B3C4D5E6F7A8B9C0D1E2F3 /* VaultCreateTests.swift */,
+				A3B4C5D6E7F8A9B0C1D2E3F4 /* UnlockTests.swift */,
+				A4B5C6D7E8F9A0B1C2D3E4F5 /* SeedImportTests.swift */,
+				A5B6C7D8E9F0A1B2C3D4E5F6 /* BackupTests.swift */,
+				A6B7C8D9E0F1A2B3C4D5E6F7 /* ShamirShareTests.swift */,
+				A7B8C9D0E1F2A3B4C5D6E7F8 /* RestoreFromFileTests.swift */,
+				A8B9C0D1E2F3A4B5C6D7E8F9 /* SeedRevealTests.swift */,
 				71480926541331B0C80A6D35 /* Info.plist */,
 			);
 			name = AppUITests;
@@ -283,6 +307,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				B7CF2649724BB5E77EFD0E40 /* AppUITests.swift in Sources */,
+				B1C2D3E4F5A6B7C8D9E0F1A2 /* TestHelpers.swift in Sources */,
+				B2C3D4E5F6A7B8C9D0E1F2A3 /* VaultCreateTests.swift in Sources */,
+				B3C4D5E6F7A8B9C0D1E2F3A4 /* UnlockTests.swift in Sources */,
+				B4C5D6E7F8A9B0C1D2E3F4A5 /* SeedImportTests.swift in Sources */,
+				B5C6D7E8F9A0B1C2D3E4F5A6 /* BackupTests.swift in Sources */,
+				B6C7D8E9F0A1B2C3D4E5F6A7 /* ShamirShareTests.swift in Sources */,
+				B7C8D9E0F1A2B3C4D5E6F7A8 /* RestoreFromFileTests.swift in Sources */,
+				B8C9D0E1F2A3B4C5D6E7F8A9 /* SeedRevealTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
