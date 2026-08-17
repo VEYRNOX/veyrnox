@@ -9,7 +9,7 @@
 // falls back to `Infinity` so that platform is never misclassified as
 // low-end on that axis alone.
 //
-// Thresholds: <=4 GB RAM or <=4 logical cores counts as low-end.
+// Thresholds: <=2 GB RAM or <=2 logical cores counts as low-end.
 const mem =
   typeof navigator !== "undefined" && navigator.deviceMemory != null
     ? navigator.deviceMemory
@@ -19,6 +19,6 @@ const cores =
     ? navigator.hardwareConcurrency
     : Infinity;
 
-export const isLowEndDevice = mem <= 4 || cores <= 4;
+export const isLowEndDevice = mem <= 2 || cores <= 2;
 
 export default isLowEndDevice;
