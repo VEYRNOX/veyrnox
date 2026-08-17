@@ -87,7 +87,7 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(ciWorkflow).toContain("inputs.build_firebase_test == true");
     expect(ciWorkflow).toContain("github.ref == 'refs/heads/main' && github.event_name == 'push'");
     expect(ciWorkflow).toContain('android-firebase-test:');
-    expect(ciWorkflow).toContain('./gradlew assembleFirebaseTest');
+    expect(ciWorkflow).toContain('./gradlew assembleGoogleFirebaseTest');
     expect(ciWorkflow).toContain('name: veyrnox-firebase-test-apk');
     expect(ciWorkflow).not.toContain('./gradlew bundleFirebaseTest');
 
@@ -95,9 +95,11 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(androidBuild).toContain('initWith release');
     expect(androidBuild).toContain('applicationIdSuffix ".firebase.testlab"');
     expect(androidBuild).toContain("project.findProperty('FIREBASE_TEST_CERT_SHA256')");
-    expect(androidBuild).toContain("it.name == 'assembleFirebaseTest'");
+    expect(androidBuild).toContain("it.name == 'assembleGoogleFirebaseTest'");
     expect(androidBuild).toContain('cert.equalsIgnoreCase(uploadSha)');
-    expect(androidBuild).toContain("it.name == 'bundleFirebaseTest'");
+    // Non-google flavors and all bundle tasks are disabled by pattern match,
+    // not per-task name, so assert the pattern the multi-flavor build uses.
+    expect(androidBuild).toContain("it.name.contains('FirebaseTest') && it.name.startsWith('bundle')");
     expect(androidBuild).toContain('enabled = false');
   });
 
