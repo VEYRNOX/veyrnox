@@ -55,6 +55,7 @@ export default function EntryTiles({ onSelect }) {
             type="button"
             variant="outline"
             className="w-full h-auto py-4 flex-col items-start gap-1 text-start"
+            aria-label={label}
             onClick={() => onSelect(path)}
           >
             <span className="flex items-center gap-2 text-sm font-medium">
