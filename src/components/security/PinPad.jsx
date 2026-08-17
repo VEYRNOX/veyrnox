@@ -107,7 +107,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
   // Numeric PIN mode: traditional PIN pad with buttons
   return (
     <div
-      className="space-y-5 outline-none"
+      className="space-y-3 outline-none"
       role="group"
       aria-label={ariaLabel}
       aria-describedby="pin-hint"
@@ -152,7 +152,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
             - touch-manipulation — kills the 300ms mobile tap delay
           Hover state still fires on desktop for keyboard/pointer input. Reduced-
           motion users get the color flash without the scale (a11y). */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {KEYS.map((k) => {
           if (k === "clear") {
             return (
@@ -163,7 +163,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
                 aria-label="Clear — re-enter PIN"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
-                className="h-16 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground active:bg-secondary active:scale-[0.92] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
+                className="h-12 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground active:bg-secondary active:scale-[0.92] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
               >
                 Re-enter
               </button>
@@ -178,7 +178,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
                 aria-label="Delete last digit"
                 disabled={disabled || value.length === 0}
                 onClick={() => press(k)}
-                className="h-16 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-secondary active:scale-[0.92] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
+                className="h-12 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground active:bg-secondary active:scale-[0.92] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation disabled:opacity-40 disabled:active:scale-100"
               >
                 <Delete className="h-5 w-5" />
               </button>
@@ -191,7 +191,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
               tabIndex={-1}
               disabled={disabled}
               onClick={() => press(k)}
-              className="h-16 rounded-xl bg-secondary/40 hover:bg-secondary active:bg-primary/40 active:scale-[0.92] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation text-2xl font-semibold mono-value disabled:opacity-40 disabled:active:scale-100"
+              className="h-12 rounded-xl bg-secondary/40 hover:bg-secondary active:bg-primary/40 active:scale-[0.92] motion-reduce:active:scale-100 transition-transform duration-75 touch-manipulation text-xl font-semibold mono-value disabled:opacity-40 disabled:active:scale-100"
             >
               {k}
             </button>
@@ -209,7 +209,7 @@ export default function PinPad({ value = "", onChange, onComplete, disabled = fa
         aria-label="Submit PIN"
         disabled={disabled}
         onClick={() => press("submit")}
-        className="h-12 w-full rounded-xl bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 active:bg-primary/80 active:scale-[0.98] transition-all duration-100 disabled:opacity-40"
+        className="h-10 w-full rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 active:bg-primary/80 active:scale-[0.98] transition-all duration-100 disabled:opacity-40"
       >
         {submitLabel}
       </button>

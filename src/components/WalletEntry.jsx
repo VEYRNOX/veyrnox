@@ -163,7 +163,7 @@ function EntryShell({ error, children, chromeless = false }) {
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-background overflow-hidden">
       <VeyrnoxAmbient />
-      <div className="relative w-full max-w-sm space-y-6" style={{ zIndex: 1 }}>
+      <div className="relative w-full max-w-sm space-y-4" style={{ zIndex: 1 }}>
         {/* Slice K: single shared <VeyrnoxHero> for every pre-vault surface.
             chromeless still supported (entry-tiles view passes it because
             EntryTiles renders its own <VeyrnoxHero> inside — avoids stacking
@@ -348,11 +348,13 @@ function WelcomeHero({ onGetStarted, onRestore }) {
             aria-hidden
             className="absolute inset-0 -z-10 rounded-full bg-primary/25 blur-3xl motion-safe:animate-pulse"
           />
-          <VeyrnoxLogo size={76} />
+          <div style={reduce ? undefined : { animation: "vx-logo-spin 1.4s cubic-bezier(0.22,1,0.36,1) 0.1s both" }}>
+            <VeyrnoxLogo size={76} />
+          </div>
         </motion.div>
 
         <motion.div variants={item}>
-          <VeyrnoxWordmark className="text-3xl block" />
+          <VeyrnoxWordmark className="text-3xl block" animated={!reduce} />
         </motion.div>
 
         <motion.p variants={item} className="mt-3 text-sm leading-relaxed text-muted-foreground max-w-[18rem]">
@@ -1841,7 +1843,7 @@ export default function WalletEntry() {
   if (view === "pin-create") {
     return (
       <EntryShell error={error}>
-        <div className="space-y-5">
+        <div className="space-y-3">
           {/* PIN-FIRST: Back returns to the entry-tiles picker (the fresh-device
               landing ahead of the PIN), NOT a dashboard — the empty dashboard is
               only reachable AFTER the PIN is set. */}

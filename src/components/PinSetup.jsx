@@ -47,9 +47,9 @@ export default function PinSetup({ onDone, onCancel }) {
   const handleCancel = () => { reset(); onCancel?.(); };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {pinStep === "real" && (
-        <div className="space-y-3 text-center">
+        <div className="space-y-2 text-center">
           <h2 className="text-sm font-medium">Choose an 8-digit PIN</h2>
           <p className="text-xs text-muted-foreground">This unlocks your wallet. An 8-digit PIN. Always guard your device.</p>
           {error && (
@@ -69,7 +69,7 @@ export default function PinSetup({ onDone, onCancel }) {
       )}
 
       {pinStep === "real-confirm" && (
-        <div className="space-y-3 text-center">
+        <div className="space-y-2 text-center">
           <h2 className="text-sm font-medium">Confirm your PIN</h2>
           {error && (
             <p role="alert" className="text-xs text-destructive">{error}</p>
