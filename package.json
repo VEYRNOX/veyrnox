@@ -252,6 +252,9 @@
     "jayson": {
       "uuid": "^11.1.1"
     },
+    "xcode": {
+      "uuid": "^11.1.1"
+    },
     "diff": ">=8.0.3",
     "tar": "^7.5.20",
     "@puppeteer/browsers": "^3"
