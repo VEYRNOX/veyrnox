@@ -2490,6 +2490,44 @@ none of this is "verified" in the strict on-chain / independent-audit sense).
 - **#1730** — Lighthouse LCP > 2500 ms on main; profiled via Chrome DevTools MCP; 3 fix levers named; needs owner call between fix (SPA bundle-split) and honest budget bump
 - **#1850** — tip-chat vault caps strip every Safety Plus subscriber; locked infra; needs owner-authored RC entitlement path
 
+## 2026-08-17 — stale `appStateChange` no longer supersedes an in-flight unlock
+
+✅ BUILT, INTERNAL (static + unit only; **not** device-verified). Closes the race
+PR #1881 targeted, without the biometric prompt-count change that got #1881 reverted
+by #1887.
+
+**The race.** `_lockSuppressDepth` suppression covers the window an OS sheet is OPEN,
+not DELIVERY. Capacitor dispatches `appStateChange` asynchronously and the main thread
+blocks for seconds on the synchronous Argon2id WASM (192 MiB), so the `isActive:false`
+a Face ID sheet emitted earlier can flush after suppression returned to 0 — typically
+as the next PIN unlock finishes its KDF. `fireLockHook()` → `WalletProvider.lock()` →
+`unlockGenRef` bumps → the unlock aborts with `UNLOCK_SUPERSEDED` before
+`keyStore.unlock()` has started.
+
+**The fix** (`native.js` `shouldFireLockOnAppStateChange`): discriminate on LIVE state,
+not the queued payload. A pause event describes a moment that has passed, so if
+`document.visibilityState === 'visible'` at delivery the event is stale and must not
+lock. Read synchronously — deliberately NOT `App.getState()`, whose promise would
+resolve only after a genuine background ended (reporting `isActive:true` on resume) and
+would skip the lock on exactly the case that needs it.
+
+**Why it cannot change the prompt count.** It is a pure predicate over state it is
+handed; it never authenticates and never touches `unlockWithBiometric`. The
+`kekBiometricCacheGate` guard — the assertion #1881 broke — stays green, verified.
+
+**Safety argument, stated plainly.** `pause` stays unguarded and remains the genuine
+background signal; only `appStateChange` is narrowed. On native these two are the ONLY
+background-lock signals (WalletProvider's `visibilitychange` handler returns early on
+`Capacitor.isNativePlatform()` by design), so losing the background lock now requires
+BOTH `pause` to not fire AND `visibilityState` to read `'visible'` while genuinely
+backgrounded. Fail-closed: any value other than `'visible'` — including a missing
+`document` or a throwing getter — locks (I4).
+
+Verified: unit + mutation (inverting the predicate, and fail-opening on unknown
+visibility, each turn the guard red). **Not verified:** no device run — the race itself
+is a real-hardware timing artefact and only a device can confirm it is gone. Do not
+mark this device-verified without an iPhone reproduction.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
