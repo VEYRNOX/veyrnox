@@ -606,3 +606,65 @@ where the mutable copy *is* zeroed and the pages are `mlock`ed. Unchanged since 
 7. **L-3, L-4, L-7, L-10, L-6, L-8, L-9** — defense-in-depth and honesty.
 8. **INFO** — delete the stale Play Integrity issuer-fallback prose before someone
    "restores" it.
+
+---
+
+# Remediation log
+
+Appended 2026-08-17, after the findings above were written. **The findings themselves are
+unmodified** — this section is the only place that tracks state, matching the convention
+`docs/audit-2026-08-03-weekly.md` established. Rewriting a finding to say "fixed" would
+destroy the evidence of what was wrong and make the report useless for judging whether the
+fix was adequate.
+
+Nothing here is "verified" in this project's sense: the fix carries a regression test and
+passed CI's required checks, which is not an on-chain txid and not on-device evidence.
+
+## Partially closed
+
+| Finding | Fix | PR | Squash commit |
+|---|---|---|---|
+| **L-10** (carried, prior C-3) — Android raw HMAC output (factor H) never zeroed | `hmacResult` is scrubbed with `java.util.Arrays.fill(…, 0.toByte())` in a `finally`, so a throw from `encodeToString`/`resolve` cannot skip it. Matches `EnclaveKeyService.kt:351,599`, which already did this correctly — the pattern was in-tree and had never been applied here | [#1891](https://github.com/VEYRNOX/veyrnox/pull/1891) | `c4bf73a6` |
+
+**PARTIAL — read this before recording L-10 as closed.** The finding named two buffers and
+was right that both were unhandled. Only one is now scrubbed:
+
+- **`hmacResult`** (raw H, 32 bytes) — zeroed.
+- **`b64`** — H base64-encoded into a `java.lang.String` for the Capacitor bridge. As the
+  finding itself states, this copy is "unzeroable by construction". The fill does not reach
+  it, and no fill can. Closing it requires a bridge that carries bytes rather than a
+  string. This is now an explicitly accepted, in-source-disclosed residual, in the same
+  class as the iOS M-6 residual the finding compares it to.
+- **`macInput`** — deliberately **not** scrubbed, and this is the trap worth recording. It
+  is the kekSalt, which is already persisted in the vault blob as plaintext base64, so it
+  is not secret. More importantly, on the v1 path `macInput` **is** the shared
+  `PRF_EVAL_SALT` instance (`HardwareKekPlugin.kt:63`) — filling it would corrupt that
+  constant for every subsequent call in the process and silently change H. Anyone
+  "finishing" L-10 by scrubbing the second buffer would introduce a real defect. Guard on
+  the v2 branch if this is ever revisited.
+
+The file header now carries all three points, so the next audit reads the residual in the
+source rather than re-deriving it.
+
+## Regression pin, and why it is shaped this way
+
+`src/wallet-core/keystore/__tests__/hardwareKek.android.h-zeroization.test.js` pins the
+Kotlin **source** (vitest cannot execute it), asserting **position and shape** rather than
+substring presence: the scrub must sit in a `finally`, in the same block as `doFinal`, and
+`macInput`/`PRF_EVAL_SALT` must **not** be filled.
+
+That shape is a direct response to this repo's own recorded failure — the 2026-08-16 scan
+found the RASP pin asserts only `toContain('RASP_BLOCK')` and therefore could not detect
+the argument-order swap it was nominally guarding. A pin that matches a substring anywhere
+in a 22 KB file pins almost nothing.
+
+Mutation-checked three ways: the unfixed file fails 6 cases, a fill moved out of the
+`finally` onto the happy path fails 2, and scrubbing `macInput` fails 1. **A bare
+`toContain` would have passed the second.**
+
+## Still open from this audit
+
+Everything else. H-1, M-1…M-5, L-1…L-9, and the INFO items are untouched — see the
+recommended remediation order above. **M-1** (PIN backoff wired or deleted) is the one this
+log would flag twice: it is the same dead-code-plus-inaccurate-comment state the 2026-08-03
+audit recorded as C-2, so it is now also on its second consecutive audit.
