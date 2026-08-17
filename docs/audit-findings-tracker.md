@@ -1,8 +1,14 @@
 # Audit Findings Tracker
-Last updated: 2026-08-17
+Last updated: 2026-08-17 (amended same day — see the C-3 amendment)
 Analysed against: origin/main @ `470ff315d755e1d30d35a72b2bdbb5659be93927`
 (clean branch worktree cut from `origin/main` per Step 0 — not the live checkout,
 not a `git show` fallback.)
+
+**Amended 2026-08-17 after publication**, at `c4bf73a6`. Two changes, both confined to
+C-3: the 2026-08-17 weekly (`ba27d76a`) landed *after* the pin above and re-raises C-3 as
+**L-10**, making it the fifth consecutive audit rather than the fourth; and PR #1891
+partially closed it. The analysis body is otherwise left as the point-in-time record it
+was — amendments are marked, not silently reworded.
 
 > Automated weekly synthesis of every finding across the audit corpus, checked against a
 > **pinned snapshot of `origin/main`**. **Static analysis only.** "FIXED" means the code
@@ -39,6 +45,13 @@ Carried from prior runs (unchanged): `audit-2026-06-26`, `audit-2026-06-27` (×2
   (+ run 2 + a backlog catch-up), `08-08`, `08-09`, `08-15`, `08-16`.
 - `docs/dependency-audits/dep-audit-2026-08-15.md`.
 
+- **`docs/audit-2026-08-17-weekly.md`** — **NOT read by this run.** It merged at
+  `ba27d76a`, after the `470ff315` pin and before this tracker's PR merged, so it was
+  invisible to the analysis. Folded in only for C-3, which it carries as **L-10**. Its
+  other findings (including L-9 and the INFO items on `PlayIntegrityPlugin` comment drift
+  and `credentialVerifier` KDF doc drift) are **not** reflected anywhere below and are
+  owed a pass by the next run.
+
 Also scanned: `docs/audit-triage/` (26 files) and `docs/security-audits/` (11 files) — no
 finding IDs beyond those already catalogued.
 
@@ -71,6 +84,23 @@ part of the 2026-08-15 Codex remediation wave.
 gate display-only). The 2026-08-03 audit's own recommendation stands and is repeated here:
 **fix them or move them to a documented accepted-residual list**, because a finding that
 recurs unchanged four times is no longer telling anyone anything.
+
+> **Amendment, 2026-08-17 (post-publication) — two corrections to the paragraph above.**
+>
+> **1. It was the fifth audit, not the fourth.** This run pinned `470ff315`, and
+> `docs/audit-2026-08-17-weekly.md` merged at `ba27d76a` — *after* that pin but *before*
+> this tracker's own PR merged. So the weekly was invisible to the analysis and absent
+> from the source list. It re-raises C-3 as **L-10** ("Android raw HMAC output (factor H)
+> is still never zeroed — LIVE (carried, prior C-3)", `:403`). The pin is disclosed in the
+> header and the count was honest given what was read; it was still wrong. **A same-day
+> audit doc can land between the pin and the merge — check for one before publishing.**
+>
+> **2. C-3 / L-10 is now PARTIALLY closed** by **PR #1891** (`c4bf73a6`, merged
+> 2026-08-17T16:50Z). Raw H is zeroed; the unzeroable `String` copy is not. Detail in the
+> Still Open table below — the row is **kept**, not deleted, because the finding is not
+> fully closed and deleting it would overstate the fix.
+>
+> C-4 and C-5 are untouched by that PR and remain on their fifth audit.
 
 ### Two REGRESSIONS opened and closed inside the window
 
@@ -184,7 +214,7 @@ the second site is new, from the exception-safe `finally` added by #1643), **RAS
 
 | ID | Severity | Finding | File:Line | First reported |
 |---|---|---|---|---|
-| **C-3** (08-03) | MEDIUM | Android raw HMAC output (factor H) never zeroed. **Not a single `fill(0)` or `Arrays.fill` anywhere in the file** — re-confirmed by count this run | `HardwareKekPlugin.kt:373-374` (grep) | 2026-07-14 — **4th consecutive audit** |
+| **C-3 / L-10** (08-03, 08-17) | MEDIUM → LOW | **PARTIALLY CLOSED 2026-08-17 by PR #1891 (`c4bf73a6`).** The raw-H half is fixed: `hmacResult` is now scrubbed with `java.util.Arrays.fill(…, 0.toByte())` in a `finally`, so a throw from `encodeToString`/`resolve` cannot skip it. **What remains open is the `b64` copy** — H base64-encoded into a `java.lang.String` to cross the Capacitor bridge. Strings are immutable, so it is not zeroable and the fill does not reach it; closing it needs a bridge that carries bytes, not another `fill()`. Same kind as the accepted iOS `NSString hB64` residual (M-6 / iOS-F5-residual), which is why the severity drops rather than clearing. `macInput` is **deliberately** not scrubbed — it is the kekSalt (already plaintext in the vault blob) and on the v1 path it *is* the shared `PRF_EVAL_SALT` instance, so filling it would corrupt that constant for every later call and silently change H | `HardwareKekPlugin.kt` — scrub at the `doFinal` site; residual documented in the file header (grep) | 2026-07-14 — **5th consecutive audit**, now partial |
 | **C-4** (08-03) | MEDIUM | iOS `enroll()` plaintext-H buffer is an immutable `NSData`; the decrypt path does it correctly (`NSMutableData` + `resetBytesInRange`, `:354/:370`) and the fix was never mirrored | `HardwareKekPlugin.m:184` (grep) | 2026-07-14 — **4th consecutive audit** |
 | **C-5** (08-03) | MEDIUM | WC known-bad/unresolvable dApp flag is display-only at the per-request gate. `approveBlocked` is declared at `:180`, **before** `sessionUnresolved` and `dapp` exist at `:192-196`, so it structurally cannot reference them without a reorder | `RequestApprovalModal.jsx:180` (grep) | 2026-07-14 — **4th consecutive audit**, verbatim |
 | **C-2** (08-03) | MEDIUM (I4) | The documented PIN-backoff rate limiter is still dead code. `pinBackoffMs` has **no consumer outside its own module and tests**; `PIN_BACKOFF_KEY` is only ever `removeItem`'d (`WalletEntry.jsx:843`), never written or read. The module comment still asserts the tiers are live ("unchanged from the prior VULN-8 rate-limit") — that comment is the honesty gap | `pinAttemptGuard.js:37`, `WalletEntry.jsx:837,843` (grep) | 2026-07-20 |
@@ -247,7 +277,7 @@ against `ALL_RESIDUE_KEYS` (it wrote none).
 | G2-ROOTCERT-PIN | Play Integrity root pin | Needs a captured real token from a registered Play Console app |
 | iOS App Attest | Entitlement wiring | `DCAppAttestService.isSupported` no-ops |
 | C-1 v2→v3 migration | Android KEK salt migration | BLOCKED on-device; unit-tested only |
-| C-3 / C-4 | Native H residue, both platforms | Heap dump on a compromised device to demonstrate extractability |
+| C-3 / C-4 | Native H residue, both platforms | Heap dump on a compromised device to demonstrate extractability. **Unchanged by PR #1891** — that PR is source-verified and CI-compiled (`android-unit-tests` green) but was never run on a device, so "raw H no longer reachable from a heap dump" is asserted, not demonstrated. The unzeroable `String` copy means a heap dump would still be expected to yield H |
 | H1 / H2 / BIO-01 | Biometric OS-ACL binding (M2c/M2d) | Native plugin + real device |
 | weekly H-1 (07-14) | Timing equalisation | Code-correct; on-device wall-clock across success/duress/miss unmeasured |
 | 2026-07-20 weekly H-1 | WC session-approval BLOCK | Code-correct; that `TIER.BLOCK` refuses a session approval on a hooked device is unmeasured |
