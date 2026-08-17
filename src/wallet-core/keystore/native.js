@@ -979,43 +979,42 @@ export const nativeKeyStore = {
       // (which surfaces the proper error) instead of throwing from the metadata peek.
       try { peekRecord = parseVaultBlob(rawPeek); } catch { /* fall through */ }
       if (peekRecord && peekRecord.wrap === WRAP_VERSION_ENCLAVE) {
-        // OS biometric is enforced by the Enclave key ACL inside hwUnwrap — no
-        // separate app-layer gate. Tag cancel/lockout so the caller fails closed.
-        let blobJson;
-        try {
-          const { hwUnwrap } = await enclavePlugin();
-          blobJson = utf8FromBase64(await hwUnwrap(peekRecord.hw));
-        } catch (err) {
-          if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
-          throw err;
-        }
-        const innerBlob = parseVaultBlob(blobJson);
-        if (innerBlob.kekWrap) {
-          // Dual-enrolled: Enclave-wrapped outer + KEK-DEK inner. The Enclave
-          // layer is already unwrapped; now do the same KEK unwrap _unlockInner
-          // does (line ~461). getHardwareFactor may be absent if the caller
-          // passed skipBiometric — fail closed (I4).
-          const getHF = opts && opts.getHardwareFactor;
-          if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
-          let saltBytes, H, C, kek, dek;
+        // Suppress lock hook: hwUnwrap triggers Face ID via SE key ACL, and
+        // getHardwareFactorWithLockoutFallback may trigger a second biometric.
+        // Both cause appStateChange pause that would fire fireLockHook().
+        return withLockSuppressed(async () => {
+          let blobJson;
           try {
-            saltBytes = decodeKekSalt(innerBlob.kekSalt);
-            H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(innerBlob, saltBytes));
-            C = await deriveKekC(password, saltBytes);
-            kek = await combineKek(H, C);
-            if (H && H.fill) H.fill(0);
-            if (C) C.fill(0);
-            dek = await unwrapDek(kek, innerBlob.kekWrap);
-            return await decryptVaultWithDek(innerBlob, dek);
-          } finally {
-            if (saltBytes && saltBytes.fill) saltBytes.fill(0);
-            if (H && H.fill) H.fill(0);
-            if (C && C.fill) C.fill(0);
-            if (kek && kek.fill) kek.fill(0);
-            if (dek && dek.fill) dek.fill(0);
+            const { hwUnwrap } = await enclavePlugin();
+            blobJson = utf8FromBase64(await hwUnwrap(peekRecord.hw));
+          } catch (err) {
+            if (err && typeof err === 'object') err.veyrnoxBiometricGate = true;
+            throw err;
           }
-        }
-        return decryptVault(innerBlob, password);
+          const innerBlob = parseVaultBlob(blobJson);
+          if (innerBlob.kekWrap) {
+            const getHF = opts && opts.getHardwareFactor;
+            if (typeof getHF !== 'function') throw new Error(KEK_ERR.NO_HARDWARE_FACTOR);
+            let saltBytes, H, C, kek, dek;
+            try {
+              saltBytes = decodeKekSalt(innerBlob.kekSalt);
+              H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(innerBlob, saltBytes));
+              C = await deriveKekC(password, saltBytes);
+              kek = await combineKek(H, C);
+              if (H && H.fill) H.fill(0);
+              if (C) C.fill(0);
+              dek = await unwrapDek(kek, innerBlob.kekWrap);
+              return await decryptVaultWithDek(innerBlob, dek);
+            } finally {
+              if (saltBytes && saltBytes.fill) saltBytes.fill(0);
+              if (H && H.fill) H.fill(0);
+              if (C && C.fill) C.fill(0);
+              if (kek && kek.fill) kek.fill(0);
+              if (dek && dek.fill) dek.fill(0);
+            }
+          }
+          return decryptVault(innerBlob, password);
+        });
       }
     }
 
