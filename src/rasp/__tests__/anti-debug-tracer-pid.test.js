@@ -709,13 +709,13 @@ describe('Native signing gate — RaspIntegrityPlugin.isBlockTier + HardwareKekP
 // signatures (RFC 7518 §3.4, 64 bytes) to ASN.1 DER before calling JCA
 // SHA256withECDSA.verify(). The algorithm was extracted into EcdsaDerTranscoder.kt
 // (pure JVM, no Android context) so that RawEcdsaDerTranscoderTest.kt can
-// execute it with real P-256 keypairs on `./gradlew :app:testDebugUnitTest`.
+// execute it with real P-256 keypairs on `./gradlew :app:testGoogleDebugUnitTest`.
 // The CI job android-unit-tests runs it on every push.
 //
 // These structural pins confirm the three artefacts are all present and wired:
 //   1. EcdsaDerTranscoder.kt — extracted pure-JVM object
 //   2. RawEcdsaDerTranscoderTest.kt — JUnit test class with roundtrip fuzz
-//   3. ci.yml android-unit-tests job — `./gradlew :app:testDebugUnitTest`
+//   3. ci.yml android-unit-tests job — `./gradlew :app:testGoogleDebugUnitTest`
 
 describe('Item 38 — Kotlin JVM test harness: EcdsaDerTranscoder + CI gate', () => {
   it('EcdsaDerTranscoder.kt defines rawEcdsaSignatureToDer', () => {
@@ -736,9 +736,9 @@ describe('Item 38 — Kotlin JVM test harness: EcdsaDerTranscoder + CI gate', ()
     expect(ecdsaTestKt).toContain('secp256r1');
   });
 
-  it('ci.yml android-unit-tests job runs testDebugUnitTest', () => {
+  it('ci.yml android-unit-tests job runs testGoogleDebugUnitTest', () => {
     expect(ciYml).toContain('android-unit-tests');
-    expect(ciYml).toContain('testDebugUnitTest');
+    expect(ciYml).toContain('testGoogleDebugUnitTest');
   });
 });
 

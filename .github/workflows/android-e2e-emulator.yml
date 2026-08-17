@@ -91,7 +91,7 @@ jobs:
           npm run android:sync
           chmod +x android/gradlew
           cd android
-          ./gradlew assembleDebug --build-cache
+          ./gradlew assembleGoogleDebug --build-cache
 
       - name: Install Appium + UiAutomator2 driver
         run: |
