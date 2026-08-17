@@ -746,7 +746,7 @@ export default function WalletEntry() {
   const handleBiometricUnlock = async () => {
     setError(""); setBusy(true);
     try {
-      await unlockWithBiometric();
+      await unlockWithBiometric(); // success → isUnlocked flips → app renders
     } catch (e) {
       setBiometricFailed(true);
       if (isBiometricGateError(e)) {

@@ -159,6 +159,7 @@ import { DECOY_BIOMETRIC_MARKER_KEY } from '@/lib/duressBiometricGuard';
 import {
   storeUnlockSecret,
   retrieveUnlockSecret,
+  retrieveUnlockSecretDirect,
   clearUnlockSecret,
 } from '@/lib/biometricUnlock';
 // PASSKEY UNLOCK GATE (S1). The dual of the biometric gate: an ADDITIONAL
@@ -1642,7 +1643,6 @@ export function WalletProvider({ children }) {
         throw Object.assign(new Error('UNLOCK_SUPERSEDED'), { code: 'UNLOCK_SUPERSEDED' });
       }
     };
-    return withLockSuppressed(async () => {
     // PROVISIONAL app-layer biometric gate. In demo this shows the simulated
     // prompt; on native the real OS prompt fires inside keyStore.unlock(). A
     // cancel here throws a BiometricGateError and aborts the unlock before any
@@ -2037,7 +2037,6 @@ export function WalletProvider({ children }) {
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
     return { passkeySkipped, biometricSkipped };
-    });
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // BIOMETRIC ONE-TAP UNLOCK (convenience over the existing vault).
@@ -2140,16 +2139,36 @@ export function WalletProvider({ children }) {
       try { await showSimulatedPrompt(status); }
       catch (err) { throw new BiometricGateError('cancelled', err); }
     }
-    // native: the OS biometric sheet fires inside retrieveUnlockSecret() (to
-    // release the cache) and again inside keyStore.unlock() (to read the vault).
-    // withLockSuppressed prevents the FaceID sheet's appStateChange pause from
-    // firing lock() — which would bump unlockGenRef and cause UNLOCK_SUPERSEDED
-    // when unlock() resumes. keyStore.unlock() has its own withLockSuppressed
-    // for FaceID #2.
+    // SINGLE-PROMPT DESIGN (device-confirmed iPhone 17 Pro Max / Pixel 10 Pro XL).
+    // Both KEK and non-KEK vaults fire exactly ONE biometric prompt per one-tap
+    // unlock: non-KEK gets it from retrieveUnlockSecret() (the cache-gate), KEK
+    // gets it from the SE/StrongBox ACL inside keyStore.unlock(). The second call
+    // (unlock) always receives skipBiometric:true, which disables both the
+    // app-layer runBiometricGate and the native requireBiometric gate.
+    //
+    // TRIPLE-PROMPT FIX (device-confirmed iPhone 17 Pro Max / Pixel 10 Pro XL).
+    // On a KEK-enrolled native vault, one-tap unlock fired THREE biometric prompts:
+    // (#1) the app-layer cache-gate here, and (#2/#3) the Secure-Enclave / StrongBox
+    // key-retrieve + decrypt inside keyStore.unlock() (getHardwareFactor). The SE
+    // requires TWO evaluations by design (one per ACL-gated op) and the native plugin
+    // is correct — so we drop the REDUNDANT #1. For a KEK vault the cached PIN is the
+    // C-factor ONLY; the DEK = HKDF(H ‖ C) and H is producible ONLY by passing the
+    // hardware-enforced SE gate below — reading the cached C without H unwraps nothing.
+    // So the app-layer cache-gate cannot strengthen a KEK vault; we read the cached PIN
+    // directly (retrieveUnlockSecretDirect, no BiometricAuth.authenticate) and rely
+    // solely on the unbypassable SE gate. For a NON-KEK vault the cache-gate IS the sole
+    // biometric gate protecting the cached password and MUST be preserved (I4). A
+    // best-effort false negative from isVaultKekEnrolledSafe() keeps the cache-gate on
+    // (fails safe toward MORE protection), never off.
     let password;
     try {
-      password = await withLockSuppressed(() => retrieveUnlockSecret());
+      const kekEnrolled = Capacitor.isNativePlatform() && await isVaultKekEnrolledSafe();
+      password = kekEnrolled
+        ? await retrieveUnlockSecretDirect({ kekEnrolled: true })
+        : await retrieveUnlockSecret();
     } catch (err) {
+      // A cancelled/failed biometric match on the cache release. Fail closed and
+      // route to the password fallback, same as a cancelled demo prompt.
       throw new BiometricGateError('cancelled', err);
     }
     if (!password) throw new BiometricGateError('no-secret');
