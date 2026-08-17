@@ -6,8 +6,11 @@
 // the pure check over it. Mirrors wallet-core/evm/poison.js's LOCAL_FLAGGED
 // pattern: LOCAL-ONLY (checking it leaks nothing off-device), illustrative and
 // non-exhaustive, and it NEVER asserts a domain is "safe" — only that a domain is
-// known bad. Intended to be hydrated from a real threat feed later and still stay
-// local. No network, no keys, no React.
+// known bad.
+//
+// Now augmented by phishingFeed.js: a remote-updatable domain list cached in
+// IndexedDB. checkDappDomain checks the live feed first, then falls back to
+// the local seed. The domain being checked NEVER leaves the device.
 
 // Moved verbatim out of pages/DAppSecurityAlerts.jsx so the page and the
 // WalletConnect connect/request flow share one list.
@@ -59,32 +62,39 @@ export function normalizeDomain(input) {
     .split(/[/?#]/)[0];
 }
 
+// ESM circular import is safe here: phishingFeed imports LOCAL_KNOWN_BAD and
+// normalizeDomain (both resolved at module load), and we import checkDomain
+// which is only called at runtime inside checkDappDomain.
+import { checkDomain } from './phishingFeed.js';
+
 /**
- * Check a dApp URL/domain against the LOCAL known-bad list. Pure + total: never
- * throws, never makes a network call, and never returns a "safe" verdict —
- * absence from the list is reported as flagged:false, which the caller must NOT
- * present as a safety guarantee.
+ * Check a dApp URL/domain against the live phishing feed (if available) AND
+ * the local known-bad list. Pure + total: never throws, never makes a network
+ * call at check time, and never returns a "safe" verdict — absence from both
+ * lists is reported as flagged:false, which the caller must NOT present as a
+ * safety guarantee.
  *
  * @param {unknown} url
- * @returns {{ domain: string, flagged: boolean, reason: string|null }}
+ * @returns {{ domain: string, flagged: boolean, reason: string|null, source: string|null }}
  */
 export function checkDappDomain(url) {
-  const domain = normalizeDomain(url);
-  if (!domain) return { domain: '', flagged: false, reason: null };
-  // Exact match first.
-  const exact = BAD_SET.get(domain);
-  if (exact) return { domain, flagged: true, reason: exact.reason };
+  try {
+    return checkDomain(url);
+  } catch {
+    // Fallback: local seed only (phishingFeed errored).
+    const domain = normalizeDomain(url);
+    if (!domain) return { domain: '', flagged: false, reason: null, source: null };
 
-  // L5: parent-domain (suffix) walk. A subdomain of a known-bad domain is also
-  // bad: app.knownbad.com matches knownbad.com. Strip one leading label at a
-  // time and re-check. Stop before the final two labels would collapse to a
-  // bare TLD — we never match on a shared TLD alone (that would over-match).
-  const labels = domain.split('.');
-  for (let i = 1; i < labels.length - 1; i++) {
-    const suffix = labels.slice(i).join('.');
-    const hit = BAD_SET.get(suffix);
-    if (hit) return { domain, flagged: true, reason: hit.reason };
+    const exact = BAD_SET.get(domain);
+    if (exact) return { domain, flagged: true, reason: exact.reason, source: 'local' };
+
+    const labels = domain.split('.');
+    for (let i = 1; i < labels.length - 1; i++) {
+      const suffix = labels.slice(i).join('.');
+      const hit = BAD_SET.get(suffix);
+      if (hit) return { domain, flagged: true, reason: hit.reason, source: 'local' };
+    }
+
+    return { domain, flagged: false, reason: null, source: null };
   }
-
-  return { domain, flagged: false, reason: null };
 }
