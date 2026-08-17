@@ -220,9 +220,15 @@ function init() {
     // suspenders alongside WalletProvider's existing `visibilitychange` lock.
     // Best-effort: @capacitor/app may be unavailable in some shells.
     try {
+      // `pause` stays unguarded — it is the genuine-background signal, and the
+      // stale-event guard below must never become a single point of failure for
+      // background hardening.
       App.addListener('pause', fireLockHook);
+      // `appStateChange` is the path a Face ID sheet emits on (resign-active without
+      // backgrounding) and the one that flushes late behind a blocked main thread.
+      // See shouldFireLockOnAppStateChange for the full race.
       App.addListener('appStateChange', ({ isActive }) => {
-        if (!isActive) fireLockHook();
+        if (shouldFireLockOnAppStateChange(isActive, liveVisibilityState())) fireLockHook();
       });
     } catch {
       /* non-fatal — WalletProvider's visibilitychange auto-lock still applies. */
@@ -243,6 +249,65 @@ function fireLockHook() {
   // Suppressed during biometric-gated non-unlock operations (see _lockSuppressDepth).
   if (_lockSuppressDepth > 0) return;
   if (typeof _lockHook === 'function') _lockHook();
+}
+
+/**
+ * Should a delivered `appStateChange` event fire the background lock hook?
+ *
+ * THE RACE THIS CLOSES (#1881's target, without #1881's cost). Depth-based
+ * suppression (`_lockSuppressDepth`) covers the window in which an OS sheet is
+ * OPEN. It cannot cover DELIVERY: Capacitor dispatches `appStateChange` through
+ * the bridge asynchronously, and the main thread is blocked for seconds at a time
+ * by the synchronous Argon2id WASM (192 MiB — see vault.js KDF_PARAMS). So the
+ * `isActive:false` emitted when a Face ID sheet resigned active earlier can flush
+ * LATE — after suppression has already returned to 0, typically just as the user's
+ * next PIN unlock completes its KDF. `fireLockHook()` then calls
+ * WalletProvider.lock(), which bumps `unlockGenRef`, and the in-flight unlock
+ * aborts with UNLOCK_SUPERSEDED before `keyStore.unlock()` has even started.
+ *
+ * The discriminator is LIVE state, not the event payload: a queued pause describes
+ * a moment that has passed, so if the WebView is visible right now the event is
+ * stale and must not lock. `document.visibilityState` is read SYNCHRONOUSLY —
+ * deliberately, and not `App.getState()`, which is a bridge round-trip whose
+ * promise would resolve only AFTER a genuine background ended (reporting
+ * `isActive:true` on resume) and would therefore skip the lock on exactly the case
+ * that most needs it.
+ *
+ * FAIL CLOSED (I4): only a definite `'visible'` proves staleness. Any other value —
+ * `'hidden'`, `'prerender'`, a missing `document`, a throwing getter — locks.
+ *
+ * SCOPE, and why `pause` is deliberately NOT routed through here: on iOS the Face ID
+ * sheet resigns active WITHOUT backgrounding the app, so it emits `appStateChange`
+ * only. A real background emits `pause` as well, and that listener stays unguarded —
+ * so genuine background hardening never depends on `visibilityState` being right.
+ * This guard narrows one event path; it removes no existing protection.
+ *
+ * Stated precisely, because it is the safety argument: on native these two listeners
+ * are the ONLY background-lock signals. WalletProvider's `visibilitychange` handler
+ * returns early on `Capacitor.isNativePlatform()` by design (a second unsuppressable
+ * lock path would itself race unlock/enrollKek), so it is a web fallback, NOT a third
+ * net here. Losing the background lock therefore needs BOTH `pause` to not fire AND
+ * `visibilityState` to read `'visible'` while genuinely backgrounded — two independent
+ * failures, where before this change there was one path with no failure mode but also
+ * no way to tell a live pause from a stale one.
+ *
+ * @param {boolean} isActive   the delivered event's payload
+ * @param {string} [visibilityState]  live `document.visibilityState` at delivery
+ * @returns {boolean} true → fire the lock hook
+ */
+export function shouldFireLockOnAppStateChange(isActive, visibilityState) {
+  if (isActive) return false;
+  return visibilityState !== 'visible';
+}
+
+/** Live visibility, fail-closed: anything unreadable reads as backgrounded. */
+function liveVisibilityState() {
+  try {
+    if (typeof document === 'undefined') return 'unknown';
+    return document.visibilityState ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 // Wrap a biometric-gated operation so the lock hook is suppressed while it
