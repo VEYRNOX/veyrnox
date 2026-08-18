@@ -29,8 +29,10 @@ const STORE_NAME = 'domains';
 const META_KEY = '__meta__';
 const STALE_MS = 60 * 60 * 1000;
 
+/** @type {Map<string, {domain: string, reason: string}>|null} */
 let _feedDomains = null;
 let _hydrated = false;
+/** @type {Promise<void>|null} */
 let _hydratePromise = null;
 
 function openDb() {
@@ -135,7 +137,9 @@ export function checkDomain(url) {
   const labels = domain.split('.');
 
   // Check feed first (more up-to-date), then local seed.
-  for (const [map, source] of [[_feedDomains, 'feed'], [LOCAL_MAP, 'local']]) {
+  /** @type {Array<[Map<string,{reason:string}>|null, 'feed'|'local']>} */
+  const sources = [[_feedDomains, 'feed'], [LOCAL_MAP, 'local']];
+  for (const [map, source] of sources) {
     if (!map) continue;
 
     const exact = map.get(domain);

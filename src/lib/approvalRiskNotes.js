@@ -36,8 +36,10 @@ export function getRiskNote(spender, chain = 'evm') {
 
   if (_cache.has(key)) return _cache.get(key);
 
-  // Local threat intel — instant, no network.
-  const localHit = lookupThreatSync(spender);
+  // Local threat intel — instant, no network. Returns Array of matches;
+  // take the first if any.
+  const localHits = lookupThreatSync(spender);
+  const localHit = localHits.length > 0 ? localHits[0] : null;
   if (localHit) {
     const note = {
       note: `Flagged: ${localHit.note || localHit.category}. ${severityAdvice(localHit.severity)}`,
@@ -77,6 +79,9 @@ async function fetchRiskNote(spender, chain, key) {
   }
 
   try {
+    // sourcesConsulted is populated at runtime by tipScreen but not in its
+    // declared @returns shape; cast to any so downstream reads type-check.
+    /** @type {any} */
     const result = await screenTransaction({
       chain,
       actionType: 'approval_check',
