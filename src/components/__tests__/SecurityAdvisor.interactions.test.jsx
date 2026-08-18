@@ -31,8 +31,6 @@ vi.mock('@/api/tipScreen.js', () => ({
 
 async function mountAdvisor() {
   vi.resetModules();
-  vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-  vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
   vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
 
   const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
@@ -281,15 +279,10 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
 
     it('continues using local KB when TIP chat is unconfigured', async () => {
       vi.unstubAllEnvs();
-      // TIP chat is now gated on SUPABASE_URL + ANON_KEY (not TIP_BASE_URL).
-      // Blanking both disables the tip-chat proxy endpoint entirely.
-      vi.stubEnv('VITE_SUPABASE_URL', '');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
+      // Blanking TIP_BASE_URL disables the chat feature switch entirely.
       vi.stubEnv('VITE_TIP_BASE_URL', '');
 
       vi.resetModules();
-      vi.stubEnv('VITE_SUPABASE_URL', '');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
       vi.stubEnv('VITE_TIP_BASE_URL', '');
 
       const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
@@ -359,8 +352,6 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
   describe('Context-aware advisor correlation with page state', () => {
     it('provides send-screen-specific advice for send page', async () => {
       vi.resetModules();
-      vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
       vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
 
       const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
@@ -384,8 +375,6 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
 
     it('correlates deniability advice with deniability page context', async () => {
       vi.resetModules();
-      vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
       vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
 
       const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
@@ -484,8 +473,6 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
       isDeniabilityOrDemoActive.mockReturnValue(true);
       try {
         vi.resetModules();
-        vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-        vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
         vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
         const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
         render(
