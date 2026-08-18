@@ -613,7 +613,7 @@ export default function SecurityAdvisor({ walletChain }) {
           messages: [
             {
               role: "system",
-              content: `You are the Veyrnox Security Advisor — an expert security guide embedded in the Veyrnox self-custody crypto wallet. You give clear, actionable security advice tailored to what the user is doing right now.
+              content: `You are Vigil, the Veyrnox Security Advisor — an expert security guide embedded in the Veyrnox self-custody crypto wallet. You give clear, actionable security advice tailored to what the user is doing right now.
 
 Current page: ${currentScreen} (chain: ${walletChain || "evm"})
 ${PAGE_CONTEXT[currentScreen] || PAGE_CONTEXT.general}
@@ -739,7 +739,6 @@ Additional public knowledge you should apply:
   };
 
   const handleClose = () => {
-    if (abortRef.current) abortRef.current.abort();
     setOpen(false);
   };
 
@@ -747,22 +746,33 @@ Additional public knowledge you should apply:
 
   return (
     <>
-      {/* FAB */}
+      {/* FAB — pulse animation draws attention to the advisor */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        aria-label="Open Security Advisor"
+        aria-label="Open Vigil — Security Advisor"
       >
-        <ShieldCheck className="h-5 w-5" />
+        <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-20" />
+        <ShieldCheck className="relative h-5 w-5" />
       </button>
 
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent className="max-h-[92dvh] flex flex-col">
+      <Drawer open={open} onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) {
+          if (abortRef.current) abortRef.current.abort();
+          setMessages([]);
+          setInput("");
+        }
+      }}>
+        <DrawerContent className="max-h-[95dvh] flex flex-col">
           <DrawerHeader className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              <DrawerTitle className="text-sm">Security Advisor</DrawerTitle>
+              <div>
+                <DrawerTitle className="text-sm">Vigil</DrawerTitle>
+                <p className="text-[10px] text-muted-foreground leading-tight">Security Advisor</p>
+              </div>
               {offline && (
                 <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-500">
                   <WifiOff className="h-2.5 w-2.5" />
@@ -826,12 +836,12 @@ Additional public knowledge you should apply:
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3"
-            style={{ minHeight: "200px", maxHeight: "calc(92dvh - 140px)" }}
+            style={{ minHeight: "300px", maxHeight: "calc(95dvh - 140px)" }}
           >
             {messages.length === 0 && (
               <div className="space-y-3 pt-1">
                 <p className="text-xs text-muted-foreground text-center">
-                  Your security guide for this page. Tap any question to learn more.
+                  Hi, I'm Vigil. Tap any question or type your own below.
                 </p>
                 <div className="flex flex-col gap-1.5">
                   {getSuggestedQuestions(currentScreen).map((q) => (
@@ -911,7 +921,7 @@ Additional public knowledge you should apply:
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about security..."
+              placeholder="Ask Vigil anything..."
               disabled={streaming}
               className="flex-1 rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
               autoComplete="off"

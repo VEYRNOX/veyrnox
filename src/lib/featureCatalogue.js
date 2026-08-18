@@ -258,6 +258,12 @@ export const FEATURE_CATEGORIES = [
         summary: 'Ciphertext-only vault backup',
         explanation: 'Built (/personal-backup). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device. The ECC independent review (2026-06-23) confirmed key custody for this LOCAL path (plaintext seed never leaves the device; Argon2id (64 MiB / t=3, reviewed at 192 MiB then lowered for device latency — not yet re-reviewed at 64 MiB) + AES-256-GCM; verify-before-success) and the only finding (L-1, PIN floor 4→6 digits) was fixed in PR #340. Scope note: this is the local file path only — the BACKEND-ESCROW variant (a server-side ciphertext target) remains backend + review gated and is not built.',
       },
+      {
+        name: 'Shamir Shard Backup (2-of-3)',
+        status: 'verified',
+        summary: 'Split vault DEK into 2-of-3 Shamir shares for distributed recovery',
+        explanation: 'Built (/personal-backup, Advanced tab). The vault DEK is split into three Shamir Secret Sharing shares over GF(2^8); any two of three reconstruct the key. Each share is exported as a passphrase-wrapped, integrity-checked recovery bundle (SHARD_BUNDLE_VERSION 2, with nested-key-aware vault hash). Same-device and cross-device restore are supported. Gated behind Safety Plus subscription. Pre-audit preview: owner-authorized 2026-08-08 carve-out ahead of independent audit. Passphrase wrapping is mandatory (PR #1752 closed an earlier gap where the checkbox shipped unwired, silently producing unencrypted bundles). NOT verified: no real on-device recovery round-trip confirmed, no independent audit. Cross-platform cloud sync (iCloud/Google Backup) not shipped. Hand-rolled Shamir implementation — audited library replacement (#1833) parked.',
+      },
     ],
   },
   {
@@ -411,22 +417,26 @@ export const FEATURE_CATEGORIES = [
     ],
   },
   {
-    // Advisory-only stays in the CATEGORY name, not just the entry text: the
-    // category label is what a scanning reader takes away, and it must not read
-    // as a protection claim on its own.
-    //
-    // Deliberately NOT re-listed here: address screening, risk scoring, drainer
-    // detection and approval view/revoke. Each is already catalogued under
-    // Security as a verified entry with its own honest limits. Restating them
-    // under new names in a second category inflates apparent coverage without
-    // adding a capability.
-    category: 'AI Assistant (Advisory-Only)',
+    // Merged 2026-08-18 during #1899 rebase: branch renamed the category to
+    // "AI Security Protection" and consolidated entries; main (#1897) added
+    // Live Phishing Domain Feed and Approval Monitor + kept the older Q&A
+    // roadmap items. Take the branch's category name (drops the misleading
+    // "Advisory-Only" framing since Address Threat Screening genuinely gates
+    // sends), promote the shipped chat panel to verified (main's Personal AI
+    // Advisor), and keep every unique entry from both sides.
+    category: 'AI Security Protection',
     features: [
       {
-        name: 'Personal AI Advisor',
+        name: 'AI Security Advisor',
         status: 'verified',
-        summary: 'LLM chat via TIP proxy — advisory only',
-        explanation: 'An opt-in LLM chat panel (SecurityAdvisor, wired in Layout) that answers security questions via the tip-chat Supabase Edge Function over SSE. The AI never holds keys, never signs, and never initiates a transaction — it cannot act, only answer. The conversation is secret-scrubbed before sending. I3: the panel renders nothing and aborts in-flight requests in deniability/demo. This is a chat interface, not monitoring: it sees only what you type into it.',
+        summary: 'LLM-powered security chat with local knowledge fallback',
+        explanation: 'Built. A floating chat panel (SecurityAdvisor, wired in Layout) powered by the TIP backend via a server-side Supabase Edge Function proxy (tip-chat) over SSE. The AI never holds keys, never signs, and never initiates a transaction — it cannot act, only answer. The advisor answers wallet, crypto, and security questions with context-aware responses; streaming errors fall back to a bundled local knowledge base (I4 fail-closed). The system prompt (server-side) refuses seeds, keys, and PINs. User messages are scrubbed of secret material before sending. Requires explicit advisor consent (opt-in). Suppressed entirely in deniability/demo sessions (I3 — FAB hidden, in-flight requests aborted, zero egress). The wallet never ships TIP API keys (I1); the Edge Function holds them server-side. NOT independently audited.',
+      },
+      {
+        name: 'Address Threat Screening',
+        status: 'roadmap',
+        summary: 'Multi-source sanctions, phishing, and hack-registry screening on send',
+        explanation: 'Built. Before a send, the recipient address is screened via a multi-source aggregator (sanctions lists, phishing registries, hack-fund trackers, contract-risk signals, and transaction simulation) through the tip-screen Edge Function proxy. Covers EVM, BTC, and SOL address formats. A sanctioned-namespace cross-chain lane blocks known threat actors (Tornado Cash, Lazarus, Blender.io, Sinbad, Ronin bridge) on every EVM chain, not just Ethereum. Falls back to honest "unknown" when all sources are unavailable rather than defaulting to "clean" (I4). A locally-cached, Ed25519-signed IOC manifest provides offline/deniability screening. Advisory — warns rather than silently blocks. NOT independently audited.',
       },
       {
         name: 'Transaction Explanation',
@@ -443,8 +453,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Educational Assistant',
         status: 'roadmap',
-        summary: 'Answer wallet / crypto questions',
-        explanation: 'Answer questions about gas, approvals, address formats, and wallet concepts. Advisory only; specced, not yet built.',
+        summary: 'Answer wallet and crypto security questions',
+        explanation: 'Built. The AI Security Advisor doubles as an educational assistant — it answers questions about gas, approvals, address formats, wallet security, and crypto concepts. Responses are context-aware (the advisor knows which screen the user is on) and include follow-up suggestions. Falls back to the local knowledge base when offline. Advisory only — the AI never holds keys and never signs.',
       },
       {
         name: 'Portfolio Q&A',
@@ -512,14 +522,20 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'iOS App',
         status: 'roadmap',
-        summary: 'Native iOS shell',
-        explanation: 'A native iOS shell runs on the simulator; App Store submission is gated on an Apple organisation account. Roadmap.',
+        summary: 'Native iOS shell — TestFlight internal testing',
+        explanation: 'Built. Native iOS shell via Capacitor, published to TestFlight (1.0.1 Build 11, READY_FOR_BETA_TESTING). Apple Organisation account (Veyrnox LTD, Team R54268MWFV) verified. CLI archive + upload pipeline working (xcodebuild + altool). App Store review submission on hold pending pre-submission verification checklist (fresh-device golden-path walk, Organizer crash/hang check). NOT verified: no App Store review submission made, RASP on a TestFlight install not device-verified.',
       },
       {
         name: 'Android App',
         status: 'roadmap',
-        summary: 'Native Android shell',
-        explanation: 'A native Android shell is scaffolded (non-custodial = store-exempt in the relevant sense). Roadmap.',
+        summary: 'Native Android shell — Play internal testing',
+        explanation: 'Built. Native Android shell via Capacitor, published to Play internal testing track (1.0, versionCode 6). Upload key reset completed. Play Billing (IAP) device-verified on internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). App Store review submission on hold pending pre-submission verification checklist (Pre-launch report, Android Vitals crash/ANR check, fresh-device golden-path walk). NOT verified: RASP on a Play install not device-verified, no production review submission made.',
+      },
+      {
+        name: 'Samsung Galaxy Store',
+        status: 'roadmap',
+        summary: 'Samsung Galaxy Store distribution via Gradle product flavors',
+        explanation: 'Built. Samsung Galaxy Store integration via Gradle product flavors (google/samsung) and RevenueCat Samsung billing. The samsung flavor uses Samsung In-App Purchase SDK instead of Google Play Billing. CI produces Samsung-specific artifacts. NOT verified: no Galaxy Store submission made, no device-verified purchase on Samsung billing.',
       },
       {
         name: 'Voice Commands',
