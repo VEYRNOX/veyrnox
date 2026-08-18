@@ -1113,7 +1113,6 @@ Additional public knowledge you should apply:
       setStreaming(false);
       abortRef.current = null;
     }
-  }, [messages, streaming, currentScreen, walletChain, answerLocally, currentLanguage, currentLanguageName, t]);
   }, [messages, streaming, currentScreen, walletChain, pageSnapshot, answerLocally, currentLanguage, currentLanguageName, t]);
 
   const handleSubmit = (e) => {
