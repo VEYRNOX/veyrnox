@@ -120,7 +120,16 @@ async function refreshFeed() {
   } catch { /* feed fetch failure is non-fatal — local seed remains */ }
 }
 
-const LOCAL_MAP = buildMap(LOCAL_KNOWN_BAD);
+// Lazy — knownBadDapps.js also imports checkDomain from this file, so at module
+// load LOCAL_KNOWN_BAD is still in its TDZ / undefined when the mutual import
+// hits us. Build the map on first checkDomain() call instead.
+/** @type {Map<string, {reason: string}>|null} */
+let _localMap = null;
+function localMap() {
+  if (_localMap) return _localMap;
+  _localMap = buildMap(LOCAL_KNOWN_BAD || []);
+  return _localMap;
+}
 
 /**
  * Check a dApp URL/domain against both the live feed AND the local seed.
@@ -138,7 +147,7 @@ export function checkDomain(url) {
 
   // Check feed first (more up-to-date), then local seed.
   /** @type {Array<[Map<string,{reason:string}>|null, 'feed'|'local']>} */
-  const sources = [[_feedDomains, 'feed'], [LOCAL_MAP, 'local']];
+  const sources = [[_feedDomains, 'feed'], [localMap(), 'local']];
   for (const [map, source] of sources) {
     if (!map) continue;
 
