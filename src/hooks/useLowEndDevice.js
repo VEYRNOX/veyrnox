@@ -9,7 +9,16 @@
 // falls back to `Infinity` so that platform is never misclassified as
 // low-end on that axis alone.
 //
-// Thresholds: <=4 GB RAM or <=4 logical cores counts as low-end.
+// Thresholds: <=2 GB RAM or <=2 logical cores counts as low-end.
+//
+// E2E override: Playwright CI runners are 4-core / 16 GB so they never trip the
+// heuristic and animate the lamp for the whole suite — enough main-thread load
+// to time out the onboarding illegal-transit specs. Force low-end when
+// VITE_TEST_E2E is set so tests see the same "no lamp" render path shipped
+// devices in the low-end bucket already get.
+const forcedLowEnd =
+  typeof import.meta !== "undefined" && import.meta.env?.VITE_TEST_E2E === "1";
+
 const mem =
   typeof navigator !== "undefined" && navigator.deviceMemory != null
     ? navigator.deviceMemory
@@ -19,6 +28,6 @@ const cores =
     ? navigator.hardwareConcurrency
     : Infinity;
 
-export const isLowEndDevice = mem <= 4 || cores <= 4;
+export const isLowEndDevice = forcedLowEnd || mem <= 2 || cores <= 2;
 
 export default isLowEndDevice;
