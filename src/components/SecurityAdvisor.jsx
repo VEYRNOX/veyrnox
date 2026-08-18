@@ -760,6 +760,12 @@ function ScreeningVerdict({ result }) {
   );
 }
 
+/**
+ * @param {{
+ *   walletChain?: string | null,
+ *   pageSnapshot?: any,
+ * }} props
+ */
 export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   const location = useLocation();
   const currentScreen = resolveScreen(location.pathname);
