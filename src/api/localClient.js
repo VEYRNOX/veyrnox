@@ -97,6 +97,48 @@ const getTable = async (name) => (await idbGet(name)) || [];
 const matches = (row, query) =>
   !query || Object.entries(query).every(([k, v]) => row[k] === v);
 
+function parseSort(sort) {
+  if (typeof sort !== 'string' || !sort.trim()) return null;
+  const key = sort.startsWith('-') ? sort.slice(1) : sort;
+  if (!key) return null;
+  return { key, desc: sort.startsWith('-') };
+}
+
+function compareValues(a, b) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  const aTime = typeof a === 'string' ? Date.parse(a) : NaN;
+  const bTime = typeof b === 'string' ? Date.parse(b) : NaN;
+  if (!Number.isNaN(aTime) && !Number.isNaN(bTime)) return aTime - bTime;
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function sortRows(rows, sort) {
+  const parsed = parseSort(sort);
+  if (!parsed) return rows.slice();
+  const { key, desc } = parsed;
+  return rows.slice().sort((a, b) => {
+    const cmp = compareValues(a?.[key], b?.[key]);
+    return desc ? -cmp : cmp;
+  });
+}
+
+function applyLimit(rows, limit) {
+  const n = Number(limit);
+  if (!Number.isFinite(n) || n <= 0) return rows;
+  return rows.slice(0, Math.floor(n));
+}
+
+function makeMissingRowError(entityName, id) {
+  const err = new Error(`${entityName} row not found: ${id}`);
+  err.code = 'LOCAL_ENTITY_NOT_FOUND';
+  err.entity = entityName;
+  err.id = id;
+  return err;
+}
+
 // Globally-unique, collision-free ids that survive across sessions (a module
 // counter would reset to the same values on every reload). Prefer the platform
 // UUID; fall back to a timestamped random suffix where it's unavailable.
@@ -111,15 +153,15 @@ const nextId = () => {
 
 function makeEntity(name) {
   return {
-    // base44's list takes (sort, limit); the local store keeps insertion order
-    // (newest first, like the demo) and callers re-sort/slice as needed, so the
-    // args are accepted but not used here — same observable behaviour as demo.
-    list: async (_sort, _limit) => (await getTable(name)).slice(),
+    // base44's list takes (sort, limit). Honor both so callers that were written
+    // against the hosted API keep the same ordering/size semantics locally.
+    list: async (sort, limit) => applyLimit(sortRows(await getTable(name), sort), limit),
     filter: async (query) => (await getTable(name)).filter((r) => matches(r, query)),
     get: async (id) => (await getTable(name)).find((r) => r.id === id) || null,
     create: async (data) => {
       const rows = await getTable(name);
-      const row = { id: nextId(), created_date: iso(Date.now()), ...data };
+      const now = iso(Date.now());
+      const row = { id: nextId(), created_date: now, updated_date: now, ...data };
       rows.unshift(row);
       await idbPut(name, rows);
       return row;
@@ -127,12 +169,10 @@ function makeEntity(name) {
     update: async (id, data) => {
       const rows = await getTable(name);
       const i = rows.findIndex((r) => r.id === id);
-      if (i >= 0) {
-        rows[i] = { ...rows[i], ...data };
-        await idbPut(name, rows);
-        return rows[i];
-      }
-      return { id, ...data };
+      if (i < 0) throw makeMissingRowError(name, id);
+      rows[i] = { ...rows[i], ...data, updated_date: iso(Date.now()) };
+      await idbPut(name, rows);
+      return rows[i];
     },
     delete: async (id) => {
       const rows = await getTable(name);

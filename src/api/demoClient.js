@@ -197,21 +197,65 @@ const ok = (v) => Promise.resolve(v);
 const matches = (row, query) =>
   !query || Object.entries(query).every(([k, v]) => row[k] === v);
 
+function parseSort(sort) {
+  if (typeof sort !== 'string' || !sort.trim()) return null;
+  const key = sort.startsWith('-') ? sort.slice(1) : sort;
+  if (!key) return null;
+  return { key, desc: sort.startsWith('-') };
+}
+
+function compareValues(a, b) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  const aTime = typeof a === 'string' ? Date.parse(a) : NaN;
+  const bTime = typeof b === 'string' ? Date.parse(b) : NaN;
+  if (!Number.isNaN(aTime) && !Number.isNaN(bTime)) return aTime - bTime;
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function sortRows(rows, sort) {
+  const parsed = parseSort(sort);
+  if (!parsed) return rows.slice();
+  const { key, desc } = parsed;
+  return rows.slice().sort((a, b) => {
+    const cmp = compareValues(a?.[key], b?.[key]);
+    return desc ? -cmp : cmp;
+  });
+}
+
+function applyLimit(rows, limit) {
+  const n = Number(limit);
+  if (!Number.isFinite(n) || n <= 0) return rows;
+  return rows.slice(0, Math.floor(n));
+}
+
+function makeMissingRowError(entityName, id) {
+  const err = new Error(`${entityName} row not found: ${id}`);
+  err.code = 'DEMO_ENTITY_NOT_FOUND';
+  err.entity = entityName;
+  err.id = id;
+  return err;
+}
+
 function makeEntity(name) {
   return {
-    list: (_sort, _limit) => ok(tableFor(name).slice()),
+    list: (sort, limit) => ok(applyLimit(sortRows(tableFor(name), sort), limit)),
     filter: (query) => ok(tableFor(name).filter((r) => matches(r, query))),
     get: (id) => ok(tableFor(name).find((r) => r.id === id) || null),
     create: (data) => {
-      const row = { id: nextId(), created_date: iso(Date.now()), ...data };
+      const now = iso(Date.now());
+      const row = { id: nextId(), created_date: now, updated_date: now, ...data };
       tableFor(name).unshift(row);
       return ok(row);
     },
     update: (id, data) => {
       const t = tableFor(name);
       const i = t.findIndex((r) => r.id === id);
-      if (i >= 0) t[i] = { ...t[i], ...data };
-      return ok(t[i] || { id, ...data });
+      if (i < 0) return Promise.reject(makeMissingRowError(name, id));
+      t[i] = { ...t[i], ...data, updated_date: iso(Date.now()) };
+      return ok(t[i]);
     },
     delete: (id) => {
       const t = tableFor(name);
