@@ -241,10 +241,22 @@
       "intro": "Ένας επιπλέον έλεγχος πάνω από το PIN σας για ευαίσθητες ενέργειες. Ακόμα κι αν κάποιος σας δει να πληκτρολογείτε το PIN σας, δεν μπορεί να κάνει αυτά τα πράγματα χωρίς το δεύτερο βήμα.",
       "actions_protects_label": "Ενέργειες που προστατεύει",
       "gated_actions": [
-        { "label": "Αποστολή κεφαλαίων", "desc": "κάθε αποστολή, μετά από ελέγχους ασφαλείας" },
-        { "label": "Αποκάλυψη της φράσης ανάκτησής σας", "desc": "προβολή ή εξαγωγή του αντιγράφου ασφαλείας σας" },
-        { "label": "Ορισμός PIN Έκτακτης Ανάγκης", "desc": "δημιουργία του πορτοφολιού Έκτακτης Ανάγκης" },
-        { "label": "Δημιουργία ή απόκρυψη πορτοφολιού", "desc": "αλλαγές κρυφού πορτοφολιού" }
+        {
+          "label": "Αποστολή κεφαλαίων",
+          "desc": "κάθε αποστολή, μετά από ελέγχους ασφαλείας"
+        },
+        {
+          "label": "Αποκάλυψη της φράσης ανάκτησής σας",
+          "desc": "προβολή ή εξαγωγή του αντιγράφου ασφαλείας σας"
+        },
+        {
+          "label": "Ορισμός PIN Έκτακτης Ανάγκης",
+          "desc": "δημιουργία του πορτοφολιού Έκτακτης Ανάγκης"
+        },
+        {
+          "label": "Δημιουργία ή απόκρυψη πορτοφολιού",
+          "desc": "αλλαγές κρυφού πορτοφολιού"
+        }
       ],
       "currently_enforcing": "Επιβάλλεται αυτή τη στιγμή:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Πρόσφατα",
     "tab_home": "Αρχική",
     "tab_send": "Αποστολή",
-    "tab_receive": "Λήψη"
+    "tab_receive": "Λήψη",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Πίσω"
@@ -343,8 +356,14 @@
     "heading": "Αποστολή Κρυπτονομίσματος",
     "subheading": "Μεταφορά κεφαλαίων με ασφάλεια",
     "wallet_fallback": "Πορτοφόλι",
-    "wallet_picker": { "label": "Από Πορτοφόλι", "placeholder": "Επιλέξτε πορτοφόλι" },
-    "asset_picker": { "label": "Περιουσιακό στοιχείο", "placeholder": "Επιλέξτε περιουσιακό στοιχείο" },
+    "wallet_picker": {
+      "label": "Από Πορτοφόλι",
+      "placeholder": "Επιλέξτε πορτοφόλι"
+    },
+    "asset_picker": {
+      "label": "Περιουσιακό στοιχείο",
+      "placeholder": "Επιλέξτε περιουσιακό στοιχείο"
+    },
     "recipient": {
       "label": "Αποστολή σε (διεύθυνση ή όνομα)",
       "placeholder": "Επικολλήστε μια διεύθυνση ή εισαγάγετε ένα όνομα (π.χ. vitalik.eth)",
@@ -404,7 +423,10 @@
       "dev_ungate_body": "— η πύλη αποστολής παρακάμπτεται για {{currency}} μέσω VITE_DEV_UNGATE_SEND (μόνο έκδοση dev). Η κατάσταση αυτού του περιουσιακού στοιχείου παραμένει αμετάβλητη (ακόμα όχι ζωντανό)· το mainnet παραμένει αποκλεισμένο. Μόνο επαλήθευση testnet — μην κυκλοφορήσετε ποτέ αυτή την έκδοση.",
       "locked": "Το πορτοφόλι σας είναι κλειδωμένο. Ξεκλειδώστε το στις Ρυθμίσεις Πορτοφολιού για να υπογράψετε και να στείλετε."
     },
-    "note": { "label": "Σημείωση (προαιρετικό)", "placeholder": "Για τι είναι αυτό;" },
+    "note": {
+      "label": "Σημείωση (προαιρετικό)",
+      "placeholder": "Για τι είναι αυτό;"
+    },
     "trezor": {
       "toggle_label": "Υπογραφή με Trezor",
       "connected": "Η συσκευή είναι συνδεδεμένη",
@@ -415,7 +437,9 @@
       "confirm_send": "Επιβεβαίωση & Αποστολή",
       "back": "Πίσω"
     },
-    "verify": { "summary_label": "Στέλνετε" },
+    "verify": {
+      "summary_label": "Στέλνετε"
+    },
     "fee": {
       "automatic": "Το τέλος δικτύου ορίζεται αυτόματα για {{currency}} ({{network}}).",
       "native_fee_note": "Το τέλος δικτύου καταβάλλεται σε {{symbol}} ({{network}}) — χρειάζεστε {{symbol}} για να καλύψετε το τέλος δικτύου ακόμα και όταν στέλνετε {{token}}."
@@ -708,5 +732,46 @@
     "allocation": "Κατανομή",
     "holdings": "Περιουσιακά στοιχεία",
     "noHoldings": "Δεν υπάρχουν ακόμα περιουσιακά στοιχεία."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }
