@@ -15,6 +15,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { SEED_THREATS } from '@/lib/threatIntelStore.js';
 
 const ADVISOR_KEY = 'veyrnox-advisor-remote-consent';
 
@@ -30,8 +31,6 @@ vi.mock('@/api/tipScreen.js', () => ({
 
 async function mountAdvisor() {
   vi.resetModules();
-  vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-  vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
   vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
 
   const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
@@ -86,6 +85,22 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
   });
 
   describe('Address extraction & threat screening correlation', () => {
+    it('renders a local seeded sanctions hit without crashing, even when remote consent is denied', async () => {
+      await mountAdvisor();
+      await denyAdvisorConsent();
+
+      await askQuestion(`Is ${SEED_THREATS[0].address} safe?`);
+
+      await waitFor(() => {
+        const verdict = screen.getByTestId('tip-screening-verdict');
+        expect(verdict.textContent).toContain('BLOCKED');
+        expect(verdict.textContent).toContain('Sanctions match detected');
+      });
+
+      expect(mockScreenTransaction).not.toHaveBeenCalled();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
     it('detects EVM addresses and screens them before asking for chat', async () => {
       await mountAdvisor();
       await grantAdvisorConsent();
@@ -264,15 +279,10 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
 
     it('continues using local KB when TIP chat is unconfigured', async () => {
       vi.unstubAllEnvs();
-      // TIP chat is now gated on SUPABASE_URL + ANON_KEY (not TIP_BASE_URL).
-      // Blanking both disables the tip-chat proxy endpoint entirely.
-      vi.stubEnv('VITE_SUPABASE_URL', '');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
+      // Blanking TIP_BASE_URL disables the chat feature switch entirely.
       vi.stubEnv('VITE_TIP_BASE_URL', '');
 
       vi.resetModules();
-      vi.stubEnv('VITE_SUPABASE_URL', '');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
       vi.stubEnv('VITE_TIP_BASE_URL', '');
 
       const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
@@ -342,8 +352,6 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
   describe('Context-aware advisor correlation with page state', () => {
     it('provides send-screen-specific advice for send page', async () => {
       vi.resetModules();
-      vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
       vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
 
       const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
@@ -367,8 +375,6 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
 
     it('correlates deniability advice with deniability page context', async () => {
       vi.resetModules();
-      vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-      vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
       vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
 
       const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
@@ -467,8 +473,6 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
       isDeniabilityOrDemoActive.mockReturnValue(true);
       try {
         vi.resetModules();
-        vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
-        vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
         vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
         const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
         render(
@@ -512,6 +516,43 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
         const messages = screen.getAllByText(/./);
         expect(messages.length).toBeGreaterThan(2); // User + assistant for each
       });
+    });
+
+    it('sends the live page snapshot in remote chat context', async () => {
+      vi.resetModules();
+      vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+
+      const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
+      fetchSpy.mockResolvedValueOnce(new Response(
+        'data: {"response":"Use the send form carefully."}\ndata: [DONE]\n',
+        { status: 200 }
+      ));
+
+      render(
+        <MemoryRouter initialEntries={['/send']}>
+          <SecurityAdvisor
+            walletChain="bitcoin"
+            pageSnapshot={{
+              pathname: '/send',
+              route_params: { asset: 'BTC' },
+              wallet_session: { unlocked: true, mode: 'primary', wallet_count: 2 },
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByLabelText(/open vigil/i));
+      await grantAdvisorConsent();
+      await askQuestion('What should I check before sending?');
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+      const [, options] = fetchSpy.mock.calls.at(-1);
+      const payload = JSON.parse(options.body);
+
+      expect(payload.context.wallet_chain).toBe('bitcoin');
+      expect(payload.context.page_snapshot.pathname).toBe('/send');
+      expect(payload.context.page_snapshot.route_params.asset).toBe('BTC');
+      expect(payload.context.page_snapshot.wallet_session.wallet_count).toBe(2);
     });
   });
 });
