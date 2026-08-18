@@ -191,7 +191,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Token Approvals (View + Revoke)',
         status: 'verified',
         summary: 'Inspect and revoke ERC-20 allowances',
-        explanation: 'List the token allowances granted to contracts, flag unlimited approvals, and build revoke calldata the user signs locally. Helps shut down drainer exposure from stale approvals.',
+        explanation: 'List the token allowances granted to contracts, flag unlimited approvals, and build revoke calldata the user signs locally. Helps shut down drainer exposure from stale approvals. Each spender also carries a one-line risk note: a local threat-intel hit is answered instantly on-device, and otherwise the SPENDER address (never your own — the sender field is sent as the zero address) is screened through the tip-screen proxy. That screening runs automatically when you open the page, not only when you act, and is suppressed entirely in deniability/demo. A lookup that fails returns "could not assess", never "safe" (I4). The page shows approvals on demand — it does not monitor for new ones in the background.',
       },
       {
         name: 'Address-Poisoning Warnings',
@@ -411,67 +411,58 @@ export const FEATURE_CATEGORIES = [
     ],
   },
   {
-    category: "AI Security Protection",
+    // Advisory-only stays in the CATEGORY name, not just the entry text: the
+    // category label is what a scanning reader takes away, and it must not read
+    // as a protection claim on its own.
+    //
+    // Deliberately NOT re-listed here: address screening, risk scoring, drainer
+    // detection and approval view/revoke. Each is already catalogued under
+    // Security as a verified entry with its own honest limits. Restating them
+    // under new names in a second category inflates apparent coverage without
+    // adding a capability.
+    category: 'AI Assistant (Advisory-Only)',
     features: [
       {
-        name: "Address Threat Screening",
-        status: "roadmap",
-        summary: "Pre-send address screening via local blocklist + TIP proxy",
-        explanation: "Before sending, the recipient address is screened against a local threat-intel store (15 hardcoded addresses including OFAC SDN entries) and optionally through the TIP screening proxy (tip-screen Supabase Edge Function). The check runs at send time, not continuously. It warns — never blocks — and never claims an address is safe. The checked address is sent to the TIP proxy when configured; local-only mode sends nothing off-device. I3: suppressed in deniability/demo.",
+        name: 'Personal AI Advisor',
+        status: 'verified',
+        summary: 'LLM chat via TIP proxy — advisory only',
+        explanation: 'An opt-in LLM chat panel (SecurityAdvisor, wired in Layout) that answers security questions via the tip-chat Supabase Edge Function over SSE. The AI never holds keys, never signs, and never initiates a transaction — it cannot act, only answer. The conversation is secret-scrubbed before sending. I3: the panel renders nothing and aborts in-flight requests in deniability/demo. This is a chat interface, not monitoring: it sees only what you type into it.',
       },
       {
-        name: "Phishing Site Detection",
-        status: "roadmap",
-        summary: "Domain blocklist + live feed for dApp screening",
-        explanation: "dApp domains (from WalletConnect sessions and manual checks) are screened against a 23-domain local seed list and an optional remote-updatable phishing feed cached in IndexedDB. The domain being checked never leaves the device (I2). Feed refresh is hourly and fire-and-forget; if the feed is unavailable, the local seed provides baseline coverage. Suffix matching catches subdomains of known-bad domains. This is a blocklist check, not an ML classifier — it catches known domains only and never claims a site is safe.",
+        name: 'Transaction Explanation',
+        status: 'roadmap',
+        summary: 'Plain-language description of a transaction',
+        explanation: 'Explain in plain language what a pending transaction does. Advisory only — the AI never holds keys and never signs. Specced, not yet built.',
       },
       {
-        name: "Risk Scoring",
-        status: "roadmap",
-        summary: "Rule-based composite pre-sign risk score",
-        explanation: "A transparent, rule-based risk score computed from 9 on-device signals (fresh recipient, unlimited approval, fresh spender, address poisoning, ENS mismatch, dust input, calldata mismatch, value anomaly, TIP threat) combined into a single pre-sign verdict. Not AI/ML — deterministic rules over local data. Warns rather than blocks; INDETERMINATE escalates to caution (fail-closed, I4). Never claims a transaction is safe.",
+        name: 'Scam & Phishing Explanation',
+        status: 'roadmap',
+        summary: 'Explain why something looks risky',
+        explanation: 'Explain why an address, contract, or site looks risky. Advisory only; specced, not yet built.',
       },
       {
-        name: "Token Approval Review",
-        status: "roadmap",
-        summary: "View, assess, and revoke ERC-20 approvals",
-        explanation: "List ERC-20 token allowances granted to contracts, flag unlimited approvals as high-risk, show per-spender AI risk notes from TIP screening, and build revoke calldata the user signs locally. The review page shows current approvals — it does not continuously monitor for new ones in the background (see Approval Monitor for that).",
+        name: 'Educational Assistant',
+        status: 'roadmap',
+        summary: 'Answer wallet / crypto questions',
+        explanation: 'Answer questions about gas, approvals, address formats, and wallet concepts. Advisory only; specced, not yet built.',
       },
       {
-        name: "Approval Monitor",
-        status: "roadmap",
-        summary: "Periodic background check for new approvals and risky transfers",
-        explanation: "A background polling module that periodically (default 60s) checks for new token approvals and flags incoming transfers from known-bad addresses. Alerts are stored in-memory (max 50, not persisted). Runs only while the app is open — not a push-notification service. I3: suppressed in deniability/demo. I4: polling failure retried silently, never all-clear.",
+        name: 'Portfolio Q&A',
+        status: 'roadmap',
+        summary: 'Questions over public on-chain data',
+        explanation: 'Answer questions over the user’s public on-chain data. Advisory only — never autonomous trading or management. Specced, not yet built.',
       },
       {
-        name: "AI Risk Notes",
-        status: "roadmap",
-        summary: "Per-spender risk annotation via TIP screening",
-        explanation: "Each spender address on the Token Approvals page is fed through the TIP screening pipeline to produce a one-sentence risk note. Notes are cached in-memory per session (no persistence). A failed lookup returns a cautious could-not-assess note (I4, never this-spender-is-safe). I3: returns null in deniability/demo. Uses the existing tip-screen proxy — no new network surface.",
+        name: 'Live Phishing Domain Feed',
+        status: 'roadmap',
+        summary: 'Remote-updatable dApp domain blocklist, layered over the local seed',
+        explanation: 'A phishing-domain list downloaded over https, cached in IndexedDB, and layered over the in-bundle seed list that screens dApp domains on WalletConnect connect and request. The seed is never replaced, so a missing feed URL, a failed fetch or an empty payload degrades to exactly the pre-feed behaviour rather than to "no list" (I4) — an empty payload is treated as a failed refresh, so a compromised feed cannot switch coverage off by serving []. A feed older than seven days is treated as absent rather than silently trusted. The domain being checked NEVER leaves the device (I2): the list is downloaded and matched locally. Feed text is length-capped and control-character-stripped before it can reach a warning dialog. I3: no fetch and no feed matches in deniability/demo — the local seed still runs, so screening never goes dark — and the cache database is erased by panic wipe, since its presence alone is a tell. STATUS: the implementation is complete, wired at app init and unit-tested, but it has NOT been observed running on a device or in a browser, and no feed URL is configured by default — so it stays roadmap rather than claiming to work. Coverage today is the seed list unless VITE_PHISHING_FEED_URL is set. This is a blocklist, not a classifier: it catches listed domains only and never asserts a site is safe.',
       },
       {
-        name: "Personal AI Advisor",
-        status: "roadmap",
-        summary: "LLM chat via TIP proxy — advisory only",
-        explanation: "An opt-in LLM chat panel (SecurityAdvisor) that answers security questions via the tip-chat Supabase Edge Function (SSE streaming). The AI never holds keys, never signs, and never initiates transactions. Conversation is secret-scrubbed before sending. I3: suppressed in deniability/demo. Consent-gated. This is a chat interface, not autonomous monitoring.",
-      },
-      {
-        name: "Drainer Detection",
-        status: "roadmap",
-        summary: "Local rule-based approval-drain pattern detection",
-        explanation: "The pre-sign risk scorer (S2 signal) detects the approve-then-transferFrom two-step drain shape, and the anomaly detector flags unlimited approvals to fresh spenders. These are local heuristics over on-device data, not a real-time ML drainer classifier. Combined with the approval monitor, which flags incoming transfers from known-bad addresses.",
-      },
-      {
-        name: "Transaction Explanation",
-        status: "roadmap",
-        summary: "Plain-language description of a pending transaction",
-        explanation: "Explain in plain language what a pending transaction does via the TIP proxy. Advisory only — the AI never holds keys and never signs. Specced, not yet built.",
-      },
-      {
-        name: "Portfolio Q&A",
-        status: "roadmap",
-        summary: "Questions over public on-chain data",
-        explanation: "Answer questions over the user’s public on-chain data via the AI advisor. Advisory only — never autonomous trading or management. Specced, not yet built.",
+        name: 'Approval Monitor',
+        status: 'roadmap',
+        summary: 'Periodic in-app check for new approvals and risky transfers',
+        explanation: 'While the app is open and unlocked, a 60-second poll re-reads the local approval and transaction rows and raises an alert for a newly-seen approval to a flagged spender, a newly-seen unlimited approval, or an incoming transfer from a flagged address. Alerts surface on the Token Approvals page; they are held in memory only (max 50, never persisted) and are cleared on lock and on entering deniability/demo, because they name real counterparties. It reads the same local entity stores the pages already read: no new backend surface and no new egress. A flagged verdict comes from the local threat-intel store, which returns matches only; an empty result is never treated as a hit. This is NOT a push-notification service — nothing is checked while the app is closed, and no alert is not evidence that nothing happened (I4). STATUS: the implementation is complete, wired in Layout via useBackgroundSecurity and unit-tested, but it has NOT been observed running on a device or in a browser, so it stays roadmap rather than claiming to work. Deleting the useBackgroundSecurity call would silently disable it with no test going red.',
       },
     ],
   },

@@ -32,6 +32,10 @@ const _inflight = new Map();
  */
 export function getRiskNote(spender, chain = 'evm') {
   if (!spender) return null;
+  // I3: a decoy session gets nothing — not a cached note from the real session,
+  // and no background fetch. fetchRiskNote gates the egress too; this is the
+  // read-side half, and it must be here rather than only at the call site.
+  if (isDeniabilityOrDemoActive()) return null;
   const key = `${chain}:${spender}`.toLowerCase();
 
   if (_cache.has(key)) return _cache.get(key);
@@ -64,6 +68,8 @@ export function getRiskNote(spender, chain = 'evm') {
  */
 export async function fetchRiskNoteAsync(spender, chain = 'evm') {
   if (!spender) return null;
+  // Returns BEFORE the cache read: notes are keyed by real spender addresses,
+  // so a decoy session must not be able to read one the real session cached.
   if (isDeniabilityOrDemoActive()) return null;
 
   const key = `${chain}:${spender}`.toLowerCase();
