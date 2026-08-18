@@ -1,16 +1,12 @@
-// WalletEntry post-onboard branch swap (Slice G+H plan §4).
+// WalletEntry post-onboard branch (Slice G+H, updated: Personal Backup
+// prompt removed from onboarding — nudge moved to in-app BackupNagSheet).
 //
-// Source-level test rather than a full mount: WalletEntry pulls the full
-// vault / KEK / router / RASP tree. Same pattern as
-// FirstRunTour.placement.test.js — pin the branch itself in the source.
+// Source-level test: WalletEntry pulls the full vault / KEK / router / RASP
+// tree. Same pattern as FirstRunTour.placement.test.js.
 //
-// The plan requires (line ~1227) the CREATE post-onboard branch to render
-// <WalletCreatedFlash> instead of <FirstReceiveCardWithTelemetry>, and IMPORT
-// to continue rendering FirstReceiveCard. CTA handlers must clear
-// justOnboarded so the branch doesn't intercept forever.
-//
-// RED phase: WalletEntry.jsx still renders <FirstReceiveCardWithTelemetry> in
-// this branch and does not import WalletCreatedFlash / backupNag.
+// CREATE branch renders <WalletCreatedFlash> with a single onDismiss that
+// clears justOnboarded. No onPrimary, no /personal-backup navigation.
+// IMPORT branch still renders FirstReceiveCard (unchanged).
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -23,10 +19,6 @@ describe('WalletEntry — CREATE post-onboard renders WalletCreatedFlash', () =>
     expect(SRC).toMatch(/from\s+['"]@\/components\/WalletCreatedFlash['"]/);
   });
 
-  it('imports backupNag', () => {
-    expect(SRC).toMatch(/from\s+['"]@\/lib\/backupNag['"]/);
-  });
-
   it('CREATE post-onboard branch renders <WalletCreatedFlash>, not FirstReceiveCardWithTelemetry', () => {
     const branchIdx = SRC.indexOf('justOnboarded && !isDeniabilityOrDemoActive()');
     expect(branchIdx).toBeGreaterThan(-1);
@@ -36,27 +28,21 @@ describe('WalletEntry — CREATE post-onboard renders WalletCreatedFlash', () =>
   });
 
   it('IMPORT branch still renders FirstReceiveCard (unchanged)', () => {
-    // FirstReceiveCard still imported and referenced somewhere in the file.
     expect(SRC).toMatch(/FirstReceiveCard/);
   });
 
-  it('primary CTA handler clears justOnboarded, calls markBackupNagShown, and navigates to /personal-backup', () => {
-    // The handler is expressed inline on the WalletCreatedFlash render.
+  it('onDismiss clears justOnboarded', () => {
     const flashIdx = SRC.indexOf('<WalletCreatedFlash');
     expect(flashIdx).toBeGreaterThan(-1);
-    const jsx = SRC.slice(flashIdx, flashIdx + 800);
-    expect(jsx).toMatch(/onPrimary\s*=/);
-    expect(jsx).toMatch(/setJustOnboarded\s*\(\s*false\s*\)/);
-    expect(jsx).toMatch(/markBackupNagShown\s*\(/);
-    expect(jsx).toMatch(/\/personal-backup/);
-  });
-
-  it('secondary CTA handler clears justOnboarded and calls dismissForSession', () => {
-    const flashIdx = SRC.indexOf('<WalletCreatedFlash');
-    expect(flashIdx).toBeGreaterThan(-1);
-    const jsx = SRC.slice(flashIdx, flashIdx + 800);
+    const jsx = SRC.slice(flashIdx, flashIdx + 400);
     expect(jsx).toMatch(/onDismiss\s*=/);
     expect(jsx).toMatch(/setJustOnboarded\s*\(\s*false\s*\)/);
-    expect(jsx).toMatch(/dismissForSession\s*\(/);
+  });
+
+  it('does NOT navigate to /personal-backup from onboarding', () => {
+    const flashIdx = SRC.indexOf('<WalletCreatedFlash');
+    expect(flashIdx).toBeGreaterThan(-1);
+    const jsx = SRC.slice(flashIdx, flashIdx + 400);
+    expect(jsx).not.toMatch(/\/personal-backup/);
   });
 });
