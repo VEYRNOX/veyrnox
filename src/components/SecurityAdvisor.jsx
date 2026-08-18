@@ -1091,15 +1091,19 @@ Additional public knowledge you should apply:
 
   return (
     <>
-      {/* FAB — pulse animation draws attention to the advisor */}
+      {/* FAB — lifted above the mobile nav with a bright blue force-field glow
+          so it reads as an interactive security surface rather than footer chrome. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-sky-300/60 bg-sky-500 text-white shadow-[0_0_28px_rgba(56,189,248,0.5)] transition-transform hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 md:bottom-6"
         aria-label="Open Vigil — Security Advisor"
       >
-        <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-20" />
-        <ShieldCheck className="relative h-5 w-5" />
+        <span className="absolute -inset-2 rounded-full border border-sky-300/35 bg-sky-400/10 motion-safe:animate-pulse" />
+        <span className="absolute inset-0 rounded-full bg-sky-400/25 motion-safe:animate-ping" />
+        <span className="absolute inset-1 rounded-full border border-white/35" />
+        <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.7),rgba(56,189,248,0.08)_42%,rgba(14,116,144,0.95)_100%)]" />
+        <ShieldCheck className="relative h-6 w-6 drop-shadow-[0_0_10px_rgba(255,255,255,0.45)]" />
       </button>
 
       <Drawer open={open} onOpenChange={(v) => {
