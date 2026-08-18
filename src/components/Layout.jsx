@@ -22,7 +22,8 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import FeatureGate from './FeatureGate';
 import VeyrnoxLogo, { VeyrnoxWordmark } from "./VeyrnoxLogo";
 import { navGroups, groupColor, searchableRoutes } from "@/lib/navigation";
-import { getParentRoute, isFromMoreDrawer } from "@/lib/parentRoute";
+import { getParentRoute } from "@/lib/parentRoute";
+import { getStoredBackTarget, hasBrowserBackHistory, rememberCurrentRoute } from "@/lib/backNavigation";
 import useRecentPages from "@/hooks/useRecentPages";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useQueryClient } from "@tanstack/react-query";
@@ -141,8 +142,9 @@ export default function Layout() {
       // No need to reset sealing — Layout unmounts as WalletEntry takes over.
     }, 380);
   };
-  const ROOT_TABS = ['/', '/send', '/receive', '/settings'];
-  const isRootTab = ROOT_TABS.includes(location.pathname);
+  const isHomeTab = location.pathname === '/';
+  const shellBackTarget = getStoredBackTarget(location);
+  const canShowShellBack = !isHomeTab && shellBackTarget !== null;
   // Render the desktop OR the mobile main-content region — never both — so a page
   // mounts exactly once (see useIsDesktop). The nav chrome (sidebar / top bar /
   // bottom nav) stays CSS-toggled; only the heavy page-hosting regions are gated.
@@ -164,6 +166,26 @@ export default function Layout() {
       if (mainScroll) mainScroll.scrollTop = 0;
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    rememberCurrentRoute(location);
+  }, [location]);
+
+  const handleShellBack = useCallback(() => {
+    if (location.state?.fromMore) {
+      const parent = getParentRoute(location.pathname);
+      navigate(parent, { replace: true });
+      setMoreOpen(true);
+      return;
+    }
+    if (hasBrowserBackHistory()) {
+      navigate(-1);
+      return;
+    }
+    if (shellBackTarget) {
+      navigate(shellBackTarget, { replace: true });
+    }
+  }, [location, navigate, shellBackTarget]);
 
   const handleMobileTabClick = useCallback((path) => {
     // Send always navigates fresh — clears ?asset= param and resets the form.
@@ -382,25 +404,14 @@ export default function Layout() {
         style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))", paddingBottom: "0.75rem" }}
       >
         <div className="flex items-center gap-2">
-          {isRootTab ? (
+          {!canShowShellBack ? (
             <>
               <VeyrnoxLogo size={30} className="shrink-0" />
               <VeyrnoxWordmark className="text-sm" />
             </>
           ) : (
             <button
-              onClick={() => {
-                const hasHistory = window.history.length > 1 && document.referrer;
-                if (location.state?.fromMore || (!hasHistory && isFromMoreDrawer(location.pathname))) {
-                  const parent = getParentRoute(location.pathname);
-                  navigate(parent, { replace: true });
-                  setMoreOpen(true);
-                } else if (hasHistory) {
-                  navigate(-1);
-                } else {
-                  navigate(getParentRoute(location.pathname), { replace: true });
-                }
-              }}
+              onClick={handleShellBack}
               className="flex items-center gap-1 -ms-1 pe-3 min-h-[44px] text-foreground active:opacity-60 transition-opacity select-none"
             >
               {/* Icon mirrors under dir="rtl" — back-navigation chevron. */}
@@ -454,14 +465,12 @@ export default function Layout() {
           transition={{ duration: prefersReducedMotion ? 0.15 : motionDuration.normal, ease: motionEasing.out }}
           className="hidden md:flex md:flex-1 flex-col p-8 overflow-auto"
         >
-          {/* Desktop back affordance (item: back nav on every page). The desktop
-              layout has no back control of its own — only the sidebar (which
-              jumps to top-level destinations) — so a sub-page reached from e.g.
-              the Security Dashboard would otherwise strand the user. The mobile
-              top bar already provides this; here we mirror it for desktop on
-              every non-root-tab page. Root tabs (Dashboard/Send/Receive/Settings)
-              are top-level destinations and don't get a back control. */}
-          {!isRootTab && <BackButton className="mb-4" />}
+          {/* Desktop back affordance. Prefer true browser history, but the
+              shared BackButton also falls back to tracked in-app history for
+              replace-style tab switches and finally to the parent-route map for
+              direct deep-links. Keep Dashboard as the only shell page without
+              a back affordance. */}
+          {canShowShellBack && <BackButton className="mb-4" />}
           <PullToRefreshContainer onRefresh={handleRefresh} className="min-h-full">
             <ErrorBoundary key={location.pathname}><FeatureGate><Outlet /></FeatureGate></ErrorBoundary>
           </PullToRefreshContainer>
