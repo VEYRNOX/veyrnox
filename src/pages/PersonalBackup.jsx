@@ -679,15 +679,10 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
 
 function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restoreFromRecoveryShares, onRestoreFinish, isDecoy, isHidden }) {
   const [mode, setMode] = useState("export"); // 'export' | 'restore'
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [done, setDone] = useState(false);
-  // 2026-08-16 audit remediation (round 3): the encryptAll toggle is REMOVED.
-  // Any raw-JSON share bundle contains vault.ct; two raw bundles = full offline
-  // crack surface with no KEK. The toggle let a user opt into that path; the
-  // safe answer is that there is no opt-out. All exported shares are now wrapped
-  // with the user's passphrase unconditionally.
   const [recoveryPassphrase, setRecoveryPassphrase] = useState("");
   const raspArtifact = useRaspArtifact();
 
@@ -700,14 +695,8 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
     );
   }
 
-  // The button just gates on non-empty input. Actual credential validation
-  // happens inside native.js's KEK unlock chain — wrong PIN/password throws
-  // KEK_ERR.UNWRAP_FAILED, caught below and surfaced as a toast. Using
-  // MIN_PASSWORD_LENGTH here would gate out the native PIN cohort (8+ digits)
-  // since MIN_PASSWORD_LENGTH is the new-password floor (12), not an unlock
-  // floor. Phase 2 should replace this input with PinPad on native.
   const passphraseCheck = checkRecoveryPassphrase(recoveryPassphrase);
-  const canExport = password.length > 0 && passphraseCheck.ok;
+  const canExport = pin.length === 8 && passphraseCheck.ok;
 
   const runSplit = async () => {
     const gate = sensitiveGate(raspArtifact, "export");
@@ -731,7 +720,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
       // its hash. Any 2 bundles rebuild the wallet on a fresh device via
       // the "Restore from recovery shares" hero entry. Old raw-share saves
       // still work through same-device restore for existing users.
-      const bundles = await exportRecoveryBundles(password);
+      const bundles = await exportRecoveryBundles(pin);
       shares = bundles.map(() => null); // placeholder for the finally-zero loop
       let completedAll = true;
       for (let i = 0; i < bundles.length; i++) {
@@ -762,7 +751,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
         markPersonalBackupExported({ withPassphrase: true });
       }
       setDone(true);
-      setPassword("");
+      setPin("");
       setRecoveryPassphrase("");
     } catch (err) {
       // fail-closed: surface the raw error code so a round-trip failure or
@@ -858,12 +847,16 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
         </p>
       </div>
 
-      <PasswordInput
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Your wallet password"
-        autoComplete="current-password"
-      />
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-muted-foreground">Enter your wallet PIN</label>
+        <PinPad
+          value={pin}
+          onChange={setPin}
+          onComplete={setPin}
+          length={8}
+          submitLabel="Confirm"
+        />
+      </div>
 
       <div className="p-3 rounded-xl border border-border bg-card/40 space-y-2">
         <div className="space-y-0.5">
