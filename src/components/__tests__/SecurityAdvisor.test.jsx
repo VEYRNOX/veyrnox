@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilityOrDemoActive: vi.fn(() => false),
@@ -81,5 +83,15 @@ describe('SecurityAdvisor', () => {
     expect(getSuggestedQuestions('personal_backup')).toContain('How does personal backup work?');
     expect(getSuggestedQuestions('token_approvals')).toContain('How do I revoke a risky approval?');
     expect(getSuggestedQuestions('analytics')).toContain('What does this analytics page tell me?');
+  });
+
+  it('covers every static app route with a non-generic screen mapping', () => {
+    const appSrc = readFileSync(join(process.cwd(), 'src', 'App.jsx'), 'utf8');
+    const routes = [...appSrc.matchAll(/<Route path="([^"]+)"/g)].map((match) => match[1]);
+    const unmapped = routes.filter((route) => {
+      if (route === '*' || route.startsWith('/dev/') || route.includes(':')) return false;
+      return resolveScreen(route) === 'general';
+    });
+    expect(unmapped).toEqual([]);
   });
 });

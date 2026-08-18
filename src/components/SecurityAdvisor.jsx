@@ -169,6 +169,13 @@ const QUESTION_SETS = {
     "What information here is only an estimate?",
     "What privacy risks should I know about?",
   ],
+  public_onboarding: [
+    "How do I create or restore a wallet safely?",
+    "What should I know before importing recovery shares?",
+    "How do I protect my seed phrase from the start?",
+    "What happens if I choose the wrong recovery path?",
+    "How do I verify I am using the real Veyrnox app?",
+  ],
   recovery: [
     "How do I recover if I lose my device?",
     "What is the safest way to handle my seed phrase?",
@@ -388,6 +395,10 @@ The advisor should explain each security layer, what the statuses mean, and how 
     questionsKey: 'security',
     pageContext: `The user is on the FRAUD DETECTION page. This page is for identifying scam patterns, suspicious counterparties, and warning signals before or after wallet activity.`,
   },
+  audit_log: {
+    questionsKey: 'security',
+    pageContext: `The user is on the AUDIT LOG page. This page is for reviewing recorded security-relevant events and understanding what happened on the device or in the app. The advisor should help interpret entries without overstating their certainty.`,
+  },
   analytics: {
     questionsKey: 'analytics',
     pageContext: `The user is on an ANALYTICS page. This family includes analytics, advanced analytics, risk score, correlation, event timeline, custom widgets, news sentiment, and referral tracking. The advisor should explain what the page measures, what is only informational, and how to verify decisions with on-chain evidence before acting.`,
@@ -430,6 +441,10 @@ The advisor can help the user understand transaction details, confirmation times
   calculator: {
     questionsKey: 'finance',
     pageContext: `The user is on the CALCULATOR / CONVERT page. This page is informational: conversions, rough planning, and estimates. The advisor should explain that pricing tools help decisions but do not replace transaction verification.`,
+  },
+  price_alerts: {
+    questionsKey: 'portfolio',
+    pageContext: `The user is on a PRICE ALERTS or PRICE CHARTS page. This page helps the user monitor asset movement and trigger attention when price conditions change. The advisor should explain that alerts and charts are informational only and do not reduce signing or custody risk.`,
   },
   recurring: {
     questionsKey: 'finance',
@@ -507,6 +522,18 @@ The advisor can help the user understand transaction details, confirmation times
     questionsKey: 'general',
     pageContext: `The user is on a DOCUMENTATION or EXPLANATION page. This surface is educational, so the advisor should clarify terminology, explain security tradeoffs, and keep the app's honesty rules intact: BUILT is not verified.`,
   },
+  invoices: {
+    questionsKey: 'finance',
+    pageContext: `The user is on the INVOICE GENERATOR page. This page helps assemble payment requests and records, but it does not make custody safer by itself. The advisor should emphasize address verification, amount confirmation, and avoiding trust in unauthenticated invoice sources.`,
+  },
+  voice_commands: {
+    questionsKey: 'device_security',
+    pageContext: `The user is on the VOICE COMMANDS page. This page concerns hands-free interaction and convenience features. The advisor should explain that convenience surfaces still need strong confirmation boundaries and must never bypass signing review or seed safety.`,
+  },
+  public_onboarding: {
+    questionsKey: 'public_onboarding',
+    pageContext: `The user is on a public or onboarding route such as landing, login redirect, registration redirect, or restore-from-shares onboarding. The advisor should focus on safe wallet creation or recovery, authentic app verification, and making sure the user understands seed and recovery choices before proceeding.`,
+  },
   general: {
     questionsKey: 'general',
     pageContext: `The user is browsing the Veyrnox wallet app. Veyrnox is a self-custody, coercion-resistant crypto wallet supporting ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, and USDT. Key features: hardware-bound encryption (KEK), RASP tamper detection, deniability mode with duress PINs, vault with AES-256-GCM + Argon2id, and built-in threat intelligence screening.`,
@@ -519,6 +546,12 @@ const ROUTE_SCREEN_MAP = {
   '/receive': 'receive',
   '/buy': 'buy',
   '/buy/in-progress': 'buy',
+  '/landing': 'public_onboarding',
+  '/login': 'public_onboarding',
+  '/register': 'public_onboarding',
+  '/forgot-password': 'public_onboarding',
+  '/reset-password': 'public_onboarding',
+  '/onboarding/restore-shares': 'public_onboarding',
   '/settings': 'settings',
   '/plans': 'subscription',
   '/safety-plus': 'subscription',
@@ -565,6 +598,9 @@ const ROUTE_SCREEN_MAP = {
   '/news-sentiment': 'analytics',
   '/referrals': 'analytics',
   '/tax': 'tax',
+  '/audit-log': 'audit_log',
+  '/alerts': 'price_alerts',
+  '/price-charts': 'price_alerts',
   '/watchlist': 'watchlist',
   '/nft': 'nft',
   '/nft-multichain': 'nft',
@@ -583,7 +619,9 @@ const ROUTE_SCREEN_MAP = {
   '/crypto-signing': 'crypto_signing',
   '/calculator': 'calculator',
   '/recurring': 'recurring',
+  '/invoices': 'invoices',
   '/hd-wallet': 'hd_wallet',
+  '/voice-commands': 'voice_commands',
   '/docs': 'docs',
   '/features': 'docs',
   '/verify': 'docs',

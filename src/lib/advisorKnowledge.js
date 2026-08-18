@@ -318,6 +318,7 @@ export function getKnowledgeForScreen(screen) {
     receive: ['receiving', 'general'],
     settings: ['security', 'wallet_basics', 'general'],
     buy: ['wallet_basics', 'security', 'general'],
+    public_onboarding: ['wallet_basics', 'security', 'general'],
     walletconnect: ['walletconnect', 'security'],
     deniability: ['deniability', 'security'],
     subscription: ['subscription', 'general'],
@@ -341,6 +342,7 @@ export function getKnowledgeForScreen(screen) {
     token_approvals: ['walletconnect', 'security'],
     trust_score: ['security', 'general'],
     fraud_detection: ['security', 'general'],
+    audit_log: ['security', 'general'],
     analytics: ['general', 'security'],
     tax: ['general'],
     asset_detail: ['general', 'security'],
@@ -349,6 +351,7 @@ export function getKnowledgeForScreen(screen) {
     fee_analytics: ['sending', 'general'],
     crypto_signing: ['walletconnect', 'security'],
     calculator: ['general'],
+    price_alerts: ['general', 'security'],
     recurring: ['sending', 'general'],
     watchlist: ['general'],
     nft: ['general', 'security'],
@@ -368,6 +371,8 @@ export function getKnowledgeForScreen(screen) {
     hd_wallet: ['wallet_basics', 'general'],
     notifications: ['security', 'general'],
     docs: ['general', 'security'],
+    invoices: ['general'],
+    voice_commands: ['security', 'general'],
     general: ['general', 'wallet_basics', 'security'],
   };
 
@@ -393,6 +398,7 @@ export function getFollowUpQuestions(asked, screen) {
     walletconnect: ['walletconnect', 'security'],
     deniability: ['deniability', 'security'],
     dashboard: ['wallet_basics', 'general', 'security'],
+    public_onboarding: ['wallet_basics', 'security'],
     address_checker: ['sending', 'security'],
     token_approvals: ['walletconnect', 'security'],
     wallet_access: ['wallet_basics', 'security'],
@@ -401,9 +407,12 @@ export function getFollowUpQuestions(asked, screen) {
     rasp_security: ['security'],
     security_dashboard: ['security', 'wallet_basics'],
     security_center: ['security', 'wallet_basics'],
+    audit_log: ['security', 'general'],
     analytics: ['general', 'security'],
     transaction_history: ['sending', 'general'],
     transaction_receipt: ['sending', 'general'],
+    price_alerts: ['general', 'security'],
+    voice_commands: ['security', 'general'],
   };
   const preferred = screenTopics[screen] || ['general', 'wallet_basics', 'security'];
   const preferredEntries = new Set();
