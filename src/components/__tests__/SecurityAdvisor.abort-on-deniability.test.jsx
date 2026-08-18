@@ -75,7 +75,7 @@ async function mountAdvisor() {
       <SecurityAdvisor walletChain="ethereum" />
     </MemoryRouter>,
   );
-  fireEvent.click(screen.getByLabelText(/open security advisor/i));
+  fireEvent.click(screen.getByLabelText(/open vigil/i));
 }
 
 beforeEach(() => {
@@ -102,7 +102,7 @@ describe('I3 — an in-flight Advisor stream is aborted when deniability activat
 
     await mountAdvisor();
 
-    const box = await screen.findByPlaceholderText(/ask about security/i);
+    const box = await screen.findByPlaceholderText(/ask vigil/i);
     fireEvent.change(box, { target: { value: 'is this address safe?' } });
     fireEvent.submit(box.closest('form'));
 
@@ -116,7 +116,7 @@ describe('I3 — an in-flight Advisor stream is aborted when deniability activat
 
     // The component is gone from the DOM...
     await waitFor(() =>
-      expect(screen.queryByLabelText(/open security advisor/i)).toBeNull(),
+      expect(screen.queryByLabelText(/open vigil/i)).toBeNull(),
     );
 
     // ...and the connection must be gone with it. Unmounting alone does not
@@ -133,7 +133,7 @@ describe('I3 — an in-flight Advisor stream is aborted when deniability activat
 
     await mountAdvisor();
 
-    const box = await screen.findByPlaceholderText(/ask about security/i);
+    const box = await screen.findByPlaceholderText(/ask vigil/i);
     fireEvent.change(box, { target: { value: 'hello' } });
     fireEvent.submit(box.closest('form'));
 
@@ -160,7 +160,7 @@ describe('I3 — an in-flight Advisor stream is aborted when deniability activat
       </MemoryRouter>,
     );
 
-    expect(screen.queryByLabelText(/open security advisor/i)).toBeNull();
+    expect(screen.queryByLabelText(/open vigil/i)).toBeNull();
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });

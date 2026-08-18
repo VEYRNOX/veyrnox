@@ -17,6 +17,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
+// The Recovery Shares tab now drives vault-unlock via PinPad (8 digits), not a
+// PasswordInput. Type each digit as a button click; the parent's canExport
+// gate flips true once pin.length === 8. TEST_PIN is a valid 8-digit vault PIN
+// stand-in that the tests below pass into the exportRecoveryBundles mock.
+const TEST_PIN = '13572468';
+function typeVaultPin(pin = TEST_PIN) {
+  for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
+}
+
 vi.mock('@/components/security/useActionGuard', () => ({
   useActionGuard: () => ({ requireTwoFactor: (fn) => fn(), gateModal: null }),
 }));
@@ -135,9 +144,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
-      target: { value: 'a-strong-password-16' },
-    });
+    typeVaultPin();
     // 2026-08-16 audit round 3: passphrase-wrap is mandatory, no opt-out.
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'a-nice-and-long-passphrase' },
@@ -149,7 +156,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
       () => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(),
       { timeout: 15_000 },
     );
-    expect(exportRecoveryBundles).toHaveBeenCalledWith('a-strong-password-16');
+    expect(exportRecoveryBundles).toHaveBeenCalledWith(TEST_PIN);
   }, 30_000);
 
   it('surfaces a fail-closed error when exportRecoveryBundles throws', async () => {
@@ -169,9 +176,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
-      target: { value: 'a-strong-password-16' },
-    });
+    typeVaultPin();
     // 2026-08-16 audit round 3: passphrase-wrap is mandatory.
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'a-nice-and-long-passphrase' },
@@ -221,9 +226,7 @@ describe('PersonalBackup — Export passphrase-wrap (Phase 3, flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
-      target: { value: 'wallet-password-123' },
-    });
+    typeVaultPin();
     // No passphrase yet — disabled.
     expect(screen.getByRole('button', { name: /split & save 3 shares/i }).hasAttribute('disabled')).toBe(true);
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
@@ -473,9 +476,7 @@ describe('PersonalBackup — every exported share is passphrase-wrapped', () => 
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
-      target: { value: 'a-strong-password-16' },
-    });
+    typeVaultPin();
     // Passphrase is now the only path.
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'a-very-long-recovery-passphrase' },

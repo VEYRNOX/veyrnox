@@ -41,12 +41,12 @@ async function mountAdvisor() {
     </MemoryRouter>
   );
 
-  fireEvent.click(screen.getByLabelText(/open security advisor/i));
+  fireEvent.click(screen.getByLabelText(/open vigil/i));
   return screen;
 }
 
 async function askQuestion(text) {
-  const box = await screen.findByPlaceholderText(/ask about security/i);
+  const box = await screen.findByPlaceholderText(/ask vigil/i);
   fireEvent.change(box, { target: { value: text } });
   fireEvent.submit(box.closest('form'));
 }
@@ -282,7 +282,7 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByLabelText(/open security advisor/i));
+      fireEvent.click(screen.getByLabelText(/open vigil/i));
 
       // Should not show consent panel (no remote endpoint to consent to)
       await waitFor(() => {
@@ -353,7 +353,7 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByLabelText(/open security advisor/i));
+      fireEvent.click(screen.getByLabelText(/open vigil/i));
       await grantAdvisorConsent();
 
       // Suggested questions should be send-specific
@@ -378,7 +378,7 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByLabelText(/open security advisor/i));
+      fireEvent.click(screen.getByLabelText(/open vigil/i));
 
       // Should show deniability-specific questions
       const suggestedButtons = screen.getAllByRole('button');
@@ -476,7 +476,7 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
             <SecurityAdvisor walletChain="ethereum" />
           </MemoryRouter>
         );
-        expect(screen.queryByLabelText(/open security advisor/i)).toBeNull();
+        expect(screen.queryByLabelText(/open vigil/i)).toBeNull();
       } finally {
         isDeniabilityOrDemoActive.mockReturnValue(false);
       }

@@ -28,7 +28,7 @@ describe('SecurityAdvisor', () => {
         <SecurityAdvisor walletChain="evm" />
       </MemoryRouter>
     );
-    expect(screen.getByRole('button', { name: /open security advisor/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /open vigil/i })).toBeDefined();
   });
 
   it('renders nothing in deniability mode (I3)', () => {
@@ -52,7 +52,7 @@ describe('SecurityAdvisor', () => {
         <SecurityAdvisor walletChain="evm" />
       </MemoryRouter>
     );
-    expect(screen.getByRole('button', { name: /open security advisor/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /open vigil/i })).toBeDefined();
   });
 
   it('renders on dashboard route (app-wide)', () => {
@@ -62,6 +62,6 @@ describe('SecurityAdvisor', () => {
         <SecurityAdvisor walletChain="evm" />
       </MemoryRouter>
     );
-    expect(screen.getByRole('button', { name: /open security advisor/i })).toBeDefined();
+    expect(screen.getByRole('button', { name: /open vigil/i })).toBeDefined();
   });
 });

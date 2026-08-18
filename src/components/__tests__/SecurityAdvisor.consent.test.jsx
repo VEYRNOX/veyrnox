@@ -41,7 +41,7 @@ async function mountAdvisor() {
     </MemoryRouter>
   );
   // Open the drawer.
-  fireEvent.click(screen.getByLabelText(/open security advisor/i));
+  fireEvent.click(screen.getByLabelText(/open vigil/i));
   return screen.findByTestId('advisor-remote-consent').catch(() => null);
 }
 
@@ -50,7 +50,7 @@ async function mountAdvisor() {
 // version of this helper used keyDown and the "sends nothing" assertions passed
 // against the UNFIXED component, i.e. for the wrong reason entirely.
 async function ask(text) {
-  const box = await screen.findByPlaceholderText(/ask about security/i);
+  const box = await screen.findByPlaceholderText(/ask vigil/i);
   fireEvent.change(box, { target: { value: text } });
   fireEvent.submit(box.closest('form'));
 }
