@@ -12,13 +12,11 @@
 // COLOUR is a severity cue, never the only cue: each row also carries an icon
 // and explicit text, so the warning survives a monochrome or colour-blind read.
 //
-// SANCTIONS: the bundled seed list carries NO 'sanctioned' entries — see
-// docs/OFAC-legal-gate.md, which requires an enterprise-licensed RUNTIME API
-// rather than a build-time snapshot that cannot track delistings. The
-// 'sanctioned' branch below is retained because a LIVE TIP verdict can still
-// produce that category at runtime, which is the disclosed path the gate allows.
-// Do NOT re-add sanctioned addresses to SEED_THREATS to make this branch
-// reachable offline; that is the exact thing the gate forbids.
+// SANCTIONS: the owner override on 2026-08-13 reintroduced OFAC-sourced SEED
+// entries under the explicit category `ofac_sanctioned` (see
+// docs/OFAC-legal-gate.md). LIVE TIP verdicts can still produce the generic
+// `sanctioned` category. Keep both mapped to the SAME critical presentation so
+// seed-vs-runtime source does not downgrade the warning.
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +26,7 @@ import { lookupThreatSync } from '@/lib/threatIntelStore';
 // Presentation only — copy lives in the i18n catalog under send_gates.sentinel.
 const CATEGORY_STYLE = {
   sanctioned:         { icon: Skull,         tone: 'critical' },
+  ofac_sanctioned:    { icon: Skull,         tone: 'critical' },
   drainer:            { icon: Skull,         tone: 'critical' },
   phishing:           { icon: Skull,         tone: 'critical' },
   exploit:            { icon: AlertTriangle, tone: 'high' },
@@ -45,6 +44,9 @@ const TONE_CLASS = {
 
 const DEFAULT_STYLE = { icon: AlertTriangle, tone: 'medium' };
 const SEVERITY_ORDER = { critical: 3, high: 2, medium: 1 };
+const CATEGORY_HEADLINE_KEY = {
+  ofac_sanctioned: 'sanctioned',
+};
 
 /**
  * Sentinel — local threat-intel screening for the send flow.
@@ -74,8 +76,9 @@ export default function SecurityAdvisorBanner({ address }) {
 
   // Headline keyed by category, with a generic fallback for a category the
   // catalog does not yet name (e.g. a new TIP signal type).
+  const headlineKey = CATEGORY_HEADLINE_KEY[worst.category] || worst.category;
   const headline = t([
-    `send_gates.sentinel.headline.${worst.category}`,
+    `send_gates.sentinel.headline.${headlineKey}`,
     'send_gates.sentinel.headline.default',
   ]);
 
