@@ -13,12 +13,17 @@ vi.mock('@/api/demoClient', () => ({
 describe('SecurityAdvisor', () => {
   let SecurityAdvisor;
   let isDeniabilityOrDemoActive;
+  let resolveScreen;
+  let getSuggestedQuestions;
 
   beforeEach(async () => {
     vi.resetModules();
     vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
     isDeniabilityOrDemoActive = (await import('@/wallet-core/deniabilitySession.js')).isDeniabilityOrDemoActive;
-    SecurityAdvisor = (await import('../SecurityAdvisor.jsx')).default;
+    const advisorModule = await import('../SecurityAdvisor.jsx');
+    SecurityAdvisor = advisorModule.default;
+    resolveScreen = advisorModule.resolveScreen;
+    getSuggestedQuestions = advisorModule.getSuggestedQuestions;
   });
 
   it('renders FAB when not in deniability', () => {
@@ -63,5 +68,18 @@ describe('SecurityAdvisor', () => {
       </MemoryRouter>
     );
     expect(screen.getByRole('button', { name: /open vigil/i })).toBeDefined();
+  });
+
+  it('maps representative deep routes to specific advisor screens', () => {
+    expect(resolveScreen('/personal-backup')).toBe('personal_backup');
+    expect(resolveScreen('/token-approvals')).toBe('token_approvals');
+    expect(resolveScreen('/analytics')).toBe('analytics');
+    expect(resolveScreen('/asset/eth')).toBe('asset_detail');
+  });
+
+  it('offers page-specific suggestions for recovery, approvals, and analytics surfaces', () => {
+    expect(getSuggestedQuestions('personal_backup')).toContain('How does personal backup work?');
+    expect(getSuggestedQuestions('token_approvals')).toContain('How do I revoke a risky approval?');
+    expect(getSuggestedQuestions('analytics')).toContain('What does this analytics page tell me?');
   });
 });
