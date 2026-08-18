@@ -101,18 +101,18 @@ describe('computePostureScore', () => {
     // Total: 20 + 25 + 8 + 0 + 0 = 53
     expect(result.total).toBe(53);
     expect(result.percentage).toBe(53);
-    expect(result.color).toBe('#E8A838');  // Amber
+    expect(result.color).toBe('#D4C44A');  // Yellow-green
     expect(result.label).toBe('Fair');
   });
 
   // -------------------------------------------------------------------------
-  // 2. Full score: all checks pass with StrongBox = 100
+  // 2. Full score: all live checks pass with StrongBox = 95
   // -------------------------------------------------------------------------
-  it('scores a full-security state as 100/100 Complete Green', () => {
+  it('scores a full-security state as 95/100 Complete Green', () => {
     const result = computePostureScore(fullState());
 
-    expect(result.total).toBe(100);
-    expect(result.percentage).toBe(100);
+    expect(result.total).toBe(95);
+    expect(result.percentage).toBe(95);
     expect(result.color).toBe('#4ADAC2');  // 86+ = Green
     expect(result.label).toBe('Complete'); // 86+ = Complete
 
@@ -125,14 +125,14 @@ describe('computePostureScore', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. TEE caps hardware at 8/10 (not 10/10)
+  // 3. TEE caps hardware at 8/10, trimming 2 points from the 95 ceiling
   // -------------------------------------------------------------------------
   it('TEE gives 3 pts (not 5), capping hardware at 8/10', () => {
     const result = computePostureScore(fullState({ hardwareTier: 'TEE' }));
 
     expect(result.dimensions.hardwareBinding.score).toBe(8);
-    // Total drops by 2 from the full 100 (StrongBox 5 -> TEE 3)
-    expect(result.total).toBe(98);
+    // Total drops by 2 from the 95 ceiling (StrongBox 5 -> TEE 3)
+    expect(result.total).toBe(93);
   });
 
   // -------------------------------------------------------------------------
@@ -141,7 +141,7 @@ describe('computePostureScore', () => {
   it('SECURE_ENCLAVE gives 5 pts same as StrongBox', () => {
     const result = computePostureScore(fullState({ hardwareTier: 'SECURE_ENCLAVE' }));
     expect(result.dimensions.hardwareBinding.score).toBe(10);
-    expect(result.total).toBe(100);
+    expect(result.total).toBe(95);
   });
 
   // -------------------------------------------------------------------------
