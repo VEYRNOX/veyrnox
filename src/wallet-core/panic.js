@@ -132,6 +132,13 @@ const THREATINTEL_STORE = 'threats';
 // this device has done screening, and its ROWS name addresses (public but
 // still linkable to on-device wallet history).
 const IOC_CACHE_DB_NAME = 'veyrnox-ioc-cache';
+// Phishing-domain feed cache (src/risk/phishingFeed.js) — a downloaded list of
+// known-bad dApp domains. Wiped for the same reason as the two above: it is not
+// the CONTENTS that incriminate (the list is public), it is the PRESENCE. This
+// database only exists if the app ran outside deniability long enough to fetch
+// a feed, so finding it contradicts a decoy story. Deleting it costs nothing
+// functionally — dApp screening falls back to the in-bundle seed list.
+const PHISHING_FEED_DB_NAME = 'veyrnox-phishing-feed';
 // Neutral, non-incriminating key (follows 'primary'/'secondary'); a forensic dump
 // sees one more vault-shaped blob, not a key literally named "panic". The marker
 // is byte-shaped like every other vault blob, so it does not stand out.
@@ -919,6 +926,35 @@ async function eraseIocCacheDatabase() {
   });
 }
 
+// Best-effort erase of the phishing-feed cache database. Exists only once a
+// feed has actually been downloaded, so on a device that never fetched one the
+// delete is a no-op — success and "no such database" are both accepted.
+async function erasePhishingFeedDatabase() {
+  // Drop the in-memory map and withdraw the feed from knownBadDapps first, so a
+  // post-wipe lookup cannot answer from RAM after the database is gone.
+  try {
+    const mod = await import('../risk/phishingFeed.js');
+    if (typeof mod.resetPhishingFeed === 'function') mod.resetPhishingFeed();
+  } catch {
+    // Best-effort; fall through to the authoritative delete below.
+  }
+
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    let req;
+    try {
+      req = indexedDB.deleteDatabase(PHISHING_FEED_DB_NAME);
+    } catch {
+      finish();
+      return;
+    }
+    req.onsuccess = finish;
+    req.onerror = finish;
+    req.onblocked = finish;
+  });
+}
+
 /**
  * NON-DESTRUCTIVE inspection of what local key material currently exists. Used
  * BEFORE a wipe (to show what is there) and AFTER (to prove nothing recoverable
@@ -952,12 +988,12 @@ export async function inspectKeyMaterial() {
   // `onblocked` (a lingering handle in another module pends the delete
   // until it closes), so the previous `clean` verdict was returning true
   // WITHOUT proving those DBs were actually gone. Enumerate IndexedDB
-  // and treat any of the three names surviving as `sideDatabasesResidue`;
+  // and treat any of the SIDE_DB_NAMES surviving as `sideDatabasesResidue`;
   // `clean` becomes false when we can verify AND at least one survived.
   // `sideDatabasesVerified` is false when the platform lacks
   // indexedDB.databases() (Firefox pre-126 still doesn't ship it), so a
   // failure to enumerate is reported honestly instead of falsely clean.
-  const SIDE_DB_NAMES = [APPDATA_DB_NAME, THREATINTEL_DB_NAME, IOC_CACHE_DB_NAME];
+  const SIDE_DB_NAMES = [APPDATA_DB_NAME, THREATINTEL_DB_NAME, IOC_CACHE_DB_NAME, PHISHING_FEED_DB_NAME];
   let sideDatabasesResidue = [];
   let sideDatabasesVerified = false;
   try {
@@ -1017,6 +1053,7 @@ export async function panicWipeLocal() {
   await deleteAppDataDatabase();
   await eraseThreatIntelDatabase();
   await eraseIocCacheDatabase();
+  await erasePhishingFeedDatabase();
   clearLocalAddressResidue();
   clearSessionResidue();  // C-1: sessionStorage tells (More-drawer recents)
   clearBrowserCookies(); // PW-02: expire known browser cookies (sidebar_state)

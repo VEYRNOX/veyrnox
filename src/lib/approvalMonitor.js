@@ -1,18 +1,39 @@
 // src/lib/approvalMonitor.js
 //
-// Background approval monitor — periodically polls for new ERC-20 approvals
-// and incoming transfers from known-bad addresses. Feeds into the existing
-// threatIntelStore + risk scoring pipeline.
+// Background approval monitor — while the app is open, periodically re-reads
+// the local approval and transaction rows and raises an alert for a newly-seen
+// approval to a flagged spender, a newly-seen unlimited approval, or an
+// incoming transfer from a flagged address. Verdicts come from the existing
+// threatIntelStore.
 //
-// LOCAL-FIRST: polling reads on-chain data the wallet already queries
-// (balances, approval events). No new backend surface. Alerts are stored
-// in-memory and surfaced via the useApprovalMonitor hook.
+// LOCAL-FIRST: the two fetchers are injected by the caller and read the SAME
+// local entity stores the pages already read (TokenApproval, Transaction) — no
+// new backend surface and no new egress. Alerts live in memory only and are
+// surfaced via the useApprovalMonitor hook.
 //
-// I3: suppressed in deniability/demo — no polling, no alerts.
-// I4: a polling failure is silently retried, never presented as "all clear".
+// Started from src/hooks/useBackgroundSecurity.js, which is its ONLY caller.
+// Without that call this module is inert — it previously shipped described as a
+// running feature while nothing started it, and no test went red.
+//
+// I3: no polling in deniability/demo, AND already-collected alerts are dropped
+//     — they name real counterparties, so gating the poll alone is not enough.
+// I4: a polling failure is silently retried, never presented as "all clear",
+//     and no alert is never evidence that nothing happened.
 
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { lookupThreatSync } from '@/lib/threatIntelStore';
+
+/**
+ * lookupThreatSync returns an ARRAY of matches and `[]` on a miss — and `[]` is
+ * truthy, so `if (lookupThreatSync(a))` is ALWAYS true. Unwrap through here so
+ * a clean address can never be reported as flagged.
+ * @param {string} address
+ * @returns {{note?: string, category?: string, severity?: string}|null}
+ */
+function firstThreat(address) {
+  const hits = lookupThreatSync(address);
+  return Array.isArray(hits) && hits.length > 0 ? hits[0] : null;
+}
 
 const DEFAULT_INTERVAL_MS = 60_000;
 const MAX_ALERTS = 50;
@@ -23,19 +44,36 @@ const ALERT_TYPE = Object.freeze({
   UNLIMITED_APPROVAL: 'unlimited_approval',
 });
 
-let _alerts = [];
+// _alerts is the snapshot itself, never mutated in place — every mutator
+// REPLACES it. useSyncExternalStore compares snapshots with Object.is, so
+// getAlerts must hand back this exact reference: returning a fresh copy makes
+// every render look like a change and spins React into an infinite loop.
+/** @type {ReadonlyArray<any>} */
+const EMPTY_ALERTS = Object.freeze([]);
+/** @type {ReadonlyArray<any>} */
+let _alerts = EMPTY_ALERTS;
+/** @type {Set<() => void>} */
 let _listeners = new Set();
+/** @type {ReturnType<typeof setInterval>|null} */
 let _timer = null;
 let _running = false;
 
 function notify() {
+  // Listeners are notified that SOMETHING changed and re-read via getAlerts();
+  // the snapshot is deliberately not passed as an argument, so there is only
+  // one way to read it.
   for (const fn of _listeners) {
-    try { fn([..._alerts]); } catch { /* listener error is not our problem */ }
+    try { fn(); } catch { /* listener error is not our problem */ }
   }
 }
 
+// Monotonic, process-local. `ts` is NOT unique — a poll can push several alerts
+// inside the same millisecond, which would collide as a React key and make
+// dismissAlert remove more than the one that was clicked.
+let _nextId = 1;
+
 function pushAlert(alert) {
-  _alerts = [alert, ..._alerts].slice(0, MAX_ALERTS);
+  _alerts = [{ id: _nextId++, ...alert }, ..._alerts].slice(0, MAX_ALERTS);
   notify();
 }
 
@@ -58,7 +96,7 @@ function scanApprovals(approvals, seen) {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    const threat = lookupThreatSync(a.spender_address);
+    const threat = firstThreat(a.spender_address);
     if (threat) {
       pushAlert({
         type: ALERT_TYPE.NEW_APPROVAL,
@@ -95,7 +133,7 @@ function scanIncoming(transfers, seen) {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    const threat = lookupThreatSync(tx.from);
+    const threat = firstThreat(tx.from);
     if (threat) {
       pushAlert({
         type: ALERT_TYPE.RISKY_INCOMING,
@@ -126,7 +164,15 @@ export function startMonitor({ fetchApprovals, fetchRecentTransfers, intervalMs 
   const seenTransfers = new Set();
 
   async function poll() {
-    if (isDeniabilityOrDemoActive()) return;
+    // Gating the POLL is not enough on its own: alerts already collected in a
+    // real session would still be readable from a decoy opened in the same page
+    // lifetime. Drop the residue as well as skipping the work (I3).
+    if (isDeniabilityOrDemoActive()) {
+      seenApprovals.clear();
+      seenTransfers.clear();
+      clearAlerts();
+      return;
+    }
     try {
       const [approvals, transfers] = await Promise.all([
         fetchApprovals().catch(() => []),
@@ -141,32 +187,45 @@ export function startMonitor({ fetchApprovals, fetchRecentTransfers, intervalMs 
   _timer = setInterval(poll, intervalMs);
 }
 
+/**
+ * Stop polling AND drop every collected alert. Alerts carry real counterparty
+ * addresses, so teardown (lock, panic wipe, entering deniability) must clear
+ * them — stopping the timer alone leaves the residue readable.
+ */
 export function stopMonitor() {
   if (_timer) clearInterval(_timer);
   _timer = null;
   _running = false;
+  clearAlerts();
 }
 
 /**
- * Subscribe to alert changes.
- * @param {(alerts: Array) => void} fn
+ * Subscribe to alert changes. `fn` is a change NOTIFICATION and takes no
+ * argument — read the current value with getAlerts(). It is deliberately not
+ * invoked here: useSyncExternalStore reads the snapshot itself after
+ * subscribing, and calling back synchronously only forces an extra render.
+ * @param {() => void} fn
  * @returns {() => void} unsubscribe
  */
 export function subscribeAlerts(fn) {
   _listeners.add(fn);
-  fn([..._alerts]);
   return () => _listeners.delete(fn);
 }
 
-export function getAlerts() { return [..._alerts]; }
+/** @returns {ReadonlyArray<any>} the current snapshot — a stable reference. */
+export function getAlerts() { return _alerts; }
 
-export function dismissAlert(ts) {
-  _alerts = _alerts.filter(a => a.ts !== ts);
+/** @param {number} id the alert's `id` (NOT its `ts` — timestamps collide). */
+export function dismissAlert(id) {
+  const next = _alerts.filter(a => a.id !== id);
+  if (next.length === _alerts.length) return; // no change → no new snapshot
+  _alerts = next;
   notify();
 }
 
 export function clearAlerts() {
-  _alerts = [];
+  if (_alerts.length === 0) return; // already empty → keep the same snapshot
+  _alerts = EMPTY_ALERTS;
   notify();
 }
 

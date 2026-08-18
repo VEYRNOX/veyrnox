@@ -7,7 +7,8 @@ import { useWallet } from "@/lib/WalletProvider";
 import { summarizeAllowance, buildRevokeCalldata, sendRevoke } from "@/wallet-core/evm/approvals";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { fetchRiskNoteAsync } from "@/lib/approvalRiskNotes";
-import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X, MessageSquare } from "lucide-react";
+import { useApprovalMonitor } from "@/hooks/useApprovalMonitor";
+import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X, MessageSquare, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -111,6 +112,16 @@ export default function TokenApprovals() {
   });
   const riskNotes = riskNoteQueries.data || {};
 
+  // Background approval monitor (started in Layout via useBackgroundSecurity).
+  // This page is where its alerts surface — the module collects them, it does
+  // not render anything on its own.
+  const {
+    alerts: monitorAlerts,
+    highCount: monitorHighCount,
+    dismiss: dismissMonitorAlert,
+    clearAll: clearMonitorAlerts,
+  } = useApprovalMonitor();
+
   const visible = approvals.filter((a) => filter === "all" || a.status === filter);
   const activeHigh = approvals.filter((a) => a.status === "active" && a.risk === "high").length;
 
@@ -138,7 +149,7 @@ export default function TokenApprovals() {
 
       {activeHigh > 0 && (
         <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+          <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
           <div>
             <p className="text-sm font-semibold text-destructive">
               {activeHigh} high-risk approval{activeHigh > 1 ? "s" : ""} detected
@@ -148,6 +159,62 @@ export default function TokenApprovals() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Background approval monitor. Alerts arrive asynchronously while the
+          page is open, so the list is a polite live region — a sighted user
+          sees it appear, and a screen-reader user is told. */}
+      {monitorAlerts.length > 0 && (
+        <section
+          aria-labelledby="approval-monitor-heading"
+          className="rounded-xl border border-border bg-card/50 overflow-hidden"
+        >
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
+            <h2 id="approval-monitor-heading" className="text-sm font-semibold flex items-center gap-2">
+              <BellRing className="h-4 w-4 text-caution" aria-hidden="true" />
+              Monitor alerts
+              <span className="text-[10px] font-normal text-muted-foreground">
+                ({monitorAlerts.length}
+                {monitorHighCount > 0 ? `, ${monitorHighCount} high` : ""})
+              </span>
+            </h2>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearMonitorAlerts}>
+              Dismiss all
+            </Button>
+          </div>
+          <ul role="status" aria-live="polite" className="divide-y divide-border">
+            {monitorAlerts.map((al) => {
+              const high = al.severity === "high";
+              const Icon = high ? ShieldAlert : AlertTriangle;
+              return (
+                <li key={al.id} className="flex items-start gap-2 px-4 py-3">
+                  <Icon
+                    className={`h-4 w-4 shrink-0 mt-0.5 ${high ? "text-destructive" : "text-caution"}`}
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0 flex-1">
+                    {/* Severity is stated in words, not carried by colour alone. */}
+                    <p className={`text-xs font-semibold ${high ? "text-destructive" : "text-caution"}`}>
+                      {high ? "High risk" : "Caution"} — {al.title}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 break-words">{al.detail}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => dismissMonitorAlert(al.id)}
+                    aria-label={`Dismiss alert: ${al.title}`}
+                    className="shrink-0 text-muted-foreground hover:text-foreground rounded p-1"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="px-4 py-2 text-[10px] text-muted-foreground border-t border-border">
+            Checked while the app is open. Absence of an alert is not a guarantee that nothing changed.
+          </p>
+        </section>
       )}
 
       {error && (
@@ -211,11 +278,29 @@ export default function TokenApprovals() {
                   {(() => {
                     const note = riskNotes[a.spender_address?.toLowerCase()];
                     if (!note) return null;
-                    const cls = note.severity === 'high' ? 'text-destructive' : note.severity === 'medium' ? 'text-caution' : 'text-muted-foreground';
+                    // Severity is carried by an icon AND a leading word, never by
+                    // colour alone (WCAG 1.4.1). The note resolves asynchronously
+                    // after the list has already rendered, so the container is a
+                    // polite live region — otherwise it appears silently for
+                    // anyone not watching that row.
+                    const { cls, Icon, label } =
+                      note.severity === 'high'
+                        ? { cls: 'text-destructive', Icon: ShieldAlert, label: 'High risk' }
+                        : note.severity === 'medium'
+                          ? { cls: 'text-caution', Icon: AlertTriangle, label: 'Caution' }
+                          : note.severity === 'low'
+                            ? { cls: 'text-muted-foreground', Icon: ShieldCheck, label: 'No known threats' }
+                            : { cls: 'text-muted-foreground', Icon: MessageSquare, label: 'Not assessed' };
                     return (
-                      <div className={`flex items-start gap-1.5 mt-2 text-[11px] ${cls}`}>
-                        <MessageSquare className="h-3 w-3 shrink-0 mt-0.5" />
-                        <span>{note.note}</span>
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className={`flex items-start gap-1.5 mt-2 text-[11px] ${cls}`}
+                      >
+                        <Icon className="h-3 w-3 shrink-0 mt-0.5" aria-hidden="true" />
+                        <span>
+                          <span className="font-semibold">{label}:</span> {note.note}
+                        </span>
                       </div>
                     );
                   })()}
