@@ -9,6 +9,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router";
 import { Capacitor } from "@capacitor/core";
+import { useTranslation } from "react-i18next";
 import { ShieldCheck, Send, X, Loader2, WifiOff, AlertTriangle, CheckCircle2, ShieldAlert as ShieldAlertIcon } from "lucide-react";
 import { screenTransaction } from "@/api/tipScreen.js";
 import { scrubSecrets } from "@/lib/advisorScrubber.js";
@@ -761,8 +762,18 @@ function ScreeningVerdict({ result }) {
 }
 
 export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
+  const { t, i18n } = useTranslation('wallet');
   const location = useLocation();
   const currentScreen = resolveScreen(location.pathname);
+  const currentLanguage = i18n.resolvedLanguage || i18n.language || 'en';
+  const currentLanguageName = (() => {
+    try {
+      const base = String(currentLanguage).split('-')[0];
+      return new Intl.DisplayNames([currentLanguage], { type: 'language' }).of(base) || currentLanguage;
+    } catch {
+      return currentLanguage;
+    }
+  })();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -850,12 +861,12 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
     } else {
       setMessages([...history, {
         role: "assistant",
-        content: "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+        content: t('advisor.local_fallback', { defaultValue: "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet." }),
         local: true,
       }]);
     }
     setStreaming(false);
-  }, []);
+  }, [t]);
 
   const sendMessage = useCallback(async (text) => {
     if (!text.trim() || streaming) return;
@@ -977,11 +988,13 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
 Current page: ${currentScreen} (chain: ${walletChain || "evm"})
 ${PAGE_CONTEXT[currentScreen] || PAGE_CONTEXT.general}
 ${buildPageSnapshotContext(pageSnapshot)}
+Current app language: ${currentLanguageName} (${currentLanguage})
 
 Rules:
 - Give expert advice specific to THIS page and what the user can see/do here
 - Use the live page snapshot when it is relevant; prefer it over generic assumptions
 - Be concise but thorough — explain risks and how to mitigate them
+- Answer in the current app language by default. If the user writes in another language or explicitly asks to switch, follow the user's language for that reply.
 - If the user asks about something on a different page, guide them there
 - Never reveal seed phrases, private keys, or PINs
 - If you don't know something, say so honestly
@@ -1084,7 +1097,7 @@ Additional public knowledge you should apply:
         updated[assistantIdx] = {
           role: "assistant",
           content: localAnswer
-            || "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+            || t('advisor.offline_fallback', { defaultValue: "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet." }),
           local: true,
         };
         return updated;
@@ -1093,7 +1106,7 @@ Additional public knowledge you should apply:
       setStreaming(false);
       abortRef.current = null;
     }
-  }, [messages, streaming, currentScreen, walletChain, pageSnapshot, answerLocally]);
+  }, [messages, streaming, currentScreen, walletChain, pageSnapshot, answerLocally, currentLanguage, currentLanguageName, t]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -1114,7 +1127,7 @@ Additional public knowledge you should apply:
         type="button"
         onClick={() => setOpen(true)}
         className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-sky-300/60 bg-sky-500 text-white shadow-[0_0_28px_rgba(56,189,248,0.5)] transition-transform hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 md:bottom-6"
-        aria-label="Open Vigil — Security Advisor"
+        aria-label={t('advisor.open_aria', { defaultValue: 'Open Vigil - Security Advisor' })}
       >
         <span className="absolute -inset-2 rounded-full border border-sky-300/35 bg-sky-400/10 motion-safe:animate-pulse" />
         <span className="absolute inset-0 rounded-full bg-sky-400/25 motion-safe:animate-ping" />
@@ -1137,12 +1150,12 @@ Additional public knowledge you should apply:
               <ShieldCheck className="h-4 w-4 text-primary" />
               <div>
                 <DrawerTitle className="text-sm">Vigil</DrawerTitle>
-                <p className="text-[10px] text-muted-foreground leading-tight">Security Advisor</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{t('advisor.title', { defaultValue: 'Security Advisor' })}</p>
               </div>
               {offline && (
                 <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-500">
                   <WifiOff className="h-2.5 w-2.5" />
-                  offline
+                  {t('advisor.offline_badge', { defaultValue: 'offline' })}
                 </span>
               )}
             </div>
@@ -1151,7 +1164,7 @@ Additional public knowledge you should apply:
                 type="button"
                 onClick={handleClose}
                 className="rounded-sm p-1 text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                aria-label="Close"
+                aria-label={t('nav.close')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1167,15 +1180,12 @@ Additional public knowledge you should apply:
               className="mx-4 mt-3 rounded-lg border border-border bg-muted/40 p-3 text-xs"
               data-testid="advisor-remote-consent"
             >
-              <p className="font-medium text-foreground">Answer questions online?</p>
+              <p className="font-medium text-foreground">{t('advisor.consent.title', { defaultValue: 'Answer questions online?' })}</p>
               <p className="mt-1 text-muted-foreground">
-                The advisor can send the questions you type — plus which screen you are on and
-                which chain is selected — to Veyrnox&rsquo;s threat-intelligence service for a
-                fuller answer. Your addresses, balances, seed and PIN are never included.
+                {t('advisor.consent.body_1', { defaultValue: "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included." })}
               </p>
               <p className="mt-1 text-muted-foreground">
-                Decline and the advisor keeps working, answering from the guidance built into
-                the app. You can change this later from the advisor.
+                {t('advisor.consent.body_2', { defaultValue: 'Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.' })}
               </p>
               <div className="mt-2 flex gap-2">
                 <button
@@ -1184,7 +1194,7 @@ Additional public knowledge you should apply:
                   className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground"
                   data-testid="advisor-consent-allow"
                 >
-                  Allow online answers
+                  {t('advisor.consent.allow', { defaultValue: 'Allow online answers' })}
                 </button>
                 <button
                   type="button"
@@ -1192,7 +1202,7 @@ Additional public knowledge you should apply:
                   className="rounded-md border border-border px-3 py-1.5 font-medium text-foreground"
                   data-testid="advisor-consent-deny"
                 >
-                  Keep answers local
+                  {t('advisor.consent.deny', { defaultValue: 'Keep answers local' })}
                 </button>
               </div>
             </div>
@@ -1207,7 +1217,7 @@ Additional public knowledge you should apply:
             {messages.length === 0 && (
               <div className="space-y-3 pt-1">
                 <p className="text-xs text-muted-foreground text-center">
-                  Hi, I'm Vigil. Tap any question or type your own below.
+                  {t('advisor.empty_state', { defaultValue: "Hi, I'm Vigil. Tap any question or type your own below." })}
                 </p>
                 <div className="flex flex-col gap-1.5">
                   {getSuggestedQuestions(currentScreen).map((q) => (
@@ -1243,12 +1253,12 @@ Additional public knowledge you should apply:
                     ) : (
                       <span className="flex items-center gap-1.5 text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        Thinking...
+                        {t('advisor.thinking', { defaultValue: 'Thinking...' })}
                       </span>
                     )}
                     {msg.local && msg.role === "assistant" && msg.content && !msg.screening && (
                       <p className="mt-1.5 text-[10px] text-muted-foreground/60 italic">
-                        from local knowledge base
+                        {t('advisor.local_suffix', { defaultValue: 'from local knowledge base' })}
                       </p>
                     )}
                   </div>
@@ -1287,7 +1297,7 @@ Additional public knowledge you should apply:
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask Vigil anything..."
+              placeholder={t('advisor.placeholder', { defaultValue: 'Ask Vigil anything...' })}
               disabled={streaming}
               className="flex-1 rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
               autoComplete="off"
@@ -1296,7 +1306,7 @@ Additional public knowledge you should apply:
               type="submit"
               disabled={streaming || !input.trim()}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-40 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              aria-label="Send message"
+              aria-label={t('advisor.send_aria', { defaultValue: 'Send message' })}
             >
               {streaming ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
