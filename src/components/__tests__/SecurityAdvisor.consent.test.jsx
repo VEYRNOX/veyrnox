@@ -9,6 +9,28 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+vi.mock('react-i18next', async () => {
+  const wallet = /** @type {any} */ (await import('@/i18n/locales/en/wallet.json'));
+  const common = /** @type {any} */ (await import('@/i18n/locales/en/common.json'));
+  const bundles = { wallet: wallet.default, common: common.default };
+  const resolve = (key, opts = {}) => {
+    const ns = opts.ns || 'common';
+    let v = bundles[ns];
+    for (const p of String(key).split('.')) v = v?.[p];
+    if (typeof v !== 'string') return opts.defaultValue || key;
+    return v.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in opts ? String(opts[k]) : `{{${k}}}`));
+  };
+  return {
+    useTranslation: (ns) => ({
+      t: (k, o) => resolve(k, { ns, ...(o || {}) }),
+      i18n: { language: 'en', resolvedLanguage: 'en' },
+    }),
+    Trans: ({ children }) => children,
+    initReactI18next: { type: '3rdParty', init: () => {} },
+    I18nextProvider: ({ children }) => children,
+  };
+});
+
 vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilityOrDemoActive: vi.fn(() => false),
 }));
