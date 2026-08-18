@@ -15,6 +15,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { SEED_THREATS } from '@/lib/threatIntelStore.js';
 
 const ADVISOR_KEY = 'veyrnox-advisor-remote-consent';
 
@@ -86,6 +87,22 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
   });
 
   describe('Address extraction & threat screening correlation', () => {
+    it('renders a local seeded sanctions hit without crashing, even when remote consent is denied', async () => {
+      await mountAdvisor();
+      await denyAdvisorConsent();
+
+      await askQuestion(`Is ${SEED_THREATS[0].address} safe?`);
+
+      await waitFor(() => {
+        const verdict = screen.getByTestId('tip-screening-verdict');
+        expect(verdict.textContent).toContain('BLOCKED');
+        expect(verdict.textContent).toContain('Sanctions match detected');
+      });
+
+      expect(mockScreenTransaction).not.toHaveBeenCalled();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
     it('detects EVM addresses and screens them before asking for chat', async () => {
       await mountAdvisor();
       await grantAdvisorConsent();

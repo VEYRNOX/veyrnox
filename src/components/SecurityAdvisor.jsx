@@ -298,6 +298,7 @@ function extractAddress(text) {
 
 function ScreeningVerdict({ result }) {
   if (!result) return null;
+  const risks = Array.isArray(result.risks) ? result.risks : [];
 
   // 'unknown' — TIP could not screen (all sources skipped/errored). Distinct
   // from 'warn': warn = we found signals; unknown = we found NOTHING because
@@ -349,9 +350,9 @@ function ScreeningVerdict({ result }) {
         </p>
       )}
 
-      {result.risks.length > 0 && (
+      {risks.length > 0 && (
         <ul className="mt-1.5 space-y-1">
-          {result.risks.map((r, i) => (
+          {risks.map((r, i) => (
             <li key={i} className="text-foreground/80">
               <span className="font-medium">{r.title}</span>
               {r.detail && <span className="text-muted-foreground"> — {r.detail}</span>}
@@ -360,7 +361,7 @@ function ScreeningVerdict({ result }) {
         </ul>
       )}
 
-      {isClear && result.risks.length === 0 && (
+      {isClear && risks.length === 0 && (
         <p className="mt-1.5 text-muted-foreground">
           No hits from consulted sources. Address is not on any list this build screens against.
         </p>
@@ -553,16 +554,20 @@ export default function SecurityAdvisor({ walletChain }) {
           && remoteResult.verdict === 'block'
           && seedVerdict !== 'block';
         if (!remoteWins) {
+          const isSanctions = /sanction/i.test(top.category) || /ofac|sdn/i.test(top.source || '');
           setMessages((prev) => [...prev, {
             role: "assistant",
             content: "",
             screening: {
               verdict: seedVerdict,
-              reason: `${top.note} (${top.category}) — source: ${top.source}`,
-              source: 'local_seed',
+              sanctions: isSanctions,
+              risks: [{
+                title: top.note || 'Known bad address',
+                detail: `${top.category} — source: ${top.source}`,
+              }],
               address: detected.address,
               chain: detected.chain,
-              sourcesConsulted: [{ id: 'local_seed', ok: true }],
+              sourcesConsulted: [{ source: 'Local seed', status: 'hit', latency_ms: 0 }],
             },
           }]);
           setStreaming(false);
