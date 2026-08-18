@@ -771,7 +771,7 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   const { t, i18n } = useTranslation('wallet');
   const location = useLocation();
   const currentScreen = resolveScreen(location.pathname);
-  const currentLanguage = i18n.resolvedLanguage || i18n.language || 'en';
+  const currentLanguage = i18n?.resolvedLanguage || i18n?.language || 'en';
   const currentLanguageName = (() => {
     try {
       const base = String(currentLanguage).split('-')[0];
