@@ -517,5 +517,42 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
         expect(messages.length).toBeGreaterThan(2); // User + assistant for each
       });
     });
+
+    it('sends the live page snapshot in remote chat context', async () => {
+      vi.resetModules();
+      vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+
+      const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
+      fetchSpy.mockResolvedValueOnce(new Response(
+        'data: {"response":"Use the send form carefully."}\ndata: [DONE]\n',
+        { status: 200 }
+      ));
+
+      render(
+        <MemoryRouter initialEntries={['/send']}>
+          <SecurityAdvisor
+            walletChain="bitcoin"
+            pageSnapshot={{
+              pathname: '/send',
+              route_params: { asset: 'BTC' },
+              wallet_session: { unlocked: true, mode: 'primary', wallet_count: 2 },
+            }}
+          />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByLabelText(/open vigil/i));
+      await grantAdvisorConsent();
+      await askQuestion('What should I check before sending?');
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+      const [, options] = fetchSpy.mock.calls.at(-1);
+      const payload = JSON.parse(options.body);
+
+      expect(payload.context.wallet_chain).toBe('bitcoin');
+      expect(payload.context.page_snapshot.pathname).toBe('/send');
+      expect(payload.context.page_snapshot.route_params.asset).toBe('BTC');
+      expect(payload.context.page_snapshot.wallet_session.wallet_count).toBe(2);
+    });
   });
 });
