@@ -212,6 +212,11 @@ jobs:
           VITE_TEST_THROWAWAY_SEED: ${{ secrets.VITE_TEST_THROWAWAY_SEED }}
           # Exercise the same recovery-share surface enabled in staging builds.
           VITE_ENABLE_PERSONAL_BACKUP_SHARDS: '1'
+          # Force the low-end render path so the WalletEntry lamp block skips
+          # its Framer Motion loops — CI runners are 4-core / 16 GB and would
+          # otherwise animate, tying up the main thread enough to time out the
+          # onboarding illegal-transit specs.
+          VITE_TEST_E2E: '1'
 
       - name: Upload Web Test Results
         if: always()
