@@ -614,6 +614,20 @@ function getSuggestedQuestions(screen) {
 
 export { getSuggestedQuestions };
 
+function buildPageSnapshotContext(pageSnapshot) {
+  if (!pageSnapshot || typeof pageSnapshot !== 'object') {
+    return 'Live page snapshot: unavailable.';
+  }
+  try {
+    return `Live page snapshot (non-secret shell state):
+${JSON.stringify(pageSnapshot, null, 2)}`;
+  } catch {
+    return 'Live page snapshot: unavailable.';
+  }
+}
+
+export { buildPageSnapshotContext };
+
 // Per-chain address regexes. Order-of-check matters: EVM's `0x…` pattern is
 // unambiguous, so try that first. Bitcoin bech32 (`bc1…`) is next — it can't
 // be confused with legacy BTC. Legacy BTC (`1…`/`3…`) then Solana overlap on
@@ -746,7 +760,7 @@ function ScreeningVerdict({ result }) {
   );
 }
 
-export default function SecurityAdvisor({ walletChain }) {
+export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   const location = useLocation();
   const currentScreen = resolveScreen(location.pathname);
   const [open, setOpen] = useState(false);
@@ -962,9 +976,11 @@ export default function SecurityAdvisor({ walletChain }) {
 
 Current page: ${currentScreen} (chain: ${walletChain || "evm"})
 ${PAGE_CONTEXT[currentScreen] || PAGE_CONTEXT.general}
+${buildPageSnapshotContext(pageSnapshot)}
 
 Rules:
 - Give expert advice specific to THIS page and what the user can see/do here
+- Use the live page snapshot when it is relevant; prefer it over generic assumptions
 - Be concise but thorough — explain risks and how to mitigate them
 - If the user asks about something on a different page, guide them there
 - Never reveal seed phrases, private keys, or PINs
@@ -1002,6 +1018,7 @@ Additional public knowledge you should apply:
           context: {
             current_screen: currentScreen,
             wallet_chain: walletChain,
+            page_snapshot: pageSnapshot,
           },
           // Per-device Advisor cap on the TIP side (30 turns / 24h) is keyed
           // on device_id. Without it every wallet installation shares the
@@ -1076,7 +1093,7 @@ Additional public knowledge you should apply:
       setStreaming(false);
       abortRef.current = null;
     }
-  }, [messages, streaming, currentScreen, walletChain, answerLocally]);
+  }, [messages, streaming, currentScreen, walletChain, pageSnapshot, answerLocally]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

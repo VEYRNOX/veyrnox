@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, useCallback, useRef } from "react";
+import { useState, useEffect, lazy, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, Link, useLocation, useNavigate, useNavigationType } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -101,11 +101,53 @@ export function shouldShowHeaderSearch(pathname, mobileTab) {
   return !isHomeSearchPillVisible(pathname, mobileTab);
 }
 
+function normalizeAdvisorParamValue(value) {
+  const s = String(value ?? "").trim();
+  if (!s) return null;
+  return s.length > 80 ? `${s.slice(0, 77)}...` : s;
+}
+
+function buildAdvisorSearchSnapshot(search) {
+  const params = new URLSearchParams(search);
+  const entries = [...params.entries()].slice(0, 8);
+  return Object.fromEntries(
+    entries
+      .map(([key, value]) => [key, normalizeAdvisorParamValue(value)])
+      .filter(([, value]) => value != null)
+  );
+}
+
+function resolveAdvisorChain(pathname, search) {
+  if (pathname === '/solana') return 'solana';
+  if (pathname.startsWith('/asset/')) {
+    const symbol = pathname.slice('/asset/'.length).toUpperCase();
+    if (symbol === 'BTC') return 'bitcoin';
+    if (symbol === 'SOL') return 'solana';
+  }
+  const params = new URLSearchParams(search);
+  const asset = String(params.get('asset') || '').toUpperCase();
+  if (asset === 'BTC') return 'bitcoin';
+  if (asset === 'SOL') return 'solana';
+  return 'evm';
+}
+
 export default function Layout() {
   const { t } = useTranslation('wallet');
   const location = useLocation();
   const navigate = useNavigate();
-  const { lock, isUnlocked } = useWallet();
+  const {
+    lock,
+    isUnlocked,
+    isDecoy,
+    isHidden,
+    wallets,
+    activeWalletId,
+    portfolios,
+    activePortfolioId,
+    vaultExists,
+    auditLogEnabled,
+    actionPasswordConfigured,
+  } = useWallet();
   const buyEnabled = useBuyEnabled();
   const mobileBottomNav = MOBILE_BOTTOM_NAV_ITEMS
     .filter((item) => !item.requiresBuy || buyEnabled)
@@ -158,6 +200,63 @@ export default function Layout() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState({ Overview: true, Wallet: true });
   const toggleGroup = (label) => setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+  const advisorRouteMeta = useMemo(
+    () => searchableRoutes.find((route) => route.path === location.pathname) || null,
+    [location.pathname]
+  );
+  const advisorWalletChain = useMemo(
+    () => resolveAdvisorChain(location.pathname, location.search),
+    [location.pathname, location.search]
+  );
+  const advisorPageSnapshot = useMemo(() => {
+    const query = buildAdvisorSearchSnapshot(location.search);
+    const sessionMode = isHidden ? 'hidden' : isDecoy ? 'decoy' : 'primary';
+    return {
+      pathname: location.pathname,
+      route_label: advisorRouteMeta?.label || null,
+      route_group: advisorRouteMeta?.group || null,
+      route_params: Object.keys(query).length ? query : null,
+      wallet_chain_hint: advisorWalletChain,
+      shell: {
+        mobile_tab: mobileTab,
+        more_drawer_open: moreOpen,
+        can_show_back: canShowShellBack,
+      },
+      wallet_session: {
+        unlocked: isUnlocked,
+        mode: sessionMode,
+        active_wallet_id: activeWalletId,
+        wallet_count: Array.isArray(wallets) ? wallets.length : 0,
+        portfolio_count: Array.isArray(portfolios) ? portfolios.length : 0,
+        active_portfolio_id: activePortfolioId || null,
+        vault_exists: vaultExists,
+        action_password_configured: !!actionPasswordConfigured,
+        audit_log_enabled: !!auditLogEnabled,
+      },
+      feature_flags: {
+        buy_enabled: !!buyEnabled,
+      },
+    };
+  }, [
+    actionPasswordConfigured,
+    activePortfolioId,
+    activeWalletId,
+    advisorRouteMeta,
+    advisorWalletChain,
+    auditLogEnabled,
+    buyEnabled,
+    canShowShellBack,
+    isDecoy,
+    isHidden,
+    isUnlocked,
+    location.pathname,
+    location.search,
+    mobileTab,
+    moreOpen,
+    portfolios,
+    vaultExists,
+    wallets,
+  ]);
 
   useEffect(() => {
     if (MOBILE_TABS.includes(location.pathname)) {
@@ -402,7 +501,7 @@ export default function Layout() {
       {/* Day-3 soft paywall nudge (Task 6). Renders nothing until
           shouldShowPaywallNudge() is true; I3-gated internally. */}
       <PaywallNudge />
-      <SecurityAdvisor walletChain="evm" />
+      <SecurityAdvisor walletChain={advisorWalletChain} pageSnapshot={advisorPageSnapshot} />
 
       {/* ── Mobile Top Bar ── */}
       <header
