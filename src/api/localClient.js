@@ -70,6 +70,25 @@ function openDb() {
   return dbPromise;
 }
 
+/**
+ * Close the cached IndexedDB connection and drop the handle, so a test that
+ * deletes the database is not left BLOCKED behind a live module-level
+ * connection. The next operation reopens lazily via openDb().
+ *
+ * @returns {Promise<void>}
+ */
+export async function closeLocalBase44DbForTest() {
+  const pending = dbPromise;
+  dbPromise = null;
+  if (!pending) return;
+  try {
+    const db = await pending;
+    db.close();
+  } catch {
+    // The database never opened successfully, so there is nothing to close.
+  }
+}
+
 function idbGet(name) {
   return openDb().then(
     (db) =>

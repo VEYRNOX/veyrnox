@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('localBase44 entity contract', () => {
   beforeEach(async () => {
+    try {
+      const { closeLocalBase44DbForTest } = await import('../localClient.js');
+      await closeLocalBase44DbForTest();
+    } catch {
+      // The prior test may not have opened the local client yet.
+    }
     vi.resetModules();
     await new Promise((resolve) => {
       const req = indexedDB.deleteDatabase('veyrnox-appdata');
