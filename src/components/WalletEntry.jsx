@@ -1332,8 +1332,7 @@ export default function WalletEntry() {
       return (
         <EntryShell chromeless>
           <WalletCreatedFlash
-            onPrimary={() => { setJustOnboarded(false); backupNag.markBackupNagShown(); navigate("/personal-backup"); }}
-            onDismiss={() => { setJustOnboarded(false); backupNag.dismissForSession(); }}
+            onDismiss={() => { setJustOnboarded(false); }}
           />
         </EntryShell>
       );
