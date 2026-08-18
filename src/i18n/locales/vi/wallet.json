@@ -241,10 +241,22 @@
       "intro": "Một bước kiểm tra bổ sung ngoài PIN của bạn cho các hành động nhạy cảm. Ngay cả khi ai đó thấy bạn gõ PIN, họ vẫn không thể thực hiện những việc này nếu không có bước thứ hai.",
       "actions_protects_label": "Các hành động được bảo vệ",
       "gated_actions": [
-        { "label": "Gửi tiền", "desc": "mỗi lệnh gửi, sau các kiểm tra an toàn" },
-        { "label": "Tiết lộ cụm từ khôi phục của bạn", "desc": "xem hoặc xuất bản sao lưu của bạn" },
-        { "label": "Đặt PIN khẩn cấp", "desc": "tạo ví khẩn cấp" },
-        { "label": "Tạo hoặc ẩn một ví", "desc": "thay đổi ví ẩn" }
+        {
+          "label": "Gửi tiền",
+          "desc": "mỗi lệnh gửi, sau các kiểm tra an toàn"
+        },
+        {
+          "label": "Tiết lộ cụm từ khôi phục của bạn",
+          "desc": "xem hoặc xuất bản sao lưu của bạn"
+        },
+        {
+          "label": "Đặt PIN khẩn cấp",
+          "desc": "tạo ví khẩn cấp"
+        },
+        {
+          "label": "Tạo hoặc ẩn một ví",
+          "desc": "thay đổi ví ẩn"
+        }
       ],
       "currently_enforcing": "Hiện đang áp dụng:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Gần đây",
     "tab_home": "Trang chủ",
     "tab_send": "Gửi",
-    "tab_receive": "Nhận"
+    "tab_receive": "Nhận",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Quay lại"
@@ -343,8 +356,14 @@
     "heading": "Gửi tiền mã hóa",
     "subheading": "Chuyển tiền một cách an toàn",
     "wallet_fallback": "Ví",
-    "wallet_picker": { "label": "Từ ví", "placeholder": "Chọn ví" },
-    "asset_picker": { "label": "Tài sản", "placeholder": "Chọn tài sản" },
+    "wallet_picker": {
+      "label": "Từ ví",
+      "placeholder": "Chọn ví"
+    },
+    "asset_picker": {
+      "label": "Tài sản",
+      "placeholder": "Chọn tài sản"
+    },
     "recipient": {
       "label": "Gửi đến (địa chỉ hoặc tên)",
       "placeholder": "Dán một địa chỉ hoặc nhập một tên (ví dụ: vitalik.eth)",
@@ -404,7 +423,10 @@
       "dev_ungate_body": "— cổng gửi bị bỏ qua cho {{currency}} thông qua VITE_DEV_UNGATE_SEND (chỉ bản dựng dev). Trạng thái của tài sản này không thay đổi (vẫn chưa hoạt động); mainnet vẫn bị khóa. Chỉ để xác minh trên testnet — không bao giờ phát hành bản dựng này.",
       "locked": "Ví của bạn đã bị khóa. Mở khóa trong Cài đặt ví để ký và gửi."
     },
-    "note": { "label": "Ghi chú (tùy chọn)", "placeholder": "Đây là để làm gì?" },
+    "note": {
+      "label": "Ghi chú (tùy chọn)",
+      "placeholder": "Đây là để làm gì?"
+    },
     "trezor": {
       "toggle_label": "Ký bằng Trezor",
       "connected": "Thiết bị đã kết nối",
@@ -415,7 +437,9 @@
       "confirm_send": "Xác nhận & Gửi",
       "back": "Quay lại"
     },
-    "verify": { "summary_label": "Bạn đang gửi" },
+    "verify": {
+      "summary_label": "Bạn đang gửi"
+    },
     "fee": {
       "automatic": "Phí mạng được đặt tự động cho {{currency}} ({{network}}).",
       "native_fee_note": "Phí mạng được trả bằng {{symbol}} ({{network}}) — bạn cần {{symbol}} để trang trải phí mạng ngay cả khi gửi {{token}}."
@@ -708,5 +732,46 @@
     "allocation": "Phân bổ",
     "holdings": "Tài sản nắm giữ",
     "noHoldings": "Chưa có tài sản nào."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

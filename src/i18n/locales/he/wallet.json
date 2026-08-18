@@ -241,10 +241,22 @@
       "intro": "בדיקה נוספת מעבר ל-PIN שלכם עבור פעולות רגישות. גם אם מישהו רואה אתכם מקלידים את ה-PIN שלכם, הוא עדיין לא יכול לבצע פעולות אלה ללא השלב הנוסף.",
       "actions_protects_label": "פעולות שהוא מגן עליהן",
       "gated_actions": [
-        { "label": "שליחת כספים", "desc": "כל שליחה, לאחר בדיקות בטיחות" },
-        { "label": "חשיפת ביטוי השחזור שלכם", "desc": "צפייה או ייצוא הגיבוי שלכם" },
-        { "label": "הגדרת PIN חירום", "desc": "יצירת ארנק החירום" },
-        { "label": "יצירה או הסתרה של ארנק", "desc": "שינויים בארנק מוסתר" }
+        {
+          "label": "שליחת כספים",
+          "desc": "כל שליחה, לאחר בדיקות בטיחות"
+        },
+        {
+          "label": "חשיפת ביטוי השחזור שלכם",
+          "desc": "צפייה או ייצוא הגיבוי שלכם"
+        },
+        {
+          "label": "הגדרת PIN חירום",
+          "desc": "יצירת ארנק החירום"
+        },
+        {
+          "label": "יצירה או הסתרה של ארנק",
+          "desc": "שינויים בארנק מוסתר"
+        }
       ],
       "currently_enforcing": "אוכף כרגע:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "אחרונים",
     "tab_home": "בית",
     "tab_send": "שליחה",
-    "tab_receive": "קבלה"
+    "tab_receive": "קבלה",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "חזרה"
@@ -343,8 +356,14 @@
     "heading": "שליחת קריפטו",
     "subheading": "העברת כספים בבטחה",
     "wallet_fallback": "ארנק",
-    "wallet_picker": { "label": "מהארנק", "placeholder": "בחרו ארנק" },
-    "asset_picker": { "label": "נכס", "placeholder": "בחרו נכס" },
+    "wallet_picker": {
+      "label": "מהארנק",
+      "placeholder": "בחרו ארנק"
+    },
+    "asset_picker": {
+      "label": "נכס",
+      "placeholder": "בחרו נכס"
+    },
     "recipient": {
       "label": "שליחה אל (כתובת או שם)",
       "placeholder": "הדביקו כתובת או הזינו שם (למשל vitalik.eth)",
@@ -404,7 +423,10 @@
       "dev_ungate_body": "— שער השליחה עקוף עבור {{currency}} דרך VITE_DEV_UNGATE_SEND (בגרסת פיתוח בלבד). הסטטוס של נכס זה לא השתנה (עדיין לא חי); המיינט נותר חסום. אימות ברשת בדיקה בלבד — לעולם אל תשחררו גרסה זו.",
       "locked": "הארנק שלכם נעול. פתחו אותו בהגדרות הארנק כדי לחתום ולשלוח."
     },
-    "note": { "label": "הערה (אופציונלי)", "placeholder": "למה זה מיועד?" },
+    "note": {
+      "label": "הערה (אופציונלי)",
+      "placeholder": "למה זה מיועד?"
+    },
     "trezor": {
       "toggle_label": "חתימה עם Trezor",
       "connected": "המכשיר מחובר",
@@ -415,7 +437,9 @@
       "confirm_send": "אישור ושליחה",
       "back": "חזרה"
     },
-    "verify": { "summary_label": "אתם שולחים" },
+    "verify": {
+      "summary_label": "אתם שולחים"
+    },
     "fee": {
       "automatic": "עמלת הרשת מוגדרת אוטומטית עבור {{currency}} ({{network}}).",
       "native_fee_note": "עמלת הרשת משולמת ב-{{symbol}} ({{network}}) — אתם זקוקים ל-{{symbol}} כדי לכסות את עמלת הרשת גם כששולחים {{token}}."
@@ -708,5 +732,46 @@
     "allocation": "הקצאה",
     "holdings": "החזקות",
     "noHoldings": "עדיין אין החזקות."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

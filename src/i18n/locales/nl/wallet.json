@@ -241,10 +241,22 @@
       "intro": "Een extra controle bovenop je pincode voor gevoelige acties. Zelfs als iemand je pincode ziet typen, kan hij deze dingen nog steeds niet doen zonder de tweede stap.",
       "actions_protects_label": "Acties die het beschermt",
       "gated_actions": [
-        { "label": "Geld versturen", "desc": "elke verzending, na veiligheidscontroles" },
-        { "label": "Je herstelzin onthullen", "desc": "je back-up bekijken of exporteren" },
-        { "label": "Een noodpincode instellen", "desc": "de noodwallet aanmaken" },
-        { "label": "Een wallet aanmaken of verbergen", "desc": "wijzigingen aan verborgen wallets" }
+        {
+          "label": "Geld versturen",
+          "desc": "elke verzending, na veiligheidscontroles"
+        },
+        {
+          "label": "Je herstelzin onthullen",
+          "desc": "je back-up bekijken of exporteren"
+        },
+        {
+          "label": "Een noodpincode instellen",
+          "desc": "de noodwallet aanmaken"
+        },
+        {
+          "label": "Een wallet aanmaken of verbergen",
+          "desc": "wijzigingen aan verborgen wallets"
+        }
       ],
       "currently_enforcing": "Momenteel afgedwongen:",
       "badge_biometric": "Pincode + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Recent",
     "tab_home": "Start",
     "tab_send": "Versturen",
-    "tab_receive": "Ontvangen"
+    "tab_receive": "Ontvangen",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Terug"
@@ -343,8 +356,14 @@
     "heading": "Crypto versturen",
     "subheading": "Geld veilig overmaken",
     "wallet_fallback": "Wallet",
-    "wallet_picker": { "label": "Van wallet", "placeholder": "Selecteer wallet" },
-    "asset_picker": { "label": "Asset", "placeholder": "Selecteer asset" },
+    "wallet_picker": {
+      "label": "Van wallet",
+      "placeholder": "Selecteer wallet"
+    },
+    "asset_picker": {
+      "label": "Asset",
+      "placeholder": "Selecteer asset"
+    },
     "recipient": {
       "label": "Versturen naar (adres of naam)",
       "placeholder": "Plak een adres of voer een naam in (bijv. vitalik.eth)",
@@ -404,7 +423,10 @@
       "dev_ungate_body": "— de verzendgate wordt omzeild voor {{currency}} via VITE_DEV_UNGATE_SEND (alleen dev-build). De status van deze asset is ongewijzigd (nog niet live); mainnet blijft geblokkeerd. Alleen voor testnetverificatie — verzend deze build nooit.",
       "locked": "Je wallet is vergrendeld. Ontgrendel hem in Wallet-instellingen om te ondertekenen en te versturen."
     },
-    "note": { "label": "Notitie (optioneel)", "placeholder": "Waar is dit voor?" },
+    "note": {
+      "label": "Notitie (optioneel)",
+      "placeholder": "Waar is dit voor?"
+    },
     "trezor": {
       "toggle_label": "Ondertekenen met Trezor",
       "connected": "Apparaat verbonden",
@@ -415,7 +437,9 @@
       "confirm_send": "Bevestigen en versturen",
       "back": "Terug"
     },
-    "verify": { "summary_label": "Je verstuurt" },
+    "verify": {
+      "summary_label": "Je verstuurt"
+    },
     "fee": {
       "automatic": "Netwerkkosten worden automatisch ingesteld voor {{currency}} ({{network}}).",
       "native_fee_note": "Netwerkkosten worden betaald in {{symbol}} ({{network}}) — je hebt {{symbol}} nodig om de netwerkkosten te dekken, ook bij het versturen van {{token}}."
@@ -708,5 +732,46 @@
     "allocation": "Allocatie",
     "holdings": "Bezittingen",
     "noHoldings": "Nog geen bezittingen."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

@@ -241,10 +241,22 @@
       "intro": "Dodatočná kontrola nad rámec vášho PIN-u pri citlivých akciách. Aj keby niekto videl, ako zadávate PIN, tieto veci bez druhého kroku vykonať nedokáže.",
       "actions_protects_label": "Akcie, ktoré to chráni",
       "gated_actions": [
-        { "label": "Odosielanie prostriedkov", "desc": "každé odoslanie, po bezpečnostných kontrolách" },
-        { "label": "Zobrazenie obnovovacej frázy", "desc": "zobrazenie alebo export zálohy" },
-        { "label": "Nastavenie núdzového PIN-u", "desc": "vytvorenie núdzovej peňaženky" },
-        { "label": "Vytvorenie alebo skrytie peňaženky", "desc": "zmeny skrytej peňaženky" }
+        {
+          "label": "Odosielanie prostriedkov",
+          "desc": "každé odoslanie, po bezpečnostných kontrolách"
+        },
+        {
+          "label": "Zobrazenie obnovovacej frázy",
+          "desc": "zobrazenie alebo export zálohy"
+        },
+        {
+          "label": "Nastavenie núdzového PIN-u",
+          "desc": "vytvorenie núdzovej peňaženky"
+        },
+        {
+          "label": "Vytvorenie alebo skrytie peňaženky",
+          "desc": "zmeny skrytej peňaženky"
+        }
       ],
       "currently_enforcing": "Aktuálne vynucované:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Nedávne",
     "tab_home": "Domov",
     "tab_send": "Poslať",
-    "tab_receive": "Prijať"
+    "tab_receive": "Prijať",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Späť"
@@ -343,8 +356,14 @@
     "heading": "Poslať kryptomenu",
     "subheading": "Bezpečný prevod prostriedkov",
     "wallet_fallback": "Peňaženka",
-    "wallet_picker": { "label": "Z peňaženky", "placeholder": "Vyberte peňaženku" },
-    "asset_picker": { "label": "Aktívum", "placeholder": "Vyberte aktívum" },
+    "wallet_picker": {
+      "label": "Z peňaženky",
+      "placeholder": "Vyberte peňaženku"
+    },
+    "asset_picker": {
+      "label": "Aktívum",
+      "placeholder": "Vyberte aktívum"
+    },
     "recipient": {
       "label": "Poslať na (adresa alebo meno)",
       "placeholder": "Vložte adresu alebo zadajte meno (napr. vitalik.eth)",
@@ -404,7 +423,10 @@
       "dev_ungate_body": "— brána odosielania je pre {{currency}} obídená cez VITE_DEV_UNGATE_SEND (iba vývojová zostava). Stav tohto aktíva sa nemení (stále nie je živé); mainnet zostáva zablokovaný. Len na overenie testnetu — túto zostavu nikdy nenasadzujte.",
       "locked": "Vaša peňaženka je uzamknutá. Odomknite ju v Nastaveniach peňaženky, aby ste mohli podpísať a odoslať."
     },
-    "note": { "label": "Poznámka (voliteľné)", "placeholder": "Na čo to je?" },
+    "note": {
+      "label": "Poznámka (voliteľné)",
+      "placeholder": "Na čo to je?"
+    },
     "trezor": {
       "toggle_label": "Podpísať pomocou Trezor",
       "connected": "Zariadenie pripojené",
@@ -415,7 +437,9 @@
       "confirm_send": "Potvrdiť a odoslať",
       "back": "Späť"
     },
-    "verify": { "summary_label": "Posielate" },
+    "verify": {
+      "summary_label": "Posielate"
+    },
     "fee": {
       "automatic": "Sieťový poplatok pre {{currency}} ({{network}}) sa nastavuje automaticky.",
       "native_fee_note": "Sieťový poplatok sa platí v {{symbol}} ({{network}}) — na pokrytie sieťového poplatku potrebujete {{symbol}} aj pri odosielaní {{token}}."
@@ -708,5 +732,46 @@
     "allocation": "Alokácia",
     "holdings": "Majetok",
     "noHoldings": "Zatiaľ žiadny majetok."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }
