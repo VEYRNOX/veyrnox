@@ -22,7 +22,7 @@ export const KNOWLEDGE_BASE = {
       },
       {
         q: 'How do I back up my wallet?',
-        a: 'Your seed phrase is the ultimate backup — write it on paper and store it somewhere safe offline. Safety Plus subscribers can also export an encrypted backup file protected by their PIN; store it on a USB drive or secure location, not in cloud storage.',
+        a: 'Your seed phrase is the ultimate backup — write it on paper and store it somewhere safe offline. Safety Plus subscribers can also export an encrypted backup file protected by their PIN; store it on a USB drive or secure location, not in cloud storage. The advanced 2-of-3 recovery-share export additionally requires Hardware Protection to be ON for that wallet first.',
       },
     ],
   },
@@ -133,6 +133,10 @@ export const KNOWLEDGE_BASE = {
       {
         q: 'What is biometric authentication?',
         a: 'Biometric authentication (Face ID, Touch ID, fingerprint) provides a convenient way to unlock your wallet without entering your full PIN every time. In Veyrnox, biometric auth is always backed by a hardware-bound key — it\'s not just a simple "is fingerprint enrolled" check. The biometric unlocks a cryptographic key stored in your device\'s secure hardware.',
+      },
+      {
+        q: 'Why are recovery shares disabled?',
+        a: 'Recovery-share export is gated on Hardware Protection for the current vault, not just the Biometric Re-Auth toggle. If the Advanced 2-of-3 section is greyed out, open Settings and make sure Hardware Protection itself is enabled for this wallet. Once the vault is KEK-wrapped, shard export can proceed.',
       },
       {
         q: 'How do I export my seed phrase?',
