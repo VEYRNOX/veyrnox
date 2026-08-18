@@ -6,7 +6,8 @@ import { DEMO } from "@/api/demoClient";
 import { useWallet } from "@/lib/WalletProvider";
 import { summarizeAllowance, buildRevokeCalldata, sendRevoke } from "@/wallet-core/evm/approvals";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
-import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X } from "lucide-react";
+import { fetchRiskNoteAsync } from "@/lib/approvalRiskNotes";
+import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -93,6 +94,22 @@ export default function TokenApprovals() {
     },
     onError: (e) => setError(e?.message || "Revoke failed"),
   });
+
+  const spenders = useMemo(() => [...new Set(approvals.map(a => a.spender_address).filter(Boolean))], [approvals]);
+  const riskNoteQueries = useQuery({
+    queryKey: ["approval-risk-notes", ...spenders],
+    queryFn: async () => {
+      const notes = {};
+      await Promise.all(spenders.map(async (s) => {
+        notes[s.toLowerCase()] = await fetchRiskNoteAsync(s);
+      }));
+      return notes;
+    },
+    enabled: spenders.length > 0 && !DEMO,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const riskNotes = riskNoteQueries.data || {};
 
   const visible = approvals.filter((a) => filter === "all" || a.status === filter);
   const activeHigh = approvals.filter((a) => a.status === "active" && a.risk === "high").length;
@@ -191,6 +208,17 @@ export default function TokenApprovals() {
                     <span>{net?.name || a.network}</span>
                     {a.last_used && <span>Last used: {new Date(a.last_used).toLocaleDateString()}</span>}
                   </div>
+                  {(() => {
+                    const note = riskNotes[a.spender_address?.toLowerCase()];
+                    if (!note) return null;
+                    const cls = note.severity === 'high' ? 'text-destructive' : note.severity === 'medium' ? 'text-caution' : 'text-muted-foreground';
+                    return (
+                      <div className={`flex items-start gap-1.5 mt-2 text-[11px] ${cls}`}>
+                        <MessageSquare className="h-3 w-3 shrink-0 mt-0.5" />
+                        <span>{note.note}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {a.status === "active" ? (
