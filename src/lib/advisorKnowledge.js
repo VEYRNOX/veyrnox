@@ -112,7 +112,15 @@ export const KNOWLEDGE_BASE = {
     entries: [
       {
         q: 'How do I set up a strong PIN?',
-        a: 'Your PIN protects access to your wallet on this device. Use at least 8 digits (the minimum enforced by Veyrnox). Avoid patterns like 123456789012 or repeated digits. Your PIN encrypts the vault using Argon2id key derivation with 192 MiB of memory — making brute-force attacks extremely expensive.',
+        a: 'Your PIN protects access to your wallet on this device. Use at least 8 digits (the minimum enforced by Veyrnox). Avoid patterns like 12345678, 00000000, or repeated digits. Your PIN encrypts the vault using Argon2id key derivation with 192 MiB of memory — making brute-force attacks extremely expensive.',
+      },
+      {
+        q: 'How is the security score calculated?',
+        a: 'The security score is a 100-point posture meter. Authentication is worth 20 points: 10 for having a PIN, 5 for meeting the real app minimum of 8 digits, and 5 for biometrics. Device Integrity is worth 25 points when RASP is ALLOW. Hardware Binding is worth 10 points: 5 for Hardware Protection being active and 5 more for top-tier hardware such as StrongBox or Secure Enclave (TEE earns 3 instead of 5). Recovery is worth 30 points, and WalletConnect session security is worth 10 points. A complete setup can now honestly reach 100.',
+      },
+      {
+        q: 'Why is my security score lower than expected?',
+        a: 'The score is a total across multiple categories, not just one feature. Biometrics alone add 5 points. Hardware Protection adds 5 more when the vault is actually KEK-wrapped, and top-tier hardware adds another 5. RASP can add up to 25. Recovery and WalletConnect safety settings contribute the rest. So a low score does not necessarily mean your device is compromised — it may just mean other categories are not configured yet.',
       },
       {
         q: 'What does hardware key encryption do?',
