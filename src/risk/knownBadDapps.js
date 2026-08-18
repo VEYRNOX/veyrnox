@@ -89,14 +89,14 @@ export function setFeedLookup(fn) {
  * known-bad list. Pure + total: never throws, never makes a network call at
  * check time, and never returns a "safe" verdict — absence from both lists is
  * reported as flagged:false, which the caller must NOT present as a safety
- * guarantee.
+ * guarantee. `source` names which list matched, for provenance in the UI.
  *
  * @param {unknown} url
- * @returns {{ domain: string, flagged: boolean, reason: string|null }}
+ * @returns {{ domain: string, flagged: boolean, reason: string|null, source: 'feed'|'local'|null }}
  */
 export function checkDappDomain(url) {
   const domain = normalizeDomain(url);
-  if (!domain) return { domain: '', flagged: false, reason: null };
+  if (!domain) return { domain: '', flagged: false, reason: null, source: null };
 
   // L5: parent-domain (suffix) walk. A subdomain of a known-bad domain is also
   // bad: app.knownbad.com matches knownbad.com. Strip one leading label at a
@@ -114,15 +114,15 @@ export function checkDappDomain(url) {
     try {
       for (const c of candidates) {
         const reason = _feedLookup(c);
-        if (reason) return { domain, flagged: true, reason };
+        if (reason) return { domain, flagged: true, reason, source: 'feed' };
       }
     } catch { /* feed lookup is best-effort; fall through to the local seed */ }
   }
 
   for (const c of candidates) {
     const hit = BAD_SET.get(c);
-    if (hit) return { domain, flagged: true, reason: hit.reason };
+    if (hit) return { domain, flagged: true, reason: hit.reason, source: 'local' };
   }
 
-  return { domain, flagged: false, reason: null };
+  return { domain, flagged: false, reason: null, source: null };
 }
