@@ -36,7 +36,7 @@ vi.mock('@/rasp', async (importOriginal) => {
 });
 
 vi.mock('@capacitor/core', () => ({
-  Capacitor: { getPlatform: () => 'web' },
+  Capacitor: { getPlatform: () => 'web', isNativePlatform: () => false },
   registerPlugin: vi.fn(() => ({})),
 }));
 
@@ -67,11 +67,18 @@ afterEach(() => {
   cleanup();
 });
 
-async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus' }) {
+async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', shardExportReady = true, native = false }) {
   if (enableShards) vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
   vi.resetModules();
+  vi.doMock('@capacitor/core', () => ({
+    Capacitor: { getPlatform: () => (native ? 'ios' : 'web'), isNativePlatform: () => native },
+    registerPlugin: vi.fn(() => ({})),
+  }));
   vi.doMock('@/lib/WalletProvider', () => ({
     useWallet: () => useWalletValue,
+  }));
+  vi.doMock('@/lib/hardwareKekStatus', () => ({
+    isHardwareKekEnrolled: vi.fn(async () => shardExportReady),
   }));
   // Tier is now consumed inside PersonalBackup — the shard tab renders the
   // export panel only when currentTier === 'safety_plus', otherwise an
@@ -186,6 +193,56 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     // globally elsewhere) rather than a false "shares saved" confirmation.
     await waitFor(() => expect(exportRecoveryBundles).toHaveBeenCalled());
     expect(screen.queryByText(/all 3 recovery shares saved/i)).toBeNull();
+  });
+
+  it('translates KEK_NO_HARDWARE_FACTOR into an actionable export error', async () => {
+    const exportRecoveryBundles = vi.fn(async () => {
+      throw Object.assign(new Error('KEK_NO_HARDWARE_FACTOR'), { code: 'KEK_NO_HARDWARE_FACTOR' });
+    });
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        exportRecoveryBundles,
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    typeVaultPin();
+    fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
+      target: { value: 'a-nice-and-long-passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
+    await waitFor(() => expect(exportRecoveryBundles).toHaveBeenCalled());
+    expect(toastError).toHaveBeenCalledWith(
+      'Hardware Protection is already on, but this device did not return the hardware factor for shard export. Try again; if it keeps happening, turn Hardware Protection off and back on in Settings.'
+    );
+  });
+
+  it('greys out shard export until Hardware Protection is on for the vault', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      native: true,
+      shardExportReady: false,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        exportRecoveryBundles: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    await waitFor(() => expect(screen.getByText(/turn on hardware protection first/i)).toBeTruthy());
+    expect(screen.getByText(/biometric re-auth alone is not enough/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /split & save 3 shares/i })).toBeDisabled();
   });
 });
 
@@ -576,13 +633,49 @@ describe('PersonalBackup — same-device restore rejects a cross-device bundle e
     fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), {
       target: { value: '24681024' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
-
-    await waitFor(() => expect(toastError).toHaveBeenCalled());
-    const [message] = toastError.mock.calls[0];
-    expect(message).toMatch(/cross-device recovery file/i);
-    expect(message).not.toBe('RECOVERY_SHARE_MALFORMED');
+    expect(await screen.findByText(/cross-device recovery bundles detected/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /open restore from bundles/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /restore wallet/i })).toBeDisabled();
+    expect(toastError).not.toHaveBeenCalled();
     expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
+  });
+
+  it('shows a direct CTA to the bundle-restore flow when bundle files are loaded', async () => {
+    vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
+    vi.resetModules();
+    const { wrapBundleWithPassphrase } = await import('@/wallet-core/recoveryShare');
+    const bundleEnvelope = await wrapBundleWithPassphrase(
+      new TextEncoder().encode(JSON.stringify({ v: 1, shareIndex: 2 })),
+      'a-very-long-recovery-passphrase',
+      2,
+    );
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+
+    const restoreFilePick = stubFilePick([
+      new TextEncoder().encode('\x02'.repeat(88)),
+      new TextEncoder().encode(bundleEnvelope),
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: /choose 2 share files/i }));
+    restoreFilePick();
+
+    expect(await screen.findByText(/cross-device recovery bundles detected/i)).toBeTruthy();
+    const cta = screen.getByRole('button', { name: /open restore from bundles/i });
+    expect(cta).toBeTruthy();
+    expect(screen.getByRole('button', { name: /restore wallet/i })).toBeDisabled();
   });
 });
 
