@@ -1,27 +1,31 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LOCALE_KEY, TIMEZONE_KEY } from '@/lib/locale.js';
-import { setDeniabilitySession } from '@/wallet-core/deniabilitySession.js';
 
 async function loadGateModule() {
   return import('../useBuyEnabled.js');
 }
 
-function clearBuyGateState() {
+async function setDeniabilitySessionState(active) {
+  const { setDeniabilitySession } = await import('@/wallet-core/deniabilitySession.js');
+  setDeniabilitySession(active);
+}
+
+async function clearBuyGateState() {
   localStorage.removeItem(LOCALE_KEY);
   localStorage.removeItem(TIMEZONE_KEY);
   localStorage.removeItem('veyrnox-demo');
-  setDeniabilitySession(false);
+  await setDeniabilitySessionState(false);
 }
 
 describe('isUkBuyBlocked', () => {
-  beforeEach(() => {
-    clearBuyGateState();
+  beforeEach(async () => {
+    await clearBuyGateState();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllEnvs();
     vi.resetModules();
-    clearBuyGateState();
+    await clearBuyGateState();
   });
 
   it('blocks locale tags that resolve to the UK region', async () => {
@@ -44,14 +48,14 @@ describe('isUkBuyBlocked', () => {
 });
 
 describe('isBuyEnabled', () => {
-  beforeEach(() => {
-    clearBuyGateState();
+  beforeEach(async () => {
+    await clearBuyGateState();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllEnvs();
     vi.resetModules();
-    clearBuyGateState();
+    await clearBuyGateState();
   });
 
   it('returns true only when the ship gate is on and the device is not UK-flagged', async () => {
@@ -89,7 +93,7 @@ describe('isBuyEnabled', () => {
     vi.stubEnv('VITE_BUY_ENABLED', 'true');
     localStorage.setItem(LOCALE_KEY, 'en-US');
     localStorage.setItem(TIMEZONE_KEY, 'America/New_York');
-    setDeniabilitySession(true);
+    await setDeniabilitySessionState(true);
     const { isBuyEnabled } = await loadGateModule();
     expect(isBuyEnabled()).toBe(false);
   });
