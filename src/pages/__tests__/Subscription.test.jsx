@@ -20,11 +20,11 @@ const restorePurchases = vi.fn();
 const manageSubscription = vi.fn();
 const setReferralAttribute = vi.fn();
 const offerPriceInfo = vi.fn();
-const getAiSecurityProtectionOfferingId = vi.fn(() => null);
+const getAiSecurityProtectionOfferingId = vi.fn();
 vi.mock('@/lib/purchases', () => ({
   getOfferings: (...a) => getOfferings(...a),
   getTierOffering: (...a) => getTierOffering(...a),
-  getAiSecurityProtectionOfferingId: (...a) => getAiSecurityProtectionOfferingId(...a),
+  getAiSecurityProtectionOfferingId: () => getAiSecurityProtectionOfferingId(),
   purchasePackage: (...a) => purchasePackage(...a),
   restorePurchases: (...a) => restorePurchases(...a),
   manageSubscription: (...a) => manageSubscription(...a),
