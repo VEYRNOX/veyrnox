@@ -63,10 +63,10 @@ describe('SecurityPosture — real computePostureScore integration', () => {
         }} />
       </MemoryRouter>,
     );
-    // Hardware-binding dimension caps at 5 (kekActive) + 5 (top-tier) = 10 of its
-    // declared max:15 (STRONGBOX/SECURE_ENCLAVE and TEE are mutually exclusive with
-    // no combined path to the full 15) — so the real ceiling is 95, not 100. This
-    // pins the ACTUAL scoring function's behaviour, not this widget's assumption.
+    // Integrator-supplied fields complete the missing home-page inputs, but the
+    // current score model still tops out at 95 because hardware contributes
+    // 10 earned points against a 10-point dimension while the overall gauge
+    // presents the raw summed score.
     await waitFor(() => expect(screen.getByTestId('security-posture-card').textContent).toContain('95%'));
     expect(screen.getByTestId('security-posture-card').textContent).toContain('Complete');
   });

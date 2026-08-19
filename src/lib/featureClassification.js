@@ -319,7 +319,7 @@ export const CLASSIFICATION = {
   },
   '/connect': {
     verdict: 'live', dataSource: 'on-device',
-    note: 'Uses real browser wallet injection (window.ethereum for MetaMask/Coinbase, window.solana for Phantom). Balance reads go through the injected provider API (eth_getBalance) or a public Solana JSON-RPC call (user-initiated, single request on connect, not a background feed). Imports to local entities Wallet as a read-only snapshot with an honest disclosure. No private key access.',
+    note: 'Uses real browser wallet injection (window.ethereum for MetaMask/Coinbase, window.solana for Phantom) plus WalletConnect App SDK / Reown AppKit for modal-based EVM wallet connection. Balance reads are user-initiated, one-shot only: injected EVM wallets use eth_getBalance via the provider, Phantom imports the public address without an immediate RPC balance read, and WalletConnect imports EVM accounts through the session then reads each supported chain\'s public balance through wallet-core RPC. Imports to local entities Wallet as a read-only snapshot with an honest disclosure. No private key access.',
   },
   // ── Core / Preferences group (audit batch 5) ──────────────────────────────
   '/settings': {
