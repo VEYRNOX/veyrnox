@@ -11,6 +11,7 @@ const localStorageMock = {
 beforeEach(() => {
   localStorageMock.clear();
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
   vi.resetModules();
   Object.defineProperty(global, 'localStorage', { value: localStorageMock, configurable: true });
 });
@@ -215,17 +216,24 @@ describe('attribution tracking', () => {
 });
 
 describe('PLAN_FULL_PRICE_CENTS', () => {
-  it('has monthly at 599', async () => {
+  it('keeps Safety Plus monthly at 599', async () => {
     const { PLAN_FULL_PRICE_CENTS } = await import('../referral.js');
-    expect(PLAN_FULL_PRICE_CENTS.monthly).toBe(599);
+    expect(PLAN_FULL_PRICE_CENTS.safety_plus.monthly).toBe(599);
   });
-  it('has annual at 4999', async () => {
+  it('keeps Safety Plus annual at 4999', async () => {
     const { PLAN_FULL_PRICE_CENTS } = await import('../referral.js');
-    expect(PLAN_FULL_PRICE_CENTS.annual).toBe(4999);
+    expect(PLAN_FULL_PRICE_CENTS.safety_plus.annual).toBe(4999);
   });
   it('PLAN_REVENUE_CENTS is the same reference', async () => {
     const { PLAN_REVENUE_CENTS, PLAN_FULL_PRICE_CENTS } = await import('../referral.js');
     expect(PLAN_REVENUE_CENTS).toBe(PLAN_FULL_PRICE_CENTS);
+  });
+  it('reads AI Security Protection full-price cents from env via helper', async () => {
+    vi.stubEnv('VITE_AI_SECURITY_PROTECTION_MONTHLY_PRICE_CENTS', '1999');
+    vi.stubEnv('VITE_AI_SECURITY_PROTECTION_ANNUAL_PRICE_CENTS', '19999');
+    const { getPlanFullPriceCents } = await import('../referral.js');
+    expect(getPlanFullPriceCents('ai_security_protection', 'monthly')).toBe(1999);
+    expect(getPlanFullPriceCents('ai_security_protection', 'annual')).toBe(19999);
   });
 });
 
@@ -260,6 +268,15 @@ describe('TIER_OFFERING_ID / getOfferingIdForTier', () => {
   it('returns null for unknown tier', async () => {
     const { getOfferingIdForTier } = await import('../referral.js');
     expect(getOfferingIdForTier('none')).toBeNull();
+  });
+  it('derives AI referral offering ids from the configured prefix', async () => {
+    vi.stubEnv('VITE_RC_AI_REFERRAL_OFFERING_PREFIX', 'ai-referral');
+    const { getOfferingIdForTier } = await import('../referral.js');
+    expect(getOfferingIdForTier('gold', 'ai_security_protection')).toBe('ai-referral-gold');
+  });
+  it('fails closed for AI referral offerings when no prefix is configured', async () => {
+    const { getOfferingIdForTier } = await import('../referral.js');
+    expect(getOfferingIdForTier('gold', 'ai_security_protection')).toBeNull();
   });
 });
 

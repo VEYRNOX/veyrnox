@@ -27,6 +27,7 @@ import {
 import {
   getOfferings,
   getTierOffering,
+  getAiSecurityProtectionOfferingId,
   purchasePackage,
   restorePurchases,
   manageSubscription,
@@ -44,8 +45,8 @@ import {
   getTier,
   getTierInfo,
   getOfferingIdForTier,
+  getPlanFullPriceCents,
   storeDiscountCents,
-  PLAN_FULL_PRICE_CENTS,
 } from "@/lib/referral";
 import { annualSavingPercent } from "@/lib/annualSaving";
 import { discountPercent } from "@/lib/discountPercent";
@@ -128,9 +129,14 @@ export default function Subscription() {
   }
   const [monthlyPackage, setMonthlyPackage] = useState(null);
   const [annualPackage, setAnnualPackage] = useState(null);
+  const [aiMonthlyPackage, setAiMonthlyPackage] = useState(null);
+  const [aiAnnualPackage, setAiAnnualPackage] = useState(null);
   const [referralMonthly, setReferralMonthly] = useState(null);
   const [referralOfferTag, setReferralOfferTag] = useState(null);
   const [referralAnnual, setReferralAnnual] = useState(null);
+  const [aiReferralMonthly, setAiReferralMonthly] = useState(null);
+  const [aiReferralOfferTag, setAiReferralOfferTag] = useState(null);
+  const [aiReferralAnnual, setAiReferralAnnual] = useState(null);
   const [referrerTierInfo, setReferrerTierInfo] = useState(null);
   const [billing, setBilling] = useState("annual");
   const [busy, setBusy] = useState(false);
@@ -175,6 +181,7 @@ export default function Subscription() {
   const [cancelOfferOpen, setCancelOfferOpen] = useState(false);
   const [retentionMonthly, setRetentionMonthly] = useState(null);
   const [retentionAnnual, setRetentionAnnual] = useState(null);
+  const aiOfferingId = getAiSecurityProtectionOfferingId();
 
   useEffect(() => {
     if (!isNative) return;
@@ -199,6 +206,20 @@ export default function Subscription() {
         console.warn("Safety Plus offerings unavailable:", err);
       });
 
+    if (aiOfferingId) {
+      getTierOffering(aiOfferingId)
+        .then((offering) => {
+          if (cancelled) return;
+          const { monthly, annual } = extractPackages(offering);
+          setAiMonthlyPackage(monthly);
+          setAiAnnualPackage(annual);
+        })
+        .catch(() => {});
+    } else {
+      setAiMonthlyPackage(null);
+      setAiAnnualPackage(null);
+    }
+
     if (hasReferral) {
       const refCode = getRedeemedCode();
       if (refCode) {
@@ -208,22 +229,54 @@ export default function Subscription() {
             const tierKey = getTier(paid);
             const info = getTierInfo(paid);
             setReferrerTierInfo(info);
-            const offeringId = getOfferingIdForTier(tierKey);
-            if (!offeringId) return;
-            // The offering id doubles as the Play offer tag (referral-gold →
-            // the offer tagged `referral-gold`). Held so handleUpgrade can name
-            // the option explicitly — see purchases.js findOfferOption.
-            setReferralOfferTag(offeringId);
-            return getTierOffering(offeringId);
+            const offeringId = getOfferingIdForTier(tierKey, TIER.SAFETY_PLUS);
+            const aiReferralId = getOfferingIdForTier(tierKey, TIER.AI_SECURITY_PROTECTION);
+            if (offeringId) {
+              // The offering id doubles as the Play offer tag (referral-gold →
+              // the offer tagged `referral-gold`). Held so handleUpgrade can name
+              // the option explicitly — see purchases.js findOfferOption.
+              setReferralOfferTag(offeringId);
+            } else {
+              setReferralOfferTag(null);
+            }
+            if (aiReferralId) {
+              setAiReferralOfferTag(aiReferralId);
+            } else {
+              setAiReferralOfferTag(null);
+            }
+            return Promise.all([
+              offeringId ? getTierOffering(offeringId) : Promise.resolve(null),
+              aiReferralId ? getTierOffering(aiReferralId) : Promise.resolve(null),
+            ]);
           })
-          .then((offering) => {
-            if (cancelled || !offering) return;
-            const { monthly, annual } = extractPackages(offering);
-            setReferralMonthly(monthly);
-            setReferralAnnual(annual);
+          .then(([offering, aiOffering]) => {
+            if (cancelled) return;
+            if (offering) {
+              const { monthly, annual } = extractPackages(offering);
+              setReferralMonthly(monthly);
+              setReferralAnnual(annual);
+            } else {
+              setReferralMonthly(null);
+              setReferralAnnual(null);
+            }
+            if (aiOffering) {
+              const { monthly, annual } = extractPackages(aiOffering);
+              setAiReferralMonthly(monthly);
+              setAiReferralAnnual(annual);
+            } else {
+              setAiReferralMonthly(null);
+              setAiReferralAnnual(null);
+            }
           })
           .catch(() => {});
       }
+    } else {
+      setReferralMonthly(null);
+      setReferralAnnual(null);
+      setReferralOfferTag(null);
+      setAiReferralMonthly(null);
+      setAiReferralAnnual(null);
+      setAiReferralOfferTag(null);
     }
 
     // Retention offering — only meaningful to someone who already subscribes.
@@ -247,11 +300,19 @@ export default function Subscription() {
     }
 
     return () => { cancelled = true; };
-  }, [isNative, hasReferral, currentTier, isPaidPlan]);
+  }, [aiOfferingId, isNative, hasReferral, currentTier, isPaidPlan]);
 
   const hasDiscount = hasReferral && Boolean(referralMonthly || referralAnnual);
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
   const effectiveAnnual = (hasDiscount && referralAnnual) ? referralAnnual : annualPackage;
+  const hasAiDiscount = hasReferral && Boolean(aiReferralMonthly || aiReferralAnnual);
+  const effectiveAiMonthly = (hasAiDiscount && aiReferralMonthly) ? aiReferralMonthly : aiMonthlyPackage;
+  const effectiveAiAnnual = (hasAiDiscount && aiReferralAnnual) ? aiReferralAnnual : aiAnnualPackage;
+  const selectedAiPackage = billing === "annual"
+    ? (effectiveAiAnnual ?? effectiveAiMonthly)
+    : (effectiveAiMonthly ?? effectiveAiAnnual);
+  const aiOfferingConfigured = Boolean(aiOfferingId);
+  const aiPurchaseAvailable = Boolean(selectedAiPackage);
 
   // Both monthly and annual plans always exist as product offerings, so the
   // toggle always renders. On sideloaded builds where Play Billing is
@@ -278,6 +339,13 @@ export default function Subscription() {
   const usingReferralPackage =
     effectiveBilling === "annual" ? usingReferralAnnual : usingReferralMonthly;
   const activeOfferTag = usingReferralPackage ? referralOfferTag : null;
+  const usingAiReferralMonthly =
+    hasAiDiscount && effectiveAiMonthly != null && effectiveAiMonthly === aiReferralMonthly;
+  const usingAiReferralAnnual =
+    hasAiDiscount && effectiveAiAnnual != null && effectiveAiAnnual === aiReferralAnnual;
+  const usingAiReferralPackage =
+    effectiveBilling === "annual" ? usingAiReferralAnnual : usingAiReferralMonthly;
+  const aiActiveOfferTag = usingAiReferralPackage ? aiReferralOfferTag : null;
 
   // A discounted package still reports the BASE price in product.priceString —
   // it wraps the same store product as the full-price package. The offer price
@@ -288,6 +356,12 @@ export default function Subscription() {
     : null;
   const referralAnnualPrice = usingReferralAnnual
     ? offerPriceInfo(referralAnnual, referralOfferTag)?.priceString
+    : null;
+  const aiReferralMonthlyPrice = usingAiReferralMonthly
+    ? offerPriceInfo(aiReferralMonthly, aiReferralOfferTag)?.priceString
+    : null;
+  const aiReferralAnnualPrice = usingAiReferralAnnual
+    ? offerPriceInfo(aiReferralAnnual, aiReferralOfferTag)?.priceString
     : null;
 
   // No hardcoded USD fallback: quoting "$5.99" to a JP/EU user whose store
@@ -303,6 +377,14 @@ export default function Subscription() {
   const regularAnnualPrice = annualPackage?.product?.priceString;
   const selectedPriceString = effectiveBilling === "annual" ? annualPriceString : monthlyPriceString;
   const selectedRegularPrice = effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice;
+  const aiMonthlyPriceString =
+    aiReferralMonthlyPrice ?? effectiveAiMonthly?.product?.priceString ?? null;
+  const aiAnnualPriceString =
+    aiReferralAnnualPrice ?? effectiveAiAnnual?.product?.priceString ?? null;
+  const aiRegularMonthlyPrice = aiMonthlyPackage?.product?.priceString;
+  const aiRegularAnnualPrice = aiAnnualPackage?.product?.priceString;
+  const aiSelectedPriceString = effectiveBilling === "annual" ? aiAnnualPriceString : aiMonthlyPriceString;
+  const aiSelectedRegularPrice = effectiveBilling === "annual" ? aiRegularAnnualPrice : aiRegularMonthlyPrice;
 
   // The NUMBERS behind the two strings above, so the annual-saving claim is
   // derived from exactly what is on screen rather than hardcoded. Same
@@ -314,6 +396,12 @@ export default function Subscription() {
   const annualPriceNumber = usingReferralAnnual
     ? offerPriceInfo(referralAnnual, referralOfferTag)?.price
     : effectiveAnnual?.product?.price;
+  const aiMonthlyPriceNumber = usingAiReferralMonthly
+    ? offerPriceInfo(aiReferralMonthly, aiReferralOfferTag)?.price
+    : effectiveAiMonthly?.product?.price;
+  const aiAnnualPriceNumber = usingAiReferralAnnual
+    ? offerPriceInfo(aiReferralAnnual, aiReferralOfferTag)?.price
+    : effectiveAiAnnual?.product?.price;
   // null whenever either side is unresolvable or annual is not actually cheaper —
   // the badge and the billing note then render nothing at all (I4).
   const savingPercent = annualSavingPercent(monthlyPriceNumber, annualPriceNumber);
@@ -334,12 +422,41 @@ export default function Subscription() {
     ? annualPriceNumber
     : monthlyPriceNumber;
   const referralDiscount = discountPercent(selectedBasePrice, selectedOfferPrice);
+  const aiSelectedBasePrice = effectiveBilling === "annual"
+    ? aiAnnualPackage?.product?.price
+    : aiMonthlyPackage?.product?.price;
+  const aiSelectedOfferPrice = effectiveBilling === "annual"
+    ? aiAnnualPriceNumber
+    : aiMonthlyPriceNumber;
+  const aiReferralDiscount = discountPercent(aiSelectedBasePrice, aiSelectedOfferPrice);
+  const hasAnyReferralDiscount = hasDiscount || hasAiDiscount;
+  const activeReferralPercent = referralDiscount ?? aiReferralDiscount;
 
-  async function handleUpgrade() {
-    if (!selectedPackage) return;
+  async function purchaseAndRefresh(pkg, {
+    offerTag = null,
+    expectedTier = TIER.SAFETY_PLUS,
+    attributionPlanId = TIER.SAFETY_PLUS,
+    billingPeriod = effectiveBilling,
+    basePrice = null,
+    offerPrice = null,
+    successLabel,
+    pendingLabel,
+  } = {}) {
+    if (!pkg) return;
+    const refCode = getRedeemedCode();
+    const needsAttribution = Boolean(refCode) && !hasAttributed();
+    const fullPrice = getPlanFullPriceCents(attributionPlanId, billingPeriod);
+    if (needsAttribution && !fullPrice && expectedTier === TIER.AI_SECURITY_PROTECTION) {
+      toast.error("AI Security Protection referral pricing is not configured in this build yet — nothing was charged");
+      return;
+    }
+    if (offerTag && needsAttribution && !fullPrice) {
+      toast.error("This referral discount is not configured in this build yet — nothing was charged");
+      return;
+    }
     setBusy(true);
     try {
-      await purchasePackage(selectedPackage, { offerTag: activeOfferTag });
+      await purchasePackage(pkg, { offerTag });
       // Codex P1 2026-08-16: purchasePackage() returning is NOT the same as
       // "entitlement granted". RC + StoreKit / Play Billing can delay,
       // fail, or downgrade the grant after the call resolves (deferred
@@ -353,11 +470,10 @@ export default function Subscription() {
       // user can retry / restore purchases; RC will eventually reconcile
       // and the next refresh will flip currentTier for real.
       const resolvedTier = await refreshTier();
-      if (resolvedTier !== 'safety_plus') {
-        toast.info('Purchase started — waiting for the store to confirm. Try Restore Purchases if it does not appear in a minute.');
+      if (resolvedTier !== expectedTier) {
+        toast.info(pendingLabel ?? 'Purchase started — waiting for the store to confirm. Try Restore Purchases if it does not appear in a minute.');
         return;
       }
-      const refCode = getRedeemedCode();
       if (refCode && !hasAttributed()) {
         // Codex P2 2026-08-15: previously discountCents came from the
         // REFERRER's tier commission percentage — a hardcoded "should be"
@@ -369,7 +485,10 @@ export default function Subscription() {
         // downstream referrer earnings on paper. Derive from the store-
         // returned price DELTA (base priceString - offer priceString) so
         // the attribution matches the money that actually moved.
-        const fullPrice = PLAN_FULL_PRICE_CENTS[effectiveBilling] || PLAN_FULL_PRICE_CENTS.monthly;
+        if (!fullPrice) {
+          toast.success(successLabel ?? `${tierLabel(expectedTier)} unlocked`);
+          return;
+        }
         // Branch review 2026-08-15 (C-1): this subtracted the store's price (the
         // USER'S currency) from PLAN_FULL_PRICE_CENTS (hardcoded USD), which is
         // only meaningful in USD territories. Both inputs now come from the SAME
@@ -378,15 +497,15 @@ export default function Subscription() {
         // selectedBasePrice / selectedOfferPrice already exist above for the
         // on-screen percentage — reuse them rather than re-deriving, so the
         // attribution and the banner can never disagree about what was charged.
-        const discountCents = storeDiscountCents(selectedBasePrice, selectedOfferPrice, fullPrice);
+        const discountCents = storeDiscountCents(basePrice, offerPrice, fullPrice);
         try {
-          await recordAttribution(refCode, effectiveBilling, fullPrice, discountCents);
+          await recordAttribution(refCode, billingPeriod, fullPrice, discountCents);
           markAttributed();
           claimFirstReferralBonus(refCode).catch(() => {});
         } catch { /* best-effort — retry on next purchase if Supabase failed */ }
         setReferralAttribute(refCode, referrerTierInfo?.key).catch(() => {});
       }
-      toast.success("Safety Plus unlocked");
+      toast.success(successLabel ?? `${tierLabel(expectedTier)} unlocked`);
     } catch (err) {
       if (err?.code === OFFER_UNAVAILABLE) {
         // The referral discount could not be applied. Say so plainly rather
@@ -401,13 +520,39 @@ export default function Subscription() {
     }
   }
 
+  async function handleUpgrade() {
+    return purchaseAndRefresh(selectedPackage, {
+      offerTag: activeOfferTag,
+      expectedTier: TIER.SAFETY_PLUS,
+      attributionPlanId: TIER.SAFETY_PLUS,
+      billingPeriod: effectiveBilling,
+      basePrice: selectedBasePrice,
+      offerPrice: selectedOfferPrice,
+      successLabel: 'Safety Plus unlocked',
+      pendingLabel: 'Purchase started — waiting for Safety Plus to be confirmed. Try Restore Purchases if it does not appear in a minute.',
+    });
+  }
+
+  async function handleAiUpgrade() {
+    return purchaseAndRefresh(selectedAiPackage, {
+      offerTag: aiActiveOfferTag,
+      expectedTier: TIER.AI_SECURITY_PROTECTION,
+      attributionPlanId: TIER.AI_SECURITY_PROTECTION,
+      billingPeriod: effectiveBilling,
+      basePrice: aiSelectedBasePrice,
+      offerPrice: aiSelectedOfferPrice,
+      successLabel: 'AI Security Protection unlocked',
+      pendingLabel: 'Purchase started — waiting for AI Security Protection to be confirmed. Try Restore Purchases if it does not appear in a minute.',
+    });
+  }
+
   async function handleRestore() {
     setBusy(true);
     try {
       await restorePurchases();
       const tier = await refreshTier();
-      toast[tier === "safety_plus" ? "success" : "info"](
-        tier === "safety_plus" ? "Safety Plus restored" : "No active Safety Plus purchase found"
+      toast[tier === TIER.FREE ? "info" : "success"](
+        tier === TIER.FREE ? "No active subscription purchase found" : `${tierLabel(tier)} restored`
       );
     } catch {
       toast.error("Restore failed — please try again");
@@ -524,15 +669,15 @@ export default function Subscription() {
         </p>
       )}
 
-      {hasDiscount && !isPaidPlan && (
+      {hasAnyReferralDiscount && !isPaidPlan && (
         <div className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/5 p-4">
           <Sparkles className="h-5 w-5 text-success shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-success">
-              Referral discount applied{referralDiscount != null ? ` — ${referralDiscount}% off` : ""}
+              Referral pricing available{activeReferralPercent != null ? ` — up to ${activeReferralPercent}% off` : ""}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              You used a friend&rsquo;s referral code — enjoy a discounted rate on Safety Plus.
+              You used a friend&rsquo;s referral code — eligible paid plans can show discounted store pricing when their referral offering is configured.
             </p>
           </div>
         </div>
@@ -606,15 +751,43 @@ export default function Subscription() {
             </>
           ) : (
             <>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold mono-value">Contact sales</span>
-              </div>
               <p className="text-sm text-muted-foreground">
                 AI Security Protection includes everything in Free and Safety Plus, then adds live online TIP-backed Vigil answers.
               </p>
-              <p className="text-xs text-muted-foreground">
-                This plan sits above Safety Plus in the tier stack. The mobile purchase flow on this page currently sells Safety Plus only.
-              </p>
+              {isNative ? (
+                aiPurchaseAvailable ? (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-sm font-medium text-foreground mono-value">
+                        {aiSelectedPriceString ?? "—"}
+                      </p>
+                      {hasAiDiscount && aiSelectedRegularPrice && aiSelectedRegularPrice !== aiSelectedPriceString && (
+                        <span className="text-xs text-muted-foreground line-through mono-value">{aiSelectedRegularPrice}</span>
+                      )}
+                    </div>
+                    <Button
+                      className="w-full bg-sky-600 hover:bg-sky-700 text-white"
+                      onClick={handleAiUpgrade}
+                      disabled={busy || !aiPurchaseAvailable}
+                    >
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : `Upgrade to AI Security Protection${aiSelectedPriceString ? ` • ${aiSelectedPriceString}` : ''}`}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {aiOfferingConfigured
+                      ? "AI Security Protection is intended to be sold as an in-app subscription, but no store package is available for this build yet."
+                      : "AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet."}
+                  </p>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Web remains read-only for subscriptions; this plan is purchased and managed through the mobile app stores.
+                </p>
+              )}
             </>
           )}
         </CardContent>
