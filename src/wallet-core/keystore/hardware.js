@@ -54,6 +54,8 @@ export const ENROLL_ERR = Object.freeze({
   // A SOFTWARE-tier key gives NO hardware binding, so enrolling it would let a
   // software-only key present as "Hardware Protection ON" — refused (M2).
   INSECURE_TIER: 'KEK_ENROLL_INSECURE_TIER',
+  // Native integrity gate refused access to the hardware factor.
+  RASP_BLOCK: 'KEK_RASP_BLOCK',
 });
 
 // Tier names the enroll gate ACCEPTS as real secure hardware.
@@ -224,7 +226,13 @@ export async function getHardwareFactor(opts) {
   try {
     bridgeResult = await plugin.getHardwareFactor(pluginOpts);
   } catch (err) {
+    const rawCode = String((err && err.code) ?? '');
     const msg = String((err && err.message) ?? err ?? '');
+    if (rawCode === 'RASP_BLOCK') {
+      throw Object.assign(new Error(ENROLL_ERR.RASP_BLOCK), {
+        code: ENROLL_ERR.RASP_BLOCK,
+      });
+    }
     if (msg.startsWith('KEK_KEY_PERMANENTLY_INVALIDATED')) {
       // OS permanently killed the key (biometric enrollment changed / screen lock removed).
       // Only recovery is seed restore — NEVER a wrong-PIN increment.

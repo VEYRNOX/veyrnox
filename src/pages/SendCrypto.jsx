@@ -18,14 +18,6 @@ import RiskShield from "@/components/RiskShield";
 import { motion, useReducedMotion } from "motion/react";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';
-// Issue #961 (SEND H-1): the Trezor EVM branch now goes through the audited
-// hw-send.js helpers (signAndBroadcastEvmTrezor / signAndBroadcastEvmTrezorToken),
-// NOT the raw device wrapper — those helpers apply the M-2/#746 recovery check,
-// the 'pending' block-tag nonce + sanity window, and estimated gas + headroom.
-// BTC + SOL Trezor branches still use their raw wrappers (unrelated to #961).
-import { trezorSignBtcTx } from '../wallet-core/hw/trezor.js';
-import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wallet-core/evm/hw-send.js';
-import { signAndBroadcastSolTrezor } from '../wallet-core/sol/hw-send.js';
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
 import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
@@ -137,6 +129,21 @@ export function isFormAmountWellFormed(amountStr) {
   if (!/^\d+(\.\d+)?$|^\.\d+$/.test(s)) return false;
   // Must be strictly positive (rejects "0", "0.0", "0.000").
   return /[1-9]/.test(s);
+}
+
+// Keep hardware-wallet send modules off the eager SEND route. Android/WebView
+// users who never select Trezor should not pay or fail for Ledger/Trezor-only
+// imports at page-load time.
+async function loadTrezorBtcSigner() {
+  return import('../wallet-core/hw/trezor.js');
+}
+
+async function loadTrezorEvmSenders() {
+  return import('../wallet-core/evm/hw-send.js');
+}
+
+async function loadTrezorSolSender() {
+  return import('../wallet-core/sol/hw-send.js');
 }
 
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
@@ -1309,6 +1316,7 @@ export default function SendCrypto() {
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
           if (!trezorBtcAddress) throw new Error('Trezor BTC address not available');
+          const { trezorSignBtcTx } = await loadTrezorBtcSigner();
           // BTC Trezor path: the key never leaves the device (I1). Build a
           // coin-selection plan against the Trezor-derived address (it owns the
           // UTXOs and receives change), translate it into the device's input/
@@ -1351,6 +1359,7 @@ export default function SendCrypto() {
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
           if (!trezorSolAddress) throw new Error('Trezor SOL address not available');
+          const { signAndBroadcastSolTrezor } = await loadTrezorSolSender();
           // SOL Trezor path: the key never leaves the device (I1). Codex P1
           // 2026-08-15: the previous raw buildUnsignedSolTx + trezorSignSolTx
           // + attachSolSignature chain bypassed the audited planSolTransfer
@@ -1381,6 +1390,7 @@ export default function SendCrypto() {
         // EVM native + ERC-20.
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
+          const { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } = await loadTrezorEvmSenders();
           // Fee-clamp still lives here (NOT inside hw-send.js): the merge of
           // selectedFee with the provider's fee-data fallback is a UI concern,
           // and the F-08-TREZOR / L-2 caps must apply BEFORE the fee crosses the

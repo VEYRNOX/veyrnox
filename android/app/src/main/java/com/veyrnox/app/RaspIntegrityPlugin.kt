@@ -900,9 +900,13 @@ class RaspIntegrityPlugin : Plugin() {
          */
         @JvmSynthetic
         internal fun isBlockTier(context: android.content.Context): Boolean =
-            runCatching {
-                earlyDetectHook() || earlyDetectTamper(context) || earlyCheckScreenCapture(context)
-            }.getOrElse { true }
+            if (BuildConfig.DEBUG) {
+                false
+            } else {
+                runCatching {
+                    earlyDetectHook() || earlyDetectTamper(context) || earlyCheckScreenCapture(context)
+                }.getOrElse { true }
+            }
 
         // earlyAntiDump — sets PR_SET_DUMPABLE to 0 via android.system.Os.prctl.
         // Fail-open (runCatching, no else): if prctl is denied or unavailable,

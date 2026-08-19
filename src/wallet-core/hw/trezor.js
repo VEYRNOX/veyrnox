@@ -26,23 +26,25 @@ const SOL_PATH = "m/44'/501'/0'/0'";
 //   2. Dev fallback — localhost bundle on `http://localhost:<VITE_PORT>/trezor-
 //      connect/`. This has always worked because the corsValidator explicitly
 //      allowlists localhost:5xxx/8xxx.
-//   3. Otherwise — dev only falls back to a console.error; a PROD build hard-
-//      fails at module init so a shipped bundle never silently loads the
-//      connect.trezor.io CDN.
+//   3. Otherwise — non-WebUSB platforms log once and leave connectSrc unset,
+//      which lets @trezor/connect-web use its default CDN-hosted iframe IF a
+//      Trezor flow is ever invoked. Real WebUSB-capable production builds still
+//      fail closed at module init when VITE_TREZOR_CONNECT_SRC is unset.
 //
 // Whichever URL is used, I3 is enforced upstream via checkDeniability() in
 // requireWebUsb(); a deniable session never even reaches this init.
 
-// 2026-08-16 audit remediation (LOW): if VITE_TREZOR_CONNECT_SRC is unset in a
-// production build, HARD-FAIL at module init — mirrors src/rasp/useRaspArtifact.js's
-// BYPASS_RASP-in-prod throw. Loading connect.trezor.io from a shipped bundle
-// silently ships a third-party iframe into every user's browser; that is a
-// build defect the app must not run under. Dev builds are unaffected: the
-// fallback to `http://localhost:<port>/trezor-connect/` still applies.
+// 2026-08-16 audit remediation (LOW), narrowed for native safety:
+// keep the fail-closed guard on REAL WebUSB-capable production builds, where a
+// missing VITE_TREZOR_CONNECT_SRC would silently fall back to the CDN in a
+// hardware-wallet-capable browser session. Do NOT crash non-WebUSB platforms
+// (e.g. Android WebView) at module import time merely because SEND imports this
+// file while Trezor mode is unused there.
 if (
   typeof import.meta !== 'undefined' &&
   import.meta.env?.PROD &&
-  !import.meta.env?.VITE_TREZOR_CONNECT_SRC
+  !import.meta.env?.VITE_TREZOR_CONNECT_SRC &&
+  getTransport().type === 'webusb'
 ) {
   throw new Error('[trezor] VITE_TREZOR_CONNECT_SRC is unset in a production build -- refusing to load. Wire the self-hosted bundle produced by scripts/bundle-trezor-connect.mjs (e.g. VITE_TREZOR_CONNECT_SRC=/trezor-connect/) before deploying.');
 }
@@ -54,10 +56,6 @@ function resolveConnectSrc() {
     if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
       return `http://localhost:${import.meta.env.VITE_PORT ?? 5173}/trezor-connect/`;
     }
-    // Unreachable in a normal PROD build (the module-init throw above catches
-    // this case). Kept as a defense-in-depth error log for test harnesses or
-    // any environment where PROD is false but VITE_TREZOR_CONNECT_SRC is also
-    // unset — surfacing loudly rather than silently loading the CDN.
     if (!globalThis.__veyrnoxTrezorCdnWarned) {
       globalThis.__veyrnoxTrezorCdnWarned = true;
       try {

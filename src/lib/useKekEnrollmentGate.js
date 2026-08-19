@@ -68,6 +68,8 @@ const PLUGIN_UNAVAILABLE_MSG =
   "Hardware protection isn’t available on this version of the app. You can continue without hardware protection.";
 const BIOMETRIC_LOCKOUT_MSG =
   "Your device's biometric sensor is temporarily locked from too many attempts. Wait a moment, then try again — or skip for now and enable hardware protection later in Security settings.";
+const RASP_BLOCK_MSG =
+  "Device integrity blocked access to the hardware key. Clear the security alert or integrity issue on this phone, then try enabling hardware protection again.";
 const GENERIC_MSG = 'Something went wrong. Please try again.';
 
 function isWrongPinVaultError(e) {
@@ -80,6 +82,9 @@ function classifyEnrollError(e) {
   const emsg = e?.message || '';
   if (code === 'KEK_ENROLL_INSECURE_TIER') {
     return { msg: INSECURE_TIER_MSG, isInsecureTier: true, isWrongPin: false };
+  }
+  if (code === 'KEK_RASP_BLOCK') {
+    return { msg: RASP_BLOCK_MSG, isInsecureTier: false, isWrongPin: false };
   }
   if (
     code === KEK_ERR.UNWRAP_FAILED ||

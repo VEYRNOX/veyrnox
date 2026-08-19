@@ -33,6 +33,8 @@ export class ErrorBoundary extends Component {
 
   render() {
     if (this.state.hasError) {
+      const envLabel = String(import.meta.env.VITE_ENV_LABEL || "").toLowerCase();
+      const showDiagnosticDetail = import.meta.env.DEV || envLabel === "staging";
       return (
         <div className="min-h-[400px] flex items-center justify-center p-6">
           <Card className="max-w-md w-full border-destructive/30 bg-destructive/5">
@@ -48,7 +50,7 @@ export class ErrorBoundary extends Component {
               <p className="text-sm text-muted-foreground">
                 An unexpected error occurred. This has been logged for debugging purposes.
               </p>
-              {this.state.error && import.meta.env.DEV && (
+              {this.state.error && showDiagnosticDetail && (
                 <div className="p-3 bg-background rounded-lg border border-border">
                   <p className="text-xs font-mono text-destructive break-all">
                     {this.state.error.toString()}
