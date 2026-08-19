@@ -20,6 +20,7 @@ import { useModalA11y } from '@/lib/useModalA11y';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { trackEvent, EVENT } from '@/api/trackEvent';
 import { useTier } from '@/lib/TierProvider';
+import { isPaidTier } from '@/lib/tier';
 
 const SESSION_COUNT_KEY = 'veyrnox-session-day-count';
 const SESSION_LAST_DAY_KEY = 'veyrnox-session-last-day';
@@ -46,7 +47,7 @@ export function incrementSessionDayCount() {
 export function shouldShowPaywallNudge(currentTier) {
   try {
     if (isDeniabilityOrDemoActive()) return false;
-    if (currentTier === 'safety_plus') return false;
+    if (isPaidTier(currentTier)) return false;
     if (localStorage.getItem(NUDGE_DISMISSED_KEY)) return false;
     const count = parseInt(localStorage.getItem(SESSION_COUNT_KEY) || '0', 10);
     return count >= DAY_THRESHOLD;

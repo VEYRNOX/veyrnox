@@ -10,6 +10,7 @@ import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 export const SAFETY_PLUS_ENTITLEMENT = 'safety_plus';
+export const AI_SECURITY_PROTECTION_ENTITLEMENT = 'ai_security_protection';
 
 // RevenueCat standard package identifiers for the Safety Plus offering. Both
 // packages grant the SAME entitlement (`safety_plus`) — annual is a pricing

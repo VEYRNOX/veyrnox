@@ -11,6 +11,7 @@ const unsubscribe = vi.fn();
 const configurePurchases = vi.fn(async () => {});
 vi.mock('../purchases', () => ({
   SAFETY_PLUS_ENTITLEMENT: 'safety_plus',
+  AI_SECURITY_PROTECTION_ENTITLEMENT: 'ai_security_protection',
   configurePurchases: (...a) => configurePurchases(...a),
   addCustomerInfoUpdateListener: async (cb) => {
     capturedListener = cb;
@@ -78,7 +79,7 @@ describe('TierProvider', () => {
     resolveTier.mockResolvedValue('free');
     render(<TierProvider><Probe /></TierProvider>);
     await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
-    expect(Number(screen.getByTestId('tier-count').textContent)).toBe(2);
+    expect(Number(screen.getByTestId('tier-count').textContent)).toBe(3);
   });
 
   it('updates currentTier live when the customer-info listener fires', async () => {
@@ -92,6 +93,19 @@ describe('TierProvider', () => {
     });
 
     expect(screen.getByTestId('tier').textContent).toBe('safety_plus');
+  });
+
+  it('prefers ai_security_protection when that listener entitlement is active', async () => {
+    resolveTier.mockResolvedValue('free');
+    render(<TierProvider><Probe /></TierProvider>);
+    await waitFor(() => expect(screen.getByTestId('tier').textContent).toBe('free'));
+    await waitFor(() => expect(capturedListener).not.toBeNull());
+
+    act(() => {
+      capturedListener({ entitlements: { active: { ai_security_protection: { isActive: true } } } });
+    });
+
+    expect(screen.getByTestId('tier').textContent).toBe('ai_security_protection');
   });
 
   it('unsubscribes the listener on unmount', async () => {

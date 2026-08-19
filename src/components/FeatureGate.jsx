@@ -11,6 +11,7 @@ import { useLocation } from 'react-router';
 import { featureRouteOutcome } from '@/lib/featureRegistry';
 import { isSafetyPlusRoute } from '@/lib/safetyPlusRoutes';
 import { useTier } from '@/lib/TierProvider';
+import { hasSafetyPlusAccess } from '@/lib/tier';
 import HonestDisabledPage from './HonestDisabledPage';
 import TierLockedPage from './TierLockedPage';
 import PageNotFound from '@/lib/PageNotFound';
@@ -41,7 +42,7 @@ export default function FeatureGate({ children, path }) {
         </div>
       );
     }
-    if (currentTier !== 'safety_plus') return <TierLockedPage />;
+    if (!hasSafetyPlusAccess(currentTier)) return <TierLockedPage />;
   }
 
   return children;

@@ -37,6 +37,7 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { isHardwareKekEnrolled } from "@/lib/hardwareKekStatus";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordStrength";
 import { checkPinStrength } from "@/lib/pinStrength";
+import { hasSafetyPlusAccess } from "@/lib/tier";
 import {
   CloudUpload, Download, Upload,
   AlertTriangle, Shield, CheckCircle2, Loader2,
@@ -987,7 +988,7 @@ export default function PersonalBackup() {
   // "Advanced (2-of-3)" is Safety Plus only — tab stays visible so free
   // users can discover the feature; clicking it renders an upsell card
   // instead of the export/restore panel.
-  const hasSafetyPlus = currentTier === "safety_plus";
+  const hasSafetyPlus = hasSafetyPlusAccess(currentTier);
 
   useEffect(() => {
     let live = true;
