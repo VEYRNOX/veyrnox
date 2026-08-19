@@ -51,6 +51,10 @@ vi.mock('@/wallet-core/deniabilitySession.js', () => ({
 }));
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
 vi.mock('@/api/tipScreen.js', () => ({ screenTransaction: vi.fn() }));
+const useTierMock = vi.fn(() => ({ currentTier: 'ai_security_protection' }));
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => useTierMock(),
+}));
 
 /** A fetch that resolves with a stream we never close, so the turn stays open. */
 function openEndedStream(signal) {
@@ -85,6 +89,7 @@ async function mountAdvisor() {
   vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
   vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
   vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+  useTierMock.mockReturnValue({ currentTier: 'ai_security_protection' });
 
   const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
   const utils = render(
@@ -104,6 +109,7 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem(ADVISOR_KEY, 'granted'); // consent already given
   isDeniabilityOrDemoActive.mockReturnValue(false);
+  useTierMock.mockReturnValue({ currentTier: 'ai_security_protection' });
 });
 
 afterEach(() => {

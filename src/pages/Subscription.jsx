@@ -16,7 +16,14 @@ import { Link } from "react-router";
 import { toast } from "@/lib/toast";
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";
-import { FREE_FEATURES, SAFETY_PLUS_FEATURES } from "@/lib/tier";
+import {
+  FREE_FEATURES,
+  SAFETY_PLUS_FEATURES,
+  AI_SECURITY_PROTECTION_FEATURES,
+  tierLabel,
+  isPaidTier,
+  TIER,
+} from "@/lib/tier";
 import {
   getOfferings,
   getTierOffering,
@@ -104,6 +111,10 @@ function HighlightChips({ features, max = 6 }) {
 // via resolveTier() at consumption time, not trust the client cache.
 export default function Subscription() {
   const { currentTier, refreshTier } = useTier();
+  const currentPlanName = tierLabel(currentTier);
+  const isSafetyPlusPlan = currentTier === TIER.SAFETY_PLUS;
+  const isAiSecurityProtectionPlan = currentTier === TIER.AI_SECURITY_PROTECTION;
+  const isPaidPlan = isPaidTier(currentTier);
   const { locale, fiatCurrency } = useLocalePreferences();
   // "$0" hardcoded here mis-labeled the Free tier price for non-USD users
   // (the store never returns a Free package, so no priceString source exists).
@@ -156,7 +167,7 @@ export default function Subscription() {
   // sessions skip the marker write, so they simply see it each time (I3 — a
   // decoy session leaves no trace that the real user visited the paywall).
   const [outcomeStep, setOutcomeStep] = useState(() => {
-    if (currentTier === "safety_plus") return null;
+    if (isPaidPlan) return null;
     try {
       return localStorage.getItem(OUTCOME_SEEN_KEY) ? null : 0;
     } catch { return 0; }
@@ -218,7 +229,7 @@ export default function Subscription() {
     // Retention offering — only meaningful to someone who already subscribes.
     // Absent unless a promotional offer is configured store-side, in which case
     // getTierOffering resolves to null and the dialog shows no price.
-    if (currentTier === "safety_plus") {
+    if (isPaidPlan) {
       // Promise.resolve() wraps the call: this runs on the MANAGE view of a
       // paying subscriber, and a retention offer is a nice-to-have. If the
       // lookup throws synchronously or returns a non-thenable, the failure must
@@ -236,7 +247,7 @@ export default function Subscription() {
     }
 
     return () => { cancelled = true; };
-  }, [isNative, hasReferral, currentTier]);
+  }, [isNative, hasReferral, currentTier, isPaidPlan]);
 
   const hasDiscount = hasReferral && Boolean(referralMonthly || referralAnnual);
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
@@ -422,6 +433,22 @@ export default function Subscription() {
     }
   }
 
+  function renderManageSubscriptionControls() {
+    if (!isNative) return null;
+    return (
+      <>
+        <Button variant="outline" className="w-full" onClick={handleManage}>
+          <ExternalLink className="h-4 w-4 me-2" />
+          Manage subscription
+        </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          Opens the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"} settings —
+          cancel, change plan or update payment there.
+        </p>
+      </>
+    );
+  }
+
   // Outcome-first preamble: sell the result before showing a price. Skippable,
   // and never shown to someone who already subscribes.
   if (outcomeStep !== null) {
@@ -475,7 +502,7 @@ export default function Subscription() {
         <div className="text-muted-foreground mt-1 text-sm">
           You are on the{" "}
           <Badge variant="outline" className={CURRENT_BADGE}>
-            {currentTier === "safety_plus" ? "Safety Plus plan" : "Free plan"}
+            {currentPlanName} plan
           </Badge>{" "}
           — the complete self-custody wallet, no account required.
         </div>
@@ -497,7 +524,7 @@ export default function Subscription() {
         </p>
       )}
 
-      {hasDiscount && currentTier !== "safety_plus" && (
+      {hasDiscount && !isPaidPlan && (
         <div className="flex items-start gap-3 rounded-xl border border-success/30 bg-success/5 p-4">
           <Sparkles className="h-5 w-5 text-success shrink-0 mt-0.5" />
           <div>
@@ -517,7 +544,7 @@ export default function Subscription() {
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Free</h2>
             <span className="text-sm font-bold mono-value">{freeTierPrice}</span>
-            {currentTier === "free" && (
+            {currentTier === TIER.FREE && (
               <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
             )}
           </div>
@@ -528,7 +555,7 @@ export default function Subscription() {
         <div className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-primary flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5" /> Safety Plus adds
-            {currentTier === "safety_plus" && (
+            {isSafetyPlusPlan && (
               <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
             )}
           </h2>
@@ -541,7 +568,57 @@ export default function Subscription() {
             See all Safety Plus features <ArrowRight className="h-3 w-3 rtl:-scale-x-100" />
           </Link>
         </div>
+
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-600 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" /> AI Security Protection adds
+            {isAiSecurityProtectionPlan && (
+              <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
+            )}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Everything in Free and Safety Plus stays included.</span>
+            {" "}AI Security Protection adds live online TIP-backed Vigil answers on top.
+          </p>
+          <HighlightChips features={AI_SECURITY_PROTECTION_FEATURES} max={4} />
+        </div>
       </div>
+
+      <Card className="border-sky-500/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg text-sky-700">
+            AI Security Protection
+            <Sparkles className="h-4 w-4 text-sky-600" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4" data-testid="ai-security-protection-card">
+          {isAiSecurityProtectionPlan ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                You’re on AI Security Protection. This is the plan that lets Vigil talk to TIP online for live answers.
+              </p>
+              {renderManageSubscriptionControls()}
+              {!isNative && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Web remains read-only for subscriptions; manage this plan from your mobile app store account.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold mono-value">Contact sales</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                AI Security Protection includes everything in Free and Safety Plus, then adds live online TIP-backed Vigil answers.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                This plan sits above Safety Plus in the tier stack. The mobile purchase flow on this page currently sells Safety Plus only.
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Pricing (Month / Year) ── */}
       <Card className="border-primary/30">
@@ -552,21 +629,21 @@ export default function Subscription() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {currentTier === "safety_plus" ? (
+          {isSafetyPlusPlan ? (
             <>
-              <p className="text-sm text-muted-foreground">You&rsquo;re on Safety Plus — all features unlocked.</p>
-              {isNative && (
-                <>
-                  <Button variant="outline" className="w-full" onClick={handleManage}>
-                    <ExternalLink className="h-4 w-4 me-2" />
-                    Manage subscription
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center">
-                    Opens the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"} settings —
-                    cancel, change plan or update payment there.
-                  </p>
-                </>
-              )}
+              <p className="text-sm text-muted-foreground">
+                You’re on Safety Plus — all features unlocked.
+              </p>
+              {renderManageSubscriptionControls()}
+            </>
+          ) : isAiSecurityProtectionPlan ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Your current paid plan is {currentPlanName}, which already includes every Safety Plus feature.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                This card stays here so the included Safety Plus pricing remains visible, but your entitlement is already above it.
+              </p>
             </>
           ) : (
             <>
