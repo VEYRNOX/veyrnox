@@ -64,6 +64,12 @@ function Field({ label, type = "text", value, onChange, placeholder, maxLength =
   );
 }
 
+function isNativePlatformSafe() {
+  if (typeof Capacitor?.isNativePlatform === "function") {
+    return Capacitor.isNativePlatform();
+  }
+  return Capacitor?.getPlatform?.() !== "web";
+}
 function describeRecoveryShareExportError(err, { shardExportReady } = {}) {
   const code = err?.code || err?.message || "";
   if (code === "KEK_NO_HARDWARE_FACTOR") {
@@ -976,7 +982,7 @@ export default function PersonalBackup() {
   const { currentTier } = useTier();
   const navigate = useNavigate();
   const [tab, setTab] = useState("export");
-  const [shardExportReady, setShardExportReady] = useState(() => (Capacitor.isNativePlatform() ? null : true));
+  const [shardExportReady, setShardExportReady] = useState(() => (isNativePlatformSafe() ? null : true));
   // Vault backup ("Create backup" + "Restore") is free. Shard-based
   // "Advanced (2-of-3)" is Safety Plus only — tab stays visible so free
   // users can discover the feature; clicking it renders an upsell card
@@ -985,7 +991,7 @@ export default function PersonalBackup() {
 
   useEffect(() => {
     let live = true;
-    if (!Capacitor.isNativePlatform()) {
+    if (!isNativePlatformSafe()) {
       setShardExportReady(true);
       return () => { live = false; };
     }

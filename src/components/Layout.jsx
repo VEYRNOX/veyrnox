@@ -4,6 +4,7 @@ import { Outlet, Link, useLocation, useNavigate, useNavigationType } from "react
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { duration as motionDuration, easing as motionEasing } from "@/lib/motion-tokens";
 import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";
+import { useBackgroundSecurity } from "../hooks/useBackgroundSecurity";
 import AccessibilityWrapper from "./AccessibilityWrapper";
 import SafeSuspense from "./SafeSuspense";
 import HelpMenu from "./HelpMenu";
@@ -305,6 +306,11 @@ export default function Layout() {
   }, [mobileTab, location.pathname, navigate]);
   usePriceAlertNotifier();
   useReceiveDetector(); // PR-275: fires emitReceiveDetected on positive active-set balance delta (I3/I4).
+  // Starts the phishing-domain feed and the approval monitor. Layout only ever
+  // mounts inside WalletGate, so this is already post-unlock; isUnlocked is
+  // passed anyway so the dependency is explicit rather than positional, and so
+  // the services stop the moment the wallet locks.
+  useBackgroundSecurity(isUnlocked);
   // In-app Notifications v1 (brief PR-2 §3). ONE hook instance for the whole
   // authenticated shell: the toast (latest) and the bell badge (unseenCount) read
   // the same session-scoped queue. Mounted inside WalletGate, so it unmounts and

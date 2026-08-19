@@ -241,10 +241,22 @@
       "intro": "Uma verificação extra além do seu PIN para ações sensíveis. Mesmo que alguém veja você digitar seu PIN, ainda assim não consegue fazer essas coisas sem a segunda etapa.",
       "actions_protects_label": "Ações que protege",
       "gated_actions": [
-        { "label": "Enviar fundos", "desc": "cada envio, após as verificações de segurança" },
-        { "label": "Revelar sua frase de recuperação", "desc": "visualizar ou exportar seu backup" },
-        { "label": "Definir um PIN de emergência", "desc": "criar a carteira de emergência" },
-        { "label": "Criar ou ocultar uma carteira", "desc": "alterações em carteiras ocultas" }
+        {
+          "label": "Enviar fundos",
+          "desc": "cada envio, após as verificações de segurança"
+        },
+        {
+          "label": "Revelar sua frase de recuperação",
+          "desc": "visualizar ou exportar seu backup"
+        },
+        {
+          "label": "Definir um PIN de emergência",
+          "desc": "criar a carteira de emergência"
+        },
+        {
+          "label": "Criar ou ocultar uma carteira",
+          "desc": "alterações em carteiras ocultas"
+        }
       ],
       "currently_enforcing": "Aplicando atualmente:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Recentes",
     "tab_home": "Início",
     "tab_send": "Enviar",
-    "tab_receive": "Receber"
+    "tab_receive": "Receber",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Voltar"
@@ -343,8 +356,14 @@
     "heading": "Enviar criptomoeda",
     "subheading": "Transfira fundos com segurança",
     "wallet_fallback": "Carteira",
-    "wallet_picker": { "label": "Da carteira", "placeholder": "Selecionar carteira" },
-    "asset_picker": { "label": "Ativo", "placeholder": "Selecionar ativo" },
+    "wallet_picker": {
+      "label": "Da carteira",
+      "placeholder": "Selecionar carteira"
+    },
+    "asset_picker": {
+      "label": "Ativo",
+      "placeholder": "Selecionar ativo"
+    },
     "recipient": {
       "label": "Enviar para (endereço ou nome)",
       "placeholder": "Cole um endereço ou digite um nome (ex.: vitalik.eth)",
@@ -404,7 +423,10 @@
       "dev_ungate_body": "— o bloqueio de envio é ignorado para {{currency}} via VITE_DEV_UNGATE_SEND (somente compilação de desenvolvimento). O status deste ativo não muda (ainda não está ativo); a mainnet permanece bloqueada. Apenas para verificação em testnet — nunca lance esta compilação.",
       "locked": "Sua carteira está bloqueada. Desbloqueie-a nas Configurações da carteira para assinar e enviar."
     },
-    "note": { "label": "Observação (opcional)", "placeholder": "Para que é isto?" },
+    "note": {
+      "label": "Observação (opcional)",
+      "placeholder": "Para que é isto?"
+    },
     "trezor": {
       "toggle_label": "Assinar com Trezor",
       "connected": "Dispositivo conectado",
@@ -415,7 +437,9 @@
       "confirm_send": "Confirmar e enviar",
       "back": "Voltar"
     },
-    "verify": { "summary_label": "Você está enviando" },
+    "verify": {
+      "summary_label": "Você está enviando"
+    },
     "fee": {
       "automatic": "A taxa de rede é definida automaticamente para {{currency}} ({{network}}).",
       "native_fee_note": "A taxa de rede é paga em {{symbol}} ({{network}}) — você precisa de {{symbol}} para cobrir a taxa de rede mesmo ao enviar {{token}}."
@@ -708,5 +732,46 @@
     "allocation": "Alocação",
     "holdings": "Posições",
     "noHoldings": "Nenhuma posição ainda."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

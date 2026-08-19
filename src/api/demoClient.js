@@ -232,6 +232,7 @@ function applyLimit(rows, limit) {
 }
 
 function makeMissingRowError(entityName, id) {
+  /** @type {Error & { code?: string, entity?: string, id?: string }} */
   const err = new Error(`${entityName} row not found: ${id}`);
   err.code = 'DEMO_ENTITY_NOT_FOUND';
   err.entity = entityName;

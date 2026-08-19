@@ -241,10 +241,22 @@
       "intro": "Egy extra ellenőrzés a PIN-je mellett érzékeny műveletekhez. Még ha valaki látja is, hogy begépeli a PIN-jét, e nélkül a második lépés nélkül nem tud semmit tenni.",
       "actions_protects_label": "Az általa védett műveletek",
       "gated_actions": [
-        { "label": "Pénz küldése", "desc": "minden küldés, a biztonsági ellenőrzések után" },
-        { "label": "Helyreállítási mondat felfedése", "desc": "a biztonsági mentés megtekintése vagy exportálása" },
-        { "label": "Vészhelyzeti PIN beállítása", "desc": "a Vészhelyzeti pénztárca létrehozása" },
-        { "label": "Pénztárca létrehozása vagy elrejtése", "desc": "rejtett pénztárca-változtatások" }
+        {
+          "label": "Pénz küldése",
+          "desc": "minden küldés, a biztonsági ellenőrzések után"
+        },
+        {
+          "label": "Helyreállítási mondat felfedése",
+          "desc": "a biztonsági mentés megtekintése vagy exportálása"
+        },
+        {
+          "label": "Vészhelyzeti PIN beállítása",
+          "desc": "a Vészhelyzeti pénztárca létrehozása"
+        },
+        {
+          "label": "Pénztárca létrehozása vagy elrejtése",
+          "desc": "rejtett pénztárca-változtatások"
+        }
       ],
       "currently_enforcing": "Jelenleg érvényesített:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Legutóbbi",
     "tab_home": "Kezdőlap",
     "tab_send": "Küldés",
-    "tab_receive": "Fogadás"
+    "tab_receive": "Fogadás",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Vissza"
@@ -343,8 +356,14 @@
     "heading": "Kripto küldése",
     "subheading": "Pénzeszközök biztonságos átutalása",
     "wallet_fallback": "Pénztárca",
-    "wallet_picker": { "label": "Feladó pénztárca", "placeholder": "Válasszon pénztárcát" },
-    "asset_picker": { "label": "Eszköz", "placeholder": "Válasszon eszközt" },
+    "wallet_picker": {
+      "label": "Feladó pénztárca",
+      "placeholder": "Válasszon pénztárcát"
+    },
+    "asset_picker": {
+      "label": "Eszköz",
+      "placeholder": "Válasszon eszközt"
+    },
     "recipient": {
       "label": "Küldés ide (cím vagy név)",
       "placeholder": "Illesszen be egy címet, vagy adjon meg egy nevet (pl. vitalik.eth)",
@@ -404,7 +423,10 @@
       "dev_ungate_body": "— a küldési kapu megkerülve a(z) {{currency}} esetében a VITE_DEV_UNGATE_SEND révén (csak fejlesztői összeállítás). Ennek az eszköznek az állapota nem változott (még mindig nem élő); a fő hálózat továbbra is zárolva. Csak teszthálózati ellenőrzéshez — soha ne szállítsa ezt az összeállítást.",
       "locked": "A pénztárcája zárolva van. Oldja fel a Pénztárca beállításokban az aláíráshoz és a küldéshez."
     },
-    "note": { "label": "Megjegyzés (opcionális)", "placeholder": "Mire szolgál ez?" },
+    "note": {
+      "label": "Megjegyzés (opcionális)",
+      "placeholder": "Mire szolgál ez?"
+    },
     "trezor": {
       "toggle_label": "Aláírás Trezorral",
       "connected": "Eszköz csatlakoztatva",
@@ -415,7 +437,9 @@
       "confirm_send": "Megerősítés és küldés",
       "back": "Vissza"
     },
-    "verify": { "summary_label": "Ön a következőt küldi" },
+    "verify": {
+      "summary_label": "Ön a következőt küldi"
+    },
     "fee": {
       "automatic": "A hálózati díj automatikusan van beállítva a(z) {{currency}} ({{network}}) esetében.",
       "native_fee_note": "A hálózati díjat {{symbol}} ({{network}}) valutában kell fizetni — {{symbol}} szükséges a hálózati díj fedezésére akkor is, ha {{token}} eszközt küld."
@@ -708,5 +732,46 @@
     "allocation": "Elosztás",
     "holdings": "Állomány",
     "noHoldings": "Még nincs állomány."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

@@ -787,12 +787,18 @@ function ScreeningVerdict({ result }) {
   );
 }
 
+/**
+ * @param {{
+ *   walletChain?: string | null,
+ *   pageSnapshot?: any,
+ * }} props
+ */
 export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   const { t, i18n } = useTranslation('wallet');
   const location = useLocation();
   const { currentTier } = useTier();
   const currentScreen = resolveScreen(location.pathname);
-  const currentLanguage = i18n.resolvedLanguage || i18n.language || 'en';
+  const currentLanguage = i18n?.resolvedLanguage || i18n?.language || 'en';
   const currentLanguageName = (() => {
     try {
       const base = String(currentLanguage).split('-')[0];
@@ -1182,14 +1188,14 @@ Additional public knowledge you should apply:
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-sky-300/60 bg-sky-500 text-white shadow-[0_0_28px_rgba(56,189,248,0.5)] transition-transform hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 md:bottom-6"
+        className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-primary/45 bg-primary text-primary-foreground shadow-[0_0_28px_hsl(var(--primary)/0.45)] transition-transform hover:scale-105 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:bottom-6"
         aria-label={t('advisor.open_aria', { defaultValue: 'Open Vigil - Security Advisor' })}
       >
-        <span className="absolute -inset-2 rounded-full border border-sky-300/35 bg-sky-400/10 motion-safe:animate-pulse" />
-        <span className="absolute inset-0 rounded-full bg-sky-400/25 motion-safe:animate-ping" />
-        <span className="absolute inset-1 rounded-full border border-white/35" />
-        <span className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.7),rgba(56,189,248,0.08)_42%,rgba(14,116,144,0.95)_100%)]" />
-        <ShieldCheck className="relative h-6 w-6 drop-shadow-[0_0_10px_rgba(255,255,255,0.45)]" />
+        <span aria-hidden="true" className="pointer-events-none absolute -inset-2 rounded-full border border-primary/25 bg-primary/8 motion-safe:animate-pulse motion-reduce:animate-none" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full bg-primary/20 motion-safe:animate-ping motion-reduce:animate-none" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-1 rounded-full border border-primary-foreground/30" />
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_30%,hsl(var(--primary-foreground)/0.65),hsl(var(--primary)/0.08)_42%,hsl(var(--primary)/0.95)_100%)]" />
+        <ShieldCheck className="relative h-6 w-6 drop-shadow-[0_0_10px_hsl(var(--primary-foreground)/0.4)]" />
       </button>
 
       <Drawer open={open} onOpenChange={(v) => {

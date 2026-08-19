@@ -106,7 +106,7 @@ describe('computePostureScore', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 2. Full score: all checks pass with StrongBox = 100
+  // 2. Full score: all live checks pass with StrongBox = 95
   // -------------------------------------------------------------------------
   it('scores a full-security state as 100/100 Complete Green', () => {
     const result = computePostureScore(fullState());

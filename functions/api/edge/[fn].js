@@ -5,13 +5,14 @@
 // injected server-side.
 //
 // Allowlist — only these edge functions are proxied:
-//   first-referral-bonus, tip-screen
+//   first-referral-bonus, tip-screen, tip-chat
 
 import { enforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
 
 const ALLOWED_FUNCTIONS = new Set([
   'first-referral-bonus',
   'tip-screen',
+  'tip-chat',
 ]);
 
 function err(status, message) {
@@ -69,6 +70,17 @@ export async function onRequestPost(context) {
     },
     body,
   });
+
+  if ((res.headers.get('Content-Type') || '').includes('text/event-stream')) {
+    return new Response(res.body, {
+      status: res.status,
+      headers: {
+        'Content-Type': res.headers.get('Content-Type') || 'text/event-stream',
+        'Cache-Control': res.headers.get('Cache-Control') || 'no-cache, no-transform',
+        'Connection': res.headers.get('Connection') || 'keep-alive',
+      },
+    });
+  }
 
   const responseBody = await res.text();
 
