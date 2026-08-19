@@ -270,11 +270,15 @@ export const KNOWLEDGE_BASE = {
         // screening" as a Safety Plus feature. The remote-screening toggle in the
         // send flow has no entitlement check of any kind — it is available on
         // every tier — so the claim described a gate that does not exist.
-        a: 'Safety Plus is Veyrnox\'s optional premium tier: advanced security alerts and priority access to new security features. It\'s a monthly ($5.99) or annual ($49.99) subscription managed through your device\'s app store. Note that on-device and online threat screening are NOT behind it — both are free and opt-in for everyone.',
+        a: 'Safety Plus is Veyrnox\'s optional premium tier: advanced security alerts and priority access to new security features. It\'s a monthly ($5.99) or annual ($49.99) subscription managed through your device\'s app store. Note that send-flow threat screening is still free and opt-in for everyone. The live online Vigil advisor is separate: Free and Safety Plus keep Vigil local/offline, while AI Security Protection unlocks live online TIP-backed answers.',
       },
       {
         q: 'Do I need Safety Plus to be secure?',
-        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, and RASP — is available to all users, and so is transaction threat screening. Safety Plus unlocks deniability features (duress PIN, stealth wallets, panic wipe) and encrypted personal backup, plus advanced security alerts. The free tier is already significantly more secure than most wallets.',
+        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, and RASP — is available to all users, and so is transaction threat screening. Safety Plus unlocks deniability features (duress PIN, stealth wallets, panic wipe) and encrypted personal backup, plus advanced security alerts. The free tier is already significantly more secure than most wallets. AI Security Protection is the separate tier that lets Vigil go online to query TIP in real time.',
+      },
+      {
+        q: 'What is AI Security Protection?',
+        a: 'AI Security Protection is the tier that unlocks live online Vigil answers through the TIP threat-intelligence platform. Free and Safety Plus still include the local, offline advisor built into the app; AI Security Protection is what turns on remote TIP-backed AI responses.',
       },
     ],
   },

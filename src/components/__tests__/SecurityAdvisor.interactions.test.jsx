@@ -45,15 +45,39 @@ vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilityOrDemoActive: vi.fn(() => false),
 }));
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
+const useTierMock = vi.fn(() => ({ currentTier: 'ai_security_protection' }));
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => useTierMock(),
+}));
 
 const mockScreenTransaction = vi.fn();
 vi.mock('@/api/tipScreen.js', () => ({
   screenTransaction: mockScreenTransaction,
 }));
 
-async function mountAdvisor() {
+async function mountAdvisor({ tier = 'ai_security_protection' } = {}) {
   vi.resetModules();
   vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+  useTierMock.mockReturnValue({ currentTier: tier });
+
+  const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
+  render(
+    <MemoryRouter initialEntries={['/send']}>
+      <SecurityAdvisor walletChain="ethereum" />
+    </MemoryRouter>
+  );
+
+  fireEvent.click(screen.getByLabelText(/open vigil/i));
+  return screen;
+}
+
+async function mountAdvisorWithFallback({ tier = 'ai_security_protection' } = {}) {
+  vi.resetModules();
+  vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+  vi.stubEnv('VITE_EDGE_BASE', 'https://veyrnox-prod.pages.dev');
+  vi.stubEnv('VITE_SUPABASE_URL', 'https://project.supabase.co');
+  vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'sb-anon-key');
+  useTierMock.mockReturnValue({ currentTier: tier });
 
   const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
   render(
@@ -89,6 +113,7 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    useTierMock.mockReturnValue({ currentTier: 'ai_security_protection' });
 
     // Spy on all fetch calls (both chat and screening)
     fetchSpy = vi.fn();
@@ -261,9 +286,35 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
       // Should not show consent panel again
       expect(screen.queryByTestId('advisor-remote-consent')).toBeNull();
     });
+
+    it('shows the AI Security Protection paywall instead of consent on Safety Plus', async () => {
+      await mountAdvisor({ tier: 'safety_plus' });
+      expect(await screen.findByTestId('advisor-online-paywall')).toBeTruthy();
+      expect(screen.queryByTestId('advisor-remote-consent')).toBeNull();
+    });
   });
 
   describe('Local fallback correlation: offline degrades gracefully', () => {
+    it('falls back from the edge proxy to Supabase with the required auth headers', async () => {
+      await mountAdvisorWithFallback();
+      await grantAdvisorConsent();
+
+      fetchSpy
+        .mockResolvedValueOnce({ ok: false })
+        .mockRejectedValueOnce(new Error('Network error'));
+
+      await askQuestion('what is deniability mode?');
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+      expect(fetchSpy.mock.calls[0][0]).toBe('https://veyrnox-prod.pages.dev/api/edge/tip-chat');
+      expect(fetchSpy.mock.calls[1][0]).toBe('https://project.supabase.co/functions/v1/tip-chat');
+      expect(fetchSpy.mock.calls[1][1].headers).toMatchObject({
+        Authorization: 'Bearer sb-anon-key',
+        apikey: 'sb-anon-key',
+        'Content-Type': 'application/json',
+      });
+    });
+
     it('falls back to local knowledge when TIP chat is offline', async () => {
       await mountAdvisor();
       await grantAdvisorConsent();
@@ -281,6 +332,24 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
       // Local answer should appear
       const messages = screen.getAllByText(/deniability/i, { ignore: '.hidden' });
       expect(messages.length).toBeGreaterThan(0);
+    });
+
+    it('surfaces the advisor cap honestly on 402 instead of pretending it is offline', async () => {
+      await mountAdvisor();
+      await grantAdvisorConsent();
+
+      fetchSpy.mockResolvedValueOnce(new Response(
+        JSON.stringify({ error: 'quota_exceeded' }),
+        { status: 402, headers: { 'Content-Type': 'application/json' } }
+      ));
+
+      await askQuestion('what is deniability mode?');
+
+      await waitFor(() => {
+        expect(screen.getByText(/online answer limit for this device has been reached/i)).toBeTruthy();
+      });
+
+      expect(screen.queryByText(/^offline$/i)).toBeNull();
     });
 
     it('shows local answer when consent is denied (not an error state)', async () => {

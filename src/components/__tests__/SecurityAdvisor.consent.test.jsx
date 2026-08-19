@@ -38,18 +38,23 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilityOrDemoActive: vi.fn(() => false),
 }));
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
+const useTierMock = vi.fn(() => ({ currentTier: 'ai_security_protection' }));
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => useTierMock(),
+}));
 
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
 const ADVISOR_KEY = 'veyrnox-advisor-remote-consent';
 
-async function mountAdvisor() {
+async function mountAdvisor({ tier = 'ai_security_protection' } = {}) {
   vi.resetModules();
   // SecurityAdvisor exposes remote chat when TIP is feature-enabled at build
   // time. The client now routes through /api/edge/tip-chat, so it no longer
   // needs direct Supabase browser env vars to consider the remote path live.
   vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+  useTierMock.mockReturnValue({ currentTier: tier });
   const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
   render(
     <MemoryRouter initialEntries={['/send']}>
@@ -76,6 +81,7 @@ describe('SecurityAdvisor — remote answers need explicit consent (M-5)', () =>
 
   beforeEach(() => {
     localStorage.clear();
+    useTierMock.mockReturnValue({ currentTier: 'ai_security_protection' });
     fetchSpy = vi.fn(async () => { throw new Error('network should not be reached'); });
     vi.stubGlobal('fetch', fetchSpy);
   });
@@ -138,5 +144,12 @@ describe('SecurityAdvisor — remote answers need explicit consent (M-5)', () =>
     await mountAdvisor();
     fireEvent.click(await screen.findByTestId('advisor-consent-allow'));
     await waitFor(() => expect(localStorage.getItem(ADVISOR_KEY)).toBe('granted'));
+  });
+
+  it('does not show remote consent on Free because advisor chat stays local-only', async () => {
+    await mountAdvisor({ tier: 'free' });
+    await screen.findByRole('textbox');
+    expect(screen.queryByTestId('advisor-remote-consent')).toBeNull();
+    expect(screen.getByTestId('advisor-online-paywall')).toBeTruthy();
   });
 });

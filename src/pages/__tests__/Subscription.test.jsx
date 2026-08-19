@@ -383,6 +383,15 @@ describe('Subscription page — Manage subscription (paid tier, native)', () => 
     renderPage();
     await waitFor(() => expect(screen.getByText(/Play Store settings/i)).toBeTruthy());
   });
+
+  it('renders a separate AI Security Protection card when that is the current plan', async () => {
+    useTierMock.mockReturnValue({ currentTier: 'ai_security_protection', tiers: [], refreshTier });
+    renderPage();
+    expect(await screen.findByTestId('ai-security-protection-card')).toBeTruthy();
+    expect(screen.getByText(/You're on AI Security Protection/i)).toBeTruthy();
+    expect(screen.getByText(/already includes every Safety Plus feature/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /manage subscription/i })).toBeTruthy();
+  });
 });
 
 describe('Subscription page — Manage subscription hidden when it should be', () => {
@@ -403,6 +412,15 @@ describe('Subscription page — Manage subscription hidden when it should be', (
     // Wait long enough for any offering effect (there is none on web) to run.
     await waitFor(() => expect(screen.getByText(/Plans/i)).toBeTruthy());
     expect(screen.queryByRole('button', { name: /manage subscription/i })).toBeNull();
+  });
+
+  it('shows the honest separate-plan note for AI Security Protection when free', async () => {
+    isNativePlatform.mockReturnValue(false);
+    useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
+    renderPage();
+    expect(await screen.findByTestId('ai-security-protection-card')).toBeTruthy();
+    expect(screen.getByText(/Contact sales/i)).toBeTruthy();
+    expect(screen.getByText(/includes everything in Free and Safety Plus/i)).toBeTruthy();
   });
 });
 

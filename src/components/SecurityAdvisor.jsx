@@ -7,7 +7,7 @@
 // P1: system prompt (server-side) refuses seeds/keys/PINs.
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Capacitor } from "@capacitor/core";
 import { useTranslation } from "react-i18next";
 import { ShieldCheck, Send, X, Loader2, WifiOff, AlertTriangle, CheckCircle2, ShieldAlert as ShieldAlertIcon } from "lucide-react";
@@ -40,9 +40,13 @@ import {
   hasAdvisorConsent,
   setAdvisorConsent,
 } from "@/lib/advisorConsent";
+import { useTier } from "@/lib/TierProvider";
+import { hasAdvisorOnlineAccess, tierLabel, TIER } from "@/lib/tier";
 
 const TIP_CONFIGURED = !!import.meta.env.VITE_TIP_BASE_URL;
 const EDGE_BASE = import.meta.env.VITE_EDGE_BASE || '';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Advisor now goes through the app's /api/edge/tip-chat proxy.
 //
 // PR #48 (veyrnox-tip 57c9bed) made `/api/v1/chat` HMAC-required. A
@@ -56,7 +60,27 @@ function resolveTipChatUrl() {
   if (!EDGE_BASE && Capacitor.isNativePlatform()) return null;
   return `${EDGE_BASE}/api/edge/tip-chat`;
 }
+
+function resolveLegacyTipChatUrl() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
+  return `${String(SUPABASE_URL).replace(/\/$/, '')}/functions/v1/tip-chat`;
+}
+
+function buildTipChatHeaders(url) {
+  const headers = { "Content-Type": "application/json" };
+  if (
+    url &&
+    SUPABASE_URL &&
+    SUPABASE_ANON_KEY &&
+    url.startsWith(String(SUPABASE_URL).replace(/\/$/, ''))
+  ) {
+    headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
+    headers.apikey = SUPABASE_ANON_KEY;
+  }
+  return headers;
+}
 const TIP_CHAT_URL = resolveTipChatUrl();
+const LEGACY_TIP_CHAT_URL = resolveLegacyTipChatUrl();
 const QUESTION_SETS = {
   dashboard: [
     "How do I keep my wallet safe?",
@@ -132,6 +156,7 @@ const QUESTION_SETS = {
   ],
   subscription: [
     "What is Safety Plus?",
+    "What is AI Security Protection?",
     "Do I need Safety Plus to be secure?",
     "What extra features does Safety Plus include?",
     "How do I cancel my subscription?",
@@ -770,6 +795,7 @@ function ScreeningVerdict({ result }) {
 export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   const { t, i18n } = useTranslation('wallet');
   const location = useLocation();
+  const { currentTier } = useTier();
   const currentScreen = resolveScreen(location.pathname);
   const currentLanguage = i18n?.resolvedLanguage || i18n?.language || 'en';
   const currentLanguageName = (() => {
@@ -806,6 +832,9 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   }, []);
 
   const hidden = isDeniabilityOrDemoActive() || DEMO;
+  const advisorOnlineEnabled = hasAdvisorOnlineAccess(currentTier);
+  const advisorOnlineLocked = !!TIP_CHAT_URL && !advisorOnlineEnabled;
+  const currentPlanName = tierLabel(currentTier);
 
   // I3 — kill any in-flight turn the moment the session becomes deniable.
   //
@@ -846,7 +875,7 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   // Only ask when there is actually a remote endpoint to send to; an
   // unconfigured build is local-only anyway and a consent prompt there would be
   // asking permission for something that cannot happen.
-  const needsAdvisorConsent = !!TIP_CHAT_URL && advisorConsent == null;
+  const needsAdvisorConsent = !!TIP_CHAT_URL && advisorOnlineEnabled && advisorConsent == null;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -900,7 +929,7 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
       // the remote call unless the user has affirmatively granted advisor
       // consent — local seed still fires either way, so a known-bad address
       // is still surfaced honestly. Matches the sendMessage gate at :553.
-      if (TIP_CHAT_URL && hasAdvisorConsent()) {
+      if (TIP_CHAT_URL && advisorOnlineEnabled && hasAdvisorConsent()) {
         // 2026-08-16 audit remediation: wire an AbortController so a
         // mid-flight deniability flip cancels this screen call rather than
         // running to completion after the session has already been suppressed.
@@ -968,7 +997,10 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
     // the local knowledge base answers instead, exactly as it does when no
     // endpoint is configured. Checked here, at the one place egress happens,
     // rather than at the input or the drawer.
-    if (!TIP_CHAT_URL || !hasAdvisorConsent()) {
+    const chatUrls = advisorOnlineEnabled
+      ? [TIP_CHAT_URL, LEGACY_TIP_CHAT_URL].filter(Boolean)
+      : [];
+    if (chatUrls.length === 0 || !hasAdvisorConsent()) {
       answerLocally(text, history);
       return;
     }
@@ -979,12 +1011,7 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
     abortRef.current = controller;
 
     try {
-      const resp = await fetch(TIP_CHAT_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const requestBody = JSON.stringify({
           action: "chat",
           messages: [
             {
@@ -1043,14 +1070,37 @@ Additional public knowledge you should apply:
           // on device_id. Without it every wallet installation shares the
           // "anonymous" bucket globally — one user hits the cap for
           // everyone. Consent has already been checked above, so it is safe
-          // to mint the persistent id here. Vault subscribers eventually
-          // prefix this with "vault:" to bypass the cap (see companion PR).
+          // to mint the persistent id here. The proxy currently strips any
+          // caller-supplied "vault:" prefix and fail-closes everyone to the
+          // free tier until a real server-authored entitlement exists.
           device_id: getOrCreateDeviceId() ?? undefined,
-        }),
-        signal: controller.signal,
       });
+      let resp = null;
+      let lastError = null;
+      for (const url of chatUrls) {
+        try {
+          resp = await fetch(url, {
+            method: "POST",
+            headers: buildTipChatHeaders(url),
+            body: requestBody,
+            signal: controller.signal,
+          });
+          if (resp.status === 402) {
+            throw Object.assign(new Error("Advisor cap reached"), {
+              code: "ADVISOR_CAP_REACHED",
+            });
+          }
+          if (!resp.ok) throw new Error("Chat request failed");
+          break;
+        } catch (err) {
+          if (err?.code === "ADVISOR_CAP_REACHED") throw err;
+          lastError = err;
+          resp = null;
+          if (controller.signal.aborted) throw err;
+        }
+      }
 
-      if (!resp.ok) throw new Error("Chat request failed");
+      if (!resp) throw lastError || new Error("Chat request failed");
 
       setOffline(false);
 
@@ -1095,9 +1145,14 @@ Additional public knowledge you should apply:
         return;
       }
 
-      setOffline(true);
-      // I4: fall back to local knowledge instead of showing an error
-      const localAnswer = findLocalAnswer(text);
+      const capReached = err?.code === "ADVISOR_CAP_REACHED";
+      setOffline(capReached ? false : true);
+      // I4: fall back to local knowledge instead of showing an error.
+      // 402 is NOT "offline": the online cap was reached, and the client needs
+      // to say so honestly rather than pretending the network failed.
+      const localAnswer = capReached
+        ? t('advisor.cap_fallback', { defaultValue: "Vigil's online answer limit for this device has been reached. The higher AI Security Protection chat cap is temporarily unavailable, so I'm falling back to local guidance for now." })
+        : findLocalAnswer(text);
       setMessages((prev) => {
         const updated = [...prev];
         updated[assistantIdx] = {
@@ -1211,6 +1266,31 @@ Additional public knowledge you should apply:
                   {t('advisor.consent.deny', { defaultValue: 'Keep answers local' })}
                 </button>
               </div>
+            </div>
+          )}
+
+          {advisorOnlineLocked && (
+            <div
+              className="mx-4 mt-3 rounded-lg border border-sky-400/30 bg-sky-500/5 p-3 text-xs"
+              data-testid="advisor-online-paywall"
+            >
+              <p className="font-medium text-foreground">
+                {t('advisor.paywall.title', { defaultValue: 'Live online Vigil answers require AI Security Protection' })}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {currentTier === TIER.SAFETY_PLUS
+                  ? t('advisor.paywall.body_safety_plus', { defaultValue: "Your Safety Plus plan already includes those paid protections. AI Security Protection keeps all of them and additionally unlocks live online answers from TIP; local guidance below still works normally." })
+                  : t('advisor.paywall.body_free', { defaultValue: "Free stays local and offline. AI Security Protection includes everything in Free and Safety Plus, then unlocks live online answers from TIP; local guidance below still works normally." })}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {t('advisor.paywall.current_plan', { defaultValue: 'Current plan: {{plan}}.', plan: currentPlanName })}
+              </p>
+              <Link
+                to="/plans"
+                className="mt-2 inline-flex items-center rounded-md border border-sky-400/40 px-3 py-1.5 font-medium text-sky-600 hover:bg-sky-500/10"
+              >
+                {t('advisor.paywall.cta', { defaultValue: 'View AI Security Protection' })}
+              </Link>
             </div>
           )}
 

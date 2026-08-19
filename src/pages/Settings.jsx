@@ -9,6 +9,7 @@ import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { useTier } from "@/lib/TierProvider";
+import { hasSafetyPlusAccess, tierLabel, TIER } from "@/lib/tier";
 import { getAuthModel } from "@/lib/authModel";
 import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature, BarChart3 } from "lucide-react";
 import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
@@ -37,7 +38,8 @@ export default function Settings() {
     auditLogWritable = true,
   } = useWallet();
   const { currentTier } = useTier();
-  const isSafetyPlus = currentTier === "safety_plus";
+  const isSafetyPlus = hasSafetyPlusAccess(currentTier);
+  const planLabel = tierLabel(currentTier);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -335,9 +337,15 @@ export default function Settings() {
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold">Current plan: {isSafetyPlus ? "Safety Plus" : "Free"}</p>
+            <p className="text-sm font-semibold">Current plan: {planLabel}</p>
             <p className="text-xs text-muted-foreground">
-              {isSafetyPlus ? "Deeper security controls & advanced analytics" : "Upgrade to Safety Plus — $5.99/mo"}
+              {isSafetyPlus
+                ? currentTier === TIER.AI_SECURITY_PROTECTION
+                  ? "Includes every Safety Plus feature plus live TIP-backed Vigil answers"
+                  : "Deeper security controls & advanced analytics"
+                : currentTier === TIER.AI_SECURITY_PROTECTION
+                  ? "Live TIP-backed Vigil answers"
+                  : "Upgrade to Safety Plus or AI Security Protection"}
             </p>
           </div>
         </div>
