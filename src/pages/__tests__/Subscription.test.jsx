@@ -387,8 +387,10 @@ describe('Subscription page — Manage subscription (paid tier, native)', () => 
   it('renders a separate AI Security Protection card when that is the current plan', async () => {
     useTierMock.mockReturnValue({ currentTier: 'ai_security_protection', tiers: [], refreshTier });
     renderPage();
-    expect(await screen.findByTestId('ai-security-protection-card')).toBeTruthy();
-    expect(screen.getByText(/You're on AI Security Protection/i)).toBeTruthy();
+    const aiCard = await screen.findByTestId('ai-security-protection-card');
+    expect(aiCard).toBeTruthy();
+    expect(screen.getByText(/You are on the/i)).toBeTruthy();
+    expect(aiCard).toHaveTextContent(/Vigil talk to TIP online for live answers/i);
     expect(screen.getByText(/already includes every Safety Plus feature/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /manage subscription/i })).toBeTruthy();
   });

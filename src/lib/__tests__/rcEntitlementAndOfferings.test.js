@@ -92,6 +92,7 @@ describe('resolveTier — entitlement shape (C-2)', () => {
   async function loadWithCustomerInfo(customerInfo) {
     vi.doMock('../purchases', () => ({
       SAFETY_PLUS_ENTITLEMENT: 'safety_plus',
+      AI_SECURITY_PROTECTION_ENTITLEMENT: 'ai_security_protection',
       getCustomerInfo: vi.fn(async () => customerInfo),
     }));
     return (await import('../entitlement.js')).resolveTier;
