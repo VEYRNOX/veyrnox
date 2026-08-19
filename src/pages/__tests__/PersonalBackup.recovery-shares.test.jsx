@@ -240,7 +240,9 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    expect(screen.getByText(/turn on hardware protection first/i)).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByText(/turn on hardware protection first/i)).toBeTruthy()
+    );
     expect(screen.getByText(/biometric re-auth alone is not enough/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /split & save 3 shares/i })).toBeDisabled();
   });
@@ -267,6 +269,49 @@ describe('PersonalBackup — Export passphrase-wrap (Phase 3, flag on)', () => {
     expect(screen.getByPlaceholderText(/recovery passphrase/i)).toBeTruthy();
     // The old opt-out checkbox must not exist any more.
     expect(screen.queryByLabelText(/encrypt each share with a passphrase/i)).toBeNull();
+  });
+
+  it('offers an optional keypad for numeric-only export passphrases', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    fireEvent.click(screen.getByRole('button', { name: /use keypad/i }));
+    expect(await screen.findByRole('group', { name: /recovery passphrase numeric passphrase entry/i })).toBeTruthy();
+  });
+
+  it('falls back to keyboard mode for non-numeric export passphrases', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    fireEvent.click(screen.getByRole('button', { name: /use keypad/i }));
+    expect(await screen.findByRole('group', { name: /recovery passphrase numeric passphrase entry/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /use keyboard/i }));
+    fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
+      target: { value: '123456789012345a' },
+    });
+    expect(await screen.findByText(/keypad mode is available for numeric-only passphrases/i)).toBeTruthy();
+    expect(screen.queryByRole('group', { name: /numeric passphrase entry/i })).toBeNull();
   });
 
   it('keeps the Split button disabled until the passphrase meets the length floor', async () => {
@@ -301,6 +346,22 @@ describe('PersonalBackup — Export passphrase-wrap (Phase 3, flag on)', () => {
 describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
   // Restore is a mode INSIDE the Recovery Shares tab. Tests below open that
   // tab first, click Restore, and drive from there.
+
+  function stubRestoreFilePick(buffers) {
+    const files = buffers.map(
+      (buf, i) => new File([buf], `share${i}.json`, { type: 'application/json' }),
+    );
+    const origClick = HTMLInputElement.prototype.click;
+    HTMLInputElement.prototype.click = function () {
+      if (this.type === 'file') {
+        Object.defineProperty(this, 'files', { value: files, configurable: true });
+        this.onchange && this.onchange(new Event('change'));
+      } else {
+        origClick.call(this);
+      }
+    };
+    return () => { HTMLInputElement.prototype.click = origClick; };
+  }
 
   it('renders the Restore panel copy when the Restore mode is selected', async () => {
     const Page = await loadPage({
@@ -453,6 +514,77 @@ describe('PersonalBackup — Restore sub-view (Phase 2, flag on)', () => {
     expect(screen.queryByPlaceholderText(/recovery passphrase/i)).toBeNull();
   });
 
+  it('offers an optional keypad for numeric-only recovery passphrases in the restore panel', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+
+    const restoreFilePick = stubRestoreFilePick([
+      new TextEncoder().encode(JSON.stringify({ app: 'veyrnox', type: 'recovery-share', version: 1, shareIndex: 1, kdf: {}, salt: 'c2FsdA==', iv: 'aXY=', ct: 'Y3Q=' })),
+      new TextEncoder().encode('\x02'.repeat(88)),
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: /choose 2 share files/i }));
+    try {
+      restoreFilePick();
+
+      fireEvent.click(await screen.findByRole('button', { name: /use keypad/i }));
+      expect(await screen.findByRole('group', { name: /recovery passphrase numeric passphrase entry/i })).toBeTruthy();
+    } finally {
+      restoreFilePick();
+    }
+  });
+
+  it('falls back to keyboard mode when the recovery passphrase is no longer numeric-only', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+
+    const restoreFilePick = stubRestoreFilePick([
+      new TextEncoder().encode(JSON.stringify({ app: 'veyrnox', type: 'recovery-share', version: 1, kdf: {}, shareIndex: 1, salt: 'c2FsdA==', iv: 'aXY=', ct: 'Y3Q=' })),
+      new TextEncoder().encode('\x02'.repeat(88)),
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: /choose 2 share files/i }));
+    try {
+      restoreFilePick();
+
+      fireEvent.click(await screen.findByRole('button', { name: /use keypad/i }));
+      expect(await screen.findByRole('group', { name: /recovery passphrase numeric passphrase entry/i })).toBeTruthy();
+
+      fireEvent.click(screen.getByRole('button', { name: /use keyboard/i }));
+      const passphraseInput = await screen.findByPlaceholderText(/recovery passphrase/i);
+      fireEvent.change(passphraseInput, { target: { value: '123456789012345a' } });
+
+      expect(await screen.findByText(/keypad mode is available for numeric-only passphrases/i)).toBeTruthy();
+      expect(screen.queryByRole('group', { name: /numeric passphrase entry/i })).toBeNull();
+    } finally {
+      restoreFilePick();
+    }
+  });
+
   it('suppresses the whole tab (export AND restore) in a decoy session', async () => {
     // Sanity: the deniability gate is on the tab root, so both modes are
     // hidden — a decoy examiner cannot even see the Restore UI, let alone
@@ -587,7 +719,7 @@ describe('PersonalBackup — same-device restore rejects a cross-device bundle e
     return () => { HTMLInputElement.prototype.click = origClick; };
   }
 
-  it('shows a clear cross-device message instead of throwing RECOVERY_SHARE_MALFORMED', async () => {
+  it('shows a direct bundle-restore CTA instead of throwing RECOVERY_SHARE_MALFORMED', async () => {
     vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
     vi.resetModules();
     const { wrapBundleWithPassphrase } = await import('@/wallet-core/recoveryShare');
@@ -633,12 +765,10 @@ describe('PersonalBackup — same-device restore rejects a cross-device bundle e
     fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), {
       target: { value: '24681024' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
-
-    await waitFor(() => expect(toastError).toHaveBeenCalled());
-    const [message] = toastError.mock.calls[0];
-    expect(message).toMatch(/cross-device recovery file/i);
-    expect(message).not.toBe('RECOVERY_SHARE_MALFORMED');
+    expect(await screen.findByText(/cross-device recovery bundles detected/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /open restore from bundles/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /restore wallet/i })).toBeDisabled();
+    expect(toastError).not.toHaveBeenCalled();
     expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
   });
 

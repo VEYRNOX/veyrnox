@@ -67,6 +67,34 @@ function enterPassphraseAndSubmit(pass = NEW_PASSPHRASE) {
 }
 
 describe('RestoreFromShares — encrypted bundle detection', () => {
+  it('offers an optional keypad for numeric-only recovery passphrases', async () => {
+    const restoreFromRecoveryBundles = vi.fn();
+    const Page = await loadPage(restoreFromRecoveryBundles);
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    pasteShares(RAW_BUNDLE_1, wrappedBundle2);
+
+    fireEvent.click(await screen.findByRole('button', { name: /use keypad/i }));
+    expect(await screen.findByRole('group', { name: /share 2 recovery passphrase numeric passphrase entry/i })).toBeTruthy();
+  });
+
+  it('falls back to keyboard mode once a passphrase is no longer numeric-only', async () => {
+    const restoreFromRecoveryBundles = vi.fn();
+    const Page = await loadPage(restoreFromRecoveryBundles);
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    pasteShares(RAW_BUNDLE_1, wrappedBundle2);
+
+    fireEvent.click(await screen.findByRole('button', { name: /use keypad/i }));
+    expect(await screen.findByRole('group', { name: /share 2 recovery passphrase numeric passphrase entry/i })).toBeTruthy();
+
+    const keypadToggle = screen.getByRole('button', { name: /use keyboard/i });
+    fireEvent.click(keypadToggle);
+    const passphraseInput = await screen.findByPlaceholderText(/recovery passphrase/i);
+    fireEvent.change(passphraseInput, { target: { value: '123456789012345a' } });
+
+    expect(await screen.findByText(/keypad mode is available for numeric-only passphrases/i)).toBeTruthy();
+    expect(screen.queryByRole('group', { name: /numeric passphrase entry/i })).toBeNull();
+  });
+
   it('shows a passphrase field once an encrypted bundle is pasted in', async () => {
     const restoreFromRecoveryBundles = vi.fn();
     const Page = await loadPage(restoreFromRecoveryBundles);

@@ -75,6 +75,73 @@ function describeRecoveryShareExportError(err, { shardExportReady } = {}) {
   return err?.message || "Recovery share export failed.";
 }
 
+const NUMERIC_PASSPHRASE_RE = /^\d+$/;
+
+function canUseNumericKeypad(value) {
+  return value.trim() === "" || NUMERIC_PASSPHRASE_RE.test(value.trim());
+}
+
+function RecoveryPassphraseField({
+  label,
+  value,
+  onChange,
+  useKeypad,
+  setUseKeypad,
+  placeholder,
+  autoComplete,
+}) {
+  const keypadEligible = canUseNumericKeypad(value);
+  const showKeypad = useKeypad && keypadEligible;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-3">
+        <label className="text-xs font-medium text-muted-foreground">{label}</label>
+        <button
+          type="button"
+          onClick={() => setUseKeypad((v) => !v)}
+          className="text-xs font-medium text-primary hover:text-primary/80"
+        >
+          {showKeypad ? "Use keyboard" : "Use keypad"}
+        </button>
+      </div>
+      {showKeypad ? (
+        <>
+          <PinPad
+            value={value}
+            onChange={onChange}
+            onComplete={() => {}}
+            length={Math.max(
+              RECOVERY_PASSPHRASE_MIN_LENGTH,
+              value.length || RECOVERY_PASSPHRASE_MIN_LENGTH,
+            )}
+            submitLabel="Done"
+            aria-label={`${label} numeric passphrase entry`}
+            numericOnly
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Numeric passphrases still need at least {RECOVERY_PASSPHRASE_MIN_LENGTH} digits.
+          </p>
+        </>
+      ) : (
+        <>
+          <PasswordInput
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            autoComplete={autoComplete}
+          />
+          {!keypadEligible && (
+            <p className="text-[11px] text-muted-foreground">
+              Keypad mode is available for numeric-only passphrases.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Export tab ───────────────────────────────────────────────────────────────
 
 function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
@@ -479,6 +546,7 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [recoveryPassphrase, setRecoveryPassphrase] = useState("");
+  const [useKeypadRecoveryPassphrase, setUseKeypadRecoveryPassphrase] = useState(false);
   const [busy, setBusy] = useState(false);
   const [pickErr, setPickErr] = useState("");
   const raspArtifact = useRaspArtifact();
@@ -528,6 +596,12 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
     pinConfirmed &&
     (!needsPassphrase || passphraseCheck.ok) &&
     !busy;
+
+  useEffect(() => {
+    if (!canUseNumericKeypad(recoveryPassphrase)) {
+      setUseKeypadRecoveryPassphrase(false);
+    }
+  }, [recoveryPassphrase]);
 
   const runRestore = async () => {
     const gate = sensitiveGate(raspArtifact, "export"); // reuse the same RASP surface as export
@@ -661,9 +735,12 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
 
       {needsPassphrase && (
         <div className="space-y-1">
-          <PasswordInput
+          <RecoveryPassphraseField
+            label="Recovery passphrase"
             value={recoveryPassphrase}
-            onChange={(e) => setRecoveryPassphrase(e.target.value)}
+            onChange={setRecoveryPassphrase}
+            useKeypad={useKeypadRecoveryPassphrase}
+            setUseKeypad={setUseKeypadRecoveryPassphrase}
             placeholder={`Recovery passphrase (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
             autoComplete="current-password"
           />
@@ -730,7 +807,14 @@ function RecoveryShareTab({
   const [savedCount, setSavedCount] = useState(0);
   const [done, setDone] = useState(false);
   const [recoveryPassphrase, setRecoveryPassphrase] = useState("");
+  const [useKeypadRecoveryPassphrase, setUseKeypadRecoveryPassphrase] = useState(false);
   const raspArtifact = useRaspArtifact();
+
+  useEffect(() => {
+    if (!canUseNumericKeypad(recoveryPassphrase)) {
+      setUseKeypadRecoveryPassphrase(false);
+    }
+  }, [recoveryPassphrase]);
 
   if (isDecoy || isHidden) {
     return (
@@ -932,9 +1016,12 @@ function RecoveryShareTab({
           </p>
         </div>
         <div className="space-y-1">
-          <PasswordInput
+          <RecoveryPassphraseField
+            label="Recovery passphrase"
             value={recoveryPassphrase}
-            onChange={(e) => setRecoveryPassphrase(e.target.value)}
+            onChange={setRecoveryPassphrase}
+            useKeypad={useKeypadRecoveryPassphrase}
+            setUseKeypad={setUseKeypadRecoveryPassphrase}
             placeholder={`Recovery passphrase (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
             autoComplete="new-password"
           />

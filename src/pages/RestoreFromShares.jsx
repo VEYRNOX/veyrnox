@@ -24,6 +24,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, Upload, FileText } from "lucide-react";
+import PinPad from "@/components/security/PinPad";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useWallet } from "@/lib/WalletProvider";
 import {
@@ -37,6 +38,8 @@ const BUNDLE_ENVELOPE_TYPE = "recovery-bundle-v1";
 
 const BACK_CHIP =
   "inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground";
+
+const NUMERIC_PASSPHRASE_RE = /^\d+$/;
 
 /** Detect whether pasted/loaded text is a passphrase-wrapped bundle envelope
  * (recovery-bundle-v1) rather than a raw bundle. Returns the parsed envelope
@@ -66,6 +69,70 @@ function readFileText(file) {
   });
 }
 
+function canUseNumericKeypad(value) {
+  return value.trim() === "" || NUMERIC_PASSPHRASE_RE.test(value.trim());
+}
+
+function RecoveryPassphraseField({
+  label,
+  value,
+  onChange,
+  useKeypad,
+  setUseKeypad,
+  placeholder,
+  autoComplete,
+  submitLabel = "Done",
+}) {
+  const keypadEligible = canUseNumericKeypad(value);
+  const showKeypad = useKeypad && keypadEligible;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+        <button
+          type="button"
+          onClick={() => setUseKeypad((v) => !v)}
+          className="text-xs font-medium text-primary hover:text-primary/80"
+        >
+          {showKeypad ? "Use keyboard" : "Use keypad"}
+        </button>
+      </div>
+      {showKeypad ? (
+        <>
+          <PinPad
+            value={value}
+            onChange={onChange}
+            onComplete={() => {}}
+            disabled={false}
+            length={Math.max(RECOVERY_PASSPHRASE_MIN_LENGTH, value.length || RECOVERY_PASSPHRASE_MIN_LENGTH)}
+            submitLabel={submitLabel}
+            aria-label={`${label} numeric passphrase entry`}
+            numericOnly
+          />
+          <p className="text-xs text-muted-foreground">
+            Numeric passphrases still need at least {RECOVERY_PASSPHRASE_MIN_LENGTH} digits.
+          </p>
+        </>
+      ) : (
+        <>
+          <PasswordInput
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            autoComplete={autoComplete}
+          />
+          {!keypadEligible && (
+            <p className="text-xs text-muted-foreground">
+              Keypad mode is available for numeric-only passphrases.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function RestoreFromShares() {
   const navigate = useNavigate();
   const { restoreFromRecoveryBundles } = useWallet();
@@ -81,6 +148,10 @@ export default function RestoreFromShares() {
   const [newPassphrase, setNewPassphrase] = useState("");
   const [newPassphraseConfirm, setNewPassphraseConfirm] = useState("");
   const [error, setError] = useState("");
+  const [useKeypadA, setUseKeypadA] = useState(false);
+  const [useKeypadB, setUseKeypadB] = useState(false);
+  const [useKeypadNew, setUseKeypadNew] = useState(false);
+  const [useKeypadConfirm, setUseKeypadConfirm] = useState(false);
   const fileRefA = useRef(null);
   const fileRefB = useRef(null);
   const [passphraseA, setPassphraseA] = useState("");
@@ -99,8 +170,28 @@ export default function RestoreFromShares() {
       setPassphraseB("");
       setNewPassphrase("");
       setNewPassphraseConfirm("");
+      setUseKeypadA(false);
+      setUseKeypadB(false);
+      setUseKeypadNew(false);
+      setUseKeypadConfirm(false);
     };
   }, []);
+
+  useEffect(() => {
+    if (!canUseNumericKeypad(passphraseA)) setUseKeypadA(false);
+  }, [passphraseA]);
+
+  useEffect(() => {
+    if (!canUseNumericKeypad(passphraseB)) setUseKeypadB(false);
+  }, [passphraseB]);
+
+  useEffect(() => {
+    if (!canUseNumericKeypad(newPassphrase)) setUseKeypadNew(false);
+  }, [newPassphrase]);
+
+  useEffect(() => {
+    if (!canUseNumericKeypad(newPassphraseConfirm)) setUseKeypadConfirm(false);
+  }, [newPassphraseConfirm]);
 
   const pickInto = useCallback(async (which, file) => {
     setError("");
@@ -228,20 +319,28 @@ export default function RestoreFromShares() {
         <div className="space-y-4">
           <ShareInput label="Share 1" value={shareA} setValue={setShareA} fileRef={fileRefA} which="A" />
           {envelopeA && (
-            <PasswordInput
+            <RecoveryPassphraseField
+              label="Share 1 Recovery Passphrase"
               value={passphraseA}
-              onChange={(e) => setPassphraseA(e.target.value)}
+              onChange={setPassphraseA}
+              useKeypad={useKeypadA}
+              setUseKeypad={setUseKeypadA}
               placeholder={`Recovery passphrase for share 1 (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
               autoComplete="current-password"
+              submitLabel="Done"
             />
           )}
           <ShareInput label="Share 2" value={shareB} setValue={setShareB} fileRef={fileRefB} which="B" />
           {envelopeB && (
-            <PasswordInput
+            <RecoveryPassphraseField
+              label="Share 2 Recovery Passphrase"
               value={passphraseB}
-              onChange={(e) => setPassphraseB(e.target.value)}
+              onChange={setPassphraseB}
+              useKeypad={useKeypadB}
+              setUseKeypad={setUseKeypadB}
               placeholder={`Recovery passphrase for share 2 (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
               autoComplete="current-password"
+              submitLabel="Done"
             />
           )}
           {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
@@ -262,17 +361,25 @@ export default function RestoreFromShares() {
             This must be a PASSPHRASE, not a PIN — a short PIN is not enough entropy to protect a
             cross-device restore.
           </p>
-          <PasswordInput
+          <RecoveryPassphraseField
+            label="New Device Passphrase"
             value={newPassphrase}
-            onChange={(e) => setNewPassphrase(e.target.value)}
+            onChange={setNewPassphrase}
+            useKeypad={useKeypadNew}
+            setUseKeypad={setUseKeypadNew}
             placeholder={`New passphrase (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} chars)`}
             autoComplete="new-password"
+            submitLabel="Done"
           />
-          <PasswordInput
+          <RecoveryPassphraseField
+            label="Confirm New Device Passphrase"
             value={newPassphraseConfirm}
-            onChange={(e) => setNewPassphraseConfirm(e.target.value)}
+            onChange={setNewPassphraseConfirm}
+            useKeypad={useKeypadConfirm}
+            setUseKeypad={setUseKeypadConfirm}
             placeholder="Confirm new passphrase"
             autoComplete="new-password"
+            submitLabel="Done"
           />
           {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
           <button
