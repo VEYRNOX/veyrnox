@@ -1,9 +1,9 @@
 # AI Security Protection IAP — external account setup checklist
 
 > Standalone checklist for wiring the **AI Security Protection** in-app subscription
-> to Apple / Google / RevenueCat without guessing identifiers in code. This tier sits
-> **above** Safety Plus: users who buy it must keep all Free + Safety Plus access, and
-> additionally unlock the live online TIP-backed Vigil chat.
+> to Apple / Google / RevenueCat. This tier sits **above** Safety Plus: users who buy it
+> must keep all Free + Safety Plus access, and additionally unlock the live online
+> TIP-backed Vigil chat.
 >
 > Status of the feature today: **BUILT / unit-tested only — NOT device-verified.** The
 > client-side paywall is honest and fail-closed:
@@ -13,6 +13,11 @@
 > - only a real active RevenueCat entitlement `ai_security_protection` resolves the paid tier
 >
 > Nothing here is "verified" until a real sandbox purchase + restore is confirmed on a device.
+>
+> **Live-dashboard status as of 2026-08-19:** RevenueCat and Google Play were inspected live
+> and the checklist below now mirrors the real Safety Plus structure there. App Store Connect
+> was still auth-blocked in the browser session, so the Apple section is intentionally marked
+> as a live follow-up instead of pretending we confirmed it.
 
 ## ⚠️ Identifiers that MUST match the code exactly
 
@@ -35,17 +40,32 @@ and document the store-side ids you want to standardize on.
 > pointed at those exact products. The app only requires that the offering named in
 > `VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID` exposes `$rc_monthly` / `$rc_annual`.
 
+## Live Safety Plus model this should mirror
+
+These are the important live patterns already confirmed on 2026-08-19:
+
+- **RevenueCat entitlement:** `safety_plus`
+- **RevenueCat active offerings:** `default`, `referral-bronze`, `referral-silver`,
+  `referral-gold`, `referral-platinum`, `retention`
+- **RevenueCat default offering packages:** `$rc_monthly`, `$rc_annual`, plus an unused
+  `$rc_lifetime` slot
+- **Google Play base subscription products:** `safety_plus_monthly`, `safety_plus_annual`
+- **Google Play base-product shape:** each base subscription currently has `1` active base
+  plan and `5` offers
+- **Referral-tier products already exist for Safety Plus**, but those are tracked in the
+  separate AI referral task and are intentionally out of scope here
+
+For AI Security Protection, this task should mirror the **base subscription + retention**
+shape only. Referral-specific AI offerings/products belong in the separate referral chat.
+
 ## Recommended product naming
 
-The code does not require these exact ids, but using a consistent pair keeps ops simple:
+Unless a live store constraint forces divergence, use:
 
 - iOS monthly: `ai_security_protection_monthly`
 - iOS annual: `ai_security_protection_annual`
 - Play monthly: `ai_security_protection_monthly`
 - Play annual: `ai_security_protection_annual`
-
-If Apple and Play must diverge for operational reasons, document the divergence here the
-same way Safety Plus documents `safety_plus_monthly_v2` vs `safety_plus_monthly`.
 
 ## Subscription-group rule
 
@@ -63,9 +83,9 @@ verify crossgrade / restore behavior carefully before shipping.
 
 ## Order of operations
 
-1. **App Store Connect** — create AI subscription products
-2. **Google Play Console** — create AI subscription products / base plans
-3. **RevenueCat** — create AI entitlement + offering + attach products
+1. **App Store Connect** — confirm the live Safety Plus group shape, then add AI products
+2. **Google Play Console** — create AI subscription products / base plans / retention offer
+3. **RevenueCat** — create AI entitlement + offerings + attach products
 4. **Local env / rebuild** — set `VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID`, rebuild app
 5. **Device verification** — sandbox purchase + restore on real devices
 
@@ -75,6 +95,9 @@ verify crossgrade / restore behavior carefully before shipping.
 
 - [ ] Open the Veyrnox app record in [App Store Connect](https://appstoreconnect.apple.com).
 - [ ] Go to **Features → In-App Purchases and Subscriptions**.
+- [ ] Re-authenticate first if needed. On **2026-08-19** the existing Chrome session still
+  landed on `authResult=FAILED`, so Apple identifiers and offer counts were **not**
+  re-confirmed live in this pass.
 - [ ] Add AI Security Protection to the **same subscription group as Safety Plus** unless a different grouping is a deliberate business decision.
 - [ ] Create the **monthly auto-renewable subscription**:
   - Product ID: choose and record the canonical id (recommended `ai_security_protection_monthly`)
@@ -91,6 +114,9 @@ verify crossgrade / restore behavior carefully before shipping.
   - Price: choose the real annual price point
   - Add localization matching the monthly product
 - [ ] Leave them in sandbox-testable state; they do **not** need to be fully live to validate purchases in sandbox.
+- [ ] If Safety Plus currently has a cancel-save promotional offer on Apple, mirror that
+  setup for AI here too; do **not** assume the identifier shape without reading the live
+  Safety Plus subscription group first.
 
 ## Task 2 — Google Play Console (Google)
 
@@ -104,6 +130,11 @@ verify crossgrade / restore behavior carefully before shipping.
   - Product ID: choose and record the canonical id (recommended `ai_security_protection_annual`)
   - Name: `AI Security Protection Annual`
   - Base plan: auto-renewing, 1 year, real chosen price
+- [ ] Mirror the live Safety Plus base-product shape:
+  - monthly AI product should have `1` active monthly base plan
+  - annual AI product should have `1` active annual base plan
+- [ ] Add the AI **retention / cancel-save** offer if AI should use the same manage-flow
+  discount pattern as Safety Plus.
 - [ ] Keep the AI subscription on the same internal / closed testing track as Safety Plus while validating.
 - [ ] Confirm RevenueCat's Play service account already has the required permissions:
   - **Financial data**
@@ -115,12 +146,20 @@ verify crossgrade / restore behavior carefully before shipping.
 - [ ] Create one **Entitlement** with identifier **`ai_security_protection`**.
   - This must match code exactly.
 - [ ] Attach the AI monthly and annual store products to that entitlement.
-- [ ] Create one **Offering** for the AI plan.
+- [ ] Create one **base AI offering** for the AI plan.
   - Choose the offering identifier you want to standardize on, then put that exact string into `VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID`.
   - Recommended offering id: `ai-security-protection`
-- [ ] Add packages to the AI offering:
+- [ ] Add packages to the base AI offering:
   - `$rc_monthly` → AI monthly product
   - `$rc_annual` → AI annual product, if annual exists
+- [ ] Optional but recommended for parity with the current manage flow: create an AI
+  **retention** offering if AI should have a cancel-save discount too.
+  - The current app fetches retention by offering id `retention`
+  - Do **not** point an AI subscriber at a Safety Plus retention product
+- [ ] Note the live Safety Plus precedent:
+  - `default` currently has 3 package slots (`$rc_monthly`, `$rc_annual`, `$rc_lifetime`)
+  - `retention` currently exists as its own offering
+  - referral offerings are intentionally excluded from this checklist
 - [ ] Confirm the offering is visible in RevenueCat's offering list and the packages resolve under that offering.
 
 > The app reads the AI plan via `getTierOffering(aiOfferingId)` rather than `getOfferings().current`.
@@ -171,6 +210,7 @@ Do **not** mark the AI subscription setup complete if any of these are still tru
 
 - `VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID` is blank in the build under test
 - the AI RevenueCat offering exists but has no `$rc_monthly` / `$rc_annual` packages attached
+- the retention setup for AI points at Safety Plus store products, or vice versa
 - the store product is purchasable but the entitlement is not `ai_security_protection`
 - AI purchase succeeds in the store sheet but `refreshTier()` still resolves `free`
 - restore works only for Safety Plus and not for AI on a real device
@@ -184,5 +224,8 @@ It does **not** cover:
 - AI-specific referral discounts or referral offerings
 - AI plan price cents for referral attribution math
 - App Store / Play promotional-offer setup for AI referral tiers
+- UK Buy / Transak suppression for FCA / FSMA compliance
 
 Those belong in the separate **AI Security Protection Referral** task.
+The UK Buy suppression runbook lives in
+`docs/buy-uk-financial-promotions-checklist.md`.
