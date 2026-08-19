@@ -240,7 +240,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    expect(screen.getByText(/turn on hardware protection first/i)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/turn on hardware protection first/i)).toBeTruthy());
     expect(screen.getByText(/biometric re-auth alone is not enough/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /split & save 3 shares/i })).toBeDisabled();
   });
