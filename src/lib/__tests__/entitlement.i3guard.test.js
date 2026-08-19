@@ -14,8 +14,9 @@ vi.mock('@capacitor/core', () => ({
 
 vi.mock('../purchases', () => ({
   SAFETY_PLUS_ENTITLEMENT: 'safety_plus',
+  AI_SECURITY_PROTECTION_ENTITLEMENT: 'ai_security_protection',
   getCustomerInfo: vi.fn(async () => ({
-    entitlements: { active: { safety_plus: { isActive: true } } },
+    entitlements: { active: { safety_plus: { identifier: 'safety_plus', isActive: true } } },
   })),
 }));
 

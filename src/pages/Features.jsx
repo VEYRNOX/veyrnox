@@ -13,6 +13,7 @@ import { FileText, Search, Download, Sparkles } from "lucide-react";
 import { exportCataloguePdf } from "@/lib/pdfExport";
 import { FEATURE_CATEGORIES, STATUS, resolveStatus, verifiedFeatureNames } from "@/lib/featureCatalogue";
 import { useTier } from "@/lib/TierProvider";
+import { tierLabel } from "@/lib/tier";
 import { toast } from "@/lib/toast";
 
 // Two states: see src/lib/featureCatalogue.js.
@@ -27,7 +28,7 @@ const STATUS_META = {
 export default function Features() {
   const [searchTerm, setSearchTerm] = useState("");
   const { currentTier } = useTier();
-  const planName = currentTier === "safety_plus" ? "Safety Plus" : "Free";
+  const planName = tierLabel(currentTier);
 
   const featureCategories = FEATURE_CATEGORIES;
   // Resolve once: `verified` is honoured only with a txid evidence entry, so a
