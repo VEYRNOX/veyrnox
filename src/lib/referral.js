@@ -96,8 +96,9 @@ export async function initCode(generateServerCode) {
 
 // Tiers are determined by PAID SUBSCRIBER count (not raw referral count).
 // A "referral" is anyone who enters the code; a "paid subscriber" is someone
-// who actually purchased Safety Plus using the code. Only paid conversions
-// drive tier progression and commission earnings.
+// who actually purchased an eligible paid plan (Safety Plus or AI Security
+// Protection) using the code. Only paid conversions drive tier progression
+// and commission earnings.
 export const TIERS = [
   { key: 'platinum', label: 'Platinum', min: 10000, max: 100000, commission: 15 },
   { key: 'gold',     label: 'Gold',     min: 1000,  max: 10000,  commission: 10 },
