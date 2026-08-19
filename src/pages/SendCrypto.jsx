@@ -25,7 +25,6 @@ import { useTrezor } from '../context/TrezorContext.jsx';
 // BTC + SOL Trezor branches still use their raw wrappers (unrelated to #961).
 import { trezorSignBtcTx } from '../wallet-core/hw/trezor.js';
 import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wallet-core/evm/hw-send.js';
-import { signAndBroadcastSolTrezor } from '../wallet-core/sol/hw-send.js';
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
 import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
@@ -139,6 +138,11 @@ export function isFormAmountWellFormed(amountStr) {
   return /[1-9]/.test(s);
 }
 
+async function loadTrezorSolSender() {
+  // Trezor SOL stays isolated from the mixed Ledger+Trezor module so the SEND
+  // route bundle never pulls Ledger's bare Android-unsafe package specifier.
+  return import('../wallet-core/sol/hw-send-trezor.js');
+}
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
@@ -1351,6 +1355,7 @@ export default function SendCrypto() {
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
           if (!trezorSolAddress) throw new Error('Trezor SOL address not available');
+          const { signAndBroadcastSolTrezor } = await loadTrezorSolSender();
           // SOL Trezor path: the key never leaves the device (I1). Codex P1
           // 2026-08-15: the previous raw buildUnsignedSolTx + trezorSignSolTx
           // + attachSolSignature chain bypassed the audited planSolTransfer
