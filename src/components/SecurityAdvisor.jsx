@@ -995,7 +995,6 @@ Current page: ${currentScreen} (chain: ${walletChain || "evm"})
 ${PAGE_CONTEXT[currentScreen] || PAGE_CONTEXT.general}
 ${buildPageSnapshotContext(pageSnapshot)}
 Current app language: ${currentLanguageName} (${currentLanguage})
-Current app language: ${currentLanguageName} (${currentLanguage})
 
 Rules:
 - Give expert advice specific to THIS page and what the user can see/do here
