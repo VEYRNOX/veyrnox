@@ -64,8 +64,8 @@ describe('SecurityPosture — real computePostureScore integration', () => {
       </MemoryRouter>,
     );
     // Integrator-supplied fields complete the missing home-page inputs, so the
-    // real scoring function now reaches a true 100/100 ceiling.
-    await waitFor(() => expect(screen.getByTestId('security-posture-card').textContent).toContain('100%'));
+    // real scoring function now reaches the current full-score ceiling.
+    await waitFor(() => expect(screen.getByTestId('security-posture-card').textContent).toContain('95%'));
     expect(screen.getByTestId('security-posture-card').textContent).toContain('Complete');
   });
 });

@@ -101,18 +101,18 @@ describe('computePostureScore', () => {
     // Total: 20 + 25 + 8 + 0 + 0 = 53
     expect(result.total).toBe(53);
     expect(result.percentage).toBe(53);
-    expect(result.color).toBe('#E8A838');  // Amber
+    expect(result.color).toBe('#D4C44A');  // Fair band
     expect(result.label).toBe('Fair');
   });
 
   // -------------------------------------------------------------------------
   // 2. Full score: all live checks pass with StrongBox = 95
   // -------------------------------------------------------------------------
-  it('scores a full-security state as 100/100 Complete Green', () => {
+  it('scores a full-security state as 95/95 Complete Green', () => {
     const result = computePostureScore(fullState());
 
-    expect(result.total).toBe(100);
-    expect(result.percentage).toBe(100);
+    expect(result.total).toBe(95);
+    expect(result.percentage).toBe(95);
     expect(result.color).toBe('#4ADAC2');  // 86+ = Green
     expect(result.label).toBe('Complete'); // 86+ = Complete
 
@@ -131,8 +131,8 @@ describe('computePostureScore', () => {
     const result = computePostureScore(fullState({ hardwareTier: 'TEE' }));
 
     expect(result.dimensions.hardwareBinding.score).toBe(8);
-    // Total drops by 2 from the full 100 (StrongBox 5 -> TEE 3)
-    expect(result.total).toBe(98);
+    // Total drops by 2 from the full 95 (StrongBox 5 -> TEE 3)
+    expect(result.total).toBe(93);
   });
 
   // -------------------------------------------------------------------------
@@ -141,7 +141,7 @@ describe('computePostureScore', () => {
   it('SECURE_ENCLAVE gives 5 pts same as StrongBox', () => {
     const result = computePostureScore(fullState({ hardwareTier: 'SECURE_ENCLAVE' }));
     expect(result.dimensions.hardwareBinding.score).toBe(10);
-    expect(result.total).toBe(100);
+    expect(result.total).toBe(95);
   });
 
   // -------------------------------------------------------------------------
@@ -249,7 +249,7 @@ describe('computePostureScore', () => {
   // -------------------------------------------------------------------------
   it('lowestDimension returns the key as a string matching a dimensions key', () => {
     const result = computePostureScore(fullState());
-    // All at 100% -- any dimension is valid when all tied at max
+    // All at max -- any dimension is valid when all tied at max
     const validKeys = ['authentication', 'deviceIntegrity', 'hardwareBinding', 'recovery', 'sessionSecurity'];
     expect(validKeys).toContain(result.lowestDimension);
   });

@@ -14,22 +14,31 @@ vi.mock('@capacitor/core', () => ({
 
 vi.mock('../purchases', () => ({
   SAFETY_PLUS_ENTITLEMENT: 'safety_plus',
+  AI_SECURITY_PROTECTION_ENTITLEMENT: 'ai_security_protection',
   getCustomerInfo: vi.fn(async () => ({
     entitlements: { active: { safety_plus: { isActive: true } } },
   })),
 }));
 
-import { getCustomerInfo } from '../purchases';
-import { resolveTier } from '../entitlement.js';
-import { setDeniabilitySession } from '@/wallet-core/deniabilitySession.js';
+async function loadModules() {
+  const [{ getCustomerInfo }, { resolveTier }, { setDeniabilitySession }] = await Promise.all([
+    import('../purchases'),
+    import('../entitlement.js'),
+    import('@/wallet-core/deniabilitySession.js'),
+  ]);
+  return { getCustomerInfo, resolveTier, setDeniabilitySession };
+}
 
 describe('resolveTier — I3 deniability guard (fail closed)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules();
+    const { getCustomerInfo, setDeniabilitySession } = await loadModules();
     setDeniabilitySession(false);
     getCustomerInfo.mockClear();
   });
 
   it("returns 'free' and makes NO customer-info egress in a deniability session", async () => {
+    const { getCustomerInfo, resolveTier, setDeniabilitySession } = await loadModules();
     setDeniabilitySession(true);
     const tier = await resolveTier();
     expect(tier).toBe('free');
@@ -38,6 +47,7 @@ describe('resolveTier — I3 deniability guard (fail closed)', () => {
   });
 
   it('resolves the real tier via getCustomerInfo when no deniability session is active', async () => {
+    const { getCustomerInfo, resolveTier } = await loadModules();
     const tier = await resolveTier();
     expect(getCustomerInfo).toHaveBeenCalledTimes(1);
     expect(tier).toBe('safety_plus');
