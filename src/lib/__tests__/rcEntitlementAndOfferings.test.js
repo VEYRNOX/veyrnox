@@ -90,6 +90,7 @@ describe('getOfferings / getTierOffering — I3 egress gate (C-2)', () => {
 
 describe('resolveTier — entitlement shape (C-2)', () => {
   async function loadWithCustomerInfo(customerInfo) {
+    vi.resetModules();
     vi.doMock('../purchases', () => ({
       SAFETY_PLUS_ENTITLEMENT: 'safety_plus',
       AI_SECURITY_PROTECTION_ENTITLEMENT: 'ai_security_protection',

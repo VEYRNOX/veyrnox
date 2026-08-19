@@ -36,8 +36,8 @@ vi.mock('@/lib/TierProvider', () => ({
   useTier: () => ({
     currentTier: 'free',
     tiers: [],
-    refreshTier: vi.fn(),
     loading: false,
+    refreshTier: vi.fn(),
   }),
 }));
 
