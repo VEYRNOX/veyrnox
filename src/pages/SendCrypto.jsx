@@ -143,7 +143,9 @@ async function loadTrezorEvmSenders() {
 }
 
 async function loadTrezorSolSender() {
-  return import('../wallet-core/sol/hw-send.js');
+  // Trezor SOL stays isolated from the mixed Ledger+Trezor module so the SEND
+  // route bundle never pulls Ledger's bare Android-unsafe package specifier.
+  return import('../wallet-core/sol/hw-send-trezor.js');
 }
 
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
