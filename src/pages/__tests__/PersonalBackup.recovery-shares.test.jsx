@@ -633,12 +633,10 @@ describe('PersonalBackup — same-device restore rejects a cross-device bundle e
     fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), {
       target: { value: '24681024' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
-
-    await waitFor(() => expect(toastError).toHaveBeenCalled());
-    const [message] = toastError.mock.calls[0];
-    expect(message).toMatch(/cross-device recovery file/i);
-    expect(message).not.toBe('RECOVERY_SHARE_MALFORMED');
+    expect(await screen.findByText(/cross-device recovery bundles detected/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /open restore from bundles/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /restore wallet/i })).toBeDisabled();
+    expect(toastError).not.toHaveBeenCalled();
     expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
   });
 
