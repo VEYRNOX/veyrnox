@@ -112,6 +112,7 @@ describe('SecurityAdvisor', () => {
 
   it('offers page-specific suggestions for recovery, approvals, and analytics surfaces', () => {
     expect(getSuggestedQuestions('personal_backup')).toContain('How does personal backup work?');
+    expect(getSuggestedQuestions('personal_backup')).toContain('Why are recovery shares disabled?');
     expect(getSuggestedQuestions('token_approvals')).toContain('How do I revoke a risky approval?');
     expect(getSuggestedQuestions('analytics')).toContain('What does this analytics page tell me?');
   });

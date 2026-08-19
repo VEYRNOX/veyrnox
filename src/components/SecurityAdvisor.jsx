@@ -199,6 +199,7 @@ const QUESTION_SETS = {
     "How do I recover if I lose my device?",
     "What is the safest way to handle my seed phrase?",
     "How does personal backup work?",
+    "Why are recovery shares disabled?",
     "What should I never store in the cloud?",
     "How do I test recovery without risking funds?",
   ],
@@ -380,7 +381,7 @@ The advisor should explain each security layer, what the statuses mean, and how 
   },
   personal_backup: {
     questionsKey: 'recovery',
-    pageContext: `The user is on the PERSONAL BACKUP page. This feature is for encrypted recovery and shard-based backup planning, not casual cloud storage. The advisor should stress that plaintext keys never leave the device and that recovery must be tested carefully before the user relies on it.`,
+    pageContext: `The user is on the PERSONAL BACKUP page. This feature is for encrypted recovery and shard-based backup planning, not casual cloud storage. The advisor should stress that plaintext keys never leave the device, that recovery must be tested carefully before the user relies on it, and that the advanced 2-of-3 recovery-share export on native requires Hardware Protection to be ON for the current vault — the Biometric Re-Auth toggle alone is not sufficient.`,
   },
   dapp_alerts: {
     questionsKey: 'walletconnect',
