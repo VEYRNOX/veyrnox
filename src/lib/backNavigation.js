@@ -9,7 +9,7 @@ export function getRouteKey(locationLike) {
   const pathname = locationLike.pathname || '/';
   const search = locationLike.search || '';
   const hash = locationLike.hash || '';
-  return `${pathname}${search}${hash}`;
+  return `${pathname}${search}${hash}` || '/';
 }
 
 export function rememberCurrentRoute(route) {

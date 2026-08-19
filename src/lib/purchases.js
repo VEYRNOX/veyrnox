@@ -20,9 +20,6 @@ export const AI_SECURITY_PROTECTION_ENTITLEMENT = 'ai_security_protection';
 export const SAFETY_PLUS_MONTHLY_PACKAGE = '$rc_monthly';
 export const SAFETY_PLUS_ANNUAL_PACKAGE = '$rc_annual';
 
-// Optional dedicated RevenueCat offering for the higher AI tier. This stays
-// env-driven until the canonical dashboard identifier is finalized; when
-// absent, the UI must fail closed rather than inventing a dead purchase path.
 export function getAiSecurityProtectionOfferingId() {
   return import.meta.env.VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID || null;
 }

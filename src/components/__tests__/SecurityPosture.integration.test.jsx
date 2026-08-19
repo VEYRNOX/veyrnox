@@ -63,10 +63,8 @@ describe('SecurityPosture — real computePostureScore integration', () => {
         }} />
       </MemoryRouter>,
     );
-    // Integrator-supplied fields complete the missing home-page inputs, but the
-    // current score model still tops out at 95 because hardware contributes
-    // 10 earned points against a 10-point dimension while the overall gauge
-    // presents the raw summed score.
+    // Integrator-supplied fields complete the missing home-page inputs, so the
+    // real scoring function now reaches the current full-score ceiling.
     await waitFor(() => expect(screen.getByTestId('security-posture-card').textContent).toContain('95%'));
     expect(screen.getByTestId('security-posture-card').textContent).toContain('Complete');
   });

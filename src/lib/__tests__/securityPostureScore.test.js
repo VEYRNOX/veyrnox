@@ -101,14 +101,14 @@ describe('computePostureScore', () => {
     // Total: 20 + 25 + 8 + 0 + 0 = 53
     expect(result.total).toBe(53);
     expect(result.percentage).toBe(53);
-    expect(result.color).toBe('#D4C44A');  // Yellow-green
+    expect(result.color).toBe('#D4C44A');  // Fair band
     expect(result.label).toBe('Fair');
   });
 
   // -------------------------------------------------------------------------
   // 2. Full score: all live checks pass with StrongBox = 95
   // -------------------------------------------------------------------------
-  it('scores a full-security state as 95/100 Complete Green', () => {
+  it('scores a full-security state as 95/95 Complete Green', () => {
     const result = computePostureScore(fullState());
 
     expect(result.total).toBe(95);
@@ -125,13 +125,13 @@ describe('computePostureScore', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. TEE caps hardware at 8/10, trimming 2 points from the 95 ceiling
+  // 3. TEE caps hardware at 8/10 (not 10/10)
   // -------------------------------------------------------------------------
   it('TEE gives 3 pts (not 5), capping hardware at 8/10', () => {
     const result = computePostureScore(fullState({ hardwareTier: 'TEE' }));
 
     expect(result.dimensions.hardwareBinding.score).toBe(8);
-    // Total drops by 2 from the 95 ceiling (StrongBox 5 -> TEE 3)
+    // Total drops by 2 from the full 95 (StrongBox 5 -> TEE 3)
     expect(result.total).toBe(93);
   });
 
@@ -249,7 +249,7 @@ describe('computePostureScore', () => {
   // -------------------------------------------------------------------------
   it('lowestDimension returns the key as a string matching a dimensions key', () => {
     const result = computePostureScore(fullState());
-    // All at 100% -- any dimension is valid when all tied at max
+    // All at max -- any dimension is valid when all tied at max
     const validKeys = ['authentication', 'deviceIntegrity', 'hardwareBinding', 'recovery', 'sessionSecurity'];
     expect(validKeys).toContain(result.lowestDimension);
   });

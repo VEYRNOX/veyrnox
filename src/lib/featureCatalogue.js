@@ -417,38 +417,21 @@ export const FEATURE_CATEGORIES = [
     ],
   },
   {
-    // Merged 2026-08-18 during #1899 rebase: branch renamed the category to
-    // "AI Security Protection" and consolidated entries; main (#1897) added
-    // Live Phishing Domain Feed and Approval Monitor + kept the older Q&A
-    // roadmap items. Take the branch's category name (drops the misleading
-    // "Advisory-Only" framing since Address Threat Screening genuinely gates
-    // sends), promote the shipped chat panel to verified (main's Personal AI
-    // Advisor), and keep every unique entry from both sides.
+    // Merge note: keep the branch's renamed category and the unique roadmap
+    // items from both sides without promoting anything to a stronger status.
     category: 'AI Security Protection',
     features: [
       {
         name: 'AI Security Advisor',
-        status: 'verified',
+        status: 'roadmap',
         summary: 'LLM-powered security chat with local knowledge fallback',
-        explanation: 'Built. A floating chat panel (SecurityAdvisor, wired in Layout) powered by the TIP backend via a server-side Supabase Edge Function proxy (tip-chat) over SSE. The AI never holds keys, never signs, and never initiates a transaction — it cannot act, only answer. The advisor answers wallet, crypto, and security questions with context-aware responses; streaming errors fall back to a bundled local knowledge base (I4 fail-closed). The system prompt (server-side) refuses seeds, keys, and PINs. User messages are scrubbed of secret material before sending. Requires explicit advisor consent (opt-in). Suppressed entirely in deniability/demo sessions (I3 — FAB hidden, in-flight requests aborted, zero egress). The wallet never ships TIP API keys (I1); the Edge Function holds them server-side. NOT independently audited.',
+        explanation: 'Built. A floating chat panel (SecurityAdvisor) powered by the TIP backend via a server-side Supabase Edge Function proxy (tip-chat). The advisor answers wallet, crypto, and security questions with context-aware responses; streaming errors fall back to a bundled local knowledge base (I4 fail-closed). The system prompt (server-side) refuses seeds, keys, and PINs. User messages are scrubbed of secret material before sending. Requires explicit advisor consent (opt-in). Suppressed entirely in deniability/demo sessions (I3 — FAB hidden, zero egress). The wallet never ships TIP API keys (I1); the Edge Function holds them server-side. NOT independently audited.',
       },
       {
         name: 'Address Threat Screening',
         status: 'roadmap',
         summary: 'Multi-source sanctions, phishing, and hack-registry screening on send',
         explanation: 'Built. Before a send, the recipient address is screened via a multi-source aggregator (sanctions lists, phishing registries, hack-fund trackers, contract-risk signals, and transaction simulation) through the tip-screen Edge Function proxy. Covers EVM, BTC, and SOL address formats. A sanctioned-namespace cross-chain lane blocks known threat actors (Tornado Cash, Lazarus, Blender.io, Sinbad, Ronin bridge) on every EVM chain, not just Ethereum. Falls back to honest "unknown" when all sources are unavailable rather than defaulting to "clean" (I4). A locally-cached, Ed25519-signed IOC manifest provides offline/deniability screening. Advisory — warns rather than silently blocks. NOT independently audited.',
-      },
-      {
-        name: 'Transaction Explanation',
-        status: 'roadmap',
-        summary: 'Plain-language description of a transaction',
-        explanation: 'Explain in plain language what a pending transaction does. Advisory only — the AI never holds keys and never signs. Specced, not yet built.',
-      },
-      {
-        name: 'Scam & Phishing Explanation',
-        status: 'roadmap',
-        summary: 'Explain why something looks risky',
-        explanation: 'Explain why an address, contract, or site looks risky. Advisory only; specced, not yet built.',
       },
       {
         name: 'Educational Assistant',

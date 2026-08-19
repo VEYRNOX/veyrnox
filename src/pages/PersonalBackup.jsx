@@ -70,7 +70,6 @@ function isNativePlatformSafe() {
   }
   return Capacitor?.getPlatform?.() !== "web";
 }
-
 function describeRecoveryShareExportError(err, { shardExportReady } = {}) {
   const code = err?.code || err?.message || "";
   if (code === "KEK_NO_HARDWARE_FACTOR") {
