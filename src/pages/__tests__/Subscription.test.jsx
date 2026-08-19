@@ -20,9 +20,11 @@ const restorePurchases = vi.fn();
 const manageSubscription = vi.fn();
 const setReferralAttribute = vi.fn();
 const offerPriceInfo = vi.fn();
+const getAiSecurityProtectionOfferingId = vi.fn();
 vi.mock('@/lib/purchases', () => ({
   getOfferings: (...a) => getOfferings(...a),
   getTierOffering: (...a) => getTierOffering(...a),
+  getAiSecurityProtectionOfferingId: () => getAiSecurityProtectionOfferingId(),
   purchasePackage: (...a) => purchasePackage(...a),
   restorePurchases: (...a) => restorePurchases(...a),
   manageSubscription: (...a) => manageSubscription(...a),
@@ -104,6 +106,7 @@ beforeEach(() => {
   getTierInfoMock.mockReturnValue({ key: 'none', commission: 0, next: null });
   getOfferingIdForTierMock.mockReturnValue(null);
   offerPriceInfo.mockReturnValue(null);
+  getAiSecurityProtectionOfferingId.mockReturnValue(null);
   calculateDiscountCentsMock.mockImplementation((full, comm) => Math.round(full * comm / 100));
   useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
 });
@@ -421,8 +424,40 @@ describe('Subscription page — Manage subscription hidden when it should be', (
     useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
     renderPage();
     expect(await screen.findByTestId('ai-security-protection-card')).toBeTruthy();
-    expect(screen.getByText(/Contact sales/i)).toBeTruthy();
     expect(screen.getByText(/includes everything in Free and Safety Plus/i)).toBeTruthy();
+  });
+
+  it('fails closed with an honest message when the AI store offering is not configured', async () => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferings.mockResolvedValue({ availablePackages: [] });
+    getAiSecurityProtectionOfferingId.mockReturnValue(null);
+    renderPage();
+    expect(await screen.findByTestId('ai-security-protection-card')).toBeTruthy();
+    expect(screen.getByText(/offering is not configured in this build yet/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /upgrade to ai security protection/i })).toBeNull();
+  });
+
+  it('uses the native AI in-app purchase flow when an AI offering is configured', async () => {
+    isNativePlatform.mockReturnValue(true);
+    getOfferings.mockResolvedValue({ availablePackages: [] });
+    getAiSecurityProtectionOfferingId.mockReturnValue('ai-security-protection');
+    getTierOffering.mockResolvedValue({
+      availablePackages: [
+        { identifier: '$rc_monthly', product: { priceString: '$19.99' } },
+        { identifier: '$rc_annual', product: { priceString: '$199.99' } },
+      ],
+    });
+    purchasePackage.mockResolvedValue({});
+    refreshTier.mockResolvedValue('ai_security_protection');
+    renderPage();
+    const button = await screen.findByRole('button', { name: /upgrade to ai security protection.*\$199\.99/i });
+    fireEvent.click(button);
+    await waitFor(() => expect(getTierOffering).toHaveBeenCalledWith('ai-security-protection'));
+    await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith(
+      { identifier: '$rc_annual', product: { priceString: '$199.99' } },
+      { offerTag: null }
+    ));
+    await waitFor(() => expect(refreshTier).toHaveBeenCalled());
   });
 });
 
@@ -451,7 +486,11 @@ describe('Subscription page — tier-based referral discount', () => {
     fetchPaidCount.mockResolvedValue(5000);
     getTierMock.mockReturnValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: { key: 'platinum', min: 10000 } });
-    getOfferingIdForTierMock.mockReturnValue('referral-gold');
+    getOfferingIdForTierMock.mockImplementation((tierKey, planId) => (
+      tierKey === 'gold' && (planId == null || planId === 'safety_plus')
+        ? 'referral-gold'
+        : null
+    ));
     getTierOffering.mockResolvedValue({ availablePackages: goldReferralPackages });
     // The 10% Gold offer as the store reports it, per package.
     offerPriceInfo.mockImplementation((pkg, offeringId) => {
@@ -470,7 +509,7 @@ describe('Subscription page — tier-based referral discount', () => {
   it('shows the discount banner with the discount derived from the store prices', async () => {
     setupGoldReferral();
     renderPage();
-    await waitFor(() => expect(screen.getByText(/referral discount applied.*10% off/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/referral pricing available.*10% off/i)).toBeTruthy());
   });
 
   // The banner used to render referrerTierInfo.commission — the REFERRER's
@@ -485,7 +524,7 @@ describe('Subscription page — tier-based referral discount', () => {
     offerPriceInfo.mockReturnValue(null);
     renderPage();
 
-    await waitFor(() => expect(screen.getByText(/referral discount applied/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/referral pricing available/i)).toBeTruthy());
     expect(screen.queryByText(/% off/i)).toBeNull();
   });
 
@@ -501,7 +540,7 @@ describe('Subscription page — tier-based referral discount', () => {
     });
     renderPage();
 
-    await waitFor(() => expect(screen.getByText(/referral discount applied/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/referral pricing available/i)).toBeTruthy());
     expect(screen.queryByText(/% off/i)).toBeNull();
   });
 
@@ -514,7 +553,11 @@ describe('Subscription page — tier-based referral discount', () => {
     fetchPaidCount.mockResolvedValue(10);
     getTierMock.mockReturnValue('bronze');
     getTierInfoMock.mockReturnValue({ key: 'bronze', commission: 2.5, next: { key: 'silver', min: 100 } });
-    getOfferingIdForTierMock.mockReturnValue('referral-bronze');
+    getOfferingIdForTierMock.mockImplementation((tierKey, planId) => (
+      tierKey === 'bronze' && (planId == null || planId === 'safety_plus')
+        ? 'referral-bronze'
+        : null
+    ));
     getTierOffering.mockResolvedValue({ availablePackages: goldReferralPackages });
     offerPriceInfo.mockImplementation((pkg, offeringId) => {
       if (offeringId !== 'referral-bronze' || !pkg) return null;
@@ -524,7 +567,7 @@ describe('Subscription page — tier-based referral discount', () => {
     });
     renderPage();
 
-    await waitFor(() => expect(screen.getByText(/referral discount applied.*3% off/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/referral pricing available.*3% off/i)).toBeTruthy());
     expect(screen.queryByText(/2\.5% off/i)).toBeNull();
   });
 
@@ -532,7 +575,7 @@ describe('Subscription page — tier-based referral discount', () => {
     hasRedeemedMock.mockReturnValue(false);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
-    expect(screen.queryByText(/referral discount applied/i)).toBeNull();
+    expect(screen.queryByText(/referral pricing available/i)).toBeNull();
   });
 
   it('does not show the discount banner when user is already on safety_plus', async () => {
@@ -540,7 +583,7 @@ describe('Subscription page — tier-based referral discount', () => {
     useTierMock.mockReturnValue({ currentTier: 'safety_plus', tiers: [], refreshTier });
     renderPage();
     await waitFor(() => expect(screen.getByText(/Plans/i)).toBeTruthy());
-    expect(screen.queryByText(/referral discount applied/i)).toBeNull();
+    expect(screen.queryByText(/referral pricing available/i)).toBeNull();
   });
 
   it('shows tier-discounted prices instead of default prices', async () => {
@@ -609,7 +652,7 @@ describe('Subscription page — tier-based referral discount', () => {
     fetchPaidCount.mockResolvedValue(null);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
-    expect(screen.queryByText(/referral discount applied/i)).toBeNull();
+    expect(screen.queryByText(/referral pricing available/i)).toBeNull();
   });
 
   it('falls back to default prices when tier offering is unavailable', async () => {
@@ -618,11 +661,123 @@ describe('Subscription page — tier-based referral discount', () => {
     fetchPaidCount.mockResolvedValue(5000);
     getTierMock.mockReturnValue('gold');
     getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: null });
-    getOfferingIdForTierMock.mockReturnValue('referral-gold');
+    getOfferingIdForTierMock.mockImplementation((tierKey, planId) => (
+      tierKey === 'gold' && (planId == null || planId === 'safety_plus')
+        ? 'referral-gold'
+        : null
+    ));
     getTierOffering.mockResolvedValue(null);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$49.99').length).toBeGreaterThan(0));
-    expect(screen.queryByText(/referral discount applied/i)).toBeNull();
+    expect(screen.queryByText(/referral pricing available/i)).toBeNull();
+  });
+
+  it('uses the AI referral offering and records AI attribution when configured', async () => {
+    vi.stubEnv('VITE_AI_SECURITY_PROTECTION_MONTHLY_PRICE_CENTS', '1999');
+    vi.stubEnv('VITE_AI_SECURITY_PROTECTION_ANNUAL_PRICE_CENTS', '19999');
+    hasRedeemedMock.mockReturnValue(true);
+    getRedeemedCodeMock.mockReturnValue('VYX-AI9999');
+    fetchPaidCount.mockResolvedValue(5000);
+    getTierMock.mockReturnValue('gold');
+    getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: { key: 'platinum', min: 10000 } });
+    getOfferingIdForTierMock.mockImplementation((tierKey, planId) => {
+      if (tierKey !== 'gold') return null;
+      if (planId === 'ai_security_protection') return 'ai-referral-gold';
+      return 'referral-gold';
+    });
+    getAiSecurityProtectionOfferingId.mockReturnValue('ai-security-protection');
+    getOfferings.mockResolvedValue({ availablePackages: defaultPackages });
+    getTierOffering.mockImplementation(async (offeringId) => {
+      if (offeringId === 'ai-security-protection') {
+        return {
+          availablePackages: [
+            { identifier: '$rc_monthly', product: { priceString: '$19.99', price: 19.99 } },
+            { identifier: '$rc_annual', product: { priceString: '$199.99', price: 199.99 } },
+          ],
+        };
+      }
+      if (offeringId === 'ai-referral-gold') {
+        return {
+          availablePackages: [
+            { identifier: '$rc_monthly', product: { priceString: '$19.99', price: 19.99 } },
+            { identifier: '$rc_annual', product: { priceString: '$199.99', price: 199.99 } },
+          ],
+        };
+      }
+      if (offeringId === 'referral-gold') return { availablePackages: goldReferralPackages };
+      return null;
+    });
+    offerPriceInfo.mockImplementation((pkg, offeringId) => {
+      if (!pkg) return null;
+      if (offeringId === 'referral-gold') {
+        if (pkg.identifier === '$rc_annual') return { priceString: '$44.99', price: 44.99 };
+        if (pkg.identifier === '$rc_monthly') return { priceString: '$5.39', price: 5.39 };
+      }
+      if (offeringId === 'ai-referral-gold') {
+        if (pkg.identifier === '$rc_annual') return { priceString: '$179.99', price: 179.99 };
+        if (pkg.identifier === '$rc_monthly') return { priceString: '$17.99', price: 17.99 };
+      }
+      return null;
+    });
+    purchasePackage.mockResolvedValue({});
+    refreshTier.mockResolvedValue('ai_security_protection');
+    recordAttribution.mockResolvedValue({});
+    setReferralAttribute.mockResolvedValue(undefined);
+
+    renderPage();
+    const button = await screen.findByRole('button', { name: /upgrade to ai security protection.*\$179\.99/i });
+    fireEvent.click(button);
+    await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith(
+      { identifier: '$rc_annual', product: { priceString: '$199.99', price: 199.99 } },
+      { offerTag: 'ai-referral-gold' }
+    ));
+    await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-AI9999', 'annual', 19999, 2000));
+    expect(setReferralAttribute).toHaveBeenCalledWith('VYX-AI9999', 'gold');
+  });
+
+  it('fails closed for referred AI purchases when AI revenue config is missing', async () => {
+    vi.stubEnv('VITE_AI_SECURITY_PROTECTION_MONTHLY_PRICE_CENTS', '');
+    vi.stubEnv('VITE_AI_SECURITY_PROTECTION_ANNUAL_PRICE_CENTS', '');
+    hasRedeemedMock.mockReturnValue(true);
+    getRedeemedCodeMock.mockReturnValue('VYX-AI9999');
+    fetchPaidCount.mockResolvedValue(5000);
+    getTierMock.mockReturnValue('gold');
+    getTierInfoMock.mockReturnValue({ key: 'gold', commission: 10, next: null });
+    getOfferingIdForTierMock.mockImplementation((tierKey, planId) => {
+      if (tierKey !== 'gold') return null;
+      if (planId === 'ai_security_protection') return 'ai-referral-gold';
+      return 'referral-gold';
+    });
+    getAiSecurityProtectionOfferingId.mockReturnValue('ai-security-protection');
+    getOfferings.mockResolvedValue({ availablePackages: defaultPackages });
+    getTierOffering.mockImplementation(async (offeringId) => {
+      if (offeringId === 'ai-security-protection' || offeringId === 'ai-referral-gold') {
+        return {
+          availablePackages: [
+            { identifier: '$rc_monthly', product: { priceString: '$19.99', price: 19.99 } },
+            { identifier: '$rc_annual', product: { priceString: '$199.99', price: 199.99 } },
+          ],
+        };
+      }
+      if (offeringId === 'referral-gold') return { availablePackages: goldReferralPackages };
+      return null;
+    });
+    offerPriceInfo.mockImplementation((pkg, offeringId) => {
+      if (offeringId === 'ai-referral-gold' && pkg?.identifier === '$rc_annual') {
+        return { priceString: '$179.99', price: 179.99 };
+      }
+      if (offeringId === 'referral-gold') {
+        if (pkg?.identifier === '$rc_annual') return { priceString: '$44.99', price: 44.99 };
+        if (pkg?.identifier === '$rc_monthly') return { priceString: '$5.39', price: 5.39 };
+      }
+      return null;
+    });
+
+    renderPage();
+    const button = await screen.findByRole('button', { name: /upgrade to ai security protection.*\$179\.99/i });
+    fireEvent.click(button);
+    await waitFor(() => expect(purchasePackage).not.toHaveBeenCalled());
+    expect(recordAttribution).not.toHaveBeenCalled();
   });
 });
 
