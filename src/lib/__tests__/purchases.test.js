@@ -43,6 +43,7 @@ vi.mock('@capacitor/app', () => ({
 
 const {
   SAFETY_PLUS_ENTITLEMENT,
+  AI_SECURITY_PROTECTION_ENTITLEMENT,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
   configurePurchases,
@@ -77,6 +78,10 @@ describe('purchases.js — package identifier constants', () => {
 
   it('exports the safety_plus entitlement identifier', () => {
     expect(SAFETY_PLUS_ENTITLEMENT).toBe('safety_plus');
+  });
+
+  it('exports the ai_security_protection entitlement identifier', () => {
+    expect(AI_SECURITY_PROTECTION_ENTITLEMENT).toBe('ai_security_protection');
   });
 });
 

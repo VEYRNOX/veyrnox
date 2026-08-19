@@ -7,7 +7,11 @@
 // only ever returned when RevenueCat confirms an ACTIVE entitlement.
 
 import { Capacitor } from '@capacitor/core';
-import { getCustomerInfo, SAFETY_PLUS_ENTITLEMENT } from './purchases';
+import {
+  getCustomerInfo,
+  SAFETY_PLUS_ENTITLEMENT,
+  AI_SECURITY_PROTECTION_ENTITLEMENT,
+} from './purchases';
 import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js';
 
 // DEV override: VITE_FORCE_TIER=safety_plus bypasses RevenueCat for on-device
@@ -39,6 +43,10 @@ export async function resolveTier() {
     // unlock the paid tier without a real receipt. Own-property check + a
     // shape sanity check on the active entitlement object (RC returns
     // { identifier, isActive: true, … } — treat missing isActive as false).
+    const hasAi = Object.prototype.hasOwnProperty.call(active, AI_SECURITY_PROTECTION_ENTITLEMENT);
+    const aiEnt = hasAi ? active[AI_SECURITY_PROTECTION_ENTITLEMENT] : null;
+    if (aiEnt && aiEnt.isActive === true) return 'ai_security_protection';
+
     if (!Object.prototype.hasOwnProperty.call(active, SAFETY_PLUS_ENTITLEMENT)) return 'free';
     const ent = active[SAFETY_PLUS_ENTITLEMENT];
     return ent && ent.isActive === true ? 'safety_plus' : 'free';
