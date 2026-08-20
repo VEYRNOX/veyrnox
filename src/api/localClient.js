@@ -64,7 +64,17 @@ function openDb() {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Close and reset the cached handle when the database is deleted or
+      // replaced between tests so follow-up opens don't hang on a stale
+      // connection.
+      db.onversionchange = () => {
+        try { db.close(); } catch { /* best-effort */ }
+        dbPromise = null;
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error);
   });
   return dbPromise;
