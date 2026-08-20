@@ -424,20 +424,23 @@ export function combine(shares) {
     if (local.length > refK) {
       const baseShares = kShares.slice(0, refK - 1);
       for (let e = refK; e < local.length; e++) {
+        /** @type {Uint8Array | null} */
         let extraRecon = null;
         const subset = [...baseShares, local[e]];
+        /** @type {Uint8Array[]} */
         const rawSubset = [];
         try {
           for (const share of subset) rawSubset.push(rawShareFromEnvelope(share));
-          extraRecon = combineRaw(rawSubset, refK);
+          const reconstructed = combineRaw(rawSubset, refK);
+          extraRecon = reconstructed;
           let diff = 0;
-          for (let i = 0; i < SECRET_SIZE; i++) diff |= result[i] ^ extraRecon[i];
+          for (let i = 0; i < SECRET_SIZE; i++) diff |= result[i] ^ reconstructed[i];
           if (diff !== 0) {
             result.fill(0);
             throw new Error('SHARE_INCONSISTENT');
           }
         } catch (err) {
-          if (err?.message === 'SHARE_INCONSISTENT') throw err;
+          if (err instanceof Error && err.message === 'SHARE_INCONSISTENT') throw err;
           if (result) {
             result.fill(0);
           }
