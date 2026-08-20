@@ -204,11 +204,24 @@ jobs:
           else
             TIMEOUT="5m"
           fi
+          # 2026-08-20: service-account-triggered Test Lab runs were failing
+          # before matrix creation with a 403 on Firebase's hidden tenant
+          # staging bucket (`test-lab-...`) while copying the local APK. The
+          # same principal already has access to our own results bucket, so
+          # stage the app there first and hand Test Lab a gs:// URI instead of
+          # a local path. This avoids the CLI's hidden-bucket upload step.
+          if [[ "$RESULTS_BUCKET" == gs://* ]]; then
+            RESULTS_BUCKET_URI="$RESULTS_BUCKET"
+          else
+            RESULTS_BUCKET_URI="gs://$RESULTS_BUCKET"
+          fi
+          APP_GCS_URI="${RESULTS_BUCKET_URI%/}/${RESULTS_DIR}/app-firebaseTest.apk"
           echo "results_dir=$RESULTS_DIR" >> "$GITHUB_OUTPUT"
+          gcloud storage cp artifacts/app-firebaseTest.apk "$APP_GCS_URI"
           set +e
           gcloud firebase test android run \
             --type robo \
-            --app artifacts/app-firebaseTest.apk \
+            --app "$APP_GCS_URI" \
             # Trimmed from 3 devices (oriole/panther/shiba) to 1 on
             # 2026-08-15 to stay under Spark's 10-virtual-slot daily cap.
             # shiba (Pixel 8, API 34) chosen as the newest supported target.
@@ -217,7 +230,7 @@ jobs:
             --num-flaky-test-attempts 0 \
             --no-resign \
             --robo-script .github/testlab/android-pin-onboarding-robo-script.json \
-            --results-bucket "$RESULTS_BUCKET" \
+            --results-bucket "$RESULTS_BUCKET_URI" \
             --results-dir "$RESULTS_DIR" 2>&1 | tee firebase-test-lab.log
           TEST_STATUS=${PIPESTATUS[0]}
           set -e
@@ -460,16 +473,27 @@ jobs:
           else
             TIMEOUT="5m"
           fi
+          # Mirror the Android workaround above for iOS: pre-stage the local
+          # test bundle in our own GCS bucket and pass a gs:// URI so the CLI
+          # does not need to copy it into Firebase's hidden tenant bucket.
+          if [[ "$RESULTS_BUCKET" == gs://* ]]; then
+            RESULTS_BUCKET_URI="$RESULTS_BUCKET"
+          else
+            RESULTS_BUCKET_URI="gs://$RESULTS_BUCKET"
+          fi
+          RESULTS_DIR="ios-smoke-$SHA-${{ github.run_id }}-${{ github.run_attempt }}"
+          IOS_TEST_GCS_URI="${RESULTS_BUCKET_URI%/}/${RESULTS_DIR}/ios-tests.zip"
+          gcloud storage cp ios/App/build/Build/Products/ios-tests.zip "$IOS_TEST_GCS_URI"
           set +e
           gcloud firebase test ios run \
-            --test ios/App/build/Build/Products/ios-tests.zip \
+            --test "$IOS_TEST_GCS_URI" \
             # Trimmed from 2 devices (iphone13pro/iphone14) to 1 on
             # 2026-08-15 to stay under Spark's 5-physical-slot daily cap.
             # iphone14 kept as the more recent hardware.
             --device model=iphone14,version=17.5,locale=en_US,orientation=portrait \
             --timeout "$TIMEOUT" \
-            --results-bucket "$RESULTS_BUCKET" \
-            --results-dir "ios-smoke-$SHA-${{ github.run_id }}-${{ github.run_attempt }}" 2>&1 \
+            --results-bucket "$RESULTS_BUCKET_URI" \
+            --results-dir "$RESULTS_DIR" 2>&1 \
             | tee firebase-ios-test-lab.log
           TEST_STATUS=${PIPESTATUS[0]}
           set -e
