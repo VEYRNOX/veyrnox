@@ -30,6 +30,7 @@ vi.mock('@revenuecat/purchases-capacitor', () => ({
 
 vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => true, getPlatform: () => 'android' },
+  registerPlugin: () => ({ getStatus: async () => ({ available: false, reason: 'NOT_IMPLEMENTED' }) }),
 }));
 
 const { findOfferOption, offerPriceInfo, purchasePackage, OFFER_UNAVAILABLE } =

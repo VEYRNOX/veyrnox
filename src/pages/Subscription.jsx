@@ -36,6 +36,9 @@ import {
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
   RETENTION_OFFERING_ID,
+  currentStoreFlavor,
+  SAMSUNG_IAP_NOT_WIRED,
+  HUAWEI_IAP_NOT_WIRED,
 } from "@/lib/purchases";
 import {
   getRedeemedCode,
@@ -61,6 +64,44 @@ import CancelOfferDialog from "@/components/subscription/CancelOfferDialog";
 import { useLocalePreferences } from "@/lib/useLocale";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
+
+function storeLabel() {
+  if (Capacitor.getPlatform() === "ios") return "App Store";
+  switch (currentStoreFlavor()) {
+    case "samsung":
+      return "Galaxy Store";
+    case "huawei":
+      return "AppGallery";
+    default:
+      return "Google Play";
+  }
+}
+
+function unavailablePurchaseMessage(err) {
+  if (err?.code === SAMSUNG_IAP_NOT_WIRED) {
+    return "Galaxy Store billing is not wired in this build yet — nothing was charged";
+  }
+  if (err?.code === HUAWEI_IAP_NOT_WIRED) {
+    return "AppGallery billing is not wired in this build yet — nothing was charged";
+  }
+  return null;
+}
+
+function packageProductId(pkg) {
+  const product = pkg?.product;
+  return (
+    product?.identifier ??
+    product?.productIdentifier ??
+    product?.id ??
+    null
+  );
+}
+
+function packageMatchesCurrentPlan(retentionPkg, currentPkg) {
+  const retentionId = packageProductId(retentionPkg);
+  const currentId = packageProductId(currentPkg);
+  return Boolean(retentionId && currentId && retentionId === currentId);
+}
 
 // Compact, scannable feature summary — names only, capped, with a "+N more" pill.
 // The full detailed lists live on /safety-plus (grouped by SECURITY · FINANCE ·
@@ -385,6 +426,21 @@ export default function Subscription() {
   const aiRegularAnnualPrice = aiAnnualPackage?.product?.priceString;
   const aiSelectedPriceString = effectiveBilling === "annual" ? aiAnnualPriceString : aiMonthlyPriceString;
   const aiSelectedRegularPrice = effectiveBilling === "annual" ? aiRegularAnnualPrice : aiRegularMonthlyPrice;
+  const currentPlanPackage = isAiSecurityProtectionPlan
+    ? (effectiveBilling === "annual" ? (aiAnnualPackage ?? aiMonthlyPackage) : (aiMonthlyPackage ?? aiAnnualPackage))
+    : (effectiveBilling === "annual" ? (annualPackage ?? monthlyPackage) : (monthlyPackage ?? annualPackage));
+  const currentPlanRegularPrice = isAiSecurityProtectionPlan
+    ? aiSelectedRegularPrice
+    : selectedRegularPrice;
+  const rawRetentionPackage = effectiveBilling === "annual" ? retentionAnnual : retentionMonthly;
+  // One RevenueCat offering id cannot safely stand in for two different paid
+  // products. If the configured retention package points at a different store
+  // product than the subscriber currently owns — e.g. Safety Plus retention
+  // shown to an AI Security Protection user — hide the offer entirely rather
+  // than risk a downgrade disguised as a cancel-save flow.
+  const activeRetentionPackage = packageMatchesCurrentPlan(rawRetentionPackage, currentPlanPackage)
+    ? rawRetentionPackage
+    : null;
 
   // The NUMBERS behind the two strings above, so the annual-saving claim is
   // derived from exactly what is on screen rather than hardcoded. Same
@@ -431,6 +487,10 @@ export default function Subscription() {
   const aiReferralDiscount = discountPercent(aiSelectedBasePrice, aiSelectedOfferPrice);
   const hasAnyReferralDiscount = hasDiscount || hasAiDiscount;
   const activeReferralPercent = referralDiscount ?? aiReferralDiscount;
+  const safetyPlusStoreWiringPending =
+    isNative &&
+    !selectedPackage &&
+    (currentStoreFlavor() === "samsung" || currentStoreFlavor() === "huawei");
 
   async function purchaseAndRefresh(pkg, {
     offerTag = null,
@@ -512,6 +572,8 @@ export default function Subscription() {
         // than "try again" — retrying will not help, and the alternative
         // (charging full price after showing a discount) is worse than failing.
         toast.error("Your referral discount isn't available right now — nothing was charged");
+      } else if (unavailablePurchaseMessage(err)) {
+        toast.error(unavailablePurchaseMessage(err));
       } else if (!err?.userCancelled) {
         toast.error("Purchase failed — please try again");
       }
@@ -554,8 +616,8 @@ export default function Subscription() {
       toast[tier === TIER.FREE ? "info" : "success"](
         tier === TIER.FREE ? "No active subscription purchase found" : `${tierLabel(tier)} restored`
       );
-    } catch {
-      toast.error("Restore failed — please try again");
+    } catch (err) {
+      toast.error(unavailablePurchaseMessage(err) ?? "Restore failed — please try again");
     } finally {
       setBusy(false);
     }
@@ -573,8 +635,8 @@ export default function Subscription() {
     setCancelOfferOpen(false);
     try {
       await manageSubscription();
-    } catch {
-      toast.error("Couldn't open subscription settings");
+    } catch (err) {
+      toast.error(unavailablePurchaseMessage(err) ?? "Couldn't open subscription settings");
     }
   }
 
@@ -587,7 +649,7 @@ export default function Subscription() {
           Manage subscription
         </Button>
         <p className="text-xs text-muted-foreground text-center">
-          Opens the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"} settings —
+          Opens the {storeLabel()} settings —
           cancel, change plan or update payment there.
         </p>
       </>
@@ -625,21 +687,24 @@ export default function Subscription() {
         onOpenChange={setCancelOfferOpen}
         onKeep={() => setCancelOfferOpen(false)}
         onContinue={openStoreSubscriptions}
+        planLabel={isAiSecurityProtectionPlan ? "AI Security Protection" : "Safety Plus"}
+        planTier={isAiSecurityProtectionPlan ? TIER.AI_SECURITY_PROTECTION : TIER.SAFETY_PLUS}
+        storeName={storeLabel()}
         // Only ever a package that genuinely exists in the current offering —
         // never a client-side computed "discount". With no promotional offer
         // configured in App Store Connect / Play Console this is null and the
         // dialog shows no price, which is correct.
-        offerPackage={effectiveBilling === "annual" ? retentionAnnual : retentionMonthly}
+        offerPackage={activeRetentionPackage}
         // The retention package wraps the same product as the current one, so
         // its priceString is the FULL price. Without the real offer price the
         // dialog rendered "$5.99 struck through, $5.99" under "Stay for less".
         // Null here means the dialog shows no price at all, which is correct.
         offerPrice={offerPriceInfo(
-          effectiveBilling === "annual" ? retentionAnnual : retentionMonthly,
+          activeRetentionPackage,
           RETENTION_OFFERING_ID
         )}
-        currentPackage={effectiveBilling === "annual" ? annualPackage : monthlyPackage}
-        currentPriceString={effectiveBilling === "annual" ? regularAnnualPrice : regularMonthlyPrice}
+        currentPackage={currentPlanPackage}
+        currentPriceString={currentPlanRegularPrice}
       />
 
       <div>
@@ -657,7 +722,7 @@ export default function Subscription() {
         <div className="flex items-start gap-3 rounded-xl border border-caution/20 bg-caution/5 p-4">
           <Info className="h-5 w-5 text-caution shrink-0 mt-0.5" />
           <p className="text-sm text-muted-foreground">
-            In-app purchase via Google Play and App Store is available in the mobile app.
+            In-app purchase via mobile app stores is available in the mobile app.
             This web build is testing-only — install Veyrnox on iOS or Android to upgrade.
           </p>
         </div>
@@ -665,7 +730,7 @@ export default function Subscription() {
 
       {isNative && (
         <p className="text-xs text-muted-foreground text-center px-4">
-          Purchases are verified securely through the App Store or Google Play. Your wallet stays private.
+          Purchases are verified securely through the {storeLabel()}. Your wallet stays private.
         </p>
       )}
 
@@ -773,14 +838,18 @@ export default function Subscription() {
                       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : `Upgrade to AI Security Protection${aiSelectedPriceString ? ` • ${aiSelectedPriceString}` : ''}`}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
-                      Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
+                      Billed as an in-app subscription through the {storeLabel()}.
                     </p>
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    {aiOfferingConfigured
-                      ? "AI Security Protection is intended to be sold as an in-app subscription, but no store package is available for this build yet."
-                      : "AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet."}
+                    {currentStoreFlavor() === "samsung"
+                      ? "AI Security Protection is intended for Galaxy Store billing, but that billing path is not wired in this build yet."
+                      : currentStoreFlavor() === "huawei"
+                        ? "AI Security Protection is intended for AppGallery billing, but that billing path is not wired in this build yet."
+                        : aiOfferingConfigured
+                          ? "AI Security Protection is intended to be sold as an in-app subscription, but no store package is available for this build yet."
+                          : "AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet."}
                   </p>
                 )
               ) : (
@@ -920,8 +989,22 @@ export default function Subscription() {
                 onClick={handleUpgrade}
               >
                 {busy ? <Loader2 className="h-4 w-4 me-2 motion-safe:animate-spin" /> : <Sparkles className="h-4 w-4 me-2" />}
-                {isNative ? (selectedPriceString ? `Upgrade — ${selectedPriceString}` : "Upgrade — loading pricing") : "Upgrade — mobile only"}
+                {isNative
+                  ? selectedPriceString
+                    ? `Upgrade — ${selectedPriceString}`
+                    : safetyPlusStoreWiringPending
+                      ? "Upgrade unavailable on this build"
+                      : "Upgrade — loading pricing"
+                  : "Upgrade — mobile only"}
               </Button>
+
+              {safetyPlusStoreWiringPending && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {currentStoreFlavor() === "samsung"
+                    ? "Safety Plus is intended for Galaxy Store billing, but that billing path is not wired in this build yet."
+                    : "Safety Plus is intended for AppGallery billing, but that billing path is not wired in this build yet."}
+                </p>
+              )}
 
               {/* Renewal terms. Both stores require this disclosure at the
                   point of purchase, so it sits with the CTA rather than in
@@ -930,7 +1013,7 @@ export default function Subscription() {
                 <span className="font-semibold text-foreground">Cancel anytime.</span>{" "}
                 Renews {effectiveBilling === "annual" ? "yearly" : "monthly"} at{" "}
                 {selectedPriceString ?? "the store price"} until cancelled — manage or cancel in your{" "}
-                {Capacitor.getPlatform() === "ios" ? "App Store" : "Google Play"} account settings.
+                {storeLabel()} account settings.
               </p>
               {isNative ? (
                 <button

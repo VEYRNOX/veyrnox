@@ -30,6 +30,7 @@ vi.mock('@capacitor/core', () => ({
     isNativePlatform: () => isNativePlatform(),
     getPlatform: () => 'ios',
   },
+  registerPlugin: () => ({ getStatus: async () => ({ available: false, reason: 'NOT_IMPLEMENTED' }) }),
 }));
 vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn() } }));
 vi.mock('@revenuecat/purchases-capacitor', () => ({
@@ -90,8 +91,9 @@ describe('getOfferings / getTierOffering — I3 egress gate (C-2)', () => {
 
 describe('resolveTier — entitlement shape (C-2)', () => {
   async function loadWithCustomerInfo(customerInfo) {
-    vi.doMock('../purchases', () => ({
+    vi.doMock('../purchases.js', () => ({
       SAFETY_PLUS_ENTITLEMENT: 'safety_plus',
+      AI_SECURITY_PROTECTION_ENTITLEMENT: 'ai_security_protection',
       getCustomerInfo: vi.fn(async () => customerInfo),
     }));
     return (await import('../entitlement.js')).resolveTier;

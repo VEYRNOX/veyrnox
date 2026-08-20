@@ -3,11 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const isNativePlatform = vi.fn();
 const getPlatform = vi.fn();
+const registerPlugin = vi.fn(() => ({ getStatus: vi.fn(async () => ({ available: false, reason: 'NOT_IMPLEMENTED' })) }));
 vi.mock('@capacitor/core', () => ({
   Capacitor: {
     isNativePlatform: () => isNativePlatform(),
     getPlatform: () => getPlatform(),
   },
+  registerPlugin: (...a) => registerPlugin(...a),
 }));
 
 const configure = vi.fn();

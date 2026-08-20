@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router';
 
@@ -21,6 +21,7 @@ const manageSubscription = vi.fn();
 const setReferralAttribute = vi.fn();
 const offerPriceInfo = vi.fn();
 const getAiSecurityProtectionOfferingId = vi.fn(() => null);
+const currentStoreFlavor = vi.fn(() => 'google');
 vi.mock('@/lib/purchases', () => ({
   getOfferings: (...a) => getOfferings(...a),
   getTierOffering: (...a) => getTierOffering(...a),
@@ -34,7 +35,10 @@ vi.mock('@/lib/purchases', () => ({
   // suppresses the strikethrough. Tests that exercise a real discount override
   // it per-case. Covered directly in lib/__tests__/purchases*.offers.test.js.
   offerPriceInfo: (...a) => offerPriceInfo(...a),
+  currentStoreFlavor: (...a) => currentStoreFlavor(...a),
   OFFER_UNAVAILABLE: 'OFFER_UNAVAILABLE',
+  SAMSUNG_IAP_NOT_WIRED: 'SAMSUNG_IAP_NOT_WIRED',
+  HUAWEI_IAP_NOT_WIRED: 'HUAWEI_IAP_NOT_WIRED',
   SAFETY_PLUS_MONTHLY_PACKAGE: '$rc_monthly',
   SAFETY_PLUS_ANNUAL_PACKAGE: '$rc_annual',
   RETENTION_OFFERING_ID: 'retention',
@@ -107,6 +111,7 @@ beforeEach(() => {
   getOfferingIdForTierMock.mockReturnValue(null);
   offerPriceInfo.mockReturnValue(null);
   getAiSecurityProtectionOfferingId.mockReturnValue(null);
+  currentStoreFlavor.mockReturnValue('google');
   calculateDiscountCentsMock.mockImplementation((full, comm) => Math.round(full * comm / 100));
   useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
 });
@@ -384,7 +389,7 @@ describe('Subscription page — Manage subscription (paid tier, native)', () => 
   it('helper copy names the Play Store on Android', async () => {
     getPlatform.mockReturnValue('android');
     renderPage();
-    await waitFor(() => expect(screen.getByText(/Play Store settings/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Google Play settings/i)).toBeTruthy());
   });
 
   it('renders a separate AI Security Protection card when that is the current plan', async () => {
@@ -395,6 +400,44 @@ describe('Subscription page — Manage subscription (paid tier, native)', () => 
     expect(aiCard).toHaveTextContent(/Vigil talk to TIP online for live answers/i);
     expect(screen.getByText(/already includes every Safety Plus feature/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: /manage subscription/i })).toBeTruthy();
+  });
+
+  it('uses AI-specific cancel-intent copy and hides mismatched Safety Plus retention offers', async () => {
+    useTierMock.mockReturnValue({ currentTier: 'ai_security_protection', tiers: [], refreshTier });
+    getAiSecurityProtectionOfferingId.mockReturnValue('ai-security-protection');
+    getOfferings.mockResolvedValue({
+      availablePackages: [
+        { identifier: '$rc_monthly', product: { identifier: 'safety_plus_monthly', priceString: '$5.99', price: 5.99 } },
+        { identifier: '$rc_annual', product: { identifier: 'safety_plus_annual', priceString: '$49.99', price: 49.99 } },
+      ],
+    });
+    getTierOffering.mockImplementation(async (offeringId) => {
+      if (offeringId === 'ai-security-protection') {
+        return {
+          availablePackages: [
+            { identifier: '$rc_monthly', product: { identifier: 'ai_security_protection_monthly', priceString: '$19.99', price: 19.99 } },
+            { identifier: '$rc_annual', product: { identifier: 'ai_security_protection_annual', priceString: '$199.99', price: 199.99 } },
+          ],
+        };
+      }
+      if (offeringId === 'retention') {
+        return {
+          availablePackages: [
+            { identifier: '$rc_monthly', product: { identifier: 'safety_plus_monthly', priceString: '$5.99', price: 5.99 } },
+            { identifier: '$rc_annual', product: { identifier: 'safety_plus_annual', priceString: '$49.99', price: 49.99 } },
+          ],
+        };
+      }
+      return null;
+    });
+
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /manage subscription/i }));
+    const dialog = await screen.findByTestId('cancel-offer-dialog');
+    expect(within(dialog).getByRole('button', { name: /keep ai security protection/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /keep safety plus/i })).toBeNull();
+    expect(within(dialog).getByText(/live vigil answers/i)).toBeTruthy();
+    expect(screen.queryByTestId('cancel-offer-price')).toBeNull();
   });
 });
 

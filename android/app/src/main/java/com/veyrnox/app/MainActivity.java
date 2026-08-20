@@ -15,16 +15,16 @@ import com.veyrnox.app.HardwareKekPlugin;
 import com.veyrnox.app.RaspIntegrityPlugin;
 import com.veyrnox.app.PlayIntegrityPlugin;
 import com.veyrnox.app.VeyrnoxEnclavePlugin;
+import com.veyrnox.app.AndroidBiometricCachePlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Pre-WebView RASP gate — must run before plugin registration and
-        // super.onCreate() so the Capacitor bridge never initialises on
-        // BLOCK-tier (hooked/tampered) devices. Calling super.onCreate(null)
-        // in the blocked path satisfies the Activity lifecycle contract and
-        // creates a window for the AlertDialog without loading any plugins.
-        if (RaspIntegrityPlugin.Companion.earlyCheck(this)) {
+        // Staging-only escape hatch: keep the hardened pre-WebView block gate on
+        // by default, but allow explicitly labelled staging builds to disable it
+        // while preserving the rest of the Android startup path.
+        if (BuildConfig.NATIVE_RASP_STARTUP_BLOCK_ENABLED
+                && RaspIntegrityPlugin.Companion.earlyCheck(this)) {
             super.onCreate(null);
             showNativeBlockScreen();
             return;
@@ -34,8 +34,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(HardwareKekPlugin.class);
         registerPlugin(RaspIntegrityPlugin.class);
         registerPlugin(PlayIntegrityPlugin.class);
+        registerPlugin(SamsungIapPlugin.class);
+        registerPlugin(HuaweiIapPlugin.class);
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
+        registerPlugin(AndroidBiometricCachePlugin.class);
         super.onCreate(savedInstanceState);
 
         // Firebase Test Lab-ONLY observability (F-1, 2026-08-15). The staging
@@ -101,9 +104,6 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    // showNativeBlockScreen — shown when earlyCheck() returns BLOCK-tier. Uses a
-    // plain AlertDialog with no Capacitor dependency; the WebView was never loaded.
-    // finishAffinity() closes the task stack so there is no way back into the app.
     private void showNativeBlockScreen() {
         new AlertDialog.Builder(this)
             .setTitle("Security Alert")

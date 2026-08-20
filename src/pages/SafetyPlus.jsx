@@ -118,7 +118,7 @@ export default function SafetyPlus() {
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-primary/30 bg-primary/5">
           <div>
             <p className="text-sm font-semibold">Upgrade to Safety Plus</p>
-            <p className="text-xs text-muted-foreground mt-0.5">$5.99/mo or $49.99/yr · via Google Play &amp; App Store at launch</p>
+            <p className="text-xs text-muted-foreground mt-0.5">$5.99/mo or $49.99/yr · via supported mobile app stores</p>
           </div>
           <Link
             to="/plans"
@@ -147,7 +147,7 @@ export default function SafetyPlus() {
       })}
 
       <p className="text-xs text-muted-foreground text-center pt-2">
-        Safety Plus is a paid subscription via Google Play &amp; the App Store (mobile only).
+        Safety Plus is a paid subscription via supported mobile app stores (mobile only).
         These features are BUILT and unit-tested; on-device purchase verification is
         still pending.
       </p>
