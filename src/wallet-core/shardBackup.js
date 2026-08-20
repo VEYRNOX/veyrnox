@@ -22,7 +22,16 @@
  *     them (native share sheet in Phase 1; cloud + posture in later phases).
  */
 
-import { split, combine, SECRET_SIZE, SHARE_SIZE } from './shamir.js';
+import {
+  split,
+  combine,
+  SECRET_SIZE,
+  SHARE_SIZE,
+  isValidShareShape,
+  getShareVersion,
+  isRecognizedShareVersion,
+  SHARE_VERSION_V2,
+} from './shamir.js';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex } from '@noble/hashes/utils';
 
@@ -289,7 +298,7 @@ function hashVault(vault) {
  */
 export function encodeShareBundle(share, index, vault) {
   if (!ENABLE_PERSONAL_BACKUP_SHARDS) throw new Error(PERSONAL_BACKUP_SHARDS_DISABLED);
-  if (!(share instanceof Uint8Array) || share.length !== SHARE_SIZE) throw new Error(SHARD_BUNDLE_INVALID);
+  if (!isValidShareShape(share)) throw new Error(SHARD_BUNDLE_INVALID);
   if (!Number.isInteger(index) || index < 1 || index > 3) throw new Error(SHARD_BUNDLE_INVALID);
   if (!vault || typeof vault !== 'object') throw new Error(SHARD_BUNDLE_INVALID);
   const v = /** @type {any} */ (vault);
@@ -343,7 +352,14 @@ export function decodeShareBundle(input) {
   if (typeof obj.vaultHash !== 'string') throw new Error(SHARD_BUNDLE_INVALID);
 
   const share = b64.dec(obj.shareBytes);
-  if (share.length !== SHARE_SIZE) throw new Error(SHARD_BUNDLE_INVALID);
+  const shareVersion = getShareVersion(share);
+  if (!isRecognizedShareVersion(shareVersion)) throw new Error(SHARD_BUNDLE_INVALID);
+  if (shareVersion === SHARE_VERSION_V2 && !isValidShareShape(share)) {
+    throw new Error(SHARD_BUNDLE_INVALID);
+  }
+  if (shareVersion !== SHARE_VERSION_V2 && share.length !== SHARE_SIZE) {
+    throw new Error(SHARD_BUNDLE_INVALID);
+  }
   if (hashVault(obj.vault) !== obj.vaultHash) throw new Error(SHARD_BUNDLE_MISMATCH);
 
   return { share, index: obj.shareIndex, vault: obj.vault, vaultHash: obj.vaultHash };
@@ -364,6 +380,9 @@ export function combineFromBundles(bundles) {
   const b = decodeShareBundle(bundles[1]);
   if (a.vaultHash !== b.vaultHash) throw new Error(SHARD_BUNDLE_MISMATCH);
   if (a.index === b.index) throw new Error(SHARD_BUNDLE_MISMATCH);
+  if (getShareVersion(a.share) !== getShareVersion(b.share)) {
+    throw new Error(SHARD_BUNDLE_MISMATCH);
+  }
   const dek = combine([a.share, b.share]);
   return { dek, vault: a.vault };
 }
