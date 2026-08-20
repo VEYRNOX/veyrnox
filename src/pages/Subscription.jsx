@@ -490,7 +490,7 @@ export default function Subscription() {
   const safetyPlusStoreWiringPending =
     isNative &&
     !selectedPackage &&
-    (currentStoreFlavor() === "samsung" || currentStoreFlavor() === "huawei");
+    currentStoreFlavor() === "huawei";
 
   async function purchaseAndRefresh(pkg, {
     offerTag = null,
@@ -843,9 +843,7 @@ export default function Subscription() {
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    {currentStoreFlavor() === "samsung"
-                      ? "AI Security Protection is intended for Galaxy Store billing, but that billing path is not wired in this build yet."
-                      : currentStoreFlavor() === "huawei"
+                    {currentStoreFlavor() === "huawei"
                         ? "AI Security Protection is intended for AppGallery billing, but that billing path is not wired in this build yet."
                         : aiOfferingConfigured
                           ? "AI Security Protection is intended to be sold as an in-app subscription, but no store package is available for this build yet."
@@ -1000,9 +998,7 @@ export default function Subscription() {
 
               {safetyPlusStoreWiringPending && (
                 <p className="text-xs text-muted-foreground text-center">
-                  {currentStoreFlavor() === "samsung"
-                    ? "Safety Plus is intended for Galaxy Store billing, but that billing path is not wired in this build yet."
-                    : "Safety Plus is intended for AppGallery billing, but that billing path is not wired in this build yet."}
+                  {"Safety Plus is intended for AppGallery billing, but that billing path is not wired in this build yet."}
                 </p>
               )}
 
