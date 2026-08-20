@@ -1,13 +1,15 @@
-// ponytail: hand-rolled Shamir. Audit 2026-08-16 flagged replacement with an
-// audited library (@stablelib/sss or equivalent) as the correct upgrade path.
-// Full library swap deferred — too large for the remediation PR and needs its
-// own review. Tracking issue: see PR body of audit 2026-08-16 remediation for
-// the linked GitHub issue. Do NOT extend this file's algorithmic surface;
-// route new needs through the deferred library swap.
+// Audited Shamir wrapper. The raw split/combine core now routes through
+// `@stablelib/tss`, while this module preserves Veyrnox's envelope/versioning,
+// commitment, CRC, and validation behaviour around that core.
+//
+// Security-sensitive changes here still need explicit review: this file sits on
+// the recovery-share boundary and owns the compatibility contract for the share
+// envelope callers consume.
 /**
- * Shamir Secret Sharing over GF(2^8) — AES field (irreducible poly 0x11B).
+ * Shamir Secret Sharing over GF(2^8) via audited StableLib raw TSS.
  *
- * Pure implementation, no external dependencies beyond Web Crypto RNG.
+ * The external primitive is audited; this wrapper keeps the project-specific
+ * share envelope, commitment, and corruption/authentication checks around it.
  * Designed for 2-of-3 threshold splitting of 32-byte DEK material.
  *
  * Share envelope (v2, 88 bytes):
@@ -57,11 +59,16 @@
 // @noble/hashes — the project's mandated audited primitive source ("no custom
 // crypto primitives"). Synchronous, so combine() stays synchronous.
 import { sha256 } from '@noble/hashes/sha256';
+import { splitRaw, combineRaw } from '@stablelib/tss';
 
 export const SECRET_SIZE = 32;
+export const SHARE_VERSION_V2 = 0x02;
+export const SHARE_VERSION_V3 = 0x03;
+export const CURRENT_SHARE_VERSION = SHARE_VERSION_V2;
 export const SHARE_SIZE = 88; // envelope v2: 1+1+1+16+1+32+32+4
+export const MIXED_SHARE_VERSIONS = 'MIXED_SHARE_VERSIONS';
 
-const ENVELOPE_VERSION = 0x02;
+const ENVELOPE_VERSION = SHARE_VERSION_V2;
 const SET_ID_SIZE = 16;
 // Exported so tests address the envelope by offset constants rather than
 // hardcoded numbers — a format change should not silently invalidate them.
@@ -74,6 +81,26 @@ const CRC_OFFSET = COMMITMENT_OFFSET + COMMITMENT_SIZE; // 84
 // Domain-separated so this hash can never collide with any other SHA-256 use in
 // the codebase (same discipline as kek.js's KEK_DOMAIN).
 const COMMITMENT_DOMAIN = 'veyrnox/shamir/v2/commit(setId||k||n||secret)';
+
+export function getShareVersion(share) {
+  if (!(share instanceof Uint8Array) || share.length < 1) return null;
+  return share[0];
+}
+
+export function isRecognizedShareVersion(version) {
+  return version === SHARE_VERSION_V2 || version === SHARE_VERSION_V3;
+}
+
+export function getShareSize(version) {
+  if (version === SHARE_VERSION_V2) return SHARE_SIZE;
+  return null;
+}
+
+export function isValidShareShape(share) {
+  const version = getShareVersion(share);
+  const expected = getShareSize(version);
+  return expected !== null && share instanceof Uint8Array && share.length === expected;
+}
 
 // ---------------------------------------------------------------------------
 // CRC-32 (IEEE 802.3) — corruption detection for share envelopes
@@ -98,92 +125,11 @@ function crc32(data, start = 0, end = data.length) {
   return (crc ^ 0xFFFFFFFF) >>> 0;
 }
 
-// ---------------------------------------------------------------------------
-// GF(2^8) arithmetic — irreducible polynomial x^8 + x^4 + x^3 + x + 1 = 0x11B
-// ---------------------------------------------------------------------------
-
-const IRREDUCIBLE = 0x11b;
-// Low byte of the irreducible polynomial — what gets XORed back in after a
-// left shift overflows out of x^8.
-const REDUCTION = IRREDUCIBLE & 0xFF; // 0x1B
-
-// Audit 2026-08-03 M-7 — this arithmetic used to be table-driven
-// (EXP_TABLE/LOG_TABLE) with `if (a === 0 || b === 0) return 0` on top. Both
-// operands are secret-derived on the hot paths (the DEK's bytes in split(),
-// share y-values in combine()), so that was a data-dependent branch plus
-// secret-indexed memory access — the classic cache-timing shape, the same class
-// as naive T-table AES. docs/cloud-recovery-shard-spec.md required this
-// implementation to be constant-time on the share bytes; it was not.
-//
-// Now branch-free and table-free: a fixed 8-iteration loop, arithmetic masks
-// instead of conditionals, no indexed reads at all. Zero is handled by the
-// algebra rather than special-cased (multiplying by zero produces zero because
-// every mask is zero), so the absorbing case costs exactly what any other
-// multiplication costs.
-//
-// HONEST LIMIT — do not upgrade this claim: JavaScript cannot guarantee
-// constant-time execution end to end. JIT deoptimisation, GC pauses, and
-// engine-level specialisation on integer ranges are outside our control. What
-// is verifiable, and what the tests pin, is the absence of secret-dependent
-// branches and secret-indexed memory access in the source. That is the
-// achievable part of the spec's requirement; the spec is reworded to match
-// rather than left asserting something no JS implementation can deliver.
-//
-// Exported for exhaustive verification (all 65,536 multiply pairs, all 255
-// inverses). Field arithmetic is the one part of this module where a silent
-// off-by-one is both catastrophic and invisible end-to-end, so it is checked
-// directly rather than inferred from round-trips.
-export function gfMul(a, b) {
-  let p = 0;
-  let x = a & 0xFF;
-  let y = b & 0xFF;
-  for (let i = 0; i < 8; i++) {
-    // mask = 0xFFFFFFFF when the low bit of y is set, else 0.
-    p ^= x & -(y & 1);
-    // carry = 0xFFFFFFFF when x is about to overflow past x^7, else 0.
-    const carry = -((x >> 7) & 1);
-    x = (x << 1) & 0xFF;
-    x ^= REDUCTION & carry;
-    y >>= 1;
-  }
-  return p & 0xFF;
-}
-
-// a^254 is the multiplicative inverse in GF(2^8)*, since a^255 = 1. Computed by
-// a FIXED square-and-multiply chain over the bits of 254 (0b11111110) — the
-// same 13 gfMul calls in the same order for every input, so no value-dependent
-// control flow and no table read.
-//
-// The zero guard is a branch, but on the ZERO ELEMENT of a public value: gfInv
-// is only ever called on differences of x-coordinates, which are envelope
-// header bytes (1..n), never secret material. Keeping it preserves the existing
-// fail-closed contract; a silent 0 would let a degenerate share set through.
-export function gfInv(a) {
-  if (a === 0) throw new Error('GF_ZERO_INVERSE');
-  let r = a;
-  r = gfMul(gfMul(r, r), a); // a^3
-  r = gfMul(gfMul(r, r), a); // a^7
-  r = gfMul(gfMul(r, r), a); // a^15
-  r = gfMul(gfMul(r, r), a); // a^31
-  r = gfMul(gfMul(r, r), a); // a^63
-  r = gfMul(gfMul(r, r), a); // a^127
-  return gfMul(r, r);        // a^254
-}
-
-function gfAdd(a, b) {
-  return a ^ b;
-}
-
-// ---------------------------------------------------------------------------
-// Polynomial evaluation
-// ---------------------------------------------------------------------------
-
-function polyEval(coeffs, x) {
-  let result = 0;
-  for (let i = coeffs.length - 1; i >= 0; i--) {
-    result = gfAdd(gfMul(result, x), coeffs[i]);
-  }
-  return result;
+function rawShareFromEnvelope(share) {
+  const raw = new Uint8Array(1 + SECRET_SIZE);
+  raw[0] = share[19];
+  raw.set(share.subarray(HEADER_SIZE, COMMITMENT_OFFSET), 1);
+  return raw;
 }
 
 // ---------------------------------------------------------------------------
@@ -300,31 +246,19 @@ export function split(secret, n = 3, k = 2) {
     const setId = new Uint8Array(SET_ID_SIZE);
     crypto.getRandomValues(setId);
 
-    const coeffBuf = new Uint8Array((k - 1) * SECRET_SIZE);
     try {
-      crypto.getRandomValues(coeffBuf);
-
-      const shares = [];
-      for (let i = 0; i < n; i++) {
-        const share = new Uint8Array(SHARE_SIZE);
-        const x = i + 1;
-        writeEnvelope(share, ENVELOPE_VERSION, k, n, setId, x);
-        shares.push(share);
-      }
-
-      const coeffs = new Uint8Array(k);
+      const rawShares = splitRaw(sec, k, n);
+      const shares = new Array(rawShares.length);
       try {
-        for (let byteIdx = 0; byteIdx < SECRET_SIZE; byteIdx++) {
-          coeffs[0] = sec[byteIdx];
-          for (let c = 1; c < k; c++) {
-            coeffs[c] = coeffBuf[(c - 1) * SECRET_SIZE + byteIdx];
-          }
-          for (let i = 0; i < n; i++) {
-            shares[i][HEADER_SIZE + byteIdx] = polyEval(coeffs, i + 1);
-          }
+        for (let i = 0; i < rawShares.length; i++) {
+          const raw = rawShares[i];
+          const share = new Uint8Array(SHARE_SIZE);
+          writeEnvelope(share, ENVELOPE_VERSION, k, n, setId, raw[0]);
+          share.set(raw.subarray(1), HEADER_SIZE);
+          shares[i] = share;
         }
       } finally {
-        coeffs.fill(0);
+        for (const raw of rawShares) raw.fill(0);
       }
 
       // H-6 — every share carries the same commitment to (setId, k, n, secret).
@@ -337,7 +271,7 @@ export function split(secret, n = 3, k = 2) {
 
       return shares;
     } finally {
-      coeffBuf.fill(0);
+      setId.fill(0);
     }
   } finally {
     sec.fill(0);
@@ -363,11 +297,6 @@ export function split(secret, n = 3, k = 2) {
  * A caller that ALSO authenticates the DEK against the vault's AES-256-GCM AAD
  * is still correct; that is defence in depth, not a requirement this function
  * delegates upward.
- *
- * GF arithmetic is branch-free and table-free (audit 2026-08-03 M-7): no
- * secret-dependent branches, no secret-indexed memory access. That is NOT a
- * claim of end-to-end constant-time execution, which JavaScript cannot provide
- * — see the note above gfMul.
  *
  * @param {Uint8Array[]} shares - Array of shares (each SHARE_SIZE bytes, envelope v2)
  * @returns {Uint8Array} Reconstructed secret (SECRET_SIZE bytes)
@@ -396,6 +325,19 @@ export function combine(shares) {
     for (let i = 0; i < shares.length; i++) {
       local.push(new Uint8Array(shares[i]));
     }
+
+    const versions = new Set(local.map((share) => share[0]));
+    let allRecognized = true;
+    for (const version of versions) {
+      if (!isRecognizedShareVersion(version)) {
+        allRecognized = false;
+        break;
+      }
+    }
+    if (versions.size > 1 && allRecognized) {
+      throw new Error(MIXED_SHARE_VERSIONS);
+    }
+
     // Validate envelope on every share
     const refVersion = local[0][0];
     const refK = local[0][1];
@@ -448,31 +390,12 @@ export function combine(shares) {
 
     // Use exactly refK shares for interpolation (the first refK provided)
     const kShares = local.slice(0, refK);
-
-    const basis = new Uint8Array(refK);
+    const rawKShares = [];
     try {
-      for (let i = 0; i < refK; i++) {
-        const xi = kShares[i][19];
-        let num = 1;
-        let den = 1;
-        for (let j = 0; j < refK; j++) {
-          if (i === j) continue;
-          const xj = kShares[j][19];
-          num = gfMul(num, xj);
-          den = gfMul(den, gfAdd(xi, xj));
-        }
-        basis[i] = gfMul(num, gfInv(den));
-      }
-
-      for (let byteIdx = 0; byteIdx < SECRET_SIZE; byteIdx++) {
-        let val = 0;
-        for (let i = 0; i < refK; i++) {
-          val = gfAdd(val, gfMul(basis[i], kShares[i][HEADER_SIZE + byteIdx]));
-        }
-        result[byteIdx] = val;
-      }
+      for (let i = 0; i < refK; i++) rawKShares.push(rawShareFromEnvelope(kShares[i]));
+      result.set(combineRaw(rawKShares, refK));
     } finally {
-      basis.fill(0);
+      for (const raw of rawKShares) raw.fill(0);
     }
 
     // H-6 — AUTHENTICATE the reconstruction. Everything above this line is
@@ -499,24 +422,29 @@ export function combine(shares) {
 
     // Verify any extra shares against the reconstructed polynomial.
     if (local.length > refK) {
+      const baseShares = kShares.slice(0, refK - 1);
       for (let e = refK; e < local.length; e++) {
-        const ex = local[e][19];
-        for (let byteIdx = 0; byteIdx < SECRET_SIZE; byteIdx++) {
-          let val = 0;
-          for (let i = 0; i < refK; i++) {
-            const xi = kShares[i][19];
-            let li = 1;
-            for (let j = 0; j < refK; j++) {
-              if (i === j) continue;
-              const xj = kShares[j][19];
-              li = gfMul(li, gfMul(gfAdd(ex, xj), gfInv(gfAdd(xi, xj))));
-            }
-            val = gfAdd(val, gfMul(li, kShares[i][HEADER_SIZE + byteIdx]));
-          }
-          if (val !== local[e][HEADER_SIZE + byteIdx]) {
+        let extraRecon = null;
+        const subset = [...baseShares, local[e]];
+        const rawSubset = [];
+        try {
+          for (const share of subset) rawSubset.push(rawShareFromEnvelope(share));
+          extraRecon = combineRaw(rawSubset, refK);
+          let diff = 0;
+          for (let i = 0; i < SECRET_SIZE; i++) diff |= result[i] ^ extraRecon[i];
+          if (diff !== 0) {
             result.fill(0);
             throw new Error('SHARE_INCONSISTENT');
           }
+        } catch (err) {
+          if (err?.message === 'SHARE_INCONSISTENT') throw err;
+          if (result) {
+            result.fill(0);
+          }
+          throw new Error('SHARE_INCONSISTENT');
+        } finally {
+          for (const raw of rawSubset) raw.fill(0);
+          if (extraRecon) extraRecon.fill(0);
         }
       }
     }
