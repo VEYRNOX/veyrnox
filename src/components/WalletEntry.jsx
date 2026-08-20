@@ -610,7 +610,12 @@ export default function WalletEntry() {
   // in the wallet. Detection + enrollment logic live in useKekEnrollmentGate
   // (src/lib) to stay within the ring boundary (components cannot import
   // wallet-core directly).
-  const { gateActive: kekGatePending, enroll: kekEnroll, dismiss: kekDismiss } =
+  const {
+    gateActive: kekGatePending,
+    enroll: kekEnroll,
+    dismiss: kekDismiss,
+    suppressInsecureTier: kekSuppressInsecureTier,
+  } =
     useKekEnrollmentGate({ isUnlocked });
 
   // Shake feedback counter — increment on any wrong-PIN / PIN-mismatch moment
@@ -725,10 +730,26 @@ export default function WalletEntry() {
     return result;
   }, [kekEnroll, kekDismiss]);
 
-  const handleKekSkip = useCallback(() => {
+  const handleKekSkip = useCallback((opts = {}) => {
+    if (opts.insecureDevice) kekSuppressInsecureTier();
     autoEnrollPinRef.current = null;
     kekDismiss();
-  }, [kekDismiss]);
+  }, [kekDismiss, kekSuppressInsecureTier]);
+
+  // Fresh CREATE onboarding should land on the dashboard immediately. Once the
+  // user is genuinely unlocked and past the KEK gate, clear the transient
+  // justOnboarded flag so later renders can show the regular backup nag sheet.
+  useEffect(() => {
+    if (
+      isUnlocked &&
+      !generatedSeed &&
+      !kekGatePending &&
+      justOnboarded &&
+      chosenPath === "new"
+    ) {
+      setJustOnboarded(false);
+    }
+  }, [chosenPath, generatedSeed, isUnlocked, justOnboarded, kekGatePending]);
 
   // Fresh CREATE onboarding should land on the dashboard immediately. Once the
   // user is genuinely unlocked and past the KEK gate, clear the transient
