@@ -143,11 +143,12 @@ jobs:
                 --arg job "$EXPECTED_JOB" \
                 '.jobs[]? | select(.name == $job) | .conclusion // empty' \
                 <<<"$JOBS_JSON" | tail -1)
-              ARTIFACT_COUNT=$(gh api \
-                "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
-                --jq \
+              ARTIFACTS_JSON=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts")
+              ARTIFACT_COUNT=$(jq -r \
                 --arg name "$EXPECTED_ARTIFACT" \
-                '[.artifacts[]? | select(.name == $name and .expired == false)] | length')
+                '[.artifacts[]? | select(.name == $name and .expired == false)] | length' \
+                <<<"$ARTIFACTS_JSON")
 
               if [[ "$JOB_STATUS" == "completed" && "$JOB_CONCLUSION" == "success" && "$ARTIFACT_COUNT" -gt 0 ]]; then
                 echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
