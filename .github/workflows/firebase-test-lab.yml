@@ -117,6 +117,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.sha }}
           EXPECTED_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || 'push' }}
+          EXPECTED_JOB: android-firebase-test
+          EXPECTED_ARTIFACT: veyrnox-firebase-test-apk
         run: |
           set -euo pipefail
           for attempt in $(seq 1 100); do
@@ -130,10 +132,37 @@ jobs:
             STATUS=$(jq -r '.status // empty' <<<"$RUN_JSON")
             CONCLUSION=$(jq -r '.conclusion // empty' <<<"$RUN_JSON")
 
-            if [[ "$STATUS" == "completed" ]]; then
-              if [[ "$CONCLUSION" == "success" ]]; then
+            if [[ -n "$RUN_ID" ]]; then
+              JOBS_JSON=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/jobs?per_page=100")
+              JOB_STATUS=$(jq -r \
+                --arg job "$EXPECTED_JOB" \
+                '.jobs[]? | select(.name == $job) | .status // empty' \
+                <<<"$JOBS_JSON" | tail -1)
+              JOB_CONCLUSION=$(jq -r \
+                --arg job "$EXPECTED_JOB" \
+                '.jobs[]? | select(.name == $job) | .conclusion // empty' \
+                <<<"$JOBS_JSON" | tail -1)
+              ARTIFACT_COUNT=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
+                --jq \
+                --arg name "$EXPECTED_ARTIFACT" \
+                '[.artifacts[]? | select(.name == $name and .expired == false)] | length')
+
+              if [[ "$JOB_STATUS" == "completed" && "$JOB_CONCLUSION" == "success" && "$ARTIFACT_COUNT" -gt 0 ]]; then
                 echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
                 exit 0
+              fi
+            else
+              JOB_STATUS=""
+              JOB_CONCLUSION=""
+              ARTIFACT_COUNT=0
+            fi
+
+            if [[ "$STATUS" == "completed" ]]; then
+              if [[ "$CONCLUSION" == "success" ]]; then
+                echo "::error::CI run ${RUN_ID} finished successfully, but ${EXPECTED_JOB} or ${EXPECTED_ARTIFACT} was unavailable."
+                exit 1
               fi
 
               # No redispatch on `cancelled`. It was tried (#1857) and could
@@ -151,11 +180,11 @@ jobs:
             fi
 
             if (( attempt % 8 == 1 )); then
-              echo "Waiting for CI on ${SHA} (status=${STATUS:-not-started})..."
+              echo "Waiting for CI on ${SHA} (run=${STATUS:-not-started}, ${EXPECTED_JOB}=${JOB_STATUS:-missing}/${JOB_CONCLUSION:-pending}, artifact_count=${ARTIFACT_COUNT:-0})..."
             fi
             sleep 15
           done
-          echo "::error::Timed out waiting for a successful CI run for ${SHA}; refusing to fall back to an older APK."
+          echo "::error::Timed out waiting for ${EXPECTED_JOB} + ${EXPECTED_ARTIFACT} on CI for ${SHA}; refusing to fall back to an older APK."
           exit 1
 
       - name: Download this commit's isolated Firebase APK from ci.yml
