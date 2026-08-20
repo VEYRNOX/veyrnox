@@ -133,7 +133,7 @@
       "test_cancelled": "Prompt cancelled"
     },
     "passkey_unlock": {
-      "heading_native": "Biometric unlock",
+      "heading_native": "Biometric verification",
       "heading_web": "Unlock with Passkey",
       "scope_banner_native_pre": "Your fingerprint or face is checked before unlocking —",
       "scope_banner_native_post": "not a replacement for your password. Your password and recovery phrase still work on their own, so losing biometrics never locks you out.",
