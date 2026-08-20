@@ -102,6 +102,7 @@ async function enclavePlugin() {
 // an unsupported phone from re-running enrollment discovery after every lock;
 // the next cold launch probes again so OS/biometric changes are picked up.
 let _secureHardwareAvailablePromise = null;
+let _nativeSecuritySnapshotPromise = null;
 export function isEligibleHardwareCapability(capability) {
   const backing = capability?.backing;
   return capability?.biometryEnrolled === true
@@ -115,6 +116,76 @@ async function detectSecureHardwareAvailable() {
   } catch {
     return false;
   }
+}
+
+async function detectNativeSecuritySnapshot() {
+  const platform = (() => {
+    try {
+      return Capacitor.getPlatform();
+    } catch {
+      return 'unknown';
+    }
+  })();
+
+  let biometricInfo = null;
+  try {
+    biometricInfo = await BiometricAuth.checkBiometry();
+  } catch {
+    biometricInfo = null;
+  }
+
+  if (platform === 'android') {
+    try {
+      const { isHardwareKeyAvailable } = await enclavePlugin();
+      const capability = await isHardwareKeyAvailable();
+      return {
+        platform: 'android',
+        manufacturer: capability?.manufacturer ?? null,
+        model: capability?.model ?? null,
+        sdkInt: Number.isFinite(capability?.sdkInt) ? capability.sdkInt : null,
+        hardwareBacking: capability?.backing ?? null,
+        biometryEnrolled: capability?.biometryEnrolled === true,
+        biometricAvailable: biometricInfo?.isAvailable === true,
+        deviceIsSecure: biometricInfo?.deviceIsSecure === true,
+        secureHardwareAvailable: isEligibleHardwareCapability(capability),
+      };
+    } catch {
+      return {
+        platform: 'android',
+        manufacturer: null,
+        model: null,
+        sdkInt: null,
+        hardwareBacking: null,
+        biometryEnrolled: false,
+        biometricAvailable: biometricInfo?.isAvailable === true,
+        deviceIsSecure: biometricInfo?.deviceIsSecure === true,
+        secureHardwareAvailable: false,
+      };
+    }
+  }
+
+  if (platform === 'ios') {
+    let capability = null;
+    try {
+      const { isHardwareKeyAvailable } = await enclavePlugin();
+      capability = await isHardwareKeyAvailable();
+    } catch {
+      capability = null;
+    }
+    return {
+      platform: 'ios',
+      manufacturer: 'Apple',
+      model: null,
+      sdkInt: null,
+      hardwareBacking: capability?.backing ?? null,
+      biometryEnrolled: capability?.biometryEnrolled === true,
+      biometricAvailable: biometricInfo?.isAvailable === true,
+      deviceIsSecure: biometricInfo?.deviceIsSecure === true,
+      secureHardwareAvailable: isEligibleHardwareCapability(capability),
+    };
+  }
+
+  return null;
 }
 // Hardware-wrap path. Capability-detected AND gated behind M2C_HARDWARE_WRAP_ENABLED.
 // Ungated after device verification (PR #1152 / commit f518ba57, 2026-07-18) —
@@ -696,6 +767,21 @@ export const nativeKeyStore = {
       _secureHardwareAvailablePromise = detectSecureHardwareAvailable();
     }
     return _secureHardwareAvailablePromise;
+  },
+
+  async getNativeSecuritySnapshot() {
+    if (!_nativeSecuritySnapshotPromise) {
+      _nativeSecuritySnapshotPromise = detectNativeSecuritySnapshot();
+    }
+    return _nativeSecuritySnapshotPromise;
+  },
+
+  async refreshNativeSecuritySnapshot() {
+    _secureHardwareAvailablePromise = null;
+    _nativeSecuritySnapshotPromise = detectNativeSecuritySnapshot();
+    const snapshot = await _nativeSecuritySnapshotPromise;
+    _secureHardwareAvailablePromise = Promise.resolve(!!snapshot?.secureHardwareAvailable);
+    return snapshot;
   },
 
   // Presence check only — reads metadata, never the secret, and does NOT prompt

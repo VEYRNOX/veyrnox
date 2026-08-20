@@ -76,6 +76,14 @@ const NATIVE_PREFIX = 'veyrnox_';
 
 let _demoCache = null; // in-memory only; cleared when the module unloads
 
+function isAndroidNativePlatform() {
+  try {
+    return Capacitor.isNativePlatform() && Capacitor.getPlatform?.() === 'android';
+  } catch {
+    return false;
+  }
+}
+
 function demoStore(pw) { _demoCache = pw; }
 function demoGet() { return _demoCache; }
 function demoClear() { _demoCache = null; }
@@ -83,21 +91,27 @@ function demoClear() { _demoCache = null; }
 // Native secure-storage helpers. Loaded lazily so the Capacitor plugin never
 // reaches the web/test bundle (exactly like keystore/index.js does for native).
 async function nativeStore(pw) {
-  // H-NEW-5 (ANDROID): @aparajita/capacitor-secure-storage (^8.0.0) does not expose
-  // setInvalidatedByBiometricEnrollment(true) — per its published Android source
-  // (aparajita/capacitor-secure-storage, SecureStorage.java, KeyGenParameterSpec builder)
-  // the Android KeyGenParameterSpec is built WITHOUT
-  // setUserAuthenticationRequired/setInvalidatedByBiometricEnrollment — so a new
-  // fingerprint enrollment does NOT invalidate this cache on Android. Mitigation
-  // requires a custom Capacitor plugin using Android Keystore with
-  // setInvalidatedByBiometricEnrollment(true) (key destroyed on enrollment change).
-  // iOS (separate half): requires kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly +
-  // a biometryCurrentSet (SecAccessControl) ACL via a native Swift shim (needs a Mac).
-  // Both are TARGET — see audit H-NEW-5. We do NOT fake it here (I4): the release-time
-  // OS biometric match in nativeAuthenticateOrThrow() still gates reads, but that is a
-  // live match, NOT a key bound to the current biometric enrollment set.
-  // HONEST STATUS: biometric cache is device-PIN/passcode-gated only; a biometric
-  // enrollment change does not wipe it. Not active; TARGET for a custom plugin.
+  // H-NEW-5 STATUS (2026-08-20): ANDROID HALF is now shipped via the custom
+  // AndroidBiometricCache plugin, which stores the cached secret encrypted at rest
+  // and binds a separate Android Keystore invalidation sentinel to
+  // setInvalidatedByBiometricEnrollment(true). If a biometric is added/changed, the
+  // sentinel key invalidates and the cache is wiped on the next presence/read check.
+  //
+  // iOS half remains TARGET: kSecAccessControlBiometryCurrentSet still needs a
+  // native Swift/ObjC shim. We do NOT pretend parity that does not exist (I4).
+  if (isAndroidNativePlatform()) {
+    try {
+      const cache = await import('@/plugins/androidBiometricCache.js');
+      const available = await cache.isAvailable();
+      if (available?.available === true) {
+        await cache.putSecret(pw);
+        return;
+      }
+    } catch {
+      // Fall back to the generic secure-storage path on older/unsupported Android
+      // builds so the cache remains usable instead of failing hard.
+    }
+  }
   const { SecureStorage, KeychainAccess } = await import('@aparajita/capacitor-secure-storage');
   await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
   await SecureStorage.setSynchronize(false);
@@ -110,6 +124,17 @@ async function nativeStore(pw) {
 // match. This single-caller structure is what makes the biometric gate
 // non-bypassable in app code; a test pins it (biometricUnlock-native.test.js).
 async function nativeReadSecret() {
+  if (isAndroidNativePlatform()) {
+    try {
+      const cache = await import('@/plugins/androidBiometricCache.js');
+      const available = await cache.isAvailable();
+      if (available?.available === true) {
+        return await cache.getSecret();
+      }
+    } catch {
+      // Fall through to the generic secure-storage path for compatibility.
+    }
+  }
   const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
   await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
   const v = await SecureStorage.get(NATIVE_KEY, false);
@@ -123,6 +148,17 @@ async function nativeReadSecret() {
 // it neither releases the secret nor triggers a biometric prompt. Mirrors
 // keystore/native.js's "hasVault is a presence check that does NOT prompt".
 async function nativeHasSecret() {
+  if (isAndroidNativePlatform()) {
+    try {
+      const cache = await import('@/plugins/androidBiometricCache.js');
+      const available = await cache.isAvailable();
+      if (available?.available === true) {
+        return await cache.hasSecret();
+      }
+    } catch {
+      // Fall through to the generic secure-storage path for compatibility.
+    }
+  }
   try {
     const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
     await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
@@ -182,6 +218,18 @@ async function nativeAuthenticateOrThrow() {
 }
 
 async function nativeClear() {
+  if (isAndroidNativePlatform()) {
+    try {
+      const cache = await import('@/plugins/androidBiometricCache.js');
+      const available = await cache.isAvailable();
+      if (available?.available === true) {
+        await cache.clearSecret();
+        return;
+      }
+    } catch {
+      // Fall through to the generic secure-storage path for compatibility.
+    }
+  }
   try {
     const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
     await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
@@ -205,11 +253,9 @@ export function biometricUnlockSupported() {
  * this. Storing does NOT release a secret, so it does not itself prompt for
  * biometrics. No-op on plain web (returns false).
  *
- * H-NEW-5 honest limit: on Android the cached item is NOT bound to the biometric
- * enrollment set — enrolling a new fingerprint does NOT wipe this cache, because the
- * secure-storage plugin does not expose setInvalidatedByBiometricEnrollment(true).
- * A real fix is TARGET (custom Capacitor/Android Keystore plugin; iOS biometryCurrentSet
- * Swift shim). See the comment block in nativeStore() and audit H-NEW-5.
+ * H-NEW-5 honest limit: Android now uses a custom native cache plugin with a real
+ * biometric-enrollment invalidation sentinel, but iOS still does NOT bind the cache
+ * to biometryCurrentSet. Full cross-platform parity remains TARGET.
  * @returns {Promise<boolean>} true if stored.
  */
 export async function storeUnlockSecret(password) {
@@ -321,9 +367,10 @@ export async function hasStoredUnlockSecret() {
  *   'key-bound' — Keychain item pinned to `kSecAccessControlBiometryCurrentSet`
  *                 (iOS) / `setUserAuthenticationRequired`+
  *                 `setInvalidatedByBiometricEnrollment` (Android). Biometric-
- *                 enrollment change wipes the item at the OS. TARGET status —
- *                 needs a native shim (@aparajita/capacitor-secure-storage
- *                 does not expose these flags today).
+ *                 enrollment change wipes the item at the OS. Android now has
+ *                 a PARTIAL native cache plugin that ships the invalidation half,
+ *                 but the release gate is still the JS chokepoint and iOS still
+ *                 lacks the biometryCurrentSet shim.
  *   'demo'      — non-native fallback: in-memory only, no cryptographic gate.
  *   'unavailable' — web (no cache, no gate).
  *
@@ -332,6 +379,7 @@ export async function hasStoredUnlockSecret() {
 export function biometricUnlockSecurityMode() {
   if (DEMO) return 'demo';
   if (!Capacitor.isNativePlatform()) return 'unavailable';
-  // No `key-bound` shim shipped yet — see LIMITATION in the header comment.
+  // Android now ships enrollment invalidation via a native plugin, but the release
+  // gate is still app-layer and iOS still lacks a biometryCurrentSet item ACL.
   return 'app-gate';
 }

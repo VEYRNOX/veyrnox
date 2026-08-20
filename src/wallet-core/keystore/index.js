@@ -64,6 +64,14 @@ function makeNativeFacade() {
     async getVaultKekVersion() {
       return (await load()).nativeKeyStore.getVaultKekVersion();
     },
+    // Native-only: read-only compatibility/diagnostic snapshot for Android/iOS.
+    // Helps the UI explain vendor-specific behavior without touching secrets.
+    async getNativeSecuritySnapshot() {
+      return (await load()).nativeKeyStore.getNativeSecuritySnapshot();
+    },
+    async refreshNativeSecuritySnapshot() {
+      return (await load()).nativeKeyStore.refreshNativeSecuritySnapshot();
+    },
     // Native-only: EXPLICIT, consented, FAIL-CLOSED re-enroll of a non-v3 KEK vault to a
     // genuinely salt-bound v3 wrap. Fires two biometric prompts (unwrap + re-wrap) for a
     // one-time action; propagates any failure (no swallow). Idempotent on a v3 vault.
