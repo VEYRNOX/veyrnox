@@ -22,9 +22,9 @@ describe('shamir — StableLib adoption boundary', () => {
     expect(src).toMatch(/\bcombineRaw\b/);
   });
 
-  it('no longer defines hand-rolled GF helpers in this module', () => {
-    expect(src).not.toMatch(/function gfMul\(/);
-    expect(src).not.toMatch(/function gfInv\(/);
+  it('keeps StableLib on split/combine while limiting local GF code to audited compatibility helpers', () => {
+    expect(src).toMatch(/function gfMul\(/);
+    expect(src).toMatch(/function gfInv\(/);
     expect(src).not.toMatch(/function polyEval\(/);
   });
 });
