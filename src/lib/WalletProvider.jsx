@@ -2163,9 +2163,11 @@ export function WalletProvider({ children }) {
     let password;
     try {
       const kekEnrolled = Capacitor.isNativePlatform() && await isVaultKekEnrolledSafe();
-      password = kekEnrolled
-        ? await retrieveUnlockSecretDirect({ kekEnrolled: true })
-        : await retrieveUnlockSecret();
+      password = await withLockSuppressed(() => (
+        kekEnrolled
+          ? retrieveUnlockSecretDirect({ kekEnrolled: true })
+          : retrieveUnlockSecret()
+      ));
     } catch (err) {
       // A cancelled/failed biometric match on the cache release. Fail closed and
       // route to the password fallback, same as a cancelled demo prompt.
