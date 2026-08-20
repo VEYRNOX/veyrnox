@@ -133,7 +133,6 @@ import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
 import { errorHaptic } from "@/lib/haptics";
 import FirstReceiveCard from "@/components/FirstReceiveCard";
-import WalletCreatedFlash from "@/components/WalletCreatedFlash";
 import BackupNagSheet from "@/components/BackupNagSheet";
 import * as backupNag from "@/lib/backupNag";
 import { resolveReceive } from "@/lib/receiveAddress";
@@ -526,9 +525,10 @@ export default function WalletEntry() {
   // localStorage read) so the screen renders at most once per onboarding pass.
   const [consentDone, setConsentDone] = useState(() => getConsentState() !== null);
   // True only across a fresh onboarding pass (finishPinSetup → Phase-2 create/import
-  // → KEK gate → consent). Drives the one-time FirstReceiveCard branch below. NOT set
-  // on the PIN-recovery path (finishPinRecover) — restore flows don't get this card
-  // this slice. Cleared on the card's "You're set" dismissal.
+  // → KEK gate → consent). Drives the one-time post-onboard import hold below. NOT
+  // set on the PIN-recovery path (finishPinRecover) — restore flows don't get this
+  // card this slice. CREATE clears it automatically once the dashboard is allowed
+  // through; IMPORT clears it on the card dismissal.
   const [justOnboarded, setJustOnboarded] = useState(false);
   // SAST M-3 escape hatch: null until the passkey gate has actually FAILED on an
   // unlock attempt; then { reason } so we can offer a signposted password-only
@@ -610,7 +610,12 @@ export default function WalletEntry() {
   // in the wallet. Detection + enrollment logic live in useKekEnrollmentGate
   // (src/lib) to stay within the ring boundary (components cannot import
   // wallet-core directly).
-  const { gateActive: kekGatePending, enroll: kekEnroll, dismiss: kekDismiss } =
+  const {
+    gateActive: kekGatePending,
+    enroll: kekEnroll,
+    dismiss: kekDismiss,
+    suppressInsecureTier: kekSuppressInsecureTier,
+  } =
     useKekEnrollmentGate({ isUnlocked });
 
   // Shake feedback counter — increment on any wrong-PIN / PIN-mismatch moment
@@ -725,10 +730,26 @@ export default function WalletEntry() {
     return result;
   }, [kekEnroll, kekDismiss]);
 
-  const handleKekSkip = useCallback(() => {
+  const handleKekSkip = useCallback((opts = {}) => {
+    if (opts.insecureDevice) kekSuppressInsecureTier();
     autoEnrollPinRef.current = null;
     kekDismiss();
-  }, [kekDismiss]);
+  }, [kekDismiss, kekSuppressInsecureTier]);
+
+  // Fresh CREATE onboarding should land on the dashboard immediately. Once the
+  // user is genuinely unlocked and past the KEK gate, clear the transient
+  // justOnboarded flag so later renders can show the regular backup nag sheet.
+  useEffect(() => {
+    if (
+      isUnlocked &&
+      !generatedSeed &&
+      !kekGatePending &&
+      justOnboarded &&
+      chosenPath === "new"
+    ) {
+      setJustOnboarded(false);
+    }
+  }, [chosenPath, generatedSeed, isUnlocked, justOnboarded, kekGatePending]);
 
   const copySeed = async () => {
     const gate = sensitiveGate(raspArtifact, 'seed-reveal');
@@ -1293,14 +1314,11 @@ export default function WalletEntry() {
   }
 
   // ONE-TIME FIRST-RECEIVE CARD for the IMPORT path — fresh onboarding only
-  // (justOnboarded, set in finishPinSetup). Shows the newly-imported wallet's
-  // EVM receive address + QR so a new user's fastest path is funding it.
-  // EVM only this slice (see plan's non-goals); resolveReceive owns the
-  // address lookup so a future accounts-shape refactor is one edit, not a
-  // hand-rolled accounts?.[0]?.address here. Extracted to a function (rather
-  // than inlined in the branch below) so the CREATE branch's post-onboard
-  // condition reads as WalletCreatedFlash-only in source, matching the
-  // WalletEntry.wallet-created-flash regression test.
+  // (justOnboarded, set in finishPinSetup). CREATE now falls straight through
+  // to the dashboard; only IMPORT keeps the funding nudge here. EVM only this
+  // slice (see plan's non-goals); resolveReceive owns the address lookup so a
+  // future accounts-shape refactor is one edit, not a hand-rolled
+  // accounts?.[0]?.address here.
   const renderImportFirstReceive = () => {
     const receive = resolveReceive('ETH', { accounts, btcAccount, solAccount });
     return (
@@ -1319,26 +1337,14 @@ export default function WalletEntry() {
   // mint, so removing the prompt does not enable telemetry. Opt-in path is
   // Settings → Privacy.
   //
-  // ONE-TIME POST-CREATE CELEBRATION — fresh onboarding only, after consent
-  // and past the KEK gate, before FirstRunTour/<Outlet>. CREATE
-  // (chosenPath==='new') gets the honest WalletCreatedFlash celebration +
-  // backup nudge; IMPORT (chosenPath==='have') keeps the FirstReceiveCard
-  // funding nudge (renderImportFirstReceive above) — unchanged behaviour.
-  // Gated on !isDeniabilityOrDemoActive() (I3) — structurally unreachable in
-  // decoy anyway (post-KEK ladder order), but defensive-in-depth matches the
-  // consent/FirstRunTour branches around it.
+  // ONE-TIME POST-ONBOARD IMPORT HOLD — fresh onboarding only, after consent
+  // and past the KEK gate, before <Outlet>. CREATE should land on the
+  // dashboard immediately; only IMPORT keeps the FirstReceiveCard funding
+  // nudge here. Gated on !isDeniabilityOrDemoActive() (I3) — structurally
+  // unreachable in decoy anyway (post-KEK ladder order), but
+  // defensive-in-depth matches the surrounding onboarding branches.
   if (isUnlocked && !generatedSeed && !kekGatePending && justOnboarded && !isDeniabilityOrDemoActive()) {
-    if (chosenPath === "new") {
-      return (
-        <EntryShell chromeless>
-          <WalletCreatedFlash
-            onPrimary={() => { setJustOnboarded(false); backupNag.markBackupNagShown(); navigate("/personal-backup"); }}
-            onDismiss={() => { setJustOnboarded(false); backupNag.dismissForSession(); }}
-          />
-        </EntryShell>
-      );
-    }
-    return renderImportFirstReceive();
+    if (chosenPath === "have") return renderImportFirstReceive();
   }
 
   // One-time telemetry consent screen: after backup confirmation (create path)
