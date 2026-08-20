@@ -69,7 +69,6 @@ package com.veyrnox.app
 //     RSA-OAEP asymmetric ("wrap without prompt") deferred; revisit criterion
 //     is the M2d-1c/-1d device runbook surfacing UX pain.
 
-import android.os.Build
 import androidx.fragment.app.FragmentActivity
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin

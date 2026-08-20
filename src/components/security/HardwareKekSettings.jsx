@@ -83,7 +83,7 @@ function prettyHardwareBacking(backing) {
   switch (backing) {
     case 'strongBox': return 'StrongBox';
     case 'tee': return 'TEE';
-    case 'secureEnclave': return 'Secure Enclave';
+    case 'secureEnclave': return 'Device hardware';
     case 'none': return 'None detected';
     default: return backing ? String(backing) : 'Unknown';
   }
