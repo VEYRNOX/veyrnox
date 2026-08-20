@@ -78,7 +78,8 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
     expect(workflow).toContain('name: veyrnox-firebase-test-apk');
-    expect(workflow).toContain('--app artifacts/app-firebaseTest.apk');
+    expect(workflow).toContain('gcloud storage cp artifacts/app-firebaseTest.apk "$APP_GCS_URI"');
+    expect(workflow).toContain('--app "$APP_GCS_URI"');
     expect(workflow).not.toContain('--app artifacts/app-release.aab');
   });
 
