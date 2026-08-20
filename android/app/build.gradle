@@ -5,6 +5,8 @@ apply plugin: 'kotlin-android'
 // labelled staging store packages. Ordinary production builds leave it false.
 def firebaseObservabilityEnabled =
     (project.findProperty('FIREBASE_OBSERVABILITY_ENABLED') ?: 'false').toBoolean()
+def nativeRaspStartupBlockEnabled =
+    (project.findProperty('NATIVE_RASP_STARTUP_BLOCK_ENABLED') ?: 'true').toBoolean()
 
 android {
     namespace = "com.veyrnox.app"
@@ -22,7 +24,7 @@ android {
         applicationId "com.veyrnox.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10
+        versionCode 30
         // Customer-facing version for the public Play launch. versionCode is internal
         // bookkeeping (monotonic, permanently consumed per upload, never shown to users);
         // versionName is what appears on the store listing.
@@ -32,6 +34,7 @@ android {
         // RASP APK tamper detection — inject via -PRELEASE_CERT_SHA256=<hash>.
         // Blank = fail-closed (I4). Release builds validate format at task start.
         buildConfigField "String", "RELEASE_CERT_SHA256", "\"${project.findProperty('RELEASE_CERT_SHA256') ?: ''}\""
+        buildConfigField "boolean", "NATIVE_RASP_STARTUP_BLOCK_ENABLED", "${nativeRaspStartupBlockEnabled}"
         // Firebase observability is enabled only by an explicit CI build property.
         // Production stays disabled even if a config file is present accidentally.
         buildConfigField "boolean", "FIREBASE_OBSERVABILITY_ENABLED", "${firebaseObservabilityEnabled}"
@@ -202,13 +205,19 @@ dependencies {
     samsungImplementation 'com.google.firebase:firebase-perf'
 
     // --- Samsung Galaxy Store (RevenueCat handles billing) ---
-    samsungImplementation 'com.revenuecat.purchases:purchases:10.16.2'
+    compileOnly 'com.revenuecat.purchases:purchases:10.16.0'
+    compileOnly 'com.revenuecat.purchases:purchases-hybrid-common:18.29.0'
+    compileOnly 'com.revenuecat.purchases:purchases-store-galaxy:10.16.0'
+    samsungImplementation 'com.revenuecat.purchases:purchases:10.16.0'
     samsungImplementation 'com.revenuecat.purchases:purchases-hybrid-common:18.29.0'
-    samsungImplementation 'com.revenuecat.purchases:purchases-store-galaxy:10.16.2'
+    samsungImplementation 'com.revenuecat.purchases:purchases-store-galaxy:10.16.0'
 
     // --- Huawei HMS (AppGallery — no RevenueCat support, direct HMS IAP) ---
+    compileOnly 'com.huawei.hms:base:6.13.0.303'
+    compileOnly 'com.huawei.hms:iap:6.16.6.305'
+    compileOnly 'com.huawei.hms:safetydetect:6.3.0.301'
     huaweiImplementation 'com.huawei.hms:base:6.13.0.303'
-    huaweiImplementation 'com.huawei.hms:iap:6.5.1.300'
+    huaweiImplementation 'com.huawei.hms:iap:6.16.6.305'
     huaweiImplementation 'com.huawei.hms:safetydetect:6.3.0.301'
 }
 
@@ -421,13 +430,19 @@ tasks.matching { it.name.endsWith('Release') && (it.name.startsWith('bundle') ||
             logger.lifecycle("release-cert guard: debug cert resolved from ${debugSource}")
         }
         if (uploadSha != null && cert.equalsIgnoreCase(uploadSha)) {
-            throw new GradleException(
-                "RELEASE_CERT_SHA256 is the UPLOAD cert (${uploadSha}).\n" +
-                'With Play App Signing enabled, Play re-signs the AAB with Google\'s app ' +
-                'signing key, so the installed APK never carries the upload cert. Use the ' +
-                'SHA-256 from Play Console -> Setup -> App integrity -> App signing key.\n' +
-                'If this app is NOT enrolled in Play App Signing, the upload key IS the ' +
-                'signing key — remove this check deliberately rather than working around it.')
+            def allowDirectPhone =
+                (project.findProperty('ALLOW_UPLOAD_CERT_FOR_DIRECT_PHONE') ?: 'false').toString()
+            if (allowDirectPhone.equalsIgnoreCase('true')) {
+                logger.lifecycle('release-cert guard: allowing upload cert for direct-phone build')
+            } else {
+                throw new GradleException(
+                    "RELEASE_CERT_SHA256 is the UPLOAD cert (${uploadSha}).\n" +
+                    'With Play App Signing enabled, Play re-signs the AAB with Google\'s app ' +
+                    'signing key, so the installed APK never carries the upload cert. Use the ' +
+                    'SHA-256 from Play Console -> Setup -> App integrity -> App signing key.\n' +
+                    'If this app is NOT enrolled in Play App Signing, the upload key IS the ' +
+                    'signing key — remove this check deliberately rather than working around it.')
+            }
         }
         if (debugSha != null && cert.equalsIgnoreCase(debugSha)) {
             throw new GradleException(

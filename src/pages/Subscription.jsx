@@ -82,7 +82,7 @@ function unavailablePurchaseMessage(err) {
     return "Galaxy Store billing is not wired in this build yet — nothing was charged";
   }
   if (err?.code === HUAWEI_IAP_NOT_WIRED) {
-    return "AppGallery billing is not wired in this build yet — nothing was charged";
+    return "AppGallery billing is unavailable in this build — nothing was charged";
   }
   return null;
 }
@@ -487,11 +487,6 @@ export default function Subscription() {
   const aiReferralDiscount = discountPercent(aiSelectedBasePrice, aiSelectedOfferPrice);
   const hasAnyReferralDiscount = hasDiscount || hasAiDiscount;
   const activeReferralPercent = referralDiscount ?? aiReferralDiscount;
-  const safetyPlusStoreWiringPending =
-    isNative &&
-    !selectedPackage &&
-    currentStoreFlavor() === "huawei";
-
   async function purchaseAndRefresh(pkg, {
     offerTag = null,
     expectedTier = TIER.SAFETY_PLUS,
@@ -842,12 +837,10 @@ export default function Subscription() {
                     </p>
                   </>
                 ) : (
-                  <p className="text-xs text-muted-foreground">
-                    {currentStoreFlavor() === "huawei"
-                        ? "AI Security Protection is intended for AppGallery billing, but that billing path is not wired in this build yet."
-                        : aiOfferingConfigured
-                          ? "AI Security Protection is intended to be sold as an in-app subscription, but no store package is available for this build yet."
-                          : "AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet."}
+                    <p className="text-xs text-muted-foreground">
+                    {aiOfferingConfigured
+                      ? "AI Security Protection is intended to be sold as an in-app subscription, but no store package is available for this build yet."
+                      : "AI Security Protection is intended to be sold as an in-app subscription, but its offering is not configured in this build yet."}
                   </p>
                 )
               ) : (
@@ -990,17 +983,9 @@ export default function Subscription() {
                 {isNative
                   ? selectedPriceString
                     ? `Upgrade — ${selectedPriceString}`
-                    : safetyPlusStoreWiringPending
-                      ? "Upgrade unavailable on this build"
-                      : "Upgrade — loading pricing"
+                    : "Upgrade — loading pricing"
                   : "Upgrade — mobile only"}
               </Button>
-
-              {safetyPlusStoreWiringPending && (
-                <p className="text-xs text-muted-foreground text-center">
-                  {"Safety Plus is intended for AppGallery billing, but that billing path is not wired in this build yet."}
-                </p>
-              )}
 
               {/* Renewal terms. Both stores require this disclosure at the
                   point of purchase, so it sits with the CTA rather than in
