@@ -14,7 +14,6 @@
 //
 // No private key ever touches this module. I1 preserved.
 
-import AppSolana from '@ledgerhq/hw-app-solana';
 import TrezorConnect from '@trezor/connect-web';
 import {
   PublicKey, Transaction, SystemProgram, Connection,
@@ -178,6 +177,10 @@ export async function signAndBroadcastSolLedger({
   computeUnitLimit = 0,
 }) {
   assertNotDeniabilitySession();
+  // Keep the Ledger Solana package out of the eager SEND bundle. Android/iOS
+  // WebViews cannot resolve a bare external specifier from a packaged asset,
+  // so this must lazy-load only when the Ledger path is actually invoked.
+  const { default: AppSolana } = await import('@ledgerhq/hw-app-solana');
   const solApp = new AppSolana(transport);
 
   return sendSolHw({
