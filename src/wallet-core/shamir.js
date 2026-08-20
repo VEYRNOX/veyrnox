@@ -1,13 +1,15 @@
-// ponytail: hand-rolled Shamir. Audit 2026-08-16 flagged replacement with an
-// audited library (@stablelib/sss or equivalent) as the correct upgrade path.
-// Full library swap deferred — too large for the remediation PR and needs its
-// own review. Tracking issue: see PR body of audit 2026-08-16 remediation for
-// the linked GitHub issue. Do NOT extend this file's algorithmic surface;
-// route new needs through the deferred library swap.
+// Audited Shamir wrapper. The raw split/combine core now routes through
+// `@stablelib/tss`, while this module preserves Veyrnox's envelope/versioning,
+// commitment, CRC, and validation behaviour around that core.
+//
+// Security-sensitive changes here still need explicit review: this file sits on
+// the recovery-share boundary and owns the compatibility contract for the share
+// envelope callers consume.
 /**
- * Shamir Secret Sharing over GF(2^8) — AES field (irreducible poly 0x11B).
+ * Shamir Secret Sharing over GF(2^8) via audited StableLib raw TSS.
  *
- * Pure implementation, no external dependencies beyond Web Crypto RNG.
+ * The external primitive is audited; this wrapper keeps the project-specific
+ * share envelope, commitment, and corruption/authentication checks around it.
  * Designed for 2-of-3 threshold splitting of 32-byte DEK material.
  *
  * Share envelope (v2, 88 bytes):
@@ -422,6 +424,7 @@ export function combine(shares) {
     if (local.length > refK) {
       const baseShares = kShares.slice(0, refK - 1);
       for (let e = refK; e < local.length; e++) {
+        /** @type {Uint8Array | null} */
         let extraRecon = null;
         const subset = [...baseShares, local[e]];
         const rawSubset = [];
@@ -435,10 +438,9 @@ export function combine(shares) {
             throw new Error('SHARE_INCONSISTENT');
           }
         } catch (err) {
-          if (err?.message === 'SHARE_INCONSISTENT') throw err;
-          if (result) {
-            result.fill(0);
-          }
+          const error = /** @type {{ message?: string } | null | undefined} */ (err);
+          if (error?.message === 'SHARE_INCONSISTENT') throw err;
+          result.fill(0);
           throw new Error('SHARE_INCONSISTENT');
         } finally {
           for (const raw of rawSubset) raw.fill(0);

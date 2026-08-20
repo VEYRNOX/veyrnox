@@ -210,7 +210,14 @@ async function runArgon2idBinary(opts) {
  * @param {Uint8Array} salt
  * @param {{parallelism:number,iterations:number,memorySize:number,hashLength:number}} [params]
  */
-async function deriveKey(password, salt, params = KDF_PARAMS) {
+// Dev-only: 192 MiB Argon2id OOMs in iOS-simulator WKWebView (backup = 4 calls
+// = 768 MiB peak). Dead-code-eliminated in production builds.
+/** @type {{parallelism:number,iterations:number,memorySize:number,hashLength:number}} */
+const _devKdfParams = (import.meta.env.VITE_BYPASS_RASP === '1' && !import.meta.env.PROD)
+  ? Object.freeze({ ...KDF_PARAMS, iterations: 1, memorySize: 8192 })
+  : KDF_PARAMS;
+
+async function deriveKey(password, salt, params = _devKdfParams) {
   const { parallelism, iterations, memorySize, hashLength } = params;
   const pw = enc.encode(password.normalize('NFKC'));
   let raw;
@@ -663,4 +670,3 @@ function zero(u8) { if (u8 && u8.fill) u8.fill(0); }
 // base64 helpers (no Buffer dependency; browser-safe)
 function b64(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); }
 function unb64(str) { const s = atob(str); const u8 = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i); return u8; }
-

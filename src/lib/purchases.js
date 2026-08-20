@@ -22,6 +22,10 @@ export {
 export { SAMSUNG_IAP_NOT_WIRED } from './purchases/samsungPurchases.js';
 export { HUAWEI_IAP_NOT_WIRED } from './purchases/huaweiPurchases.js';
 
+/**
+ * @typedef {{ offerTag?: string | null }} PurchasePackageOptions
+ */
+
 function adapter() {
   if (Capacitor.getPlatform() === 'ios') return revenuecat;
   switch (import.meta.env.VITE_STORE_FLAVOR) {
@@ -34,44 +38,62 @@ function adapter() {
   }
 }
 
-export async function configurePurchases(...args) {
-  return adapter().configurePurchases(...args);
+export async function configurePurchases() {
+  return adapter().configurePurchases();
 }
 
-export async function getOfferings(...args) {
-  return adapter().getOfferings(...args);
+export async function getOfferings() {
+  return adapter().getOfferings();
 }
 
-export async function getTierOffering(...args) {
-  return adapter().getTierOffering(...args);
+export async function getTierOffering(offeringId) {
+  return adapter().getTierOffering(offeringId);
 }
 
-export async function purchasePackage(...args) {
-  return adapter().purchasePackage(...args);
+/**
+ * @param {unknown} pkg
+ * @param {PurchasePackageOptions} [opts]
+ */
+export async function purchasePackage(pkg, opts = {}) {
+  return adapter().purchasePackage(pkg, opts);
 }
 
-export async function restorePurchases(...args) {
-  return adapter().restorePurchases(...args);
+export async function restorePurchases() {
+  return adapter().restorePurchases();
 }
 
-export async function getCustomerInfo(...args) {
-  return adapter().getCustomerInfo(...args);
+export async function getCustomerInfo() {
+  return adapter().getCustomerInfo();
 }
 
-export async function getAppUserId(...args) {
-  return adapter().getAppUserId(...args);
+export async function getAppUserId() {
+  return adapter().getAppUserId();
 }
 
-export async function addCustomerInfoUpdateListener(...args) {
-  return adapter().addCustomerInfoUpdateListener(...args);
+/**
+ * @param {(customerInfo: unknown) => void} callback
+ */
+export async function addCustomerInfoUpdateListener(callback) {
+  return adapter().addCustomerInfoUpdateListener(callback);
 }
 
-export async function setReferralAttributes(...args) {
-  return adapter().setReferralAttributes(...args);
+/**
+ * @param {string} code
+ * @param {string | null | undefined} tierKey
+ * @param {boolean | null | undefined} isFoundingReferrer
+ */
+export async function setReferralAttributes(code, tierKey, isFoundingReferrer) {
+  return adapter().setReferralAttributes(code, tierKey, isFoundingReferrer);
 }
 
 export const setReferralAttribute = setReferralAttributes;
 
-export async function manageSubscription(...args) {
-  return adapter().manageSubscription(...args);
+/**
+ * @param {null | undefined | unknown} [pkg]
+ */
+export async function manageSubscription(pkg = null) {
+  if (Capacitor.getPlatform() !== 'ios' && import.meta.env.VITE_STORE_FLAVOR === 'huawei') {
+    return huawei.manageSubscription(pkg);
+  }
+  return adapter().manageSubscription();
 }

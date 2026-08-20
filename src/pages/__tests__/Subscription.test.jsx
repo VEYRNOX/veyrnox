@@ -20,22 +20,23 @@ const restorePurchases = vi.fn();
 const manageSubscription = vi.fn();
 const setReferralAttribute = vi.fn();
 const offerPriceInfo = vi.fn();
+/** @type {import('vitest').Mock<() => string | null>} */
 const getAiSecurityProtectionOfferingId = vi.fn(() => null);
 const currentStoreFlavor = vi.fn(() => 'google');
 vi.mock('@/lib/purchases', () => ({
-  getOfferings: (...a) => getOfferings(...a),
-  getTierOffering: (...a) => getTierOffering(...a),
-  getAiSecurityProtectionOfferingId: (...a) => getAiSecurityProtectionOfferingId(...a),
-  purchasePackage: (...a) => purchasePackage(...a),
-  restorePurchases: (...a) => restorePurchases(...a),
-  manageSubscription: (...a) => manageSubscription(...a),
-  setReferralAttribute: (...a) => setReferralAttribute(...a),
+  getOfferings,
+  getTierOffering,
+  getAiSecurityProtectionOfferingId,
+  purchasePackage,
+  restorePurchases,
+  manageSubscription,
+  setReferralAttribute,
   // Resolves an offer's REAL price from the store payload. Defaults to null
   // (unresolvable) so the page falls back to the base price and — critically —
   // suppresses the strikethrough. Tests that exercise a real discount override
   // it per-case. Covered directly in lib/__tests__/purchases*.offers.test.js.
-  offerPriceInfo: (...a) => offerPriceInfo(...a),
-  currentStoreFlavor: (...a) => currentStoreFlavor(...a),
+  offerPriceInfo,
+  currentStoreFlavor,
   OFFER_UNAVAILABLE: 'OFFER_UNAVAILABLE',
   SAMSUNG_IAP_NOT_WIRED: 'SAMSUNG_IAP_NOT_WIRED',
   HUAWEI_IAP_NOT_WIRED: 'HUAWEI_IAP_NOT_WIRED',
@@ -54,14 +55,14 @@ const getOfferingIdForTierMock = vi.fn();
 const calculateDiscountCentsMock = vi.fn();
 vi.mock('@/lib/referral', async (importOriginal) => ({
   ...(await importOriginal()),
-  hasRedeemed: (...a) => hasRedeemedMock(...a),
-  getRedeemedCode: (...a) => getRedeemedCodeMock(...a),
-  hasAttributed: (...a) => hasAttributedMock(...a),
-  markAttributed: (...a) => markAttributedMock(...a),
-  getTier: (...a) => getTierMock(...a),
-  getTierInfo: (...a) => getTierInfoMock(...a),
-  getOfferingIdForTier: (...a) => getOfferingIdForTierMock(...a),
-  calculateDiscountCents: (...a) => calculateDiscountCentsMock(...a),
+  hasRedeemed: hasRedeemedMock,
+  getRedeemedCode: getRedeemedCodeMock,
+  hasAttributed: hasAttributedMock,
+  markAttributed: markAttributedMock,
+  getTier: getTierMock,
+  getTierInfo: getTierInfoMock,
+  getOfferingIdForTier: getOfferingIdForTierMock,
+  calculateDiscountCents: calculateDiscountCentsMock,
   PLAN_FULL_PRICE_CENTS: { monthly: 599, annual: 4999 },
   // Branch review 2026-08-15 (C-1): spread importOriginal() so exports this
   // suite does not stub — storeDiscountCents — resolve to the REAL function
@@ -75,8 +76,8 @@ vi.mock('@/lib/referral', async (importOriginal) => ({
 const recordAttribution = vi.fn();
 const fetchPaidCount = vi.fn();
 vi.mock('@/api/referralApi', () => ({
-  recordAttribution: (...a) => recordAttribution(...a),
-  fetchPaidCount: (...a) => fetchPaidCount(...a),
+  recordAttribution,
+  fetchPaidCount,
 }));
 
 const refreshTier = vi.fn();

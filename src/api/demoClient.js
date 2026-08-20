@@ -231,8 +231,18 @@ function applyLimit(rows, limit) {
   return rows.slice(0, Math.floor(n));
 }
 
+/**
+ * @typedef {Error & {
+ *   code: 'DEMO_ENTITY_NOT_FOUND',
+ *   entity: string,
+ *   id: string,
+ * }} DemoMissingRowError
+ */
+
 function makeMissingRowError(entityName, id) {
-  const err = new Error(`${entityName} row not found: ${id}`);
+  const err = /** @type {DemoMissingRowError} */ (
+    new Error(`${entityName} row not found: ${id}`)
+  );
   err.code = 'DEMO_ENTITY_NOT_FOUND';
   err.entity = entityName;
   err.id = id;
