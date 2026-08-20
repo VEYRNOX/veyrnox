@@ -25,7 +25,7 @@ import {
 // NOTE: setBiometricUnlockEnabled is used ONLY in the explicit confirmEnable() path
 // (a deliberate user action), never automatically on mount.
 
-export default function BiometricUnlockSettings() {
+export default function BiometricUnlockSettings({ embedded = false } = {}) {
   const { t } = useTranslation('wallet');
   const { biometricPreview, disableBiometricUnlock, recordAudit } = useWallet();
   const [enabled, setEnabled] = useState(() => isBiometricUnlockEnabled());
@@ -111,11 +111,13 @@ export default function BiometricUnlockSettings() {
   const simulated = status?.simulated;
 
   return (
-    <div className="p-5 rounded-xl border border-border bg-card space-y-4">
-      <div className="flex items-center gap-2">
-        <ScanFace className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">{t('settings.biometric_unlock.heading')}</h2>
-      </div>
+    <div className={embedded ? "space-y-4" : "p-5 rounded-xl border border-border bg-card space-y-4"}>
+      {!embedded && (
+        <div className="flex items-center gap-2">
+          <ScanFace className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold">{t('settings.biometric_unlock.heading')}</h2>
+        </div>
+      )}
 
       {/* VULN-1 / VULN-2 disclosure — explicit about the security trade-off. */}
       <div

@@ -37,7 +37,7 @@ import {
   canSetPasskeyUnlock,
 } from '@/lib/passkey';
 
-export default function PasskeyUnlockSettings() {
+export default function PasskeyUnlockSettings({ embedded = false } = {}) {
   const { t } = useTranslation('wallet');
   const { passkeyPreview } = useWallet();
   const [enabled, setEnabled] = useState(() => isPasskeyUnlockEnabled());
@@ -124,11 +124,13 @@ export default function PasskeyUnlockSettings() {
   };
 
   return (
-    <div className="p-5 rounded-xl border border-border bg-card space-y-4">
-      <div className="flex items-center gap-2">
-        <KeyRound className="h-5 w-5 text-primary" />
-        <h2 className="font-semibold">{nativeBio ? t('settings.passkey_unlock.heading_native') : t('settings.passkey_unlock.heading_web')}</h2>
-      </div>
+    <div className={embedded ? "space-y-4" : "p-5 rounded-xl border border-border bg-card space-y-4"}>
+      {!embedded && (
+        <div className="flex items-center gap-2">
+          <KeyRound className="h-5 w-5 text-primary" />
+          <h2 className="font-semibold">{nativeBio ? t('settings.passkey_unlock.heading_native') : t('settings.passkey_unlock.heading_web')}</h2>
+        </div>
+      )}
 
       {/* Honest scope banner: convenience factor, never the path to funds. */}
       <div className="flex items-start gap-2 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">

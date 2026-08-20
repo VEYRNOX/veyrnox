@@ -293,8 +293,20 @@ export default function Settings() {
         </div>
       ) : (
         <>
-          <BiometricUnlockSettings />
-          <PasskeyUnlockSettings />
+          <div className="p-5 rounded-xl border border-border bg-card space-y-5">
+            <div className="flex items-center gap-2">
+              <Fingerprint className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">
+                {isNative ? "Biometric" : "Unlock Methods"}
+              </h2>
+            </div>
+
+            <div className="space-y-5">
+              <BiometricUnlockSettings embedded />
+              <div className="border-t border-border" />
+              <PasskeyUnlockSettings embedded />
+            </div>
+          </div>
           <TwoFactorSettings />
 
           <HardwareKekSettings />
