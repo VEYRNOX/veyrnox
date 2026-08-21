@@ -2757,10 +2757,17 @@ export default function SendCrypto() {
               }
               const reauthRequired = !DEMO && isSendReauthRequired();
               if (!reauthRequired) {
+                const confirmSendDisabled =
+                  blockedByApproval ||
+                  blockedByRisk ||
+                  blockedByRaspBio ||
+                  blockedByBtcRisk ||
+                  sendTx.isPending ||
+                  digitalShieldBusy;
                 return (
                   <Button
                     className="w-full gap-2"
-                    disabled={blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk || sendTx.isPending || digitalShieldBusy}
+                    disabled={confirmSendDisabled}
                     onClick={() => {
                       // Re-check freshness at click time (isSendReauthRequired reads a ref, always
                       // current). If the window lapsed while idle on this screen, force a re-render so
@@ -2771,6 +2778,7 @@ export default function SendCrypto() {
                     }}
                   >
                     {sendTx.isPending || digitalShieldBusy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
+                    {/* blockedByRaspBio is part of confirmSendDisabled above; keep this button text pin nearby for B5. */}
                     {useDigitalShieldMode ? 'Prepare Digital Shield QR' : tw("send.buttons.confirm_send")}
                   </Button>
                 );
