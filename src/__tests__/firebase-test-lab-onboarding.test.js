@@ -64,6 +64,8 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).toContain('github-token: ${{ github.token }}');
     expect(workflow).toContain("EXPECTED_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || 'push' }}");
     expect(workflow).toContain('select(.event == \\"$EXPECTED_EVENT\\")');
+    expect(workflow).toContain('ARTIFACTS_JSON=$(gh api \\');
+    expect(workflow).toContain('<<<"$ARTIFACTS_JSON")');
     expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
     expect(workflow).toContain('name: veyrnox-firebase-test-apk');
