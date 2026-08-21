@@ -2,6 +2,8 @@ import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 export const CONTRACT_INTEL_CONSENT_KEY = 'veyrnox-contract-intel-consent';
 export const DISMISSED_SUSPICIOUS_NFTS_KEY = 'veyrnox-dismissed-suspicious-nfts';
+export const CONTRACT_INTEL_CACHE_KEY = 'veyrnox-contract-intel-cache';
+export const CONTRACT_INTEL_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 export function isContractIntelConfigured() {
   return !!(
@@ -27,6 +29,58 @@ export function setContractIntelConsent(granted) {
 export function clearContractIntelConsent() {
   if (isDeniabilityOrDemoActive()) return;
   try { localStorage.removeItem(CONTRACT_INTEL_CONSENT_KEY); } catch { /* best-effort */ }
+}
+
+function readContractIntelCacheMap() {
+  try {
+    const raw = localStorage.getItem(CONTRACT_INTEL_CACHE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeContractIntelCacheMap(map) {
+  if (isDeniabilityOrDemoActive()) return;
+  try { localStorage.setItem(CONTRACT_INTEL_CACHE_KEY, JSON.stringify(map)); } catch { /* best-effort */ }
+}
+
+export function readCachedContractIntel(id, now = Date.now()) {
+  if (!id) return null;
+  const map = readContractIntelCacheMap();
+  const entry = map[String(id)];
+  if (!entry || typeof entry !== 'object') return null;
+  const expiresAt = Number(entry.expiresAt);
+  if (!Number.isFinite(expiresAt) || expiresAt <= now) {
+    delete map[String(id)];
+    writeContractIntelCacheMap(map);
+    return null;
+  }
+  return entry.value ?? null;
+}
+
+export function cacheContractIntel(id, value, now = Date.now()) {
+  if (!id || value == null) return;
+  const map = readContractIntelCacheMap();
+  map[String(id)] = {
+    value,
+    expiresAt: now + CONTRACT_INTEL_CACHE_TTL_MS,
+  };
+  writeContractIntelCacheMap(map);
+}
+
+export function clearCachedContractIntel(id) {
+  if (!id) return;
+  const map = readContractIntelCacheMap();
+  delete map[String(id)];
+  writeContractIntelCacheMap(map);
+}
+
+export function clearAllCachedContractIntel() {
+  if (isDeniabilityOrDemoActive()) return;
+  try { localStorage.removeItem(CONTRACT_INTEL_CACHE_KEY); } catch { /* best-effort */ }
 }
 
 export function readDismissedSuspiciousNfts() {

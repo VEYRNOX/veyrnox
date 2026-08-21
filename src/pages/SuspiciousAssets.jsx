@@ -11,12 +11,14 @@ import { openAdvisor, publishAdvisorContext } from '@/lib/advisorBridge';
 import { safeNftImageUrl } from '@/lib/nftImageUrl';
 import { screenAssetContract } from '@/api/tipScreen';
 import {
+  cacheContractIntel,
   clearContractIntelConsent,
   clearDismissedSuspiciousNfts,
   dismissSuspiciousNft,
   getContractIntelConsentState,
   hasContractIntelConsent,
   isContractIntelConfigured,
+  readCachedContractIntel,
   readDismissedSuspiciousNfts,
   setContractIntelConsent,
 } from '@/lib/suspiciousAssetPrefs';
@@ -105,6 +107,11 @@ export default function SuspiciousAssets() {
   };
   const fetchRemoteContractIntel = async (token) => {
     if (!token?.id || remoteContractIntel[token.id] || remoteContractIntelLoading[token.id] || !contractIntelConfigured || !contractIntelEnabled) return;
+    const cached = readCachedContractIntel(token.id);
+    if (cached) {
+      setRemoteContractIntel((prev) => ({ ...prev, [token.id]: cached }));
+      return;
+    }
     setRemoteContractIntelLoading((prev) => ({ ...prev, [token.id]: true }));
     try {
       const result = await screenAssetContract({
@@ -112,6 +119,7 @@ export default function SuspiciousAssets() {
         contractAddress: token.token_contract,
         tokenAddress: token.token_contract,
       });
+      if (result) cacheContractIntel(token.id, result);
       setRemoteContractIntel((prev) => ({ ...prev, [token.id]: result }));
     } finally {
       setRemoteContractIntelLoading((prev) => ({ ...prev, [token.id]: false }));

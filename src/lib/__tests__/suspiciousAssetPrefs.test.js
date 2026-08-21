@@ -49,14 +49,29 @@ describe('suspiciousAssetPrefs', () => {
     mod.clearDismissedSuspiciousNfts();
     expect(mod.readDismissedSuspiciousNfts()).toEqual([]);
   });
+
+  it('caches contract-intel results with a ttl', () => {
+    const now = Date.UTC(2026, 7, 21, 12, 0, 0);
+    const value = { verdict: 'warn', risks: [{ title: 'test' }] };
+    mod.cacheContractIntel('token-1', value, now);
+    expect(mod.readCachedContractIntel('token-1', now + 1_000)).toEqual(value);
+    expect(mod.readCachedContractIntel('token-1', now + mod.CONTRACT_INTEL_CACHE_TTL_MS + 1)).toBeNull();
+  });
+
+  it('does not write contract-intel cache entries in a decoy/demo session', () => {
+    isDeniabilityOrDemoActive.mockReturnValue(true);
+    mod.cacheContractIntel('token-1', { verdict: 'warn' });
+    expect(localStorage.getItem(mod.CONTRACT_INTEL_CACHE_KEY)).toBeNull();
+  });
 });
 
 describe('suspiciousAssetPrefs — panic wipe coverage', () => {
   it('preference keys are listed in wallet-core/panic.js', async () => {
-    const { CONTRACT_INTEL_CONSENT_KEY, DISMISSED_SUSPICIOUS_NFTS_KEY } = await import('@/lib/suspiciousAssetPrefs.js');
+    const { CONTRACT_INTEL_CONSENT_KEY, CONTRACT_INTEL_CACHE_KEY, DISMISSED_SUSPICIOUS_NFTS_KEY } = await import('@/lib/suspiciousAssetPrefs.js');
     const here = dirname(fileURLToPath(import.meta.url));
     const panicSrc = readFileSync(join(here, '../../wallet-core/panic.js'), 'utf8');
     expect(panicSrc).toContain(CONTRACT_INTEL_CONSENT_KEY);
+    expect(panicSrc).toContain(CONTRACT_INTEL_CACHE_KEY);
     expect(panicSrc).toContain(DISMISSED_SUSPICIOUS_NFTS_KEY);
   });
 });
