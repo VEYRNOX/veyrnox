@@ -115,6 +115,7 @@ import { requiresVerification } from "@/lib/seedVerifyGate";
 import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
 import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
 import { isRiskGateReady } from "@/lib/riskGateReady";
+import { openAdvisor, publishAdvisorContext } from "@/lib/advisorBridge";
 import {
   buildDigitalShieldBtcPsbt,
   buildDigitalShieldEvmRequest,
