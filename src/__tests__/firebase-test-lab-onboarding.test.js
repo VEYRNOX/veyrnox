@@ -63,7 +63,7 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(roboScript).toContainEqual(expect.objectContaining({
       eventType: 'ASSERTION',
       contextDescriptor: expect.objectContaining({
-        elementDescriptors: [{ text: 'Created.' }],
+        elementDescriptors: [{ text: 'Help improve Veyrnox' }],
       }),
     }));
   });
