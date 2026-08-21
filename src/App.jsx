@@ -284,27 +284,27 @@ function App() {
       <ErrorBoundary>
         <WalletProvider>
           <TrezorProvider>
-          <TierProvider>
-            <QueryClientProvider client={queryClientInstance}>
-              <Router>
-                <DeepLinkHandler />
-                <VoiceProvider>
-                  <EnvBadge />
-                  <AuthenticatedApp />
-                  <VoiceFab />
-                  <OfflineBanner />
-          <DigitalShieldProvider>
-                </VoiceProvider>
-              </Router>
-              <Toaster />
-            </QueryClientProvider>
-          </TierProvider>
+            <TierProvider>
+              <QueryClientProvider client={queryClientInstance}>
+                <Router>
+                  <VoiceProvider>
+                    <DigitalShieldProvider>
+                      <DeepLinkHandler />
+                      <EnvBadge />
+                      <AuthenticatedApp />
+                      <VoiceFab />
+                      <OfflineBanner />
+                    </DigitalShieldProvider>
+                  </VoiceProvider>
+                </Router>
+                <Toaster />
+              </QueryClientProvider>
+            </TierProvider>
           </TrezorProvider>
         </WalletProvider>
       </ErrorBoundary>
     </ThemeProvider>
   )
 }
-          </DigitalShieldProvider>
 
 export default App
