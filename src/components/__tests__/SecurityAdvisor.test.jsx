@@ -32,13 +32,14 @@ vi.mock('@/api/demoClient', () => ({
   DEMO: false,
 }));
 
+const useTierMock = vi.fn(() => ({
+  currentTier: 'free',
+  tiers: [],
+  loading: false,
+  refreshTier: vi.fn(),
+}));
 vi.mock('@/lib/TierProvider', () => ({
-  useTier: () => ({
-    currentTier: 'free',
-    tiers: [],
-    loading: false,
-    refreshTier: vi.fn(),
-  }),
+  useTier: () => useTierMock(),
 }));
 
 describe('SecurityAdvisor', () => {
@@ -51,6 +52,12 @@ describe('SecurityAdvisor', () => {
   beforeEach(async () => {
     vi.resetModules();
     vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+    useTierMock.mockReturnValue({
+      currentTier: 'free',
+      tiers: [],
+      loading: false,
+      refreshTier: vi.fn(),
+    });
     isDeniabilityOrDemoActive = (await import('@/wallet-core/deniabilitySession.js')).isDeniabilityOrDemoActive;
     const advisorModule = await import('../SecurityAdvisor.jsx');
     SecurityAdvisor = advisorModule.default;
@@ -100,6 +107,30 @@ describe('SecurityAdvisor', () => {
         <SecurityAdvisor walletChain="evm" />
       </MemoryRouter>
     );
+    expect(screen.getByRole('button', { name: /open vigil/i })).toBeDefined();
+  });
+
+  it('does not crash when useTranslation returns no i18n handle', async () => {
+    vi.doMock('react-i18next', () => ({
+      useTranslation: () => ({
+        t: (k, o) => o?.defaultValue || k,
+        i18n: undefined,
+      }),
+      Trans: ({ children }) => children,
+      initReactI18next: { type: '3rdParty', init: () => {} },
+      I18nextProvider: ({ children }) => children,
+    }));
+    vi.resetModules();
+    isDeniabilityOrDemoActive = (await import('@/wallet-core/deniabilitySession.js')).isDeniabilityOrDemoActive;
+    isDeniabilityOrDemoActive.mockReturnValue(false);
+    SecurityAdvisor = (await import('../SecurityAdvisor.jsx')).default;
+
+    render(
+      <MemoryRouter initialEntries={['/send']}>
+        <SecurityAdvisor walletChain="evm" />
+      </MemoryRouter>
+    );
+
     expect(screen.getByRole('button', { name: /open vigil/i })).toBeDefined();
   });
 

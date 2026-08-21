@@ -11,10 +11,10 @@ import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
 // ceiling enforced at send time are one value (H-7).
 import { resolveWcWorstCaseFeeWei } from '@/wallet-core/evm/walletconnect/fee.js';
 import { checkDappDomain } from '@/risk/knownBadDapps.js';
-import { score } from '@/risk/score.js';
-import { buildRiskInputsFromWcRequest } from '@/risk/fromWalletConnect.js';
-import RiskVerdictBanner from '@/components/RiskVerdictBanner.jsx';
-import { simulateEvmTransaction } from '@/wallet-core/evm/simulate.js';
+import TransactionIntelligencePanel from '@/components/TransactionIntelligencePanel.jsx';
+import { deriveSigningPolicy } from '@/policy/signingPolicy.js';
+import { buildWcTransactionIntelligence } from '@/risk/walletConnectIntel.js';
+import { readRemoteScreenPreference } from '@/lib/remoteScreenPreference.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { useModalA11y } from '@/lib/useModalA11y.js';
 
@@ -32,10 +32,12 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   const [permitAcknowledged, setPermitAcknowledged] = useState(false);
   const [txAcknowledged, setTxAcknowledged] = useState(false);
   const [riskVerdict, setRiskVerdict] = useState(null);
+  const [txIntelVerdict, setTxIntelVerdict] = useState(null);
+  const [tipResult, setTipResult] = useState(null);
   const [codePending, setCodePending] = useState(false);
   const [riskAck, setRiskAck] = useState(false);
 
-  const { topic, id, params, type, blocked, typedDataMeta } = request;
+  const { topic, id, params, type, blocked, typedDataMeta, reviewMeta } = request;
   const { request: { method, params: reqParams } } = params;
 
   const titleId = useId();
@@ -54,6 +56,10 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
       ? t('wc.request_approval.unknown_network_with_id', { id: wcChainIdNum })
       : t('wc.request_approval.unknown_network'));
   const realFundsWarning = wcNetwork ? wcNetwork.isTestnet === false : true;
+  const tipConfigured = !!import.meta.env.VITE_TIP_BASE_URL;
+  const remoteScreenRequested = readRemoteScreenPreference(tipConfigured);
+  const remoteScreenEnabled = remoteScreenRequested && tipConfigured;
+  const remoteScreenUnavailable = remoteScreenRequested && !tipConfigured;
 
   // H-7 — the MOST this request can cost in fees. M9/F-02-GASCAP already bound
   // it; the bug was that the bound was invisible, so a `value: 0x0` request with
@@ -74,49 +80,48 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   useEffect(() => {
     if (type !== REQUEST_TYPES.SEND_TRANSACTION) return undefined;
     const txParam = reqParams?.[0] || {};
-    const chainId = parseWcChainId(params.chainId);
     let cancelled = false;
+    const abortController = new AbortController();
     setCodePending(true);
     setRiskVerdict(null);
+    setTxIntelVerdict(null);
+    setTipResult(null);
     (async () => {
-      let recipientCode;
-      try {
-        const net = getNetworkByChainId(chainId);
-        if (net?.key && txParam.to) {
-          const sim = await simulateEvmTransaction({
-            networkKey: net.key,
-            from: evmAddress,
-            to: txParam.to,
-            valueWei: txParam.value ? BigInt(txParam.value) : 0n,
-            data: txParam.data ?? '0x',
-          });
-          recipientCode = sim?.recipientCode ?? undefined;
-        }
-      } catch {
-        recipientCode = undefined; // fail closed -> S7 CAUTION
-      }
+      const intel = await buildWcTransactionIntelligence({
+        txParams: txParam,
+        caip2ChainId: params.chainId,
+        evmAddress,
+        remoteScreenEnabled,
+        review: reviewMeta,
+        signal: abortController.signal,
+      });
       if (cancelled) return;
-      const inputs = buildRiskInputsFromWcRequest({ txParam, chainId, recipientCode });
-      let verdict;
-      try {
-        verdict = score(inputs.unsignedTx, inputs.activeSetLocalState, inputs.chainData);
-      } catch {
-        // score() should never throw (it catches its signals), but if it does we
-        // must not read "safe" — synthesize a blocking RISK verdict.
-        verdict = {
-          level: 'RISK',
-          sentence: 'A risk check could not complete. Treat this request as unsafe.',
-          evidence: null,
-          signalId: null,
-          requiresConfirmation: true,
-          signals: [],
-        };
-      }
-      setRiskVerdict(verdict);
+      setRiskVerdict(intel?.localVerdict ?? null);
+      setTxIntelVerdict(intel?.verdict ?? null);
+      setTipResult(intel?.tipResult ?? null);
       setCodePending(false);
     })();
-    return () => { cancelled = true; };
-  }, [type, reqParams, params.chainId, evmAddress]);
+    return () => {
+      cancelled = true;
+      abortController.abort();
+    };
+  }, [type, reqParams, params.chainId, evmAddress, remoteScreenEnabled]);
+
+  useEffect(() => {
+    if (type !== REQUEST_TYPES.SEND_TRANSACTION) return;
+    if (!tipResult || !reqParams?.[0]?.to) return;
+    import('@/lib/threatIntelStore')
+      .then((m) => m.cacheTipResult(reqParams[0].to, tipResult))
+      .catch(() => {});
+  }, [type, tipResult, reqParams]);
+
+  const txIntelPolicy = deriveSigningPolicy({
+    verdict: txIntelVerdict,
+    presign: riskVerdict?.requiresConfirmation && !riskAck
+      ? { proceedAllowed: false, signerReachable: true }
+      : { proceedAllowed: true, signerReachable: true },
+    acknowledged: riskAck,
+  });
 
   const blockedRef = useModalA11y({
     active: !!blocked,
@@ -175,7 +180,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
 
   const riskBlocks =
     type === REQUEST_TYPES.SEND_TRANSACTION &&
-    (codePending || (riskVerdict?.requiresConfirmation && !riskAck));
+    (codePending || !txIntelPolicy.canProceed);
 
   const approveBlocked =
     needsReauth ||
@@ -382,6 +387,16 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                 {t('wc.request_approval.mainnet_flag')}
               </p>
             )}
+            {remoteScreenEnabled && (
+              <p className={styles.hint}>
+                {t('wc.request_approval.remote_screening_notice')}
+              </p>
+            )}
+            {remoteScreenUnavailable && (
+              <p className={styles.hint}>
+                {t('wc.request_approval.remote_screening_unavailable')}
+              </p>
+            )}
             <div className={styles.permitWarning}>
               <p className={styles.permitTitle}>{t('wc.request_approval.broadcast_title')}</p>
               <p className={styles.permitBody}>
@@ -396,12 +411,14 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                 {t('wc.request_approval.broadcast_ack')}
               </label>
             </div>
-            <RiskVerdictBanner
-              verdict={riskVerdict}
-              pending={codePending}
-              acknowledged={riskAck}
-              onAcknowledge={setRiskAck}
-            />
+            {txIntelVerdict && (
+              <TransactionIntelligencePanel
+                verdict={txIntelVerdict}
+                policy={txIntelPolicy}
+                acknowledged={riskAck}
+                onAcknowledge={setRiskAck}
+              />
+            )}
           </>
         )}
 

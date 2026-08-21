@@ -45,6 +45,7 @@ import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
 import TransactionPreview from "@/components/TransactionPreview";
 import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
+import TransactionIntelligencePanel from "@/components/TransactionIntelligencePanel";
 import { toast } from "@/lib/toast";
 import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
 import { parseEther, parseUnits } from "ethers";
@@ -66,8 +67,11 @@ import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/ev
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
+import { composeTransactionVerdict } from "@/risk/composeVerdict";
+import { buildReviewContributor } from "@/risk/reviewContributor";
 import { TIER, useRaspArtifact, getFreshRaspArtifact } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
+import { deriveSigningPolicy } from "@/policy/signingPolicy";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
@@ -94,6 +98,7 @@ import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet,
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import { screenTransaction } from "@/api/tipScreen";
 import { ZERO_FROM_ADDRESS } from "@/lib/tipZeroFrom.js";
+import { persistRemoteScreenPreference, readRemoteScreenPreference } from "@/lib/remoteScreenPreference.js";
 import { resolveTipChain } from "./sendCryptoTipChain";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
@@ -103,6 +108,7 @@ import { requiresVerification } from "@/lib/seedVerifyGate";
 import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
 import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
 import { isRiskGateReady } from "@/lib/riskGateReady";
+import { openAdvisor, publishAdvisorContext } from "@/lib/advisorBridge";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -499,11 +505,7 @@ export default function SendCrypto() {
   // can always toggle it; the choice is persisted across sessions.
   const tipConfigured = !!import.meta.env.VITE_TIP_BASE_URL;
   const [remoteScreen, setRemoteScreen] = useState(() => {
-    try {
-      const stored = localStorage.getItem("veyrnox-remote-screen");
-      if (stored !== null) return stored === "1";
-      return tipConfigured;
-    } catch { return tipConfigured; }
+    return readRemoteScreenPreference(tipConfigured);
   });
   const toggleRemoteScreen = (v) => {
     setRemoteScreen(v);
@@ -512,7 +514,7 @@ export default function SendCrypto() {
     // change the real user's default on the next primary unlock. In-memory
     // state still updates so the current session behaves as chosen.
     if (isDecoy || isHidden) return;
-    try { localStorage.setItem("veyrnox-remote-screen", v ? "1" : "0"); } catch { /* ignore */ }
+    persistRemoteScreenPreference(v);
   };
 
   // User-controlled simulation toggle. On by default; persisted so the choice
@@ -859,6 +861,13 @@ export default function SendCrypto() {
     () => knownAddresses.map((k) => k.address?.toLowerCase()).filter(Boolean),
     [knownAddresses]
   );
+  const reviewContributor = useMemo(() => buildReviewContributor({
+    recipient: toAddress || null,
+    currency: selectedWallet?.currency || null,
+    history,
+    knownAddresses,
+    whitelist,
+  }), [toAddress, selectedWallet?.currency, history, knownAddresses, whitelist]);
 
   // PRE-SIGN TRANSACTION SIMULATION (Phase S2). Before the user confirms, dry-run
   // the transaction against the EXISTING RPC (eth_call / eth_getBalance /
@@ -1085,6 +1094,74 @@ export default function SendCrypto() {
     && presign?.decision !== 'block';
   const blockedByRaspBio = raspNeedsBio && !raspWarnBioOk;
 
+  const txIntelVerdict = useMemo(() => composeTransactionVerdict({
+    localVerdict: riskVerdict,
+    localApplicable: riskApplicable,
+    localSettled: riskApplicable ? riskReady : false,
+    tipResult: tipQuery.data ?? null,
+    tipApplicable: tipScreenApplies,
+    tipSettled: !tipScreenApplies || tipQuery.isSuccess || tipQuery.isError,
+    review: reviewContributor,
+    raspTier,
+    raspArtifact,
+    presign,
+  }), [riskVerdict, riskApplicable, riskReady, tipQuery.data, tipQuery.isSuccess, tipQuery.isError, tipScreenApplies, reviewContributor, raspTier, raspArtifact, presign]);
+
+  const txIntelPolicy = useMemo(() => deriveSigningPolicy({
+    verdict: txIntelVerdict,
+    presign,
+    acknowledged: riskAck,
+    raspNeedsBio,
+    biometricCleared: raspWarnBioOk,
+  }), [txIntelVerdict, presign, riskAck, raspNeedsBio, raspWarnBioOk]);
+
+  const advisorTxContext = useMemo(() => {
+    if (step !== 'verify' || !selectedWallet?.currency) return null;
+    return {
+      transaction_intelligence: {
+        asset: selectedWallet.currency,
+        amount: amount || null,
+        recipient: toAddress || null,
+        level: txIntelVerdict?.level ?? null,
+        owner: txIntelVerdict?.owner ?? null,
+        primary_reason: txIntelVerdict?.primaryReason ?? null,
+        policy_decision: txIntelPolicy?.decision ?? null,
+        policy_action: txIntelPolicy?.actionLabel ?? null,
+        recommend_hardware_signer: txIntelPolicy?.recommendHardwareSigner === true,
+        contributors: Array.isArray(txIntelVerdict?.contributors)
+          ? txIntelVerdict.contributors.map((c) => ({
+              id: c.id,
+              label: c.label,
+              applicable: c.applicable,
+              settled: c.settled,
+              level: c.level ?? null,
+              summary: c.summary ?? null,
+            }))
+          : [],
+        local_signals: Array.isArray(txIntelVerdict?.localSignals)
+          ? txIntelVerdict.localSignals.map((s) => ({
+              id: s.id,
+              level: s.level,
+              summary: s.summary ?? null,
+            }))
+          : [],
+      },
+    };
+  }, [step, selectedWallet, amount, toAddress, txIntelVerdict, txIntelPolicy]);
+
+  useEffect(() => {
+    publishAdvisorContext(advisorTxContext);
+    return () => publishAdvisorContext(null);
+  }, [advisorTxContext]);
+
+  const handleAskAdvisorAboutTx = () => {
+    openAdvisor({
+      question: "Explain this transaction risk and tell me what I should verify before signing.",
+      autoSend: true,
+      context: advisorTxContext,
+    });
+  };
+
   // BTC pre-sign risk gate (internal audit M-2). BTC isn't EVM-shaped, so it has no
   // `presign` verdict — instead its honest decode (btcSim → describeBtcPlan) raises
   // high-severity flags (e.g. entire_balance). A high flag requires the same explicit
@@ -1206,9 +1283,31 @@ export default function SendCrypto() {
 
       let riskScoreFailed = false;
       let presignAtSign = /** @type {any} */ (null);
+      let txPolicyAtSign = /** @type {any} */ (null);
       try {
         const freshScore = scoreCurrentSend();
         presignAtSign = presignGate(freshRaspTier, freshScore.level, riskAck);
+        const txVerdictAtSign = composeTransactionVerdict({
+          localVerdict: freshScore,
+          localApplicable: riskApplicable,
+          localSettled: riskApplicable ? riskReady : false,
+          tipResult: tipQuery.data ?? null,
+          tipApplicable: tipScreenApplies,
+          tipSettled: !tipScreenApplies || tipQuery.isSuccess || tipQuery.isError,
+          review: reviewContributor,
+          raspTier: freshRaspTier,
+          raspArtifact: freshArtifact,
+          presign: presignAtSign,
+        });
+        txPolicyAtSign = deriveSigningPolicy({
+          verdict: txVerdictAtSign,
+          presign: presignAtSign,
+          acknowledged: riskAck,
+          raspNeedsBio: freshArtifact?.requiresBiometric === true
+            && Capacitor.isNativePlatform()
+            && presignAtSign?.decision !== 'block',
+          biometricCleared: raspWarnBioOk,
+        });
         // Fire-and-forget (I4) — notification failure must never block or unwind the send.
         notifyTxRiskAlert({ level: freshScore.level, sentence: freshScore.sentence, signalId: freshScore.signalId, ts: Date.now() });
       } catch {
@@ -1252,6 +1351,7 @@ export default function SendCrypto() {
         limit: limitGate,
         limitAck,
         riskScoreFailed,
+        txPolicy: txPolicyAtSign,
         presign: presignAtSign,
         // BTC risk re-checked from the settled preview at signing time (M-2), so a
         // high decode flag can't be bypassed by stale UI state — mirrors how the EVM
@@ -2192,6 +2292,12 @@ export default function SendCrypto() {
             ) : (
               <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
             )}
+
+            <TransactionIntelligencePanel
+              verdict={txIntelVerdict}
+              policy={txIntelPolicy}
+              onAskAdvisor={handleAskAdvisorAboutTx}
+            />
 
             {/* B5 — biometric re-confirm on native WARN (ROOTED / INTEGRITY_UNAVAILABLE).
                 Rendered OUTSIDE the owner-branch ternary so it appears regardless of which
