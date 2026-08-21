@@ -12,6 +12,7 @@ import { BrowserRouter as Router, Route, Routes, useParams } from 'react-router'
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
 import { TrezorProvider } from '@/context/TrezorContext';
+import { DigitalShieldProvider } from '@/context/DigitalShieldContext';
 import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { NotificationsProvider } from '@/notify/useNotifications';
@@ -292,6 +293,7 @@ function App() {
                   <AuthenticatedApp />
                   <VoiceFab />
                   <OfflineBanner />
+          <DigitalShieldProvider>
                 </VoiceProvider>
               </Router>
               <Toaster />
@@ -303,5 +305,6 @@ function App() {
     </ThemeProvider>
   )
 }
+          </DigitalShieldProvider>
 
 export default App
