@@ -113,6 +113,10 @@ export default function SuspiciousAssets() {
   }, [snapshot, dismissedNftIds.length, contractIntelConsentState, contractIntelConfigured]);
 
   const loading = loadingTokens || loadingNfts;
+  const visibleTokenCount = snapshot.totals.visibleTokens;
+  const hiddenTokenCount = snapshot.totals.hiddenTokens;
+  const visibleCollectibleCount = snapshot.totals.suspiciousNfts;
+  const dismissedCollectibleCount = dismissedNftIds.length;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -171,6 +175,52 @@ export default function SuspiciousAssets() {
           This queue is local evidence, not a safety guarantee. Contract concerns only appear when the app actually has those metadata fields; missing fields stay unknown rather than being guessed.
         </p>
       </div>
+
+      {!loading && (
+        <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold">Review lanes</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Veyrnox separates active review items from things you have already hidden or deferred, so this page stays honest about what still needs attention.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-border bg-background/60 p-3 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium">Active review</p>
+                <SeverityChip severity={(visibleTokenCount + visibleCollectibleCount) > 0 ? 'medium' : 'ok'}>
+                  {visibleTokenCount + visibleCollectibleCount}
+                </SeverityChip>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {visibleTokenCount} visible suspicious token{visibleTokenCount === 1 ? '' : 's'} and {visibleCollectibleCount} suspicious collectible{visibleCollectibleCount === 1 ? '' : 's'} still shown here.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-background/60 p-3 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium">Hidden spam</p>
+                <SeverityChip severity={hiddenTokenCount > 0 ? 'ok' : 'ok'}>
+                  {hiddenTokenCount}
+                </SeverityChip>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Hidden tokens stay out of normal portfolio views until you show them again. This is cleanup, not a declaration that they are safe.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-background/60 p-3 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium">Deferred collectibles</p>
+                <SeverityChip severity={dismissedCollectibleCount > 0 ? 'ok' : 'ok'}>
+                  {dismissedCollectibleCount}
+                </SeverityChip>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Dismissed collectibles are removed from this queue only. You can restore them later if you want to review them again.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
@@ -276,6 +326,12 @@ export default function SuspiciousAssets() {
                       ))}
                     </ul>
 
+                    <p className="text-[11px] text-muted-foreground">
+                      {token.hidden
+                        ? 'Hidden elsewhere: this token is suppressed in normal portfolio views until you show it again.'
+                        : 'Active review: this token still appears in your suspicious-assets queue and may need manual verification before any interaction.'}
+                    </p>
+
                     {token.contract.unknowns.length > 0 && (
                       <p className="text-[11px] text-muted-foreground">
                         Unknown here: {token.contract.unknowns.join(', ')}.
@@ -321,6 +377,9 @@ export default function SuspiciousAssets() {
                           <li key={`${nft.id}-${reason.kind}`} className="text-xs text-caution">{reason.text}</li>
                         ))}
                       </ul>
+                      <p className="text-[11px] text-muted-foreground">
+                        Active review: dismissing this collectible removes it from this queue only. It does not mark the NFT safe or trusted.
+                      </p>
                       <div className="flex gap-2">
                         <Link to="/nft" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
                           Review NFT portfolio <ExternalLink className="h-3 w-3" />
