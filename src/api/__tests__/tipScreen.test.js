@@ -73,8 +73,14 @@ describe('screenTransaction', () => {
 
   it('screens an asset contract through TIP without sending a wallet address', async () => {
     const mockScreen = vi.fn().mockResolvedValue({
+      kind: 'asset_review',
       verdict: 'warn',
-      risk_data: { threat_signals: [{ signal_type: 'suspicious_contract', confidence: 0.88, source: 'test' }], sanctions_hit: false },
+      review_summary: 'Proxy contract uses a suspicious upgrade pattern.',
+      findings: [
+        { title: 'Upgradeable proxy', detail: 'Admin can swap implementation.', severity: 'medium', confidence: 0.88, code: 'upgradeable_proxy' },
+      ],
+      sources_consulted: [{ source: 'tip-asset-engine', status: 'hit', latency_ms: 42 }],
+      sanctions_hit: false,
     });
     createTipClient.mockReturnValue({ screen: mockScreen });
 
@@ -93,10 +99,29 @@ describe('screenTransaction', () => {
     }), expect.anything());
     expect(result.verdict).toBe('warn');
     expect(result.level).toBe('medium');
+    expect(result.kind).toBe('asset_review');
+    expect(result.reviewSummary).toContain('suspicious upgrade pattern');
+    expect(result.findings[0].title).toBe('Upgradeable proxy');
   });
 
   it('returns null for asset review when the contract address or chain cannot be resolved', async () => {
     expect(await screenAssetContract({ chain: '', contractAddress: '' })).toBeNull();
     expect(await screenAssetContract({ chain: 'unknown', contractAddress: 'abc' })).toBeNull();
+  });
+
+  it('falls back to the generic TIP screen shape for asset review when needed', async () => {
+    const mockScreen = vi.fn().mockResolvedValue({
+      verdict: 'warn',
+      risk_data: { threat_signals: [{ signal_type: 'suspicious_contract', confidence: 0.88, source: 'test' }], sanctions_hit: false },
+    });
+    createTipClient.mockReturnValue({ screen: mockScreen });
+
+    const result = await screenAssetContract({
+      chain: 'evm',
+      contractAddress: '0x1234567890123456789012345678901234567890',
+    });
+
+    expect(result.kind).toBe('generic_screen');
+    expect(result.risks[0].title).toBe('suspicious_contract');
   });
 });

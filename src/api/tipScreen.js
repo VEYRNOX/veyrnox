@@ -143,6 +143,64 @@ export async function screenTransaction(params, { signal } = {}) {
   }
 }
 
+function isWellFormedAssetReviewResult(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+  if (result.kind !== 'asset_review') return false;
+  if (typeof result.verdict !== 'string' || !KNOWN_VERDICTS.includes(result.verdict)) return false;
+  if (!Array.isArray(result.findings)) return false;
+  if (result.sources_consulted != null && !Array.isArray(result.sources_consulted)) return false;
+  return true;
+}
+
+function normalizeAssetReviewResult(result) {
+  if (!isWellFormedAssetReviewResult(result)) return null;
+  const findings = result.findings
+    .filter((row) => row && typeof row === 'object' && !Array.isArray(row))
+    .map((row, index) => ({
+      level: row.severity === 'critical' ? 'high' : row.severity === 'high' ? 'high' : row.severity === 'medium' ? 'medium' : 'info',
+      title: typeof row.title === 'string' && row.title.trim() ? row.title : `asset finding ${index + 1}`,
+      detail: typeof row.detail === 'string' ? row.detail : '',
+      code: typeof row.code === 'string' ? row.code : null,
+      confidence: typeof row.confidence === 'number' ? row.confidence : null,
+    }));
+  const sourcesConsulted = Array.isArray(result.sources_consulted)
+    ? result.sources_consulted.filter(isWellFormedSource)
+    : [];
+  return {
+    verdict: result.verdict,
+    level: verdictToRiskLevel(result.verdict),
+    risks: findings,
+    signals: [],
+    findings,
+    reviewSummary: typeof result.review_summary === 'string' ? result.review_summary : null,
+    sourcesConsulted,
+    verdictReason: typeof result.verdict_reason === 'string' ? result.verdict_reason : null,
+    sanctions: result.sanctions_hit === true,
+    raw: result,
+    kind: 'asset_review',
+  };
+}
+
+function normalizeGenericScreenResult(result) {
+  if (!isWellFormedScreenResult(result)) return null;
+  const signals = Array.isArray(result.risk_data?.threat_signals)
+    ? result.risk_data.threat_signals
+    : [];
+  const sourcesConsulted = Array.isArray(result.risk_data?.sources_consulted)
+    ? result.risk_data.sources_consulted.filter(isWellFormedSource)
+    : [];
+  return {
+    verdict: result.verdict,
+    level: verdictToRiskLevel(result.verdict),
+    risks: signalsToRiskRows(signals),
+    signals,
+    sourcesConsulted,
+    verdictReason: typeof result.verdict_reason === 'string' ? result.verdict_reason : null,
+    sanctions: result.risk_data?.sanctions_hit === true,
+    raw: result,
+  };
+}
+
 function normalizeAssetIntelChain(chain, contractAddress) {
   const raw = String(chain || '').trim().toLowerCase();
   if (raw === 'evm' || raw === 'eth' || raw === 'ethereum') return 'ethereum';
@@ -172,14 +230,30 @@ export async function screenAssetContract(params, { signal } = {}) {
   if (!chain) return null;
   const from = ZERO_FROM_ADDRESS[chain];
   if (!from) return null;
-  return screenTransaction({
-    chain,
-    actionType: 'asset_review',
-    from,
-    to: contractAddress,
-    contractAddress,
-    tokenAddress: params?.tokenAddress || contractAddress,
-  }, { signal });
+  const client = getClient();
+  if (!client || isDeniabilityOrDemoActive()) return null;
+  try {
+    const result = await client.screen({
+      chain,
+      action_type: 'asset_review',
+      from_address: from,
+      to_address: contractAddress,
+      contract_address: contractAddress,
+      token_address: params?.tokenAddress || contractAddress,
+    }, { signal });
+    const normalized = normalizeAssetReviewResult(result);
+    if (normalized) return normalized;
+    if (!isWellFormedScreenResult(result)) {
+      if (import.meta.env.DEV) console.error('[TIP] unrecognised asset-review response shape');
+      return unavailableResult();
+    }
+    const fallback = normalizeGenericScreenResult(result);
+    if (fallback) fallback.kind = 'generic_screen';
+    return fallback;
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[TIP] screenAssetContract error:', err);
+    return unavailableResult();
+  }
 }
 
 // The only verdicts the client will act on. Anything else — absent, renamed,

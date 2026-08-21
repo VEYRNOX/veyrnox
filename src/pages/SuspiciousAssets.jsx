@@ -474,6 +474,20 @@ export default function SuspiciousAssets() {
                                     TIP verdict: <span className="text-foreground">{String(remoteContractIntel[token.id].verdict || 'unknown').toUpperCase()}</span>
                                     {remoteContractIntel[token.id].sourcesConsulted?.length ? ` · ${remoteContractIntel[token.id].sourcesConsulted.length} source${remoteContractIntel[token.id].sourcesConsulted.length === 1 ? '' : 's'} answered` : ''}
                                   </p>
+                                  {remoteContractIntel[token.id].reviewSummary && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {remoteContractIntel[token.id].reviewSummary}
+                                    </p>
+                                  )}
+                                  {remoteContractIntel[token.id].findings?.length > 0 ? (
+                                    <ul className="space-y-1">
+                                      {remoteContractIntel[token.id].findings.slice(0, 3).map((finding, index) => (
+                                        <li key={`${token.id}-tip-finding-${index}`} className="text-[11px] text-muted-foreground">
+                                          <span className="text-foreground">{finding.title}:</span> {finding.detail}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : null}
                                   {remoteContractIntel[token.id].risks?.length > 0 ? (
                                     <ul className="space-y-1">
                                       {remoteContractIntel[token.id].risks.slice(0, 3).map((risk, index) => (
