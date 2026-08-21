@@ -9,6 +9,7 @@ import Spinner from '@/components/Spinner';
 import { buildSuspiciousAssetSnapshot } from '@/lib/suspiciousAssets';
 import { openAdvisor, publishAdvisorContext } from '@/lib/advisorBridge';
 import { safeNftImageUrl } from '@/lib/nftImageUrl';
+import { screenAssetContract } from '@/api/tipScreen';
 import {
   clearContractIntelConsent,
   clearDismissedSuspiciousNfts,
@@ -54,6 +55,9 @@ export default function SuspiciousAssets() {
   const [spamOverrides, setSpamOverrides] = useState(() => readSpamTokenOverrides());
   const [dismissedNftIds, setDismissedNftIds] = useState(() => readDismissedSuspiciousNfts());
   const [contractIntelConsentState, setContractIntelConsentState] = useState(() => getContractIntelConsentState());
+  const [expandedContractRows, setExpandedContractRows] = useState({});
+  const [remoteContractIntel, setRemoteContractIntel] = useState({});
+  const [remoteContractIntelLoading, setRemoteContractIntelLoading] = useState({});
   const { data: tokenRows = [], isLoading: loadingTokens, isError: errorTokens } = useQuery({
     queryKey: ['wallet-tokens'],
     queryFn: () => base44.entities.WalletToken.list('-created_date'),
@@ -98,6 +102,24 @@ export default function SuspiciousAssets() {
   const resetContractIntelConsent = () => {
     clearContractIntelConsent();
     setContractIntelConsentState(getContractIntelConsentState());
+  };
+  const fetchRemoteContractIntel = async (token) => {
+    if (!token?.id || remoteContractIntel[token.id] || remoteContractIntelLoading[token.id] || !contractIntelConfigured || !contractIntelEnabled) return;
+    setRemoteContractIntelLoading((prev) => ({ ...prev, [token.id]: true }));
+    try {
+      const result = await screenAssetContract({
+        chain: token.chain,
+        contractAddress: token.token_contract,
+        tokenAddress: token.token_contract,
+      });
+      setRemoteContractIntel((prev) => ({ ...prev, [token.id]: result }));
+    } finally {
+      setRemoteContractIntelLoading((prev) => ({ ...prev, [token.id]: false }));
+    }
+  };
+  const handleContractDetailToggle = (token, isOpen) => {
+    setExpandedContractRows((prev) => ({ ...prev, [token.id]: isOpen }));
+    if (isOpen) fetchRemoteContractIntel(token);
   };
 
   useEffect(() => {
@@ -244,7 +266,7 @@ export default function SuspiciousAssets() {
           <div>
             <h2 className="text-sm font-semibold">Deeper contract intel</h2>
             <p className="text-xs text-muted-foreground mt-1">
-              Off by default. If enabled and configured in this build, future contract reviews may send token contract addresses and chain ids to a third-party contract-intelligence service. Seed, PIN, balances, and wallet addresses stay out of scope.
+              Off by default. If enabled and configured in this build, deeper contract reviews can ask the Veyrnox TIP service for extra intelligence about token contract addresses and chain ids. Seed, PIN, balances, and wallet addresses stay out of scope.
             </p>
           </div>
           <SeverityChip severity={contractIntelEnabled ? 'medium' : 'ok'}>
@@ -253,8 +275,8 @@ export default function SuspiciousAssets() {
         </div>
         <p className="text-[11px] text-muted-foreground">
           {contractIntelConfigured
-            ? 'This build can support external contract-intelligence checks once you opt in.'
-            : 'No external contract-intelligence service is configured in this build yet, so this preference is stored for future availability only.'}
+            ? 'This build can support TIP-backed contract-intelligence checks once you opt in.'
+            : 'TIP contract-intelligence screening is not configured in this build yet, so this preference is stored for future availability only.'}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button type="button" size="sm" onClick={() => chooseContractIntelConsent(true)}>Allow deeper checks</Button>
@@ -351,7 +373,11 @@ export default function SuspiciousAssets() {
                     </p>
 
                     {token.contract.score > 0 && (
-                      <details className="rounded-xl border border-border/70 bg-background/40 p-3">
+                      <details
+                        className="rounded-xl border border-border/70 bg-background/40 p-3"
+                        open={!!expandedContractRows[token.id]}
+                        onToggle={(event) => handleContractDetailToggle(token, event.currentTarget.open)}
+                      >
                         <summary className="cursor-pointer list-none text-[11px] text-muted-foreground">
                           {token.contract.confidence === 'strong_warning'
                             ? `Contract review confidence: strong warning. ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved with concrete risk signals.`
@@ -384,6 +410,42 @@ export default function SuspiciousAssets() {
                               </ul>
                             </div>
                           )}
+                          <div>
+                            <p className="text-[11px] font-medium text-foreground">TIP deeper review</p>
+                            {contractIntelEnabled && contractIntelConfigured ? (
+                              remoteContractIntelLoading[token.id] ? (
+                                <p className="mt-1 text-[11px] text-muted-foreground">Checking this contract through TIP now…</p>
+                              ) : remoteContractIntel[token.id] ? (
+                                <div className="mt-1 space-y-1">
+                                  <p className="text-[11px] text-muted-foreground">
+                                    TIP verdict: <span className="text-foreground">{String(remoteContractIntel[token.id].verdict || 'unknown').toUpperCase()}</span>
+                                    {remoteContractIntel[token.id].sourcesConsulted?.length ? ` · ${remoteContractIntel[token.id].sourcesConsulted.length} source${remoteContractIntel[token.id].sourcesConsulted.length === 1 ? '' : 's'} answered` : ''}
+                                  </p>
+                                  {remoteContractIntel[token.id].risks?.length > 0 ? (
+                                    <ul className="space-y-1">
+                                      {remoteContractIntel[token.id].risks.slice(0, 3).map((risk, index) => (
+                                        <li key={`${token.id}-tip-risk-${index}`} className="text-[11px] text-muted-foreground">
+                                          <span className="text-foreground">{risk.title}:</span> {risk.detail}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p className="text-[11px] text-muted-foreground">TIP did not add any extra risk rows for this contract.</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                  No TIP review has been cached for this contract yet. Open this section to request one through the existing opt-in gate.
+                                </p>
+                              )
+                            ) : (
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                {contractIntelConfigured
+                                  ? 'Enable deeper contract intel above if you want this row to ask TIP for extra contract review.'
+                                  : 'TIP contract-intelligence review is not configured in this build yet.'}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </details>
                     )}

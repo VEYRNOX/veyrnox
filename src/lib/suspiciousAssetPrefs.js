@@ -4,7 +4,11 @@ export const CONTRACT_INTEL_CONSENT_KEY = 'veyrnox-contract-intel-consent';
 export const DISMISSED_SUSPICIOUS_NFTS_KEY = 'veyrnox-dismissed-suspicious-nfts';
 
 export function isContractIntelConfigured() {
-  return !!import.meta.env.VITE_CONTRACT_INTEL_BASE_URL;
+  return !!(
+    import.meta.env.VITE_TIP_BASE_URL
+    && import.meta.env.VITE_SUPABASE_URL
+    && import.meta.env.VITE_SUPABASE_ANON_KEY
+  );
 }
 
 export function getContractIntelConsentState() {

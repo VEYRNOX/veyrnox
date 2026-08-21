@@ -10,6 +10,7 @@
 import { createTipClient, verdictToRiskLevel, signalsToRiskRows } from './tipClient.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { hydrateFromCache, lookupLocal } from '@/lib/localIocCache.js';
+import { ZERO_FROM_ADDRESS } from '@/lib/tipZeroFrom.js';
 
 let _client = null;
 
@@ -88,6 +89,7 @@ export async function screenTransaction(params, { signal } = {}) {
       from_address: params.from,
       to_address: params.to,
       ...(params.contractAddress && { contract_address: params.contractAddress }),
+      ...(params.tokenAddress && { token_address: params.tokenAddress }),
       ...(params.calldata && { calldata: params.calldata }),
       ...(params.valueWei && { value_wei: params.valueWei }),
       // Solana + Bitcoin lanes on the Worker consume a base64/hex serialized
@@ -139,6 +141,45 @@ export async function screenTransaction(params, { signal } = {}) {
     if (import.meta.env.DEV) console.error('[TIP] screenTransaction error:', err);
     return unavailableResult();
   }
+}
+
+function normalizeAssetIntelChain(chain, contractAddress) {
+  const raw = String(chain || '').trim().toLowerCase();
+  if (raw === 'evm' || raw === 'eth' || raw === 'ethereum') return 'ethereum';
+  if (raw === 'btc' || raw === 'bitcoin') return 'bitcoin';
+  if (raw === 'sol' || raw === 'solana') return 'solana';
+  if (!raw && String(contractAddress || '').startsWith('0x')) return 'ethereum';
+  return raw || null;
+}
+
+/**
+ * Deeper contract review through TIP for suspicious-assets rows.
+ *
+ * This remains separate from pre-send screening so the suspicious-assets page
+ * can ask for extra contract intelligence without sending wallet addresses,
+ * balances, or user-entered destinations. Only the chain + contract/token
+ * address leave the device, and only after the page-level opt-in gate allows
+ * it. The same tip-screen proxy, response validation, and fail-closed posture
+ * are reused.
+ *
+ * @param {{ chain?: string, contractAddress: string, tokenAddress?: string }} params
+ * @returns {Promise<{ verdict: string, level: string, risks: Array, signals: Array, sanctions: boolean, raw: object } | null>}
+ */
+export async function screenAssetContract(params, { signal } = {}) {
+  const contractAddress = String(params?.contractAddress || '').trim();
+  if (!contractAddress) return null;
+  const chain = normalizeAssetIntelChain(params?.chain, contractAddress);
+  if (!chain) return null;
+  const from = ZERO_FROM_ADDRESS[chain];
+  if (!from) return null;
+  return screenTransaction({
+    chain,
+    actionType: 'asset_review',
+    from,
+    to: contractAddress,
+    contractAddress,
+    tokenAddress: params?.tokenAddress || contractAddress,
+  }, { signal });
 }
 
 // The only verdicts the client will act on. Anything else — absent, renamed,
