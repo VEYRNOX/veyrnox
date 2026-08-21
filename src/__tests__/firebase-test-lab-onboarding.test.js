@@ -66,6 +66,9 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).toContain('select(.event == \\"$EXPECTED_EVENT\\")');
     expect(workflow).toContain('ARTIFACTS_JSON=$(gh api \\');
     expect(workflow).toContain('<<<"$ARTIFACTS_JSON")');
+    expect(workflow).toContain('RESULTS_BUCKET_NAME="${RESULTS_BUCKET_PATH%%/*}"');
+    expect(workflow).toContain('gcloud storage buckets create "$RESULTS_BUCKET_ROOT_URI" \\');
+    expect(workflow).toContain('echo "results_bucket_uri=$RESULTS_BUCKET_ROOT_URI" >> "$GITHUB_OUTPUT"');
     expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
     expect(workflow).toContain('name: veyrnox-firebase-test-apk');

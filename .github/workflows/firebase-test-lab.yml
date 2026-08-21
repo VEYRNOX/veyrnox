@@ -231,6 +231,7 @@ jobs:
         env:
           RAW_TIMEOUT: ${{ inputs.timeout }}
           RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
+          RESULTS_BUCKET_LOCATION: ${{ vars.GCS_RESULTS_BUCKET_LOCATION }}
           RESULTS_DIR: robo-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           set -euo pipefail
@@ -246,14 +247,33 @@ jobs:
           # same principal already has access to our own results bucket, so
           # stage the app there first and hand Test Lab a gs:// URI instead of
           # a local path. This avoids the CLI's hidden-bucket upload step.
-          if [[ "$RESULTS_BUCKET" == gs://* ]]; then
-            RESULTS_BUCKET_URI="$RESULTS_BUCKET"
+          if [[ "${RESULTS_BUCKET:-}" == gs://* ]]; then
+            RESULTS_BUCKET_URI="${RESULTS_BUCKET%/}"
           else
-            RESULTS_BUCKET_URI="gs://$RESULTS_BUCKET"
+            RESULTS_BUCKET_URI="gs://${RESULTS_BUCKET%/}"
           fi
-          APP_GCS_URI="${RESULTS_BUCKET_URI%/}/${RESULTS_DIR}/app-firebaseTest.apk"
-          TEST_GCS_URI="${RESULTS_BUCKET_URI%/}/${RESULTS_DIR}/app-firebaseTest-androidTest.apk"
-          echo "results_dir=$RESULTS_DIR" >> "$GITHUB_OUTPUT"
+          RESULTS_BUCKET_PATH="${RESULTS_BUCKET_URI#gs://}"
+          RESULTS_BUCKET_NAME="${RESULTS_BUCKET_PATH%%/*}"
+          RESULTS_BUCKET_PREFIX="${RESULTS_BUCKET_PATH#"$RESULTS_BUCKET_NAME"}"
+          RESULTS_BUCKET_PREFIX="${RESULTS_BUCKET_PREFIX#/}"
+          if [[ -z "$RESULTS_BUCKET_NAME" ]]; then
+            echo "::error::GCS_RESULTS_BUCKET must be a valid bucket name or gs://bucket[/prefix]."
+            exit 1
+          fi
+          RESULTS_BUCKET_ROOT_URI="gs://${RESULTS_BUCKET_NAME}"
+          RESULTS_OBJECT_PREFIX="$RESULTS_DIR"
+          if [[ -n "$RESULTS_BUCKET_PREFIX" ]]; then
+            RESULTS_OBJECT_PREFIX="${RESULTS_BUCKET_PREFIX}/${RESULTS_OBJECT_PREFIX}"
+          fi
+          if ! gcloud storage buckets describe "$RESULTS_BUCKET_ROOT_URI" >/dev/null 2>&1; then
+            gcloud storage buckets create "$RESULTS_BUCKET_ROOT_URI" \
+              --project "$GOOGLE_CLOUD_PROJECT" \
+              --location "${RESULTS_BUCKET_LOCATION:-US}"
+          fi
+          APP_GCS_URI="${RESULTS_BUCKET_ROOT_URI}/${RESULTS_OBJECT_PREFIX}/app-firebaseTest.apk"
+          TEST_GCS_URI="${RESULTS_BUCKET_ROOT_URI}/${RESULTS_OBJECT_PREFIX}/app-firebaseTest-androidTest.apk"
+          echo "results_bucket_uri=$RESULTS_BUCKET_ROOT_URI" >> "$GITHUB_OUTPUT"
+          echo "results_dir=$RESULTS_OBJECT_PREFIX" >> "$GITHUB_OUTPUT"
           gcloud storage cp artifacts/app-firebaseTest.apk "$APP_GCS_URI"
           gcloud storage cp artifacts/app-google-firebaseTest-androidTest.apk "$TEST_GCS_URI"
           set +e
@@ -266,8 +286,8 @@ jobs:
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
             --no-resign \
-            --results-bucket "$RESULTS_BUCKET_URI" \
-            --results-dir "$RESULTS_DIR" 2>&1 | tee firebase-test-lab.log
+            --results-bucket "$RESULTS_BUCKET_ROOT_URI" \
+            --results-dir "$RESULTS_OBJECT_PREFIX" 2>&1 | tee firebase-test-lab.log
           TEST_STATUS=${PIPESTATUS[0]}
           set -e
 
@@ -320,19 +340,19 @@ jobs:
       - name: Surface sanitized Firebase result inventory
         if: always() && steps.robo.outputs.results_dir != ''
         env:
-          RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
+          RESULTS_BUCKET_URI: ${{ steps.robo.outputs.results_bucket_uri }}
           RESULTS_DIR: ${{ steps.robo.outputs.results_dir }}
         run: |
           set -euo pipefail
-          gcloud storage ls --recursive "gs://${RESULTS_BUCKET}/${RESULTS_DIR}/**" \
-            | sed "s#^gs://${RESULTS_BUCKET}/${RESULTS_DIR}/##" \
+          gcloud storage ls --recursive "${RESULTS_BUCKET_URI}/${RESULTS_DIR}/**" \
+            | sed "s#^${RESULTS_BUCKET_URI}/${RESULTS_DIR}/##" \
             | LC_ALL=C sort
 
       - name: Post results link to job summary
         if: always()
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-          RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
+          RESULTS_BUCKET_URI: ${{ steps.robo.outputs.results_bucket_uri }}
           RESULTS_DIR: ${{ steps.robo.outputs.results_dir }}
           MATRIX_ID: ${{ steps.robo.outputs.matrix_id }}
         run: |
@@ -340,7 +360,7 @@ jobs:
             echo "### Firebase Test Lab — Android instrumentation smoke"
             echo "Results: https://console.firebase.google.com/project/${PROJECT_ID}/testlab/histories/"
             echo "Matrix: \`${MATRIX_ID:-unavailable}\`"
-            echo "Bucket:  gs://${RESULTS_BUCKET}/${RESULTS_DIR}"
+            echo "Bucket:  ${RESULTS_BUCKET_URI}/${RESULTS_DIR}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # --------------------------------------------------------------
@@ -501,6 +521,7 @@ jobs:
         env:
           RAW_TIMEOUT: ${{ inputs.timeout }}
           RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
+          RESULTS_BUCKET_LOCATION: ${{ vars.GCS_RESULTS_BUCKET_LOCATION }}
           SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -512,13 +533,31 @@ jobs:
           # Mirror the Android workaround above for iOS: pre-stage the local
           # test bundle in our own GCS bucket and pass a gs:// URI so the CLI
           # does not need to copy it into Firebase's hidden tenant bucket.
-          if [[ "$RESULTS_BUCKET" == gs://* ]]; then
-            RESULTS_BUCKET_URI="$RESULTS_BUCKET"
+          if [[ "${RESULTS_BUCKET:-}" == gs://* ]]; then
+            RESULTS_BUCKET_URI="${RESULTS_BUCKET%/}"
           else
-            RESULTS_BUCKET_URI="gs://$RESULTS_BUCKET"
+            RESULTS_BUCKET_URI="gs://${RESULTS_BUCKET%/}"
+          fi
+          RESULTS_BUCKET_PATH="${RESULTS_BUCKET_URI#gs://}"
+          RESULTS_BUCKET_NAME="${RESULTS_BUCKET_PATH%%/*}"
+          RESULTS_BUCKET_PREFIX="${RESULTS_BUCKET_PATH#"$RESULTS_BUCKET_NAME"}"
+          RESULTS_BUCKET_PREFIX="${RESULTS_BUCKET_PREFIX#/}"
+          if [[ -z "$RESULTS_BUCKET_NAME" ]]; then
+            echo "::error::GCS_RESULTS_BUCKET must be a valid bucket name or gs://bucket[/prefix]."
+            exit 1
+          fi
+          RESULTS_BUCKET_ROOT_URI="gs://${RESULTS_BUCKET_NAME}"
+          if ! gcloud storage buckets describe "$RESULTS_BUCKET_ROOT_URI" >/dev/null 2>&1; then
+            gcloud storage buckets create "$RESULTS_BUCKET_ROOT_URI" \
+              --project "$GOOGLE_CLOUD_PROJECT" \
+              --location "${RESULTS_BUCKET_LOCATION:-US}"
           fi
           RESULTS_DIR="ios-smoke-$SHA-${{ github.run_id }}-${{ github.run_attempt }}"
-          IOS_TEST_GCS_URI="${RESULTS_BUCKET_URI%/}/${RESULTS_DIR}/ios-tests.zip"
+          RESULTS_OBJECT_PREFIX="$RESULTS_DIR"
+          if [[ -n "$RESULTS_BUCKET_PREFIX" ]]; then
+            RESULTS_OBJECT_PREFIX="${RESULTS_BUCKET_PREFIX}/${RESULTS_OBJECT_PREFIX}"
+          fi
+          IOS_TEST_GCS_URI="${RESULTS_BUCKET_ROOT_URI}/${RESULTS_OBJECT_PREFIX}/ios-tests.zip"
           gcloud storage cp ios/App/build/Build/Products/ios-tests.zip "$IOS_TEST_GCS_URI"
           set +e
           gcloud firebase test ios run \
@@ -528,12 +567,14 @@ jobs:
             # iphone14 kept as the more recent hardware.
             --device model=iphone14,version=17.5,locale=en_US,orientation=portrait \
             --timeout "$TIMEOUT" \
-            --results-bucket "$RESULTS_BUCKET_URI" \
-            --results-dir "$RESULTS_DIR" 2>&1 \
+            --results-bucket "$RESULTS_BUCKET_ROOT_URI" \
+            --results-dir "$RESULTS_OBJECT_PREFIX" 2>&1 \
             | tee firebase-ios-test-lab.log
           TEST_STATUS=${PIPESTATUS[0]}
           set -e
           MATRIX_ID=$(sed -n 's/.*Test \[\(matrix-[^]]*\)\].*/\1/p' firebase-ios-test-lab.log | tail -1)
+          echo "results_bucket_uri=$RESULTS_BUCKET_ROOT_URI" >> "$GITHUB_OUTPUT"
+          echo "results_dir=$RESULTS_OBJECT_PREFIX" >> "$GITHUB_OUTPUT"
           echo "matrix_id=$MATRIX_ID" >> "$GITHUB_OUTPUT"
           exit "$TEST_STATUS"
 
@@ -576,11 +617,14 @@ jobs:
         if: always()
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          RESULTS_BUCKET_URI: ${{ steps.ios_test.outputs.results_bucket_uri }}
+          RESULTS_DIR: ${{ steps.ios_test.outputs.results_dir }}
         run: |
           {
             echo "### Firebase Test Lab — iOS smoke"
             echo "Results: https://console.firebase.google.com/project/${PROJECT_ID}/testlab/histories/"
             echo "Matrix: \`${{ steps.ios_test.outputs.matrix_id || 'unavailable' }}\`"
+            echo "Bucket:  ${RESULTS_BUCKET_URI}/${RESULTS_DIR}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # --------------------------------------------------------------
