@@ -47,7 +47,7 @@ function writeContractIntelCacheMap(map) {
   try { localStorage.setItem(CONTRACT_INTEL_CACHE_KEY, JSON.stringify(map)); } catch { /* best-effort */ }
 }
 
-export function readCachedContractIntel(id, now = Date.now()) {
+export function readCachedContractIntelEntry(id, now = Date.now()) {
   if (!id) return null;
   const map = readContractIntelCacheMap();
   const entry = map[String(id)];
@@ -58,7 +58,15 @@ export function readCachedContractIntel(id, now = Date.now()) {
     writeContractIntelCacheMap(map);
     return null;
   }
-  return entry.value ?? null;
+  return {
+    value: entry.value ?? null,
+    expiresAt,
+    cachedAt: Number(entry.cachedAt) || null,
+  };
+}
+
+export function readCachedContractIntel(id, now = Date.now()) {
+  return readCachedContractIntelEntry(id, now)?.value ?? null;
 }
 
 export function cacheContractIntel(id, value, now = Date.now()) {
@@ -66,6 +74,7 @@ export function cacheContractIntel(id, value, now = Date.now()) {
   const map = readContractIntelCacheMap();
   map[String(id)] = {
     value,
+    cachedAt: now,
     expiresAt: now + CONTRACT_INTEL_CACHE_TTL_MS,
   };
   writeContractIntelCacheMap(map);

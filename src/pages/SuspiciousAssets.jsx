@@ -13,12 +13,13 @@ import { screenAssetContract } from '@/api/tipScreen';
 import {
   cacheContractIntel,
   clearContractIntelConsent,
+  clearCachedContractIntel,
   clearDismissedSuspiciousNfts,
   dismissSuspiciousNft,
   getContractIntelConsentState,
   hasContractIntelConsent,
   isContractIntelConfigured,
-  readCachedContractIntel,
+  readCachedContractIntelEntry,
   readDismissedSuspiciousNfts,
   setContractIntelConsent,
 } from '@/lib/suspiciousAssetPrefs';
@@ -60,6 +61,7 @@ export default function SuspiciousAssets() {
   const [expandedContractRows, setExpandedContractRows] = useState({});
   const [remoteContractIntel, setRemoteContractIntel] = useState({});
   const [remoteContractIntelLoading, setRemoteContractIntelLoading] = useState({});
+  const [remoteContractIntelMeta, setRemoteContractIntelMeta] = useState({});
   const { data: tokenRows = [], isLoading: loadingTokens, isError: errorTokens } = useQuery({
     queryKey: ['wallet-tokens'],
     queryFn: () => base44.entities.WalletToken.list('-created_date'),
@@ -105,29 +107,57 @@ export default function SuspiciousAssets() {
     clearContractIntelConsent();
     setContractIntelConsentState(getContractIntelConsentState());
   };
-  const fetchRemoteContractIntel = async (token) => {
-    if (!token?.id || remoteContractIntel[token.id] || remoteContractIntelLoading[token.id] || !contractIntelConfigured || !contractIntelEnabled) return;
-    const cached = readCachedContractIntel(token.id);
-    if (cached) {
-      setRemoteContractIntel((prev) => ({ ...prev, [token.id]: cached }));
-      return;
+  const fetchRemoteContractIntel = async (token, { force = false } = {}) => {
+    if (!token?.id || remoteContractIntelLoading[token.id] || !contractIntelConfigured || !contractIntelEnabled) return;
+    if (!force && remoteContractIntel[token.id]) return;
+    if (!force) {
+      const cached = readCachedContractIntelEntry(token.id);
+      if (cached?.value) {
+        setRemoteContractIntel((prev) => ({ ...prev, [token.id]: cached.value }));
+        setRemoteContractIntelMeta((prev) => ({
+          ...prev,
+          [token.id]: { source: 'cache', cachedAt: cached.cachedAt, expiresAt: cached.expiresAt },
+        }));
+        return;
+      }
+    } else {
+      clearCachedContractIntel(token.id);
+      setRemoteContractIntel((prev) => ({ ...prev, [token.id]: null }));
+      setRemoteContractIntelMeta((prev) => ({ ...prev, [token.id]: null }));
     }
     setRemoteContractIntelLoading((prev) => ({ ...prev, [token.id]: true }));
     try {
+      const now = Date.now();
       const result = await screenAssetContract({
         chain: token.chain,
         contractAddress: token.token_contract,
         tokenAddress: token.token_contract,
       });
-      if (result) cacheContractIntel(token.id, result);
+      if (result) {
+        cacheContractIntel(token.id, result, now);
+        setRemoteContractIntelMeta((prev) => ({
+          ...prev,
+          [token.id]: { source: 'live', cachedAt: now, expiresAt: now + 6 * 60 * 60 * 1000 },
+        }));
+      }
       setRemoteContractIntel((prev) => ({ ...prev, [token.id]: result }));
-    } finally {
+      return;
+    }
+    finally {
       setRemoteContractIntelLoading((prev) => ({ ...prev, [token.id]: false }));
     }
   };
   const handleContractDetailToggle = (token, isOpen) => {
     setExpandedContractRows((prev) => ({ ...prev, [token.id]: isOpen }));
     if (isOpen) fetchRemoteContractIntel(token);
+  };
+  const formatCacheTime = (value) => {
+    if (!value) return null;
+    try {
+      return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -425,6 +455,21 @@ export default function SuspiciousAssets() {
                                 <p className="mt-1 text-[11px] text-muted-foreground">Checking this contract through TIP now…</p>
                               ) : remoteContractIntel[token.id] ? (
                                 <div className="mt-1 space-y-1">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {remoteContractIntelMeta[token.id]?.source === 'cache'
+                                        ? `Cached TIP review${formatCacheTime(remoteContractIntelMeta[token.id]?.expiresAt) ? ` until ${formatCacheTime(remoteContractIntelMeta[token.id]?.expiresAt)}` : ''}.`
+                                        : `Fresh TIP review${formatCacheTime(remoteContractIntelMeta[token.id]?.cachedAt) ? ` at ${formatCacheTime(remoteContractIntelMeta[token.id]?.cachedAt)}` : ''}.`}
+                                    </p>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => fetchRemoteContractIntel(token, { force: true })}
+                                    >
+                                      Refresh
+                                    </Button>
+                                  </div>
                                   <p className="text-[11px] text-muted-foreground">
                                     TIP verdict: <span className="text-foreground">{String(remoteContractIntel[token.id].verdict || 'unknown').toUpperCase()}</span>
                                     {remoteContractIntel[token.id].sourcesConsulted?.length ? ` · ${remoteContractIntel[token.id].sourcesConsulted.length} source${remoteContractIntel[token.id].sourcesConsulted.length === 1 ? '' : 's'} answered` : ''}
@@ -442,9 +487,19 @@ export default function SuspiciousAssets() {
                                   )}
                                 </div>
                               ) : (
-                                <p className="mt-1 text-[11px] text-muted-foreground">
-                                  No TIP review has been cached for this contract yet. Open this section to request one through the existing opt-in gate.
-                                </p>
+                                <div className="mt-1 flex items-center justify-between gap-3">
+                                  <p className="text-[11px] text-muted-foreground">
+                                    No TIP review has been cached for this contract yet. Open this section to request one through the existing opt-in gate.
+                                  </p>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => fetchRemoteContractIntel(token, { force: true })}
+                                  >
+                                    Fetch now
+                                  </Button>
+                                </div>
                               )
                             ) : (
                               <p className="mt-1 text-[11px] text-muted-foreground">
