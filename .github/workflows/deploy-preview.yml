@@ -338,7 +338,8 @@ jobs:
       # Vite is serving source in dev. Against a built, hashed deployment there
       # is no /src/**, so they 404 — 26 failed that way, none of them because
       # the deployment was actually broken. The full suite's harness is the
-      # local dev server, where `web-e2e-tests` already runs it.
+      # local dev server; this preview lane intentionally limits itself to the
+      # deployed-artifact smoke checks below.
       #
       # BASE_URL is the variable the specs actually read (see e2e/*.spec.js).
       # It was previously STAGING_URL, which no spec consulted — so every test
