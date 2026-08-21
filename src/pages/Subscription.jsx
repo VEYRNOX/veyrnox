@@ -499,7 +499,7 @@ export default function Subscription() {
         // attribution and the banner can never disagree about what was charged.
         const discountCents = storeDiscountCents(basePrice, offerPrice, fullPrice);
         try {
-          await recordAttribution(refCode, billingPeriod, fullPrice, discountCents);
+          await recordAttribution(refCode, attributionPlanId, billingPeriod, fullPrice, discountCents);
           markAttributed();
           claimFirstReferralBonus(refCode).catch(() => {});
         } catch { /* best-effort — retry on next purchase if Supabase failed */ }
