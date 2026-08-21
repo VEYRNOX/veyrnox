@@ -2,14 +2,29 @@
 import { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+import { jsPDF } from "jspdf";
 import CoinLogo from "@/components/CoinLogo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import BackupPaywallNudge from "@/components/BackupPaywallNudge";
 import { useTier } from "@/lib/TierProvider";
+import { artifactToQrDataUrl, encryptSeedBackup } from "@/lib/seedQr";
+import { toast } from "@/lib/toast";
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
 
 export default function WalletSeedQR() {
   const { wallets, confirmWalletBackup } = useWallet();
@@ -18,7 +33,13 @@ export default function WalletSeedQR() {
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [mnemonic, setMnemonic] = useState(null);
   const [showSeed, setShowSeed] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const [printed, setPrinted] = useState(false);
+  const [backupPassword, setBackupPassword] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [qrError, setQrError] = useState("");
+  const [qrPending, setQrPending] = useState(false);
+  const [printPending, setPrintPending] = useState(false);
   const mnemonicRef = useRef(null);
 
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
@@ -37,11 +58,23 @@ export default function WalletSeedQR() {
   useEffect(() => {
     setMnemonic(null);
     setShowSeed(false);
+    setShowQr(false);
     setPrinted(false);
+    setBackupPassword("");
+    setQrDataUrl("");
+    setQrError("");
+    setQrPending(false);
+    setPrintPending(false);
   }, [selectedWalletId]);
 
   useEffect(() => {
-    return () => { setMnemonic(null); };
+    return () => {
+      setMnemonic(null);
+      setShowQr(false);
+      setBackupPassword("");
+      setQrDataUrl("");
+      setQrError("");
+    };
   }, []);
 
   const handleReveal = () => {
@@ -49,91 +82,181 @@ export default function WalletSeedQR() {
     revealWithReauth(selectedWalletId, { title: 'Reveal recovery phrase' });
   };
 
-  const handlePrint = async () => {
+  const handleGenerateQr = async () => {
     if (!mnemonic) return;
-
-    // Codex P1 2026-08-15: no more plaintext QR (the words below already ARE
-    // the backup; a QR of the same words just adds a shoulder-surf / camera-
-    // capture surface without any encryption). The printed sheet now carries
-    // words only; the native share path is disabled to stop raw seed leaving
-    // the app via OS share targets (email/cloud drives/messaging apps).
-    const nameText = selectedWallet?.name || "Wallet";
-
-    if (Capacitor.isNativePlatform()) {
-      // Native path: no OS-share of the seed. The user reads the words off the
-      // screen and writes them down. Encrypted scannable backup lives at
-      // /personal-backup (Personal Backup — 2-of-3 encrypted shard export).
-      setPrinted(true);
-      confirmWalletBackup(selectedWalletId);
+    if (!backupPassword) {
+      setQrError("Enter a backup password to generate the QR.");
       return;
     }
+    setQrPending(true);
+    setQrError("");
+    try {
+      const artifact = await encryptSeedBackup(mnemonic, backupPassword);
+      const dataUrl = await artifactToQrDataUrl(artifact);
+      setQrDataUrl(dataUrl);
+    } catch (error) {
+      setQrDataUrl("");
+      setQrError(error?.message || "Could not generate the encrypted QR.");
+    } finally {
+      setQrPending(false);
+    }
+  };
 
-    // Web path: inject a hidden print container into THIS document so the user
-    // stays on the page. @media print hides everything except the container, then
-    // we call window.print() on the current window — no popup, no orphaned tab.
-    const PRINT_ID = "veyrnox-seed-print-container";
-    let container = document.getElementById(PRINT_ID);
-    if (!container) {
-      container = document.createElement("div");
-      container.id = PRINT_ID;
-      document.body.appendChild(container);
+  const buildPdf = () => {
+    if (!mnemonic) return null;
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const walletName = selectedWallet?.name || "Wallet";
+    const walletMeta = `${selectedWallet?.currency || ""} ${selectedWallet?.address ? `· ${selectedWallet.address.slice(0, 16)}…` : ""}`.trim();
+    const wordsText = mnemonic.trim().split(/\s+/).map((word, index) => `${index + 1}. ${word}`).join("   ");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text(`${walletName} - Recovery Backup`, 20, 20);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    if (walletMeta) doc.text(walletMeta, 20, 28);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(190, 40, 40);
+    doc.text("KEEP THIS DOCUMENT SECURE. ANYONE WITH THIS BACKUP CONTROLS THE WALLET.", 20, 38);
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    const seedLines = doc.splitTextToSize(wordsText, 170);
+    doc.text(seedLines, 20, 52);
+
+    let qrY = 52 + seedLines.length * 6 + 8;
+    if (qrDataUrl) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Encrypted Seed Key QR", 20, qrY);
+      qrY += 6;
+      doc.addImage(qrDataUrl, "PNG", 20, qrY, 70, 70);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const note = doc.splitTextToSize(
+        "This QR is encrypted with the backup password you entered on-screen. You need that password to restore from the QR.",
+        85
+      );
+      doc.text(note, 100, qrY + 8);
     }
 
-    // Build the print container with DOM methods — no innerHTML, no XSS surface.
-    // All content is plain text set via textContent (wallet name, mnemonic, address)
-    // or a data: URL from the local qrcode library (QR image).
-    container.textContent = "";
+    return doc;
+  };
 
-    const h2 = document.createElement("h2");
-    h2.textContent = `${nameText} — Recovery Backup`;
-    container.appendChild(h2);
+  const handlePrint = async () => {
+    if (!mnemonic || printPending) return;
+    setPrintPending(true);
 
-    const meta = document.createElement("p");
-    meta.textContent = `${selectedWallet?.currency || ""} · ${selectedWallet?.address?.slice(0, 16) || ""}...`;
-    container.appendChild(meta);
+    const nameText = selectedWallet?.name || "Wallet";
 
-    const seedDiv = document.createElement("div");
-    seedDiv.className = "seed";
-    seedDiv.textContent = mnemonic;
-    container.appendChild(seedDiv);
-
-    const warn1 = document.createElement("p");
-    warn1.className = "warning";
-    warn1.textContent = "KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.";
-    container.appendChild(warn1);
-
-    // Inject scoped print styles once (idempotent).
-    const STYLE_ID = "veyrnox-seed-print-styles";
-    if (!document.getElementById(STYLE_ID)) {
-      const style = document.createElement("style");
-      style.id = STYLE_ID;
-      style.textContent = `
-        @media print {
-          body > *:not(#${PRINT_ID}) { display: none !important; }
-          #${PRINT_ID} { display: block !important; font-family: monospace; text-align: center; padding: 40px; }
-          #${PRINT_ID} h2 { margin-bottom: 8px; }
-          #${PRINT_ID} p { color: #666; font-size: 13px; margin: 4px 0; }
-          #${PRINT_ID} .seed { font-size: 14px; font-weight: bold; margin: 20px 0; word-break: break-all; background: #f5f5f5; padding: 16px; border-radius: 8px; }
-          #${PRINT_ID} .qr { margin: 12px auto; display: block; }
-          #${PRINT_ID} .warning { color: #ef4444; font-size: 12px; margin-top: 20px; }
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const doc = buildPdf();
+        if (!doc) return;
+        const bytes = new Uint8Array(doc.output("arraybuffer"));
+        const fileName = "veyrnox-recovery-backup.pdf";
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: bytesToBase64(bytes),
+          directory: Directory.Cache,
+        });
+        await Share.share({
+          title: `${nameText} recovery backup`,
+          text: "Print or save this recovery backup in a secure location.",
+          url: result.uri,
+          dialogTitle: "Print or save recovery backup",
+        });
+      } else {
+        // Web path: inject a hidden print container into THIS document so the user
+        // stays on the page. @media print hides everything except the container.
+        const PRINT_ID = "veyrnox-seed-print-container";
+        let container = document.getElementById(PRINT_ID);
+        if (!container) {
+          container = document.createElement("div");
+          container.id = PRINT_ID;
+          document.body.appendChild(container);
         }
-        @media screen {
-          #${PRINT_ID} { display: none; }
+
+        container.textContent = "";
+
+        const h2 = document.createElement("h2");
+        h2.textContent = `${nameText} — Recovery Backup`;
+        container.appendChild(h2);
+
+        const meta = document.createElement("p");
+        meta.textContent = `${selectedWallet?.currency || ""} · ${selectedWallet?.address?.slice(0, 16) || ""}...`;
+        container.appendChild(meta);
+
+        const seedDiv = document.createElement("div");
+        seedDiv.className = "seed";
+        seedDiv.textContent = mnemonic;
+        container.appendChild(seedDiv);
+
+        if (qrDataUrl) {
+          const qrTitle = document.createElement("p");
+          qrTitle.className = "qr-label";
+          qrTitle.textContent = "Encrypted Seed Key QR";
+          container.appendChild(qrTitle);
+
+          const qrImg = document.createElement("img");
+          qrImg.src = qrDataUrl;
+          qrImg.alt = "Encrypted Seed Key QR";
+          qrImg.className = "qr";
+          container.appendChild(qrImg);
         }
-      `;
-      document.head.appendChild(style);
+
+        const warn1 = document.createElement("p");
+        warn1.className = "warning";
+        warn1.textContent = "KEEP THIS DOCUMENT SECURE. NEVER SHARE WITH ANYONE.";
+        container.appendChild(warn1);
+
+        const STYLE_ID = "veyrnox-seed-print-styles";
+        if (!document.getElementById(STYLE_ID)) {
+          const style = document.createElement("style");
+          style.id = STYLE_ID;
+          style.textContent = `
+            @media print {
+              body > *:not(#${PRINT_ID}) { display: none !important; }
+              #${PRINT_ID} { display: block !important; font-family: monospace; text-align: center; padding: 40px; }
+              #${PRINT_ID} h2 { margin-bottom: 8px; }
+              #${PRINT_ID} p { color: #666; font-size: 13px; margin: 4px 0; }
+              #${PRINT_ID} .seed { font-size: 14px; font-weight: bold; margin: 20px 0; word-break: break-all; background: #f5f5f5; padding: 16px; border-radius: 8px; }
+              #${PRINT_ID} .qr { margin: 12px auto; display: block; width: 220px; height: 220px; }
+              #${PRINT_ID} .qr-label { margin-top: 16px; font-weight: bold; color: #111; }
+              #${PRINT_ID} .warning { color: #ef4444; font-size: 12px; margin-top: 20px; }
+            }
+            @media screen {
+              #${PRINT_ID} { display: none; }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+
+        window.print();
+      }
+
+      setPrinted(true);
+      confirmWalletBackup(selectedWalletId);
+    } catch (error) {
+      toast.error(error?.message || "Could not print or save the recovery backup.");
+    } finally {
+      setPrintPending(false);
     }
-
-    window.print();
-    setPrinted(true);
-    confirmWalletBackup(selectedWalletId);
   };
 
   const handleClear = () => {
     setMnemonic(null);
     mnemonicRef.current = null;
     setShowSeed(false);
+    setShowQr(false);
     setPrinted(false);
+    setBackupPassword("");
+    setQrDataUrl("");
+    setQrError("");
+    setQrPending(false);
   };
 
   const words = mnemonic ? mnemonic.trim().split(/\s+/) : [];
@@ -218,8 +341,30 @@ export default function WalletSeedQR() {
             </button>
           </div>
 
-          {showSeed ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={showSeed ? "default" : "outline"}
+              className="gap-2"
+              onClick={() => setShowSeed((s) => !s)}
+            >
+              {showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showSeed ? "Hide Words" : "Reveal Words"}
+            </Button>
+            <Button
+              type="button"
+              variant={showQr ? "default" : "outline"}
+              className="gap-2"
+              onClick={() => setShowQr((s) => !s)}
+            >
+              <KeyRound className="h-4 w-4" />
+              {showQr ? "Hide QR" : "Reveal QR"}
+            </Button>
+          </div>
+
+          {(showSeed || showQr) ? (
             <>
+              {showSeed && (
               <div className="grid grid-cols-3 gap-2">
                 {words.map((word, i) => (
                   <div key={i} className="flex items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1.5">
@@ -228,20 +373,46 @@ export default function WalletSeedQR() {
                   </div>
                 ))}
               </div>
+              )}
 
-              {/* Codex P1 2026-08-15: removed the plaintext-mnemonic QR that used
-                  to render here. It contradicted the "encrypted QR backup" claim
-                  in Documentation.jsx and turned a photograph or screenshot into
-                  full wallet control with zero decryption step. Users who want a
-                  scannable backup should use Personal Backup (2-of-3 encrypted
-                  shard export at /personal-backup), which is the actual encrypted
-                  QR path (src/lib/seedQr.js + Argon2id-AES-GCM). Nothing about
-                  the seed-phrase display above is affected — the words stay for
-                  manual write-down, which is the safer offline backup anyway. */}
+              {showQr && (
+              <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+                <div>
+                  <p className="text-sm font-medium">Encrypted Seed Key QR</p>
+                  <p className="text-xs text-muted-foreground">
+                    This QR is generated locally after the reveal gate. It is encrypted under a backup password, so scanning it still requires that password to recover the seed.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="seed-qr-password">Backup password</Label>
+                  <PasswordInput
+                    id="seed-qr-password"
+                    value={backupPassword}
+                    onChange={(e) => { setBackupPassword(e.target.value); if (qrError) setQrError(""); }}
+                    placeholder="Enter a backup password for the QR"
+                    autoComplete="off"
+                  />
+                </div>
+                {qrError && <p className="text-xs text-destructive">{qrError}</p>}
+                <Button onClick={handleGenerateQr} variant="secondary" className="w-full" disabled={!backupPassword || qrPending}>
+                  {qrPending ? "Generating encrypted QR…" : "Generate Seed Key QR"}
+                </Button>
+                {qrDataUrl && (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="rounded-2xl bg-white p-3 shadow-lg">
+                      <img src={qrDataUrl} alt="Encrypted Seed Key QR" width={220} height={220} className="rounded-lg" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      Save this QR only if you also remember the backup password you used to encrypt it.
+                    </p>
+                  </div>
+                )}
+              </div>
+              )}
             </>
           ) : (
             <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-center">
-              <p className="text-sm text-muted-foreground">Tap the eye to reveal your {words.length}-word recovery phrase</p>
+              <p className="text-sm text-muted-foreground">Choose to reveal your {words.length}-word recovery phrase, the encrypted Seed Key QR, or both.</p>
             </div>
           )}
 
@@ -250,8 +421,8 @@ export default function WalletSeedQR() {
             {selectedWallet && <span className="font-mono"> {selectedWallet.currency} · {selectedWallet.address?.slice(0, 20)}…</span>}
           </p>
 
-          <Button onClick={handlePrint} className="gap-2 w-full" variant="outline">
-            <Printer className="h-4 w-4" /> Print Secure Backup
+          <Button onClick={handlePrint} className="gap-2 w-full" variant="outline" disabled={printPending}>
+            <Printer className="h-4 w-4" /> {printPending ? "Preparing Backup…" : "Print Secure Backup"}
           </Button>
           {printed && (
             <>
