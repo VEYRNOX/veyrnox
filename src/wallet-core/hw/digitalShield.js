@@ -389,6 +389,13 @@ export function finalizeDigitalShieldBtcResponse({ session, unsignedPsbtHex, inp
   if (original.inputsLength !== signed.inputsLength || original.outputsLength !== signed.outputsLength) {
     throw new Error('DIGITAL_SHIELD_BTC_PSBT_SHAPE_MISMATCH');
   }
+  for (let i = 0; i < original.inputsLength; i += 1) {
+    const a = original.getInput(i);
+    const b = signed.getInput(i);
+    if (bytesToHex(a.txid) !== bytesToHex(b.txid) || a.index !== b.index || a.sequence !== b.sequence) {
+      throw new Error('DIGITAL_SHIELD_BTC_INPUT_MISMATCH');
+    }
+  }
   for (let i = 0; i < original.outputsLength; i += 1) {
     const a = original.getOutput(i);
     const b = signed.getOutput(i);

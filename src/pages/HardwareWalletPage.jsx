@@ -7,6 +7,7 @@ import { useDigitalShield } from '@/context/DigitalShieldContext';
 import { TrezorConnectModal } from '@/components/hw/TrezorConnectModal';
 import QRScanner from '@/components/QRScanner';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 function CopyButton({ value }) {
@@ -218,7 +219,9 @@ export default function HardwareWalletPage() {
                 Scanned parts: {importParts.length}
               </div>
             )}
+            <Label htmlFor="digital-shield-import-ur">Digital Shield account UR</Label>
             <textarea
+              id="digital-shield-import-ur"
               value={importDraft || importPreview}
               onChange={(e) => setImportDraft(e.target.value)}
               placeholder="Paste one UR or multiple UR parts here"
