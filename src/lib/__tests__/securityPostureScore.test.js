@@ -4,6 +4,7 @@
 // Tests pin structure/codes, NOT prose copy. Written BEFORE the implementation.
 
 import { describe, it, expect } from 'vitest';
+import { TIER } from '@/rasp';
 import {
   computePostureScore,
   getPostureColor,
@@ -21,7 +22,7 @@ function bareState(overrides = {}) {
     pinCreated: false,
     pinLength: null,
     biometricEnabled: false,
-    raspTier: 'BLOCK',
+    raspTier: TIER.BLOCK,
     kekActive: false,
     hardwareTier: null,
     recoveryPassphraseSet: false,
@@ -42,7 +43,7 @@ function typicalState(overrides = {}) {
     pinCreated: true,
     pinLength: 8,
     biometricEnabled: true,
-    raspTier: 'ALLOW',
+    raspTier: TIER.ALLOW,
     kekActive: true,
     hardwareTier: 'TEE',
     ...overrides,
@@ -55,7 +56,7 @@ function fullState(overrides = {}) {
     pinCreated: true,
     pinLength: 14,
     biometricEnabled: true,
-    raspTier: 'ALLOW',
+    raspTier: TIER.ALLOW,
     kekActive: true,
     hardwareTier: 'STRONGBOX',
     recoveryPassphraseSet: true,
@@ -101,7 +102,7 @@ describe('computePostureScore', () => {
     // Total: 20 + 25 + 8 + 0 + 0 = 53
     expect(result.total).toBe(53);
     expect(result.percentage).toBe(53);
-    expect(result.color).toBe('#D4C44A');  // Fair band
+    expect(result.color).toBe('#D4C44A');  // Yellow
     expect(result.label).toBe('Fair');
   });
 
@@ -131,7 +132,7 @@ describe('computePostureScore', () => {
     const result = computePostureScore(fullState({ hardwareTier: 'TEE' }));
 
     expect(result.dimensions.hardwareBinding.score).toBe(8);
-    // Total drops by 2 from the full 95 (StrongBox 5 -> TEE 3)
+    // Total drops by 2 from the full 95 (StrongBox 5 -> TEE 3).
     expect(result.total).toBe(93);
   });
 
@@ -148,7 +149,7 @@ describe('computePostureScore', () => {
   // 4. RASP BLOCK = 0/25 device integrity
   // -------------------------------------------------------------------------
   it('RASP BLOCK scores 0/25 on device integrity', () => {
-    const result = computePostureScore(typicalState({ raspTier: 'BLOCK' }));
+    const result = computePostureScore(typicalState({ raspTier: TIER.BLOCK }));
     expect(result.dimensions.deviceIntegrity.score).toBe(0);
   });
 
@@ -156,7 +157,7 @@ describe('computePostureScore', () => {
   // 5. RASP WARN = 10/25 device integrity
   // -------------------------------------------------------------------------
   it('RASP WARN scores 10/25 on device integrity', () => {
-    const result = computePostureScore(typicalState({ raspTier: 'WARN' }));
+    const result = computePostureScore(typicalState({ raspTier: TIER.WARN }));
     expect(result.dimensions.deviceIntegrity.score).toBe(10);
   });
 

@@ -20,6 +20,7 @@
 import { summarizeAllowance } from '@/wallet-core/evm/approvals';
 import { classifyToken } from '@/wallet-core/evm/spam';
 import { screenRecipient, isLocallyFlagged } from '@/wallet-core/evm/poison';
+import { TIER } from '@/rasp';
 
 /**
  * Aggregate ERC-20 allowance rows (local TokenApproval shape) into counts.
@@ -228,7 +229,7 @@ function scoreAuthentication(s) {
  */
 function scoreDeviceIntegrity(s) {
   const tier = s.raspTier;
-  const pts = tier === 'ALLOW' ? 25 : tier === 'WARN' ? 10 : 0;
+  const pts = tier === TIER.ALLOW ? 25 : tier === TIER.WARN ? 10 : 0;
   const items = [item('rasp_tier', pts > 0, pts)];
   return { score: pts, max: 25, items };
 }
