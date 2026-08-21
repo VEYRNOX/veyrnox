@@ -1,9 +1,11 @@
 // @ts-nocheck
 // src/pages/CryptoDetailPage.jsx
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router";
-import { ArrowUpRight, ArrowDownLeft, CreditCard } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowUpRight, ArrowDownLeft, CreditCard, Eye, EyeOff, ShieldAlert, Sparkles } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import BackButton from "@/components/BackButton";
 import { useBuyEnabled } from "@/lib/buy/useBuyEnabled";
@@ -15,6 +17,13 @@ import { usePortfolio } from "@/lib/portfolioBalances";
 import { resolveAssetRow, fmtIndeterminateAmount } from "@/lib/balanceDisplay";
 import { TOP_CRYPTOS } from "@/lib/cryptos";
 import { PERIODS } from "@/lib/chartPeriods";
+import { openAdvisor, publishAdvisorContext } from "@/lib/advisorBridge";
+import {
+  buildAssetSpamIntel,
+  readSpamTokenOverrides,
+  setSpamTokenOverride,
+} from "@/lib/spamTokenIntel";
+import { evaluateSuspiciousToken } from "@/lib/suspiciousAssets";
 
 export default function CryptoDetailPage() {
   const { t } = useTranslation("wallet");
@@ -22,11 +31,47 @@ export default function CryptoDetailPage() {
   const navigate = useNavigate();
   const buyEnabled = useBuyEnabled();
   const [period, setPeriod] = useState("1D");
+  const [spamOverrides, setSpamOverrides] = useState(() => readSpamTokenOverrides());
   const { isUnlocked, wallets, walletAddresses, activeWalletId } = useWallet();
   const { changeFor } = useBasketPrices();
   const { data: portfolio } = usePortfolio(wallets, walletAddresses);
+  const { data: tokenRows = [] } = useQuery({
+    queryKey: ["wallet-tokens"],
+    queryFn: () => base44.entities.WalletToken.list(),
+    enabled: isUnlocked,
+  });
 
   const asset = TOP_CRYPTOS.find((c) => c.symbol === symbol);
+  const assetSpamIntel = useMemo(
+    () => buildAssetSpamIntel(tokenRows, symbol, spamOverrides),
+    [tokenRows, symbol, spamOverrides]
+  );
+  const suspiciousAssetTokens = useMemo(
+    () => assetSpamIntel.tokens.map(evaluateSuspiciousToken).filter((token) => token.suspicious),
+    [assetSpamIntel.tokens]
+  );
+
+  useEffect(() => {
+    publishAdvisorContext({
+      asset_symbol: symbol || null,
+      asset_name: asset?.name || null,
+      suspicious_token_count: suspiciousAssetTokens.length,
+      visible_suspicious_token_count: suspiciousAssetTokens.filter((token) => !token.hidden).length,
+      hidden_suspicious_token_count: suspiciousAssetTokens.filter((token) => token.hidden).length,
+      risky_contract_token_count: suspiciousAssetTokens.filter((token) => token.contract.score > 0).length,
+      suspicious_tokens: suspiciousAssetTokens.map((token) => ({
+        id: token.id,
+        symbol: token.symbol,
+        name: token.name,
+        hidden: token.hidden,
+        reasons: token.reasons.map((reason) => reason.text),
+        acquired_via: token.acquired_via || null,
+        verified: !!token.verified,
+        contract_unknowns: token.contract.unknowns,
+      })),
+    });
+    return () => publishAdvisorContext(null);
+  }, [asset?.name, suspiciousAssetTokens, symbol]);
 
   if (!asset) {
     return (
@@ -39,6 +84,27 @@ export default function CryptoDetailPage() {
 
   const change = changeFor(symbol);
   const isUp = change == null ? null : change >= 0;
+  const handleSpamOverride = (tokenId, mode) => {
+    setSpamTokenOverride(tokenId, mode);
+    setSpamOverrides(readSpamTokenOverrides());
+  };
+  const askAdvisorAboutSpam = () => {
+    openAdvisor({
+      question: `Why is ${symbol} showing suspicious token warnings, and what should I do next?`,
+      context: {
+        asset_symbol: symbol,
+        asset_name: asset.name,
+        suspicious_tokens: suspiciousAssetTokens.map((token) => ({
+          symbol: token.symbol,
+          name: token.name,
+          reasons: token.reasons.map((reason) => reason.text),
+          hidden: token.hidden,
+          acquired_via: token.acquired_via || null,
+          contract_unknowns: token.contract.unknowns,
+        })),
+      },
+    });
+  };
 
   return (
     <div className="max-w-lg mx-auto space-y-5 pt-1">
@@ -83,6 +149,74 @@ export default function CryptoDetailPage() {
           </div>
         );
       })()}
+
+      {suspiciousAssetTokens.length > 0 && (
+        <div className="rounded-2xl border border-caution/30 bg-caution/5 p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="h-5 w-5 text-caution shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">
+                Suspicious {symbol} token {suspiciousAssetTokens.length > 1 ? "copies" : "copy"} detected
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                This warning is local screening, not a contract audit. It combines metadata lures with contract-level cautions only when the app actually has those fields.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {suspiciousAssetTokens.map((token) => (
+              <div key={token.id} className="rounded-xl border border-border bg-card/70 p-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{token.name || token.symbol}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {token.acquired_via === "airdrop" ? "Unsolicited airdrop" : "Unverified token metadata"}
+                      {token.contract.score > 0 ? " · contract cautions present" : ""}
+                      {token.hidden ? " · hidden from spam views" : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleSpamOverride(token.id, token.hidden ? "show" : "hide")}
+                    className="shrink-0 inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg border border-border hover:bg-secondary"
+                  >
+                    {token.hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                    {token.hidden ? "Show" : "Hide"}
+                  </button>
+                </div>
+                <ul className="space-y-1">
+                  {token.reasons.map((reason) => (
+                    <li key={reason.kind + reason.text} className={`text-xs ${reason.severity === 'high' ? 'text-destructive' : 'text-caution'}`}>
+                      {reason.text}
+                    </li>
+                  ))}
+                </ul>
+                {token.contract.unknowns.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Unknown here: {token.contract.unknowns.join(', ')}.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" className="flex-1 gap-2" onClick={() => navigate("/trust-score")}>
+              <ShieldAlert className="h-4 w-4" />
+              Review Spam Filter
+            </Button>
+            <Button type="button" variant="secondary" className="flex-1 gap-2" onClick={() => navigate("/suspicious-assets")}>
+              <ShieldAlert className="h-4 w-4" />
+              Suspicious Queue
+            </Button>
+            <Button type="button" className="flex-1 gap-2" onClick={askAdvisorAboutSpam}>
+              <Sparkles className="h-4 w-4" />
+              Ask AI Advisor
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Period tabs */}
       <div className="flex gap-1">

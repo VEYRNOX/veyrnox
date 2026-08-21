@@ -19,9 +19,18 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // --- DEMO is the seam under test. Forced true for this whole suite. ---
-vi.mock('@/api/demoClient', () => ({ DEMO: true }));
+vi.mock('@/api/demoClient', () => ({
+  DEMO: true,
+  demoBase44: {
+    auth: { logout: vi.fn() },
+    functions: {},
+    integrations: { Core: { InvokeLLM: vi.fn() } },
+    entities: {},
+  },
+}));
 vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilityOrDemoActive: () => true,
 }));
@@ -94,14 +103,19 @@ import { WalletConnectProvider, useWalletConnect } from '@/lib/WalletConnectProv
 
 function renderWithCapture() {
   const out = {};
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   function Grab() {
     out.ctx = useWalletConnect();
     return null;
   }
   render(
-    <WalletConnectProvider>
-      <Grab />
-    </WalletConnectProvider>,
+    <QueryClientProvider client={qc}>
+      <WalletConnectProvider>
+        <Grab />
+      </WalletConnectProvider>
+    </QueryClientProvider>,
   );
   return out;
 }

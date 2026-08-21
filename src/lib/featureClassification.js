@@ -35,6 +35,7 @@ export const ALL_ROUTE_PATHS = [
   '/safety-plus',
   '/referrals',
   '/walletconnect',
+  '/suspicious-assets',
   '/asset/:symbol',
   '/verify',
 ];
@@ -185,6 +186,10 @@ export const CLASSIFICATION = {
   '/security-dashboard': {
     verdict: 'live', dataSource: 'on-device',
     note: 'Aggregates real local signals only: summarizeApprovals/summarizeSpamTokens/screenAddressHistory from lib/securityPosture.js (run over local entity records already held on device); biometric/passkey/session toggles from lib/biometric, lib/passkey, lib/session; hasStealthPool from WalletProvider (a non-destructive IndexedDB read of the universal baseline pool only — the provider exposes no duress/panic configured-state accessor, deniability v2). No external call, no fabrication. Explicitly disclaims being a guarantee.',
+  },
+  '/suspicious-assets': {
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'Reviews the local wallet token/NFT queue for spam or suspicious assets using on-device heuristics first, with optional TIP-backed contract review only when the remote-screening gate allows it. The page can surface locally stored WalletToken/NFTAsset rows, spam heuristics, and TIP review findings without inventing balances or risk labels.',
   },
   '/security': {
     verdict: 'live', dataSource: 'local-entities',
