@@ -12,6 +12,7 @@ vi.mock('@/api/tipClient.js', () => ({
 
 describe('screenTransaction', () => {
   let screenTransaction;
+  let screenAssetContract;
   let isDeniabilityOrDemoActive;
   let createTipClient;
 
@@ -29,6 +30,7 @@ describe('screenTransaction', () => {
     isDeniabilityOrDemoActive = (await import('@/wallet-core/deniabilitySession.js')).isDeniabilityOrDemoActive;
     createTipClient = (await import('@/api/tipClient.js')).createTipClient;
     screenTransaction = (await import('../tipScreen.js')).screenTransaction;
+    screenAssetContract = (await import('../tipScreen.js')).screenAssetContract;
   });
 
   it('returns null in deniability mode (I3)', async () => {
@@ -67,5 +69,59 @@ describe('screenTransaction', () => {
     expect(result.verdict).toBe('error');
     expect(result.level).toBe('medium');
     expect(result.risks[0].title).toContain('unavailable');
+  });
+
+  it('screens an asset contract through TIP without sending a wallet address', async () => {
+    const mockScreen = vi.fn().mockResolvedValue({
+      kind: 'asset_review',
+      verdict: 'warn',
+      review_summary: 'Proxy contract uses a suspicious upgrade pattern.',
+      findings: [
+        { title: 'Upgradeable proxy', detail: 'Admin can swap implementation.', severity: 'medium', confidence: 0.88, code: 'upgradeable_proxy' },
+      ],
+      sources_consulted: [{ source: 'tip-asset-engine', status: 'hit', latency_ms: 42 }],
+      sanctions_hit: false,
+    });
+    createTipClient.mockReturnValue({ screen: mockScreen });
+
+    const result = await screenAssetContract({
+      chain: 'evm',
+      contractAddress: '0x1234567890123456789012345678901234567890',
+    });
+
+    expect(mockScreen).toHaveBeenCalledWith(expect.objectContaining({
+      chain: 'ethereum',
+      action_type: 'asset_review',
+      from_address: '0x0000000000000000000000000000000000000000',
+      to_address: '0x1234567890123456789012345678901234567890',
+      contract_address: '0x1234567890123456789012345678901234567890',
+      token_address: '0x1234567890123456789012345678901234567890',
+    }), expect.anything());
+    expect(result.verdict).toBe('warn');
+    expect(result.level).toBe('medium');
+    expect(result.kind).toBe('asset_review');
+    expect(result.reviewSummary).toContain('suspicious upgrade pattern');
+    expect(result.findings[0].title).toBe('Upgradeable proxy');
+  });
+
+  it('returns null for asset review when the contract address or chain cannot be resolved', async () => {
+    expect(await screenAssetContract({ chain: '', contractAddress: '' })).toBeNull();
+    expect(await screenAssetContract({ chain: 'unknown', contractAddress: 'abc' })).toBeNull();
+  });
+
+  it('falls back to the generic TIP screen shape for asset review when needed', async () => {
+    const mockScreen = vi.fn().mockResolvedValue({
+      verdict: 'warn',
+      risk_data: { threat_signals: [{ signal_type: 'suspicious_contract', confidence: 0.88, source: 'test' }], sanctions_hit: false },
+    });
+    createTipClient.mockReturnValue({ screen: mockScreen });
+
+    const result = await screenAssetContract({
+      chain: 'evm',
+      contractAddress: '0x1234567890123456789012345678901234567890',
+    });
+
+    expect(result.kind).toBe('generic_screen');
+    expect(result.risks[0].title).toBe('suspicious_contract');
   });
 });

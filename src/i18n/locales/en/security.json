@@ -243,6 +243,8 @@
       "max_fee_note": "This is the most the network fee can cost, on top of the value above. It is a ceiling, not an estimate — the actual fee is usually far lower.",
       "data_row_label": "Data",
       "mainnet_flag": "⚠ REAL FUNDS — live mainnet transaction, not testnet. Double-check the network and amount before approving.",
+      "remote_screening_notice": "Online threat-intelligence screening is active for this request. Before approval, Veyrnox may send the recipient address, amount, and call data to its TIP screening service.",
+      "remote_screening_unavailable": "Online screening is enabled in your preferences, but no TIP provider is configured in this build. This request will be screened locally only.",
       "broadcast_title": "⚠ This will broadcast a transaction",
       "broadcast_body": "Approving sends a real on-chain transaction and costs gas. Only approve requests from dApps you trust. This action cannot be undone.",
       "broadcast_ack": "I understand this will send a real transaction",

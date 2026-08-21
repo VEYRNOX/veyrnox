@@ -12,6 +12,7 @@ import {
   screenAddressHistory,
   buildReviewItems,
 } from "@/lib/securityPosture";
+import { buildSuspiciousAssetSnapshot } from "@/lib/suspiciousAssets";
 import { useRaspArtifact, TIER } from "@/rasp";
 import Spinner from "@/components/Spinner";
 import { isBiometricUnlockEnabled } from "@/lib/biometric";
@@ -117,6 +118,11 @@ export default function SecurityDashboard() {
     queryFn: () => base44.entities.Transaction.list(),
     enabled: entityQueryEnabled,
   });
+  const { data: nftRows = [], isLoading: loadingNfts, isError: errorNfts } = useQuery({
+    queryKey: ["nft-assets"],
+    queryFn: () => base44.entities.NFTAsset.list(),
+    enabled: entityQueryEnabled,
+  });
 
   // ── Feature toggles. Sync ones read directly; the stealth-pool marker is
   //    resolved via WalletProvider. NOTE: duress/panic configured-state is
@@ -145,10 +151,22 @@ export default function SecurityDashboard() {
   const approvals = useMemo(() => summarizeApprovals(approvalRows), [approvalRows]);
   const spam = useMemo(() => summarizeSpamTokens(tokenRows), [tokenRows]);
   const addresses = useMemo(() => screenAddressHistory(txRows), [txRows]);
+  const suspiciousAssets = useMemo(
+    () => buildSuspiciousAssetSnapshot({ tokens: tokenRows, nfts: nftRows }),
+    [tokenRows, nftRows]
+  );
   const { review: postureReview } = useMemo(
     () => buildReviewItems({ approvals, spam, addresses, features: { autoLockNever } }),
     [approvals, spam, addresses, autoLockNever]
   );
+  const suspiciousAssetsReviewItem = useMemo(() => {
+    if (suspiciousAssets.totals.total <= 0) return null;
+    return {
+      severity: suspiciousAssets.totals.riskyContracts > 0 ? 'high' : 'medium',
+      text: `${suspiciousAssets.totals.total} suspicious asset${suspiciousAssets.totals.total > 1 ? 's' : ''} need review`,
+      path: '/suspicious-assets',
+    };
+  }, [suspiciousAssets]);
 
   // Prepend a RASP device-integrity item when the environment is non-clean.
   // BLOCK (tampered/hooked) → high; WARN (rooted/unavailable) → high.
@@ -163,11 +181,11 @@ export default function SecurityDashboard() {
   }, [raspArtifact]);
 
   const review = useMemo(
-    () => (raspReviewItem ? [raspReviewItem, ...postureReview] : postureReview),
-    [raspReviewItem, postureReview]
+    () => [raspReviewItem, suspiciousAssetsReviewItem, ...postureReview].filter(Boolean),
+    [raspReviewItem, suspiciousAssetsReviewItem, postureReview]
   );
 
-  const loading = loadingApprovals || loadingTokens || loadingTxs;
+  const loading = loadingApprovals || loadingTokens || loadingTxs || loadingNfts;
   const highCount = review.filter((r) => r.severity === "high").length;
 
   return (
@@ -240,7 +258,7 @@ export default function SecurityDashboard() {
       {/* Active risk signals (counts → jump to the existing action page). */}
       <div>
         <h2 className="text-sm font-semibold mb-2">Active risk signals</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           <StatCard
             icon={ShieldOff}
             label="Approvals"
@@ -258,6 +276,14 @@ export default function SecurityDashboard() {
             path="/spam-filter"
           />
           <StatCard
+            icon={ShieldAlert}
+            label="Suspicious assets"
+            value={loading ? "—" : suspiciousAssets.totals.total}
+            sub={`${suspiciousAssets.totals.riskyContracts} contract${suspiciousAssets.totals.riskyContracts === 1 ? '' : 's'} · ${suspiciousAssets.totals.suspiciousNfts} NFT${suspiciousAssets.totals.suspiciousNfts === 1 ? '' : 's'}`}
+            tone={suspiciousAssets.totals.riskyContracts > 0 ? "high" : suspiciousAssets.totals.total > 0 ? "medium" : "ok"}
+            path="/suspicious-assets"
+          />
+          <StatCard
             icon={ShieldQuestion}
             label="Addresses"
             value={loading ? "—" : addresses.flagged + addresses.lookAlikePairs}
@@ -271,6 +297,9 @@ export default function SecurityDashboard() {
         )}
         {errorTokens && (
           <p className="mt-2 text-xs text-caution">Couldn't load wallet tokens — this signal may be incomplete.</p>
+        )}
+        {errorNfts && (
+          <p className="mt-2 text-xs text-caution">Couldn't load NFT holdings — suspicious collectible review may be incomplete.</p>
         )}
         {errorTxs && (
           <p className="mt-2 text-xs text-caution">Couldn't load transaction history — address screening may be incomplete.</p>

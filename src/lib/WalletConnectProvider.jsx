@@ -24,8 +24,9 @@
 // checks isDeniabilitySessionActive() FIRST inside its own body — no set handle
 // is introduced here (byte-identical real/decoy).
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ethers } from 'ethers';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -45,10 +46,14 @@ import { classifyRequest, isBlocked, REQUEST_TYPES } from '@/wallet-core/evm/wal
 import { parseTypedData, detectAssetAuthorising, describeTypedData } from '@/wallet-core/evm/typed-data.js';
 import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
+import { base44 } from '@/api/base44Client';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
 import { scoreWcTypedDataLevel } from '@/lib/wcTypedLevel';
+import { buildWcTransactionIntelligence } from '@/risk/walletConnectIntel.js';
+import { buildReviewContributor } from '@/risk/reviewContributor.js';
+import { readRemoteScreenPreference } from '@/lib/remoteScreenPreference.js';
 
 // #1093 — WC pre-sign tx-risk plane. Risk-signal modules (`@/risk/signals` and
 // `@/risk/calldata`) instantiate an ethers Interface at MODULE INIT time, so a
@@ -66,40 +71,14 @@ import { scoreWcTypedDataLevel } from '@/lib/wcTypedLevel';
 //                           but wired for a future address-book pass.
 // A non-approve, non-lookalike send composes txLevel=LEVEL.OK, and the RASP
 // env plane is the sole determinant (previous behaviour preserved).
-export async function scoreWcTxLevel(txParams, caip2ChainId) {
-  try {
-    const [
-      { score },
-      { s2UnlimitedApproval },
-      { s4AddressPoisoning },
-      { buildRiskInputsFromWcRequest },
-    ] = await Promise.all([
-      import('@/risk/score'),
-      import('@/risk/signals/s2-unlimited-approval'),
-      import('@/risk/signals/s4-address-poisoning'),
-      import('@/risk/fromWalletConnect'),
-    ]);
-    const WC_TX_RISK_SIGNALS = [
-      { id: 'S2', fn: s2UnlimitedApproval },
-      { id: 'S4', fn: s4AddressPoisoning },
-    ];
-    const parsedChainId = typeof caip2ChainId === 'string'
-      ? parseInt(caip2ChainId.replace(/^eip155:/, ''), 10)
-      : undefined;
-    const riskInputs = buildRiskInputsFromWcRequest({
-      txParam: txParams,
-      chainId: Number.isFinite(parsedChainId) ? parsedChainId : undefined,
-    });
-    const verdict = score(
-      riskInputs.unsignedTx,
-      riskInputs.activeSetLocalState,
-      riskInputs.chainData,
-      WC_TX_RISK_SIGNALS,
-    );
-    return verdict?.level ?? LEVEL.CAUTION;
-  } catch {
-    return LEVEL.CAUTION;
-  }
+export async function scoreWcTxLevel(txParams, caip2ChainId, evmAddress = null, remoteScreenEnabled = false) {
+  const intel = await buildWcTransactionIntelligence({
+    txParams,
+    caip2ChainId,
+    evmAddress,
+    remoteScreenEnabled,
+  });
+  return intel?.txLevel ?? LEVEL.CAUTION;
 }
 import {
   detect,
@@ -478,7 +457,7 @@ export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic
 }
 
 export async function _handleSendTransaction(
-  { withPrivateKey, evmAddress, actionPasswordConfigured = false, txLimits = [], history = [], usdRates = USD_RATES },
+  { withPrivateKey, evmAddress, actionPasswordConfigured = false, txLimits = [], history = [], knownAddresses = [], whitelist = [], usdRates = USD_RATES, remoteScreenEnabled = false },
   topic, id, params, caip2ChainId,
 ) {
   const txParams = params[0] ?? {};
@@ -487,7 +466,16 @@ export async function _handleSendTransaction(
   // so unlimited approvals (and future poison-address hits) drive presignGate
   // → CONFIRM/BLOCK. Pure: no network, no signer, no seed. Failures fall back
   // to CAUTION (I4 fail-closed) — the WC surface has no "sign anyway" ack.
-  const txLevel = await scoreWcTxLevel(txParams, caip2ChainId);
+  const intel = await buildWcTransactionIntelligence({
+    txParams,
+    caip2ChainId,
+    evmAddress,
+    remoteScreenEnabled,
+    history,
+    knownAddresses,
+    whitelist,
+  });
+  const txLevel = intel?.txLevel ?? LEVEL.CAUTION;
 
   // RASP + tx compose gate. Kept BEFORE the from-binding so a WARN/BLOCK-tier
   // environment (or a tx-owned RISK) is reported by the appropriate code even
@@ -629,6 +617,32 @@ export function WalletConnectProvider({ children }) {
   const [pendingProposals, setPendingProposals] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const { data: corpusHistory = [] } = /** @type {{ data: any[] }} */ (useQuery({
+    queryKey: ['transactions'],
+    queryFn: () => base44.entities.Transaction.list('-created_date', 100),
+    enabled: !isDecoy && !isHidden,
+  }));
+  const { data: addressBook = [] } = useQuery({
+    queryKey: ['address-book'],
+    queryFn: () => base44.entities.AddressBook.list(),
+    enabled: !isDecoy && !isHidden,
+  });
+  const { data: whitelist = [] } = useQuery({
+    queryKey: ['whitelisted-addresses'],
+    queryFn: () => base44.entities.WhitelistedAddress.list(),
+    enabled: !isDecoy && !isHidden,
+  });
+  const knownAddresses = useMemo(() => {
+    const out = [];
+    for (const tx of corpusHistory) {
+      if (tx.to_address) out.push({ address: tx.to_address, label: tx.type === 'send' ? "an address you've paid before" : 'a counterparty in your history', date: tx.created_date });
+      if (tx.from_address) out.push({ address: tx.from_address, label: 'a counterparty in your history', date: tx.created_date });
+      if (tx.address) out.push({ address: tx.address, label: 'a counterparty in your history', date: tx.created_date });
+    }
+    for (const c of addressBook) out.push({ address: c.address, label: c.name ? `your saved contact "${c.name}"` : 'a saved contact' });
+    for (const w of whitelist) out.push({ address: w.address, label: 'a whitelisted address' });
+    return out;
+  }, [corpusHistory, addressBook, whitelist]);
 
   // M11: getActiveSessions() may include sessions whose expiry has passed if the
   // SDK has not yet fired session_expire (e.g. the app was offline). Drop them so
@@ -900,12 +914,15 @@ export function WalletConnectProvider({ children }) {
         actionPasswordConfigured,
         txLimits,
         history,
+        knownAddresses,
+        whitelist,
         usdRates: USD_RATES,
+        remoteScreenEnabled: readRemoteScreenPreference(!!import.meta.env.VITE_TIP_BASE_URL),
       },
       topic, id, params, boundCaip2,
     );
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, evmAddress, actionPasswordConfigured, assertSessionLive, isSendReauthRequired]);
+  }, [withPrivateKey, evmAddress, actionPasswordConfigured, assertSessionLive, isSendReauthRequired, knownAddresses, whitelist]);
 
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);
@@ -923,6 +940,7 @@ export function WalletConnectProvider({ children }) {
     const type = classifyRequest(method);
     const blocked = isBlocked(method);
     let typedDataMeta = null;
+    let reviewMeta = null;
     if (type === REQUEST_TYPES.SIGN_TYPED_DATA) {
       const raw = params[1] ?? params[0];
       const parsed = parseTypedData(raw);
@@ -932,8 +950,23 @@ export function WalletConnectProvider({ children }) {
         description: describeTypedData(parsed),
       };
     }
-    return { ...req, type, blocked, typedDataMeta };
-  }, []);
+    if (type === REQUEST_TYPES.SEND_TRANSACTION) {
+      const txParam = params?.[0] ?? {};
+      const chainId = typeof req.params?.chainId === 'string'
+        ? parseInt(req.params.chainId.replace(/^eip155:/, ''), 10)
+        : NaN;
+      const wcNetwork = Number.isFinite(chainId) ? getNetworkByChainId(chainId) : null;
+      reviewMeta = buildReviewContributor({
+        recipient: txParam.to ?? null,
+        currency: wcNetwork?.symbol ?? 'ETH',
+        history: corpusHistory,
+        knownAddresses,
+        whitelist,
+        sessionMeta: getActiveSessions().find((s) => s.topic === req.topic)?.peer?.metadata ?? null,
+      });
+    }
+    return { ...req, type, blocked, typedDataMeta, reviewMeta };
+  }, [corpusHistory, knownAddresses, whitelist]);
 
   return (
     <WalletConnectCtx.Provider value={{

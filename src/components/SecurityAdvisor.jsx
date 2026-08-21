@@ -40,6 +40,10 @@ import {
   hasAdvisorConsent,
   setAdvisorConsent,
 } from "@/lib/advisorConsent";
+import {
+  ADVISOR_CONTEXT_EVENT,
+  ADVISOR_OPEN_EVENT,
+} from "@/lib/advisorBridge";
 import { useTier } from "@/lib/TierProvider";
 import { hasAdvisorOnlineAccess, tierLabel, TIER } from "@/lib/tier";
 
@@ -172,6 +176,14 @@ const QUESTION_SETS = {
     "How does Veyrnox detect a rooted device?",
     "What is the threat intelligence platform?",
     "How are sanctions lists checked?",
+  ],
+  suspicious_assets: [
+    "Which suspicious assets need my attention first?",
+    "What is the difference between hidden spam and active review items?",
+    "Why is a token in contract review instead of being called malicious?",
+    "What should I do with a dismissed suspicious collectible?",
+    "What does deeper contract intelligence add here?",
+    "What information is still unknown on this page?",
   ],
   analytics: [
     "What does this analytics page tell me?",
@@ -411,6 +423,10 @@ The advisor should explain each security layer, what the statuses mean, and how 
     questionsKey: 'address_screening',
     pageContext: `The user is on the TOKEN SPAM / TRUST SCORE page. This page flags suspicious assets or spam-like token behavior. The advisor should explain that unsolicited tokens often exist to lure the user into phishing flows and should not be treated as free money.`,
   },
+  suspicious_assets: {
+    questionsKey: 'suspicious_assets',
+    pageContext: `The user is on the SUSPICIOUS ASSETS page. This page combines suspicious fungible tokens, contract-risk hints, and unsolicited NFTs into one review queue. The advisor should explain clearly which concerns come from local metadata heuristics, which come from optional contract fields, and which items remain unknown rather than pretending the app has a complete contract audit. The advisor must distinguish active review items from user-hidden spam tokens, dismissed suspicious collectibles, and tokens that merely need deeper contract review.`,
+  },
   fraud_detection: {
     questionsKey: 'security',
     pageContext: `The user is on the FRAUD DETECTION page. This page is for identifying scam patterns, suspicious counterparties, and warning signals before or after wallet activity.`,
@@ -582,6 +598,7 @@ const ROUTE_SCREEN_MAP = {
   '/token-approvals': 'token_approvals',
   '/trust-score': 'trust_score',
   '/spam-filter': 'trust_score',
+  '/suspicious-assets': 'suspicious_assets',
   '/fraud': 'fraud_detection',
   '/analytics': 'analytics',
   '/advanced-analytics': 'analytics',
@@ -641,19 +658,62 @@ function getSuggestedQuestions(screen) {
 
 export { getSuggestedQuestions };
 
-function buildPageSnapshotContext(pageSnapshot) {
+function buildSuspiciousAssetsSnapshotGuidance(pageSnapshot) {
+  if (!pageSnapshot || typeof pageSnapshot !== 'object') return '';
+  const suspiciousTokenTotal = Number(pageSnapshot.suspicious_token_total ?? 0) || 0;
+  const suspiciousNftTotal = Number(pageSnapshot.suspicious_nft_total ?? 0) || 0;
+  const hiddenTokenTotal = Number(pageSnapshot.hidden_suspicious_token_total ?? 0) || 0;
+  const dismissedNftTotal = Number(pageSnapshot.dismissed_suspicious_nft_total ?? 0) || 0;
+  const riskyContractTotal = Number(pageSnapshot.risky_contract_total ?? 0) || 0;
+  const activeVisibleTokens = Math.max(0, suspiciousTokenTotal - hiddenTokenTotal);
+  const contractIntelConfigured = pageSnapshot.contract_intel_configured === true;
+  const contractIntelOptIn = pageSnapshot.contract_intel_opt_in === 'granted';
+  const lines = [
+    'Suspicious-assets queue interpretation:',
+    `- Active review lane: ${activeVisibleTokens} visible suspicious token(s) and ${suspiciousNftTotal} suspicious collectible(s) still shown in the queue.`,
+    `- Hidden spam lane: ${hiddenTokenTotal} suspicious token(s) are hidden elsewhere by user choice; treat these as lower-priority cleanup unless the user asks to restore or inspect one.`,
+    `- Deferred collectible lane: ${dismissedNftTotal} suspicious collectible(s) were dismissed from this queue by user choice; do not present them as active urgent warnings unless the user asks about dismissed items.`,
+    `- Contract-review lane: ${riskyContractTotal} token(s) have contract-risk hints; distinguish positive warning signs from missing fields or unresolved unknowns.`,
+    `- Deeper contract intelligence: ${contractIntelConfigured ? (contractIntelOptIn ? 'configured and explicitly enabled' : 'configured but still off because the user has not opted in') : 'not configured in this build, so only local evidence is available'}.`,
+  ];
+  const tokens = Array.isArray(pageSnapshot.suspicious_tokens) ? pageSnapshot.suspicious_tokens : [];
+  if (tokens.length > 0) {
+    const visible = tokens.filter((token) => token?.hidden !== true).slice(0, 3);
+    const hidden = tokens.filter((token) => token?.hidden === true).slice(0, 3);
+    if (visible.length > 0) {
+      lines.push(`- Visible token examples: ${visible.map((token) => token.symbol || token.name || 'unknown token').join(', ')}.`);
+    }
+    if (hidden.length > 0) {
+      lines.push(`- Hidden token examples: ${hidden.map((token) => token.symbol || token.name || 'unknown token').join(', ')}.`);
+    }
+  }
+  const nfts = Array.isArray(pageSnapshot.suspicious_nfts) ? pageSnapshot.suspicious_nfts : [];
+  if (nfts.length > 0) {
+    lines.push(`- Visible collectible examples: ${nfts.slice(0, 3).map((nft) => nft?.name || nft?.collection || 'unknown collectible').join(', ')}.`);
+  }
+  return lines.join('\n');
+}
+
+function buildPageSnapshotContext(pageSnapshot, screen = 'general') {
   if (!pageSnapshot || typeof pageSnapshot !== 'object') {
     return 'Live page snapshot: unavailable.';
   }
   try {
-    return `Live page snapshot (non-secret shell state):
-${JSON.stringify(pageSnapshot, null, 2)}`;
+    const lines = [
+      'Live page snapshot (non-secret shell state):',
+      JSON.stringify(pageSnapshot, null, 2),
+    ];
+    if (screen === 'suspicious_assets') {
+      const guidance = buildSuspiciousAssetsSnapshotGuidance(pageSnapshot);
+      if (guidance) lines.push(guidance);
+    }
+    return lines.join('\n');
   } catch {
     return 'Live page snapshot: unavailable.';
   }
 }
 
-export { buildPageSnapshotContext };
+export { buildPageSnapshotContext, buildSuspiciousAssetsSnapshotGuidance };
 
 // Per-chain address regexes. Order-of-check matters: EVM's `0x…` pattern is
 // unambiguous, so try that first. Bitcoin bech32 (`bc1…`) is next — it can't
@@ -810,6 +870,8 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [queuedQuestion, setQueuedQuestion] = useState(null);
+  const [liveSnapshot, setLiveSnapshot] = useState(null);
   const [streaming, setStreaming] = useState(false);
   const [offline, setOffline] = useState(false);
   const scrollRef = useRef(null);
@@ -833,6 +895,9 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   }, []);
 
   const hidden = isDeniabilityOrDemoActive() || DEMO;
+  const effectivePageSnapshot = liveSnapshot
+    ? { ...(pageSnapshot || {}), ...liveSnapshot }
+    : pageSnapshot;
   const advisorOnlineEnabled = hasAdvisorOnlineAccess(currentTier);
   const advisorOnlineLocked = !!TIP_CHAT_URL && !advisorOnlineEnabled;
   const currentPlanName = tierLabel(currentTier);
@@ -889,6 +954,34 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
       setTimeout(() => inputRef.current?.focus(), 200);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onContext = (e) => {
+      const next = e?.detail;
+      setLiveSnapshot(next && typeof next === 'object' ? next : null);
+    };
+    const onOpen = (e) => {
+      const detail = e?.detail || {};
+      if (detail.context && typeof detail.context === 'object') {
+        setLiveSnapshot(detail.context);
+      }
+      setOpen(true);
+      if (typeof detail.question === 'string' && detail.question.trim()) {
+        if (detail.autoSend) {
+          setQueuedQuestion(detail.question.trim());
+        } else {
+          setInput(detail.question.trim());
+        }
+      }
+    };
+    window.addEventListener(ADVISOR_CONTEXT_EVENT, onContext);
+    window.addEventListener(ADVISOR_OPEN_EVENT, onOpen);
+    return () => {
+      window.removeEventListener(ADVISOR_CONTEXT_EVENT, onContext);
+      window.removeEventListener(ADVISOR_OPEN_EVENT, onOpen);
+    };
+  }, []);
 
   const answerLocally = useCallback((text, history) => {
     const localAnswer = findLocalAnswer(text);
@@ -1021,7 +1114,7 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
 
 Current page: ${currentScreen} (chain: ${walletChain || "evm"})
 ${PAGE_CONTEXT[currentScreen] || PAGE_CONTEXT.general}
-${buildPageSnapshotContext(pageSnapshot)}
+${buildPageSnapshotContext(effectivePageSnapshot, currentScreen)}
 Current app language: ${currentLanguageName} (${currentLanguage})
 
 Rules:
@@ -1065,7 +1158,7 @@ Additional public knowledge you should apply:
           context: {
             current_screen: currentScreen,
             wallet_chain: walletChain,
-            page_snapshot: pageSnapshot,
+            page_snapshot: effectivePageSnapshot,
           },
           // Per-device Advisor cap on the TIP side (30 turns / 24h) is keyed
           // on device_id. Without it every wallet installation shares the
@@ -1168,7 +1261,13 @@ Additional public knowledge you should apply:
       setStreaming(false);
       abortRef.current = null;
     }
-  }, [messages, streaming, currentScreen, walletChain, pageSnapshot, answerLocally, currentLanguage, currentLanguageName, t]);
+  }, [messages, streaming, currentScreen, walletChain, effectivePageSnapshot, answerLocally, currentLanguage, currentLanguageName, t]);
+
+  useEffect(() => {
+    if (!open || !queuedQuestion || streaming) return;
+    sendMessage(queuedQuestion);
+    setQueuedQuestion(null);
+  }, [open, queuedQuestion, streaming, sendMessage]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -1204,6 +1303,7 @@ Additional public knowledge you should apply:
           if (abortRef.current) abortRef.current.abort();
           setMessages([]);
           setInput("");
+          setQueuedQuestion(null);
         }
       }}>
         <DrawerContent className="max-h-[95dvh] flex flex-col">
