@@ -222,6 +222,17 @@ export function getPlanFullPriceCents(planId, billing) {
   return PLAN_FULL_PRICE_CENTS?.[planId]?.[billing] || 0;
 }
 
+export function encodeAttributionPlan(planId, billing) {
+  if (!planId || !billing) return null;
+  if (planId === 'safety_plus' || planId === 'ai_security_protection') {
+    if (billing === 'monthly' || billing === 'annual') {
+      return `${planId}_${billing}`;
+    }
+  }
+  if (billing === 'monthly' || billing === 'annual') return billing;
+  return null;
+}
+
 export function calculateDiscountCents(fullPriceCents, tierCommission) {
   return Math.round(fullPriceCents * tierCommission / 100);
 }
