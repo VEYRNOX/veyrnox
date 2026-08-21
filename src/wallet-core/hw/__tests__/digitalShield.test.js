@@ -174,6 +174,44 @@ describe('Digital Shield BTC request/response', () => {
     expect(finalized.finalizedTxHex).toMatch(/^[0-9a-f]+$/);
     expect(p2wpkh(root.derive(account.accountPath).publicKey, net.params).address).toBe(account.address);
   });
+
+  it('rejects a signed response that substitutes an input', () => {
+    const imported = parseDigitalShieldImport(makeImportUr());
+    const account = imported.accounts.btc;
+    const req = buildDigitalShieldBtcPsbt({
+      account,
+      requestId: TEST_UUID,
+      plan: {
+        inputs: [{ txid: 'aa'.repeat(32), vout: 0, value: 100000n }],
+        outputs: [
+          { address: account.address, value: 90000n },
+          { address: account.address, value: 9000n },
+        ],
+      },
+    });
+    const seed = mnemonicToSeed(MNEMONIC);
+    const root = HDKey.fromMasterSeed(seed);
+    const leaf = root.derive(account.accountPath);
+    const net = getBtcNetworkInfo('mainnet');
+    const owner = p2wpkh(leaf.publicKey, net.params);
+    const substituted = new BtcTransaction();
+    substituted.addInput({
+      txid: hex.decode('bb'.repeat(32)),
+      index: 0,
+      witnessUtxo: { script: owner.script, amount: 100000n },
+    });
+    substituted.addOutputAddress(account.address, 90000n, net.params);
+    substituted.addOutputAddress(account.address, 9000n, net.params);
+    substituted.sign(leaf.privateKey);
+    substituted.finalize();
+    const responseUr = new CryptoPSBT(substituted.toPSBT()).toUR();
+
+    expect(() => finalizeDigitalShieldBtcResponse({
+      session: req.session,
+      unsignedPsbtHex: req.psbtHex,
+      input: encodeParts(responseUr),
+    })).toThrow('DIGITAL_SHIELD_BTC_INPUT_MISMATCH');
+  });
 });
 
 describe('Digital Shield Solana request/response', () => {
