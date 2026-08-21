@@ -29,6 +29,8 @@ import { installGlobalErrorHandlers } from '@/lib/globalErrorHandlers';
 import { captureReferralFromUrl } from '@/lib/referralAttribution';
 import { useCryptoDiagnostics } from '@/lib/tracking-integration';
 import { resolveLocale, LOCALE_CHANGED_EVENT, isRtlLocale } from '@/lib/locale';
+import { SupabaseAuthProvider } from '@/lib/SupabaseAuthProvider';
+import ProtectedCloudRoute from '@/components/ProtectedCloudRoute';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const SendCrypto = lazy(() => import('./pages/SendCrypto'));
 const ReceiveCrypto = lazy(() => import('./pages/ReceiveCrypto'));
@@ -88,9 +90,9 @@ const RestoreFromShares = lazy(() => import('./pages/RestoreFromShares'));
 const GasFeeControl = lazy(() => import('./pages/GasFeeControl'));
 const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
 const TrustScore = lazy(() => import('./pages/TrustScore'));
+const SuspiciousAssets = lazy(() => import('./pages/SuspiciousAssets'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
 const CryptoDetailPage = lazy(() => import('./pages/CryptoDetailPage'));
-const SuspiciousAssets = lazy(() => import('./pages/SuspiciousAssets'));
 
 // DEV-ONLY: throwaway PRF-in-WebView spike that gates the KEK build (see
 // src/dev/prfSpike.js). import.meta.env.DEV is statically false in any production
@@ -115,6 +117,8 @@ const Subscription = lazy(() => import('./pages/Subscription'));
 const SafetyPlus = lazy(() => import('./pages/SafetyPlus'));
 const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 const SeedVerificationPage = lazy(() => import('./pages/SeedVerificationPage'));
+const CloudAccountAuth = lazy(() => import('./pages/CloudAccountAuth'));
+const CloudAccountPage = lazy(() => import('./pages/CloudAccountPage'));
 
 function ReferralRedirect() {
   const { code } = useParams();
@@ -156,6 +160,11 @@ const AuthenticatedApp = () => {
         <Route element={<NotificationsProvider />}>
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/account/login" element={<CloudAccountAuth />} />
+          <Route element={<ProtectedCloudRoute />}>
+            <Route path="/account" element={<CloudAccountPage />} />
+            <Route path="/account/security" element={<CloudAccountPage />} />
+          </Route>
           <Route path="/send" element={<SendCrypto />} />
           <Route path="/receive" element={<ReceiveCrypto />} />
           <Route path="/buy" element={<BuyCrypto />} />
@@ -227,6 +236,7 @@ const AuthenticatedApp = () => {
           <Route path="/spam-filter" element={<Navigate to="/trust-score" replace />} />
           <Route path="/hd-wallet" element={<HDWalletManager />} />
           <Route path="/trust-score" element={<TrustScore />} />
+          <Route path="/suspicious-assets" element={<SuspiciousAssets />} />
           <Route path="/solana" element={<SolanaTokens />} />
           <Route path="/asset/:symbol" element={<CryptoDetailPage />} />
           <Route path="/crypto-signing" element={<CryptoSigning />} />
@@ -237,7 +247,6 @@ const AuthenticatedApp = () => {
           <Route path="/features" element={<Navigate replace to="/docs" />} />
           <Route path="/plans" element={<Subscription />} />
           <Route path="/safety-plus" element={<SafetyPlus />} />
-          <Route path="/suspicious-assets" element={<SuspiciousAssets />} />
           <Route path="/referrals" element={<ReferralTracker />} />
           <Route path="/verify" element={<SeedVerificationPage />} />
         </Route>
@@ -284,27 +293,29 @@ function App() {
       <ErrorBoundary>
         <WalletProvider>
           <TrezorProvider>
-          <TierProvider>
-            <QueryClientProvider client={queryClientInstance}>
-              <Router>
-                <DeepLinkHandler />
-                <VoiceProvider>
-                  <EnvBadge />
-                  <AuthenticatedApp />
-                  <VoiceFab />
-                  <OfflineBanner />
-          <DigitalShieldProvider>
-                </VoiceProvider>
-              </Router>
-              <Toaster />
-            </QueryClientProvider>
-          </TierProvider>
+            <DigitalShieldProvider>
+              <TierProvider>
+                <QueryClientProvider client={queryClientInstance}>
+                  <SupabaseAuthProvider>
+                    <Router>
+                      <DeepLinkHandler />
+                      <VoiceProvider>
+                        <EnvBadge />
+                        <AuthenticatedApp />
+                        <VoiceFab />
+                        <OfflineBanner />
+                      </VoiceProvider>
+                    </Router>
+                  </SupabaseAuthProvider>
+                  <Toaster />
+                </QueryClientProvider>
+              </TierProvider>
+            </DigitalShieldProvider>
           </TrezorProvider>
         </WalletProvider>
       </ErrorBoundary>
     </ThemeProvider>
   )
 }
-          </DigitalShieldProvider>
 
 export default App

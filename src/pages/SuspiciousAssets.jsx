@@ -2,7 +2,7 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { ShieldAlert, Sparkles, ScanSearch, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Sparkles, ScanSearch, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import Spinner from '@/components/Spinner';
@@ -231,4 +231,3 @@ export default function SuspiciousAssets() {
     </div>
   );
 }
-

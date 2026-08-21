@@ -45,6 +45,7 @@ import TransactionIntelligencePanel from "@/components/TransactionIntelligencePa
 import { toast } from "@/lib/toast";
 import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
 import { parseEther, parseUnits } from "ethers";
+import { Buffer } from "buffer";
 import { useWallet } from "@/lib/WalletProvider";
 import { useNavigate, useSearchParams } from "react-router";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
