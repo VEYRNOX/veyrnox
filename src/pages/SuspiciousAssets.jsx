@@ -1,14 +1,28 @@
 // @ts-nocheck
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { ShieldAlert, Sparkles, ScanSearch, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Sparkles, ScanSearch, Image as ImageIcon, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import Spinner from '@/components/Spinner';
 import { buildSuspiciousAssetSnapshot } from '@/lib/suspiciousAssets';
 import { openAdvisor, publishAdvisorContext } from '@/lib/advisorBridge';
 import { safeNftImageUrl } from '@/lib/nftImageUrl';
+import {
+  clearContractIntelConsent,
+  clearDismissedSuspiciousNfts,
+  dismissSuspiciousNft,
+  getContractIntelConsentState,
+  hasContractIntelConsent,
+  isContractIntelConfigured,
+  readDismissedSuspiciousNfts,
+  setContractIntelConsent,
+} from '@/lib/suspiciousAssetPrefs';
+import {
+  readSpamTokenOverrides,
+  setSpamTokenOverride,
+} from '@/lib/spamTokenIntel';
 
 function SeverityChip({ severity, children }) {
   const cls = severity === 'high'
@@ -20,6 +34,9 @@ function SeverityChip({ severity, children }) {
 }
 
 export default function SuspiciousAssets() {
+  const [spamOverrides, setSpamOverrides] = useState(() => readSpamTokenOverrides());
+  const [dismissedNftIds, setDismissedNftIds] = useState(() => readDismissedSuspiciousNfts());
+  const [contractIntelConsentState, setContractIntelConsentState] = useState(() => getContractIntelConsentState());
   const { data: tokenRows = [], isLoading: loadingTokens, isError: errorTokens } = useQuery({
     queryKey: ['wallet-tokens'],
     queryFn: () => base44.entities.WalletToken.list('-created_date'),
@@ -30,9 +47,41 @@ export default function SuspiciousAssets() {
   });
 
   const snapshot = useMemo(
-    () => buildSuspiciousAssetSnapshot({ tokens: tokenRows, nfts: nftRows }),
-    [tokenRows, nftRows]
+    () => buildSuspiciousAssetSnapshot({ tokens: tokenRows, nfts: nftRows, spamOverrides, dismissedNftIds }),
+    [tokenRows, nftRows, spamOverrides, dismissedNftIds]
   );
+  const contractIntelConfigured = isContractIntelConfigured();
+  const contractIntelEnabled = hasContractIntelConsent();
+
+  const refreshSpamOverrides = () => setSpamOverrides(readSpamTokenOverrides());
+  const hideAllFlaggedTokens = () => {
+    for (const token of snapshot.suspiciousTokens) setSpamTokenOverride(token.id, 'hide');
+    refreshSpamOverrides();
+  };
+  const showAllHiddenTokens = () => {
+    for (const token of snapshot.suspiciousTokens.filter((row) => row.hidden)) setSpamTokenOverride(token.id, 'show');
+    refreshSpamOverrides();
+  };
+  const toggleTokenHidden = (token) => {
+    setSpamTokenOverride(token.id, token.hidden ? 'show' : 'hide');
+    refreshSpamOverrides();
+  };
+  const dismissCollectible = (id) => {
+    dismissSuspiciousNft(id);
+    setDismissedNftIds(readDismissedSuspiciousNfts());
+  };
+  const restoreDismissedCollectibles = () => {
+    clearDismissedSuspiciousNfts();
+    setDismissedNftIds([]);
+  };
+  const chooseContractIntelConsent = (granted) => {
+    setContractIntelConsent(granted);
+    setContractIntelConsentState(getContractIntelConsentState());
+  };
+  const resetContractIntelConsent = () => {
+    clearContractIntelConsent();
+    setContractIntelConsentState(getContractIntelConsentState());
+  };
 
   useEffect(() => {
     publishAdvisorContext({
@@ -40,6 +89,10 @@ export default function SuspiciousAssets() {
       suspicious_token_total: snapshot.totals.suspiciousTokens,
       suspicious_nft_total: snapshot.totals.suspiciousNfts,
       risky_contract_total: snapshot.totals.riskyContracts,
+      hidden_suspicious_token_total: snapshot.totals.hiddenTokens,
+      dismissed_suspicious_nft_total: dismissedNftIds.length,
+      contract_intel_opt_in: contractIntelConsentState,
+      contract_intel_configured: contractIntelConfigured,
       suspicious_tokens: snapshot.suspiciousTokens.map((token) => ({
         symbol: token.symbol,
         name: token.name,
@@ -47,6 +100,7 @@ export default function SuspiciousAssets() {
         severity: token.severity,
         reasons: token.reasons.map((reason) => reason.text),
         unknowns: token.contract.unknowns,
+        hidden: !!token.hidden,
       })),
       suspicious_nfts: snapshot.suspiciousNfts.map((nft) => ({
         name: nft.name,
@@ -56,7 +110,7 @@ export default function SuspiciousAssets() {
       })),
     });
     return () => publishAdvisorContext(null);
-  }, [snapshot]);
+  }, [snapshot, dismissedNftIds.length, contractIntelConsentState, contractIntelConfigured]);
 
   const loading = loadingTokens || loadingNfts;
 
@@ -79,6 +133,9 @@ export default function SuspiciousAssets() {
               suspicious_token_total: snapshot.totals.suspiciousTokens,
               suspicious_nft_total: snapshot.totals.suspiciousNfts,
               risky_contract_total: snapshot.totals.riskyContracts,
+              hidden_suspicious_token_total: snapshot.totals.hiddenTokens,
+              contract_intel_opt_in: contractIntelConsentState,
+              contract_intel_configured: contractIntelConfigured,
             },
           })}
         >
@@ -115,6 +172,32 @@ export default function SuspiciousAssets() {
         </p>
       </div>
 
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Deeper contract intel</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Off by default. If enabled and configured in this build, future contract reviews may send token contract addresses and chain ids to a third-party contract-intelligence service. Seed, PIN, balances, and wallet addresses stay out of scope.
+            </p>
+          </div>
+          <SeverityChip severity={contractIntelEnabled ? 'medium' : 'ok'}>
+            {contractIntelEnabled ? 'Opted in' : 'Local only'}
+          </SeverityChip>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {contractIntelConfigured
+            ? 'This build can support external contract-intelligence checks once you opt in.'
+            : 'No external contract-intelligence service is configured in this build yet, so this preference is stored for future availability only.'}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" size="sm" onClick={() => chooseContractIntelConsent(true)}>Allow deeper checks</Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => chooseContractIntelConsent(false)}>Keep reviews local</Button>
+          {contractIntelConsentState && (
+            <Button type="button" size="sm" variant="ghost" onClick={resetContractIntelConsent}>Reset choice</Button>
+          )}
+        </div>
+      </div>
+
       {loading ? (
         <Spinner className="py-12" />
       ) : snapshot.totals.total === 0 ? (
@@ -131,7 +214,13 @@ export default function SuspiciousAssets() {
                   <h2 className="text-sm font-semibold">Tokens</h2>
                   <p className="text-xs text-muted-foreground">Spam-lure metadata and contract-level cautions where available.</p>
                 </div>
-                <Link to="/trust-score" className="text-xs text-primary hover:underline">Open Spam Screening</Link>
+                <div className="flex items-center gap-3">
+                  <Link to="/trust-score" className="text-xs text-primary hover:underline">Open Spam Screening</Link>
+                  <Button type="button" size="sm" variant="secondary" onClick={hideAllFlaggedTokens}>Hide all flagged tokens</Button>
+                  {snapshot.totals.hiddenTokens > 0 && (
+                    <Button type="button" size="sm" variant="ghost" onClick={showAllHiddenTokens}>Show hidden tokens</Button>
+                  )}
+                </div>
               </div>
               <div className="space-y-3">
                 {snapshot.suspiciousTokens.map((token) => (
@@ -167,6 +256,16 @@ export default function SuspiciousAssets() {
                         <Sparkles className="h-3.5 w-3.5" />
                         Ask Advisor
                       </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => toggleTokenHidden(token)}
+                      >
+                        {token.hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        {token.hidden ? 'Show elsewhere' : 'Hide elsewhere'}
+                      </Button>
                     </div>
 
                     <ul className="space-y-1">
@@ -190,9 +289,16 @@ export default function SuspiciousAssets() {
 
           {snapshot.suspiciousNfts.length > 0 && (
             <section className="space-y-3">
-              <div>
-                <h2 className="text-sm font-semibold">Collectibles</h2>
-                <p className="text-xs text-muted-foreground">Unsolicited drops and remote-art tracking concerns.</p>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold">Collectibles</h2>
+                  <p className="text-xs text-muted-foreground">Unsolicited drops and remote-art tracking concerns.</p>
+                </div>
+                {dismissedNftIds.length > 0 && (
+                  <Button type="button" size="sm" variant="ghost" onClick={restoreDismissedCollectibles}>
+                    Restore dismissed collectibles
+                  </Button>
+                )}
               </div>
               <div className="space-y-3">
                 {snapshot.suspiciousNfts.map((nft) => (
@@ -219,6 +325,9 @@ export default function SuspiciousAssets() {
                         <Link to="/nft" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
                           Review NFT portfolio <ExternalLink className="h-3 w-3" />
                         </Link>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => dismissCollectible(nft.id)}>
+                          Dismiss collectible
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -228,7 +337,15 @@ export default function SuspiciousAssets() {
           )}
         </>
       )}
+
+      {!loading && dismissedNftIds.length > 0 && snapshot.suspiciousNfts.length === 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {dismissedNftIds.length} suspicious collectible{dismissedNftIds.length === 1 ? '' : 's'} dismissed from this queue.
+          </p>
+          <Button type="button" size="sm" variant="ghost" onClick={restoreDismissedCollectibles}>Restore</Button>
+        </div>
+      )}
     </div>
   );
 }
-

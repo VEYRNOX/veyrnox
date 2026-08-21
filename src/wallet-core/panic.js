@@ -285,6 +285,8 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-portfolios',
   'veyrnox-active-portfolio',
   'veyrnox-spam-overrides',
+  'veyrnox-contract-intel-consent', // lib/suspiciousAssetPrefs.js CONTRACT_INTEL_CONSENT_KEY
+  'veyrnox-dismissed-suspicious-nfts', // lib/suspiciousAssetPrefs.js DISMISSED_SUSPICIOUS_NFTS_KEY
   // GAP-4 (LOW): app-usage tells that describe how the primary vault was configured.
   // Not deniability secrets, but each ties this device to a Veyrnox installation.
   'veyrnox-autolock-timeout',       // lib/session.js AUTO_LOCK_PREF_KEY

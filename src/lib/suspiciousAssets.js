@@ -1,4 +1,4 @@
-import { classifyToken } from '@/wallet-core/evm/spam';
+import { annotateTokens, classifyToken } from '@/wallet-core/evm/spam';
 import { isSafeNftImageUrl } from '@/lib/nftImageUrl';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -134,9 +134,16 @@ export function evaluateSuspiciousNft(nft = {}) {
   };
 }
 
-export function buildSuspiciousAssetSnapshot({ tokens = [], nfts = [] } = {}) {
-  const suspiciousTokens = tokens.map(evaluateSuspiciousToken).filter((token) => token.suspicious);
-  const suspiciousNfts = nfts.map(evaluateSuspiciousNft).filter((nft) => nft.suspicious);
+export function buildSuspiciousAssetSnapshot({ tokens = [], nfts = [], spamOverrides = {}, dismissedNftIds = [] } = {}) {
+  const annotatedTokens = annotateTokens(tokens, spamOverrides);
+  const dismissed = new Set((dismissedNftIds || []).map((id) => String(id)));
+  const suspiciousTokens = /** @type {any[]} */ (annotatedTokens.map(evaluateSuspiciousToken).filter((token) => token.suspicious));
+  const suspiciousNfts = /** @type {any[]} */ (nfts
+    .map(evaluateSuspiciousNft)
+    .filter((nft) => {
+      const candidate = /** @type {any} */ (nft);
+      return candidate.suspicious && !dismissed.has(String(candidate.id ?? ''));
+    }));
   const highRiskTokens = suspiciousTokens.filter((token) => token.severity === 'high');
   const contractRiskTokens = suspiciousTokens.filter((token) => token.contract.score > 0);
   return {
@@ -148,8 +155,10 @@ export function buildSuspiciousAssetSnapshot({ tokens = [], nfts = [] } = {}) {
       suspiciousTokens: suspiciousTokens.length,
       suspiciousNfts: suspiciousNfts.length,
       riskyContracts: contractRiskTokens.length,
+      hiddenTokens: suspiciousTokens.filter((token) => token?.hidden === true).length,
+      visibleTokens: suspiciousTokens.filter((token) => token?.hidden !== true).length,
+      dismissedNfts: dismissed.size,
       total: suspiciousTokens.length + suspiciousNfts.length,
     },
   };
 }
-

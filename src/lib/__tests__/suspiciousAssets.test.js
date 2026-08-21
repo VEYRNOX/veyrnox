@@ -76,5 +76,21 @@ describe('buildSuspiciousAssetSnapshot', () => {
     expect(snapshot.totals.riskyContracts).toBe(1);
     expect(snapshot.totals.total).toBe(2);
   });
-});
 
+  it('respects spam overrides and dismissed NFT ids', () => {
+    const snapshot = buildSuspiciousAssetSnapshot({
+      tokens: [
+        { id: 'clone', symbol: 'USDC', name: 'USDC-Rewards.com', acquired_via: 'airdrop', value_usd: 0, balance: 5000, contract_verified: false },
+      ],
+      nfts: [
+        { id: 'nft-1', name: 'Claim Reward Pass', collection: 'Free Reward', acquired_via: 'airdrop', image_url: 'https://attacker.example/track.png' },
+      ],
+      spamOverrides: { clone: 'show' },
+      dismissedNftIds: ['nft-1'],
+    });
+
+    expect(snapshot.totals.visibleTokens).toBe(1);
+    expect(snapshot.totals.hiddenTokens).toBe(0);
+    expect(snapshot.totals.suspiciousNfts).toBe(0);
+  });
+});
