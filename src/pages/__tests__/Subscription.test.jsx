@@ -74,7 +74,6 @@ const claimFirstReferralBonus = vi.fn();
 vi.mock('@/api/referralApi', () => ({
   recordAttribution: (...a) => recordAttribution(...a),
   fetchPaidCount: (...a) => fetchPaidCount(...a),
-  claimFirstReferralBonus,
   claimFirstReferralBonus: (...a) => claimFirstReferralBonus(...a),
 }));
 
