@@ -12,7 +12,7 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
 vi.mock('../../rasp/useRaspArtifact', () => ({
-  useRaspArtifact: () => ({ tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false }),
+  useRaspArtifact: () => ({ tier: 'allow', sentence: null, blockedActions: [], requiresBiometric: false }),
 }));
 
 const isBiometricUnlockEnabledMock = vi.fn(() => true);
@@ -63,8 +63,8 @@ describe('SecurityPosture — real computePostureScore integration', () => {
         }} />
       </MemoryRouter>,
     );
-    // Integrator-supplied fields complete the missing home-page inputs, so the
-    // real scoring function now reaches the current full-score ceiling.
+    // Integrator-supplied fields substantially raise the score, but the real
+    // scoring function currently tops out at 95% for this state bundle.
     await waitFor(() => expect(screen.getByTestId('security-posture-card').textContent).toContain('95%'));
     expect(screen.getByTestId('security-posture-card').textContent).toContain('Complete');
   });
