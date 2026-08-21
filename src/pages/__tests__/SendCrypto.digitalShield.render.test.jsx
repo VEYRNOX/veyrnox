@@ -261,9 +261,9 @@ vi.mock('@/lib/addressValidation', () => ({
   isValidAddressForCurrency: (value) => /^0x[0-9a-fA-F]{40}$/.test(value),
 }));
 vi.mock('@/lib/sendAddressError', () => ({
-  sendAddressErrorKind: ({ address, addressFormatValid, addressTouched, showErrors }) => {
-    if (!address && showErrors) return 'missing';
-    if (address && !addressFormatValid && addressTouched) return 'invalid';
+  sendAddressErrorKind: ({ toAddress, addressFormatValid, addressTouched, showErrors }) => {
+    if (!toAddress && showErrors) return 'missing';
+    if (toAddress && !addressFormatValid && addressTouched) return 'malformed';
     return null;
   },
 }));
@@ -389,6 +389,10 @@ describe('SendCrypto — Digital Shield render flow', () => {
       target: { value: '0.5' },
     });
     fireEvent.blur(screen.getByLabelText('Amount'));
+
+    await waitFor(() => {
+      expect(screen.getByText('≈$16,000')).toBeTruthy();
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
