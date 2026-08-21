@@ -42,6 +42,14 @@ function ContractConfidenceChip({ confidence }) {
   return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${copy.cls}`}>{copy.label}</span>;
 }
 
+function formatIssueKind(kind) {
+  return String(kind || '')
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export default function SuspiciousAssets() {
   const [spamOverrides, setSpamOverrides] = useState(() => readSpamTokenOverrides());
   const [dismissedNftIds, setDismissedNftIds] = useState(() => readDismissedSuspiciousNfts());
@@ -343,19 +351,41 @@ export default function SuspiciousAssets() {
                     </p>
 
                     {token.contract.score > 0 && (
-                      <p className="text-[11px] text-muted-foreground">
-                        {token.contract.confidence === 'strong_warning'
-                          ? `Contract review confidence: strong warning. ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved with concrete risk signals.`
-                          : token.contract.confidence === 'partial_evidence'
-                            ? `Contract review confidence: partial evidence. ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved, but some conclusions still depend on missing fields.`
-                            : `Contract review confidence: mostly unknown. Only ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved, so this row stays cautious without pretending the contract is fully understood.`}
-                      </p>
-                    )}
-
-                    {token.contract.unknowns.length > 0 && (
-                      <p className="text-[11px] text-muted-foreground">
-                        Unknown here: {token.contract.unknowns.join(', ')}.
-                      </p>
+                      <details className="rounded-xl border border-border/70 bg-background/40 p-3">
+                        <summary className="cursor-pointer list-none text-[11px] text-muted-foreground">
+                          {token.contract.confidence === 'strong_warning'
+                            ? `Contract review confidence: strong warning. ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved with concrete risk signals.`
+                            : token.contract.confidence === 'partial_evidence'
+                              ? `Contract review confidence: partial evidence. ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved, but some conclusions still depend on missing fields.`
+                              : `Contract review confidence: mostly unknown. Only ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved, so this row stays cautious without pretending the contract is fully understood.`}
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                          {token.contract.issues.length > 0 && (
+                            <div>
+                              <p className="text-[11px] font-medium text-foreground">Concrete warning signals</p>
+                              <ul className="mt-1 space-y-1">
+                                {token.contract.issues.map((issue) => (
+                                  <li key={`${token.id}-contract-${issue.kind}`} className="text-[11px] text-muted-foreground">
+                                    <span className="text-foreground">{formatIssueKind(issue.kind)}:</span> {issue.text}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {token.contract.unknowns.length > 0 && (
+                            <div>
+                              <p className="text-[11px] font-medium text-foreground">Still unknown here</p>
+                              <ul className="mt-1 space-y-1">
+                                {token.contract.unknowns.map((unknown) => (
+                                  <li key={`${token.id}-unknown-${unknown}`} className="text-[11px] text-muted-foreground">
+                                    {unknown}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </details>
                     )}
                   </div>
                 ))}
