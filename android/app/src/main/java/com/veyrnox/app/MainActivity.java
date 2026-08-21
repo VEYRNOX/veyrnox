@@ -20,11 +20,10 @@ import com.veyrnox.app.AndroidBiometricCachePlugin;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Staging-only escape hatch: keep the hardened pre-WebView block gate on
-        // by default, but allow explicitly labelled staging builds to disable it
-        // while preserving the rest of the Android startup path.
-        if (BuildConfig.NATIVE_RASP_STARTUP_BLOCK_ENABLED
-                && RaspIntegrityPlugin.Companion.earlyCheck(this)) {
+        // Pre-WebView RASP gate — must run before plugin registration and
+        // super.onCreate() so the Capacitor bridge never initialises on
+        // BLOCK-tier (hooked/tampered) devices.
+        if (RaspIntegrityPlugin.Companion.earlyCheck(this)) {
             super.onCreate(null);
             showNativeBlockScreen();
             return;
@@ -34,15 +33,6 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(HardwareKekPlugin.class);
         registerPlugin(RaspIntegrityPlugin.class);
         registerPlugin(PlayIntegrityPlugin.class);
-        // Store-specific billing plugins must only load in the flavor that ships
-        // their runtime SDKs. Firebase/Test Lab uses the google flavor, where the
-        // Samsung RevenueCat store module and Huawei HMS IAP classes are absent.
-        if ("samsung".equals(BuildConfig.FLAVOR)) {
-            registerPlugin(SamsungIapPlugin.class);
-        }
-        if ("huawei".equals(BuildConfig.FLAVOR)) {
-            registerPlugin(HuaweiIapPlugin.class);
-        }
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         registerPlugin(AndroidBiometricCachePlugin.class);
