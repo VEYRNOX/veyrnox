@@ -58,6 +58,9 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Generate the instrumentation APK against the release-hardened Test Lab
+    // variant so CI can assemble `assembleGoogleFirebaseTestAndroidTest`.
+    testBuildType "firebaseTest"
     signingConfigs {
         release {
             // Resolution order: keystore.properties (local dev / release box), then

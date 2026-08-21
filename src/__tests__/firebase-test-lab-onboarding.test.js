@@ -87,6 +87,7 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(ciWorkflow).not.toContain('./gradlew bundleFirebaseTest');
 
     expect(androidBuild).toContain('firebaseTest {');
+    expect(androidBuild).toContain('testBuildType "firebaseTest"');
     expect(androidBuild).toContain('initWith release');
     expect(androidBuild).toContain('applicationIdSuffix ".firebase.testlab"');
     expect(androidBuild).toContain("androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.3.0'");
