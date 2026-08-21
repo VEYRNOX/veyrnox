@@ -40,6 +40,10 @@ import {
   hasAdvisorConsent,
   setAdvisorConsent,
 } from "@/lib/advisorConsent";
+import {
+  ADVISOR_CONTEXT_EVENT,
+  ADVISOR_OPEN_EVENT,
+} from "@/lib/advisorBridge";
 import { useTier } from "@/lib/TierProvider";
 import { hasAdvisorOnlineAccess, tierLabel, TIER } from "@/lib/tier";
 
@@ -813,6 +817,8 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [queuedQuestion, setQueuedQuestion] = useState(null);
+  const [liveSnapshot, setLiveSnapshot] = useState(null);
   const [streaming, setStreaming] = useState(false);
   const [offline, setOffline] = useState(false);
   const scrollRef = useRef(null);
@@ -836,6 +842,9 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
   }, []);
 
   const hidden = isDeniabilityOrDemoActive() || DEMO;
+  const effectivePageSnapshot = liveSnapshot
+    ? { ...(pageSnapshot || {}), ...liveSnapshot }
+    : pageSnapshot;
   const advisorOnlineEnabled = hasAdvisorOnlineAccess(currentTier);
   const advisorOnlineLocked = !!TIP_CHAT_URL && !advisorOnlineEnabled;
   const currentPlanName = tierLabel(currentTier);
@@ -892,6 +901,34 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
       setTimeout(() => inputRef.current?.focus(), 200);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onContext = (e) => {
+      const next = e?.detail;
+      setLiveSnapshot(next && typeof next === 'object' ? next : null);
+    };
+    const onOpen = (e) => {
+      const detail = e?.detail || {};
+      if (detail.context && typeof detail.context === 'object') {
+        setLiveSnapshot(detail.context);
+      }
+      setOpen(true);
+      if (typeof detail.question === 'string' && detail.question.trim()) {
+        if (detail.autoSend) {
+          setQueuedQuestion(detail.question.trim());
+        } else {
+          setInput(detail.question.trim());
+        }
+      }
+    };
+    window.addEventListener(ADVISOR_CONTEXT_EVENT, onContext);
+    window.addEventListener(ADVISOR_OPEN_EVENT, onOpen);
+    return () => {
+      window.removeEventListener(ADVISOR_CONTEXT_EVENT, onContext);
+      window.removeEventListener(ADVISOR_OPEN_EVENT, onOpen);
+    };
+  }, []);
 
   const answerLocally = useCallback((text, history) => {
     const localAnswer = findLocalAnswer(text);
@@ -1024,7 +1061,7 @@ export default function SecurityAdvisor({ walletChain, pageSnapshot = null }) {
 
 Current page: ${currentScreen} (chain: ${walletChain || "evm"})
 ${PAGE_CONTEXT[currentScreen] || PAGE_CONTEXT.general}
-${buildPageSnapshotContext(pageSnapshot)}
+${buildPageSnapshotContext(effectivePageSnapshot)}
 Current app language: ${currentLanguageName} (${currentLanguage})
 
 Rules:
@@ -1068,7 +1105,7 @@ Additional public knowledge you should apply:
           context: {
             current_screen: currentScreen,
             wallet_chain: walletChain,
-            page_snapshot: pageSnapshot,
+            page_snapshot: effectivePageSnapshot,
           },
           // Per-device Advisor cap on the TIP side (30 turns / 24h) is keyed
           // on device_id. Without it every wallet installation shares the
@@ -1171,7 +1208,13 @@ Additional public knowledge you should apply:
       setStreaming(false);
       abortRef.current = null;
     }
-  }, [messages, streaming, currentScreen, walletChain, pageSnapshot, answerLocally, currentLanguage, currentLanguageName, t]);
+  }, [messages, streaming, currentScreen, walletChain, effectivePageSnapshot, answerLocally, currentLanguage, currentLanguageName, t]);
+
+  useEffect(() => {
+    if (!open || !queuedQuestion || streaming) return;
+    sendMessage(queuedQuestion);
+    setQueuedQuestion(null);
+  }, [open, queuedQuestion, streaming, sendMessage]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -1207,6 +1250,7 @@ Additional public knowledge you should apply:
           if (abortRef.current) abortRef.current.abort();
           setMessages([]);
           setInput("");
+          setQueuedQuestion(null);
         }
       }}>
         <DrawerContent className="max-h-[95dvh] flex flex-col">
