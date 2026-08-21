@@ -262,6 +262,10 @@
     },
     "diff": ">=8.0.3",
     "tar": "^7.5.20",
-    "@puppeteer/browsers": "^3"
+    "@puppeteer/browsers": "^3",
+    "deepmerge-ts": "^8.0.2",
+    "@keystonehq/keystone-sdk": {
+      "uuid": "11.1.1"
+    }
   }
 }
