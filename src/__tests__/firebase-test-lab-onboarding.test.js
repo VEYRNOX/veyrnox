@@ -54,9 +54,9 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(clicks).toEqual([
       { text: 'New wallet' },
       ...[...pin].map(text => ({ text })),
-      { contentDescription: 'Submit PIN' },
+      { text: 'Submit PIN' },
       ...[...pin].map(text => ({ text })),
-      { contentDescription: 'Submit PIN' },
+      { text: 'Submit PIN' },
     ]);
     expect(roboScript.every(({ visionText }) => visionText == null)).toBe(true);
     expect(roboScript.some(({ eventType }) => eventType === 'VIEW_TEXT_CHANGED')).toBe(false);
