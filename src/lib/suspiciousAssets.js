@@ -5,6 +5,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const CONTRACT_REVIEW_WINDOW_DAYS = 30;
 const LOW_LIQUIDITY_USD = 25_000;
 const LOW_HOLDER_COUNT = 250;
+const CONTRACT_SIGNAL_CHECKS = 6;
 
 function toFlags(value) {
   if (Array.isArray(value)) return value.filter(Boolean).map((v) => String(v).trim().toLowerCase());
@@ -30,6 +31,7 @@ function hasPlaceholderContract(token) {
 export function evaluateTokenContractRisk(token = {}) {
   const issues = [];
   const unknowns = [];
+  let knownChecks = 0;
   const flags = new Set(toFlags(token.contract_flags));
   const liquidityUsd = parseNumber(token.liquidity_usd);
   const holderCount = parseNumber(token.holder_count);
@@ -39,42 +41,60 @@ export function evaluateTokenContractRisk(token = {}) {
   const freezable = token.is_freezable ?? token.freezable;
 
   if (mintable === true || flags.has('mintable')) {
+    knownChecks += 1;
     issues.push({ severity: 'high', kind: 'mintable', text: 'Issuer can still mint more supply.' });
-  } else if (mintable == null && !flags.has('non_mintable')) {
+  } else if (mintable === false || flags.has('non_mintable')) {
+    knownChecks += 1;
+  } else {
     unknowns.push('mint authority');
   }
 
   if (freezable === true || flags.has('freezable')) {
+    knownChecks += 1;
     issues.push({ severity: 'high', kind: 'freezable', text: 'Issuer can freeze or block transfers.' });
-  } else if (freezable == null && !flags.has('non_freezable')) {
+  } else if (freezable === false || flags.has('non_freezable')) {
+    knownChecks += 1;
+  } else {
     unknowns.push('freeze authority');
   }
 
   if (transferFeeBps != null && transferFeeBps > 0) {
+    knownChecks += 1;
     issues.push({
       severity: transferFeeBps >= 500 ? 'high' : 'medium',
       kind: 'transfer_fee',
       text: `Transfers can charge a ${Number((transferFeeBps / 100).toFixed(2))}% token fee.`,
     });
-  } else if (transferFeeBps == null) {
+  } else if (transferFeeBps != null) {
+    knownChecks += 1;
+  } else {
     unknowns.push('transfer tax');
   }
 
   if (liquidityUsd != null && liquidityUsd < LOW_LIQUIDITY_USD) {
+    knownChecks += 1;
     issues.push({ severity: 'medium', kind: 'liquidity', text: 'Observed liquidity is thin, so exits may be hard or heavily slippage-prone.' });
-  } else if (liquidityUsd == null) {
+  } else if (liquidityUsd != null) {
+    knownChecks += 1;
+  } else {
     unknowns.push('liquidity depth');
   }
 
   if (holderCount != null && holderCount < LOW_HOLDER_COUNT) {
+    knownChecks += 1;
     issues.push({ severity: 'medium', kind: 'holder_count', text: 'Very few holders are visible, which can indicate a fresh or thinly distributed token.' });
-  } else if (holderCount == null) {
+  } else if (holderCount != null) {
+    knownChecks += 1;
+  } else {
     unknowns.push('holder distribution');
   }
 
   if (contractVerified === false || flags.has('unverified_contract')) {
+    knownChecks += 1;
     issues.push({ severity: 'medium', kind: 'contract_verified', text: 'Contract source is not verified in this dataset.' });
-  } else if (contractVerified == null) {
+  } else if (contractVerified === true || flags.has('verified_contract')) {
+    knownChecks += 1;
+  } else {
     unknowns.push('source verification');
   }
 
@@ -87,9 +107,20 @@ export function evaluateTokenContractRisk(token = {}) {
   }
 
   const hasHigh = issues.some((issue) => issue.severity === 'high');
+  const coverageRatio = knownChecks / CONTRACT_SIGNAL_CHECKS;
+  let confidence = 'mostly_unknown';
+  if (hasHigh || (issues.length >= 3 && coverageRatio >= 0.5)) {
+    confidence = 'strong_warning';
+  } else if (issues.length > 0) {
+    confidence = coverageRatio >= 0.5 ? 'partial_evidence' : 'mostly_unknown';
+  }
   return {
     issues,
     unknowns,
+    knownChecks,
+    totalChecks: CONTRACT_SIGNAL_CHECKS,
+    coverageRatio,
+    confidence,
     severity: hasHigh ? 'high' : issues.length > 0 ? 'medium' : 'ok',
     score: hasHigh ? 2 : issues.length > 0 ? 1 : 0,
   };

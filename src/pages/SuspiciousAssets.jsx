@@ -33,6 +33,15 @@ function SeverityChip({ severity, children }) {
   return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${cls}`}>{children}</span>;
 }
 
+function ContractConfidenceChip({ confidence }) {
+  const copy = confidence === 'strong_warning'
+    ? { label: 'Strong warning', cls: 'bg-destructive/10 text-destructive' }
+    : confidence === 'partial_evidence'
+      ? { label: 'Partial evidence', cls: 'bg-caution/10 text-caution' }
+      : { label: 'Mostly unknown', cls: 'bg-secondary text-muted-foreground' };
+  return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${copy.cls}`}>{copy.label}</span>;
+}
+
 export default function SuspiciousAssets() {
   const [spamOverrides, setSpamOverrides] = useState(() => readSpamTokenOverrides());
   const [dismissedNftIds, setDismissedNftIds] = useState(() => readDismissedSuspiciousNfts());
@@ -280,6 +289,7 @@ export default function SuspiciousAssets() {
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-semibold">{token.name || token.symbol}</p>
                           <SeverityChip severity={token.severity}>{token.severity === 'high' ? 'High' : 'Review'}</SeverityChip>
+                          {token.contract.score > 0 && <ContractConfidenceChip confidence={token.contract.confidence} />}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           {token.symbol}
@@ -331,6 +341,16 @@ export default function SuspiciousAssets() {
                         ? 'Hidden elsewhere: this token is suppressed in normal portfolio views until you show it again.'
                         : 'Active review: this token still appears in your suspicious-assets queue and may need manual verification before any interaction.'}
                     </p>
+
+                    {token.contract.score > 0 && (
+                      <p className="text-[11px] text-muted-foreground">
+                        {token.contract.confidence === 'strong_warning'
+                          ? `Contract review confidence: strong warning. ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved with concrete risk signals.`
+                          : token.contract.confidence === 'partial_evidence'
+                            ? `Contract review confidence: partial evidence. ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved, but some conclusions still depend on missing fields.`
+                            : `Contract review confidence: mostly unknown. Only ${token.contract.knownChecks} of ${token.contract.totalChecks} local checks resolved, so this row stays cautious without pretending the contract is fully understood.`}
+                      </p>
+                    )}
 
                     {token.contract.unknowns.length > 0 && (
                       <p className="text-[11px] text-muted-foreground">

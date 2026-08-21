@@ -24,6 +24,36 @@ describe('evaluateTokenContractRisk', () => {
     expect(risk.issues.map((issue) => issue.kind)).toEqual(
       expect.arrayContaining(['mintable', 'freezable', 'transfer_fee', 'liquidity', 'holder_count', 'contract_verified', 'new_contract', 'placeholder_contract'])
     );
+    expect(risk.confidence).toBe('strong_warning');
+    expect(risk.knownChecks).toBe(6);
+  });
+
+  it('marks limited contract evidence as mostly unknown when coverage stays thin', () => {
+    const risk = evaluateTokenContractRisk({
+      token_contract: '0x1234567890123456789012345678901234567890',
+      contract_verified: false,
+    });
+
+    expect(risk.score).toBe(1);
+    expect(risk.confidence).toBe('mostly_unknown');
+    expect(risk.knownChecks).toBe(1);
+    expect(risk.unknowns).toEqual(
+      expect.arrayContaining(['mint authority', 'freeze authority', 'transfer tax', 'liquidity depth', 'holder distribution'])
+    );
+  });
+
+  it('marks medium-risk rows as partial evidence when enough checks are concrete', () => {
+    const risk = evaluateTokenContractRisk({
+      token_contract: '0x1234567890123456789012345678901234567890',
+      liquidity_usd: 1000,
+      holder_count: 120,
+      transfer_fee_bps: 0,
+      contract_verified: true,
+    });
+
+    expect(risk.score).toBe(1);
+    expect(risk.confidence).toBe('partial_evidence');
+    expect(risk.knownChecks).toBe(4);
   });
 });
 
