@@ -16,7 +16,7 @@
 // $0 view-only + create/import CTA). Per-wallet backup tracking warns prominently
 // about any seed not yet confirmed backed up (multi-seed fund-loss risk).
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/lib/toast";
@@ -29,6 +29,7 @@ import {
 import { useBuyEnabled } from "@/lib/buy/useBuyEnabled";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import EmptyWalletState from "@/components/EmptyWalletState";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,7 @@ import { DEMO } from "@/api/demoClient";
 import { fetchAssetHistory } from "@/lib/txHistory";
 import { isDeferred } from "@/lib/seedVerifyState";
 import { useWalletReady, useFirstInbound } from "@/lib/tracking-integration";
+import { buildAssetSpamIntel } from "@/lib/spamTokenIntel";
 
 const fmtAmount = (n) =>
   n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
@@ -574,6 +576,22 @@ export default function WalletPortfolioPage() {
   // provider never decrypted another set, and usePortfolio cannot reach one.
   const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
   const byWallet = /** @type {any} */ (portfolio?.byWallet || {});
+  const entityQueryEnabled = !isDecoy && !isHidden;
+  const { data: tokenRows = [] } = useQuery({
+    queryKey: ["wallet-tokens"],
+    queryFn: () => base44.entities.WalletToken.list(),
+    enabled: entityQueryEnabled,
+  });
+  const flaggedTokenCountsBySymbol = useMemo(() => {
+    const counts = new Map();
+    for (const token of tokenRows) {
+      const intel = buildAssetSpamIntel([token], token?.symbol);
+      if (!intel.hasRisk) continue;
+      const key = String(token?.symbol || '').trim().toUpperCase();
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return counts;
+  }, [tokenRows]);
 
   // Portfolio Health scoring inputs (KEK, passkey, deniability).
   const healthInputs = usePortfolioHealthInputs({ isUnlocked });
@@ -739,11 +757,19 @@ export default function WalletPortfolioPage() {
             // not a confident "0" — resolveAssetRow fails closed to amount:null so
             // the row renders "—", never a fabricated $0.00 (I4 fail-closed).
             const row = resolveAssetRow(data.assets, symbol);
+            const suspiciousCount = flaggedTokenCountsBySymbol.get(String(symbol || '').toUpperCase()) || 0;
             return (
               <button key={symbol} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
                 <CoinLogo symbol={symbol} size={36} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{symbol}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold">{symbol}</p>
+                    {suspiciousCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">
+                        {suspiciousCount} suspicious token{suspiciousCount > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground truncate">{a?.name}</p>
                 </div>
                 <div className="text-end shrink-0">
