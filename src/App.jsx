@@ -89,6 +89,7 @@ const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
 const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
 const CryptoDetailPage = lazy(() => import('./pages/CryptoDetailPage'));
+const SuspiciousAssets = lazy(() => import('./pages/SuspiciousAssets'));
 
 // DEV-ONLY: throwaway PRF-in-WebView spike that gates the KEK build (see
 // src/dev/prfSpike.js). import.meta.env.DEV is statically false in any production
@@ -235,6 +236,7 @@ const AuthenticatedApp = () => {
           <Route path="/features" element={<Navigate replace to="/docs" />} />
           <Route path="/plans" element={<Subscription />} />
           <Route path="/safety-plus" element={<SafetyPlus />} />
+          <Route path="/suspicious-assets" element={<SuspiciousAssets />} />
           <Route path="/referrals" element={<ReferralTracker />} />
           <Route path="/verify" element={<SeedVerificationPage />} />
         </Route>

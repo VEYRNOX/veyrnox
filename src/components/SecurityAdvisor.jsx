@@ -415,6 +415,10 @@ The advisor should explain each security layer, what the statuses mean, and how 
     questionsKey: 'address_screening',
     pageContext: `The user is on the TOKEN SPAM / TRUST SCORE page. This page flags suspicious assets or spam-like token behavior. The advisor should explain that unsolicited tokens often exist to lure the user into phishing flows and should not be treated as free money.`,
   },
+  suspicious_assets: {
+    questionsKey: 'security',
+    pageContext: `The user is on the SUSPICIOUS ASSETS page. This page combines suspicious fungible tokens, contract-risk hints, and unsolicited NFTs into one review queue. The advisor should explain clearly which concerns come from local metadata heuristics, which come from optional contract fields, and which items remain unknown rather than pretending the app has a complete contract audit.`,
+  },
   fraud_detection: {
     questionsKey: 'security',
     pageContext: `The user is on the FRAUD DETECTION page. This page is for identifying scam patterns, suspicious counterparties, and warning signals before or after wallet activity.`,
@@ -586,6 +590,7 @@ const ROUTE_SCREEN_MAP = {
   '/token-approvals': 'token_approvals',
   '/trust-score': 'trust_score',
   '/spam-filter': 'trust_score',
+  '/suspicious-assets': 'suspicious_assets',
   '/fraud': 'fraud_detection',
   '/analytics': 'analytics',
   '/advanced-analytics': 'analytics',
