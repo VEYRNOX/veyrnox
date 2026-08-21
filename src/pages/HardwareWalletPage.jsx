@@ -62,9 +62,9 @@ export default function HardwareWalletPage() {
 
   const importPreview = useMemo(() => importParts.join('\n'), [importParts]);
 
-  const tryImport = (input) => {
+  const tryImport = async (input) => {
     try {
-      const parsed = importProfile(input);
+      const parsed = await importProfile(input);
       setImportError('');
       setImportParts([]);
       setImportDraft('');
@@ -81,7 +81,7 @@ export default function HardwareWalletPage() {
   const addImportPart = (part) => {
     setImportParts((current) => {
       const next = current.includes(part) ? current : [...current, part];
-      tryImport(next);
+      void tryImport(next);
       return next;
     });
   };
@@ -227,7 +227,7 @@ export default function HardwareWalletPage() {
             {importError ? (
               <p className="text-xs text-destructive break-all">{importError}</p>
             ) : null}
-            <Button className="w-full" onClick={() => tryImport(importDraft || importParts)}>
+            <Button className="w-full" onClick={() => { void tryImport(importDraft || importParts); }}>
               Import Public Accounts
             </Button>
           </div>

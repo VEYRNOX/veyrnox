@@ -1,21 +1,29 @@
 // @ts-nocheck
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { getHardwareSignerProvider } from '@/wallet-core/hw/provider.js';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
 const DigitalShieldContext = createContext(null);
-
-const provider = getHardwareSignerProvider('digital-shield');
 
 export function DigitalShieldProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [lastImportedAt, setLastImportedAt] = useState(null);
+  const providerPromiseRef = useRef(null);
 
-  const importProfile = useCallback((input) => {
+  const loadProvider = useCallback(async () => {
+    if (!providerPromiseRef.current) {
+      providerPromiseRef.current = import('@/wallet-core/hw/provider.js').then(({ getHardwareSignerProvider }) => (
+        getHardwareSignerProvider('digital-shield')
+      ));
+    }
+    return providerPromiseRef.current;
+  }, []);
+
+  const importProfile = useCallback(async (input) => {
+    const provider = await loadProvider();
     const parsed = provider.parseImport(input);
     setProfile(parsed);
     setLastImportedAt(Date.now());
     return parsed;
-  }, []);
+  }, [loadProvider]);
 
   const clearProfile = useCallback(() => {
     setProfile(null);
@@ -23,7 +31,6 @@ export function DigitalShieldProvider({ children }) {
   }, []);
 
   const value = useMemo(() => ({
-    provider,
     profile,
     lastImportedAt,
     connected: !!profile,
