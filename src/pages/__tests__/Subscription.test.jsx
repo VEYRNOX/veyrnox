@@ -70,9 +70,12 @@ vi.mock('@/lib/referral', async (importOriginal) => ({
 
 const recordAttribution = vi.fn();
 const fetchPaidCount = vi.fn();
+const claimFirstReferralBonus = vi.fn();
 vi.mock('@/api/referralApi', () => ({
   recordAttribution: (...a) => recordAttribution(...a),
   fetchPaidCount: (...a) => fetchPaidCount(...a),
+  claimFirstReferralBonus,
+  claimFirstReferralBonus: (...a) => claimFirstReferralBonus(...a),
 }));
 
 const refreshTier = vi.fn();
@@ -624,11 +627,13 @@ describe('Subscription page — tier-based referral discount', () => {
     purchasePackage.mockResolvedValue({});
     refreshTier.mockResolvedValue('safety_plus');
     recordAttribution.mockResolvedValue({});
+    claimFirstReferralBonus.mockResolvedValue({ granted: false });
     setReferralAttribute.mockResolvedValue(undefined);
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$44.99').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', { name: /upgrade/i }));
-    await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-ABC123', 'annual', 4999, 500));
+    await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-ABC123', 'safety_plus', 'annual', 4999, 500));
+    expect(claimFirstReferralBonus).toHaveBeenCalledWith('VYX-ABC123');
     expect(setReferralAttribute).toHaveBeenCalledWith('VYX-ABC123', 'gold');
     expect(markAttributedMock).toHaveBeenCalled();
   });
@@ -721,6 +726,7 @@ describe('Subscription page — tier-based referral discount', () => {
     purchasePackage.mockResolvedValue({});
     refreshTier.mockResolvedValue('ai_security_protection');
     recordAttribution.mockResolvedValue({});
+    claimFirstReferralBonus.mockResolvedValue({ granted: false });
     setReferralAttribute.mockResolvedValue(undefined);
 
     renderPage();
@@ -730,7 +736,8 @@ describe('Subscription page — tier-based referral discount', () => {
       { identifier: '$rc_annual', product: { priceString: '$199.99', price: 199.99 } },
       { offerTag: 'ai-referral-gold' }
     ));
-    await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-AI9999', 'annual', 19999, 2000));
+    await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-AI9999', 'ai_security_protection', 'annual', 19999, 2000));
+    expect(claimFirstReferralBonus).toHaveBeenCalledWith('VYX-AI9999');
     expect(setReferralAttribute).toHaveBeenCalledWith('VYX-AI9999', 'gold');
   });
 

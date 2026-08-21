@@ -237,6 +237,28 @@ describe('PLAN_FULL_PRICE_CENTS', () => {
   });
 });
 
+describe('encodeAttributionPlan', () => {
+  it('encodes Safety Plus monthly with its plan family', async () => {
+    const { encodeAttributionPlan } = await import('../referral.js');
+    expect(encodeAttributionPlan('safety_plus', 'monthly')).toBe('safety_plus_monthly');
+  });
+
+  it('encodes AI annual with its plan family', async () => {
+    const { encodeAttributionPlan } = await import('../referral.js');
+    expect(encodeAttributionPlan('ai_security_protection', 'annual')).toBe('ai_security_protection_annual');
+  });
+
+  it('falls back to legacy period-only values for unknown plan families', async () => {
+    const { encodeAttributionPlan } = await import('../referral.js');
+    expect(encodeAttributionPlan('legacy', 'monthly')).toBe('monthly');
+  });
+
+  it('fails closed on an unsupported billing period', async () => {
+    const { encodeAttributionPlan } = await import('../referral.js');
+    expect(encodeAttributionPlan('ai_security_protection', 'weekly')).toBeNull();
+  });
+});
+
 describe('calculateDiscountCents', () => {
   it('calculates 2.5% discount on annual', async () => {
     const { calculateDiscountCents } = await import('../referral.js');
