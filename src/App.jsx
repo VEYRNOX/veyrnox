@@ -12,6 +12,7 @@ import { BrowserRouter as Router, Route, Routes, useParams } from 'react-router'
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
 import { TrezorProvider } from '@/context/TrezorContext';
+import { DigitalShieldProvider } from '@/context/DigitalShieldContext';
 import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { NotificationsProvider } from '@/notify/useNotifications';
@@ -283,20 +284,22 @@ function App() {
       <ErrorBoundary>
         <WalletProvider>
           <TrezorProvider>
-          <TierProvider>
-            <QueryClientProvider client={queryClientInstance}>
-              <Router>
-                <DeepLinkHandler />
-                <VoiceProvider>
-                  <EnvBadge />
-                  <AuthenticatedApp />
-                  <VoiceFab />
-                  <OfflineBanner />
-                </VoiceProvider>
-              </Router>
-              <Toaster />
-            </QueryClientProvider>
-          </TierProvider>
+            <TierProvider>
+              <QueryClientProvider client={queryClientInstance}>
+                <Router>
+                  <VoiceProvider>
+                    <DigitalShieldProvider>
+                      <DeepLinkHandler />
+                      <EnvBadge />
+                      <AuthenticatedApp />
+                      <VoiceFab />
+                      <OfflineBanner />
+                    </DigitalShieldProvider>
+                  </VoiceProvider>
+                </Router>
+                <Toaster />
+              </QueryClientProvider>
+            </TierProvider>
           </TrezorProvider>
         </WalletProvider>
       </ErrorBoundary>
