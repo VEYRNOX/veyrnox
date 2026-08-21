@@ -1,0 +1,106 @@
+language: "en-GB"
+
+reviews:
+  profile: "assertive"
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  high_level_summary_instructions: |
+    Write the PR summary as a risk-oriented architecture review, not release notes.
+
+    Always cover:
+    - The trust boundaries, security controls, and storage/network/key-material surfaces touched.
+    - The highest-risk behavioural or logic regression that could be introduced by this diff.
+    - What real verification is still missing: tests, device exercise, CI, or on-chain evidence.
+    - Any wording in code, docs, or PR text that overstates reality.
+
+    For this repository, prefer comments about:
+    - Architecture, threat model drift, fail-open vs fail-closed behaviour, downgrade paths, and invariant breaks.
+    - Security-sensitive data flow, auth decisions, capability leakage, dangerous coupling, and review gaps.
+    - Behavioural regressions, edge cases, missing tests, and cross-platform divergence.
+
+    De-emphasise style-only or naming-only comments unless they hide a correctness, security, or maintainability risk.
+
+    Never describe a change as "verified", "audited", "independent", or "live" unless the diff itself includes the evidence required by AGENTS.md and project docs.
+  review_status: true
+  review_details: true
+  review_progress: true
+  changed_files_summary: true
+  enable_prompt_for_ai_agents: true
+  auto_review:
+    enabled: true
+    drafts: true
+    auto_incremental_review: true
+    base_branches:
+      - ".*"
+  path_filters:
+    - "!builds/**"
+    - "!tmp/**"
+  path_instructions:
+    - path: "src/wallet-core/**"
+      instructions: |
+        This is the highest-sensitivity area in the repo.
+        Review for:
+        - Key/seed/private-material flow, zeroization, crypto misuse, and accidental persistence.
+        - Fail-open behaviour, silent fallback, protocol downgrade, weak defaults, and broken invariants.
+        - Changes that weaken deniability, panic wipe, vault wrapping, KDF/KEK contracts, or signing safety.
+        - Missing negative tests and any mismatch between code, docs, and claimed security posture.
+        Inline comments should focus on exploitability, correctness, and recovery impact, not style.
+    - path: "src/lib/**"
+      instructions: |
+        Focus on architecture and logic, especially auth, navigation, unlock state, biometrics, KEK enrollment, and network/storage chokepoints.
+        Flag:
+        - Hidden coupling between UI state and security decisions.
+        - New localStorage/sessionStorage/network writes on deniability, demo, or locked paths.
+        - Cross-platform divergence between web and native behaviour.
+        - UI copy or status language that overclaims what is actually built or verified.
+    - path: "src/api/**"
+      instructions: |
+        Review as an untrusted-boundary surface.
+        Focus on auth, input validation, rate limiting assumptions, secrets handling, and fail-closed behaviour.
+        Flag any trust placed in client-controlled fields or environment configuration that could drift in production.
+    - path: "functions/**"
+      instructions: |
+        Treat all backend and edge code as security-sensitive.
+        Focus on authentication, authorization, secret handling, replay/injection risk, and any path that could expose wallet, referral, or billing data.
+        Prefer findings about privilege boundaries and data egress over framework style.
+    - path: "android/**"
+      instructions: |
+        Review native Android code for StrongBox/biometric correctness, bridge argument integrity, secure defaults, debug leakage, and lifecycle edge cases.
+        Flag any fallback from hardware-backed protection, any logging of sensitive material, and any mismatch between JS expectations and Kotlin/Java implementation.
+    - path: "ios/**"
+      instructions: |
+        Review native iOS code for Secure Enclave, Keychain ACL, biometric binding, bridge argument integrity, and sensitive-memory handling.
+        Flag any silent fallback, deprecated or weaker auth paths, sensitive logging, and any mismatch between JS expectations and ObjC/Swift implementation.
+    - path: ".github/workflows/**"
+      instructions: |
+        Treat workflow files as supply-chain and privilege-boundary code.
+        Focus on:
+        - Secrets exposure, write-token scope, unsafe checkout/run patterns, and PR-triggered privilege escalation.
+        - Command/script injection through branch names, PR titles, file names, matrix values, or workflow inputs.
+        - Whether the claimed gate is real, or merely advisory/procedural.
+    - path: "scripts/**"
+      instructions: |
+        Review scripts for command injection, destructive defaults, unsafe shell quoting, and over-broad file or network access.
+        Flag scripts that can silently mutate state, overclaim verification, or bypass intended review gates.
+    - path: "e2e/**"
+      instructions: |
+        Focus on whether tests truly prove the claimed behaviour.
+        Flag weak assertions, false positives, demo-mode leakage, mocked security controls, or tests that claim verification without real evidence.
+    - path: "docs/**"
+      instructions: |
+        Review for honesty and status-tag accuracy.
+        Flag any text that blurs BUILT vs VERIFIED, INTERNAL vs INDEPENDENT, or test/device evidence vs real on-chain verification.
+        Prefer inline comments when wording could mislead users, reviewers, or auditors.
+    - path: "package.json"
+      instructions: |
+        Treat dependency and script changes as supply-chain sensitive.
+        Flag new packages, version jumps in crypto/wallet/auth tooling, postinstall hooks, and scripts that add privileged or networked behaviour.
+    - path: "package-lock.json"
+      instructions: |
+        Review lockfile changes only for meaningful supply-chain risk: newly introduced packages, suspicious lifecycle scripts, or unexpected transitive changes.
+  tools:
+    ast-grep:
+      essential_rules: true
+
+chat:
+  auto_reply: true
