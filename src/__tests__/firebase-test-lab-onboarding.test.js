@@ -1,6 +1,6 @@
 // Firebase Test Lab release-smoke regression guard.
 //
-// The device tests are authored in Swift / workflow YAML / Robo Script JSON, so
+// The device tests are authored in Swift / workflow YAML / Android instrumentation, so
 // Vitest cannot execute them locally. This static guard pins the pieces that
 // previously drifted independently: Veyrnox's eight-digit explicit-submit
 // PinPad, the fresh-install "New wallet" route, and the exact-SHA APK handoff.
@@ -16,8 +16,7 @@ const swift = read('ios/App/AppUITests/AppUITests.swift');
 const workflow = read('.github/workflows/firebase-test-lab.yml');
 const ciWorkflow = read('.github/workflows/ci.yml');
 const androidBuild = read('android/app/build.gradle');
-const roboScriptPath = '.github/testlab/android-pin-onboarding-robo-script.json';
-const roboScript = JSON.parse(read(roboScriptPath));
+const androidInstrumentation = read('android/app/src/androidTest/java/com/veyrnox/app/FirebaseOnboardingSmokeTest.java');
 
 function indexOrFail(source, needle) {
   const index = source.indexOf(needle);
@@ -43,29 +42,19 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(swift).toContain('app.buttons["Submit PIN"]');
   });
 
-  it('uses a Robo script to click the custom Android PinPad instead of inventing text fields', () => {
-    expect(workflow).toContain(`--robo-script ${roboScriptPath}`);
-    expect(workflow).not.toContain('--robo-directives');
+  it('uses an Android instrumentation smoke test to drive the custom PinPad explicitly', () => {
+    expect(workflow).toContain('--type instrumentation');
+    expect(workflow).toContain('--test "$TEST_GCS_URI"');
+    expect(workflow).toContain('--test-targets "class com.veyrnox.app.FirebaseOnboardingSmokeTest"');
+    expect(workflow).not.toContain('--robo-script');
+    expect(workflow).not.toContain('--type robo');
 
-    const clicks = roboScript
-      .filter(({ eventType }) => eventType === 'VIEW_CLICKED')
-      .map(({ elementDescriptors }) => elementDescriptors?.[0]);
-    const pin = '24681024';
-    expect(clicks).toEqual([
-      { text: 'New wallet' },
-      ...[...pin].map(text => ({ text })),
-      { contentDescription: 'Submit PIN' },
-      ...[...pin].map(text => ({ text })),
-      { contentDescription: 'Submit PIN' },
-    ]);
-    expect(roboScript.every(({ visionText }) => visionText == null)).toBe(true);
-    expect(roboScript.some(({ eventType }) => eventType === 'VIEW_TEXT_CHANGED')).toBe(false);
-    expect(roboScript).toContainEqual(expect.objectContaining({
-      eventType: 'ASSERTION',
-      contextDescriptor: expect.objectContaining({
-        elementDescriptors: [{ text: 'Created.' }],
-      }),
-    }));
+    expect(androidInstrumentation).toContain('TARGET_PACKAGE = "com.veyrnox.app.firebase.testlab"');
+    expect(androidInstrumentation).toContain('clickText("New wallet")');
+    expect(androidInstrumentation).toContain('enterPin(PIN);');
+    expect(androidInstrumentation).toContain('clickText("Submit PIN")');
+    expect(androidInstrumentation).toContain('waitForAnyText("Help improve Veyrnox", "Created.")');
+    expect(androidInstrumentation).toContain('By.text(text)');
   });
 
   it('downloads the isolated Android Firebase artifact from CI for this exact commit', () => {
@@ -78,7 +67,11 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).not.toContain('--event push');
     expect(workflow).not.toContain('dawidd6/action-download-artifact');
     expect(workflow).toContain('name: veyrnox-firebase-test-apk');
-    expect(workflow).toContain('--app artifacts/app-firebaseTest.apk');
+    expect(workflow).toContain('name: veyrnox-firebase-test-test-apk');
+    expect(workflow).toContain('gcloud storage cp artifacts/app-firebaseTest.apk "$APP_GCS_URI"');
+    expect(workflow).toContain('gcloud storage cp artifacts/app-google-firebaseTest-androidTest.apk "$TEST_GCS_URI"');
+    expect(workflow).toContain('--app "$APP_GCS_URI"');
+    expect(workflow).toContain('--test "$TEST_GCS_URI"');
     expect(workflow).not.toContain('--app artifacts/app-release.aab');
   });
 
@@ -88,12 +81,15 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(ciWorkflow).toContain("github.ref == 'refs/heads/main' && github.event_name == 'push'");
     expect(ciWorkflow).toContain('android-firebase-test:');
     expect(ciWorkflow).toContain('./gradlew assembleGoogleFirebaseTest');
+    expect(ciWorkflow).toContain('assembleGoogleFirebaseTestAndroidTest');
     expect(ciWorkflow).toContain('name: veyrnox-firebase-test-apk');
+    expect(ciWorkflow).toContain('name: veyrnox-firebase-test-test-apk');
     expect(ciWorkflow).not.toContain('./gradlew bundleFirebaseTest');
 
     expect(androidBuild).toContain('firebaseTest {');
     expect(androidBuild).toContain('initWith release');
     expect(androidBuild).toContain('applicationIdSuffix ".firebase.testlab"');
+    expect(androidBuild).toContain("androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.3.0'");
     expect(androidBuild).toContain("project.findProperty('FIREBASE_TEST_CERT_SHA256')");
     expect(androidBuild).toContain("it.name == 'assembleGoogleFirebaseTest'");
     expect(androidBuild).toContain('cert.equalsIgnoreCase(uploadSha)');

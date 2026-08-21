@@ -609,7 +609,7 @@ jobs:
             exit 1
           fi
           echo "sha256=$FIREBASE_SHA" >> "$GITHUB_OUTPUT"
-      - name: Build non-publishable Firebase Test Lab APK
+      - name: Build non-publishable Firebase Test Lab APKs
         env:
           FIREBASE_TEST_CERT_SHA256: ${{ steps.firebase_cert.outputs.sha256 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -620,6 +620,7 @@ jobs:
           set -euo pipefail
           chmod +x gradlew
           ./gradlew assembleGoogleFirebaseTest \
+            assembleGoogleFirebaseTestAndroidTest \
             -PFIREBASE_TEST_CERT_SHA256="$FIREBASE_TEST_CERT_SHA256"
       - name: Upload isolated Firebase APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -627,13 +628,19 @@ jobs:
           name: veyrnox-firebase-test-apk
           path: android/app/build/outputs/apk/google/firebaseTest/app-google-firebaseTest.apk
           retention-days: 14
+      - name: Upload isolated Firebase instrumentation test APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: veyrnox-firebase-test-test-apk
+          path: android/app/build/outputs/apk/androidTest/google/firebaseTest/app-google-firebaseTest-androidTest.apk
+          retention-days: 14
       - name: Report Firebase artifact isolation
         run: |
           {
             echo "### Android Firebase Test Lab artifact"
             echo "- package: \`com.veyrnox.app.firebase.testlab\`"
             echo "- build: release-hardened, signed with the CI upload key"
-            echo "- output: APK only; \`bundleFirebaseTest\` is disabled"
+            echo "- output: app APK + instrumentation test APK; \`bundleFirebaseTest\` is disabled"
             echo "- Play publication: not permitted"
           } >> "$GITHUB_STEP_SUMMARY"
 

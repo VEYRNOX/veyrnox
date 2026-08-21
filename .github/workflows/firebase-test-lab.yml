@@ -1,10 +1,10 @@
 name: Firebase Test Lab (Android + iOS smoke)
 # ------------------------------------------------------------------
-# Runs the same Robo crawler Google Play Pre-launch report uses,
-# on physical devices in Google's data center — BEFORE a production AAB is
-# ever uploaded to Play. Rejection-shaped defects (crash on Create
-# Wallet, unresponsive UI, KEK fail-closed on untested hardware)
-# surface here, not from a human reviewer.
+# Runs deterministic mobile smoke suites on physical devices in Google's
+# data center — BEFORE a production AAB is ever uploaded to Play.
+# Rejection-shaped defects (crash on Create Wallet, unresponsive UI,
+# KEK fail-closed on untested hardware) surface here, not from a human
+# reviewer.
 #
 # Cost: billed by Firebase for the configured 3-device matrix.
 # Auth: workload-identity federation to Firebase, or a service-account
@@ -66,9 +66,10 @@ env:
 
 jobs:
   # --------------------------------------------------------------
-  # Android — Robo crawler on 3 real devices. Same infra as Play
-  # Pre-launch report. Output: crashes, ANRs, screenshots, video,
-  # logcat per device.
+  # Android — explicit instrumentation smoke on a real Pixel. Robo was
+  # consistently hijacked into Firebase's own companion backdrop activity
+  # instead of Veyrnox's FLAG_SECURE WebView, so this uses a signed test APK
+  # that launches the app and taps the first-run path directly.
   # --------------------------------------------------------------
   android-robo:
     if: >-
@@ -119,6 +120,7 @@ jobs:
           EXPECTED_EVENT: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || 'push' }}
           EXPECTED_JOB: android-firebase-test
           EXPECTED_ARTIFACT: veyrnox-firebase-test-apk
+          EXPECTED_TEST_ARTIFACT: veyrnox-firebase-test-test-apk
         run: |
           set -euo pipefail
           for attempt in $(seq 1 100); do
@@ -148,8 +150,13 @@ jobs:
                 --jq \
                 --arg name "$EXPECTED_ARTIFACT" \
                 '[.artifacts[]? | select(.name == $name and .expired == false)] | length')
+              TEST_ARTIFACT_COUNT=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
+                --jq \
+                --arg name "$EXPECTED_TEST_ARTIFACT" \
+                '[.artifacts[]? | select(.name == $name and .expired == false)] | length')
 
-              if [[ "$JOB_STATUS" == "completed" && "$JOB_CONCLUSION" == "success" && "$ARTIFACT_COUNT" -gt 0 ]]; then
+              if [[ "$JOB_STATUS" == "completed" && "$JOB_CONCLUSION" == "success" && "$ARTIFACT_COUNT" -gt 0 && "$TEST_ARTIFACT_COUNT" -gt 0 ]]; then
                 echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
                 exit 0
               fi
@@ -157,11 +164,12 @@ jobs:
               JOB_STATUS=""
               JOB_CONCLUSION=""
               ARTIFACT_COUNT=0
+              TEST_ARTIFACT_COUNT=0
             fi
 
             if [[ "$STATUS" == "completed" ]]; then
               if [[ "$CONCLUSION" == "success" ]]; then
-                echo "::error::CI run ${RUN_ID} finished successfully, but ${EXPECTED_JOB} or ${EXPECTED_ARTIFACT} was unavailable."
+                echo "::error::CI run ${RUN_ID} finished successfully, but ${EXPECTED_JOB} or one of the Firebase artifacts was unavailable."
                 exit 1
               fi
 
@@ -180,17 +188,25 @@ jobs:
             fi
 
             if (( attempt % 8 == 1 )); then
-              echo "Waiting for CI on ${SHA} (run=${STATUS:-not-started}, ${EXPECTED_JOB}=${JOB_STATUS:-missing}/${JOB_CONCLUSION:-pending}, artifact_count=${ARTIFACT_COUNT:-0})..."
+              echo "Waiting for CI on ${SHA} (run=${STATUS:-not-started}, ${EXPECTED_JOB}=${JOB_STATUS:-missing}/${JOB_CONCLUSION:-pending}, app_artifact_count=${ARTIFACT_COUNT:-0}, test_artifact_count=${TEST_ARTIFACT_COUNT:-0})..."
             fi
             sleep 15
           done
-          echo "::error::Timed out waiting for ${EXPECTED_JOB} + ${EXPECTED_ARTIFACT} on CI for ${SHA}; refusing to fall back to an older APK."
+          echo "::error::Timed out waiting for ${EXPECTED_JOB} + both Firebase artifacts on CI for ${SHA}; refusing to fall back to an older APK."
           exit 1
 
       - name: Download this commit's isolated Firebase APK from ci.yml
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: veyrnox-firebase-test-apk
+          path: artifacts
+          run-id: ${{ steps.ci_run.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download this commit's isolated Firebase test APK from ci.yml
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: veyrnox-firebase-test-test-apk
           path: artifacts
           run-id: ${{ steps.ci_run.outputs.run_id }}
           github-token: ${{ github.token }}
@@ -205,22 +221,13 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Robo crawl (3 devices, mixed API levels)
+      - name: Android instrumentation smoke
         id: robo
-        # --num-flaky-test-attempts 0 means no retry: any crash is a crash.
-        # Model IDs must match Firebase's current catalog exactly. First run
-        # tried raven/a13/husky and hit "'raven' is not a valid model" — some
-        # were retired. The three below are long-lived Pixels confirmed on
-        # the 2026-08 catalog. To extend coverage later:
-        #   gcloud firebase test android models list
-        # and add rows here.
-        # The Capacitor PinPad is a grid of WebView buttons, not EditText
-        # fields. MainActivity sets FLAG_SECURE, so screenshots/OCR are blank by
-        # design. The Robo Script therefore targets the WebView accessibility
-        # tree (text/contentDescription), enters + explicitly submits the
-        # eight-digit PIN twice, then hands control back to the crawler.
-        # TIMEOUT and RESULTS_BUCKET come via env: workflow-dispatch input goes
-        # through a regex allowlist to block shell metachars (injection guard).
+        # Firebase Robo kept landing in
+        # com.google.testing.helium.utp.android.companion.backdrop instead of
+        # Veyrnox, truncating the generated crawl script to waits + relaunches.
+        # Use the same exact-SHA artifact handoff, but run a deterministic
+        # instrumentation smoke instead.
         env:
           RAW_TIMEOUT: ${{ inputs.timeout }}
           RESULTS_BUCKET: ${{ secrets.GCS_RESULTS_BUCKET }}
@@ -245,20 +252,20 @@ jobs:
             RESULTS_BUCKET_URI="gs://$RESULTS_BUCKET"
           fi
           APP_GCS_URI="${RESULTS_BUCKET_URI%/}/${RESULTS_DIR}/app-firebaseTest.apk"
+          TEST_GCS_URI="${RESULTS_BUCKET_URI%/}/${RESULTS_DIR}/app-firebaseTest-androidTest.apk"
           echo "results_dir=$RESULTS_DIR" >> "$GITHUB_OUTPUT"
           gcloud storage cp artifacts/app-firebaseTest.apk "$APP_GCS_URI"
+          gcloud storage cp artifacts/app-google-firebaseTest-androidTest.apk "$TEST_GCS_URI"
           set +e
           gcloud firebase test android run \
-            --type robo \
+            --type instrumentation \
             --app "$APP_GCS_URI" \
-            # Trimmed from 3 devices (oriole/panther/shiba) to 1 on
-            # 2026-08-15 to stay under Spark's 10-virtual-slot daily cap.
-            # shiba (Pixel 8, API 34) chosen as the newest supported target.
-            --device model=shiba,version=34,locale=en,orientation=portrait \
+            --test "$TEST_GCS_URI" \
+            --test-targets "class com.veyrnox.app.FirebaseOnboardingSmokeTest" \
+            --device model=oriole,version=33,locale=en,orientation=portrait \
             --timeout "$TIMEOUT" \
             --num-flaky-test-attempts 0 \
             --no-resign \
-            --robo-script .github/testlab/android-pin-onboarding-robo-script.json \
             --results-bucket "$RESULTS_BUCKET_URI" \
             --results-dir "$RESULTS_DIR" 2>&1 | tee firebase-test-lab.log
           TEST_STATUS=${PIPESTATUS[0]}
@@ -330,7 +337,7 @@ jobs:
           MATRIX_ID: ${{ steps.robo.outputs.matrix_id }}
         run: |
           {
-            echo "### Firebase Test Lab — Robo crawl"
+            echo "### Firebase Test Lab — Android instrumentation smoke"
             echo "Results: https://console.firebase.google.com/project/${PROJECT_ID}/testlab/histories/"
             echo "Matrix: \`${MATRIX_ID:-unavailable}\`"
             echo "Bucket:  gs://${RESULTS_BUCKET}/${RESULTS_DIR}"
