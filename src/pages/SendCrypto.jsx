@@ -2861,7 +2861,9 @@ export default function SendCrypto() {
               Scanned response parts: {digitalShieldResponseParts.length}
             </div>
           )}
+          <Label htmlFor="digital-shield-signed-response">Signed response UR</Label>
           <textarea
+            id="digital-shield-signed-response"
             value={digitalShieldResponseDraft || digitalShieldResponseParts.join('\n')}
             onChange={(e) => setDigitalShieldResponseDraft(e.target.value)}
             placeholder="Paste one UR or multiple UR response parts here"
