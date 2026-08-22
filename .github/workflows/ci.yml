@@ -678,7 +678,7 @@ jobs:
       - name: Verify AAB present
         run: |
           ls -l aab-artifact/
-          test -s aab-artifact/app-release.aab
+          test -s aab-artifact/app-google-release.aab
       - name: Upload to Play internal track
         # r0adkll/upload-google-play — pinned by SHA per repo convention.
         # v1.1.3 (2024-08 vintage) — the most recent stable tag on the
@@ -688,7 +688,7 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.veyrnox.app
-          releaseFiles: aab-artifact/app-release.aab
+          releaseFiles: aab-artifact/app-google-release.aab
           track: internal
           status: completed
           # No release notes here — internal testers see the versionCode
