@@ -32,6 +32,7 @@ export default function WalletSeedQR() {
   const mnemonicRef = useRef(null);
 
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
+  const selectedWalletName = selectedWallet?.name || "Wallet";
 
   // Seed reveal (2FA gate + M6 recent-auth window). On a lapsed window this shows
   // an inline "unlock again" prompt in place of the reveal button instead of a
@@ -118,7 +119,7 @@ export default function WalletSeedQR() {
         container.textContent = "";
 
         const h2 = document.createElement("h2");
-        h2.textContent = `${nameText} — Recovery Backup`;
+        h2.textContent = `${selectedWalletName} — Recovery Backup`;
         container.appendChild(h2);
 
         const meta = document.createElement("p");
