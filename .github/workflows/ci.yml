@@ -684,7 +684,7 @@ jobs:
         # v1.1.3 (2024-08 vintage) — the most recent stable tag on the
         # action's repo. Bump the SHA (and this comment) if a newer
         # audited version is preferred.
-        uses: r0adkll/upload-google-play@935ef9c68bfaeb5c8b5c0f9bc8b6a2f7b2fce4d3 # v1.1.3
+        uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb # v1.1.3
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.veyrnox.app
