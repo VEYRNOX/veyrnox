@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, AlertTriangle, Shield, Printer } from "lucide-react";
+import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import CoinLogo from "@/components/CoinLogo";
 import { Button } from "@/components/ui/button";
