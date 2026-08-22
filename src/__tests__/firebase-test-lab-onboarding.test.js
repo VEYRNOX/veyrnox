@@ -135,9 +135,9 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
 
   it('gates both staging store uploads on both Firebase device suites', () => {
     expect(workflow).toContain('publish_staging:');
-    expect(workflow).toContain('publish-android-staging:');
     expect(workflow).toContain('publish-ios-staging:');
-    expect(workflow.match(/needs: \[android-robo, ios-smoke\]/g)).toHaveLength(2);
+    expect(workflow).not.toContain('publish-android-staging:');
+    expect(workflow.match(/needs: \[android-robo, ios-smoke\]/g)).toHaveLength(1);
     expect(workflow).toContain('name: veyrnox-staging-aab');
     expect(workflow).toContain('track: internal');
     expect(workflow).toContain('xcrun altool --upload-app');
