@@ -75,32 +75,32 @@ export default function PortfolioBenchmark() {
         <p className="text-sm text-muted-foreground">Your real returns based on transaction history</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="p-4 rounded-xl border border-border bg-card">
-          <p className="text-xs text-muted-foreground mb-1">Portfolio Return</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="p-4 rounded-xl border border-border bg-card min-w-0">
+          <p className="text-xs text-muted-foreground mb-1 break-words">Portfolio Return</p>
           <div className="flex items-center gap-2">
             {returnUp ? <TrendingUp className="h-4 w-4 text-success" /> : <TrendingDown className="h-4 w-4 text-destructive" />}
-            <p className={`text-xl font-bold ${returnUp ? "text-success" : "text-destructive"}`}>
+            <p className={`text-xl font-bold break-words ${returnUp ? "text-success" : "text-destructive"}`}>
               {returnUp ? "+" : ""}{portfolioReturn.toFixed(1)}%
             </p>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">All-time return</p>
+          <p className="text-[10px] text-muted-foreground mt-1 break-words">All-time return</p>
         </div>
 
-        <div className="p-4 rounded-xl border border-border bg-card">
-          <p className="text-xs text-muted-foreground mb-1">Net Invested</p>
-          <p className="text-xl font-bold">
+        <div className="p-4 rounded-xl border border-border bg-card min-w-0">
+          <p className="text-xs text-muted-foreground mb-1 break-words">Net Invested</p>
+          <p className="text-xl font-bold break-words">
             ${Math.abs(netInvested).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-1">Received minus sent</p>
+          <p className="text-[10px] text-muted-foreground mt-1 break-words">Received minus sent</p>
         </div>
 
-        <div className="p-4 rounded-xl border border-border bg-card">
-          <p className="text-xs text-muted-foreground mb-1">Current Value</p>
-          <p className="text-xl font-bold">
+        <div className="p-4 rounded-xl border border-border bg-card min-w-0">
+          <p className="text-xs text-muted-foreground mb-1 break-words">Current Value</p>
+          <p className="text-xl font-bold break-words">
             ${currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-1">Portfolio total</p>
+          <p className="text-[10px] text-muted-foreground mt-1 break-words">Portfolio total</p>
         </div>
       </div>
       <ReferenceRateNote />
