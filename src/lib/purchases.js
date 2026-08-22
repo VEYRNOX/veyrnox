@@ -302,24 +302,21 @@ export async function addCustomerInfoUpdateListener(callback) {
   return () => Purchases.removeCustomerInfoUpdateListener({ listenerToRemove: listenerId });
 }
 
-// Tag the RC customer with a referral code so attribution is visible in the
-// RevenueCat dashboard alongside revenue data. Best-effort — a failure here
-// must never block the purchase flow or surface an error to the user.
-// Owner override 2026-07-18: setAttributes was previously on the "do not add"
-// list (identity leak concern); unlocked for referral-code-only attribution.
-// The referral code identifies the REFERRER, not the purchaser — no wallet
-// address, seed, or balance is ever sent. I3-gated at the call site
-// (Subscription.jsx only calls this after a successful real-session purchase).
-export async function setReferralAttributes(code, tierKey, isFoundingReferrer) {
-  if (!isNative() || !configured || !code) return;
-  const attrs = { referralCode: code };
-  if (tierKey) attrs.referralTier = tierKey;
-  if (isFoundingReferrer != null) attrs.isFoundingReferrer = String(isFoundingReferrer);
+// Bind THIS user's own referral code to their RC subscriber profile so the
+// rc-webhook can map their app_user_id back to their referrals row. Called at
+// app start (TierProvider) and is the ONLY writer of veyrnox_referral_code.
+// Best-effort — a failure must never block the purchase flow or app startup.
+// I3-safe: getLocalState() reads shared localStorage, but the attribute value
+// is a non-identifying VYX-XXXXXX code, not a wallet address or seed.
+export async function bindOwnReferralCode() {
+  if (!isNative() || !configured) return;
+  const { getLocalState } = await import('@/lib/referral');
+  const code = getLocalState().code;
+  if (!code) return;
   try {
-    await Purchases.setAttributes(attrs);
+    await Purchases.setAttributes({ veyrnox_referral_code: code });
   } catch { /* best-effort */ }
 }
-export const setReferralAttribute = setReferralAttributes;
 
 // Deep-link to the platform's own subscription management page (Apple: App Store
 // Subscriptions; Google: Play Store Subscriptions). The Capacitor RC plugin does

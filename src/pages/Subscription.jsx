@@ -31,7 +31,6 @@ import {
   purchasePackage,
   restorePurchases,
   manageSubscription,
-  setReferralAttribute,
   offerPriceInfo,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
@@ -503,7 +502,9 @@ export default function Subscription() {
           markAttributed();
           claimFirstReferralBonus(refCode).catch(() => {});
         } catch { /* best-effort — retry on next purchase if Supabase failed */ }
-        setReferralAttribute(refCode, referrerTierInfo?.key).catch(() => {});
+        // #1703: the user's OWN code is bound to RC at app start (TierProvider →
+        // bindOwnReferralCode). Do NOT send refCode here — that is the REFERRER's
+        // code and would bind THIS user's rc_user_id to the referrer's row.
       }
       toast.success(successLabel ?? `${tierLabel(expectedTier)} unlocked`);
     } catch (err) {
