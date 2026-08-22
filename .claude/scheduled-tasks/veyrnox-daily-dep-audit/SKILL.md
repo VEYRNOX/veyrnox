@@ -46,6 +46,15 @@ Check the Veyrnox wallet project at `C:\Users\aljob\Downloads\Veyrnox` for npm d
     findings tables — but never from the counts, and never silently: the widget
     must always state how many were suppressed and why (step 3, last bullets).
 
+    **Only entries under `## Accepted residuals` suppress anything.** Entries under
+    `## Retired residuals` are history: same `###` shape, same backticked root name,
+    same "Accounted for N findings" line, and they must never match. A retired
+    advisory reappearing in the resolved tree is a NEW finding that surfaces
+    normally — see the retired entry's own "If it comes back" line. Match on the
+    section, not on the entry shape; suppressing 12 high findings because a root
+    name appears somewhere in this file is exactly the silent vanishing that I4
+    forbids.
+
     If a listed residual ever appears at a **higher severity** than recorded, do
     NOT suppress it. Surface it as a normal finding and say the severity changed.
     That is the whole point of scoping by package rather than by severity level.
@@ -153,15 +162,43 @@ its own.
   (the Android E2E test harness). Never imported by `src/`, never bundled in the
   production wallet. `npm audit --omit=dev` reports 0 high / 0 critical. Not
   attacker-reachable — the harness parses trusted local test fixtures.
-- **Accounts for** 3 high findings: `shell-quote`, `@appium/support`,
-  `@appium/base-driver`. (The chain was ~8 when first accepted; it shrank as the root
-  copies got patched.) Suppress the whole chain under this root.
+- **Accounts for 0 findings as of 2026-08-22 — RETIREMENT CANDIDATE, not yet retired.**
+  This line said "3 high findings: `shell-quote`, `@appium/support`, `@appium/base-driver`"
+  (down from ~8 when first accepted). That is no longer true of the resolved tree.
+  Re-derived at `origin/main` `b8f01272` — `npm audit` reports **22 low / 0 moderate /
+  0 high / 0 critical**, and all 22 are `elliptic`-rooted; none of these three roots
+  appears. The nested subtree still exists (291 entries) but now resolves PATCHED:
+  `@appium/support 7.2.6`, `@appium/base-driver 10.7.2`, `shell-quote 1.10.0`.
+  **Do not retire on this paragraph alone** — the whole point of the 2026-07-27 lesson is
+  that retirement runs through the watcher's own fresh resolve, not a reader's spot check.
+  Let `veyrnox-appium-shellquote-watch` fire and follow its report; until then the entry
+  stands and suppresses nothing that is not there.
 - **Revisit trigger — evidence, NOT a version number.** A version-based trigger is what
-  produced the false positive above. Trigger only on: the lockfile no longer containing
-  `node_modules/appium-uiautomator2-driver/node_modules/@appium/support`; OR the Android
-  E2E harness being retired; OR the advisory being re-rated above high. A new
-  `@appium/*` release is NOT sufficient on its own — verify the nested entry is actually
-  gone before retiring this again.
+  produced the false positive above. An earlier, NARROWER version of this list (nested key
+  absent / harness retired / re-rated only) failed to fire on what actually happened,
+  because the nested key never went away — its contents were patched in place. The first
+  five conditions below are `veyrnox-appium-shellquote-watch`'s five, in its order.
+  Trigger on ANY of:
+  - the nested `node_modules/appium-uiautomator2-driver/node_modules/@appium/support` key
+    is ABSENT from a fresh resolve; OR
+  - the nested `shell-quote` resolves to a version greater than `1.8.4`; OR
+  - the nested `body-parser` resolves to `2.3.0` or greater; OR
+  - `npm audit` on the fresh resolve no longer reports `shell-quote`, `@appium/support`,
+    `@appium/base-driver`, or `body-parser` as advisory roots; OR
+  - the committed lockfile on `origin/main` no longer contains the nested
+    `@appium/support` key; OR
+  - the Android E2E harness is retired.
+
+  A new `@appium/*` release is NOT sufficient on its own, and neither is an
+  `npm audit` `fixAvailable: true` — verify the resolved tree before retiring this again.
+
+  **Two deliberate differences from the watcher, kept rather than silently reconciled:**
+  the harness-retired condition is this entry's own and is not in the watcher's list; and
+  a re-rating ABOVE high is a trigger here (it breaks the severity-scoped suppression in
+  step 2a) while the watcher treats it as report-but-not-trigger. Everything else must
+  stay identical — **if you change a shared condition, change it in both files in the same
+  commit.** Drift is what produced the gap above: the watcher would have fired on
+  conditions 2 and 4 while this entry, by its own rule, said nothing had happened.
 - **Tracked:** watcher `veyrnox-appium-shellquote-watch` (weekly, Mondays ~9am),
   deleted and REBUILT 2026-07-27. The original watched version numbers and produced the
   false positive above; the rebuilt one ignores version numbers entirely and triggers
@@ -181,10 +218,15 @@ its own.
   unfixable for the same four reasons. The root `body-parser` is already the patched
   `2.3.0`; the flagged `2.2.2` is pinned exactly by the nested
   `@appium/base-driver@10.7.1`. DoS-only, dev-only, never bundled.
-- **Accounts for** 1 low finding (`body-parser` under the appium subtree).
-- **Revisit trigger:** as `shell-quote` above — the nested entry actually disappearing.
-  Retired and reinstated 2026-07-27 alongside it; do not retire this one on an
-  `npm audit` `fixAvailable: true` either, which was verified to be a no-op.
+- **Accounts for 0 findings as of 2026-08-22 — RETIREMENT CANDIDATE, not yet retired.**
+  This line said "1 low finding (`body-parser` under the appium subtree)". Re-derived at
+  `origin/main` `b8f01272`: the nested `body-parser` now resolves to the patched `2.3.0`
+  and `npm audit` no longer reports it. Same caveat as `shell-quote` above — retirement
+  runs through the watcher, not through this paragraph.
+- **Revisit trigger:** the same six conditions as `shell-quote` above (the first five are
+  the watcher's). Note the third one (`body-parser >= 2.3.0`) is already true. Retired and
+  reinstated 2026-07-27 alongside it; do not retire this one on an `npm audit`
+  `fixAvailable: true` either, which was verified to be a no-op.
 - **Tracked:** covered by the same rebuilt `veyrnox-appium-shellquote-watch` (weekly,
   Mondays ~9am), which checks the nested `body-parser` resolution alongside
   `shell-quote`.
