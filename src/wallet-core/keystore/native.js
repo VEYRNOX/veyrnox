@@ -1127,10 +1127,9 @@ export const nativeKeyStore = {
       let peekRecord;
       try { peekRecord = parseVaultBlob(rawPeek); } catch { /* fall through */ }
       if (peekRecord && peekRecord.wrap === WRAP_VERSION_ENCLAVE) {
-        // Suppress pause-driven lock hook for M2c enclave path. hwUnwrap and
-        // getHardwareFactor trigger Face ID which backgrounds the app; without
-        // suppression appStateChange fires lock() and the in-flight
-        // WalletProvider unlock throws SUPERSEDED.
+        // Suppress lock hook: hwUnwrap triggers Face ID via SE key ACL, and
+        // getHardwareFactorWithLockoutFallback may trigger a second biometric.
+        // Both cause appStateChange pause that would fire fireLockHook().
         return withLockSuppressed(async () => {
           let blobJson;
           try {
