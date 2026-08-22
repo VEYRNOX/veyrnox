@@ -77,9 +77,10 @@
 // measurably faster (the H-1 oracle) — and (b) was a magic constant that drifted whenever
 // KDF_PARAMS changed. It is REPLACED by spendPrimaryUnlockEqualizerKdfs (below): the
 // primary-success path now runs the SAME resolveDeniabilityUnlock the failure path runs
-// (result discarded), so every outcome costs an identical unlock(1) + resolver(3) +
-// verifier(1) = 5 KDFs. Timing is EQUAL by construction — it no longer reveals even "the
-// primary password was correct". See unlockTimingEqualizer.h1.test.jsx.
+// (result discarded), so every outcome costs an identical prompt-visible unlock(1) +
+// resolver(3) path. Timing is EQUAL by construction — it no longer reveals even "the
+// primary password was correct". The step-up verifier capture now runs after the session
+// mounts, off the visible unlock path. See unlockTimingEqualizer.h1.test.jsx.
 //   - [P1] PARAM-PROFILE (not just count) is now equal too. An earlier count-only
 //     equalizer (3 dummyKdf at the CURRENT KDF_PARAMS) left an INSTALLED-BASE oracle: a
 //     vault whose deniability blob(s) were written under LEGACY params (64 MiB) and not
