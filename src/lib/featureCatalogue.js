@@ -512,7 +512,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Android App',
         status: 'roadmap',
         summary: 'Native Android shell — Play internal testing',
-        explanation: 'Built. Native Android shell via Capacitor, published to Play internal testing track (1.0, versionCode 6). Upload key reset completed. Play Billing (IAP) device-verified on internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). App Store review submission on hold pending pre-submission verification checklist (Pre-launch report, Android Vitals crash/ANR check, fresh-device golden-path walk). NOT verified: RASP on a Play install not device-verified, no production review submission made.',
+        explanation: 'Built. Native Android shell via Capacitor, current submission train 1.0.1 / versionCode 10 with Play internal-testing upload path wired in CI. Upload key reset completed. Play Billing (IAP) device-verified on the internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). Submission remains on hold pending the pre-submission verification checklist (Play Pre-launch report, Android Vitals crash/ANR check, fresh-device golden-path walk). NOT verified: a clean Pre-launch report for versionCode 10 is still console-only and pending, RASP on a Play install not device-verified, no production review submission made.',
       },
       {
         name: 'Samsung Galaxy Store',

@@ -366,18 +366,25 @@ describe('Android anti-dump — prctl(PR_SET_DUMPABLE, 0)', () => {
     expect(fnBody).toContain('runCatching');
   });
 
-  it('earlyCheck calls earlyAntiDump() and earlyPtraceTraceme() before earlyDetectHook()', () => {
+  it('earlyCheck probes hook state before claiming the ptrace slot', () => {
     const checkStart = kt.indexOf('fun earlyCheck(');
     expect(checkStart).toBeGreaterThan(-1);
     const checkBody = kt.slice(checkStart, checkStart + 800);
     const antiDumpIdx = checkBody.indexOf('earlyAntiDump()');
-    const ptraceIdx = checkBody.indexOf('earlyPtraceTraceme()');
     const hookIdx = checkBody.indexOf('earlyDetectHook()');
+    const ptraceIdx = checkBody.indexOf('earlyPtraceTraceme()');
     expect(antiDumpIdx).toBeGreaterThan(-1);
-    expect(ptraceIdx).toBeGreaterThan(-1);
     expect(hookIdx).toBeGreaterThan(-1);
+    expect(ptraceIdx).toBeGreaterThan(-1);
     expect(antiDumpIdx).toBeLessThan(ptraceIdx);
-    expect(ptraceIdx).toBeLessThan(hookIdx);
+    expect(hookIdx).toBeLessThan(ptraceIdx);
+  });
+
+  it('earlyCheck documents why TracerPid must be read before nativeEarlyTraceme', () => {
+    const checkStart = kt.indexOf('fun earlyCheck(');
+    expect(checkStart).toBeGreaterThan(-1);
+    const checkBody = kt.slice(checkStart, checkStart + 500);
+    expect(checkBody).toContain('TracerPid probe self-detects on a clean device');
   });
 });
 
@@ -1201,7 +1208,7 @@ describe('Item 22 — Android earlyCheckScreenCapture in companion earlyCheck()'
   it('earlyCheck() chains earlyCheckScreenCapture(context)', () => {
     const start = kt.indexOf('fun earlyCheck(context');
     expect(start).toBeGreaterThan(-1);
-    const body = kt.slice(start, start + 800);
+    const body = kt.slice(start, start + 1200);
     expect(body).toContain('earlyCheckScreenCapture(context)');
   });
 

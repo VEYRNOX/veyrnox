@@ -204,6 +204,8 @@ function buildImportedProfile(parsed) {
       accountNodePath: btc.path,
       xpub: btc.extendedPublicKey,
       publicKeyHex: ensureHex(btc.publicKey, 'btc_public_key'),
+      // Digital Shield BTC is mainnet-only today; SendCrypto gates testnet/signet
+      // before this account is used, and buildDigitalShieldBtcPsbt re-asserts it.
       address: deriveBtcAddressFromXpub(btc.extendedPublicKey, 'mainnet', 0, 0),
     };
   }
