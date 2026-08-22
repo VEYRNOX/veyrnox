@@ -223,9 +223,16 @@ justified each retirement is on file rather than in a PR description.
   `overrides["@puppeteer/browsers"]`, or `@wdio/utils` widening its own pin in a way that
   re-resolves to `2.x`, reopens all 12 findings. A reappearance is a new finding, not a
   reinstatement — re-derive the chain before assuming this history still applies.
-- **Loose ends for the owner (NOT actioned by the audit task, which may not touch
-  scheduled tasks):** watcher `veyrnox-extract-zip-watch` (weekly, Mondays ~11am) is now
-  watching a retired residual and can be deleted; issue #1851 can be closed.
+- **No watcher — none needed.** `veyrnox-extract-zip-watch` (weekly, Mondays ~11am) was
+  deleted 2026-08-22, on owner instruction, once this entry was retired. Its `SKILL.md`
+  survives at `~/.claude/scheduled-tasks/veyrnox-extract-zip-watch/SKILL.md` if the prompt
+  is ever wanted back. Note the audit task itself may not delete scheduled tasks (see
+  Constraints) — it reports them and the owner acts.
+- **Issue #1851 was already closed** as COMPLETED on 2026-08-16, auto-closed by PR #1852
+  merging. An earlier draft of this entry said it "can be closed"; that was taken from the
+  old entry's `Tracked as issue #1851` line without checking the issue. Stated here because
+  it is the same mistake this file keeps recording in other forms: a tracking reference
+  ages into a claim about current state. Check the issue, not the line that names it.
 
 ## Constraints
 - Do NOT run `npm audit fix` or modify any files — read-only audit only.
