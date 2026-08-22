@@ -225,16 +225,16 @@ export default function SuspiciousAssets() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           { label: 'Total flagged', value: snapshot.totals.total },
           { label: 'Suspicious tokens', value: snapshot.totals.suspiciousTokens },
           { label: 'Risky contracts', value: snapshot.totals.riskyContracts },
           { label: 'Suspicious NFTs', value: snapshot.totals.suspiciousNfts },
         ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-border bg-card p-4 text-center">
-            <p className="text-2xl font-bold">{loading ? '—' : stat.value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+          <div key={stat.label} className="rounded-xl border border-border bg-card p-4 text-center min-w-0">
+            <p className="text-2xl font-bold break-words">{loading ? '—' : stat.value}</p>
+            <p className="text-xs text-muted-foreground mt-1 break-words">{stat.label}</p>
           </div>
         ))}
       </div>

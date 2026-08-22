@@ -79,13 +79,16 @@ function FeatureRow({ icon: Icon, label, on, detail, path, gapWhenOff = true }) 
 function StatCard({ icon: Icon, label, value, sub, tone, path }) {
   const toneCls = tone === "high" ? "border-destructive/30" : tone === "medium" ? "border-caution/30" : "border-border";
   return (
-    <Link to={path} className={`p-4 rounded-xl border bg-card hover:bg-secondary/40 transition-colors block ${toneCls}`}>
-      <div className="flex items-center gap-2 text-muted-foreground mb-2">
+    <Link
+      to={path}
+      className={`block h-full min-w-0 rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/40 ${toneCls}`}
+    >
+      <div className="mb-2 flex items-start gap-2 text-muted-foreground">
         <Icon className="h-4 w-4" />
-        <span className="text-xs font-medium">{label}</span>
+        <span className="min-w-0 text-xs font-medium leading-snug break-words">{label}</span>
       </div>
-      <p className={`text-2xl font-bold ${tone === "high" ? "text-destructive" : tone === "medium" ? "text-caution" : ""}`}>{value}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+      <p className={`break-words text-2xl font-bold ${tone === "high" ? "text-destructive" : tone === "medium" ? "text-caution" : ""}`}>{value}</p>
+      <p className="mt-0.5 text-xs leading-snug text-muted-foreground break-words">{sub}</p>
     </Link>
   );
 }
@@ -258,7 +261,7 @@ export default function SecurityDashboard() {
       {/* Active risk signals (counts → jump to the existing action page). */}
       <div>
         <h2 className="text-sm font-semibold mb-2">Active risk signals</h2>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
             icon={ShieldOff}
             label="Approvals"
