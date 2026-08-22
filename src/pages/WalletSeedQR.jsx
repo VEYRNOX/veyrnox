@@ -54,7 +54,6 @@ export default function WalletSeedQR() {
     if (!selectedWalletId) return;
     revealWithReauth(selectedWalletId, { title: 'Reveal recovery phrase' });
   };
-
   const handlePrint = async () => {
     if (!mnemonic || printPending) return;
     setPrintPending(true);
