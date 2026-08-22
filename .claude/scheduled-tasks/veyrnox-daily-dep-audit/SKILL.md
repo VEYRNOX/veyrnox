@@ -171,8 +171,21 @@ its own.
   `@appium/support 7.2.6`, `@appium/base-driver 10.7.2`, `shell-quote 1.10.0`.
   **Do not retire on this paragraph alone** — the whole point of the 2026-07-27 lesson is
   that retirement runs through the watcher's own fresh resolve, not a reader's spot check.
-  Let `veyrnox-appium-shellquote-watch` fire and follow its report; until then the entry
-  stands and suppresses nothing that is not there.
+  Let `veyrnox-appium-shellquote-watch` fire; until then the entry stands and suppresses
+  nothing that is not there.
+
+  **What "fire" produces depends on whether #1945 has landed.** Until it does, the watcher
+  reports remediation steps and a human acts on them. Once it lands, the watcher opens the
+  retirement PR itself — cut from `origin/main` in its own worktree, never merged and never
+  auto-merged, left for the owner. Either way the retirement arrives as a reviewable PR,
+  and either way **this entry is not the thing that authorises it.**
+
+  Note what will NOT retire these entries, in both modes: a trigger from the watcher's
+  condition 1 or 5 alone — the nested `@appium/support` key disappearing — is deliberately
+  insufficient, because a key can move without the advisory clearing. Retirement needs
+  condition 4, `npm audit` reporting none of the four packages as an advisory root. That is
+  the distinction the 2026-07-27 false positive turned on, and it is why the watcher's
+  PR path gates on condition 4 specifically rather than on "the trigger fired".
 - **Revisit trigger — evidence, NOT a version number.** A version-based trigger is what
   produced the false positive above. An earlier, NARROWER version of this list (nested key
   absent / harness retired / re-rated only) failed to fire on what actually happened,
