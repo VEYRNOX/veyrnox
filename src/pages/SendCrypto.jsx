@@ -1220,6 +1220,120 @@ export default function SendCrypto() {
   // second factor is enforced at the chokepoint — not only by which JSX branch renders.
   const twoFactorVerifiedRef = useRef(false);
 
+  const evaluateCurrentSendGate = async ({ twoFactorVerified = twoFactorVerifiedRef.current } = {}) => {
+    // The Send gate must stay a SINGLE chokepoint even when the UX forks into a
+    // Digital Shield prepare/finalize flow. Recompute the same live inputs here
+    // instead of mirroring a subset of them in UI state.
+
+    const trimmedTo = String(toAddress || '').trim();
+    const chainKey = selectedWallet?.currency;
+    const networkName = activeNetwork?.name || '';
+    if (!trimmedTo || !isValidAddressForCurrency(trimmedTo, chainKey, networkName)) {
+      throw Object.assign(new Error('RECIPIENT_INVALID_AT_SIGN'), { code: 'RECIPIENT_INVALID_AT_SIGN' });
+    }
+    if (!isFormAmountWellFormed(canonicalAmount) || Number(canonicalAmount) <= 0) {
+      throw Object.assign(new Error('AMOUNT_INVALID_AT_SIGN'), { code: 'AMOUNT_INVALID_AT_SIGN' });
+    }
+
+    if (requiresVerification(activeWalletId, amountUsd)) {
+      throw Object.assign(new Error('VERIFY_REQUIRED'), { code: 'VERIFY_REQUIRED' });
+    }
+
+    const limitGate = evaluateSendAgainstLimits({
+      amount: canonicalAmount,
+      currency: selectedWallet.currency,
+      usdRates: USD_RATES,
+      history: /** @type {any} */ (history),
+      limits: /** @type {any} */ (txLimits),
+      now: new Date(),
+    });
+
+    const freshArtifact = await getFreshRaspArtifact();
+    const freshRaspTier = freshArtifact?.tier ?? TIER.BLOCK;
+    if (freshRaspTier !== 'allow') {
+      notifyRaspAlert({ tier: freshRaspTier, sentence: freshArtifact?.sentence ?? null, ts: Date.now() });
+    }
+
+    if (tipScreenApplies && !(tipQuery.isSuccess || tipQuery.isError)) {
+      throw Object.assign(
+        new Error('Threat screening has not finished for this transaction yet.'),
+        { code: 'TIP_SCREEN_PENDING' }
+      );
+    }
+
+    let riskScoreFailed = false;
+    let presignAtSign = /** @type {any} */ (null);
+    let txPolicyAtSign = /** @type {any} */ (null);
+    try {
+      const freshScore = scoreCurrentSend();
+      presignAtSign = presignGate(freshRaspTier, freshScore.level, riskAck);
+      const txVerdictAtSign = composeTransactionVerdict({
+        localVerdict: freshScore,
+        localApplicable: riskApplicable,
+        localSettled: riskApplicable ? riskReady : false,
+        tipResult: tipQuery.data ?? null,
+        tipApplicable: tipScreenApplies,
+        tipSettled: !tipScreenApplies || tipQuery.isSuccess || tipQuery.isError,
+        review: reviewContributor,
+        raspTier: freshRaspTier,
+        raspArtifact: freshArtifact,
+        presign: presignAtSign,
+      });
+      txPolicyAtSign = deriveSigningPolicy({
+        verdict: txVerdictAtSign,
+        presign: presignAtSign,
+        acknowledged: riskAck,
+        raspNeedsBio: freshArtifact?.requiresBiometric === true
+          && Capacitor.isNativePlatform()
+          && presignAtSign?.decision !== 'block',
+        biometricCleared: raspWarnBioOk,
+      });
+      notifyTxRiskAlert({ level: freshScore.level, sentence: freshScore.sentence, signalId: freshScore.signalId, ts: Date.now() });
+    } catch {
+      riskScoreFailed = true;
+    }
+
+    const raspNeedsBioAtSign = freshArtifact?.requiresBiometric === true
+      && Capacitor.isNativePlatform()
+      && presignAtSign?.decision !== 'block';
+    if (raspNeedsBioAtSign && !raspWarnBioOk) {
+      throw Object.assign(
+        new Error('Biometric confirmation required before signing on a modified device.'),
+        { code: 'RASP_BIO_REQUIRED' }
+      );
+    }
+
+    const gate = /** @type {any} */ (evaluateSendGate({
+      canSend: canSend(selectedAsset),
+      devUngated,
+      currency: selectedWallet?.currency,
+      isUnlocked,
+      demo: DEMO,
+      reauthRequired: DEMO ? false : isSendReauthRequired(),
+      twoFactorRequired: send2faMethod !== SEND_2FA.NONE,
+      twoFactorVerified,
+      limit: limitGate,
+      limitAck,
+      riskScoreFailed,
+      txPolicy: txPolicyAtSign,
+      presign: presignAtSign,
+      btcRiskBlocked: isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high") && !btcRiskAck,
+      blockedByApproval,
+    }));
+    if (!gate.allowed) {
+      throw Object.assign(new Error(gate.message), { code: gate.code });
+    }
+
+    if (!canSend(selectedAsset)) {
+      throw new Error(
+        `[Security] Send blocked: ${selectedAsset.symbol} status is "${selectedAsset.status}". ` +
+        `Only verified LIVE assets may send. This is a code-level safety assertion.`
+      );
+    }
+
+    return { freshArtifact, presignAtSign, txPolicyAtSign };
+  };
+
   // Codex P2 2026-08-15: imperative in-flight latch. The three call sites of
   // sendTx.mutate() (:1510 plain confirm, :2264 2FA success, :2314 direct)
   // relied on `disabled={sendTx.isPending}` after a re-render, so a rapid
@@ -1240,180 +1354,11 @@ export default function SendCrypto() {
       }
       broadcastInFlightRef.current = true;
 
-      // Codex P2 2026-08-15: recipient + amount re-validation at the
-      // chokepoint. QR / clipboard / ENS / contact-tap paths write straight
-      // into `toAddress`, and evaluateSendGate below re-checks limits +
-      // risk + 2FA but does NOT revalidate the address/amount shape. If
-      // stale verify state or a direct mutate() reaches here, we must
-      // re-assert shape at signing time — never delegate the final check to
-      // downstream chain libraries where a malformed value could be
-      // interpreted differently (e.g. an EIP-55 case-mangled address that
-      // ethers happily lowercases). Fails closed with a distinct code so
-      // the UI can toast "recipient invalid, please re-enter".
-      const trimmedTo = String(toAddress || '').trim();
-      const _chainKey = selectedWallet?.currency;
-      const _network = activeNetwork?.name || '';
-      if (!trimmedTo || !isValidAddressForCurrency(trimmedTo, _chainKey, _network)) {
-        throw Object.assign(new Error('RECIPIENT_INVALID_AT_SIGN'), { code: 'RECIPIENT_INVALID_AT_SIGN' });
-      }
-      if (!isFormAmountWellFormed(canonicalAmount) || Number(canonicalAmount) <= 0) {
-        throw Object.assign(new Error('AMOUNT_INVALID_AT_SIGN'), { code: 'AMOUNT_INVALID_AT_SIGN' });
-      }
-
-      // SEED-VERIFICATION GATE (Task 9, UI-level — distinct from evaluateSendGate()
-      // in lib/sendGate.js, which stays untouched). If this wallet deferred its
-      // seed-backup verification quiz and this send is at/above the safety
-      // threshold, block BEFORE any signing/broadcast work and send the user to
-      // finish verification. Checked first (cheap, local, no RPC) so a deferred
-      // wallet never even reaches the RASP/risk/limits machinery below.
-      if (requiresVerification(activeWalletId, amountUsd)) {
-        throw Object.assign(new Error('VERIFY_REQUIRED'), { code: 'VERIFY_REQUIRED' });
-      }
-
-      // DEFENSE-IN-DEPTH: re-assert EVERY UI gate at signing time, as one ordered
-      // decision, so no stale UI state can broadcast past a tripped gate. The order
-      // and the user-facing messages live in the pure evaluateSendGate()
-      // (lib/sendGate.js), which is exhaustively unit-tested — so the enforced
-      // verdict cannot drift from this call site. Each raw input below is recomputed
-      // here against live state / a fresh risk score.
-
-      // 7 — spend limits, recomputed against the latest local history (per-tx + daily).
-      const limitGate = evaluateSendAgainstLimits({
-        amount: canonicalAmount,
-        currency: selectedWallet.currency,
-        usdRates: USD_RATES,
-        history: /** @type {any} */ (history),
-        limits: /** @type {any} */ (txLimits),
-        now: new Date(),
-      });
-
-      // 8 — pre-sign risk. Uses the SAME scoreCurrentSend() the banner renders, so the
-      // enforced verdict matches what the user saw. Fail closed: if scoring throws,
-      // mark it failed and the gate refuses to sign. Otherwise compose the tx verdict
-      // with the RASP environment tier (Phase 3; raspTier is ALLOW when the flag is
-      // off → reduces to the tx-risk gate).
-      //
-      // P2-1 (audit 2026-07-15): fetch a FRESH RASP artifact right here on the sign
-      // hot-path instead of reusing the closure's `raspTier` (which could be up
-      // to ~60 s stale — last heartbeat sample). An attacker who injected a hook
-      // AFTER the last probe but BEFORE the user tapped Send previously slipped
-      // past a stale ALLOW. getFreshRaspArtifact awaits both the OS and
-      // attestation legs with a FRESH_PROBE_TIMEOUT_MS fail-closed timeout (WC pattern);
-      // timeout/throw/shape-drift → BLOCK. Never a fabricated CLEAN.
-      const freshArtifact = await getFreshRaspArtifact();
-      const freshRaspTier = freshArtifact?.tier ?? TIER.BLOCK;
-      // Emit a security notification if RASP found a non-clean environment at sign time.
-      // Fire-and-forget (I4) — the notification path must never block or unwind the send.
-      if (freshRaspTier !== 'allow') {
-        notifyRaspAlert({ tier: freshRaspTier, sentence: freshArtifact?.sentence ?? null, ts: Date.now() });
-      }
-
-      // H-1 chokepoint re-assert. The Continue button is disabled while remote
-      // screening is in flight, but button state is not the security boundary —
-      // scoreCurrentSend() below reads tipQuery.data through a closure, and an
-      // unsettled query means `tipResult` is undefined, which S9 scores as OK.
-      // Refuse to sign rather than sign on a verdict that never consulted the
-      // screening the user opted into. Mirrors the RASP fresh-artifact re-assert
-      // immediately below (I4 fail-closed).
-      if (tipScreenApplies && !(tipQuery.isSuccess || tipQuery.isError)) {
-        throw Object.assign(
-          new Error('Threat screening has not finished for this transaction yet.'),
-          { code: 'TIP_SCREEN_PENDING' }
-        );
-      }
-
-      let riskScoreFailed = false;
-      let presignAtSign = /** @type {any} */ (null);
-      let txPolicyAtSign = /** @type {any} */ (null);
-      try {
-        const freshScore = scoreCurrentSend();
-        presignAtSign = presignGate(freshRaspTier, freshScore.level, riskAck);
-        const txVerdictAtSign = composeTransactionVerdict({
-          localVerdict: freshScore,
-          localApplicable: riskApplicable,
-          localSettled: riskApplicable ? riskReady : false,
-          tipResult: tipQuery.data ?? null,
-          tipApplicable: tipScreenApplies,
-          tipSettled: !tipScreenApplies || tipQuery.isSuccess || tipQuery.isError,
-          review: reviewContributor,
-          raspTier: freshRaspTier,
-          raspArtifact: freshArtifact,
-          presign: presignAtSign,
-        });
-        txPolicyAtSign = deriveSigningPolicy({
-          verdict: txVerdictAtSign,
-          presign: presignAtSign,
-          acknowledged: riskAck,
-          raspNeedsBio: freshArtifact?.requiresBiometric === true
-            && Capacitor.isNativePlatform()
-            && presignAtSign?.decision !== 'block',
-          biometricCleared: raspWarnBioOk,
-        });
-        // Fire-and-forget (I4) — notification failure must never block or unwind the send.
-        notifyTxRiskAlert({ level: freshScore.level, sentence: freshScore.sentence, signalId: freshScore.signalId, ts: Date.now() });
-      } catch {
-        riskScoreFailed = true;
-      }
-
-      // B5 — RASP WARN biometric enforcement chokepoint (I4 fail-closed).
-      // Defense-in-depth: re-assert the bio gate at sign time so UI state cannot be
-      // bypassed. Uses the FRESH artifact (P2-1), not the stale closure, so a
-      // just-injected hook cannot slip past biometric friction.
-      const raspNeedsBioAtSign = freshArtifact?.requiresBiometric === true
-        && Capacitor.isNativePlatform()
-        && presignAtSign?.decision !== 'block';
-      if (raspNeedsBioAtSign && !raspWarnBioOk) {
-        throw Object.assign(
-          new Error('Biometric confirmation required before signing on a modified device.'),
-          { code: 'RASP_BIO_REQUIRED' }
-        );
-      }
-
-      // The single ordered verdict (capability → unlock → re-auth → limits → risk →
-      // approval). canSend() stays the production truth, relaxed only by the dev,
-      // testnet-only, build-eliminated ungate. Mainnet stays gated in networks.js.
-      // One-shot: consume the 2FA token for THIS attempt (a retry must re-verify).
+      // One-shot: consume the 2FA token for THIS software-key attempt before the
+      // shared gate evaluation, preserving the existing retry semantics.
       const twoFactorVerified = twoFactorVerifiedRef.current;
       twoFactorVerifiedRef.current = false;
-
-      const gate = /** @type {any} */ (evaluateSendGate({
-        canSend: canSend(selectedAsset),
-        devUngated,
-        currency: selectedWallet?.currency,
-        isUnlocked,
-        demo: DEMO,                                    // demo has no vault → re-auth exempt
-        reauthRequired: DEMO ? false : isSendReauthRequired(),
-        // Second factor (audit H1): when a second factor is configured — Action Password
-        // OR a registered passkey (H-1 fix) — it must be verified THIS send, enforced here
-        // so a recently-authed session can't reach the signer on PIN recency alone.
-        // evaluateSendGate exempts demo internally; send2faMethod is already 'none' in demo.
-        twoFactorRequired: send2faMethod !== SEND_2FA.NONE,
-        twoFactorVerified,
-        limit: limitGate,
-        limitAck,
-        riskScoreFailed,
-        txPolicy: txPolicyAtSign,
-        presign: presignAtSign,
-        // BTC risk re-checked from the settled preview at signing time (M-2), so a
-        // high decode flag can't be bypassed by stale UI state — mirrors how the EVM
-        // verdict is recomputed above.
-        btcRiskBlocked: isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high") && !btcRiskAck,
-        blockedByApproval,
-      }));
-      if (!gate.allowed) {
-        throw Object.assign(new Error(gate.message), { code: gate.code });
-      }
-
-      // CODE-LEVEL SEND GUARD (Task 7 — audit remediation). Defense-in-depth:
-      // even if the gate above was somehow bypassed or a stale UI state persisted,
-      // this hard assertion ensures no unverified asset can sign. Only assets with
-      // status === LIVE may send — period. This is a wallet-core–layer invariant.
-      if (!canSend(selectedAsset)) {
-        throw new Error(
-          `[Security] Send blocked: ${selectedAsset.symbol} status is "${selectedAsset.status}". ` +
-          `Only verified LIVE assets may send. This is a code-level safety assertion.`
-        );
-      }
+      await evaluateCurrentSendGate({ twoFactorVerified });
 
       // NOTE: the HD-account lookup that main did here is intentionally NOT hoisted —
       // it is EVM-only (matches selectedWallet.address against an EVM account) and now
@@ -1801,6 +1746,7 @@ export default function SendCrypto() {
     setDigitalShieldBusy(true);
     setDigitalShieldError("");
     try {
+      await evaluateCurrentSendGate();
       if (family === 'btc') {
         const amountSats = toBaseUnits(canonicalAmount, 8);
         const { plan } = await estimateBtcSend({
@@ -1893,6 +1839,9 @@ export default function SendCrypto() {
     setDigitalShieldBusy(true);
     setDigitalShieldError("");
     try {
+      const twoFactorVerified = twoFactorVerifiedRef.current;
+      await evaluateCurrentSendGate({ twoFactorVerified });
+      twoFactorVerifiedRef.current = false;
       let raw;
       let result;
       if (digitalShieldFlow.kind === 'btc') {

@@ -8,14 +8,30 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { MemoryRouter } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const { buildDigitalShieldEvmRequest, transactionCreate } = vi.hoisted(() => ({
+const {
+  buildDigitalShieldEvmRequest,
+  finalizeDigitalShieldEvmResponse,
+  transactionCreate,
+  broadcastTransaction,
+  evaluateSendGate,
+  toastError,
+} = vi.hoisted(() => ({
   buildDigitalShieldEvmRequest: vi.fn(() => ({
     session: { requestId: '11111111-1111-4111-8111-111111111111' },
     unsignedHex: '0x02f8aa',
     ur: { type: 'eth-sign-request' },
     urParts: ['UR:ETH-SIGN-REQUEST/AAA'],
   })),
+  finalizeDigitalShieldEvmResponse: vi.fn(() => ({
+    signedHex: '0x02signed',
+  })),
   transactionCreate: vi.fn(async () => ({})),
+  broadcastTransaction: vi.fn(async () => ({
+    hash: '0xabc',
+    wait: vi.fn(async () => ({})),
+  })),
+  evaluateSendGate: vi.fn(() => ({ allowed: true })),
+  toastError: vi.fn(),
 }));
 
 vi.mock('motion/react', () => ({
@@ -107,7 +123,7 @@ vi.mock('@/components/ui/dialog', () => ({
 }));
 
 vi.mock('@/lib/toast', () => ({
-  toast: Object.assign(vi.fn(), { error: vi.fn(), info: vi.fn(), success: vi.fn() }),
+  toast: Object.assign(vi.fn(), { error: toastError, info: vi.fn(), success: vi.fn() }),
 }));
 vi.mock('@/lib/haptics', () => ({
   successHaptic: vi.fn(),
@@ -193,7 +209,7 @@ vi.mock('@/wallet-core/evm/provider', () => ({
   getProvider: () => ({
     getFeeData: vi.fn(async () => ({ maxFeePerGas: 1n, maxPriorityFeePerGas: 1n, gasPrice: 1n })),
     getTransactionCount: vi.fn(async () => 7),
-    broadcastTransaction: vi.fn(),
+    broadcastTransaction,
   }),
 }));
 vi.mock('@/wallet-core/evm/fees', () => ({
@@ -283,7 +299,7 @@ vi.mock('@/lib/txLimits', () => ({
 }));
 vi.mock('@/lib/sendGate', () => ({
   SEND_GATE: { TWO_FACTOR: 'TWO_FACTOR' },
-  evaluateSendGate: () => ({ allowed: true }),
+  evaluateSendGate,
 }));
 vi.mock('@/lib/ens', () => ({ resolveEnsName: vi.fn(async () => null) }));
 vi.mock('@/lib/twoFactorGate', () => ({
@@ -350,7 +366,7 @@ vi.mock('@/wallet-core/hw/digitalShield.js', () => ({
   buildDigitalShieldEvmRequest,
   buildDigitalShieldBtcPsbt: vi.fn(),
   buildDigitalShieldSolRequest: vi.fn(),
-  finalizeDigitalShieldEvmResponse: vi.fn(),
+  finalizeDigitalShieldEvmResponse,
   finalizeDigitalShieldBtcResponse: vi.fn(),
   finalizeDigitalShieldSolResponse: vi.fn(),
 }));
@@ -372,6 +388,12 @@ describe('SendCrypto — Digital Shield render flow', () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
+    evaluateSendGate.mockReturnValue({ allowed: true });
+    finalizeDigitalShieldEvmResponse.mockReturnValue({ signedHex: '0x02signed' });
+    broadcastTransaction.mockResolvedValue({
+      hash: '0xabc',
+      wait: vi.fn(async () => ({})),
+    });
     try {
       localStorage.setItem('veyrnox-sim-enabled', '0');
     } catch {}
@@ -406,6 +428,81 @@ describe('SendCrypto — Digital Shield render flow', () => {
       expect(screen.getByText('Digital Shield Signing')).toBeTruthy();
     });
     expect(buildDigitalShieldEvmRequest).toHaveBeenCalledTimes(1);
+    expect(evaluateSendGate).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('qr-code-display').textContent).toContain('UR:ETH-SIGN-REQUEST/AAA');
+  });
+
+  it('fails closed before preparing the QR when the shared send gate blocks', async () => {
+    evaluateSendGate.mockReturnValueOnce({ allowed: false, code: 'REAUTH', message: 'Re-enter your PIN or password to authorise this send.' });
+    renderPage();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /use digital shield air-gap signing/i }));
+    fireEvent.change(screen.getByLabelText('Recipient'), {
+      target: { value: '0x2222222222222222222222222222222222222222' },
+    });
+    fireEvent.blur(screen.getByLabelText('Recipient'));
+    fireEvent.change(screen.getByLabelText('Amount'), {
+      target: { value: '0.5' },
+    });
+    fireEvent.blur(screen.getByLabelText('Amount'));
+
+    await waitFor(() => {
+      expect(screen.getByText('≈$16,000')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Prepare Digital Shield QR' })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare Digital Shield QR' }));
+
+    await waitFor(() => {
+      expect(buildDigitalShieldEvmRequest).not.toHaveBeenCalled();
+    });
+    expect(toastError).toHaveBeenCalled();
+    expect(screen.queryByText('Digital Shield Signing')).toBeNull();
+  });
+
+  it('re-checks the shared send gate before final broadcast', async () => {
+    evaluateSendGate
+      .mockReturnValueOnce({ allowed: true })
+      .mockReturnValueOnce({ allowed: false, code: 'REAUTH', message: 'Re-enter your PIN or password to authorise this send.' });
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /use digital shield air-gap signing/i }));
+    fireEvent.change(screen.getByLabelText('Recipient'), {
+      target: { value: '0x2222222222222222222222222222222222222222' },
+    });
+    fireEvent.blur(screen.getByLabelText('Recipient'));
+    fireEvent.change(screen.getByLabelText('Amount'), {
+      target: { value: '0.5' },
+    });
+    fireEvent.blur(screen.getByLabelText('Amount'));
+
+    await waitFor(() => {
+      expect(screen.getByText('≈$16,000')).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Prepare Digital Shield QR' })).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare Digital Shield QR' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Digital Shield Signing')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Signed response UR'), {
+      target: { value: 'UR:ETH-SIGNATURE/AAA' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Finalize and Broadcast' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Re-enter your PIN or password to authorise this send.')).toBeTruthy();
+    });
+    expect(evaluateSendGate).toHaveBeenCalledTimes(2);
+    expect(finalizeDigitalShieldEvmResponse).not.toHaveBeenCalled();
+    expect(broadcastTransaction).not.toHaveBeenCalled();
   });
 });

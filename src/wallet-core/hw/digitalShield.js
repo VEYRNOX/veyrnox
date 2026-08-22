@@ -9,6 +9,9 @@ import { UREncoder, URDecoder } from '@ngraveio/bc-ur';
 import { CryptoMultiAccounts, CryptoPSBT } from '@keystonehq/bc-ur-registry';
 import { ETHSignature } from '@keystonehq/bc-ur-registry-eth';
 import { SolSignature } from '@keystonehq/bc-ur-registry-sol';
+// Keystone SDK 0.12.3 ships no public subpath exports for these chain helpers.
+// Keep the internal dist paths version-pinned and covered by H-4 dependency
+// guards; if the SDK exposes public entrypoints later, prefer those on upgrade.
 import { KeystoneEthereumSDK } from '@keystonehq/keystone-sdk/dist/chains/ethereum.js';
 import { KeystoneSolanaSDK } from '@keystonehq/keystone-sdk/dist/chains/solana.js';
 import { URType } from '@keystonehq/keystone-sdk/dist/types/ur.js';
