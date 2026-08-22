@@ -598,6 +598,7 @@ export default function SendCrypto() {
   const isBtc = family === "btc";
   const isSolana = family === "solana";
   const networkKey = selectedAsset?.chain || "sepolia";
+  const digitalShieldBtcUnsupported = isBtc && networkKey !== 'mainnet';
   // The EVM network registry only describes EVM chains; for BTC/SOL there is no
   // EIP-1559 fee model and the native symbol is just the asset's own currency.
   const activeNetwork = (isEvmFamily(selectedAsset) || isErc20) ? getNetworkInfo(networkKey) : null;
@@ -1739,6 +1740,10 @@ export default function SendCrypto() {
       toast.error('Import Digital Shield on the Hardware Wallet page first.');
       return;
     }
+    if (digitalShieldBtcUnsupported) {
+      toast.error('Digital Shield BTC signing is currently supported on Bitcoin mainnet only.');
+      return;
+    }
     if (isDeniabilityOrDemoActive() || DEMO) {
       toast.error('Digital Shield signing is disabled in demo and deniability sessions.');
       return;
@@ -1759,7 +1764,7 @@ export default function SendCrypto() {
         const request = buildDigitalShieldBtcPsbt({
           account: digitalShieldAccount,
           plan,
-          networkKey: 'mainnet',
+          networkKey,
         });
         setDigitalShieldFlow({ kind: 'btc', networkKey, plan, ...request });
       } else if (family === 'solana') {
@@ -2420,6 +2425,7 @@ export default function SendCrypto() {
             <input
               type="checkbox"
               checked={useDigitalShieldMode}
+              disabled={digitalShieldBtcUnsupported}
               onChange={(e) => {
                 setUseDigitalShieldMode(e.target.checked);
                 if (e.target.checked) setUseTrezorMode(false);
@@ -2428,6 +2434,9 @@ export default function SendCrypto() {
             />
             Use Digital Shield air-gap signing
           </label>
+          {digitalShieldBtcUnsupported && (
+            <span className="text-xs text-caution">Bitcoin testnet and signet are not supported for Digital Shield yet.</span>
+          )}
           {useDigitalShieldMode && digitalShieldConnected && <span className="text-primary text-xs">✓ Imported</span>}
           {useDigitalShieldMode && !digitalShieldConnected && (
             <span className="text-xs text-caution">Import it first on Hardware Wallet</span>

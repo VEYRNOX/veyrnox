@@ -883,13 +883,16 @@ class RaspIntegrityPlugin : Plugin() {
         @JvmStatic
         fun earlyCheck(context: android.content.Context): Boolean {
             earlyAntiDump()
-            // Preventive hardening only: claim the ptrace slot early, but do not
-            // treat a refusal here as a hook verdict. Real hook verdicts come from
-            // TracerPid/JDWP/Frida markers below.
+            // Read the pre-existing hook state BEFORE claiming the ptrace slot.
+            // If nativeEarlyTraceme() succeeds first, TracerPid becomes the parent
+            // PID and the TracerPid probe self-detects on a clean device.
+            val hookDetected = earlyDetectHook()
+            // Preventive hardening only: claim the ptrace slot after the hook
+            // probes above, but do not treat a refusal here as a hook verdict.
             earlyPtraceTraceme()
             // BLOCK-tier early checks: hook (debugger/Frida/ptrace) + tamper (cert) +
             // screen capture (Miracast/WFD mirroring — surveillance vector, item 22).
-            return earlyDetectHook() || earlyDetectTamper(context)
+            return hookDetected || earlyDetectTamper(context)
                 || earlyCheckScreenCapture(context)
         }
 

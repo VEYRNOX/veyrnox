@@ -29,6 +29,14 @@ describe('SendCrypto — Digital Shield air-gap branch', () => {
     expect(src).toMatch(/Prepare Digital Shield QR/);
   });
 
+  it('gates BTC Digital Shield to mainnet in the UI and forwards the live networkKey to the BTC builder', () => {
+    expect(src).toMatch(/digitalShieldBtcUnsupported\s*=\s*isBtc && networkKey !== 'mainnet'/);
+    expect(src).toMatch(/disabled=\{digitalShieldBtcUnsupported\}/);
+    expect(src).toMatch(/Digital Shield BTC signing is currently supported on Bitcoin mainnet only/);
+    expect(src).toMatch(/Bitcoin testnet and signet are not supported for Digital Shield yet/);
+    expect(src).toMatch(/buildDigitalShieldBtcPsbt\(\{[\s\S]*networkKey,[\s\S]*\}\)/);
+  });
+
   it('fails closed for demo and deniability sessions before preparing a QR request', () => {
     expect(src).toMatch(/Digital Shield signing is disabled in demo and deniability sessions/);
     expect(src).toMatch(/isDeniabilityOrDemoActive\(\)/);
