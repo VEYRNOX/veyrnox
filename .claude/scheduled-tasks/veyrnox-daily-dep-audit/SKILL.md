@@ -99,19 +99,27 @@ its own.
   available mitigation is already applied.
 - **Blast radius:** not on the wallet's signing path. `src/wallet-core/` uses
   `@noble`/`@scure` and ethers v6. `elliptic` reaches the tree solely through
-  hardware-wallet transport/APDU code, via two direct dependencies:
-  `@trezor/connect-web` → `@trezor/utxo-lib` → `tiny-secp256k1` → `elliptic`, and
-  `@ledgerhq/hw-app-eth` → `@ethersproject/transactions` → `signing-key` → `elliptic`.
-  The physical device performs the signing.
-- **Accounts for** ~18 findings (1 root + its transitive dependents, which include
-  `@trezor/connect` and `@trezor/connect-web` now that the protobufjs moderate is fixed).
+  hardware-wallet transport/APDU code, via three direct dependencies:
+  `@trezor/connect-web` → `@trezor/utxo-lib` → `tiny-secp256k1` → `elliptic`;
+  `@ledgerhq/hw-app-eth` → `@ethersproject/transactions` → `signing-key` → `elliptic`;
+  and `@keystonehq/keystone-sdk` → `@keystonehq/bc-ur-registry-eth` → `hdkey` →
+  `secp256k1` → `elliptic`. The physical device performs the signing.
+- **Accounts for** 22 findings as of 2026-08-22 (1 root + its transitive dependents).
+  It was ~18 until the Keystone chain arrived — `@keystonehq/keystone-sdk` is a newer
+  direct dependency and contributes 2 findings of its own plus the `hdkey`/`secp256k1`
+  hops. Severity is unchanged (low), so the suppression still applies; the count moving
+  on its own is not a revisit trigger, but a count that moves for an unexplained reason
+  is — re-derive the chains from `npm audit --json` before assuming this number.
 - **Revisit trigger:** a fixed `elliptic` release ships; OR the advisory is
-  re-rated above low; OR either direct dependency drops it (e.g. `@ledgerhq/hw-app-eth`
-  migrating off `@ethersproject/*` v5, or `@trezor/utxo-lib` moving to
-  `tiny-secp256k1 >= 2.0.0`, which already dropped elliptic); OR `elliptic` gains a
+  re-rated above low; OR any of the three direct dependencies drops it (e.g.
+  `@ledgerhq/hw-app-eth` migrating off `@ethersproject/*` v5, `@trezor/utxo-lib` moving
+  to `tiny-secp256k1 >= 2.0.0`, which already dropped elliptic, or
+  `@keystonehq/bc-ur-registry-eth` moving off `hdkey`); OR `elliptic` gains a
   path into `src/wallet-core/`. On any of these, remove this entry and report normally.
 - **Tracked:** watcher `veyrnox-elliptic-upstream-watch` (weekly, Mondays ~10am) checks
-  all three signals above and reports remediation steps when any fires.
+  all three signals above and reports remediation steps when any fires. It was written
+  when only the Trezor and Ledger chains existed — confirm it covers the Keystone chain
+  before relying on it to catch that one.
 - **Note:** npm's `fixAvailable` for the Ledger chain suggests
   `@ledgerhq/hw-app-eth@6.40.3`. That is a major *downgrade* from the installed 7.8.x
   and still declares `@ethersproject/{abi,rlp,transactions}` v5, so it does not clear
@@ -183,57 +191,41 @@ its own.
 - Dependabot alert #14 auto-dismissed (low-severity dev dependency). That dismissal is
   not itself a reason to suppress here; the rationale above is.
 
-### `extract-zip` — max severity: high — accepted 2026-08-16
+## Retired residuals
 
-- **Advisory:** GHSA-jmr9-qjv8-65gv — unvalidated symlink path traversal in `extract-zip`
-  (CVSS 8.1, CWE-22, vulnerable `<= 2.0.1`).
-- **Why accepted:** no upstream fix exists at any version. `2.0.1` is the latest
-  published release (`npm view extract-zip dist-tags` → `latest: 2.0.1`) and the advisory
-  range covers it, so there is no version bump that clears this.
-- **Blast radius:** dev-only. Reaches the tree solely through the WebdriverIO E2E test
-  harness: `@wdio/*` devDependencies (`^9.30.1`) → `@wdio/utils` → `@puppeteer/browsers`
-  → `extract-zip`. Never imported by `src/`, never bundled in the production wallet.
-  `npm audit --omit=dev` reports 0 high / 0 critical. Exploitation requires the harness to
-  extract an attacker-controlled zip; in practice `@puppeteer/browsers` extracts browser
-  builds from Google's Chrome for Testing endpoints.
-- **Accounts for** 12 high findings — the root plus its transitive dependents:
-  `extract-zip`, `@puppeteer/browsers`, `@wdio/utils`, `@wdio/config`, `@wdio/globals`,
-  `@wdio/runner`, `@wdio/cli`, `@wdio/local-runner`, `@wdio/mocha-framework`,
-  `expect-webdriverio`, `webdriver`, `webdriverio`. Suppress the whole chain under this
-  root.
-- **Revisit trigger:** an `extract-zip` release ships outside the `<= 2.0.1` range; OR
-  `@puppeteer/browsers` drops `extract-zip`; OR the WebdriverIO E2E harness is retired;
-  OR `extract-zip` gains a path into a production dependency. Verify the resolved tree
-  before retiring — an npm `fixAvailable: true` is not evidence.
-- **Tracked:** watcher `veyrnox-extract-zip-watch` (weekly, Mondays ~11am), created
-  2026-08-16. Checks for a patched `extract-zip`, for `@wdio/utils` moving its
-  `@puppeteer/browsers` pin to a range admitting `>= 3.0.0`, and for the E2E harness being
-  retired.
-- **PENDING RETIREMENT (2026-08-16) — the override below was taken, and the findings are
-  gone from the resolved tree.** `overrides` now pins `@puppeteer/browsers` to `^3`;
-  `npm install --package-lock-only` resolves it to `3.2.0` under `@wdio/utils`, and
-  `extract-zip` is absent from the lockfile entirely. `npm audit` drops from 12 high to
-  **0 high** (21 total: 18 low elliptic + 3 moderate uuid/xcode chain). The appium subtree
-  is byte-identical — no entries added or removed — so the `--legacy-peer-deps` collateral
-  hazard did not recur. **Do not retire this entry on that evidence alone.** The open
-  question is not whether the advisory clears — it does — but whether the harness still
-  launches its browser drivers under a semver-major `@puppeteer/browsers`. Retire only
-  once the E2E jobs have passed on the PR carrying the override. If they fail, the override
-  is reverted and this entry stands unchanged.
-- **The candidate remediation, as evaluated before it was taken:**
-  `@puppeteer/browsers@3.2.0` has already DROPPED `extract-zip` (its dependencies are now
-  `{yargs, modern-tar}`). The chain does not clear only because `@wdio/utils@9.30.1` —
-  which is also `@latest` — pins `@puppeteer/browsers: ^2.2.0`, and `3.x` is outside that
-  caret. A `package.json` `overrides` entry forcing `@puppeteer/browsers` to `^3` would
-  clear all 12 findings without waiting for upstream. It is a semver-MAJOR override of a
-  transitive dependency inside the test harness, so it can break browser-driver launch in
-  a way `npm audit` will not show. It needs a real E2E run to validate, which is why this
-  is an accepted residual rather than a fix. Do not apply it from the audit task.
-- **Note:** npm's `fixAvailable` suggests `@wdio/cli@8.14.6`, a major *downgrade* from the
-  installed 9.30.1. `@wdio/utils@8.x` still depends on `@puppeteer/browsers` →
-  `extract-zip`, so it does not clear the advisory. Evaluated and rejected 2026-08-16.
-  Do not propose it again.
-- Tracked as issue #1851.
+Entries that were accepted, then genuinely cleared. Kept as a record so a future reader
+can tell "this was fixed" from "this was never looked at", and so the evidence that
+justified each retirement is on file rather than in a PR description.
+
+### `extract-zip` — accepted 2026-08-16, RETIRED 2026-08-22
+
+- **Advisory:** GHSA-jmr9-qjv8-65gv — unvalidated symlink path traversal (CVSS 8.1,
+  CWE-22, vulnerable `<= 2.0.1`). Reached the tree dev-only, via the WebdriverIO E2E
+  harness: `@wdio/*` → `@wdio/utils` → `@puppeteer/browsers` → `extract-zip`. Accounted
+  for 12 high findings.
+- **How it cleared:** not an upstream fix — `2.0.1` is still `latest` and still in range.
+  `@puppeteer/browsers@3.2.0` had already dropped `extract-zip` (deps are now
+  `{yargs, modern-tar}`), but `@wdio/utils@9.30.1` pinned `^2.2.0`. PR #1852 added a
+  `package.json` `overrides` entry forcing `@puppeteer/browsers` to `^3`.
+- **Retirement evidence — resolved tree plus a real E2E run, per this file's own rule
+  that a version number and an npm `fixAvailable` are not evidence:**
+  1. `extract-zip` is ABSENT from `origin/main`'s `package-lock.json` (verified
+     2026-08-22 at `b8f0127` by resolving the lockfile from the ref, not a working tree).
+  2. `npm audit` on that lockfile reports 0 high / 0 critical; the 12 findings are gone,
+     not merely suppressed.
+  3. The open question was never whether the advisory cleared but whether a semver-MAJOR
+     override broke browser-driver launch — invisible to `npm audit`. PR #1852 merged
+     2026-08-16 with `e2e-emulator-tests (31, google_apis)`, `web-e2e-tests` and `e2e`
+     all SUCCESS, which is the condition the entry set for itself.
+  4. The appium subtree was byte-identical across the override, so the
+     `--legacy-peer-deps` collateral hazard did not recur.
+- **If it comes back:** the override is the only thing holding this. Dropping
+  `overrides["@puppeteer/browsers"]`, or `@wdio/utils` widening its own pin in a way that
+  re-resolves to `2.x`, reopens all 12 findings. A reappearance is a new finding, not a
+  reinstatement — re-derive the chain before assuming this history still applies.
+- **Loose ends for the owner (NOT actioned by the audit task, which may not touch
+  scheduled tasks):** watcher `veyrnox-extract-zip-watch` (weekly, Mondays ~11am) is now
+  watching a retired residual and can be deleted; issue #1851 can be closed.
 
 ## Constraints
 - Do NOT run `npm audit fix` or modify any files — read-only audit only.
