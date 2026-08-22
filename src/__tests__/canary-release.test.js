@@ -13,12 +13,15 @@ const read = (path) => readFileSync(resolve(root, path), 'utf8');
 
 const canaryEnv = read('.env.canary');
 const workflow = read('.github/workflows/canary-release.yml');
+const wrangler = read('wrangler.toml');
 describe('canary release contract', () => {
   it('defines a dedicated canary env with a visible label and blanked Supabase', () => {
     expect(canaryEnv).toContain('VITE_ENV_LABEL=Canary');
     expect(canaryEnv).toContain('VITE_ENV=canary');
     expect(canaryEnv).toContain('VITE_SUPABASE_URL=');
     expect(canaryEnv).toContain('VITE_SUPABASE_ANON_KEY=');
+    expect(canaryEnv).toContain('Client-side only:');
+    expect(canaryEnv).toContain('Pages Functions are unaffected');
     expect(canaryEnv).toContain('VITE_BUY_ENABLED=true');
     expect(canaryEnv).toContain('VITE_TRANSAK_ENVIRONMENT=STAGING');
   });
@@ -37,5 +40,12 @@ describe('canary release contract', () => {
     expect(workflow).toContain('BASE_URL: ${{ needs.deploy-canary.outputs.deployment_url }}');
     expect(workflow).toContain('canary-gate:');
     expect(workflow).toContain('Canary deployed and smoke checks passed');
+  });
+
+  it('pins preview and production ENVIRONMENT values in wrangler.toml', () => {
+    expect(wrangler).toContain('[env.preview.vars]');
+    expect(wrangler).toContain('ENVIRONMENT = "preview"');
+    expect(wrangler).toContain('[env.production.vars]');
+    expect(wrangler).toContain('ENVIRONMENT = "production"');
   });
 });

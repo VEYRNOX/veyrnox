@@ -389,6 +389,8 @@ neither had been run against build 5 (Play Pre-launch report showed
   reupload. Do NOT submit for review without a clean report — this is the same tool
   Google's reviewer would have used, and its absence is why build 5 shipped a fatal
   Create-Wallet path.
+  Current Android candidate: **1.0.1 / versionCode 10**. This check remains
+  console-only: a green repo/CI state does NOT prove the report exists yet.
 - **iOS (mandatory — no equivalent auto-tool):** upload to TestFlight, install on at
   least one **physical iPhone that is NOT the dev machine's paired device** (a stock
   iPhone with no dev certs / no Xcode-installed KEK state), and walk the full

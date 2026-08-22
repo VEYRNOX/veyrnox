@@ -29,6 +29,7 @@ describe('screenTransaction', () => {
 
     isDeniabilityOrDemoActive = (await import('@/wallet-core/deniabilitySession.js')).isDeniabilityOrDemoActive;
     createTipClient = (await import('@/api/tipClient.js')).createTipClient;
+    isDeniabilityOrDemoActive.mockReturnValue(false);
     screenTransaction = (await import('../tipScreen.js')).screenTransaction;
     screenAssetContract = (await import('../tipScreen.js')).screenAssetContract;
   });
@@ -107,6 +108,20 @@ describe('screenTransaction', () => {
   it('returns null for asset review when the contract address or chain cannot be resolved', async () => {
     expect(await screenAssetContract({ chain: '', contractAddress: '' })).toBeNull();
     expect(await screenAssetContract({ chain: 'unknown', contractAddress: 'abc' })).toBeNull();
+  });
+
+  it('makes zero asset-review egress in deniability mode (I3)', async () => {
+    const mockScreen = vi.fn();
+    createTipClient.mockReturnValue({ screen: mockScreen });
+    isDeniabilityOrDemoActive.mockReturnValue(true);
+
+    const result = await screenAssetContract({
+      chain: 'evm',
+      contractAddress: '0x1234567890123456789012345678901234567890',
+    });
+
+    expect(result).toBeNull();
+    expect(mockScreen).not.toHaveBeenCalled();
   });
 
   it('falls back to the generic TIP screen shape for asset review when needed', async () => {

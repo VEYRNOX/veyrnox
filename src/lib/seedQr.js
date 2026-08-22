@@ -14,6 +14,7 @@
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 import { encryptVault, decryptVault } from '@/wallet-core/vault.js';
+import { MIN_PASSWORD_LENGTH } from '@/lib/passwordStrength';
 
 const FMT = 'veyrnox-seed-backup';
 const VERSION = 1;
@@ -25,6 +26,9 @@ const VERSION = 1;
  * @returns {Promise<{fmt:string, v:number, blob:object}>}
  */
 export async function encryptSeedBackup(mnemonic, password) {
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Choose a backup password of at least ${MIN_PASSWORD_LENGTH} characters.`);
+  }
   const blob = await encryptVault(mnemonic, password);
   return { fmt: FMT, v: VERSION, blob };
 }

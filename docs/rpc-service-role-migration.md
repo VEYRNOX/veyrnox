@@ -39,6 +39,19 @@ Step 1 is a **no-op until step 2**: with the secret unset the proxy uses the ano
 key exactly as before. That is deliberate, so the deploy and the secret can land
 independently without a flag day.
 
+## Environment scope source of truth
+
+The proxy's production fail-loud guard no longer depends on a dashboard-only
+`ENVIRONMENT` variable. `wrangler.toml` now records it in source control:
+
+- `[env.production.vars] ENVIRONMENT = "production"`
+- `[env.preview.vars] ENVIRONMENT = "preview"`
+
+That makes the repo-visible behavior explicit in review and git history. What is
+still *not* repo-visible is secret scope: whether `SUPABASE_SERVICE_ROLE_KEY` is
+bound in Cloudflare Preview as well as Production must still be verified in the
+dashboard before treating the canary / preview URLs as equivalent to production.
+
 **Running step 4 before steps 2–3 breaks every referral and telemetry write.**
 The symptom is a `403` from `/api/rpc/*` with
 `permission denied for function <name>` — pinned as a test in
