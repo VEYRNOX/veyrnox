@@ -20,7 +20,11 @@ describe('provisionPinWallet', () => {
 
     await provisionPinWallet(deps, { pin: '123456' });
 
-    expect(deps.createWallet).toHaveBeenCalledWith('123456');
+    expect(deps.createWallet).toHaveBeenCalledWith(
+      '123456',
+      128,
+      { skipBackgroundDeniabilityChaff: true },
+    );
     expect(order).toEqual(['create', 'chaff', 'cohort']);
     expect(deps.setAuthModel).toHaveBeenCalledWith('pin');
     expect(deps.discardIncompleteWallet).not.toHaveBeenCalled();

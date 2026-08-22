@@ -118,7 +118,9 @@ Coercion resistance — with honest limits
 
 What Veyrnox is not
 - No account, no email, no phone number, no signup.
-- No wallet analytics, no ad SDKs, no attribution tracking.
+- No ad SDKs, no cross-app tracking, and no behavioural profiling. Optional
+  anonymous usage events can be turned on in Settings → Privacy, and referral
+  codes are sent only when the user chooses to apply one.
 - Not an investment platform, not a broker, not a custodian. Veyrnox does
   not offer, endorse, or advise on any investment.
 - Not financial advice. Cryptocurrency values are volatile; you can lose

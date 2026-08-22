@@ -32,7 +32,7 @@ export default defineConfig({
   workers: process.env.CI ? 6 : 1,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://127.0.0.1:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     // Since the low-end threshold dropped to <=2GB/<=2 cores, CI chromium no
@@ -67,15 +67,15 @@ export default defineConfig({
       testMatch: /staging-smoke\.spec\.js$/,
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: process.env.BASE_URL || 'http://localhost:5173',
+        baseURL: process.env.BASE_URL || 'http://127.0.0.1:5173',
       },
     },
   ],
 
   // Skip the local dev server only when tests target a remote deployment.
   webServer: process.env.BASE_URL ? undefined : {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
+    command: 'npm run dev -- --host 127.0.0.1',
+    url: 'http://127.0.0.1:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

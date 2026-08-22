@@ -65,6 +65,10 @@ describe('Firebase staging observability', () => {
     expect(androidActivity).toContain('VEYRNOX_FIREBASE_NONFATAL_SMOKE');
     expect(androidActivity).toContain('newTrace("staging_launch_smoke")');
     expect(androidActivity).not.toContain('setUserId');
+    expect(androidActivity).toContain('if ("samsung".equals(BuildConfig.FLAVOR))');
+    expect(androidActivity).toContain('registerPlugin(SamsungIapPlugin.class);');
+    expect(androidActivity).toContain('if ("huawei".equals(BuildConfig.FLAVOR))');
+    expect(androidActivity).toContain('registerPlugin(HuaweiIapPlugin.class);');
   });
 
   it('adds iOS Test Lab-only collection', () => {

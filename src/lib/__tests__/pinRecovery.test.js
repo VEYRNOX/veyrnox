@@ -15,7 +15,11 @@ describe('provisionPinRecovery', () => {
   it('imports under the new PIN, provisions chaff, selects the PIN cohort', async () => {
     const deps = makeDeps();
     await provisionPinRecovery(deps, PARAMS);
-    expect(deps.importWallet).toHaveBeenCalledWith(PARAMS.seed, PARAMS.realPin);
+    expect(deps.importWallet).toHaveBeenCalledWith(
+      PARAMS.seed,
+      PARAMS.realPin,
+      { skipBackgroundDeniabilityChaff: true },
+    );
     expect(deps.provisionDeniabilityChaff).toHaveBeenCalledTimes(1);
     expect(deps.setAuthModel).toHaveBeenCalledWith('pin'); // never 'password'
     expect(deps.discardIncompleteWallet).not.toHaveBeenCalled();

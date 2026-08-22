@@ -8,14 +8,14 @@
 // deniabilityUnlock.js.) So at PIN creation we silently provision a CHAFF blob in
 // both the duress ('secondary') and panic ('tertiary') slots.
 //
-// The chaff is encrypted under a high-entropy THROWAWAY password generated and
-// discarded here. Nobody holds it, so the chaff is genuinely unopenable; a
-// non-enrolled PIN never matches it and is rejected with an explicit "Incorrect PIN"
-// error (v2 model — the Option-A deterministic decoy was removed, commit d27e816),
-// exactly as it would past a real duress blob. The chaff goes through the
-// SAME encryptVault path (same Argon2id at KDF_PARAMS, same salt handling) as a
-// real credential — there is NO chaff-specific branch — so it is byte-shaped like
-// a personalized blob.
+// The chaff is a VAULT-SHAPED RANDOM BLOB. Nobody holds a secret for it, so it is
+// genuinely unopenable; a non-enrolled PIN never matches it and is rejected with an
+// explicit "Incorrect PIN" error (v2 model — the Option-A deterministic decoy was
+// removed, commit d27e816), exactly as it would past a real duress blob. We stamp the
+// CURRENT KDF params + fixed-length ciphertext shape, so decrypting the chaff later
+// spends the SAME Argon2id work as decrypting a real deniability blob. This avoids
+// paying two extra 192 MiB Argon2 encryptions during onboarding — the Firebase/Test Lab
+// failure path — while preserving the on-disk shape and unlock-path cost profile.
 //
 // Idempotent and never-overwrite (mirrors stealth.js ensureStealthPool): it writes
 // ONLY into an empty slot, so a personalized credential is never clobbered and a
@@ -23,31 +23,66 @@
 //
 // TESTNET ONLY. No network/provider/signing — only local encrypt + store.
 
-import { generateMnemonic } from './mnemonic.js';
-import { hasDuressVault, setDuressVault } from './duress.js';
-import { hasPanicVault, setPanicVault } from './panic.js';
+import { FIXED_LEN } from './multiVault.js';
+import { KDF_PARAMS } from './vault.js';
+import { hasDuressVault } from './duress.js';
+import { hasPanicVault } from './panic.js';
 
-// 32 random bytes → base64. Generated and discarded; never persisted.
-// Used for the DURESS chaff, which accepts a free-form password.
-function throwawayPassword() {
-  const b = new Uint8Array(32);
+const DB_NAME = 'veyrnox-vault';
+const STORE = 'vault';
+const DURESS_KEY = 'secondary';
+const PANIC_KEY = 'tertiary';
+const GCM_TAG_LEN = 16;
+
+function randomBytes(n) {
+  const b = new Uint8Array(n);
   crypto.getRandomValues(b);
+  return b;
+}
+
+function b64(u8) {
   let s = '';
-  for (const x of b) s += String.fromCharCode(x);
+  for (const x of u8) s += String.fromCharCode(x);
   return btoa(s);
 }
 
-// 8 random digits matching PANIC_PIN_RE (`/^\d{8}$/`) — setPanicVault
-// enforces the UI's "exactly 8 digits" contract at the capability layer
-// (Codex P2 2026-08-16), so a base64 throwaway no longer passes. Chaff
-// is never unlocked, so the modulo bias on Uint8 → digit does not matter
-// (the space is 10^8; nobody guesses this).
-function throwawayPanicPin() {
-  const b = new Uint8Array(8);
-  crypto.getRandomValues(b);
-  let s = '';
-  for (const x of b) s += String(x % 10);
-  return s;
+function openDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function store(db, mode) {
+  return db.transaction(STORE, mode).objectStore(STORE);
+}
+
+function makeChaffBlob() {
+  return {
+    v: 1,
+    kdf: { name: 'argon2id', ...KDF_PARAMS },
+    salt: b64(randomBytes(16)),
+    iv: b64(randomBytes(12)),
+    ct: b64(randomBytes(FIXED_LEN + GCM_TAG_LEN)),
+  };
+}
+
+async function putBlob(key, blob) {
+  const db = await openDb();
+  try {
+    await /** @type {Promise<void>} */ (new Promise((resolve, reject) => {
+      const req = store(db, 'readwrite').put(blob, key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    }));
+  } finally {
+    db.close();
+  }
 }
 
 /**
@@ -68,9 +103,9 @@ function throwawayPanicPin() {
  */
 export async function provisionDeniabilityChaff() {
   if (!(await hasDuressVault())) {
-    await setDuressVault(generateMnemonic(128), throwawayPassword());
+    await putBlob(DURESS_KEY, makeChaffBlob());
   }
   if (!(await hasPanicVault())) {
-    await setPanicVault(throwawayPanicPin());
+    await putBlob(PANIC_KEY, makeChaffBlob());
   }
 }

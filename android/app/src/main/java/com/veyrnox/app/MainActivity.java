@@ -34,8 +34,15 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(HardwareKekPlugin.class);
         registerPlugin(RaspIntegrityPlugin.class);
         registerPlugin(PlayIntegrityPlugin.class);
-        registerPlugin(SamsungIapPlugin.class);
-        registerPlugin(HuaweiIapPlugin.class);
+        // Store-specific billing plugins must only load in the flavor that ships
+        // their runtime SDKs. Firebase/Test Lab uses the google flavor, where the
+        // Samsung RevenueCat store module and Huawei HMS IAP classes are absent.
+        if ("samsung".equals(BuildConfig.FLAVOR)) {
+            registerPlugin(SamsungIapPlugin.class);
+        }
+        if ("huawei".equals(BuildConfig.FLAVOR)) {
+            registerPlugin(HuaweiIapPlugin.class);
+        }
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         registerPlugin(AndroidBiometricCachePlugin.class);

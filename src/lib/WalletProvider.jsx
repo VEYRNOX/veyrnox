@@ -984,7 +984,9 @@ export function WalletProvider({ children }) {
   // (backedUp:false) so the mandatory backup screen + the prominent unbacked
   // warning are live until the user confirms via confirmWalletBackup(). New
   // wallets default to the headline assets (the other EVM chains are opt-in).
-  const createWallet = useCallback(async (password, strength = 128) => {
+  const createWallet = useCallback(async (password, strength = 128, options = {}) => {
+    const skipBackgroundDeniabilityChaff =
+      options && options.skipBackgroundDeniabilityChaff === true;
     const mnemonic = generateMnemonic(/** @type {128|256} */ (strength));
     const { container, walletId } = mv.migrateLegacyMnemonic(mnemonic);
     await keyStore.createVault(mv.serializeContainer(container), password);
@@ -1022,7 +1024,9 @@ export function WalletProvider({ children }) {
     // never-overwrite, and best-effort like ensureStealthPool above (a storage
     // hiccup must never break wallet creation). The PIN cohort already provisions
     // chaff via provisionPinWallet; this brings the password cohort to parity.
-    void provisionDeniabilityChaff().catch(() => {});
+    if (!skipBackgroundDeniabilityChaff) {
+      void provisionDeniabilityChaff().catch(() => {});
+    }
     void initCode(generateServerCode).catch(() => {});
     // Codex P1 2026-08-15: reset consent BEFORE emitting wallet_created for the
     // new wallet identity. Previously WalletEntry.finishCreate() called
@@ -1050,7 +1054,9 @@ export function WalletProvider({ children }) {
   // Import an existing mnemonic as the FIRST wallet on this device. Wrapped as
   // wallet #1 of a fresh container. Marked backedUp:true — the user supplied the
   // seed, so by definition they hold the backup (no nag for an imported wallet).
-  const importWallet = useCallback(async (mnemonic, password) => {
+  const importWallet = useCallback(async (mnemonic, password, options = {}) => {
+    const skipBackgroundDeniabilityChaff =
+      options && options.skipBackgroundDeniabilityChaff === true;
     if (!validateMnemonic(mnemonic)) {
       // Tag the recoverable input reject so the UI catch can KEEP the pending PIN
       // (see isRecoverableSeedInputError); a bad phrase is user-fixable, not a
@@ -1079,7 +1085,9 @@ export function WalletProvider({ children }) {
     setBiometricUnlockEnabled(false);
     void clearUnlockSecret().catch(() => {});
     void ensureStealthPool().catch(() => {}); // seed chaff pool (see createWallet)
-    void provisionDeniabilityChaff().catch(() => {}); // M-5: duress/panic chaff parity (see createWallet)
+    if (!skipBackgroundDeniabilityChaff) {
+      void provisionDeniabilityChaff().catch(() => {}); // M-5: duress/panic chaff parity (see createWallet)
+    }
     void initCode(generateServerCode).catch(() => {});
     // Codex P1 2026-08-15: same fresh-consent reset as createWallet — an
     // imported wallet is a new identity and must not inherit prior consent.
@@ -1643,6 +1651,7 @@ export function WalletProvider({ children }) {
         throw Object.assign(new Error('UNLOCK_SUPERSEDED'), { code: 'UNLOCK_SUPERSEDED' });
       }
     };
+    return withLockSuppressed(async () => {
     // PROVISIONAL app-layer biometric gate. In demo this shows the simulated
     // prompt; on native the real OS prompt fires inside keyStore.unlock(). A
     // cancel here throws a BiometricGateError and aborts the unlock before any
@@ -2037,6 +2046,7 @@ export function WalletProvider({ children }) {
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
     return { passkeySkipped, biometricSkipped };
+    });
   }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // BIOMETRIC ONE-TAP UNLOCK (convenience over the existing vault).
@@ -2122,13 +2132,14 @@ export function WalletProvider({ children }) {
   // unlockWithBiometric(): the one-tap returning-user path. Satisfy the biometric
   // gate, retrieve the cached vault password, then unlock with it.
   //   - demo: the clearly-labelled SIMULATED prompt is shown here.
-  //   - native: retrieveUnlockSecret() now performs a REAL OS biometric match as
-  //     a hard precondition of releasing the cached password (lib/biometricUnlock
-  //     chokepoint); a cancel/failure THROWS and the secret is never read. We map
-  //     that throw to a BiometricGateError so the UI falls back to the password.
-  //     keyStore.unlock() below then presents its OWN OS biometric sheet to gate
-  //     the vault-blob decrypt — so native one-tap shows the sheet twice (the
-  //     disclosed cost of OS-enforcing the cache without touching wallet-core).
+  //   - native, NON-KEK vault: retrieveUnlockSecret() performs the REAL OS
+  //     biometric match as the hard precondition of releasing the cached
+  //     password; a cancel/failure THROWS and the secret is never read.
+  //   - native, KEK-enrolled vault: skip that app-layer cache-gate and read the
+  //     cached C factor directly. The cached PIN alone is useless without H, and
+  //     H is released only behind the hardware-enforced KEK prompt(s) inside
+  //     keyStore.unlock(). This restores PR #694's 3→2 prompt reduction without
+  //     undoing the later stale-appState fixes.
   // We pass skipBiometric so the app-layer (demo) gate isn't run twice. THROWS a
   // BiometricGateError on cancel/unavailable/missing-cache so the UI falls back
   // to the vault password field — which always works (it is the real key).
@@ -2139,38 +2150,20 @@ export function WalletProvider({ children }) {
       try { await showSimulatedPrompt(status); }
       catch (err) { throw new BiometricGateError('cancelled', err); }
     }
-    // SINGLE-PROMPT DESIGN (device-confirmed iPhone 17 Pro Max / Pixel 10 Pro XL).
-    // Both KEK and non-KEK vaults fire exactly ONE biometric prompt per one-tap
-    // unlock: non-KEK gets it from retrieveUnlockSecret() (the cache-gate), KEK
-    // gets it from the SE/StrongBox ACL inside keyStore.unlock(). The second call
-    // (unlock) always receives skipBiometric:true, which disables both the
-    // app-layer runBiometricGate and the native requireBiometric gate.
-    //
-    // TRIPLE-PROMPT FIX (device-confirmed iPhone 17 Pro Max / Pixel 10 Pro XL).
-    // On a KEK-enrolled native vault, one-tap unlock fired THREE biometric prompts:
-    // (#1) the app-layer cache-gate here, and (#2/#3) the Secure-Enclave / StrongBox
-    // key-retrieve + decrypt inside keyStore.unlock() (getHardwareFactor). The SE
-    // requires TWO evaluations by design (one per ACL-gated op) and the native plugin
-    // is correct — so we drop the REDUNDANT #1. For a KEK vault the cached PIN is the
-    // C-factor ONLY; the DEK = HKDF(H ‖ C) and H is producible ONLY by passing the
-    // hardware-enforced SE gate below — reading the cached C without H unwraps nothing.
-    // So the app-layer cache-gate cannot strengthen a KEK vault; we read the cached PIN
-    // directly (retrieveUnlockSecretDirect, no BiometricAuth.authenticate) and rely
-    // solely on the unbypassable SE gate. For a NON-KEK vault the cache-gate IS the sole
-    // biometric gate protecting the cached password and MUST be preserved (I4). A
-    // best-effort false negative from isVaultKekEnrolledSafe() keeps the cache-gate on
-    // (fails safe toward MORE protection), never off.
+    // native: NON-KEK vaults authenticate once here to release the cached PIN;
+    // KEK vaults bypass that prompt and rely on the hardware-enforced prompt(s)
+    // inside keyStore.unlock(). Either way we suppress stale appStateChange
+    // delivery around the cache read; keyStore.unlock() protects its own prompt
+    // window separately.
     let password;
     try {
-      const kekEnrolled = Capacitor.isNativePlatform() && await isVaultKekEnrolledSafe();
+      const kekEnrolled = await isVaultKekEnrolledSafe();
       password = await withLockSuppressed(() => (
         kekEnrolled
           ? retrieveUnlockSecretDirect({ kekEnrolled: true })
           : retrieveUnlockSecret()
       ));
     } catch (err) {
-      // A cancelled/failed biometric match on the cache release. Fail closed and
-      // route to the password fallback, same as a cancelled demo prompt.
       throw new BiometricGateError('cancelled', err);
     }
     if (!password) throw new BiometricGateError('no-secret');

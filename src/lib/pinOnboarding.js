@@ -31,7 +31,7 @@ export async function provisionPinWallet(deps, { pin }) {
 
   // 1. Create the real wallet under the real PIN (writes the primary vault, unlocks).
   //    A throw here means nothing was created — propagate; there is nothing to tear down.
-  await createWallet(pin);
+  await createWallet(pin, 128, { skipBackgroundDeniabilityChaff: true });
 
   // 2. Provision BOTH deniability chaff slots. FAIL CLOSED: on any failure, tear the
   //    just-created vault down so no half-provisioned, defenseless wallet survives,

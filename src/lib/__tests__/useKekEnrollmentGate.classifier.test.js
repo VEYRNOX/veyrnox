@@ -27,12 +27,16 @@ vi.mock('@/wallet-core/keystore', () => ({
 vi.mock('@/wallet-core/keystore/hardware.js', () => ({
   enrollHardwareCredential: vi.fn(),
   getHardwareFactor: vi.fn(),
+  clearHardwareCredential: vi.fn(),
 }));
 vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilityOrDemoActive: () => false,
 }));
 
-const { enrollHardwareCredential } = await import('@/wallet-core/keystore/hardware.js');
+const {
+  enrollHardwareCredential,
+  clearHardwareCredential,
+} = await import('@/wallet-core/keystore/hardware.js');
 const { useKekEnrollmentGate } = await import('@/lib/useKekEnrollmentGate.js');
 
 function makeError(message, code) {
@@ -40,6 +44,9 @@ function makeError(message, code) {
 }
 
 async function enrollAndGetResult(error) {
+  enrollHardwareCredential.mockReset();
+  clearHardwareCredential.mockReset();
+  clearHardwareCredential.mockResolvedValue(undefined);
   enrollHardwareCredential.mockRejectedValue(error);
 
   const { result } = renderHook(() => useKekEnrollmentGate({ isUnlocked: false }));
@@ -49,6 +56,20 @@ async function enrollAndGetResult(error) {
   });
   return outcome;
 }
+
+describe('cleanup policy — retryable failures keep the native credential', () => {
+  it('does NOT clear the native credential on KEK_NO_HARDWARE_FACTOR', async () => {
+    const r = await enrollAndGetResult(makeError('hardware unavailable', 'KEK_NO_HARDWARE_FACTOR'));
+    expect(r.ok).toBe(false);
+    expect(clearHardwareCredential).not.toHaveBeenCalled();
+  });
+
+  it('DOES clear the native credential on KEK_ENROLL_INSECURE_TIER', async () => {
+    const r = await enrollAndGetResult(makeError('SOFTWARE tier refused', 'KEK_ENROLL_INSECURE_TIER'));
+    expect(r.ok).toBe(false);
+    expect(clearHardwareCredential).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('classifyEnrollError — stale key codes', () => {
   it('KEK_CLEAR_STALE_FAILED code (Android Kotlin) → stale key message, not generic', async () => {
@@ -103,6 +124,23 @@ describe('classifyEnrollError — biometric lockout', () => {
     const r = await enrollAndGetResult(makeError('biometryLockout: too many attempts'));
     expect(r.ok).toBe(false);
     expect(r.msg).toMatch(/biometric sensor is temporarily locked/i);
+  });
+});
+
+describe('classifyEnrollError — hardware access failures are not wrong-PIN', () => {
+  it('KEK_NO_HARDWARE_FACTOR code → hardware message and no wrong-PIN branch', async () => {
+    const r = await enrollAndGetResult(makeError('hardware unavailable', 'KEK_NO_HARDWARE_FACTOR'));
+    expect(r.ok).toBe(false);
+    expect(r.msg).toMatch(/hardware security/i);
+    expect(r.isInsecureTier).toBe(false);
+    expect(r.isWrongPin).toBe(false);
+  });
+
+  it('KEK_ERR.NO_HARDWARE_FACTOR constant → hardware message and no wrong-PIN branch', async () => {
+    const r = await enrollAndGetResult(makeError('hardware unavailable', 'KEK_NO_HARDWARE_FACTOR'));
+    expect(r.ok).toBe(false);
+    expect(r.msg).toMatch(/hardware security/i);
+    expect(r.isWrongPin).toBe(false);
   });
 });
 

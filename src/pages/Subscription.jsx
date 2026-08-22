@@ -35,7 +35,7 @@ import {
   offerPriceInfo,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
-  RETENTION_OFFERING_ID,
+  getRetentionOfferingId,
   currentStoreFlavor,
   SAMSUNG_IAP_NOT_WIRED,
   HUAWEI_IAP_NOT_WIRED,
@@ -223,6 +223,7 @@ export default function Subscription() {
   const [retentionMonthly, setRetentionMonthly] = useState(null);
   const [retentionAnnual, setRetentionAnnual] = useState(null);
   const aiOfferingId = getAiSecurityProtectionOfferingId();
+  const retentionOfferingId = getRetentionOfferingId(currentTier);
 
   useEffect(() => {
     if (!isNative) return;
@@ -330,7 +331,7 @@ export default function Subscription() {
       // degrade to "no offer" — never take down the page where someone manages
       // a subscription they are already paying for.
       Promise.resolve()
-        .then(() => getTierOffering(RETENTION_OFFERING_ID))
+        .then(() => retentionOfferingId ? getTierOffering(retentionOfferingId) : null)
         .then((offering) => {
           if (cancelled || !offering) return;
           const { monthly, annual } = extractPackages(offering);
@@ -341,7 +342,7 @@ export default function Subscription() {
     }
 
     return () => { cancelled = true; };
-  }, [aiOfferingId, isNative, hasReferral, currentTier, isPaidPlan]);
+  }, [aiOfferingId, isNative, hasReferral, currentTier, isPaidPlan, retentionOfferingId]);
 
   const hasDiscount = hasReferral && Boolean(referralMonthly || referralAnnual);
   const effectiveMonthly = (hasDiscount && referralMonthly) ? referralMonthly : monthlyPackage;
@@ -696,7 +697,7 @@ export default function Subscription() {
         // Null here means the dialog shows no price at all, which is correct.
         offerPrice={offerPriceInfo(
           activeRetentionPackage,
-          RETENTION_OFFERING_ID
+          retentionOfferingId
         )}
         currentPackage={currentPlanPackage}
         currentPriceString={currentPlanRegularPrice}

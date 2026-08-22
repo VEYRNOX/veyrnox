@@ -17,18 +17,17 @@ describe('tier catalogue', () => {
   it('every tier has a name, price, and tagline', () => {
     for (const t of TIERS) {
       expect(t.name, `${t.id} name`).toBeTruthy();
-      expect(t.price, `${t.id} price`).toBeTruthy();
       expect(t.tagline, `${t.id} tagline`).toBeTruthy();
     }
   });
 
-  it('Free tier is $0, Safety Plus is $5.99/mo, and AI Security Protection is separately listed', () => {
+  it('Free tier is $0, Safety Plus is $5.99/mo, and AI Security Protection stays separately listed without a direct price string', () => {
     const free = TIERS.find((t) => t.id === 'free');
     const plus = TIERS.find((t) => t.id === 'safety_plus');
     const ai = TIERS.find((t) => t.id === 'ai_security_protection');
     expect(free.price).toBe('$0');
     expect(plus.price).toBe('$5.99/mo');
-    expect(ai.price).toBeTruthy();
+    expect(ai.price).toBe('');
   });
 
   it('getCurrentTier is a legacy display stub that always returns free (real tier comes from resolveTier)', () => {

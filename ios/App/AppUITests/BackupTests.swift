@@ -10,14 +10,7 @@ final class BackupTests: XCTestCase {
         let app = XCUIApplication()
         app.launchFresh()
         createFreshWallet(app: app)
-
-        // Tap "Set up Personal Backup" on WalletCreatedFlash
-        let backupBtn = app.buttons["Set up Personal Backup"]
-        XCTAssertTrue(backupBtn.waitForExistence(timeout: 5), "Backup CTA missing.")
-        backupBtn.tap()
-
-        // Should land on Personal Backup page
-        waitForText("Encrypted Personal Backup", in: app, timeout: 10)
+        openPersonalBackup(app: app)
 
         // "Create backup" tab should be active by default
         let createTab = app.buttons["Create backup"]
@@ -57,12 +50,7 @@ final class BackupTests: XCTestCase {
         let app = XCUIApplication()
         app.launchFresh()
         createFreshWallet(app: app)
-
-        let backupBtn = app.buttons["Set up Personal Backup"]
-        XCTAssertTrue(backupBtn.waitForExistence(timeout: 5))
-        backupBtn.tap()
-
-        waitForText("Encrypted Personal Backup", in: app, timeout: 10)
+        openPersonalBackup(app: app)
 
         let tabs = ["Create backup", "Restore"]
         for tab in tabs {
@@ -83,12 +71,7 @@ final class BackupTests: XCTestCase {
         let app = XCUIApplication()
         app.launchFresh()
         createFreshWallet(app: app)
-
-        let backupBtn = app.buttons["Set up Personal Backup"]
-        XCTAssertTrue(backupBtn.waitForExistence(timeout: 5))
-        backupBtn.tap()
-
-        waitForText("Encrypted Personal Backup", in: app, timeout: 10)
+        openPersonalBackup(app: app)
 
         // Switch to Restore tab
         let restoreTab = app.buttons["Restore"]
@@ -101,5 +84,40 @@ final class BackupTests: XCTestCase {
             selectFile.waitForExistence(timeout: 5),
             "Recovery bay file picker not shown."
         )
+    }
+
+    /// Create wallet → Personal Backup → create .enc backup → verify Restore tab
+    /// stays reachable from the same real setup session.
+    func test_createBackup_thenRestoreTab_showsRecoveryBay() throws {
+        let app = XCUIApplication()
+        app.launchFresh()
+        createFreshWallet(app: app)
+        openPersonalBackup(app: app)
+
+        let passwordField = app.secureTextFields.firstMatch
+        XCTAssertTrue(passwordField.waitForExistence(timeout: 5), "Backup password field missing.")
+        passwordField.tap()
+        passwordField.typeText("TestBackupPassword123!")
+        dismissKeyboardIfPresent(app: app)
+
+        enterPin(app: app, digits: TestPin.backupPin)
+        submitPin(app: app)
+        enterPin(app: app, digits: TestPin.backupPin)
+        submitPin(app: app)
+
+        let saveBtn = app.buttons["Save backup"]
+        XCTAssertTrue(saveBtn.waitForExistence(timeout: 5), "Save backup button missing.")
+        saveBtn.tap()
+
+        let saved = app.staticTexts["Backup saved"].waitForExistence(timeout: 30)
+            || app.staticTexts["Did you save the backup file?"].waitForExistence(timeout: 30)
+        XCTAssertTrue(saved, "Backup save confirmation never appeared.")
+
+        let restoreTab = app.buttons["Restore"]
+        XCTAssertTrue(restoreTab.waitForExistence(timeout: 5), "Restore tab missing after backup creation.")
+        restoreTab.tap()
+
+        let selectFile = app.buttons["Select backup file"]
+        XCTAssertTrue(selectFile.waitForExistence(timeout: 5), "Recovery bay file picker not shown after backup creation.")
     }
 }

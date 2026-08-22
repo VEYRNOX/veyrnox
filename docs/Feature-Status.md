@@ -2482,7 +2482,7 @@ none of this is "verified" in the strict on-chain / independent-audit sense).
 ### Docs
 - **#1847** daily security-diff scan 2026-08-16
 - **#1836** activate native `HardwareKekPlugin` tests when Phase 2 lands (deferred, tracked)
-- **#1833** replace hand-rolled Shamir with audited library (`@stablelib/sss` — parking, needs its own PR + parity fixtures)
+- **#1833** replace hand-rolled Shamir with audited library — now reframed as a **versioned v3 share-format migration** (not a transparent lib swap). See `docs/audit-triage/shamir-library-swap-design-2026-08-19.md`, `docs/audit-triage/shamir-v3-migration-plan-2026-08-19.md`, and the strict merge gate `docs/audit-triage/shamir-merge-checklist-2026-08-19.md`.
 
 ### Known-open items after the sprint (issues, not defects on `main`)
 - **#1600** — `veyrnox` CF Worker is a Hello-World stub, still noisy on every PR (owner needs to Delete via CF dashboard)

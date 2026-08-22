@@ -22,11 +22,23 @@ export const APPLE_OFFER_IDS = {
   'referral-gold':     { monthly: 'referral_gold_m2',     annual: 'referral_gold_annual' },
   'referral-platinum': { monthly: 'referral_platinum_m2', annual: 'referral_platinum_annual' },
   'retention':         { monthly: 'retention_50_m2',      annual: 'retention_50_annual' },
+  'ai-referral-bronze':   { monthly: 'ai_referral_bronze_m2',   annual: 'ai_referral_bronze_annual' },
+  'ai-referral-silver':   { monthly: 'ai_referral_silver_m2',   annual: 'ai_referral_silver_annual' },
+  'ai-referral-gold':     { monthly: 'ai_referral_gold_m2',     annual: 'ai_referral_gold_annual' },
+  'ai-referral-platinum': { monthly: 'ai_referral_platinum_m2', annual: 'ai_referral_platinum_annual' },
+  'ai-retention':         { monthly: 'ai_retention_50_m2',      annual: 'ai_retention_50_annual' },
 };
+
+function normalizeAppleOfferLookupKey(offeringId) {
+  if (!offeringId) return null;
+  if (APPLE_OFFER_IDS[offeringId]) return offeringId;
+  return null;
+}
 
 export function appleOfferIdFor(offeringId, pkg) {
   if (!offeringId) return null;
-  const entry = APPLE_OFFER_IDS[offeringId];
+  const normalized = normalizeAppleOfferLookupKey(offeringId);
+  const entry = normalized ? APPLE_OFFER_IDS[normalized] : null;
   if (!entry) return null;
   const packageId = pkg?.identifier;
   if (packageId === SAFETY_PLUS_MONTHLY_PACKAGE) return entry.monthly;
@@ -72,6 +84,13 @@ export function offerUnavailable(offerTag) {
 
 export function getAiSecurityProtectionOfferingId() {
   return import.meta.env.VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID || null;
+}
+
+export function getRetentionOfferingId(planId = SAFETY_PLUS_ENTITLEMENT) {
+  if (planId === AI_SECURITY_PROTECTION_ENTITLEMENT) {
+    return import.meta.env.VITE_RC_AI_RETENTION_OFFERING_ID || null;
+  }
+  return RETENTION_OFFERING_ID;
 }
 
 export function currentStoreFlavor() {

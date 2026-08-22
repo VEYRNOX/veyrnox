@@ -58,6 +58,7 @@ export default function PinSetup({ onDone, onCancel }) {
           <PinPad
             value={realPin}
             onChange={(v) => { setRealPin(v); if (error) setError(""); }}
+            submitLabel="Submit PIN"
             onComplete={(p) => {
               const s = checkPinStrength(p);
               if (!s.ok) { setError(s.reason); setRealPin(""); setPinStep("real"); return; }
@@ -77,6 +78,7 @@ export default function PinSetup({ onDone, onCancel }) {
           <PinPad
             value={realPinConfirm}
             onChange={(v) => { setRealPinConfirm(v); if (error) setError(""); }}
+            submitLabel="Submit PIN"
             onComplete={(p) => {
               if (!pinsEqual(p, realPin)) {
                 // Reset BOTH pins and return to step 1.

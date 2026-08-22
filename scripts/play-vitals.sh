@@ -1,0 +1,1 @@
+/Users/aljobson/veyrnox-observability/play-vitals.sh

@@ -22,11 +22,13 @@ const setReferralAttribute = vi.fn();
 const offerPriceInfo = vi.fn();
 /** @type {import('vitest').Mock<() => string | null>} */
 const getAiSecurityProtectionOfferingId = vi.fn(() => null);
+const getRetentionOfferingId = vi.fn(() => 'retention');
 const currentStoreFlavor = vi.fn(() => 'google');
 vi.mock('@/lib/purchases', () => ({
   getOfferings,
   getTierOffering,
   getAiSecurityProtectionOfferingId,
+  getRetentionOfferingId,
   purchasePackage,
   restorePurchases,
   manageSubscription,
@@ -114,6 +116,7 @@ beforeEach(() => {
   getOfferingIdForTierMock.mockReturnValue(null);
   offerPriceInfo.mockReturnValue(null);
   getAiSecurityProtectionOfferingId.mockReturnValue(null);
+  getRetentionOfferingId.mockReturnValue('retention');
   currentStoreFlavor.mockReturnValue('google');
   calculateDiscountCentsMock.mockImplementation((full, comm) => Math.round(full * comm / 100));
   useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });

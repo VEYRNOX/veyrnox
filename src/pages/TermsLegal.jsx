@@ -100,7 +100,7 @@ export default function TermsLegal() {
         {/* §0 — Privacy policy (mirrors veyrnox.com/privacy) */}
         <Section icon={ShieldCheck} title="Privacy policy">
           <p className="font-medium">
-            Last updated: 26 July 2026.{" "}
+            Last updated: 15 August 2026.{" "}
             <a
               href={PRIVACY_POLICY_URL}
               target="_blank"
@@ -164,8 +164,8 @@ export default function TermsLegal() {
             <TermsSection number={4} title="Retention & Deletion" group="privacy">
               <p>
                 Apart from the anonymous events in section 9 — which exist only if you opted in — we
-                hold no personal data, so there is nothing for us to retain and nothing for us to
-                delete on our side.
+                hold no personal data. Those events are stored on our own Supabase instance in the
+                EU, with rate limits, deduplication keys, and the event size cap enforced server-side.
               </p>
               <p>
                 Those anonymous events are kept for up to 12 months and then deleted. Because they
@@ -231,7 +231,10 @@ export default function TermsLegal() {
             <TermsSection number={9} title="Cookies & Anonymous Usage Events" group="privacy">
               <p>
                 The Veyrnox app uses no cookies, no third-party analytics SDKs, and no tracking
-                pixels. Our website uses no advertising or third-party tracking cookies.
+                pixels. This website uses Google Tag Manager and a Reddit advertising pixel to
+                measure traffic and conversions. Those website tools may set cookies or local
+                storage in your browser, but they do not expose your wallet, holdings, or
+                transaction history to us.
               </p>
               <p className="font-semibold text-foreground">
                 These events are opt-in and OFF by default. Unless you explicitly turn on{' '}

@@ -42,9 +42,9 @@ final class RestoreFromFileTests: XCTestCase {
             "Restore from shares heading not shown."
         )
 
-        // Should show file pickers for Share 1 and Share 2
-        let share1 = app.staticTexts["Share 1"]
-        let share2 = app.staticTexts["Share 2"]
+        // Labels render uppercase via CSS text-transform
+        let share1 = app.staticTexts["SHARE 1"]
+        let share2 = app.staticTexts["SHARE 2"]
         XCTAssertTrue(share1.waitForExistence(timeout: 5), "Share 1 label missing.")
         XCTAssertTrue(share2.waitForExistence(timeout: 5), "Share 2 label missing.")
 
@@ -101,5 +101,44 @@ final class RestoreFromFileTests: XCTestCase {
             newWallet.waitForExistence(timeout: 10),
             "Entry tiles not shown after back from shares restore."
         )
+    }
+
+    /// Both restore paths from fresh hero: File backup → Recovery Bay, back, Recovery Shares → shares UI.
+    func test_hero_bothRestorePaths_showCorrectUI() throws {
+        let app = XCUIApplication()
+        app.launchFresh()
+
+        // --- Path 1: File backup → Recovery Bay ---
+        let fileTile = app.buttons["File backup"]
+        XCTAssertTrue(fileTile.waitForExistence(timeout: 10), "File backup tile missing.")
+        fileTile.tap()
+
+        let selectBtn = app.buttons["Select backup file"]
+        XCTAssertTrue(selectBtn.waitForExistence(timeout: 10), "Recovery Bay not shown.")
+
+        let backBtn = app.buttons["Back"]
+        XCTAssertTrue(backBtn.waitForExistence(timeout: 3), "Back button missing from Recovery Bay.")
+        backBtn.tap()
+
+        // --- Back at hero ---
+        let newWallet = app.buttons["New wallet"]
+        XCTAssertTrue(newWallet.waitForExistence(timeout: 5), "Hero tiles not shown after back.")
+
+        // --- Path 2: Recovery Shares → shares restore UI ---
+        let sharesTile = app.buttons["Recovery Shares"]
+        XCTAssertTrue(sharesTile.waitForExistence(timeout: 10), "Recovery Shares tile missing.")
+        sharesTile.tap()
+
+        let heading = app.staticTexts["Restore from recovery shares"]
+        XCTAssertTrue(heading.waitForExistence(timeout: 10), "Shares restore heading not shown.")
+
+        // Labels render uppercase via CSS text-transform
+        let share1 = app.staticTexts["SHARE 1"]
+        let share2 = app.staticTexts["SHARE 2"]
+        XCTAssertTrue(share1.waitForExistence(timeout: 5), "Share 1 label missing.")
+        XCTAssertTrue(share2.waitForExistence(timeout: 5), "Share 2 label missing.")
+
+        let pickBtns = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Pick file'"))
+        XCTAssertGreaterThanOrEqual(pickBtns.count, 2, "Need at least 2 Pick file buttons.")
     }
 }

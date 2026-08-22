@@ -26,12 +26,15 @@
     "check:rasp-bypass": "node scripts/check-rasp-bypass.mjs",
     "check:spm-paths": "node scripts/check-spm-paths.mjs",
     "check:iap-preflight": "node scripts/preflight-iap-config.mjs",
+    "setup:iap-ai-referrals": "node scripts/setup-ai-referral-offerings.mjs",
     "verify:onchain": "node scripts/verify-onchain-evidence.mjs",
     "phase2:checklist": "node scripts/phase2-checklist-runner.mjs",
     "phase2:checklist:quick": "node scripts/phase2-checklist-runner.mjs --no-tests --no-native",
     "pretest": "node scripts/audit/lib/source-scan.selftest.mjs && node scripts/check-crypto-rng.mjs && node scripts/check-deniability-strings.mjs && node scripts/check-finding-id-consistency.mjs && node scripts/check-cert-pin-manager-safety.mjs && npm run typecheck:core",
     "test": "vitest run",
+    "test:ai-security-advisor": "node scripts/test-ai-security-advisor.mjs",
     "test:e2e": "playwright test",
+    "test:e2e:advisor-smoke": "playwright test e2e/security-advisor-smoke.spec.js",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:post-audit": "node scripts/run-post-audit-qa.mjs",
@@ -79,6 +82,7 @@
     "build:sit": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=SIT npm run build",
     "build:uat": "cross-env VITE_RELEASE=1 VITE_ENV_LABEL=UAT npm run build",
     "build:staging": "node ./node_modules/cross-env/dist/bin/cross-env.js NODE_OPTIONS=--max-old-space-size=4096 vite build --mode staging",
+    "build:canary": "node ./node_modules/cross-env/dist/bin/cross-env.js NODE_OPTIONS=--max-old-space-size=4096 vite build --mode canary",
     "mobile:build:sit": "node ./node_modules/cross-env/dist/bin/cross-env.js VITE_RELEASE=1 VITE_ENV_LABEL=SIT npm run build && npm run cap:sync",
     "mobile:build:uat": "node ./node_modules/cross-env/dist/bin/cross-env.js VITE_RELEASE=1 VITE_ENV_LABEL=UAT npm run build && npm run cap:sync",
     "postinstall": "patch-package"
@@ -150,6 +154,7 @@
     "@scure/bip39": "1.6.0",
     "@scure/btc-signer": "2.2.0",
     "@solana/web3.js": "^1.98.4",
+    "@stablelib/tss": "^2.0.1",
     "@supabase/supabase-js": "^2.112.3",
     "@tanstack/react-query": "^5.101.4",
     "@trezor/connect-web": "^9.7.3",
@@ -185,8 +190,7 @@
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
-    "zod": "^4.4.3",
-    "@stablelib/tss": "^2.0.1"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

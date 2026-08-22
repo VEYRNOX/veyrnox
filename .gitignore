@@ -12,6 +12,7 @@ node_modules
 # Build output
 dist/
 build/
+reports/ai-security-advisor/
 
 # Trezor Connect self-hosted iframe bundle — generated at build time from node_modules.
 # Re-created by: node scripts/bundle-trezor-connect.mjs  (also runs as npm prebuild).
@@ -145,6 +146,11 @@ supabase/.temp/
 
 # BMad tooling: installer-managed, contains personal config
 _bmad/
+
+# Codex desktop local workspace state
+.codex/
+.gradle-local/
+.pnpm-store/
 
 # Taste-skill + BMad skills (installed per-dev, not shared)
 .claude/skills/bmad-*/

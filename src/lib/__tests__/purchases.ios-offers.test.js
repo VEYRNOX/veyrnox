@@ -12,8 +12,12 @@
 // The identifiers also differ by construction. App Store Connect scopes offer
 // identifiers to the whole SUBSCRIPTION GROUP and rejects hyphens, so the offer
 // behind the `referral-bronze` offering is `referral_bronze_m2` on the
-// monthly product and `referral_bronze_annual` on the annual one. Mapping the
-// wrong way round would apply an annual discount to a monthly purchase.
+// monthly product and `referral_bronze_annual` on the annual one. AI lives in
+// that same group, so its Apple identifiers must be distinct again
+// (`ai_referral_bronze_m2` / `_annual`) even though Play can keep the shared
+// offer tags. Mapping the wrong way round would apply an annual discount to a
+// monthly purchase, or point AI at a Safety Plus-only identifier Apple refuses
+// to create.
 //
 // Every failure here must fail CLOSED: a purchase that doesn't happen is
 // strictly better than one charged at a price the customer was not shown.
@@ -100,6 +104,24 @@ describe('appleOfferIdFor — offering id + package → App Store offer identifi
     // This asymmetry is real store state — not a naming slip to "tidy up".
     expect(appleOfferIdFor('retention', { identifier: '$rc_monthly' })).toBe('retention_50_m2');
     expect(appleOfferIdFor('retention', { identifier: '$rc_annual' })).toBe('retention_50_annual');
+  });
+
+  it('maps AI referral tiers to their own Apple identifiers', () => {
+    const m = (id) => appleOfferIdFor(id, { identifier: '$rc_monthly' });
+    const a = (id) => appleOfferIdFor(id, { identifier: '$rc_annual' });
+    expect(m('ai-referral-bronze')).toBe('ai_referral_bronze_m2');
+    expect(m('ai-referral-silver')).toBe('ai_referral_silver_m2');
+    expect(m('ai-referral-gold')).toBe('ai_referral_gold_m2');
+    expect(m('ai-referral-platinum')).toBe('ai_referral_platinum_m2');
+    expect(a('ai-referral-bronze')).toBe('ai_referral_bronze_annual');
+    expect(a('ai-referral-silver')).toBe('ai_referral_silver_annual');
+    expect(a('ai-referral-gold')).toBe('ai_referral_gold_annual');
+    expect(a('ai-referral-platinum')).toBe('ai_referral_platinum_annual');
+  });
+
+  it('maps AI retention to distinct Apple identifiers', () => {
+    expect(appleOfferIdFor('ai-retention', { identifier: '$rc_monthly' })).toBe('ai_retention_50_m2');
+    expect(appleOfferIdFor('ai-retention', { identifier: '$rc_annual' })).toBe('ai_retention_50_annual');
   });
 
   it('returns null for an unknown offering rather than guessing an identifier', () => {

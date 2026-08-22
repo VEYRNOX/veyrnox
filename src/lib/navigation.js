@@ -23,7 +23,7 @@ import {
   Gift, Key, LayoutGrid, Fuel,
   RotateCcw, Mic,
   ShieldOff, Gauge, KeyRound, ScanLine, Frame, Wifi, Pen,
-  CloudUpload, Compass, ScanSearch, Ghost, Bomb, Scissors,
+  CloudUpload, Compass, ScanSearch, Ghost, Bomb, Scissors, UserRound,
   CreditCard, ShoppingCart, Boxes,
 } from "lucide-react";
 import { isCut } from './featureRegistry';
@@ -153,6 +153,7 @@ const RAW_NAV_GROUPS = [
     label: "Preferences",
     items: [
       { path: "/settings", label: "Settings", icon: Settings },
+      { path: "/account", label: "Cloud Account", icon: UserRound },
       { path: "/plans", label: "Subscriptions", icon: CreditCard },
       { path: "/docs", label: "Documentation", icon: BookOpen },
     ],

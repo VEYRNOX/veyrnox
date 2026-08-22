@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Veyrnox Security Architecture Preview</title>
+  <desc id="desc">Consulting-style security architecture preview for Veyrnox mobile.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#0f1720" flood-opacity="0.10"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f1720" flood-opacity="0.06"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#667784"/>
+    </marker>
+    <style>
+      .title { font: 700 34px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill: #12202b; }
+      .subtitle { font: 500 16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill: #5f7382; }
+      .section { font: 700 14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill: #6a7d89; letter-spacing: 1.8px; text-transform: uppercase; }
+      .h2 { font: 700 22px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill: #14232d; }
+      .h3 { font: 700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill: #14232d; }
+      .body { font: 500 16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill: #32424d; }
+      .small { font: 500 14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill: #647784; }
+      .mono { font: 600 14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; fill: #22313a; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="#f6f7f8"/>
+
+  <!-- header -->
+  <line x1="72" y1="84" x2="1848" y2="84" stroke="#0f2740" stroke-width="4"/>
+  <text x="72" y="62" class="section">Security Architecture Preview</text>
+  <text x="72" y="132" class="title">Veyrnox Mobile Security Architecture</text>
+  <text x="72" y="162" class="subtitle">Consulting whitepaper style preview • implementation-backed • current state</text>
+
+  <!-- left narrative panel -->
+  <g filter="url(#soft)">
+    <rect x="72" y="220" width="420" height="748" rx="24" fill="#ffffff" stroke="#d7dde2"/>
+  </g>
+  <text x="104" y="268" class="h2">Reading Frame</text>
+  <text x="104" y="308" class="body">The mobile design is strongest at vault protection and unlock hardening. The main residual gap is post-unlock exposure inside the WebView runtime.</text>
+
+  <rect x="104" y="350" width="356" height="118" rx="18" fill="#edf6f0" stroke="#8bb79a"/>
+  <text x="128" y="388" class="h3">What Is Strong</text>
+  <text x="128" y="416" class="body">Local encrypted vault</text>
+  <text x="128" y="442" class="body">Hardware-assisted KEK unlock</text>
+
+  <rect x="104" y="494" width="356" height="138" rx="18" fill="#fff5e8" stroke="#d6ac68"/>
+  <text x="128" y="532" class="h3">Current Design Truth</text>
+  <text x="128" y="564" class="mono">native-unlock / native-KEK / JS-signing</text>
+  <text x="128" y="596" class="body">Native hardware meaningfully protects access to the vault, but not yet the full signing path.</text>
+
+  <rect x="104" y="658" width="356" height="176" rx="18" fill="#fff0ef" stroke="#d39a95"/>
+  <text x="128" y="696" class="h3">Primary Residual Risk</text>
+  <text x="128" y="726" class="body">Unlocked mnemonic and current EVM signing still cross into `WalletProvider` and JS send modules inside the WebView runtime.</text>
+  <text x="128" y="772" class="body">That is the next architectural frontier.</text>
+
+  <text x="104" y="888" class="section">Legend</text>
+  <rect x="104" y="908" width="18" height="18" rx="4" fill="#e8f2eb" stroke="#8bb79a"/>
+  <text x="138" y="922" class="small">trusted / local control</text>
+  <rect x="104" y="938" width="18" height="18" rx="4" fill="#edf2f7" stroke="#9db0bf"/>
+  <text x="138" y="952" class="small">native platform boundary</text>
+  <rect x="104" y="968" width="18" height="18" rx="4" fill="#fff4e6" stroke="#d6ac68"/>
+  <text x="138" y="982" class="small">crypto protection layer</text>
+  <rect x="286" y="908" width="18" height="18" rx="4" fill="#f2edf8" stroke="#a892c6"/>
+  <text x="320" y="922" class="small">WebView runtime</text>
+  <rect x="286" y="938" width="18" height="18" rx="4" fill="#fff0ef" stroke="#d39a95"/>
+  <text x="320" y="952" class="small">policy chokepoint</text>
+  <rect x="286" y="968" width="18" height="18" rx="4" fill="#f7f7f7" stroke="#b7c1c9"/>
+  <text x="320" y="982" class="small">external / untrusted</text>
+
+  <!-- main diagram canvas -->
+  <text x="550" y="202" class="section">Core Architecture</text>
+
+  <!-- inputs -->
+  <g filter="url(#soft)">
+    <rect x="550" y="236" width="250" height="92" rx="18" fill="#e8f2eb" stroke="#8bb79a"/>
+  </g>
+  <text x="574" y="274" class="h3">User PIN / Password</text>
+  <text x="574" y="300" class="body">Knowledge factor</text>
+
+  <g filter="url(#soft)">
+    <rect x="550" y="356" width="250" height="92" rx="18" fill="#edf2f7" stroke="#9db0bf"/>
+  </g>
+  <text x="574" y="394" class="h3">OS Biometric UX</text>
+  <text x="574" y="420" class="body">Native ceremony</text>
+
+  <!-- native boundary -->
+  <g filter="url(#shadow)">
+    <rect x="860" y="220" width="420" height="574" rx="26" fill="#ffffff" stroke="#cfd7de"/>
+  </g>
+  <text x="892" y="262" class="h2">Native Security Boundary</text>
+  <line x1="892" y1="278" x2="1248" y2="278" stroke="#dce2e7"/>
+
+  <g filter="url(#soft)">
+    <rect x="892" y="304" width="356" height="104" rx="16" fill="#edf2f7" stroke="#9db0bf"/>
+  </g>
+  <text x="916" y="342" class="h3">keyStore Native Facade</text>
+  <text x="916" y="368" class="mono">keystore/index.js -> native.js</text>
+  <text x="916" y="392" class="body">Selects native storage branch on mobile</text>
+
+  <g filter="url(#soft)">
+    <rect x="892" y="430" width="356" height="126" rx="16" fill="#edf2f7" stroke="#9db0bf"/>
+  </g>
+  <text x="916" y="468" class="h3">Vault Operations</text>
+  <text x="916" y="494" class="mono">createVault / unlock / changePassword / enrollKek</text>
+  <text x="916" y="518" class="body">Persists ciphertext through native storage and preserves KEK-wrapped forms</text>
+
+  <g filter="url(#soft)">
+    <rect x="892" y="578" width="356" height="100" rx="16" fill="#edf2f7" stroke="#9db0bf"/>
+  </g>
+  <text x="916" y="616" class="h3">Hardware Factor Retrieval</text>
+  <text x="916" y="642" class="body">hardware.js bridges to HardwareKek plugin and returns H or stable failure code</text>
+
+  <g filter="url(#soft)">
+    <rect x="892" y="700" width="356" height="72" rx="16" fill="#edf2f7" stroke="#9db0bf"/>
+  </g>
+  <text x="916" y="742" class="body">Native probe / attestation feeds sign-time gating</text>
+
+  <!-- crypto core -->
+  <g filter="url(#shadow)">
+    <rect x="1340" y="220" width="290" height="574" rx="26" fill="#ffffff" stroke="#cfd7de"/>
+  </g>
+  <text x="1372" y="262" class="h2">Crypto Core</text>
+  <line x1="1372" y1="278" x2="1598" y2="278" stroke="#dce2e7"/>
+
+  <g filter="url(#soft)">
+    <rect x="1372" y="304" width="226" height="112" rx="16" fill="#fff4e6" stroke="#d6ac68"/>
+  </g>
+  <text x="1394" y="342" class="h3">vault.js</text>
+  <text x="1394" y="368" class="body">Argon2id + AES-256-GCM</text>
+  <text x="1394" y="394" class="body">AAD-bound metadata</text>
+
+  <g filter="url(#soft)">
+    <rect x="1372" y="438" width="226" height="118" rx="16" fill="#fff4e6" stroke="#d6ac68"/>
+  </g>
+  <text x="1394" y="476" class="h3">kek.js</text>
+  <text x="1394" y="502" class="body">HKDF(H || C)</text>
+  <text x="1394" y="528" class="body">Wraps and unwraps DEK</text>
+
+  <g filter="url(#soft)">
+    <rect x="1372" y="578" width="226" height="148" rx="16" fill="#fff4e6" stroke="#d6ac68"/>
+  </g>
+  <text x="1394" y="616" class="h3">Protected Forms</text>
+  <text x="1394" y="642" class="body">Bare vault</text>
+  <text x="1394" y="668" class="body">KEK-protected vault</text>
+  <text x="1394" y="694" class="body">H • C • KEK • DEK held transiently</text>
+
+  <!-- js boundary -->
+  <g filter="url(#shadow)">
+    <rect x="550" y="522" width="250" height="272" rx="26" fill="#ffffff" stroke="#cfd7de"/>
+  </g>
+  <text x="582" y="564" class="h2">WebView Runtime</text>
+  <line x1="582" y1="580" x2="768" y2="580" stroke="#dce2e7"/>
+
+  <g filter="url(#soft)">
+    <rect x="582" y="606" width="186" height="92" rx="16" fill="#f2edf8" stroke="#a892c6"/>
+  </g>
+  <text x="604" y="642" class="h3">WalletProvider</text>
+  <text x="604" y="666" class="body">Mnemonic lives transiently in JS memory</text>
+
+  <g filter="url(#soft)">
+    <rect x="582" y="718" width="186" height="58" rx="16" fill="#fff0ef" stroke="#d39a95"/>
+  </g>
+  <text x="604" y="754" class="body">SendCrypto / WalletConnect gates</text>
+
+  <!-- external -->
+  <g filter="url(#soft)">
+    <rect x="550" y="824" width="250" height="120" rx="18" fill="#f7f7f7" stroke="#b7c1c9"/>
+  </g>
+  <text x="574" y="862" class="h3">External Surfaces</text>
+  <text x="574" y="888" class="body">RPC providers</text>
+  <text x="574" y="914" class="body">WalletConnect peers / dApps</text>
+
+  <!-- AI advisor -->
+  <g filter="url(#shadow)">
+    <rect x="860" y="840" width="770" height="104" rx="22" fill="#ffffff" stroke="#cfd7de"/>
+  </g>
+  <rect x="878" y="858" width="734" height="68" rx="16" fill="#f6e8d9" stroke="#aa6d35" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="902" y="898" class="h3">AI Security Advisor Boundary</text>
+  <text x="1170" y="898" class="body">advisory-only • local fallback • consented remote TIP-backed answers • outside signing trust root</text>
+
+  <!-- flow lines -->
+  <path d="M800 282 C 844 282, 844 626, 892 626" fill="none" stroke="#667784" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M800 402 C 844 402, 844 626, 892 626" fill="none" stroke="#667784" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1248 626 C 1304 626, 1312 498, 1372 498" fill="none" stroke="#667784" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1598 498 C 1650 498, 1646 652, 582 652" fill="none" stroke="#667784" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M675 698 L675 718" fill="none" stroke="#667784" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M675 776 L675 824" fill="none" stroke="#667784" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M768 746 C 840 746, 850 892, 878 892" fill="none" stroke="#aa6d35" stroke-width="3.5" stroke-dasharray="8 6" marker-end="url(#arrow)"/>
+</svg>

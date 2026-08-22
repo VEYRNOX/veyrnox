@@ -139,6 +139,17 @@ async function bestEffortClearCredential() {
   } catch { /* best-effort */ }
 }
 
+function shouldClearCredentialOnEnrollFailure(e, isInsecureTier) {
+  if (isInsecureTier) return true;
+  // A retryable getHardwareFactor failure (for example a transient hardware access
+  // refusal during the second biometric step) must NOT delete the just-enrolled
+  // native credential. Doing so converts a recoverable retry into a stale-key /
+  // re-enroll loop. The only guaranteed partial-enroll case that needs cleanup
+  // here is the explicit insecure-tier refusal: the alias exists, but we must not
+  // leave a SOFTWARE/unknown-tier key behind presenting as potentially reusable.
+  return false;
+}
+
 export function useKekEnrollmentGate({ isUnlocked }) {
   const [gateActive, setGateActive] = useState(false);
   const checkedRef = useRef(false);
@@ -208,7 +219,9 @@ export function useKekEnrollmentGate({ isUnlocked }) {
       return { ok: true };
     } catch (e) {
       const { msg, isInsecureTier, isWrongPin } = classifyEnrollError(e);
-      if (!isInsecureTier) await bestEffortClearCredential();
+      if (shouldClearCredentialOnEnrollFailure(e, isInsecureTier)) {
+        await bestEffortClearCredential();
+      }
       // Persist the ineligible verdict so the next unlock does NOT re-prompt.
       // Deterministic per device — no benefit to asking again.
       if (isInsecureTier) persistKekInsecureTier();

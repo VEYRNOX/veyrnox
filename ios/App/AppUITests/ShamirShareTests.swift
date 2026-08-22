@@ -11,19 +11,12 @@ final class ShamirShareTests: XCTestCase {
         let app = XCUIApplication()
         app.launchFresh()
         createFreshWallet(app: app)
+        openPersonalBackup(app: app)
 
-        let backupBtn = app.buttons["Set up Personal Backup"]
-        XCTAssertTrue(backupBtn.waitForExistence(timeout: 5))
-        backupBtn.tap()
-
-        waitForText("Encrypted Personal Backup", in: app, timeout: 10)
-
-        let advancedTab = app.buttons["Advanced (2-of-3)"]
-        guard advancedTab.waitForExistence(timeout: 5) else {
+        guard openAdvancedRecoveryShares(app: app) else {
             // Tab not shown — may be feature-flagged off
             return
         }
-        advancedTab.tap()
 
         // Either the share export UI or the upsell card appears
         let shareUI = app.staticTexts["2-of-3 recovery shares (preview)"]
@@ -50,18 +43,11 @@ final class ShamirShareTests: XCTestCase {
         app.launch()
 
         createFreshWallet(app: app)
+        openPersonalBackup(app: app)
 
-        let backupBtn = app.buttons["Set up Personal Backup"]
-        XCTAssertTrue(backupBtn.waitForExistence(timeout: 5))
-        backupBtn.tap()
-
-        waitForText("Encrypted Personal Backup", in: app, timeout: 10)
-
-        let advancedTab = app.buttons["Advanced (2-of-3)"]
-        guard advancedTab.waitForExistence(timeout: 5) else {
+        guard openAdvancedRecoveryShares(app: app) else {
             return // Feature not available
         }
-        advancedTab.tap()
 
         // Check if upsell blocks us
         let upsell = app.staticTexts["Advanced 2-of-3 backup — Safety Plus"]
@@ -84,6 +70,7 @@ final class ShamirShareTests: XCTestCase {
         }
         passwordField.tap()
         passwordField.typeText("TestPassword123!")
+        dismissKeyboardIfPresent(app: app)
 
         // Enter recovery passphrase (second secure field)
         let fields = app.secureTextFields
@@ -91,6 +78,7 @@ final class ShamirShareTests: XCTestCase {
             let passphraseField = fields.element(boundBy: 1)
             passphraseField.tap()
             passphraseField.typeText("MyRecoveryPassphrase2026!")
+            dismissKeyboardIfPresent(app: app)
         }
 
         // Tap split button
@@ -113,16 +101,9 @@ final class ShamirShareTests: XCTestCase {
         let app = XCUIApplication()
         app.launchFresh()
         createFreshWallet(app: app)
+        openPersonalBackup(app: app)
 
-        let backupBtn = app.buttons["Set up Personal Backup"]
-        XCTAssertTrue(backupBtn.waitForExistence(timeout: 5))
-        backupBtn.tap()
-
-        waitForText("Encrypted Personal Backup", in: app, timeout: 10)
-
-        let advancedTab = app.buttons["Advanced (2-of-3)"]
-        guard advancedTab.waitForExistence(timeout: 5) else { return }
-        advancedTab.tap()
+        guard openAdvancedRecoveryShares(app: app) else { return }
 
         // Check for upsell
         let upsell = app.staticTexts["Advanced 2-of-3 backup — Safety Plus"]
@@ -148,6 +129,42 @@ final class ShamirShareTests: XCTestCase {
         XCTAssertTrue(
             pickFile.waitForExistence(timeout: 5),
             "Share file picker button missing."
+        )
+    }
+
+    /// Real setup path: create wallet → Personal Backup → Advanced tab exposes
+    /// both export and restore modes in the same session.
+    func test_shareModes_reachableFromPersonalBackup() throws {
+        let app = XCUIApplication()
+        app.launchFresh()
+        createFreshWallet(app: app)
+        openPersonalBackup(app: app)
+
+        guard openAdvancedRecoveryShares(app: app) else { return }
+
+        let upsell = app.staticTexts["Advanced 2-of-3 backup — Safety Plus"]
+        if upsell.waitForExistence(timeout: 3) { return }
+
+        XCTAssertTrue(
+            app.staticTexts["2-of-3 recovery shares (preview)"].waitForExistence(timeout: 5),
+            "Share export panel not shown."
+        )
+        XCTAssertTrue(
+            app.buttons["Split & save 3 shares"].waitForExistence(timeout: 5),
+            "Split button missing on share export panel."
+        )
+
+        let restoreToggle = app.buttons["Restore"]
+        XCTAssertTrue(restoreToggle.waitForExistence(timeout: 3), "Restore toggle missing on Advanced tab.")
+        restoreToggle.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Restore from 2 recovery shares"].waitForExistence(timeout: 5),
+            "Share restore panel not shown."
+        )
+        XCTAssertTrue(
+            app.buttons["Choose 2 share files"].waitForExistence(timeout: 5),
+            "Share file picker button missing on restore panel."
         )
     }
 }

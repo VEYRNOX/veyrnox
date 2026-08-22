@@ -69,7 +69,7 @@ export async function provisionPinRecovery(deps, params) {
 
   // 1. Import the recovered seed under the new real PIN. A throw here (invalid
   //    phrase, storage failure) aborts BEFORE any cohort/slot change — fail closed.
-  await importWallet(seed, realPin);
+  await importWallet(seed, realPin, { skipBackgroundDeniabilityChaff: true });
 
   // 2. Silently provision both deniability slots with chaff, exactly as fresh PIN
   //    onboarding does, so the recovered device's storage footprint is identical.

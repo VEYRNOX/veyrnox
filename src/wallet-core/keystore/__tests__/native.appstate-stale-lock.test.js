@@ -1,17 +1,17 @@
-// Stale `appStateChange` must not fire the background lock hook mid-unlock.
+// Stale native background events must not fire the background lock hook mid-unlock.
 //
 // THE BUG. Depth-based lock suppression (`_lockSuppressDepth`) covers the window in
 // which an OS biometric sheet is OPEN. It does not cover DELIVERY. Capacitor dispatches
 // `appStateChange` over the bridge asynchronously, and the main thread is blocked for
-// seconds by the synchronous Argon2id WASM, so the `isActive:false` a Face ID sheet
-// emitted earlier can flush LATE — after suppression is back to 0, right as the user's
-// next PIN unlock finishes its KDF. `fireLockHook()` → WalletProvider.lock() → bumps
+// seconds by the synchronous Argon2id WASM, so the biometric-sheet background signal
+// emitted earlier can flush LATE — after suppression is back to 0, right as the
+// user's foregrounded flow resumes. `fireLockHook()` → WalletProvider.lock() → bumps
 // `unlockGenRef` → the in-flight unlock aborts with UNLOCK_SUPERSEDED before
 // keyStore.unlock() has started. PR #1881 attacked this by wrapping unlock() in
 // withLockSuppressed and was reverted (#1887) for bundling a biometric prompt-count
-// regression with it. This guard closes the same race by discriminating on LIVE state
-// instead: a queued pause describes a moment that has passed, so if the WebView is
-// visible at delivery the event is stale.
+// regression with it. The current guard closes the same race by discriminating on
+// LIVE state instead: a queued pause/appStateChange describes a moment that has
+// passed, so if the WebView is visible at delivery the event is stale.
 //
 // WHY THE PREDICATE IS TESTED DIRECTLY. The listener itself only reaches
 // `document.visibilityState` and calls this; wiring a full Capacitor bridge to re-assert
@@ -19,7 +19,7 @@
 // fail-closed defaults — so that is what is pinned, exhaustively.
 
 import { describe, it, expect } from 'vitest';
-import { shouldFireLockOnAppStateChange } from '@/wallet-core/keystore/native';
+import { shouldFireLockOnAppStateChange, shouldFireLockOnPause } from '@/wallet-core/keystore/native';
 
 describe('shouldFireLockOnAppStateChange — stale-event guard (#1881 race, prompt-neutral)', () => {
   it('IGNORES a stale isActive:false delivered while the WebView is visible', () => {
@@ -58,5 +58,27 @@ describe('shouldFireLockOnAppStateChange — stale-event guard (#1881 race, prom
     expect(shouldFireLockOnAppStateChange.length).toBe(2);
     expect(shouldFireLockOnAppStateChange(false, 'visible')).toBe(false);
     expect(shouldFireLockOnAppStateChange(false, 'visible')).toBe(false);
+  });
+});
+
+describe('shouldFireLockOnPause — stale-event guard for Android biometric sheets', () => {
+  it('IGNORES a stale pause delivered while the WebView is visible', () => {
+    expect(shouldFireLockOnPause('visible')).toBe(false);
+  });
+
+  it('LOCKS on a genuine background — pause while hidden', () => {
+    expect(shouldFireLockOnPause('hidden')).toBe(true);
+  });
+
+  it('FAILS CLOSED: every non-`visible` value locks, including unreadable ones (I4)', () => {
+    for (const v of ['hidden', 'prerender', 'unknown', undefined, null, '', 'VISIBLE']) {
+      expect(shouldFireLockOnPause(/** @type {any} */ (v))).toBe(true);
+    }
+  });
+
+  it('adds no biometric call — the pause guard is also a pure predicate', () => {
+    expect(shouldFireLockOnPause.length).toBe(1);
+    expect(shouldFireLockOnPause('visible')).toBe(false);
+    expect(shouldFireLockOnPause('visible')).toBe(false);
   });
 });

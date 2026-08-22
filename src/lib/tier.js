@@ -73,7 +73,7 @@ export const TIERS = [
   {
     id: TIER.AI_SECURITY_PROTECTION,
     name: 'AI Security Protection',
-    price: 'Contact sales',
+    price: '',
     tagline: 'Everything in Free and Safety Plus, plus live online TIP-backed Vigil guidance.',
   },
 ];
