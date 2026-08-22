@@ -85,11 +85,13 @@ describe('WalletEntry — web joins the PIN cohort (parity with native, lockout 
     // Fresh device lands on the entry-tiles picker → "New wallet" tile → pin-create
     // (both New and Have tiles are PIN-first; see lib/onboardingEntry.js).
     await waitFor(() => expect(screen.getByRole('button', { name: /new wallet/i })).toBeTruthy());
+    expect(screen.getByRole('progressbar', { name: /wallet setup progress/i })).toHaveAttribute('aria-valuenow', '0');
     fireEvent.click(screen.getByRole('button', { name: /new wallet/i }));
 
     // Web pin-create now renders the SAME numeric PinPad as native (no password Input).
     await waitFor(() => expect(screen.getByText(/choose an 8-digit pin/i)).toBeTruthy());
     expect(screen.queryByPlaceholderText(/at least 12 characters/i)).toBeNull();
+    expect(screen.getByRole('progressbar', { name: /wallet setup progress/i })).toHaveAttribute('aria-valuenow', '33');
 
     enterPinPad(document, WEB_PIN.split(''));
     fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
