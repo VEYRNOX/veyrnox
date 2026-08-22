@@ -1,18 +1,15 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound } from "lucide-react";
+import { Eye, EyeOff, AlertTriangle, Shield, Printer } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import CoinLogo from "@/components/CoinLogo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import BackupPaywallNudge from "@/components/BackupPaywallNudge";
 import { useTier } from "@/lib/TierProvider";
-import { MIN_PASSWORD_LENGTH } from "@/lib/passwordStrength";
-import { artifactToQrDataUrl, encryptSeedBackup } from "@/lib/seedQr";
 import { toast } from "@/lib/toast";
 
 export default function WalletSeedQR() {
@@ -22,12 +19,7 @@ export default function WalletSeedQR() {
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [mnemonic, setMnemonic] = useState(null);
   const [showSeed, setShowSeed] = useState(false);
-  const [showQr, setShowQr] = useState(false);
   const [printed, setPrinted] = useState(false);
-  const [backupPassword, setBackupPassword] = useState("");
-  const [qrDataUrl, setQrDataUrl] = useState("");
-  const [qrError, setQrError] = useState("");
-  const [qrPending, setQrPending] = useState(false);
   const [printPending, setPrintPending] = useState(false);
   const mnemonicRef = useRef(null);
 
@@ -48,52 +40,19 @@ export default function WalletSeedQR() {
   useEffect(() => {
     setMnemonic(null);
     setShowSeed(false);
-    setShowQr(false);
     setPrinted(false);
-    setBackupPassword("");
-    setQrDataUrl("");
-    setQrError("");
-    setQrPending(false);
     setPrintPending(false);
   }, [selectedWalletId]);
 
   useEffect(() => {
     return () => {
       setMnemonic(null);
-      setShowQr(false);
-      setBackupPassword("");
-      setQrDataUrl("");
-      setQrError("");
     };
   }, []);
 
   const handleReveal = () => {
     if (!selectedWalletId) return;
     revealWithReauth(selectedWalletId, { title: 'Reveal recovery phrase' });
-  };
-
-  const handleGenerateQr = async () => {
-    if (!mnemonic) return;
-    if (!backupPassword) {
-      setQrError("Enter a backup password to generate the QR.");
-      return;
-    }
-    if (backupPassword.length < MIN_PASSWORD_LENGTH) {
-      setQrError(`Choose a backup password of at least ${MIN_PASSWORD_LENGTH} characters.`);
-      return;
-    }
-    setQrPending(true);
-    setQrError("");
-    try {
-      const artifact = await encryptSeedBackup(mnemonic, backupPassword);
-      const dataUrl = await artifactToQrDataUrl(artifact);
-      setQrDataUrl(dataUrl);
-    } catch (error) {
-      setQrDataUrl("");
-      setQrError(error?.message || "Could not generate the encrypted QR.");
-    } finally {
-      setQrPending(false);
-    }
   };
 
   const handlePrint = async () => {
@@ -130,19 +89,6 @@ export default function WalletSeedQR() {
         seedDiv.className = "seed";
         seedDiv.textContent = mnemonic;
         container.appendChild(seedDiv);
-
-        if (qrDataUrl) {
-          const qrTitle = document.createElement("p");
-          qrTitle.className = "qr-label";
-          qrTitle.textContent = "Encrypted Seed Key QR";
-          container.appendChild(qrTitle);
-
-          const qrImg = document.createElement("img");
-          qrImg.src = qrDataUrl;
-          qrImg.alt = "Encrypted Seed Key QR";
-          qrImg.className = "qr";
-          container.appendChild(qrImg);
-        }
 
         const warn1 = document.createElement("p");
         warn1.className = "warning";
@@ -187,12 +133,7 @@ export default function WalletSeedQR() {
     setMnemonic(null);
     mnemonicRef.current = null;
     setShowSeed(false);
-    setShowQr(false);
     setPrinted(false);
-    setBackupPassword("");
-    setQrDataUrl("");
-    setQrError("");
-    setQrPending(false);
   };
 
   const words = mnemonic ? mnemonic.trim().split(/\s+/) : [];
@@ -287,18 +228,15 @@ export default function WalletSeedQR() {
               {showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               {showSeed ? "Hide Words" : "Reveal Words"}
             </Button>
-            <Button
-              type="button"
-              variant={showQr ? "default" : "outline"}
-              className="gap-2"
-              onClick={() => setShowQr((s) => !s)}
-            >
-              <KeyRound className="h-4 w-4" />
-              {showQr ? "Hide QR" : "Reveal QR"}
-            </Button>
+            <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-left">
+              <p className="text-xs font-medium">Seed Key QR unavailable</p>
+              <p className="text-[11px] text-muted-foreground">
+                In-app QR restore is not built yet. Use Personal Backup for an encrypted export with a restore path.
+              </p>
+            </div>
           </div>
 
-          {(showSeed || showQr) ? (
+          {showSeed ? (
             <>
               {showSeed && (
               <div className="grid grid-cols-3 gap-2">
@@ -310,45 +248,10 @@ export default function WalletSeedQR() {
                 ))}
               </div>
               )}
-
-              {showQr && (
-              <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
-                <div>
-                  <p className="text-sm font-medium">Encrypted Seed Key QR</p>
-                  <p className="text-xs text-muted-foreground">
-                    This QR is generated locally after the reveal gate. It is encrypted under a backup password, so scanning it still requires that password to recover the seed.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="seed-qr-password">Backup password</Label>
-                  <PasswordInput
-                    id="seed-qr-password"
-                    value={backupPassword}
-                    onChange={(e) => { setBackupPassword(e.target.value); if (qrError) setQrError(""); }}
-                    placeholder="Enter a backup password for the QR"
-                    autoComplete="off"
-                  />
-                </div>
-                {qrError && <p className="text-xs text-destructive">{qrError}</p>}
-                <Button onClick={handleGenerateQr} variant="secondary" className="w-full" disabled={!backupPassword || qrPending}>
-                  {qrPending ? "Generating encrypted QR…" : "Generate Seed Key QR"}
-                </Button>
-                {qrDataUrl && (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="rounded-2xl bg-white p-3 shadow-lg">
-                      <img src={qrDataUrl} alt="Encrypted Seed Key QR" width={220} height={220} className="rounded-lg" />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground text-center">
-                      Save this QR only if you also remember the backup password you used to encrypt it.
-                    </p>
-                  </div>
-                )}
-              </div>
-              )}
             </>
           ) : (
             <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-center">
-              <p className="text-sm text-muted-foreground">Choose to reveal your {words.length}-word recovery phrase, the encrypted Seed Key QR, or both.</p>
+              <p className="text-sm text-muted-foreground">Reveal your {words.length}-word recovery phrase here. For encrypted export with a built restore path, use Personal Backup.</p>
             </div>
           )}
 

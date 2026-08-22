@@ -16,7 +16,10 @@ describe('WalletSeedQR native backup hardening', () => {
     expect(src).not.toMatch(/Share\.share/);
   });
 
-  it('requires a minimum backup-password length before generating the QR', () => {
-    expect(src).toMatch(/backupPassword\.length\s*<\s*MIN_PASSWORD_LENGTH/);
+  it('does not promise an in-app QR restore path that is not built', () => {
+    expect(src).toContain('Seed Key QR unavailable');
+    expect(src).toContain('In-app QR restore is not built yet');
+    expect(src).toContain('Use Personal Backup for an encrypted export with a restore path');
+    expect(src).not.toContain('Generate Seed Key QR');
   });
 });
