@@ -69,11 +69,11 @@ export async function onRequestPost(context) {
   // SUPABASE_SERVICE_ROLE_KEY. The previous fallback to SUPABASE_ANON_KEY was
   // silent, so an operator who ran the H-3 REVOKE batch after only setting one
   // secret would see every referral / telemetry write start failing without any
-  // indication that the missing secret was the cause. `env.ENVIRONMENT === 'production'`
-  // matches the wrangler.toml var used by other server checks; when it is set
-  // and the service-role key is not, refuse to serve rather than silently
-  // downgrade auth. The anon fallback remains for non-prod so local/dev keep
-  // working before secrets are wired.
+  // indication that the missing secret was the cause. `env.ENVIRONMENT` is now
+  // repo-controlled in wrangler.toml: [env.production.vars] sets "production"
+  // and [env.preview.vars] sets "preview". Only production hard-fails; preview
+  // and local/dev keep the anon fallback so the deploy and the secret can land
+  // independently.
   const isProd = env.ENVIRONMENT === 'production';
   if (isProd && !env.SUPABASE_SERVICE_ROLE_KEY) {
     err(503, 'Database not configured');

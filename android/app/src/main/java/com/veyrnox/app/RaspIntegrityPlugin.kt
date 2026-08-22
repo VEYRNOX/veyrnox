@@ -883,19 +883,22 @@ class RaspIntegrityPlugin : Plugin() {
         @JvmStatic
         fun earlyCheck(context: android.content.Context): Boolean {
             earlyAntiDump()
-            // Preventive hardening only: claim the ptrace slot early, but do not
-            // treat a refusal here as a hook verdict. Real hook verdicts come from
-            // TracerPid/JDWP/Frida markers below.
+            // Read the pre-existing hook state BEFORE claiming the ptrace slot.
+            // If nativeEarlyTraceme() succeeds first, TracerPid becomes the parent
+            // PID and the TracerPid probe self-detects on a clean device.
+            val hookDetected = earlyDetectHook()
+            // Preventive hardening only: claim the ptrace slot after the hook
+            // probes above, but do not treat a refusal here as a hook verdict.
             earlyPtraceTraceme()
             // BLOCK-tier early checks: hook (debugger/Frida/ptrace) + tamper (cert) +
             // screen capture (Miracast/WFD mirroring — surveillance vector, item 22).
-            return earlyDetectHook() || earlyDetectTamper(context)
+            return hookDetected || earlyDetectTamper(context)
                 || earlyCheckScreenCapture(context)
         }
 
         /**
          * BLOCK-tier gate for use by other plugins in the same package.
-         * Returns true if ANY BLOCK-tier signal fires (hook / tamper / screen capture).
+         * Returns true if any BLOCK-tier signal fires (hook / tamper / screen capture).
          * Fail-closed: any exception → true (blocked). Does NOT run earlyAntiDump()
          * — that is a one-shot setup call in earlyCheck(), not a per-operation check.
          *
@@ -904,25 +907,16 @@ class RaspIntegrityPlugin : Plugin() {
          */
         @JvmSynthetic
         internal fun isBlockTier(context: android.content.Context): Boolean =
-            if (BuildConfig.DEBUG) {
-                false
-            } else {
-                runCatching {
-                    val hook = earlyDetectHook()
-                    val tamper = earlyDetectTamper(context)
-                    val screenCapture = earlyCheckScreenCapture(context)
-                    val blocked = hook || tamper || screenCapture
-                    if (blocked) {
-                        android.util.Log.w(
-                            "RASP",
-                            "BLOCK tier fired: hook=$hook tamper=$tamper screenCapture=$screenCapture"
-                        )
-                    }
-                    blocked
-                }.getOrElse {
-                    android.util.Log.e("RASP", "BLOCK tier evaluation failed closed", it)
-                    true
+            runCatching {
+                val blocked = earlyDetectHook() || earlyDetectTamper(context)
+                    || earlyCheckScreenCapture(context)
+                if (blocked) {
+                    android.util.Log.w("RASP", "BLOCK tier fired")
                 }
+                blocked
+            }.getOrElse {
+                android.util.Log.e("RASP", "BLOCK tier evaluation failed closed", it)
+                true
             }
 
         // earlyAntiDump — sets PR_SET_DUMPABLE to 0 via android.system.Os.prctl.

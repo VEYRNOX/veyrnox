@@ -2,29 +2,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff, AlertTriangle, Shield, Printer, KeyRound } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { Filesystem, Directory } from "@capacitor/filesystem";
-import { Share } from "@capacitor/share";
-import { jsPDF } from "jspdf";
 import CoinLogo from "@/components/CoinLogo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/lib/WalletProvider";
 import { useRevealWithReauth } from "@/components/security/useRevealWithReauth";
 import BackupPaywallNudge from "@/components/BackupPaywallNudge";
 import { useTier } from "@/lib/TierProvider";
-import { artifactToQrDataUrl, encryptSeedBackup } from "@/lib/seedQr";
 import { toast } from "@/lib/toast";
-
-function bytesToBase64(bytes) {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
 
 export default function WalletSeedQR() {
   const { wallets, confirmWalletBackup } = useWallet();
@@ -33,16 +19,12 @@ export default function WalletSeedQR() {
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [mnemonic, setMnemonic] = useState(null);
   const [showSeed, setShowSeed] = useState(false);
-  const [showQr, setShowQr] = useState(false);
   const [printed, setPrinted] = useState(false);
-  const [backupPassword, setBackupPassword] = useState("");
-  const [qrDataUrl, setQrDataUrl] = useState("");
-  const [qrError, setQrError] = useState("");
-  const [qrPending, setQrPending] = useState(false);
   const [printPending, setPrintPending] = useState(false);
   const mnemonicRef = useRef(null);
 
   const selectedWallet = wallets.find(w => w.id === selectedWalletId);
+  const selectedWalletName = selectedWallet?.name || "Wallet";
 
   // Seed reveal (2FA gate + M6 recent-auth window). On a lapsed window this shows
   // an inline "unlock again" prompt in place of the reveal button instead of a
@@ -58,22 +40,13 @@ export default function WalletSeedQR() {
   useEffect(() => {
     setMnemonic(null);
     setShowSeed(false);
-    setShowQr(false);
     setPrinted(false);
-    setBackupPassword("");
-    setQrDataUrl("");
-    setQrError("");
-    setQrPending(false);
     setPrintPending(false);
   }, [selectedWalletId]);
 
   useEffect(() => {
     return () => {
       setMnemonic(null);
-      setShowQr(false);
-      setBackupPassword("");
-      setQrDataUrl("");
-      setQrError("");
     };
   }, []);
 
@@ -82,93 +55,15 @@ export default function WalletSeedQR() {
     revealWithReauth(selectedWalletId, { title: 'Reveal recovery phrase' });
   };
 
-  const handleGenerateQr = async () => {
-    if (!mnemonic) return;
-    if (!backupPassword) {
-      setQrError("Enter a backup password to generate the QR.");
-      return;
-    }
-    setQrPending(true);
-    setQrError("");
-    try {
-      const artifact = await encryptSeedBackup(mnemonic, backupPassword);
-      const dataUrl = await artifactToQrDataUrl(artifact);
-      setQrDataUrl(dataUrl);
-    } catch (error) {
-      setQrDataUrl("");
-      setQrError(error?.message || "Could not generate the encrypted QR.");
-    } finally {
-      setQrPending(false);
-    }
-  };
-
-  const buildPdf = () => {
-    if (!mnemonic) return null;
-
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const walletName = selectedWallet?.name || "Wallet";
-    const walletMeta = `${selectedWallet?.currency || ""} ${selectedWallet?.address ? `· ${selectedWallet.address.slice(0, 16)}…` : ""}`.trim();
-    const wordsText = mnemonic.trim().split(/\s+/).map((word, index) => `${index + 1}. ${word}`).join("   ");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text(`${walletName} - Recovery Backup`, 20, 20);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    if (walletMeta) doc.text(walletMeta, 20, 28);
-
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(190, 40, 40);
-    doc.text("KEEP THIS DOCUMENT SECURE. ANYONE WITH THIS BACKUP CONTROLS THE WALLET.", 20, 38);
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    const seedLines = doc.splitTextToSize(wordsText, 170);
-    doc.text(seedLines, 20, 52);
-
-    let qrY = 52 + seedLines.length * 6 + 8;
-    if (qrDataUrl) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Encrypted Seed Key QR", 20, qrY);
-      qrY += 6;
-      doc.addImage(qrDataUrl, "PNG", 20, qrY, 70, 70);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      const note = doc.splitTextToSize(
-        "This QR is encrypted with the backup password you entered on-screen. You need that password to restore from the QR.",
-        85
-      );
-      doc.text(note, 100, qrY + 8);
-    }
-
-    return doc;
-  };
-
   const handlePrint = async () => {
     if (!mnemonic || printPending) return;
     setPrintPending(true);
 
-    const nameText = selectedWallet?.name || "Wallet";
-
     try {
       if (Capacitor.isNativePlatform()) {
-        const doc = buildPdf();
-        if (!doc) return;
-        const bytes = new Uint8Array(doc.output("arraybuffer"));
-        const fileName = "veyrnox-recovery-backup.pdf";
-        const result = await Filesystem.writeFile({
-          path: fileName,
-          data: bytesToBase64(bytes),
-          directory: Directory.Cache,
-        });
-        await Share.share({
-          title: `${nameText} recovery backup`,
-          text: "Print or save this recovery backup in a secure location.",
-          url: result.uri,
-          dialogTitle: "Print or save recovery backup",
-        });
+        // Native path: no plaintext file, no OS share. The user writes the words
+        // down by hand; encrypted export belongs to Personal Backup instead.
+        toast.info("No file was created or shared. Write the recovery words down by hand and store them securely offline.");
       } else {
         // Web path: inject a hidden print container into THIS document so the user
         // stays on the page. @media print hides everything except the container.
@@ -183,7 +78,7 @@ export default function WalletSeedQR() {
         container.textContent = "";
 
         const h2 = document.createElement("h2");
-        h2.textContent = `${nameText} — Recovery Backup`;
+        h2.textContent = `${selectedWalletName} — Recovery Backup`;
         container.appendChild(h2);
 
         const meta = document.createElement("p");
@@ -194,19 +89,6 @@ export default function WalletSeedQR() {
         seedDiv.className = "seed";
         seedDiv.textContent = mnemonic;
         container.appendChild(seedDiv);
-
-        if (qrDataUrl) {
-          const qrTitle = document.createElement("p");
-          qrTitle.className = "qr-label";
-          qrTitle.textContent = "Encrypted Seed Key QR";
-          container.appendChild(qrTitle);
-
-          const qrImg = document.createElement("img");
-          qrImg.src = qrDataUrl;
-          qrImg.alt = "Encrypted Seed Key QR";
-          qrImg.className = "qr";
-          container.appendChild(qrImg);
-        }
 
         const warn1 = document.createElement("p");
         warn1.className = "warning";
@@ -241,7 +123,7 @@ export default function WalletSeedQR() {
       setPrinted(true);
       confirmWalletBackup(selectedWalletId);
     } catch (error) {
-      toast.error(error?.message || "Could not print or save the recovery backup.");
+      toast.error(error?.message || "Could not confirm the recovery backup.");
     } finally {
       setPrintPending(false);
     }
@@ -251,12 +133,7 @@ export default function WalletSeedQR() {
     setMnemonic(null);
     mnemonicRef.current = null;
     setShowSeed(false);
-    setShowQr(false);
     setPrinted(false);
-    setBackupPassword("");
-    setQrDataUrl("");
-    setQrError("");
-    setQrPending(false);
   };
 
   const words = mnemonic ? mnemonic.trim().split(/\s+/) : [];
@@ -351,18 +228,15 @@ export default function WalletSeedQR() {
               {showSeed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               {showSeed ? "Hide Words" : "Reveal Words"}
             </Button>
-            <Button
-              type="button"
-              variant={showQr ? "default" : "outline"}
-              className="gap-2"
-              onClick={() => setShowQr((s) => !s)}
-            >
-              <KeyRound className="h-4 w-4" />
-              {showQr ? "Hide QR" : "Reveal QR"}
-            </Button>
+            <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-left">
+              <p className="text-xs font-medium">Seed Key QR unavailable</p>
+              <p className="text-[11px] text-muted-foreground">
+                In-app QR restore is not built yet. Use Personal Backup for an encrypted export with a restore path.
+              </p>
+            </div>
           </div>
 
-          {(showSeed || showQr) ? (
+          {showSeed ? (
             <>
               {showSeed && (
               <div className="grid grid-cols-3 gap-2">
@@ -374,45 +248,10 @@ export default function WalletSeedQR() {
                 ))}
               </div>
               )}
-
-              {showQr && (
-              <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
-                <div>
-                  <p className="text-sm font-medium">Encrypted Seed Key QR</p>
-                  <p className="text-xs text-muted-foreground">
-                    This QR is generated locally after the reveal gate. It is encrypted under a backup password, so scanning it still requires that password to recover the seed.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="seed-qr-password">Backup password</Label>
-                  <PasswordInput
-                    id="seed-qr-password"
-                    value={backupPassword}
-                    onChange={(e) => { setBackupPassword(e.target.value); if (qrError) setQrError(""); }}
-                    placeholder="Enter a backup password for the QR"
-                    autoComplete="off"
-                  />
-                </div>
-                {qrError && <p className="text-xs text-destructive">{qrError}</p>}
-                <Button onClick={handleGenerateQr} variant="secondary" className="w-full" disabled={!backupPassword || qrPending}>
-                  {qrPending ? "Generating encrypted QR…" : "Generate Seed Key QR"}
-                </Button>
-                {qrDataUrl && (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="rounded-2xl bg-white p-3 shadow-lg">
-                      <img src={qrDataUrl} alt="Encrypted Seed Key QR" width={220} height={220} className="rounded-lg" />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground text-center">
-                      Save this QR only if you also remember the backup password you used to encrypt it.
-                    </p>
-                  </div>
-                )}
-              </div>
-              )}
             </>
           ) : (
             <div className="rounded-md border border-border bg-muted/30 px-4 py-3 text-center">
-              <p className="text-sm text-muted-foreground">Choose to reveal your {words.length}-word recovery phrase, the encrypted Seed Key QR, or both.</p>
+              <p className="text-sm text-muted-foreground">Reveal your {words.length}-word recovery phrase here. For encrypted export with a built restore path, use Personal Backup.</p>
             </div>
           )}
 
@@ -421,8 +260,14 @@ export default function WalletSeedQR() {
             {selectedWallet && <span className="font-mono"> {selectedWallet.currency} · {selectedWallet.address?.slice(0, 20)}…</span>}
           </p>
 
+          {Capacitor.isNativePlatform() && (
+            <p className="text-xs text-muted-foreground rounded-md border border-border bg-muted/30 px-3 py-2">
+              On mobile, no plaintext file is created or shared. Write the recovery words down by hand. For encrypted export, use Personal Backup.
+            </p>
+          )}
+
           <Button onClick={handlePrint} className="gap-2 w-full" variant="outline" disabled={printPending}>
-            <Printer className="h-4 w-4" /> {printPending ? "Preparing Backup…" : "Print Secure Backup"}
+            <Printer className="h-4 w-4" /> {printPending ? "Preparing Backup…" : Capacitor.isNativePlatform() ? "I've Written These Words Down" : "Print Secure Backup"}
           </Button>
           {printed && (
             <>
