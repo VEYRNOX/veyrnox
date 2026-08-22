@@ -1306,7 +1306,7 @@ Additional public knowledge you should apply:
           setQueuedQuestion(null);
         }
       }}>
-        <DrawerContent className="max-h-[95dvh] flex flex-col">
+        <DrawerContent className="max-h-[95dvh] flex min-h-0 flex-col">
           <DrawerHeader className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary" />
@@ -1398,8 +1398,7 @@ Additional public knowledge you should apply:
           {/* Messages */}
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3"
-            style={{ minHeight: "300px", maxHeight: "calc(95dvh - 140px)" }}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3"
           >
             {messages.length === 0 && (
               <div className="space-y-3 pt-1">
@@ -1477,7 +1476,7 @@ Additional public knowledge you should apply:
           {/* Input */}
           <form
             onSubmit={handleSubmit}
-            className="flex items-center gap-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            className="sticky bottom-0 z-10 flex items-center gap-2 border-t border-border bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           >
             <input
               ref={inputRef}

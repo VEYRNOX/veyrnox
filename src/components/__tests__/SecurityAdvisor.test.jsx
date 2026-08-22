@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
 vi.mock('react-i18next', async () => {
@@ -110,6 +110,26 @@ describe('SecurityAdvisor', () => {
       </MemoryRouter>
     );
     expect(screen.getByRole('button', { name: /open vigil/i })).toBeDefined();
+  });
+
+  it('keeps the composer pinned while the message list is the scrolling region', async () => {
+    isDeniabilityOrDemoActive.mockReturnValue(false);
+    render(
+      <MemoryRouter initialEntries={['/send']}>
+        <SecurityAdvisor walletChain="evm" />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /open vigil/i }));
+
+    const composer = await screen.findByPlaceholderText(/ask vigil anything/i);
+    const form = composer.closest('form');
+    const scrollingPane = document.querySelector('[class*="min-h-0"][class*="overflow-y-auto"]');
+
+    expect(form?.className).toContain('sticky');
+    expect(form?.className).toContain('bottom-0');
+    expect(scrollingPane?.className).toContain('overflow-y-auto');
+    expect(scrollingPane?.className).toContain('min-h-0');
   });
 
   it('does not crash when useTranslation returns no i18n handle', async () => {
