@@ -895,7 +895,7 @@ class RaspIntegrityPlugin : Plugin() {
 
         /**
          * BLOCK-tier gate for use by other plugins in the same package.
-         * Returns true if ANY BLOCK-tier signal fires (hook / tamper / screen capture).
+         * Returns true if any BLOCK-tier signal fires (hook / tamper / screen capture).
          * Fail-closed: any exception → true (blocked). Does NOT run earlyAntiDump()
          * — that is a one-shot setup call in earlyCheck(), not a per-operation check.
          *
@@ -904,25 +904,16 @@ class RaspIntegrityPlugin : Plugin() {
          */
         @JvmSynthetic
         internal fun isBlockTier(context: android.content.Context): Boolean =
-            if (BuildConfig.DEBUG) {
-                false
-            } else {
-                runCatching {
-                    val hook = earlyDetectHook()
-                    val tamper = earlyDetectTamper(context)
-                    val screenCapture = earlyCheckScreenCapture(context)
-                    val blocked = hook || tamper || screenCapture
-                    if (blocked) {
-                        android.util.Log.w(
-                            "RASP",
-                            "BLOCK tier fired: hook=$hook tamper=$tamper screenCapture=$screenCapture"
-                        )
-                    }
-                    blocked
-                }.getOrElse {
-                    android.util.Log.e("RASP", "BLOCK tier evaluation failed closed", it)
-                    true
+            runCatching {
+                val blocked = earlyDetectHook() || earlyDetectTamper(context)
+                    || earlyCheckScreenCapture(context)
+                if (blocked) {
+                    android.util.Log.w("RASP", "BLOCK tier fired")
                 }
+                blocked
+            }.getOrElse {
+                android.util.Log.e("RASP", "BLOCK tier evaluation failed closed", it)
+                true
             }
 
         // earlyAntiDump — sets PR_SET_DUMPABLE to 0 via android.system.Os.prctl.

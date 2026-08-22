@@ -68,6 +68,27 @@ describe('credential selection', () => {
     expect(init.headers.apikey).toBe('anon-key');
   });
 
+  it('503s in production when the service-role key is absent', async () => {
+    const e = await thrown(() => onRequestPost(ctx('track_event', {
+      SUPABASE_URL: URL_BASE,
+      SUPABASE_ANON_KEY: 'anon-key',
+      ENVIRONMENT: 'production',
+    })));
+    expect(e.status).toBe(503);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('still allows the anon fallback outside production', async () => {
+    await onRequestPost(ctx('track_event', {
+      SUPABASE_URL: URL_BASE,
+      SUPABASE_ANON_KEY: 'anon-key',
+      ENVIRONMENT: 'preview',
+    }));
+
+    const [, init] = globalThis.fetch.mock.calls[0];
+    expect(init.headers.apikey).toBe('anon-key');
+  });
+
   it('503s when neither key is configured', async () => {
     const e = await thrown(() => onRequestPost(ctx('track_event', { SUPABASE_URL: URL_BASE })));
     expect(e.status).toBe(503);

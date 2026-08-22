@@ -99,6 +99,20 @@ describe('Anti-debug — Android checkTracerPid', () => {
   it('checkTracerPid fails closed (getOrDefault(false))', () => {
     expect(kt).toContain('getOrDefault(false)');
   });
+
+  it('isBlockTier does not bypass the gate in debug builds', () => {
+    expect(kt).not.toContain('if (BuildConfig.DEBUG) {\n                false');
+  });
+
+  it('isBlockTier logs only a generic release message when BLOCK fires', () => {
+    expect(kt).toContain('"BLOCK tier fired"');
+  });
+
+  it('isBlockTier does not log per-detector attribution', () => {
+    expect(kt).not.toContain('hook=');
+    expect(kt).not.toContain('tamper=');
+    expect(kt).not.toContain('screenCapture=');
+  });
 });
 
 // ── 2. iOS: PT_DENY_ATTACH ───────────────────────────────────────────────────

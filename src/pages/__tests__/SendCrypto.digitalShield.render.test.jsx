@@ -30,7 +30,7 @@ const {
     hash: '0xabc',
     wait: vi.fn(async () => ({})),
   })),
-  evaluateSendGate: vi.fn(() => /** @type {any} */ ({ allowed: true })),
+  evaluateSendGate: vi.fn(() => /** @type {any} */ ({ allowed: true, code: 'ALLOW', message: null })),
   toastError: vi.fn(),
 }));
 
@@ -467,7 +467,7 @@ describe('SendCrypto — Digital Shield render flow', () => {
 
   it('re-checks the shared send gate before final broadcast', async () => {
     evaluateSendGate
-      .mockReturnValueOnce(/** @type {any} */ ({ allowed: true }))
+      .mockReturnValueOnce(/** @type {any} */ ({ allowed: true, code: 'ALLOW', message: null }))
       .mockReturnValueOnce(
         /** @type {any} */ ({ allowed: false, code: 'REAUTH', message: 'Re-enter your PIN or password to authorise this send.' })
       );
