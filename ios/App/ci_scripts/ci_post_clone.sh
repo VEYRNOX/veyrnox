@@ -6,15 +6,27 @@ set -euo pipefail
 
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 
-# Xcode Cloud's image ships Node 20 but the Capacitor 8 CLI hard-requires
-# >=22. Unconditionally install node@22 via brew and prepend to PATH so
-# `npx cap sync ios` doesn't fail its Node-version check.
-if command -v brew >/dev/null 2>&1; then
-  brew install node@22
-  export PATH="$(brew --prefix node@22)/bin:$PATH"
-elif ! command -v node >/dev/null 2>&1; then
-  echo "no brew and no node — abort" >&2
-  exit 1
+# Capacitor 8's CLI requires Node >=22 for `npx cap sync ios`. Prefer the
+# runner's preinstalled Node when it already satisfies that floor; only fall
+# back to Homebrew when Node is missing or too old.
+need_node22=false
+if command -v node >/dev/null 2>&1; then
+  node_major="$(node -p 'process.versions.node.split(`.`)[0]')"
+  if [ "$node_major" -lt 22 ]; then
+    need_node22=true
+  fi
+else
+  need_node22=true
+fi
+
+if [ "$need_node22" = true ]; then
+  if command -v brew >/dev/null 2>&1; then
+    brew install node@22
+    export PATH="$(brew --prefix node@22)/bin:$PATH"
+  else
+    echo "Node >=22 required for Capacitor 8, but neither a suitable node nor brew is available — abort" >&2
+    exit 1
+  fi
 fi
 
 node --version
