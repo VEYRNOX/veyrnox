@@ -101,13 +101,13 @@ export default function AnomalyDetection() {
             {scanning ? "Scanning…" : scanResult ? "Re-scan" : "Run Scan"}
           </Button>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {CHECKS.map(c => (
-            <div key={c.key} className="rounded-lg border border-border bg-background/60 px-3 py-2">
-              <p className="text-xs font-medium">{c.label}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{c.desc}</p>
+            <div key={c.key} className="rounded-lg border border-border bg-background/60 px-3 py-2 min-w-0">
+              <p className="text-xs font-medium break-words">{c.label}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5 break-words">{c.desc}</p>
               {scanResult && (
-                <p className="text-[10px] font-semibold mt-1 text-primary">
+                <p className="text-[10px] font-semibold mt-1 text-primary break-words">
                   {scanResult.anomalies.filter(a => a.type === c.key).length} found
                 </p>
               )}
@@ -122,15 +122,15 @@ export default function AnomalyDetection() {
       </div>
 
       {scanResult && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
             { label: "Critical", count: allAlerts.filter(a => a.severity === "critical").length, color: "text-destructive" },
             { label: "High", count: allAlerts.filter(a => a.severity === "high").length, color: "text-risk" },
             { label: "Medium / Low", count: allAlerts.filter(a => ["medium", "low"].includes(a.severity)).length, color: "text-caution" },
           ].map(s => (
-            <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
-              <p className={`font-bold text-2xl ${s.color}`}>{s.count}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+            <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center min-w-0">
+              <p className={`font-bold text-2xl break-words ${s.color}`}>{s.count}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 break-words">{s.label}</p>
             </div>
           ))}
         </div>

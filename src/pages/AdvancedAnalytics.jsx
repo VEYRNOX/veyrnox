@@ -165,24 +165,24 @@ export default function AdvancedAnalytics() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="p-3 rounded-xl border border-border bg-card text-center">
-              <p className="text-lg font-bold text-success">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="p-3 rounded-xl border border-border bg-card text-center min-w-0">
+              <p className="text-lg font-bold text-success break-words">
                 {bestMonth != null ? (bestMonth >= 0 ? '+' : '') + '$' + Math.abs(bestMonth).toLocaleString() : '—'}
               </p>
-              <p className="text-xs text-muted-foreground">Best Month</p>
+              <p className="text-xs text-muted-foreground break-words">Best Month</p>
             </div>
-            <div className="p-3 rounded-xl border border-border bg-card text-center">
-              <p className="text-lg font-bold text-destructive">
+            <div className="p-3 rounded-xl border border-border bg-card text-center min-w-0">
+              <p className="text-lg font-bold text-destructive break-words">
                 {worstMonth != null ? (worstMonth >= 0 ? '+' : '-') + '$' + Math.abs(worstMonth).toLocaleString() : '—'}
               </p>
-              <p className="text-xs text-muted-foreground">Worst Month</p>
+              <p className="text-xs text-muted-foreground break-words">Worst Month</p>
             </div>
-            <div className="p-3 rounded-xl border border-border bg-card text-center">
-              <p className="text-lg font-bold text-primary">
+            <div className="p-3 rounded-xl border border-border bg-card text-center min-w-0">
+              <p className="text-lg font-bold text-primary break-words">
                 {winMonths != null ? Math.round((winMonths / 6) * 100) + '%' : '—'}
               </p>
-              <p className="text-xs text-muted-foreground">Win Rate</p>
+              <p className="text-xs text-muted-foreground break-words">Win Rate</p>
             </div>
           </div>
         </TabsContent>

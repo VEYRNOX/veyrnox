@@ -52,9 +52,9 @@ function addressFor(asset, wallet) {
 
 function StatCard({ label, value, symbol = undefined, mono = true }) {
   return (
-    <div className="p-4 rounded-xl border border-border bg-card">
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className={`font-semibold text-lg ${mono ? "font-mono" : ""}`}>
+    <div className="p-4 rounded-xl border border-border bg-card min-w-0">
+      <p className="text-xs text-muted-foreground mb-1 break-words">{label}</p>
+      <p className={`font-semibold text-lg break-words ${mono ? "font-mono" : ""}`}>
         {value}{symbol ? <span className="text-sm text-muted-foreground"> {symbol}</span> : null}
       </p>
     </div>
