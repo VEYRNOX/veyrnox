@@ -1,9 +1,10 @@
-import { useState, useEffect, lazy, useCallback, useRef } from "react";
+import { useState, useEffect, lazy, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Outlet, Link, useLocation, useNavigate, useNavigationType } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { duration as motionDuration, easing as motionEasing } from "@/lib/motion-tokens";
 import { usePriceAlertNotifier } from "../hooks/usePriceAlertNotifier";
+import { useBackgroundSecurity } from "../hooks/useBackgroundSecurity";
 import AccessibilityWrapper from "./AccessibilityWrapper";
 import SafeSuspense from "./SafeSuspense";
 import HelpMenu from "./HelpMenu";
@@ -22,7 +23,8 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import FeatureGate from './FeatureGate';
 import VeyrnoxLogo, { VeyrnoxWordmark } from "./VeyrnoxLogo";
 import { navGroups, groupColor, searchableRoutes } from "@/lib/navigation";
-import { getParentRoute, isFromMoreDrawer } from "@/lib/parentRoute";
+import { getParentRoute } from "@/lib/parentRoute";
+import { getStoredBackTarget, hasBrowserBackHistory, rememberCurrentRoute } from "@/lib/backNavigation";
 import useRecentPages from "@/hooks/useRecentPages";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { useQueryClient } from "@tanstack/react-query";
@@ -99,11 +101,53 @@ export function shouldShowHeaderSearch(pathname, mobileTab) {
   return !isHomeSearchPillVisible(pathname, mobileTab);
 }
 
+function normalizeAdvisorParamValue(value) {
+  const s = String(value ?? "").trim();
+  if (!s) return null;
+  return s.length > 80 ? `${s.slice(0, 77)}...` : s;
+}
+
+function buildAdvisorSearchSnapshot(search) {
+  const params = new URLSearchParams(search);
+  const entries = [...params.entries()].slice(0, 8);
+  return Object.fromEntries(
+    entries
+      .map(([key, value]) => [key, normalizeAdvisorParamValue(value)])
+      .filter(([, value]) => value != null)
+  );
+}
+
+function resolveAdvisorChain(pathname, search) {
+  if (pathname === '/solana') return 'solana';
+  if (pathname.startsWith('/asset/')) {
+    const symbol = pathname.slice('/asset/'.length).toUpperCase();
+    if (symbol === 'BTC') return 'bitcoin';
+    if (symbol === 'SOL') return 'solana';
+  }
+  const params = new URLSearchParams(search);
+  const asset = String(params.get('asset') || '').toUpperCase();
+  if (asset === 'BTC') return 'bitcoin';
+  if (asset === 'SOL') return 'solana';
+  return 'evm';
+}
+
 export default function Layout() {
   const { t } = useTranslation('wallet');
   const location = useLocation();
   const navigate = useNavigate();
-  const { lock } = useWallet();
+  const {
+    lock,
+    isUnlocked,
+    isDecoy,
+    isHidden,
+    wallets,
+    activeWalletId,
+    portfolios,
+    activePortfolioId,
+    vaultExists,
+    auditLogEnabled,
+    actionPasswordConfigured,
+  } = useWallet();
   const buyEnabled = useBuyEnabled();
   const mobileBottomNav = MOBILE_BOTTOM_NAV_ITEMS
     .filter((item) => !item.requiresBuy || buyEnabled)
@@ -141,8 +185,9 @@ export default function Layout() {
       // No need to reset sealing — Layout unmounts as WalletEntry takes over.
     }, 380);
   };
-  const ROOT_TABS = ['/', '/send', '/receive', '/settings'];
-  const isRootTab = ROOT_TABS.includes(location.pathname);
+  const isHomeTab = location.pathname === '/';
+  const shellBackTarget = getStoredBackTarget(location);
+  const canShowShellBack = !isHomeTab && shellBackTarget !== null;
   // Render the desktop OR the mobile main-content region — never both — so a page
   // mounts exactly once (see useIsDesktop). The nav chrome (sidebar / top bar /
   // bottom nav) stays CSS-toggled; only the heavy page-hosting regions are gated.
@@ -155,6 +200,63 @@ export default function Layout() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState({ Overview: true, Wallet: true });
   const toggleGroup = (label) => setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
+  const advisorRouteMeta = useMemo(
+    () => searchableRoutes.find((route) => route.path === location.pathname) || null,
+    [location.pathname]
+  );
+  const advisorWalletChain = useMemo(
+    () => resolveAdvisorChain(location.pathname, location.search),
+    [location.pathname, location.search]
+  );
+  const advisorPageSnapshot = useMemo(() => {
+    const query = buildAdvisorSearchSnapshot(location.search);
+    const sessionMode = isHidden ? 'hidden' : isDecoy ? 'decoy' : 'primary';
+    return {
+      pathname: location.pathname,
+      route_label: advisorRouteMeta?.label || null,
+      route_group: advisorRouteMeta?.group || null,
+      route_params: Object.keys(query).length ? query : null,
+      wallet_chain_hint: advisorWalletChain,
+      shell: {
+        mobile_tab: mobileTab,
+        more_drawer_open: moreOpen,
+        can_show_back: canShowShellBack,
+      },
+      wallet_session: {
+        unlocked: isUnlocked,
+        mode: sessionMode,
+        active_wallet_id: activeWalletId,
+        wallet_count: Array.isArray(wallets) ? wallets.length : 0,
+        portfolio_count: Array.isArray(portfolios) ? portfolios.length : 0,
+        active_portfolio_id: activePortfolioId || null,
+        vault_exists: vaultExists,
+        action_password_configured: !!actionPasswordConfigured,
+        audit_log_enabled: !!auditLogEnabled,
+      },
+      feature_flags: {
+        buy_enabled: !!buyEnabled,
+      },
+    };
+  }, [
+    actionPasswordConfigured,
+    activePortfolioId,
+    activeWalletId,
+    advisorRouteMeta,
+    advisorWalletChain,
+    auditLogEnabled,
+    buyEnabled,
+    canShowShellBack,
+    isDecoy,
+    isHidden,
+    isUnlocked,
+    location.pathname,
+    location.search,
+    mobileTab,
+    moreOpen,
+    portfolios,
+    vaultExists,
+    wallets,
+  ]);
 
   useEffect(() => {
     if (MOBILE_TABS.includes(location.pathname)) {
@@ -164,6 +266,26 @@ export default function Layout() {
       if (mainScroll) mainScroll.scrollTop = 0;
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    rememberCurrentRoute(location);
+  }, [location]);
+
+  const handleShellBack = useCallback(() => {
+    if (location.state?.fromMore) {
+      const parent = getParentRoute(location.pathname);
+      navigate(parent, { replace: true });
+      setMoreOpen(true);
+      return;
+    }
+    if (hasBrowserBackHistory()) {
+      navigate(-1);
+      return;
+    }
+    if (shellBackTarget) {
+      navigate(shellBackTarget, { replace: true });
+    }
+  }, [location, navigate, shellBackTarget]);
 
   const handleMobileTabClick = useCallback((path) => {
     // Send always navigates fresh — clears ?asset= param and resets the form.
@@ -184,6 +306,11 @@ export default function Layout() {
   }, [mobileTab, location.pathname, navigate]);
   usePriceAlertNotifier();
   useReceiveDetector(); // PR-275: fires emitReceiveDetected on positive active-set balance delta (I3/I4).
+  // Starts the phishing-domain feed and the approval monitor. Layout only ever
+  // mounts inside WalletGate, so this is already post-unlock; isUnlocked is
+  // passed anyway so the dependency is explicit rather than positional, and so
+  // the services stop the moment the wallet locks.
+  useBackgroundSecurity(isUnlocked);
   // In-app Notifications v1 (brief PR-2 §3). ONE hook instance for the whole
   // authenticated shell: the toast (latest) and the bell badge (unseenCount) read
   // the same session-scoped queue. Mounted inside WalletGate, so it unmounts and
@@ -374,7 +501,7 @@ export default function Layout() {
       {/* Day-3 soft paywall nudge (Task 6). Renders nothing until
           shouldShowPaywallNudge() is true; I3-gated internally. */}
       <PaywallNudge />
-      <SecurityAdvisor walletChain="evm" />
+      <SecurityAdvisor walletChain={advisorWalletChain} pageSnapshot={advisorPageSnapshot} />
 
       {/* ── Mobile Top Bar ── */}
       <header
@@ -382,25 +509,14 @@ export default function Layout() {
         style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))", paddingBottom: "0.75rem" }}
       >
         <div className="flex items-center gap-2">
-          {isRootTab ? (
+          {!canShowShellBack ? (
             <>
               <VeyrnoxLogo size={30} className="shrink-0" />
               <VeyrnoxWordmark className="text-sm" />
             </>
           ) : (
             <button
-              onClick={() => {
-                const hasHistory = window.history.length > 1 && document.referrer;
-                if (location.state?.fromMore || (!hasHistory && isFromMoreDrawer(location.pathname))) {
-                  const parent = getParentRoute(location.pathname);
-                  navigate(parent, { replace: true });
-                  setMoreOpen(true);
-                } else if (hasHistory) {
-                  navigate(-1);
-                } else {
-                  navigate(getParentRoute(location.pathname), { replace: true });
-                }
-              }}
+              onClick={handleShellBack}
               className="flex items-center gap-1 -ms-1 pe-3 min-h-[44px] text-foreground active:opacity-60 transition-opacity select-none"
             >
               {/* Icon mirrors under dir="rtl" — back-navigation chevron. */}
@@ -454,14 +570,12 @@ export default function Layout() {
           transition={{ duration: prefersReducedMotion ? 0.15 : motionDuration.normal, ease: motionEasing.out }}
           className="hidden md:flex md:flex-1 flex-col p-8 overflow-auto"
         >
-          {/* Desktop back affordance (item: back nav on every page). The desktop
-              layout has no back control of its own — only the sidebar (which
-              jumps to top-level destinations) — so a sub-page reached from e.g.
-              the Security Dashboard would otherwise strand the user. The mobile
-              top bar already provides this; here we mirror it for desktop on
-              every non-root-tab page. Root tabs (Dashboard/Send/Receive/Settings)
-              are top-level destinations and don't get a back control. */}
-          {!isRootTab && <BackButton className="mb-4" />}
+          {/* Desktop back affordance. Prefer true browser history, but the
+              shared BackButton also falls back to tracked in-app history for
+              replace-style tab switches and finally to the parent-route map for
+              direct deep-links. Keep Dashboard as the only shell page without
+              a back affordance. */}
+          {canShowShellBack && <BackButton className="mb-4" />}
           <PullToRefreshContainer onRefresh={handleRefresh} className="min-h-full">
             <ErrorBoundary key={location.pathname}><FeatureGate><Outlet /></FeatureGate></ErrorBoundary>
           </PullToRefreshContainer>

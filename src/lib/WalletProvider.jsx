@@ -159,6 +159,7 @@ import { DECOY_BIOMETRIC_MARKER_KEY } from '@/lib/duressBiometricGuard';
 import {
   storeUnlockSecret,
   retrieveUnlockSecret,
+  retrieveUnlockSecretDirect,
   clearUnlockSecret,
 } from '@/lib/biometricUnlock';
 // PASSKEY UNLOCK GATE (S1). The dual of the biometric gate: an ADDITIONAL
@@ -2148,7 +2149,12 @@ export function WalletProvider({ children }) {
     // for FaceID #2.
     let password;
     try {
-      password = await withLockSuppressed(() => retrieveUnlockSecret());
+      const kekEnrolled = Capacitor.isNativePlatform() && await isVaultKekEnrolledSafe();
+      password = await withLockSuppressed(() => (
+        kekEnrolled
+          ? retrieveUnlockSecretDirect({ kekEnrolled: true })
+          : retrieveUnlockSecret()
+      ));
     } catch (err) {
       throw new BiometricGateError('cancelled', err);
     }

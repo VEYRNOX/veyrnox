@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useId } from "react";
+import { useState, useId, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
@@ -34,8 +34,10 @@ import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
 import PinPad from "@/components/security/PinPad";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+import { isHardwareKekEnrolled } from "@/lib/hardwareKekStatus";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordStrength";
 import { checkPinStrength } from "@/lib/pinStrength";
+import { hasSafetyPlusAccess } from "@/lib/tier";
 import {
   CloudUpload, Download, Upload,
   AlertTriangle, Shield, CheckCircle2, Loader2,
@@ -60,6 +62,23 @@ function Field({ label, type = "text", value, onChange, placeholder, maxLength =
       />
     </div>
   );
+}
+
+function isNativePlatformSafe() {
+  if (typeof Capacitor?.isNativePlatform === "function") {
+    return Capacitor.isNativePlatform();
+  }
+  return Capacitor?.getPlatform?.() !== "web";
+}
+function describeRecoveryShareExportError(err, { shardExportReady } = {}) {
+  const code = err?.code || err?.message || "";
+  if (code === "KEK_NO_HARDWARE_FACTOR") {
+    if (shardExportReady === false) {
+      return "Recovery shares require Hardware Protection for this wallet. Enable Hardware Protection in Settings, then try again.";
+    }
+    return "Hardware Protection is already on, but this device did not return the hardware factor for shard export. Try again; if it keeps happening, turn Hardware Protection off and back on in Settings.";
+  }
+  return err?.message || "Recovery share export failed.";
 }
 
 // ── Export tab ───────────────────────────────────────────────────────────────
@@ -458,6 +477,7 @@ async function pickShareFiles(minCount, maxCount) {
 }
 
 function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
+  const navigate = useNavigate();
   // pickedFiles carries raw bytes as picked from disk — either 88-byte raw
   // shares or JSON recovery envelopes. Envelopes are unwrapped only at submit
   // time, so a wrong passphrase can be re-entered without re-picking files.
@@ -473,6 +493,12 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
   const encryptedCount = pickedFiles
     ? pickedFiles.reduce((n, f) => (tryParseRecoveryEnvelope(f) ? n + 1 : n), 0)
     : 0;
+  const hasBundleEnvelope = pickedFiles
+    ? pickedFiles.some((f) => {
+        const envelope = tryParseRecoveryEnvelope(f);
+        return envelope && envelope.type === ENVELOPE_TYPE_BUNDLE;
+      })
+    : false;
   const needsPassphrase = encryptedCount > 0;
 
   const runPick = async () => {
@@ -503,6 +529,7 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
   const canRestore =
     pickedFiles &&
     pickedFiles.length === 2 &&
+    !hasBundleEnvelope &&
     pinCheck.ok &&
     pinConfirmed &&
     (!needsPassphrase || passphraseCheck.ok) &&
@@ -614,12 +641,29 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
           {pickedFiles ? `Change files (${pickedFiles.length} of 2 chosen)` : "Choose 2 share files"}
         </button>
         {pickErr && <p className="text-xs text-destructive">{pickErr}</p>}
-        {pickedFiles && pickedFiles.length === 2 && (
-          <p className="text-xs text-muted-foreground">
-            2 files loaded{encryptedCount > 0 ? ` — ${encryptedCount} is passphrase-encrypted` : ""}. Fill in the fields below to complete recovery.
-          </p>
-        )}
+      {pickedFiles && pickedFiles.length === 2 && (
+        <p className="text-xs text-muted-foreground">
+          2 files loaded{encryptedCount > 0 ? ` — ${encryptedCount} is passphrase-encrypted` : ""}. Fill in the fields below to complete recovery.
+        </p>
+      )}
       </div>
+
+      {hasBundleEnvelope && (
+        <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-3">
+          <p className="font-semibold text-warning">Cross-device recovery bundles detected</p>
+          <p>
+            These files are recovery bundles for the dedicated cross-device restore flow, not the same-device
+            share-restore flow on this tab.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate("/onboarding/restore-shares")}
+            className="w-full py-2 rounded-lg border border-warning/30 text-warning hover:bg-warning/10"
+          >
+            Open Restore From Bundles
+          </button>
+        </div>
+      )}
 
       {needsPassphrase && (
         <div className="space-y-1">
@@ -677,17 +721,20 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
   );
 }
 
-function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restoreFromRecoveryShares, onRestoreFinish, isDecoy, isHidden }) {
+function RecoveryShareTab({
+  exportRecoveryShares,
+  exportRecoveryBundles,
+  restoreFromRecoveryShares,
+  onRestoreFinish,
+  isDecoy,
+  isHidden,
+  shardExportReady,
+}) {
   const [mode, setMode] = useState("export"); // 'export' | 'restore'
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [done, setDone] = useState(false);
-  // 2026-08-16 audit remediation (round 3): the encryptAll toggle is REMOVED.
-  // Any raw-JSON share bundle contains vault.ct; two raw bundles = full offline
-  // crack surface with no KEK. The toggle let a user opt into that path; the
-  // safe answer is that there is no opt-out. All exported shares are now wrapped
-  // with the user's passphrase unconditionally.
   const [recoveryPassphrase, setRecoveryPassphrase] = useState("");
   const raspArtifact = useRaspArtifact();
 
@@ -700,14 +747,8 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
     );
   }
 
-  // The button just gates on non-empty input. Actual credential validation
-  // happens inside native.js's KEK unlock chain — wrong PIN/password throws
-  // KEK_ERR.UNWRAP_FAILED, caught below and surfaced as a toast. Using
-  // MIN_PASSWORD_LENGTH here would gate out the native PIN cohort (8+ digits)
-  // since MIN_PASSWORD_LENGTH is the new-password floor (12), not an unlock
-  // floor. Phase 2 should replace this input with PinPad on native.
   const passphraseCheck = checkRecoveryPassphrase(recoveryPassphrase);
-  const canExport = password.length > 0 && passphraseCheck.ok;
+  const canExport = shardExportReady === true && pin.length === 8 && passphraseCheck.ok;
 
   const runSplit = async () => {
     const gate = sensitiveGate(raspArtifact, "export");
@@ -731,7 +772,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
       // its hash. Any 2 bundles rebuild the wallet on a fresh device via
       // the "Restore from recovery shares" hero entry. Old raw-share saves
       // still work through same-device restore for existing users.
-      const bundles = await exportRecoveryBundles(password);
+      const bundles = await exportRecoveryBundles(pin);
       shares = bundles.map(() => null); // placeholder for the finally-zero loop
       let completedAll = true;
       for (let i = 0; i < bundles.length; i++) {
@@ -762,12 +803,12 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
         markPersonalBackupExported({ withPassphrase: true });
       }
       setDone(true);
-      setPassword("");
+      setPin("");
       setRecoveryPassphrase("");
     } catch (err) {
-      // fail-closed: surface the raw error code so a round-trip failure or
-      // KEK issue is visible, not silently masked (I4).
-      toast.error(err?.message || "Recovery share export failed.");
+      // Fail-closed stays intact, but translate the known machine-code
+      // hardware-KEK miss into an actionable UI message.
+      toast.error(describeRecoveryShareExportError(err, { shardExportReady }));
     } finally {
       // Best-effort zero of the in-memory shares regardless of path.
       if (shares) for (const s of shares) if (s && s.fill) s.fill(0);
@@ -851,6 +892,22 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
         </p>
       </div>
 
+      {shardExportReady === false && (
+        <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
+          <p className="font-semibold text-warning">Turn on Hardware Protection first</p>
+          <p>
+            Recovery-share export only works when this wallet is enrolled under Hardware Protection. Biometric
+            re-auth alone is not enough — open Settings and enable Hardware Protection for this vault first.
+          </p>
+          <Link
+            to="/settings"
+            className="inline-flex items-center gap-2 rounded-lg border border-warning/30 px-3 py-2 text-warning hover:bg-warning/10"
+          >
+            Open Settings
+          </Link>
+        </div>
+      )}
+
       <div className="p-4 rounded-xl border border-warning/30 bg-warning/5 text-xs space-y-2">
         <p>
           Same-device restore ships in this build; cross-device (device lost) recovery is a later phase. Keep an
@@ -858,12 +915,16 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
         </p>
       </div>
 
-      <PasswordInput
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Your wallet password"
-        autoComplete="current-password"
-      />
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-muted-foreground">Enter your wallet PIN</label>
+        <PinPad
+          value={pin}
+          onChange={setPin}
+          onComplete={setPin}
+          length={8}
+          submitLabel="Confirm"
+        />
+      </div>
 
       <div className="p-3 rounded-xl border border-border bg-card/40 space-y-2">
         <div className="space-y-0.5">
@@ -895,7 +956,7 @@ function RecoveryShareTab({ exportRecoveryShares, exportRecoveryBundles, restore
       <button
         onClick={runSplit}
         disabled={!canExport || busy}
-        className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-40 flex items-center justify-center gap-2"
+        className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-medium disabled:opacity-40 disabled:grayscale flex items-center justify-center gap-2"
       >
         {busy
           ? <><Loader2 className="h-4 w-4 animate-spin" /> Encrypting…</>
@@ -921,11 +982,29 @@ export default function PersonalBackup() {
   const { currentTier } = useTier();
   const navigate = useNavigate();
   const [tab, setTab] = useState("export");
+  const [shardExportReady, setShardExportReady] = useState(() => (isNativePlatformSafe() ? null : true));
   // Vault backup ("Create backup" + "Restore") is free. Shard-based
   // "Advanced (2-of-3)" is Safety Plus only — tab stays visible so free
   // users can discover the feature; clicking it renders an upsell card
   // instead of the export/restore panel.
-  const hasSafetyPlus = currentTier === "safety_plus";
+  const hasSafetyPlus = hasSafetyPlusAccess(currentTier);
+
+  useEffect(() => {
+    let live = true;
+    if (!isNativePlatformSafe()) {
+      setShardExportReady(true);
+      return () => { live = false; };
+    }
+    (async () => {
+      try {
+        const enrolled = await isHardwareKekEnrolled();
+        if (live) setShardExportReady(enrolled === true);
+      } catch {
+        if (live) setShardExportReady(false);
+      }
+    })();
+    return () => { live = false; };
+  }, []);
 
   return (
     <div className="max-w-lg mx-auto space-y-5">
@@ -978,6 +1057,7 @@ export default function PersonalBackup() {
           onRestoreFinish={() => { lock(); navigate("/"); }}
           isDecoy={isDecoy}
           isHidden={isHidden}
+          shardExportReady={shardExportReady}
         />
       )}
       {tab === "shares" && ENABLE_PERSONAL_BACKUP_SHARDS && !hasSafetyPlus && (

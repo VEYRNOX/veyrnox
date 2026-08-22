@@ -80,13 +80,25 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import com.google.android.play.core.integrity.IntegrityManagerFactory
-import com.google.android.play.core.integrity.IntegrityTokenRequest
 import org.json.JSONArray
 import org.json.JSONObject
+import java.lang.reflect.InvocationHandler
+import java.lang.reflect.Method
+import java.lang.reflect.Proxy
 
 @CapacitorPlugin(name = "PlayIntegrity")
 class PlayIntegrityPlugin : Plugin() {
+
+    companion object {
+        private const val INTEGRITY_MANAGER_FACTORY_CLASS =
+            "com.google.android.play.core.integrity.IntegrityManagerFactory"
+        private const val INTEGRITY_TOKEN_REQUEST_CLASS =
+            "com.google.android.play.core.integrity.IntegrityTokenRequest"
+        private const val ON_SUCCESS_LISTENER_CLASS =
+            "com.google.android.gms.tasks.OnSuccessListener"
+        private const val ON_FAILURE_LISTENER_CLASS =
+            "com.google.android.gms.tasks.OnFailureListener"
+    }
 
     /**
      * requestVerdict({ nonce }) →
@@ -107,7 +119,7 @@ class PlayIntegrityPlugin : Plugin() {
         }
 
         val manager = try {
-            IntegrityManagerFactory.create(context)
+            createIntegrityManager()
         } catch (e: Exception) {
             // Play Services absent / too old / disabled → no attestation channel.
             call.resolve(unavailable())
@@ -115,26 +127,14 @@ class PlayIntegrityPlugin : Plugin() {
         }
 
         try {
-            manager
-                .requestIntegrityToken(
-                    IntegrityTokenRequest.builder().setNonce(nonce).build()
-                )
-                .addOnSuccessListener { response ->
-                    // On-device verdict read: parse the JWS payload directly. The
-                    // nonce we sent to setNonce() is threaded through so the parser
-                    // can bind the returned verdict to THIS request (audit P1-1).
-                    call.resolve(
-                        try {
-                            parseVerdictToken(response.token(), nonce)
-                        } catch (e: Exception) {
-                            unavailable()
-                        }
-                    )
-                }
-                .addOnFailureListener { _ ->
-                    // Network failure, integrity API error, quota, etc. → fail closed.
-                    call.resolve(unavailable())
-                }
+            val request = createIntegrityTokenRequest(nonce)
+            val task = manager.javaClass
+                .getMethod("requestIntegrityToken", request.javaClass.interfaces.firstOrNull()
+                    ?: Class.forName(INTEGRITY_TOKEN_REQUEST_CLASS))
+                .invoke(manager, request)
+
+            attachSuccessListener(task, nonce, call)
+            attachFailureListener(task, call)
         } catch (e: Exception) {
             call.resolve(unavailable())
         }
@@ -210,6 +210,77 @@ class PlayIntegrityPlugin : Plugin() {
     // see that file for the current contract (SHA-256 root pin, no issuer-string fallback, #1097).
     private fun verifyJwsSignature(token: String): Boolean =
         PlayIntegrityJwsVerifier.verify(token, ::base64UrlDecode)
+
+    private fun createIntegrityManager(): Any {
+        val factoryClass = Class.forName(INTEGRITY_MANAGER_FACTORY_CLASS)
+        return factoryClass.getMethod("create", android.content.Context::class.java)
+            .invoke(null, context)
+            ?: throw IllegalStateException("IntegrityManagerFactory.create returned null")
+    }
+
+    private fun createIntegrityTokenRequest(nonce: String): Any {
+        val requestClass = Class.forName(INTEGRITY_TOKEN_REQUEST_CLASS)
+        val builder = requestClass.getMethod("builder").invoke(null)
+            ?: throw IllegalStateException("IntegrityTokenRequest.builder returned null")
+        val builderClass = builder.javaClass
+        builderClass.getMethod("setNonce", String::class.java).invoke(builder, nonce)
+        return builderClass.getMethod("build").invoke(builder)
+            ?: throw IllegalStateException("IntegrityTokenRequest.build returned null")
+    }
+
+    private fun attachSuccessListener(task: Any, nonce: String, call: PluginCall) {
+        val listenerClass = Class.forName(ON_SUCCESS_LISTENER_CLASS)
+        val listener = Proxy.newProxyInstance(
+            listenerClass.classLoader,
+            arrayOf(listenerClass),
+            SuccessInvocationHandler(nonce, call)
+        )
+        task.javaClass.getMethod("addOnSuccessListener", listenerClass).invoke(task, listener)
+    }
+
+    private fun attachFailureListener(task: Any, call: PluginCall) {
+        val listenerClass = Class.forName(ON_FAILURE_LISTENER_CLASS)
+        val listener = Proxy.newProxyInstance(
+            listenerClass.classLoader,
+            arrayOf(listenerClass),
+            FailureInvocationHandler(call)
+        )
+        task.javaClass.getMethod("addOnFailureListener", listenerClass).invoke(task, listener)
+    }
+
+    private inner class SuccessInvocationHandler(
+        private val nonce: String,
+        private val call: PluginCall,
+    ) : InvocationHandler {
+        override fun invoke(proxy: Any?, method: Method?, args: Array<out Any?>?): Any? {
+            if (method?.name != "onSuccess") return null
+            val response = args?.firstOrNull() ?: return null
+            val token = try {
+                response.javaClass.getMethod("token").invoke(response) as? String
+            } catch (_: Exception) {
+                null
+            }
+            call.resolve(
+                try {
+                    if (token.isNullOrEmpty()) unavailable() else parseVerdictToken(token, nonce)
+                } catch (_: Exception) {
+                    unavailable()
+                }
+            )
+            return null
+        }
+    }
+
+    private inner class FailureInvocationHandler(
+        private val call: PluginCall,
+    ) : InvocationHandler {
+        override fun invoke(proxy: Any?, method: Method?, args: Array<out Any?>?): Any? {
+            if (method?.name == "onFailure") {
+                call.resolve(unavailable())
+            }
+            return null
+        }
+    }
 
     // Base64URL decode: Play Integrity JWS segments are base64url (- and _, no
     // padding). Convert to standard alphabet and pad to a multiple of 4.

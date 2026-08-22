@@ -10,6 +10,7 @@ import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 export const SAFETY_PLUS_ENTITLEMENT = 'safety_plus';
+export const AI_SECURITY_PROTECTION_ENTITLEMENT = 'ai_security_protection';
 
 // RevenueCat standard package identifiers for the Safety Plus offering. Both
 // packages grant the SAME entitlement (`safety_plus`) — annual is a pricing
@@ -18,6 +19,10 @@ export const SAFETY_PLUS_ENTITLEMENT = 'safety_plus';
 // present — never crash, never surface a broken purchase button (I4).
 export const SAFETY_PLUS_MONTHLY_PACKAGE = '$rc_monthly';
 export const SAFETY_PLUS_ANNUAL_PACKAGE = '$rc_annual';
+
+export function getAiSecurityProtectionOfferingId() {
+  return import.meta.env.VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID || null;
+}
 
 // Offering used for the cancel-intent retention offer (components/subscription/
 // CancelOfferDialog.jsx). Resolved via getTierOffering() and absent by default:
@@ -154,9 +159,11 @@ function isNative() {
 }
 
 function apiKeyForPlatform() {
-  return Capacitor.getPlatform() === 'ios'
-    ? import.meta.env.VITE_REVENUECAT_APPLE_API_KEY
-    : import.meta.env.VITE_REVENUECAT_GOOGLE_API_KEY;
+  if (Capacitor.getPlatform() === 'ios')
+    return import.meta.env.VITE_REVENUECAT_APPLE_API_KEY;
+  if (import.meta.env.VITE_STORE_FLAVOR === 'samsung')
+    return import.meta.env.VITE_REVENUECAT_SAMSUNG_API_KEY;
+  return import.meta.env.VITE_REVENUECAT_GOOGLE_API_KEY;
 }
 
 export async function configurePurchases() {
@@ -323,7 +330,9 @@ export async function manageSubscription() {
   if (!isNative()) throw new Error('PURCHASES_NATIVE_ONLY');
   const url = Capacitor.getPlatform() === 'ios'
     ? 'itms-apps://apps.apple.com/account/subscriptions'
-    : 'https://play.google.com/store/account/subscriptions';
+    : import.meta.env.VITE_STORE_FLAVOR === 'samsung'
+      ? 'https://galaxystore.samsung.com/mypage/subscriptions'
+      : 'https://play.google.com/store/account/subscriptions';
   // @capacitor/app@8.x's public TS surface does not include `openUrl`
   // (it exposes lifecycle events + getLaunchUrl only). The method exists on
   // the underlying native plugin bridge; PR #1085's own runbook flags the

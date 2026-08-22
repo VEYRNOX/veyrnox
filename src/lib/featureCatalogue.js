@@ -191,7 +191,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Token Approvals (View + Revoke)',
         status: 'verified',
         summary: 'Inspect and revoke ERC-20 allowances',
-        explanation: 'List the token allowances granted to contracts, flag unlimited approvals, and build revoke calldata the user signs locally. Helps shut down drainer exposure from stale approvals.',
+        explanation: 'List the token allowances granted to contracts, flag unlimited approvals, and build revoke calldata the user signs locally. Helps shut down drainer exposure from stale approvals. Each spender also carries a one-line risk note: a local threat-intel hit is answered instantly on-device, and otherwise the SPENDER address (never your own — the sender field is sent as the zero address) is screened through the tip-screen proxy. That screening runs automatically when you open the page, not only when you act, and is suppressed entirely in deniability/demo. A lookup that fails returns "could not assess", never "safe" (I4). The page shows approvals on demand — it does not monitor for new ones in the background.',
       },
       {
         name: 'Address-Poisoning Warnings',
@@ -257,6 +257,12 @@ export const FEATURE_CATEGORIES = [
         status: 'verified',
         summary: 'Ciphertext-only vault backup',
         explanation: 'Built (/personal-backup). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device. The ECC independent review (2026-06-23) confirmed key custody for this LOCAL path (plaintext seed never leaves the device; Argon2id (64 MiB / t=3, reviewed at 192 MiB then lowered for device latency — not yet re-reviewed at 64 MiB) + AES-256-GCM; verify-before-success) and the only finding (L-1, PIN floor 4→6 digits) was fixed in PR #340. Scope note: this is the local file path only — the BACKEND-ESCROW variant (a server-side ciphertext target) remains backend + review gated and is not built.',
+      },
+      {
+        name: 'Shamir Shard Backup (2-of-3)',
+        status: 'verified',
+        summary: 'Split vault DEK into 2-of-3 Shamir shares for distributed recovery',
+        explanation: 'Built (/personal-backup, Advanced tab). The vault DEK is split into three Shamir Secret Sharing shares over GF(2^8); any two of three reconstruct the key. Each share is exported as a passphrase-wrapped, integrity-checked recovery bundle (SHARD_BUNDLE_VERSION 2, with nested-key-aware vault hash). Same-device and cross-device restore are supported. Gated behind Safety Plus subscription. Pre-audit preview: owner-authorized 2026-08-08 carve-out ahead of independent audit. Passphrase wrapping is mandatory (PR #1752 closed an earlier gap where the checkbox shipped unwired, silently producing unencrypted bundles). NOT verified: no real on-device recovery round-trip confirmed, no independent audit. Cross-platform cloud sync (iCloud/Google Backup) not shipped. Hand-rolled Shamir implementation — audited library replacement (#1833) parked.',
       },
     ],
   },
@@ -411,31 +417,45 @@ export const FEATURE_CATEGORIES = [
     ],
   },
   {
-    category: 'AI Assistant (Advisory-Only)',
+    // Merge note: keep the branch's renamed category and the unique roadmap
+    // items from both sides without promoting anything to a stronger status.
+    category: 'AI Security Protection',
     features: [
       {
-        name: 'Transaction Explanation',
+        name: 'AI Security Advisor',
         status: 'roadmap',
-        summary: 'Plain-language description of a transaction',
-        explanation: 'Explain in plain language what a pending transaction does. Advisory only — the AI never holds keys and never signs. Specced, not yet built.',
+        summary: 'LLM-powered security chat with local knowledge fallback',
+        explanation: 'Built. A floating chat panel (SecurityAdvisor) powered by the TIP backend via a server-side Supabase Edge Function proxy (tip-chat). The advisor answers wallet, crypto, and security questions with context-aware responses; streaming errors fall back to a bundled local knowledge base (I4 fail-closed). The system prompt (server-side) refuses seeds, keys, and PINs. User messages are scrubbed of secret material before sending. Requires explicit advisor consent (opt-in). Suppressed entirely in deniability/demo sessions (I3 — FAB hidden, zero egress). The wallet never ships TIP API keys (I1); the Edge Function holds them server-side. NOT independently audited.',
       },
       {
-        name: 'Scam & Phishing Explanation',
+        name: 'Address Threat Screening',
         status: 'roadmap',
-        summary: 'Explain why something looks risky',
-        explanation: 'Explain why an address, contract, or site looks risky. Advisory only; specced, not yet built.',
+        summary: 'Multi-source sanctions, phishing, and hack-registry screening on send',
+        explanation: 'Built. Before a send, the recipient address is screened via a multi-source aggregator (sanctions lists, phishing registries, hack-fund trackers, contract-risk signals, and transaction simulation) through the tip-screen Edge Function proxy. Covers EVM, BTC, and SOL address formats. A sanctioned-namespace cross-chain lane blocks known threat actors (Tornado Cash, Lazarus, Blender.io, Sinbad, Ronin bridge) on every EVM chain, not just Ethereum. Falls back to honest "unknown" when all sources are unavailable rather than defaulting to "clean" (I4). A locally-cached, Ed25519-signed IOC manifest provides offline/deniability screening. Advisory — warns rather than silently blocks. NOT independently audited.',
       },
       {
         name: 'Educational Assistant',
         status: 'roadmap',
-        summary: 'Answer wallet / crypto questions',
-        explanation: 'Answer questions about gas, approvals, address formats, and wallet concepts. Advisory only; specced, not yet built.',
+        summary: 'Answer wallet and crypto security questions',
+        explanation: 'Built. The AI Security Advisor doubles as an educational assistant — it answers questions about gas, approvals, address formats, wallet security, and crypto concepts. Responses are context-aware (the advisor knows which screen the user is on) and include follow-up suggestions. Falls back to the local knowledge base when offline. Advisory only — the AI never holds keys and never signs.',
       },
       {
         name: 'Portfolio Q&A',
         status: 'roadmap',
         summary: 'Questions over public on-chain data',
         explanation: 'Answer questions over the user’s public on-chain data. Advisory only — never autonomous trading or management. Specced, not yet built.',
+      },
+      {
+        name: 'Live Phishing Domain Feed',
+        status: 'roadmap',
+        summary: 'Remote-updatable dApp domain blocklist, layered over the local seed',
+        explanation: 'A phishing-domain list downloaded over https, cached in IndexedDB, and layered over the in-bundle seed list that screens dApp domains on WalletConnect connect and request. The seed is never replaced, so a missing feed URL, a failed fetch or an empty payload degrades to exactly the pre-feed behaviour rather than to "no list" (I4) — an empty payload is treated as a failed refresh, so a compromised feed cannot switch coverage off by serving []. A feed older than seven days is treated as absent rather than silently trusted. The domain being checked NEVER leaves the device (I2): the list is downloaded and matched locally. Feed text is length-capped and control-character-stripped before it can reach a warning dialog. I3: no fetch and no feed matches in deniability/demo — the local seed still runs, so screening never goes dark — and the cache database is erased by panic wipe, since its presence alone is a tell. STATUS: the implementation is complete, wired at app init and unit-tested, but it has NOT been observed running on a device or in a browser, and no feed URL is configured by default — so it stays roadmap rather than claiming to work. Coverage today is the seed list unless VITE_PHISHING_FEED_URL is set. This is a blocklist, not a classifier: it catches listed domains only and never asserts a site is safe.',
+      },
+      {
+        name: 'Approval Monitor',
+        status: 'roadmap',
+        summary: 'Periodic in-app check for new approvals and risky transfers',
+        explanation: 'While the app is open and unlocked, a 60-second poll re-reads the local approval and transaction rows and raises an alert for a newly-seen approval to a flagged spender, a newly-seen unlimited approval, or an incoming transfer from a flagged address. Alerts surface on the Token Approvals page; they are held in memory only (max 50, never persisted) and are cleared on lock and on entering deniability/demo, because they name real counterparties. It reads the same local entity stores the pages already read: no new backend surface and no new egress. A flagged verdict comes from the local threat-intel store, which returns matches only; an empty result is never treated as a hit. This is NOT a push-notification service — nothing is checked while the app is closed, and no alert is not evidence that nothing happened (I4). STATUS: the implementation is complete, wired in Layout via useBackgroundSecurity and unit-tested, but it has NOT been observed running on a device or in a browser, so it stays roadmap rather than claiming to work. Deleting the useBackgroundSecurity call would silently disable it with no test going red.',
       },
     ],
   },
@@ -485,14 +505,20 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'iOS App',
         status: 'roadmap',
-        summary: 'Native iOS shell',
-        explanation: 'A native iOS shell runs on the simulator; App Store submission is gated on an Apple organisation account. Roadmap.',
+        summary: 'Native iOS shell — TestFlight internal testing',
+        explanation: 'Built. Native iOS shell via Capacitor, published to TestFlight (1.0.1 Build 11, READY_FOR_BETA_TESTING). Apple Organisation account (Veyrnox LTD, Team R54268MWFV) verified. CLI archive + upload pipeline working (xcodebuild + altool). App Store review submission on hold pending pre-submission verification checklist (fresh-device golden-path walk, Organizer crash/hang check). NOT verified: no App Store review submission made, RASP on a TestFlight install not device-verified.',
       },
       {
         name: 'Android App',
         status: 'roadmap',
-        summary: 'Native Android shell',
-        explanation: 'A native Android shell is scaffolded (non-custodial = store-exempt in the relevant sense). Roadmap.',
+        summary: 'Native Android shell — Play internal testing',
+        explanation: 'Built. Native Android shell via Capacitor, published to Play internal testing track (1.0, versionCode 6). Upload key reset completed. Play Billing (IAP) device-verified on internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). App Store review submission on hold pending pre-submission verification checklist (Pre-launch report, Android Vitals crash/ANR check, fresh-device golden-path walk). NOT verified: RASP on a Play install not device-verified, no production review submission made.',
+      },
+      {
+        name: 'Samsung Galaxy Store',
+        status: 'roadmap',
+        summary: 'Samsung Galaxy Store distribution via Gradle product flavors',
+        explanation: 'Built. Samsung Galaxy Store integration via Gradle product flavors (google/samsung) and RevenueCat Samsung billing. The samsung flavor uses Samsung In-App Purchase SDK instead of Google Play Billing. CI produces Samsung-specific artifacts. NOT verified: no Galaxy Store submission made, no device-verified purchase on Samsung billing.',
       },
       {
         name: 'Voice Commands',

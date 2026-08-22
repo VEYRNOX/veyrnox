@@ -96,6 +96,7 @@ vi.mock('@/wallet-core/keystore/hardware.js', async (orig) => {
 
 import { useWallet } from '@/lib/WalletProvider';
 import WalletEntry from '@/components/WalletEntry';
+import { KEK_INSECURE_TIER_KEY } from '@/lib/useKekEnrollmentGate';
 
 function makeCtx(overrides = {}) {
   return {
@@ -231,5 +232,23 @@ describe('WalletEntry — hardware-KEK enrollment gate after restore', () => {
     expect(keyStoreStub.enrollKek).not.toHaveBeenCalled();
     // Nor re-ask for consent this device has already given (see test 6).
     expect(screen.queryByTestId('consent-dismiss')).toBeNull();
+  });
+
+  it('8. insecure-tier continue persists the verdict so future unlocks do not re-prompt forever', async () => {
+    enrollHardwareCredential.mockRejectedValueOnce(
+      Object.assign(new Error('SOFTWARE tier refused'), { code: 'KEK_ENROLL_INSECURE_TIER' }),
+    );
+    vi.mocked(useWallet).mockReturnValue(makeCtx());
+    renderEntry();
+
+    await waitFor(() => expect(screen.getByTestId(GATE_TESTID)).toBeTruthy());
+    for (const d of '13572468') fireEvent.click(screen.getByRole('button', { name: d }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /continue with pin protection/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /continue with pin protection/i }));
+
+    await waitFor(() => expect(screen.getByText(APP_MARKER)).toBeTruthy());
+    expect(localStorage.getItem(KEK_INSECURE_TIER_KEY)).toBe('1');
   });
 });

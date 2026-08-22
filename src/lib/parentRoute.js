@@ -8,14 +8,20 @@
 // Fixes: #1156 (navigate(-1) fallback) + #1157 (fromMore state-restored nav).
 
 const PARENT_MAP = {
+  '/landing': '/',
+  '/onboarding/restore-shares': '/',
   '/send': '/',
   '/receive': '/',
   '/settings': '/',
+  '/buy': '/',
+  '/buy/in-progress': '/buy',
   '/notifications': '/',
   '/hd-wallet': '/',
   '/tx-history': '/',
+  '/verify': '/',
   '/security-dashboard': '/',
   '/security': '/',
+  '/what-this-protects': '/security-dashboard',
   '/wallet-access': '/',
   '/duress-pin': '/security-dashboard',
   '/stealth-wallets': '/security-dashboard',
@@ -25,6 +31,7 @@ const PARENT_MAP = {
   '/anomaly-detection': '/security-dashboard',
   '/hardware-wallet': '/security-dashboard',
   '/personal-backup': '/security-dashboard',
+  '/audit-log': '/security-dashboard',
   '/wallet-seed-qr': '/security-dashboard',
   '/dapp-alerts': '/security-dashboard',
   '/security-scanner': '/security-dashboard',
@@ -60,10 +67,16 @@ const PARENT_MAP = {
   '/spending': '/',
   '/snapshots': '/',
   '/onchain': '/',
+  '/tax': '/analytics',
   '/savings': '/',
   '/budget': '/',
   '/net-worth': '/',
+  '/invoices': '/',
+  '/asset': '/',
   '/docs': '/settings',
+  '/terms-legal': '/settings',
+  '/plans': '/settings',
+  '/safety-plus': '/plans',
   '/fee-analytics': '/',
   '/crypto-signing': '/',
   '/recurring': '/',
@@ -71,6 +84,7 @@ const PARENT_MAP = {
   '/receipt': '/',
   '/split-bill': '/',
   '/subscription': '/settings',
+  '/dev/prf-spike': '/',
 };
 
 export function getParentRoute(pathname) {

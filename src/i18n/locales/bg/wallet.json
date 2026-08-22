@@ -241,10 +241,22 @@
       "intro": "Допълнителна проверка над вашия PIN за чувствителни действия. Дори ако някой ви види да въвеждате PIN кода, той пак не може да извърши тези действия без втората стъпка.",
       "actions_protects_label": "Действия, които защитава",
       "gated_actions": [
-        { "label": "Изпращане на средства", "desc": "всяко изпращане, след проверките за сигурност" },
-        { "label": "Разкриване на възстановителната ви фраза", "desc": "преглед или експортиране на резервното копие" },
-        { "label": "Задаване на авариен PIN", "desc": "създаване на аварийния портфейл" },
-        { "label": "Създаване или скриване на портфейл", "desc": "промени в скритите портфейли" }
+        {
+          "label": "Изпращане на средства",
+          "desc": "всяко изпращане, след проверките за сигурност"
+        },
+        {
+          "label": "Разкриване на възстановителната ви фраза",
+          "desc": "преглед или експортиране на резервното копие"
+        },
+        {
+          "label": "Задаване на авариен PIN",
+          "desc": "създаване на аварийния портфейл"
+        },
+        {
+          "label": "Създаване или скриване на портфейл",
+          "desc": "промени в скритите портфейли"
+        }
       ],
       "currently_enforcing": "В момента се прилага:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Скорошни",
     "tab_home": "Начало",
     "tab_send": "Изпрати",
-    "tab_receive": "Получи"
+    "tab_receive": "Получи",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Назад"
@@ -343,8 +356,14 @@
     "heading": "Изпрати криптовалута",
     "subheading": "Прехвърляйте средства сигурно",
     "wallet_fallback": "Портфейл",
-    "wallet_picker": { "label": "От портфейл", "placeholder": "Избери портфейл" },
-    "asset_picker": { "label": "Актив", "placeholder": "Избери актив" },
+    "wallet_picker": {
+      "label": "От портфейл",
+      "placeholder": "Избери портфейл"
+    },
+    "asset_picker": {
+      "label": "Актив",
+      "placeholder": "Избери актив"
+    },
     "recipient": {
       "label": "Изпрати до (адрес или име)",
       "placeholder": "Поставете адрес или въведете име (напр. vitalik.eth)",
@@ -404,7 +423,10 @@
       "dev_ungate_body": "— бариерата за изпращане е заобиколена за {{currency}} чрез VITE_DEV_UNGATE_SEND (само за версии за разработка). Статусът на този актив е непроменен (все още не е на живо); основната мрежа остава блокирана. Само за тестова проверка — никога не пускайте тази версия в продукция.",
       "locked": "Портфейлът ви е заключен. Отключете го в Настройки на портфейла, за да подписвате и изпращате."
     },
-    "note": { "label": "Бележка (незадължително)", "placeholder": "За какво е това?" },
+    "note": {
+      "label": "Бележка (незадължително)",
+      "placeholder": "За какво е това?"
+    },
     "trezor": {
       "toggle_label": "Подпиши с Trezor",
       "connected": "Устройството е свързано",
@@ -415,7 +437,9 @@
       "confirm_send": "Потвърди и изпрати",
       "back": "Назад"
     },
-    "verify": { "summary_label": "Изпращате" },
+    "verify": {
+      "summary_label": "Изпращате"
+    },
     "fee": {
       "automatic": "Мрежовата такса се задава автоматично за {{currency}} ({{network}}).",
       "native_fee_note": "Мрежовата такса се плаща в {{symbol}} ({{network}}) — трябва ви {{symbol}}, за да покриете мрежовата такса дори при изпращане на {{token}}."
@@ -708,5 +732,46 @@
     "allocation": "Разпределение",
     "holdings": "Активи",
     "noHoldings": "Все още няма активи."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

@@ -13,9 +13,9 @@ describe('tierToBadge — StrongBox / SecureEnclave (strongest, success variant)
     expect(b.variant).toBe('success');
   });
 
-  it('maps SecureEnclave to "Secure Enclave Protected" with success variant', () => {
+  it('maps SecureEnclave to device-bound wording with success variant', () => {
     const b = tierToBadge('SecureEnclave');
-    expect(b.label).toBe('Secure Enclave Protected');
+    expect(b.label).toBe('Device Protected');
     expect(b.variant).toBe('success');
   });
 });

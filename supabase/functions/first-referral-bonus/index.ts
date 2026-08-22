@@ -1,14 +1,15 @@
 // supabase/functions/first-referral-bonus/index.ts
 //
-// Supabase Edge Function: grants the REFERRER a 1-month free Safety Plus
+// Supabase Edge Function: grants the REFERRER a 1-month promotional
 // entitlement via RevenueCat when their first referee converts to paid.
 //
 // Called by the client after record_attribution succeeds. The function:
 //   1. Rate-limits the attempt (record_bonus_claim_attempt, 5/hour/code)
 //   2. Calls check_first_referral_bonus(p_code) — atomically claims the bonus
 //      and returns the referrer's RevenueCat app_user_id, or NULL
-//   3. If claimed, calls the RevenueCat REST API to grant a promotional
-//      entitlement for 1 month
+//   3. If claimed, reads the FIRST paid attribution family for the code
+//   4. Calls the RevenueCat REST API to grant a 1-month promotional
+//      entitlement that matches that paid plan family
 //
 // ─── H-1 (2026-07-28 internal audit): PREREQUISITE FOR DEPLOY ───────────────
 //
@@ -82,7 +83,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
-const ENTITLEMENT_ID = 'safety_plus';
 const BONUS_DURATION = 'P1M'; // ISO 8601: 1 month
 
 // M-8: RC calls can hang. AbortController + this timeout turn a hang into a
@@ -123,6 +123,24 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'capacitor://localhost',
   'https://localhost',
 ];
+
+const LEGACY_SAFETY_PLUS_PLANS = new Set(['monthly', 'annual']);
+
+function resolveBonusEntitlementId(plan: string | null): string | null {
+  const safetyPlusEntitlement =
+    Deno.env.get('SAFETY_PLUS_REFERRAL_BONUS_ENTITLEMENT_ID') || 'safety_plus';
+  const aiEntitlement =
+    Deno.env.get('AI_SECURITY_PROTECTION_REFERRAL_BONUS_ENTITLEMENT_ID') ||
+    'ai_security_protection';
+  if (!plan) return null;
+  if (LEGACY_SAFETY_PLUS_PLANS.has(plan) || plan.startsWith('safety_plus_')) {
+    return safetyPlusEntitlement;
+  }
+  if (plan.startsWith('ai_security_protection_')) {
+    return aiEntitlement;
+  }
+  return null;
+}
 
 function allowedOrigins(): Set<string> {
   const extra = (Deno.env.get('ALLOWED_ORIGINS') ?? '')
@@ -320,7 +338,34 @@ serve(async (req: Request) => {
 
     // Grant 1-month promotional entitlement via RevenueCat REST API v1.
     // POST /v1/subscribers/{app_user_id}/entitlements/{entitlement_id}/promotional
-    const rcUrl = `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(rcUserId)}/entitlements/${ENTITLEMENT_ID}/promotional`;
+    const { data: firstAttribution, error: attrErr } = await supabase
+      .from('referral_attributions')
+      .select('plan')
+      .eq('referral_code', referralCode)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (attrErr) {
+      console.error('attribution read failed:', attrErr.message);
+      await supabase
+        .from('referrals')
+        .update({ first_bonus_granted_at: null })
+        .eq('code', referralCode);
+      return json({ error: 'db_error' }, 500, origin);
+    }
+
+    const entitlementId = resolveBonusEntitlementId(firstAttribution?.plan ?? null);
+    if (!entitlementId) {
+      console.error('unsupported_attribution_plan:', firstAttribution?.plan ?? null);
+      await supabase
+        .from('referrals')
+        .update({ first_bonus_granted_at: null })
+        .eq('code', referralCode);
+      return json({ error: 'unsupported_plan', released: true }, 422, origin);
+    }
+
+    const rcUrl = `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(rcUserId)}/entitlements/${entitlementId}/promotional`;
 
     // audit(outcome, status?, errorExcerpt?) — best-effort; if the insert
     // itself fails we log and move on, because failing the response on an

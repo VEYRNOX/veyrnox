@@ -12,6 +12,7 @@ import { BrowserRouter as Router, Route, Routes, useParams } from 'react-router'
 import PageNotFound from './lib/PageNotFound';
 import { WalletProvider } from '@/lib/WalletProvider';
 import { TrezorProvider } from '@/context/TrezorContext';
+import { DigitalShieldProvider } from '@/context/DigitalShieldContext';
 import { TierProvider } from '@/lib/TierProvider';
 import WalletGate from '@/components/WalletGate';
 import { NotificationsProvider } from '@/notify/useNotifications';
@@ -89,6 +90,7 @@ const HDWalletManager = lazy(() => import('./pages/HDWalletManager'));
 const TrustScore = lazy(() => import('./pages/TrustScore'));
 const SolanaTokens = lazy(() => import('./pages/SolanaTokens'));
 const CryptoDetailPage = lazy(() => import('./pages/CryptoDetailPage'));
+const SuspiciousAssets = lazy(() => import('./pages/SuspiciousAssets'));
 
 // DEV-ONLY: throwaway PRF-in-WebView spike that gates the KEK build (see
 // src/dev/prfSpike.js). import.meta.env.DEV is statically false in any production
@@ -235,6 +237,7 @@ const AuthenticatedApp = () => {
           <Route path="/features" element={<Navigate replace to="/docs" />} />
           <Route path="/plans" element={<Subscription />} />
           <Route path="/safety-plus" element={<SafetyPlus />} />
+          <Route path="/suspicious-assets" element={<SuspiciousAssets />} />
           <Route path="/referrals" element={<ReferralTracker />} />
           <Route path="/verify" element={<SeedVerificationPage />} />
         </Route>
@@ -281,20 +284,22 @@ function App() {
       <ErrorBoundary>
         <WalletProvider>
           <TrezorProvider>
-          <TierProvider>
-            <QueryClientProvider client={queryClientInstance}>
-              <Router>
-                <DeepLinkHandler />
-                <VoiceProvider>
-                  <EnvBadge />
-                  <AuthenticatedApp />
-                  <VoiceFab />
-                  <OfflineBanner />
-                </VoiceProvider>
-              </Router>
-              <Toaster />
-            </QueryClientProvider>
-          </TierProvider>
+            <TierProvider>
+              <QueryClientProvider client={queryClientInstance}>
+                <Router>
+                  <VoiceProvider>
+                    <DigitalShieldProvider>
+                      <DeepLinkHandler />
+                      <EnvBadge />
+                      <AuthenticatedApp />
+                      <VoiceFab />
+                      <OfflineBanner />
+                    </DigitalShieldProvider>
+                  </VoiceProvider>
+                </Router>
+                <Toaster />
+              </QueryClientProvider>
+            </TierProvider>
           </TrezorProvider>
         </WalletProvider>
       </ErrorBoundary>

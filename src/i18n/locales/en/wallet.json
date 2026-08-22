@@ -133,7 +133,7 @@
       "test_cancelled": "Prompt cancelled"
     },
     "passkey_unlock": {
-      "heading_native": "Biometric unlock",
+      "heading_native": "Biometric verification",
       "heading_web": "Unlock with Passkey",
       "scope_banner_native_pre": "Your fingerprint or face is checked before unlocking —",
       "scope_banner_native_post": "not a replacement for your password. Your password and recovery phrase still work on their own, so losing biometrics never locks you out.",
@@ -241,10 +241,22 @@
       "intro": "An extra check on top of your PIN for sensitive actions. Even if someone sees you type your PIN, they still can't do these things without the second step.",
       "actions_protects_label": "Actions it protects",
       "gated_actions": [
-        { "label": "Sending funds", "desc": "every send, after safety checks" },
-        { "label": "Revealing your recovery phrase", "desc": "viewing or exporting your backup" },
-        { "label": "Setting an Emergency PIN", "desc": "creating the Emergency wallet" },
-        { "label": "Creating or hiding a wallet", "desc": "hidden wallet changes" }
+        {
+          "label": "Sending funds",
+          "desc": "every send, after safety checks"
+        },
+        {
+          "label": "Revealing your recovery phrase",
+          "desc": "viewing or exporting your backup"
+        },
+        {
+          "label": "Setting an Emergency PIN",
+          "desc": "creating the Emergency wallet"
+        },
+        {
+          "label": "Creating or hiding a wallet",
+          "desc": "hidden wallet changes"
+        }
       ],
       "currently_enforcing": "Currently enforcing:",
       "badge_biometric": "PIN + {{label}}",
@@ -373,14 +385,26 @@
       "browser_open_failed": "Couldn’t open the checkout window. Please try again.",
       "amount_malformed": "Enter an amount as digits with a single decimal point — for example 50 or 49.99."
     },
-    "receives_note": "You’ll receive {{received}} on {{network}}."
+    "receives_note": "You’ll receive {{received}} on {{network}}.",
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
   },
   "send": {
     "heading": "Send Crypto",
     "subheading": "Transfer funds securely",
     "wallet_fallback": "Wallet",
-    "wallet_picker": { "label": "From Wallet", "placeholder": "Select wallet" },
-    "asset_picker": { "label": "Asset", "placeholder": "Select asset" },
+    "wallet_picker": {
+      "label": "From Wallet",
+      "placeholder": "Select wallet"
+    },
+    "asset_picker": {
+      "label": "Asset",
+      "placeholder": "Select asset"
+    },
     "recipient": {
       "label": "Send to (address or name)",
       "placeholder": "Paste an address or enter a name (e.g. vitalik.eth)",
@@ -441,7 +465,10 @@
       "dev_ungate_body": "— the send gate is bypassed for {{currency}} via VITE_DEV_UNGATE_SEND (dev build only). This asset's status is unchanged (still not live); mainnet remains gated. Testnet verification only — never ship this build.",
       "locked": "Your wallet is locked. Unlock it in Wallet Settings to sign and send."
     },
-    "note": { "label": "Note (optional)", "placeholder": "What's this for?" },
+    "note": {
+      "label": "Note (optional)",
+      "placeholder": "What's this for?"
+    },
     "trezor": {
       "toggle_label": "Sign with Trezor",
       "connected": "Device connected",
@@ -452,7 +479,9 @@
       "confirm_send": "Confirm & Send",
       "back": "Back"
     },
-    "verify": { "summary_label": "You're sending" },
+    "verify": {
+      "summary_label": "You're sending"
+    },
     "fee": {
       "automatic": "Network fee is set automatically for {{currency}} ({{network}}).",
       "native_fee_note": "Network fee is paid in {{symbol}} ({{network}}) — you need {{symbol}} to cover the network fee even when sending {{token}}."
@@ -745,5 +774,28 @@
     "allocation": "Allocation",
     "holdings": "Holdings",
     "noHoldings": "No holdings yet."
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

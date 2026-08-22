@@ -16,6 +16,7 @@ import BackButton from "@/components/BackButton";
 import SuccessBeacon from "@/components/SuccessBeacon";
 import RiskShield from "@/components/RiskShield";
 import { motion, useReducedMotion } from "motion/react";
+import { Buffer } from "buffer";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
 import { useTrezor } from '../context/TrezorContext.jsx';
 // Issue #961 (SEND H-1): the Trezor EVM branch now goes through the audited
@@ -25,7 +26,7 @@ import { useTrezor } from '../context/TrezorContext.jsx';
 // BTC + SOL Trezor branches still use their raw wrappers (unrelated to #961).
 import { trezorSignBtcTx } from '../wallet-core/hw/trezor.js';
 import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wallet-core/evm/hw-send.js';
-import { signAndBroadcastSolTrezor } from '../wallet-core/sol/hw-send.js';
+import { useDigitalShield } from '@/context/DigitalShieldContext';
 import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
 import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
@@ -38,21 +39,24 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet, Activity } from "lucide-react";
 import QRScanner from "../components/QRScanner";
+import UrQrPlayer from "@/components/hw/UrQrPlayer";
 import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
 import TransactionPreview from "@/components/TransactionPreview";
 import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
+import TransactionIntelligencePanel from "@/components/TransactionIntelligencePanel";
 import { toast } from "@/lib/toast";
 import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
 import { useNavigate, useSearchParams } from "react-router";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
-import { MAX_BASE_FEE_GWEI } from "@/wallet-core/evm/fees";
+import { MAX_BASE_FEE_GWEI, evmFeeOverrides } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getBalanceSats } from "@/wallet-core/btc/provider.js";
 import { getBalanceSol } from "@/wallet-core/sol/provider.js";
@@ -61,17 +65,23 @@ import { isDevSendUngated } from "@/lib/devSendOverride";
 import { signAndBroadcastBtc, estimateBtcSend, broadcastBtcTx } from "@/wallet-core/btc/send";
 import { describeBtcPlan } from "@/wallet-core/btc/simulate";
 import { signAndBroadcastSol, buildUnsignedSolTx } from "@/wallet-core/sol/send";
+import { getSolNetwork } from "@/wallet-core/sol/networks.js";
+import { broadcastRawTx, confirmTx } from "@/wallet-core/sol/provider.js";
 import { toBaseUnits, normalizeSendResult } from "@/lib/sendDispatch";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
+import { composeTransactionVerdict } from "@/risk/composeVerdict";
+import { buildReviewContributor } from "@/risk/reviewContributor";
 import { TIER, useRaspArtifact, getFreshRaspArtifact } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
+import { deriveSigningPolicy } from "@/policy/signingPolicy";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
+import { verifyLiveChainId, applyEstimatedGasLimit } from "@/wallet-core/evm/preflight.js";
 import SecurityAdvisorBanner from "@/components/SecurityAdvisorBanner";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { sendAddressErrorKind } from "@/lib/sendAddressError";
@@ -95,6 +105,7 @@ import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet,
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import { screenTransaction } from "@/api/tipScreen";
 import { ZERO_FROM_ADDRESS } from "@/lib/tipZeroFrom.js";
+import { persistRemoteScreenPreference, readRemoteScreenPreference } from "@/lib/remoteScreenPreference.js";
 import { resolveTipChain } from "./sendCryptoTipChain";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
@@ -104,6 +115,15 @@ import { requiresVerification } from "@/lib/seedVerifyGate";
 import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
 import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
 import { isRiskGateReady } from "@/lib/riskGateReady";
+import { openAdvisor, publishAdvisorContext } from "@/lib/advisorBridge";
+import {
+  buildDigitalShieldBtcPsbt,
+  buildDigitalShieldEvmRequest,
+  buildDigitalShieldSolRequest,
+  finalizeDigitalShieldBtcResponse,
+  finalizeDigitalShieldEvmResponse,
+  finalizeDigitalShieldSolResponse,
+} from "@/wallet-core/hw/digitalShield.js";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -120,6 +140,12 @@ function enrichWithTip(simResult, tipResult) {
       mode: simResult.source?.mode ? `${simResult.source.mode}+tip` : 'tip',
     },
   };
+}
+
+function parseDigitalShieldQr(raw) {
+  const trimmed = String(raw || '').trim();
+  if (!/^ur:/i.test(trimmed) || trimmed.length > 2048) return null;
+  return trimmed.toUpperCase();
 }
 
 // M-3: form-boundary amount validity. `parseFloat(amount) <= 0` alone ACCEPTS
@@ -139,6 +165,11 @@ export function isFormAmountWellFormed(amountStr) {
   return /[1-9]/.test(s);
 }
 
+async function loadTrezorSolSender() {
+  // Trezor SOL stays isolated from the mixed Ledger+Trezor module so the SEND
+  // route bundle never pulls Ledger's bare Android-unsafe package specifier.
+  return import('../wallet-core/sol/hw-send-trezor.js');
+}
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
@@ -329,8 +360,17 @@ export default function SendCrypto() {
 
   // TREZOR hardware-wallet signing mode
   const { connected: trezorConnected, platform: trezorPlatform, evmAddress: trezorEvmAddress, btcAddress: trezorBtcAddress, solAddress: trezorSolAddress } = useTrezor();
+  const { connected: digitalShieldConnected, evmAccount: digitalShieldEvmAccount, btcAccount: digitalShieldBtcAccount, solAccount: digitalShieldSolAccount } = useDigitalShield();
   const [useTrezorMode, setUseTrezorMode] = useState(false);
   const [trezorModalOpen, setTrezorModalOpen] = useState(false);
+  const [useDigitalShieldMode, setUseDigitalShieldMode] = useState(false);
+  const [digitalShieldDialogOpen, setDigitalShieldDialogOpen] = useState(false);
+  const [digitalShieldScannerOpen, setDigitalShieldScannerOpen] = useState(false);
+  const [digitalShieldResponseDraft, setDigitalShieldResponseDraft] = useState("");
+  const [digitalShieldResponseParts, setDigitalShieldResponseParts] = useState([]);
+  const [digitalShieldFlow, setDigitalShieldFlow] = useState(null);
+  const [digitalShieldError, setDigitalShieldError] = useState("");
+  const [digitalShieldBusy, setDigitalShieldBusy] = useState(false);
 
   // STEP-UP RE-AUTH state (replaces the stranded passkey/OTP 2FA).
   const [reauthValue, setReauthValue] = useState("");
@@ -495,11 +535,7 @@ export default function SendCrypto() {
   // can always toggle it; the choice is persisted across sessions.
   const tipConfigured = !!import.meta.env.VITE_TIP_BASE_URL;
   const [remoteScreen, setRemoteScreen] = useState(() => {
-    try {
-      const stored = localStorage.getItem("veyrnox-remote-screen");
-      if (stored !== null) return stored === "1";
-      return tipConfigured;
-    } catch { return tipConfigured; }
+    return readRemoteScreenPreference(tipConfigured);
   });
   const toggleRemoteScreen = (v) => {
     setRemoteScreen(v);
@@ -508,7 +544,7 @@ export default function SendCrypto() {
     // change the real user's default on the next primary unlock. In-memory
     // state still updates so the current session behaves as chosen.
     if (isDecoy || isHidden) return;
-    try { localStorage.setItem("veyrnox-remote-screen", v ? "1" : "0"); } catch { /* ignore */ }
+    persistRemoteScreenPreference(v);
   };
 
   // User-controlled simulation toggle. On by default; persisted so the choice
@@ -529,12 +565,23 @@ export default function SendCrypto() {
   // (.currency/.address/.balance) from the live source, so downstream send / limit /
   // screening logic is unchanged. Address comes from the active wallet's derived
   // accounts (EVM shared / BTC / SOL) via resolveReceive.
-  const selectedWallet = /** @type {any} */ (buildSendWallet({ wallets: srcWallets, walletId, assetSymbol, accounts: srcAccounts, btcAccount: srcBtcAccount, solAccount: srcSolAccount }));
+  const vaultSelectedWallet = /** @type {any} */ (buildSendWallet({ wallets: srcWallets, walletId, assetSymbol, accounts: srcAccounts, btcAccount: srcBtcAccount, solAccount: srcSolAccount }));
 
   // Capability gate: only assets whose status is `live` may move funds. ETH is
   // live (Phase A); ERC-20 tokens (Phase B) are receive_only until a testnet
   // transfer is verified, so they read balances but cannot yet send.
-  const selectedAsset = /** @type {any} */ (getAsset(selectedWallet?.currency));
+  const selectedAsset = /** @type {any} */ (getAsset(assetSymbol || vaultSelectedWallet?.currency));
+  const digitalShieldAccount = useMemo(() => {
+    if (!useDigitalShieldMode) return null;
+    if (selectedAsset?.family === "btc") return digitalShieldBtcAccount;
+    if (selectedAsset?.family === "solana") return digitalShieldSolAccount;
+    return digitalShieldEvmAccount;
+  }, [useDigitalShieldMode, selectedAsset?.family, digitalShieldBtcAccount, digitalShieldSolAccount, digitalShieldEvmAccount]);
+  const selectedWallet = /** @type {any} */ (
+    useDigitalShieldMode && digitalShieldAccount
+      ? { ...(vaultSelectedWallet || {}), id: `${walletId || 'hardware'}:digital-shield`, name: `${selectedWalletName || 'Wallet'} · Digital Shield`, currency: assetSymbol || vaultSelectedWallet?.currency, address: digitalShieldAccount.address, balance: 0 }
+      : vaultSelectedWallet
+  );
   const sendEnabled = canSend(selectedAsset);
   const isErc20 = selectedAsset?.family === "erc20";
 
@@ -855,6 +902,13 @@ export default function SendCrypto() {
     () => knownAddresses.map((k) => k.address?.toLowerCase()).filter(Boolean),
     [knownAddresses]
   );
+  const reviewContributor = useMemo(() => buildReviewContributor({
+    recipient: toAddress || null,
+    currency: selectedWallet?.currency || null,
+    history,
+    knownAddresses,
+    whitelist,
+  }), [toAddress, selectedWallet?.currency, history, knownAddresses, whitelist]);
 
   // PRE-SIGN TRANSACTION SIMULATION (Phase S2). Before the user confirms, dry-run
   // the transaction against the EXISTING RPC (eth_call / eth_getBalance /
@@ -1081,6 +1135,74 @@ export default function SendCrypto() {
     && presign?.decision !== 'block';
   const blockedByRaspBio = raspNeedsBio && !raspWarnBioOk;
 
+  const txIntelVerdict = useMemo(() => composeTransactionVerdict({
+    localVerdict: riskVerdict,
+    localApplicable: riskApplicable,
+    localSettled: riskApplicable ? riskReady : false,
+    tipResult: tipQuery.data ?? null,
+    tipApplicable: tipScreenApplies,
+    tipSettled: !tipScreenApplies || tipQuery.isSuccess || tipQuery.isError,
+    review: reviewContributor,
+    raspTier,
+    raspArtifact,
+    presign,
+  }), [riskVerdict, riskApplicable, riskReady, tipQuery.data, tipQuery.isSuccess, tipQuery.isError, tipScreenApplies, reviewContributor, raspTier, raspArtifact, presign]);
+
+  const txIntelPolicy = useMemo(() => deriveSigningPolicy({
+    verdict: txIntelVerdict,
+    presign,
+    acknowledged: riskAck,
+    raspNeedsBio,
+    biometricCleared: raspWarnBioOk,
+  }), [txIntelVerdict, presign, riskAck, raspNeedsBio, raspWarnBioOk]);
+
+  const advisorTxContext = useMemo(() => {
+    if (step !== 'verify' || !selectedWallet?.currency) return null;
+    return {
+      transaction_intelligence: {
+        asset: selectedWallet.currency,
+        amount: amount || null,
+        recipient: toAddress || null,
+        level: txIntelVerdict?.level ?? null,
+        owner: txIntelVerdict?.owner ?? null,
+        primary_reason: txIntelVerdict?.primaryReason ?? null,
+        policy_decision: txIntelPolicy?.decision ?? null,
+        policy_action: txIntelPolicy?.actionLabel ?? null,
+        recommend_hardware_signer: txIntelPolicy?.recommendHardwareSigner === true,
+        contributors: Array.isArray(txIntelVerdict?.contributors)
+          ? txIntelVerdict.contributors.map((c) => ({
+              id: c.id,
+              label: c.label,
+              applicable: c.applicable,
+              settled: c.settled,
+              level: c.level ?? null,
+              summary: c.summary ?? null,
+            }))
+          : [],
+        local_signals: Array.isArray(txIntelVerdict?.localSignals)
+          ? txIntelVerdict.localSignals.map((s) => ({
+              id: s.id,
+              level: s.level,
+              summary: s.summary ?? null,
+            }))
+          : [],
+      },
+    };
+  }, [step, selectedWallet, amount, toAddress, txIntelVerdict, txIntelPolicy]);
+
+  useEffect(() => {
+    publishAdvisorContext(advisorTxContext);
+    return () => publishAdvisorContext(null);
+  }, [advisorTxContext]);
+
+  const handleAskAdvisorAboutTx = () => {
+    openAdvisor({
+      question: "Explain this transaction risk and tell me what I should verify before signing.",
+      autoSend: true,
+      context: advisorTxContext,
+    });
+  };
+
   // BTC pre-sign risk gate (internal audit M-2). BTC isn't EVM-shaped, so it has no
   // `presign` verdict — instead its honest decode (btcSim → describeBtcPlan) raises
   // high-severity flags (e.g. entire_balance). A high flag requires the same explicit
@@ -1202,9 +1324,31 @@ export default function SendCrypto() {
 
       let riskScoreFailed = false;
       let presignAtSign = /** @type {any} */ (null);
+      let txPolicyAtSign = /** @type {any} */ (null);
       try {
         const freshScore = scoreCurrentSend();
         presignAtSign = presignGate(freshRaspTier, freshScore.level, riskAck);
+        const txVerdictAtSign = composeTransactionVerdict({
+          localVerdict: freshScore,
+          localApplicable: riskApplicable,
+          localSettled: riskApplicable ? riskReady : false,
+          tipResult: tipQuery.data ?? null,
+          tipApplicable: tipScreenApplies,
+          tipSettled: !tipScreenApplies || tipQuery.isSuccess || tipQuery.isError,
+          review: reviewContributor,
+          raspTier: freshRaspTier,
+          raspArtifact: freshArtifact,
+          presign: presignAtSign,
+        });
+        txPolicyAtSign = deriveSigningPolicy({
+          verdict: txVerdictAtSign,
+          presign: presignAtSign,
+          acknowledged: riskAck,
+          raspNeedsBio: freshArtifact?.requiresBiometric === true
+            && Capacitor.isNativePlatform()
+            && presignAtSign?.decision !== 'block',
+          biometricCleared: raspWarnBioOk,
+        });
         // Fire-and-forget (I4) — notification failure must never block or unwind the send.
         notifyTxRiskAlert({ level: freshScore.level, sentence: freshScore.sentence, signalId: freshScore.signalId, ts: Date.now() });
       } catch {
@@ -1248,6 +1392,7 @@ export default function SendCrypto() {
         limit: limitGate,
         limitAck,
         riskScoreFailed,
+        txPolicy: txPolicyAtSign,
         presign: presignAtSign,
         // BTC risk re-checked from the settled preview at signing time (M-2), so a
         // high decode flag can't be bypassed by stale UI state — mirrors how the EVM
@@ -1351,6 +1496,7 @@ export default function SendCrypto() {
         if (useTrezorMode) {
           if (!trezorConnected) throw new Error('Trezor not connected');
           if (!trezorSolAddress) throw new Error('Trezor SOL address not available');
+          const { signAndBroadcastSolTrezor } = await loadTrezorSolSender();
           // SOL Trezor path: the key never leaves the device (I1). Codex P1
           // 2026-08-15: the previous raw buildUnsignedSolTx + trezorSignSolTx
           // + attachSolSignature chain bypassed the audited planSolTransfer
@@ -1602,7 +1748,7 @@ export default function SendCrypto() {
       }
       if (result.ok) {
         setReauthValue("");
-        sendTx.mutate();
+        void startSendAttempt();
         return;
       }
       const n = reauthAttempts + 1;
@@ -1626,6 +1772,195 @@ export default function SendCrypto() {
       setReauthError(tw("send.reauth.errors.unavailable"));
     } finally {
       setReauthPending(false);
+    }
+  };
+
+  const resetDigitalShieldFlow = () => {
+    setDigitalShieldDialogOpen(false);
+    setDigitalShieldScannerOpen(false);
+    setDigitalShieldResponseDraft("");
+    setDigitalShieldResponseParts([]);
+    setDigitalShieldFlow(null);
+    setDigitalShieldError("");
+    setDigitalShieldBusy(false);
+  };
+
+  const startSendAttempt = async () => {
+    if (!useDigitalShieldMode) {
+      sendTx.mutate();
+      return;
+    }
+    if (!digitalShieldConnected || !digitalShieldAccount) {
+      toast.error('Import Digital Shield on the Hardware Wallet page first.');
+      return;
+    }
+    if (isDeniabilityOrDemoActive() || DEMO) {
+      toast.error('Digital Shield signing is disabled in demo and deniability sessions.');
+      return;
+    }
+    setDigitalShieldBusy(true);
+    setDigitalShieldError("");
+    try {
+      if (family === 'btc') {
+        const amountSats = toBaseUnits(canonicalAmount, 8);
+        const { plan } = await estimateBtcSend({
+          networkKey,
+          fromAddress: selectedWallet.address,
+          toAddress,
+          amountSats,
+          changeAddress: selectedWallet.address,
+        });
+        const request = buildDigitalShieldBtcPsbt({
+          account: digitalShieldAccount,
+          plan,
+          networkKey: 'mainnet',
+        });
+        setDigitalShieldFlow({ kind: 'btc', networkKey, plan, ...request });
+      } else if (family === 'solana') {
+        const unsigned = await buildUnsignedSolTx({
+          fromAddress: selectedWallet.address,
+          toAddress,
+          lamports: toBaseUnits(canonicalAmount, 9),
+          networkKey,
+        });
+        const signDataHex = Buffer.from(unsigned.unsignedTxBase64, 'base64').toString('hex');
+        const request = buildDigitalShieldSolRequest({
+          account: digitalShieldAccount,
+          signDataHex,
+        });
+        setDigitalShieldFlow({ kind: 'solana', networkKey, unsigned, ...request });
+      } else {
+        const provider = getProvider(networkKey);
+        const feeData = await provider.getFeeData();
+        const fee = selectedFee?.fee || undefined;
+        const rawMaxFeePerGas = fee?.maxFeePerGas ?? feeData.maxFeePerGas ?? feeData.gasPrice;
+        const feeCapGwei = MAX_BASE_FEE_GWEI[networkKey] ?? 5_000n;
+        const maxFeePerGasCap = feeCapGwei * 1_000_000_000n;
+        const cappedMaxFeePerGas = rawMaxFeePerGas != null && rawMaxFeePerGas > maxFeePerGasCap
+          ? maxFeePerGasCap
+          : rawMaxFeePerGas;
+        const clampedPriorityFee = resolveMaxPriorityFeePerGas(
+          fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n,
+          cappedMaxFeePerGas,
+        );
+        const overrides = evmFeeOverrides((cappedMaxFeePerGas != null)
+          ? {
+              maxFeePerGasWei: cappedMaxFeePerGas.toString(),
+              maxPriorityFeePerGasWei: clampedPriorityFee.toString(),
+            }
+          : undefined);
+        const net = getNetworkInfo(networkKey);
+        await verifyLiveChainId(provider, net.chainId);
+        const pendingNonce = await provider.getTransactionCount(selectedWallet.address, 'pending');
+        let tx;
+        if (isErc20) {
+          const built = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount });
+          tx = {
+            to: built.to,
+            value: 0n,
+            data: built.data,
+            chainId: net.chainId,
+            nonce: pendingNonce,
+            type: 2,
+          };
+        } else {
+          tx = {
+            to: toAddress,
+            value: parseEther(String(canonicalAmount)),
+            data: '0x',
+            chainId: net.chainId,
+            nonce: pendingNonce,
+            type: 2,
+          };
+        }
+        await applyEstimatedGasLimit(provider, { from: selectedWallet.address, to: tx.to, value: tx.value, data: tx.data }, overrides);
+        const request = buildDigitalShieldEvmRequest({
+          account: digitalShieldAccount,
+          tx: { ...tx, ...overrides },
+        });
+        setDigitalShieldFlow({ kind: isErc20 ? 'erc20' : 'evm', networkKey, ...request });
+      }
+      setDigitalShieldDialogOpen(true);
+    } catch (err) {
+      toast.error(err?.message || 'Could not prepare the Digital Shield request.');
+    } finally {
+      setDigitalShieldBusy(false);
+    }
+  };
+
+  const finalizeDigitalShieldSend = async (input) => {
+    if (!digitalShieldFlow) return;
+    setDigitalShieldBusy(true);
+    setDigitalShieldError("");
+    try {
+      let raw;
+      let result;
+      if (digitalShieldFlow.kind === 'btc') {
+        result = finalizeDigitalShieldBtcResponse({
+          session: digitalShieldFlow.session,
+          unsignedPsbtHex: digitalShieldFlow.psbtHex,
+          input,
+        });
+        raw = await broadcastBtcTx(networkKey, result.finalizedTxHex);
+      } else if (digitalShieldFlow.kind === 'solana') {
+        result = finalizeDigitalShieldSolResponse({
+          session: digitalShieldFlow.session,
+          signDataHex: digitalShieldFlow.signDataHex,
+          input,
+        });
+        const { Transaction, PublicKey } = await import('@solana/web3.js');
+        const tx = Transaction.from(Buffer.from(digitalShieldFlow.unsigned.unsignedTxBase64, 'base64'));
+        tx.addSignature(new PublicKey(selectedWallet.address), Buffer.from(result.signatureHex.slice(2), 'hex'));
+        const rawTx = tx.serialize();
+        const sig = await broadcastRawTx(networkKey, rawTx);
+        await confirmTx(
+          networkKey,
+          sig,
+          digitalShieldFlow.unsigned.blockhash,
+          digitalShieldFlow.unsigned.lastValidBlockHeight,
+        );
+        raw = { signature: sig, explorerUrl: `${getSolNetwork(networkKey).explorer}/tx/${sig}` };
+      } else {
+        result = finalizeDigitalShieldEvmResponse({
+          session: digitalShieldFlow.session,
+          unsignedHex: digitalShieldFlow.unsignedHex,
+          input,
+        });
+        const txResponse = await getProvider(networkKey).broadcastTransaction(result.signedHex);
+        raw = {
+          hash: txResponse.hash,
+          explorerUrl: `${getNetworkInfo(networkKey).explorer}/tx/${txResponse.hash}`,
+          wait: (confirmations = 1) => txResponse.wait(confirmations),
+        };
+      }
+      const normalized = normalizeSendResult(digitalShieldFlow.kind, raw);
+      await base44.entities.Transaction.create({
+        wallet_id: walletId,
+        type: "send",
+        amount: parseFloat(canonicalAmount),
+        currency: selectedWallet.currency,
+        to_address: toAddress,
+        from_address: selectedWallet.address,
+        status: "pending",
+        tx_hash: normalized.hash,
+        explorer_url: normalized.explorerUrl,
+        has_note: !!(note && String(note).trim()),
+      });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet?.address] });
+      setTxResult(normalized);
+      setStep("done");
+      resetDigitalShieldFlow();
+      successHaptic();
+      notifySendConfirmed({ amount: `${amount} ${selectedWallet.currency}`, to: toAddress, ts: Date.now() });
+      recordAudit("send_completed");
+      void trackEvent(EVENT.SEND_COMPLETED, { currency: selectedWallet?.currency }).catch(() => {});
+      markFirstSend();
+    } catch (err) {
+      setDigitalShieldError(err?.message || 'Could not verify the Digital Shield response.');
+      errorHaptic();
+    } finally {
+      setDigitalShieldBusy(false);
     }
   };
 
@@ -2114,7 +2449,11 @@ export default function SendCrypto() {
               <input
                 type="checkbox"
                 checked={useTrezorMode}
-                onChange={(e) => { setUseTrezorMode(e.target.checked); if (e.target.checked && !trezorConnected) setTrezorModalOpen(true); }}
+                onChange={(e) => {
+                  setUseTrezorMode(e.target.checked);
+                  if (e.target.checked) setUseDigitalShieldMode(false);
+                  if (e.target.checked && !trezorConnected) setTrezorModalOpen(true);
+                }}
                 className="accent-primary"
               />
               {tw("send.trezor.toggle_label")}
@@ -2127,6 +2466,24 @@ export default function SendCrypto() {
             )}
           </div>
         )}
+        <div className="flex items-center gap-3 -mt-1 mb-4">
+          <label className="flex items-center gap-2 text-muted-foreground text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useDigitalShieldMode}
+              onChange={(e) => {
+                setUseDigitalShieldMode(e.target.checked);
+                if (e.target.checked) setUseTrezorMode(false);
+              }}
+              className="accent-primary"
+            />
+            Use Digital Shield air-gap signing
+          </label>
+          {useDigitalShieldMode && digitalShieldConnected && <span className="text-primary text-xs">✓ Imported</span>}
+          {useDigitalShieldMode && !digitalShieldConnected && (
+            <span className="text-xs text-caution">Import it first on Hardware Wallet</span>
+          )}
+        </div>
         <TrezorConnectModal open={trezorModalOpen} onClose={() => setTrezorModalOpen(false)} onConnected={() => setTrezorModalOpen(false)} btcNetworkKey={networkKey === 'btc-mainnet' ? 'btc-mainnet' : 'btc-testnet'} />
 
         {step === "form" && (
@@ -2187,6 +2544,12 @@ export default function SendCrypto() {
             ) : (
               <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
             )}
+
+            <TransactionIntelligencePanel
+              verdict={txIntelVerdict}
+              policy={txIntelPolicy}
+              onAskAdvisor={handleAskAdvisorAboutTx}
+            />
 
             {/* B5 — biometric re-confirm on native WARN (ROOTED / INTEGRITY_UNAVAILABLE).
                 Rendered OUTSIDE the owner-branch ternary so it appears regardless of which
@@ -2354,7 +2717,7 @@ export default function SendCrypto() {
                     sendError={sendTx.isError ? /** @type {Error} */ (sendTx.error) : null}
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
-                    onSuccess={() => { twoFactorVerifiedRef.current = true; actionHaptic(); sendTx.mutate(); }}
+                    onSuccess={() => { twoFactorVerifiedRef.current = true; actionHaptic(); void startSendAttempt(); }}
                     verify={async ({ pin, password }) => {
                       if (send2faMethod === SEND_2FA.BIOMETRIC) {
                         // BIOMETRIC mode: the user is already unlocked (vault open = PIN proved).
@@ -2394,21 +2757,29 @@ export default function SendCrypto() {
               }
               const reauthRequired = !DEMO && isSendReauthRequired();
               if (!reauthRequired) {
+                const confirmSendDisabled =
+                  blockedByApproval ||
+                  blockedByRisk ||
+                  blockedByRaspBio ||
+                  blockedByBtcRisk ||
+                  sendTx.isPending ||
+                  digitalShieldBusy;
                 return (
                   <Button
                     className="w-full gap-2"
-                    disabled={blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk || sendTx.isPending}
+                    disabled={confirmSendDisabled}
                     onClick={() => {
                       // Re-check freshness at click time (isSendReauthRequired reads a ref, always
                       // current). If the window lapsed while idle on this screen, force a re-render so
                       // the block below switches to the step-up prompt instead of sending.
                       if (!DEMO && isSendReauthRequired()) { setReauthTick((t) => t + 1); return; }
                       actionHaptic();
-                      sendTx.mutate();
+                      void startSendAttempt();
                     }}
                   >
-                    {sendTx.isPending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
-                    {tw("send.buttons.confirm_send")}
+                    {sendTx.isPending || digitalShieldBusy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
+                    {/* blockedByRaspBio is part of confirmSendDisabled above; keep this button text pin nearby for B5. */}
+                    {useDigitalShieldMode ? 'Prepare Digital Shield QR' : tw("send.buttons.confirm_send")}
                   </Button>
                 );
               }
@@ -2424,7 +2795,7 @@ export default function SendCrypto() {
                       value={reauthValue}
                       onChange={setReauthValue}
                       onComplete={submitReauth}
-                      disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
+                      disabled={reauthPending || sendTx.isPending || digitalShieldBusy || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                       submitLabel={tw("send.reauth.submit_pin")}
                     />
                   ) : (
@@ -2439,7 +2810,7 @@ export default function SendCrypto() {
                       />
                       <Button
                         className="w-full gap-2"
-                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
+                        disabled={!reauthValue || reauthPending || sendTx.isPending || digitalShieldBusy || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                         onClick={() => submitReauth(reauthValue)}
                       >
                         {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Lock className="h-4 w-4" />}
@@ -2456,6 +2827,72 @@ export default function SendCrypto() {
         )}
       </div>
     </div>
+    <Dialog open={digitalShieldDialogOpen} onOpenChange={(open) => { if (!open) resetDigitalShieldFlow(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Digital Shield Signing</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-2">
+          <p className="text-sm text-muted-foreground">
+            Scan this request with Digital Shield, approve it on the device, then scan or paste the signed response UR below.
+          </p>
+          {digitalShieldFlow?.urParts?.length ? (
+            <div className="space-y-2">
+              <UrQrPlayer parts={digitalShieldFlow.urParts} size={220} title="Digital Shield request QR" />
+              <textarea
+                readOnly
+                value={digitalShieldFlow.urParts.join('\n')}
+                className="min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-[11px] font-mono"
+              />
+            </div>
+          ) : null}
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => setDigitalShieldScannerOpen(true)}>
+              Scan Signed QR
+            </Button>
+            {digitalShieldResponseParts.length > 0 && (
+              <Button type="button" variant="ghost" onClick={() => { setDigitalShieldResponseParts([]); setDigitalShieldResponseDraft(""); setDigitalShieldError(""); }}>
+                Clear response
+              </Button>
+            )}
+          </div>
+          {digitalShieldResponseParts.length > 0 && (
+            <div className="rounded-lg bg-secondary/40 border border-border p-3 text-xs text-muted-foreground">
+              Scanned response parts: {digitalShieldResponseParts.length}
+            </div>
+          )}
+          <Label htmlFor="digital-shield-signed-response">Signed response UR</Label>
+          <textarea
+            id="digital-shield-signed-response"
+            value={digitalShieldResponseDraft || digitalShieldResponseParts.join('\n')}
+            onChange={(e) => setDigitalShieldResponseDraft(e.target.value)}
+            placeholder="Paste one UR or multiple UR response parts here"
+            className="min-h-28 w-full rounded-lg border border-input bg-background px-3 py-2 text-[11px] font-mono"
+          />
+          {digitalShieldError ? <p className="text-xs text-destructive break-all">{digitalShieldError}</p> : null}
+          <Button
+            className="w-full"
+            disabled={digitalShieldBusy || !(digitalShieldResponseDraft || digitalShieldResponseParts.length)}
+            onClick={() => finalizeDigitalShieldSend(digitalShieldResponseDraft || digitalShieldResponseParts)}
+          >
+            {digitalShieldBusy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : null}
+            Finalize and Broadcast
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    {digitalShieldScannerOpen && (
+      <QRScanner
+        parse={parseDigitalShieldQr}
+        title="Scan Signed Digital Shield QR"
+        helperText="Scan each signed UR fragment from the device. If there are multiple parts, reopen the scanner for the next one."
+        onScan={(value) => {
+          setDigitalShieldResponseParts((current) => current.includes(value) ? current : [...current, value]);
+          setDigitalShieldScannerOpen(false);
+        }}
+        onClose={() => setDigitalShieldScannerOpen(false)}
+      />
+    )}
     </>
   );
 }

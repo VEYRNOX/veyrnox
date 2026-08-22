@@ -118,9 +118,11 @@ async function waitForAuthedShell(page) {
   // DENY, never grant: a test must not switch real telemetry egress on. See
   // CLAUDE.md on the run that wrote 126 events to production Supabase.
   const consentDeny = page.getByRole('button', { name: 'No thanks' });
-  const dismissCreatedFlash = page.getByRole('button', {
-    name: 'Skip for now — take me to my wallet',
-  });
+  // Post-#1900: the created-flash CTA was renamed. Match either label so tests
+  // still pass against pre- and post-rename builds without a coordinated bump.
+  const dismissCreatedFlash = page
+    .getByRole('button', { name: 'Go to my wallet' })
+    .or(page.getByRole('button', { name: 'Skip for now — take me to my wallet' }));
   const dismissReceiveCard = page.getByRole('button', { name: "You're set" });
   const sendLink = page.getByRole('link', { name: 'Send', exact: true });
 

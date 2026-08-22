@@ -9,6 +9,8 @@
 // Returns:
 //   gateActive  — boolean: true when a restored vault needs hardware re-enrollment
 //   dismiss()   — clears the gate (call on complete OR skip)
+//   suppressInsecureTier() — persist "this device cannot satisfy the KEK bar"
+//                            so future unlocks do not re-prompt forever
 //   enroll(pin) — async: runs the full enrollment flow, returns
 //                   { ok: true } on success
 //                   { ok: false, msg: string, isInsecureTier: bool, isWrongPin: bool } on error
@@ -78,18 +80,18 @@ function isWrongPinVaultError(e) {
 function classifyEnrollError(e) {
   const code = e?.code;
   const emsg = e?.message || '';
+  if (code === KEK_ERR.NO_HARDWARE_FACTOR || code === 'KEK_NO_HARDWARE_FACTOR') {
+    return { msg: NO_HARDWARE_MSG, isInsecureTier: false, isWrongPin: false };
+  }
   if (code === 'KEK_ENROLL_INSECURE_TIER') {
     return { msg: INSECURE_TIER_MSG, isInsecureTier: true, isWrongPin: false };
   }
   if (
     code === KEK_ERR.UNWRAP_FAILED ||
-    code === KEK_ERR.NO_HARDWARE_FACTOR ||
     code === 'WRONG_PASSWORD' ||
-    code === 'KEK_NO_HARDWARE_FACTOR' ||
     isWrongPinVaultError(e)
   ) {
-    const msg = code === KEK_ERR.NO_HARDWARE_FACTOR ? NO_HARDWARE_MSG : WRONG_PIN_MSG;
-    return { msg, isInsecureTier: false, isWrongPin: true };
+    return { msg: WRONG_PIN_MSG, isInsecureTier: false, isWrongPin: true };
   }
   // Stale hardware key from a previous install — auto-clear failed in the native layer.
   // Codes: KEK_CLEAR_STALE_FAILED (Android), STALE_CLEAR_FAILED (iOS).
@@ -210,6 +212,9 @@ export function useKekEnrollmentGate({ isUnlocked }) {
   }, []);
 
   const dismiss = useCallback(() => setGateActive(false), []);
+  const suppressInsecureTier = useCallback(() => {
+    persistKekInsecureTier();
+  }, []);
 
-  return { gateActive, enroll, dismiss };
+  return { gateActive, enroll, dismiss, suppressInsecureTier };
 }
