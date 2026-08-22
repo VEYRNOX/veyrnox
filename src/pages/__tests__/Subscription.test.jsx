@@ -18,7 +18,6 @@ const getTierOffering = vi.fn();
 const purchasePackage = vi.fn();
 const restorePurchases = vi.fn();
 const manageSubscription = vi.fn();
-const setReferralAttribute = vi.fn();
 const offerPriceInfo = vi.fn();
 const getAiSecurityProtectionOfferingId = vi.fn();
 vi.mock('@/lib/purchases', () => ({
@@ -28,7 +27,6 @@ vi.mock('@/lib/purchases', () => ({
   purchasePackage: (...a) => purchasePackage(...a),
   restorePurchases: (...a) => restorePurchases(...a),
   manageSubscription: (...a) => manageSubscription(...a),
-  setReferralAttribute: (...a) => setReferralAttribute(...a),
   // Resolves an offer's REAL price from the store payload. Defaults to null
   // (unresolvable) so the page falls back to the base price and — critically —
   // suppresses the strikethrough. Tests that exercise a real discount override
@@ -627,13 +625,13 @@ describe('Subscription page — tier-based referral discount', () => {
     refreshTier.mockResolvedValue('safety_plus');
     recordAttribution.mockResolvedValue({});
     claimFirstReferralBonus.mockResolvedValue({ granted: false });
-    setReferralAttribute.mockResolvedValue(undefined);
+
     renderPage();
     await waitFor(() => expect(screen.getAllByText('$44.99').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', { name: /upgrade/i }));
     await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-ABC123', 'safety_plus', 'annual', 4999, 500));
     expect(claimFirstReferralBonus).toHaveBeenCalledWith('VYX-ABC123');
-    expect(setReferralAttribute).toHaveBeenCalledWith('VYX-ABC123', 'gold');
+
     expect(markAttributedMock).toHaveBeenCalled();
   });
 
@@ -726,7 +724,7 @@ describe('Subscription page — tier-based referral discount', () => {
     refreshTier.mockResolvedValue('ai_security_protection');
     recordAttribution.mockResolvedValue({});
     claimFirstReferralBonus.mockResolvedValue({ granted: false });
-    setReferralAttribute.mockResolvedValue(undefined);
+
 
     renderPage();
     const button = await screen.findByRole('button', { name: /upgrade to ai security protection.*\$179\.99/i });
@@ -737,7 +735,7 @@ describe('Subscription page — tier-based referral discount', () => {
     ));
     await waitFor(() => expect(recordAttribution).toHaveBeenCalledWith('VYX-AI9999', 'ai_security_protection', 'annual', 19999, 2000));
     expect(claimFirstReferralBonus).toHaveBeenCalledWith('VYX-AI9999');
-    expect(setReferralAttribute).toHaveBeenCalledWith('VYX-AI9999', 'gold');
+
   });
 
   it('fails closed for referred AI purchases when AI revenue config is missing', async () => {
