@@ -523,35 +523,10 @@ jobs:
             echo "Matrix: \`${{ steps.ios_test.outputs.matrix_id || 'unavailable' }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # --------------------------------------------------------------
-  # Store distribution is deliberately downstream of BOTH device suites. A
-  # staging upload can never race ahead of a red Android or iOS matrix.
-  # --------------------------------------------------------------
-  publish-android-staging:
-    if: >-
-      github.event_name == 'workflow_dispatch'
-      && inputs.platform == 'both'
-      && inputs.publish_staging == true
-    needs: [android-robo, ios-smoke]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Firebase-gated staging AAB
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: veyrnox-staging-aab
-          path: aab-artifact
-          run-id: ${{ needs.android-robo.outputs.ci_run_id }}
-          github-token: ${{ github.token }}
-      - name: Verify staging AAB
-        run: test -s aab-artifact/app-release.aab
-      - name: Upload Android 1.0.1 staging to Play Internal Testing
-        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: com.veyrnox.app
-          releaseFiles: aab-artifact/app-release.aab
-          track: internal
-          status: completed
+  # publish-android-staging removed 2026-08-22: second uncontrolled Play
+  # upload path was consuming versionCodes before ci.yml's
+  # publish-to-play-internal could use them. ci.yml is the single upload
+  # path; firebase validates device suites only.
 
   publish-ios-staging:
     if: >-
