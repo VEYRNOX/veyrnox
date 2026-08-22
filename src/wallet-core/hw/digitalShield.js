@@ -112,7 +112,7 @@ function serializeXpub({ path, parentFingerprint, chainCode, publicKeyHex }) {
   if (!components.length) throw new Error('DIGITAL_SHIELD_INVALID_BIP32_PATH');
   const depth = components.length;
   const last = components[components.length - 1];
-  const index = Number(last.replace("'", ''));
+  const index = Number(last.replace(/'/g, ''));
   const hardened = last.endsWith("'");
   const childIndex = hardened ? index + 0x80000000 : index;
   const payload = Buffer.concat([

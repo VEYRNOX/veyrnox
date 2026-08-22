@@ -30,7 +30,7 @@ function makeKeypath(path, fingerprintHex) {
   return new CryptoKeypath(
     path.split('/').slice(1).map((component) => {
       const hardened = component.endsWith("'");
-      const index = Number(component.replace("'", ''));
+      const index = Number(component.replace(/'/g, ''));
       return new PathComponent({ index, hardened });
     }),
     Buffer.from(fingerprintHex, 'hex'),
