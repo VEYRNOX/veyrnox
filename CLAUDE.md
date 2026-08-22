@@ -274,18 +274,16 @@ Upload key: `veyrnox-upload.jks` (SHA-1 `97:5A:05:8E…:BA:B2:F3`). App signing 
 Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Secrets
 (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`,
 `RELEASE_CERT_SHA256`) updated 2026-07-22 for CI.
-- **versionCode: `build.gradle` is at 11 on `main`** (bumped 2026-08-22).
-  Bumps since: 5→6 (#1319), 6→7 (#1737), 7→8 (#1747), 8→10 (#1890), 10→11 (#1972).
-  Product flavours were added in #1890 but do NOT override `versionCode` — there is
-  still exactly one declaration, at `android/app/build.gradle:25`.
-  - **Codes 1–10 consumed on Play.** 1–5 from early uploads. 10 consumed despite
-    `publish-to-play-internal` failing on the verify step (AAB filename mismatch,
-    fixed in #1967) — the AAB had already been uploaded manually or from a branch
-    build before CI ran. Confirmed by Play API rejecting 10 with "already used"
-    on run 32567064743.
-  - An unmerged branch (`e191e9c5`, Huawei AppGallery) takes this to **30**. If that lands,
-    every number above moves. Re-read `origin/main` rather than trusting this bullet.
-  - Gating context: no Play Pre-launch report exists for versionCode 11, which is a
+- **versionCode: `build.gradle` is at 32 on `main`** (bumped 2026-08-22).
+  Bumps: 5→6 (#1319), 6→7 (#1737), 7→8 (#1747), 8→10 (#1890), 10→11 (#1974),
+  11→32 (#1975, PLR Robo onboard). Product flavours added in #1890 do NOT override
+  `versionCode` — still one declaration, at `android/app/build.gradle:25`.
+  - **Codes 1–11 consumed on Play.** 1–5 from early uploads; 10–11 consumed by
+    `firebase-test-lab.yml`'s duplicate `publish-android-staging` job (removed in
+    #1980) before `ci.yml`'s `publish-to-play-internal` could use them.
+  - `ci.yml` is now the **single** Play upload path. The firebase duplicate was
+    removed because it raced CI and silently consumed versionCodes.
+  - Gating context: no Play Pre-launch report exists for versionCode 32, which is a
     mandatory 1.0.1 submission gate. Tracked in #1960.
 - **Release build verified end-to-end 2026-07-23** (INTERNAL): signed `app-release.aab`,
   `jarsigner` verified, `BuildConfig.RELEASE_CERT_SHA256` = Google's app-signing cert.
@@ -401,7 +399,7 @@ neither had been run against build 5 (Play Pre-launch report showed
   reupload. Do NOT submit for review without a clean report — this is the same tool
   Google's reviewer would have used, and its absence is why build 5 shipped a fatal
   Create-Wallet path.
-  Current Android candidate: **1.0.1 / versionCode 11**. This check remains
+  Current Android candidate: **1.0.1 / versionCode 32**. This check remains
   console-only: a green repo/CI state does NOT prove the report exists yet.
 - **iOS (mandatory — no equivalent auto-tool):** upload to TestFlight, install on at
   least one **physical iPhone that is NOT the dev machine's paired device** (a stock
