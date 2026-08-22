@@ -274,7 +274,22 @@ Upload key: `veyrnox-upload.jks` (SHA-1 `97:5A:05:8E…:BA:B2:F3`). App signing 
 Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Secrets
 (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`,
 `RELEASE_CERT_SHA256`) updated 2026-07-22 for CI.
-- versionCodes 1–5 consumed. Next upload must use **6+** (`build.gradle` is at 6).
+- **versionCode: `build.gradle` is at 10 on `main`** (corrected 2026-08-22; this line said
+  "next upload must use 6+, `build.gradle` is at 6" and had been stale since 2026-08-13).
+  Bumps since: 5→6 (#1319), 6→7 (#1737), 7→8 (#1747), 8→10 (#1890). Product flavours were
+  added in #1890 but do NOT override `versionCode` — there is still exactly one declaration,
+  at `android/app/build.gradle:25`.
+  - **Which codes Play has actually consumed is NOT verified here.** Reading it needs the
+    Play Developer API service-account credentials, which live in CI secrets and are not
+    available locally, so do not infer consumption from this file. Check Play Console.
+    What IS known: 1–5 were consumed, and `publish-to-play-internal` failed on every recent
+    `main` run until #1948 (`dbb424c6`) fixed a non-existent SHA pin on
+    `r0adkll/upload-google-play` — so 10 has very probably never reached Play. "Probably"
+    is the honest word; confirm before picking a number.
+  - An unmerged branch (`e191e9c5`, Huawei AppGallery) takes this to **30**. If that lands,
+    every number above moves. Re-read `origin/main` rather than trusting this bullet.
+  - Gating context: no Play Pre-launch report exists for versionCode 10, which is a
+    mandatory 1.0.1 submission gate. Tracked in #1960.
 - **Release build verified end-to-end 2026-07-23** (INTERNAL): signed `app-release.aab`,
   `jarsigner` verified, `BuildConfig.RELEASE_CERT_SHA256` = Google's app-signing cert.
   Fixed en route: `keystore.properties` `storeFile` resolved against the wrong directory
