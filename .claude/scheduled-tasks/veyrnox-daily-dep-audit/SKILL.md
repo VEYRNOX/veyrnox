@@ -234,6 +234,35 @@ justified each retirement is on file rather than in a PR description.
   it is the same mistake this file keeps recording in other forms: a tracking reference
   ages into a claim about current state. Check the issue, not the line that names it.
 
+### `brace-expansion` — RETIRED 2026-08-22 (never an entry in this file)
+
+Recorded here because it was a real HIGH residual with its own watcher, and because a
+reader of this file would otherwise have no trace of it. It was never in the accepted-
+residuals list above — its rationale lived only in the watcher's runbook, which is how it
+stayed invisible to the daily audit for weeks.
+
+- **Advisory:** GHSA-mh99-v99m-4gvg, HIGH — DoS via unbounded expansion length causing an
+  out-of-memory crash. Accounted for ~28-29 of ~32 HIGH findings at its peak.
+- **How it cleared:** the advisory was re-scoped into per-line ranges (`< 1.1.17`,
+  `>= 2.0.0 < 2.1.3`, `>= 3.0.0 < 3.0.3`, `>= 4.0.0 < 5.0.8`) and the fix was BACKPORTED to
+  the old-shape 1.x and 2.x lines. Ordinary range resolution then reached it — no
+  `overrides` entry was ever added, and none is needed.
+- **Retirement evidence (2026-08-22, `origin/main` at `b8f0127`):** re-resolved lockfile
+  carries `1.1.18`, `2.1.4` x5, `5.0.9` x3, all at or above their line's patched floor;
+  `npm audit` lists `elliptic` as the sole advisory root, 0 high / 0 critical.
+- **The 5.x incompatibility was never fixed — it was routed around.** A `latest` override
+  still throws `TypeError: expand is not a function` at `minimatch.js:269`, and 6 of 9
+  `minimatch` copies still declare `^1.`/`^2.` ranges. So the old remediation advice
+  ("add a `^5.0.8` override") is now actively harmful: it would reintroduce the
+  `minimatch`/`eslint` breakage while fixing nothing.
+- **Watcher deleted** 2026-08-22. Its runbook is retained at
+  `.claude/scheduled-tasks/veyrnox-brace-expansion-watch/SKILL.md`, marked RETIRED, with
+  the corrected ranges and the probe method intact.
+- **Why it sat unnoticed:** the watcher was rebuilt 2026-07-27 and left DISABLED, so it
+  never ran once — no `lastRunAt` at all. Its "Tracked" claim was false for ~4 weeks. If a
+  residual's only tracking is a watcher, confirm the watcher is enabled, not merely that it
+  exists.
+
 ## Constraints
 - Do NOT run `npm audit fix` or modify any files — read-only audit only.
 - Suppression is a **reporting** decision only. Never edit `package.json`,
