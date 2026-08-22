@@ -30,7 +30,7 @@ const {
     hash: '0xabc',
     wait: vi.fn(async () => ({})),
   })),
-  evaluateSendGate: vi.fn(() => ({ allowed: true })),
+  evaluateSendGate: vi.fn(() => /** @type {any} */ ({ allowed: true })),
   toastError: vi.fn(),
 }));
 
@@ -388,7 +388,7 @@ describe('SendCrypto — Digital Shield render flow', () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
-    evaluateSendGate.mockReturnValue({ allowed: true });
+    evaluateSendGate.mockReturnValue(/** @type {any} */ ({ allowed: true }));
     finalizeDigitalShieldEvmResponse.mockReturnValue({ signedHex: '0x02signed' });
     broadcastTransaction.mockResolvedValue({
       hash: '0xabc',
@@ -433,7 +433,9 @@ describe('SendCrypto — Digital Shield render flow', () => {
   });
 
   it('fails closed before preparing the QR when the shared send gate blocks', async () => {
-    evaluateSendGate.mockReturnValueOnce({ allowed: false, code: 'REAUTH', message: 'Re-enter your PIN or password to authorise this send.' });
+    evaluateSendGate.mockReturnValueOnce(
+      /** @type {any} */ ({ allowed: false, code: 'REAUTH', message: 'Re-enter your PIN or password to authorise this send.' })
+    );
     renderPage();
 
     fireEvent.click(screen.getByRole('checkbox', { name: /use digital shield air-gap signing/i }));
@@ -465,8 +467,10 @@ describe('SendCrypto — Digital Shield render flow', () => {
 
   it('re-checks the shared send gate before final broadcast', async () => {
     evaluateSendGate
-      .mockReturnValueOnce({ allowed: true })
-      .mockReturnValueOnce({ allowed: false, code: 'REAUTH', message: 'Re-enter your PIN or password to authorise this send.' });
+      .mockReturnValueOnce(/** @type {any} */ ({ allowed: true }))
+      .mockReturnValueOnce(
+        /** @type {any} */ ({ allowed: false, code: 'REAUTH', message: 'Re-enter your PIN or password to authorise this send.' })
+      );
 
     renderPage();
 
