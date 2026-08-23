@@ -31,7 +31,25 @@ extension XCUIApplication {
     }
 }
 
+/// Timeouts for the first UI query after launch.
+///
+/// `XCUIApplication.launch()` returns when the process is idle, not when the
+/// Capacitor WKWebView has painted. On cold CI runners the first query can race
+/// the webview paint and misreport a startup delay as a missing onboarding tile.
+enum UITestTimeouts {
+    static let webViewPaint: TimeInterval = 90
+    static let firstElement: TimeInterval = 60
+}
+
 extension XCTestCase {
+    /// Wait for the Capacitor webview before querying web-backed elements.
+    func waitForWebView(app: XCUIApplication, timeout: TimeInterval = UITestTimeouts.webViewPaint) {
+        XCTAssertTrue(
+            app.webViews.firstMatch.waitForExistence(timeout: timeout),
+            "Capacitor webview never appeared within \(Int(timeout))s — the app launched but never painted."
+        )
+    }
+
     /// Tap each digit on the on-screen PinPad keypad.
     func enterPin(app: XCUIApplication, digits: String) {
         for ch in digits {
@@ -65,8 +83,12 @@ extension XCTestCase {
     /// Create a fresh wallet via the New Wallet tile + PIN flow.
     /// Leaves the app on the WalletCreatedFlash screen.
     func createFreshWallet(app: XCUIApplication, pin: String = TestPin.standard) {
+        waitForWebView(app: app)
         let tile = app.buttons["New wallet"]
-        XCTAssertTrue(tile.waitForExistence(timeout: 10), "New wallet tile missing.")
+        XCTAssertTrue(
+            tile.waitForExistence(timeout: UITestTimeouts.firstElement),
+            "New wallet tile missing."
+        )
         tile.tap()
 
         setPinFull(app: app, pin: pin)

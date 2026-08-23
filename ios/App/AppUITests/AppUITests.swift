@@ -24,14 +24,6 @@ final class AppUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchFresh()
 
-        // Capacitor's WKWebView accessibility bridge can lag the native shell
-        // on hosted simulator images. Wait for it first so we fail on the
-        // actual onboarding surface, not on startup timing.
-        XCTAssertTrue(
-            app.webViews.firstMatch.waitForExistence(timeout: 30),
-            "WebView never rendered — app did not launch."
-        )
-
         createFreshWallet(app: app)
     }
 }
