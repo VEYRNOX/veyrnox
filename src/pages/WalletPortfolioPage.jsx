@@ -87,7 +87,7 @@ import { buildAssetSpamIntel } from "@/lib/spamTokenIntel";
 // floor is 12. Report the real minimum for the current cohort so the score
 // reflects what the app actually requires. Unknown cohort → null (no fabricated
 // length — I4).
-function SecurityPostureMount() {
+function SecurityPostureMount({ enabledLimits = 0, actionPasswordConfigured = false }) {
   const [hardwareTier, setHardwareTier] = useState(null);
   useEffect(() => {
     let live = true;
@@ -98,6 +98,12 @@ function SecurityPostureMount() {
   const authModel = getAuthModel();
   const pinCreated = authModel === 'pin' || authModel === 'password';
   const pinLength = authModel === 'pin' ? 8 : authModel === 'password' ? 12 : null;
+  const deniable = isDeniabilitySessionActive();
+  const wc = deniable ? {} : {
+    wcSpendLimitSet: enabledLimits > 0,
+    wcSessionExpiry: true,
+    wcStepUpReauth: !!actionPasswordConfigured,
+  };
   return (
     <SecurityPosture state={{
       pinCreated,
@@ -105,6 +111,7 @@ function SecurityPostureMount() {
       hardwareTier,
       recoveryPassphraseSet: pb.passphrase,
       shareCExported: pb.exported,
+      ...wc,
     }} />
   );
 }
@@ -572,6 +579,7 @@ export default function WalletPortfolioPage() {
     wallets, activeWalletId, switchWallet, walletAddresses,
     confirmWalletBackup, isDecoy, isHidden,
     portfolios, activePortfolioId, setActivePortfolio, walletPortfolioMap,
+    actionPasswordConfigured,
   } = useWallet();
 
   const [addOpen, setAddOpen] = useState(false);
@@ -665,6 +673,16 @@ export default function WalletPortfolioPage() {
     enabled: !!_activeEvmAddress && !isDeniabilitySessionActive(),
     staleTime: 60_000,
   });
+
+  // Session Security posture wiring — count enabled spend-limit rows. Skip in
+  // deniability/demo (limits list is real-session state, must not surface I3).
+  const { data: _txLimits = [] } = useQuery({
+    queryKey: ["tx-limits"],
+    queryFn: () => base44.entities.TransactionLimit.list(),
+    enabled: !isDeniabilitySessionActive(),
+    staleTime: 60_000,
+  });
+  const enabledLimits = _txLimits.filter((l) => l.enabled).length;
 
   // Active-portfolio wallets + total, computed here (ahead of the early
   // explore-mode return below) so the tracking hooks — which must run
@@ -971,7 +989,10 @@ export default function WalletPortfolioPage() {
           hiding the whole point of the posture card. shareCVerified stays
           honestly false — spec §9 gates it on a real recovery round-trip,
           which Phase 2 does not yet log (I4: no fabricated "verified"). */}
-      <SecurityPostureMount />
+      <SecurityPostureMount
+        enabledLimits={enabledLimits}
+        actionPasswordConfigured={actionPasswordConfigured}
+      />
 
       {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">
