@@ -87,12 +87,7 @@ jobs:
             # 500 pseudo-random events, throttled to 100ms between events,
             # constrained to our package. --kill-process-after-error and
             # --monitor-native-crashes make ANY crash a non-zero exit.
-            adb shell monkey -p com.veyrnox.app \
-              -v --throttle 100 \
-              --kill-process-after-error \
-              --monitor-native-crashes \
-              --pct-touch 60 --pct-motion 20 --pct-nav 10 --pct-syskeys 10 \
-              500 | tee monkey.log
+            adb shell "monkey -p com.veyrnox.app -v --throttle 100 --kill-process-after-error --monitor-native-crashes --pct-touch 60 --pct-motion 20 --pct-nav 10 --pct-syskeys 10 500" | tee monkey.log
             # `monkey` returns 0 on some crash types but prints "CRASH:" or
             # "// NOT RESPONDING:". Grep as a second guard.
             if grep -E "^// (CRASH|NOT RESPONDING):" monkey.log; then
