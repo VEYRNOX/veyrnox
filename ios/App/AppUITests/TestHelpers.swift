@@ -31,6 +31,16 @@ extension XCUIApplication {
     }
 }
 
+/// Timeouts for the first actionable UI query after launch.
+///
+/// `XCUIApplication.launch()` returns when the process is idle, not when the
+/// Capacitor surface has exposed web-backed controls through accessibility.
+/// On cold CI runners, the first real button query can lag far behind launch.
+enum UITestTimeouts {
+    /// First actionable element inside the Capacitor surface.
+    static let firstElement: TimeInterval = 60
+}
+
 extension XCTestCase {
     /// Tap each digit on the on-screen PinPad keypad.
     func enterPin(app: XCUIApplication, digits: String) {
@@ -66,7 +76,10 @@ extension XCTestCase {
     /// Leaves the app on the WalletCreatedFlash screen.
     func createFreshWallet(app: XCUIApplication, pin: String = TestPin.standard) {
         let tile = app.buttons["New wallet"]
-        XCTAssertTrue(tile.waitForExistence(timeout: 10), "New wallet tile missing.")
+        XCTAssertTrue(
+            tile.waitForExistence(timeout: UITestTimeouts.firstElement),
+            "New wallet tile missing."
+        )
         tile.tap()
 
         setPinFull(app: app, pin: pin)
