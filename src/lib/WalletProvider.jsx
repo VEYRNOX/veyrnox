@@ -159,6 +159,7 @@ import { DECOY_BIOMETRIC_MARKER_KEY } from '@/lib/duressBiometricGuard';
 import {
   storeUnlockSecret,
   retrieveUnlockSecret,
+  retrieveUnlockSecretDirect,
   clearUnlockSecret,
 } from '@/lib/biometricUnlock';
 // PASSKEY UNLOCK GATE (S1). The dual of the biometric gate: an ADDITIONAL
