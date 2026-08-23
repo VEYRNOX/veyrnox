@@ -29,7 +29,7 @@ final class AppUITests: XCTestCase {
         //    "Create Wallet" button on this path.
         let newWalletButton = app.buttons["New wallet"]
         XCTAssertTrue(
-            newWalletButton.waitForExistence(timeout: 10),
+            newWalletButton.waitForExistence(timeout: UITestTimeouts.firstElement),
             "New wallet entry tile never appeared on a fresh install."
         )
         newWalletButton.tap()
