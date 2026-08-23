@@ -214,6 +214,23 @@ describe('Digital Shield BTC request/response', () => {
   });
 });
 
+describe('Digital Shield extended-pubkey versioning (R6 audit)', () => {
+  it('serializes the BIP84 BTC account as a zpub (version bytes 04b24746)', () => {
+    const imported = parseDigitalShieldImport(makeImportUr());
+    const btcXpub = imported.accounts.btc.xpub;
+    // zpub prefix is deterministic; xpub would start with "xpub".
+    expect(btcXpub.slice(0, 4)).toBe('zpub');
+    // Ensure the round-trip still derives a valid P2WPKH address (proves the
+    // toStandardXpub rewrap keeps HDKey happy).
+    expect(imported.accounts.btc.address).toMatch(/^bc1[a-z0-9]+$/);
+  });
+
+  it('serializes the BIP44 EVM account as an xpub (version bytes 0488b21e)', () => {
+    const imported = parseDigitalShieldImport(makeImportUr());
+    expect(imported.accounts.evm.xpub.slice(0, 4)).toBe('xpub');
+  });
+});
+
 describe('Digital Shield Solana request/response', () => {
   it('verifies an ed25519 signature locally and consumes the session', () => {
     const imported = parseDigitalShieldImport(makeImportUr());

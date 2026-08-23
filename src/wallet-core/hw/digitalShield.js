@@ -3,7 +3,9 @@ import { HDKey } from '@scure/bip32';
 import { base58, base58check, hex } from '@scure/base';
 import { computeAddress, Signature, Transaction, getAddress } from 'ethers';
 import { ed25519 } from '@noble/curves/ed25519';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { sha256 } from '@noble/hashes/sha2.js';
+import { ripemd160 } from '@noble/hashes/legacy.js';
 import { bytesToHex } from '@noble/hashes/utils';
 import { UREncoder, URDecoder } from '@ngraveio/bc-ur';
 import { CryptoMultiAccounts, CryptoPSBT } from '@keystonehq/bc-ur-registry';
@@ -110,7 +112,24 @@ function ensureSupportedEvmChain(chainId) {
   return id;
 }
 
-function serializeXpub({ path, parentFingerprint, chainCode, publicKeyHex }) {
+// BIP32 version bytes by purpose (mainnet only — Digital Shield is mainnet
+// today; testnet entries recorded for the day networkKey is threaded in).
+// 2026-08-16 audit R6: previously hardcoded to 0488b21e (xpub) for every
+// account, so a BIP84 account exported as an xpub instead of the required
+// zpub, breaking downstream wallets that key on the version bytes.
+const XPUB_VERSIONS = {
+  mainnet: { 44: '0488b21e', 49: '049d7cb2', 84: '04b24746' },
+  testnet: { 44: '043587cf', 49: '044a5262', 84: '045f1cf6' },
+};
+
+function pickXpubVersion(path, network = 'mainnet') {
+  const purposeMatch = String(path || '').match(/^m\/(\d+)'/);
+  const purpose = purposeMatch ? Number(purposeMatch[1]) : 44;
+  const table = XPUB_VERSIONS[network] || XPUB_VERSIONS.mainnet;
+  return table[purpose] || table[44];
+}
+
+function serializeXpub({ path, parentFingerprint, chainCode, publicKeyHex, network = 'mainnet' }) {
   const components = String(path || '').split('/').slice(1);
   if (!components.length) throw new Error('DIGITAL_SHIELD_INVALID_BIP32_PATH');
   const depth = components.length;
@@ -119,7 +138,7 @@ function serializeXpub({ path, parentFingerprint, chainCode, publicKeyHex }) {
   const hardened = last.endsWith("'");
   const childIndex = hardened ? index + 0x80000000 : index;
   const payload = Buffer.concat([
-    Buffer.from('0488b21e', 'hex'),
+    Buffer.from(pickXpubVersion(path, network), 'hex'),
     Buffer.from([depth]),
     Buffer.from(parentFingerprint || '00000000', 'hex'),
     Buffer.from([
@@ -141,9 +160,34 @@ function deriveEvmAddressFromXpub(xpub, index = 0) {
   return computeAddress(`0x${bytesToHex(child.publicKey)}`);
 }
 
+// @scure/bip32 HDKey only recognizes standard BIP32 version bytes (xpub/tpub).
+// After R6, BIP49/84 accounts are serialized with the correct external prefix
+// (ypub/zpub / upub/vpub); rewrite the leading 4 bytes back to xpub before
+// handing to HDKey so address derivation stays valid.
+const XPUB_ALIASES = new Set([
+  '049d7cb2', '04b24746', // mainnet ypub / zpub
+  '044a5262', '045f1cf6', // testnet upub / vpub
+]);
+function toStandardXpub(extendedKey) {
+  try {
+    const bytes = base58checkCodec.decode(extendedKey);
+    const version = Buffer.from(bytes.subarray(0, 4)).toString('hex');
+    if (!XPUB_ALIASES.has(version)) return extendedKey;
+    const rewrapped = new Uint8Array(bytes);
+    // mainnet aliases → xpub 0488b21e; testnet aliases → tpub 043587cf.
+    const target = version === '044a5262' || version === '045f1cf6'
+      ? [0x04, 0x35, 0x87, 0xcf]
+      : [0x04, 0x88, 0xb2, 0x1e];
+    rewrapped.set(target, 0);
+    return base58checkCodec.encode(rewrapped);
+  } catch {
+    return extendedKey;
+  }
+}
+
 function deriveBtcAddressFromXpub(xpub, networkKey = 'mainnet', change = 0, index = 0) {
   const net = getBtcNetworkInfo(networkKey);
-  const accountNode = HDKey.fromExtendedKey(xpub);
+  const accountNode = HDKey.fromExtendedKey(toStandardXpub(xpub));
   const child = accountNode.derive(`m/${change}/${index}`);
   const { address } = p2wpkh(child.publicKey, net.params);
   if (!address) throw new Error('DIGITAL_SHIELD_BTC_XPUB_DERIVATION_FAILED');
@@ -355,7 +399,7 @@ export function buildDigitalShieldBtcPsbt({ account, plan, networkKey = 'mainnet
   if (!account?.xpub || account.family !== 'btc') throw new Error('DIGITAL_SHIELD_BTC_ACCOUNT_REQUIRED');
   if (networkKey !== 'mainnet') throw new Error('DIGITAL_SHIELD_BTC_NETWORK_UNSUPPORTED');
   const net = getBtcNetworkInfo(networkKey);
-  const pubKey = HDKey.fromExtendedKey(account.xpub).derive('m/0/0').publicKey;
+  const pubKey = HDKey.fromExtendedKey(toStandardXpub(account.xpub)).derive('m/0/0').publicKey;
   const owner = p2wpkh(pubKey, net.params);
   const tx = new BtcTransaction();
   for (const input of plan.inputs) {
@@ -368,7 +412,11 @@ export function buildDigitalShieldBtcPsbt({ account, plan, networkKey = 'mainnet
   for (const output of plan.outputs) {
     tx.addOutputAddress(output.address, BigInt(output.value), net.params);
   }
-  const derivation = [[pubKey, { fingerprint: parseInt(account.xfp, 16), path: bip32Path(account.accountPath) }]];
+  // R6 audit LOW: coerce to unsigned 32-bit — parseInt returns a signed number
+  // and BIP32 xfps with a high bit set (>= 0x80000000) would otherwise arrive
+  // negative in the PSBT bip32Derivation record.
+  const fingerprint = parseInt(account.xfp, 16) >>> 0;
+  const derivation = [[pubKey, { fingerprint, path: bip32Path(account.accountPath) }]];
   for (let i = 0; i < plan.inputs.length; i += 1) tx.updateInput(i, { bip32Derivation: derivation });
   const psbtBytes = tx.toPSBT();
   const psbtHex = hex.encode(psbtBytes);
@@ -409,6 +457,36 @@ export function finalizeDigitalShieldBtcResponse({ session, unsignedPsbtHex, inp
     }
   }
   if (!signed.isFinal) signed.finalize();
+  // R6 audit LOW: independent ECDSA verify per input. @scure/btc-signer
+  // validates during finalize, but this is defense-in-depth against a library
+  // bug or a malicious pre-finalized PSBT.  P2WPKH scriptCode is
+  // 0x76 0xa9 0x14 <hash160(pubkey)> 0x88 0xac (BIP143).
+  const ownerPubKey = HDKey.fromExtendedKey(toStandardXpub(session.account.xpub))
+    .derive('m/0/0').publicKey;
+  const ownerPkh = ripemd160(sha256(ownerPubKey));
+  const scriptCode = new Uint8Array([0x76, 0xa9, 0x14, ...ownerPkh, 0x88, 0xac]);
+  for (let i = 0; i < signed.inputsLength; i += 1) {
+    const inp = signed.getInput(i);
+    const witness = inp.finalScriptWitness;
+    if (!Array.isArray(witness) || witness.length !== 2) {
+      throw new Error('DIGITAL_SHIELD_BTC_WITNESS_SHAPE_INVALID');
+    }
+    const [sigWithHash, witnessPubKey] = witness;
+    if (bytesToHex(witnessPubKey) !== bytesToHex(ownerPubKey)) {
+      throw new Error('DIGITAL_SHIELD_BTC_UNEXPECTED_SIGNER');
+    }
+    if (!sigWithHash?.length || sigWithHash.length < 9) {
+      throw new Error('DIGITAL_SHIELD_BTC_SIGNATURE_MALFORMED');
+    }
+    const hashType = sigWithHash[sigWithHash.length - 1];
+    const derSig = sigWithHash.subarray(0, sigWithHash.length - 1);
+    const amount = inp.witnessUtxo?.amount ?? original.getInput(i).witnessUtxo?.amount;
+    if (amount == null) throw new Error('DIGITAL_SHIELD_BTC_WITNESS_UTXO_MISSING');
+    const sighash = signed.preimageWitnessV0(i, scriptCode, hashType, BigInt(amount));
+    if (!secp256k1.verify(secp256k1.Signature.fromDER(derSig), sighash, witnessPubKey)) {
+      throw new Error('DIGITAL_SHIELD_BTC_SIGNATURE_INVALID');
+    }
+  }
   return {
     signedPsbtHex,
     finalizedTxHex: signed.hex,
