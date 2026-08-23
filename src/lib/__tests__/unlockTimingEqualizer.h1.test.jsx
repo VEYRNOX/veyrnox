@@ -44,6 +44,20 @@ vi.mock('hash-wasm', async (importOriginal) => {
   };
 });
 
+// #1989 moves verifier capture OFF the prompt-visible unlock path via setTimeout(0)
+// so older native devices do not sit on a second synchronous Argon2 before the
+// dashboard renders. This suite measures ONLY the prompt-visible unlock KDF count,
+// so the deferred verifier must be excluded or its later macrotask can bleed one
+// extra current-param KDF into the NEXT measured unlock. Mock it to a no-op here:
+// verifier behavior has dedicated tests, and this file is strictly about unlock-path
+// count/profile parity.
+vi.mock('@/wallet-core/credentialVerifier', () => ({
+  captureVerifierSafe: vi.fn(async () => null),
+  verifyCredential: vi.fn(async () => false),
+  verifyCredentialDetailed: vi.fn(async () => ({ ok: false, reason: 'mocked' })),
+  createCredentialVerifier: vi.fn(async () => null),
+}));
+
 // The primary vault password (correct real PIN). Anything else -> the mock unlock
 // throws, exactly like a real keystore decrypt (1 KDF spent, GCM auth fails).
 const PRIMARY_PW = 'correct-horse-battery-staple-pin';
