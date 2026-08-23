@@ -103,17 +103,48 @@ function FeeRow({ tx, symbol }) {
 
 export default function FeeAnalytics() {
   const wallet = useWallet();
-  const egressAllowed = !isDeniabilityOrDemoActive();
   const [symbol, setSymbol] = useState("BTC"); // a chain with in-app history by default
   const asset = useMemo(() => FEE_ASSETS.find((a) => a.symbol === symbol) || FEE_ASSETS[0], [symbol]);
-  const address = DEMO ? null : addressFor(asset, wallet);
+
+  // Deniability and demo are DIFFERENT outcomes here and must not be collapsed:
+  // a deniability session disables the query outright, while a demo tour still
+  // renders its sample fee data. So the data path needs its own demo flag.
+  //
+  // It must be the UNION of two sources, because neither alone is complete:
+  //
+  //   DEMO                        knows about the build-time/native paths --
+  //                               VITE_DEMO_MODE=1 and DEV+isNativePlatform() --
+  //                               but is a load-time IIFE snapshot, so it misses
+  //                               a `veyrnox-demo=1` set AFTER module import.
+  //   isDeniabilityOrDemoActive() reads `veyrnox-demo` LIVE and fails closed,
+  //                               but knows ONLY that key -- not VITE_DEMO_MODE,
+  //                               not native dev.
+  //
+  // Gating the data path on DEMO alone was the bug: in the post-import-flip
+  // window DEMO stays false, so the REAL derived address went into the query key
+  // and to the indexer with `demo: false` (and into the explorer link below),
+  // while `enabled` -- deniability-only, by design -- still said "run". Gating on
+  // the live helper alone would be the opposite bug: a VITE_DEMO_MODE=1 or
+  // native-dev demo build would query the real indexer with a real address.
+  //
+  // `!inDeniability &&` is load-bearing for the render sites: it keeps liveDemo
+  // false in a decoy/hidden session, so the badge and privacy note read exactly
+  // as they do in a real session. A demo flag that were true under deniability
+  // would make a coerced session look different from a real one -- an I3 tell.
+  const inDeniability = isDeniabilitySessionActive();
+  const liveDemo = !inDeniability && (DEMO || isDeniabilityOrDemoActive());
+  // Unchanged from the #1120 shape -- pinned by FeeAnalytics.refetch-i3.test.js.
+  const egressAllowed = !isDeniabilityOrDemoActive();
+
+  const address = liveDemo ? null : addressFor(asset, wallet);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ["fee-analytics", asset.symbol, address, DEMO],
-    queryFn: () => fetchAssetHistory({ asset, address, demo: DEMO }),
+    queryKey: ["fee-analytics", asset.symbol, address, liveDemo],
+    queryFn: () => fetchAssetHistory({ asset, address, demo: liveDemo }),
     // I3 zero-egress: disable entirely in a deniability (decoy/hidden) session so
-    // the address->indexer disclosure is never even attempted.
-    enabled: !isDeniabilitySessionActive(),
+    // the address->indexer disclosure is never even attempted. Demo does NOT
+    // disable it — it routes to the local sample-data path via `liveDemo` above.
+    enabled: !inDeniability,
     // Like the history view, this is a snapshot the user explicitly opens — no
     // background refetch (that would repeat the address->indexer disclosure).
     refetchOnWindowFocus: false,
@@ -123,7 +154,7 @@ export default function FeeAnalytics() {
 
   const source = data?.source;
   const analytics = useMemo(() => (data ? computeFeeAnalytics(data, asset) : null), [data, asset]);
-  const lockedLive = !DEMO && data?.reason === "locked";
+  const lockedLive = !liveDemo && data?.reason === "locked";
   const evmNoIndexer = data?.supported === false && data?.reason === "evm-no-indexer";
   const isErc20Empty = analytics?.available && analytics.paidTxCount === 0 && asset.family === "erc20";
 
@@ -139,7 +170,7 @@ export default function FeeAnalytics() {
           </p>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
-          {DEMO ? "Demo · sample data" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
+          {liveDemo ? "Demo · sample data" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
       </div>
 
@@ -166,7 +197,7 @@ export default function FeeAnalytics() {
           <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <p>
             <span className="font-semibold text-foreground">{source.networkName}</span>{" · "}
-            {DEMO
+            {liveDemo
               ? "Demo mode — nothing is queried over the network; the figures below are computed from local sample data."
               : source.privacyNote}
           </p>
