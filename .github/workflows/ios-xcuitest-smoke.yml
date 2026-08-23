@@ -52,7 +52,13 @@ jobs:
   xcuitest:
     continue-on-error: true
     runs-on: macos-latest
-    timeout-minutes: 15
+    # Budget note (see issue #2008). A JOB-level timeout kills the whole job,
+    # including `Upload test log` — which is why 26 consecutive runs produced
+    # zero artifacts and nobody could see why the test step never finished.
+    # The test step now carries its own smaller timeout, so when it blows the
+    # budget the job survives long enough to upload the evidence.
+    # Job budget must stay comfortably ABOVE the test step's, never equal to it.
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -88,18 +94,42 @@ jobs:
 
       - name: Run AppUITests
         working-directory: ios/App
+        # MUST stay below the job's timeout-minutes. If this step is killed by
+        # the JOB timeout instead of its own, the steps below never run and the
+        # failure is invisible again — the exact regression issue #2008 describes.
+        timeout-minutes: 25
         run: |
           set -o pipefail
+          # xcodebuild refuses to overwrite an existing result bundle.
+          rm -rf TestResults.xcresult
           xcodebuild test \
             -project App.xcodeproj \
             -scheme App \
             -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
             -only-testing:AppUITests/AppUITests/test_freshInstall_createsWalletWithoutFailureBanner \
+            -resultBundlePath TestResults.xcresult \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 300 \
             CODE_SIGNING_ALLOWED=NO \
             | tee xcodebuild.log | xcbeautify --renderer github-actions || {
               echo "xcodebuild test failed"
               exit 1
             }
+
+      # Puts the assertion text in the job summary, so the reason a run failed
+      # is readable without downloading an artifact. `xcresulttool` on a local
+      # bundle produced the first real diagnosis of this test (issue #2008).
+      - name: Summarise test failures
+        if: always()
+        working-directory: ios/App
+        run: |
+          if [ ! -d TestResults.xcresult ]; then
+            echo "No result bundle — the test step died before xcodebuild wrote one." \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          xcrun xcresulttool get test-results summary \
+            --path TestResults.xcresult 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
 
       - name: Upload test log
         if: always()
@@ -108,3 +138,12 @@ jobs:
           name: xcodebuild-log
           path: ios/App/xcodebuild.log
           if-no-files-found: warn
+
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: xcuitest-result-bundle
+          path: ios/App/TestResults.xcresult
+          if-no-files-found: warn
+          retention-days: 7
