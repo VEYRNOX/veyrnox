@@ -104,15 +104,27 @@ function FeeRow({ tx, symbol }) {
 export default function FeeAnalytics() {
   const wallet = useWallet();
   const egressAllowed = !isDeniabilityOrDemoActive();
+  // LIVE demo/deniability decision for the DATA PATH (address + queryKey + queryFn).
+  // `DEMO` (api/demoClient) is a load-time IIFE snapshot, so `veyrnox-demo=1` set
+  // AFTER module import — the post-import-flip window deniabilitySession.js
+  // documents — leaves DEMO false. Gating the data path on DEMO alone therefore
+  // put the REAL per-asset address in the query key and sent it to the indexer
+  // with `demo: false`, while the `enabled` clause below (deniability-only, by
+  // design) still said "run". The union keeps the build-time (VITE_DEMO_MODE) and
+  // native-dev demo paths that only DEMO knows about, and adds the live read.
+  const demoActive = DEMO || !egressAllowed;
   const [symbol, setSymbol] = useState("BTC"); // a chain with in-app history by default
   const asset = useMemo(() => FEE_ASSETS.find((a) => a.symbol === symbol) || FEE_ASSETS[0], [symbol]);
-  const address = DEMO ? null : addressFor(asset, wallet);
+  const address = demoActive ? null : addressFor(asset, wallet);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ["fee-analytics", asset.symbol, address, DEMO],
-    queryFn: () => fetchAssetHistory({ asset, address, demo: DEMO }),
+    queryKey: ["fee-analytics", asset.symbol, address, demoActive],
+    queryFn: () => fetchAssetHistory({ asset, address, demo: demoActive }),
     // I3 zero-egress: disable entirely in a deniability (decoy/hidden) session so
-    // the address->indexer disclosure is never even attempted.
+    // the address->indexer disclosure is never even attempted. Deliberately NOT
+    // !isDeniabilityOrDemoActive() — an ordinary demo tour must still render its
+    // sample fee data. Demo is handled by `demoActive` above, which routes the
+    // query onto the local fixture path with a null address instead.
     enabled: !isDeniabilitySessionActive(),
     // Like the history view, this is a snapshot the user explicitly opens — no
     // background refetch (that would repeat the address->indexer disclosure).
@@ -123,7 +135,7 @@ export default function FeeAnalytics() {
 
   const source = data?.source;
   const analytics = useMemo(() => (data ? computeFeeAnalytics(data, asset) : null), [data, asset]);
-  const lockedLive = !DEMO && data?.reason === "locked";
+  const lockedLive = !demoActive && data?.reason === "locked";
   const evmNoIndexer = data?.supported === false && data?.reason === "evm-no-indexer";
   const isErc20Empty = analytics?.available && analytics.paidTxCount === 0 && asset.family === "erc20";
 
@@ -138,6 +150,11 @@ export default function FeeAnalytics() {
             Network fees you’ve paid, in native units, computed on-device from chain history — no fiat, nothing stored.
           </p>
         </div>
+        {/* Deliberately on DEMO, not demoActive: this badge renders even when the
+            query is disabled, and demoActive is true in a decoy/hidden session —
+            flipping the badge there would make a coerced session look different
+            from a real one (an I3 tell). The demo-vs-live data-source statement
+            lives in the privacy note below, which only renders once a query ran. */}
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
           {DEMO ? "Demo · sample data" : ALLOW_MAINNET ? "Mainnet" : "Testnet"}
         </span>
@@ -166,7 +183,7 @@ export default function FeeAnalytics() {
           <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <p>
             <span className="font-semibold text-foreground">{source.networkName}</span>{" · "}
-            {DEMO
+            {demoActive
               ? "Demo mode — nothing is queried over the network; the figures below are computed from local sample data."
               : source.privacyNote}
           </p>
