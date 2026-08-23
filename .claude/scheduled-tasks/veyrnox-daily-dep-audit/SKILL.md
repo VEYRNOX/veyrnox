@@ -134,123 +134,80 @@ its own.
   and still declares `@ethersproject/{abi,rlp,transactions}` v5, so it does not clear
   this advisory. Evaluated and rejected 2026-07-19. Do not propose it again.
 
-### `shell-quote` — max severity: high — accepted 2026-07-21, reinstated 2026-07-27
-
-- **Advisory:** GHSA-395f-4hp3-45gv — quadratic-complexity Denial of Service in
-  `shell-quote` `parse()` (vulnerable `<= 1.8.4`, patched in `1.9.0`).
-- **Retired and reinstated the same day — read this before acting on any "fix
-  available" signal.** It was retired on 2026-07-27 because `@appium/support@7.2.6`
-  shipped with its `shell-quote` pin moved from an exact `1.8.4` to a patched `1.10.0`,
-  and npm flipped to `fixAvailable: true`. Both facts are real. Both are useless here,
-  and the retirement was wrong.
-- **Why accepted:** the patched copies are ALREADY hoisted at the tree root
-  (`node_modules/{@appium/support 7.2.6, @appium/base-driver 10.7.2, shell-quote 1.10.0,
-  body-parser 2.3.0}`). What `npm audit` flags is a separate 258-package DUPLICATE
-  subtree under `node_modules/appium-uiautomator2-driver/node_modules/` still holding
-  `@appium/support 7.2.5` → `shell-quote 1.8.4` and `@appium/base-driver 10.7.1` →
-  `body-parser 2.2.2`. Four remediation routes were tested on a clean worktree off
-  `main` (2026-07-27) and all four failed: (1) a version bump is impossible — every
-  package in the chain is already at latest (`appium-uiautomator2-driver@8.1.2`,
-  `appium-android-driver@14.0.2`, `@appium/base-driver@10.7.2`); (2) `npm update` on the
-  four packages left the nested copies untouched; (3) `overrides` of `^7.2.6` / `^10.7.2`
-  on `@appium/support` and `@appium/base-driver` were silently ignored, extending the
-  original shell-quote override finding to the parent packages that carry the exact pins;
-  (4) deleting all 295 nested lockfile entries and re-resolving made npm re-derive them
-  byte-identically. `npm audit fix --dry-run` is a NO-OP — it prints "fix available via
-  `npm audit fix`", changes zero lockfile lines, and still reports 51 vulnerabilities.
-- **Blast radius:** DoS-only, confined to the `appium-uiautomator2-driver` devDependency
-  (the Android E2E test harness). Never imported by `src/`, never bundled in the
-  production wallet. `npm audit --omit=dev` reports 0 high / 0 critical. Not
-  attacker-reachable — the harness parses trusted local test fixtures.
-- **Accounts for 0 findings as of 2026-08-22 — RETIREMENT CANDIDATE, not yet retired.**
-  This line said "3 high findings: `shell-quote`, `@appium/support`, `@appium/base-driver`"
-  (down from ~8 when first accepted). That is no longer true of the resolved tree.
-  Re-derived at `origin/main` `b8f01272` — `npm audit` reports **22 low / 0 moderate /
-  0 high / 0 critical**, and all 22 are `elliptic`-rooted; none of these three roots
-  appears. The nested subtree still exists (291 entries) but now resolves PATCHED:
-  `@appium/support 7.2.6`, `@appium/base-driver 10.7.2`, `shell-quote 1.10.0`.
-  **Do not retire on this paragraph alone** — the whole point of the 2026-07-27 lesson is
-  that retirement runs through the watcher's own fresh resolve, not a reader's spot check.
-  Let `veyrnox-appium-shellquote-watch` fire; until then the entry stands and suppresses
-  nothing that is not there.
-
-  **What "fire" produces depends on whether #1945 has landed.** Until it does, the watcher
-  reports remediation steps and a human acts on them. Once it lands, the watcher opens the
-  retirement PR itself — cut from `origin/main` in its own worktree, never merged and never
-  auto-merged, left for the owner. Either way the retirement arrives as a reviewable PR,
-  and either way **this entry is not the thing that authorises it.**
-
-  Note what will NOT retire these entries, in both modes: a trigger from the watcher's
-  condition 1 or 5 alone — the nested `@appium/support` key disappearing — is deliberately
-  insufficient, because a key can move without the advisory clearing. Retirement needs
-  condition 4, `npm audit` reporting none of the four packages as an advisory root. That is
-  the distinction the 2026-07-27 false positive turned on, and it is why the watcher's
-  PR path gates on condition 4 specifically rather than on "the trigger fired".
-- **Revisit trigger — evidence, NOT a version number.** A version-based trigger is what
-  produced the false positive above. An earlier, NARROWER version of this list (nested key
-  absent / harness retired / re-rated only) failed to fire on what actually happened,
-  because the nested key never went away — its contents were patched in place. The first
-  five conditions below are `veyrnox-appium-shellquote-watch`'s five, in its order.
-  Trigger on ANY of:
-  - the nested `node_modules/appium-uiautomator2-driver/node_modules/@appium/support` key
-    is ABSENT from a fresh resolve; OR
-  - the nested `shell-quote` resolves to a version greater than `1.8.4`; OR
-  - the nested `body-parser` resolves to `2.3.0` or greater; OR
-  - `npm audit` on the fresh resolve no longer reports `shell-quote`, `@appium/support`,
-    `@appium/base-driver`, or `body-parser` as advisory roots; OR
-  - the committed lockfile on `origin/main` no longer contains the nested
-    `@appium/support` key; OR
-  - the Android E2E harness is retired.
-
-  A new `@appium/*` release is NOT sufficient on its own, and neither is an
-  `npm audit` `fixAvailable: true` — verify the resolved tree before retiring this again.
-
-  **Two deliberate differences from the watcher, kept rather than silently reconciled:**
-  the harness-retired condition is this entry's own and is not in the watcher's list; and
-  a re-rating ABOVE high is a trigger here (it breaks the severity-scoped suppression in
-  step 2a) while the watcher treats it as report-but-not-trigger. Everything else must
-  stay identical — **if you change a shared condition, change it in both files in the same
-  commit.** Drift is what produced the gap above: the watcher would have fired on
-  conditions 2 and 4 while this entry, by its own rule, said nothing had happened.
-- **Tracked:** watcher `veyrnox-appium-shellquote-watch` (weekly, Mondays ~9am),
-  deleted and REBUILT 2026-07-27. The original watched version numbers and produced the
-  false positive above; the rebuilt one ignores version numbers entirely and triggers
-  only on resolved-tree evidence — it copies `package.json` + `package-lock.json` to a
-  scratch dir, runs `npm install --package-lock-only`, and checks whether
-  `node_modules/appium-uiautomator2-driver/node_modules/@appium/support` is actually
-  gone. If a future run reports a trigger on the strength of a release number or an
-  `npm audit` `fixAvailable: true`, that is the old failure recurring — verify the
-  nested entry yourself before retiring anything.
-- Dependabot alert #12 dismissed as `tolerable_risk`.
-
-### `body-parser` — max severity: low — accepted 2026-07-21, reinstated 2026-07-27
-
-- **Advisory:** GHSA-v422-hmwv-36x6 — DoS when an invalid `limit` value silently
-  disables size enforcement (vulnerable `2.0.0 - 2.2.x`, patched `2.3.0`).
-- **Why accepted:** the same nested-duplicate mechanism as `shell-quote` above, and
-  unfixable for the same four reasons. The root `body-parser` is already the patched
-  `2.3.0`; the flagged `2.2.2` is pinned exactly by the nested
-  `@appium/base-driver@10.7.1`. DoS-only, dev-only, never bundled.
-- **Accounts for 0 findings as of 2026-08-22 — RETIREMENT CANDIDATE, not yet retired.**
-  This line said "1 low finding (`body-parser` under the appium subtree)". Re-derived at
-  `origin/main` `b8f01272`: the nested `body-parser` now resolves to the patched `2.3.0`
-  and `npm audit` no longer reports it. Same caveat as `shell-quote` above — retirement
-  runs through the watcher, not through this paragraph.
-- **Revisit trigger:** the same six conditions as `shell-quote` above (the first five are
-  the watcher's). Note the third one (`body-parser >= 2.3.0`) is already true. Retired and
-  reinstated 2026-07-27 alongside it; do not retire this one on an `npm audit`
-  `fixAvailable: true` either, which was verified to be a no-op.
-- **Tracked:** covered by the same rebuilt `veyrnox-appium-shellquote-watch` (weekly,
-  Mondays ~9am), which checks the nested `body-parser` resolution alongside
-  `shell-quote`.
-- Dependabot alert #14 auto-dismissed (low-severity dev dependency). That dismissal is
-  not itself a reason to suppress here; the rationale above is.
-
 ## Retired residuals
 
 Entries that were accepted, then genuinely cleared. Kept as a record so a future reader
 can tell "this was fixed" from "this was never looked at", and so the evidence that
 justified each retirement is on file rather than in a PR description.
+
+### `shell-quote` — accepted 2026-07-21, reinstated 2026-07-27, RETIRED 2026-08-23
+
+- **Advisory:** GHSA-395f-4hp3-45gv — quadratic-complexity Denial of Service in
+  `shell-quote` `parse()` (vulnerable `<= 1.8.4`, patched in `1.9.0`). Reached the tree
+  dev-only, through a ~257-package duplicate subtree under
+  `node_modules/appium-uiautomator2-driver/node_modules/` that carried its own
+  `@appium/support` → `shell-quote` pair, separate from the already-patched copies
+  hoisted at the tree root. Accounted for 3 high findings at retirement time, ~8 when
+  first accepted.
+- **How it cleared:** nothing was deliberately remediated, and no `overrides` entry was
+  ever added. The nested subtree was re-resolved as a side effect of routine lockfile
+  regeneration, and now duplicates PATCHED copies instead of vulnerable ones. Note the
+  shape of that: the entry's own condition 1 — "the nested `@appium/support` key
+  disappears" — never fired and was the wrong trigger. The key is still there; its
+  contents changed underneath it. That is exactly why conditions 2, 3 and 4 were added
+  after the 2026-07-27 false positive, and all three are what fired here.
+- **Retirement evidence — resolved tree, measured this run, per this file's own rule that
+  a version number and an npm `fixAvailable` are not evidence:**
+  1. Fresh `npm install --package-lock-only` (no `--legacy-peer-deps`) in a scratch dir,
+     from `origin/main` at `8b3d3fb`. Sanity check passed: `node_modules/appium` present
+     at `3.6.0`, so the resolve is not the corrupt/stripped kind that flag produces.
+  2. The nested subtree still exists (257 entries) and resolves PATCHED:
+     `@appium/support 7.2.6`, `shell-quote 1.10.0`, `@appium/base-driver 10.7.2`,
+     `body-parser 2.3.0`. Root copies match. Condition 2 (`shell-quote > 1.8.4`) and
+     condition 3 (`body-parser >= 2.3.0`) both true.
+  3. **Condition 4, the one retirement actually requires:** `npm audit` on that resolve
+     reports 22 low / 0 moderate / 0 high / 0 critical, with `elliptic` as the sole
+     advisory root. None of `shell-quote`, `@appium/support`, `@appium/base-driver`, or
+     `body-parser` appears as a root. A trigger from condition 1 or 5 alone would not
+     have been sufficient.
+  4. The fresh resolve is byte-identical in size to the committed lockfile (1,239,773
+     bytes), so this is `main`'s real state and not a scratch artifact.
+- **This was already recorded elsewhere 20 days earlier, and the drift is the finding.**
+  `package.json` `//overrides-audit-notes` has said "RESOLVED 2026-08-03 — no longer an
+  accepted residual" since 2026-08-03, with the same lockfile evidence. That note also
+  states "WATCHER RETIRED: veyrnox-appium-shellquote-watch deleted 2026-08-03". **Both
+  halves were out of step with reality:** this file kept both entries under
+  `## Accepted residuals` for three more weeks, and the watcher was never deleted — it
+  is still registered and enabled. A retirement recorded in one file and not the other
+  is indistinguishable from no retirement at all to whichever reader opens the other
+  file. If you retire a residual, change every place that names it in the same commit.
+- **If it comes back:** nothing is pinning this. No `overrides` entry holds the nested
+  subtree at patched versions — it landed there through ordinary range resolution and
+  could regress the same way (it already did once, transiently, on 2026-07-29: patched at
+  `87e9897b`, back to `1.8.4` at `ff78ac99` 12 minutes later, restored at `0295fd40`).
+  A reappearance is a NEW finding that must surface normally, not a reinstatement of this
+  entry — re-derive the chain before assuming this history applies.
+- **Watcher:** `veyrnox-appium-shellquote-watch` produced this retirement and is now
+  redundant. Recommend deleting the scheduled task; this task may not delete scheduled
+  tasks itself (see Constraints), so the owner acts. Its `SKILL.md` should be retained
+  the way `veyrnox-extract-zip-watch`'s was, in case the prompt is wanted back.
+- Dependabot alert #12 was dismissed as `tolerable_risk` and should now resolve.
+
+### `body-parser` — accepted 2026-07-21, reinstated 2026-07-27, RETIRED 2026-08-23
+
+- **Advisory:** GHSA-v422-hmwv-36x6 — DoS when an invalid `limit` value silently disables
+  size enforcement (vulnerable `2.0.0 - 2.2.x`, patched `2.3.0`). Same nested-duplicate
+  mechanism as `shell-quote` above, reached via the nested `@appium/base-driver`.
+  Accounted for 1 low finding.
+- **How it cleared and retirement evidence:** identical to `shell-quote` above and
+  measured in the same run — the nested `body-parser` resolves to the patched `2.3.0`,
+  and `npm audit` at `origin/main` `8b3d3fb` no longer lists it as an advisory root.
+- **If it comes back:** as above — unpinned, so a regression is possible and would be a
+  new finding rather than a reinstatement.
+- **Watcher:** same `veyrnox-appium-shellquote-watch`, same deletion recommendation.
+- Dependabot alert #14 was auto-dismissed (low-severity dev dependency) and should now
+  resolve. That dismissal was never the reason for suppression, and is not the reason for
+  retirement either.
 
 ### `extract-zip` — accepted 2026-08-16, RETIRED 2026-08-22
 
