@@ -182,7 +182,7 @@ describe('per-IP rate limit', () => {
     vi.stubGlobal('caches', {
       default: {
         async match(req) {
-          if (String(req.url).includes('buy-session-rl')) throw new Error('cache down');
+          if (String(req.url).includes('/rl/buy-session/')) throw new Error('cache down');
           return undefined;
         },
         async put() {},
