@@ -460,9 +460,9 @@ neither had been run against build 5 (Play Pre-launch report showed
 The `code_scanning` rule was **removed** from ruleset `Veyrnox Code Review` (`17946638`).
 CodeQL still scans all six languages on every PR and still files alerts to the Security
 tab; they no longer block merges. Swift stays covered by push-to-main and the weekly scan.
-Everything else on the ruleset is unchanged — `required_status_checks` (**six** contexts,
-tabulated in the two-layer note below — this file said three until 2026-08-08 and five
-until 2026-08-15),
+Everything else on the ruleset is unchanged — `required_status_checks` (**five** contexts,
+tabulated in the two-layer note below — this file said three until 2026-08-08, five until
+2026-08-15, and six until 2026-08-23, the last of those wrong from 2026-08-21 onward),
 `pull_request` (0 required approvals — **on the ruleset only**; classic branch protection
 is a separate layer, see that note), `deletion`, `non_fast_forward`. Exact rule JSON for
 restoring the removed rule is in issue #1375.
@@ -505,8 +505,9 @@ more contexts (five vs three) and classic requires none the ruleset does not. Re
 before concluding anything about what gates a merge —
 `gh api repos/VEYRNOX/veyrnox/branches/main/protection` is the half that
 `gh api repos/.../rulesets/17946638` does not show you, and vice versa.
-- **The two layers require DIFFERENT check sets. The effective gate is the UNION — SIX
-  contexts** (five until 2026-08-15; verified 2026-08-15 by re-reading both endpoints):
+- **The two layers require DIFFERENT check sets. The effective gate is the UNION — FIVE
+  contexts** (three until 2026-08-08, five until 2026-08-15, six until 2026-08-21, five
+  again since; verified 2026-08-23 by re-reading both endpoints):
 
   | context | ruleset `17946638` | classic protection |
   |---|---|---|
@@ -515,7 +516,23 @@ before concluding anything about what gates a merge —
   | `Release-cert guard rejects wrong fingerprints` | yes | yes |
   | `mainnet-flag-gate` | yes | — |
   | `staging-gate` | yes | — |
-  | `web-e2e-tests` | yes (2026-08-15) | yes (2026-08-15) |
+
+  **`web-e2e-tests` was removed from BOTH layers on 2026-08-21 and is no longer a
+  required context.** This file listed it as required on both from 2026-08-15 until
+  2026-08-23 — two days after it was actually dropped. Why it went: by 2026-08-21 no
+  workflow job reported a `web-e2e-tests` status at all, so the gate blocked mobile PRs
+  behind a check they could never satisfy. This is a React/Capacitor mobile build; the
+  deployed-preview lane still runs `e2e/staging-smoke.spec.js`, but that is a scoped
+  smoke check inside `deploy-preview.yml` reporting through `staging-gate`, NOT a
+  standalone `web-e2e-tests` pipeline. Full record, including the restore payload:
+  `docs/branch-protection-config.md` 2026-08-21 entry.
+
+  **Note the failure mode this row demonstrates, because it is the same one the rest of
+  this section documents.** `docs/branch-protection-config.md` was updated the day of the
+  change and was correct throughout; `deploy-preview.yml` and `e2e/staging-smoke.spec.js`
+  had their comments corrected the same day too. Only this table was missed, and it is
+  the one a reader consults first. A required-check list is worth re-deriving from
+  `gh api` before acting on it — the command is two lines up.
 
   `staging-gate` is the one most likely to surprise you: it is defined in
   `deploy-preview.yml`, NOT `ci.yml`; it is a pure reporter whose verdict comes from its
