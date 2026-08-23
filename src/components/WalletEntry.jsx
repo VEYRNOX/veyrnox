@@ -129,7 +129,6 @@ import { copySecret } from "@/lib/copySecret";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import PinSetup from "@/components/PinSetup";
-import OnboardingProgressBar from "@/components/OnboardingProgressBar";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
 import { errorHaptic } from "@/lib/haptics";
@@ -159,7 +158,7 @@ function FirstReceiveCardWithTelemetry(props) {
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
 // dropping focus from the password/seed inputs.
-function EntryShell({ error, children, chromeless = false, footer = null }) {
+function EntryShell({ error, children, chromeless = false }) {
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-background overflow-hidden">
       <VeyrnoxAmbient />
@@ -176,7 +175,6 @@ function EntryShell({ error, children, chromeless = false, footer = null }) {
         )}
         {children}
       </div>
-      {footer}
     </div>
   );
 }
@@ -461,16 +459,6 @@ function ExploreShell({ onCreate, children }) {
     </div>
   );
 }
-
-const ONBOARDING_PROGRESS_BY_VIEW = {
-  welcome: 0,
-  "entry-tiles": 0,
-  "pin-create": 33,
-  choose: 66,
-  "restore-file": 66,
-  generate: 66,
-  import: 66,
-};
 
 export default function WalletEntry() {
   const navigate = useNavigate();
@@ -762,22 +750,6 @@ export default function WalletEntry() {
       setJustOnboarded(false);
     }
   }, [chosenPath, generatedSeed, isUnlocked, justOnboarded, kekGatePending]);
-
-  const firstRunOnboardingProgress = (() => {
-    if (recovering) return null;
-    if (provisioning) return 80;
-    if (vaultExists !== false) return null;
-    return ONBOARDING_PROGRESS_BY_VIEW[view] ?? null;
-  })();
-
-  const onboardingFooter = firstRunOnboardingProgress == null
-    ? null
-    : (
-        <OnboardingProgressBar
-          value={firstRunOnboardingProgress}
-          label="Wallet setup progress"
-        />
-      );
 
   const copySeed = async () => {
     const gate = sensitiveGate(raspArtifact, 'seed-reveal');
@@ -1319,7 +1291,7 @@ export default function WalletEntry() {
   // fall through to the PIN entry with an error.
   if (provisioning) {
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         <ProvisioningView />
       </EntryShell>
     );
@@ -1350,7 +1322,7 @@ export default function WalletEntry() {
   const renderImportFirstReceive = () => {
     const receive = resolveReceive('ETH', { accounts, btcAccount, solAccount });
     return (
-      <EntryShell footer={onboardingFooter}>
+      <EntryShell>
         <FirstReceiveCardWithTelemetry
           address={receive?.address ?? null}
           onDismiss={() => setJustOnboarded(false)}
@@ -1386,7 +1358,7 @@ export default function WalletEntry() {
   // veyrnox-telemetry-consent into the SHARED localStorage the real session reads.
   if (isUnlocked && !generatedSeed && !consentDone && !isDeniabilityOrDemoActive()) {
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         <TelemetryConsent onChoice={() => setConsentDone(true)} />
       </EntryShell>
     );
@@ -1464,7 +1436,7 @@ export default function WalletEntry() {
     // error banner. Tiles are pure navigation — no submit path here can
     // populate `error`.
     return (
-      <EntryShell chromeless footer={onboardingFooter}>
+      <EntryShell chromeless>
         <EntryTiles onSelect={handleTileSelect} />
       </EntryShell>
     );
@@ -1495,7 +1467,7 @@ export default function WalletEntry() {
   // KEK enrollment gate). onBack returns to welcome (fresh install) or unlock.
   if (view === "restore-file") {
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         <RestoreFromFile
           onBack={() => { setError(""); setChosenPath(null); setView(vaultExists ? "unlock" : "entry-tiles"); }}
           onFinish={handleFileRestored}
@@ -1533,7 +1505,7 @@ export default function WalletEntry() {
       } finally { setDesyncWiping(false); }
     };
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         <div className="p-5 rounded-xl border border-caution/40 bg-caution/10 space-y-4">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-caution" />
@@ -1614,7 +1586,7 @@ export default function WalletEntry() {
   if (view === "unlock" && authModel === "pin") {
     const bioLabel = bioStatus?.label || "Face ID";
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-4">
           {biometricEnabled && !biometricFailed && (
             <>
@@ -1665,7 +1637,7 @@ export default function WalletEntry() {
   if (view === "unlock") {
     const bioLabel = bioStatus?.label || "Face ID";
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-3">
           {/* PROMINENT one-tap Face ID entry (only when it can actually run). */}
           {biometricEnabled && !biometricFailed && (
@@ -1772,7 +1744,7 @@ export default function WalletEntry() {
       // over. No separate "Create Wallet" click needed.
       if (chosenPath === "new") {
         return (
-          <EntryShell error={error} footer={onboardingFooter}>
+          <EntryShell error={error}>
             <div className="flex justify-center py-10"><Spinner size="lg" /></div>
           </EntryShell>
         );
@@ -1781,7 +1753,7 @@ export default function WalletEntry() {
       // user already chose "Have a wallet" on the entry-tiles screen.
       const showImportForm = choosePinImport || chosenPath === "have";
       return (
-        <EntryShell error={error} footer={onboardingFooter}>
+        <EntryShell error={error}>
           <div className="p-6 rounded-xl border border-dashed border-border bg-card space-y-4">
             {!showImportForm ? (
               <>
@@ -1842,7 +1814,7 @@ export default function WalletEntry() {
     // ONLY into PIN-create — there is deliberately NO "explore the dashboard"
     // affordance before a PIN is set (the empty dashboard is a post-PIN state).
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         <div className="p-6 rounded-xl border border-dashed border-border bg-card text-center space-y-4">
           <Wallet className="h-8 w-8 text-primary mx-auto" />
           <p className="text-sm font-medium">Set up your wallet</p>
@@ -1876,7 +1848,7 @@ export default function WalletEntry() {
   // ---- View: Create (PIN cohort) — choose PIN → confirm → Dashboard ----
   if (view === "pin-create") {
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         <div className="space-y-3">
           {/* PIN-FIRST: Back returns to the entry-tiles picker (the fresh-device
               landing ahead of the PIN), NOT a dashboard — the empty dashboard is
@@ -1898,7 +1870,7 @@ export default function WalletEntry() {
   // backup screen — the user just supplied the seed. finishPinRecover does the work.
   if (view === "pin-recover") {
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         <div className="space-y-5">
           <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setRecovering(false); setView("unlock"); }} />
 
@@ -1940,7 +1912,7 @@ export default function WalletEntry() {
   // ---- View: Create — ONE security screen (password → seed backup → Face ID) ----
   if (view === "generate") {
     return (
-      <EntryShell error={error} footer={onboardingFooter}>
+      <EntryShell error={error}>
         {!generatedSeed ? (
           <div className="space-y-4">
             <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setView("choose"); }} />
@@ -1999,7 +1971,7 @@ export default function WalletEntry() {
 
   // ---- View: Import an existing seed (also the seed-recovery path) ----
   return (
-    <EntryShell error={error} footer={onboardingFooter}>
+    <EntryShell error={error}>
       <div className="space-y-4">
         <BackButton data-testid="back-button" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-foreground/90 hover:bg-white/[0.08] hover:text-foreground" onClick={() => { setError(""); setView(vaultExists ? "unlock" : "choose"); setRecovering(false); }} />
         {recovering && (
