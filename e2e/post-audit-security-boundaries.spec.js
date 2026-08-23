@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
 
 test.describe('Security Boundary: Input Validation & Sanitization', () => {
-  test.skip('rejects oversized transaction amounts', async ({ page }) => {
+  test.fixme('#2021 rejects oversized transaction amounts', async ({ page }) => {
     await page.goto(`${BASE_URL}/send`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');
@@ -27,7 +27,7 @@ test.describe('Security Boundary: Input Validation & Sanitization', () => {
     expect(await error.textContent()).toMatch(/exceeds|invalid|amount/i);
   });
 
-  test.skip('sanitizes recipient address input', async ({ page }) => {
+  test.fixme('#2021 sanitizes recipient address input', async ({ page }) => {
     await page.goto(`${BASE_URL}/send`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');
@@ -57,7 +57,7 @@ test.describe('Security Boundary: Input Validation & Sanitization', () => {
     }
   });
 
-  test.skip('rejects invalid ethereum addresses', async ({ page }) => {
+  test.fixme('#2021 rejects invalid ethereum addresses', async ({ page }) => {
     await page.goto(`${BASE_URL}/send`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');
@@ -84,7 +84,7 @@ test.describe('Security Boundary: Input Validation & Sanitization', () => {
     }
   });
 
-  test.skip('memo field rejects plaintext leakage & HTML', async ({ page }) => {
+  test.fixme('#2021 memo field rejects plaintext leakage & HTML', async ({ page }) => {
     await page.goto(`${BASE_URL}/send`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');
@@ -117,7 +117,7 @@ test.describe('Security Boundary: Input Validation & Sanitization', () => {
 });
 
 test.describe('Security Boundary: Nonce & Double-Spend Prevention', () => {
-  test.skip('prevents double-broadcast via latch mechanism', async ({ page }) => {
+  test.fixme('#2021 prevents double-broadcast via latch mechanism', async ({ page }) => {
     await page.goto(`${BASE_URL}/send`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');
@@ -155,7 +155,7 @@ test.describe('Security Boundary: Nonce & Double-Spend Prevention', () => {
     expect(broadcastCount).toBeLessThanOrEqual(1);
   });
 
-  test.skip('nonce shape assertion rejects malformed nonces', async ({ page }) => {
+  test.fixme('#2021 nonce shape assertion rejects malformed nonces', async ({ page }) => {
     await page.goto(`${BASE_URL}/send`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');
@@ -186,7 +186,7 @@ test.describe('Security Boundary: Nonce & Double-Spend Prevention', () => {
 });
 
 test.describe('Security Boundary: Session & Authentication', () => {
-  test.skip('session expires after inactivity timeout', async ({ page }) => {
+  test.fixme('#2021 session expires after inactivity timeout', async ({ page }) => {
     await page.goto(`${BASE_URL}`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');
@@ -219,7 +219,7 @@ test.describe('Security Boundary: Session & Authentication', () => {
     expect(isLocked || isDash).toBeTruthy();
   });
 
-  test.skip('PIN validation rejects weak PINs', async ({ page }) => {
+  test.fixme('#2021 PIN validation rejects weak PINs', async ({ page }) => {
     await page.goto(`${BASE_URL}/settings/security`);
 
     const currentPin = page.locator('[data-testid="current-pin"]');
@@ -248,7 +248,7 @@ test.describe('Security Boundary: Session & Authentication', () => {
     }
   });
 
-  test.skip('concurrent unlock attempts fail gracefully', async ({ page, context }) => {
+  test.fixme('#2021 concurrent unlock attempts fail gracefully', async ({ page, context }) => {
     await page.goto(`${BASE_URL}`);
 
     // Open two tabs
@@ -283,7 +283,7 @@ test.describe('Security Boundary: Session & Authentication', () => {
 });
 
 test.describe('Security Boundary: Key & Secret Exposure', () => {
-  test.skip('private keys never appear in logs or storage dumps', async ({ page }) => {
+  test.fixme('#2021 private keys never appear in logs or storage dumps', async ({ page }) => {
     await page.goto(`${BASE_URL}`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');
@@ -332,7 +332,7 @@ test.describe('Security Boundary: Key & Secret Exposure', () => {
     });
   });
 
-  test.skip('API keys not sent to upstream services', async ({ page }) => {
+  test.fixme('#2021 API keys not sent to upstream services', async ({ page }) => {
     // Intercept network BEFORE navigation
     const thirdPartyRequests = [];
     page.on('request', req => {
@@ -373,7 +373,7 @@ test.describe('Security Boundary: Key & Secret Exposure', () => {
 });
 
 test.describe('Security Boundary: CSP & XSS Prevention', () => {
-  test.skip('content security policy headers present and enforced', async ({ page, context }) => {
+  test.fixme('#2021 content security policy headers present and enforced', async ({ page, context }) => {
     const response = await page.goto(`${BASE_URL}`);
 
     expect(response).toBeTruthy();
@@ -384,7 +384,7 @@ test.describe('Security Boundary: CSP & XSS Prevention', () => {
     expect(cspHeader).toContain("default-src 'self'");
   });
 
-  test.skip('rejects XSS payloads in input fields', async ({ page }) => {
+  test.fixme('#2021 rejects XSS payloads in input fields', async ({ page }) => {
     await page.goto(`${BASE_URL}/send`);
 
     const pinInput = page.locator('[data-testid="pin-input"]');

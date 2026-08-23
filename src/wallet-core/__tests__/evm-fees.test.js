@@ -6,7 +6,7 @@
 // is the EXACT object spread into wallet.sendTransaction(), so what they see is
 // what gets signed. No network.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { parseUnits } from 'ethers';
 import { buildEvmTiers, buildEvmCustomFee, evmFeeOverrides, EVM_TIERS, MIN_TIP_WEI } from '../evm/fees.js';
 
@@ -152,6 +152,29 @@ describe('buildEvmTiers — per-chain base-fee ceiling (C-4)', () => {
     expect(() =>
       buildEvmTiers({ baseFeePerGasWei: GWEI(99999), suggestedTipWei: tip, gasLimit, networkKey: 'unknownchain' }),
     ).not.toThrow();
+  });
+});
+
+describe('estimateEvmFeeTiers — estimateGas failure surfaces (2026-08-16 audit)', () => {
+  it('throws GAS_ESTIMATION_FAILED instead of silently falling back to 21000n', async () => {
+    // Mock the provider + network modules so no network is touched.
+    vi.resetModules();
+    vi.doMock('../evm/provider.js', () => ({
+      getProvider: () => ({
+        getBlock: async () => ({ baseFeePerGas: GWEI(20) }),
+        getFeeData: async () => ({ maxPriorityFeePerGas: GWEI(2), gasPrice: GWEI(22) }),
+        estimateGas: async () => { throw new Error('execution reverted'); },
+      }),
+    }));
+    vi.doMock('../evm/networks.js', () => ({
+      getNetworkInfo: () => ({ symbol: 'ETH', decimals: 18, name: 'mainnet' }),
+    }));
+    const { estimateEvmFeeTiers } = await import('../evm/fees.js');
+    await expect(
+      estimateEvmFeeTiers({ networkKey: 'mainnet', from: '0x0', to: '0x1', value: 0n, data: '0xdeadbeef' }),
+    ).rejects.toMatchObject({ code: 'GAS_ESTIMATION_FAILED' });
+    vi.doUnmock('../evm/provider.js');
+    vi.doUnmock('../evm/networks.js');
   });
 });
 
