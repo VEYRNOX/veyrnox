@@ -3,7 +3,8 @@
 // The device tests are authored in Swift / workflow YAML / Robo Script JSON, so
 // Vitest cannot execute them locally. This static guard pins the pieces that
 // previously drifted independently: Veyrnox's eight-digit explicit-submit
-// PinPad, the fresh-install "New wallet" route, and the exact-SHA APK handoff.
+// PinPad, the fresh-install iOS "Get Started" route, the Android "New wallet"
+// Robo flow, and the exact-SHA APK handoff.
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -26,21 +27,23 @@ function indexOrFail(source, needle) {
 }
 
 describe('Firebase Test Lab first-run PIN smoke', () => {
-  it('drives iOS through New wallet and explicitly submits both 8-digit PIN stages', () => {
+  it('drives iOS through Get Started and explicitly submits both 8-digit PIN stages', () => {
     const pin = swift.match(/let pin = "(\d+)"/)?.[1];
     expect(pin).toBe('24681024');
 
-    const newWallet = indexOrFail(swift, 'app.buttons["New wallet"]');
+    const getStarted = indexOrFail(swift, 'tapButton(');
+    const getStartedLabel = indexOrFail(swift, 'label: "Get Started"');
     const setDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "set")');
     const setSubmit = indexOrFail(swift, 'submitPin(app: app, stage: "set")');
     const confirmDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "confirm")');
     const confirmSubmit = indexOrFail(swift, 'submitPin(app: app, stage: "confirm")');
 
-    expect(newWallet).toBeLessThan(setDigits);
+    expect(getStarted).toBeLessThan(getStartedLabel);
+    expect(getStartedLabel).toBeLessThan(setDigits);
     expect(setDigits).toBeLessThan(setSubmit);
     expect(setSubmit).toBeLessThan(confirmDigits);
     expect(confirmDigits).toBeLessThan(confirmSubmit);
-    expect(swift).toContain('app.buttons["Submit PIN"]');
+    expect(swift).toContain('"Submit PIN", "Continue"');
   });
 
   it('uses a Robo script to click the custom Android PinPad instead of inventing text fields', () => {
