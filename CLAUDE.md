@@ -61,6 +61,36 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
   - **Cloudflare Pages** `SUPABASE_ANON_KEY` env on `veyrnox-prod` /
     `veyrnox-staging` — must remain the publishable key that matches what
     Supabase auto-injects into Edge Functions.
+  - **Cloudflare Pages Transak secrets** — the two projects run DIFFERENT
+    Transak environments on purpose; do NOT collapse them.
+    * **`veyrnox-prod`** (set 2026-08-23): `TRANSAK_ENVIRONMENT=PRODUCTION`,
+      `TRANSAK_API_KEY=758a05a5-2eaf-4ecd-bc8f-6aed9fec35a3`,
+      `TRANSAK_API_SECRET=Q3UYM7E9TffXeIEUWsQRGw==` (**capital I in `XeIEUW`,
+      NOT lowercase l** — a lowercase-l value returns 400 "Invalid api-secret"
+      at `POST api.transak.com/partners/api/v2/refresh-token`, verified).
+      Endpoint targets: `api.transak.com`, `api-gateway.transak.com`,
+      `global.transak.com`. Real card charges.
+    * **`veyrnox-staging`** stays on Transak STAGING: `TRANSAK_API_KEY` +
+      `TRANSAK_API_SECRET` set, `TRANSAK_ENVIRONMENT` deliberately UNSET so
+      `functions/api/buy/session.js`'s `env.TRANSAK_ENVIRONMENT || 'STAGING'`
+      falls back to STAGING. Endpoint targets: `api-stg.transak.com`,
+      `api-gateway-stg.transak.com`, `global-stg.transak.com`. Simulated
+      flow, no real charges — the correct default for staging.
+    Rotate the prod secret only via Transak Partner Dashboard → Developers →
+    Production → Refresh; then re-set via `wrangler pages secret put
+    TRANSAK_API_SECRET --project-name veyrnox-prod` AND redeploy Pages
+    (`wrangler pages deploy dist --project-name veyrnox-prod --branch main`)
+    — Pages Functions bake env at deploy time. Never set
+    `TRANSAK_ENVIRONMENT=PRODUCTION` on `veyrnox-staging` unless you
+    genuinely intend every staging test to charge real cards.
+    **Current partner state (2026-08-23):** refresh-token accepts on prod,
+    but create-session returns `401 errorCode 1002 "Invalid or missing
+    access-token"` at `POST api-gateway.transak.com/api/v2/auth/session`.
+    That's a Transak partner-side widget enablement pending, NOT a wiring
+    bug — do not "diagnose" it into the code, do not roll prod back to
+    STAGING as a "fix", contact Transak support with errorCode 1002 + the
+    API key above. Buy will start working the moment they enable widget
+    access for that partner, no config change on our side needed.
   - **RevenueCat** offer identifiers (`APPLE_OFFER_IDS`, Play offer tags),
     entitlement `safety_plus`, and the `rc-webhook` Edge Function's shared
     secret with the RC dashboard.
