@@ -234,6 +234,20 @@ function scoreDeviceIntegrity(s) {
   return { score: pts, max: 25, items };
 }
 
+// Tier strings the native plugins actually persist into blob.hardwareKekTier
+// (see wallet-core/keystore/hardware.js ACCEPTED_TIER_NAMES). The scorer used
+// to check only the aspirational canonical names ('STRONGBOX', 'SECURE_ENCLAVE',
+// 'TEE'), so every iOS Secure-Enclave device (persisted as 'SecureEnclave')
+// scored 0 on the sub-item next to a live kekActive=true — a silent -5 for
+// every iPhone. Accept both the persisted and canonical spellings.
+const TOP_TIER_NAMES = new Set(['STRONGBOX', 'SECURE_ENCLAVE', 'SecureEnclave']);
+const TEE_TIER_NAMES = new Set([
+  'TEE',
+  'TRUSTED_ENVIRONMENT',      // Android AndroidKeyStore SecurityLevel.TRUSTED_ENVIRONMENT
+  'SECURE_HARDWARE_PRE31',    // pre-API-31 Androids reporting secure hw without a level
+  'UNKNOWN_SECURE',           // Android reported secure but level not surfaced (still hw)
+]);
+
 /**
  * Score the hardware binding dimension (max 10).
  * KEK active = 5. StrongBox/SecureEnclave = 5, TEE = 3 (mutually exclusive).
@@ -242,8 +256,8 @@ function scoreDeviceIntegrity(s) {
 function scoreHardwareBinding(s) {
   const kekItem = item('kek_active', !!s.kekActive, 5);
 
-  const isTopTier = !!s.kekActive && (s.hardwareTier === 'STRONGBOX' || s.hardwareTier === 'SECURE_ENCLAVE');
-  const isTee = !!s.kekActive && s.hardwareTier === 'TEE';
+  const isTopTier = !!s.kekActive && TOP_TIER_NAMES.has(s.hardwareTier);
+  const isTee = !!s.kekActive && !isTopTier && TEE_TIER_NAMES.has(s.hardwareTier);
 
   const hwItem = isTopTier
     ? item('hardware_top_tier', true, 5)
