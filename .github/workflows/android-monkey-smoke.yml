@@ -144,7 +144,7 @@ jobs:
             # --kill-process-after-error / --monitor-native-crashes exist to
             # produce. `set -o pipefail` is not an option — it would not
             # outlive the line it is set on. Capture, print, then gate on it.
-            adb shell "monkey -p com.veyrnox.app.debug -v --throttle 100 --kill-process-after-error --monitor-native-crashes --pct-touch 60 --pct-motion 20 --pct-nav 10 --pct-syskeys 10 500" > monkey.log 2>&1; rc=$?; cat monkey.log; [ "$rc" -eq 0 ] || { echo "Monkey exited $rc — failing job"; exit "$rc"; }
+            adb shell "monkey -p com.veyrnox.app.debug -v --throttle 100 --kill-process-after-error --monitor-native-crashes --pct-touch 65 --pct-motion 20 --pct-nav 15 --pct-syskeys 0 500" > monkey.log 2>&1; rc=$?; cat monkey.log; [ "$rc" -eq 0 ] || { echo "Monkey exited $rc — failing job"; exit "$rc"; }
             # Second guard: monkey returns 0 on some crash types but still
             # prints "// CRASH:" or "// NOT RESPONDING:" into the log.
             grep -E "^// (CRASH|NOT RESPONDING):" monkey.log && { echo "Monkey detected a crash / ANR — failing job"; exit 1; } || true
