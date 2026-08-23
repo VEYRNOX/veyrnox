@@ -31,42 +31,17 @@ extension XCUIApplication {
     }
 }
 
-/// Timeouts for the first UI query after a launch.
+/// Timeouts for the first actionable UI query after launch.
 ///
-/// `XCUIApplication.launch()` returns when the PROCESS is idle, not when the
-/// Capacitor WKWebView has painted. On a warm dev simulator the gap is
-/// invisible; on a cold CI runner it is not, and the first element query
-/// races the paint.
-///
-/// Measured, not guessed — CI run 32623310002: the test was allowed 10s to
-/// find the entry tile and the whole test took 70.5s, so launch consumed the
-/// best part of a minute and the tile wait then expired against a webview
-/// that had not painted. The tile itself was never missing:
-/// src/components/EntryTiles.jsx defines "New wallet".
+/// `XCUIApplication.launch()` returns when the process is idle, not when the
+/// Capacitor surface has exposed web-backed controls through accessibility.
+/// On cold CI runners, the first real button query can lag far behind launch.
 enum UITestTimeouts {
-    /// WKWebView existing at all. Generous: this covers cold-simulator boot.
-    static let webViewPaint: TimeInterval = 90
-    /// A specific element inside an already-painted webview. Covers React
-    /// mount + first render, which is fast once the webview is up.
+    /// First actionable element inside the Capacitor surface.
     static let firstElement: TimeInterval = 60
 }
 
 extension XCTestCase {
-    /// Block until the Capacitor webview exists, before querying anything in it.
-    ///
-    /// Worth its own assertion rather than folding into the element wait: it
-    /// splits one ambiguous failure into two actionable ones. "Webview never
-    /// appeared" means the app launched but never painted — a broken bundle,
-    /// a missing `cap sync`, or a runner too slow. "Tile never appeared"
-    /// then means what the test says it means: a real UI regression. Before
-    /// this, both read as "New wallet entry tile never appeared".
-    func waitForWebView(app: XCUIApplication, timeout: TimeInterval = UITestTimeouts.webViewPaint) {
-        XCTAssertTrue(
-            app.webViews.firstMatch.waitForExistence(timeout: timeout),
-            "Capacitor webview never appeared within \(Int(timeout))s — the app launched but never painted."
-        )
-    }
-
     /// Tap each digit on the on-screen PinPad keypad.
     func enterPin(app: XCUIApplication, digits: String) {
         for ch in digits {
@@ -100,7 +75,6 @@ extension XCTestCase {
     /// Create a fresh wallet via the New Wallet tile + PIN flow.
     /// Leaves the app on the WalletCreatedFlash screen.
     func createFreshWallet(app: XCUIApplication, pin: String = TestPin.standard) {
-        waitForWebView(app: app)
         let tile = app.buttons["New wallet"]
         XCTAssertTrue(
             tile.waitForExistence(timeout: UITestTimeouts.firstElement),
