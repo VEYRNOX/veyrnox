@@ -37,6 +37,19 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     `DEFAULT_ALLOWED_ORIGINS` (localhost:5173/5199/5211 stay because they
     are how devs test), and the `STATUS: BUILT, WIRED` header comment which
     is paired to a test (`src/api/__tests__/tipEdge.chatRoute.test.js`).
+    **2026-08-23 checkpoint — DEPLOYED VERSION MUST match the repo source.**
+    The live function was v34 until 2026-08-23, pre-PR #1725: it read only
+    `Deno.env.get('TIP_BASE_URL')` and ignored `TIP_CHAT_BASE_URL`. Every
+    chat request went via `tip.veyrnox.com` and hit Cloudflare Turnstile
+    (`Just a moment…` HTML) — Edge returned 502 `tip_upstream_error`, the
+    Advisor showed generic "AI advisor unavailable". Redeployed to v35 with
+    the repo source that reads `TIP_CHAT_BASE_URL || TIP_BASE_URL`, then
+    set `TIP_CHAT_BASE_URL='https://veyrnox-tip.al-jobson.workers.dev'` on
+    the prod project. If you redeploy `tip-chat`, deploy from
+    `supabase/functions/tip-chat/index.ts` verbatim — never bring back an
+    older shape. If `TIP_CHAT_BASE_URL` is ever unset, chat silently reverts
+    to Turnstile-blocked. `verify_jwt: false` on the function (the header
+    comment above explains why — CORS OPTIONS preflight carries no auth).
   - **Supabase Edge Function `tip-screen`** — signing helpers, endpoint
     binding (`/api/v1/screen` only; the historical `action:'chat'` branch
     is deliberately removed and must stay removed).
