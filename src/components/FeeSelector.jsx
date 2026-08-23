@@ -81,7 +81,7 @@ function describeTier(chain, tier, ctx) {
   };
 }
 
-export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRate, gasLimitHint, to, onChange }) {
+export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRate, gasLimitHint, to, txData, value, from, onChange }) {
   const [selectedId, setSelectedId] = useState(null);
   const [custom, setCustom] = useState({ maxBaseFeeGwei: "", priorityGwei: "", gasLimit: "" });
 
@@ -99,17 +99,18 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
       }
       return run();
     };
-    // 2026-08-16 audit R6: forward `to` so estimateEvmFeeTiers can reach its
-    // estimateGas branch (gasLimitHint still short-circuits it for known
-    // paths; contract calls omitting the hint now get a live estimate + honest
-    // GAS_ESTIMATION_FAILED on failure).
-    if (chain === "evm") return gate(() => estimateEvmFeeTiers(/** @type {any} */ ({ networkKey, gasLimit: gasLimitHint, to })));
+    // 2026-08-16 round-7: forward `to`, `data`, `value`, `from` so
+    // estimateEvmFeeTiers reaches its LIVE estimateGas branch for contract
+    // interactions (ERC-20 transfers, approvals, deployments). gasLimitHint
+    // is now only honoured by the estimator when data is absent — a native
+    // ETH transfer with the exact 21000n constant.
+    if (chain === "evm") return gate(() => estimateEvmFeeTiers(/** @type {any} */ ({ networkKey, gasLimit: gasLimitHint, from, to, data: txData, value })));
     if (chain === "btc") return gate(() => estimateBtcFeeTiers({ networkKey }));
     return gate(() => estimateSolFeeTiers({ networkKey }));
-  }, [chain, networkKey, gasLimitHint, to]);
+  }, [chain, networkKey, gasLimitHint, from, to, txData, value]);
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["fee-tiers", chain, networkKey, gasLimitHint, to],
+    queryKey: ["fee-tiers", chain, networkKey, gasLimitHint, from, to, txData, value],
     queryFn,
     staleTime: 15_000,
     refetchInterval: 30_000,
@@ -148,7 +149,12 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
         const fee = buildEvmCustomFee({
           maxBaseFeeGwei: maxBase,
           priorityGwei: priority,
-          gasLimit: custom.gasLimit || gasLimitHint || 21000,
+          // 2026-08-16 round-7: fall back to the live-estimated gasLimit
+          // (data.gasLimit) before the 21000 constant — ERC-20 sends no
+          // longer pass a gasLimitHint, so the estimator's honest number
+          // must reach the custom-fee preview or the on-screen max fee will
+          // silently underquote.
+          gasLimit: custom.gasLimit || gasLimitHint || (/** @type {any} */ (data))?.gasLimit || 21000,
           networkKey,
         });
         const nativeFloat = Number(formatUnits(BigInt(fee.estFeeWei), decimals));
