@@ -63,6 +63,7 @@ import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
 import WatchlistWidget from "@/components/WatchlistWidget";
 import SecurityPosture from "@/components/SecurityPosture";
 import { readPersonalBackupState } from "@/lib/personalBackupState";
+import { getHardwareKekTier } from "@/lib/hardwareKekStatus";
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
@@ -73,6 +74,40 @@ import { fetchAssetHistory } from "@/lib/txHistory";
 import { isDeferred } from "@/lib/seedVerifyState";
 import { useWalletReady, useFirstInbound } from "@/lib/tracking-integration";
 import { buildAssetSpamIntel } from "@/lib/spamTokenIntel";
+
+// Read-only supplier of the posture-state fields the SecurityPosture widget
+// intentionally does NOT self-detect (portable-by-design): PIN cohort / length,
+// hardware KEK tier, and recovery inputs. Before this mount, those fields
+// stayed at their conservative false/null defaults regardless of what the user
+// toggled — the auth-dimension (pin_created 10, pin_length 5) and the
+// hardware sub-item (5 top-tier / 3 tee) always scored 0 even when kekActive
+// was live, so RASP=ALLOW alone yielded a stuck "25% Critical" reading.
+//
+// pinLength: PIN cohort enforces an 8-digit floor at PinPad; password cohort's
+// floor is 12. Report the real minimum for the current cohort so the score
+// reflects what the app actually requires. Unknown cohort → null (no fabricated
+// length — I4).
+function SecurityPostureMount() {
+  const [hardwareTier, setHardwareTier] = useState(null);
+  useEffect(() => {
+    let live = true;
+    getHardwareKekTier().then((tier) => { if (live) setHardwareTier(tier); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  const pb = readPersonalBackupState();
+  const authModel = getAuthModel();
+  const pinCreated = authModel === 'pin' || authModel === 'password';
+  const pinLength = authModel === 'pin' ? 8 : authModel === 'password' ? 12 : null;
+  return (
+    <SecurityPosture state={{
+      pinCreated,
+      pinLength,
+      hardwareTier,
+      recoveryPassphraseSet: pb.passphrase,
+      shareCExported: pb.exported,
+    }} />
+  );
+}
 
 const fmtAmount = (n) =>
   n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
@@ -936,13 +971,7 @@ export default function WalletPortfolioPage() {
           hiding the whole point of the posture card. shareCVerified stays
           honestly false — spec §9 gates it on a real recovery round-trip,
           which Phase 2 does not yet log (I4: no fabricated "verified"). */}
-      {(() => {
-        const pb = readPersonalBackupState();
-        return <SecurityPosture state={{
-          recoveryPassphraseSet: pb.passphrase,
-          shareCExported: pb.exported,
-        }} />;
-      })()}
+      <SecurityPostureMount />
 
       {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">
