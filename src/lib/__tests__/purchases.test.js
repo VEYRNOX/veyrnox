@@ -19,6 +19,7 @@ const getCustomerInfoMock = vi.fn();
 const addCustomerInfoUpdateListenerMock = vi.fn();
 const removeCustomerInfoUpdateListenerMock = vi.fn();
 const setAttributesMock = vi.fn();
+const getAppUserIDMock = vi.fn();
 vi.mock('@revenuecat/purchases-capacitor', () => ({
   Purchases: {
     configure,
@@ -28,6 +29,7 @@ vi.mock('@revenuecat/purchases-capacitor', () => ({
     purchasePackage: purchasePackageMock,
     restorePurchases: restorePurchasesMock,
     getCustomerInfo: getCustomerInfoMock,
+    getAppUserID: getAppUserIDMock,
     addCustomerInfoUpdateListener: addCustomerInfoUpdateListenerMock,
     removeCustomerInfoUpdateListener: removeCustomerInfoUpdateListenerMock,
   },
@@ -59,6 +61,7 @@ const {
   configurePurchases,
   getOfferings,
   getTierOffering,
+  getRcUserId,
   purchasePackage,
   restorePurchases,
   getCustomerInfo,
@@ -104,6 +107,11 @@ describe('purchases.js — web (no App Store / Play Store)', () => {
   it('getCustomerInfo resolves null without calling the plugin', async () => {
     expect(await getCustomerInfo()).toBeNull();
     expect(getCustomerInfoMock).not.toHaveBeenCalled();
+  });
+
+  it('getRcUserId resolves null without calling the plugin', async () => {
+    expect(await getRcUserId()).toBeNull();
+    expect(getAppUserIDMock).not.toHaveBeenCalled();
   });
 
   it('purchasePackage throws PURCHASES_NATIVE_ONLY', async () => {
@@ -159,6 +167,11 @@ describe('purchases.js — native', () => {
   it('getCustomerInfo returns customerInfo from the plugin', async () => {
     getCustomerInfoMock.mockResolvedValue({ customerInfo: { entitlements: { active: {} } } });
     expect(await getCustomerInfo()).toEqual({ entitlements: { active: {} } });
+  });
+
+  it('getRcUserId returns the RevenueCat app user id from the plugin', async () => {
+    getAppUserIDMock.mockResolvedValue({ appUserID: 'rc-user-123' });
+    expect(await getRcUserId()).toBe('rc-user-123');
   });
 
   it('addCustomerInfoUpdateListener registers with the plugin and resolves a real unsubscribe', async () => {

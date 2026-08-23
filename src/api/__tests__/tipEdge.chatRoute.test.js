@@ -113,6 +113,13 @@ describe('tip-chat validates messages per entry', () => {
     expect(chatCode).toMatch(/bad_message_content/);
   });
 
+  it('requires a RevenueCat user id and the AI Security Protection entitlement', () => {
+    expect(chatCode).toMatch(/x-rc-user-id/);
+    expect(chatCode).toMatch(/REQUIRED_ENTITLEMENT = 'ai_security_protection'/);
+    expect(chatCode).toMatch(/REVENUECAT_V1_SECRET_KEY/);
+    expect(chatCode).toMatch(/entitlement_required/);
+  });
+
   it('rejects the request instead of filtering bad entries out', () => {
     // Silently dropping messages would change the conversation the caller
     // believes it sent. Every failure path must return, not continue.

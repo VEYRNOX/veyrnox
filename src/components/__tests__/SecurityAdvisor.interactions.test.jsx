@@ -46,8 +46,12 @@ vi.mock('@/wallet-core/deniabilitySession.js', () => ({
 }));
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
 const useTierMock = vi.fn(() => ({ currentTier: 'ai_security_protection' }));
+const getRcUserIdMock = vi.fn(async () => null);
 vi.mock('@/lib/TierProvider', () => ({
   useTier: () => useTierMock(),
+}));
+vi.mock('@/lib/purchases', () => ({
+  getRcUserId: () => getRcUserIdMock(),
 }));
 
 const mockScreenTransaction = vi.fn();
@@ -114,6 +118,7 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
   beforeEach(() => {
     localStorage.clear();
     useTierMock.mockReturnValue({ currentTier: 'ai_security_protection' });
+    getRcUserIdMock.mockResolvedValue(null);
 
     // Spy on all fetch calls (both chat and screening)
     fetchSpy = vi.fn();
@@ -313,6 +318,20 @@ describe('SecurityAdvisor — AI + TIP Interactions & Correlations', () => {
         apikey: 'sb-anon-key',
         'Content-Type': 'application/json',
       });
+    });
+
+    it('attaches the RevenueCat app user id header when available', async () => {
+      getRcUserIdMock.mockResolvedValue('rc-user-123');
+      await mountAdvisorWithFallback();
+      await grantAdvisorConsent();
+
+      fetchSpy.mockResolvedValueOnce({ ok: false }).mockRejectedValueOnce(new Error('Network error'));
+
+      await askQuestion('what is deniability mode?');
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+      expect(fetchSpy.mock.calls[0][1].headers['X-Rc-User-Id']).toBe('rc-user-123');
+      expect(fetchSpy.mock.calls[1][1].headers['X-Rc-User-Id']).toBe('rc-user-123');
     });
 
     it('falls back to local knowledge when TIP chat is offline', async () => {

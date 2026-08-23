@@ -46,6 +46,7 @@ import {
 } from "@/lib/advisorBridge";
 import { useTier } from "@/lib/TierProvider";
 import { hasAdvisorOnlineAccess, tierLabel, TIER } from "@/lib/tier";
+import { getRcUserId } from "@/lib/purchases";
 
 const TIP_CONFIGURED = !!import.meta.env.VITE_TIP_BASE_URL;
 const EDGE_BASE = import.meta.env.VITE_EDGE_BASE || '';
@@ -70,7 +71,7 @@ function resolveLegacyTipChatUrl() {
   return `${String(SUPABASE_URL).replace(/\/$/, '')}/functions/v1/tip-chat`;
 }
 
-function buildTipChatHeaders(url) {
+async function buildTipChatHeaders(url) {
   const headers = { "Content-Type": "application/json" };
   if (
     url &&
@@ -81,6 +82,8 @@ function buildTipChatHeaders(url) {
     headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
     headers.apikey = SUPABASE_ANON_KEY;
   }
+  const rcUserId = await getRcUserId();
+  if (rcUserId) headers["X-Rc-User-Id"] = rcUserId;
   return headers;
 }
 const TIP_CHAT_URL = resolveTipChatUrl();
@@ -1336,7 +1339,7 @@ Additional public knowledge you should apply:
         try {
           resp = await fetch(url, {
             method: "POST",
-            headers: buildTipChatHeaders(url),
+            headers: await buildTipChatHeaders(url),
             body: requestBody,
             signal: controller.signal,
           });
