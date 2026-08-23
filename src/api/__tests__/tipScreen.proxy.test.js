@@ -69,6 +69,11 @@ describe('H-4 — no signing secret in the client', () => {
   it('the request routes through the Edge Function path', () => {
     expect(screenSrc).toMatch(/functions\/v1\/tip-screen/);
   });
+
+  it('threads the RevenueCat app user id through the proxy header path', () => {
+    expect(clientSrc).toMatch(/X-Rc-User-Id/);
+    expect(screenSrc).toMatch(/getRcUserId/);
+  });
 });
 
 describe('H-4 — setting the forbidden env vars disables screening rather than using them', () => {
@@ -148,6 +153,10 @@ describe('H-4 — the Edge Function keeps the secrets server-side', () => {
 
   it('does not relay the upstream error body to the client', () => {
     expect(fnSrc).toMatch(/tip_upstream_error/);
+  });
+
+  it('allows the RevenueCat user id header through CORS for entitlement checks', () => {
+    expect(fnSrc).toMatch(/x-rc-user-id/);
   });
 
   it('generates the request id with a CSPRNG', () => {
