@@ -633,22 +633,24 @@ export async function decryptVaultWithDek(vault, dek) {
  * @returns {Promise<Uint8Array>} 32-byte C factor
  */
 export async function deriveKekC(password, salt) {
-  const { argon2id: _argon2id } = await import('hash-wasm');
   const pw = enc.encode(password.normalize('NFKC'));
   let raw;
   try {
-    raw = await _argon2id({
+    raw = await runArgon2idBinary({
       password: pw,
       salt,
       parallelism: KDF_PARAMS.parallelism,
       iterations: KDF_PARAMS.iterations,
       memorySize: KDF_PARAMS.memorySize,
       hashLength: KDF_PARAMS.hashLength,
-      outputType: 'binary',
     });
   } finally {
-    zero(pw); // wipe encoded password bytes, mirroring deriveKey()
+    zero(pw); // wipe our copy of the password bytes (the worker wipes its own copy)
   }
+  // Mirror deriveKey(): yield after the heavy Argon2 run so the worker/in-thread WASM
+  // instance becomes GC-eligible before the next sequential derivation allocates its
+  // own KDF_PARAMS.memorySize. On native unlock this keeps the KEK C-factor path from
+  // pinning the UI on the same tick after the KDF completes.
   await new Promise((resolve) => setTimeout(resolve, 0));
   const result = new Uint8Array(raw);
   // M-J: zero the raw Argon2id output once copied, matching deriveKey()'s zero(raw).
