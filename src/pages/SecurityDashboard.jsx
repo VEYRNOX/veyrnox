@@ -366,6 +366,66 @@ export default function SecurityDashboard() {
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 rtl:-scale-x-100" />
       </Link>
 
+      {/* How the score is calculated — user-visible rubric that matches
+          lib/securityPosture.js. Every item is worth exactly the points shown;
+          the score never fabricates evidence for anything not earned (I4).
+          Kept in sync with lib/advisorKnowledge.js "How is the security score
+          calculated?" so the AI Advisor and the visible docs agree. */}
+      <details className="rounded-xl border border-border bg-card/50 open:bg-card">
+        <summary className="cursor-pointer list-none p-3 flex items-center justify-between">
+          <span className="text-sm font-medium">How is my score calculated?</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground rtl:-scale-x-100" />
+        </summary>
+        <div className="px-3 pb-3 space-y-3 text-xs text-muted-foreground">
+          <p>
+            Five dimensions sum to a maximum of 95 points. Every item scores exactly its listed points, or zero — nothing partial.
+          </p>
+          <div>
+            <p className="font-medium text-foreground">Authentication · 20</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>PIN created — 10</li>
+              <li>PIN meets 8-digit minimum — 5</li>
+              <li>Biometric unlock enabled (app-level, not iOS Face ID enrollment) — 5</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Device Integrity · 25</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>RASP ALLOW — 25 · WARN — 10 · BLOCK — 0</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Hardware Binding · 10</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>Hardware Protection active (KEK-wrapped vault) — 5</li>
+              <li>Top-tier hardware: iOS Secure Enclave or Android StrongBox — 5</li>
+              <li>Android TEE (Trusted Execution Environment) — 3 instead of 5</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Recovery · 30</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>Recovery passphrase set — 8</li>
+              <li>Share A wrapped — 2</li>
+              <li>Share B uploaded — 8</li>
+              <li>Share C exported — 6</li>
+              <li>Share C verified — 6 <span className="italic">(gated on a real recovery round-trip; not yet loggable — currently unreachable)</span></li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">WalletConnect Session Security · 10</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>Spend limit set — 3 <span className="italic">(not yet wired to score)</span></li>
+              <li>Session expiry set — 3 <span className="italic">(not yet wired to score)</span></li>
+              <li>Step-up re-auth enabled — 4 <span className="italic">(not yet wired to score)</span></li>
+            </ul>
+          </div>
+          <p className="border-t border-border pt-2">
+            <span className="font-medium text-foreground">Honest ceiling today: ~79 / 95.</span> The four <span className="italic">unwired/unreachable</span> items above cannot be earned until follow-up work lands. Everything else is under your control on this device.
+          </p>
+        </div>
+      </details>
+
       {/* Honest coverage note — KNOWN signals only, never a guarantee. */}
       <div className="p-3 rounded-xl bg-secondary/50 border border-border">
         <p className="text-xs text-muted-foreground">

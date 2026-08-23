@@ -114,9 +114,11 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
   const [showSkipWarning, setShowSkipWarning] = useState(false);
 
   const copy = COPY[origin] || COPY.restored;
-  const onboardingFooter = mode === 'onboarding'
-    ? <OnboardingProgressBar value={100} label="Wallet setup progress" />
-    : null;
+  // Progress bar is scoped to THIS step only (WalletEntry no longer renders
+  // the pre-KEK bar). Unconditional here — mode='auto' vs 'onboarding' is a
+  // one-time-warning policy axis, not a "should the bar exist" axis, and gating
+  // the bar on it hid it whenever kekOrigin defaulted to 'restored'.
+  const onboardingFooter = <OnboardingProgressBar value={100} label="Wallet setup progress" />;
 
   const clearOnboardingSkipWarning = () => {
     if (mode !== 'onboarding') return;

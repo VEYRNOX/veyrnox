@@ -633,24 +633,27 @@ export async function decryptVaultWithDek(vault, dek) {
  * @returns {Promise<Uint8Array>} 32-byte C factor
  */
 export async function deriveKekC(password, salt) {
+  // Reverted the #1989 worker-route (was: runArgon2idBinary) — that path broke
+  // wallet CREATE on iOS: the very first KEK-C derivation on a fresh install
+  // failed inside the worker/hash-wasm bootstrap, teardown ran, banner showed
+  // "Wallet setup couldn't finish securely". In-thread argon2id is the pre-#1989
+  // shape and known-good. Keeps the trailing setTimeout(0) yield.
+  const { argon2id: _argon2id } = await import('hash-wasm');
   const pw = enc.encode(password.normalize('NFKC'));
   let raw;
   try {
-    raw = await runArgon2idBinary({
+    raw = await _argon2id({
       password: pw,
       salt,
       parallelism: KDF_PARAMS.parallelism,
       iterations: KDF_PARAMS.iterations,
       memorySize: KDF_PARAMS.memorySize,
       hashLength: KDF_PARAMS.hashLength,
+      outputType: 'binary',
     });
   } finally {
-    zero(pw); // wipe our copy of the password bytes (the worker wipes its own copy)
+    zero(pw); // wipe encoded password bytes, mirroring deriveKey()
   }
-  // Mirror deriveKey(): yield after the heavy Argon2 run so the worker/in-thread WASM
-  // instance becomes GC-eligible before the next sequential derivation allocates its
-  // own KDF_PARAMS.memorySize. On native unlock this keeps the KEK C-factor path from
-  // pinning the UI on the same tick after the KDF completes.
   await new Promise((resolve) => setTimeout(resolve, 0));
   const result = new Uint8Array(raw);
   // M-J: zero the raw Argon2id output once copied, matching deriveKey()'s zero(raw).

@@ -37,3 +37,21 @@ export async function isHardwareKekEnrolled() {
     return false;
   }
 }
+
+/**
+ * @returns {Promise<'STRONGBOX' | 'TEE' | 'SECURE_ENCLAVE' | string | null>}
+ * The hardware KEK tier persisted in the vault blob, or null when there is no
+ * vault / it is not KEK-wrapped / we are in a decoy/demo session. Read-only,
+ * no biometric prompt, matches the securityPosture.js `hardwareTier` field so
+ * the posture score's hardware sub-item can score correctly (5 for top tier,
+ * 3 for TEE) instead of always resolving to 0 next to a live kekActive=true.
+ */
+export async function getHardwareKekTier() {
+  if (isDeniabilityOrDemoActive()) return null;
+  try {
+    const ks = getKeyStore();
+    return typeof ks.getVaultKekTier === 'function' ? await ks.getVaultKekTier() : null;
+  } catch {
+    return null;
+  }
+}

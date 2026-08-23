@@ -91,7 +91,7 @@ describe('KekEnrollmentGate — mode prop', () => {
     expect(sessionStorage.getItem(SKIP_WARN_KEY)).toBe('1');
   });
 
-  it('2b. mode="auto" keeps the onboarding progress bar hidden', () => {
+  it('2b. mode="auto" still renders the wallet-setup progress bar (unconditional at the KEK step)', () => {
     render(
       <KekEnrollmentGate
         origin="fresh"
@@ -101,7 +101,7 @@ describe('KekEnrollmentGate — mode prop', () => {
       />,
     );
 
-    expect(screen.queryByRole('progressbar', { name: /wallet setup progress/i })).toBeNull();
+    expect(screen.getByRole('progressbar', { name: /wallet setup progress/i })).toHaveAttribute('aria-valuenow', '100');
   });
 
   it('3. mode="onboarding" — warning renders on first skip; hidden on remount while session flag is set', () => {
