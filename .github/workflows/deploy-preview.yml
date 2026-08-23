@@ -33,9 +33,15 @@ jobs:
   #
   # NOT exempt, on purpose: package.json and package-lock.json (dependencies,
   # `overrides`, and `scripts` all change what ships), everything under src/,
-  # scripts/, android/, ios/, and .github/ workflows themselves. A comment-only
+  # scripts/, android/, ios/, and nearly all .github/ workflows. A comment-only
   # edit to package.json is indistinguishable here from a dependency bump, so
   # package.json always runs the full pipeline.
+  #
+  # Narrow exception: the machine-driven crash-smoke workflows are CI harness
+  # only. They do not affect the built web bundle, Pages Functions, native app
+  # source, or runtime config, so forcing a staging Pages deploy for those two
+  # files only adds unrelated preview noise (for example, transient upstream
+  # edge-provider 502s) without increasing shipped-behavior confidence.
   #
   # Markdown is exempt because nothing imports it: there is no markdown plugin
   # in vite.config.js and no `.md` import anywhere in src/, verified 2026-07-27.
@@ -81,7 +87,7 @@ jobs:
           echo "changed files:"
           echo "$FILES" | sed 's/^/  /'
 
-          ALLOW='^docs/|^\.github/ISSUE_TEMPLATE/|^\.github/PULL_REQUEST_TEMPLATE|\.md$|^LICENSE$'
+          ALLOW='^docs/|^\.github/ISSUE_TEMPLATE/|^\.github/PULL_REQUEST_TEMPLATE|^\.github/workflows/(android-monkey-smoke|ios-xcuitest-smoke)\.yml$|\.md$|^LICENSE$'
           NON_DOCS=$(echo "$FILES" | grep -vE "$ALLOW" || true)
 
           if [ -n "$NON_DOCS" ]; then
