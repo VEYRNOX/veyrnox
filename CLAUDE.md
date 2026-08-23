@@ -283,7 +283,7 @@ Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Se
     #1980) before `ci.yml`'s `publish-to-play-internal` could use them.
   - `ci.yml` is now the **single** Play upload path. The firebase duplicate was
     removed because it raced CI and silently consumed versionCodes.
-  - Gating context: no Play Pre-launch report exists for versionCode 32, which is a
+  - Gating context: no Play Pre-launch report exists for versionCode 33, which is a
     mandatory 1.0.1 submission gate. Tracked in #1960.
 - **Release build verified end-to-end 2026-07-23** (INTERNAL): signed `app-release.aab`,
   `jarsigner` verified, `BuildConfig.RELEASE_CERT_SHA256` = Google's app-signing cert.
@@ -399,7 +399,7 @@ neither had been run against build 5 (Play Pre-launch report showed
   reupload. Do NOT submit for review without a clean report — this is the same tool
   Google's reviewer would have used, and its absence is why build 5 shipped a fatal
   Create-Wallet path.
-  Current Android candidate: **1.0.1 / versionCode 32**. This check remains
+  Current Android candidate: **1.0.1 / versionCode 33**. This check remains
   console-only: a green repo/CI state does NOT prove the report exists yet.
 - **iOS (mandatory — no equivalent auto-tool):** upload to TestFlight, install on at
   least one **physical iPhone that is NOT the dev machine's paired device** (a stock
