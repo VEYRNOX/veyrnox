@@ -106,7 +106,8 @@ ${SIGNCOUNT_KEY}: ${signCountValue === null ? 'absent (expected — no real FIDO
     expect(signCountValue).toBeNull();
   });
 
-  it('documents the real signCount contract as a web-only, unit-tested boundary (not device-testable here)', async () => {
+  // #2022 — pending real device instrumentation; skipped to remove expect(true)==true theater.
+  it.skip('#2022 documents the real signCount contract as a web-only, unit-tested boundary (not device-testable here)', async () => {
     console.log(`
 ℹ️ M-K cloned-authenticator detection (checkPasskeySignCount / PasskeyClonedError,
 'authenticator_cloned' code) operates on WebAuthn authenticatorData bytes 33-36,

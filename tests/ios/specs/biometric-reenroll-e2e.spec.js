@@ -22,7 +22,8 @@ describe('Biometric Re-enrollment Invalidation — iOS (H-2/iOS-F11)', () => {
     await appHelper.pause(1500);
   });
 
-  it('should print the supervised re-enrollment procedure', async () => {
+  // #2022 — pending real device instrumentation; skipped to remove expect(true)==true theater.
+  it.skip('#2022 should print the supervised re-enrollment procedure', async () => {
     console.log(`
 🧪 H-2/iOS-F11 iOS runtime procedure (mirrors the passed Android test):
 

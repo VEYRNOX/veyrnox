@@ -53,7 +53,8 @@ describe('Hardware KEK — iOS Secure Enclave', () => {
     expect(badge === null || typeof badge === 'string').toBe(true);
   });
 
-  it('should document the SE ECIES design anchor (H-NEW-D — CLOSED at native layer)', async () => {
+  // #2022 — pending real device instrumentation; skipped to remove expect(true)==true theater.
+  it.skip('#2022 should document the SE ECIES design anchor (H-NEW-D — CLOSED at native layer)', async () => {
     console.log(`
 📐 SE-ECIES design (confirmed by 2026-07-01 internal audit):
   - kSecAttrTokenIDSecureEnclave present at HardwareKekPlugin.m:78 (H-NEW-D CLOSED)
