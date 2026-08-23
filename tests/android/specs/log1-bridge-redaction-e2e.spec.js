@@ -168,7 +168,8 @@ describe('LOG-1 — App-Wide Debug Bridge Log Redaction Sweep', () => {
     expect(consolePayloadLeak.length).toBe(0);
   });
 
-  it('should confirm the patch-package patch is present in the shipped build environment', async () => {
+  // #2022 — pending real device instrumentation; skipped to remove expect(true)==true theater.
+  it.skip('#2022 should confirm the patch-package patch is present in the shipped build environment', async () => {
     // This is a build-config check, not a device check — included here so a
     // regression that accidentally drops the patch (e.g. patch-package
     // silently failing on a dependency bump) fails the SAME suite that

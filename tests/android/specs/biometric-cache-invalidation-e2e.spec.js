@@ -34,7 +34,8 @@ This is the operator escape hatch after:
     expect(source).toBeDefined();
   });
 
-  it('documents the real-device biometric cache invalidation flow', async () => {
+  // #2022 — pending real device instrumentation; skipped to remove expect(true)==true theater.
+  it.skip('#2022 documents the real-device biometric cache invalidation flow', async () => {
     console.log(`
 📋 Android biometric cache invalidation runbook
 
