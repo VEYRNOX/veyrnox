@@ -17,7 +17,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { getKeyStore } from '@/wallet-core/keystore';
+import { getKeyStore, withLockSuppressed } from '@/wallet-core/keystore';
 import { KEK_ERR } from '@/wallet-core/keystore/kek.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
@@ -188,27 +188,37 @@ export function useKekEnrollmentGate({ isUnlocked }) {
   }, [isUnlocked]);
 
   const enroll = useCallback(async (pin) => {
-    try {
-      const { enrollHardwareCredential, getHardwareFactor } = await import(
-        '@/wallet-core/keystore/hardware.js'
-      );
-      const ks = getKeyStore();
-      const enrolledTier = await enrollHardwareCredential({
-        isVaultWrapped: () => ks.hasVaultKekWrap(),
-      });
-      await ks.enrollKek(pin, {
-        getHardwareFactor,
-        hardwareKekTier: enrolledTier?.securityLevelName ?? null,
-      });
-      return { ok: true };
-    } catch (e) {
-      const { msg, isInsecureTier, isWrongPin } = classifyEnrollError(e);
-      if (!isInsecureTier) await bestEffortClearCredential();
-      // Persist the ineligible verdict so the next unlock does NOT re-prompt.
-      // Deterministic per device — no benefit to asking again.
-      if (isInsecureTier) persistKekInsecureTier();
-      return { ok: false, msg, isInsecureTier, isWrongPin };
-    }
+    // Wrap the WHOLE enroll body in withLockSuppressed. enrollHardwareCredential
+    // ->  HardwareKekPlugin.enroll: mints an SE key with a biometry-gated ACL; on
+    // iOS that resigns-active momentarily, Capacitor dispatches appStateChange,
+    // and fireLockHook() otherwise relocks the vault mid-enroll → the KEK gate
+    // unmounts and the hasVault effect re-routes to Unlock (looks like a bounce
+    // to the Hero brand block). ks.enrollKek already suppressed internally; this
+    // covers the sibling native call that used to race it (same class as
+    // commits 02711199 / ef7aa705). Web is a transparent no-op.
+    return withLockSuppressed(async () => {
+      try {
+        const { enrollHardwareCredential, getHardwareFactor } = await import(
+          '@/wallet-core/keystore/hardware.js'
+        );
+        const ks = getKeyStore();
+        const enrolledTier = await enrollHardwareCredential({
+          isVaultWrapped: () => ks.hasVaultKekWrap(),
+        });
+        await ks.enrollKek(pin, {
+          getHardwareFactor,
+          hardwareKekTier: enrolledTier?.securityLevelName ?? null,
+        });
+        return { ok: true };
+      } catch (e) {
+        const { msg, isInsecureTier, isWrongPin } = classifyEnrollError(e);
+        if (!isInsecureTier) await bestEffortClearCredential();
+        // Persist the ineligible verdict so the next unlock does NOT re-prompt.
+        // Deterministic per device — no benefit to asking again.
+        if (isInsecureTier) persistKekInsecureTier();
+        return { ok: false, msg, isInsecureTier, isWrongPin };
+      }
+    });
   }, []);
 
   const dismiss = useCallback(() => setGateActive(false), []);
