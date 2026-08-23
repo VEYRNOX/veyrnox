@@ -1052,6 +1052,7 @@ export default function WalletEntry() {
     setBusy(true); setProvisioning(true); setError("");
     try { setKekOrigin('fresh'); await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
+      if (import.meta.env.DEV) console.error('[VEYRNOX-CREATE-FAIL]', e?.code || e?.name, e?.message);
       autoEnrollPinRef.current = null;
       setProvisioning(false);
       // Slice D1: an auto-fired create (chosenPath==='new') failed — clear the
