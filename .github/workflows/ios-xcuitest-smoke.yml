@@ -1,0 +1,104 @@
+name: iOS XCUITest Smoke
+
+# Machine-driven iOS crash catcher. macOS runner boots an iPhone simulator,
+# builds the App scheme, and runs AppUITests → test_freshInstall_creates
+# WalletWithoutFailureBanner. The test walks fresh install → PIN → Create
+# Wallet → seed reveal and hard-fails on the exact KEK/RASP fail-closed
+# banner Play rejected build 5 for. Any XCTest failure OR crash goes red at
+# PR time.
+#
+# HONESTY SCOPE: simulator-only. Real-device-only failure modes (StrongBox,
+# Secure Enclave attestation, RASP dyld scans) will not fire here. Crashes
+# do NOT populate ASC / Organizer — those are real-install-only telemetry.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/ios-xcuitest-smoke.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/ios-xcuitest-smoke.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-xcuitest-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+  VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
+
+jobs:
+  xcuitest:
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Pin npm to 11
+        run: npm install -g npm@11
+
+      - name: Install deps
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+
+      - name: Build webview payload
+        run: |
+          npm run build
+          npx cap sync ios
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Resolve SPM packages
+        working-directory: ios/App
+        run: xcodebuild -project App.xcodeproj -resolvePackageDependencies
+
+      - name: Run AppUITests
+        working-directory: ios/App
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project App.xcodeproj \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -only-testing:AppUITests/AppUITests/test_freshInstall_createsWalletWithoutFailureBanner \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee xcodebuild.log | xcbeautify --renderer github-actions || {
+              echo "xcodebuild test failed"
+              exit 1
+            }
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: xcodebuild-log
+          path: ios/App/xcodebuild.log
+          if-no-files-found: warn

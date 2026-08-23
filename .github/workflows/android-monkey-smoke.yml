@@ -1,0 +1,109 @@
+name: Android Monkey Smoke
+
+# Machine-driven crash catcher. Spins the Android emulator, installs the
+# Google-flavour debug APK, and fires 500 pseudo-random UI events at it via
+# `adb shell monkey`. Any uncaught JVM/native crash exits monkey non-zero, so
+# the job goes red at PR time — the same class of failure Play rejected build
+# 5 for (Broken Functionality / unresponsive UI).
+#
+# HONESTY SCOPE: emulator-only. Crashes here do NOT populate Play Vitals
+# (Vitals accepts only real-user, real-device installs opted into Usage &
+# diagnostics). This is a pre-submission catcher, not a replacement.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-monkey-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '22'
+  GRADLE_OPTS: '-Xmx6g -Dorg.gradle.daemon=false'
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+  VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
+
+jobs:
+  monkey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Pin npm to 11
+        run: npm install -g npm@11
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build debug APK
+        run: |
+          npm run android:sync
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleGoogleDebug --build-cache
+
+      - name: Run monkey on emulator
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 31
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb install -r android/app/build/outputs/apk/google/debug/app-google-debug.apk
+            # 500 pseudo-random events, throttled to 100ms between events,
+            # constrained to our package. --kill-process-after-error and
+            # --monitor-native-crashes make ANY crash a non-zero exit.
+            adb shell monkey -p com.veyrnox.app \
+              -v --throttle 100 \
+              --kill-process-after-error \
+              --monitor-native-crashes \
+              --pct-touch 60 --pct-motion 20 --pct-nav 10 --pct-syskeys 10 \
+              500 | tee monkey.log
+            # `monkey` returns 0 on some crash types but prints "CRASH:" or
+            # "// NOT RESPONDING:". Grep as a second guard.
+            if grep -E "^// (CRASH|NOT RESPONDING):" monkey.log; then
+              echo "Monkey detected a crash / ANR — failing job"
+              exit 1
+            fi
+
+      - name: Upload monkey log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: monkey-log
+          path: monkey.log
+          if-no-files-found: warn
