@@ -44,13 +44,9 @@ vi.mock('hash-wasm', async (importOriginal) => {
   };
 });
 
-// #1989 moves verifier capture OFF the prompt-visible unlock path via setTimeout(0)
-// so older native devices do not sit on a second synchronous Argon2 before the
-// dashboard renders. This suite measures ONLY the prompt-visible unlock KDF count,
-// so the deferred verifier must be excluded or its later macrotask can bleed one
-// extra current-param KDF into the NEXT measured unlock. Mock it to a no-op here:
-// verifier behavior has dedicated tests, and this file is strictly about unlock-path
-// count/profile parity.
+// Mock the credential verifier to a no-op so this suite isolates the unlock-path
+// equalizer itself. Verifier behavior has dedicated tests elsewhere; this file is
+// strictly about success/duress/miss count parity through WalletProvider.unlock().
 vi.mock('@/wallet-core/credentialVerifier', () => ({
   captureVerifierSafe: vi.fn(async () => null),
   verifyCredential: vi.fn(async () => false),

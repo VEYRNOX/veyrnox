@@ -202,13 +202,6 @@ const ACTIVITY_THROTTLE_MS = 1000;
 // ceiling (MAX_SESSION_MS) is unaffected. For every other timeout (1/5/15 min)
 // the secure instant background-lock is kept.
 const BACKGROUND_LOCK_GRACE_MS = 45 * 1000;
-// Native-only brief re-unlock cache. This is a SPEED tradeoff for the mobile
-// product: after a lock/background event, keep the just-unlocked PRIMARY session's
-// plaintext container + credential in memory for one short TTL so re-entering the
-// SAME secret can re-open without paying the full Argon2 path again. Memory-only,
-// never persisted, and never used for decoy/hidden sessions.
-const NATIVE_RELOCK_CACHE_MS = 30 * 1000;
-
 // Platform-resolved storage seam. Web today; native (M2b) swaps in behind the
 // same interface. Stable singleton, so it lives at module scope.
 const keyStore = getKeyStore();
@@ -233,9 +226,7 @@ async function isVaultKekEnrolledSafe() {
 // (PRIMARY_UNLOCK_EQUALIZER_MS) was REMOVED: it only bridged ~1.4 of the 3-KDF deficit
 // between a primary success (which short-circuits before resolveDeniabilityUnlock) and
 // any failure/duress outcome, so the fast path stayed measurably faster (the H-1
-// oracle), and the constant drifted whenever KDF_PARAMS changed. Today the equalizer
-// remains enabled on the web/testing surface, but native unlocks deliberately skip it
-// for speed — see the success-path note in unlock().
+// oracle), and the constant drifted whenever KDF_PARAMS changed.
 
 // M6: re-export so callers/tests pin the reveal window against the same constant.
 export { REAUTH_WINDOW_MS };
@@ -414,8 +405,6 @@ export function WalletProvider({ children }) {
   // containerRef/isUnlocked/wallets/etc.
   const unlockGenRef = useRef(0);
   const sessionUnlockSecretRef = useRef(null);
-  const recentNativeUnlockRef = useRef(null);
-  const recentNativeUnlockTimerRef = useRef(null);
 
   // PROVISIONAL biometric-unlock UI state (see lib/biometric.js header). Holds
   // the SIMULATED prompt's props while shown; null when hidden. The resolver
@@ -555,41 +544,6 @@ export function WalletProvider({ children }) {
     return { status: PASSKEY_GATE.PASSED };
   }, [showSimulatedPasskeyPrompt]);
 
-  const clearRecentNativeUnlockCache = useCallback(({ clearSessionSecret = false } = {}) => {
-    recentNativeUnlockRef.current = null;
-    if (recentNativeUnlockTimerRef.current) {
-      clearTimeout(recentNativeUnlockTimerRef.current);
-      recentNativeUnlockTimerRef.current = null;
-    }
-    if (clearSessionSecret) sessionUnlockSecretRef.current = null;
-  }, []);
-
-  const armRecentNativeUnlockCache = useCallback(() => {
-    if (!Capacitor.isNativePlatform()) {
-      clearRecentNativeUnlockCache({ clearSessionSecret: true });
-      return;
-    }
-    if (decoyRef.current || hiddenRef.current) {
-      clearRecentNativeUnlockCache({ clearSessionSecret: true });
-      return;
-    }
-    if (!containerRef.current || typeof sessionUnlockSecretRef.current !== 'string') {
-      clearRecentNativeUnlockCache({ clearSessionSecret: true });
-      return;
-    }
-    recentNativeUnlockRef.current = {
-      secret: sessionUnlockSecretRef.current,
-      payload: mv.serializeContainer(containerRef.current),
-      expiresAt: Date.now() + NATIVE_RELOCK_CACHE_MS,
-    };
-    if (recentNativeUnlockTimerRef.current) clearTimeout(recentNativeUnlockTimerRef.current);
-    recentNativeUnlockTimerRef.current = setTimeout(() => {
-      recentNativeUnlockRef.current = null;
-      recentNativeUnlockTimerRef.current = null;
-      sessionUnlockSecretRef.current = null;
-    }, NATIVE_RELOCK_CACHE_MS);
-  }, [clearRecentNativeUnlockCache]);
-
   const lock = useCallback(() => {
     // Codex P1 2026-08-15: invalidate any in-flight unlock BEFORE we clear
     // session state. An unlock() continuation resuming after this line will
@@ -615,7 +569,7 @@ export function WalletProvider({ children }) {
     setPasskeyPrompt(null);
     if (_pk) { try { _pk.reject(new Error('Passkey authentication cancelled by lock')); } catch { /* noop */ } }
 
-    armRecentNativeUnlockCache();
+    sessionUnlockSecretRef.current = null;
     const c = containerRef.current;
     if (c && Array.isArray(c.wallets)) {
       // best-effort overwrite of EVERY seed before dropping the container — the
@@ -673,7 +627,7 @@ export function WalletProvider({ children }) {
     // updating UI as if unlocked) and forces re-auth before any subsequent
     // signing. Non-locked paths do not see any change.
     signingGenerationRef.current += 1;
-  }, [armRecentNativeUnlockCache]);
+  }, []);
 
   // (Re)arm the idle auto-lock timer for the CURRENT timeout preference. Safe to
   // call anytime: it clears any pending timer first, and arms a new one only
@@ -834,8 +788,8 @@ export function WalletProvider({ children }) {
   }, [lock]);
 
   useEffect(() => () => {
-    clearRecentNativeUnlockCache({ clearSessionSecret: true });
-  }, [clearRecentNativeUnlockCache]);
+    sessionUnlockSecretRef.current = null;
+  }, []);
 
   // ── MULTI-SEED SESSION HELPERS ─────────────────────────────────────────────
   // The single source of truth for "which seed do send/receive/derivation use":
@@ -980,7 +934,7 @@ export function WalletProvider({ children }) {
   const panicWipe = useCallback(async () => {
     try { await keyStore.clearVault(); } catch { /* may already be gone */ }
     const residual = await panicWipeLocal();
-    clearRecentNativeUnlockCache({ clearSessionSecret: true });
+    sessionUnlockSecretRef.current = null;
     // Also destroy the biometric one-tap cache + preference: it holds a copy of
     // the vault password, so a wipe must take it too.
     setBiometricUnlockEnabled(false);
@@ -994,7 +948,7 @@ export function WalletProvider({ children }) {
     lock();              // drop in-memory secret + reset session flags
     setWasWiped(true);   // UX/proof signal only (not a secret)
     return residual;     // { indexedDbKeys, vaultBlobCount, localStorageResidue, clean }
-  }, [clearRecentNativeUnlockCache, lock]);
+  }, [lock]);
 
   // Acknowledge the loud next-open wipe screen: clear the persisted 'veyrnox-wiped'
   // marker AND drop the in-memory flag, so the loud "This device was wiped" screen
@@ -1015,7 +969,7 @@ export function WalletProvider({ children }) {
   const discardIncompleteWallet = useCallback(async () => {
     try { await keyStore.clearVault(); } catch { /* native branch; may already be gone */ }
     try { await panicWipeLocal(); } catch { /* best-effort */ }
-    clearRecentNativeUnlockCache({ clearSessionSecret: true });
+    sessionUnlockSecretRef.current = null;
     setBiometricUnlockEnabled(false);
     try { await clearUnlockSecret(); } catch { /* best-effort */ }
     clearAllWalletMeta();
@@ -1024,7 +978,7 @@ export function WalletProvider({ children }) {
     lock();             // drop the in-memory secret + reset session flags (isUnlocked -> false)
     setVaultExists(false); // the vault createWallet/importWallet flagged present is gone again
     // Deliberately NO setWasWiped(true): this is a setup-failure rollback, not a panic wipe.
-  }, [clearRecentNativeUnlockCache, lock]);
+  }, [lock]);
 
   // Create a brand-new wallet (the FIRST wallet on this device): generate one
   // seed, wrap it in a fresh multi-seed container as wallet #1, encrypt the
@@ -1747,22 +1701,7 @@ export function WalletProvider({ children }) {
     let mnemonic;
     let decoy = false;
     let hidden = false;
-    let usedRecentNativeUnlock = false;
-    const recentNativeUnlock = (() => {
-      if (!Capacitor.isNativePlatform() || !recentNativeUnlockRef.current) return null;
-      if (recentNativeUnlockRef.current.expiresAt <= Date.now()) {
-        clearRecentNativeUnlockCache({ clearSessionSecret: true });
-        return null;
-      }
-      return recentNativeUnlockRef.current.secret === password
-        ? recentNativeUnlockRef.current
-        : null;
-    })();
     try {
-      if (recentNativeUnlock) {
-        mnemonic = recentNativeUnlock.payload;
-        usedRecentNativeUnlock = true;
-      } else {
       // Require the native biometric gate ONLY when biometric unlock is actually
       // enabled (and not bypassed via the escape hatch). When it's off, unlock is
       // PIN/password-only — no Face ID on the Exit→unlock step — and a biometric
@@ -1776,19 +1715,10 @@ export function WalletProvider({ children }) {
         // getHardwareFactor is never called inside unlock (native or web).
         getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
       });
-      // H-1 equalizer (web only): a correct primary unlock short-circuits BEFORE the
+      // H-1 equalizer: a correct primary unlock short-circuits BEFORE the
       // deniability resolver, so it would otherwise spend fewer Argon2id KDFs than a
-      // failure/duress/hidden outcome. On the web/testing surface we preserve the old
-      // timing-equality model by spending the same resolver KDF profile here.
-      //
-      // NATIVE SPEED OVERRIDE (owner-directed, Aug 22 2026): do NOT run the success-path
-      // equalizer on native PIN unlocks. On real phones this turns one unlock into four
-      // full Argon2 runs (1 primary unlock + 3 equalizer KDFs), which is the dominant
-      // cause of the 4-10s unlock times reported on Android devices. This consciously
-      // re-opens a native timing distinction between a correct primary secret and a miss/
-      // duress path; that is an honesty tradeoff in favor of usable unlock latency on the
-      // shipped mobile product. Web keeps the structural equalizer for tests and the
-      // browser-only surface.
+      // failure/duress/hidden outcome. Preserve the timing-equality model on every
+      // surface by spending the same resolver KDF profile here.
       //
       // FAIL-CLOSED ISOLATION (when enabled): the equalizer is a pure timing pad whose
       // RETURN IS DISCARDED — its outcome must NEVER affect this already-confirmed-correct
@@ -1799,12 +1729,9 @@ export function WalletProvider({ children }) {
       // the resolver threw, the throw can never fall into `catch (primaryErr)` below and
       // be misread as a primary miss — which, with a duress vault configured, would
       // silently open the DECOY instead of the real wallet (I4).
-        if (!Capacitor.isNativePlatform()) {
-          try {
-            await spendPrimaryUnlockEqualizerKdfs(password);
-          } catch { /* timing pad only — a confirmed unlock must not be diverted */ }
-        }
-      }
+      try {
+        await spendPrimaryUnlockEqualizerKdfs(password);
+      } catch { /* timing pad only — a confirmed unlock must not be diverted */ }
     } catch (primaryErr) {
       // BIOMETRIC FAILURE (native, biometric-unlock enabled): the OS prompt was
       // cancelled/failed/locked-out BEFORE any password check (tagged in
@@ -1880,12 +1807,9 @@ export function WalletProvider({ children }) {
         mnemonic = hiddenMnemonic;
         hidden = true;
       } else {
-        // M-4 (deniability timing, internal audit): the prompt-visible unlock work is
-        // now the primary/duress/hidden decrypt + the shared deniability equalizer
-        // only. The step-up verifier capture moved OFF the visible unlock path below
-        // (background-only after a successful mount), so a total miss must throw
-        // immediately here — adding a throwaway verifier KDF would make wrong guesses
-        // observably SLOWER than a real secret on older devices.
+        // M-4 equalizer: a total miss spends the same verifier-capture KDF the success
+        // path spends below, so a wrong guess remains timing-equal with a real secret.
+        await captureVerifierSafe(password); // equalize miss vs success; discard result
         throw primaryErr; // total miss (PIN or password): same visible KDF profile as a hit
       }
     }
@@ -2052,7 +1976,6 @@ export function WalletProvider({ children }) {
     setExploreMode(false);
     setWasWiped(false); // a wallet opened successfully; clear any prior wipe signal
     sessionUnlockSecretRef.current = password;
-    if (usedRecentNativeUnlock) clearRecentNativeUnlockCache();
     void trackEvent(EVENT.SESSION_START, { returning: true }).catch(() => {});
     incrementSessionDayCount();
     // Keep the chaff pool seeded for this device (idempotent; never overwrites a
@@ -2096,37 +2019,17 @@ export function WalletProvider({ children }) {
     })();
     touch();
     deriveActiveAndAll();
-    // STEP-UP capture: a per-session verifier for the credential that opened THIS
-    // session (real OR decoy — `password` is whatever the user typed). Path-agnostic by
-    // design, so step-up behaves identically across session types (no deniability tell).
-    //
-    // PERF (older Android phones): do NOT await this extra Argon2id before exposing the
-    // unlocked session. The vault is already open; blocking the dashboard on a second KDF
-    // adds seconds of pure post-unlock latency on slow WebViews. The verifier remains
-    // best-effort and fail-closed — if it isn't ready yet, sensitive paths still gate on
-    // lastAuthAt / verifier presence exactly as before.
-    //
-    // Set the window clock FIRST so it starts at unlock — a rare action taken immediately
-    // after unlock can proceed within the fresh-auth window even while the verifier is
-    // still deriving. Start it on the NEXT macrotask (not merely "fire and forget"):
-    // calling captureVerifierSafe() inline would still enter its Argon2 path on this
-    // same tick before the promise yields, so the unlock spinner would keep stalling.
-    // Guard the async write with this unlock generation so a later lock() or
-    // superseding unlock cannot repopulate verifierRef for a stale session.
+    // STEP-UP capture: derive the verifier on the visible unlock path so a later
+    // authenticated action never observes a fresh session without a matching verifier.
     lastAuthAtRef.current = Date.now();
-    verifierRef.current = null;
-    setTimeout(() => {
-      void captureVerifierSafe(password).then((verifier) => {
-        if (unlockGenRef.current !== gen || !containerRef.current) return;
-        verifierRef.current = verifier;
-      });
-    }, 0);
+    verifierRef.current = await captureVerifierSafe(password);
+    assertUnlockCurrent();
     // Signal (not secret): tell the caller whether either convenience factor was
     // dropped for this unlock so the UI can disclose it rather than silently
     // proceeding.
     return { passkeySkipped, biometricSkipped };
     });
-  }, [clearRecentNativeUnlockCache, refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch, runBiometricGate, runPasskeyGate, panicWipe]);
+  }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch, runBiometricGate, runPasskeyGate, panicWipe]);
 
   // BIOMETRIC ONE-TAP UNLOCK (convenience over the existing vault).
   //
