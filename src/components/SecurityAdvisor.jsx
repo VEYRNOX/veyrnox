@@ -738,6 +738,13 @@ const PROMPT_INJECTION_PATTERNS = [
   /<\s*\/?\s*user\s*>/i,
   /(?:\n|\\n)\s*(system|assistant|user)\s*:/i,
   /(?:ignore|disregard|forget|override|discard|dismiss|drop|skip)\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|earlier|above|preceding|foregoing|initial|original)\s+(?:instructions|prompts|rules|directives|context|messages)/i,
+  // 2026-08-16 round-7: multi-word imperatives that a single verb+noun regex misses.
+  /(?:pay\s+no\s+attention\s+to|set\s+aside|do\s+not\s+heed|do\s+not\s+comply\s+with)\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|earlier|above|preceding|foregoing|initial|original|these|those|the)?\s*(?:instructions|prompts|rules|directives|context|messages|constraints)/i,
+  // 2026-08-16 round-7: standalone verb without previous/prior, gated on a
+  // noun (instructions/rules/etc.) within ~20 chars — the attacker phrasing
+  // "discard the constraints", "forget your rules" that skipped the temporal
+  // verb+noun pattern above.
+  /\b(?:discard|dismiss|ignore|forget)\b[\s\S]{0,20}?\b(?:instructions|prompts?|rules|context|directives|constraints|guidelines?)\b/i,
   /<\s*untrusted_context/i, // attacker trying to forge our delimiter
   /<\s*\/\s*untrusted_context\s*>/i,
 ];
@@ -759,18 +766,43 @@ function decodeNumericEntities(s) {
 // Enumerated (not blanket-mapped) so we only touch characters that visually
 // impersonate ASCII letters used in role/verb keywords.
 const HOMOGLYPHS = {
+  // Cyrillic
   'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'у': 'y', 'х': 'x',
   'ѕ': 's', 'і': 'i', 'ј': 'j', 'ԁ': 'd', 'ѡ': 'w', 'ѵ': 'v', 'ԛ': 'q',
   'т': 't', 'ѱ': 'ps',
+  // 2026-08-16 round-7: Greek look-alikes that NFKC leaves alone.
+  'Σ': 'S', 'σ': 's', 'ς': 's', 'ε': 'e', 'ο': 'o', 'Ο': 'O', 'ρ': 'p',
+  'Α': 'A', 'α': 'a', 'Β': 'B', 'Ε': 'E', 'Η': 'H', 'Ι': 'I', 'Κ': 'K',
+  'Μ': 'M', 'Ν': 'N', 'Ρ': 'P', 'Τ': 'T', 'Υ': 'Y', 'Χ': 'X', 'Ζ': 'Z',
+  // Armenian
+  'Ѕ': 'S',
 };
+const HOMOGLYPH_RE = new RegExp('[' + Object.keys(HOMOGLYPHS).join('') + ']', 'g');
 function foldHomoglyphs(s) {
-  return s.replace(/[аеорсухѕіјԁѡѵԛтѱ]/g, (ch) => HOMOGLYPHS[ch] || ch);
+  return s.replace(HOMOGLYPH_RE, (ch) => HOMOGLYPHS[ch] || ch);
+}
+
+// 2026-08-16 round-7: line/paragraph separators that behave as newlines in
+// most renderers but bypass the `\n` in role-switch gates; and Unicode Tag
+// characters (U+E0000 to U+E007F) that are invisible and can smuggle a
+// payload past both regex and homoglyph folds.
+function stripTagChars(s) {
+  return s.replace(/[\u{E0000}-\u{E007F}]/gu, '');
+}
+function normalizeLineBreaks(s) {
+  // U+2028 line separator, U+2029 paragraph separator, U+0085 next line —
+  // escaped so JS line-terminator handling doesn't split the literal.
+  return s.replace(/[\u2028\u2029\u0085]/g, '\n');
 }
 
 function normalizeForInjectionScan(text) {
-  // NFKC folds fullwidth `＜` / `＞` to ASCII `<` / `>`; homoglyph fold catches
-  // Cyrillic `ѕystem`; entity decode expands `&#10;`. Lowercase for regex.
-  return foldHomoglyphs(decodeNumericEntities(text.normalize('NFKC'))).toLowerCase();
+  // NFKC folds fullwidth `＜` / `＞` to ASCII `<` / `>`; line-break normalise
+  // folds U+2028/U+2029/U+0085 to `\n`; tag-char strip removes invisible
+  // U+E00xx; homoglyph fold catches Cyrillic/Greek/Armenian look-alikes;
+  // entity decode expands `&#10;`. Lowercase for regex.
+  return foldHomoglyphs(
+    stripTagChars(normalizeLineBreaks(decodeNumericEntities(text.normalize('NFKC')))),
+  ).toLowerCase();
 }
 
 function detectPromptInjection(text) {

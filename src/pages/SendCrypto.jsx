@@ -2632,14 +2632,23 @@ export default function SendCrypto() {
                 Skip the selector in that combination — the send-time gate above
                 will refuse anyway, so a fee tier serves no purpose. */}
             {!isBtc && !isSolana && !(useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) ? (
+              {/* 2026-08-16 round-7: for ERC-20 we STOP hinting 65000 —
+                  the estimator now reaches provider.estimateGas against
+                  the token contract (to=contractAddress, data=riskCalldata)
+                  and surfaces GAS_ESTIMATION_FAILED if the RPC/contract
+                  can't quote a real number. Pure ETH transfers still pin
+                  the exact protocol constant 21000. */}
               <FeeSelector
                 chain="evm"
                 networkKey={networkKey}
                 symbol={nativeSymbol}
                 decimals={activeNetwork?.decimals ?? 18}
                 usdRate={USD_RATES[nativeSymbol] ?? USD_RATES[selectedWallet?.currency]}
-                gasLimitHint={isErc20 ? 65000 : 21000}
-                to={toAddress || undefined}
+                gasLimitHint={isErc20 ? undefined : 21000}
+                from={selectedWallet?.address || undefined}
+                to={isErc20 ? (selectedAsset?.contractAddress || undefined) : (toAddress || undefined)}
+                txData={isErc20 ? (riskCalldata || undefined) : undefined}
+                value={isErc20 ? "0x0" : undefined}
                 onChange={setSelectedFee}
               />
             ) : (
