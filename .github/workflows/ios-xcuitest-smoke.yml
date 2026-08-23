@@ -2,10 +2,11 @@ name: iOS XCUITest Smoke
 
 # Machine-driven iOS crash catcher. macOS runner boots an iPhone simulator,
 # builds the App scheme, and runs AppUITests → test_freshInstall_creates
-# WalletWithoutFailureBanner. The test walks fresh install → PIN → Create
-# Wallet → seed reveal and hard-fails on the exact KEK/RASP fail-closed
+# WalletWithoutFailureBanner. The test walks fresh install → New wallet →
+# PIN → WalletCreatedFlash and hard-fails on the exact KEK/RASP fail-closed
 # banner Play rejected build 5 for. Any XCTest failure OR crash goes red at
-# PR time.
+# PR time. (No seed-reveal step: raw reveal was deliberately moved out of
+# onboarding — see the comment on step 4 in AppUITests.swift.)
 #
 # HONESTY SCOPE: simulator-only. Real-device-only failure modes (StrongBox,
 # Secure Enclave attestation, RASP dyld scans) will not fire here. Crashes
@@ -66,7 +67,11 @@ jobs:
         run: npm install -g npm@11
 
       - name: Install deps
-        run: npm install --no-audit --no-fund --legacy-peer-deps
+        # `npm ci`, matching the Android job and the rest of the repo.
+        # --legacy-peer-deps has been unnecessary since #1372/#1376 and it
+        # strips the appium peer subtree, so this job would have proved the
+        # bundle works against a dep tree no other job builds.
+        run: npm ci
 
       - name: Build webview payload
         run: |

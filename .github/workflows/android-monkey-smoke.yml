@@ -29,10 +29,31 @@ env:
   NODE_VERSION: '22'
   GRADLE_OPTS: '-Xmx6g -Dorg.gradle.daemon=false'
   VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
-  VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
-  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-  VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
+  # Backend egress is deliberately BLANKED for this job, unlike every other
+  # Android workflow. Those run scripted, deterministic suites; monkey fires
+  # 500 RANDOM taps at a first-run build. Random taps land on the telemetry
+  # consent screen and can grant it, after which the run mints a fresh
+  # `veyrnox-device-id` and writes real rows to PRODUCTION Supabase — one
+  # phantom device per CI run. That is PR #1328 (test suite writing to prod,
+  # 126 rows / 114 phantom device_ids) re-entering through a different door.
+  #
+  # Blanking VITE_EDGE_BASE is the effective lever: on native every /api/*
+  # call goes through the Pages proxy, and src/api/edgeApi.js `edgeUrl()`
+  # throws EDGE_BASE_UNSET rather than emitting a request (I4, fail honest).
+  # The Supabase pair is blanked too, matching the rule vitest.config.js
+  # already states: any VITE_ var added to a workflow-level `env:` gets
+  # blanked unless it is needed.
+  #
+  # Trade-off, stated rather than hidden: the app under monkey runs with all
+  # network dead, so this exercises the offline path, not the reviewer's
+  # online one. Accepted because the crash/ANR surface this job exists for —
+  # PIN, KEK enrolment, vault create — is entirely local. If online fidelity
+  # is wanted later, point VITE_EDGE_BASE at the STAGING Pages project rather
+  # than restoring production.
+  VITE_TIP_BASE_URL: ''
+  VITE_SUPABASE_URL: ''
+  VITE_SUPABASE_ANON_KEY: ''
+  VITE_EDGE_BASE: ''
 
 jobs:
   monkey:
@@ -90,14 +111,22 @@ jobs:
             # 500 pseudo-random events, throttled to 100ms between events,
             # constrained to our package. --kill-process-after-error and
             # --monitor-native-crashes make ANY crash a non-zero exit.
-            # Keep this on ONE line — adb shell swallows backslash-newline
-            # continuations and the on-device shell only sees the first two
-            # args (COUNT missing → "Error: Count not specified").
-            adb shell "monkey -p com.veyrnox.app.debug -v --throttle 100 --kill-process-after-error --monitor-native-crashes --pct-touch 60 --pct-motion 20 --pct-nav 10 --pct-syskeys 10 500" | tee monkey.log
-            # `monkey` returns 0 on some crash types but prints "CRASH:" or
-            # "// NOT RESPONDING:". Grep as a second guard.
-            # Single-line: the emulator-runner action passes each script line
-            # to a fresh `sh -c`, so multi-line if..fi hits "unexpected EOF".
+            #
+            # EVERY statement must stay on ONE line. The emulator-runner action
+            # splits `script:` on newlines and hands each line to a fresh
+            # `sh -c`, so a backslash continuation runs as its own command
+            # (monkey saw two args, no COUNT → "Error: Count not specified")
+            # and a multi-line `if..fi` dies on "unexpected EOF". A fresh shell
+            # per line also means no variable survives to the next line.
+            #
+            # Redirect rather than `| tee`: in a pipeline the exit status is
+            # tee's, always 0, which silently discarded the non-zero exit that
+            # --kill-process-after-error / --monitor-native-crashes exist to
+            # produce. `set -o pipefail` is not an option — it would not
+            # outlive the line it is set on. Capture, print, then gate on it.
+            adb shell "monkey -p com.veyrnox.app.debug -v --throttle 100 --kill-process-after-error --monitor-native-crashes --pct-touch 60 --pct-motion 20 --pct-nav 10 --pct-syskeys 10 500" > monkey.log 2>&1; rc=$?; cat monkey.log; [ "$rc" -eq 0 ] || { echo "Monkey exited $rc — failing job"; exit "$rc"; }
+            # Second guard: monkey returns 0 on some crash types but still
+            # prints "// CRASH:" or "// NOT RESPONDING:" into the log.
             grep -E "^// (CRASH|NOT RESPONDING):" monkey.log && { echo "Monkey detected a crash / ANR — failing job"; exit 1; } || true
 
       - name: Upload monkey log
