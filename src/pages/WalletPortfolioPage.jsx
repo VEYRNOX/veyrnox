@@ -63,7 +63,6 @@ import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
 import WatchlistWidget from "@/components/WatchlistWidget";
 import SecurityPosture from "@/components/SecurityPosture";
 import { readPersonalBackupState } from "@/lib/personalBackupState";
-import { base44 } from "@/api/base44Client";
 import { getHardwareKekTier } from "@/lib/hardwareKekStatus";
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
