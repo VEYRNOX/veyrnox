@@ -104,6 +104,7 @@ import { requiresVerification } from "@/lib/seedVerifyGate";
 import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
 import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
 import { isRiskGateReady } from "@/lib/riskGateReady";
+import { useTier } from "@/lib/TierProvider";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -735,7 +736,16 @@ export default function SendCrypto() {
   // enables each query. Previously the gate was written independently of the
   // queries and drifted from them; declaring the condition once makes that
   // impossible. Both `enabled:` props below read these constants.
-  const tipScreenApplies = remoteScreen && step === 'verify' && !!toAddress
+  // Safety Plus paywall. Remote TIP screening is the "Risk scoring (pre-sign
+  // gate)" item in SAFETY_PLUS_FEATURES — gate on tier so free users see the
+  // local poison / look-alike screen but no remote sanctions / phishing /
+  // hack lane fires. Fail-closed: any tier other than 'safety_plus' (incl.
+  // still-loading) skips the remote call, matching the client-side gate on
+  // SecurityAdvisor.jsx and the server-side gate in the Edge Function.
+  const { currentTier: sendCryptoTier, loading: sendCryptoTierLoading } = useTier();
+  const tipRemoteAllowed = !sendCryptoTierLoading && sendCryptoTier === 'safety_plus';
+
+  const tipScreenApplies = remoteScreen && tipRemoteAllowed && step === 'verify' && !!toAddress
     && !!selectedWallet?.address && addressFormatValid;
 
   // Unsigned SOL transaction for the TIP `solana-sim` lane. The Worker's
@@ -750,7 +760,7 @@ export default function SendCrypto() {
   // egress must NOT fire when remote screening is off, in demo, or in a
   // decoy/hidden session — mirrors the same suppression the other simulation
   // queries apply. Codex 2nd-review flagged this as [P1] in the first pass.
-  const solUnsignedTxApplies = isSolana && remoteScreen && step === 'verify'
+  const solUnsignedTxApplies = isSolana && remoteScreen && tipRemoteAllowed && step === 'verify'
     && !!toAddress && !!selectedWallet?.address && addressFormatValid
     && !!canonicalAmount && parseFloat(canonicalAmount) > 0
     && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive();

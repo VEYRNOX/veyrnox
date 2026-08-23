@@ -28,6 +28,12 @@ vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilityOrDemoActive: () => isDeniabilityOrDemoActive(),
 }));
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'safety_plus', loading: false }),
+}));
+vi.mock('@/lib/purchases', () => ({
+  getRcUserId: vi.fn(async () => 'test-rc-user'),
+}));
 vi.mock('@/api/tipScreen.js', () => ({ screenTransaction: vi.fn() }));
 
 /** A fetch that resolves with a stream we never close, so the turn stays open. */

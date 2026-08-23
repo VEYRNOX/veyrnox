@@ -21,6 +21,7 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
+import { useTier } from "@/lib/TierProvider";
 // 2026-08-16 audit remediation: hard-code the event name to avoid coupling
 // the subscription to a mockable named export — existing test suites mock
 // deniabilitySession.js without exporting this constant. The string here
@@ -28,6 +29,7 @@ import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession.js";
 const DENIABILITY_SESSION_CHANGED_EVENT = 'veyrnox:deniability-session-changed';
 import { DEMO } from "@/api/demoClient";
 import { getOrCreateDeviceId } from "@/lib/deviceId";
+import { getRcUserId } from "@/lib/purchases";
 import {
   findLocalAnswer,
   buildAdvisorSystemContext,
@@ -429,6 +431,18 @@ export default function SecurityAdvisor({ walletChain }) {
     return () => window.removeEventListener(DENIABILITY_SESSION_CHANGED_EVENT, onChange);
   }, []);
 
+  // Safety Plus paywall — REMOTE only.
+  // The Advisor's local knowledge base is FREE for everyone (see answerLocally
+  // and findLocalAnswer). Only the live tip-chat SSE stream and the tip-screen
+  // remote address lookup are gated on Safety Plus, so the FAB stays visible
+  // for free users and they get an offline advisor. Fail-closed: while loading
+  // or on any tier other than 'safety_plus', hasRemoteAdvisor = false and the
+  // two remote paths short-circuit to local knowledge — same shape the
+  // consent gate already uses at lines 537 and 601. Server-side entitlement
+  // proof at tip-chat / tip-screen is enforced separately in the Edge
+  // Functions (see supabase/functions/tip-{chat,screen}/index.ts).
+  const { currentTier, loading: tierLoading } = useTier();
+  const hasRemoteAdvisor = !tierLoading && currentTier === 'safety_plus';
   const hidden = isDeniabilityOrDemoActive() || DEMO;
 
   // I3 — kill any in-flight turn the moment the session becomes deniable.
@@ -524,7 +538,7 @@ export default function SecurityAdvisor({ walletChain }) {
       // the remote call unless the user has affirmatively granted advisor
       // consent — local seed still fires either way, so a known-bad address
       // is still surfaced honestly. Matches the sendMessage gate at :553.
-      if (TIP_CHAT_URL && hasAdvisorConsent()) {
+      if (TIP_CHAT_URL && hasAdvisorConsent() && hasRemoteAdvisor) {
         // 2026-08-16 audit remediation: wire an AbortController so a
         // mid-flight deniability flip cancels this screen call rather than
         // running to completion after the session has already been suppressed.
@@ -588,7 +602,7 @@ export default function SecurityAdvisor({ walletChain }) {
     // the local knowledge base answers instead, exactly as it does when no
     // endpoint is configured. Checked here, at the one place egress happens,
     // rather than at the input or the drawer.
-    if (!TIP_CHAT_URL || !hasAdvisorConsent()) {
+    if (!TIP_CHAT_URL || !hasAdvisorConsent() || !hasRemoteAdvisor) {
       answerLocally(text, history);
       return;
     }
@@ -599,15 +613,25 @@ export default function SecurityAdvisor({ walletChain }) {
     abortRef.current = controller;
 
     try {
+      // Safety Plus entitlement proof for tip-chat. The Edge Function looks
+      // this id up against RevenueCat and denies if the safety_plus
+      // entitlement is absent or expired. Null on web / deniability / demo,
+      // which the proxy treats as unentitled (fail-closed) — free users have
+      // already been short-circuited to answerLocally() above, so this fetch
+      // is only reached on native + safety_plus, but the header is still the
+      // wire-level proof.
+      const rcUserId = await getRcUserId();
+      const chatHeaders = {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      };
+      if (rcUserId) chatHeaders["X-Rc-User-Id"] = rcUserId;
       const resp = await fetch(TIP_CHAT_URL, {
         method: "POST",
         // Supabase edge function requires apikey + bearer (anon). Auth on
         // the TIP Worker itself is handled inside the proxy via HMAC.
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+        headers: chatHeaders,
         body: JSON.stringify({
           action: "chat",
           messages: [

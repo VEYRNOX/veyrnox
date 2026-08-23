@@ -22,6 +22,12 @@ vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilityOrDemoActive: vi.fn(() => false),
 }));
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'safety_plus', loading: false }),
+}));
+vi.mock('@/lib/purchases', () => ({
+  getRcUserId: vi.fn(async () => 'test-rc-user'),
+}));
 
 const mockScreenTransaction = vi.fn();
 vi.mock('@/api/tipScreen.js', () => ({

@@ -10,6 +10,10 @@ vi.mock('@/api/demoClient', () => ({
   DEMO: false,
 }));
 
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'safety_plus', loading: false }),
+}));
+
 describe('SecurityAdvisor', () => {
   let SecurityAdvisor;
   let isDeniabilityOrDemoActive;

@@ -105,7 +105,7 @@ function allowedOrigins(): Set<string> {
 
 function corsHeaders(origin: string | null): Record<string, string> {
   const base: Record<string, string> = {
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-rc-user-id',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
@@ -135,6 +135,53 @@ async function hmacHex(message: string, secret: string): Promise<string> {
   );
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
   return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Safety Plus paywall — server-side entitlement proof.
+//
+// The client sends X-Rc-User-Id (RevenueCat subscriber id, from
+// Purchases.getAppUserID()). Anyone with the public Supabase anon key can
+// reach this proxy — the anon-key gate above stops unkeyed drive-by only —
+// so the paywall must be enforced HERE, not by trusting a client-side check.
+//
+// Fail-closed (I4): missing header, RC misconfig, RC error, expired
+// entitlement all deny. In-isolate cache (60s) avoids hammering RC on every
+// turn; the cache is best-effort and evaporates when Deno recycles the
+// isolate, which is the desired behaviour — a genuinely revoked subscriber
+// loses access within one minute.
+const RC_ENT_CACHE = new Map<string, { entitled: boolean; expiresAt: number }>();
+const RC_CACHE_TTL_MS = 60_000;
+const RC_REQ_TIMEOUT_MS = 3_000;
+
+async function verifySafetyPlus(appUserId: string | null): Promise<boolean> {
+  if (!appUserId || appUserId.length > 256) return false;
+  const now = Date.now();
+  const cached = RC_ENT_CACHE.get(appUserId);
+  if (cached && cached.expiresAt > now) return cached.entitled;
+  const secret = Deno.env.get('REVENUECAT_V1_SECRET_KEY');
+  if (!secret) return false;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), RC_REQ_TIMEOUT_MS);
+  try {
+    const resp = await fetch(
+      `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`,
+      { headers: { Authorization: `Bearer ${secret}`, Accept: 'application/json' }, signal: ctrl.signal },
+    );
+    if (!resp.ok) {
+      RC_ENT_CACHE.set(appUserId, { entitled: false, expiresAt: now + RC_CACHE_TTL_MS });
+      return false;
+    }
+    const body = await resp.json().catch(() => null);
+    const ent = body?.subscriber?.entitlements?.safety_plus;
+    const expiresIso = ent?.expires_date;
+    const entitled = typeof expiresIso === 'string' && Date.parse(expiresIso) > now;
+    RC_ENT_CACHE.set(appUserId, { entitled, expiresAt: now + RC_CACHE_TTL_MS });
+    return entitled;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // Rebuild the outbound body from an explicit allowlist. The caller does not get
@@ -222,6 +269,14 @@ serve(async (req: Request) => {
   const apikey = req.headers.get('apikey') ?? '';
   if (!bearer && !apikey) {
     return json({ error: 'unauthorized' }, 401, origin);
+  }
+
+  // Safety Plus paywall — enforced HERE (server-side) because the anon key is
+  // public and cannot gate a paid feature on its own.
+  const rcUserId = req.headers.get('x-rc-user-id');
+  const entitled = await verifySafetyPlus(rcUserId);
+  if (!entitled) {
+    return json({ error: 'safety_plus_required' }, 403, origin);
   }
 
   const tipBaseUrl = Deno.env.get('TIP_BASE_URL');

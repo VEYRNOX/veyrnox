@@ -178,6 +178,26 @@ export async function configurePurchases() {
   configured = true;
 }
 
+// RevenueCat app_user_id — what the server-side tip-chat / tip-screen paywall
+// checks against via the RC REST v1 /subscribers/{id} endpoint. Returns null
+// on web (no Purchases SDK) or in deniability/demo (I3 — no RC egress). Native
+// only. The Edge Function fails closed when the header is absent, so a null
+// here naturally denies the remote path; free users fall back to local advisor
+// knowledge without an entitlement lookup, which is I3-safe.
+export async function getRcUserId() {
+  if (!isNative()) return null;
+  if (isDeniabilityOrDemoActive()) return null;
+  try {
+    const result = await Purchases.getAppUserID();
+    if (typeof result === 'string' && result) return result;
+    if (result && typeof result.appUserID === 'string') return result.appUserID;
+    if (result && typeof result.originalAppUserId === 'string') return result.originalAppUserId;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // Codex P1 2026-08-15: getOfferings + getTierOffering used to make a real
 // RevenueCat network call in decoy/hidden/demo sessions. resolveTier() +
 // getCustomerInfo() were correctly I3-gated, but the /plans page was still

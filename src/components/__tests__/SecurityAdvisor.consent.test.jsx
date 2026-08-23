@@ -16,6 +16,12 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
   isDeniabilityOrDemoActive: vi.fn(() => false),
 }));
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'safety_plus', loading: false }),
+}));
+vi.mock('@/lib/purchases', () => ({
+  getRcUserId: vi.fn(async () => 'test-rc-user'),
+}));
 
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';

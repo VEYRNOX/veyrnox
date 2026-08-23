@@ -77,6 +77,7 @@ export const FREE_FEATURES = [
 // flow rather than standalone routes, so they are listed here but are NOT yet
 // route-gated — see docs and SAFETY_PLUS_ROUTES.
 export const SAFETY_PLUS_FEATURES = [
+  { name: 'AI Security Advisor — live', summary: 'Live LLM answers + remote address screening; offline knowledge stays free' },
   { name: 'Duress PIN', summary: 'Decoy wallet under coercion' },
   { name: 'Stealth / hidden wallets', summary: 'Deniable hidden-wallet pool' },
   { name: 'Panic wipe', summary: 'Irreversible local key destruction' },

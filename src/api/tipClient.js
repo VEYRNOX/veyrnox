@@ -25,7 +25,7 @@
 // so the feature has been inert in every build. This is the architecture landing
 // before the endpoint is provisioned rather than after.
 
-export function createTipClient({ proxyUrl, anonKey, timeout = 10_000 }) {
+export function createTipClient({ proxyUrl, anonKey, getRcUserId, timeout = 10_000 }) {
   if (!proxyUrl || !anonKey) {
     throw new Error('tipClient: proxyUrl and anonKey are required');
   }
@@ -44,16 +44,26 @@ export function createTipClient({ proxyUrl, anonKey, timeout = 10_000 }) {
       if (externalSignal.aborted) controller.abort();
       else externalSignal.addEventListener('abort', onExternal, { once: true });
     }
+    // Safety Plus entitlement proof for the Edge Function. Resolved per-call
+    // rather than at construction so a subscription that renews or expires
+    // mid-session is honoured on the next request. Null on web / deniability /
+    // demo — the Edge Function then denies with 403 (fail-closed), matching
+    // the client-side gate.
+    const rcUserId = typeof getRcUserId === 'function'
+      ? await Promise.resolve(getRcUserId()).catch(() => null)
+      : null;
+    const headers = {
+      'Content-Type': 'application/json',
+      // The Supabase anon key is PUBLIC by design — it is the same bar every
+      // other RPC in this app sits behind, and it is not authentication.
+      'Authorization': `Bearer ${anonKey}`,
+      'apikey': anonKey,
+    };
+    if (typeof rcUserId === 'string' && rcUserId) headers['X-Rc-User-Id'] = rcUserId;
     try {
       return await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // The Supabase anon key is PUBLIC by design — it is the same bar every
-          // other RPC in this app sits behind, and it is not authentication.
-          'Authorization': `Bearer ${anonKey}`,
-          'apikey': anonKey,
-        },
+        headers,
         body: JSON.stringify(body),
         signal: controller.signal,
       });

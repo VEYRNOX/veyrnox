@@ -10,6 +10,7 @@
 import { createTipClient, verdictToRiskLevel, signalsToRiskRows } from './tipClient.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { hydrateFromCache, lookupLocal } from '@/lib/localIocCache.js';
+import { getRcUserId } from '@/lib/purchases';
 
 let _client = null;
 
@@ -47,6 +48,11 @@ function getClient() {
   _client = createTipClient({
     proxyUrl: `${String(supabaseUrl).replace(/\/$/, '')}/functions/v1/tip-screen`,
     anonKey,
+    // Server-side Safety Plus paywall — tip-screen's Edge Function looks the
+    // id up against RevenueCat and denies if the safety_plus entitlement is
+    // absent or expired. Returns null on web / deniability / demo, which the
+    // proxy treats as unentitled (fail-closed).
+    getRcUserId,
   });
   return _client;
 }
