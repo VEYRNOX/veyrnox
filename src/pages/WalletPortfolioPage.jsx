@@ -62,6 +62,7 @@ import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
 import WatchlistWidget from "@/components/WatchlistWidget";
 import SecurityPosture from "@/components/SecurityPosture";
 import { readPersonalBackupState } from "@/lib/personalBackupState";
+import { base44 } from "@/api/base44Client";
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
@@ -535,6 +536,7 @@ export default function WalletPortfolioPage() {
     wallets, activeWalletId, switchWallet, walletAddresses,
     confirmWalletBackup, isDecoy, isHidden,
     portfolios, activePortfolioId, setActivePortfolio, walletPortfolioMap,
+    actionPasswordConfigured,
   } = useWallet();
 
   const [addOpen, setAddOpen] = useState(false);
@@ -612,6 +614,16 @@ export default function WalletPortfolioPage() {
     enabled: !!_activeEvmAddress && !isDeniabilitySessionActive(),
     staleTime: 60_000,
   });
+
+  // Session Security posture wiring — count enabled spend-limit rows. Skip in
+  // deniability/demo (limits list is real-session state, must not surface I3).
+  const { data: _txLimits = [] } = useQuery({
+    queryKey: ["tx-limits"],
+    queryFn: () => base44.entities.TransactionLimit.list(),
+    enabled: !isDeniabilitySessionActive(),
+    staleTime: 60_000,
+  });
+  const enabledLimits = _txLimits.filter((l) => l.enabled).length;
 
   // Active-portfolio wallets + total, computed here (ahead of the early
   // explore-mode return below) so the tracking hooks — which must run
@@ -912,9 +924,22 @@ export default function WalletPortfolioPage() {
           which Phase 2 does not yet log (I4: no fabricated "verified"). */}
       {(() => {
         const pb = readPersonalBackupState();
+        // Session Security dimension wiring. In deniability/demo, leave the
+        // three WC flags at their honest-false defaults so the real user's
+        // configured limits/step-up don't surface to a coerced observer (I3).
+        // wcSessionExpiry is static-true: M11 unconditionally enforces session
+        // expiry on every WC signing path (WalletConnectProvider.jsx §M11), it
+        // is not a user-toggleable control.
+        const deniable = isDeniabilitySessionActive();
+        const wc = deniable ? {} : {
+          wcSpendLimitSet: enabledLimits > 0,
+          wcSessionExpiry: true,
+          wcStepUpReauth: !!actionPasswordConfigured,
+        };
         return <SecurityPosture state={{
           recoveryPassphraseSet: pb.passphrase,
           shareCExported: pb.exported,
+          ...wc,
         }} />;
       })()}
 
