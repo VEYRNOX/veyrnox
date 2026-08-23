@@ -176,6 +176,30 @@ describe('estimateEvmFeeTiers — estimateGas failure surfaces (2026-08-16 audit
     vi.doUnmock('../evm/provider.js');
     vi.doUnmock('../evm/networks.js');
   });
+
+  // R6 audit — contract DEPLOYMENT (to == null, data set) must also reach the
+  // estimateGas branch. Previously fell through to a silent 21000n default.
+  it('reaches estimateGas for contract deploy (to == null, data present)', async () => {
+    vi.resetModules();
+    const spy = vi.fn(async () => { throw new Error('deploy revert'); });
+    vi.doMock('../evm/provider.js', () => ({
+      getProvider: () => ({
+        getBlock: async () => ({ baseFeePerGas: GWEI(20) }),
+        getFeeData: async () => ({ maxPriorityFeePerGas: GWEI(2), gasPrice: GWEI(22) }),
+        estimateGas: spy,
+      }),
+    }));
+    vi.doMock('../evm/networks.js', () => ({
+      getNetworkInfo: () => ({ symbol: 'ETH', decimals: 18, name: 'mainnet' }),
+    }));
+    const { estimateEvmFeeTiers } = await import('../evm/fees.js');
+    await expect(
+      estimateEvmFeeTiers({ networkKey: 'mainnet', from: '0xabc', data: '0x60806040', value: 0n }),
+    ).rejects.toMatchObject({ code: 'GAS_ESTIMATION_FAILED' });
+    expect(spy).toHaveBeenCalledOnce();
+    vi.doUnmock('../evm/provider.js');
+    vi.doUnmock('../evm/networks.js');
+  });
 });
 
 describe('buildEvmCustomFee — per-chain ceiling (C-4)', () => {

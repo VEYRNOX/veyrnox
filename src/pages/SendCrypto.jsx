@@ -2639,6 +2639,7 @@ export default function SendCrypto() {
                 decimals={activeNetwork?.decimals ?? 18}
                 usdRate={USD_RATES[nativeSymbol] ?? USD_RATES[selectedWallet?.currency]}
                 gasLimitHint={isErc20 ? 65000 : 21000}
+                to={toAddress || undefined}
                 onChange={setSelectedFee}
               />
             ) : (

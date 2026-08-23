@@ -81,7 +81,7 @@ function describeTier(chain, tier, ctx) {
   };
 }
 
-export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRate, gasLimitHint, onChange }) {
+export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRate, gasLimitHint, to, onChange }) {
   const [selectedId, setSelectedId] = useState(null);
   const [custom, setCustom] = useState({ maxBaseFeeGwei: "", priorityGwei: "", gasLimit: "" });
 
@@ -99,13 +99,17 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
       }
       return run();
     };
-    if (chain === "evm") return gate(() => estimateEvmFeeTiers(/** @type {any} */ ({ networkKey, gasLimit: gasLimitHint })));
+    // 2026-08-16 audit R6: forward `to` so estimateEvmFeeTiers can reach its
+    // estimateGas branch (gasLimitHint still short-circuits it for known
+    // paths; contract calls omitting the hint now get a live estimate + honest
+    // GAS_ESTIMATION_FAILED on failure).
+    if (chain === "evm") return gate(() => estimateEvmFeeTiers(/** @type {any} */ ({ networkKey, gasLimit: gasLimitHint, to })));
     if (chain === "btc") return gate(() => estimateBtcFeeTiers({ networkKey }));
     return gate(() => estimateSolFeeTiers({ networkKey }));
-  }, [chain, networkKey, gasLimitHint]);
+  }, [chain, networkKey, gasLimitHint, to]);
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["fee-tiers", chain, networkKey, gasLimitHint],
+    queryKey: ["fee-tiers", chain, networkKey, gasLimitHint, to],
     queryFn,
     staleTime: 15_000,
     refetchInterval: 30_000,
