@@ -123,13 +123,37 @@ jobs:
         if: always()
         working-directory: ios/App
         run: |
-          if [ ! -d TestResults.xcresult ]; then
-            echo "No result bundle — the test step died before xcodebuild wrote one." \
+          # The LOG is the primary source, not the result bundle. On run
+          # 32647666200 xcodebuild left TestResults.xcresult without an
+          # Info.plist on the failure path, so xcresulttool could not read it
+          # and the summary said nothing — while xcodebuild.log carried the
+          # exact assertion. Read the reliable one first.
+          if [ -f xcodebuild.log ]; then
+            {
+              echo '### xcuitest failures'
+              echo '```'
+              grep -aE '(error: -\[|Test Case .* failed|Testing failed|\*\* TEST .* \*\*)' \
+                xcodebuild.log | tail -40 || echo 'No failure lines matched.'
+              echo '```'
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No xcodebuild.log — the test step died before writing one.' \
               | tee -a "$GITHUB_STEP_SUMMARY"
-            exit 0
           fi
-          xcrun xcresulttool get test-results summary \
-            --path TestResults.xcresult 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+
+          # Bonus only. Never gate the summary on this: the bundle is finalised
+          # by xcodebuild at the end of the test action and is routinely
+          # unreadable exactly when a run fails, which is when it is wanted.
+          if [ -f TestResults.xcresult/Info.plist ]; then
+            {
+              echo '### result bundle summary'
+              xcrun xcresulttool get test-results summary \
+                --path TestResults.xcresult 2>&1 || true
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo '_Result bundle unreadable (no Info.plist) — see the log lines above._' \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload test log
         if: always()
