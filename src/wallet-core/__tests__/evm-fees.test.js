@@ -179,6 +179,57 @@ describe('estimateEvmFeeTiers — estimateGas failure surfaces (2026-08-16 audit
 
   // R6 audit — contract DEPLOYMENT (to == null, data set) must also reach the
   // estimateGas branch. Previously fell through to a silent 21000n default.
+  // R7 audit — an ERC-20 send used to hard-code gasLimitHint=65000n, which
+  // short-circuited estimateGas entirely. Now the hint is IGNORED whenever
+  // calldata is present (contract interaction), so provider.estimateGas is
+  // reached and its throw surfaces as GAS_ESTIMATION_FAILED — no silent 65000
+  // fallback that would out-of-gas a heavier ERC-20 (fee-on-transfer, hooks).
+  it('ignores gasLimit hint when calldata is present (ERC-20 short-circuit is gone)', async () => {
+    vi.resetModules();
+    const spy = vi.fn(async () => { throw new Error('token estimate revert'); });
+    vi.doMock('../evm/provider.js', () => ({
+      getProvider: () => ({
+        getBlock: async () => ({ baseFeePerGas: GWEI(20) }),
+        getFeeData: async () => ({ maxPriorityFeePerGas: GWEI(2), gasPrice: GWEI(22) }),
+        estimateGas: spy,
+      }),
+    }));
+    vi.doMock('../evm/networks.js', () => ({
+      getNetworkInfo: () => ({ symbol: 'ETH', decimals: 18, name: 'mainnet' }),
+    }));
+    const { estimateEvmFeeTiers } = await import('../evm/fees.js');
+    await expect(
+      // Caller passes BOTH a gasLimit hint (the old 65000n theater) AND real
+      // contract-call data — the estimator must ignore the hint and estimate.
+      estimateEvmFeeTiers({ networkKey: 'mainnet', from: '0xabc', to: '0xtoken', value: 0n, data: '0xa9059cbb', gasLimit: 65000n }),
+    ).rejects.toMatchObject({ code: 'GAS_ESTIMATION_FAILED' });
+    expect(spy).toHaveBeenCalledOnce();
+    vi.doUnmock('../evm/provider.js');
+    vi.doUnmock('../evm/networks.js');
+  });
+
+  // Pure ETH transfer (no data) — the 21000n hint stays authoritative.
+  it('honours gasLimit hint for pure ETH transfer (no calldata)', async () => {
+    vi.resetModules();
+    const spy = vi.fn();
+    vi.doMock('../evm/provider.js', () => ({
+      getProvider: () => ({
+        getBlock: async () => ({ baseFeePerGas: GWEI(20) }),
+        getFeeData: async () => ({ maxPriorityFeePerGas: GWEI(2), gasPrice: GWEI(22) }),
+        estimateGas: spy,
+      }),
+    }));
+    vi.doMock('../evm/networks.js', () => ({
+      getNetworkInfo: () => ({ symbol: 'ETH', decimals: 18, name: 'mainnet' }),
+    }));
+    const { estimateEvmFeeTiers } = await import('../evm/fees.js');
+    const out = await estimateEvmFeeTiers({ networkKey: 'mainnet', from: '0xabc', to: '0xdef', value: 1n, gasLimit: 21000n });
+    expect(out.gasLimit).toBe('21000');
+    expect(spy).not.toHaveBeenCalled();
+    vi.doUnmock('../evm/provider.js');
+    vi.doUnmock('../evm/networks.js');
+  });
+
   it('reaches estimateGas for contract deploy (to == null, data present)', async () => {
     vi.resetModules();
     const spy = vi.fn(async () => { throw new Error('deploy revert'); });
