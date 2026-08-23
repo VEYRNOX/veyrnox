@@ -24,12 +24,17 @@ final class AppUITests: XCTestCase {
         ]
         app.launch()
 
+        // 0. launch() returns on process idle, not on webview paint. Assert the
+        //    webview separately so a slow/blank runner cannot masquerade as a
+        //    missing tile — see UITestTimeouts in TestHelpers.swift.
+        waitForWebView(app: app)
+
         // 1. Fresh installs land on the entry tiles. Pick the new-wallet path;
         //    it auto-creates after PIN confirmation, so there is no later
         //    "Create Wallet" button on this path.
         let newWalletButton = app.buttons["New wallet"]
         XCTAssertTrue(
-            newWalletButton.waitForExistence(timeout: 10),
+            newWalletButton.waitForExistence(timeout: UITestTimeouts.firstElement),
             "New wallet entry tile never appeared on a fresh install."
         )
         newWalletButton.tap()
