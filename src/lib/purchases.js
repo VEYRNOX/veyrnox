@@ -209,6 +209,17 @@ export async function getTierOffering(offeringId) {
   }
 }
 
+export async function getRcUserId() {
+  if (!isNative()) return null;
+  if (isDeniabilityOrDemoActive()) return null;
+  try {
+    const { appUserID } = await Purchases.getAppUserID();
+    return typeof appUserID === 'string' && appUserID.trim() ? appUserID : null;
+  } catch {
+    return null;
+  }
+}
+
 // `offerTag` names a Play offer that MUST be applied for this purchase to be
 // the price the user was shown (a referral tier, or the cancel-save offer).
 //

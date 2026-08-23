@@ -106,22 +106,4 @@ ${SIGNCOUNT_KEY}: ${signCountValue === null ? 'absent (expected — no real FIDO
     expect(signCountValue).toBeNull();
   });
 
-  // #2022 — pending real device instrumentation; skipped to remove expect(true)==true theater.
-  it.skip('#2022 documents the real signCount contract as a web-only, unit-tested boundary (not device-testable here)', async () => {
-    console.log(`
-ℹ️ M-K cloned-authenticator detection (checkPasskeySignCount / PasskeyClonedError,
-'authenticator_cloned' code) operates on WebAuthn authenticatorData bytes 33-36,
-which only exist for a REAL FIDO2 assertion. That path is web-only in this
-codebase (src/lib/passkey.js explicitly stubs navigator.credentials on native).
-The regression contract for that logic lives in:
-  src/lib/__tests__/passkey.test.js
-and (browser-real-authenticator level) the CDP-virtual-authenticator suite
-pattern used by e2e/webauthn-prf-kek.spec.js could be extended to cover signCount
-monotonicity for the DESKTOP/web passkey unlock path — that is a web Playwright
-task, not an Android Appium one. This Android suite's job is only to confirm the
-native app never fabricates that signal (assertion above) and never mislabels
-its OS-biometric gate as FIDO2 hardware (assertion above).
-    `);
-    expect(true).toBe(true);
-  });
 });

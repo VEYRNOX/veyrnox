@@ -11,6 +11,7 @@ import { createTipClient, verdictToRiskLevel, signalsToRiskRows } from './tipCli
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { hydrateFromCache, lookupLocal } from '@/lib/localIocCache.js';
 import { ZERO_FROM_ADDRESS } from '@/lib/tipZeroFrom.js';
+import { getRcUserId } from '@/lib/purchases.js';
 
 let _client = null;
 
@@ -48,6 +49,7 @@ function getClient() {
   _client = createTipClient({
     proxyUrl: `${String(supabaseUrl).replace(/\/$/, '')}/functions/v1/tip-screen`,
     anonKey,
+    getRcUserId,
   });
   return _client;
 }
