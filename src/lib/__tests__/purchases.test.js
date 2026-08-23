@@ -41,8 +41,19 @@ vi.mock('@capacitor/app', () => ({
   },
 }));
 
+const isDeniabilityOrDemoActive = vi.fn(() => false);
+vi.mock('@/wallet-core/deniabilitySession.js', () => ({
+  isDeniabilityOrDemoActive: () => isDeniabilityOrDemoActive(),
+}));
+
+const getLocalStateMock = vi.fn(() => ({}));
+vi.mock('@/lib/referral', () => ({
+  getLocalState: () => getLocalStateMock(),
+}));
+
 const {
   SAFETY_PLUS_ENTITLEMENT,
+  AI_SECURITY_PROTECTION_ENTITLEMENT,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
   configurePurchases,
@@ -53,7 +64,7 @@ const {
   getCustomerInfo,
   addCustomerInfoUpdateListener,
   manageSubscription,
-  setReferralAttribute,
+  bindOwnReferralCode,
 } = await import('../purchases');
 
 beforeEach(() => {
@@ -77,6 +88,10 @@ describe('purchases.js — package identifier constants', () => {
 
   it('exports the safety_plus entitlement identifier', () => {
     expect(SAFETY_PLUS_ENTITLEMENT).toBe('safety_plus');
+  });
+
+  it('exports the ai_security_protection entitlement identifier', () => {
+    expect(AI_SECURITY_PROTECTION_ENTITLEMENT).toBe('ai_security_protection');
   });
 });
 
@@ -240,30 +255,32 @@ describe('purchases.js — getTierOffering', () => {
   });
 });
 
-describe('purchases.js — setReferralAttribute', () => {
+describe('purchases.js — bindOwnReferralCode', () => {
   it('no-ops on web', async () => {
     isNativePlatform.mockReturnValue(false);
-    await setReferralAttribute('VYX-1234');
+    getLocalStateMock.mockReturnValue({ code: 'VYX-1234' });
+    await bindOwnReferralCode();
     expect(setAttributesMock).not.toHaveBeenCalled();
   });
 
-  it('no-ops when code is null/empty', async () => {
+  it('no-ops when user has no code', async () => {
     isNativePlatform.mockReturnValue(true);
-    await setReferralAttribute(null);
-    await setReferralAttribute('');
+    getLocalStateMock.mockReturnValue({});
+    await bindOwnReferralCode();
     expect(setAttributesMock).not.toHaveBeenCalled();
   });
 
-  it('calls Purchases.setAttributes with the referral code on native after configure', async () => {
+  it('sets veyrnox_referral_code attribute with own code on native after configure', async () => {
     isNativePlatform.mockReturnValue(true);
     getPlatform.mockReturnValue('android');
     vi.stubEnv('VITE_REVENUECAT_GOOGLE_API_KEY', 'goog-key');
     vi.resetModules();
     const fresh = await import('../purchases');
     await fresh.configurePurchases();
+    getLocalStateMock.mockReturnValue({ code: 'VYX-MINE' });
     setAttributesMock.mockResolvedValue(undefined);
-    await fresh.setReferralAttribute('VYX-DEMO');
-    expect(setAttributesMock).toHaveBeenCalledWith({ referralCode: 'VYX-DEMO' });
+    await fresh.bindOwnReferralCode();
+    expect(setAttributesMock).toHaveBeenCalledWith({ veyrnox_referral_code: 'VYX-MINE' });
   });
 
   it('swallows setAttributes rejection (best-effort)', async () => {
@@ -273,7 +290,8 @@ describe('purchases.js — setReferralAttribute', () => {
     vi.resetModules();
     const fresh = await import('../purchases');
     await fresh.configurePurchases();
+    getLocalStateMock.mockReturnValue({ code: 'VYX-FAIL' });
     setAttributesMock.mockRejectedValue(new Error('network failure'));
-    await expect(fresh.setReferralAttribute('VYX-FAIL')).resolves.toBeUndefined();
+    await expect(fresh.bindOwnReferralCode()).resolves.toBeUndefined();
   });
 });

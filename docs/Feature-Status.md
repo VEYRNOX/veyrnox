@@ -393,6 +393,7 @@ Android StrongBox equivalent: see Android entry above (end-to-end device-verifie
   - **Android biometric permission (PR #483):** `USE_BIOMETRIC` and `USE_FINGERPRINT` added to `AndroidManifest.xml`. Without these, `BiometricPrompt` threw `SecurityException` on Android 9+. Now BUILT for Android.
 - FIDO2 / passkeys (unlock gate, NOT key custody) — ✅ (`passkey.js`; password-only escape hatch present — SAST M-3 fix). M-K cloned-authenticator (signCount) detection e2e-proven 2026-07-06 via a real CDP dual-virtual-authenticator clone/replay (`e2e/passkey-clone-replay.spec.js`, PR #644 — see §8c and the residual table M-K row) — real crypto, real CDP-level WebAuthn, but still a software clone, not a physical hardware authenticator.
 - Session manager + auto-lock (idle / background) — ✅ (`session.js`)
+  - **2026-08-23 native relock hardening (issues #1998 / #2000) — BUILT / unit-tested, INTERNAL.** The short-lived native plaintext relock cache introduced by PR #1989 was removed: `lock()` now clears the in-memory unlock secret immediately, and every post-lock native reopen goes back through the normal `keyStore.unlock()` path instead of reusing a 30s JS-side secret. This restores the biometric / hardware-KEK gate on every relock and eliminates the JS-heap window where a serialized container + typed secret could survive past `lock()`. The native H-1 / M-4 timing-equalizer carveout from that same PR was also reverted, and a dedicated Capacitor-surface regression test now pins native success / duress / miss parity (`src/lib/__tests__/unlockTimingEqualizer.h1.native.test.jsx`). No on-chain txid applies; not independently audited.
 - At-rest KDF work-factor raise + param migration — ✅ (SAST M3; KDF params reviewed under both audits — internal 2026-06-17 + independent ECC 2026-06-23, see `docs/audit-triage/a2-deniability-kdf-param-timing-2026-06-23.md`)
 - Account access / change password + seed recovery — ✅ (PR #50; non-custodial `keyStore.changePassword` + `importWallet` seed recovery; honest "no custodial reset"). OS-enforced ACL hardening (M2c iOS) — 🟡 BUILT behind flag (PRs #690/#695, 2026-07-07; hardened PR #1098, 2026-07-17); **M2d Android — 🟡 BUILT behind flag (scaffold + capability probe + createWrappingKey + wrap, PRs #1116/#1131/#1141, 2026-07-17/18); unwrap (M2d-1d) still 📋 not built.** Not device-verified; flag stays false until `docs/audit-triage/m2c-enclave-device-test.md` (iOS) / `docs/audit-triage/m2d-strongbox-device-test.md` (Android) are run on physical hardware.
 
@@ -2489,6 +2490,44 @@ none of this is "verified" in the strict on-chain / independent-audit sense).
 - **#1664** — TIP RiskVerdictBanner silent-CLEAR on Tornado router; suspect list posted; needs Safari Web Inspector on iOS Simulator to confirm which branch fires
 - **#1730** — Lighthouse LCP > 2500 ms on main; profiled via Chrome DevTools MCP; 3 fix levers named; needs owner call between fix (SPA bundle-split) and honest budget bump
 - **#1850** — tip-chat vault caps strip every Safety Plus subscriber; locked infra; needs owner-authored RC entitlement path
+
+## 2026-08-17 — stale `appStateChange` no longer supersedes an in-flight unlock
+
+✅ BUILT, INTERNAL (static + unit only; **not** device-verified). Closes the race
+PR #1881 targeted, without the biometric prompt-count change that got #1881 reverted
+by #1887.
+
+**The race.** `_lockSuppressDepth` suppression covers the window an OS sheet is OPEN,
+not DELIVERY. Capacitor dispatches `appStateChange` asynchronously and the main thread
+blocks for seconds on the synchronous Argon2id WASM (192 MiB), so the `isActive:false`
+a Face ID sheet emitted earlier can flush after suppression returned to 0 — typically
+as the next PIN unlock finishes its KDF. `fireLockHook()` → `WalletProvider.lock()` →
+`unlockGenRef` bumps → the unlock aborts with `UNLOCK_SUPERSEDED` before
+`keyStore.unlock()` has started.
+
+**The fix** (`native.js` `shouldFireLockOnAppStateChange`): discriminate on LIVE state,
+not the queued payload. A pause event describes a moment that has passed, so if
+`document.visibilityState === 'visible'` at delivery the event is stale and must not
+lock. Read synchronously — deliberately NOT `App.getState()`, whose promise would
+resolve only after a genuine background ended (reporting `isActive:true` on resume) and
+would skip the lock on exactly the case that needs it.
+
+**Why it cannot change the prompt count.** It is a pure predicate over state it is
+handed; it never authenticates and never touches `unlockWithBiometric`. The
+`kekBiometricCacheGate` guard — the assertion #1881 broke — stays green, verified.
+
+**Safety argument, stated plainly.** `pause` stays unguarded and remains the genuine
+background signal; only `appStateChange` is narrowed. On native these two are the ONLY
+background-lock signals (WalletProvider's `visibilitychange` handler returns early on
+`Capacitor.isNativePlatform()` by design), so losing the background lock now requires
+BOTH `pause` to not fire AND `visibilityState` to read `'visible'` while genuinely
+backgrounded. Fail-closed: any value other than `'visible'` — including a missing
+`document` or a throwing getter — locks (I4).
+
+Verified: unit + mutation (inverting the predicate, and fail-opening on unknown
+visibility, each turn the guard red). **Not verified:** no device run — the race itself
+is a real-hardware timing artefact and only a device can confirm it is gone. Do not
+mark this device-verified without an iPhone reproduction.
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses

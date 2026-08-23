@@ -69,6 +69,8 @@ export const SEED_THREATS = [
 
 // ── In-memory index (instant lookup) ─────────────────────────────────────────
 const _index = new Map();
+const _learnedIndex = new Map();
+let _hydrateStarted = false;
 
 function _buildIndex() {
   if (_index.size > 0) return;
@@ -78,6 +80,39 @@ function _buildIndex() {
     if (existing) existing.push(entry);
     else _index.set(key, [entry]);
   }
+}
+
+function _pushLearned(entry) {
+  if (!entry?.address) return;
+  const key = String(entry.address).toLowerCase();
+  const existing = _learnedIndex.get(key) || [];
+  const dup = existing.some((e) =>
+    e.category === entry.category
+      && e.source === entry.source
+      && e.note === entry.note
+      && e.severity === entry.severity
+      && e.chain === entry.chain,
+  );
+  if (!dup) _learnedIndex.set(key, [...existing, entry]);
+}
+
+function _hydrateLearnedIndex() {
+  if (_hydrateStarted) return;
+  _hydrateStarted = true;
+  openDb()
+    .then((db) => new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    }))
+    .then((rows) => {
+      for (const row of rows) _pushLearned(row);
+    })
+    .catch(() => {
+      // IndexedDB unavailable — seed-only remains available.
+    });
 }
 
 // ── IndexedDB for learned threats ────────────────────────────────────────────
@@ -151,7 +186,7 @@ export async function lookupThreat(address) {
   _buildIndex();
 
   const seedHits = _index.get(key) || [];
-  let dbHits = [];
+  let dbHits = _learnedIndex.get(key) || [];
 
   try {
     const db = /** @type {IDBDatabase} */ (await openDb());
@@ -162,7 +197,10 @@ export async function lookupThreat(address) {
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
-    if (result) dbHits = [result];
+    if (result) {
+      _pushLearned(result);
+      dbHits = _learnedIndex.get(key) || [result];
+    }
   } catch {
     // IndexedDB unavailable — seed-only is still useful.
   }
@@ -179,7 +217,9 @@ export function lookupThreatSync(address) {
   if (isDeniabilityOrDemoActive()) return [];
   if (!address || typeof address !== 'string') return [];
   _buildIndex();
-  return _index.get(address.toLowerCase()) || [];
+  _hydrateLearnedIndex();
+  const key = address.toLowerCase();
+  return [...(_index.get(key) || []), ...(_learnedIndex.get(key) || [])];
 }
 
 /**
@@ -215,6 +255,7 @@ export async function learnThreat(entry) {
       tx.onabort = () => reject(tx.error);
     });
     await committed;
+    _pushLearned(record);
   } catch {
     // Best-effort persistence.
   }

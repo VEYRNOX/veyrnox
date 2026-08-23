@@ -633,6 +633,11 @@ export async function decryptVaultWithDek(vault, dek) {
  * @returns {Promise<Uint8Array>} 32-byte C factor
  */
 export async function deriveKekC(password, salt) {
+  // Reverted the #1989 worker-route (was: runArgon2idBinary) — that path broke
+  // wallet CREATE on iOS: the very first KEK-C derivation on a fresh install
+  // failed inside the worker/hash-wasm bootstrap, teardown ran, banner showed
+  // "Wallet setup couldn't finish securely". In-thread argon2id is the pre-#1989
+  // shape and known-good. Keeps the trailing setTimeout(0) yield.
   const { argon2id: _argon2id } = await import('hash-wasm');
   const pw = enc.encode(password.normalize('NFKC'));
   let raw;

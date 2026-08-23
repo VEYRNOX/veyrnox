@@ -31,7 +31,7 @@
 
 import { argon2id } from 'hash-wasm';
 import { KDF_PARAMS } from './vault.js';
-import { SHARE_SIZE } from './shamir.js';
+import { SHARE_SIZE, isValidShareShape } from './shamir.js';
 import {
   ENABLE_PERSONAL_BACKUP_SHARDS,
   PERSONAL_BACKUP_SHARDS_DISABLED,
@@ -170,7 +170,7 @@ export async function wrapShareWithPassphrase(share, passphrase, shareIndex) {
   if (!ENABLE_PERSONAL_BACKUP_SHARDS) {
     throw new Error(RECOVERY_SHARE_DISABLED);
   }
-  if (!(share instanceof Uint8Array) || share.length !== SHARE_SIZE) {
+  if (!isValidShareShape(share)) {
     throw new Error(RECOVERY_SHARE_MALFORMED);
   }
   if (!Number.isInteger(shareIndex) || shareIndex < 1 || shareIndex > 255) {

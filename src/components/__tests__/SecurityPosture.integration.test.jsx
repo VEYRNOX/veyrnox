@@ -12,7 +12,7 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
 vi.mock('../../rasp/useRaspArtifact', () => ({
-  useRaspArtifact: () => ({ tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false }),
+  useRaspArtifact: () => ({ tier: 'allow', sentence: null, blockedActions: [], requiresBiometric: false }),
 }));
 
 const isBiometricUnlockEnabledMock = vi.fn(() => true);
@@ -63,10 +63,8 @@ describe('SecurityPosture — real computePostureScore integration', () => {
         }} />
       </MemoryRouter>,
     );
-    // Hardware-binding dimension caps at 5 (kekActive) + 5 (top-tier) = 10 of its
-    // declared max:15 (STRONGBOX/SECURE_ENCLAVE and TEE are mutually exclusive with
-    // no combined path to the full 15) — so the real ceiling is 95, not 100. This
-    // pins the ACTUAL scoring function's behaviour, not this widget's assumption.
+    // Integrator-supplied fields substantially raise the score, but the real
+    // scoring function currently tops out at 95% for this state bundle.
     await waitFor(() => expect(screen.getByTestId('security-posture-card').textContent).toContain('95%'));
     expect(screen.getByTestId('security-posture-card').textContent).toContain('Complete');
   });

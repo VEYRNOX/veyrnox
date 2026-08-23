@@ -30,6 +30,7 @@ import PinPad from '@/components/security/PinPad';
 import { tierToBadge } from '@/wallet-core/keystore/tierBadge.js';
 import Spinner from '@/components/Spinner';
 import { KEK_INSECURE_TIER_KEY, clearKekInsecureTier } from '@/lib/useKekEnrollmentGate';
+import { classifyAndroidCompatibility, ANDROID_COMPAT_CLASS } from '@/lib/androidCompatibility';
 
 // Classify a thrown error by its STABLE machine CODE (not prose — copy is not a
 // contract and a raw message can leak internals). Returns the plain-language string
@@ -65,9 +66,28 @@ function isWrongPinVaultError(e) {
   return msg.startsWith('Decryption failed') || msg.startsWith('No wallet');
 }
 
+function shouldClearCredentialOnEnrollFailure(e) {
+  const code = e?.code || e?.message;
+  // Only the explicit insecure-tier refusal guarantees "native alias created,
+  // vault not wrapped". Retryable step-2 failures (hardware factor unavailable,
+  // user-cancelled biometric, transient native refusal) must keep the credential
+  // intact so a retry does not start from a self-induced stale-key state.
+  return code === 'KEK_ENROLL_INSECURE_TIER';
+}
+
 const isNative = (() => {
   try { return Capacitor.isNativePlatform(); } catch { return false; }
 })();
+
+function prettyHardwareBacking(backing) {
+  switch (backing) {
+    case 'strongBox': return 'StrongBox';
+    case 'tee': return 'TEE';
+    case 'secureEnclave': return 'Device hardware';
+    case 'none': return 'None detected';
+    default: return backing ? String(backing) : 'Unknown';
+  }
+}
 
 // PIN strength disclosure — informational only, no logic change.
 // An 8-digit numeric PIN has ~100 M combinations. Argon2id raises offline exhaustion
@@ -140,6 +160,8 @@ export default function HardwareKekSettings() {
   // A value < 3 surfaces the one-time consented "Upgrade protection" re-enroll (C-1).
   const [kekVersion, setKekVersion] = useState(null);
   const [upgrading, setUpgrading] = useState(false);
+  const [nativeSnapshot, setNativeSnapshot] = useState(null);
+  const [retesting, setRetesting] = useState(false);
   // Persisted "device previously failed the hardware-tier gate" verdict from
   // useKekEnrollmentGate. Shown as a caution banner in the enroll branch so
   // the user knows retrying is expected to fail again (Chinese OEM Keystore
@@ -147,6 +169,9 @@ export default function HardwareKekSettings() {
   const [previouslyIneligible, setPreviouslyIneligible] = useState(() => {
     try { return localStorage.getItem(KEK_INSECURE_TIER_KEY) === '1'; } catch { return false; }
   });
+  const androidCompatibility = nativeSnapshot?.platform === 'android'
+    ? classifyAndroidCompatibility(nativeSnapshot)
+    : null;
 
   useEffect(() => {
     let active = true;
@@ -190,6 +215,12 @@ export default function HardwareKekSettings() {
                 const ver = await ks.getVaultKekVersion();
                 if (active) setKekVersion(ver);
               } catch { /* best-effort — the upgrade prompt just won't show */ }
+            }
+            if (typeof ks.getNativeSecuritySnapshot === 'function') {
+              try {
+                const snapshot = await ks.getNativeSecuritySnapshot();
+                if (active) setNativeSnapshot(snapshot);
+              } catch { /* best-effort — diagnostics only */ }
             }
           }
         } catch {
@@ -273,17 +304,18 @@ export default function HardwareKekSettings() {
         console.error('[KEK-ENROLL] failed:', e?.code);
         setError(classifyKekError(e, t));
       }
-      // Best-effort cleanup of any partially-created credential.
-      try {
-        if (isNative) {
-          const { clearHardwareCredential } = await import('@/wallet-core/keystore/hardware.js');
-          await clearHardwareCredential();
-        } else {
-          if (typeof window !== 'undefined' && window.localStorage) {
+      if (shouldClearCredentialOnEnrollFailure(e)) {
+        // Best-effort cleanup only for the partial-enroll case where the native
+        // credential was created but refused on tier honesty grounds.
+        try {
+          if (isNative) {
+            const { clearHardwareCredential } = await import('@/wallet-core/keystore/hardware.js');
+            await clearHardwareCredential();
+          } else if (typeof window !== 'undefined' && window.localStorage) {
             window.localStorage.removeItem('veyrnox-prf-cred-id');
           }
-        }
-      } catch { /* best-effort */ }
+        } catch { /* best-effort */ }
+      }
     } finally {
       setBusy(false);
     }
@@ -353,6 +385,29 @@ export default function HardwareKekSettings() {
       }
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleRetestDeviceSecurity = async () => {
+    setRetesting(true);
+    setError('');
+    try {
+      const ks = getKeyStore();
+      if (typeof ks.refreshNativeSecuritySnapshot === 'function') {
+        const snapshot = await ks.refreshNativeSecuritySnapshot();
+        setNativeSnapshot(snapshot);
+        if (snapshot?.platform === 'android') {
+          const compatibility = classifyAndroidCompatibility(snapshot);
+          if (compatibility.canAttemptEnrollment) {
+            clearKekInsecureTier();
+            setPreviouslyIneligible(false);
+          }
+        }
+      }
+    } catch {
+      setError('Could not retest this device right now. Please try again.');
+    } finally {
+      setRetesting(false);
     }
   };
 
@@ -431,6 +486,44 @@ export default function HardwareKekSettings() {
           {t('settings.hardware_kek.device_binding_note')}
         </p>
       </div>
+
+      {isNative && nativeSnapshot && (
+        <div
+          data-testid="android-security-snapshot"
+          className="space-y-2 rounded-lg bg-muted/40 border border-border px-3 py-3"
+        >
+          <p className="text-xs font-semibold text-foreground">Device compatibility snapshot</p>
+          <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Device</span>
+            <span>
+              {nativeSnapshot.manufacturer || nativeSnapshot.model
+                ? [nativeSnapshot.manufacturer, nativeSnapshot.model].filter(Boolean).join(' ')
+                : 'Unknown device'}
+            </span>
+            <span className="font-medium text-foreground">Platform</span>
+            <span>
+              {nativeSnapshot.platform === 'android'
+                ? `Android${nativeSnapshot.sdkInt ? ` (API ${nativeSnapshot.sdkInt})` : ''}`
+                : 'iOS'}
+            </span>
+            <span className="font-medium text-foreground">Biometrics</span>
+            <span>
+              {nativeSnapshot.biometricAvailable
+                ? 'Available'
+                : nativeSnapshot.deviceIsSecure
+                  ? 'Not enrolled - device credential fallback only'
+                  : 'Unavailable'}
+            </span>
+            <span className="font-medium text-foreground">Hardware backing</span>
+            <span>{prettyHardwareBacking(nativeSnapshot.hardwareBacking)}</span>
+          </div>
+          {androidCompatibility?.summary && (
+            <p className="text-xs text-muted-foreground">
+              {androidCompatibility.summary}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Loading */}
       {enrolled === null && (
@@ -590,7 +683,52 @@ export default function HardwareKekSettings() {
             </div>
           )}
 
-          <PinStrengthNotice variant="pre-enroll" />
+          {nativeSnapshot?.platform === 'android' && androidCompatibility?.className === ANDROID_COMPAT_CLASS.TEE && (
+            <div className="flex items-start gap-2 rounded-lg bg-muted/40 border border-border px-3 py-2">
+              <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-xs text-muted-foreground">
+                This device can still enable hardware protection, but it uses TEE-backed security rather than StrongBox. That is expected on many Android builds, including some OnePlus and Samsung devices.
+              </p>
+            </div>
+          )}
+
+          {nativeSnapshot?.platform === 'android' && androidCompatibility?.className === ANDROID_COMPAT_CLASS.DEVICE_CREDENTIAL_ONLY && (
+            <div className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2">
+              <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-xs text-muted-foreground">
+                Veyrnox cannot enable hardware protection yet because this device has no enrolled biometrics. Add a fingerprint or face unlock in system settings, then retry.
+              </p>
+            </div>
+          )}
+
+          {nativeSnapshot?.platform === 'android' && androidCompatibility?.className === ANDROID_COMPAT_CLASS.UNSUPPORTED && (
+            <div className="flex items-start gap-2 rounded-lg bg-caution/10 border border-caution/30 px-3 py-2">
+              <ShieldAlert className="h-4 w-4 text-caution shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-xs text-muted-foreground">
+                This Android build is currently falling back to password-only protection because Veyrnox could not confirm a supported hardware-backed biometric path.
+              </p>
+            </div>
+          )}
+
+          {nativeSnapshot?.platform === 'android' && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="text-xs text-primary underline disabled:text-muted-foreground"
+                onClick={handleRetestDeviceSecurity}
+                disabled={retesting || busy}
+              >
+                {retesting ? 'Retesting device security...' : 'Retest device security'}
+              </button>
+              <p className="text-[11px] text-muted-foreground">
+                Re-run the Android security checks after an OS update, a new biometric enrollment, or a device security setting change.
+              </p>
+            </div>
+          )}
+
+          {(androidCompatibility?.showPreEnrollNotice ?? true) && (
+            <PinStrengthNotice variant="pre-enroll" />
+          )}
 
           {error && <p role="alert" aria-live="polite" className="text-xs text-destructive">{error}</p>}
 
@@ -600,19 +738,29 @@ export default function HardwareKekSettings() {
                 <Spinner size="sm" decorative /> {t('settings.hardware_kek.enroll.busy_native')}
               </p>
             ) : (
-              <PinPad
-                value={pin}
-                onChange={v => { setPin(v); setError(''); }}
-                onComplete={handleEnroll}
-                disabled={busy}
-                length={8}
-                submitLabel={t('settings.hardware_kek.enroll.cta')}
-              />
+              androidCompatibility?.canAttemptEnrollment === false ? (
+                <div className="rounded-lg border border-border bg-muted/20 px-3 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    Hardware protection is unavailable on this device right now. You can continue using your wallet with password protection and retry later if the device security state changes.
+                  </p>
+                </div>
+              ) : (
+                <PinPad
+                  value={pin}
+                  onChange={v => { setPin(v); setError(''); }}
+                  onComplete={handleEnroll}
+                  disabled={busy}
+                  length={8}
+                  submitLabel={t('settings.hardware_kek.enroll.cta')}
+                />
+              )
             )
           }
 
           <p className="text-[11px] text-muted-foreground">
-            {t('settings.hardware_kek.enroll.footnote_native')}
+            {androidCompatibility?.className === ANDROID_COMPAT_CLASS.TEE
+              ? 'TEE-backed Android devices are supported, but vendor-specific biometric prompts and reenrollment behavior may differ from Pixel.'
+              : t('settings.hardware_kek.enroll.footnote_native')}
           </p>
         </div>
       )}

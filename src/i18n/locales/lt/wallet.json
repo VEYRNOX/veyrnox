@@ -241,10 +241,22 @@
       "intro": "Papildoma patikra virš jūsų PIN kodo jautriems veiksmams. Net jei kas nors matytų jus įvedant PIN kodą, jis vis tiek negalėtų atlikti šių veiksmų be antrojo žingsnio.",
       "actions_protects_label": "Veiksmai, kuriuos tai apsaugo",
       "gated_actions": [
-        { "label": "Lėšų siuntimas", "desc": "kiekvienas siuntimas, po saugumo patikrų" },
-        { "label": "Atkūrimo frazės atskleidimas", "desc": "atsarginės kopijos peržiūra ar eksportavimas" },
-        { "label": "Avarinio PIN kodo nustatymas", "desc": "Avarinės piniginės kūrimas" },
-        { "label": "Piniginės kūrimas ar slėpimas", "desc": "paslėptos piniginės pakeitimai" }
+        {
+          "label": "Lėšų siuntimas",
+          "desc": "kiekvienas siuntimas, po saugumo patikrų"
+        },
+        {
+          "label": "Atkūrimo frazės atskleidimas",
+          "desc": "atsarginės kopijos peržiūra ar eksportavimas"
+        },
+        {
+          "label": "Avarinio PIN kodo nustatymas",
+          "desc": "Avarinės piniginės kūrimas"
+        },
+        {
+          "label": "Piniginės kūrimas ar slėpimas",
+          "desc": "paslėptos piniginės pakeitimai"
+        }
       ],
       "currently_enforcing": "Šiuo metu taikoma:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Naujausi",
     "tab_home": "Pradžia",
     "tab_send": "Siųsti",
-    "tab_receive": "Gauti"
+    "tab_receive": "Gauti",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Atgal"
@@ -343,8 +356,14 @@
     "heading": "Siųsti kriptovaliutą",
     "subheading": "Saugiai pervedkite lėšas",
     "wallet_fallback": "Piniginė",
-    "wallet_picker": { "label": "Iš piniginės", "placeholder": "Pasirinkite piniginę" },
-    "asset_picker": { "label": "Turtas", "placeholder": "Pasirinkite turtą" },
+    "wallet_picker": {
+      "label": "Iš piniginės",
+      "placeholder": "Pasirinkite piniginę"
+    },
+    "asset_picker": {
+      "label": "Turtas",
+      "placeholder": "Pasirinkite turtą"
+    },
     "recipient": {
       "label": "Siųsti (adresas arba vardas)",
       "placeholder": "Įklijuokite adresą arba įveskite vardą (pvz., vitalik.eth)",
@@ -404,7 +423,10 @@
       "dev_ungate_body": "— siuntimo apribojimas {{currency}} apeitas per VITE_DEV_UNGATE_SEND (tik kūrimo versijoje). Šio turto būsena nepakito (vis dar neaktyvus); pagrindinis tinklas lieka uždaras. Tik testinio tinklo tikrinimui — niekada nediekite šios versijos.",
       "locked": "Jūsų piniginė užrakinta. Atrakinkite ją Piniginės nustatymuose, kad pasirašytumėte ir siųstumėte."
     },
-    "note": { "label": "Pastaba (nebūtina)", "placeholder": "Kam tai skirta?" },
+    "note": {
+      "label": "Pastaba (nebūtina)",
+      "placeholder": "Kam tai skirta?"
+    },
     "trezor": {
       "toggle_label": "Pasirašyti su Trezor",
       "connected": "Įrenginys prijungtas",
@@ -415,7 +437,9 @@
       "confirm_send": "Patvirtinti ir siųsti",
       "back": "Atgal"
     },
-    "verify": { "summary_label": "Siunčiate" },
+    "verify": {
+      "summary_label": "Siunčiate"
+    },
     "fee": {
       "automatic": "Tinklo mokestis {{currency}} ({{network}}) nustatomas automatiškai.",
       "native_fee_note": "Tinklo mokestis mokamas {{symbol}} ({{network}}) — jums reikia {{symbol}}, kad padengtumėte tinklo mokestį, net siunčiant {{token}}."
@@ -708,5 +732,46 @@
     "allocation": "Paskirstymas",
     "holdings": "Turimas turtas",
     "noHoldings": "Kol kas nėra turimo turto."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

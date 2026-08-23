@@ -1,12 +1,12 @@
 // AppUITests.swift
 //
-// Minimal XCUITest smoke — the iOS analogue to Firebase Test Lab's Android
-// Robo crawl. Walks fresh install → New wallet → PIN → wallet created, and
-// hard-fails if the KEK/RASP fail-closed banner ever appears (that banner is
-// what got Play build 5 rejected under Broken Functionality).
+// Minimal XCUITest smoke. Walks fresh install → New wallet → PIN → wallet
+// created, and hard-fails if the KEK/RASP fail-closed banner ever appears
+// (that banner is what got Play build 5 rejected under Broken Functionality).
 //
-// Runs in Firebase Test Lab on real iPhones via the ios-smoke job in
-// .github/workflows/firebase-test-lab.yml.
+// Run locally with `xcodebuild test` against a booted simulator or a paired
+// device. No cloud runner is wired up — iOS crash + hang signal comes from
+// TestFlight → Crashes and Xcode Organizer → Metrics / Hangs on real installs.
 
 import XCTest
 
@@ -21,7 +21,6 @@ final class AppUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += [
             "--uitest-fresh-install",
-            "--firebase-observability-smoke",
         ]
         app.launch()
 
@@ -30,7 +29,7 @@ final class AppUITests: XCTestCase {
         //    "Create Wallet" button on this path.
         let newWalletButton = app.buttons["New wallet"]
         XCTAssertTrue(
-            newWalletButton.waitForExistence(timeout: 10),
+            newWalletButton.waitForExistence(timeout: UITestTimeouts.firstElement),
             "New wallet entry tile never appeared on a fresh install."
         )
         newWalletButton.tap()

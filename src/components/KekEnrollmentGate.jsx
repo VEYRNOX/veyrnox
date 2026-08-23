@@ -31,7 +31,7 @@
 //
 // Props:
 //   onEnroll: (pin: string) => Promise<{ ok: boolean, msg?: string, isInsecureTier?: boolean, isWrongPin?: boolean }>
-//   onSkip:   () => void
+//   onSkip:   ({ insecureDevice?: boolean }) => void
 //   origin?:  'fresh' | 'restored'  (default: 'restored' — matches historical copy)
 //   mode?:    'auto' | 'onboarding'  (default: 'auto' — current behavior, unchanged)
 //
@@ -49,6 +49,7 @@ import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PinPad from '@/components/security/PinPad';
 import VaultIllustration from '@/components/VaultIllustration';
+import OnboardingProgressBar from '@/components/OnboardingProgressBar';
 import ShakeOnKey from '@/components/ShakeOnKey';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
@@ -113,6 +114,11 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
   const [showSkipWarning, setShowSkipWarning] = useState(false);
 
   const copy = COPY[origin] || COPY.restored;
+  // Progress bar is scoped to THIS step only (WalletEntry no longer renders
+  // the pre-KEK bar). Unconditional here — mode='auto' vs 'onboarding' is a
+  // one-time-warning policy axis, not a "should the bar exist" axis, and gating
+  // the bar on it hid it whenever kekOrigin defaulted to 'restored'.
+  const onboardingFooter = <OnboardingProgressBar value={100} label="Wallet setup progress" />;
 
   const clearOnboardingSkipWarning = () => {
     if (mode !== 'onboarding') return;
@@ -127,7 +133,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
       setSkipWarned(true);
       setShowSkipWarning(true);
     }
-    onSkip?.();
+    onSkip?.({ insecureDevice });
   };
 
   const handleEnroll = async (testPin) => {
@@ -209,6 +215,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
             <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Approve the prompt on your device…
           </p>
         </div>
+        {onboardingFooter}
       </div>
     );
   }
@@ -322,6 +329,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
           </motion.p>
         )}
       </motion.div>
+      {onboardingFooter}
     </div>
   );
 }

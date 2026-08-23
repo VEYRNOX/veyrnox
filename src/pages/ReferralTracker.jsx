@@ -513,7 +513,7 @@ export default function ReferralTracker() {
         <p className="text-xs text-muted-foreground uppercase tracking-widest">How tiers work</p>
         <p className="text-sm text-muted-foreground">
           Your tier is determined by the number of people who <span className="font-semibold text-foreground">actually paid</span> for
-          Safety Plus using your code — not the total number of people who entered it.
+          an eligible paid plan using your code — not the total number of people who entered it.
         </p>
         <p className="text-sm text-muted-foreground">
           For example, if 11,500 people enter your code but only 1,480 subscribe, your tier is based on the 1,480 paid subscribers (Gold), not the 11,500 total referrals.

@@ -883,15 +883,22 @@ class RaspIntegrityPlugin : Plugin() {
         @JvmStatic
         fun earlyCheck(context: android.content.Context): Boolean {
             earlyAntiDump()
+            // Read the pre-existing hook state BEFORE claiming the ptrace slot.
+            // If nativeEarlyTraceme() succeeds first, TracerPid becomes the parent
+            // PID and the TracerPid probe self-detects on a clean device.
+            val hookDetected = earlyDetectHook()
+            // Preventive hardening only: claim the ptrace slot after the hook
+            // probes above, but do not treat a refusal here as a hook verdict.
+            earlyPtraceTraceme()
             // BLOCK-tier early checks: hook (debugger/Frida/ptrace) + tamper (cert) +
             // screen capture (Miracast/WFD mirroring — surveillance vector, item 22).
-            return earlyDetectHook() || earlyDetectTamper(context)
+            return hookDetected || earlyDetectTamper(context)
                 || earlyCheckScreenCapture(context)
         }
 
         /**
          * BLOCK-tier gate for use by other plugins in the same package.
-         * Returns true if ANY BLOCK-tier signal fires (hook / tamper / screen capture).
+         * Returns true if any BLOCK-tier signal fires (hook / tamper / screen capture).
          * Fail-closed: any exception → true (blocked). Does NOT run earlyAntiDump()
          * — that is a one-shot setup call in earlyCheck(), not a per-operation check.
          *
@@ -901,8 +908,16 @@ class RaspIntegrityPlugin : Plugin() {
         @JvmSynthetic
         internal fun isBlockTier(context: android.content.Context): Boolean =
             runCatching {
-                earlyDetectHook() || earlyDetectTamper(context) || earlyCheckScreenCapture(context)
-            }.getOrElse { true }
+                val blocked = earlyDetectHook() || earlyDetectTamper(context)
+                    || earlyCheckScreenCapture(context)
+                if (blocked) {
+                    android.util.Log.w("RASP", "BLOCK tier fired")
+                }
+                blocked
+            }.getOrElse {
+                android.util.Log.e("RASP", "BLOCK tier evaluation failed closed", it)
+                true
+            }
 
         // earlyAntiDump — sets PR_SET_DUMPABLE to 0 via android.system.Os.prctl.
         // Fail-open (runCatching, no else): if prctl is denied or unavailable,
@@ -921,7 +936,6 @@ class RaspIntegrityPlugin : Plugin() {
                 || earlyProcMaps()
                 || earlyGadgetThreads()
                 || earlyFridaPipes()
-                || earlyPtraceTraceme()
                 || earlyCheckJdwp()
 
         // earlyCheckJdwp — JDWP debugger detection in the early companion gate
@@ -950,11 +964,11 @@ class RaspIntegrityPlugin : Plugin() {
             dm.getDisplays(android.hardware.display.DisplayManager.DISPLAY_CATEGORY_PRESENTATION).isNotEmpty()
         }.getOrDefault(false)
 
-        // earlyPtraceTraceme — calls ptrace(PTRACE_TRACEME) via JNI. Hardening:
-        // claims the tracing slot for the parent (Zygote), complementing
-        // earlyAntiDump's PR_SET_DUMPABLE=0. Detection: returns true (BLOCK) if
-        // PTRACE_TRACEME fails, which indicates a debugger already holds the slot.
-        // Fail-open: UnsatisfiedLinkError (JVM tests, stripped build) caught here.
+        // earlyPtraceTraceme — calls ptrace(PTRACE_TRACEME) via JNI as preventive
+        // hardening only. On modern production Android builds this can be refused
+        // by SELinux / zygote policy without implying a hooked device, so the KEK
+        // gate must not derive BLOCK directly from this call. Fail-open:
+        // UnsatisfiedLinkError (JVM tests, stripped build) caught here.
         private fun earlyPtraceTraceme(): Boolean = runCatching {
             nativeEarlyTraceme()
         }.getOrDefault(false)

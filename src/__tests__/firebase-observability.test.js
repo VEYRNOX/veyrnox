@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const read = (path) => readFileSync(resolve(process.cwd(), path), 'utf8');
@@ -9,12 +9,10 @@ const androidApp = read('android/app/build.gradle');
 const androidManifest = read('android/app/src/main/AndroidManifest.xml');
 const androidActivity = read('android/app/src/main/java/com/veyrnox/app/MainActivity.java');
 const iosPackage = read('ios/App/CapApp-SPM/Package.swift');
-const iosBootstrap = read(
-  'ios/App/CapApp-SPM/Sources/CapApp-SPM/FirebaseObservability.swift',
-);
+const iosBootstrapPath = 'ios/App/CapApp-SPM/Sources/CapApp-SPM/FirebaseObservability.swift';
+const iosHasBootstrap = existsSync(resolve(process.cwd(), iosBootstrapPath));
 const iosDelegate = read('ios/App/App/AppDelegate.swift');
 const iosTests = read('ios/App/AppUITests/AppUITests.swift');
-const xcodeProject = read('ios/App/App.xcodeproj/project.pbxproj');
 const ci = read('.github/workflows/ci.yml');
 const firebaseWorkflow = read('.github/workflows/firebase-test-lab.yml');
 const configFetcher = read('.github/scripts/fetch-firebase-config.sh');
@@ -67,22 +65,17 @@ describe('Firebase staging observability', () => {
     expect(androidActivity).not.toContain('setUserId');
   });
 
-  it('adds iOS Test Lab-only collection', () => {
-    expect(iosPackage).toContain('firebase-ios-sdk.git", exact: "12.12.1"');
-    expect(iosPackage).toContain('FirebaseCrashlytics');
-    expect(iosPackage).toContain('FirebasePerformance');
+  it('strips Firebase from the iOS app while keeping the CI tripwires', () => {
+    expect(iosPackage).not.toContain('firebase-ios-sdk.git');
+    expect(iosPackage).not.toContain('FirebaseCore');
+    expect(iosPackage).not.toContain('FirebaseCrashlytics');
+    expect(iosPackage).not.toContain('FirebasePerformance');
     expect(iosPackage).not.toContain('FirebaseAnalytics');
-    expect(iosBootstrap).toContain('--firebase-observability-smoke');
-    // F-1: the Info.plist staging flag is gone; Test Lab CLI arg is the only gate.
-    expect(iosBootstrap).not.toContain('VeyrnoxFirebaseObservabilityEnabled');
-    expect(iosBootstrap).toContain('"firebase_test_lab"');
-    expect(iosBootstrap).not.toContain(': "staging"');
-    expect(iosBootstrap).toContain('VEYRNOX_FIREBASE_NONFATAL_SMOKE');
-    expect(iosBootstrap).toContain('startTrace(name: "staging_launch_smoke")');
-    expect(iosBootstrap).not.toContain('setUserID');
-    expect(iosDelegate).toContain('configureIfEnabled()');
-    expect(iosTests).toContain('--firebase-observability-smoke');
-    expect(xcodeProject).toContain('Install Firebase config if supplied');
+    expect(iosHasBootstrap).toBe(false);
+    expect(iosDelegate).not.toContain('configureIfEnabled()');
+    expect(iosTests).not.toContain('--firebase-observability-smoke');
+    expect(iosTests).not.toContain('GoogleService-Info.plist');
+    expect(iosTests).not.toContain('Crashlytics');
     expect(packageJson).toContain('"capacitor:sync:after"');
     expect(packagePatcher).toContain('firebase-ios-sdk.git');
     expect(packagePatcher).toContain('FirebaseCrashlytics');
