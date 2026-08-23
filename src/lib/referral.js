@@ -96,8 +96,9 @@ export async function initCode(generateServerCode) {
 
 // Tiers are determined by PAID SUBSCRIBER count (not raw referral count).
 // A "referral" is anyone who enters the code; a "paid subscriber" is someone
-// who actually purchased Safety Plus using the code. Only paid conversions
-// drive tier progression and commission earnings.
+// who actually purchased an eligible paid plan (Safety Plus or AI Security
+// Protection) using the code. Only paid conversions drive tier progression
+// and commission earnings.
 export const TIERS = [
   { key: 'platinum', label: 'Platinum', min: 10000, max: 100000, commission: 15 },
   { key: 'gold',     label: 'Gold',     min: 1000,  max: 10000,  commission: 10 },
@@ -176,18 +177,60 @@ export function hasAttributed() {
   return !!getLocalState().attributed;
 }
 
-export const PLAN_FULL_PRICE_CENTS = { monthly: 599, annual: 4999 };
+export const PLAN_FULL_PRICE_CENTS = {
+  safety_plus: { monthly: 599, annual: 4999 },
+  ai_security_protection: {
+    monthly: Number(import.meta.env.VITE_AI_SECURITY_PROTECTION_MONTHLY_PRICE_CENTS) || 0,
+    annual: Number(import.meta.env.VITE_AI_SECURITY_PROTECTION_ANNUAL_PRICE_CENTS) || 0,
+  },
+};
 export const PLAN_REVENUE_CENTS = PLAN_FULL_PRICE_CENTS;
 
 export const TIER_OFFERING_ID = {
-  bronze:   'referral-bronze',
-  silver:   'referral-silver',
-  gold:     'referral-gold',
-  platinum: 'referral-platinum',
+  safety_plus: {
+    bronze:   'referral-bronze',
+    silver:   'referral-silver',
+    gold:     'referral-gold',
+    platinum: 'referral-platinum',
+  },
 };
 
-export function getOfferingIdForTier(tierKey) {
-  return TIER_OFFERING_ID[tierKey] ?? null;
+export function getOfferingIdForTier(tierKey, planId = 'safety_plus') {
+  if (!tierKey || tierKey === 'none') return null;
+  const explicit = TIER_OFFERING_ID[planId]?.[tierKey];
+  if (explicit) return explicit;
+  // AI Security Protection referral offerings are optional and intentionally
+  // env-driven until the canonical RevenueCat identifiers are finalized. When
+  // absent, the caller fails closed to the base AI price rather than inventing
+  // an offering id and surfacing a dead discount path.
+  if (planId === 'ai_security_protection') {
+    const prefix = import.meta.env.VITE_RC_AI_REFERRAL_OFFERING_PREFIX || null;
+    return prefix ? `${prefix}-${tierKey}` : null;
+  }
+  return null;
+}
+
+export function getPlanFullPriceCents(planId, billing) {
+  if (planId === 'ai_security_protection') {
+    if (billing === 'monthly') {
+      return Number(import.meta.env.VITE_AI_SECURITY_PROTECTION_MONTHLY_PRICE_CENTS) || 0;
+    }
+    if (billing === 'annual') {
+      return Number(import.meta.env.VITE_AI_SECURITY_PROTECTION_ANNUAL_PRICE_CENTS) || 0;
+    }
+  }
+  return PLAN_FULL_PRICE_CENTS?.[planId]?.[billing] || 0;
+}
+
+export function encodeAttributionPlan(planId, billing) {
+  if (!planId || !billing) return null;
+  if (planId === 'safety_plus' || planId === 'ai_security_protection') {
+    if (billing === 'monthly' || billing === 'annual') {
+      return `${planId}_${billing}`;
+    }
+  }
+  if (billing === 'monthly' || billing === 'annual') return billing;
+  return null;
 }
 
 export function calculateDiscountCents(fullPriceCents, tierCommission) {

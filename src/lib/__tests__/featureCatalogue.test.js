@@ -49,3 +49,12 @@ describe('key features are verified', () => {
     expect(resolveStatus(byName('Audit Log'))).toBe(STATUS.VERIFIED);
   });
 });
+
+describe('release-track wording stays current', () => {
+  it('Android App cites the current 1.0.1 / versionCode 10 train, not the retired versionCode 6 copy', () => {
+    const feature = byName('Android App');
+    expect(feature.explanation).toContain('1.0.1 / versionCode 10');
+    expect(feature.explanation).not.toContain('versionCode 6');
+    expect(feature.explanation).toContain('Pre-launch report');
+  });
+});

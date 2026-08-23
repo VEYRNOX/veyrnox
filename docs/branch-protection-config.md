@@ -24,6 +24,32 @@ regression signal rather than a workflow).
 
 ---
 
+## 2026-08-21 — retire stale `web-e2e-tests` gate
+
+**Change.** Removed `web-e2e-tests` from both protection layers:
+
+- ruleset `17946638` required checks
+- classic `main` branch protection required checks
+
+**Why.** By 2026-08-21 there was no active workflow job or required pipeline lane
+reporting a `web-e2e-tests` status. Keeping it in branch protection blocked mobile PRs
+behind a check they could never satisfy. The deployed-preview lane still runs
+`e2e/staging-smoke.spec.js`, but that is a scoped smoke check inside `deploy-preview.yml`,
+not a standalone `web-e2e-tests` pipeline.
+
+**Result.** The effective required-check union returned to the checks that actually report:
+
+- `verify`
+- `mainnet-flag-gate`
+- `unit-tests`
+- `Release-cert guard rejects wrong fingerprints`
+- `staging-gate`
+
+**Follow-through.** Comments in `deploy-preview.yml` and `e2e/staging-smoke.spec.js` were
+updated the same day so the repo no longer claims a retired `web-e2e-tests` lane exists.
+
+---
+
 ## 2026-08-15 — `web-e2e-tests` added as a required check (both layers)
 
 **Change.** `web-e2e-tests` added to `required_status_checks` on ruleset `17946638`

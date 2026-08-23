@@ -11,7 +11,7 @@
  *   'TRUSTED_ENVIRONMENT'    — Android TEE (hardware-backed, standard Keystore)
  *   'SECURE_HARDWARE_PRE31'  — Android pre-API-31 secure hardware (legacy name)
  *   'UNKNOWN_SECURE'         — Android: reported secure but tier unclassified
- *   'SecureEnclave'          — iOS Secure Enclave (P-256, non-extractable)
+ *   'SecureEnclave'          — iOS top-tier device-bound hardware
  *   anything else / absent   — generic label (web WebAuthn PRF, or tier unknown)
  *
  * The returned `variant` is a semantic colour token:
@@ -36,7 +36,10 @@ export function tierToBadge(tierName) {
       return { label: 'StrongBox Protected', variant: 'success' };
 
     case 'SecureEnclave':
-      return { label: 'Secure Enclave Protected', variant: 'success' };
+      // Honesty contract: user-facing copy must not present "Secure Enclave"
+      // as the storage mechanism directly. Keep the success-tier signal while
+      // phrasing it in device-bound terms, parallel to the generic hardware label.
+      return { label: 'Device Protected', variant: 'success' };
 
     case 'TRUSTED_ENVIRONMENT':
     case 'SECURE_HARDWARE_PRE31':

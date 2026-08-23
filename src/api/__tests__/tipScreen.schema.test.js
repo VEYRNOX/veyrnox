@@ -35,6 +35,7 @@ const TX = { chain: 'evm', actionType: 'transfer', from: '0xa', to: '0xb' };
 
 describe('screenTransaction — response schema validation (M-4)', () => {
   let screenTransaction;
+  let screenAssetContract;
   let createTipClient;
 
   async function withResponse(payload) {
@@ -52,7 +53,9 @@ describe('screenTransaction — response schema validation (M-4)', () => {
     dm.isDeniabilityOrDemoActive.mockReturnValue(false);
     createTipClient = (await import('@/api/tipClient.js')).createTipClient;
     createTipClient.mockReturnValue({ screen: vi.fn(async () => payload) });
-    screenTransaction = (await import('../tipScreen.js')).screenTransaction;
+    const mod = await import('../tipScreen.js');
+    screenTransaction = mod.screenTransaction;
+    screenAssetContract = mod.screenAssetContract;
     return screenTransaction(TX);
   }
 
@@ -128,5 +131,31 @@ describe('screenTransaction — response schema validation (M-4)', () => {
     const r = await fn(TX);
     expect(r.verdict).toBe('error');
     expect(r.level).toBe('medium');
+  });
+
+  it('accepts a well-formed dedicated asset-review shape', async () => {
+    vi.resetModules();
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
+    vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+    const dm = await import('@/wallet-core/deniabilitySession.js');
+    dm.isDeniabilityOrDemoActive.mockReturnValue(false);
+    const cc = (await import('@/api/tipClient.js')).createTipClient;
+    cc.mockReturnValue({
+      screen: vi.fn(async () => ({
+        kind: 'asset_review',
+        verdict: 'warn',
+        review_summary: 'Liquidity controls are unusual.',
+        findings: [{ title: 'Liquidity risk', detail: 'LP access is centralized.', severity: 'medium', confidence: 0.7 }],
+        sources_consulted: [{ source: 'tip-asset-engine', status: 'hit', latency_ms: 15 }],
+      })),
+    });
+    const mod = await import('../tipScreen.js');
+    const r = await mod.screenAssetContract({
+      chain: 'evm',
+      contractAddress: '0x1234567890123456789012345678901234567890',
+    });
+    expect(r.kind).toBe('asset_review');
+    expect(r.findings[0].title).toBe('Liquidity risk');
   });
 });

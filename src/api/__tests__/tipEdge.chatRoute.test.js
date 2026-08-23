@@ -160,7 +160,7 @@ describe('tip-chat does not hand upstream diagnostics to the caller', () => {
 });
 
 describe('tip-chat header describes the wiring that actually exists', () => {
-  // Paired assertion: SecurityAdvisor.jsx must call functions/v1/tip-chat
+  // Paired assertion: SecurityAdvisor.jsx must call /api/edge/tip-chat
   // AND this file's header must state WIRED. Flipping one without the other
   // fails the pair, which is what stops the header drifting from reality.
   //
@@ -174,11 +174,25 @@ describe('tip-chat header describes the wiring that actually exists', () => {
   });
 
   it('the wallet routes through this function', () => {
-    expect(advisorSrc).toMatch(/functions\/v1\/tip-chat/);
+    expect(advisorSrc).toMatch(/\/api\/edge\/tip-chat/);
   });
 
   it('the header states it IS wired', () => {
     // Marker rather than prose match — reworded prose would silently drift.
     expect(chatSrc).toMatch(/STATUS: BUILT, WIRED/);
+  });
+});
+
+describe('edge proxy allows streaming tip-chat', () => {
+  const edgeProxySrc = readFileSync(
+    join(root, 'functions', 'api', 'edge', '[fn].js'), 'utf8');
+
+  it('allowlists tip-chat', () => {
+    expect(edgeProxySrc).toMatch(/'tip-chat'/);
+  });
+
+  it('passes through SSE responses without buffering them into text', () => {
+    expect(edgeProxySrc).toMatch(/text\/event-stream/);
+    expect(edgeProxySrc).toMatch(/new Response\(res\.body/);
   });
 });

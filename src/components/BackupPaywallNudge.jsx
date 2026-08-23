@@ -9,13 +9,14 @@ import { Shield, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { trackEvent, EVENT } from '@/api/trackEvent';
+import { isPaidTier } from '@/lib/tier';
 
 const KEY = 'veyrnox-backup-nudge-dismissed';
 
 export function shouldShowBackupNudge(currentTier) {
   try {
     if (isDeniabilityOrDemoActive()) return false;
-    if (currentTier === 'safety_plus') return false;
+    if (isPaidTier(currentTier)) return false;
     return !localStorage.getItem(KEY);
   } catch {
     return false;

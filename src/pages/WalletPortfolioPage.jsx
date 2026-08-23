@@ -16,7 +16,7 @@
 // $0 view-only + create/import CTA). Per-wallet backup tracking warns prominently
 // about any seed not yet confirmed backed up (multi-seed fund-loss risk).
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/lib/toast";
@@ -29,6 +29,7 @@ import {
 import { useBuyEnabled } from "@/lib/buy/useBuyEnabled";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import EmptyWalletState from "@/components/EmptyWalletState";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,7 @@ import WatchlistWidget from "@/components/WatchlistWidget";
 import SecurityPosture from "@/components/SecurityPosture";
 import { readPersonalBackupState } from "@/lib/personalBackupState";
 import { base44 } from "@/api/base44Client";
+import { getHardwareKekTier } from "@/lib/hardwareKekStatus";
 import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
@@ -72,6 +74,48 @@ import { DEMO } from "@/api/demoClient";
 import { fetchAssetHistory } from "@/lib/txHistory";
 import { isDeferred } from "@/lib/seedVerifyState";
 import { useWalletReady, useFirstInbound } from "@/lib/tracking-integration";
+import { buildAssetSpamIntel } from "@/lib/spamTokenIntel";
+
+// Read-only supplier of the posture-state fields the SecurityPosture widget
+// intentionally does NOT self-detect (portable-by-design): PIN cohort / length,
+// hardware KEK tier, and recovery inputs. Before this mount, those fields
+// stayed at their conservative false/null defaults regardless of what the user
+// toggled — the auth-dimension (pin_created 10, pin_length 5) and the
+// hardware sub-item (5 top-tier / 3 tee) always scored 0 even when kekActive
+// was live, so RASP=ALLOW alone yielded a stuck "25% Critical" reading.
+//
+// pinLength: PIN cohort enforces an 8-digit floor at PinPad; password cohort's
+// floor is 12. Report the real minimum for the current cohort so the score
+// reflects what the app actually requires. Unknown cohort → null (no fabricated
+// length — I4).
+function SecurityPostureMount({ enabledLimits = 0, actionPasswordConfigured = false }) {
+  const [hardwareTier, setHardwareTier] = useState(null);
+  useEffect(() => {
+    let live = true;
+    getHardwareKekTier().then((tier) => { if (live) setHardwareTier(tier); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  const pb = readPersonalBackupState();
+  const authModel = getAuthModel();
+  const pinCreated = authModel === 'pin' || authModel === 'password';
+  const pinLength = authModel === 'pin' ? 8 : authModel === 'password' ? 12 : null;
+  const deniable = isDeniabilitySessionActive();
+  const wc = deniable ? {} : {
+    wcSpendLimitSet: enabledLimits > 0,
+    wcSessionExpiry: true,
+    wcStepUpReauth: !!actionPasswordConfigured,
+  };
+  return (
+    <SecurityPosture state={{
+      pinCreated,
+      pinLength,
+      hardwareTier,
+      recoveryPassphraseSet: pb.passphrase,
+      shareCExported: pb.exported,
+      ...wc,
+    }} />
+  );
+}
 
 const fmtAmount = (n) =>
   n == null ? "—" // indeterminate: read failed (I4 fail-closed) — never shown as "0"
@@ -576,6 +620,22 @@ export default function WalletPortfolioPage() {
   // provider never decrypted another set, and usePortfolio cannot reach one.
   const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
   const byWallet = /** @type {any} */ (portfolio?.byWallet || {});
+  const entityQueryEnabled = !isDecoy && !isHidden;
+  const { data: tokenRows = [] } = useQuery({
+    queryKey: ["wallet-tokens"],
+    queryFn: () => base44.entities.WalletToken.list(),
+    enabled: entityQueryEnabled,
+  });
+  const flaggedTokenCountsBySymbol = useMemo(() => {
+    const counts = new Map();
+    for (const token of tokenRows) {
+      const intel = buildAssetSpamIntel([token], token?.symbol);
+      if (!intel.hasRisk) continue;
+      const key = String(token?.symbol || '').trim().toUpperCase();
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return counts;
+  }, [tokenRows]);
 
   // Portfolio Health scoring inputs (KEK, passkey, deniability).
   const healthInputs = usePortfolioHealthInputs({ isUnlocked });
@@ -751,11 +811,19 @@ export default function WalletPortfolioPage() {
             // not a confident "0" — resolveAssetRow fails closed to amount:null so
             // the row renders "—", never a fabricated $0.00 (I4 fail-closed).
             const row = resolveAssetRow(data.assets, symbol);
+            const suspiciousCount = flaggedTokenCountsBySymbol.get(String(symbol || '').toUpperCase()) || 0;
             return (
               <button key={symbol} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
                 <CoinLogo symbol={symbol} size={36} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{symbol}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold">{symbol}</p>
+                    {suspiciousCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">
+                        {suspiciousCount} suspicious token{suspiciousCount > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground truncate">{a?.name}</p>
                 </div>
                 <div className="text-end shrink-0">
@@ -922,26 +990,10 @@ export default function WalletPortfolioPage() {
           hiding the whole point of the posture card. shareCVerified stays
           honestly false — spec §9 gates it on a real recovery round-trip,
           which Phase 2 does not yet log (I4: no fabricated "verified"). */}
-      {(() => {
-        const pb = readPersonalBackupState();
-        // Session Security dimension wiring. In deniability/demo, leave the
-        // three WC flags at their honest-false defaults so the real user's
-        // configured limits/step-up don't surface to a coerced observer (I3).
-        // wcSessionExpiry is static-true: M11 unconditionally enforces session
-        // expiry on every WC signing path (WalletConnectProvider.jsx §M11), it
-        // is not a user-toggleable control.
-        const deniable = isDeniabilitySessionActive();
-        const wc = deniable ? {} : {
-          wcSpendLimitSet: enabledLimits > 0,
-          wcSessionExpiry: true,
-          wcStepUpReauth: !!actionPasswordConfigured,
-        };
-        return <SecurityPosture state={{
-          recoveryPassphraseSet: pb.passphrase,
-          shareCExported: pb.exported,
-          ...wc,
-        }} />;
-      })()}
+      <SecurityPostureMount
+        enabledLimits={enabledLimits}
+        actionPasswordConfigured={actionPasswordConfigured}
+      />
 
       {/* Tabs: Tokens / Activity / Analytics */}
       <Tabs defaultValue="tokens" className="w-full">

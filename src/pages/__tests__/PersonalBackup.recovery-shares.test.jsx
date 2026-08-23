@@ -17,6 +17,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
+// The Recovery Shares tab now drives vault-unlock via PinPad (8 digits), not a
+// PasswordInput. Type each digit as a button click; the parent's canExport
+// gate flips true once pin.length === 8. TEST_PIN is a valid 8-digit vault PIN
+// stand-in that the tests below pass into the exportRecoveryBundles mock.
+const TEST_PIN = '13572468';
+function typeVaultPin(pin = TEST_PIN) {
+  for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
+}
+
 vi.mock('@/components/security/useActionGuard', () => ({
   useActionGuard: () => ({ requireTwoFactor: (fn) => fn(), gateModal: null }),
 }));
@@ -27,7 +36,7 @@ vi.mock('@/rasp', async (importOriginal) => {
 });
 
 vi.mock('@capacitor/core', () => ({
-  Capacitor: { getPlatform: () => 'web' },
+  Capacitor: { getPlatform: () => 'web', isNativePlatform: () => false },
   registerPlugin: vi.fn(() => ({})),
 }));
 
@@ -58,17 +67,24 @@ afterEach(() => {
   cleanup();
 });
 
-async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus' }) {
+async function loadPage({ enableShards, useWalletValue, tier = 'safety_plus', shardExportReady = true, native = false }) {
   if (enableShards) vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
   vi.resetModules();
+  vi.doMock('@capacitor/core', () => ({
+    Capacitor: { getPlatform: () => (native ? 'ios' : 'web'), isNativePlatform: () => native },
+    registerPlugin: vi.fn(() => ({})),
+  }));
   vi.doMock('@/lib/WalletProvider', () => ({
     useWallet: () => useWalletValue,
   }));
+  vi.doMock('@/lib/hardwareKekStatus', () => ({
+    isHardwareKekEnrolled: vi.fn(async () => shardExportReady),
+  }));
   // Tier is now consumed inside PersonalBackup — the shard tab renders the
-  // export panel only when currentTier === 'safety_plus', otherwise an
-  // upsell. Every existing test in this suite asserts flow-shape behaviour
-  // that presumes shards are reachable, so default to Safety Plus; the
-  // free-tier upsell path gets its own explicit test below.
+  // export panel for any tier with Safety Plus access, otherwise an upsell.
+  // Every existing test in this suite asserts flow-shape behaviour that
+  // presumes shards are reachable, so default to Safety Plus; the free-tier
+  // upsell path gets its own explicit test below.
   vi.doMock('@/lib/TierProvider', () => ({
     useTier: () => ({ currentTier: tier, tiers: {}, loading: false, refreshTier: vi.fn() }),
   }));
@@ -135,9 +151,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
-      target: { value: 'a-strong-password-16' },
-    });
+    typeVaultPin();
     // 2026-08-16 audit round 3: passphrase-wrap is mandatory, no opt-out.
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'a-nice-and-long-passphrase' },
@@ -149,7 +163,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
       () => expect(screen.getByText(/all 3 recovery shares saved/i)).toBeTruthy(),
       { timeout: 15_000 },
     );
-    expect(exportRecoveryBundles).toHaveBeenCalledWith('a-strong-password-16');
+    expect(exportRecoveryBundles).toHaveBeenCalledWith(TEST_PIN);
   }, 30_000);
 
   it('surfaces a fail-closed error when exportRecoveryBundles throws', async () => {
@@ -169,9 +183,7 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    fireEvent.change(screen.getByPlaceholderText(/wallet password/i), {
-      target: { value: 'a-strong-password-16' },
-    });
+    typeVaultPin();
     // 2026-08-16 audit round 3: passphrase-wrap is mandatory.
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'a-nice-and-long-passphrase' },
@@ -181,6 +193,57 @@ describe('PersonalBackup — Recovery Shares tab (flag on)', () => {
     // globally elsewhere) rather than a false "shares saved" confirmation.
     await waitFor(() => expect(exportRecoveryBundles).toHaveBeenCalled());
     expect(screen.queryByText(/all 3 recovery shares saved/i)).toBeNull();
+  });
+
+  it('translates KEK_NO_HARDWARE_FACTOR into an actionable export error', async () => {
+    const exportRecoveryBundles = vi.fn(async () => {
+      throw Object.assign(new Error('KEK_NO_HARDWARE_FACTOR'), { code: 'KEK_NO_HARDWARE_FACTOR' });
+    });
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        exportRecoveryBundles,
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    typeVaultPin();
+    fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
+      target: { value: 'a-nice-and-long-passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /split & save 3 shares/i }));
+    await waitFor(() => expect(exportRecoveryBundles).toHaveBeenCalled());
+    expect(toastError).toHaveBeenCalledWith(
+      'Hardware Protection is already on, but this device did not return the hardware factor for shard export. Try again; if it keeps happening, turn Hardware Protection off and back on in Settings.'
+    );
+  });
+
+  it('greys out shard export until Hardware Protection is on for the vault', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      native: true,
+      shardExportReady: false,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        exportRecoveryBundles: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    await waitFor(() => expect(screen.getByText(/turn on hardware protection first/i)).toBeTruthy());
+    expect(screen.getByText(/recovery-share export only works when this wallet is enrolled under hardware protection/i)).toBeTruthy();
+    expect(screen.getByText(/biometric\s+re-auth alone is not enough/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /split & save 3 shares/i })).toBeDisabled();
   });
 });
 
@@ -221,9 +284,7 @@ describe('PersonalBackup — Export passphrase-wrap (Phase 3, flag on)', () => {
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
-      target: { value: 'wallet-password-123' },
-    });
+    typeVaultPin();
     // No passphrase yet — disabled.
     expect(screen.getByRole('button', { name: /split & save 3 shares/i }).hasAttribute('disabled')).toBe(true);
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
@@ -473,9 +534,7 @@ describe('PersonalBackup — every exported share is passphrase-wrapped', () => 
     });
     render(<MemoryRouter><Page /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
-    fireEvent.change(screen.getByPlaceholderText(/your wallet password/i), {
-      target: { value: 'a-strong-password-16' },
-    });
+    typeVaultPin();
     // Passphrase is now the only path.
     fireEvent.change(screen.getByPlaceholderText(/recovery passphrase/i), {
       target: { value: 'a-very-long-recovery-passphrase' },
@@ -575,13 +634,49 @@ describe('PersonalBackup — same-device restore rejects a cross-device bundle e
     fireEvent.change(screen.getByPlaceholderText(/confirm new pin/i), {
       target: { value: '24681024' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
-
-    await waitFor(() => expect(toastError).toHaveBeenCalled());
-    const [message] = toastError.mock.calls[0];
-    expect(message).toMatch(/cross-device recovery file/i);
-    expect(message).not.toBe('RECOVERY_SHARE_MALFORMED');
+    expect(await screen.findByText(/cross-device recovery bundles detected/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /open restore from bundles/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /restore wallet/i })).toBeDisabled();
+    expect(toastError).not.toHaveBeenCalled();
     expect(restoreFromRecoveryShares).not.toHaveBeenCalled();
+  });
+
+  it('shows a direct CTA to the bundle-restore flow when bundle files are loaded', async () => {
+    vi.stubEnv('VITE_ENABLE_PERSONAL_BACKUP_SHARDS', '1');
+    vi.resetModules();
+    const { wrapBundleWithPassphrase } = await import('@/wallet-core/recoveryShare');
+    const bundleEnvelope = await wrapBundleWithPassphrase(
+      new TextEncoder().encode(JSON.stringify({ v: 1, shareIndex: 2 })),
+      'a-very-long-recovery-passphrase',
+      2,
+    );
+    const Page = await loadPage({
+      enableShards: true,
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]);
+
+    const restoreFilePick = stubFilePick([
+      new TextEncoder().encode('\x02'.repeat(88)),
+      new TextEncoder().encode(bundleEnvelope),
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: /choose 2 share files/i }));
+    restoreFilePick();
+
+    expect(await screen.findByText(/cross-device recovery bundles detected/i)).toBeTruthy();
+    const cta = screen.getByRole('button', { name: /open restore from bundles/i });
+    expect(cta).toBeTruthy();
+    expect(screen.getByRole('button', { name: /restore wallet/i })).toBeDisabled();
   });
 });
 
@@ -618,6 +713,25 @@ describe('PersonalBackup — Advanced tab entitlement (free tier)', () => {
     const Page = await loadPage({
       enableShards: true,
       tier: 'safety_plus',
+      useWalletValue: {
+        createBackup: vi.fn(),
+        exportRecoveryShares: vi.fn(),
+        restoreFromRecoveryShares: vi.fn(),
+        lock: vi.fn(),
+        isDecoy: false,
+        isHidden: false,
+      },
+    });
+    render(<MemoryRouter><Page /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /advanced.*2-of-3/i }));
+    expect(screen.queryByTestId('shares-tab-upsell')).toBeNull();
+    expect(screen.getByRole('button', { name: /split & save 3 shares/i })).toBeTruthy();
+  });
+
+  it('ai_security_protection tier: tab also renders the real export panel because it includes Safety Plus', async () => {
+    const Page = await loadPage({
+      enableShards: true,
+      tier: 'ai_security_protection',
       useWalletValue: {
         createBackup: vi.fn(),
         exportRecoveryShares: vi.fn(),

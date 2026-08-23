@@ -15,6 +15,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // --- presignGate is the single seam C3 must wire in. Each test sets its return. ---
 const presignGate = vi.fn();
@@ -136,6 +137,9 @@ import { getActiveSessions } from '@/wallet-core/evm/walletconnect/session.js';
 
 function captureHandlers() {
   const out = {};
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   function Grab() {
     const ctx = useWalletConnect();
     out.signPersonal = ctx.signPersonal;
@@ -144,9 +148,11 @@ function captureHandlers() {
     return null;
   }
   render(
-    <WalletConnectProvider>
-      <Grab />
-    </WalletConnectProvider>,
+    <QueryClientProvider client={qc}>
+      <WalletConnectProvider>
+        <Grab />
+      </WalletConnectProvider>
+    </QueryClientProvider>,
   );
   return out;
 }

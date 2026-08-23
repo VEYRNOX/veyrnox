@@ -161,3 +161,87 @@ See `sql/add-discount-cents.sql` for the migration file.
 - [ ] After purchase, `referral_attributions` row has `discount_cents = 500`
 - [ ] Referrer's earnings page shows the discount amount
 - [ ] Non-referred purchase shows default $49.99/yr pricing (no discount)
+
+---
+
+## AI Security Protection referral setup (optional, separate from Safety Plus)
+
+AI Security Protection referral pricing is intentionally **env-driven / optional** in code.
+Do not invent hard-coded identifiers in the repo. The app only enables the AI referral
+path when these values are configured:
+
+- `VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID`
+- `VITE_RC_AI_REFERRAL_OFFERING_PREFIX`
+- `VITE_AI_SECURITY_PROTECTION_MONTHLY_PRICE_CENTS`
+- `VITE_AI_SECURITY_PROTECTION_ANNUAL_PRICE_CENTS`
+
+### RevenueCat
+
+- [ ] Create the base AI offering whose identifier matches `VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID`
+- [ ] Create 4 AI referral offerings using the configured prefix:
+  - `{prefix}-bronze`
+  - `{prefix}-silver`
+  - `{prefix}-gold`
+  - `{prefix}-platinum`
+- [ ] Add `$rc_monthly` and `$rc_annual` packages to each AI referral offering
+- [ ] Attach the AI monthly/annual referral products to the `ai_security_protection` entitlement
+
+If your AI tier uses the conventional product-family naming pattern, you can automate the
+RevenueCat setup with:
+
+```bash
+VITE_RC_AI_REFERRAL_OFFERING_PREFIX=<prefix> \
+REVENUECAT_V2_SECRET_KEY=sk_xxx \
+REVENUECAT_PROJECT_ID=proj_xxx \
+npm run setup:iap-ai-referrals
+```
+
+Optional overrides for non-default product naming:
+
+```bash
+AI_REFERRAL_PRODUCT_PREFIX=<product_prefix> \
+AI_REFERRAL_ENTITLEMENT_ID=ai_security_protection \
+AI_REFERRAL_MONTHLY_BASE_PLAN_ID=monthly \
+AI_REFERRAL_ANNUAL_BASE_PLAN_ID=annual
+```
+
+### App Store Connect / Google Play
+
+- [ ] Create AI monthly referral products for Bronze / Silver / Gold / Platinum
+- [ ] Create AI annual referral products for Bronze / Silver / Gold / Platinum
+- [ ] Keep those products in the same subscription group / family as the base AI monthly and annual plans so store crossgrades behave correctly
+- [ ] Sync the products into RevenueCat before wiring the referral offerings
+
+### App config
+
+- [ ] Set `VITE_RC_AI_REFERRAL_OFFERING_PREFIX` to the canonical RevenueCat offering prefix for AI referrals
+- [ ] Set `VITE_AI_SECURITY_PROTECTION_MONTHLY_PRICE_CENTS` to the undiscounted USD monthly list price in cents
+- [ ] Set `VITE_AI_SECURITY_PROTECTION_ANNUAL_PRICE_CENTS` to the undiscounted USD annual list price in cents
+- [ ] Rebuild the native apps after changing those env values
+
+### Supabase / Edge bonus path
+
+AI referrals need one extra backend step beyond the base Safety Plus setup: the
+bonus grant path must know which paid family converted first. `monthly` /
+`annual` alone is ambiguous, so deploy the richer plan-family attribution update
+before expecting AI referral bonuses to grant the AI entitlement.
+
+- [ ] Run [sql/ai-referral-attribution-plan-family.sql](/Users/aljobson/Documents/GitHub/veyrnox/sql/ai-referral-attribution-plan-family.sql:1) on the live Supabase project
+- [ ] Deploy [supabase/functions/first-referral-bonus/index.ts](/Users/aljobson/Documents/GitHub/veyrnox/supabase/functions/first-referral-bonus/index.ts:1) after that SQL change
+- [ ] Confirm the Edge Function secrets include `REVENUECAT_V1_SECRET_KEY`
+- [ ] Optional: set `SAFETY_PLUS_REFERRAL_BONUS_ENTITLEMENT_ID` and `AI_SECURITY_PROTECTION_REFERRAL_BONUS_ENTITLEMENT_ID` only if RevenueCat entitlement ids differ from the canonical defaults (`safety_plus`, `ai_security_protection`)
+- [ ] Keep `rc-webhook` deployed so `set_referral_rc_user()` continues to bind the referrer’s RevenueCat user server-side
+
+Legacy note:
+- Existing historical attribution rows with `plan = 'monthly'` or `plan = 'annual'` still map to Safety Plus on the bonus path. Only new AI-ready rows need the richer `ai_security_protection_*` plan values.
+
+### Verification
+
+- [ ] Redeem a referral code on a device where AI base offering + AI referral offerings are configured
+- [ ] Confirm the AI card shows discounted store pricing when the matching AI referral offering exists
+- [ ] Confirm the AI purchase button buys the AI referral package, not the Safety Plus one
+- [ ] Confirm `record_attribution` is called with the AI plan's full-price revenue cents and the real store-derived `discount_cents`
+- [ ] Confirm the stored `referral_attributions.plan` value is `ai_security_protection_monthly` or `ai_security_protection_annual` for AI purchases
+- [ ] Confirm the first paid AI referral grants a 1-month promotional entitlement on `ai_security_protection`, while legacy / Safety Plus rows still grant `safety_plus`
+- [ ] Confirm the same user still unlocks all Safety Plus features after the AI entitlement resolves
+- [ ] Confirm removing the AI revenue env values causes the app to fail closed: referred AI purchase blocked, nothing charged

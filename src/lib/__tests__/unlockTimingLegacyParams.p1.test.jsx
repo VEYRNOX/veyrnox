@@ -48,6 +48,16 @@ vi.mock('hash-wasm', async (importOriginal) => {
   };
 });
 
+// Mock the credential verifier to a no-op so this suite isolates the unlock-path
+// timing/profile equalizer itself. The verifier contract has dedicated tests; this
+// file is strictly about success/duress/miss parity through WalletProvider.unlock().
+vi.mock('@/wallet-core/credentialVerifier', () => ({
+  captureVerifierSafe: vi.fn(async () => null),
+  verifyCredential: vi.fn(async () => false),
+  verifyCredentialDetailed: vi.fn(async () => ({ ok: false, reason: 'mocked' })),
+  createCredentialVerifier: vi.fn(async () => null),
+}));
+
 const PRIMARY_PW = 'correct-horse-battery-staple-pin';
 const PRIMARY_MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';

@@ -15,7 +15,13 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { resolveTier } from '@/lib/entitlement';
-import { configurePurchases, addCustomerInfoUpdateListener, SAFETY_PLUS_ENTITLEMENT } from '@/lib/purchases';
+import {
+  configurePurchases,
+  addCustomerInfoUpdateListener,
+  bindOwnReferralCode,
+  SAFETY_PLUS_ENTITLEMENT,
+  AI_SECURITY_PROTECTION_ENTITLEMENT,
+} from '@/lib/purchases';
 import { TIERS } from '@/lib/tier';
 import {
   isDeniabilitySessionActive,
@@ -82,6 +88,7 @@ export function TierProvider({ children }) {
     // No-op on web; fails closed — a rejection (e.g. missing key) is swallowed
     // here so the reads below still run and resolveTier() returns 'free'.
     const configured = configurePurchases().catch(() => {});
+    configured.then(() => bindOwnReferralCode()).catch(() => {});
 
     // Capture the generation for the initial resolve — a mid-flight flip
     // TRUE will bump the generation and this commit will be discarded.
@@ -120,6 +127,12 @@ export function TierProvider({ children }) {
           }
           // Codex P2 2026-08-15: own-property + shape check (see entitlement.js).
           const active = customerInfo?.entitlements?.active ?? {};
+          const ownedAi = Object.prototype.hasOwnProperty.call(active, AI_SECURITY_PROTECTION_ENTITLEMENT);
+          const aiEnt = ownedAi ? active[AI_SECURITY_PROTECTION_ENTITLEMENT] : null;
+          if (aiEnt && aiEnt.isActive === true) {
+            setCurrentTier('ai_security_protection');
+            return;
+          }
           const owned = Object.prototype.hasOwnProperty.call(active, SAFETY_PLUS_ENTITLEMENT);
           const ent = owned ? active[SAFETY_PLUS_ENTITLEMENT] : null;
           setCurrentTier(ent && ent.isActive === true ? 'safety_plus' : 'free');

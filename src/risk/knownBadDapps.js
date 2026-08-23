@@ -6,8 +6,15 @@
 // the pure check over it. Mirrors wallet-core/evm/poison.js's LOCAL_FLAGGED
 // pattern: LOCAL-ONLY (checking it leaks nothing off-device), illustrative and
 // non-exhaustive, and it NEVER asserts a domain is "safe" — only that a domain is
-// known bad. Intended to be hydrated from a real threat feed later and still stay
-// local. No network, no keys, no React.
+// known bad. No network, no keys, no React.
+//
+// The "hydrated from a real threat feed later" part is now real: phishingFeed.js
+// downloads a domain list, caches it in IndexedDB and REGISTERS itself here via
+// setFeedLookup(). The dependency is one-way — phishingFeed imports this module,
+// never the reverse — so there is no import cycle and this file stays free of
+// network code. If the feed never registers (not initialised, no URL configured,
+// fetch failed), checkDappDomain behaves exactly as it did before: local seed
+// only. The domain being checked is still matched entirely on-device (I2).
 
 // Moved verbatim out of pages/DAppSecurityAlerts.jsx so the page and the
 // WalletConnect connect/request flow share one list.
@@ -60,31 +67,62 @@ export function normalizeDomain(input) {
 }
 
 /**
- * Check a dApp URL/domain against the LOCAL known-bad list. Pure + total: never
- * throws, never makes a network call, and never returns a "safe" verdict —
- * absence from the list is reported as flagged:false, which the caller must NOT
- * present as a safety guarantee.
+ * An optional second list, registered by phishingFeed.js once it has data.
+ * Takes an ALREADY-normalized domain and returns a reason string, or null.
+ * @type {((domain: string) => string|null) | null}
+ */
+let _feedLookup = null;
+
+/**
+ * Register (or with null, unregister) the live-feed lookup. Called by
+ * phishingFeed.initPhishingFeed(); nothing else should call it. Kept as
+ * injection rather than an import so this module never depends on the network
+ * layer and the two files cannot form an import cycle.
+ * @param {((domain: string) => string|null) | null} fn
+ */
+export function setFeedLookup(fn) {
+  _feedLookup = typeof fn === 'function' ? fn : null;
+}
+
+/**
+ * Check a dApp URL/domain against the live feed (when registered) AND the local
+ * known-bad list. Pure + total: never throws, never makes a network call at
+ * check time, and never returns a "safe" verdict — absence from both lists is
+ * reported as flagged:false, which the caller must NOT present as a safety
+ * guarantee. `source` names which list matched, for provenance in the UI.
  *
  * @param {unknown} url
- * @returns {{ domain: string, flagged: boolean, reason: string|null }}
+ * @returns {{ domain: string, flagged: boolean, reason: string|null, source: 'feed'|'local'|null }}
  */
 export function checkDappDomain(url) {
   const domain = normalizeDomain(url);
-  if (!domain) return { domain: '', flagged: false, reason: null };
-  // Exact match first.
-  const exact = BAD_SET.get(domain);
-  if (exact) return { domain, flagged: true, reason: exact.reason };
+  if (!domain) return { domain: '', flagged: false, reason: null, source: null };
 
   // L5: parent-domain (suffix) walk. A subdomain of a known-bad domain is also
   // bad: app.knownbad.com matches knownbad.com. Strip one leading label at a
   // time and re-check. Stop before the final two labels would collapse to a
   // bare TLD — we never match on a shared TLD alone (that would over-match).
   const labels = domain.split('.');
-  for (let i = 1; i < labels.length - 1; i++) {
-    const suffix = labels.slice(i).join('.');
-    const hit = BAD_SET.get(suffix);
-    if (hit) return { domain, flagged: true, reason: hit.reason };
+  /** @type {string[]} */
+  const candidates = [domain];
+  for (let i = 1; i < labels.length - 1; i++) candidates.push(labels.slice(i).join('.'));
+
+  // Feed first — it is the more current of the two. A throwing or missing feed
+  // must never take the local seed down with it, hence the try/catch around the
+  // injected function only.
+  if (_feedLookup) {
+    try {
+      for (const c of candidates) {
+        const reason = _feedLookup(c);
+        if (reason) return { domain, flagged: true, reason, source: 'feed' };
+      }
+    } catch { /* feed lookup is best-effort; fall through to the local seed */ }
   }
 
-  return { domain, flagged: false, reason: null };
+  for (const c of candidates) {
+    const hit = BAD_SET.get(c);
+    if (hit) return { domain, flagged: true, reason: hit.reason, source: 'local' };
+  }
+
+  return { domain, flagged: false, reason: null, source: null };
 }

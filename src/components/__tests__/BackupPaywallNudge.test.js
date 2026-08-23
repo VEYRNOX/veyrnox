@@ -20,6 +20,10 @@ describe('shouldShowBackupNudge', () => {
     expect(shouldShowBackupNudge('safety_plus')).toBe(false);
   });
 
+  it('returns false for AI Security Protection because it is also a paid tier', () => {
+    expect(shouldShowBackupNudge('ai_security_protection')).toBe(false);
+  });
+
   it('returns false after dismissal', () => {
     localStorage.setItem(KEY, '1');
     expect(shouldShowBackupNudge('free')).toBe(false);
