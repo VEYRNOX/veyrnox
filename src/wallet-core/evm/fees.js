@@ -212,13 +212,17 @@ export async function estimateEvmFeeTiers({ networkKey, from, to, value, data, g
     provider.getFeeData(),
     gasLimit != null
       ? Promise.resolve(BigInt(gasLimit))
-      : to
-        // 2026-08-16 audit: previous silent .catch(() => 21000n) returned a
-        // pure-transfer gas limit on ANY estimation error, including contract
-        // calls that need far more gas — leading to out-of-gas revert once
+      // 2026-08-16 audit R6: also estimate for contract DEPLOYMENTS (to == null
+      // + non-empty data). Previously only the `to`-set branch reached
+      // estimateGas, so a deploy tx silently fell back to 21000n — always
+      // out-of-gas. Split the branches so both contract-call and contract-deploy
+      // paths surface GAS_ESTIMATION_FAILED honestly.
+      : (to || (data != null && data !== '0x'))
+        // Previous silent .catch(() => 21000n) returned a pure-transfer gas
+        // limit on ANY estimation error, leading to out-of-gas revert once
         // signed. Callers that know they are doing a pure ETH transfer must
-        // pass gasLimit=21000n explicitly (or omit `to`); a live estimate
-        // failure is a signal we cannot safely default.
+        // pass gasLimit=21000n explicitly (or omit both `to` and `data`); a
+        // live estimate failure is a signal we cannot safely default.
         ? provider.estimateGas({ from, to, value, data }).catch((cause) => {
             throw Object.assign(
               new Error('Gas estimation failed, cannot safely sign contract call'),

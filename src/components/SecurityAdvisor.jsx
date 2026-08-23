@@ -713,33 +713,87 @@ function buildPageSnapshotContext(pageSnapshot, screen = 'general') {
   }
 }
 
-// 2026-08-16 audit — prompt injection defense for untrusted page-snapshot data.
+// 2026-08-16 audit (round 6) — prompt injection defense for untrusted
+// page-snapshot data.
 //
 // `pageSnapshot` contains attacker-controllable token names, memos, NFT titles
 // and dApp URLs. Previously JSON.stringified straight into the SYSTEM prompt,
 // letting a poisoned token exfiltrate the model's instructions or hijack the
-// reply. Two-layer defense: (1) scan for prompt-boundary markers and reject
-// the snapshot outright if any hit; (2) if clean, still deliver as a USER-role
-// message wrapped in <untrusted_context> delimiters — never as system text.
-// Patterns are matched against the JSON.stringify output of the snapshot, so
-// literal newlines appear as the two-character sequence \n (backslash-n).
-// Match both forms so a raw and an escaped attempt both trip the filter.
+// reply. Round-5 introduced a two-layer defense; round-6 hardens the detector
+// against ASCII/English-only bypasses:
+//   1. NORMALIZE (NFKC) so `ѕystem` (Cyrillic U+0455), `＜system＞` (fullwidth)
+//      collapse to their ASCII equivalents before regex.
+//   2. Decode numeric HTML entities (`&#10;`, `&#13;`) so encoded newlines
+//      trip the role-switch gate.
+//   3. Lowercase + collapse whitespace so `< /system>`, `</ system>` match.
+//   4. Expand the verb+noun list (disregard, forget, override, discard,
+//      dismiss, drop, skip / previous, prior, earlier, above, preceding,
+//      foregoing, initial, original).
+// Delivery still wraps clean snapshots in <untrusted_context> as USER text.
 const PROMPT_INJECTION_PATTERNS = [
   /<\|/,
   /\|>/,
-  /<\/?system>/i,
-  /<\/?assistant>/i,
-  /<\/?user>/i,
+  /<\s*\/?\s*system\s*>/i,
+  /<\s*\/?\s*assistant\s*>/i,
+  /<\s*\/?\s*user\s*>/i,
   /(?:\n|\\n)\s*(system|assistant|user)\s*:/i,
-  /ignore\s+(?:all\s+|any\s+)?(previous|prior|earlier|above)\s+(instructions|prompts|rules)/i,
-  /<untrusted_context/i, // attacker trying to forge our delimiter
-  /<\/untrusted_context>/i,
+  /(?:ignore|disregard|forget|override|discard|dismiss|drop|skip)\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|earlier|above|preceding|foregoing|initial|original)\s+(?:instructions|prompts|rules|directives|context|messages)/i,
+  /<\s*untrusted_context/i, // attacker trying to forge our delimiter
+  /<\s*\/\s*untrusted_context\s*>/i,
 ];
+
+// Decode numeric HTML entities (`&#10;`, `&#x0A;`) BEFORE regex — otherwise a
+// snapshot memo like `&#10;&#10;System:` slips past the newline+role gate.
+// Only numeric refs; named entities (`&amp;`) are irrelevant to injection.
+function decodeNumericEntities(s) {
+  return s.replace(/&#(x[0-9a-f]+|\d+);/gi, (_m, code) => {
+    const cp = code[0] === 'x' || code[0] === 'X'
+      ? parseInt(code.slice(1), 16)
+      : parseInt(code, 10);
+    if (!Number.isFinite(cp) || cp < 0 || cp > 0x10ffff) return _m;
+    try { return String.fromCodePoint(cp); } catch { return _m; }
+  });
+}
+
+// Cyrillic look-alikes that NFKC does NOT fold to Latin (different scripts).
+// Enumerated (not blanket-mapped) so we only touch characters that visually
+// impersonate ASCII letters used in role/verb keywords.
+const HOMOGLYPHS = {
+  'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'у': 'y', 'х': 'x',
+  'ѕ': 's', 'і': 'i', 'ј': 'j', 'ԁ': 'd', 'ѡ': 'w', 'ѵ': 'v', 'ԛ': 'q',
+  'т': 't', 'ѱ': 'ps',
+};
+function foldHomoglyphs(s) {
+  return s.replace(/[аеорсухѕіјԁѡѵԛтѱ]/g, (ch) => HOMOGLYPHS[ch] || ch);
+}
+
+function normalizeForInjectionScan(text) {
+  // NFKC folds fullwidth `＜` / `＞` to ASCII `<` / `>`; homoglyph fold catches
+  // Cyrillic `ѕystem`; entity decode expands `&#10;`. Lowercase for regex.
+  return foldHomoglyphs(decodeNumericEntities(text.normalize('NFKC'))).toLowerCase();
+}
 
 function detectPromptInjection(text) {
   if (typeof text !== 'string' || text.length === 0) return false;
-  return PROMPT_INJECTION_PATTERNS.some((re) => re.test(text));
+  const normalized = normalizeForInjectionScan(text);
+  // Test patterns against BOTH the normalized form (newlines preserved so the
+  // `\n + role:` gate still catches decoded `&#10;`) AND a whitespace-collapsed
+  // form (so `< /system>` matches the tag regex once `\s*` alternatives
+  // wouldn't span the run).
+  const collapsed = normalized.replace(/\s+/g, ' ');
+  return (
+    PROMPT_INJECTION_PATTERNS.some((re) => re.test(text)) ||
+    PROMPT_INJECTION_PATTERNS.some((re) => re.test(normalized)) ||
+    PROMPT_INJECTION_PATTERNS.some((re) => re.test(collapsed))
+  );
 }
+
+// Gate the browser warn behind DEV so a poisoned snapshot can't be used as a
+// timing/console oracle in production. import.meta may be undefined under
+// Jest-style bundlers — guard with optional chaining.
+const IS_DEV = (() => {
+  try { return Boolean(import.meta?.env?.DEV); } catch { return false; }
+})();
 
 function sanitizeSnapshotForPrompt(pageSnapshot) {
   if (!pageSnapshot || typeof pageSnapshot !== 'object') {
@@ -752,8 +806,10 @@ function sanitizeSnapshotForPrompt(pageSnapshot) {
     return { serialized: null, tainted: true };
   }
   if (detectPromptInjection(json)) {
-    // eslint-disable-next-line no-console
-    console.warn('[SecurityAdvisor] page_snapshot omitted — prompt-injection pattern detected');
+    if (IS_DEV) {
+      // eslint-disable-next-line no-console
+      console.warn('[SecurityAdvisor] page_snapshot omitted — prompt-injection pattern detected');
+    }
     return { serialized: null, tainted: true };
   }
   return { serialized: json, tainted: false };
