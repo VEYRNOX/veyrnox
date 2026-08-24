@@ -48,3 +48,28 @@ export async function clearSecret() {
 export async function isAvailable() {
   return AndroidBiometricCache.isAvailable();
 }
+
+// ── Issue #2019 fast-path DEK cache shims ──────────────────────────────
+//
+// Read/write a THIRD Keystore alias built with setUserAuthenticationRequired(
+// true) + setInvalidatedByBiometricEnrollment(true) — the STRONG form. See
+// AndroidBiometricCachePlugin.kt for the alias-level security contract and
+// AndroidBiometricCacheConfig.kt for the JVM-tripwire-pinned ACL constants.
+//
+// The wrapped DEK is passed as a base64 string; the actual AES-GCM wrap is
+// done in JS via wallet-core/keystore/fastpathDekCache.js with distinct AAD
+// (`fastpath/v1`). Kotlin adds a SECOND layer of biometric-gated encryption
+// under the fastpath alias.
+
+export async function putFastpathDek(wrappedDek) {
+  return AndroidBiometricCache.putFastpathDek({ wrappedDek });
+}
+
+export async function getFastpathDek() {
+  const { wrappedDek } = await AndroidBiometricCache.getFastpathDek();
+  return wrappedDek == null ? null : String(wrappedDek);
+}
+
+export async function clearFastpathDek() {
+  return AndroidBiometricCache.clearFastpathDek();
+}

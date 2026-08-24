@@ -292,7 +292,48 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 > Handoff checklist for all remaining device/Mac/browser/auditor-gated items: `docs/hardware-audit-handoff.md`.
 
-### PIN Security & Hardware Key Encryption (KEK)
+### KEK fast-path DEK cache (Android native, opt-in) — 🟡 BUILT, opt-in, off by default (issue #2019, 2026-08-24)
+
+**Status:** BUILT / INTERNAL / opt-in-gated. Trades PIN-required-to-unlock for
+latency on Android native builds. Deliberately weaker than the today-shipping
+"PIN + hardware factor" posture — same security model as iCloud Keychain,
+Signal PIN-less unlock, and 1Password biometric unlock. **Independent-audit
+disclosure obligation.**
+
+- **Owner rulings encoded** (design doc `docs/kek-fast-path-design.md`
+  §Open questions): Q1 coerced-biometric gap ACCEPTED; Q3 opt-in, OFF by
+  default (Settings toggle "Fast unlock — uses Face ID/fingerprint without
+  PIN" + one-time disclosure card); Q4 NATIVE-ONLY (web unchanged — WebAuthn
+  PRF latency already low); Q5 SEPARATE Keystore slot from Personal Backup's
+  `dek-cache/v1` with distinct AAD `veyrnox/kek/fastpath/v1/aad`, cross-slot
+  mixup fails closed.
+- **Kotlin ACL:** new alias `com.veyrnox.app.biometricCacheFastpath.v1`,
+  `setUserAuthenticationRequired(true)` + `setInvalidatedByBiometricEnrollment(true)`
+  (STRONG form — any biometric add/remove wipes the key). Constants pinned
+  by `AndroidBiometricCacheConfigTest.T5` JVM tripwire.
+- **JS primitives:** `src/wallet-core/keystore/fastpathDekCache.js` wrap/unwrap
+  with distinct AAD + distinct `FASTPATH_UNWRAP_FAILED` error code (no oracle);
+  `src/lib/fastpathUnlock.js` opt-in gate with I3 write-guard.
+- **Invariants preserved:** I3 deniability — write-gate blocks decoy/demo taps;
+  panic-wipe sweeps both `veyrnox-fastpath-enabled` /
+  `veyrnox-fastpath-disclosure-seen` (residue test) AND the Kotlin alias
+  (`clearAllState`). I4 fail-closed — any cache miss / stale / KEK-mismatch /
+  KeyPermanentlyInvalidatedException falls through silently to the slow path.
+  H-1 timing equalizer on the slow path is untouched.
+- **Ship state:** primitives + Kotlin ACL + JVM tripwire + panic sweep +
+  opt-in gate + disclosure copy all landed. Unlock hot-path wiring
+  (`native.js unlock` fast-try; PIN-change invalidation; first-unlock
+  spinner; Settings UI toggle component) is a SEPARATE follow-up commit —
+  it touches the KEK-branch of `_unlockInner` which is on the locked-infra
+  list and needs device-verified before it can honestly BUILD-tag.
+- **Pending device verification (merge gate per design §Gates):** on-device
+  P50/P95 unlock latency before/after on Pixel 4a, Pixel 3, Samsung A20 (Q4:
+  iPhone SE out of scope, native-only means Android-only). Biometric
+  enrollment invalidation real-device test (Android
+  `KeyPermanentlyInvalidatedException` clears the cache). Independent audit
+  disclosure — this bullet is that disclosure.
+
+
 
 **Phase 1 — Web WebAuthn PRF (SHIPPING, testing infrastructure only):** ✅ BUILT, ✅ Browser UAT PASSED (2026-07-07) — 13/13 Playwright e2e (PR #703 completed C-UI settings card enrollment test) — testnet txids from a real platform authenticator still PENDING (honesty bar)
 - **Implementation Status:** Code complete (200+ LOC, `src/lib/web.js`); unit-tested (19 PRF-specific tests, 1973/1973 total); security invariants verified (I1–I6). **Web is testing infrastructure only (2026-07-06 architecture clarification) — unified on native 8-digit PIN (not product password differentiation) for end-to-end testing parity; PRF enrollment UI test now PASSING — C-UI test completed 2026-07-07 (PR #703, previously `test.fixme`).**

@@ -36,6 +36,12 @@ class AndroidBiometricCachePlugin : Plugin() {
     private val storageAlias = AndroidBiometricCacheConfig.STORAGE_ALIAS
     private val invalidationAlias = AndroidBiometricCacheConfig.INVALIDATION_ALIAS
     private val storageUnauthAlias = AndroidBiometricCacheConfig.STORAGE_UNAUTH_ALIAS
+    // Issue #2019 — fast-path DEK cache alias + pref keys. Separate
+    // ciphertext/IV pair so a partial write cannot cross-contaminate the
+    // legacy / unauth blobs.
+    private val fastpathAlias = AndroidBiometricCacheConfig.FASTPATH_ALIAS
+    private val dataFastpathKey = "ciphertext_fastpath_b64"
+    private val ivFastpathKey = "iv_fastpath_b64"
 
     @PluginMethod
     fun isAvailable(call: PluginCall) {
@@ -196,6 +202,119 @@ class AndroidBiometricCachePlugin : Plugin() {
         }
     }
 
+    // ── Issue #2019 fast-path DEK cache methods ─────────────────────────
+    //
+    // These read/write a THIRD Keystore alias built with
+    // setUserAuthenticationRequired(true) AND
+    // setInvalidatedByBiometricEnrollment(true) — the STRONG form. Any
+    // biometric enrollment change on the device wipes the key at the OS
+    // level, so the next getFastpathDek() Cipher.init throws
+    // KeyPermanentlyInvalidatedException → we clear state and the JS layer
+    // falls through to the slow path.
+    //
+    // The alias is BIOMETRIC-REQUIRED, so both encrypt AND decrypt need a
+    // fresh biometric match. The JS layer fires the OS biometric prompt via
+    // the shared retrieveUnlockSecret / authenticateOrThrow path BEFORE
+    // calling in here; the alias key is created with a validity window
+    // (setUserAuthenticationValidityDurationSeconds — 30 s) so the
+    // Cipher.init inside encrypt/decrypt succeeds within that window
+    // without a second CryptoObject-bound BiometricPrompt.
+    //
+    // ponytail: 30 s validity window trades one class of freshness for less
+    // Kotlin plumbing. Upgrade path is CryptoObject + per-use auth
+    // (`setUserAuthenticationParameters(0, BIOMETRIC_STRONG)` +
+    // BiometricPrompt.authenticate(promptInfo, CryptoObject(cipher))) if a
+    // reviewer wants no window at all — pins the ceiling here so the
+    // upgrade is explicit rather than accidental.
+
+    @PluginMethod
+    fun putFastpathDek(call: PluginCall) {
+        val ctx = context ?: run {
+            call.reject("Plugin context unavailable", "NO_CONTEXT")
+            return
+        }
+        if (!isSupported(ctx)) {
+            call.reject("Android biometric cache requires Android 11+ with BIOMETRIC_STRONG enrolled", "ANDROID_BIOMETRIC_CACHE_UNSUPPORTED")
+            return
+        }
+        val wrapped = call.getString("wrappedDek")
+        if (wrapped.isNullOrEmpty()) {
+            call.reject("wrappedDek is required", "ANDROID_BIOMETRIC_CACHE_SECRET_REQUIRED")
+            return
+        }
+        try {
+            ensureFastpathKey()
+            val encoded = encryptSecretWith(fastpathAlias, wrapped)
+            prefs(ctx).edit()
+                .putString(dataFastpathKey, encoded.first)
+                .putString(ivFastpathKey, encoded.second)
+                .commit()
+            call.resolve()
+        } catch (_: KeyPermanentlyInvalidatedException) {
+            // Biometric enrollment changed between ensureFastpathKey() and
+            // the encrypt attempt — fail closed by clearing state; JS falls
+            // through to the slow path and repopulates next unlock.
+            clearFastpathState(ctx)
+            call.reject("Fast-path key was invalidated by biometric change", "ANDROID_BIOMETRIC_CACHE_INVALIDATED")
+        } catch (e: Exception) {
+            call.reject("putFastpathDek failed: ${e.message}", "ANDROID_BIOMETRIC_CACHE_STORE_FAILED")
+        }
+    }
+
+    @PluginMethod
+    fun getFastpathDek(call: PluginCall) {
+        val ctx = context ?: run {
+            call.reject("Plugin context unavailable", "NO_CONTEXT")
+            return
+        }
+        try {
+            val p = prefs(ctx)
+            val ctB64 = p.getString(dataFastpathKey, null)
+            val ivB64 = p.getString(ivFastpathKey, null)
+            if (ctB64.isNullOrEmpty() || ivB64.isNullOrEmpty()) {
+                // No cache slot yet — silent miss, JS falls through to slow path.
+                call.resolve(JSObject().put("wrappedDek", null))
+                return
+            }
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(
+                Cipher.DECRYPT_MODE,
+                loadSecretKey(fastpathAlias),
+                GCMParameterSpec(128, Base64.decode(ivB64, Base64.NO_WRAP)),
+            )
+            val plaintext = cipher.doFinal(Base64.decode(ctB64, Base64.NO_WRAP))
+            call.resolve(JSObject().put("wrappedDek", String(plaintext, StandardCharsets.UTF_8)))
+        } catch (_: KeyPermanentlyInvalidatedException) {
+            // Design mandate: on biometric enrollment change, clear + fall
+            // through silently. No oracle.
+            clearFastpathState(ctx)
+            call.resolve(JSObject().put("wrappedDek", null))
+        } catch (_: android.security.keystore.UserNotAuthenticatedException) {
+            // Auth window expired between JS-side prompt and Cipher.init.
+            // Treat as a silent miss; JS falls through to the slow path.
+            call.resolve(JSObject().put("wrappedDek", null))
+        } catch (e: Exception) {
+            // Any other failure (tampered blob, missing alias, Keystore
+            // transient) is treated as a miss — I4 fail-closed to the slow
+            // path. Reject with a code the JS layer swallows.
+            call.reject("getFastpathDek failed: ${e.message}", "ANDROID_BIOMETRIC_CACHE_READ_FAILED")
+        }
+    }
+
+    @PluginMethod
+    fun clearFastpathDek(call: PluginCall) {
+        val ctx = context ?: run {
+            call.reject("Plugin context unavailable", "NO_CONTEXT")
+            return
+        }
+        try {
+            clearFastpathState(ctx)
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject("clearFastpathDek failed: ${e.message}", "ANDROID_BIOMETRIC_CACHE_CLEAR_FAILED")
+        }
+    }
+
     @PluginMethod
     fun clearSecret(call: PluginCall) {
         val ctx = context ?: run {
@@ -242,6 +361,55 @@ class AndroidBiometricCachePlugin : Plugin() {
         if (!tryGenerateKey(storageAlias, requiresAuth = false, preferStrongBox = true)) {
             tryGenerateKey(storageAlias, requiresAuth = false, preferStrongBox = false)
         }
+    }
+
+    private fun ensureFastpathKey() {
+        val ks = keyStore()
+        if (ks.containsAlias(fastpathAlias)) return
+        // Fast-path alias: BOTH biometric-required AND
+        // invalidated-by-enrollment (STRONG form). Config constants pinned
+        // by AndroidBiometricCacheConfigTest.T5.
+        if (!tryGenerateFastpathKey(preferStrongBox = true)) {
+            tryGenerateFastpathKey(preferStrongBox = false)
+        }
+    }
+
+    private fun tryGenerateFastpathKey(preferStrongBox: Boolean): Boolean {
+        return try {
+            val builder = KeyGenParameterSpec.Builder(
+                fastpathAlias,
+                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+            )
+                .setKeySize(AndroidBiometricCacheConfig.KEY_SIZE)
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            // MUST match REQUIRES_USER_AUTH_FASTPATH + INVALIDATE_ON_
+            // BIOMETRIC_ENROLL_FASTPATH — JVM tripwire pins both to true.
+            if (AndroidBiometricCacheConfig.REQUIRES_USER_AUTH_FASTPATH) {
+                builder.setUserAuthenticationRequired(true)
+            }
+            if (AndroidBiometricCacheConfig.INVALIDATE_ON_BIOMETRIC_ENROLL_FASTPATH) {
+                builder.setInvalidatedByBiometricEnrollment(true)
+            }
+            // 30-second validity window (BIOMETRIC_STRONG). See the
+            // ponytail note above the fast-path methods for the CryptoObject
+            // upgrade path if a reviewer wants per-use auth instead.
+            builder.setUserAuthenticationParameters(30, KeyProperties.AUTH_BIOMETRIC_STRONG)
+            if (preferStrongBox) builder.setIsStrongBoxBacked(true)
+            val keyGen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+            keyGen.init(builder.build())
+            keyGen.generateKey()
+            true
+        } catch (_: StrongBoxUnavailableException) {
+            false
+        }
+    }
+
+    private fun clearFastpathState(ctx: Context) {
+        prefs(ctx).edit()
+            .remove(dataFastpathKey).remove(ivFastpathKey)
+            .commit()
+        deleteAliasIfPresent(fastpathAlias)
     }
 
     private fun ensureUnauthStorageKey() {
@@ -347,9 +515,14 @@ class AndroidBiometricCachePlugin : Plugin() {
         prefs(ctx).edit()
             .remove(dataKey).remove(ivKey)
             .remove(dataUnauthKey).remove(ivUnauthKey)
+            // Issue #2019: panic-wipe / clearSecret must ALSO sweep the
+            // fast-path pref keys and Keystore alias. I3 deniability + I4
+            // fail-closed apply to all three alias pairs symmetrically.
+            .remove(dataFastpathKey).remove(ivFastpathKey)
             .commit()
         deleteAliasIfPresent(storageAlias)
         deleteAliasIfPresent(invalidationAlias)
         deleteAliasIfPresent(storageUnauthAlias)
+        deleteAliasIfPresent(fastpathAlias)
     }
 }
