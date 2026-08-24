@@ -427,11 +427,6 @@
       "label": "Ghi chú (tùy chọn)",
       "placeholder": "Đây là để làm gì?"
     },
-    "trezor": {
-      "toggle_label": "Ký bằng Trezor",
-      "connected": "Thiết bị đã kết nối",
-      "connect_button": "Kết nối thiết bị"
-    },
     "buttons": {
       "continue": "Tiếp tục",
       "confirm_send": "Xác nhận & Gửi",

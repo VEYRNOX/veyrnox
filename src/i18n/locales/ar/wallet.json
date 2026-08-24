@@ -427,11 +427,6 @@
       "label": "ملاحظة (اختياري)",
       "placeholder": "ما الغرض من هذا؟"
     },
-    "trezor": {
-      "toggle_label": "التوقيع باستخدام Trezor",
-      "connected": "الجهاز متصل",
-      "connect_button": "توصيل الجهاز"
-    },
     "buttons": {
       "continue": "متابعة",
       "confirm_send": "تأكيد وإرسال",

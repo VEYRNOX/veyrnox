@@ -427,11 +427,6 @@
       "label": "Maelezo (hiari)",
       "placeholder": "Hii ni ya nini?"
     },
-    "trezor": {
-      "toggle_label": "Tia saini kwa Trezor",
-      "connected": "Kifaa kimeunganishwa",
-      "connect_button": "Unganisha kifaa"
-    },
     "buttons": {
       "continue": "Endelea",
       "confirm_send": "Thibitisha & Tuma",

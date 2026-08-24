@@ -4,13 +4,12 @@
 // src/pages/send/ sub-modules per the 2026-08 audit. This page is the
 // pre-sign chokepoint: RASP artifact
 // composition -> action-password re-auth -> gas / nonce / recipient screening
-// -> Trezor branch (hw-send.js) vs software branch. Any structural move risks
+// -> Digital Shield branch vs software branch. Any structural move risks
 // reordering the pre-sign gates (P2-7, #746 recovery check, #961 audited
 // helpers) the SEND signing correctness depends on. Extracted candidates for
 // a future audited pass (byte-identical, no reorder):
 //   1. amount/rate formatting helpers (pure functions)
 //   2. per-network fee-preset lookup tables
-//   3. TrezorConnectModal state machine (already isolated)
 // The signing/broadcast branch stays here until independently re-audited.
 import BackButton from "@/components/BackButton";
 import SuccessBeacon from "@/components/SuccessBeacon";
@@ -18,17 +17,7 @@ import RiskShield from "@/components/RiskShield";
 import { motion, useReducedMotion } from "motion/react";
 import { Buffer } from "buffer";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
-import { useTrezor } from '../context/TrezorContext.jsx';
-// Issue #961 (SEND H-1): the Trezor EVM branch now goes through the audited
-// hw-send.js helpers (signAndBroadcastEvmTrezor / signAndBroadcastEvmTrezorToken),
-// NOT the raw device wrapper — those helpers apply the M-2/#746 recovery check,
-// the 'pending' block-tag nonce + sanity window, and estimated gas + headroom.
-// BTC + SOL Trezor branches still use their raw wrappers (unrelated to #961).
-import { trezorSignBtcTx } from '../wallet-core/hw/trezor.js';
-import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wallet-core/evm/hw-send.js';
 import { useDigitalShield } from '@/context/DigitalShieldContext';
-import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
-import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import ReferralPrompt from "@/components/ReferralPrompt";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -165,11 +154,6 @@ export function isFormAmountWellFormed(amountStr) {
   return /[1-9]/.test(s);
 }
 
-async function loadTrezorSolSender() {
-  // Trezor SOL stays isolated from the mixed Ledger+Trezor module so the SEND
-  // route bundle never pulls Ledger's bare Android-unsafe package specifier.
-  return import('../wallet-core/sol/hw-send-trezor.js');
-}
 // Address-poisoning / look-alike warning. INFORMS, never blocks; never asserts an
 // address is safe — only that it resembles one the user has used before and
 // couldn't be verified. Renders nothing unless the local screen is suspicious.
@@ -358,11 +342,7 @@ export default function SendCrypto() {
   const [txResult, setTxResult] = useState(/** @type {any} */ (null)); // { hash, explorerUrl } from a real broadcast
   const [selectedFee, setSelectedFee] = useState(/** @type {any} */ (null)); // user-chosen EIP-1559 fee (FeeSelector)
 
-  // TREZOR hardware-wallet signing mode
-  const { connected: trezorConnected, platform: trezorPlatform, evmAddress: trezorEvmAddress, btcAddress: trezorBtcAddress, solAddress: trezorSolAddress } = useTrezor();
   const { connected: digitalShieldConnected, evmAccount: digitalShieldEvmAccount, btcAccount: digitalShieldBtcAccount, solAccount: digitalShieldSolAccount } = useDigitalShield();
-  const [useTrezorMode, setUseTrezorMode] = useState(false);
-  const [trezorModalOpen, setTrezorModalOpen] = useState(false);
   const [useDigitalShieldMode, setUseDigitalShieldMode] = useState(false);
   const [digitalShieldDialogOpen, setDigitalShieldDialogOpen] = useState(false);
   const [digitalShieldScannerOpen, setDigitalShieldScannerOpen] = useState(false);
@@ -1367,198 +1347,47 @@ export default function SendCrypto() {
       // throw "not in the unlocked HD set" for BTC/SOL, whose address is not an EVM
       // account.
 
-      // I3 hardware-send gate (#972 P1, codex round 2). The old hw/trezor.js
-      // module's requireWebUsb() gated ALL three device paths (EVM/BTC/SOL) on
-      // isDeniabilitySessionActive() — throwing TREZOR_DENIABILITY_BLOCKED before
-      // any RPC or device call. My earlier hotfix restored that gate inside
-      // hw-send.js's public entrypoints, but the caller pre-computes a fee-clamp
-      // (getFeeData for EVM) / a UTXO+blockhash preflight (BTC/SOL) BEFORE reaching
-      // those helpers — leaking one RPC round-trip. Under decoy/hidden with a
-      // Trezor connected the device holds the REAL seed regardless of session
-      // type, so any egress here is an I3 violation AND a coercion-exfil vector.
-      // One gate above the family dispatch catches all three Trezor branches;
-      // software-key sends are UNAFFECTED (decoy has its own decoy vault, that
-      // path is legitimate). Error string matches hw-send.js exactly so downstream
-      // catch-by-message keeps working. Demo-mode check mirrors hw/trezor.js's
-      // deniabilityActive() — a demo build (VITE_DEMO_MODE / veyrnox-demo=1)
-      // must never touch a real Trezor device or leak fee/nonce RPC (codex
-      // round-2 finding, #972 P1b).
-      // Use the LIVE deniability-OR-demo check (round-3 codex finding): the
-      // module-level DEMO constant is a load-time IIFE snapshot, so a
-      // veyrnox-demo=1 flag flipped AFTER import wouldn't fire this gate. The
-      // shared helper reads both signals fresh on every call.
-      if (useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) {
-        throw new Error('TREZOR_DENIABILITY_BLOCKED');
-      }
-
       // Sign LOCALLY and broadcast. The signing key is transient and never
       // persisted. Branch on the asset family — each has its own derivation/
       // signing stack and send function; the human-entered `amount` is converted
       // to that chain's integer base unit (sats / lamports / wei) for signing.
       let raw;
       if (isBtc) {
-        if (useTrezorMode) {
-          if (!trezorConnected) throw new Error('Trezor not connected');
-          if (!trezorBtcAddress) throw new Error('Trezor BTC address not available');
-          // BTC Trezor path: the key never leaves the device (I1). Build a
-          // coin-selection plan against the Trezor-derived address (it owns the
-          // UTXOs and receives change), translate it into the device's input/
-          // output shape, sign on-device, then broadcast the signed bytes.
-          const amountSats = toBaseUnits(canonicalAmount, 8);
-          const { plan } = await estimateBtcSend({
+        // BTC (BIP-84 P2WPKH). Auto fee-rate this slice (no fee UI). BTC -> sats.
+        raw = await withBtcPrivateKey(({ privateKey, publicKey, address }) =>
+          signAndBroadcastBtc({
             networkKey,
-            fromAddress: trezorBtcAddress,
+            privateKey,
+            publicKey,
+            fromAddress: address,
             toAddress,
-            amountSats,
-            changeAddress: trezorBtcAddress,
-          });
-          // coinselect plan -> @trezor/connect signTransaction shape. Recipient
-          // outputs use { address, amountSats }; the change output (isChange) is
-          // collapsed into changeAmountSats so the device derives + pays-to-self.
-          const changeOut = plan.outputs.find((o) => o.isChange);
-          const trezorPlan = {
-            inputs: plan.inputs.map((i) => ({ txid: i.txid, vout: i.vout, amountSats: BigInt(i.value) })),
-            outputs: plan.outputs
-              .filter((o) => !o.isChange)
-              .map((o) => ({ address: o.address, amountSats: BigInt(o.value) })),
-            changeAmountSats: changeOut ? BigInt(changeOut.value) : 0n,
-          };
-          const signedHex = await trezorSignBtcTx({ plan: trezorPlan, networkKey });
-          raw = await broadcastBtcTx(networkKey, signedHex);
-        } else {
-          // BTC (BIP-84 P2WPKH). Auto fee-rate this slice (no fee UI). BTC -> sats.
-          raw = await withBtcPrivateKey(({ privateKey, publicKey, address }) =>
-            signAndBroadcastBtc({
-              networkKey,
-              privateKey,
-              publicKey,
-              fromAddress: address,
-              toAddress,
-              amountSats: toBaseUnits(canonicalAmount, 8),
-            })
-          );
-        }
+            amountSats: toBaseUnits(canonicalAmount, 8),
+          })
+        );
       } else if (isSolana) {
-        if (useTrezorMode) {
-          if (!trezorConnected) throw new Error('Trezor not connected');
-          if (!trezorSolAddress) throw new Error('Trezor SOL address not available');
-          const { signAndBroadcastSolTrezor } = await loadTrezorSolSender();
-          // SOL Trezor path: the key never leaves the device (I1). Codex P1
-          // 2026-08-15: the previous raw buildUnsignedSolTx + trezorSignSolTx
-          // + attachSolSignature chain bypassed the audited planSolTransfer
-          // pre-flight — a transfer the planner would refuse for rent-
-          // exemption / sender-remainder reasons could still be signed and
-          // fail after broadcast. Route through the audited
-          // signAndBroadcastSolTrezor helper (src/wallet-core/sol/hw-send.js)
-          // which uses planSolTransfer internally, matching the Ledger path.
-          raw = await signAndBroadcastSolTrezor({
+        // SOL (ed25519). Base fee only this slice (no priority UI). SOL -> lamports.
+        raw = await withSolPrivateKey(({ privateKey, address }) =>
+          signAndBroadcastSol({
             networkKey,
-            fromAddress: trezorSolAddress,
+            privateKey,
+            fromAddress: address,
             toAddress,
             amountLamports: toBaseUnits(canonicalAmount, 9),
-          });
-        } else {
-          // SOL (ed25519). Base fee only this slice (no priority UI). SOL -> lamports.
-          raw = await withSolPrivateKey(({ privateKey, address }) =>
-            signAndBroadcastSol({
-              networkKey,
-              privateKey,
-              fromAddress: address,
-              toAddress,
-              amountLamports: toBaseUnits(canonicalAmount, 9),
-            })
-          );
-        }
+          })
+        );
       } else {
-        // EVM native + ERC-20.
-        if (useTrezorMode) {
-          if (!trezorConnected) throw new Error('Trezor not connected');
-          // Fee-clamp still lives here (NOT inside hw-send.js): the merge of
-          // selectedFee with the provider's fee-data fallback is a UI concern,
-          // and the F-08-TREZOR / L-2 caps must apply BEFORE the fee crosses the
-          // wallet-core boundary. We pre-compute the clamped values, then pass
-          // them into the audited helper via a normal { ...Wei } fee object so
-          // the exact clamped numbers are what get signed.
-          const provider = getProvider(networkKey);
-          const feeData = await provider.getFeeData();
-          const fee = selectedFee?.fee || undefined;
-          const rawMaxFeePerGas = fee?.maxFeePerGas ?? feeData.maxFeePerGas ?? feeData.gasPrice;
-          // F-08-TREZOR (I5: RPC untrusted): clamp maxFeePerGas to the same
-          // per-network ceiling the regular tier maths uses, so a misreporting
-          // provider can't inflate the fee on a hardware signer that only shows
-          // raw values. Fall back to the highest cap if the network key is unknown.
-          const feeCapGwei = MAX_BASE_FEE_GWEI[networkKey] ?? 5_000n;
-          const maxFeePerGasCap = feeCapGwei * 1_000_000_000n;
-          const cappedMaxFeePerGas = rawMaxFeePerGas != null && rawMaxFeePerGas > maxFeePerGasCap
-            ? maxFeePerGasCap
-            : rawMaxFeePerGas;
-          // L-2 (I5: RPC untrusted): clamp the priority fee against the already-
-          // capped maxFeePerGas via the shared pure helper, so a misreporting
-          // provider can't pin an implausibly large tip on a hardware signer.
-          const clampedPriorityFee = resolveMaxPriorityFeePerGas(
-            fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n,
-            cappedMaxFeePerGas,
-          );
-          // Shape the clamped values into the { ...Wei } fee object hw-send.js
-          // expects (evmFeeOverrides). gasLimit is intentionally omitted — the
-          // helper estimates + applies +20% headroom (issue #961: replaces the
-          // old hardcoded 21000n/65000n that broke L2 native + USDT transfers).
-          //
-          // Codex P2 2026-08-15 (was TODO #972 P2a): the confirmation screen's
-          // displayed fee is computed from the tier hint's 21000/65000
-          // gasLimit, but the signed tx uses estimateGas + 20% (see
-          // preflight.js:applyEstimatedGasLimit, which always applies the
-          // MAX(userLimit, estimate*1.2)). So displayed fee is a FLOOR, not
-          // the actual signed fee — the Trezor device screen shows the real
-          // value (a careful user catches the divergence) but the in-app
-          // number can under-report by up to ~65% on L2s.
-          //
-          // Honest-note only in this PR — the properly-lazy fix is
-          // "estimateGas at verify-step render via useQuery, thread the
-          // resolved gasLimit through BOTH the display and fee.gasLimit
-          // handed to the signer here". That is a larger diff that needs
-          // its own PR (adds async state to a hot render path + touches
-          // the confirm-step fee-display JSX). Tracked with this comment
-          // so a reviewer can find it. Direction is safe: signed fee is
-          // always >= displayed fee; the user never underpays their
-          // display estimate at broadcast.
-          const clampedFee = (cappedMaxFeePerGas != null)
-            ? {
-                maxFeePerGasWei: cappedMaxFeePerGas.toString(),
-                maxPriorityFeePerGasWei: clampedPriorityFee.toString(),
-              }
-            : undefined;
-          if (isErc20) {
-            raw = await signAndBroadcastEvmTrezorToken({
-              networkKey,
-              fromAddress: trezorEvmAddress,
-              symbol: selectedAsset.symbol,
-              to: toAddress,
-              amount: canonicalAmount,
-              fee: clampedFee,
-            });
-          } else {
-            raw = await signAndBroadcastEvmTrezor({
-              networkKey,
-              fromAddress: trezorEvmAddress,
-              to: toAddress,
-              amountEth: canonicalAmount,
-              fee: clampedFee,
-            });
-          }
-        } else {
-          // Map the wallet to its HD derivation index (public address match).
-          // The user-selected EIP-1559 fee flows straight into the signing call;
-          // null falls back to ethers' auto-fill (never blocks send).
-          const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
-          if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
-          const fee = selectedFee?.fee || undefined;
-          raw = await withPrivateKey(acct.index, (privateKey) =>
-            isErc20
-              ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount, fee })
-              : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: canonicalAmount, fee })
-          );
-        }
+        // EVM native + ERC-20. Map the wallet to its HD derivation index
+        // (public address match). The user-selected EIP-1559 fee flows
+        // straight into the signing call; null falls back to ethers'
+        // auto-fill (never blocks send).
+        const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
+        if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
+        const fee = selectedFee?.fee || undefined;
+        raw = await withPrivateKey(acct.index, (privateKey) =>
+          isErc20
+            ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount, fee })
+            : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: canonicalAmount, fee })
+        );
       }
 
       // Normalize each family's distinct result shape to one record shape.
@@ -2395,32 +2224,7 @@ export default function SendCrypto() {
           </div>
         )}
 
-        {/* TREZOR SIGNING TOGGLE */}
-        {trezorPlatform === 'unsupported' && useTrezorMode && <TrezorUnsupportedScreen />}
-        {trezorPlatform !== 'unsupported' && (
-          <div className="flex items-center gap-3 my-4">
-            <label className="flex items-center gap-2 text-muted-foreground text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useTrezorMode}
-                onChange={(e) => {
-                  setUseTrezorMode(e.target.checked);
-                  if (e.target.checked) setUseDigitalShieldMode(false);
-                  if (e.target.checked && !trezorConnected) setTrezorModalOpen(true);
-                }}
-                className="accent-primary"
-              />
-              {tw("send.trezor.toggle_label")}
-            </label>
-            {useTrezorMode && trezorConnected && <span className="text-primary text-xs">✓ {tw("send.trezor.connected")}</span>}
-            {useTrezorMode && !trezorConnected && (
-              <button onClick={() => setTrezorModalOpen(true)} className="bg-transparent border-none text-primary text-xs cursor-pointer underline">
-                {tw("send.trezor.connect_button")}
-              </button>
-            )}
-          </div>
-        )}
-        <div className="flex items-center gap-3 -mt-1 mb-4">
+        <div className="flex items-center gap-3 my-4">
           <label className="flex items-center gap-2 text-muted-foreground text-sm cursor-pointer">
             <input
               type="checkbox"
@@ -2428,7 +2232,6 @@ export default function SendCrypto() {
               disabled={digitalShieldBtcUnsupported}
               onChange={(e) => {
                 setUseDigitalShieldMode(e.target.checked);
-                if (e.target.checked) setUseTrezorMode(false);
               }}
               className="accent-primary"
             />
@@ -2442,7 +2245,6 @@ export default function SendCrypto() {
             <span className="text-xs text-caution">Import it first on Hardware Wallet</span>
           )}
         </div>
-        <TrezorConnectModal open={trezorModalOpen} onClose={() => setTrezorModalOpen(false)} onConnected={() => setTrezorModalOpen(false)} btcNetworkKey={networkKey === 'btc-mainnet' ? 'btc-mainnet' : 'btc-testnet'} />
 
         {step === "form" && (
           <Button
@@ -2623,15 +2425,8 @@ export default function SendCrypto() {
 
             {/* Per-chain fee control. The EVM send path is EIP-1559; the chosen
                 tier/custom fee is passed into signAndBroadcast/sendToken. BTC/SOL
-                use an automatic fee this slice (no selector).
-                I3 hardware gate (#972 round-2 P1a, codex): FeeSelector's
-                react-query fires estimateEvmFeeTiers() → provider.getFeeData() on
-                mount, with no deniability enabled clause. Under useTrezorMode +
-                decoy/hidden/demo the Trezor address is the REAL hardware address,
-                so that unguarded RPC leaks the real address to the fee provider.
-                Skip the selector in that combination — the send-time gate above
-                will refuse anyway, so a fee tier serves no purpose. */}
-            {!isBtc && !isSolana && !(useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) ? (
+                use an automatic fee this slice (no selector). */}
+            {!isBtc && !isSolana ? (
               /* 2026-08-16 round-7: for ERC-20 we STOP hinting 65000 —
                  the estimator now reaches provider.estimateGas against
                  the token contract (to=contractAddress, data=riskCalldata)

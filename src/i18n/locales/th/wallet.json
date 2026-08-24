@@ -427,11 +427,6 @@
       "label": "หมายเหตุ (ไม่บังคับ)",
       "placeholder": "เพื่ออะไร?"
     },
-    "trezor": {
-      "toggle_label": "ลงนามด้วย Trezor",
-      "connected": "เชื่อมต่ออุปกรณ์แล้ว",
-      "connect_button": "เชื่อมต่ออุปกรณ์"
-    },
     "buttons": {
       "continue": "ดำเนินการต่อ",
       "confirm_send": "ยืนยันและส่ง",

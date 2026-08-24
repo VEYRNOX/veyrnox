@@ -427,11 +427,6 @@
       "label": "הערה (אופציונלי)",
       "placeholder": "למה זה מיועד?"
     },
-    "trezor": {
-      "toggle_label": "חתימה עם Trezor",
-      "connected": "המכשיר מחובר",
-      "connect_button": "חיבור מכשיר"
-    },
     "buttons": {
       "continue": "המשך",
       "confirm_send": "אישור ושליחה",

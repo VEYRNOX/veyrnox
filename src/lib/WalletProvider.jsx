@@ -109,7 +109,7 @@ import { resolveDeniabilityUnlock, spendPrimaryUnlockEqualizerKdfs } from '@/wal
 // clipboard while the page stays visible (copySecret listens for this event).
 import { APP_LOCK_EVENT } from '@/lib/copySecret';
 // I3: surface the in-memory decoy/hidden session state to wallet-core egress gates
-// (e.g. hw/trezor.js) WITHOUT persisting it (a localStorage flag would be a
+// WITHOUT persisting it (a localStorage flag would be a
 // deniability tell). isDecoy/isHidden is React-only; this mirrors it to a plain
 // module flag wallet-core can read synchronously.
 import { setDeniabilitySession } from '@/wallet-core/deniabilitySession';
@@ -335,7 +335,7 @@ export function WalletProvider({ children }) {
   // I3 egress guard sync. isDecoy/isHidden are React-only (never persisted — a
   // localStorage flag would be a deniability tell). These wrappers mirror the
   // CURRENT decoy/hidden state into the in-memory wallet-core marker so egress
-  // gates (e.g. hw/trezor.js) can see a real coerced session and refuse network/
+  // gates can see a real coerced session and refuse network/
   // device calls. We compute "deniability active" from BOTH flags using refs so a
   // setter for one does not read a stale value of the other.
   const decoyRef = useRef(false);

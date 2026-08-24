@@ -427,11 +427,6 @@
       "label": "Catatan (opsional)",
       "placeholder": "Untuk apa ini?"
     },
-    "trezor": {
-      "toggle_label": "Tanda tangani dengan Trezor",
-      "connected": "Perangkat terhubung",
-      "connect_button": "Hubungkan perangkat"
-    },
     "buttons": {
       "continue": "Lanjutkan",
       "confirm_send": "Konfirmasi & Kirim",

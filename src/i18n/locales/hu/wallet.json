@@ -427,11 +427,6 @@
       "label": "Megjegyzés (opcionális)",
       "placeholder": "Mire szolgál ez?"
     },
-    "trezor": {
-      "toggle_label": "Aláírás Trezorral",
-      "connected": "Eszköz csatlakoztatva",
-      "connect_button": "Eszköz csatlakoztatása"
-    },
     "buttons": {
       "continue": "Tovább",
       "confirm_send": "Megerősítés és küldés",

@@ -427,11 +427,6 @@
       "label": "備註（可選）",
       "placeholder": "這是做什麼用的？"
     },
-    "trezor": {
-      "toggle_label": "使用 Trezor 簽名",
-      "connected": "裝置已連線",
-      "connect_button": "連線裝置"
-    },
     "buttons": {
       "continue": "繼續",
       "confirm_send": "確認並傳送",

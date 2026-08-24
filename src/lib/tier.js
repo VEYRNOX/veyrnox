@@ -119,7 +119,7 @@ export const SAFETY_PLUS_FEATURES = [
   { name: 'Calldata decode & approval guard', summary: 'Human-readable calldata before signing' },
   { name: 'Address-poisoning warnings', summary: 'Look-alike detection on send' },
   { name: 'Risk scoring (pre-sign gate)', summary: 'Rule-based gate wired into Send' },
-  { name: 'Hardware wallet (Trezor)', summary: 'Cold-key signing, keys never leave device' },
+  { name: 'Hardware wallet (Digital Shield)', summary: 'Cold-key signing, keys never leave device' },
   { name: 'Transaction simulation', summary: 'Pre-sign preview with risk flags' },
   { name: 'Anomaly / fraud detection', summary: 'Rule-based deviation flags' },
   { name: 'Suspicious-address screening', summary: 'Local blocklist + sanctions checks' },

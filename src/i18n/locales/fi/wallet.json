@@ -427,11 +427,6 @@
       "label": "Muistiinpano (valinnainen)",
       "placeholder": "Mihin tämä on tarkoitettu?"
     },
-    "trezor": {
-      "toggle_label": "Allekirjoita Trezorilla",
-      "connected": "Laite yhdistetty",
-      "connect_button": "Yhdistä laite"
-    },
     "buttons": {
       "continue": "Jatka",
       "confirm_send": "Vahvista ja lähetä",

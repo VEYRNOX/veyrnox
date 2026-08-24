@@ -1,5 +1,5 @@
 // Structural regression guard for the Digital Shield send branch in SendCrypto.
-// Like the existing Trezor / confirmation / deniability pins, this reads the
+// Like the existing confirmation / deniability pins, this reads the
 // source rather than mounting the entire send flow with every signer, query, and
 // step-up dependency mocked.
 

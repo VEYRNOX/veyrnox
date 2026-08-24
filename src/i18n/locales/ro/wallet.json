@@ -427,11 +427,6 @@
       "label": "Notă (opțional)",
       "placeholder": "Pentru ce este?"
     },
-    "trezor": {
-      "toggle_label": "Semnează cu Trezor",
-      "connected": "Dispozitiv conectat",
-      "connect_button": "Conectează dispozitivul"
-    },
     "buttons": {
       "continue": "Continuă",
       "confirm_send": "Confirmă și trimite",

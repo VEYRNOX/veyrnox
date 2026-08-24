@@ -1,10 +1,8 @@
 // @ts-nocheck
 import { useMemo, useState } from 'react';
-import { Copy, Cpu, QrCode, Shield, Trash2, Usb, XCircle } from 'lucide-react';
+import { Copy, Cpu, QrCode, Shield, Trash2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { useTrezor } from '@/context/TrezorContext';
 import { useDigitalShield } from '@/context/DigitalShieldContext';
-import { TrezorConnectModal } from '@/components/hw/TrezorConnectModal';
 import QRScanner from '@/components/QRScanner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -44,7 +42,6 @@ function normalizeUrScan(raw) {
 }
 
 export default function HardwareWalletPage() {
-  const { connected, platform, evmAddress, btcAddress, solAddress, disconnect } = useTrezor();
   const {
     connected: digitalShieldConnected,
     profile,
@@ -54,7 +51,6 @@ export default function HardwareWalletPage() {
     btcAccount,
     solAccount,
   } = useDigitalShield();
-  const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [importParts, setImportParts] = useState([]);
@@ -95,57 +91,8 @@ export default function HardwareWalletPage() {
         </div>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Hardware Wallet</h1>
-          <p className="text-sm text-muted-foreground">Trezor and Digital Shield air-gap signing</p>
+          <p className="text-sm text-muted-foreground">Digital Shield air-gap signing</p>
         </div>
-      </div>
-
-      {platform === 'unsupported' && (
-        <div className="rounded-xl border border-caution/40 bg-caution/10 px-5 py-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <XCircle className="h-5 w-5 text-caution shrink-0" aria-hidden="true" />
-            <p className="text-sm font-medium text-caution">
-              Trezor is not available in this app
-            </p>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Trezor uses WebUSB, which isn&apos;t available in this browser. Digital Shield QR import still works here.
-          </p>
-        </div>
-      )}
-
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <Usb className="h-5 w-5 text-muted-foreground" />
-          <h2 className="font-medium">Trezor Connection</h2>
-        </div>
-
-        {connected ? (
-          <div className="space-y-3">
-            <AddressRow label="EVM" address={evmAddress} />
-            <AddressRow label="BTC" address={btcAddress} />
-            <AddressRow label="SOL" address={solAddress} />
-            <button
-              onClick={disconnect}
-              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
-            >
-              Disconnect
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Plug in your Trezor, unlock it, and confirm each address on the device screen.
-            </p>
-            <button
-              onClick={() => setModalOpen(true)}
-              disabled={platform === 'unsupported'}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <Usb className="h-4 w-4" />
-              Connect Trezor
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
@@ -188,11 +135,9 @@ export default function HardwareWalletPage() {
       <div className="rounded-xl border border-border bg-muted/40 px-5 py-3">
         <p className="text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Status:</span>{' '}
-          Trezor signing is wired for ETH, BTC, and SOL. Digital Shield import plus QR-based signing is wired for supported air-gap flows and rejects ambiguous EVM account imports instead of guessing.
+          Digital Shield import plus QR-based signing is wired for supported air-gap flows and rejects ambiguous EVM account imports instead of guessing.
         </p>
       </div>
-
-      <TrezorConnectModal open={modalOpen} onClose={() => setModalOpen(false)} onConnected={() => setModalOpen(false)} />
 
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent>

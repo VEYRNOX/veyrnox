@@ -58,12 +58,12 @@ describe('Documentation page — restored honesty caveats (S-1)', () => {
   });
 
   it('Hardware Wallet discloses it has not been tested against physical hardware', () => {
-    expect(page).toContain('not yet tested against a physical Trezor device');
+    expect(page).toContain('not yet tested against a physical Digital Shield device');
   });
 
   it('Hardware Wallet caveat does not use a verification claim', () => {
     // I4: "built"/"code-reviewed" are fine; "verified"/"device-verified" are not,
-    // since no physical Trezor test has happened.
+    // since no physical Digital Shield test has happened.
     expect(page).not.toMatch(/device-verified|hardware-verified/i);
   });
 
