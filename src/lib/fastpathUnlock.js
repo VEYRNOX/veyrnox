@@ -80,3 +80,27 @@ export function markFastpathDisclosureSeen() {
   if (isDeniabilityOrDemoActive()) return;
   safeSet(FASTPATH_DISCLOSURE_SEEN_KEY, ENABLE_MARK);
 }
+
+/**
+ * Pure helper — decide whether the "one-time setup — faster next time" hint
+ * should render alongside the PIN unlock busy state. All three inputs must be
+ * present: (1) Android platform (fastpath is Android-only), (2) opt-in ON,
+ * and (3) the wrapped-DEK cache is empty (a slow-path populate is about to
+ * run and fill it, so subsequent unlocks can take the fast path).
+ *
+ * A pure boolean by design so callers can compute it from whatever probe
+ * shape they carry — the WalletEntry runPinUnlock caller passes the result
+ * of AndroidBiometricCache.getFastpathDek(). Unit-testable without any DOM.
+ *
+ * @param {{ platform: string, enabled: boolean, existingCacheValue: any }} args
+ * @returns {boolean}
+ */
+export function shouldShowFastpathWarmingHint({ platform, enabled, existingCacheValue }) {
+  if (platform !== 'android') return false;
+  if (!enabled) return false;
+  // Cache is "empty" for null, undefined, empty string. Any truthy value means a
+  // wrapped-DEK slot is already present — the fast path is already primed and
+  // no one-time-setup hint should appear.
+  if (existingCacheValue == null || existingCacheValue === '') return true;
+  return false;
+}
