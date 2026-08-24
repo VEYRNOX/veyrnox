@@ -27,7 +27,13 @@ import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { isPasskeyRegistered } from '@/lib/passkey';
 
 export default function FastpathToggle() {
-  const [enabled, setEnabled] = useState(() => isFastpathEnabled());
+  // Effective state under the default-ON tri-state semantics: the toggle
+  // reflects what is ACTUALLY happening, not just the storage value.
+  // Populate + button both require hasSeenFastpathDisclosure(), so a
+  // default-on user who never saw the first-run card is effectively OFF at
+  // Settings — tapping ON here re-enters the disclosure flow, matching the
+  // first-run experience.
+  const [enabled, setEnabled] = useState(() => isFastpathEnabled() && hasSeenFastpathDisclosure());
   const [showDisclosure, setShowDisclosure] = useState(false);
 
   // Read guard placed at render (not module top) so the deniability state at

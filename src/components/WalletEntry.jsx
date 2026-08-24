@@ -100,9 +100,10 @@ import SeedGrid from "@/components/SeedGrid";
 import SeedInputGrid from "@/components/SeedInputGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
 import TelemetryConsent from "@/components/TelemetryConsent";
+import FastUnlockFirstRunCard from "@/components/onboarding/FastUnlockFirstRunCard";
 import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
-import { isFastpathEnabled, shouldShowFastpathWarmingHint } from "@/lib/fastpathUnlock";
+import { isFastpathEnabled, hasSeenFastpathDisclosure, shouldShowFastpathWarmingHint } from "@/lib/fastpathUnlock";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS, isPasskeyRegistered } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
@@ -1401,6 +1402,12 @@ export default function WalletEntry() {
         {!justOnboarded && !isDeniabilityOrDemoActive() && (
           <BackupNagSheet publicAddresses={getBackupPublicAddresses ? getBackupPublicAddresses() : []} />
         )}
+        {/* Fast Unlock first-run disclosure card — informed-consent chokepoint
+            for the default-ON reversal (#2019). Renders null unless the full
+            gate matrix passes (native Android + biometric available + KEK
+            vault + not deniability/demo + no passkey + no explicit choice
+            yet + not previously seen). See FastUnlockFirstRunCard.jsx. */}
+        <FastUnlockFirstRunCard />
         <Outlet />
       </>
     );
@@ -1626,9 +1633,15 @@ export default function WalletEntry() {
     // has explicitly chosen a stronger unlock factor. Fast-path bypasses the
     // passkey gate (no runPasskeyGate() call), so hiding the button preserves
     // the passkey's role. Users who want fast-path unenrol the passkey first.
+    // Default-ON reversal: hasSeenFastpathDisclosure() is the informed-consent
+    // chokepoint. The button is a visible benefit of fast-path — users must
+    // not see it before understanding what it enables. On a fresh install
+    // isFastpathEnabled() defaults true; the disclosure marker is what gates
+    // real activation.
     const fastpathButtonVisible = (
       Capacitor.getPlatform?.() === 'android'
       && isFastpathEnabled()
+      && hasSeenFastpathDisclosure()
       && bioStatus?.available === true
       && !isDeniabilityOrDemoActive()
       && !isPasskeyRegistered()

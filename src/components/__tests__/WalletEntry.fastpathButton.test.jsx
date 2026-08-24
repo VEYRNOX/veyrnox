@@ -1,10 +1,15 @@
 // WalletEntry — fast-path biometric unlock BUTTON above the PIN keypad (#2019 UI).
 //
-// The button is a PARALLEL entry to the existing PIN pad, gated by four ANDs:
+// The button is a PARALLEL entry to the existing PIN pad, gated by ANDs:
 //   - Capacitor.getPlatform() === 'android'
-//   - isFastpathEnabled() (opt-in toggle, default OFF)
+//   - isFastpathEnabled() (tri-state; default-ON since the Q3 reversal, only
+//     an explicit '0' disables)
+//   - hasSeenFastpathDisclosure() — informed-consent chokepoint for the
+//     default-ON flip. Without it a fresh install would silently show a
+//     stronger-unlock button before the user understood what it does.
 //   - checkBiometry().isAvailable
 //   - not deniability/demo (I3 chokepoint)
+//   - passkey NOT registered
 //
 // Missing ANY gate → the button MUST NOT render (fail-closed visibility).
 // On tap, it calls unlockBiometricOnly(); on { fallbackToPin:true } the PIN pad
@@ -46,7 +51,7 @@ vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn(async () => ({ remo
 
 // The real fastpathUnlock module respects deniability at the WRITE — reads are
 // ungated and return true/false based on the flag key.
-import { FASTPATH_ENABLED_STORAGE_KEY } from '@/lib/fastpathUnlock';
+import { FASTPATH_ENABLED_STORAGE_KEY, FASTPATH_DISCLOSURE_SEEN_KEY } from '@/lib/fastpathUnlock';
 import { setDeniabilitySession } from '@/wallet-core/deniabilitySession';
 import { useWallet } from '@/lib/WalletProvider';
 import WalletEntry from '@/components/WalletEntry';
@@ -85,17 +90,40 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); setDeniabilitySession(false); });
 
+// Enable the fast-path AND record disclosure-seen so the button clears both
+// gates in the "all-conditions-pass" cases. Individual tests then unset one at
+// a time to exercise the visibility matrix.
+function armFastpath() {
+  localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+  localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+}
+
 describe('WalletEntry — fast-path biometric button visibility matrix', () => {
   it('all gates pass on Android + PIN cohort → button rendered above PIN pad', async () => {
-    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    armFastpath();
     vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
     expect(screen.getByTestId(FASTPATH_BUTTON_TESTID)).toBeTruthy();
   });
 
-  it('fastpath opt-in OFF → button hidden (default behaviour)', async () => {
-    // No localStorage flag set — isFastpathEnabled() returns false.
+  it('fastpath explicitly OFF ("0") → button hidden', async () => {
+    // Explicit opt-out under the tri-state semantics. Disclosure is set so
+    // the ONLY reason for hiding here is the explicit "0".
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '0');
+    localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+    vi.mocked(useWallet).mockReturnValue(makeCtx());
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+    await waitForPinPad();
+    expect(screen.queryByTestId(FASTPATH_BUTTON_TESTID)).toBeNull();
+  });
+
+  it('disclosure not seen → button hidden (informed-consent chokepoint for default-ON)', async () => {
+    // Under the default-ON reversal, isFastpathEnabled() returns true here
+    // (absent key = default-on). The disclosure marker is the ONLY thing
+    // preventing the button from appearing on a fresh install before the
+    // user has understood what it does.
+    // (No localStorage writes at all → default-on + disclosure not seen.)
     vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
@@ -103,7 +131,7 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
   });
 
   it('decoy session → button hidden (I3 chokepoint)', async () => {
-    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    armFastpath();
     setDeniabilitySession(true);
     vi.mocked(useWallet).mockReturnValue(makeCtx({ isDecoy: true }));
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
@@ -112,7 +140,7 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
   });
 
   it('passkey registered → button hidden (owner ruling — passkey stays the sole biometric-adjacent factor)', async () => {
-    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    armFastpath();
     isPasskeyRegisteredMock.mockReturnValue(true);
     vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
@@ -121,7 +149,7 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
   });
 
   it('tap → invokes unlockBiometricOnly() (parallel to PIN, no password argument)', async () => {
-    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    armFastpath();
     const ctx = makeCtx();
     vi.mocked(useWallet).mockReturnValue(ctx);
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
@@ -136,7 +164,7 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
   });
 
   it('fallbackToPin → PIN keypad stays visible (I4 fail-closed)', async () => {
-    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    armFastpath();
     const ctx = makeCtx({
       unlockBiometricOnly: vi.fn(async () => ({ ok: false, fallbackToPin: true, code: 'FASTPATH_MISS' })),
     });

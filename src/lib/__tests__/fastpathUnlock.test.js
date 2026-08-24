@@ -1,14 +1,28 @@
 // lib/__tests__/fastpathUnlock.test.js
 //
-// Issue #2019 — opt-in gate for the KEK fast-path DEK cache.
+// Issue #2019 — tri-state opt-in gate for the KEK fast-path DEK cache.
 //
-// Owner ruling (session 2019, Q3): OFF by default, opt-in via Settings.
-// Enabling shows a one-time disclosure card explaining the tradeoff in plain
-// language. I3: writes to the toggle key are suppressed in decoy/demo (same
-// discipline as lib/consent.js — a coerced tap must NOT be able to flip the
-// real user's answer OR leave a persistent tell that the real session ever
-// visited Security settings). Reads stay ungated (reading a localStorage key
-// leaves no trace).
+// Owner ruling — REVERSED this session: default-ON with a mandatory first-run
+// disclosure card (was: default-OFF opt-in). Informed consent is preserved via
+// the disclosure chokepoint: no fast-path benefit (populate warm, biometric
+// button) activates before the user has seen the card and chosen.
+//
+// Tri-state semantics:
+//   - key === '1'      → explicit ON  (enabled)
+//   - key === '0'      → explicit OFF (disabled)
+//   - key absent       → NOT YET CHOSEN, treated as ON (default-on)
+//
+// isFastpathEnabled() returns true iff the stored value is NOT '0'.
+// hasFastpathBeenExplicitlySet() distinguishes "chose OFF" from "unset".
+// setFastpathEnabled(false) writes '0' (not remove) so we don't collapse the
+// two absent-key meanings.
+//
+// Init migration: pre-#2051 explicit-OFF installs (old setter did `remove`) get
+// upgraded to explicit '0' iff hasSeenFastpathDisclosure() proves they saw the
+// old disclosure — honours their prior choice through the default flip.
+//
+// I3: writes to BOTH keys are suppressed in decoy/demo (same discipline as
+// lib/consent.js). Reads stay ungated (a bare read leaves no trace).
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -19,76 +33,95 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import {
   FASTPATH_ENABLED_STORAGE_KEY,
+  FASTPATH_DISCLOSURE_SEEN_KEY,
   isFastpathEnabled,
   setFastpathEnabled,
+  hasFastpathBeenExplicitlySet,
   markFastpathDisclosureSeen,
   hasSeenFastpathDisclosure,
+  migrateFastpathState,
   shouldShowFastpathWarmingHint,
 } from '../fastpathUnlock.js';
 
-describe('fastpathUnlock — opt-in gate (Q3)', () => {
+describe('fastpathUnlock — tri-state opt-in gate (default-ON, session reversal)', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(false);
   });
 
   it('exports the storage-key name so panic.js can sweep it (I3 residue)', () => {
-    // The panic-residue sweep is keyed on the exact string — this is a
-    // second copy of the same constant, so a rename in one file that
-    // forgets the other trips this pin.
     expect(FASTPATH_ENABLED_STORAGE_KEY).toBe('veyrnox-fastpath-enabled');
+    expect(FASTPATH_DISCLOSURE_SEEN_KEY).toBe('veyrnox-fastpath-disclosure-seen');
   });
 
-  it('defaults OFF when nothing is stored (Q3: off by default)', () => {
-    expect(isFastpathEnabled()).toBe(false);
-  });
-
-  it('defaults OFF for any truthy-looking legacy value except the exact enable marker', () => {
-    // Defence in depth: only the exact `'1'` reads as enabled. A partial
-    // migration/typo leaves fast-path OFF (fail-closed default).
-    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, 'true');
-    expect(isFastpathEnabled()).toBe(false);
-    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, 'yes');
-    expect(isFastpathEnabled()).toBe(false);
-  });
-
-  it('setFastpathEnabled(true) flips it on for subsequent reads', () => {
-    setFastpathEnabled(true);
+  it('defaults ON when nothing is stored (default-on flip)', () => {
     expect(isFastpathEnabled()).toBe(true);
   });
 
-  it('setFastpathEnabled(false) clears the key (residue-cleanest)', () => {
+  it('explicit "1" reads as ON', () => {
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    expect(isFastpathEnabled()).toBe(true);
+  });
+
+  it('explicit "0" reads as OFF (only value that disables)', () => {
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '0');
+    expect(isFastpathEnabled()).toBe(false);
+  });
+
+  it('any other stored value reads as ON (default-on for unknown/legacy)', () => {
+    // Under default-on semantics the only value that disables is exactly '0'.
+    // A garbled value falls through to default-on — that is the correct
+    // behaviour under this reversal (previously we fail-closed OFF).
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, 'true');
+    expect(isFastpathEnabled()).toBe(true);
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, 'yes');
+    expect(isFastpathEnabled()).toBe(true);
+  });
+
+  it('hasFastpathBeenExplicitlySet — true iff key is "0" or "1"', () => {
+    expect(hasFastpathBeenExplicitlySet()).toBe(false);
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    expect(hasFastpathBeenExplicitlySet()).toBe(true);
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '0');
+    expect(hasFastpathBeenExplicitlySet()).toBe(true);
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, 'garbled');
+    expect(hasFastpathBeenExplicitlySet()).toBe(false);
+  });
+
+  it('setFastpathEnabled(true) writes exactly "1"', () => {
+    setFastpathEnabled(true);
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('1');
+    expect(isFastpathEnabled()).toBe(true);
+  });
+
+  it('setFastpathEnabled(false) writes exactly "0" — NOT remove', () => {
+    // Tri-state critical: "explicit OFF" and "not yet chosen" must be
+    // distinguishable. A remove() would collapse them and the migration path
+    // would silently re-enable an opted-out user.
     setFastpathEnabled(true);
     setFastpathEnabled(false);
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('0');
     expect(isFastpathEnabled()).toBe(false);
-    // Removed rather than set to '0' so a wiped device is indistinguishable
-    // from one that never enabled it.
-    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBeNull();
+    expect(hasFastpathBeenExplicitlySet()).toBe(true);
   });
 
   it('setFastpathEnabled is a NO-OP in decoy/demo (I3, three-writer trap)', () => {
-    // Same discipline as lib/consent.js: a coerced tap in a decoy session
-    // must not flip or wipe the real user's answer. Guard lives at the
-    // WRITE, not at the read call sites (see consent.js history).
     localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
     vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
     setFastpathEnabled(false);
     expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('1');
     setFastpathEnabled(true);
-    // still whatever it was before the decoy session
     expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('1');
   });
 
-  it('reads stay ungated (reading leaves no trace, decoy can still consult)', () => {
+  it('reads stay ungated (decoy can consult without a write)', () => {
     localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
     vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
-    // Reading is safe in decoy — it doesn't write, doesn't reveal (returns
-    // a boolean).
     expect(isFastpathEnabled()).toBe(true);
   });
 });
 
-describe('fastpathUnlock — disclosure marker (Q3, one-time card)', () => {
+describe('fastpathUnlock — disclosure marker', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(false);
@@ -107,6 +140,54 @@ describe('fastpathUnlock — disclosure marker (Q3, one-time card)', () => {
     vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
     markFastpathDisclosureSeen();
     expect(hasSeenFastpathDisclosure()).toBe(false);
+  });
+});
+
+describe('fastpathUnlock — migration (pre-reversal explicit-OFF honoured)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(false);
+  });
+
+  it('migrates "disclosure seen + key absent" → explicit "0" (honours prior OFF)', () => {
+    // Pre-#2051 explicit-OFF users had the old setter do remove(). After the
+    // default-on flip, absent key = default-on → they would be silently
+    // re-enabled. If the disclosure was seen (proving they went through the
+    // old opt-in flow), treat the absent key as "user chose OFF".
+    localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBeNull();
+
+    migrateFastpathState();
+
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('0');
+    expect(isFastpathEnabled()).toBe(false);
+  });
+
+  it('does NOT migrate when disclosure has never been seen (genuine fresh install)', () => {
+    migrateFastpathState();
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBeNull();
+    expect(isFastpathEnabled()).toBe(true); // default-on
+  });
+
+  it('does NOT overwrite an already-explicit value', () => {
+    localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    migrateFastpathState();
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('1');
+  });
+
+  it('is idempotent — running twice does not flip a migrated value', () => {
+    localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+    migrateFastpathState();
+    migrateFastpathState();
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('0');
+  });
+
+  it('is a NO-OP in decoy/demo (I3 — a coerced session must not migrate real state)', () => {
+    localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
+    migrateFastpathState();
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBeNull();
   });
 });
 

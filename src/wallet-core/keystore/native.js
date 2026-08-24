@@ -82,7 +82,7 @@ import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVau
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
 import { wrapForFastpath, unwrapFromFastpath, deriveFastpathKek } from './fastpathDekCache.js';
-import { isFastpathEnabled } from '@/lib/fastpathUnlock.js';
+import { isFastpathEnabled, hasSeenFastpathDisclosure } from '@/lib/fastpathUnlock.js';
 import { isPasskeyRegistered } from '@/lib/passkey.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { getFreshRaspArtifact } from '@/rasp/getFreshRaspArtifact.js';
@@ -602,7 +602,12 @@ async function populateFastpathBestEffort(hCopy, dek) {
   try {
     if (!hCopy || !dek) return;
     if (isDeniabilityOrDemoActive()) return;      // I3
-    if (!isFastpathEnabled()) return;             // Q3 opt-in
+    if (!isFastpathEnabled()) return;             // Q3 explicit-OFF
+    // Default-ON reversal: informed-consent chokepoint. Populate MUST NOT
+    // warm the wrapped-DEK cache before the user has seen the first-run
+    // disclosure card and made a choice. Otherwise the default-on flip
+    // silently downgrades a device's unlock posture.
+    if (!hasSeenFastpathDisclosure()) return;
     if (isPasskeyRegistered()) return;            // owner ruling — passkey wins
     let tier = TIER.BLOCK;
     try { tier = (await getFreshRaspArtifact())?.tier ?? TIER.BLOCK; } catch { tier = TIER.BLOCK; }
