@@ -68,7 +68,7 @@ import PortfolioChart from "@/components/PortfolioChart";
 import AssetDistributionChart from "@/components/AssetDistributionChart";
 import GasTracker from "@/components/GasTracker";
 import CryptoNewsFeed from "@/components/CryptoNewsFeed";
-import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession";
+import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { DEMO } from "@/api/demoClient";
 import { fetchAssetHistory } from "@/lib/txHistory";
 import { isDeferred } from "@/lib/seedVerifyState";
@@ -619,7 +619,15 @@ export default function WalletPortfolioPage() {
   // provider never decrypted another set, and usePortfolio cannot reach one.
   const { data: portfolio, isLoading: portfolioLoading, priceBasis, pricesUpdatedAt, refetchPrices } = usePortfolio(wallets, walletAddresses);
   const byWallet = /** @type {any} */ (portfolio?.byWallet || {});
-  const entityQueryEnabled = !isDecoy && !isHidden;
+  // I3: `isDecoy`/`isHidden` are React state and LAG the module-level deniability
+  // flag, so a panic/stealth transition leaves a window in which this query can
+  // still emit. Seal it with the canonical predicate, which also covers demo —
+  // a persisted `veyrnox-demo=1` coexists with a real unlocked vault, and both
+  // flags read false there. Fail closed (I4).
+  // Kept on ONE line deliberately: portfolioDeniability.test.js scans line-by-line
+  // for isDecoy/isHidden used outside the approved gates, so a wrap hides the
+  // flags from that guard.
+  const entityQueryEnabled = isUnlocked && !isDecoy && !isHidden && !isDeniabilityOrDemoActive();
   const { data: tokenRows = [] } = useQuery({
     queryKey: ["wallet-tokens"],
     queryFn: () => base44.entities.WalletToken.list(),
@@ -679,7 +687,7 @@ export default function WalletPortfolioPage() {
   const { data: _txLimits = [] } = useQuery({
     queryKey: ["tx-limits"],
     queryFn: () => base44.entities.TransactionLimit.list(),
-    enabled: !isDeniabilitySessionActive(),
+    enabled: !isDeniabilityOrDemoActive(),
     staleTime: 60_000,
   });
   const enabledLimits = _txLimits.filter((l) => l.enabled).length;

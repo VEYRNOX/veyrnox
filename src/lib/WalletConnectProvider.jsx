@@ -617,20 +617,29 @@ export function WalletConnectProvider({ children }) {
   const [pendingProposals, setPendingProposals] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [sessions, setSessions] = useState([]);
+  // I3: these three queries emit backend traffic carrying real-wallet metadata
+  // (counterparty history, saved contacts, whitelist). They must be sealed by the
+  // SAME predicate the relay effect below uses (:665) — not by the React flags
+  // alone. `isDecoy`/`isHidden` are React state and LAG the module-level
+  // deniability flag, so a panic/stealth transition leaves a window in which
+  // `setDeniabilitySession(true)` has already fired while these still read false.
+  // `isUnlocked` is required too: without it the queries run against a locked
+  // vault. Fail closed (I4) — one shared const so the three cannot drift apart.
+  const entityQueryEnabled = isUnlocked && !isDecoy && !isHidden && !isDeniabilityOrDemoActive();
   const { data: corpusHistory = [] } = /** @type {{ data: any[] }} */ (useQuery({
     queryKey: ['transactions'],
     queryFn: () => base44.entities.Transaction.list('-created_date', 100),
-    enabled: !isDecoy && !isHidden,
+    enabled: entityQueryEnabled,
   }));
   const { data: addressBook = [] } = useQuery({
     queryKey: ['address-book'],
     queryFn: () => base44.entities.AddressBook.list(),
-    enabled: !isDecoy && !isHidden,
+    enabled: entityQueryEnabled,
   });
   const { data: whitelist = [] } = useQuery({
     queryKey: ['whitelisted-addresses'],
     queryFn: () => base44.entities.WhitelistedAddress.list(),
-    enabled: !isDecoy && !isHidden,
+    enabled: entityQueryEnabled,
   });
   const knownAddresses = useMemo(() => {
     const out = [];
