@@ -46,7 +46,7 @@ vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn(async () => ({ remo
 
 // The real fastpathUnlock module respects deniability at the WRITE — reads are
 // ungated and return true/false based on the flag key.
-import { setFastpathEnabled, FASTPATH_ENABLED_STORAGE_KEY } from '@/lib/fastpathUnlock';
+import { FASTPATH_ENABLED_STORAGE_KEY } from '@/lib/fastpathUnlock';
 import { setDeniabilitySession } from '@/wallet-core/deniabilitySession';
 import { useWallet } from '@/lib/WalletProvider';
 import WalletEntry from '@/components/WalletEntry';

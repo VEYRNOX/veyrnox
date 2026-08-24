@@ -27,6 +27,9 @@ import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { isPasskeyRegistered } from '@/lib/passkey';
 
 export default function FastpathToggle() {
+  const [enabled, setEnabled] = useState(() => isFastpathEnabled());
+  const [showDisclosure, setShowDisclosure] = useState(false);
+
   // Read guard placed at render (not module top) so the deniability state at
   // click-time is what matters, not the state at import-time.
   if (isDeniabilityOrDemoActive()) return null;
@@ -35,9 +38,6 @@ export default function FastpathToggle() {
   // factor. Fast-path bypasses the passkey gate at unlock, so we do not offer
   // the toggle to those users. Unenrol the passkey first to enable fast-path.
   if (isPasskeyRegistered()) return null;
-
-  const [enabled, setEnabled] = useState(() => isFastpathEnabled());
-  const [showDisclosure, setShowDisclosure] = useState(false);
 
   const handleToggle = async () => {
     // Belt-and-braces chokepoint at the WRITE (Finding 3 on PR #2051). Render
