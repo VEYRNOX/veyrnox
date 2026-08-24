@@ -71,12 +71,15 @@ import {
 
 const NATIVE_KEY = 'bio_unlock_secret';
 
-beforeEach(() => {
+beforeEach(async () => {
   h.store.clear();
   h.calls.length = 0;
   h.authImpl = null;
   h.checkBiometryResult = { isAvailable: true, deviceIsSecure: true };
   vi.clearAllMocks();
+  // Module-scoped probe cache — reset per test so a stale answer doesn't leak.
+  const probe = await import('@/lib/biometricProbe.js');
+  probe.invalidateBiometryProbe();
 });
 
 describe('biometricUnlock — NATIVE (OS biometric-gated secure-store cache)', () => {

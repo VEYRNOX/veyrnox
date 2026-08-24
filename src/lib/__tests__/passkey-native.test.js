@@ -65,12 +65,16 @@ function makeStorage() {
 let storage;
 let credentialsCreate;
 
-beforeEach(() => {
+beforeEach(async () => {
   isNativePlatform.mockReturnValue(true);
   authenticate.mockReset();
   authenticate.mockResolvedValue(undefined);
   checkBiometry.mockReset();
   checkBiometry.mockResolvedValue({ isAvailable: true });
+  // The biometric probe cache is module-scoped for the process lifetime;
+  // tests must reset it between cases so a stale answer doesn't leak.
+  const probe = await import('../biometricProbe.js');
+  probe.invalidateBiometryProbe();
   suppressLock.mockClear();
   storage = makeStorage();
   // A registered passkey handle so verify() doesn't bail on "no passkey".

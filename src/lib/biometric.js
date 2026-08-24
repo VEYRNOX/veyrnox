@@ -101,7 +101,8 @@ export async function verifyBiometric2fa() {
   // dialog is open — the dialog briefly pauses the app, which normally fires
   // lock() and redirects to the unlock screen mid-flow.
   const { nativeKeyStore } = await import('@/wallet-core/keystore/native.js');
-  const info = await BiometricAuth.checkBiometry();
+  const { getCachedBiometry } = await import('./biometricProbe.js');
+  const info = (await getCachedBiometry()) ?? { isAvailable: false, deviceIsSecure: false };
   if (!info.isAvailable && !info.deviceIsSecure) {
     throw new BiometricGateError('unavailable');
   }
@@ -256,8 +257,10 @@ export async function getBiometricStatus() {
     try {
       // Dynamic import keeps the Capacitor plugin out of the web/test bundle,
       // exactly like keystore/index.js does for native.js.
-      const { BiometricAuth, BiometryType } = await import('@aparajita/capacitor-biometric-auth');
-      const info = await BiometricAuth.checkBiometry();
+      const { BiometryType } = await import('@aparajita/capacitor-biometric-auth');
+      const { getCachedBiometry } = await import('./biometricProbe.js');
+      const info = await getCachedBiometry();
+      if (!info) throw new Error('checkBiometry probe unavailable');
       const label = labelForBiometry(BiometryType, info);
       if (info.isAvailable) {
         return { mode: 'native', available: true, label, simulated: false,

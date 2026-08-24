@@ -76,6 +76,7 @@ import {
   KeychainAccess,
 } from '@aparajita/capacitor-secure-storage';
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
+import { getCachedBiometry } from '@/lib/biometricProbe.js';
 import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
@@ -129,7 +130,7 @@ async function detectNativeSecuritySnapshot() {
 
   let biometricInfo = null;
   try {
-    biometricInfo = await BiometricAuth.checkBiometry();
+    biometricInfo = await getCachedBiometry();
   } catch {
     biometricInfo = null;
   }
@@ -515,7 +516,7 @@ async function clearDekCache() {
 // Throws BiometryError on user cancel / failure / lockout — propagated so the
 // unlock UI can surface it, exactly like a wrong-password throw on web.
 async function authenticateOrThrow() {
-  const info = await BiometricAuth.checkBiometry();
+  const info = (await getCachedBiometry()) ?? { isAvailable: false, deviceIsSecure: false };
 
   // No device security at all → a hardware-gated vault cannot have been created
   // (we require a passcode), and there is nothing to authenticate against.
@@ -1020,7 +1021,7 @@ export const nativeKeyStore = {
   async createVault(secret, password) {
     await init();
     try {
-      const bio = await BiometricAuth.checkBiometry();
+      const bio = await getCachedBiometry();
       if (bio && bio.deviceIsSecure === false) {
         throw Object.assign(
           new Error('DEVICE_NOT_SECURE'),

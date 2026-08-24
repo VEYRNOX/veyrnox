@@ -363,8 +363,8 @@ export async function getPasskeyStatus() {
   if (isCapacitor) {
     let biometryAvailable = false;
     try {
-      const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
-      const info = await BiometricAuth.checkBiometry();
+      const { getCachedBiometry } = await import('./biometricProbe.js');
+      const info = await getCachedBiometry();
       biometryAvailable = !!info?.isAvailable;
     } catch {
       biometryAvailable = false; // fail closed: can't probe → don't offer the gate
