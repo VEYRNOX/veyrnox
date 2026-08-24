@@ -512,6 +512,34 @@ async function clearDekCache() {
   }
 }
 
+// Issue #2019 wiring — item 4: the fast-path DEK alias lives in the
+// AndroidBiometricCache plugin (Android Keystore), NOT SecureStorage. Every
+// site that clears the Personal Backup dek-cache slot must ALSO clear this
+// alias — a stale fast-path DEK against a rotated KEK/PIN would silently
+// succeed for the OLD credentials (design doc §Security lines 106-108).
+//
+// Best-effort by construction: this is a fire-and-forget invalidator, never
+// on the read hot path. iOS / web resolve `null` on the dynamic import (the
+// plugin only registers on Android) — swallow, never fail an unlock or a
+// password-change on the clear. Regression pinned by
+// native.fastpathClearHooks.test.js's source-scan.
+async function clearFastpathDekBestEffort() {
+  try {
+    // Lazy import so this module still loads on iOS / web / JSDOM — the
+    // plugin's `web: () => Promise.reject(...)` branch fires only when the
+    // methods are CALLED, not when the module is imported.
+    const mod = await import('@/plugins/androidBiometricCache');
+    if (typeof mod.clearFastpathDek === 'function') {
+      await mod.clearFastpathDek();
+    }
+  } catch {
+    // I4 best-effort: absent plugin / bridge rejection / non-Android host —
+    // the clear is a hint, not a source of truth. The fast-path READ path
+    // treats any wrapped-DEK it cannot re-derive as a miss (silent fall-
+    // through to slow path), so a missed clear degrades gracefully.
+  }
+}
+
 // Prompt for biometric auth (with a deliberate device-credential fallback).
 // Throws BiometryError on user cancel / failure / lockout — propagated so the
 // unlock UI can surface it, exactly like a wrong-password throw on web.
@@ -1000,6 +1028,7 @@ export const nativeKeyStore = {
         // stale. Clear rather than rely on the DEK_CACHE_UNWRAP_FAILED
         // fallback — explicit is faster and leaves no dead cache blob.
         await clearDekCache();
+        await clearFastpathDekBestEffort();
       } finally {
         if (H && H.fill) H.fill(0);
         if (H2 && H2.fill) H2.fill(0);
@@ -1410,6 +1439,7 @@ export const nativeKeyStore = {
         const enclaveStatus = await this._reapplyEnclaveWrapIfNeeded(wasEnclaveWrapped);
         // Cache is stale — new KEK cannot unwrap the old cache blob.
         await clearDekCache();
+        await clearFastpathDekBestEffort();
         return { downgradedFromEnclave: enclaveStatus === 'downgraded' };
       } finally {
         if (H2 && H2.fill) H2.fill(0);
@@ -1513,6 +1543,7 @@ export const nativeKeyStore = {
           // Fast-path DEK cache: PIN rotated → KEK rotated → cached wrap
           // is stale. Clear explicitly.
           await clearDekCache();
+        await clearFastpathDekBestEffort();
         } finally {
           if (H && H.fill) H.fill(0);
           if (H2 && H2.fill) H2.fill(0);
@@ -1544,6 +1575,7 @@ export const nativeKeyStore = {
       // does not overwrite it — clear so the stale wrap is not read by a
       // subsequent re-enrollment under a differently-derived KEK.
       await clearDekCache();
+        await clearFastpathDekBestEffort();
     });
   },
 
@@ -1622,6 +1654,7 @@ export const nativeKeyStore = {
           // the correct PIN. One line here makes the invariant "every
           // DEK-rotating write clears the cache" true without exception.
           await clearDekCache();
+        await clearFastpathDekBestEffort();
         } finally {
           if (H && H.fill) H.fill(0);
           if (C) C.fill(0);
@@ -1685,6 +1718,7 @@ export const nativeKeyStore = {
         // Fast-path DEK cache: going bare, the KEK is gone — cache is
         // meaningless and its wrap can never be unwrapped again.
         await clearDekCache();
+        await clearFastpathDekBestEffort();
       } finally {
         if (H && H.fill) H.fill(0);
         if (C) C.fill(0);
@@ -1719,6 +1753,7 @@ export const nativeKeyStore = {
     // Fast-path DEK cache — a re-import under a fresh KEK must not inherit
     // an old cache blob.
     await clearDekCache();
+        await clearFastpathDekBestEffort();
     // M-4: best-effort — an absent hardware key (or plugin quirk) is not an error during
     // a wipe; the vault is already gone, so never propagate and abort the clear.
     try { await clearHardwareCredential(); } catch { /* best-effort — absent key is not an error during wipe */ }
