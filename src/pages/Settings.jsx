@@ -23,6 +23,7 @@ import BiometricUnlockSettings from "../components/security/BiometricUnlockSetti
 import PasskeyUnlockSettings from "../components/security/PasskeyUnlockSettings";
 import TwoFactorSettings from "../components/security/TwoFactorSettings";
 import HardwareKekSettings from "../components/security/HardwareKekSettings";
+import FastpathToggle from "../components/security/FastpathToggle";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -310,6 +311,9 @@ export default function Settings() {
           <TwoFactorSettings />
 
           <HardwareKekSettings />
+          {/* Fast unlock (#2019): Android-only opt-in biometric-only unlock
+              path. Renders null on non-Android and in decoy/demo (I3). */}
+          <FastpathToggle />
           <SessionSettings />
           <RehearsalSettingsRow />
         </>
