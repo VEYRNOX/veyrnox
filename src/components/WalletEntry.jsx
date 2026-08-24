@@ -102,6 +102,7 @@ import ShakeOnKey from "@/components/ShakeOnKey";
 import TelemetryConsent from "@/components/TelemetryConsent";
 import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { isFastpathEnabled } from "@/lib/fastpathUnlock";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
@@ -465,6 +466,7 @@ export default function WalletEntry() {
   const {
     isUnlocked, isDecoy, createWallet, importWallet, unlock, hasVault,
     enableBiometricUnlock, unlockWithBiometric,
+    unlockBiometricOnly,
     exploreMode, enterExplore, leaveExplore, confirmWalletBackup,
     setupPin, createWalletFromPendingPin, importWalletForPendingPin,
     clearPendingPin, hasPendingPin, panicWipe,
@@ -1586,9 +1588,62 @@ export default function WalletEntry() {
   // ---- View: Unlock (PIN cohort) ----
   if (view === "unlock" && authModel === "pin") {
     const bioLabel = bioStatus?.label || "Face ID";
+    // FAST-PATH BIOMETRIC UNLOCK BUTTON (#2019). PARALLEL to the PIN pad — never
+    // replaces PIN entry. Four AND-gates below; missing any → button not rendered
+    // (fail-closed visibility). Uses Capacitor.getPlatform() (not
+    // isNativePlatform) because the fast-path keystore branch is Android-only
+    // (StrongBox/TEE aliased key). On tap: unlockBiometricOnly() opens the
+    // vault; any FASTPATH_ code returns { fallbackToPin:true } and the PIN pad
+    // stays visible (I4). Duress/panic/wrong-PIN still route only through the
+    // PIN keypad's runPinUnlock → unlock() path — this branch never carries a
+    // password.
+    const fastpathButtonVisible = (
+      Capacitor.getPlatform?.() === 'android'
+      && isFastpathEnabled()
+      && bioStatus?.available === true
+      && !isDeniabilityOrDemoActive()
+    );
+    const fastpathLabel = bioStatus?.label ? `Unlock with ${bioStatus.label}` : 'Unlock with biometric';
+    const handleFastpathUnlock = async () => {
+      setError(""); setBusy(true);
+      try {
+        const res = await unlockBiometricOnly();
+        if (res && res.ok === false && res.fallbackToPin) {
+          // Silent fall-back: keypad is already visible. Small hint below.
+          setError("Enter your PIN");
+        }
+      } catch (e) {
+        // UNLOCK_SUPERSEDED or any unexpected error: honest generic message; PIN
+        // pad remains available.
+        if (e && e.code === 'UNLOCK_SUPERSEDED') {
+          // Silent — another action already took over the unlock.
+        } else {
+          setError("Biometric unlock didn't work. Enter your PIN below.");
+        }
+      } finally {
+        setBusy(false);
+      }
+    };
     return (
       <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-4">
+          {fastpathButtonVisible && (
+            <>
+              <Button
+                data-testid="fastpath-unlock-button"
+                className="w-full gap-2 h-12 text-base"
+                disabled={busy}
+                onClick={handleFastpathUnlock}
+              >
+                {busy ? <RefreshCw className="h-5 w-5 motion-safe:animate-spin" /> : <ScanFace className="h-5 w-5" />} {fastpathLabel}
+              </Button>
+              <div className="flex items-center gap-2 py-1">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[11px] text-muted-foreground">or enter your PIN</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          )}
           {biometricEnabled && !biometricFailed && (
             <>
               <Button className="w-full gap-2 h-12 text-base" disabled={busy} onClick={handleBiometricUnlock}>
