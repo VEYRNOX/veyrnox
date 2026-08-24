@@ -47,6 +47,7 @@ const h = vi.hoisted(() => ({
   store: null,
   available: true,
   checkBiometryResult: { isAvailable: true, deviceIsSecure: true },
+  kekWrapped: true,
 }));
 
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
@@ -55,6 +56,12 @@ vi.mock('@capacitor/core', () => ({
     isNativePlatform: () => true,
     getPlatform: () => 'android',
   },
+}));
+
+vi.mock('@/wallet-core/keystore', () => ({
+  getKeyStore: () => ({
+    hasVaultKekWrap: vi.fn(async () => h.kekWrapped),
+  }),
 }));
 
 // Plugin mock — same shape as biometricUnlock-android-plugin.test.js, plus
@@ -122,6 +129,7 @@ beforeEach(() => {
   h.store = null;
   h.available = true;
   h.checkBiometryResult = { isAvailable: true, deviceIsSecure: true };
+  h.kekWrapped = true;
   vi.clearAllMocks();
 });
 
@@ -150,6 +158,22 @@ describe('biometricUnlock — KEK-enrolled path collapses to a single OS prompt 
     expect(h.calls).toContain('getSecret'); // auth-gated Keystore read
     // And, critically, do NOT sneak the unauth path in here — that would
     // downgrade the non-KEK security posture.
+    expect(h.calls).not.toContain('getSecretUnauth');
+  });
+
+  it('C2 — retrieveUnlockSecretDirect verifies hasVaultKekWrap() itself; caller-asserted kekEnrolled that does not hold throws', async () => {
+    // C1/C2 follow-up: the runtime kekEnrolled assertion is caller-attested
+    // and retrieveUnlockSecretDirect never itself checked the keystore. A
+    // buggy or hostile caller passing { kekEnrolled: true } on a NON-KEK
+    // vault would bypass the SOLE biometric gate (the auth-gated cache
+    // read) with no OS prompt. Fix: verify in-function.
+    h.kekWrapped = false;
+    await storeUnlockSecret('should-not-leak');
+    await expect(
+      retrieveUnlockSecretDirect({ kekEnrolled: true }),
+    ).rejects.toThrow(/kek|hasVaultKekWrap/i);
+    // No cache read of any shape once we've refused.
+    expect(h.calls).not.toContain('getSecret');
     expect(h.calls).not.toContain('getSecretUnauth');
   });
 
