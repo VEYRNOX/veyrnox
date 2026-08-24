@@ -321,11 +321,27 @@ disclosure obligation.**
   KeyPermanentlyInvalidatedException falls through silently to the slow path.
   H-1 timing equalizer on the slow path is untouched.
 - **Ship state:** primitives + Kotlin ACL + JVM tripwire + panic sweep +
-  opt-in gate + disclosure copy all landed. Unlock hot-path wiring
-  (`native.js unlock` fast-try; PIN-change invalidation; first-unlock
-  spinner; Settings UI toggle component) is a SEPARATE follow-up commit —
-  it touches the KEK-branch of `_unlockInner` which is on the locked-infra
-  list and needs device-verified before it can honestly BUILD-tag.
+  opt-in gate + disclosure copy all landed. **Wiring — machine layer done
+  (2026-08-24, Option 1):** `keyStore.unlockBiometricOnly()` (native, no
+  password param, throws `FastpathError` with UI-only routing codes) and
+  slow-path populate at `_unlockInner`'s KEK-branch success (I3-gated,
+  RASP-ALLOW-gated, best-effort — cannot fail an unlock). PIN-entry path
+  and `_unlockInner(password)` UNCHANGED — duress / panic / wrong-PIN
+  routing survives by construction: `unlockBiometricOnly` accepts no
+  password, and populate only fires after the CORRECT primary PIN opens
+  the primary vault (WalletProvider routes duress via `tryDuressUnlock`
+  and panic via `panicWipe`, both outside `_unlockInner`). H is captured
+  as `hCopyForFastpath = H.slice()` BEFORE `combineKek` zeros the source,
+  copy is zeroed in the same `finally`. WalletProvider caller + PinUnlock
+  biometric button + Settings UI toggle + first-unlock spinner remain a
+  follow-up — the keystore method + populate are the security-critical
+  half; UI wiring is plumbing on top.
+- **Test coverage added:** `native.unlockBiometricOnly.test.js` (17 —
+  gate matrix: DENIABILITY_BLOCKED/DISABLED/RASP_GATE ×3/NO_VAULT/NOT_KEK
+  ×2/MISS ×4/KEY_INVALIDATED; end-to-end HIT via real fastpathDekCache
+  primitives; safety invariants) + `native.slowPathPopulate.test.js` (8 —
+  populate ON ALLOW + skip in deniability/opt-in-off/WARN/BLOCK/unknown/
+  probe-throw + populate failure never fails unlock).
 - **Pending device verification (merge gate per design §Gates):** on-device
   P50/P95 unlock latency before/after on Pixel 4a, Pixel 3, Samsung A20 (Q4:
   iPhone SE out of scope, native-only means Android-only). Biometric

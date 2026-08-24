@@ -33,6 +33,17 @@ import { KEK_ERR } from './kek.js';
 
 const enc = new TextEncoder();
 
+// HKDF salt for the fast-path KEK derivation. Fixed (not per-user) because H
+// is already device-bound + biometric-gated — the HKDF here is domain
+// separation between the primary KEK (combineKek's KEK_DOMAIN) and the fast-
+// path KEK, NOT an entropy top-up. A rotation of this constant is a hard
+// re-enrollment (every cached wrap becomes unreadable) — same discipline as
+// KEK_HKDF_SALT in kek.js.
+const FASTPATH_HKDF_SALT = enc.encode('veyrnox/kek/fastpath/v1/salt');
+const FASTPATH_HKDF_INFO = enc.encode('veyrnox/kek/fastpath/v1');
+const FASTPATH_KEK_LEN = 32;
+const H_LEN = 32;
+
 // Distinct AAD from BOTH dek-cache/v1 AND the primary vault-DEK wrap. A blob
 // tag made under this AAD does NOT verify against `dekCache.js` (which uses
 // `veyrnox/kek/dek-cache/v1/aad`) nor against `kek.js` (which uses
@@ -77,6 +88,56 @@ function unb64(s) {
 }
 
 function zero(u8) { if (u8 && u8.fill) u8.fill(0); }
+
+/**
+ * Derive the fast-path KEK from the hardware factor H.
+ *
+ *   kek_fp = HKDF-SHA256( ikm = H, salt = FASTPATH_HKDF_SALT,
+ *                         info = "veyrnox/kek/fastpath/v1" )
+ *
+ * Domain-separated from the PRIMARY KEK (combineKek's KEK_DOMAIN over H||C)
+ * so the two KEKs cannot be transposed: a fast-path wrap under kek_fp does
+ * NOT unwrap under the primary KEK, and vice versa (defence-in-depth against
+ * a slot mixup at the AES-GCM tag layer).
+ *
+ * Fail-closed on a wrong-length or degenerate H — same discipline as
+ * combineKek in kek.js. Does NOT wipe the caller's H (populates run in
+ * try/finally at the call site so H is zeroed there).
+ *
+ * @param {Uint8Array} H 32-byte hardware factor
+ * @returns {Promise<Uint8Array>} 32-byte fast-path KEK
+ */
+export async function deriveFastpathKek(H) {
+  if (!(H instanceof Uint8Array) || H.length !== H_LEN) {
+    // Same code the primary KEK path throws on a bad H so callers can share
+    // one branch (fail-closed, I4/I6).
+    throw Object.assign(new Error(KEK_ERR.NO_HARDWARE_FACTOR), { code: KEK_ERR.NO_HARDWARE_FACTOR });
+  }
+  if (H.every((b) => b === 0)) {
+    throw Object.assign(new Error(KEK_ERR.DEGENERATE_INPUT), { code: KEK_ERR.DEGENERATE_INPUT });
+  }
+  // Copy H into an owned buffer so we can zero the imported IKM's JS-visible
+  // view after importKey without touching the caller's H.
+  const ikm = new Uint8Array(H_LEN);
+  ikm.set(H);
+  /** @type {ArrayBuffer | null} */
+  let bits = null;
+  try {
+    const baseKey = await crypto.subtle.importKey('raw', ikm, { name: 'HKDF' }, false, ['deriveBits']);
+    zero(ikm);
+    bits = await crypto.subtle.deriveBits(
+      { name: 'HKDF', hash: 'SHA-256', salt: FASTPATH_HKDF_SALT, info: FASTPATH_HKDF_INFO },
+      baseKey,
+      FASTPATH_KEK_LEN * 8,
+    );
+    const kek = new Uint8Array(FASTPATH_KEK_LEN);
+    kek.set(new Uint8Array(bits));
+    return kek;
+  } finally {
+    zero(ikm);
+    if (bits) zero(new Uint8Array(bits));
+  }
+}
 
 async function importAesKey(rawKek, usages) {
   if (!(rawKek instanceof Uint8Array) || rawKek.length !== 32) {
