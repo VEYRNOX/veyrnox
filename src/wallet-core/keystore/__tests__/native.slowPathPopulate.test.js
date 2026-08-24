@@ -76,6 +76,10 @@ const isDeniabilityOrDemoActiveMock = vi.fn(() => false);
 vi.mock('@/wallet-core/deniabilitySession.js', () => ({
   isDeniabilityOrDemoActive: () => isDeniabilityOrDemoActiveMock(),
 }));
+const isPasskeyRegisteredMock = vi.fn(() => false);
+vi.mock('@/lib/passkey.js', () => ({
+  isPasskeyRegistered: () => isPasskeyRegisteredMock(),
+}));
 const raspTierMock = vi.fn(async () => ({ tier: 'allow' }));
 vi.mock('@/rasp/getFreshRaspArtifact.js', () => ({
   getFreshRaspArtifact: () => raspTierMock(),
@@ -104,6 +108,7 @@ beforeEach(async () => {
   clearFastpathDek.mockClear();
   isFastpathEnabledMock.mockReturnValue(true);
   isDeniabilityOrDemoActiveMock.mockReturnValue(false);
+  isPasskeyRegisteredMock.mockReturnValue(false);
   raspTierMock.mockResolvedValue({ tier: 'allow' });
   ({ nativeKeyStore: keyStore } = await import('../native.js'));
 });
@@ -134,6 +139,18 @@ describe('slow-path fast-path populate (issue #2019 Option 1)', () => {
 
   it('does NOT populate in a deniability/demo session (I3)', async () => {
     isDeniabilityOrDemoActiveMock.mockReturnValue(true);
+    setVault(enrolledBlob());
+    await keyStore.unlock('87654321', { getHardwareFactor: getHF });
+    expect(putFastpathDek).not.toHaveBeenCalled();
+  });
+
+  it('does NOT populate when a passkey is registered (Finding 2 — owner ruling: passkey wins)', async () => {
+    // Owner ruling on PR #2051 F2: users with a passkey enrolled see NEITHER
+    // the button NOR the toggle. Populate must respect the same rule so a
+    // "enable fast-path → enrol passkey → unenrol passkey" sequence cannot
+    // silently resurrect a warm cache. Fast-path only warms when passkey is
+    // NOT enrolled at the moment of the successful primary-PIN unlock.
+    isPasskeyRegisteredMock.mockReturnValue(true);
     setVault(enrolledBlob());
     await keyStore.unlock('87654321', { getHardwareFactor: getHF });
     expect(putFastpathDek).not.toHaveBeenCalled();

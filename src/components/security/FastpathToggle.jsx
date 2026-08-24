@@ -40,6 +40,13 @@ export default function FastpathToggle() {
   const [showDisclosure, setShowDisclosure] = useState(false);
 
   const handleToggle = async () => {
+    // Belt-and-braces chokepoint at the WRITE (Finding 3 on PR #2051). Render
+    // returns null in decoy/demo + when passkey is registered, so today this
+    // handler is unreachable in those states — but the file header set the
+    // two-chokepoint discipline and a future refactor that keeps the toggle
+    // mounted for a heartbeat would leak an oracle otherwise.
+    if (isDeniabilityOrDemoActive()) return;
+    if (isPasskeyRegistered()) return;
     if (enabled) {
       // Disable: flip off + best-effort clear the wrapped-DEK cache so a stale
       // slot cannot be re-used if the user re-enables later without going
@@ -63,6 +70,9 @@ export default function FastpathToggle() {
   };
 
   const handleAck = () => {
+    // Same belt-and-braces guard as handleToggle — Finding 3 on PR #2051.
+    if (isDeniabilityOrDemoActive()) { setShowDisclosure(false); return; }
+    if (isPasskeyRegistered()) { setShowDisclosure(false); return; }
     markFastpathDisclosureSeen();
     setFastpathEnabled(true);
     setEnabled(true);

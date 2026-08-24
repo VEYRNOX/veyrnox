@@ -83,6 +83,7 @@ import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, pars
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
 import { wrapForFastpath, unwrapFromFastpath, deriveFastpathKek } from './fastpathDekCache.js';
 import { isFastpathEnabled } from '@/lib/fastpathUnlock.js';
+import { isPasskeyRegistered } from '@/lib/passkey.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { getFreshRaspArtifact } from '@/rasp/getFreshRaspArtifact.js';
 import { TIER } from '@/rasp/conditions.js';
@@ -591,6 +592,10 @@ export class FastpathError extends Error {
 // Gating (evaluated at write time, live):
 //   - opt-in ON  (isFastpathEnabled)
 //   - not deniability/demo  (isDeniabilityOrDemoActive false — I3)
+//   - passkey NOT registered  (owner ruling — passkey users are hidden from
+//     fast-path at the UI; the populate gate here closes the "enable fast-path,
+//     then enrol passkey, then unenrol passkey → fast-path silently warm"
+//     window the honest-reviewer flagged as Finding 2 on PR #2051)
 //   - RASP tier ALLOW  (WARN/BLOCK bypass, per design doc §RASP tier)
 async function populateFastpathBestEffort(hCopy, dek) {
   let kekFp;
@@ -598,6 +603,7 @@ async function populateFastpathBestEffort(hCopy, dek) {
     if (!hCopy || !dek) return;
     if (isDeniabilityOrDemoActive()) return;      // I3
     if (!isFastpathEnabled()) return;             // Q3 opt-in
+    if (isPasskeyRegistered()) return;            // owner ruling — passkey wins
     let tier = TIER.BLOCK;
     try { tier = (await getFreshRaspArtifact())?.tier ?? TIER.BLOCK; } catch { tier = TIER.BLOCK; }
     if (tier !== TIER.ALLOW) return;              // fail-closed on WARN/BLOCK/unknown
