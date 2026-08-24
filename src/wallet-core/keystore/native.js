@@ -78,7 +78,7 @@ import {
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { getCachedBiometry } from '@/lib/biometricProbe.js';
 import { App } from '@capacitor/app';
-import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED } from '../vault.js';
+import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED, KDF_PROFILE_V2_MIGRATION_ENABLED, vaultNeedsKdfMigration } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
 import { wrapForFastpath, unwrapFromFastpath, deriveFastpathKek } from './fastpathDekCache.js';
@@ -826,7 +826,23 @@ async function _unlockInner(password, opts = {}) {
     }
   }
 
-  return decryptVault(blob, password);
+  const plaintext = await decryptVault(blob, password);
+  // KDF profile v2 migration (2026-08-24, docs/Feature-Status.md): silently
+  // re-encrypt a v1-profile (192 MiB / t=3) blob under the current v2 profile
+  // (96 MiB / t=6) once the owner flips KDF_PROFILE_V2_MIGRATION_ENABLED.
+  // Mirrors the AAD-v3 pattern above: best-effort, non-fatal, no user-visible
+  // step. Runs only for a correct slow-path unlock — wrong PIN never reaches
+  // here (decryptVault would have thrown). Duress/panic are routed by
+  // WalletProvider before this function.
+  if (KDF_PROFILE_V2_MIGRATION_ENABLED && vaultNeedsKdfMigration(blob)) {
+    try {
+      const reblob = await encryptVault(plaintext, password);
+      await safeWriteVault(reblob);
+    } catch {
+      // Best-effort — a failed rekey leaves the v1 blob untouched; next unlock retries.
+    }
+  }
+  return plaintext;
 }
 
 // Narrow-scope export: only file-picker call sites (backup save / restore open)

@@ -34,26 +34,68 @@ import { argon2id } from 'hash-wasm';
 // we want a conservative, memory-hard cost (memory is the lever against parallel
 // cracking hardware).
 //
-// CHOSEN: 192 MiB / t=3 — the deliberate at-rest cost for a single-factor seed
-// vault. 192 MiB produces ~6-8 s unlock times on real Capacitor WebView devices
-// (the WASM KDF runs ~3-5x slower there than a desktop browser due to WebView
-// JIT/memory constraints). That latency is now an ACCEPTED trade-off: Face ID /
-// biometric unlock (device-verified 2026-07-05) mitigates the UX cost of the slow
-// password path, so the stronger offline-seizure resistance is worth it. History:
-// an earlier pass lowered this to 64 MiB (PR #465, 2026-06-28) purely for unlock
-// latency before biometric unlock existed; with biometrics now available the raise
-// back to 192 MiB is intentional, applied to existing 64 MiB vaults via the
-// lazy-rekey migration below (no lockout). EXPORTED so stealth chaff advertises the
-// SAME params (otherwise chaff vs real blobs differ on the kdf field — a
-// deniability tell).
+// HISTORY (kept whole so future readers see the full tradeoff pendulum):
+//   * v0 (pre-2026-06-28): 64 MiB / t=3 (initial ship).
+//   * PR #465 (2026-06-28): dropped to 64 MiB for onboarding latency — the
+//     precedent this file's next entry overrides. See PR #465 commit for scope.
+//   * PR #604 (2026-07-05, v1): raised to 192 MiB / t=3 once biometric unlock
+//     was device-verified — the biometric path masked the slow password path, so
+//     the stronger offline-seizure resistance was worth the ~6–8 s Capacitor
+//     WebView unlock. Applied to existing 64 MiB vaults via the lazy-rekey
+//     migration below (no lockout).
+//   * v2 (2026-08-24, OWNER-RULED — this file): dropped to 96 MiB / t=6.
+//     Real-device measurement on Note 20 showed the 192 MiB path spending >6 s
+//     of dead-window time even with biometric unlock available (the password
+//     path is still hit on setup, PIN change, and any biometric miss). Halving
+//     memory + doubling iterations is NOT security-equivalent: Argon2id's
+//     GPU/ASIC-crack resistance is a function of MEMORY, not CPU-time. Halving
+//     `m` roughly halves the per-guess memory a parallel-cracking rig must
+//     provision — an honestly weaker offline-crack posture in exchange for a
+//     usable unlock. This overrides PR #465's precedent for the same
+//     latency-vs-crack-resistance tradeoff, but at a cost the owner sized and
+//     accepted rather than a default someone drifted into. See
+//     docs/Feature-Status.md 2026-08-24 entry for the disclosure to the
+//     outstanding independent audit.
+//
+// EXPORTED so stealth chaff advertises the SAME params (otherwise chaff vs real
+// blobs differ on the kdf field — a deniability tell).
+//
+// The `kdfProfileVersion` field is stamped into every new blob's `kdf` sub-object
+// so a future reader can distinguish v2 blobs from v1 blobs at a glance, without
+// re-deriving the profile from `(memorySize, iterations)`. `deriveKey` and
+// `assertSaneKdfParams` only look at the four argon2id fields — the extra field
+// rides along in the stored `kdf` object and is ignored on read.
 export const VAULT_ERR = Object.freeze({ MALFORMED: 'VAULT_MALFORMED' });
 
 export const KDF_PARAMS = Object.freeze({
   parallelism: 1,
+  iterations: 6,
+  memorySize: 98304, // KiB == 96 MiB
+  hashLength: 32,    // 256-bit key for AES-256
+  kdfProfileVersion: 2,
+});
+
+// v1 profile — kept for `vaultNeedsKdfMigration` comparison and for docs. NOT used
+// as a WRITE default anywhere: v1 blobs are only ever READ (via paramsFromVault,
+// which uses each blob's own recorded `kdf`).
+const KDF_PROFILE_V1_LEGACY = Object.freeze({
+  parallelism: 1,
   iterations: 3,
   memorySize: 196608, // KiB == 192 MiB
-  hashLength: 32,    // 256-bit key for AES-256
+  hashLength: 32,
 });
+
+/**
+ * Silent-migration flag for the v1 → v2 KDF-profile transition. Default OFF at
+ * ship: existing v1 (192 MiB / t=3) vaults keep opening at their own recorded
+ * params via paramsFromVault. New vaults are already written at v2.
+ *
+ * Owner flips this to `true` after real-device benchmark confirms the v2 profile
+ * is a net UX win on the target device class. Once on, a successful slow-path
+ * unlock silently re-encrypts a v1 blob under v2 (mirrors the AAD_V3_MIGRATION
+ * pattern in native.js — best-effort, non-fatal, no user-visible step).
+ */
+export const KDF_PROFILE_V2_MIGRATION_ENABLED = false;
 
 // LEGACY params used by vaults encrypted before M3. We do NOT decrypt with the
 // CURRENT params — we read each blob's OWN recorded params (paramsFromVault), so
@@ -76,7 +118,7 @@ const LEGACY_KDF_PARAMS = Object.freeze({
 const MAX_KDF_PARAMS = Object.freeze({
   parallelism: 4,
   iterations: 12,
-  memorySize: 1048576, // KiB == 1 GiB (CURRENT is 192 MiB)
+  memorySize: 1048576, // KiB == 1 GiB (CURRENT v2 is 96 MiB; v1 legacy 192 MiB still opens)
   hashLength: 64,
 });
 
@@ -426,10 +468,31 @@ export function vaultNeedsAAD(vault) {
  * @param {Record<string, unknown>} vault
  * @returns {boolean}
  */
-// Direction now UP: existing 64 MiB vaults rekey to 192 MiB on first unlock (deliberate, biometric-mitigated).
-// M-8: v:1 blobs also trigger rekey so AAD binding is added on first unlock.
+// AAD upgrade (v:1 → v:2) is ALWAYS-ON — it is independent of the KDF-profile
+// migration flag: an unauthenticated header is a discrete security bug and its fix
+// must not ride on an unrelated toggle. The KDF-profile mismatch (v1 192 MiB / t=3
+// vs v2 96 MiB / t=6) only triggers a rekey when KDF_PROFILE_V2_MIGRATION_ENABLED
+// is on — until the owner flips that, existing v1 blobs stay at 192 MiB and open
+// via paramsFromVault (backwards-compat safety net).
 export function vaultNeedsRekey(vault) {
   if (vaultNeedsAAD(vault)) return true;
+  if (!KDF_PROFILE_V2_MIGRATION_ENABLED) return false;
+  return vaultNeedsKdfMigration(vault);
+}
+
+/**
+ * Whether a blob's recorded Argon2id params differ from the CURRENT KDF_PARAMS
+ * (the v2 profile). Ignores the AAD-version question and the migration flag —
+ * pure profile-mismatch check. `kek-dek` blobs derive no Argon2id key, so they
+ * are never flagged. Callers gate the ACTUAL rekey on
+ * `KDF_PROFILE_V2_MIGRATION_ENABLED`.
+ * @param {Record<string, unknown>} vault
+ * @returns {boolean}
+ */
+export function vaultNeedsKdfMigration(vault) {
+  const k = /** @type {unknown} */ (vault && vault.kdf);
+  if (k === 'kek-dek') return false;
+  if (!k || typeof k !== 'object') return false;
   const p = paramsFromVault(vault);
   return p.memorySize !== KDF_PARAMS.memorySize
     || p.iterations !== KDF_PARAMS.iterations
