@@ -427,11 +427,6 @@
       "label": "メモ（任意）",
       "placeholder": "用途は？"
     },
-    "trezor": {
-      "toggle_label": "Trezorで署名",
-      "connected": "デバイス接続済み",
-      "connect_button": "デバイスに接続"
-    },
     "buttons": {
       "continue": "続ける",
       "confirm_send": "確認して送金",

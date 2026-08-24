@@ -427,11 +427,6 @@
       "label": "Σημείωση (προαιρετικό)",
       "placeholder": "Για τι είναι αυτό;"
     },
-    "trezor": {
-      "toggle_label": "Υπογραφή με Trezor",
-      "connected": "Η συσκευή είναι συνδεδεμένη",
-      "connect_button": "Σύνδεση συσκευής"
-    },
     "buttons": {
       "continue": "Συνέχεια",
       "confirm_send": "Επιβεβαίωση & Αποστολή",

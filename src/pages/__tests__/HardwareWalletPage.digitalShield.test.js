@@ -22,6 +22,8 @@ describe('HardwareWalletPage — Digital Shield import surface', () => {
     expect(src).toMatch(/Scan Digital Shield QR/);
     expect(src).toMatch(/normalizeUrScan/);
     expect(src).toMatch(/<QRScanner/);
+    expect(src).toMatch(/setImportOpen\(false\);\s*setScannerOpen\(true\);/);
+    expect(src).toMatch(/setScannerOpen\(false\);\s*setImportOpen\(true\);/);
   });
 
   it('describes the public-only import model and shows the three supported account families', () => {

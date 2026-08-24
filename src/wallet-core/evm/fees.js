@@ -97,8 +97,8 @@ export function buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit, min
   }
   // Codex P1 2026-08-15: clamp the RPC-suggested tip at MAX_TIP_WEI before
   // scaling. A hostile RPC returning e.g. 10_000 gwei would otherwise flow
-  // through unchanged (the Trezor branch clamps; the software branch did
-  // not). Also reject a negative BigInt (BigInt(-1) is legal), which no
+  // through unchanged (a hardware-signer branch clamped; the software branch
+  // did not). Also reject a negative BigInt (BigInt(-1) is legal), which no
   // real RPC returns but a stub / test / injected middleware could.
   const suggestedRaw = BigInt(suggestedTipWei);
   const suggested = suggestedRaw < 0n

@@ -427,11 +427,6 @@
       "label": "Note (valgfrit)",
       "placeholder": "Hvad er dette til?"
     },
-    "trezor": {
-      "toggle_label": "Underskriv med Trezor",
-      "connected": "Enhed forbundet",
-      "connect_button": "Forbind enhed"
-    },
     "buttons": {
       "continue": "Fortsæt",
       "confirm_send": "Bekræft og send",

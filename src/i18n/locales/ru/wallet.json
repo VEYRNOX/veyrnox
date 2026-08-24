@@ -427,11 +427,6 @@
       "label": "Примечание (необязательно)",
       "placeholder": "Для чего это?"
     },
-    "trezor": {
-      "toggle_label": "Подписать с помощью Trezor",
-      "connected": "Устройство подключено",
-      "connect_button": "Подключить устройство"
-    },
     "buttons": {
       "continue": "Продолжить",
       "confirm_send": "Подтвердить и отправить",

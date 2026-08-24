@@ -427,11 +427,6 @@
       "label": "메모 (선택)",
       "placeholder": "무엇을 위한 것인가요?"
     },
-    "trezor": {
-      "toggle_label": "Trezor로 서명",
-      "connected": "기기 연결됨",
-      "connect_button": "기기 연결"
-    },
     "buttons": {
       "continue": "계속",
       "confirm_send": "확인 및 전송",

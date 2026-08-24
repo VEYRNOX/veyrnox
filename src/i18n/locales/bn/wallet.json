@@ -427,11 +427,6 @@
       "label": "নোট (ঐচ্ছিক)",
       "placeholder": "এটি কীসের জন্য?"
     },
-    "trezor": {
-      "toggle_label": "Trezor দিয়ে সাইন করুন",
-      "connected": "ডিভাইস সংযুক্ত",
-      "connect_button": "ডিভাইস সংযোগ করুন"
-    },
     "buttons": {
       "continue": "চালিয়ে যান",
       "confirm_send": "নিশ্চিত করুন ও পাঠান",

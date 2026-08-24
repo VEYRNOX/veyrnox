@@ -427,11 +427,6 @@
       "label": "Notat (valgfritt)",
       "placeholder": "Hva gjelder dette?"
     },
-    "trezor": {
-      "toggle_label": "Signer med Trezor",
-      "connected": "Enhet tilkoblet",
-      "connect_button": "Koble til enhet"
-    },
     "buttons": {
       "continue": "Fortsett",
       "confirm_send": "Bekreft og send",

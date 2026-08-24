@@ -233,7 +233,7 @@ export const CLASSIFICATION = {
   },
   '/hardware-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'WebHID Ledger connection via @ledgerhq/hw-transport-webhid. Derives ETH address (m/44\'/60\'/0\'/0/0) from connected device via @ledgerhq/hw-app-eth. Private key never leaves device. Address derivation and transaction signing supported for ETH (EIP-1559), BTC (PSBT), and SOL on Ledger and Trezor; ERC-20 hardware signing and multi-account paths not yet wired. PLATFORM NOTE: WebHID is unavailable in the Capacitor iOS WKWebView — the page fails soft to a "WebHID unavailable" card (guarded dynamic import). Ledger flow works only on desktop Chrome/Edge.',
+    note: 'Digital Shield air-gapped QR signing is the sole hardware-wallet path (Trezor and Ledger removed 2026-08-24 — the Trezor WebUSB bundle crashed the iOS webview Send page). Imports public account data via crypto-multi-accounts UR QR, builds/finalizes PSBT/EVM/SOL signing requests over QR, and rejects ambiguous EVM account imports instead of guessing. Private key never leaves the Digital Shield device.',
   },
   '/personal-backup': {
     verdict: 'live', dataSource: 'wallet-core',

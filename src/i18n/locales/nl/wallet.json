@@ -427,11 +427,6 @@
       "label": "Notitie (optioneel)",
       "placeholder": "Waar is dit voor?"
     },
-    "trezor": {
-      "toggle_label": "Ondertekenen met Trezor",
-      "connected": "Apparaat verbonden",
-      "connect_button": "Apparaat verbinden"
-    },
     "buttons": {
       "continue": "Doorgaan",
       "confirm_send": "Bevestigen en versturen",

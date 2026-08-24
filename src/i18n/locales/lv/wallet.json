@@ -427,11 +427,6 @@
       "label": "Piezīme (izvēles)",
       "placeholder": "Kam tas paredzēts?"
     },
-    "trezor": {
-      "toggle_label": "Parakstīt ar Trezor",
-      "connected": "Ierīce savienota",
-      "connect_button": "Savienot ierīci"
-    },
     "buttons": {
       "continue": "Turpināt",
       "confirm_send": "Apstiprināt un sūtīt",

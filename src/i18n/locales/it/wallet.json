@@ -427,11 +427,6 @@
       "label": "Nota (facoltativa)",
       "placeholder": "A cosa serve?"
     },
-    "trezor": {
-      "toggle_label": "Firma con Trezor",
-      "connected": "Dispositivo connesso",
-      "connect_button": "Connetti dispositivo"
-    },
     "buttons": {
       "continue": "Continua",
       "confirm_send": "Conferma e invia",

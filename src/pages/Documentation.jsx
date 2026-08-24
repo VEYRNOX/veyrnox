@@ -55,7 +55,7 @@ const features = [
     { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password, PIN + Passkey, or PIN + Face ID / biometric.", status: "built" },
     { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "built" },
     { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "built" },
-    { name: "Hardware Wallet", desc: "Trezor support (WebUSB, Chrome/Edge) — cold-key address derivation and transaction signing for ETH, BTC, and SOL. Private keys never leave the hardware device. Built and code-reviewed; not yet tested against a physical Trezor device.", status: "built" },
+    { name: "Hardware Wallet", desc: "Digital Shield air-gapped QR signing — cold-key address derivation and transaction signing for ETH, BTC, and SOL. Private keys never leave the hardware device. Built and code-reviewed; not yet tested against a physical Digital Shield device.", status: "built" },
     { name: "Hardware Key Protection", desc: "Optional, off-by-default protection that ties your vault's encryption key to your device's secure hardware (iOS Secure Enclave or Android's secure hardware, using the strongest option your device supports). Once turned on, your PIN alone is no longer enough — the vault also needs your device's secure hardware to unlock.", status: "built" },
   ]},
   { category: "Transaction Safety", icon: ShieldAlert, items: [

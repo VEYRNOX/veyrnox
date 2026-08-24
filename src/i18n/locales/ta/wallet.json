@@ -427,11 +427,6 @@
       "label": "குறிப்பு (விருப்பத்தேர்வு)",
       "placeholder": "இது எதற்காக?"
     },
-    "trezor": {
-      "toggle_label": "Trezor உடன் கையொப்பமிடு",
-      "connected": "சாதனம் இணைக்கப்பட்டது",
-      "connect_button": "சாதனத்தை இணை"
-    },
     "buttons": {
       "continue": "தொடரவும்",
       "confirm_send": "உறுதிப்படுத்தி அனுப்பு",

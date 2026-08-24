@@ -427,11 +427,6 @@
       "label": "Anteckning (valfritt)",
       "placeholder": "Vad gäller det?"
     },
-    "trezor": {
-      "toggle_label": "Signera med Trezor",
-      "connected": "Enhet ansluten",
-      "connect_button": "Anslut enhet"
-    },
     "buttons": {
       "continue": "Fortsätt",
       "confirm_send": "Bekräfta och skicka",

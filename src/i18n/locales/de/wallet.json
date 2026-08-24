@@ -427,11 +427,6 @@
       "label": "Notiz (optional)",
       "placeholder": "Wofür ist das?"
     },
-    "trezor": {
-      "toggle_label": "Mit Trezor signieren",
-      "connected": "Gerät verbunden",
-      "connect_button": "Gerät verbinden"
-    },
     "buttons": {
       "continue": "Weiter",
       "confirm_send": "Bestätigen & senden",

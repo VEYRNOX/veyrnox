@@ -427,11 +427,6 @@
       "label": "Observação (opcional)",
       "placeholder": "Para que é isto?"
     },
-    "trezor": {
-      "toggle_label": "Assinar com Trezor",
-      "connected": "Dispositivo conectado",
-      "connect_button": "Conectar dispositivo"
-    },
     "buttons": {
       "continue": "Continuar",
       "confirm_send": "Confirmar e enviar",

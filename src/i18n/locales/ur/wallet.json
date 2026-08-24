@@ -427,11 +427,6 @@
       "label": "نوٹ (اختیاری)",
       "placeholder": "یہ کس لیے ہے؟"
     },
-    "trezor": {
-      "toggle_label": "Trezor سے دستخط کریں",
-      "connected": "ڈیوائس جڑی ہوئی ہے",
-      "connect_button": "ڈیوائس جوڑیں"
-    },
     "buttons": {
       "continue": "جاری رکھیں",
       "confirm_send": "تصدیق کریں اور بھیجیں",

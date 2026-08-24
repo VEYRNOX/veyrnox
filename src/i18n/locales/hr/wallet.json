@@ -427,11 +427,6 @@
       "label": "Napomena (opcionalno)",
       "placeholder": "Za što je ovo?"
     },
-    "trezor": {
-      "toggle_label": "Potpiši Trezorom",
-      "connected": "Uređaj povezan",
-      "connect_button": "Poveži uređaj"
-    },
     "buttons": {
       "continue": "Nastavi",
       "confirm_send": "Potvrdi i pošalji",

@@ -61,7 +61,6 @@ vi.mock('react-i18next', () => ({
         'send.buttons.confirm_send': 'Confirm & Send',
         'send.buttons.back': 'Back',
         'send.verify.summary_label': 'Review',
-        'send.trezor.toggle_label': 'Use Trezor',
         'send.fee.automatic': 'Automatic fee',
         'send.wallet_fallback': 'Wallet',
       };
@@ -73,8 +72,6 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/components/BackButton', () => ({ default: () => <div /> }));
 vi.mock('@/components/SuccessBeacon', () => ({ default: () => <div /> }));
 vi.mock('@/components/RiskShield', () => ({ default: () => <div /> }));
-vi.mock('../components/hw/TrezorConnectModal.jsx', () => ({ TrezorConnectModal: () => null }));
-vi.mock('../components/hw/TrezorUnsupportedScreen.jsx', () => ({ TrezorUnsupportedScreen: () => <div /> }));
 vi.mock('@/components/ReferenceRateNote', () => ({ default: () => <div /> }));
 vi.mock('@/components/ReferralPrompt', () => ({ default: () => <div /> }));
 vi.mock('@/components/FeeSelector', () => ({ default: () => <div data-testid="fee-selector" /> }));
@@ -129,16 +126,6 @@ vi.mock('@/lib/haptics', () => ({
   successHaptic: vi.fn(),
   errorHaptic: vi.fn(),
   actionHaptic: vi.fn(),
-}));
-
-vi.mock('@/context/TrezorContext.jsx', () => ({
-  useTrezor: () => ({
-    connected: false,
-    platform: 'unsupported',
-    evmAddress: null,
-    btcAddress: null,
-    solAddress: null,
-  }),
 }));
 
 vi.mock('@/context/DigitalShieldContext', () => ({

@@ -427,11 +427,6 @@
       "label": "Nota (opsioneel)",
       "placeholder": "Waarvoor is dit?"
     },
-    "trezor": {
-      "toggle_label": "Onderteken met Trezor",
-      "connected": "Toestel verbind",
-      "connect_button": "Verbind toestel"
-    },
     "buttons": {
       "continue": "Gaan voort",
       "confirm_send": "Bevestig & Stuur",
