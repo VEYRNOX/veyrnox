@@ -207,7 +207,7 @@ describe('BuyInProgress — ship gate', () => {
 // alone does not satisfy it).
 describe('Buy pages — each consumes the deniability predicate itself', () => {
   for (const file of ['../BuyCrypto.jsx', '../BuyInProgress.jsx']) {
-    it(`${file.replace('../', '')} calls isDeniabilityOrDemoActive() outside its import`, () => {
+    it(`${file.startsWith('../') ? file.slice(3) : file} calls isDeniabilityOrDemoActive() outside its import`, () => {
       const calls = read(file)
         .split('\n')
         .filter((l) => /isDeniabilityOrDemoActive\s*\(/.test(l) && !/^\s*import\b/.test(l));
