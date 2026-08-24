@@ -27,8 +27,15 @@ class AndroidBiometricCachePlugin : Plugin() {
     private val prefsName = "veyrnox_android_biometric_cache"
     private val dataKey = "ciphertext_b64"
     private val ivKey = "iv_b64"
-    private val storageAlias = "com.veyrnox.app.biometricCacheStorage.v1"
-    private val invalidationAlias = "com.veyrnox.app.biometricCacheInvalidation.v1"
+    // Issue #2037 — separate pref keys for the unauth alias so a partial
+    // write / migration state cannot cross-contaminate the legacy blob. The
+    // pair is (dataUnauthKey, ivUnauthKey), read/written only by the
+    // *Unauth() plugin methods.
+    private val dataUnauthKey = "ciphertext_unauth_b64"
+    private val ivUnauthKey = "iv_unauth_b64"
+    private val storageAlias = AndroidBiometricCacheConfig.STORAGE_ALIAS
+    private val invalidationAlias = AndroidBiometricCacheConfig.INVALIDATION_ALIAS
+    private val storageUnauthAlias = AndroidBiometricCacheConfig.STORAGE_UNAUTH_ALIAS
 
     @PluginMethod
     fun isAvailable(call: PluginCall) {
@@ -117,6 +124,78 @@ class AndroidBiometricCachePlugin : Plugin() {
         }
     }
 
+    // ── Issue #2037 unauth-alias methods ─────────────────────────────────
+    //
+    // These read/write a SEPARATE Keystore alias built WITHOUT
+    // setUserAuthenticationRequired(true), and never touch the invalidation
+    // sentinel. Consumed ONLY by retrieveUnlockSecretDirect({ kekEnrolled:
+    // true }) in the JS layer — on a KEK vault the cached C alone is useless
+    // (DEK = HKDF(H ‖ C), H requires the StrongBox gate inside
+    // getHardwareFactor), so this path collapses the redundant second OS
+    // biometric prompt without downgrading anything the KEK contract holds.
+    //
+    // The auth-required flag is pinned by AndroidBiometricCacheConfigTest —
+    // a future edit that flips REQUIRES_USER_AUTH_UNAUTH to true trips the
+    // JVM test and blocks the PR.
+
+    @PluginMethod
+    fun putSecretUnauth(call: PluginCall) {
+        val ctx = context ?: run {
+            call.reject("Plugin context unavailable", "NO_CONTEXT")
+            return
+        }
+        if (!isSupported(ctx)) {
+            call.reject("Android biometric cache requires Android 11+ with BIOMETRIC_STRONG enrolled", "ANDROID_BIOMETRIC_CACHE_UNSUPPORTED")
+            return
+        }
+        val secret = call.getString("secret")
+        if (secret.isNullOrEmpty()) {
+            call.reject("Secret is required", "ANDROID_BIOMETRIC_CACHE_SECRET_REQUIRED")
+            return
+        }
+        try {
+            ensureUnauthStorageKey()
+            val encoded = encryptSecretWith(storageUnauthAlias, secret)
+            prefs(ctx).edit()
+                .putString(dataUnauthKey, encoded.first)
+                .putString(ivUnauthKey, encoded.second)
+                .commit()
+            call.resolve()
+        } catch (e: Exception) {
+            call.reject("putSecretUnauth failed: ${e.message}", "ANDROID_BIOMETRIC_CACHE_STORE_FAILED")
+        }
+    }
+
+    @PluginMethod
+    fun getSecretUnauth(call: PluginCall) {
+        val ctx = context ?: run {
+            call.reject("Plugin context unavailable", "NO_CONTEXT")
+            return
+        }
+        try {
+            val p = prefs(ctx)
+            val ctB64 = p.getString(dataUnauthKey, null)
+            val ivB64 = p.getString(ivUnauthKey, null)
+            if (ctB64.isNullOrEmpty() || ivB64.isNullOrEmpty()) {
+                // Fresh install / pre-#2037 vault. JS layer falls through to
+                // the auth-gated legacy read for migration; never synthesize
+                // a null password path.
+                call.resolve(JSObject().put("secret", null))
+                return
+            }
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(
+                Cipher.DECRYPT_MODE,
+                loadSecretKey(storageUnauthAlias),
+                GCMParameterSpec(128, Base64.decode(ivB64, Base64.NO_WRAP)),
+            )
+            val plaintext = cipher.doFinal(Base64.decode(ctB64, Base64.NO_WRAP))
+            call.resolve(JSObject().put("secret", String(plaintext, StandardCharsets.UTF_8)))
+        } catch (e: Exception) {
+            call.reject("getSecretUnauth failed: ${e.message}", "ANDROID_BIOMETRIC_CACHE_READ_FAILED")
+        }
+    }
+
     @PluginMethod
     fun clearSecret(call: PluginCall) {
         val ctx = context ?: run {
@@ -165,6 +244,19 @@ class AndroidBiometricCachePlugin : Plugin() {
         }
     }
 
+    private fun ensureUnauthStorageKey() {
+        val ks = keyStore()
+        if (ks.containsAlias(storageUnauthAlias)) return
+        // Same shape as the legacy storage key: AES-GCM 256, StrongBox
+        // preferred, but crucially requiresAuth = false — pinned by
+        // AndroidBiometricCacheConfig.REQUIRES_USER_AUTH_UNAUTH which the
+        // JVM tripwire asserts is false.
+        val requiresAuth = AndroidBiometricCacheConfig.REQUIRES_USER_AUTH_UNAUTH
+        if (!tryGenerateKey(storageUnauthAlias, requiresAuth = requiresAuth, preferStrongBox = true)) {
+            tryGenerateKey(storageUnauthAlias, requiresAuth = requiresAuth, preferStrongBox = false)
+        }
+    }
+
     private fun ensureInvalidationKey() {
         val ks = keyStore()
         if (ks.containsAlias(invalidationAlias)) return
@@ -204,9 +296,12 @@ class AndroidBiometricCachePlugin : Plugin() {
             ?: throw IllegalStateException("Missing key for alias $alias")
     }
 
-    private fun encryptSecret(secret: String): Pair<String, String> {
+    private fun encryptSecret(secret: String): Pair<String, String> =
+        encryptSecretWith(storageAlias, secret)
+
+    private fun encryptSecretWith(alias: String, secret: String): Pair<String, String> {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, loadSecretKey(storageAlias))
+        cipher.init(Cipher.ENCRYPT_MODE, loadSecretKey(alias))
         val ciphertext = cipher.doFinal(secret.toByteArray(StandardCharsets.UTF_8))
         val iv = cipher.iv ?: throw IllegalStateException("Cipher returned no IV")
         return Pair(
@@ -246,8 +341,15 @@ class AndroidBiometricCachePlugin : Plugin() {
     }
 
     private fun clearAllState(ctx: Context) {
-        prefs(ctx).edit().remove(dataKey).remove(ivKey).commit()
+        // Panic-wipe / disable / reset must sweep BOTH alias pairs so no
+        // ciphertext or Keystore key material survives on either path.
+        // I3 deniability + I4 fail-closed apply symmetrically.
+        prefs(ctx).edit()
+            .remove(dataKey).remove(ivKey)
+            .remove(dataUnauthKey).remove(ivUnauthKey)
+            .commit()
         deleteAliasIfPresent(storageAlias)
         deleteAliasIfPresent(invalidationAlias)
+        deleteAliasIfPresent(storageUnauthAlias)
     }
 }
