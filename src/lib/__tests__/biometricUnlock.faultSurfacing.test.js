@@ -35,7 +35,7 @@ vi.mock('@/wallet-core/keystore', () => ({
 
 vi.mock('@/plugins/androidBiometricCache.js', () => ({
   isAvailable: vi.fn(async () => ({ available: true })),
-  putSecret: vi.fn(async () => { h.calls.push('putSecret'); }),
+  putSecret: vi.fn(async (secret) => { h.calls.push('putSecret'); h.store = String(secret); }),
   putSecretUnauth: vi.fn(async () => { h.calls.push('putSecretUnauth'); }),
   getSecret: vi.fn(async () => {
     h.calls.push('getSecret');

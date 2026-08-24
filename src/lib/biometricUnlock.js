@@ -179,29 +179,55 @@ async function nativeReadSecret() {
 // re-persist to the unauth alias so the next unlock skips the prompt.
 async function nativeReadSecretUnauth() {
   if (isAndroidNativePlatform()) {
+    let cache;
     try {
-      const cache = await import('@/plugins/androidBiometricCache.js');
-      const available = await cache.isAvailable();
-      if (available?.available === true && typeof cache.getSecretUnauth === 'function') {
-        const s = await cache.getSecretUnauth();
-        if (s != null && String(s).length > 0) return String(s);
-        // Migration fallback: legacy vaults were written before the unauth
-        // alias existed. Read via the auth-gated path (which on the current
-        // Kotlin plugin does not itself fire a JS-layer prompt — the JS gate
-        // lives in retrieveUnlockSecret, not here) and dual-write for next
-        // time.
-        const legacy = await nativeReadSecret();
-        if (legacy != null && legacy.length > 0) {
-          try {
-            if (typeof cache.putSecretUnauth === 'function') {
-              await cache.putSecretUnauth(legacy);
-            }
-          } catch { /* migration best-effort; next unlock will retry */ }
-        }
-        return legacy;
-      }
+      cache = await import('@/plugins/androidBiometricCache.js');
     } catch {
-      // Fall through to the auth-gated path for compatibility.
+      // Plugin bundle import itself failed — degrade to the legacy path.
+      return nativeReadSecret();
+    }
+    let available;
+    try {
+      available = await cache.isAvailable();
+    } catch {
+      return nativeReadSecret();
+    }
+    if (available?.available === true && typeof cache.getSecretUnauth === 'function') {
+      // Issue #2039 H2 — distinguish "not present" (null return) from
+      // Keystore fault (throw). Null is a legit fresh install / pre-#2037
+      // migration state; throws are corrupt entry, alias clash, or
+      // KeyPermanentlyInvalidatedException and MUST NOT be swallowed —
+      // otherwise a wedged alias re-persists silently on every unlock.
+      let s;
+      try {
+        s = await cache.getSecretUnauth();
+      } catch (err) {
+        // Wipe BOTH aliases (Kotlin plugin's clearAllState() sweeps
+        // storageAlias, invalidationAlias, and storageUnauthAlias plus
+        // both pref pairs) and surface the fault.
+        try { await cache.clearSecret(); } catch { /* best-effort sweep */ }
+        const surfaced = new Error(
+          'AndroidBiometricCache unauth-alias read failed; cache wiped. '
+          + 'Underlying: ' + (err && err.message ? err.message : String(err)),
+        );
+        surfaced.code = 'BIOMETRIC_CACHE_UNAUTH_FAULT';
+        throw surfaced;
+      }
+      if (s != null && String(s).length > 0) return String(s);
+      // Migration fallback: legacy vaults were written before the unauth
+      // alias existed. Read via the auth-gated path (which on the current
+      // Kotlin plugin does not itself fire a JS-layer prompt — the JS gate
+      // lives in retrieveUnlockSecret, not here) and dual-write for next
+      // time.
+      const legacy = await nativeReadSecret();
+      if (legacy != null && legacy.length > 0) {
+        try {
+          if (typeof cache.putSecretUnauth === 'function') {
+            await cache.putSecretUnauth(legacy);
+          }
+        } catch { /* migration best-effort; next unlock will retry */ }
+      }
+      return legacy;
     }
   }
   return nativeReadSecret();
