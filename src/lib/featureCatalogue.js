@@ -1,6 +1,6 @@
 // src/lib/featureCatalogue.js
 //
-// FEATURE CATALOGUE — verified | roadmap.
+// FEATURE CATALOGUE — verified | built | roadmap.
 //
 // Scope contract: docs/WalletFeatures.spec.md. This catalogue lists ONLY
 // self-custody-safe, in-scope features. Everything in spec section C
@@ -18,9 +18,23 @@
 // now". Compliance posture for Buy lives in
 // docs/buy-uk-financial-promotions-checklist.md, not here.
 //
-// Two states:
-//   verified — shipped and working.
+// THREE states (see resolveStatus below):
+//   verified — a real, explorer-confirmed txid in docs/verified-evidence.json.
+//              Cannot be asserted by hand; resolveStatus downgrades an unbacked
+//              `verified` to `built`.
+//   built    — code shipped and working, no on-chain evidence yet.
 //   roadmap  — specced, not built.
+//
+// This is the SINGLE SOURCE for the user-facing catalogue. src/pages/
+// Documentation.jsx (/docs) renders it directly. It used to keep a second,
+// parallel list of its own with no evidence gate — merged 2026-08-24, and
+// src/pages/Features.jsx (the unrouted page that read this one) was deleted in
+// the same change. Do not re-fork it: a catalogue nobody renders is how the
+// honest one ended up being the dead one.
+//
+// `displayName` is optional and user-facing. `name` is the audit-stable key —
+// tests and verified-evidence entries are keyed on it, so rename via
+// displayName rather than editing name.
 import verifiedEvidence from '../../docs/verified-evidence.json';
 
 export const STATUS = Object.freeze({
@@ -84,6 +98,7 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Gas / Fee Control',
+        displayName: 'Network Fee Control',
         status: 'verified',
         summary: 'Per-chain fee tiers + custom before signing',
         explanation: 'Choose a fee tier (or set a custom fee) per chain before signing, using each chain’s native fee model (EIP-1559 for EVM, sat/vB for Bitcoin, priority fee for Solana). The selected fee flows into the signed transaction.',
@@ -101,6 +116,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'EVM Networks',
+        displayName: 'Ethereum-compatible Networks',
         status: 'verified',
         summary: 'Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain',
         explanation: 'Six EVM networks share one secp256k1 derivation and signing stack: Ethereum, Polygon, Arbitrum, Optimism, Avalanche, and BNB Chain. All verified on testnet; mainnet was unlocked 2026-06-17, with USDC/USDT mainnet sends confirmed on Ethereum (see Send Crypto).',
@@ -121,6 +137,7 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'ERC-20 Tokens',
+        displayName: 'Ethereum Token Standard (ERC-20) Tokens',
         status: 'verified',
         verifiedBy: 'USDC mainnet send (full UI path, build:release, Ethereum mainnet)',
         summary: 'USDC and USDT via the shared token path, mainnet-verified',
@@ -145,6 +162,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Passkey Unlock',
+        displayName: 'FIDO2 Passkey Unlock',
         status: 'verified',
         summary: 'FIDO2 / WebAuthn unlock + cloned authenticator detection (M-K)',
         explanation: 'Unlock the app with a platform passkey (FIDO2 / WebAuthn). This is an unlock gate parallel to the password - it never holds or replaces the wallet keys, and a password escape hatch remains. M-K (cloned authenticator detection): WebAuthn assertions include a signCount that must strictly increase to detect replayed assertions from cloned or backed-up soft authenticators. Implementation: signCount persisted in localStorage, validated on each assertion (rejects if signCount does not increase), fail-closed on validation errors (I4 invariant). Status: BUILT 2026-06-30, ready for device verification with real cloned authenticator test.',
@@ -158,7 +176,7 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'PIN Unlock',
         status: 'verified',
-        summary: 'Numeric-PIN unlock over Argon2id (no hardware KEK yet)',
+        summary: "Numeric PIN onboarding and unlock with strong on-device encryption. On its own, a PIN can be repeatedly tried if someone extracts your device's storage; turning on Hardware Key Protection (off by default) closes that gap.",
         explanation: 'Built; the ECC independent review (2026-06-23) covered the PIN/Argon2id path with no findings (§24 satisfied). Numeric-PIN onboarding and returning-PIN unlock over the SAME Argon2id vault as the password path. Deniability model v2: real PIN opens the hidden real wallet; duress PIN opens the decoy; Face ID (opt-in) opens the decoy, never the real wallet; any other wrong PIN returns an explicit "Incorrect PIN" error (the old deterministic-decoy / no-oracle fallback was removed by design). 10 consecutive wrong PINs trigger an irreversible local wipe (pinAttemptGuard.js). HONEST LIMITATION: there is no hardware-bound key (Secure Enclave / StrongBox KEK) yet — a numeric PIN over Argon2id is offline-exhaustible on a seized device (the 10-attempt counter is a software counter, bypassable by imaging the storage). This residual gap is native, not review-related: the hardware-KEK fast-follow (a native build, real-device-verified, plus its own key-at-rest review pass since it expands crypto scope) is what closes it — it was out of reach of the source-level §24 review. Until then this is a convenience unlock gate with a wipe-on-brute-force mitigation, not a hardware guarantee.',
       },
       {
@@ -170,8 +188,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Native Secure Storage',
+        displayName: 'Hardware Key Protection',
         status: 'verified',
-        summary: 'iOS Secure Enclave ECIES + Android Keystore HMAC-SHA256 (StrongBox-preferred, TEE-accepted) KEK — device-verified (PARTIAL), internal review only, NOT independently reviewed',
+        summary: "Optional, off-by-default protection that ties your vault's encryption key to your device's secure hardware (iOS Secure Enclave or Android's secure hardware, using the strongest option your device supports). Once turned on, your PIN alone is no longer enough — the vault also needs your device's secure hardware to unlock. Checked by internal review only, NOT independently reviewed.",
         explanation: 'Built. Native hardware Key-Encryption-Key that wraps the PIN-derived vault DEK under KEK = HKDF-SHA256(H ‖ C) + AES-256-GCM, so an offline-seized vault blob cannot be PIN-exhausted without the device: the hardware factor H is released only per-use behind biometric auth and never leaves the secure element. iOS: Secure Enclave P-256 ECIES (non-extractable key, .biometryCurrentSet biometric ACL) shipped as a native Objective-C plugin (PR #495, registration blocker resolved via the two-file CAPPlugin split) and device-verified (PARTIAL) on iPhone 17 Pro Max. Android: AndroidKeyStore HMAC-SHA256, StrongBox-preferred but NOT enforced (honest tier reporting), device-verified on Pixel 10 Pro XL. NOT "verified": the iOS biometric re-enrollment invalidation test (Android PASSED 2026-07-01, Pixel 10 Pro XL) and the live iOS SE-unlock trace remain outstanding. OPEN GAP — StrongBox tier enforcement (TARGET, not built): non-StrongBox TEE keys are accepted (StrongBox preferred but not required); SOFTWARE/unknown tiers are already refused fail-closed (M2, KEK_ENROLL_INSECURE_TIER) so a software-only key can never enroll. Requiring StrongBox over TEE is a device-coverage-vs-assurance tradeoff. This is a distinct open residual gate, NOT the C-1 finding: the C-1 CRITICAL (global-fixed HMAC input / missing per-enrollment kekSalt binding) is FIXED / device-verified (v3, 2026-07-05, PR #568). REVIEW STATUS: internal static-analysis pass only (2026-07-01); NOT an independent review; "internal" must never be presented as "independent" (I4). An independent review is required before this control can be promoted. See docs/Feature-Status.md §4.',
       },
       {
@@ -189,7 +208,7 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Hardware Wallet',
         status: 'verified',
-        summary: 'Digital Shield — air-gapped QR cold-key signing for ETH, BTC, SOL',
+        summary: 'Digital Shield air-gapped QR signing — cold-key address derivation and transaction signing for ETH, BTC, and SOL. Private keys never leave the hardware device. Built and code-reviewed; not yet tested against a physical Digital Shield device.',
         explanation: 'Built (/hardware-wallet): Digital Shield is the sole hardware-wallet path (Trezor and Ledger removed 2026-08-24 — the Trezor WebUSB bundle crashed the iOS webview Send page). Imports public account data via a crypto-multi-accounts UR QR, builds unsigned PSBT/EVM/SOL requests, and finalizes them from a scanned or pasted signed-response QR. Private key never leaves the air-gapped device (I1). Deniability sessions block Digital Shield calls the same way the removed Trezor path did, via the in-memory deniabilitySession marker (wallet-core/deniabilitySession.js), fail-closed (I3). Built, not device-verified — no physical-device txid. ERC-20 hardware signing and multi-account paths not yet wired.',
       },
     ],
@@ -217,6 +236,7 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Calldata Decode & Approval Guard',
+        displayName: 'Transaction Data Decode & Approval Guard',
         status: 'verified',
         summary: 'Human-readable calldata before signing',
         explanation: 'Opaque transaction calldata is decoded into a structured, human-verifiable summary — including unlimited-approval detection — shown on the confirm screen before any signature. Holds no keys; inspects bytes only.',
@@ -281,6 +301,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'RASP',
+        displayName: 'Runtime Protection',
         status: 'verified',
         summary: 'Runtime environment detection + graduated degradation',
         explanation: 'Built — UI-confirmed. Browser-level detection active: navigator.webdriver + legacy automation fingerprints → HOOKED → signing blocked. Normal browser → CLEAN → ALLOW (no friction). Degradation policy (condition → tier) and I3 response-symmetry guard built + tested in src/rasp/. Wired to the send path via detect(browserProbeSource) → degrade() → presignGate(). The ECC independent audit (2026-06-23) confirmed the browser-level lane genuinely blocks (not merely warns) at the wired send call-site with no network egress (I2/I3 clean), and that VITE_DEV_UNGATE_SEND cannot bypass it; the only fix was stale "NOT WIRED" comments (M-4, PR #340). The OS-level probes (root/jailbreak/tamper/emulator) are implemented in a native Capacitor plugin (RaspIntegrityPlugin) and run in the same pre-sign gate; they were device-exercised on Android (internal verification, not independently audited).',
@@ -435,7 +456,7 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Referral Tracker',
         status: 'verified',
-        summary: 'Local referral-code tracking (conditional backend egress)',
+        summary: "Share your referral code to earn rewards; tier-based commissions and discounts apply to eligible paid subscriptions, including Safety Plus and AI Security Protection. Using this feature sends your referral code, chosen plan, and purchase/discount amounts to VEYRNOX's servers so earnings can be tracked — the referral service never receives your balances, your wallet addresses, or your seed phrase. Claiming a payout is separate and opens an email you write yourself, so you choose what payment details to include.",
         explanation: 'Built (/referrals). Generates a random referral code (crypto.getRandomValues — NOT seed-derived) and tracks code / tier / redeemed state in localStorage. Local-only by default: with no referral backend configured the network calls no-op. If VITE_SUPABASE_URL / ANON_KEY are set at build time, register/redeem/status send the referral code (not balances or seed) to that external backend — an opt-in egress, disclosed here per I2. Public ranking and public profiles remain cut on principle.',
       },
     ],
@@ -528,12 +549,14 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'iOS App',
+        displayName: 'iOS App Store',
         status: 'roadmap',
         summary: 'Native iOS shell — TestFlight internal testing',
         explanation: 'Built. Native iOS shell via Capacitor, published to TestFlight (1.0.1 Build 11, READY_FOR_BETA_TESTING). Apple Organisation account (Veyrnox LTD, Team R54268MWFV) verified. CLI archive + upload pipeline working (xcodebuild + altool). App Store review submission on hold pending pre-submission verification checklist (fresh-device golden-path walk, Organizer crash/hang check). NOT verified: no App Store review submission made, RASP on a TestFlight install not device-verified.',
       },
       {
         name: 'Android App',
+        displayName: 'Android Play Store',
         status: 'roadmap',
         summary: 'Native Android shell — Play internal testing',
         explanation: 'Built. Native Android shell via Capacitor, current submission train 1.0.1 / versionCode 10 with Play internal-testing upload path wired in CI. Upload key reset completed. Play Billing (IAP) device-verified on the internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). Submission remains on hold pending the pre-submission verification checklist (Play Pre-launch report, Android Vitals crash/ANR check, fresh-device golden-path walk). NOT verified: a clean Pre-launch report for versionCode 10 is still console-only and pending, RASP on a Play install not device-verified, no production review submission made.',
@@ -549,6 +572,23 @@ export const FEATURE_CATEGORIES = [
         status: 'verified',
         summary: 'Hands-free, read-only navigation',
         explanation: 'Built (/voice-commands). Voice navigation via the native @capacitor-community/speech-recognition plugin (Android SpeechRecognizer), with a Web Speech API fallback on web: recognises a fixed command set (go to dashboard, check balance, etc.) and navigates the app. Read-only navigation only — never initiates or signs transactions by voice. Transcription happens off-device on the platform speech service (Google on Android), and voice is disabled when locked or in a deniability/duress session (I3, fail closed).',
+      },
+    ],
+  },
+  {
+    // Carried over from Documentation.jsx's own catalogue when the two were
+    // merged (2026-08-24). This was the ONE category the parallel list had that
+    // this one did not — everything else was a rename. Without it the merge
+    // would have silently dropped the only place the app tells a user what it
+    // charges for.
+    category: 'Subscriptions',
+    features: [
+      {
+        name: 'Free & Safety Plus Plans',
+        displayName: 'Free & Safety Plus Plans',
+        status: 'verified',
+        summary: 'Optional paid tier — the only fee Veyrnox charges',
+        explanation: 'Built (/plans). Optional Free and Safety Plus plans gate a subset of features; Safety Plus is billed monthly or annually through the platform store (Apple / Google / Samsung) via RevenueCat, and it is the only fee Veyrnox charges. Self-custody is never gated: keys, send, receive, backup, duress and panic wipe all work on the free tier. NOT verified: no real purchase has been completed on any store, so the billing path is built and store-configured but unproven end-to-end.',
       },
     ],
   },
