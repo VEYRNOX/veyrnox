@@ -105,6 +105,17 @@ async function nativeStore(pw) {
       const available = await cache.isAvailable();
       if (available?.available === true) {
         await cache.putSecret(pw);
+        // Issue #2037 — dual-write to the unauth alias so the KEK-direct read
+        // path (retrieveUnlockSecretDirect) finds the secret on the next
+        // unlock without triggering a redundant OS prompt. Best-effort: if the
+        // unauth alias is unavailable (older plugin build, transient Keystore
+        // failure) the auth-gated fallback in nativeReadSecretUnauth still
+        // finds the secret, so we never fail the write on this side.
+        try {
+          if (typeof cache.putSecretUnauth === 'function') {
+            await cache.putSecretUnauth(pw);
+          }
+        } catch { /* unauth cache unavailable; migration path handles this on read */ }
         return;
       }
     } catch {
@@ -142,6 +153,44 @@ async function nativeReadSecret() {
   // Guard against empty-string returns from Android SecureStorage (missing/corrupt
   // entry returns "" rather than null on some plugin versions — empty is no-secret).
   return (s != null && s.length > 0) ? s : null;
+}
+
+// PRIVATE unauth-alias read — releases the cached PLAINTEXT password WITHOUT
+// firing an OS biometric prompt. Only safe to call from the KEK-enrolled unlock
+// path (retrieveUnlockSecretDirect({ kekEnrolled: true })); see the security
+// contract on that export. Fail-closed migration behaviour: if the unauth alias
+// returns null (fresh install, first unlock after upgrade, alias not yet
+// present) we fall through to nativeReadSecret() so wrong-PIN / no-secret
+// semantics stay identical for the caller. On a successful fallback we
+// re-persist to the unauth alias so the next unlock skips the prompt.
+async function nativeReadSecretUnauth() {
+  if (isAndroidNativePlatform()) {
+    try {
+      const cache = await import('@/plugins/androidBiometricCache.js');
+      const available = await cache.isAvailable();
+      if (available?.available === true && typeof cache.getSecretUnauth === 'function') {
+        const s = await cache.getSecretUnauth();
+        if (s != null && String(s).length > 0) return String(s);
+        // Migration fallback: legacy vaults were written before the unauth
+        // alias existed. Read via the auth-gated path (which on the current
+        // Kotlin plugin does not itself fire a JS-layer prompt — the JS gate
+        // lives in retrieveUnlockSecret, not here) and dual-write for next
+        // time.
+        const legacy = await nativeReadSecret();
+        if (legacy != null && legacy.length > 0) {
+          try {
+            if (typeof cache.putSecretUnauth === 'function') {
+              await cache.putSecretUnauth(legacy);
+            }
+          } catch { /* migration best-effort; next unlock will retry */ }
+        }
+        return legacy;
+      }
+    } catch {
+      // Fall through to the auth-gated path for compatibility.
+    }
+  }
+  return nativeReadSecret();
 }
 
 // PRIVATE presence check — metadata only (lists keys, never reads the value), so
@@ -331,7 +380,7 @@ export async function retrieveUnlockSecretDirect(assert) {
     );
   }
   if (DEMO) return demoGet();
-  if (Capacitor.isNativePlatform()) return nativeReadSecret();
+  if (Capacitor.isNativePlatform()) return nativeReadSecretUnauth();
   return null;
 }
 
