@@ -26,6 +26,16 @@ const h = vi.hoisted(() => ({
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true } }));
 
+// C2 (#2039) — retrieveUnlockSecretDirect now itself verifies
+// keyStore.hasVaultKekWrap() instead of trusting caller-attested
+// { kekEnrolled: true }. Stub the keystore so this suite (which focuses on the
+// biometric-gate contract, not the KEK-verify contract) can keep exercising
+// the direct read path. The wrap-verify semantics are pinned separately in
+// biometricUnlock.kekSinglePrompt.test.js and biometricUnlock.storeGating.test.js.
+vi.mock('@/wallet-core/keystore', () => ({
+  getKeyStore: () => ({ hasVaultKekWrap: async () => true }),
+}));
+
 vi.mock('@aparajita/capacitor-secure-storage', () => ({
   KeychainAccess: { whenPasscodeSetThisDeviceOnly: 4 },
   SecureStorage: {

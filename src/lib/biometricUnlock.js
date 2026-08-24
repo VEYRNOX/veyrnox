@@ -105,17 +105,31 @@ async function nativeStore(pw) {
       const available = await cache.isAvailable();
       if (available?.available === true) {
         await cache.putSecret(pw);
-        // Issue #2037 — dual-write to the unauth alias so the KEK-direct read
-        // path (retrieveUnlockSecretDirect) finds the secret on the next
-        // unlock without triggering a redundant OS prompt. Best-effort: if the
-        // unauth alias is unavailable (older plugin build, transient Keystore
-        // failure) the auth-gated fallback in nativeReadSecretUnauth still
-        // finds the secret, so we never fail the write on this side.
+        // Issue #2039 C1 — dual-write to the unauth alias ONLY when the vault is
+        // KEK-wrapped. On a KEK vault the cached PIN is the C-factor of DEK =
+        // HKDF(H ‖ C) and H is producible only inside a StrongBox-gated Secure
+        // Enclave op; the cached C alone is useless, so an unauth-alias entry
+        // (whose read path skips the biometric prompt) is safe. On a NON-KEK
+        // vault the cached PIN IS the vault password and the unauth alias
+        // would strip the SOLE biometric gate — do NOT write it there.
+        // hasVaultKekWrap() is consulted at write time; a caller-attested
+        // "isEnrolled" flag would not be trustworthy here.
+        // Fail-closed: any probe failure is treated as NOT wrapped.
+        let kekWrapped = false;
         try {
-          if (typeof cache.putSecretUnauth === 'function') {
-            await cache.putSecretUnauth(pw);
-          }
-        } catch { /* unauth cache unavailable; migration path handles this on read */ }
+          const { getKeyStore } = await import('@/wallet-core/keystore');
+          const ks = getKeyStore();
+          kekWrapped = typeof ks.hasVaultKekWrap === 'function'
+            ? (await ks.hasVaultKekWrap()) === true
+            : false;
+        } catch { kekWrapped = false; }
+        if (kekWrapped) {
+          try {
+            if (typeof cache.putSecretUnauth === 'function') {
+              await cache.putSecretUnauth(pw);
+            }
+          } catch { /* unauth cache unavailable; migration path handles this on read */ }
+        }
         return;
       }
     } catch {
@@ -165,29 +179,55 @@ async function nativeReadSecret() {
 // re-persist to the unauth alias so the next unlock skips the prompt.
 async function nativeReadSecretUnauth() {
   if (isAndroidNativePlatform()) {
+    let cache;
     try {
-      const cache = await import('@/plugins/androidBiometricCache.js');
-      const available = await cache.isAvailable();
-      if (available?.available === true && typeof cache.getSecretUnauth === 'function') {
-        const s = await cache.getSecretUnauth();
-        if (s != null && String(s).length > 0) return String(s);
-        // Migration fallback: legacy vaults were written before the unauth
-        // alias existed. Read via the auth-gated path (which on the current
-        // Kotlin plugin does not itself fire a JS-layer prompt — the JS gate
-        // lives in retrieveUnlockSecret, not here) and dual-write for next
-        // time.
-        const legacy = await nativeReadSecret();
-        if (legacy != null && legacy.length > 0) {
-          try {
-            if (typeof cache.putSecretUnauth === 'function') {
-              await cache.putSecretUnauth(legacy);
-            }
-          } catch { /* migration best-effort; next unlock will retry */ }
-        }
-        return legacy;
-      }
+      cache = await import('@/plugins/androidBiometricCache.js');
     } catch {
-      // Fall through to the auth-gated path for compatibility.
+      // Plugin bundle import itself failed — degrade to the legacy path.
+      return nativeReadSecret();
+    }
+    let available;
+    try {
+      available = await cache.isAvailable();
+    } catch {
+      return nativeReadSecret();
+    }
+    if (available?.available === true && typeof cache.getSecretUnauth === 'function') {
+      // Issue #2039 H2 — distinguish "not present" (null return) from
+      // Keystore fault (throw). Null is a legit fresh install / pre-#2037
+      // migration state; throws are corrupt entry, alias clash, or
+      // KeyPermanentlyInvalidatedException and MUST NOT be swallowed —
+      // otherwise a wedged alias re-persists silently on every unlock.
+      let s;
+      try {
+        s = await cache.getSecretUnauth();
+      } catch (err) {
+        // Wipe BOTH aliases (Kotlin plugin's clearAllState() sweeps
+        // storageAlias, invalidationAlias, and storageUnauthAlias plus
+        // both pref pairs) and surface the fault.
+        try { await cache.clearSecret(); } catch { /* best-effort sweep */ }
+        const surfaced = new Error(
+          'AndroidBiometricCache unauth-alias read failed; cache wiped. '
+          + 'Underlying: ' + (err && err.message ? err.message : String(err)),
+        );
+        surfaced.code = 'BIOMETRIC_CACHE_UNAUTH_FAULT';
+        throw surfaced;
+      }
+      if (s != null && String(s).length > 0) return String(s);
+      // Migration fallback: legacy vaults were written before the unauth
+      // alias existed. Read via the auth-gated path (which on the current
+      // Kotlin plugin does not itself fire a JS-layer prompt — the JS gate
+      // lives in retrieveUnlockSecret, not here) and dual-write for next
+      // time.
+      const legacy = await nativeReadSecret();
+      if (legacy != null && legacy.length > 0) {
+        try {
+          if (typeof cache.putSecretUnauth === 'function') {
+            await cache.putSecretUnauth(legacy);
+          }
+        } catch { /* migration best-effort; next unlock will retry */ }
+      }
+      return legacy;
     }
   }
   return nativeReadSecret();
@@ -380,7 +420,32 @@ export async function retrieveUnlockSecretDirect(assert) {
     );
   }
   if (DEMO) return demoGet();
-  if (Capacitor.isNativePlatform()) return nativeReadSecretUnauth();
+  if (Capacitor.isNativePlatform()) {
+    // Issue #2039 C2 — verify hasVaultKekWrap() in-function, do NOT trust the
+    // caller's kekEnrolled hint alone. A buggy or hostile caller that passes
+    // { kekEnrolled: true } on a NON-KEK vault would otherwise bypass the SOLE
+    // biometric gate (auth-gated cache read) with no OS prompt. The caller's
+    // flag is now a hint; the keystore is the source of truth. If a legit
+    // caller reasonably passes it and it does not hold, that is a bug the
+    // caller needs to hear about — throw, do not silently degrade.
+    let kekWrapped = false;
+    try {
+      const { getKeyStore } = await import('@/wallet-core/keystore');
+      const ks = getKeyStore();
+      kekWrapped = typeof ks.hasVaultKekWrap === 'function'
+        ? (await ks.hasVaultKekWrap()) === true
+        : false;
+    } catch { kekWrapped = false; }
+    if (!kekWrapped) {
+      throw new Error(
+        'retrieveUnlockSecretDirect: hasVaultKekWrap() did not confirm a KEK-wrapped vault. '
+        + 'The kekEnrolled assertion is a hint, not the gate — this function itself checks '
+        + 'the keystore because the unauth cache read has no OS prompt. Refusing to release '
+        + 'the cached secret.',
+      );
+    }
+    return nativeReadSecretUnauth();
+  }
   return null;
 }
 
