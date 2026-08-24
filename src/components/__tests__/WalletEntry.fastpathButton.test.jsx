@@ -29,7 +29,13 @@ vi.mock('@/lib/biometricUnlock', () => ({
   hasStoredUnlockSecret: vi.fn(async () => false),
   clearUnlockSecret: vi.fn(async () => {}),
 }));
-vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
+const isPasskeyRegisteredMock = vi.fn(() => false);
+vi.mock('@/lib/passkey', () => ({
+  isPasskeyGateError: vi.fn(() => false),
+  isPasskeyRegistered: (...a) => isPasskeyRegisteredMock(...a),
+  PASSKEY_GATE_MESSAGES: {},
+  PASSKEY_ESCAPE_HATCH_BLURBS: {},
+}));
 vi.mock('@/wallet-core/duress', () => ({ hasDuressVault: vi.fn(async () => true) }));
 
 // ANDROID native platform.
@@ -75,6 +81,7 @@ beforeEach(() => {
   // WalletEntry hasVault effect). Set the marker so we reach the 'unlock' view.
   try { localStorage.setItem('veyrnox-auth-model', 'pin'); } catch { /* shimmed */ }
   setDeniabilitySession(false);
+  isPasskeyRegisteredMock.mockReturnValue(false);
 });
 afterEach(() => { cleanup(); setDeniabilitySession(false); });
 
@@ -99,6 +106,15 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
     localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
     setDeniabilitySession(true);
     vi.mocked(useWallet).mockReturnValue(makeCtx({ isDecoy: true }));
+    render(<MemoryRouter><WalletEntry /></MemoryRouter>);
+    await waitForPinPad();
+    expect(screen.queryByTestId(FASTPATH_BUTTON_TESTID)).toBeNull();
+  });
+
+  it('passkey registered → button hidden (owner ruling — passkey stays the sole biometric-adjacent factor)', async () => {
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    isPasskeyRegisteredMock.mockReturnValue(true);
+    vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
     expect(screen.queryByTestId(FASTPATH_BUTTON_TESTID)).toBeNull();

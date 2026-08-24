@@ -104,7 +104,7 @@ import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { isFastpathEnabled, shouldShowFastpathWarmingHint } from "@/lib/fastpathUnlock";
 import { useWallet } from "@/lib/WalletProvider";
-import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS } from "@/lib/passkey";
+import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS, isPasskeyRegistered } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
 import {
   isBiometricGateError,
@@ -1613,7 +1613,7 @@ export default function WalletEntry() {
   if (view === "unlock" && authModel === "pin") {
     const bioLabel = bioStatus?.label || "Face ID";
     // FAST-PATH BIOMETRIC UNLOCK BUTTON (#2019). PARALLEL to the PIN pad — never
-    // replaces PIN entry. Four AND-gates below; missing any → button not rendered
+    // replaces PIN entry. FIVE AND-gates below; missing any → button not rendered
     // (fail-closed visibility). Uses Capacitor.getPlatform() (not
     // isNativePlatform) because the fast-path keystore branch is Android-only
     // (StrongBox/TEE aliased key). On tap: unlockBiometricOnly() opens the
@@ -1621,11 +1621,17 @@ export default function WalletEntry() {
     // stays visible (I4). Duress/panic/wrong-PIN still route only through the
     // PIN keypad's runPinUnlock → unlock() path — this branch never carries a
     // password.
+    //
+    // isPasskeyRegistered() gate: owner ruling — a user with a passkey enrolled
+    // has explicitly chosen a stronger unlock factor. Fast-path bypasses the
+    // passkey gate (no runPasskeyGate() call), so hiding the button preserves
+    // the passkey's role. Users who want fast-path unenrol the passkey first.
     const fastpathButtonVisible = (
       Capacitor.getPlatform?.() === 'android'
       && isFastpathEnabled()
       && bioStatus?.available === true
       && !isDeniabilityOrDemoActive()
+      && !isPasskeyRegistered()
     );
     const fastpathLabel = bioStatus?.label ? `Unlock with ${bioStatus.label}` : 'Unlock with biometric';
     const handleFastpathUnlock = async () => {

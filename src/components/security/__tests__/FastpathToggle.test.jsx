@@ -87,6 +87,18 @@ describe('FastpathToggle', () => {
     expect(container.textContent).toBe('');
     expect(screen.queryByTestId('fastpath-toggle')).toBeNull();
   });
+
+  it('passkey registered: renders null (owner ruling — passkey users hidden from fast-path)', async () => {
+    // Simulate an enrolled passkey by writing the public-handle record shape
+    // getRegisteredPasskey() expects (id:string is the presence test).
+    localStorage.setItem(
+      'veyrnox-passkey-cred',
+      JSON.stringify({ id: 'test-cred-id', rpId: 'veyrnox.com', label: 't', simulated: true, createdAt: Date.now() }),
+    );
+    const { container } = render(<FastpathToggle />);
+    expect(container.textContent).toBe('');
+    expect(screen.queryByTestId('fastpath-toggle')).toBeNull();
+  });
 });
 
 describe('FastpathToggle — non-Android hidden', () => {

@@ -24,12 +24,17 @@ import {
   markFastpathDisclosureSeen,
 } from '@/lib/fastpathUnlock';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+import { isPasskeyRegistered } from '@/lib/passkey';
 
 export default function FastpathToggle() {
   // Read guard placed at render (not module top) so the deniability state at
   // click-time is what matters, not the state at import-time.
   if (isDeniabilityOrDemoActive()) return null;
   if (Capacitor.getPlatform?.() !== 'android') return null;
+  // Owner ruling: users with a passkey enrolled have chosen a stronger unlock
+  // factor. Fast-path bypasses the passkey gate at unlock, so we do not offer
+  // the toggle to those users. Unenrol the passkey first to enable fast-path.
+  if (isPasskeyRegistered()) return null;
 
   const [enabled, setEnabled] = useState(() => isFastpathEnabled());
   const [showDisclosure, setShowDisclosure] = useState(false);
