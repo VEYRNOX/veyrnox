@@ -270,7 +270,8 @@ async function nativeHasSecret() {
 // cancel/failure/lockout so the secret is never read on a failed match.
 async function nativeAuthenticateOrThrow() {
   const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
-  const info = await BiometricAuth.checkBiometry();
+  const { getCachedBiometry } = await import('./biometricProbe.js');
+  const info = (await getCachedBiometry()) ?? { isAvailable: false, deviceIsSecure: false };
 
   // No device security at all → a passcode-gated item cannot have been stored,
   // and there is nothing to authenticate against.
