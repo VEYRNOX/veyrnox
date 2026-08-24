@@ -17,12 +17,29 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { FEATURE_CATEGORIES as CATALOGUE } from '../lib/featureCatalogue';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (rel) => readFileSync(resolve(here, '..', rel), 'utf8');
 const rendered = (rel) => read(rel).replace(/\s+/g, ' ');
 
-const page = rendered('pages/Documentation.jsx');
+// The copy the page RENDERS now lives in two files: the page's own prose
+// (headings, legend, workflow sections) and the feature descriptions, which
+// moved into src/lib/featureCatalogue.js when the two parallel catalogues were
+// merged on 2026-08-24. These assertions are about what a USER SEES, so they
+// read both — otherwise moving a caveat between the two files would silently
+// drop it while the suite stayed green.
+// IMPORTANT: this is the page's own prose PLUS only the catalogue fields the
+// page actually RENDERS — `displayName`/`name` and `summary`. It deliberately
+// excludes `explanation`, which is the audit voice and is not shown to users
+// (see the note in Documentation.jsx). Including the whole catalogue file would
+// make every negative assertion below fire on text no user can see.
+const renderedCatalogueCopy = CATALOGUE
+  .flatMap((c) => c.features.map((f) => `${f.displayName ?? f.name} ${f.summary ?? ''}`))
+  .join(' ')
+  .replace(/\s+/g, ' ');
+
+const page = rendered('pages/Documentation.jsx') + ' ' + renderedCatalogueCopy;
 
 describe('Documentation page — restored honesty caveats (S-1)', () => {
   it('PIN Unlock discloses that a PIN alone can be repeatedly tried if device storage is extracted', () => {
@@ -90,9 +107,18 @@ describe('Documentation page — restored honesty caveats (S-1)', () => {
     expect(page).not.toContain('your balances, addresses, and seed phrase are never sent');
   });
 
-  it('status legend explains what "Available" means and disclaims independent review', () => {
-    expect(page).toContain('means shipped and working today');
-    expect(page).toContain("not an independent security review");
+  // The legend gained a third state on 2026-08-24 (verified | built | roadmap),
+  // so the label being explained changed from "Available" to "Built". The
+  // load-bearing half is unchanged and still pinned: the page must say these
+  // labels are not an independent security review.
+  it('status legend explains the shipped-and-working label and disclaims independent review', () => {
+    expect(page).toContain('the code is shipped and working');
+    expect(page).toContain('not an independent security review');
+  });
+
+  it('the legend explains that verified is earned by on-chain evidence, not by inspection', () => {
+    expect(page).toContain('explorer-confirmed transaction proves it');
+    expect(page).toContain('can never turn a feature green');
   });
 });
 
@@ -122,6 +148,28 @@ describe('Documentation page — jargon-free (I4 / PR #1243 goal preserved)', ()
       expect(src).not.toMatch(pattern);
     });
   }
+
+  // The gap this closes: since 2026-08-24 the descriptions are rendered from
+  // featureCatalogue.js, so the scan above no longer covers the copy a user
+  // reads. The catalogue's `explanation` fields are the audit voice and carry
+  // 39 hits across 10 of these patterns — which is exactly why the page renders
+  // `summary` ONLY. This asserts the rendered field stays clean, so a future
+  // edit cannot leak audit prose onto the page through the catalogue.
+  it('every rendered summary is free of internal jargon', () => {
+    const offenders = [];
+    for (const cat of CATALOGUE) {
+      for (const f of cat.features) {
+        const text = `${f.displayName ?? f.name} ${f.summary ?? ''}`;
+        // "Samsung Galaxy Store" is the store's actual public name and is what
+        // a user needs to read; the banned pattern targets DEVICE names.
+        const scrubbed = text.replace(/Samsung Galaxy Store/g, 'that store');
+        for (const pattern of bannedPatterns) {
+          if (pattern.test(scrubbed)) offenders.push(`${f.name}: ${pattern}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
 });
 
 describe('Documentation page — zero storage writes / zero network calls (static reference screen)', () => {
