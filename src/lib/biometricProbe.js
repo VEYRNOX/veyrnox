@@ -29,6 +29,7 @@
  * render their own honest UI ("Biometrics unavailable" etc.).
  */
 
+/** @type {Promise<{ isAvailable: boolean, deviceIsSecure: boolean } | null> | null} */
 let cachedPromise = null;
 
 /**
