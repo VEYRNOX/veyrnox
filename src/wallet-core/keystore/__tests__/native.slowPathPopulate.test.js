@@ -65,10 +65,17 @@ vi.mock('@/plugins/androidBiometricCache', () => ({
   putFastpathDek, getFastpathDek, clearFastpathDek,
 }));
 
-// Gate mocks — control isFastpathEnabled / isDeniabilityOrDemoActive per test.
+// Gate mocks — control isFastpathEnabled / hasSeenFastpathDisclosure /
+// isDeniabilityOrDemoActive per test. Under the default-ON reversal, populate
+// must be gated on BOTH the tri-state enabled read AND the disclosure marker
+// — a fresh install returns enabled=true from the default flip, but the
+// informed-consent chokepoint must suppress warming until the first-run card
+// has been acknowledged.
 const isFastpathEnabledMock = vi.fn(() => true);
+const hasSeenFastpathDisclosureMock = vi.fn(() => true);
 vi.mock('@/lib/fastpathUnlock.js', () => ({
   isFastpathEnabled: () => isFastpathEnabledMock(),
+  hasSeenFastpathDisclosure: () => hasSeenFastpathDisclosureMock(),
   FASTPATH_ENABLED_STORAGE_KEY: 'veyrnox-fastpath-enabled',
   FASTPATH_DISCLOSURE_SEEN_KEY: 'veyrnox-fastpath-disclosure-seen',
 }));
@@ -107,6 +114,7 @@ beforeEach(async () => {
   getFastpathDek.mockClear();
   clearFastpathDek.mockClear();
   isFastpathEnabledMock.mockReturnValue(true);
+  hasSeenFastpathDisclosureMock.mockReturnValue(true);
   isDeniabilityOrDemoActiveMock.mockReturnValue(false);
   isPasskeyRegisteredMock.mockReturnValue(false);
   raspTierMock.mockResolvedValue({ tier: 'allow' });
@@ -132,6 +140,18 @@ describe('slow-path fast-path populate (issue #2019 Option 1)', () => {
 
   it('does NOT populate when opt-in is OFF', async () => {
     isFastpathEnabledMock.mockReturnValue(false);
+    setVault(enrolledBlob());
+    await keyStore.unlock('87654321', { getHardwareFactor: getHF });
+    expect(putFastpathDek).not.toHaveBeenCalled();
+  });
+
+  it('does NOT populate when the first-run disclosure has not been seen (informed-consent chokepoint)', async () => {
+    // Default-ON reversal: isFastpathEnabled() defaults true on a fresh
+    // install, so the disclosure marker is the ONLY thing preventing a
+    // silent posture downgrade. Populate must skip until the user has seen
+    // the card and made a choice.
+    isFastpathEnabledMock.mockReturnValue(true);
+    hasSeenFastpathDisclosureMock.mockReturnValue(false);
     setVault(enrolledBlob());
     await keyStore.unlock('87654321', { getHardwareFactor: getHF });
     expect(putFastpathDek).not.toHaveBeenCalled();
