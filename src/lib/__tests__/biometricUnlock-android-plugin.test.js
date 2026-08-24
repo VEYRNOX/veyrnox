@@ -25,6 +25,20 @@ vi.mock('@/plugins/androidBiometricCache.js', () => ({
     h.calls.push('getSecret');
     return h.store;
   }),
+  // Issue #2037 — dual-alias mocks so the storeUnlockSecret dual-write and
+  // (if reached from a legacy-fallback path) the unauth read are exercised
+  // without throwing on undefined exports. This test file pins the LEGACY
+  // (non-KEK) retrieveUnlockSecret path, which must NOT touch getSecretUnauth
+  // — the KEK-direct path is pinned separately in
+  // biometricUnlock.kekSinglePrompt.test.js.
+  putSecretUnauth: vi.fn(async (secret) => {
+    h.calls.push('putSecretUnauth');
+    h.store = String(secret);
+  }),
+  getSecretUnauth: vi.fn(async () => {
+    h.calls.push('getSecretUnauth');
+    return h.store;
+  }),
   hasSecret: vi.fn(async () => {
     h.calls.push('hasSecret');
     return h.store != null;
