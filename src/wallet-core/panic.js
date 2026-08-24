@@ -425,6 +425,14 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // settings screen was visited on a real (non-decoy) session.
   'veyrnox-fastpath-enabled',
   'veyrnox-fastpath-disclosure-seen',
+  // Configurable re-lock grace window (screen-off deferral, off by default).
+  // Writers: lib/relockGrace.js RELOCK_GRACE_STORAGE_KEY / RELOCK_GRACE_DISCLOSED_KEY.
+  // PRESENCE proves a real Veyrnox install existed on this device AND opted
+  // into a non-default re-lock behaviour — same tell class as
+  // veyrnox-fastpath-enabled above. Writers are already I3-guarded
+  // (setRelockGraceMs no-ops in decoy/demo); this closes the residue gap.
+  'veyrnox-relock-grace-ms',
+  'veyrnox-relock-grace-disclosed',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
