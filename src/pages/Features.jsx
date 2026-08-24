@@ -50,6 +50,7 @@ export default function Features() {
   const allFeatures = featureCategories.flatMap(cat => cat.features);
   const totalFeatures = allFeatures.length;
   const verifiedCount = allFeatures.filter(f => statusOf(f) === STATUS.VERIFIED).length;
+  const builtCount = allFeatures.filter(f => statusOf(f) === STATUS.BUILT).length;
   const roadmapCount = allFeatures.filter(f => statusOf(f) === STATUS.ROADMAP).length;
 
   return (
@@ -64,15 +65,22 @@ export default function Features() {
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             <Badge variant="outline" className={STATUS_META[STATUS.VERIFIED].className}>{verifiedCount} Verified</Badge>
+            <Badge variant="outline" className={STATUS_META[STATUS.BUILT].className}>{builtCount} Built</Badge>
             <Badge variant="outline" className={STATUS_META[STATUS.ROADMAP].className}>{roadmapCount} Roadmap</Badge>
             <Badge variant="outline">{featureCategories.length} Categories</Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-2 max-w-3xl">
             Scope follows docs/WalletFeatures.spec.md. Only self-custody-safe features are listed.
-            Custodial / regulated features (swaps, perps, staking/yield/lending, fiat ramps, bank links,
-            KYC/DID, NFT minting, etc.) are deliberately not built.{" "}
-            <b>Verified</b> means shipped and working;{" "}
-            <b>roadmap</b> means specced, not built. Mainnet was unlocked
+            Custodial / regulated features (swaps, perps, staking/yield/lending, fiat off-ramp,
+            fiat wallets, bank links, KYC/DID, NFT minting, etc.) are deliberately not built.
+            The one exception is the fiat on-ramp, which is a hand-off to a licensed third
+            party — Veyrnox never holds your money.{" "}
+            <b>Verified</b> means a real, explorer-confirmed transaction proves it —
+            this page reads a txid evidence file and nothing else, so passing tests
+            and code review can never turn a feature green.{" "}
+            <b>Built</b> means the code is shipped and working but no on-chain
+            evidence exists yet.{" "}
+            <b>Roadmap</b> means specced, not built. Mainnet was unlocked
             2026-06-17.
           </p>
         </div>
