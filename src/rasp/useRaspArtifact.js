@@ -58,6 +58,31 @@ if (BYPASS_RASP && import.meta.env.PROD) {
 
 const HEARTBEAT_MS = 60_000;
 
+// Defer the mount-time RASP probe past first paint so it never competes with
+// hydration for the main thread on a cold unlock. useEffect already fires after
+// commit, but the probe still races paint + hydration for JS time; wrapping it
+// in requestIdleCallback (with a small setTimeout fallback for environments
+// that lack it — JSDOM, older WebViews) hands the probe idle-tier scheduling.
+// Safe by construction: the pre-sign chokepoint calls getFreshRaspArtifact()
+// (its own bounded fresh probe), so this hook's mount-time cache is UI/read-
+// only, and the initial null → { available: false } transient already yields
+// WARN via detect()/degrade() — the fail-closed default holds until the
+// deferred probe resolves.
+function scheduleIdle(cb) {
+  if (typeof requestIdleCallback === 'function') {
+    return { handle: requestIdleCallback(cb, { timeout: 500 }), kind: 'idle' };
+  }
+  return { handle: setTimeout(cb, 16), kind: 'timeout' };
+}
+function cancelIdle(entry) {
+  if (!entry) return;
+  if (entry.kind === 'idle' && typeof cancelIdleCallback === 'function') {
+    cancelIdleCallback(entry.handle);
+  } else {
+    clearTimeout(entry.handle);
+  }
+}
+
 // Options:
 //   deferAttestation (default false): when true, the attestation useEffect body
 //     early-returns — the network call is NOT fired on mount / foreground /
@@ -120,16 +145,19 @@ export function useRaspArtifact({ deferAttestation = false, excludeAttestation =
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const source = await nativeProbeSource();
-        if (!cancelled) setNativeProbe(source);
-      } catch {
-        // I4 FAIL CLOSED: native-bridge throw → unavailable, not clean.
-        if (!cancelled) setNativeProbe({ available: false });
-      }
-    })();
-    return () => { cancelled = true; };
+    const idle = scheduleIdle(() => {
+      if (cancelled) return;
+      (async () => {
+        try {
+          const source = await nativeProbeSource();
+          if (!cancelled) setNativeProbe(source);
+        } catch {
+          // I4 FAIL CLOSED: native-bridge throw → unavailable, not clean.
+          if (!cancelled) setNativeProbe({ available: false });
+        }
+      })();
+    });
+    return () => { cancelled = true; cancelIdle(idle); };
   }, [probeKey]);
 
   // Remote-attestation leg (Phase 2b — the egress leg, pre-sign only, deniability-
@@ -150,16 +178,19 @@ export function useRaspArtifact({ deferAttestation = false, excludeAttestation =
     // and the composed condition below ignores attestation (owner decision 2026-07-16).
     if (excludeAttestation) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const r = await attestationProbeSource();
-        if (!cancelled) setAttestationResult(r);
-      } catch {
-        // I4 FAIL CLOSED: bridge throw → unavailable, never fabricated clean.
-        if (!cancelled) setAttestationResult({ available: false });
-      }
-    })();
-    return () => { cancelled = true; };
+    const idle = scheduleIdle(() => {
+      if (cancelled) return;
+      (async () => {
+        try {
+          const r = await attestationProbeSource();
+          if (!cancelled) setAttestationResult(r);
+        } catch {
+          // I4 FAIL CLOSED: bridge throw → unavailable, never fabricated clean.
+          if (!cancelled) setAttestationResult({ available: false });
+        }
+      })();
+    });
+    return () => { cancelled = true; cancelIdle(idle); };
   }, [probeKey, deferAttestation, excludeAttestation]);
 
   // Dev bypass: substitute the returned ARTIFACT with ALLOW, AFTER every hook
