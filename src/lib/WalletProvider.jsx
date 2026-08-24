@@ -108,6 +108,7 @@ import { resolveDeniabilityUnlock, spendPrimaryUnlockEqualizerKdfs } from '@/wal
 // Brief A, Lane 2: locking must also wipe any sensitive value left on the OS
 // clipboard while the page stays visible (copySecret listens for this event).
 import { APP_LOCK_EVENT } from '@/lib/copySecret';
+import { scheduleLock as scheduleRelockGrace, cancelPendingLock as cancelRelockGrace } from '@/lib/relockGrace';
 // I3: surface the in-memory decoy/hidden session state to wallet-core egress gates
 // WITHOUT persisting it (a localStorage flag would be a
 // deniability tell). isDecoy/isHidden is React-only; this mirrors it to a plain
@@ -545,6 +546,13 @@ export function WalletProvider({ children }) {
   }, [showSimulatedPasskeyPrompt]);
 
   const lock = useCallback(() => {
+    // Cancel any deferred relock-grace timer BEFORE state changes. Duress /
+    // panic / deniability-activation / RASP-WARN / explicit user lock all
+    // route through lock() directly, so a pending grace could otherwise
+    // fire again against a now-cleared session (harmless but noisy) — and
+    // for the duress/panic path it matters that the pending timer cannot
+    // race back into a coerced session. See lib/relockGrace.
+    cancelRelockGrace();
     // Codex P1 2026-08-15: invalidate any in-flight unlock BEFORE we clear
     // session state. An unlock() continuation resuming after this line will
     // see unlockGenRef.current has moved past its captured gen and abort
@@ -740,18 +748,21 @@ export function WalletProvider({ children }) {
         // 'Never' (autoLockMsRef.current == null): the user opted out of idle
         // locking, so don't nuke the session on a transient tab-switch — lock
         // only if still hidden after the grace window. Any other setting keeps
-        // the secure instant background-lock.
+        // the secure instant background-lock, except that the user may opt in
+        // to the configurable screen-off grace via lib/relockGrace (default
+        // OFF; decoy/demo always locks immediately — I3).
         if (autoLockMsRef.current == null) {
           clearBgTimer();
           bgLockTimer.current = setTimeout(() => {
             if (document.hidden) lock();
           }, BACKGROUND_LOCK_GRACE_MS);
         } else {
-          lock();
+          scheduleRelockGrace('screen-off', lock);
         }
       } else {
         // Came back in time — cancel any pending grace lock.
         clearBgTimer();
+        cancelRelockGrace();
       }
     };
     // On native, @capacitor/app's pause/appStateChange already handles background
@@ -783,8 +794,20 @@ export function WalletProvider({ children }) {
   // the live secret. Web's keyStore has no such method, so this optional call is
   // a no-op on web and the behaviour above is unchanged.
   useEffect(() => {
-    keyStore.setLockHook?.(lock);
-    return () => keyStore.setLockHook?.(null);
+    // Wrap through lib/relockGrace so the native OS background signal honours
+    // the user's "Delayed re-lock" setting. Grace ONLY applies to
+    // reason='screen-off'; decoy/demo always locks immediately (I3); default
+    // grace is 0 (immediate lock), so existing users see no behaviour change
+    // until they opt in. See lib/relockGrace.js for the full contract.
+    //
+    // ponytail: Capacitor does not disambiguate screen-off from
+    // app-backgrounded-to-another-app on Android, so both currently route
+    // through the grace path. Documented as a follow-up in the PR report;
+    // the short default (owner-recommended 10 s if opted in) keeps the
+    // app-switch regression bounded.
+    const hook = () => scheduleRelockGrace('screen-off', lock);
+    keyStore.setLockHook?.(hook);
+    return () => { cancelRelockGrace(); keyStore.setLockHook?.(null); };
   }, [lock]);
 
   useEffect(() => () => {
