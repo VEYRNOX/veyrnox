@@ -30,8 +30,8 @@
 import { useEffect, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Zap } from 'lucide-react';
-import { getKeyStore } from '@/wallet-core/keystore';
 import { getBiometricStatus } from '@/lib/biometric';
+import { isHardwareKekEnrolled } from '@/lib/hardwareKekStatus';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { isPasskeyRegistered } from '@/lib/passkey';
 import {
@@ -63,10 +63,7 @@ export default function FastUnlockFirstRunCard() {
         if (!live) return;
         if (!bio?.available) { setGate(GATE_HIDE); return; }
 
-        const ks = getKeyStore();
-        const wrapped = typeof ks?.hasVaultKekWrap === 'function'
-          ? await ks.hasVaultKekWrap()
-          : false;
+        const wrapped = await isHardwareKekEnrolled();
         if (!live) return;
         if (!wrapped) { setGate(GATE_HIDE); return; }
 

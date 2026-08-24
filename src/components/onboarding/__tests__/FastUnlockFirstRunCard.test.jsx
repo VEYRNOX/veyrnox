@@ -12,9 +12,9 @@ vi.mock('@capacitor/core', () => ({
   Capacitor: { isNativePlatform: () => true, getPlatform: () => 'android' },
 }));
 
-const hasVaultKekWrapMock = vi.fn(async () => true);
-vi.mock('@/wallet-core/keystore', () => ({
-  getKeyStore: () => ({ hasVaultKekWrap: (...a) => hasVaultKekWrapMock(...a) }),
+const isHardwareKekEnrolledMock = vi.fn(async () => true);
+vi.mock('@/lib/hardwareKekStatus', () => ({
+  isHardwareKekEnrolled: (...a) => isHardwareKekEnrolledMock(...a),
 }));
 
 const bioStatusMock = vi.fn(async () => ({ available: true, label: 'Fingerprint' }));
@@ -43,7 +43,7 @@ const DECLINE = 'fastpath-first-run-decline';
 beforeEach(() => {
   try { localStorage.clear(); } catch { /* shimmed */ }
   setDeniabilitySession(false);
-  hasVaultKekWrapMock.mockResolvedValue(true);
+  isHardwareKekEnrolledMock.mockResolvedValue(true);
   bioStatusMock.mockResolvedValue({ available: true, label: 'Fingerprint' });
   isPasskeyRegisteredMock.mockReturnValue(false);
 });
@@ -85,7 +85,7 @@ describe('FastUnlockFirstRunCard — gate matrix', () => {
   });
 
   it('hidden when the vault is not KEK-wrapped (fast-path prerequisite)', async () => {
-    hasVaultKekWrapMock.mockResolvedValue(false);
+    isHardwareKekEnrolledMock.mockResolvedValue(false);
     render(<FastUnlockFirstRunCard />);
     await new Promise((r) => setTimeout(r, 10));
     expect(screen.queryByTestId(CARD)).toBeNull();
