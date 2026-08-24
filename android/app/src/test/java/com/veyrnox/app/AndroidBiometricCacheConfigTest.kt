@@ -125,4 +125,90 @@ class AndroidBiometricCacheConfigTest {
     fun `T4 MIN_API is 30 (Android 11) — matches BIOMETRIC_STRONG auth-parameters gate`() {
         assertEquals(30, AndroidBiometricCacheConfig.MIN_API)
     }
+
+    // ── T5: fast-path alias (issue #2019) — the OPPOSITE ACL from the unauth alias ────
+    //
+    // The fast-path DEK cache (docs/kek-fast-path-design.md) trades PIN gating
+    // for latency: on steady-state unlock the DEK is released after a biometric
+    // match ALONE, no Argon2id, no PIN. That is only safe if the Keystore alias
+    // holding the wrapped DEK is BOTH:
+    //   1. auth-required (user-authentication required to use the key), AND
+    //   2. invalidated by biometric enrollment (STRONG form — any new/removed
+    //      biometric on the device wipes the key at the OS).
+    //
+    // Flipping REQUIRES_USER_AUTH_FASTPATH to false would turn the fast-path
+    // into a passive Keystore read — anyone with the device could unlock without
+    // even touching a biometric. Flipping INVALIDATE_ON_BIOMETRIC_ENROLL_FASTPATH
+    // to false would let a coerced attacker who enrolls their own biometric
+    // ride an old cache slot. Both are must-haves per the design; this test is
+    // the tripwire.
+
+    @Test
+    fun `T5 REQUIRES_USER_AUTH_FASTPATH is true — issue #2019 must-have`() {
+        assertTrue(
+            "REQUIRES_USER_AUTH_FASTPATH must be true. Flipping to false " +
+                "removes the sole biometric gate on the fast-path DEK cache — the whole " +
+                "security model (docs/kek-fast-path-design.md §Security model change) " +
+                "depends on the OS biometric match being enforced by the Keystore alias " +
+                "itself, not by an app-layer wrapper.",
+            AndroidBiometricCacheConfig.REQUIRES_USER_AUTH_FASTPATH,
+        )
+    }
+
+    @Test
+    fun `T5 INVALIDATE_ON_BIOMETRIC_ENROLL_FASTPATH is true — STRONG enrollment binding`() {
+        assertTrue(
+            "INVALIDATE_ON_BIOMETRIC_ENROLL_FASTPATH must be true. Without it a " +
+                "coerced attacker who adds their own fingerprint after taking the device " +
+                "can unwrap the cached DEK via the fast path. Design mandates the STRONG " +
+                "form (invalidate on ANY biometric change), see design doc §Cache invalidation.",
+            AndroidBiometricCacheConfig.INVALIDATE_ON_BIOMETRIC_ENROLL_FASTPATH,
+        )
+    }
+
+    @Test
+    fun `T5 fast-path alias matches reserved value and includes v1 stamp`() {
+        assertEquals(
+            "com.veyrnox.app.biometricCacheFastpath.v1",
+            AndroidBiometricCacheConfig.FASTPATH_ALIAS,
+        )
+        assertTrue(AndroidBiometricCacheConfig.FASTPATH_ALIAS.endsWith(".v1"))
+    }
+
+    @Test
+    fun `T5 fast-path alias is distinct from all three other aliases (owner Q5)`() {
+        // Owner ruling Q5: separate slot from Personal Backup's dek-cache/v1.
+        // Cross-contamination would defeat the whole design.
+        assertNotEquals(
+            AndroidBiometricCacheConfig.STORAGE_ALIAS,
+            AndroidBiometricCacheConfig.FASTPATH_ALIAS,
+        )
+        assertNotEquals(
+            AndroidBiometricCacheConfig.INVALIDATION_ALIAS,
+            AndroidBiometricCacheConfig.FASTPATH_ALIAS,
+        )
+        assertNotEquals(
+            AndroidBiometricCacheConfig.STORAGE_UNAUTH_ALIAS,
+            AndroidBiometricCacheConfig.FASTPATH_ALIAS,
+        )
+    }
+
+    @Test
+    fun `T5 both fast-path flags are const val (no runtime override path)`() {
+        val authField = AndroidBiometricCacheConfig::class.java
+            .getDeclaredField("REQUIRES_USER_AUTH_FASTPATH")
+        val invField = AndroidBiometricCacheConfig::class.java
+            .getDeclaredField("INVALIDATE_ON_BIOMETRIC_ENROLL_FASTPATH")
+        for (field in listOf(authField, invField)) {
+            assertNotNull(field)
+            assertTrue(
+                "${field.name} must be final (const val)",
+                java.lang.reflect.Modifier.isFinal(field.modifiers),
+            )
+            assertTrue(
+                "${field.name} must be static (const val)",
+                java.lang.reflect.Modifier.isStatic(field.modifiers),
+            )
+        }
+    }
 }

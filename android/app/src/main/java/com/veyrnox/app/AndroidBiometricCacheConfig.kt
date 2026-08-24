@@ -76,4 +76,36 @@ object AndroidBiometricCacheConfig {
     // for BIOMETRIC_STRONG-only auth strength. We do NOT weaken auth strength
     // to run on older APIs (H16 discipline).
     const val MIN_API: Int = 30
+
+    // ── Fast-path DEK cache alias (issue #2019) ──────────────────────────
+    //
+    // The fast-path holds the vault DEK wrapped by an Android Keystore key
+    // that is BOTH biometric-required (STRONG) AND invalidated by any
+    // biometric enrollment change. On steady-state unlock this replaces the
+    // 5 × Argon2id KDFs with a single biometric-gated AES-GCM decrypt.
+    //
+    // Owner-approved (session 2019) with these must-haves:
+    //   Q1: coerced-biometric gap ACCEPTED (design doc §Security model).
+    //   Q3: OPT-IN, off by default (JS gate lives in lib/fastpathUnlock.js).
+    //   Q5: SEPARATE slot from Personal Backup's dek-cache/v1 — distinct
+    //       AAD, distinct alias name, distinct AAD-per-purpose fails closed
+    //       on any slot mixup.
+    //
+    // Alias name pinned by AndroidBiometricCacheConfigTest.T5. The .v1
+    // suffix IS the ACL-policy stamp: any change to the auth flags, cipher,
+    // key size, or invalidation policy MUST bump to .v2 — a key existing
+    // under .v1 is a proof-of-provenance that it was minted with the ACL
+    // this file declares.
+    const val FASTPATH_ALIAS: String = "com.veyrnox.app.biometricCacheFastpath.v1"
+
+    // MUST stay true. Flipping to false removes the sole biometric gate on
+    // the fast-path DEK release (design doc §Security model). Tripwire in
+    // AndroidBiometricCacheConfigTest.T5.
+    const val REQUIRES_USER_AUTH_FASTPATH: Boolean = true
+
+    // STRONG form: invalidate the key on ANY biometric add/remove. A coerced
+    // attacker who enrolls their own fingerprint after taking the device
+    // must NOT be able to unwrap the cached DEK. Tripwire in
+    // AndroidBiometricCacheConfigTest.T5.
+    const val INVALIDATE_ON_BIOMETRIC_ENROLL_FASTPATH: Boolean = true
 }
