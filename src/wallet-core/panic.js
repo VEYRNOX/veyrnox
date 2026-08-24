@@ -414,6 +414,17 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-fiat-currency',
   'veyrnox-paywall-outcome-seen',
   'dashboard-widget-config',
+  // Issue #2019 — fast-path DEK cache opt-in toggle (Q3, off by default).
+  // Writer: lib/fastpathUnlock.js FASTPATH_ENABLED_STORAGE_KEY. PRESENCE
+  // proves a real Veyrnox install existed on this device AND enabled the
+  // fast unlock path — same tell class as veyrnox-first-run-tour-seen /
+  // veyrnox-personal-backup-exported. Writer is already I3-guarded
+  // (setFastpathEnabled no-ops in decoy/demo); this closes the residue gap.
+  // The paired disclosure marker is swept alongside for the same reason:
+  // presence of veyrnox-fastpath-disclosure-seen proves the Security
+  // settings screen was visited on a real (non-decoy) session.
+  'veyrnox-fastpath-enabled',
+  'veyrnox-fastpath-disclosure-seen',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
