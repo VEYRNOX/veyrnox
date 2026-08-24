@@ -36,6 +36,7 @@ vi.mock('react-i18next', async () => {
 
 import { render, screen, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { LOCALE_KEY, TIMEZONE_KEY } from '@/lib/locale.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -94,10 +95,27 @@ describe('BuyCrypto — every hook runs before every early return', () => {
 //
 // Mutation check: delete `if (!buyEnabled) return null;` from BuyInProgress.jsx
 // → the first case goes red.
+//
+// ENVIRONMENT PINNING, and why it is not optional. useBuyEnabled has a THIRD
+// gate beyond deniability and the ship flag: isUkBuyBlocked(), the UK
+// financial-promotions block, which reads resolveLocale()/resolveTimeZone().
+// Both fall back to the HOST's Intl settings when no preference is stored, so
+// without the pins below this block's verdict depends on the machine running
+// it — green on a UTC CI runner, red on any UK-based developer's laptop, where
+// the page correctly renders nothing and every positive assertion fails for a
+// reason that has nothing to do with the ship gate. Observed 2026-08-24 on a
+// Europe/London host.
+//
+// Storing the preference is the same idiom useBuyEnabled.test.js uses (:63-64)
+// and it exercises the real resolver rather than mocking it out.
 describe('BuyInProgress — ship gate', () => {
   beforeEach(() => {
     vi.resetModules();
     localStorage.clear();
+    // Non-UK, so isUkBuyBlocked() is false and the ship gate is the only
+    // variable under test. Do not remove: see the note above.
+    localStorage.setItem(LOCALE_KEY, 'en-US');
+    localStorage.setItem(TIMEZONE_KEY, 'America/New_York');
   });
   afterEach(() => {
     cleanup();
@@ -126,9 +144,35 @@ describe('BuyInProgress — ship gate', () => {
     expect(screen.getByText(/purchase in progress/i)).toBeInTheDocument();
   });
 
+  // The page's header rule 2 — "Hidden entirely in deniability/demo" — had no
+  // test. This pins the OUTCOME a user experiences.
+  //
+  // What it deliberately does NOT claim: that it isolates the component's own
+  // `if (isDeniabilityOrDemoActive()) return null;`. It cannot. useBuyEnabled's
+  // getSnapshot() already folds in the same predicate, so deleting the
+  // component's line leaves this green — verified by mutation, not assumed.
+  // That redundancy is the intended two-chokepoint shape, and the source
+  // assertion below is what actually pins the second chokepoint. Recorded here
+  // so a future reader does not mistake this for coverage of that line.
+  //
+  // Demo is the cheap half to drive (a persisted veyrnox-demo=1 is the
+  // documented localStorage trap) and it exercises the same predicate a decoy
+  // session does.
+  it('renders NOTHING in a demo session even with the ship gate on', async () => {
+    vi.stubEnv('VITE_BUY_ENABLED', 'true');
+    localStorage.setItem('veyrnox-demo', '1');
+    const { container } = await renderPage();
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('never renders the tid — there is no support-lookup UI, and a decoy user must learn nothing from the URL', async () => {
     vi.stubEnv('VITE_BUY_ENABLED', 'true');
     const { container } = await renderPage();
+    // Assert the screen actually rendered BEFORE asserting an absence. A bare
+    // not-toContain passes trivially against an empty DOM, which is exactly
+    // what this page returns whenever any gate closes — so on an unpinned
+    // UK host this case was green while testing nothing at all.
+    expect(screen.getByText(/purchase in progress/i)).toBeInTheDocument();
     expect(container.textContent).not.toContain('abc123');
   });
 });
@@ -143,6 +187,35 @@ describe('BuyInProgress — ship gate', () => {
 //
 // Mutation check: add `params.get('status')` handling that renders a success
 // string → red.
+// ── The second deniability chokepoint, pinned at the source ────────────────
+//
+// Both Buy pages carry their OWN isDeniabilityOrDemoActive() early return in
+// addition to useBuyEnabled()'s. A behavioural test cannot tell them apart
+// (the hook fails closed first), so the redundant-by-design one is pinned by
+// source. This is the same "guard the second chokepoint" doctrine CLAUDE.md
+// records for lib/consent.js and api/trackEvent.js: do not collapse two gates
+// into one because one currently shadows the other.
+//
+// The two pages use DIFFERENT but equally valid shapes — BuyInProgress has an
+// `if (...) return null;` early return, BuyCrypto composes a `suppressed` flag
+// (`DEMO || isDeniabilityOrDemoActive() || !buyEnabled`). So this asserts the
+// PREDICATE IS CONSUMED, not one spelling of the gate; pinning the shape would
+// have failed BuyCrypto for being written differently rather than for being
+// wrong.
+//
+// Mutation check: remove the call from either page's gate → red (the import
+// alone does not satisfy it).
+describe('Buy pages — each consumes the deniability predicate itself', () => {
+  for (const file of ['../BuyCrypto.jsx', '../BuyInProgress.jsx']) {
+    it(`${file.replace('../', '')} calls isDeniabilityOrDemoActive() outside its import`, () => {
+      const calls = read(file)
+        .split('\n')
+        .filter((l) => /isDeniabilityOrDemoActive\s*\(/.test(l) && !/^\s*import\b/.test(l));
+      expect(calls, 'the page must apply the predicate, not merely import it').not.toEqual([]);
+    });
+  }
+});
+
 describe('BuyInProgress — never claims success from the return payload', () => {
   it('does not read any query parameter', () => {
     const src = read('../BuyInProgress.jsx');
