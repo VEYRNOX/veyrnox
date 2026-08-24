@@ -91,7 +91,7 @@ export default function FeeSelector({ chain, networkKey, symbol, decimals, usdRa
     // a same-window localStorage `veyrnox-demo` flip. So the LIVE deniability-or-demo
     // check must run INSIDE the queryFn on every call and fail closed BEFORE any fee
     // provider is touched — otherwise a mid-session flag flip keeps leaking the (real,
-    // under Trezor) address to a third-party RPC. The query degrades gracefully on
+    // real) address to a third-party RPC. The query degrades gracefully on
     // throw ("the wallet will use a safe default fee"), so this stays honest (I4).
     const gate = (run) => () => {
       if (isDeniabilityOrDemoActive()) {

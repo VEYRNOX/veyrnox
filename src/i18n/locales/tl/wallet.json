@@ -427,11 +427,6 @@
       "label": "Tala (opsyonal)",
       "placeholder": "Para saan ito?"
     },
-    "trezor": {
-      "toggle_label": "Lumagda gamit ang Trezor",
-      "connected": "Nakakonekta ang device",
-      "connect_button": "Ikonekta ang device"
-    },
     "buttons": {
       "continue": "Magpatuloy",
       "confirm_send": "Kumpirmahin at Ipadala",

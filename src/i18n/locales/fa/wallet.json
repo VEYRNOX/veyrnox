@@ -427,11 +427,6 @@
       "label": "یادداشت (اختیاری)",
       "placeholder": "این برای چیست؟"
     },
-    "trezor": {
-      "toggle_label": "امضا با Trezor",
-      "connected": "دستگاه متصل است",
-      "connect_button": "اتصال دستگاه"
-    },
     "buttons": {
       "continue": "ادامه",
       "confirm_send": "تأیید و ارسال",

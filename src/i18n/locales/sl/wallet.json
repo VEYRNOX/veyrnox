@@ -427,11 +427,6 @@
       "label": "Opomba (izbirno)",
       "placeholder": "Za kaj gre?"
     },
-    "trezor": {
-      "toggle_label": "Podpiši s Trezorjem",
-      "connected": "Naprava povezana",
-      "connect_button": "Poveži napravo"
-    },
     "buttons": {
       "continue": "Naprej",
       "confirm_send": "Potrdi in pošlji",

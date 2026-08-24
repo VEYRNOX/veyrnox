@@ -30,7 +30,7 @@ const SECTIONS = [
       { name: "Duress PIN", summary: "Decoy wallet under coercion", route: "/duress-pin" },
       { name: "Stealth / Hidden Wallets", summary: "Deniable hidden-wallet pool", route: "/stealth-wallets" },
       { name: "Panic Wipe", summary: "Irreversible local key destruction", route: "/panic-wipe" },
-      { name: "Hardware Wallet (Trezor)", summary: "Cold-key signing — keys never leave the device", route: "/hardware-wallet" },
+      { name: "Hardware Wallet (Digital Shield)", summary: "Cold-key signing — keys never leave the device", route: "/hardware-wallet" },
       { name: "Anomaly / Fraud Detection", summary: "Rule-based deviation flags over your own history", route: "/anomaly-detection" },
       { name: "Suspicious-Address Screening", summary: "Local blocklist + sanctioned-address checks", route: "/address-checker" },
       { name: "Token Approvals (View + Revoke)", summary: "Inspect and revoke ERC-20 allowances", route: "/token-approvals" },

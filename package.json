@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/bundle-trezor-connect.mjs",
     "build": "node ./node_modules/cross-env/dist/bin/cross-env.js NODE_OPTIONS=--max-old-space-size=4096 vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
@@ -111,10 +110,6 @@
     "@keystonehq/bc-ur-registry-eth": "0.22.1",
     "@keystonehq/bc-ur-registry-sol": "0.9.5",
     "@keystonehq/keystone-sdk": "0.12.3",
-    "@ledgerhq/hw-app-btc": "^11.4.0",
-    "@ledgerhq/hw-app-eth": "^7.8.15",
-    "@ledgerhq/hw-app-solana": "^7.10.7",
-    "@ledgerhq/hw-transport-webhid": "^6.36.0",
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
     "@radix-ui/react-accordion": "^1.2.20",
@@ -158,7 +153,6 @@
     "@stablelib/tss": "^2.0.1",
     "@supabase/supabase-js": "^2.112.3",
     "@tanstack/react-query": "^5.101.4",
-    "@trezor/connect-web": "^9.7.3",
     "@walletconnect/core": "2.23.10",
     "@walletconnect/utils": "^2.23.10",
     "buffer": "^6.0.3",
@@ -256,9 +250,6 @@
     },
     "elliptic": "^6.6.1",
     "ajv": "^6.15.0",
-    "@ledgerhq/client-ids": {
-      "uuid": "^11.1.1"
-    },
     "jayson": {
       "uuid": "^11.1.1"
     },

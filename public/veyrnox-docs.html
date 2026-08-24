@@ -381,7 +381,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
   <h3><svg style="color:var(--violet)"><use href="#i-link"/></svg> WalletConnect &amp; Hardware</h3>
   <div class="cg">
     <div class="cd"><div class="fi"><div class="fi-ic" style="background:rgba(59,153,252,.1);color:#3B99FC"><svg><use href="#v-wc"/></svg></div><div><h4>WalletConnect v2 <span class="tg tg-b">BUILT</span></h4><p>Via @reown/walletkit. Manual wc: URI paste only (not in Explorer — store-publish gated). Session proposal with phishing check (23 known-bad domains). RASP-gated session approval (H-1). Chain binding (H7), address binding (H8), gas cap (M9), session expiry (M11). 2FA + spend-limit gate on sendTransaction.</p></div></div></div>
-    <div class="cd"><div class="fi"><div class="fi-ic" style="background:rgba(0,133,77,.1);color:#00854D"><svg><use href="#v-trezor"/></svg></div><div><h4>Trezor Integration <span class="tg tg-b">BUILT</span></h4><p>EVM/BTC/SOL signing via TrezorConnect (WebUSB). UI wired (HardwareWalletPage), send paths composed through hw-send.js with RASP/I3 gating. Not device-verified with physical Trezor.</p></div></div></div>
+    <div class="cd"><div class="fi"><div class="fi-ic" style="background:rgba(0,133,77,.1);color:#00854D"><svg><use href="#v-trezor"/></svg></div><div><h4>Digital Shield Integration <span class="tg tg-b">BUILT</span></h4><p>EVM/BTC/SOL air-gapped QR signing (Trezor and Ledger removed 2026-08-24). UI wired (HardwareWalletPage), signing requests composed through wallet-core/hw/digitalShield.js with RASP/I3 gating. Not device-verified with physical hardware.</p></div></div></div>
     <div class="cd"><div class="fi"><div class="fi-ic neu-ic"><svg><use href="#i-qr"/></svg></div><div><h4>ColdKey (Air-Gapped) <span class="tg tg-b">BUILT</span></h4><p>QR-based air-gapped signing. Unsigned PSBT for BTC, unsigned EIP-1559 for EVM. Versioned JSON envelope (fmt: veyrnox-cold, v: 1). decodeColdPayload never throws (fail closed).</p></div></div></div>
   </div>
 
@@ -446,7 +446,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
       </div></div>
       <div class="lr b"><div class="ll"><svg><use href="#i-settings"/></svg> Logic</div><div class="lc">
         <span class="lp">WalletProvider</span><span class="lp">TierProvider</span><span class="lp"><svg style="color:#3B99FC"><use href="#v-wc"/></svg>WalletConnect</span>
-        <span class="lp"><svg style="color:#00854D"><use href="#v-trezor"/></svg>Trezor</span><span class="lp"><svg><use href="#i-mic"/></svg>Voice</span><span class="lp"><svg><use href="#i-bell"/></svg>Notifications</span>
+        <span class="lp"><svg style="color:#00854D"><use href="#v-trezor"/></svg>Digital Shield</span><span class="lp"><svg><use href="#i-mic"/></svg>Voice</span><span class="lp"><svg><use href="#i-bell"/></svg>Notifications</span>
         <span class="lp"><svg><use href="#i-zap"/></svg>RASP (12)</span><span class="lp"><svg><use href="#i-alert"/></svg>Risk (8)</span><span class="lp"><svg><use href="#i-shield"/></svg>Sign Gate</span>
         <span class="lp"><svg><use href="#i-lock"/></svg>2FA Gate</span><span class="lp"><svg><use href="#i-dollar"/></svg>Feature Gate</span>
         <span class="lp"><svg style="color:#F25A5A"><use href="#v-rc"/></svg>RevenueCat</span><span class="lp">Session Mgr</span>
@@ -964,7 +964,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
         <tr><td>Audit log</td><td>Encrypted read/write</td><td>No-op (silent skip)</td></tr>
         <tr><td>Voice commands</td><td>Active</td><td>Suppressed</td></tr>
         <tr><td>Receive detector</td><td>60s polling</td><td>Disabled</td></tr>
-        <tr><td><svg class="ic" style="color:#00854D"><use href="#v-trezor"/></svg> Trezor calls</td><td>Active</td><td>Blocked (zero TrezorConnect)</td></tr>
+        <tr><td><svg class="ic" style="color:#00854D"><use href="#v-trezor"/></svg> Digital Shield calls</td><td>Active</td><td>Blocked (zero egress)</td></tr>
         <tr><td>Error messages</td><td>Specific</td><td>Sanitized to generic RPC errors</td></tr>
       </tbody>
     </table>
@@ -1204,7 +1204,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
       <thead><tr><th></th><th>Feature</th><th>Status</th><th>Dependency</th><th>Scope</th></tr></thead>
       <tbody>
         <tr><td><svg class="ic-lg"><use href="#i-globe"/></svg></td><td>Cloud Recovery</td><td><span class="tg tg-p">PLANNED</span></td><td>Full-stack audit</td><td>Encrypted cloud backup with split-key recovery</td></tr>
-        <tr><td><svg class="ic-lg" style="color:#00854D"><use href="#v-trezor"/></svg></td><td>Trezor Integration</td><td><span class="tg tg-b">BUILT</span></td><td>Physical device verify</td><td>EVM/BTC/SOL signing via TrezorConnect (WebUSB), UI wired</td></tr>
+        <tr><td><svg class="ic-lg" style="color:#00854D"><use href="#v-trezor"/></svg></td><td>Digital Shield Integration</td><td><span class="tg tg-b">BUILT</span></td><td>Physical device verify</td><td>EVM/BTC/SOL air-gapped QR signing, UI wired</td></tr>
         <tr><td><svg class="ic-lg"><use href="#i-chip"/></svg></td><td>Ledger Support</td><td><span class="tg tg-p">PLANNED</span></td><td>WebHID transport</td><td>Hardware wallet signing via Ledger</td></tr>
         <tr><td><svg class="ic-lg"><use href="#i-globe"/></svg></td><td>Cosmos Chains</td><td><span class="tg tg-p">PLANNED</span></td><td>Derivation exists (m/44'/118')</td><td>Full send/receive/history for Cosmos</td></tr>
         <tr><td><svg class="ic-lg"><use href="#i-wallet"/></svg></td><td>Multi-Wallet</td><td><span class="tg tg-b">BUILT</span></td><td>Full-stack audit</td><td>Multiple HD seeds via multiVault.js, WalletProvider wired, portfolio page live</td></tr>
@@ -1555,16 +1555,16 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
     <div class="dc">Distinct from /session-manager (login/device sessions). WC store is single source of truth &mdash; never stale React props.</div>
   </div>
 
-  <h3><svg style="color:#00854D"><use href="#v-trezor"/></svg> Trezor Connection</h3>
+  <h3><svg style="color:#00854D"><use href="#v-trezor"/></svg> Digital Shield Connection</h3>
   <div class="dw">
     <div class="fr">
       <div class="fn"><div class="fl">/hardware-wallet</div><div class="fs">HardwareWalletPage</div></div><div class="fa"></div>
-      <div class="fn"><div class="fl">TrezorConnect Init</div><div class="fs">WebUSB transport</div></div><div class="fa"></div>
+      <div class="fn"><div class="fl">Digital Shield Import</div><div class="fs">air-gapped QR</div></div><div class="fa"></div>
       <div class="fn bl"><div class="fl">I3 Gate</div><div class="fs">blocked in deniability</div></div><div class="fa"></div>
       <div class="fn hi"><div class="fl">Derive Address</div><div class="fs">on-device (I1)</div></div><div class="fa"></div>
       <div class="fn"><div class="fl">Sign Transaction</div><div class="fs">EVM/BTC/SOL facade</div></div>
     </div>
-    <div class="dc">BUILT but NOT device-verified &mdash; needs physical Trezor hardware. All TrezorConnect calls blocked when deniability active (I3).</div>
+    <div class="dc">BUILT but NOT device-verified &mdash; needs physical Digital Shield hardware. All Digital Shield calls blocked when deniability active (I3).</div>
   </div>
 
   <h3><svg style="color:var(--text-tertiary)"><use href="#i-qr"/></svg> ColdKey Air-Gapped Signing</h3>
@@ -1608,7 +1608,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
       <tbody>
         <tr><td><strong>requireTwoFactor()</strong></td><td><code>useActionGuard()</code></td><td>Duress setup, stealth create/move, panic in-app wipe, action password install, seed reveal</td><td>No-op if no 2nd factor configured (opt-in). 5-attempt cap, wallet lock on cap. OOM/network errors don't burn attempts.</td></tr>
         <tr><td><strong>sensitiveGate()</strong></td><td><code>presignGateOrReject()</code></td><td>Backup export, file restore, send, WalletConnect</td><td>RASP tier check (ALLOW/WARN/BLOCK). <code>excludeAttestation: true</code> on local backup ops (owner decision).</td></tr>
-        <tr><td><strong>isDeniabilityOrDemoActive()</strong></td><td><code>deniabilitySession.js</code></td><td>ALL referral API calls, receive detector, price feeds, audit log, Trezor, WC</td><td>Returns true in decoy, hidden, or demo sessions. Checked on EVERY render (not just mount). Any throw &rarr; treated as active (fail-closed).</td></tr>
+        <tr><td><strong>isDeniabilityOrDemoActive()</strong></td><td><code>deniabilitySession.js</code></td><td>ALL referral API calls, receive detector, price feeds, audit log, Digital Shield, WC</td><td>Returns true in decoy, hidden, or demo sessions. Checked on EVERY render (not just mount). Any throw &rarr; treated as active (fail-closed).</td></tr>
         <tr><td><strong>KEK enrollment gate</strong></td><td><code>useKekEnrollmentGate()</code></td><td>Post-create, post-import, post-restore</td><td>Auto-fires on hardware-capable devices. Skips web, deniability, insecure devices. Auto-fills PIN from ref (zeroized after).</td></tr>
         <tr><td><strong>pinAttemptGuard</strong></td><td><code>pinAttemptGuard.js</code></td><td>All unlock paths</td><td>10 wrong PINs &rarr; irreversible wipe. Backoff timer between attempts. No distinction between real/duress/panic guess failure.</td></tr>
       </tbody>
@@ -2189,7 +2189,7 @@ hr.dv{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
           <ul>
             <li><strong>I3: zero backend calls in deniability sessions</strong></li>
             <li><code>isDeniabilityOrDemoActive()</code> checked on every render path that could produce network egress</li>
-            <li>Price feeds, news, attestation, Trezor &mdash; all gated on <code>!isDecoy && !isHidden</code></li>
+            <li>Price feeds, news, attestation, Digital Shield &mdash; all gated on <code>!isDecoy && !isHidden</code></li>
             <li><code>refetch()</code> buttons hidden in deniability sessions (react-query bypass closed)</li>
           </ul>
         </div>

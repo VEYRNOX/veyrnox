@@ -427,11 +427,6 @@
       "label": "Poznámka (volitelné)",
       "placeholder": "K čemu to je?"
     },
-    "trezor": {
-      "toggle_label": "Podepsat pomocí Trezor",
-      "connected": "Zařízení připojeno",
-      "connect_button": "Připojit zařízení"
-    },
     "buttons": {
       "continue": "Pokračovat",
       "confirm_send": "Potvrdit a odeslat",

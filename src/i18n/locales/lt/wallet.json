@@ -427,11 +427,6 @@
       "label": "Pastaba (nebūtina)",
       "placeholder": "Kam tai skirta?"
     },
-    "trezor": {
-      "toggle_label": "Pasirašyti su Trezor",
-      "connected": "Įrenginys prijungtas",
-      "connect_button": "Prijungti įrenginį"
-    },
     "buttons": {
       "continue": "Tęsti",
       "confirm_send": "Patvirtinti ir siųsti",

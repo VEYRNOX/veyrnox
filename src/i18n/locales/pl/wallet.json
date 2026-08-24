@@ -427,11 +427,6 @@
       "label": "Notatka (opcjonalnie)",
       "placeholder": "Czego dotyczy ta transakcja?"
     },
-    "trezor": {
-      "toggle_label": "Podpisz za pomocą Trezor",
-      "connected": "Urządzenie podłączone",
-      "connect_button": "Podłącz urządzenie"
-    },
     "buttons": {
       "continue": "Dalej",
       "confirm_send": "Potwierdź i wyślij",

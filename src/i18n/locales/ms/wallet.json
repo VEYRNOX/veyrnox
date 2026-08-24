@@ -427,11 +427,6 @@
       "label": "Nota (pilihan)",
       "placeholder": "Untuk apa ini?"
     },
-    "trezor": {
-      "toggle_label": "Tandatangani dengan Trezor",
-      "connected": "Peranti disambungkan",
-      "connect_button": "Sambungkan peranti"
-    },
     "buttons": {
       "continue": "Teruskan",
       "confirm_send": "Sahkan & Hantar",

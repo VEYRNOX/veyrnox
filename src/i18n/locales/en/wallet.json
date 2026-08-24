@@ -469,11 +469,6 @@
       "label": "Note (optional)",
       "placeholder": "What's this for?"
     },
-    "trezor": {
-      "toggle_label": "Sign with Trezor",
-      "connected": "Device connected",
-      "connect_button": "Connect device"
-    },
     "buttons": {
       "continue": "Continue",
       "confirm_send": "Confirm & Send",

@@ -427,11 +427,6 @@
       "label": "Бележка (незадължително)",
       "placeholder": "За какво е това?"
     },
-    "trezor": {
-      "toggle_label": "Подпиши с Trezor",
-      "connected": "Устройството е свързано",
-      "connect_button": "Свържи устройство"
-    },
     "buttons": {
       "continue": "Продължи",
       "confirm_send": "Потвърди и изпрати",

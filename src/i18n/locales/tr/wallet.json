@@ -427,11 +427,6 @@
       "label": "Not (isteğe bağlı)",
       "placeholder": "Bu ne için?"
     },
-    "trezor": {
-      "toggle_label": "Trezor ile imzala",
-      "connected": "Cihaz bağlandı",
-      "connect_button": "Cihazı bağla"
-    },
     "buttons": {
       "continue": "Devam et",
       "confirm_send": "Onayla ve Gönder",

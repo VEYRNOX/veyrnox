@@ -1,6 +1,6 @@
 // src/wallet-core/__tests__/btc-broadcast-split.test.js
 //
-// The Trezor BTC path signs on the device, so send.js needs a broadcast-only
+// An external hardware signer signs on the device, so send.js needs a broadcast-only
 // helper that takes an already-signed raw tx (hex) and pushes it. The canonical
 // txid is derived LOCALLY from the signed bytes (deterministic) — never trusted
 // from the untrusted indexer's echoed body. This pins btcTxidFromHex (pure): the

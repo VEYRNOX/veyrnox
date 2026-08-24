@@ -55,7 +55,8 @@
 
 import { Capacitor } from '@capacitor/core';
 // P2-3 (audit batch, 2026-07-15): use the LIVE deniability-OR-demo helper (added
-// in PR #978, mirrors the Trezor I3 hotfix). isDeniabilitySessionActive alone
+// in PR #978, mirrors the I3 egress-gate pattern used elsewhere in wallet-core).
+// isDeniabilitySessionActive alone
 // misses the persisted `veyrnox-demo=1` localStorage flag — under demo mode the
 // attestation bridge would still fire, potentially leaking a wallet-set oracle
 // via the DEMO/real contrast. isDeniabilityOrDemoActive checks both signals fresh

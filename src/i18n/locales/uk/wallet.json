@@ -427,11 +427,6 @@
       "label": "Примітка (необов'язково)",
       "placeholder": "Для чого це?"
     },
-    "trezor": {
-      "toggle_label": "Підписати за допомогою Trezor",
-      "connected": "Пристрій підключено",
-      "connect_button": "Підключити пристрій"
-    },
     "buttons": {
       "continue": "Продовжити",
       "confirm_send": "Підтвердити і надіслати",

@@ -179,8 +179,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Hardware Wallet',
         status: 'verified',
-        summary: 'Trezor — cold-key signing for ETH, BTC, SOL (send paths wired 2026-06-29)',
-        explanation: 'Built (/hardware-wallet): Trezor (WebUSB, Chrome/Edge desktop) supports address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. trezorSignBtcTx and trezorSignSolTx are wired in SendCrypto (PR #475, 2026-06-29); broadcastBtcTx, buildUnsignedSolTx, and attachSolSignature added. Private key never leaves the hardware device (I1). Deniability sessions block all Trezor calls before any connect.trezor.io egress: demo/tour mode (veyrnox-demo) AND a real decoy/hidden (duress/stealth) session are both gated via the in-memory deniabilitySession marker (wallet-core/deniabilitySession.js, PR #476, 2026-06-29), fail-closed (I3). TrezorContext is the sole hardware wallet context (HardwareWalletContext deleted). Built, not device-verified — no physical-device txid. Non-WebUSB browsers (e.g. iOS WKWebView) fail soft to a "not available" card. ERC-20 hardware signing and multi-account paths not yet wired.',
+        summary: 'Digital Shield — air-gapped QR cold-key signing for ETH, BTC, SOL',
+        explanation: 'Built (/hardware-wallet): Digital Shield is the sole hardware-wallet path (Trezor and Ledger removed 2026-08-24 — the Trezor WebUSB bundle crashed the iOS webview Send page). Imports public account data via a crypto-multi-accounts UR QR, builds unsigned PSBT/EVM/SOL requests, and finalizes them from a scanned or pasted signed-response QR. Private key never leaves the air-gapped device (I1). Deniability sessions block Digital Shield calls the same way the removed Trezor path did, via the in-memory deniabilitySession marker (wallet-core/deniabilitySession.js), fail-closed (I3). Built, not device-verified — no physical-device txid. ERC-20 hardware signing and multi-account paths not yet wired.',
       },
     ],
   },
