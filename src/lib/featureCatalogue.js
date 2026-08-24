@@ -391,13 +391,14 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Buy Crypto (Third-Party On-Ramp)',
-        // 'verified' is this catalogue's word for SHIPPED, not for
-        // on-chain-proven — the two-state enum has no third value, and the
-        // retired 'built' string is rejected by featureCatalogue.test.js. The
-        // honesty is carried in the prose, matching Personal Backup, the iOS
-        // and Android shells, and Samsung billing, which are all 'verified'
-        // with an explicit "NOT verified:" clause. Do not read this as a claim
-        // that a purchase has ever completed — it has not.
+        // Declares 'verified'; RESOLVES to 'built', because there is no txid
+        // entry for it in docs/verified-evidence.json and resolveStatus()
+        // downgrades any unbacked claim. That is the correct outcome — no
+        // purchase has ever completed on either store.
+        //
+        // (This comment previously explained that the enum had no third value
+        // and that the honesty had to live in the prose. The third state was
+        // restored on 2026-08-24, so the badge now carries it too.)
         status: 'verified',
         summary: 'Hand-off to Transak — regional, and no purchase proven yet',
         explanation: 'Built (/buy). Buy crypto with fiat through Transak, a licensed third-party provider. Veyrnox never touches your money and never holds your crypto: you enter an amount, the app reads the deposit address from your own on-device wallet at the moment you press Continue, and hands off to Transak\'s hosted checkout in the system browser. The purchase is between you and Transak, under their terms and their identity checks, and the crypto is delivered to an address only your seed controls. Nothing about the return trip is trusted — /buy/in-progress reads nothing from the return URL, so a spoofed return cannot show a fake success; confirmation comes from the coin arriving at your address like any other incoming transaction. NOT available everywhere: the Buy entry is hidden in the UK for financial-promotions reasons (s.21 FSMA), and it is hidden entirely in decoy, duress, and demo sessions. The region check reads your device locale and timezone, so it is a good-faith regional suppression, not a security control, and it does not hide Buy when the region cannot be determined. NOT verified: no purchase has been completed on either store, so this is built-and-shipping, not proven end-to-end.',
@@ -564,6 +565,34 @@ export function verifiedFeatureNames() {
  * @param {Set<string>} [verifiedNames] - kept for call-site compat; unused
  * @returns {'verified'|'built'|'roadmap'}
  */
+/**
+ * Resolve a feature's DISPLAYED status.
+ *
+ * `verified` is IMPOSSIBLE TO ASSERT BY INSPECTION. A hand-typed
+ * `status: 'verified'` with no matching txid entry in docs/verified-evidence.json
+ * is downgraded to `built`. Passing tests, clean review, and a green pipeline
+ * never promote anything here — only a real, explorer-confirmed txid does
+ * (CLAUDE.md, "Verify, don't assert").
+ *
+ * Restored 2026-08-24. This gate shipped in PR #145 and was deleted by PR #1185
+ * ("promote all Built features to Verified/Green"), which removed the
+ * evidence-gating and turned all 48 built features teal. Everything else needed
+ * for three states survived that change — STATUS.BUILT stayed in the enum,
+ * Features.jsx kept its amber Built token, verifiedFeatureNames() kept reading
+ * the evidence file, and the comment at Features.jsx:34 kept CLAIMING the gate
+ * existed. Only this function was gutted, so the claim became false.
+ *
+ * The evidence key is `verifiedBy` when present (the txid entry's exact name),
+ * falling back to the feature name.
+ *
+ * @param {{status: string, name: string, verifiedBy?: string}} feature
+ * @param {Set<string>} [verifiedNames]
+ * @returns {'verified'|'built'|'roadmap'}
+ */
 export function resolveStatus(feature, verifiedNames = verifiedFeatureNames()) {
-  return /** @type {'verified'|'built'|'roadmap'} */ (feature.status);
+  if (feature.status !== STATUS.VERIFIED) {
+    return /** @type {'verified'|'built'|'roadmap'} */ (feature.status);
+  }
+  const evidenceKey = feature.verifiedBy ?? feature.name;
+  return verifiedNames.has(evidenceKey) ? STATUS.VERIFIED : STATUS.BUILT;
 }
