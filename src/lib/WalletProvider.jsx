@@ -2175,6 +2175,88 @@ export function WalletProvider({ children }) {
     return unlock(password, { skipBiometric: true });
   }, [showSimulatedPrompt, unlock]);
 
+  // FAST-PATH BIOMETRIC-ONLY UNLOCK (#2019 Option 1).
+  //
+  // Calls keyStore.unlockBiometricOnly (see wallet-core/keystore/native.js) which
+  // opens the vault via a single OS biometric prompt against a wrapped-DEK cache.
+  // NO PASSWORD is accepted or passed — the method signature is deliberately
+  // no-password so a caller cannot accidentally route a PIN through here (duress /
+  // panic / wrong-PIN routing lives ONLY in the PIN-entry path `unlock()` →
+  // `_unlockInner`, both untouched by this branch).
+  //
+  // Contract with the UI:
+  //   - success       → { ok:true }; the primary session is mounted (isUnlocked=true)
+  //   - FastpathError → { ok:false, fallbackToPin:true, code }; the wallet stays
+  //                     locked and the UI reveals the PIN keypad (I4 fail-closed)
+  //   - anything else → rethrown (never open the vault on unknown error)
+  //
+  // Race guard: mirrors unlock() — every entry stamps unlockGenRef; lock() bumps
+  // it; every state-write checkpoint asserts the stamp still matches, else throws
+  // UNLOCK_SUPERSEDED before touching containerRef / isUnlocked.
+  //
+  // I3: this method never runs in decoy/hidden — keyStore.unlockBiometricOnly
+  // throws FASTPATH_DENIABILITY_BLOCKED first, which surfaces as { ok:false }.
+  //
+  // Trade-off (documented, safe): the fast path has no plaintext PIN to feed
+  // `captureVerifierSafe()`, so the send-step-up verifier and
+  // `sessionUnlockSecretRef` stay null. A subsequent send will require the user to
+  // type their PIN at the step-up gate — a UX cost, never a security regression.
+  const unlockBiometricOnly = useCallback(async () => {
+    const gen = ++unlockGenRef.current;
+    const assertUnlockCurrent = () => {
+      if (unlockGenRef.current !== gen) {
+        throw Object.assign(new Error('UNLOCK_SUPERSEDED'), { code: 'UNLOCK_SUPERSEDED' });
+      }
+    };
+    return withLockSuppressed(async () => {
+      let plaintext;
+      try {
+        plaintext = await keyStore.unlockBiometricOnly({
+          getHardwareFactor: keyStore.getHardwareFactor?.bind(keyStore),
+        });
+      } catch (err) {
+        if (err && typeof err.code === 'string' && err.code.startsWith('FASTPATH_')) {
+          return { ok: false, fallbackToPin: true, code: err.code };
+        }
+        throw err;
+      }
+      assertUnlockCurrent();
+      // Fast-path is deniability-blocked at the keystore, so the plaintext is
+      // ALWAYS the primary container. No decoy/hidden branch to consider.
+      const { container } = mv.parseVault(plaintext);
+      assertUnlockCurrent();
+      containerRef.current = container;
+      setActionPasswordConfigured(mv.getActionPasswordRecord(container) != null);
+      setHiddenWallet2faModeState(mv.getHiddenWallet2faMode(container));
+      const prevLastUnlock = container.lastUnlockAt ?? null;
+      setLastUnlockAt(prevLastUnlock);
+      const stamped = mv.withLastUnlockAt(container, Date.now());
+      containerRef.current = stamped;
+      // NO disk re-persist: fast-path implies KEK-enrolled, and the primary
+      // unlock() path already skips the timestamp write on KEK vaults to avoid a
+      // per-unlock biometric prompt. Same rationale — a fresh factor here would
+      // cost a second prompt.
+      const { activeWalletId: active } = reconcileWalletMeta(mv.listWalletIds(stamped));
+      activeIdRef.current = active;
+      setIsDecoy(false);
+      setIsHidden(false);
+      refreshWalletsState();
+      refreshPortfoliosState();
+      assertUnlockCurrent();
+      setUnlocked(true);
+      setExploreMode(false);
+      setWasWiped(false);
+      void trackEvent(EVENT.SESSION_START, { returning: true }).catch(() => {});
+      incrementSessionDayCount();
+      void ensureStealthPool().catch(() => {});
+      setLivePricesEnabled(true);
+      void ensureBiometric2faOnNative().catch(() => {});
+      touch();
+      deriveActiveAndAll();
+      return { ok: true };
+    });
+  }, [refreshWalletsState, refreshPortfoliosState, deriveActiveAndAll, touch]);
+
   // PROVISIONAL: fire the prompt on demand for the Security settings "Test"
   // button, so the simulated sheet can be shown on the simulator without an
   // actual unlock. Resolves true on success, false on cancel. Demo-only today;
@@ -2819,6 +2901,10 @@ export function WalletProvider({ children }) {
     // wallet still needs the typed real PIN. Honest-disabled outside the PIN cohort.
     enableDecoyBiometricUnlock,
     unlockWithBiometric,
+    // FAST-PATH BIOMETRIC-ONLY UNLOCK (#2019). No password; opens the vault via
+    // a single OS biometric prompt + wrapped-DEK cache. FastpathError →
+    // { ok:false, fallbackToPin:true, code } so the UI can reveal the PIN keypad.
+    unlockBiometricOnly,
     // PASSKEY (S1): preview/test the passkey gate from settings. Registration,
     // removal, status and the unlock preference are read/written directly from
     // lib/passkey.js by the settings UI; only the gate + simulated prompt need

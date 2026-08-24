@@ -116,6 +116,22 @@ function notifyPasskeyRegistrationChanged() {
   } catch {
     /* best-effort signal — a missing event bus must never block registration. */
   }
+  // Fast-path cache invalidation on passkey registration change (owner ruling
+  // Finding 2 on PR #2051). Whenever the passkey-registered state flips, the
+  // fast-path wrapped-DEK slot is no longer valid — a newly-registered passkey
+  // must not be silently bypassable by a stale fast-path cache the user warmed
+  // up before enrolling. Also cleared on UNENROL so a resurrected fast-path
+  // starts from a fresh populate on the next slow-path unlock. Lazy dynamic
+  // import to avoid circular deps at module init; best-effort — a failure here
+  // must never block passkey registration.
+  Promise.resolve().then(async () => {
+    try {
+      const mod = await import('@/plugins/androidBiometricCache');
+      if (typeof mod.clearFastpathDek === 'function') {
+        await mod.clearFastpathDek();
+      }
+    } catch { /* best-effort */ }
+  });
 }
 
 // Sentinel credential id used by the demo/simulated path so the rest of the app

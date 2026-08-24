@@ -23,6 +23,7 @@ import {
   setFastpathEnabled,
   markFastpathDisclosureSeen,
   hasSeenFastpathDisclosure,
+  shouldShowFastpathWarmingHint,
 } from '../fastpathUnlock.js';
 
 describe('fastpathUnlock — opt-in gate (Q3)', () => {
@@ -106,5 +107,33 @@ describe('fastpathUnlock — disclosure marker (Q3, one-time card)', () => {
     vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
     markFastpathDisclosureSeen();
     expect(hasSeenFastpathDisclosure()).toBe(false);
+  });
+});
+
+describe('fastpathUnlock — shouldShowFastpathWarmingHint (first-unlock hint)', () => {
+  const base = { platform: 'android', enabled: true, existingCacheValue: null };
+
+  it('all conditions met → true', () => {
+    expect(shouldShowFastpathWarmingHint(base)).toBe(true);
+  });
+
+  it('non-android platform → false', () => {
+    expect(shouldShowFastpathWarmingHint({ ...base, platform: 'ios' })).toBe(false);
+    expect(shouldShowFastpathWarmingHint({ ...base, platform: 'web' })).toBe(false);
+  });
+
+  it('opt-in OFF → false', () => {
+    expect(shouldShowFastpathWarmingHint({ ...base, enabled: false })).toBe(false);
+  });
+
+  it('cache already populated → false (no one-time setup left to do)', () => {
+    expect(shouldShowFastpathWarmingHint({ ...base, existingCacheValue: '{"v":1}' })).toBe(false);
+    expect(shouldShowFastpathWarmingHint({ ...base, existingCacheValue: 'x' })).toBe(false);
+  });
+
+  it('cache "empty" allows null, undefined, and empty string', () => {
+    expect(shouldShowFastpathWarmingHint({ ...base, existingCacheValue: undefined })).toBe(true);
+    expect(shouldShowFastpathWarmingHint({ ...base, existingCacheValue: '' })).toBe(true);
+    expect(shouldShowFastpathWarmingHint({ ...base, existingCacheValue: null })).toBe(true);
   });
 });
