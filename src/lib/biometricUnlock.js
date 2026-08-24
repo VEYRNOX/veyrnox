@@ -105,17 +105,31 @@ async function nativeStore(pw) {
       const available = await cache.isAvailable();
       if (available?.available === true) {
         await cache.putSecret(pw);
-        // Issue #2037 — dual-write to the unauth alias so the KEK-direct read
-        // path (retrieveUnlockSecretDirect) finds the secret on the next
-        // unlock without triggering a redundant OS prompt. Best-effort: if the
-        // unauth alias is unavailable (older plugin build, transient Keystore
-        // failure) the auth-gated fallback in nativeReadSecretUnauth still
-        // finds the secret, so we never fail the write on this side.
+        // Issue #2039 C1 — dual-write to the unauth alias ONLY when the vault is
+        // KEK-wrapped. On a KEK vault the cached PIN is the C-factor of DEK =
+        // HKDF(H ‖ C) and H is producible only inside a StrongBox-gated Secure
+        // Enclave op; the cached C alone is useless, so an unauth-alias entry
+        // (whose read path skips the biometric prompt) is safe. On a NON-KEK
+        // vault the cached PIN IS the vault password and the unauth alias
+        // would strip the SOLE biometric gate — do NOT write it there.
+        // hasVaultKekWrap() is consulted at write time; a caller-attested
+        // "isEnrolled" flag would not be trustworthy here.
+        // Fail-closed: any probe failure is treated as NOT wrapped.
+        let kekWrapped = false;
         try {
-          if (typeof cache.putSecretUnauth === 'function') {
-            await cache.putSecretUnauth(pw);
-          }
-        } catch { /* unauth cache unavailable; migration path handles this on read */ }
+          const { getKeyStore } = await import('@/wallet-core/keystore');
+          const ks = getKeyStore();
+          kekWrapped = typeof ks.hasVaultKekWrap === 'function'
+            ? (await ks.hasVaultKekWrap()) === true
+            : false;
+        } catch { kekWrapped = false; }
+        if (kekWrapped) {
+          try {
+            if (typeof cache.putSecretUnauth === 'function') {
+              await cache.putSecretUnauth(pw);
+            }
+          } catch { /* unauth cache unavailable; migration path handles this on read */ }
+        }
         return;
       }
     } catch {
@@ -380,7 +394,32 @@ export async function retrieveUnlockSecretDirect(assert) {
     );
   }
   if (DEMO) return demoGet();
-  if (Capacitor.isNativePlatform()) return nativeReadSecretUnauth();
+  if (Capacitor.isNativePlatform()) {
+    // Issue #2039 C2 — verify hasVaultKekWrap() in-function, do NOT trust the
+    // caller's kekEnrolled hint alone. A buggy or hostile caller that passes
+    // { kekEnrolled: true } on a NON-KEK vault would otherwise bypass the SOLE
+    // biometric gate (auth-gated cache read) with no OS prompt. The caller's
+    // flag is now a hint; the keystore is the source of truth. If a legit
+    // caller reasonably passes it and it does not hold, that is a bug the
+    // caller needs to hear about — throw, do not silently degrade.
+    let kekWrapped = false;
+    try {
+      const { getKeyStore } = await import('@/wallet-core/keystore');
+      const ks = getKeyStore();
+      kekWrapped = typeof ks.hasVaultKekWrap === 'function'
+        ? (await ks.hasVaultKekWrap()) === true
+        : false;
+    } catch { kekWrapped = false; }
+    if (!kekWrapped) {
+      throw new Error(
+        'retrieveUnlockSecretDirect: hasVaultKekWrap() did not confirm a KEK-wrapped vault. '
+        + 'The kekEnrolled assertion is a hint, not the gate — this function itself checks '
+        + 'the keystore because the unauth cache read has no OS prompt. Refusing to release '
+        + 'the cached secret.',
+      );
+    }
+    return nativeReadSecretUnauth();
+  }
   return null;
 }
 
