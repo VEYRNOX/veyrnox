@@ -2608,6 +2608,89 @@ visibility, each turn the guard red). **Not verified:** no device run — the ra
 is a real-hardware timing artefact and only a device can confirm it is gone. Do not
 mark this device-verified without an iPhone reproduction.
 
+## 2026-08-24 — KDF profile v2 (96 MiB / t=6) — owner-ruled global raise-then-drop
+
+**Status:** BUILT (parameter change SHIP-GLOBAL, migration hook SHIP-INERT
+behind `KDF_PROFILE_V2_MIGRATION_ENABLED=false`). **Not verified** — no
+independent audit review of the tradeoff yet; disclose to the outstanding
+third-party audit whenever it is scheduled.
+
+**Parameters landed** (`src/wallet-core/vault.js`):
+
+```
+KDF_PARAMS = {
+  parallelism: 1,
+  iterations: 6,
+  memorySize: 98304,   // KiB == 96 MiB
+  hashLength: 32,
+  kdfProfileVersion: 2,
+}
+```
+
+Previous default was 192 MiB / t=3 (PR #604, 2026-07-05).
+
+**Reasoning.** Real-device measurement on Note 20 showed the v1 (192 MiB / t=3)
+path spending >6 s of dead-window time even with biometric unlock available —
+the password path is still hit on setup, PIN change, and any biometric miss.
+The owner ruled this session to ship the reduced memory parameter globally on
+the explicit understanding of the honest security cost below (halving `m` and
+doubling `t` is not security-equivalent; this reduces per-guess memory an
+offline attacker's parallel-cracking rig must provision — a real reduction,
+not a wash).
+
+**Honest security cost.** Halving Argon2id memory and doubling iterations is
+NOT security-equivalent. Argon2id's GPU/ASIC-crack resistance is a function of
+MEMORY, not CPU-time — halving `m` roughly halves the per-guess memory a
+parallel-cracking rig must provision. This is an honestly weaker offline-crack
+posture in exchange for a usable unlock, sized and accepted by the owner
+rather than a default drifted into.
+
+**Precedent this overrides.** PR #465 (2026-06-28) had previously lowered the
+KDF for the same latency-vs-crack-resistance reason, and PR #604 (2026-07-05)
+raised it back to 192 MiB citing biometric unlock as the UX shield. This
+change overrides PR #604's raise: real-device data showed the biometric shield
+was leaky in practice (setup, PIN change, biometric miss all still surface the
+slow path). The vault.js head comment now records the full pendulum
+(v0 64 → v1-legacy 64 → v1-audit 192 → v2 96) so a future reader sees the
+whole tradeoff history in one place.
+
+**Backwards compat.** Existing v1 blobs (192 MiB / t=3) keep opening tomorrow
+via `paramsFromVault`, which reads each blob's own recorded `kdf` sub-object.
+`assertSaneKdfParams` ceilings (1 GiB / t=12) already cover v1 comfortably.
+New blobs stamp `kdfProfileVersion: 2` — an extra field on `kdf` that
+`deriveKey`/`assertSaneKdfParams` ignore (they only look at the four argon2id
+fields), so it rides along in the stored `kdf` object as a fast at-a-glance
+version tag.
+
+**Migration flag OFF at ship.** `KDF_PROFILE_V2_MIGRATION_ENABLED = false`.
+Once the owner flips it on (after real-device benchmark confirms the v2
+profile is a net UX win on the target device class), a successful slow-path
+unlock silently re-encrypts a v1 blob under v2 in
+`native._unlockInner` — best-effort, non-fatal, no user-visible step, mirrors
+the `AAD_V3_MIGRATION_ENABLED` pattern already in that file. Web already
+routes through `vaultNeedsRekey`, which is naturally gated by the same flag
+(AAD v:1→v:2 upgrade remains always-on, independent of the KDF-profile
+migration flag).
+
+**H-1 equaliser preserved on the v2 profile.** The structural equaliser
+(primary-success path runs the failure path's own `resolveDeniabilityUnlock`
+and discards the result) is unchanged — every KDF workload dimension (count +
+per-KDF memorySize multiset) matches across success / duress / miss on the
+v2 profile. Pinned by `src/lib/__tests__/unlockTimingEqualizer.h1.v2.native.test.jsx`
+alongside the existing v1-legacy `unlockTimingLegacyParams.p1.test.jsx` (which
+still passes because `KDF_PARAMS.memorySize` resolves dynamically). No wall-clock
+target constant is picked because the current equaliser is structural, not
+time-based (the pre-2026-07 `PRIMARY_UNLOCK_EQUALIZER_MS` magic number was
+retired for exactly the drift-with-KDF_PARAMS reason this change would
+otherwise have re-opened).
+
+**Independent audit disclosure obligation.** This is a security-relevant
+parameter change traded for UX. The outstanding independent third-party audit
+(referenced throughout this file as gating for RASP / hardware KEK / cloud
+recovery) must be told about the v1→v2 profile change with the same honest
+security-cost framing above — do not present the halved memory as a wash with
+doubled iterations.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
