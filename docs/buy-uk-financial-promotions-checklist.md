@@ -122,11 +122,27 @@ Operational assumption for Veyrnox:
   resolves to `UTC` and Buy renders
 - [ ] **owner/counsel decision: Crown Dependencies perimeter** — recorded as
   intentionally out of scope, or added to the block
-- [ ] **honesty gap: the user-facing feature catalogue does not mention UK
-  suppression at all.** `src/lib/featureClassification.js:98` and
-  `src/lib/featureCatalogue.js` describe the Buy tile's deniability and ship
-  gates and omit the region block, so the catalogue overstates availability.
-  One-line fix, deliberately not bundled into a docs-only change
+- [x] **honesty gap in the route audit — FIXED 2026-08-24.**
+  `src/lib/featureClassification.js` `/buy` and `/buy/in-progress` described the
+  deniability and ship gates and omitted the UK region block, so the audit
+  understated the gating. Both notes now name all three gates, the fail-open
+  property, and that the block is device-reported rather than an access control.
+
+  **Two corrections to how this row was originally written**, kept rather than
+  reworded so the error is visible:
+  - It called `featureClassification.js` "the user-facing feature catalogue".
+    It is not — its own header calls it **THE AUDIT**, the internal
+    source-of-truth that `featureRegistry.js` derives from. The user-facing
+    surface is `featureCatalogue.js`, rendered by `Features.jsx`.
+  - It named `featureCatalogue.js` as also omitting the block. That file has
+    **no Buy entry at all** (verified by grep), so there was nothing to omit —
+    though "the user-facing catalogue never mentions Buy" is arguably its own
+    gap, and is left below as an open question rather than silently invented
+    into a fix.
+- [ ] **open: should `featureCatalogue.js` carry a Buy entry?** It currently has
+  none, so the surface users actually read says nothing about Buy either way —
+  neither overstating nor disclosing it. Owner call: add an entry naming the
+  region block, or record that Buy is deliberately absent from the catalogue.
 - [ ] optional UX follow-up decided:
   - keep silent hide, or
   - add explicit "Buy unavailable in your region" copy
@@ -240,8 +256,10 @@ Ordered by what most changes the compliance posture, not by effort.
    blocks on an absent signal. Do not change `locale.js`'s fallbacks to achieve
    it — they drive date/number formatting app-wide.
 2. **Record the Crown Dependencies perimeter** so it stops being an omission.
-3. **Fix the catalogue honesty gap** — `featureClassification.js:98` describes
-   the Buy gates and omits the region block entirely.
+3. ~~Fix the route-audit honesty gap in `featureClassification.js`.~~ **Done
+   2026-08-24** — both Buy entries now name the region block. Remaining
+   question: whether `featureCatalogue.js`, the surface users actually read,
+   should carry a Buy entry at all (it has none today).
 4. Add a provider-side UK deny control if Transak supports it for this
    integration. App-layer suppression and provider-layer suppression fail
    differently, and only the provider one survives a user changing their
@@ -264,4 +282,12 @@ Ordered by what most changes the compliance posture, not by effort.
   the two test rows that are genuinely done, and added the UK-developer note
   after `BuyCrypto.gates.test.jsx` was found to be host-timezone-dependent
   (PR #2040). No production behaviour changed.
+- **2026-08-24 (second pass)** — Fixed the route-audit omission in
+  `featureClassification.js` (both Buy entries now name the UK block, its
+  fail-open property, and that it is not an access control). Corrected the same
+  day's own two mistakes: `featureClassification.js` is the internal AUDIT, not
+  the user-facing catalogue, and `featureCatalogue.js` has no Buy entry to omit
+  one from. Also corrected a stale claim found in the audit note itself —
+  "VITE_BUY_ENABLED defaults false" described `.env.example` only, while
+  `.env.production` has shipped `true` since PR #2030.
 - **2026-08-19** — Initial checklist.
