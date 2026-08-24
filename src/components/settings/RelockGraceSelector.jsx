@@ -34,6 +34,8 @@ const LABELS = {
 };
 
 export default function RelockGraceSelector() {
+  const [value, setValue] = useState(() => String(getRelockGraceMs()));
+
   // I3 chokepoint — render nothing at all in decoy/demo.
   if (isDeniabilityOrDemoActive()) return null;
 
@@ -50,8 +52,6 @@ export default function RelockGraceSelector() {
   // be pinned; production web builds gate the SETTINGS page it lives on.
   const shouldRender = isNative || typeof window !== 'undefined';
   if (!shouldRender) return null;
-
-  const [value, setValue] = useState(() => String(getRelockGraceMs()));
 
   const onChange = (e) => {
     const next = Number(e.target.value);
