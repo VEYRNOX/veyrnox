@@ -35,7 +35,12 @@ import { useReceiveDetector } from "@/notify/useReceiveDetector";
 import LockSealingOverlay from "./LockSealingOverlay";
 import Spinner from "./Spinner";
 import PaywallNudge from "./PaywallNudge";
-import SecurityAdvisor from "./SecurityAdvisor";
+// SecurityAdvisor is a large post-unlock surface (1672 LOC + @revenuecat +
+// TIP client + threat-intel store). Lazy-load it so its module graph is not
+// parsed during cold-unlock hydration; SafeSuspense keeps the shell painted
+// while the chunk streams. Rendered only on post-unlock Layout mounts, so
+// deferring the fetch by one paint is invisible to the user.
+const SecurityAdvisor = lazy(() => import("./SecurityAdvisor"));
 
 const DashboardPage     = lazy(() => import('../pages/Dashboard'));
 const SendCryptoPage    = lazy(() => import('../pages/SendCrypto'));
@@ -501,7 +506,9 @@ export default function Layout() {
       {/* Day-3 soft paywall nudge (Task 6). Renders nothing until
           shouldShowPaywallNudge() is true; I3-gated internally. */}
       <PaywallNudge />
-      <SecurityAdvisor walletChain={advisorWalletChain} pageSnapshot={advisorPageSnapshot} />
+      <SafeSuspense fallback={null}>
+        <SecurityAdvisor walletChain={advisorWalletChain} pageSnapshot={advisorPageSnapshot} />
+      </SafeSuspense>
 
       {/* ── Mobile Top Bar ── */}
       <header
