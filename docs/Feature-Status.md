@@ -292,28 +292,62 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 > Handoff checklist for all remaining device/Mac/browser/auditor-gated items: `docs/hardware-audit-handoff.md`.
 
-### KEK fast-path DEK cache (Android native, opt-in) — 🟡 BUILT, opt-in, off by default (issue #2019, 2026-08-24)
+### KEK fast-path DEK cache (Android native, default-ON w/ first-run disclosure) — 🟡 BUILT, default-ON, informed-consent gated (issue #2019, 2026-08-24)
 
-**Status:** BUILT / INTERNAL / opt-in-gated. Trades PIN-required-to-unlock for
-latency on Android native builds. Deliberately weaker than the today-shipping
-"PIN + hardware factor" posture — same security model as iCloud Keychain,
-Signal PIN-less unlock, and 1Password biometric unlock. **Independent-audit
-disclosure obligation.**
+**Status:** BUILT / INTERNAL / default-ON with mandatory first-run disclosure
+card. Trades PIN-required-to-unlock for latency on Android native builds.
+Deliberately weaker than the today-shipping "PIN + hardware factor" posture —
+same security model as iCloud Keychain, Signal PIN-less unlock, and 1Password
+biometric unlock. **Independent-audit disclosure obligation now covers a
+"default weaker unlock" (not "opt-in weaker unlock").**
 
 - **Owner rulings encoded** (design doc `docs/kek-fast-path-design.md`
-  §Open questions): Q1 coerced-biometric gap ACCEPTED; Q3 opt-in, OFF by
-  default (Settings toggle "Fast unlock — uses Face ID/fingerprint without
-  PIN" + one-time disclosure card); Q4 NATIVE-ONLY (web unchanged — WebAuthn
-  PRF latency already low); Q5 SEPARATE Keystore slot from Personal Backup's
-  `dek-cache/v1` with distinct AAD `veyrnox/kek/fastpath/v1/aad`, cross-slot
-  mixup fails closed.
+  §Open questions): Q1 coerced-biometric gap ACCEPTED; **Q3 REVERSED
+  2026-08-24 — default-ON with MANDATORY first-run disclosure card**
+  (informed consent preserved via the disclosure chokepoint; no fast-path
+  benefit activates before the card has been seen and answered). Q4
+  NATIVE-ONLY (web unchanged — WebAuthn PRF latency already low); Q5
+  SEPARATE Keystore slot from Personal Backup's `dek-cache/v1` with distinct
+  AAD `veyrnox/kek/fastpath/v1/aad`, cross-slot mixup fails closed.
+- **Tri-state storage** (`src/lib/fastpathUnlock.js`): key value `'1'` =
+  explicit ON, `'0'` = explicit OFF, absent = not-yet-chosen (treated as ON
+  under the default flip). `hasFastpathBeenExplicitlySet()` distinguishes
+  "chose OFF" from "not yet chosen"; `setFastpathEnabled(false)` writes
+  `'0'` (NOT remove) so the two absent-key meanings do not collapse.
+- **Informed-consent chokepoint — gated at THREE sites, all on
+  `hasSeenFastpathDisclosure()`:** (1) `populateFastpathBestEffort` in
+  `wallet-core/keystore/native.js` skips warming the wrapped-DEK cache
+  unless the marker is set (would otherwise silently downgrade unlock
+  posture on the default flip); (2) `WalletEntry.jsx` biometric button
+  hidden until the marker is set (user must not see a stronger-unlock
+  affordance before understanding what it does); (3) `FastpathToggle.jsx`
+  renders EFFECTIVE state (`isFastpathEnabled() && hasSeenFastpathDisclosure()`),
+  so a fresh install shows the toggle honestly UNCHECKED rather than lying
+  about a benefit not yet active.
+- **First-run card:** `src/components/onboarding/FastUnlockFirstRunCard.jsx`.
+  Mounts from `WalletEntry.jsx` on the post-unlock render branch
+  (sibling of `<Outlet />`, same TelemetryConsent-shape chokepoint). Renders
+  null unless the full gate matrix passes: native Android + biometric
+  available + KEK-wrapped vault + not deniability/demo + no passkey + no
+  explicit choice yet + disclosure not yet seen. Both buttons dismiss
+  permanently by marking the disclosure seen; "Enable Fast Unlock" writes
+  `'1'`, "Not now" writes `'0'` (tri-state OFF, so the migration honours
+  the decline through any future re-flip).
+- **Migration (pre-reversal explicit-OFF honoured):** `migrateFastpathState()`
+  runs at module init in `lib/fastpathUnlock.js`. Pre-reversal explicit-OFF
+  installs had the old setter do `remove()`, so their storage key is absent
+  — under the default-ON flip that reads as ON. If the disclosure marker
+  is set (proving they went through the old opt-in flow), the migration
+  promotes absent → explicit `'0'`. Genuine fresh installs are left alone.
+  Idempotent + I3-guarded (a decoy session must not migrate anything).
 - **Kotlin ACL:** new alias `com.veyrnox.app.biometricCacheFastpath.v1`,
   `setUserAuthenticationRequired(true)` + `setInvalidatedByBiometricEnrollment(true)`
   (STRONG form — any biometric add/remove wipes the key). Constants pinned
   by `AndroidBiometricCacheConfigTest.T5` JVM tripwire.
 - **JS primitives:** `src/wallet-core/keystore/fastpathDekCache.js` wrap/unwrap
   with distinct AAD + distinct `FASTPATH_UNWRAP_FAILED` error code (no oracle);
-  `src/lib/fastpathUnlock.js` opt-in gate with I3 write-guard.
+  `src/lib/fastpathUnlock.js` tri-state gate with I3 write-guard on both the
+  enable setter and the disclosure marker + one-shot init migration.
 - **Invariants preserved:** I3 deniability — write-gate blocks decoy/demo taps;
   panic-wipe sweeps both `veyrnox-fastpath-enabled` /
   `veyrnox-fastpath-disclosure-seen` (residue test) AND the Kotlin alias
@@ -340,11 +374,16 @@ disclosure obligation.**
   keypad's `unlock()`); PinUnlock biometric button rendered above the
   keypad on Android when opt-in is ON and biometrics available and not in
   decoy/demo (I3); Settings toggle + one-time disclosure card in
-  `src/components/security/FastpathToggle.jsx` (OFF by default; disable
-  clears the wrapped-DEK cache best-effort; renders null in decoy/demo
-  and on non-Android); first-unlock "one-time setup — this will be faster
-  next time" hint rendered above the PIN pad when the wrapped-DEK cache
-  is empty (decision extracted as pure `shouldShowFastpathWarmingHint`
+  `src/components/security/FastpathToggle.jsx` (tri-state effective state:
+  toggle reflects `isFastpathEnabled() && hasSeenFastpathDisclosure()` so
+  the visible switch never lies about a benefit not yet active; disable
+  writes explicit `'0'` and clears the wrapped-DEK cache best-effort;
+  renders null in decoy/demo and on non-Android); mandatory first-run
+  disclosure card
+  `src/components/onboarding/FastUnlockFirstRunCard.jsx` mounted from
+  WalletEntry post-unlock; first-unlock "one-time setup — this will be
+  faster next time" hint rendered above the PIN pad when the wrapped-DEK
+  cache is empty (decision extracted as pure `shouldShowFastpathWarmingHint`
   helper for unit-testability).
 - **Test coverage added:** `native.unlockBiometricOnly.test.js` (17 —
   gate matrix: DENIABILITY_BLOCKED/DISABLED/RASP_GATE ×3/NO_VAULT/NOT_KEK
