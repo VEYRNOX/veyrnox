@@ -332,16 +332,38 @@ disclosure obligation.**
   the primary vault (WalletProvider routes duress via `tryDuressUnlock`
   and panic via `panicWipe`, both outside `_unlockInner`). H is captured
   as `hCopyForFastpath = H.slice()` BEFORE `combineKek` zeros the source,
-  copy is zeroed in the same `finally`. WalletProvider caller + PinUnlock
-  biometric button + Settings UI toggle + first-unlock spinner remain a
-  follow-up — the keystore method + populate are the security-critical
-  half; UI wiring is plumbing on top.
+  copy is zeroed in the same `finally`. **UI wiring done (2026-08-24,
+  same day):** `WalletProvider.unlockBiometricOnly()` caller (race-guarded
+  via `unlockGenRef`; `FastpathError` → `{ ok:false, fallbackToPin:true,
+  code }` for the UI to fall back; success mounts the primary session; no
+  password path so duress/panic still route only through the PIN
+  keypad's `unlock()`); PinUnlock biometric button rendered above the
+  keypad on Android when opt-in is ON and biometrics available and not in
+  decoy/demo (I3); Settings toggle + one-time disclosure card in
+  `src/components/security/FastpathToggle.jsx` (OFF by default; disable
+  clears the wrapped-DEK cache best-effort; renders null in decoy/demo
+  and on non-Android); first-unlock "one-time setup — this will be faster
+  next time" hint rendered above the PIN pad when the wrapped-DEK cache
+  is empty (decision extracted as pure `shouldShowFastpathWarmingHint`
+  helper for unit-testability).
 - **Test coverage added:** `native.unlockBiometricOnly.test.js` (17 —
   gate matrix: DENIABILITY_BLOCKED/DISABLED/RASP_GATE ×3/NO_VAULT/NOT_KEK
   ×2/MISS ×4/KEY_INVALIDATED; end-to-end HIT via real fastpathDekCache
   primitives; safety invariants) + `native.slowPathPopulate.test.js` (8 —
   populate ON ALLOW + skip in deniability/opt-in-off/WARN/BLOCK/unknown/
-  probe-throw + populate failure never fails unlock).
+  probe-throw + populate failure never fails unlock). **UI wiring
+  (2026-08-24):** `WalletProvider.unlockBiometricOnly.test.jsx` (6 —
+  exposed method, success mounts wallet, FASTPATH_MISS/DENIABILITY_BLOCKED
+  fallback-to-PIN without mounting, non-FASTPATH error rethrown, lock()
+  race → UNLOCK_SUPERSEDED); `WalletEntry.fastpathButton.test.jsx` (5 —
+  visibility matrix: all gates pass, opt-in-off hidden, decoy hidden; tap
+  invokes `unlockBiometricOnly` with no password argument; fallback-to-PIN
+  keeps keypad visible); `FastpathToggle.test.jsx` (6 — default OFF,
+  first-run disclosure gate + ack fires both writes, repeat-run no
+  re-disclosure, disable clears cache, decoy renders null, non-Android
+  renders null); `shouldShowFastpathWarmingHint` unit tests (5 — all
+  inputs met, non-android, opt-in off, cache populated, empty accepts
+  null/undefined/'').
 - **Pending device verification (merge gate per design §Gates):** on-device
   P50/P95 unlock latency before/after on Pixel 4a, Pixel 3, Samsung A20 (Q4:
   iPhone SE out of scope, native-only means Android-only). Biometric
