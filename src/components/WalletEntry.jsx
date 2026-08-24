@@ -102,7 +102,7 @@ import ShakeOnKey from "@/components/ShakeOnKey";
 import TelemetryConsent from "@/components/TelemetryConsent";
 import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
-import { isFastpathEnabled } from "@/lib/fastpathUnlock";
+import { isFastpathEnabled, shouldShowFastpathWarmingHint } from "@/lib/fastpathUnlock";
 import { useWallet } from "@/lib/WalletProvider";
 import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
@@ -541,6 +541,13 @@ export default function WalletEntry() {
   // vault password is still required, so this is NEVER a weaker path.
   const [biometricFailed, setBiometricFailed] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Fast-path (#2019) one-time-setup hint. Set to true only when a PIN unlock
+  // is about to run, fastpath is enabled, AND the wrapped-DEK cache is empty
+  // (so this unlock is the slow-path populate that primes the fast-path
+  // cache). Cleared in the runPinUnlock finally so it never lingers past the
+  // unlock. Renders a short hint alongside the busy state — no security value,
+  // purely a UX signal for the first unlock after enabling the feature.
+  const [fastpathWarmingHint, setFastpathWarmingHint] = useState(false);
   const [error, setError] = useState("");
   // Biometric availability for THIS platform (resolved once on mount). Drives the
   // onboarding offer and the returning-user one-tap button label.
@@ -876,6 +883,23 @@ export default function WalletEntry() {
   const runPinUnlock = async (pin) => {
     if (!pin) { setError("Enter your PIN."); return; }
     setError(""); setBusy(true);
+    // Fast-path (#2019) one-time-setup hint: probe the wrapped-DEK cache
+    // BEFORE unlock so we can tell the user THIS unlock will populate the
+    // cache and the next one will be faster. The three-input decision lives
+    // in the pure shouldShowFastpathWarmingHint helper (unit-tested in
+    // fastpathUnlock.test.js). Best-effort — a probe failure just means no
+    // hint, unlock proceeds normally.
+    try {
+      let existing = null;
+      const platform = Capacitor.getPlatform?.();
+      if (platform === 'android' && isFastpathEnabled()) {
+        const mod = await import('@/plugins/androidBiometricCache');
+        if (typeof mod.getFastpathDek === 'function') existing = await mod.getFastpathDek();
+      }
+      if (shouldShowFastpathWarmingHint({
+        platform, enabled: isFastpathEnabled(), existingCacheValue: existing,
+      })) setFastpathWarmingHint(true);
+    } catch { /* best-effort */ }
     try {
       await unlock(pin, { pinModel: true, skipBiometric: true });
       setUnlockPin("");
@@ -1009,7 +1033,7 @@ export default function WalletEntry() {
       setError(pinAttemptWarning(attempts) || "Incorrect PIN. Try again.");
       setUnlockPin("");                    // clear the entered digits
       setPinShakeKey((k) => k + 1);        // shake the pad
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setFastpathWarmingHint(false); }
   };
 
   // PHASE 1: PIN setup writes credential markers only (provider.setupPin) and enters
@@ -1664,6 +1688,15 @@ export default function WalletEntry() {
           <div className="flex items-center justify-center gap-2 text-sm font-medium">
             <Lock className="h-4 w-4 text-muted-foreground" /> Enter your PIN
           </div>
+          {fastpathWarmingHint && (
+            <p
+              data-testid="fastpath-warming-hint"
+              className="text-[11px] text-center text-muted-foreground"
+              role="status"
+            >
+              One-time setup &mdash; this will be faster next time
+            </p>
+          )}
           <ShakeOnKey shakeKey={pinShakeKey}>
             <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} submitLabel="Unlock" />
           </ShakeOnKey>
