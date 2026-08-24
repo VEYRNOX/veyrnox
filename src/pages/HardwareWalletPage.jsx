@@ -59,6 +59,13 @@ export default function HardwareWalletPage() {
 
   const importPreview = useMemo(() => importParts.join('\n'), [importParts]);
 
+  function openScanner() {
+    // Avoid stacking the dialog focus trap behind the full-screen scanner on
+    // Android; monkey exposed this as an ANR with no focused window.
+    setImportOpen(false);
+    setScannerOpen(true);
+  }
+
   const tryImport = async (input) => {
     try {
       const parsed = await importProfile(input);
@@ -149,7 +156,7 @@ export default function HardwareWalletPage() {
               Scan or paste the `crypto-multi-accounts` UR from your Digital Shield device. Veyrnox will import public account data only.
             </p>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" className="gap-2" onClick={() => setScannerOpen(true)}>
+              <Button type="button" variant="outline" className="gap-2" onClick={openScanner}>
                 <QrCode className="h-4 w-4" />
                 Scan QR
               </Button>
@@ -190,8 +197,12 @@ export default function HardwareWalletPage() {
           onScan={(value) => {
             addImportPart(value);
             setScannerOpen(false);
+            setImportOpen(true);
           }}
-          onClose={() => setScannerOpen(false)}
+          onClose={() => {
+            setScannerOpen(false);
+            setImportOpen(true);
+          }}
         />
       )}
     </div>
