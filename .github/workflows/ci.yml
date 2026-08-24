@@ -691,6 +691,13 @@ jobs:
           releaseFiles: aab-artifact/app-google-release.aab
           track: internal
           status: completed
+          # Play refuses to auto-commit an edit while the app has unresolved
+          # review state (first submission still pending; 1.0.1 SUBMISSION
+          # HOLD). Internal Testing does NOT need Google review, so tell the
+          # API not to send the changes for review — the edit still commits
+          # and the AAB reaches testers. Removing this flag re-breaks the
+          # publish step until the first store review clears.
+          changesNotSentForReview: true
           # No release notes here — internal testers see the versionCode
           # in Play; leave prose to closed/open-track promotions.
 
