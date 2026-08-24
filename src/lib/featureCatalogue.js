@@ -4,9 +4,19 @@
 //
 // Scope contract: docs/WalletFeatures.spec.md. This catalogue lists ONLY
 // self-custody-safe, in-scope features. Everything in spec section C
-// (custodial / regulated — swaps, perps, staking/yield/lending, fiat ramps,
-// bank links, KYC/DID, NFT minting, DAO/payroll, encrypted messaging, etc.) is
-// deliberately NOT a Veyrnox feature and is not listed here.
+// (custodial / regulated — swaps, perps, staking/yield/lending, fiat OFF-ramp,
+// fiat wallets, bank links, KYC/DID, NFT minting, DAO/payroll, encrypted
+// messaging, etc.) is deliberately NOT a Veyrnox feature and is not listed here.
+//
+// ONE scoped exception, added 2026-08-24: the fiat ON-ramp hand-off (Buy /
+// Transak) was moved out of section C to spec item 56, on the basis that
+// Veyrnox never touches fiat, never custodies, and never runs KYC — it hands
+// off to a licensed provider and the crypto lands at an address the user's own
+// seed derives. Read the section C carve-out before adding anything else that
+// looks adjacent: off-ramp, fiat wallets, bank links, and CEX deposit are all
+// still barred, and the exception does NOT mean "regulated features are fine
+// now". Compliance posture for Buy lives in
+// docs/buy-uk-financial-promotions-checklist.md, not here.
 //
 // Two states:
 //   verified — shipped and working.
@@ -379,6 +389,19 @@ export const FEATURE_CATEGORIES = [
   {
     category: 'Payments & Utilities',
     features: [
+      {
+        name: 'Buy Crypto (Third-Party On-Ramp)',
+        // 'verified' is this catalogue's word for SHIPPED, not for
+        // on-chain-proven — the two-state enum has no third value, and the
+        // retired 'built' string is rejected by featureCatalogue.test.js. The
+        // honesty is carried in the prose, matching Personal Backup, the iOS
+        // and Android shells, and Samsung billing, which are all 'verified'
+        // with an explicit "NOT verified:" clause. Do not read this as a claim
+        // that a purchase has ever completed — it has not.
+        status: 'verified',
+        summary: 'Hand-off to Transak — regional, and no purchase proven yet',
+        explanation: 'Built (/buy). Buy crypto with fiat through Transak, a licensed third-party provider. Veyrnox never touches your money and never holds your crypto: you enter an amount, the app reads the deposit address from your own on-device wallet at the moment you press Continue, and hands off to Transak\'s hosted checkout in the system browser. The purchase is between you and Transak, under their terms and their identity checks, and the crypto is delivered to an address only your seed controls. Nothing about the return trip is trusted — /buy/in-progress reads nothing from the return URL, so a spoofed return cannot show a fake success; confirmation comes from the coin arriving at your address like any other incoming transaction. NOT available everywhere: the Buy entry is hidden in the UK for financial-promotions reasons (s.21 FSMA), and it is hidden entirely in decoy, duress, and demo sessions. The region check reads your device locale and timezone, so it is a good-faith regional suppression, not a security control, and it does not hide Buy when the region cannot be determined. NOT verified: no purchase has been completed on either store, so this is built-and-shipping, not proven end-to-end.',
+      },
       {
         name: 'Address Book',
         status: 'verified',

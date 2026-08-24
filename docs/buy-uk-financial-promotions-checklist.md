@@ -139,10 +139,36 @@ Operational assumption for Veyrnox:
     though "the user-facing catalogue never mentions Buy" is arguably its own
     gap, and is left below as an open question rather than silently invented
     into a fix.
-- [ ] **open: should `featureCatalogue.js` carry a Buy entry?** It currently has
-  none, so the surface users actually read says nothing about Buy either way —
-  neither overstating nor disclosing it. Owner call: add an entry naming the
-  region block, or record that Buy is deliberately absent from the catalogue.
+- [x] **should `featureCatalogue.js` carry a Buy entry? — RESOLVED 2026-08-24,
+  owner-decided: yes, after updating the scope contract first.**
+
+  The absence turned out to be **deliberate, not an oversight**, and the
+  investigation is worth keeping. `featureCatalogue.js`'s header bound it to
+  `docs/WalletFeatures.spec.md`, whose **section C — "CUSTODIAL / REGULATED —
+  DO NOT BUILD (breaks the model)"** listed *"Fiat Ramp, Live Fiat Ramp"* under
+  Custody/banking, citing FinCEN MSB / MiCA CASP / **FCA** / e-money licensing.
+  The contract held perfectly: zero section-C items appeared in the catalogue,
+  and even NFTs were scoped to display-only to stay clear of the minting bar.
+
+  So the real finding was not a missing entry — it was that **the product ships
+  a fiat on-ramp its own spec said not to build**, and the catalogue was
+  faithfully reflecting the spec rather than reality.
+
+  Resolved by changing the contract first rather than quietly contradicting it:
+  1. Spec section C gained an explicit **carve-out** — only the third-party
+     **on-ramp hand-off** moves out; off-ramp, fiat wallets, bank links, and
+     CEX deposit stay barred.
+  2. The on-ramp is now spec item 56 (section 10, High-risk / deferred) with
+     its conditions attached.
+  3. The catalogue header records the single exception and warns against
+     reading it as "regulated features are fine now".
+  4. Only then was the entry added.
+
+  **The distinction the carve-out rests on, so it can be challenged:** Veyrnox
+  never touches fiat, never custodies, and never runs KYC — it hands off to a
+  licensed provider, and the crypto lands at an address the user's own seed
+  derives. That is *not* the same as "no obligations", which is exactly why
+  this checklist exists and why counsel sign-off remains open below.
 - [ ] optional UX follow-up decided:
   - keep silent hide, or
   - add explicit "Buy unavailable in your region" copy
@@ -282,6 +308,13 @@ Ordered by what most changes the compliance posture, not by effort.
   the two test rows that are genuinely done, and added the UK-developer note
   after `BuyCrypto.gates.test.jsx` was found to be host-timezone-dependent
   (PR #2040). No production behaviour changed.
+- **2026-08-24 (third pass)** — Resolved the open catalogue question by
+  amending the scope contract first: `WalletFeatures.spec.md` section C gained
+  a carve-out for the third-party fiat **on**-ramp hand-off (off-ramp, fiat
+  wallets, bank links and CEX deposit stay barred), the on-ramp became spec
+  item 56, `featureCatalogue.js`'s header records the single exception, and a
+  user-facing Buy entry was added naming the region block, its fail-open
+  property, and that no purchase has ever completed.
 - **2026-08-24 (second pass)** — Fixed the route-audit omission in
   `featureClassification.js` (both Buy entries now name the UK block, its
   fail-open property, and that it is not an access control). Corrected the same
