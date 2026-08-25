@@ -10,7 +10,10 @@ Method: Static code analysis via parallel specialist agents (4 agents × 4 surfa
 Branch audited: `security-audit/2026-08-25`, an isolated worktree pinned to
 `origin/main` @ `c30ad5c4d9ef7b4e1ec1ee0a7e302d1c20c9a620`
 ("feat(vault): KDF profile v2 (96 MiB / t=6)…", #2054)
-Status: **Findings only — nothing fixed. Do not mark anything verified without on-chain txid or on-device evidence.**
+Status at time of audit: **Findings only — nothing fixed.**
+Status now: **remediated the same day — see §Remediation status below.** Do not mark
+anything verified without on-chain txid or on-device evidence; every fix below is
+BUILT/INTERNAL, unit-tested only.
 
 ### Deviations from the runbook, stated up front
 
@@ -728,7 +731,117 @@ Read at `c30ad5c4`, not assumed:
 
 ---
 
+## Remediation status (added 2026-08-25, after the fix wave)
+
+Every finding above was worked the same day, in 12 isolated worktrees with
+non-overlapping file scope, one PR per group. **Read this section as a record of what
+LANDED, not of what is proven.** All fixes are BUILT / INTERNAL: unit-tested, not
+device-verified, no on-chain evidence, and not the outstanding independent audit.
+
+| ID | Finding | PR | Outcome |
+|---|---|---|---|
+| **H-1** | fast-path bypasses duress PIN | #2071 | **FIXED** |
+| **H-2** | KDF v2 chaff↔real parity | #2069 | **FIXED (future writes only)** |
+| **H-3** | WC discards the TIP verdict | #2067 | **FIXED** |
+| **H-4** | EIP-712 `primaryType` unreconciled | #2063 | **FIXED** |
+| M-1 | verdict not a max-composition | #2067 | FIXED |
+| M-2 | comment cites three non-existent tests | #2071 | FIXED — tests written for real |
+| M-3 | disclosure card omits the duress bypass | #2060 | FIXED |
+| M-4 | fast-path DEK under H alone | #2071 | **NOT reversed** — owner-accepted; hardening only |
+| M-5 | iOS screen mirroring vs seed reveal | #2065 | FIXED |
+| M-6 | spend limits blind to ERC-20 | #2068 | FIXED |
+| M-7 | PIN backoff never enforced | #2070 | FIXED — wired, not deleted |
+| M-8 | clipboard wipe has no focus trigger | #2061 | FIXED (partial — see below) |
+| M-9 | attempt counter fails open | #2070 | **MITIGATED, not fixed** — session-scoped floor |
+| M-10 | biometric cache vs enrollment change | #2066 | **iOS NOT fixed** — see below |
+| L-1..L-4 | WC provider defects | #2068 | FIXED |
+| L-5, L-6 | RASP tier monotonicity, stale artifact | #2065, #2070, #2072 | FIXED |
+| L-7, L-8 | iOS reject args, SE invalidation route | #2066 | FIXED (uncompiled) |
+| L-9 | `changePassword` leaves old PIN cached | #2071 | FIXED |
+| L-10, L-13 | credential length cap, stale KDF comments | #2069 | FIXED |
+| L-11 | fifth KDF straddles the visible outcome | — | **NOT ATTEMPTED** |
+| L-12 | Kotlin comment contradicts the code | #2062 | FIXED |
+| INFO | dead `checkTypedDataChainId` | #2063 | Deleted |
+| INFO | stale `nativeProbe.js` tamper comment | #2065 | FIXED |
+
+**Merge state when this section was written:** #2060, #2061, #2062, #2063, #2065, #2066,
+#2067, #2068, #2069 and #2071 are merged to `main`. **#2070 and #2072 were still open and
+awaiting checks** — so M-7, M-9 and the L-6 seed surfaces are written and tested but not
+yet on `main` at the time of writing. Check the PRs rather than trusting this line; a
+statement about another PR's state is perishable.
+
+### What is NOT closed, stated plainly
+
+- **M-10 (iOS) — not fixed, and deliberately so.** `kSecAccessControlBiometryCurrentSet`
+  couples enrollment-invalidation to a biometric read, so the shim would re-introduce a
+  Face ID prompt on the KEK fast path — a single-prompt property two existing tests pin.
+  Android gets both halves only via a separate Keystore sentinel the iOS Keychain has no
+  equivalent for. The alternative considered (a no-prompt presence check) rests on
+  unverified Keychain behaviour and could be a no-op that reads as a control. Implementing
+  it would have been fake security. `biometricUnlockSecurityMode()` still returns
+  `'app-gate'` and the I4 TARGET disclosure stands. **This needs an owner decision on the
+  single-prompt trade, not an audit patch.**
+- **M-9 — mitigated, not fixed.** The floor is session-scoped by construction; a reload
+  clears it. It stops a failed write resetting progress within a session. It is not
+  persistence and must not be described as such.
+- **H-2 — future writes only.** A device that already wrote a mixed footprint under the
+  shipped v2 build stays distinguishable. Only the rekey option heals an existing device.
+- **M-8 — half closed.** `WIPE_EXHAUSTED_EVENT` is emitted and tested, but nothing listens
+  yet, so the "no user-visible signal" half of the finding is still open.
+- **L-11 — not attempted.** Reordering the equalizer's fifth KDF around the visible
+  outcome flip was out of scope for this wave.
+- **L-7/L-8 are uncompiled.** No Xcode build and no device ran in this session.
+
+### Behaviour changes an owner should sanity-check
+
+1. **TIP unavailability can now block a WalletConnect send.** With S9 live on that path, a
+   `warn`/`error`/unrecognised TIP verdict scores CAUTION, and WC has no "sign anyway"
+   affordance, so it rejects. That is the fail-closed outcome the fix exists for, but it
+   is a live availability change.
+2. **The PIN lockout is now real.** Five minutes at ≥7 attempts, enforced before an attempt
+   is spent. The deadline is clamped so a corrupted value cannot brick the owner's wallet.
+3. **iOS seed reveal now refuses during active screen mirroring.** Android WARN behaviour
+   is unchanged.
+
+### Process notes worth keeping
+
+- **Two agents independently hit the same trap:** `getFreshRaspArtifact()` composes the
+  remote attestation leg, which these seed surfaces exclude by owner decision 2026-07-16.
+  Wiring it in unchanged would have blocked seed reveal/import **forever** on sideloaded
+  and web builds. Both built on-device-only helpers instead — which means
+  `freshSensitiveGate` (#2070) and `getFreshLocalRaspArtifact` (#2072) are now **two
+  implementations of one rule**, the same drift hazard this report flagged against
+  `checkTypedDataChainId`. Consolidate them.
+- **Three tests were found asserting the defect they should have caught** — two EMULATOR
+  cases in `sensitiveGate.test.js` (L-5) and two `g4-*-pins.test.js` rows that went green
+  off comment text alone. Inverted with the reason written in place, not quietly.
+- **One fix's own test failed in CI on its own premise:** an instance-level
+  `spyOn(localStorage,'setItem')` patched an object CI did not resolve, so the simulated
+  unwritable store never happened. Replaced with a Map-backed `stubGlobal` and
+  mutation-checked. A test that cannot fail is the thing this report keeps finding.
+
+### New findings surfaced during remediation (for the next pass, NOT fixed here)
+
+- **The typed-data pre-modal branch takes its chain from `data.params.chainId` rather than
+  `resolveSessionCaip2`** — same class as L-3, on the branch this audit did not name. A
+  self-consistent but session-unapproved chain still reaches the modal and is caught only
+  at sign time.
+- **`RaspSecurity.jsx`'s `CONDITION_LABEL` has no `screen_capture` entry**, so that debug
+  page renders the raw string via its fallback. One line.
+- **`raspIntegrityPlugin.js:48-53` JSDoc** still describes `screenCapture` as purely
+  `elevated`. Stale after #2065.
+- **iOS user-cancel maps to `KEK_NO_HARDWARE_FACTOR`** rather than a distinct cancelled
+  code (both wipe-exempt). Parity gap with Android.
+- **`CLAUDE.md`'s required-check table is stale**: the effective required set is **five**
+  contexts, not six — `web-e2e-tests` is required on neither the ruleset nor classic
+  protection as of 2026-08-25.
+
+---
+
 ## Recommended remediation order
+
+*(Superseded by §Remediation status above — retained as the record of what the audit
+recommended before the fix wave ran.)*
 
 1. **H-1** — add the duress gate to `populateFastpathBestEffort` and clear the cache in
    `setDuressPin`/`enforceDuressBiometricInvariant`. Default-ON coercion bypass on the product's
