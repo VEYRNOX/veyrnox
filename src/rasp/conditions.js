@@ -35,6 +35,7 @@ export const CONDITION = Object.freeze({
   CLEAN: 'clean',
   ROOTED: 'rooted',
   ELEVATED: 'elevated',
+  SCREEN_CAPTURE: 'screen_capture',
   EMULATOR: 'emulator',
   HOOKED: 'hooked',
   TAMPERED: 'tampered',

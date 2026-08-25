@@ -448,9 +448,9 @@ neither had been run against build 5 (Play Pre-launch report showed
 The `code_scanning` rule was **removed** from ruleset `Veyrnox Code Review` (`17946638`).
 CodeQL still scans all six languages on every PR and still files alerts to the Security
 tab; they no longer block merges. Swift stays covered by push-to-main and the weekly scan.
-Everything else on the ruleset is unchanged — `required_status_checks` (**six** contexts,
-tabulated in the two-layer note below — this file said three until 2026-08-08 and five
-until 2026-08-15),
+Everything else on the ruleset is unchanged — `required_status_checks` (**five** contexts,
+tabulated in the two-layer note below — this file said three until 2026-08-08, five
+until 2026-08-15, and six until the later removal of `web-e2e-tests`),
 `pull_request` (0 required approvals — **on the ruleset only**; classic branch protection
 is a separate layer, see that note), `deletion`, `non_fast_forward`. Exact rule JSON for
 restoring the removed rule is in issue #1375.
@@ -493,8 +493,9 @@ more contexts (five vs three) and classic requires none the ruleset does not. Re
 before concluding anything about what gates a merge —
 `gh api repos/VEYRNOX/veyrnox/branches/main/protection` is the half that
 `gh api repos/.../rulesets/17946638` does not show you, and vice versa.
-- **The two layers require DIFFERENT check sets. The effective gate is the UNION — SIX
-  contexts** (five until 2026-08-15; verified 2026-08-15 by re-reading both endpoints):
+- **The two layers require DIFFERENT check sets. The effective gate is the UNION — FIVE
+  contexts** (six from 2026-08-15 until `web-e2e-tests` was later removed; re-verified
+  2026-08-25 by re-reading both endpoints):
 
   | context | ruleset `17946638` | classic protection |
   |---|---|---|
@@ -503,8 +504,6 @@ before concluding anything about what gates a merge —
   | `Release-cert guard rejects wrong fingerprints` | yes | yes |
   | `mainnet-flag-gate` | yes | — |
   | `staging-gate` | yes | — |
-  | `web-e2e-tests` | yes (2026-08-15) | yes (2026-08-15) |
-
   `staging-gate` is the one most likely to surprise you: it is defined in
   `deploy-preview.yml`, NOT `ci.yml`; it is a pure reporter whose verdict comes from its
   `deploy` + `e2e` dependencies; and it carries a docs-only escape hatch

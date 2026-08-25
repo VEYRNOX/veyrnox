@@ -24,7 +24,24 @@ regression signal rather than a workflow).
 
 ---
 
-## 2026-08-15 — `web-e2e-tests` added as a required check (both layers)
+## 2026-08-25 — `web-e2e-tests` is no longer a required check
+
+**Current state.** Re-read both live protection layers on 2026-08-25:
+
+- Ruleset `17946638` required contexts: `verify`, `mainnet-flag-gate`, `unit-tests`,
+  `Release-cert guard rejects wrong fingerprints`, `staging-gate`
+- Classic branch protection required contexts: `verify`, `unit-tests`,
+  `Release-cert guard rejects wrong fingerprints`
+
+Effective union: **five** contexts. `web-e2e-tests` appears on neither layer.
+
+**Why this note exists.** The section below recorded the 2026-08-15 add correctly at the
+time, but the live config later changed and the docs drifted. The owner decision behind
+the removal is not recorded here; this file only records the verified current gate.
+
+---
+
+## 2026-08-15 — `web-e2e-tests` added as a required check (historical)
 
 **Change.** `web-e2e-tests` added to `required_status_checks` on ruleset `17946638`
 (five contexts → six) and to classic branch protection (three → four). Effective union:
