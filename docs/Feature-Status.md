@@ -2649,10 +2649,10 @@ mark this device-verified without an iPhone reproduction.
 
 ## 2026-08-24 — KDF profile v2 (96 MiB / t=6) — owner-ruled global raise-then-drop
 
-**Status:** BUILT (parameter change SHIP-GLOBAL, migration hook SHIP-INERT
-behind `KDF_PROFILE_V2_MIGRATION_ENABLED=false`). **Not verified** — no
-independent audit review of the tradeoff yet; disclose to the outstanding
-third-party audit whenever it is scheduled.
+**Status:** BUILT (parameter change SHIP-GLOBAL, migration hook LIVE as of the
+2026-08-25 owner-ruled flag flip — see the "Migration flag ON (2026-08-25)"
+section below). **Not verified** — no independent audit review of the tradeoff
+yet; disclose to the outstanding third-party audit whenever it is scheduled.
 
 **Parameters landed** (`src/wallet-core/vault.js`):
 
@@ -2701,15 +2701,39 @@ New blobs stamp `kdfProfileVersion: 2` — an extra field on `kdf` that
 fields), so it rides along in the stored `kdf` object as a fast at-a-glance
 version tag.
 
-**Migration flag OFF at ship.** `KDF_PROFILE_V2_MIGRATION_ENABLED = false`.
-Once the owner flips it on (after real-device benchmark confirms the v2
-profile is a net UX win on the target device class), a successful slow-path
-unlock silently re-encrypts a v1 blob under v2 in
-`native._unlockInner` — best-effort, non-fatal, no user-visible step, mirrors
-the `AAD_V3_MIGRATION_ENABLED` pattern already in that file. Web already
-routes through `vaultNeedsRekey`, which is naturally gated by the same flag
-(AAD v:1→v:2 upgrade remains always-on, independent of the KDF-profile
-migration flag).
+**Migration flag ON (2026-08-25 owner ruling).** `KDF_PROFILE_V2_MIGRATION_ENABLED = true`.
+A successful slow-path unlock on a v1 blob silently re-encrypts it under the
+v2 profile in `native._unlockInner` — best-effort, non-fatal, no user-visible
+step, mirroring the `AAD_V3_MIGRATION_ENABLED` pattern already in that file.
+Web already routes through `vaultNeedsRekey`, which is naturally gated by the
+same flag (AAD v:1→v:2 upgrade remains always-on, independent of the
+KDF-profile migration flag).
+
+**Personal Backup guard on the migration hook.** The v1→v2 rekey rotates the
+Argon2id-derived key material; any 2-of-3 Shamir shares the user has already
+exported via Personal Backup (see
+`docs/cloud-recovery-shard-spec.md` and `lib/personalBackupState.js`) are
+invalidated by the write. Silent invalidation is silent user-data loss, so the
+migration hook consults `keystore/kdfMigrationGuard.shouldDeferKdfMigrationForShares()`
+before rekeying. The guard is a synchronous localStorage read of
+`veyrnox-personal-backup-exported` — no biometric prompt, no async plugin
+call — and FAILS CLOSED: if the read throws, the migration is deferred. When
+a rekey is deferred the hook writes
+`veyrnox-kdf-migration-pending-shares-warning`, which the nudge card below
+reads on the dashboard. NOT I3-gated at the read: this is driving a real
+vault mutation decision, so a decoy session's blinded shares state would
+consult a false negative and rekey the wrong vault. The MARKER WRITE is only
+reached when the migration is already being deferred, so no I3-visible side
+effect fires on a legitimate rekey path.
+
+**Nudge card for share-holders.** `components/onboarding/KdfMigrationSharesNudge.jsx`
+surfaces the tradeoff on the dashboard when the pending marker is present
+(iff native Android, not deniability/demo, not dismissed). "Regenerate
+shares" routes to `/personal-backup`; "Not now" writes
+`veyrnox-kdf-nudge-dismissed`. Both marker keys are in
+`wallet-core/panic.js METADATA_RESIDUE_KEYS` and are cleared by
+`panicWipeLocal()`; `inspectKeyMaterial().clean` counts on the list too. See
+`src/wallet-core/__tests__/panic-residue-kdf-migration.test.js`.
 
 **H-1 equaliser preserved on the v2 profile.** The structural equaliser
 (primary-success path runs the failure path's own `resolveDeniabilityUnlock`

@@ -43,6 +43,12 @@ import { argon2id } from 'hash-wasm';
 //     the stronger offline-seizure resistance was worth the ~6–8 s Capacitor
 //     WebView unlock. Applied to existing 64 MiB vaults via the lazy-rekey
 //     migration below (no lockout).
+//   * v2 flag ON (2026-08-25, OWNER-RULED): KDF_PROFILE_V2_MIGRATION_ENABLED
+//     flipped from false to true. Existing v1 blobs now silently rekey to v2
+//     on the next successful slow-path unlock, GATED on a Personal Backup
+//     share check in `_unlockInner` (rekey invalidates active Shamir shares —
+//     see the constant's own JSDoc and docs/Feature-Status.md 2026-08-24
+//     entry). Fresh installs were already at v2 since 2026-08-24.
 //   * v2 (2026-08-24, OWNER-RULED — this file): dropped to 96 MiB / t=6.
 //     Real-device measurement on Note 20 showed the 192 MiB path spending >6 s
 //     of dead-window time even with biometric unlock available (the password
@@ -86,16 +92,25 @@ const KDF_PROFILE_V1_LEGACY = Object.freeze({
 });
 
 /**
- * Silent-migration flag for the v1 → v2 KDF-profile transition. Default OFF at
- * ship: existing v1 (192 MiB / t=3) vaults keep opening at their own recorded
- * params via paramsFromVault. New vaults are already written at v2.
+ * Silent-migration flag for the v1 → v2 KDF-profile transition. Now `true`
+ * (owner-ruled 2026-08-25 — see docs/Feature-Status.md 2026-08-24 entry, updated
+ * on this flip). Existing v1 (192 MiB / t=3) vaults silently re-encrypt under
+ * the current v2 profile (96 MiB / t=6) on the next successful slow-path
+ * unlock, mirroring the AAD_V3_MIGRATION pattern in native.js — best-effort,
+ * non-fatal, no user-visible step.
  *
- * Owner flips this to `true` after real-device benchmark confirms the v2 profile
- * is a net UX win on the target device class. Once on, a successful slow-path
- * unlock silently re-encrypts a v1 blob under v2 (mirrors the AAD_V3_MIGRATION
- * pattern in native.js — best-effort, non-fatal, no user-visible step).
+ * Load-bearing coupling — do NOT undo without matching Personal Backup path:
+ * the rekey rotates the Argon2id key material, which invalidates any 2-of-3
+ * Shamir shares the user has already exported (see docs/cloud-recovery-shard-spec.md
+ * and lib/personalBackupState.js). Silent migration for a share-holder would be
+ * silent-recovery-invalidation. The guard in `keystore/native.js` `_unlockInner`
+ * reads `veyrnox-personal-backup-exported` on the unlock path and DEFERS this
+ * migration when the marker is present; a paired nudge card
+ * (components/onboarding/KdfMigrationSharesNudge.jsx) surfaces the tradeoff to
+ * the user so they can regenerate shares first. Fail-closed on the check:
+ * unknown → DEFER (never rekey behind the user's back).
  */
-export const KDF_PROFILE_V2_MIGRATION_ENABLED = false;
+export const KDF_PROFILE_V2_MIGRATION_ENABLED = true;
 
 // LEGACY params used by vaults encrypted before M3. We do NOT decrypt with the
 // CURRENT params — we read each blob's OWN recorded params (paramsFromVault), so

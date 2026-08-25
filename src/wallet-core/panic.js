@@ -439,6 +439,21 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   // (setRelockGraceMs no-ops in decoy/demo); this closes the residue gap.
   'veyrnox-relock-grace-ms',
   'veyrnox-relock-grace-disclosed',
+  // KDF profile v1→v2 silent-migration nudge markers (owner-ruled flag flip
+  // 2026-08-25). Writers: keystore/native.js `_unlockInner` migration hook
+  // sets 'veyrnox-kdf-migration-pending-shares-warning' when a v1 blob would
+  // rekey but the user has active Personal Backup Shamir shares; the paired
+  // nudge card (components/onboarding/KdfMigrationSharesNudge.jsx) writes
+  // 'veyrnox-kdf-nudge-dismissed' when the user taps "Not now". Same tell
+  // class as 'veyrnox-personal-backup-exported' above — PRESENCE proves a
+  // real Veyrnox install existed here AND (a) held a legacy v1 vault at a
+  // time when shares had been exported, or (b) explicitly dismissed the
+  // regenerate-shares nudge. Writers are the migration hook itself (fires
+  // only on a successful slow-path unlock — decoy sessions have their own
+  // vault) and a native-Android + non-decoy-gated card. Panic wipe removes
+  // both so `inspectKeyMaterial().clean` cannot lie.
+  'veyrnox-kdf-migration-pending-shares-warning',
+  'veyrnox-kdf-nudge-dismissed',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.

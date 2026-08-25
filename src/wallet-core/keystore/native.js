@@ -82,6 +82,7 @@ import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVau
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
 import { wrapForFastpath, unwrapFromFastpath, deriveFastpathKek } from './fastpathDekCache.js';
+import { shouldDeferKdfMigrationForShares, markKdfMigrationPendingSharesWarning } from './kdfMigrationGuard.js';
 import { isFastpathEnabled, hasSeenFastpathDisclosure } from '@/lib/fastpathUnlock.js';
 import { isDuressConfigured } from '@/lib/duressBiometricGuard.js';
 import { isPasskeyRegistered } from '@/lib/passkey.js';
@@ -864,11 +865,19 @@ async function _unlockInner(password, opts = {}) {
   // here (decryptVault would have thrown). Duress/panic are routed by
   // WalletProvider before this function.
   if (KDF_PROFILE_V2_MIGRATION_ENABLED && vaultNeedsKdfMigration(blob)) {
-    try {
-      const reblob = await encryptVault(plaintext, password);
-      await safeWriteVault(reblob);
-    } catch {
-      // Best-effort — a failed rekey leaves the v1 blob untouched; next unlock retries.
+    // Personal Backup guard (2026-08-25 owner ruling — see vault.js head
+    // comment on KDF_PROFILE_V2_MIGRATION_ENABLED and keystore/kdfMigrationGuard.js
+    // for the fail-closed shape). Silent rekey would invalidate any 2-of-3
+    // Shamir shares already exported; unknown share state DEFERS.
+    if (shouldDeferKdfMigrationForShares()) {
+      markKdfMigrationPendingSharesWarning();
+    } else {
+      try {
+        const reblob = await encryptVault(plaintext, password);
+        await safeWriteVault(reblob);
+      } catch {
+        // Best-effort — a failed rekey leaves the v1 blob untouched; next unlock retries.
+      }
     }
   }
   return plaintext;
