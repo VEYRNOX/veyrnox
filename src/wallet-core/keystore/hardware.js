@@ -245,7 +245,7 @@ export async function getHardwareFactor(opts) {
         code: KEK_ERR.KEY_PERMANENTLY_INVALIDATED,
       });
     }
-    if (rawCode === KEK_ERR.USER_CANCELLED || msg === 'User cancelled') {
+    if (errCode === KEK_ERR.USER_CANCELLED || msg === 'User cancelled') {
       // User-initiated abort of the per-use biometric sheet. A raw re-throw carries NO
       // .code, so WalletEntry's KEK exemptions miss it and it falls through to the
       // wrong-PIN counter — a correct-PIN user who cancels the sheet 10 times triggers the
