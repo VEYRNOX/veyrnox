@@ -858,6 +858,9 @@ export function WalletConnectProvider({ children }) {
           // after the user had walked a whole approval modal. parseTypedData
           // takes string or object; toNumericChainId matches sign time's
           // coercion so a hex domain.chainId is read identically on both sides.
+          // #2076: bind against the approved session chain, not the request's
+          // own CAIP-2 string, so an unapproved chain is rejected before the
+          // user sees the approval modal.
           if (!rejected) {
             const parsed = parseTypedData(reqParams[1] ?? reqParams[0]);
             // Invalid payload: leave it queued so _handleSignTypedData rejects
