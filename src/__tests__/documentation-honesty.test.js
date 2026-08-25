@@ -107,19 +107,26 @@ describe('Documentation page — restored honesty caveats (S-1)', () => {
     expect(page).not.toContain('your balances, addresses, and seed phrase are never sent');
   });
 
-  // The legend gained a third state on 2026-08-24 (verified | built | roadmap),
-  // and this PR relabels the user-facing shipped state from "Built" to "Live".
-  // load-bearing half is unchanged and still pinned: the page must say these
-  // labels are not an independent security review.
+  // The page-facing three states (verified | built | roadmap) collapse to a
+  // two-state badge (Live | Roadmap) on 2026-08-25 — the underlying evidence
+  // gate in featureCatalogue.js is preserved but the badge no longer surfaces
+  // the distinction to users. The load-bearing honesty half is unchanged and
+  // still pinned: the page must say these labels are not an independent
+  // security review.
   it('status legend explains the Live label and disclaims independent review', () => {
     expect(page).toContain('<b>Live</b>');
     expect(page).toContain('the code is shipped and working');
     expect(page).toContain('not an independent security review');
   });
 
-  it('the legend explains that verified is earned by on-chain evidence, not by inspection', () => {
-    expect(page).toContain('explorer-confirmed transaction proves it');
-    expect(page).toContain('can never turn a feature green');
+  it('legend no longer surfaces the verified-vs-built distinction to users', () => {
+    // The two-state legend collapsed the "explorer-confirmed" and "code review
+    // can never turn a feature green" lines with the badge unification. The
+    // gate itself still exists in featureCatalogue.js (STATUS.VERIFIED only
+    // resolves when a real txid matches docs/verified-evidence.json), it just
+    // no longer shows up in the on-screen label.
+    expect(page).not.toContain('explorer-confirmed transaction proves it');
+    expect(page).not.toContain('can never turn a feature green');
   });
 });
 
