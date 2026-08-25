@@ -40,6 +40,7 @@ import {
   hasSeenFastpathDisclosure,
   markFastpathDisclosureSeen,
   setFastpathEnabled,
+  enableFastpathAndBiometricUnlock,
 } from '@/lib/fastpathUnlock';
 
 const GATE_LOADING = 0;
@@ -88,7 +89,10 @@ export default function FastUnlockFirstRunCard() {
     if (isDeniabilityOrDemoActive()) { setGate(GATE_HIDE); return; }
     if (isPasskeyRegistered()) { setGate(GATE_HIDE); return; }
     markFastpathDisclosureSeen();
-    setFastpathEnabled(true);
+    // #2037 follow-up — links Biometric Unlock ON in the same tap so the
+    // fast-path button's cache-warming path can populate. Never linked on
+    // decline / disable (asymmetric intent).
+    enableFastpathAndBiometricUnlock();
     setGate(GATE_HIDE);
   };
   const guardedNotNow = () => {
