@@ -770,6 +770,74 @@ awaiting checks** — so M-7, M-9 and the L-6 seed surfaces are written and test
 yet on `main` at the time of writing. Check the PRs rather than trusting this line; a
 statement about another PR's state is perishable.
 
+**UPDATE, later the same day:** all twelve merged, plus #2075 (helper consolidation) and
+#2073 (this section). The perishable line above is left standing rather than edited away —
+it is the record of what was true when written, and the reason the convention exists.
+
+### After the wave — what happened next, on the same day
+
+- **#2075 — the two fresh-probe helpers were collapsed into one.** #2070 and #2072 fixed
+  L-6 on different files in parallel worktrees and each grew its own on-device probe chain
+  (`freshSensitiveGate`, `getFreshLocalRaspArtifact`). Two implementations of one rule is
+  the drift hazard this report flagged as INFO against `checkTypedDataChainId`, so the
+  stricter copy survived and the other became a one-line delegation. **Cause worth
+  recording: the file-scope partition that made 12 parallel fix agents safe is also what
+  produced the duplicate.** Both agents independently hit the same trap first —
+  `getFreshRaspArtifact()` composes the remote attestation leg these surfaces exclude by
+  owner decision 2026-07-16, and wiring it in unchanged would have blocked seed
+  reveal/import **forever** on sideloaded and web builds.
+- **The five follow-up findings were filed as #2076–#2080, and four are fixed.**
+  #2076 (WC typed-data pre-modal chain bound to the request rather than the session),
+  #2077 (missing `screen_capture` label, plus a recurrence guard in #2088), #2078 (stale
+  JSDoc), #2079 (iOS cancel indistinguishable from missing hardware), #2080 (this file's
+  required-check table listing six contexts when five gate `main`).
+- **A regression reached `main` and the tripwire caught it.** PR #2086 closed all five of
+  those issues, and in doing so reintroduced the L-7 swapped-`reject:`-args bug at a NEW
+  site — the exact defect #2066 had fixed across all 17 sites hours earlier. Two
+  consequences: the `hardwareKek.ios-reject-contract` tripwire went red on `main` (a
+  REQUIRED check) for ~40 minutes with two further PRs merging on top, and **#2086's own
+  #2079 fix was inert** — JS received `code="User cancelled"`, `message="KEK_USER_CANCELLED"`,
+  matched neither branch of the classifier that PR had just extended, and still returned
+  `NO_HARDWARE_FACTOR`. The issue closed; the behaviour did not change. Repaired in #2085,
+  which also added the cancel route at the ECIES-decrypt site (the call that actually
+  presents Face ID) that #2086 missed. **The tripwire worked; the process around it did
+  not.**
+- **The Android monkey gate was fixed (#2091).** It failed ~1 run in 5 on `main` for
+  `com.android.systemui` crashing under `--pct-syskeys` — not our app. Both guards were
+  package-blind (`-p` scopes which activities LAUNCH, not which crashes COUNT). Now a
+  `com.veyrnox.*` crash fails, another process's warns and passes, and a non-zero exit with
+  no crash line still fails. Same erosion risk as the debug-cert guard: a non-required check
+  that cries wolf gets merged past, and then the real signal is invisible too.
+- **A claim in an earlier session note was wrong and is corrected here.** The iOS
+  `xcuitest` suite was described as "red on `main`". It was not: that failure was on a PR
+  branch, and the job is `continue-on-error: true` so the run reported success anyway. The
+  real problem is different and worse — `concurrency.cancel-in-progress` on
+  `ios-xcuitest-${{ github.ref }}` means a 38-minute job rarely survives this repo's merge
+  rate. Of 30 consecutive runs: **22 cancelled, 7 running, 1 success.** A suite that
+  completes once in thirty attempts, and reports green when it fails, is not currently
+  telling anyone anything. Not changed — it is disclosed in the workflow, and whether to
+  drop `continue-on-error` or scope the concurrency group is an owner call.
+
+### iOS device pass — [#2094](https://github.com/VEYRNOX/veyrnox/issues/2094)
+
+**Every iOS native change in this wave was written, reviewed and merged without being
+compiled or run on hardware.** #2094 collects the specific claims that now depend on
+unverified Secure-Enclave behaviour, each with its file:line and a test procedure:
+
+1. `errSecItemNotFound` is what an enrolment change produces (`HardwareKekPlugin.m:376`,
+   `:436`) — **three separate things rest on this**, and it is why a probe-based M-10 was
+   rejected rather than built;
+2. cancel-vs-mismatch attribution (`:82-87`, `:354`, `:444`) — testable in both
+   directions, and the direction that matters is that a wrong face must NOT read as a cancel;
+3. that `HardwareKekPlugin.m` compiles and installs at all;
+4. iOS seed-reveal refusing under mirroring started MID-SESSION (M-5, `nativeProbe.js:163-198`);
+5. M-10 stays TARGET — `biometricUnlockSecurityMode()` must NOT be flipped during the pass,
+   because that changes what the app claims about itself.
+
+Definition of done requires a physical iPhone that is not the dev machine's paired device,
+per the pre-submission rule in `CLAUDE.md`, and says to correct the comments where reality
+differs rather than adjust the code to match the assumption.
+
 ### What is NOT closed, stated plainly
 
 - **M-10 (iOS) — not fixed, and deliberately so.** `kSecAccessControlBiometryCurrentSet`
@@ -781,6 +849,16 @@ statement about another PR's state is perishable.
   it would have been fake security. `biometricUnlockSecurityMode()` still returns
   `'app-gate'` and the I4 TARGET disclosure stands. **This needs an owner decision on the
   single-prompt trade, not an audit patch.**
+  **OWNER DECISION, 2026-08-25: stays TARGET until a device is in the loop.** A second
+  look found the fact that makes it a restructure rather than a shim, now recorded in
+  `src/lib/biometricUnlock.js` (PR #2093): **the cache is read BEFORE H exists** —
+  `WalletProvider.jsx:2176-2181` obtains the password, and only then does
+  `keyStore.unlock()` fetch the hardware factor, which is where the single Face ID sheet
+  lives. So all three candidate designs touch the unlock path itself, and the one to build
+  is encrypting the cached secret under H, because its invalidation is cryptographic rather
+  than dependent on how the Keychain REPORTS an invalidated item — the assumption tracked
+  as item 1 of #2094. Getting this wrong does not weaken a control, it locks users out of
+  their own wallets.
 - **M-9 — mitigated, not fixed.** The floor is session-scoped by construction; a reload
   clears it. It stops a failed write resetting progress within a session. It is not
   persistence and must not be described as such.
