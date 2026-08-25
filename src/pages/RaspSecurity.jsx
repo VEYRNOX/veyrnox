@@ -35,6 +35,7 @@ const CONDITION_LABEL = {
   [CONDITION.CLEAN]: "clean",
   [CONDITION.ROOTED]: "rooted",
   [CONDITION.ELEVATED]: "elevated (device setting)",
+  [CONDITION.SCREEN_CAPTURE]: "screen mirroring",
   [CONDITION.EMULATOR]: "emulator",
   [CONDITION.HOOKED]: "hooked",
   [CONDITION.TAMPERED]: "tampered",

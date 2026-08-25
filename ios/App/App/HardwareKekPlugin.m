@@ -309,6 +309,11 @@ static os_log_t VeyrnoxKekLog(void) {
                 if (sePriv) CFRelease(sePriv);
                 [context invalidate];
                 context = nil;
+                if (st == errSecUserCanceled) {
+                    os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: USER CANCELLED (OSStatus %d)", (int)st);
+                    [call reject:@"KEK_USER_CANCELLED" :@"User cancelled" :nil :nil];
+                    return;
+                }
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: SE key MISSING (OSStatus %d)", (int)st);
                 [call reject:@"SE_KEY_MISSING" :@"Secure Enclave key not found — re-enrollment required" :nil :nil];
                 return;

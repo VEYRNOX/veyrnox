@@ -710,10 +710,16 @@ export function WalletConnectProvider({ children }) {
             const typedDataJson = reqParams[1] ?? reqParams[0];
             const parsed = JSON.parse(typedDataJson);
             const domainChainId = parsed?.domain?.chainId != null
-              ? Number(parsed.domain.chainId) : null;
-            const sessionChainRaw = (data.params?.chainId ?? '').split(':')[1];
-            const sessionChainId = sessionChainRaw ? Number(sessionChainRaw) : null;
-            if (domainChainId == null || sessionChainId == null || domainChainId !== sessionChainId) {
+              ? toNumericChainId(parsed.domain.chainId) : null;
+            const session = getActiveSessions().find((s) => s.topic === data.topic);
+            const sessionCaip2 = resolveSessionCaip2(session, data.params?.chainId);
+            const sessionChainId = toNumericChainId(
+              typeof sessionCaip2 === 'string' ? sessionCaip2.split(':')[1] : null,
+            );
+            if (sessionChainId == null) {
+              rejectRequest(data.topic, data.id, 'SESSION_CHAINID_INVALID').catch(() => {});
+              rejected = true;
+            } else if (domainChainId == null || domainChainId !== sessionChainId) {
               rejectRequest(data.topic, data.id, 'CHAIN_ID_MISMATCH').catch(() => {});
               rejected = true;
             }
