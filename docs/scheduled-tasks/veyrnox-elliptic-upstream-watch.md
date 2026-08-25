@@ -5,15 +5,18 @@ description: Weekly watch for upstream resolution of the Veyrnox elliptic low-se
 
 Upstream watcher for the Veyrnox wallet's accepted `elliptic` security residual. Run entirely with read-only `npm view` registry queries — do NOT modify files, run `npm install`, or touch the repo working tree. Use the Bash tool for npm commands.
 
-> **Shared-checkout note (2026-07-28): this task needs no worktree, deliberately.** The
-> primary checkout is shared by ~10 worktrees and several other scheduled tasks, so
-> sibling watchers now read `package.json`/`package-lock.json` from `origin/main` rather
-> than its working tree. This task reads **no repo file at all** — every signal comes from
-> the npm registry — so it has no exposure to that state and nothing to pin. Do not add
-> worktree ceremony here to match the others; it would be noise, not safety. If a future
-> check ever needs the lockfile, pin it to the ref
-> (`git show origin/main:package-lock.json`, with `MSYS_NO_PATHCONV=1` set) rather than
-> reading the checkout.
+> **Shared-checkout note: this task needs no worktree, deliberately.** The primary
+> checkout is shared by ~10 worktrees and several other scheduled tasks, so anything read
+> from it is of unknown provenance. This task reads exactly ONE repo file — the lockfile
+> in step 0 — and reads it from the ref
+> (`MSYS_NO_PATHCONV=1 git show origin/main:package-lock.json`), never the working tree.
+> Every other input comes from the npm registry. Do not add worktree ceremony to match
+> the sibling tasks; it would be noise, not safety.
+>
+> (Until 2026-08-25 this task read no repo file at all, and the note here said so. That
+> is exactly how it spent weeks probing two chains the tree no longer contained: with no
+> lockfile read, a watcher cannot notice that what it watches has moved. Step 0 is the
+> fix for that class of failure, not a convenience.)
 
 ## Background (why this task exists)
 
@@ -62,6 +65,59 @@ before acting on any signal here.
   number ahead of ours looks like progress and is not.
 - Context — `@keystonehq/keystone-sdk@latest` = `0.12.3` (= the repo's exact pin),
   depending on `@keystonehq/bc-ur-registry-eth: ^0.22.0`.
+
+## Step 0 — re-derive the chain from the lockfile BEFORE probing anything
+
+The signals below are hard-coded to one chain. If the tree's chain has changed, they are
+probing the wrong packages and a "no upstream movement" report is worthless. So derive
+the chain first, from `origin/main`'s lockfile, and compare it to what this runbook
+claims:
+
+```bash
+MSYS_NO_PATHCONV=1 git show origin/main:package-lock.json > "${TMPDIR:-/tmp}/veyrnox-lock.json"
+git cat-file -s origin/main:package-lock.json   # must be non-zero; a silent MSYS
+                                                # failure yields an empty file
+node -e '
+const pk = require(process.env.TMPDIR + "/veyrnox-lock.json").packages;
+const name = p => p.replace(/^.*node_modules\//, "");
+const deps = v => Object.keys({ ...(v.dependencies || {}), ...(v.optionalDependencies || {}) });
+const dependents = t => Object.entries(pk)
+  .filter(([k, v]) => k && v && deps(v).includes(t)).map(([k]) => name(k));
+let layer = ["elliptic"], seen = new Set(layer), edges = [];
+while (layer.length) {
+  const next = [];
+  for (const t of layer) for (const d of dependents(t)) {
+    edges.push(d + " -> " + t);
+    if (!seen.has(d)) { seen.add(d); next.push(d); }
+  }
+  layer = next;
+}
+console.log(edges.join("\n") || "elliptic is ABSENT from the tree");
+const root = { ...(pk[""].dependencies || {}), ...(pk[""].devDependencies || {}) };
+console.log("direct deps in the chain:", Object.keys(root).filter(d => seen.has(d)).join(", ") || "(none)");
+'
+```
+
+Expected output as of 2026-08-25 — exactly these four edges and two direct dependencies:
+
+```
+secp256k1 -> elliptic
+hdkey -> secp256k1
+@keystonehq/bc-ur-registry-eth -> hdkey
+@keystonehq/keystone-sdk -> @keystonehq/bc-ur-registry-eth
+direct deps in the chain: @keystonehq/bc-ur-registry-eth, @keystonehq/keystone-sdk
+```
+
+- **Matches** → run the signals below as written.
+- **`elliptic` is ABSENT** → the residual has cleared entirely. Do NOT report it cleared
+  on this evidence alone and do NOT retire anything yourself: say the lockfile no longer
+  contains `elliptic`, and hand it to the daily dep-audit's retirement rule, which
+  requires an `npm audit` on the resolved tree. A package missing from the lockfile is a
+  strong hint, not the retirement evidence that file demands.
+- **A different or additional chain** → the signals below are stale in exactly the way
+  the Ledger/Trezor ones were. Report the derived chain, say which signals no longer
+  apply, and recommend re-pointing this runbook. Do NOT silently probe the old packages
+  and report "no movement".
 
 ## The check (run these)
 
@@ -113,17 +169,23 @@ facts. So a remediation that bumps one of these pins MUST also update that test'
 expected versions in the same PR, or CI goes red for the right reason. Say this in the
 report — do not hand over a bump instruction that looks like a one-line change.
 
-## Out of scope for this task
+## A second chain returning
 
-A Trezor or Ledger integration returning would reintroduce a second chain. That is not a
-registry signal and this watcher cannot see it; the daily dep-audit's blast-radius check
-covers it. Do not add repo-reading ceremony here to chase it.
+A Trezor or Ledger integration coming back would reintroduce a second chain. That is not
+a registry signal, but step 0 DOES see it — it derives every path to `elliptic` from the
+lockfile, not just the one this runbook names. Report it and recommend re-pointing; do
+not try to probe it with the signals below, which are specific to the Keystone chain.
+The daily dep-audit's blast-radius check covers the same ground from the other side.
 
 ## Output
 
-- If NO CHANGE: one or two low-noise lines — e.g. "elliptic residual: no upstream
-  movement. elliptic still 6.6.1 (no patch); bc-ur-registry-eth still declares hdkey;
-  hdkey still declares secp256k1; secp256k1 latest still declares elliptic. No action."
+- Always state the step 0 result first, in the NO CHANGE case too — "chain unchanged
+  (4 edges, Keystone only)" is the sentence that makes the rest of the report mean
+  anything. A report that omits it cannot be told apart from one probing dead packages.
+- If NO CHANGE: one or two low-noise lines — e.g. "elliptic residual: chain unchanged
+  (Keystone only, 4 edges); no upstream movement. elliptic still 6.6.1 (no patch);
+  bc-ur-registry-eth still declares hdkey; hdkey still declares secp256k1; secp256k1
+  latest still declares elliptic. No action."
 - If ANY signal FIRED: state which, show old vs new dependency declarations (not just
   versions), say it is a FULL clear, and give the remediation steps — including the
   pin-aware note above where it applies. Always on a new branch, `npm audit` to confirm,
