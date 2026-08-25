@@ -2428,6 +2428,29 @@ new finding, because `src/pages/ColdSign.jsx` is unreachable dead code (no route
 import, nothing sets `location.state.coldSend`) — the underlying WARN-tier
 acknowledge-only gap is already tracked as weekly M-5 (2026-07-14).
 
+## 2026-08-25 cold-unlock perf + deniability-KDF-parity suite — PRs #2039–#2106
+
+This archive was frozen 2026-07-20; the living per-feature record for everything
+after that date is `docs/Feature-Status.md`. This entry is a short index only —
+see that file's 2026-08-25 section for full detail, honest caveats, and the
+Samsung Note 20 / Pixel 10 Pro XL measurements.
+
+- **#2039** — double-OS-prompt collapse to one prompt on KEK-enrolled cold unlock.
+- **#2042** — C1/C2/H1/H2 hardening the honest-reviewer required before #2039 merged.
+- **#2043** — biometric-capability probe memoised (6 IPC round-trips → 1).
+- **#2044** — RASP mount-time probe deferred via `requestIdleCallback`.
+- **#2045** — `SecurityAdvisor` lazy-loaded out of the entry chunk (−246 KB).
+- **#2047** — fast-path DEK cache primitives (Kotlin alias + JS helpers); inert until wired.
+- **#2051** — fast-path wiring: `keyStore.unlockBiometricOnly()`, slow-path populate, PinUnlock button (Option 1).
+- **#2052** — opt-in grace window on brief screen-off.
+- **#2054** — new-vault KDF v2 params (96 MiB / t=6); migration flag OFF pending Gate 1 of #2101.
+- **#2055** — Fast Unlock flipped default-ON with a first-run disclosure card (reverses the earlier Q3 "off by default" ruling).
+- **#2057** — Fast Unlock ↔ Biometric Unlock preference linkage (enabling either auto-enables both).
+- **#2064** — indeterminate KEK-enroll progress bar under the Safe animation.
+- **#2103** — deniability-KDF parity (Gate 2 of #2101): reveal/duress/panic paths rekey to the writer's `KDF_PARAMS` on successful decrypt; panic rekey deliberately excluded (post-wipe residue risk); transient tell disclosed and pinned by a regression test.
+- **#2106** — fast-path button hidden: duplicated the existing biometric-unlock button and errored on a cache-miss; the cache stays wired in code, unreachable from the UI.
+- **Issue #2101** — two gates before the KDF v2 migration flag flips: Gate 2 (deniability parity) closed by #2103; Gate 1 (a real-device v2-vault unlock benchmark) is still open — every trace this session was against a v1 vault.
+
 ## Security invariants
 
 - I1 — keys never leave the device. I2 — no silent data egress. I3 — deniability mode

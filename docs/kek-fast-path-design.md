@@ -3,6 +3,18 @@
 Status: **DRAFT — pre-audit, pre-owner-approval, non-implemented.**
 Owner action required before any code lands. No user-facing status changes from this doc.
 
+> **2026-08-25 implementation update.** The DEK-cache primitives and wiring
+> described below landed (`android-1.0.1-perf-suite-2026-08-25`, PRs #2039–#2106;
+> see `docs/Feature-Status.md`'s 2026-08-25 entry). The UI entry point (PinUnlock
+> button) is currently **hidden** (#2106 — duplicated the pre-existing biometric
+> button and errored on a cache-miss), so the fast-path is not exercised in
+> production today. The measured Samsung Note 20 cold-unlock improvement this
+> session (~7.6 s → ~3.8 s) came from the double-prompt collapse (#2039) and the
+> perf trio (#2043–#2045), **not** from this doc's proposed 200 ms–1 s cache path
+> — that number remains unverified on-device pending the button's return. This
+> doc's "10–30 s" problem statement and "200 ms – 1 s" target below are the
+> pre-implementation design figures; do not read them as the shipped result.
+
 Related: [kek-architecture-spec.md](./kek-architecture-spec.md),
 [hardware-kek-phase-plan.md](./hardware-kek-phase-plan.md),
 [cloud-recovery-shard-spec.md](./cloud-recovery-shard-spec.md) §4.1
@@ -135,56 +147,6 @@ The cache slot MUST be cleared on:
 - App uninstall (OS handles).
 - Any KEK error other than `DEK_CACHE_UNWRAP_FAILED` — treat as tamper,
   clear + full path.
-
-### Android 30-second device-wide auth window (L-12, BUILT)
-
-**Status: BUILT (Android only) — Issue #2019, `AndroidBiometricCachePlugin.kt`
-`getFastpathDek`/`putFastpathDek`.** The design above (`H` from a Veyrnox-fired
-prompt, HKDF, unwrap) is accurate for the hardware-factor derivation step, but
-the Android Keystore alias backing the cache slot does not gate on a
-Veyrnox-fired prompt at all — it gates on **any** `BIOMETRIC_STRONG`
-authentication that occurred anywhere on the device in the preceding 30
-seconds (`setUserAuthenticationParameters(30, AUTH_BIOMETRIC_STRONG)`,
-`AndroidBiometricCachePlugin.kt`). Corrected 2026-08-25 (audit finding L-12);
-the plugin's own comment previously asserted the opposite ordering.
-
-Call ordering, as it actually runs (`native.js unlockBiometricOnly`,
-`AndroidBiometricCachePlugin.kt getFastpathDek`):
-
-1. JS reads the cache slot (`getFastpathDek`, decrypt) **first**, before
-   requesting a hardware factor for this unlock attempt at all — so an empty
-   slot surfaces as a bare miss with zero prompts.
-2. The Keystore `Cipher.init` inside that read is satisfied only if some
-   `BIOMETRIC_STRONG` auth landed on the device in the last 30 s — the
-   lockscreen fingerprint, an unrelated app's prompt, or (on a slow-path
-   unlock a few seconds earlier) Veyrnox's own `getHardwareFactor` prompt for
-   `H`. Nothing in step 1 itself fires a prompt to satisfy this.
-3. Outside that window, `Cipher.init` throws `UserNotAuthenticatedException`,
-   mapped to a silent `wrappedDek: null` miss → PIN fallback (I4, no oracle).
-4. The cache is reliably WARM immediately after a slow-path unlock:
-   `putFastpathDek` (write) runs from `populateFastpathBestEffort()` right
-   after full unlock, reusing the `H` that unlock's own biometric prompt just
-   produced — so the write always lands inside the window.
-
-**Consequence for hit rate (STATIC READING, NOT A MEASUREMENT — nobody has
-run this on a device):** the fast path's win condition is not "the user
-biometrics into Veyrnox" but "some BIOMETRIC_STRONG event happened on this
-device in the last 30 seconds, for any reason." In the steady state described
-in §What runs when — app already backgrounded a while, screen was off, user
-taps the app icon cold — the 30 s window has very likely already elapsed
-(screen-off-to-tap latency alone is commonly longer), so `getFastpathDek`
-misses and the unlock falls through to the full 10–30 s Argon2id path with no
-user-visible difference from the fast path never having existed for that
-unlock. The window is far more likely to still be open right after unlocking
-the phone itself (lockscreen fingerprint → open Veyrnox within seconds), which
-is a real and common flow, but not the only one the feature is meant to help.
-This does not change the security analysis above (§Security model change) —
-no secret is released by a stale-but-successful decrypt; the wrapped DEK is
-still useless without `H`, and `H` still requires its own hardware-gated
-prompt — it only means the *latency* benefit the whole design doc exists to
-deliver is narrower and less predictable than "steady state = 0 KDFs" implies
-until confirmed by the real-device benchmark already required in §Test plan
-and §Gates before code.
 
 ### RASP tier interaction
 

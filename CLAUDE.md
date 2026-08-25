@@ -926,6 +926,27 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
     no accounts. Real containment: atomic single-grant claim, service_role-only RPCs,
     5/hour/code + 20/hour/IP rate limit.
 
+**2026-08-25 perf suite (tag `android-1.0.1-perf-suite-2026-08-25`, PRs #2039–#2106) —
+BUILT, INTERNAL, no on-chain txid.** Cold-unlock latency work: double-OS-prompt
+collapse on KEK vaults (#2039, hardened #2042), a perf trio (biometric-probe
+memoisation #2043, deferred RASP mount probe #2044, `SecurityAdvisor` lazy-load
+−246 KB #2045), fast-path DEK cache primitives (#2047) wired to a
+`keyStore.unlockBiometricOnly()` path (#2051) whose UI button is now **hidden**
+(#2106 — duplicated the existing biometric-unlock button and errored on cache-miss;
+the cache stays wired in code, not reachable from the UI), a screen-off grace window
+(#2052, opt-in), new-vault KDF v2 params 96 MiB/t=6 with the migration flag OFF
+(#2054), Fast Unlock flipped to default-ON with a first-run disclosure card (#2055,
+reverses the earlier Q3 "off by default" ruling), Fast-Unlock/Biometric-Unlock pref
+linkage (#2057), and an indeterminate KEK-enroll progress bar (#2064).
+Deniability-KDF parity (#2103) closed Gate 2 of issue #2101 — decoy/duress vaults now
+rekey to the writer's `KDF_PARAMS` on successful decrypt, with panic rekey
+deliberately excluded (would leave post-wipe residue) and a disclosed transient tell
+pinned by a regression test. **Gate 1 of #2101 (a real-device v2-vault unlock
+benchmark) is still open** — every trace captured this session was against a v1
+vault, so the migration flag stays off. Full per-item detail, honest caveats, and the
+Samsung Note 20 (~3.8 s, one prompt, v1 vault, firebase-test APK) / Pixel 10 Pro XL
+measurements: `docs/Feature-Status.md` 2026-08-25 entry.
+
 ## Security invariants
 
 - I1 — keys never leave the device
