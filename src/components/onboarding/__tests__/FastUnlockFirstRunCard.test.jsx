@@ -18,8 +18,23 @@ vi.mock('@/lib/hardwareKekStatus', () => ({
 }));
 
 const bioStatusMock = vi.fn(async () => ({ available: true, label: 'Fingerprint' }));
+// #2037 follow-up: card's Enable path routes through
+// enableFastpathAndBiometricUnlock() → setBiometricUnlockEnabled, so the
+// mock must cover the pref helpers too. Real implementations flip
+// localStorage; the tests below assert against localStorage/BIOMETRIC_PREF_KEY.
 vi.mock('@/lib/biometric', () => ({
   getBiometricStatus: (...a) => bioStatusMock(...a),
+  BIOMETRIC_PREF_KEY: 'veyrnox-biometric-unlock',
+  isBiometricUnlockEnabled: () => {
+    try { return localStorage.getItem('veyrnox-biometric-unlock') === '1'; }
+    catch { return false; }
+  },
+  setBiometricUnlockEnabled: (on) => {
+    try {
+      if (on) localStorage.setItem('veyrnox-biometric-unlock', '1');
+      else localStorage.removeItem('veyrnox-biometric-unlock');
+    } catch { /* noop */ }
+  },
 }));
 
 const isPasskeyRegisteredMock = vi.fn(() => false);
@@ -33,6 +48,7 @@ import {
   isFastpathEnabled,
   hasSeenFastpathDisclosure,
 } from '@/lib/fastpathUnlock';
+import { isBiometricUnlockEnabled, BIOMETRIC_PREF_KEY } from '@/lib/biometric';
 import { setDeniabilitySession } from '@/wallet-core/deniabilitySession';
 import FastUnlockFirstRunCard from '@/components/onboarding/FastUnlockFirstRunCard';
 
@@ -108,6 +124,23 @@ describe('FastUnlockFirstRunCard — chokepoint writes', () => {
     expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('1');
     expect(isFastpathEnabled()).toBe(true);
     expect(screen.queryByTestId(CARD)).toBeNull();
+  });
+
+  it('Enable → ALSO enables Biometric Unlock pref (#2037 follow-up: linked chokepoints)', async () => {
+    expect(isBiometricUnlockEnabled()).toBe(false);
+    render(<FastUnlockFirstRunCard />);
+    await waitFor(() => expect(screen.getByTestId(ENABLE)).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByTestId(ENABLE)); });
+    expect(isBiometricUnlockEnabled()).toBe(true);
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBe('1');
+  });
+
+  it('Not now → does NOT enable Biometric Unlock (asymmetric — decline never links)', async () => {
+    render(<FastUnlockFirstRunCard />);
+    await waitFor(() => expect(screen.getByTestId(DECLINE)).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByTestId(DECLINE)); });
+    expect(isBiometricUnlockEnabled()).toBe(false);
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBeNull();
   });
 
   it('Not now → marks disclosure seen + writes explicit "0" (tri-state OFF)', async () => {

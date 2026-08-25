@@ -1661,7 +1661,13 @@ export default function WalletEntry() {
         if (e && e.code === 'UNLOCK_SUPERSEDED') {
           // Silent — another action already took over the unlock.
         } else {
-          setError("Biometric unlock didn't work. Enter your PIN below.");
+          // Honest copy: unlockBiometricOnly() failures are dominated by
+          // FASTPATH_CODE.MISS (empty wrapped-DEK cache — expected on first
+          // run after enabling Fast Unlock, populates on the next PIN
+          // unlock) rather than a real biometric-hardware fault. The user
+          // saw "Biometric unlock didn't work" and read it as broken; the
+          // fast-path is simply not warm yet.
+          setError("Enter your PIN once and Fast Unlock will work next time.");
         }
       } finally {
         setBusy(false);
