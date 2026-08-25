@@ -90,13 +90,12 @@
 // vault crypto internals (vault.js / vaultStore.js / signing.js); it reuses
 // encryptVault/decryptVault verbatim for the panic marker.
 
-import { decryptVault } from './vault.js';
-// H-2 (weekly audit 2026-08-25): the panic marker must record the SAME Argon2id
-// profile as the duress blob and the stealth pool it sits beside, or personalising
-// one slot after an at-rest profile change makes it the odd one out in a storage
-// dump. This is a params READER over the shared store, not a dependency on the
-// deniability modules this file erases — panic.js stays decoupled from those.
-import { encryptDeniabilityVault } from './deniabilityKdfProfile.js';
+import { decryptVault, encryptVault, vaultNeedsKdfMigration } from './vault.js';
+// Gate 2 (H-2, owner ruling 2026-08-25): the panic marker is stamped at the
+// CURRENT KDF_PARAMS on write; a v1 marker carried across a profile change
+// silently rekeys on the next successful panic unlock (before the wipe fires).
+// deniabilityKdfProfile.js is no longer imported here — panic.js stays fully
+// decoupled from the deniability modules it erases.
 import { generateMnemonic } from './mnemonic.js';
 import { padToFixedLen, stripPad } from './multiVault.js';
 // BIO-05: biometric-2FA enabled tell. Imported (not hardcoded) so a rename in
@@ -651,7 +650,7 @@ export async function setPanicVault(panicPassword) {
   // still strip on decrypt for cleanliness/forward-safety. The marker is not a
   // container, so it uses the string-level padToFixedLen helper (NOT the JSON `pad`
   // field); the container FORMAT is unchanged.
-  const blob = await encryptDeniabilityVault(padToFixedLen(marker), panicPassword);
+  const blob = await encryptVault(padToFixedLen(marker), panicPassword);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -707,18 +706,34 @@ export async function tryPanicUnlock(password) {
     db.close();
   }
   if (!blob) return false;
+  let plaintext;
   try {
-    const plaintext = await decryptVault(blob, password); // throws on wrong PIN
-    // H2: strip the FIXED_LEN padding before any detection logic. Detection here is
-    // purely "did GCM auth succeed" (an exact-match decrypt), so the marker is
-    // recognisable after pad+strip; stripPad tolerates legacy unpadded markers
-    // (returns them unchanged), so panic still fires for blobs written before H2.
-    stripPad(plaintext);
-    return true;
+    plaintext = await decryptVault(blob, password); // throws on wrong PIN
   } catch {
     return false;
   }
+  // H2: strip the FIXED_LEN padding before any detection logic. Detection here
+  // is purely "did GCM auth succeed" (an exact-match decrypt), so the marker
+  // is recognisable after pad+strip; stripPad tolerates legacy unpadded markers.
+  stripPad(plaintext);
+  // Gate 2 (H-2, owner ruling 2026-08-25): OPPORTUNISTIC REKEY, FIRE-AND-FORGET.
+  // NO REKEY on the panic path — reviewer C-1 on PR #2103. tryPanicUnlock's
+  // caller (WalletProvider.unlock catch) fires panicWipeLocal() immediately
+  // after we return true, which deleteVaultDatabase()s the whole vault DB
+  // well inside a 250 ms deferred window. A deferred rekey would openDb()
+  // AFTER the wipe, re-creating veyrnox-vault with a lone tertiary blob —
+  // the exact residue panic-wipe exists to prevent. Cost of not rekeying:
+  // the panic marker's kdf profile may lag the primary post-migration until
+  // the user's next setPanicVault() call. Comparatively cheap tell (1 blob
+  // among 258) vs. residue-after-wipe.
+  return true;
 }
+
+// Test hook: mirrors stealth.js:_awaitPendingKdfRekey / duress.js — same
+// fire-and-forget shape, same rationale (H-1 timing budget).
+let _lastKdfRekey = /** @type {Promise<void>} */ (Promise.resolve());
+/** @returns {Promise<void>} */
+export function _awaitPendingKdfRekey() { return _lastKdfRekey; }
 
 // Clear every residue key in localStorage — the DEMO address maps AND the
 // deniability tells (C-1). Guarded for non-browser/test environments.

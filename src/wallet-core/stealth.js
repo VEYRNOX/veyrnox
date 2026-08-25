@@ -120,12 +120,13 @@
 // only encrypts, stores, and decrypts hidden-wallet mnemonics locally. It cannot
 // move funds and adds no mainnet surface.
 
-import { decryptVault } from './vault.js';
-// H-2 (weekly audit 2026-08-25): chaff and real slots must record the SAME
-// Argon2id profile, and that profile is this DEVICE's era — not the current
-// at-rest default, which diverges from an installed-base pool the moment the
-// default moves. See deniabilityKdfProfile.js.
-import { deniabilityKdfProfile, encryptDeniabilityVault } from './deniabilityKdfProfile.js';
+import { decryptVault, encryptVault, KDF_PARAMS, vaultNeedsKdfMigration } from './vault.js';
+// H-2 (weekly audit 2026-08-25): chaff and real slots record an identical
+// `kdf`. Under Gate 2 (owner ruling 2026-08-25) every WRITE stamps the
+// current KDF_PARAMS; the timing pads still resolve this device's recorded
+// era so the primary-unlock KDF budget is not touched. See
+// deniabilityKdfProfile.js for the era-lookup rationale (READ-side only).
+import { deniabilityKdfProfile } from './deniabilityKdfProfile.js';
 import { generateMnemonic, validateMnemonic } from './mnemonic.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
@@ -326,7 +327,7 @@ function readSlotForSecret(secret) {
 // same distribution as real hidden-wallet slots. The salt/iv/ct are all random,
 // which is indistinguishable from genuine AES-GCM output to anyone without the
 // secret. Mirrors the { v, kdf, salt, iv, ct } shape of vault.js exactly.
-function makeChaff(kdfProfile) {
+function makeChaff(kdfProfile = KDF_PARAMS) {
   // H2: a real hidden-wallet slot now encrypts a FIXED-LENGTH multi-seed container
   // (always exactly FIXED_LEN plaintext bytes — independent of mnemonic word-count
   // and of whether the set carries an Action-Password record). So chaff must size
@@ -376,16 +377,16 @@ export async function ensureStealthPool() {
   // shape universal too. getOrCreateStealthSalt is idempotent — a
   // pre-existing salt is returned unchanged.
   try { getOrCreateStealthSalt(); } catch { /* best-effort — matches chaff loop */ }
-  // H-2: read the device's recorded KDF era ONCE, before the write connection is
-  // open, and stamp every backfilled slot with it. Read once rather than per slot
-  // both for cost and for consistency — a profile resolved mid-loop could differ
-  // from the one the first slots were written with.
-  const kdfProfile = await deniabilityKdfProfile();
+  // Gate 2 (2026-08-25): backfilled chaff stamps the CURRENT KDF_PARAMS
+  // uniformly. On a v1-era device this creates a transient distinguisher — an
+  // un-opened v1 slot beside newer v2 chaff — until the user reveals/duress-
+  // unlocks/panics through each opaque slot they actually own and it rekeys.
+  // Documented ceiling; see docs/Feature-Status.md 2026-08-25 Gate 2 entry.
   const db = await openDb();
   try {
     for (const key of SLOT_KEYS) {
       const existing = await getKey(db, key);
-      if (existing == null) await putKey(db, key, makeChaff(kdfProfile));
+      if (existing == null) await putKey(db, key, makeChaff());
     }
   } finally {
     db.close();
@@ -450,7 +451,7 @@ export async function createHiddenWallet(secret, strength = 128) {
   // A hidden wallet has no Action Password today (the UI does not yet collect one),
   // so the record is absent; presence still means "configured" inside the container.
   const container = makeContainer([{ id: newWalletId(), mnemonic }]);
-  const blob = await encryptDeniabilityVault(serializeContainer(container), secret);
+  const blob = await encryptVault(serializeContainer(container), secret);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -523,7 +524,7 @@ export async function moveWalletToHidden(mnemonic, secret) {
   // H2: same FIXED-LENGTH container wrapping as createHiddenWallet, so a moved
   // wallet is byte-shaped identically to a fresh hidden wallet and to chaff.
   const container = makeContainer([{ id: newWalletId(), mnemonic }]);
-  const blob = await encryptDeniabilityVault(serializeContainer(container), secret);
+  const blob = await encryptVault(serializeContainer(container), secret);
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
   }
@@ -605,12 +606,62 @@ export async function tryRevealHidden(secret) {
     db.close();
   }
   if (!blob) return null;
+  let plaintext;
   try {
-    return await decryptVault(blob, secret); // throws on wrong secret / chaff
+    plaintext = await decryptVault(blob, secret); // throws on wrong secret / chaff
   } catch {
     return null;
   }
+  // Gate 2 (H-2, owner ruling 2026-08-25): OPPORTUNISTIC REKEY, FIRE-AND-FORGET.
+  // If the slot's recorded KDF profile disagrees with the current one, kick off
+  // a re-encrypt at KDF_PARAMS using the SAME secret that just decrypted it,
+  // but do NOT await it — the H-1 equaliser holds only if a reveal HIT costs
+  // the same as a reveal MISS on the same state, and awaiting an extra
+  // Argon2id derivation on the hit path would be a real-vs-chaff timing tell.
+  // Best-effort: any failure leaves the original slot untouched; correctness
+  // is preserved (both writers write the same key; last write wins).
+  //
+  // The secret is already in scope for the decrypt above; the re-encrypt uses
+  // it once more and then it goes out of scope with the caller. No new prompt.
+  if (vaultNeedsKdfMigration(blob)) {
+    // Deferred to a macrotask (setTimeout 0) so the rekey's Argon2id derivation
+    // runs AFTER the current unlock's timing budget has closed — an in-flight
+    // microtask would still be observed by a stopwatch or CPU monitor pinned
+    // to this unlock. The scheduling is fire-and-forget; the Promise is only
+    // retained for a test-only await hook (see _awaitPendingKdfRekey below).
+    _lastKdfRekey = new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          const fresh = await encryptVault(plaintext, secret);
+          if (fresh && fresh.ct && fresh.iv && fresh.salt) {
+            const wdb = await openDb();
+            try {
+              // Reviewer C-1 sibling fix on PR #2103: before writing, verify
+              // the target slot still exists. If a panic-wipe (which calls
+              // deleteVaultDatabase) fires inside the 250 ms window, the
+              // slot is gone; re-inserting would re-create part of the wiped
+              // state. Missing → skip.
+              const existing = await getKey(wdb, slot);
+              if (existing == null) return;
+              await putKey(wdb, slot, fresh);
+            } finally { wdb.close(); }
+          }
+        } catch { /* best-effort — reveal already returned the plaintext */ }
+        resolve();
+      }, 250);
+    });
+  }
+  return plaintext;
 }
+
+// Test hook: the deniability rekey is fire-and-forget so the H-1 unlock KDF
+// budget stays identical between reveal-hit and reveal-miss. Tests that assert
+// post-reveal storage state need a deterministic wait — this returns a promise
+// that resolves once the most recent rekey (if any) has settled. Not part of
+// the app's runtime contract; safe to remove if the equaliser ever moves.
+let _lastKdfRekey = /** @type {Promise<void>} */ (Promise.resolve());
+/** @returns {Promise<void>} */
+export function _awaitPendingKdfRekey() { return _lastKdfRekey; }
 
 // INTERNAL: reveal a hidden wallet's first (and only) MNEMONIC, or null. Used by
 // create/move (idempotency, clobber-guard, self-verify) which reason about the
@@ -669,7 +720,7 @@ export async function setHiddenActionPasswordRecord(secret, mnemonic, record) {
     throw new Error('Hidden wallet not found — cannot set action password record');
   }
   const container = makeContainer([{ id: newWalletId(), mnemonic }], record ?? undefined);
-  const blob = await encryptDeniabilityVault(serializeContainer(container), secret);
+  const blob = await encryptVault(serializeContainer(container), secret);
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
   }
