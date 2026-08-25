@@ -100,39 +100,63 @@ Before removing any entry, confirm the vulnerable package is actually gone from 
 resolved tree. Neither an upstream release nor npm's `fixAvailable` field is evidence on
 its own.
 
-### `elliptic` — max severity: low — accepted 2026-07-19
+### `elliptic` — max severity: low — accepted 2026-07-19, re-scoped 2026-08-25
 
-- **Advisory:** "Elliptic Uses a Cryptographic Primitive with a Risky Implementation".
+- **Advisory:** GHSA-848j-6mx2-7j84, "Elliptic Uses a Cryptographic Primitive with a
+  Risky Implementation".
 - **Why accepted:** no upstream fix exists at any version. `package.json` `overrides`
-  already pins `elliptic` to `^6.6.1`, the latest published release — the only
-  available mitigation is already applied.
-- **Blast radius:** not on the wallet's signing path. `src/wallet-core/` uses
-  `@noble`/`@scure` and ethers v6. `elliptic` reaches the tree solely through
-  hardware-wallet transport/APDU code, via three direct dependencies:
-  `@trezor/connect-web` → `@trezor/utxo-lib` → `tiny-secp256k1` → `elliptic`;
-  `@ledgerhq/hw-app-eth` → `@ethersproject/transactions` → `signing-key` → `elliptic`;
-  and `@keystonehq/keystone-sdk` → `@keystonehq/bc-ur-registry-eth` → `hdkey` →
-  `secp256k1` → `elliptic`. The physical device performs the signing.
-- **Accounts for** 22 findings as of 2026-08-22 (1 root + its transitive dependents).
-  It was ~18 until the Keystone chain arrived — `@keystonehq/keystone-sdk` is a newer
-  direct dependency and contributes 2 findings of its own plus the `hdkey`/`secp256k1`
-  hops. Severity is unchanged (low), so the suppression still applies; the count moving
-  on its own is not a revisit trigger, but a count that moves for an unexplained reason
-  is — re-derive the chains from `npm audit --json` before assuming this number.
-- **Revisit trigger:** a fixed `elliptic` release ships; OR the advisory is
-  re-rated above low; OR any of the three direct dependencies drops it (e.g.
-  `@ledgerhq/hw-app-eth` migrating off `@ethersproject/*` v5, `@trezor/utxo-lib` moving
-  to `tiny-secp256k1 >= 2.0.0`, which already dropped elliptic, or
-  `@keystonehq/bc-ur-registry-eth` moving off `hdkey`); OR `elliptic` gains a
-  path into `src/wallet-core/`. On any of these, remove this entry and report normally.
-- **Tracked:** watcher `veyrnox-elliptic-upstream-watch` (weekly, Mondays ~10am) checks
-  all three signals above and reports remediation steps when any fires. It was written
-  when only the Trezor and Ledger chains existed — confirm it covers the Keystone chain
-  before relying on it to catch that one.
-- **Note:** npm's `fixAvailable` for the Ledger chain suggests
-  `@ledgerhq/hw-app-eth@6.40.3`. That is a major *downgrade* from the installed 7.8.x
-  and still declares `@ethersproject/{abi,rlp,transactions}` v5, so it does not clear
-  this advisory. Evaluated and rejected 2026-07-19. Do not propose it again.
+  already pins `elliptic` to `^6.6.1`, and 6.6.1 is still `latest` (checked
+  2026-08-25) — the only available mitigation is already applied.
+- **Blast radius — ONE chain, and it now runs through `src/wallet-core/`:**
+  `@keystonehq/keystone-sdk` → `@keystonehq/bc-ur-registry-eth` → `hdkey` →
+  `secp256k1` → `elliptic`. The Trezor and Ledger chains this entry used to name are
+  GONE — `@trezor/connect-web`, `@trezor/utxo-lib`, `tiny-secp256k1`,
+  `@ledgerhq/hw-app-eth` and `@ethersproject/signing-key` are all absent from
+  `origin/main`'s lockfile at `24333ad9`.
+- **The old "not on the wallet's signing path" line was retired, not reworded —
+  it stopped being true.** `src/wallet-core/hw/digitalShield.js:12` imports
+  `ETHSignature` from `@keystonehq/bc-ur-registry-eth`, and the repo's own
+  `src/wallet-core/hw/__tests__/digitalShield.deps.test.js` calls that package a
+  "signing-path dependency pin". The package's ESM build carries a module-level
+  `import HDKey from 'hdkey'` (verified by unpacking 0.22.1, 2026-08-25), so
+  `elliptic` is in the wallet-core import graph.
+  **What keeps it low, stated precisely rather than as a slogan:** `digitalShield.js`
+  calls only `ETHSignature.fromCBOR`. `hdkey` backs `generateAddressFromXpub` and
+  `findHDPathFromAddress`, neither of which appears anywhere in `src/`. The Keystone
+  device performs the signing; nothing here derives or holds a key. Veyrnox key
+  material is still `@noble`/`@scure`/ethers v6 only.
+- **Accounts for** 5 findings as of 2026-08-25 at `origin/main` `24333ad9` (1 advisory
+  root + 4 transitive dependents: `secp256k1`, `hdkey`,
+  `@keystonehq/bc-ur-registry-eth`, `@keystonehq/keystone-sdk`). It was 22 on
+  2026-08-22; the drop is the Trezor/Ledger removal above, not a fix. A count that
+  moves for an unexplained reason is a revisit trigger — re-derive the chain from
+  `npm audit --json` before trusting this number.
+- **Revisit trigger:** a fixed `elliptic` release ships; OR the advisory is re-rated
+  above low; OR the surviving chain drops it (`@keystonehq/bc-ur-registry-eth` moving
+  off `hdkey`, or `hdkey` moving off `secp256k1`/`elliptic`); OR `digitalShield.js`
+  starts calling `generateAddressFromXpub` / `findHDPathFromAddress`, or any other
+  `src/` code reaches an `elliptic`-backed API; OR a Trezor/Ledger integration returns
+  and reintroduces a second chain. On any of these, re-derive before acting — retire
+  the entry only if the vulnerable package is actually gone from the resolved tree.
+- **The "gains a path into `src/wallet-core/`" trigger already fired, on 2026-08-25,
+  and this entry was re-scoped rather than retired.** That is a judgment call and is
+  recorded as one: severity is unchanged (low), no fix exists at any version, and the
+  reachable-API analysis above says no `elliptic` code path is called. The daily audit
+  of 2026-08-25 therefore suppressed NOTHING and listed all 5 findings in full. Doing
+  that once is honest; doing it every day would turn "accepted residual" into
+  "permanently ignored". If the reachability analysis above ever stops holding, this
+  entry goes.
+- **Tracked — but the watcher's brief is stale, so treat this as PARTIAL tracking.**
+  `veyrnox-elliptic-upstream-watch` is registered and enabled (weekly, Tuesdays 09:34
+  — not "Mondays ~10am" as this entry claimed until 2026-08-25; last ran 2026-08-18).
+  Its runbook checks the Trezor and Ledger chains, both of which no longer exist, and
+  it was never taught the Keystone chain. Until it is re-pointed, it can only catch
+  the upstream-`elliptic`-release signal. Per the `brace-expansion` lesson below: a
+  watcher existing is not evidence it watches the thing you care about.
+- **Note:** the old `@ledgerhq/hw-app-eth@6.40.3` `fixAvailable` warning is retired
+  with the Ledger chain. Kept as one line in case Ledger support returns: that version
+  is a major *downgrade* and still declares `@ethersproject/*` v5, so it never cleared
+  this advisory. Evaluated and rejected 2026-07-19.
 
 ## Retired residuals
 
