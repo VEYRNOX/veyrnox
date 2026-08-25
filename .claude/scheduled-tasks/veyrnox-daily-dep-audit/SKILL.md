@@ -141,11 +141,20 @@ its own.
 - **The "gains a path into `src/wallet-core/`" trigger already fired, on 2026-08-25,
   and this entry was re-scoped rather than retired.** That is a judgment call and is
   recorded as one: severity is unchanged (low), no fix exists at any version, and the
-  reachable-API analysis above says no `elliptic` code path is called. The daily audit
-  of 2026-08-25 therefore suppressed NOTHING and listed all 5 findings in full. Doing
-  that once is honest; doing it every day would turn "accepted residual" into
-  "permanently ignored". If the reachability analysis above ever stops holding, this
-  entry goes.
+  reachable-API analysis above says no `elliptic` code path is called. If the
+  reachability analysis ever stops holding, this entry goes.
+- **What each run should DO about that — unambiguous, because the previous wording was
+  not.** On 2026-08-25, the day the trigger fired, the audit suppressed NOTHING and
+  listed all 5 findings in full, so a reader that day saw the changed blast radius
+  rather than a one-line suppression note. **That was a one-off for the day of the
+  finding. From 2026-08-26 onward, suppress and state, per step 2a** — this entry is
+  under `## Accepted residuals`, its root is `elliptic`, its severity is still low, so
+  2a applies with no exception. The earlier wording ("doing that once is honest; doing
+  it every day would turn 'accepted residual' into 'permanently ignored'") left "that"
+  pointing at either behaviour and made the next run a coin flip; both readings produce
+  a defensible-looking widget, which is precisely how a rule stops constraining
+  anything. The guard against "permanently ignored" is the revisit-trigger list above
+  and the watcher, not a refusal to suppress.
 - **Tracked:** `veyrnox-elliptic-upstream-watch`, registered and enabled, weekly on
   Tuesdays 09:34 (not "Mondays ~10am" as this entry claimed until 2026-08-25).
   **Re-pointed at the Keystone chain 2026-08-25 by PR #2084** — its signals are now a
