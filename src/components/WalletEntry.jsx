@@ -125,10 +125,19 @@ import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 import {
   registerFailedPinAttempt,
   pinAttemptWarning,
+  pinBackoffRemainingMs,
+  pinLockoutMessage,
+  pinSessionFloor,
+  raisePinSessionFloor,
+  clearPinSessionFloor,
+  PIN_COUNTER_DEGRADED_NOTE,
 } from "@/lib/pinAttemptGuard";
 import { setPendingReferral } from "@/lib/referral";
 import { copySecret } from "@/lib/copySecret";
-import { useRaspArtifact, sensitiveGate } from "@/rasp";
+import {
+  sensitiveGate, degrade, detect, selectPresignProbeSource,
+  nativeProbeSource, browserProbeSource, FRESH_PROBE_TIMEOUT_MS,
+} from "@/rasp";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import PinSetup from "@/components/PinSetup";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
@@ -155,6 +164,46 @@ function FirstReceiveCardWithTelemetry(props) {
     Promise.resolve(emit(FunnelEvent.FIRST_RECEIVE_SHOWN)).catch(() => {});
   });
   return <FirstReceiveCard {...props} />;
+}
+
+// L-6 (audit 2026-08-25) — FRESH-AT-THE-TAP gate for seed material.
+//
+// useRaspArtifact() samples at mount and refreshes on foreground plus a 60 s
+// heartbeat, so a hook injected after the last probe but before the user taps was
+// judged under a verdict that never saw it. The sign hot-path was hardened for
+// exactly this (SendCrypto.jsx awaits getFreshRaspArtifact()); degrade.js calls seed
+// reveal / export / import "the highest-danger moments" and they still had the
+// weaker guarantee. This probes at the confirm step instead.
+//
+// WHY NOT getFreshRaspArtifact() ITSELF: it composes the REMOTE attestation leg,
+// which these surfaces deliberately exclude (owner decision 2026-07-16 — a sideloaded
+// build gets HTTP 404 from Play Integrity → INTEGRITY_UNAVAILABLE → seed backup
+// blocked, and the whole point of excludeAttestation is that a self-custody backup
+// must not hang on an unreachable remote check). So this composes the ON-DEVICE leg
+// only, exactly as useRaspArtifact({ excludeAttestation: true }) does — no egress
+// added on a seed path either. Fold it into a getFreshRaspArtifact({
+// excludeAttestation }) option next time src/rasp is opened; it lives here because
+// that module was owned elsewhere when this landed, not because it wants to be
+// duplicated.
+//
+// I4: a throw, a timeout, or an unavailable probe all fail CLOSED — sensitiveGate's
+// null branch (P1-2) refuses the action rather than reading absence as clean.
+export async function freshSensitiveGate(action) {
+  try {
+    const isNative = Capacitor.isNativePlatform();
+    const nativeSource = isNative
+      ? await Promise.race([
+          nativeProbeSource().catch(() => ({ available: false })),
+          new Promise((r) => setTimeout(() => r({ available: false }), FRESH_PROBE_TIMEOUT_MS)),
+        ])
+      : null;
+    const artifact = degrade(
+      detect(selectPresignProbeSource(isNative, nativeSource, browserProbeSource)),
+    );
+    return sensitiveGate(artifact, action);
+  } catch {
+    return sensitiveGate(null, action);
+  }
 }
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
@@ -565,10 +614,12 @@ export default function WalletEntry() {
 
   // Check biometric preference fresh every render (not cached), so preference changes take effect immediately
   const biometricEnabled = vaultExists && isBiometricUnlockEnabled() && bioReady;
-  // excludeAttestation: this surface gates seed-reveal + seed import (local seed
-  // material) — not gated on the remote attestation leg (unavailable on sideloaded
-  // builds → would block reveal/import). On-device threats still block. (2026-07-16)
-  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
+  // L-6 (2026-08-25): the mount-time useRaspArtifact({ excludeAttestation: true })
+  // sample used to live here and feed all three seed-material gates. It is gone
+  // because every one of them now probes fresh at the tap (freshSensitiveGate above,
+  // which keeps the same on-device-only composition and the same 2026-07-16 owner
+  // decision behind excludeAttestation). Nothing on this surface reads a RASP verdict
+  // at render time, so a <=60 s-stale sample had no remaining honest use.
 
   // Transiently holds the just-set vault password between "Generate" and the
   // "Enable Face ID" decision on the SAME screen, so we can cache it for biometric
@@ -762,7 +813,7 @@ export default function WalletEntry() {
   }, [chosenPath, generatedSeed, isUnlocked, justOnboarded, kekGatePending]);
 
   const copySeed = async () => {
-    const gate = sensitiveGate(raspArtifact, 'seed-reveal');
+    const gate = await freshSensitiveGate('seed-reveal');
     if (gate.blocked) {
       toast.error(gate.sentence || 'Clipboard copy is disabled on this device right now.');
       return;
@@ -866,13 +917,34 @@ export default function WalletEntry() {
   // clear it out-of-band to dodge the wipe. This raises the cost of online/over-the-
   // shoulder guessing and gives a lost/stolen-device auto-destruct; it does NOT replace
   // the Argon2id offline cost or planned hardware binding. Accepted software limit.
+  //
+  // M-9 (audit 2026-08-25): both accesses below used to swallow their exception with no
+  // fallback, so an UNWRITABLE store was a silent fail-OPEN — every miss read 0 and
+  // wrote nothing, giving unlimited attempts with shouldWipe never true. That is a
+  // different thing from the disclosed limit above (attacker deliberately clears the
+  // key): it needs no attacker and produces no signal. The session floor
+  // (lib/pinAttemptGuard) is the mitigation — a high-water mark max()ed against the
+  // stored value so a failed write cannot reset progress within a session. It is NOT
+  // persistence and is not written up as such; a reload still clears it. What it kills
+  // is the SILENT version, hence storageDegraded, surfaced to the user below.
   const PIN_ATTEMPTS_KEY = 'veyrnox-pin-attempts';
   const PIN_BACKOFF_KEY = 'veyrnox-pin-backoff-until';
   const readPinAttempts = () => {
-    try { return parseInt(localStorage.getItem(PIN_ATTEMPTS_KEY) || '0', 10) || 0; }
-    catch { return 0; }
+    let stored = 0;
+    try { stored = parseInt(localStorage.getItem(PIN_ATTEMPTS_KEY) || '0', 10) || 0; }
+    catch { raisePinSessionFloor({ storageDegraded: true }); }
+    return Math.max(stored, pinSessionFloor().attempts);
+  };
+  // M-7: the lockout deadline, floored the same way — a store that cannot be READ must
+  // not hand a locked-out attacker a free retry.
+  const readPinBackoffUntil = () => {
+    let stored = 0;
+    try { stored = parseInt(localStorage.getItem(PIN_BACKOFF_KEY) || '0', 10) || 0; }
+    catch { raisePinSessionFloor({ storageDegraded: true }); }
+    return Math.max(stored, pinSessionFloor().backoffUntil);
   };
   const clearPinAttempts = () => {
+    clearPinSessionFloor();
     try { localStorage.removeItem(PIN_ATTEMPTS_KEY); localStorage.removeItem(PIN_BACKOFF_KEY); }
     catch { /* best-effort */ }
   };
@@ -883,6 +955,20 @@ export default function WalletEntry() {
   // change). pinModel:true is kept on the unlock() call as the cohort marker.
   const runPinUnlock = async (pin) => {
     if (!pin) { setError("Enter your PIN."); return; }
+    // M-7 (audit 2026-08-25): ENFORCE the timed backoff. pinBackoffMs has defined the
+    // tiers since VULN-8 and had its own passing unit test, but no production code ever
+    // read the value — the 5-minute lockout at >= 7 misses did not exist at runtime.
+    // The check sits BEFORE the attempt is spent, so a lockout costs the attacker wall
+    // time without consuming one of the ten attempts, and the wipe stays reachable
+    // (delayed, never suppressed). Honest remaining-time message, rounded up.
+    const lockoutMs = pinBackoffRemainingMs(readPinBackoffUntil());
+    if (lockoutMs > 0) {
+      errorHaptic();
+      setError(pinLockoutMessage(lockoutMs));
+      setUnlockPin("");
+      setPinShakeKey((k) => k + 1);
+      return;
+    }
     setError(""); setBusy(true);
     // Fast-path (#2019) one-time-setup hint: probe the wrapped-DEK cache
     // BEFORE unlock so we can tell the user THIS unlock will populate the
@@ -1006,9 +1092,16 @@ export default function WalletEntry() {
         return;
       }
       // A real wrong-PIN miss. Register it and persist the new count; the pure guard
-      // decides whether this miss is the wipe trigger and what to warn.
-      const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());
-      try { localStorage.setItem(PIN_ATTEMPTS_KEY, String(attempts)); } catch { /* best-effort */ }
+      // decides whether this miss is the wipe trigger, how long to lock out (M-7), and
+      // what to warn. The session floor is raised FIRST so the progress survives a
+      // storage write that fails immediately after (M-9).
+      const { attempts, shouldWipe, backoffMs } = registerFailedPinAttempt(readPinAttempts());
+      const backoffUntil = backoffMs > 0 ? Date.now() + backoffMs : 0;
+      raisePinSessionFloor({ attempts, backoffUntil });
+      try {
+        localStorage.setItem(PIN_ATTEMPTS_KEY, String(attempts));
+        if (backoffUntil > 0) localStorage.setItem(PIN_BACKOFF_KEY, String(backoffUntil));
+      } catch { raisePinSessionFloor({ storageDegraded: true }); }
 
       if (shouldWipe) {
         // HARD STOP: PIN_WIPE_AFTER consecutive misses. Fire the REAL irreversible local
@@ -1029,9 +1122,16 @@ export default function WalletEntry() {
       }
 
       // Not yet at the limit: honest "Incorrect PIN", upgraded to the iOS-style
-      // remaining-count warning once within a few attempts of the wipe.
+      // remaining-count warning once within a few attempts of the wipe, then the
+      // lockout wait if this miss earned one (M-7), then the degraded-storage note if
+      // the count could not be saved (M-9 — say it rather than fail open in silence).
       errorHaptic();
-      setError(pinAttemptWarning(attempts) || "Incorrect PIN. Try again.");
+      const missLines = [
+        pinAttemptWarning(attempts) || "Incorrect PIN. Try again.",
+        pinLockoutMessage(backoffUntil ? backoffUntil - Date.now() : 0),
+        pinSessionFloor().storageDegraded ? PIN_COUNTER_DEGRADED_NOTE : null,
+      ].filter(Boolean);
+      setError(missLines.join(' '));
       setUnlockPin("");                    // clear the entered digits
       setPinShakeKey((k) => k + 1);        // shake the pad
     } finally { setBusy(false); setFastpathWarmingHint(false); }
@@ -1179,7 +1279,7 @@ export default function WalletEntry() {
   // Fail-closed: a bad phrase throws inside the import, leaving the existing vault
   // untouched; we clear the bridged pendingPin so no stale PIN lingers.
   const finishPinRecover = async (pin) => {
-    const gate = sensitiveGate(raspArtifact, 'import');
+    const gate = await freshSensitiveGate('import');
     if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setBusy(true); setProvisioning(true); setError("");
     try {
@@ -1270,7 +1370,7 @@ export default function WalletEntry() {
 
   // ---- Import an existing seed (vault password mandatory) ----
   const handleImport = async (mnemonicOverride) => {
-    const gate = sensitiveGate(raspArtifact, 'import');
+    const gate = await freshSensitiveGate('import');
     if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setError("");
     const pw = checkVaultPasswordStrength(importPassword);

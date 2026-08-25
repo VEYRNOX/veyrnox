@@ -29,17 +29,21 @@ const read = (rel) => readFileSync(join(root, rel), 'utf8');
 describe('G4 clipboard — WalletEntry.jsx copySeed gate', () => {
   const src = read('components/WalletEntry.jsx');
 
-  it('imports useRaspArtifact and sensitiveGate (already present from G4 import gate)', () => {
-    expect(src).toContain("useRaspArtifact");
+  // L-6 (audit 2026-08-25): copySeed no longer reads the mount-time artifact (up to
+  // 60 s stale); it probes fresh at the tap through freshSensitiveGate, which wraps
+  // the same sensitiveGate verdict over an on-device-only composition.
+  it('imports sensitiveGate and defines the fresh-at-the-tap wrapper', () => {
     expect(src).toContain("sensitiveGate");
+    expect(src).toMatch(/export async function freshSensitiveGate\(/);
   });
 
-  it('copySeed calls sensitiveGate with seed-reveal before copySecret', () => {
+  it('copySeed awaits the fresh seed-reveal gate before copySecret', () => {
     // Find the copySeed function and confirm it contains the gate
     const copySeedIdx = src.indexOf('const copySeed');
     expect(copySeedIdx).toBeGreaterThan(0);
     const copySeedBody = src.slice(copySeedIdx, copySeedIdx + 400);
-    expect(copySeedBody).toContain("sensitiveGate(raspArtifact, 'seed-reveal')");
+    expect(copySeedBody).toContain("await freshSensitiveGate('seed-reveal')");
+    expect(copySeedBody.indexOf('freshSensitiveGate')).toBeLessThan(copySeedBody.indexOf('copySecret('));
   });
 });
 

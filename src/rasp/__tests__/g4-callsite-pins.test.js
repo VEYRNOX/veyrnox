@@ -35,7 +35,16 @@ const EXCL = /useRaspArtifact\(\{\s*excludeAttestation:\s*true\s*\}\)/;
 describe('seed-material surfaces — excludeAttestation pin (backup not gated on remote leg)', () => {
   it('useRevealWithReauth passes excludeAttestation', () => expect(reveal).toMatch(EXCL));
   it('PersonalBackup passes excludeAttestation', () => expect(backup).toMatch(EXCL));
-  it('WalletEntry passes excludeAttestation', () => expect(entry).toMatch(EXCL));
+  // WalletEntry moved off the mount-time hook entirely (L-6, audit 2026-08-25): its
+  // three seed-material gates now probe FRESH at the tap via freshSensitiveGate(),
+  // which composes the ON-DEVICE leg only and so carries the same owner decision by
+  // construction. Pinned on the composition rather than on the hook option, because
+  // there is no longer a useRaspArtifact call here to carry the flag — and a regex
+  // that a mere COMMENT can satisfy is not a pin.
+  it('WalletEntry gates on the on-device leg only (no attestation leg composed)', () => {
+    expect(entry).toMatch(/selectPresignProbeSource\(isNative, nativeSource, browserProbeSource\)/);
+    expect(entry).not.toMatch(/composeConditions|detectAttestation/);
+  });
   it('SeedGrid passes excludeAttestation', () => expect(seedgrid).toMatch(EXCL));
   it('HDWalletManager passes excludeAttestation', () => expect(hdwallet).toMatch(EXCL));
   it('RestoreFromFile passes excludeAttestation', () => expect(restore).toMatch(EXCL));
@@ -100,28 +109,32 @@ describe('RestoreFromFile — G4 import gate (shared restore component)', () => 
 
 // ── WalletEntry — import gate (handleImport + finishPinRecover) ──────────────
 
+// L-6 (audit 2026-08-25): the gate call is now freshSensitiveGate() — a fresh
+// on-device probe composed at the tap, wrapping the same sensitiveGate() verdict —
+// so these pins match the fresh helper. The ORDERING property they exist to protect
+// (gate strictly before the import) is unchanged and still asserted.
 describe('WalletEntry — G4 import gate on seed import paths', () => {
-  it('imports sensitiveGate and useRaspArtifact', () => {
+  it('imports sensitiveGate and defines the fresh-at-the-tap wrapper', () => {
     expect(entry).toMatch(/sensitiveGate/);
-    expect(entry).toMatch(/useRaspArtifact/);
+    expect(entry).toMatch(/export async function freshSensitiveGate\(/);
   });
 
-  it("calls sensitiveGate with 'import' in handleImport before importWallet", () => {
+  it("calls freshSensitiveGate with 'import' in handleImport before importWallet", () => {
     const handleImportIdx = entry.indexOf('const handleImport');
     expect(handleImportIdx).toBeGreaterThan(-1);
     const handleImportRegion = entry.slice(handleImportIdx, handleImportIdx + 500);
-    expect(handleImportRegion).toMatch(/sensitiveGate/);
-    const gateIdx = handleImportIdx + handleImportRegion.indexOf('sensitiveGate');
+    expect(handleImportRegion).toMatch(/await freshSensitiveGate\('import'\)/);
+    const gateIdx = handleImportIdx + handleImportRegion.indexOf('freshSensitiveGate');
     const importWalletIdx = entry.indexOf('importWallet(phrase');
     expect(gateIdx).toBeLessThan(importWalletIdx);
   });
 
-  it("calls sensitiveGate with 'import' in finishPinRecover before importWalletForPendingPin", () => {
+  it("calls freshSensitiveGate with 'import' in finishPinRecover before importWalletForPendingPin", () => {
     const recoverIdx = entry.indexOf('const finishPinRecover');
     expect(recoverIdx).toBeGreaterThan(-1);
     const recoverRegion = entry.slice(recoverIdx, recoverIdx + 400);
-    expect(recoverRegion).toMatch(/sensitiveGate/);
-    const gateIdx = recoverIdx + recoverRegion.indexOf('sensitiveGate');
+    expect(recoverRegion).toMatch(/await freshSensitiveGate\('import'\)/);
+    const gateIdx = recoverIdx + recoverRegion.indexOf('freshSensitiveGate');
     const importForPinIdx = entry.indexOf('importWalletForPendingPin(recoverySeed)');
     expect(gateIdx).toBeLessThan(importForPinIdx);
   });
