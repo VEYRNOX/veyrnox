@@ -64,7 +64,11 @@ of that.
 
 ## What is mirrored
 
-All ten Veyrnox scheduled tasks.
+Ten task directories. **Rows are not registrations — three of these tasks no
+longer exist in the scheduler** (`veyrnox-appium-shellquote-watch`,
+`veyrnox-brace-expansion-watch`, `watch-risk-wire-merge`), and their runbooks
+are kept here only as history. `list_scheduled_tasks` is the authority for what
+actually runs; this table is the authority for why each one exists or stopped.
 
 | Task | Cadence | Purpose | Writes |
 |---|---|---|---|
@@ -77,7 +81,7 @@ All ten Veyrnox scheduled tasks.
 | `veyrnox-appium-shellquote-watch` | weekly | Upstream watch: `shell-quote` / `body-parser` nested-duplicate residual | report only |
 | `veyrnox-brace-expansion-watch` | weekly | Upstream watch: `brace-expansion` HIGH residual | report only |
 | `veyrnox-elliptic-upstream-watch` | weekly | Upstream watch: `elliptic` LOW residual | report only |
-| `watch-risk-wire-merge` | — | One-shot notify when a branch merges; self-disabling | nothing |
+| `watch-risk-wire-merge` | — | **RETIRED 2026-08-25 — deleted from the scheduler.** Was: one-shot notify when a branch merges. Runbook kept for history only | nothing |
 
 ### Known staleness in the mirrored copies
 
@@ -85,11 +89,19 @@ Mirrored **verbatim**, including these. Fix them in `~/.claude` first, then
 re-mirror — editing only the copy here would create drift without changing
 anything that runs.
 
-- **`watch-risk-wire-merge`** targets `--repo aljobson/veyrnox-secure`. The repo
-  is now **`VEYRNOX/veyrnox`**; the old path still resolves by GitHub redirect,
-  so the task works, but the reference is stale. It also watches
-  `feat/wire-risk-score-send-flow` and references PRs #166/#167 — long since
-  overtaken. This task is probably retirable.
+- ~~**`watch-risk-wire-merge`** is probably retirable.~~ **RETIRED 2026-08-25 —
+  task deleted from the scheduler.** The runbook stays in this directory as a
+  record, following the `veyrnox-brace-expansion-watch` precedent; the live copy
+  at `~/.claude/scheduled-tasks/watch-risk-wire-merge/SKILL.md` was also left on
+  disk, so the prompt is recoverable from either side.
+  **Evidence it could never fire again, checked before deleting rather than
+  inferred from it being disabled:** `git ls-remote --heads origin
+  feat/wire-risk-score-send-flow` returns 0 refs, and the PRs it named — #166
+  (RASP v1 pre-audit-safe policy lane) and #167 (RASP §7 compose pre-stage) —
+  are both MERGED. It had been `enabled: false` since 2026-08-15 and last ran
+  2026-08-15. The stale `--repo aljobson/veyrnox-secure` reference this bullet
+  used to describe was never the reason to retire it; the reason is that its
+  event happened months ago.
 - ~~**Three tasks commit locally and never push.**~~ **FIXED 2026-07-27.**
   `veyrnox-dependency-audit`, `veyrnox-weekly-security-audit` and
   `veyrnox-audit-finding-tracker` each ran `git add` + `git commit` and then
