@@ -2730,6 +2730,88 @@ recovery) must be told about the v1→v2 profile change with the same honest
 security-cost framing above — do not present the halved memory as a wash with
 doubled iterations.
 
+### Gate 2 — reveal-time opportunistic rekey (2026-08-25, owner-ruled)
+
+**Status:** BUILT. **Not verified** — no independent audit, no real-device
+migration trip, no on-chain evidence (this touches storage shape, not signing).
+The KDF_PROFILE_V2_MIGRATION_ENABLED flag stays OFF; that flip is issue #2101,
+a separate PR.
+
+**Context.** The Gate 1 investigation surfaced that the deniability keyspace
+carries REAL user data (hidden wallets, duress, panic) indistinguishable from
+chaff on disk. A naive "rewrite everything on unlock success" invariant would
+clobber the real slots the primary vault never touches. Four options were
+sized against the honest-data-loss risk (accept loss / reveal-time
+opportunistic rekey / owner-initiated re-provision UI / defer flip). The
+owner picked reveal-time opportunistic rekey as the smallest honest shape.
+
+**Shape X — writers stamp `KDF_PARAMS` uniformly.** Every deniability writer
+now takes the default `encryptVault(secret, password)` path — which stamps the
+current `KDF_PARAMS` — instead of `encryptDeniabilityVault`, which resolved
+this device's recorded era via `deniabilityKdfProfile`. Writers touched:
+`stealth.js` — `makeChaff` (backfill), `createHiddenWallet`, `moveWalletToHidden`,
+`setHiddenActionPasswordRecord`; `duress.js` — `setDuressVault`; `panic.js` —
+`setPanicVault`.
+
+**Reveal-time rekey — three success sites, fire-and-forget.** After a slot's
+owning secret successfully decrypts it, if the stored `kdf` profile disagrees
+with `KDF_PARAMS`, a `setTimeout(..., 250)` schedules a re-encrypt at
+`KDF_PARAMS` (same secret, same slot key) that runs OUTSIDE the current
+unlock's timing budget. Sites: `stealth.js tryRevealHidden`, `duress.js
+tryDuressUnlock`, `panic.js tryPanicUnlock`. The 250 ms delay is deliberate,
+NOT the fast path: an in-flight microtask (or `setTimeout(0)`) still
+interleaves with any IDB await inside `WalletProvider.unlock`, so the rekey's
+Argon2id derivation would blockingly extend the unlock's wall-clock on the
+duress-hit / panic-hit path — a real-vs-chaff timing tell exactly where the
+H-1 equaliser is meant to hide one. 250 ms is empirically past the unlock's
+await chain in tests, close enough to unlock in production that a panic wipe
+firing immediately after still preempts the rekey. Best-effort at every site
+— any storage or crypto failure leaves the original slot untouched and the
+reveal / duress-unlock / panic-detect still returns as before. The secret is
+already in scope for the decrypt; the re-encrypt uses it once more and it
+goes out of scope with the caller. No new prompt, no biometric surface change.
+Each module exports `_awaitPendingKdfRekey()` for tests that need to observe
+post-rekey storage state deterministically; the underscore prefix marks it as
+a test hook, not runtime contract.
+
+**`deniabilityKdfProfile.js` retained for the timing pads.** Three READ-side
+callers still resolve the device's recorded era for the constant-KDF unlock
+budget: `stealth.js tryRevealHidden`'s no-salt branch, `duress.js
+tryDuressUnlock`'s no-decoy branch, and `deniabilityUnlock.js`'s primary
+unlock chain. Those pads are the H-1 equaliser and are deliberately out of
+scope here — Gate 2 changes READ-then-WRITE side effects, not the primary
+unlock timing budget.
+
+**Honestly acknowledged transient tell.** New writes on a v1-era device stamp
+v2 while the 255 or so surrounding chaff slots stay v1 until each is
+individually opened with a real reveal secret (or wiped). During that window
+the storage dump shows two `kdf` fingerprints coexisting — a real-vs-chaff
+distinguisher for the specific case of an un-touched v1 slot beside a v2
+neighbour. This is the deniability weakening the owner accepted as the price
+of not clobbering unrecoverable data. Pinned by the transient-tell test in
+`src/wallet-core/__tests__/deniability-kdf-parity.test.js` — the assertion is
+that two fingerprints coexist, so a future change that silently sweeps unread
+slots (breaking the ruling in the safe direction) or regresses writers to
+per-device era (breaking it in the unsafe direction) BOTH fail this test and
+demand a re-read of this entry.
+
+**Coupling with issue #2101 (Gate 1 flag flip).** Deliberately decoupled.
+`KDF_PROFILE_V2_MIGRATION_ENABLED` stays false; the primary-vault migration
+hook in `native._unlockInner` still gates on it. Gate 2 lives entirely on the
+deniability side of the store, where each slot's owning secret is presented
+one-at-a-time and cannot cross-contaminate. When #2101 flips the flag, the
+primary vault picks up its own rekey path independently.
+
+**Test coverage.** `src/wallet-core/__tests__/deniability-kdf-parity.test.js`
+now pins: (i) writers stamp `KDF_PARAMS` on v1-era chaff (hidden + duress +
+panic); (ii) `tryRevealHidden` / `tryDuressUnlock` / `tryPanicUnlock` rekey a
+v1 slot after successful decrypt; (iii) a WRONG secret never touches the
+slot (rekey is structurally gated on a successful decrypt); (iv) the transient
+tell — an un-opened v1 slot beside new v2 writes — is pinned so it cannot be
+"fixed away" without a docs change. The four original v1-era-parity tests are
+gone; they described a claim the owner ruling explicitly no longer makes. The
+FRESH-device parity claim is kept — Gate 2 is a no-op there.
+
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
 - `docs/WalletFeatures.spec.md` — canonical scope + full-site split
