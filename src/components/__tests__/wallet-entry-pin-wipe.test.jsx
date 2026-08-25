@@ -35,8 +35,19 @@ vi.mock('@/lib/passkey', () => ({ isPasskeyGateError: vi.fn(() => false) }));
 import { useWallet } from '@/lib/WalletProvider';
 import { isPasskeyGateError } from '@/lib/passkey';
 import { isBiometricGateError } from '@/lib/biometric';
-import { PIN_WIPE_AFTER } from '@/lib/pinAttemptGuard';
+import { PIN_WIPE_AFTER, clearPinSessionFloor } from '@/lib/pinAttemptGuard';
 import WalletEntry from '@/components/WalletEntry';
+
+// M-7 (audit 2026-08-25): the timed backoff is now ENFORCED, so consecutive misses
+// can no longer be hammered in real time — from the 3rd miss on, a submission inside
+// the lockout window is refused before unlock() is called. That is the point of the
+// control, and it must NOT weaken this file's contract: the backoff DELAYS the tenth
+// attempt, it never suppresses it. So the clock is stepped past each lockout instead
+// of the lockout being disabled — the wipe is still asserted to fire on the 10th
+// consecutive MISS, exactly as before.
+const realNow = Date.now;
+let clock = realNow();
+const stepPastAnyLockout = () => { clock += 6 * 60 * 1000; }; // > the longest tier (5 min)
 
 function makeCtx(overrides = {}) {
   return {
@@ -57,6 +68,7 @@ function makeCtx(overrides = {}) {
 
 // Drive the PinPad: type 8 digits, then click "Submit PIN".
 async function enterPin(pin = '13572468') {
+  stepPastAnyLockout();
   for (const d of pin) fireEvent.click(screen.getByRole('button', { name: d }));
   fireEvent.click(screen.getByRole('button', { name: 'Submit PIN' }));
 }
@@ -69,8 +81,14 @@ beforeEach(() => {
   vi.mocked(isPasskeyGateError).mockReturnValue(false);
   vi.mocked(isBiometricGateError).mockReturnValue(false);
   try { localStorage.clear(); } catch { /* shimmed */ }
+  // M-9: the session floor is module state that deliberately OUTLIVES a localStorage
+  // clear — clearing only the store would carry the previous test's attempt count and
+  // lockout deadline into the next one.
+  clearPinSessionFloor();
+  clock = realNow();
+  Date.now = () => clock;
 });
-afterEach(() => { cleanup(); });
+afterEach(() => { Date.now = realNow; cleanup(); });
 
 describe('WalletEntry — 10 wrong PINs trigger the real panic wipe', () => {
   it('fires panicWipe({ confirmed: true }) EXACTLY once on the 10th consecutive wrong PIN, not before', async () => {
