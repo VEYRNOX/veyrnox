@@ -41,7 +41,9 @@
 //     panic only                3  (primary + panic  + stealth)
 //     panic + duress            4  (primary + panic  + duress + stealth)
 //
-// Argon2id at 192 MiB / t=3 is ~100 ms+, well above scheduling/network noise, so
+// Argon2id at any profile this app has shipped (v0 64 MiB/t=3, v1 192 MiB/t=3,
+// v2 96 MiB/t=6 since 2026-08-24 — always read KDF_PARAMS, never a figure quoted
+// in a comment, L-13) is ~100 ms+, well above scheduling/network noise, so
 // an attacker holding the device and timing a few wrong guesses could infer HOW
 // MANY deniability features are configured — i.e. THAT a duress / panic / hidden
 // setup exists, which is exactly what those features must hide. A sharper case:
@@ -83,10 +85,11 @@
 // mounts, off the visible unlock path. See unlockTimingEqualizer.h1.test.jsx.
 //   - [P1] PARAM-PROFILE (not just count) is now equal too. An earlier count-only
 //     equalizer (3 dummyKdf at the CURRENT KDF_PARAMS) left an INSTALLED-BASE oracle: a
-//     vault whose deniability blob(s) were written under LEGACY params (64 MiB) and not
-//     yet migrated decrypts those real slots CHEAPLY on a miss/duress-hit (decryptVault
-//     uses each blob's OWN recorded params — M3), while the success padding spent the
-//     CURRENT 192 MiB — so success was measurably SLOWER (opposite-direction oracle) for
+//     vault whose deniability blob(s) were written under an OLDER profile and not
+//     yet migrated decrypts those real slots at THAT profile's cost on a miss/duress-hit
+//     (decryptVault uses each blob's OWN recorded params — M3), while the success padding
+//     spent the CURRENT KDF_PARAMS — so success was measurably out of step (an
+//     opposite-direction oracle) for
 //     exactly the users with deniability configured. Running the real resolver on success
 //     spends the same blobs at the same recorded params, so the full memorySize MULTISET
 //     matches across outcomes for fresh, current-param, AND legacy-param vaults. See
@@ -98,8 +101,13 @@
 //     explicit audit item (the SAST pass did code-reading + KDF-cost reasoning,
 //     not a bench).
 //   - The resolver's own dummy-KDF chaff blob (constantPanic/constantDuress pads) carries
-//     the current at-rest KDF params; if those params change (SAST M3), keep this blob in
-//     sync so an ABSENT feature's pad cost still matches a real attempt. The KDF COUNT and
+//     the profile THIS DEVICE's deniability blobs are recorded under
+//     (deniabilityKdfProfile), so an ABSENT feature's pad costs what a real attempt on
+//     this device costs. It used to carry the CURRENT at-rest params with a note saying
+//     to keep it in sync as those evolve — which read as satisfied precisely because it
+//     named a figure, while the v2 profile change (2026-08-24) had already made the pad
+//     ~2× cheap on every installed-base device (H-2 / L-13, weekly audit 2026-08-25).
+//     Do not put a number back in this comment. The KDF COUNT and
 //     — because success reuses the resolver verbatim — the PARAM PROFILE are invariant
 //     across outcomes regardless.
 //
@@ -109,7 +117,8 @@
 // TESTNET ONLY. This module performs no network/provider/signing work — it only
 // spends KDFs and reads local vault-shaped blobs. It cannot move funds.
 
-import { decryptVault, KDF_PARAMS } from './vault.js';
+import { decryptVault } from './vault.js';
+import { deniabilityKdfProfile } from './deniabilityKdfProfile.js';
 import { hasPanicVault, tryPanicUnlock } from './panic.js';
 import { hasDuressVault, tryDuressUnlock } from './duress.js';
 import { ensureStealthPool, tryRevealHidden } from './stealth.js';
@@ -131,17 +140,22 @@ function b64(u8) {
 // decryptVault on it always fails (random ct -> GCM auth fail), which is exactly
 // what we want: pure KDF cost, no real secret involved.
 //
-// The kdf field MUST carry the CURRENT params (imported from vault.js), not
-// hardcoded ones: decryptVault derives with the blob's OWN recorded params
-// (M3 migration), so a stale/hardcoded value here would make a padded/absent
-// feature cost a KDF at the wrong work factor while a configured feature's real
-// blob costs a KDF at the current KDF_PARAMS.memorySize —
-// reintroducing exactly the timing tell M2 closed. Tracking KDF_PARAMS keeps the
-// dummy cost equal to a real attempt as the at-rest params evolve.
-function chaffBlob() {
+// The kdf field MUST carry the params THIS DEVICE's real deniability blobs are
+// recorded under, not hardcoded ones and not the current at-rest default:
+// decryptVault derives with the blob's OWN recorded params (M3 migration), so a
+// mismatched value here makes a padded/absent feature cost a KDF at the wrong work
+// factor while a configured feature's real blob costs a KDF at its recorded
+// memorySize — reintroducing exactly the timing tell M2 closed.
+//
+// H-2 (2026-08-25): tracking KDF_PARAMS was itself the mismatch on an installed-
+// base device. Persisted blobs are frozen at write time, so after the v2 profile
+// change (96 MiB/t=6, migration flag off) a v1 device's real slots decrypt at
+// 192 MiB while the pad spent 96 — roughly 2× off, in the ABSENT direction.
+// The caller resolves the profile once (deniabilityKdfProfile) and passes it in.
+function chaffBlob(kdfProfile) {
   return {
     v: 1,
-    kdf: { name: 'argon2id', ...KDF_PARAMS },
+    kdf: { name: 'argon2id', ...kdfProfile },
     salt: b64(randomBytes(16)),
     iv: b64(randomBytes(12)),
     ct: b64(randomBytes(48)),
@@ -150,26 +164,27 @@ function chaffBlob() {
 
 // Spend exactly one KDF and discard the result (it always throws). Used to pad an
 // unconfigured feature so its branch costs the same as a configured one.
-async function dummyKdf(password) {
+async function dummyKdf(password, kdfProfile) {
   try {
-    await decryptVault(chaffBlob(), password);
+    await decryptVault(chaffBlob(kdfProfile), password);
   } catch {
     /* always fails on a random-ct blob: this call exists purely for its KDF cost */
   }
 }
 
 // PANIC branch — always exactly 1 KDF. Accepts pre-fetched `configured` boolean
-// so the caller can batch the DB reads before the KDF phase (VULN-13).
-async function constantPanic(password, configured) {
-  if (configured) return tryPanicUnlock(password); // 1 KDF (real)
-  await dummyKdf(password);                        // 1 KDF (pad)
+// so the caller can batch the DB reads before the KDF phase (VULN-13), and the
+// pre-fetched device KDF profile so the pad matches a real attempt (H-2).
+async function constantPanic(password, configured, kdfProfile) {
+  if (configured) return tryPanicUnlock(password);  // 1 KDF (real)
+  await dummyKdf(password, kdfProfile);             // 1 KDF (pad)
   return false;
 }
 
 // DURESS branch — always exactly 1 KDF. Same pre-fetched `configured` pattern.
-async function constantDuress(password, configured) {
-  if (configured) return tryDuressUnlock(password); // 1 KDF (real)
-  await dummyKdf(password);                         // 1 KDF (pad)
+async function constantDuress(password, configured, kdfProfile) {
+  if (configured) return tryDuressUnlock(password);  // 1 KDF (real)
+  await dummyKdf(password, kdfProfile);              // 1 KDF (pad)
   return null;
 }
 
@@ -184,19 +199,20 @@ async function constantDuress(password, configured) {
 //
 // FIRST STRUCTURAL FIX (count parity): spend 3 throwaway `dummyKdf` calls so the KDF
 // COUNT matches the resolver. That closed the count gap but NOT the [P1] param-profile
-// gap: `dummyKdf` derives via chaffBlob() at the CURRENT KDF_PARAMS (192 MiB), while the
+// gap: `dummyKdf` derived via chaffBlob() at whatever KDF_PARAMS was current, while the
 // real duress/panic/hidden slots decrypt each stored blob at that blob's OWN recorded
 // params (M3 migration — decryptVault uses paramsFromVault). For an installed-base vault
-// whose deniability blob(s) were written under LEGACY params (64 MiB) and not yet
-// migrated, a miss/duress-hit spends a cheap 64 MiB real slot while the success padding
-// spent a 192 MiB dummy — so primary-success was measurably SLOWER, an opposite-direction
-// oracle for exactly the users who have deniability configured. Count equal, wall-clock
-// NOT (see unlockTimingLegacyParams.p1.test.jsx).
+// whose deniability blob(s) were written under an older profile and not yet
+// migrated, a miss/duress-hit spends a cheaper real slot while the success padding
+// spent a costlier dummy — so primary-success was measurably SLOWER, an opposite-direction
+// oracle for exactly the users who have deniability configured. (Concretely, in the era
+// this fix was written: 64 MiB legacy slots against 192 MiB dummies.) Count equal,
+// wall-clock NOT (see unlockTimingLegacyParams.p1.test.jsx).
 //
 // [P1] STRUCTURAL FIX (param-profile parity): run the SAME resolveDeniabilityUnlock the
 // failure path runs and DISCARD the result. This spends EXACTLY the KDF work the failure
-// path spends for THIS vault — same blobs, same recorded params (legacy 64 MiB or current
-// 192 MiB), same dummies at current params — so the full memorySize MULTISET is identical
+// path spends for THIS vault — same blobs, same recorded params whatever era they are
+// from, same dummies at this device's recorded profile — so the memorySize MULTISET is identical
 // across every outcome and wall-clock parity holds for fresh, current-param, AND
 // legacy-param vaults. It also stays coupled to the failure path BY CONSTRUCTION (it is
 // literally the same function), so count/profile can never silently drift apart again.
@@ -252,9 +268,16 @@ export async function resolveDeniabilityUnlock(password) {
   // running them sequentially opened two separate DB connections one after the other.
   // Batching them into a single Promise.all eliminates one round-trip: the first
   // observable expensive operation on every code path is now the first Argon2id KDF.
-  const [hasPanic, hasDuress] = await Promise.all([
+  // H-2: resolve this device's recorded KDF era in the SAME pre-KDF batch, so the
+  // pads below cost what a real attempt on this device costs. Read UNCONDITIONALLY
+  // (even when both features are configured and no pad will be spent) — a
+  // conditional read would be a new, if tiny, IO-shaped signal on exactly the axis
+  // this module exists to flatten. It is one IndexedDB get against three Argon2id
+  // derivations.
+  const [hasPanic, hasDuress, kdfProfile] = await Promise.all([
     hasPanicVault().catch(() => false),
     hasDuressVault().catch(() => false),
+    deniabilityKdfProfile(),
   ]);
 
   // Slots 1-3: exactly three KDFs, evaluated unconditionally — no short-circuit.
@@ -263,8 +286,8 @@ export async function resolveDeniabilityUnlock(password) {
   // wrong PIN errors with the SAME work-per-attempt as any enrolled hit — the
   // Option-A 4th deterministic-decoy slot was removed (owner-approved threat-model
   // change). No early return: panic/duress/hidden presence stays timing-opaque.
-  const panic = await constantPanic(password, hasPanic);
-  const duressMnemonic = await constantDuress(password, hasDuress);
+  const panic = await constantPanic(password, hasPanic, kdfProfile);
+  const duressMnemonic = await constantDuress(password, hasDuress, kdfProfile);
   const hiddenMnemonic = await tryRevealHidden(password); // pool seeded => 1 KDF
 
   return { panic, duressMnemonic, hiddenMnemonic };

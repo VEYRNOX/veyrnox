@@ -159,8 +159,9 @@ function randomBytes(n) {
 }
 
 // --- Off-main-thread Argon2id (perceived-perf only; crypto + params UNCHANGED) ---
-// The KDF derivation (KDF_PARAMS.memorySize, currently 192 MiB) blocks the UI
-// thread, so the unlock spinner can't animate
+// The KDF derivation (KDF_PARAMS.memorySize — read the constant; the profile has
+// moved three times and every restated figure here has gone stale, L-13) blocks
+// the UI thread, so the unlock spinner can't animate
 // and the app looks frozen. Run it in a Web Worker when one is available; ALWAYS
 // fall back to the exact in-thread argon2id on ANY worker problem (unsupported,
 // error, or timeout), so unlock can never break (I4, fail closed). The worker runs
@@ -265,7 +266,8 @@ async function deriveKey(password, salt, params = KDF_PARAMS) {
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (raw), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
   zero(raw);
   // DEFECT-A defense-in-depth: yield to a macrotask so hash-wasm's Argon2 WASM
-  // instance (KDF_PARAMS.memorySize, currently 192 MiB) from THIS derivation becomes
+  // instance (KDF_PARAMS.memorySize — or, on the deniability path, the device's
+  // recorded profile passed in as `params`) from THIS derivation becomes
   // GC-eligible before the next sequential derivation allocates its own
   // KDF_PARAMS.memorySize — keeping peak memory one-at-a-time rather
   // than concurrent. Best-effort (GC is non-deterministic) and negligible latency;
@@ -504,18 +506,35 @@ export function vaultNeedsKdfMigration(vault) {
  * Encrypt a plaintext secret (e.g. the mnemonic) into a portable vault blob.
  * The returned object is safe to persist locally and to sync to a backend.
  * GCM additionalData binds v, kdf, and salt into the auth-tag (M-8).
+ *
+ * `params` defaults to the CURRENT at-rest profile and every ordinary caller
+ * leaves it alone. It exists for the DENIABILITY layer (H-2, weekly audit
+ * 2026-08-25): a blob's `kdf` field is plaintext in a storage dump, so a chaff
+ * slot written under the old profile and a real slot written under the new one
+ * are trivially distinguishable — which is the one thing the stealth pool and
+ * the duress/panic chaff must never be. Those writers pass this device's
+ * recorded era via deniabilityKdfProfile.js's encryptDeniabilityVault(); see
+ * that module for the full rationale. Params are stamped into the blob AND used
+ * for the derivation, so the result stays self-describing and decryptVault
+ * re-derives correctly with no special case.
+ *
  * @param {string} secret - LIVE SECRET (mnemonic / seed material)
  * @param {string} password
+ * @param {Record<string, unknown>} [params] - Argon2id profile; defaults to KDF_PARAMS
  * @returns {Promise<object>} serializable vault { v, kdf, salt, iv, ct }
  */
-export async function encryptVault(secret, password) {
+export async function encryptVault(secret, password, params = KDF_PARAMS) {
   const salt = randomBytes(16);
   const iv = randomBytes(12); // 96-bit nonce for GCM
-  const key = await deriveKey(password, salt);
+  // Range-check before argon2id sees it: on the deniability path these come from
+  // a STORED blob, and a corrupt record must not steer an OOM-sized allocation
+  // (same guard paramsFromVault applies on the read side, B-1/B-2).
+  const kdfParams = assertSaneKdfParams(/** @type {any} */ (params));
+  const key = await deriveKey(password, salt, /** @type {any} */ (kdfParams));
   const ptBytes = enc.encode(secret);
   const blob = {
     v: VAULT_VERSION,
-    kdf: { name: 'argon2id', ...KDF_PARAMS },
+    kdf: { name: 'argon2id', ...kdfParams },
     salt: b64(salt),
     iv: b64(iv),
   };

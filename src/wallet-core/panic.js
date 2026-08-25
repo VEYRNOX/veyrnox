@@ -90,7 +90,13 @@
 // vault crypto internals (vault.js / vaultStore.js / signing.js); it reuses
 // encryptVault/decryptVault verbatim for the panic marker.
 
-import { encryptVault, decryptVault } from './vault.js';
+import { decryptVault } from './vault.js';
+// H-2 (weekly audit 2026-08-25): the panic marker must record the SAME Argon2id
+// profile as the duress blob and the stealth pool it sits beside, or personalising
+// one slot after an at-rest profile change makes it the odd one out in a storage
+// dump. This is a params READER over the shared store, not a dependency on the
+// deniability modules this file erases — panic.js stays decoupled from those.
+import { encryptDeniabilityVault } from './deniabilityKdfProfile.js';
 import { generateMnemonic } from './mnemonic.js';
 import { padToFixedLen, stripPad } from './multiVault.js';
 // BIO-05: biometric-2FA enabled tell. Imported (not hardcoded) so a rename in
@@ -645,7 +651,7 @@ export async function setPanicVault(panicPassword) {
   // still strip on decrypt for cleanliness/forward-safety. The marker is not a
   // container, so it uses the string-level padToFixedLen helper (NOT the JSON `pad`
   // field); the container FORMAT is unchanged.
-  const blob = await encryptVault(padToFixedLen(marker), panicPassword);
+  const blob = await encryptDeniabilityVault(padToFixedLen(marker), panicPassword);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
