@@ -154,6 +154,25 @@ describe('P2-8: composed tier includes the attestation axis (BLOCK on INTEGRITY_
   });
 });
 
+describe('RaspSecurity — screen capture label copy', () => {
+  it('renders screen_capture as the human label "screen mirroring"', () => {
+    withArtifact(
+      {
+        tier: 'warn-before-sign',
+        sentence: 'Screen mirroring is active.',
+        blockedActions: ['seed-reveal'],
+        requiresBiometric: false,
+        condition: 'screen_capture',
+      },
+      () => {
+        const t = allText(RaspSecurity());
+        expect(t).toMatch(/screen mirroring/i);
+        expect(t).not.toMatch(/\bscreen_capture\b/);
+      },
+    );
+  });
+});
+
 describe('RaspSecurity — honest omissions (§2)', () => {
   const t = allText(RaspSecurity());
   it('makes no "active monitoring" claim', () => {

@@ -853,17 +853,26 @@ export function WalletConnectProvider({ children }) {
           // after the user had walked a whole approval modal. parseTypedData
           // takes string or object; toNumericChainId matches sign time's
           // coercion so a hex domain.chainId is read identically on both sides.
+          // #2076: bind against the approved session chain, not the request's
+          // own CAIP-2 string, so an unapproved chain is rejected before the
+          // user sees the approval modal.
           if (!rejected) {
             const parsed = parseTypedData(reqParams[1] ?? reqParams[0]);
             // Invalid payload: leave it queued so _handleSignTypedData rejects
             // with the real parse error, exactly as before.
             if (parsed.valid) {
               const domainChainId = toNumericChainId(parsed?.domain?.chainId);
-              const sessionChainId = toNumericChainId(
-                typeof data.params?.chainId === 'string'
-                  ? data.params.chainId.split(':')[1] : null,
+              const sessionCaip2 = resolveSessionCaip2(
+                getActiveSessions().find((s) => s.topic === data.topic),
+                data.params?.chainId,
               );
-              if (domainChainId == null || sessionChainId == null || domainChainId !== sessionChainId) {
+              const sessionChainId = toNumericChainId(
+                typeof sessionCaip2 === 'string' ? sessionCaip2.split(':')[1] : null,
+              );
+              if (sessionChainId == null) {
+                rejectRequest(data.topic, data.id, 'SESSION_CHAINID_INVALID').catch(() => {});
+                rejected = true;
+              } else if (domainChainId == null || domainChainId !== sessionChainId) {
                 rejectRequest(data.topic, data.id, 'CHAIN_ID_MISMATCH').catch(() => {});
                 rejected = true;
               }

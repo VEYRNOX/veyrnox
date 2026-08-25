@@ -92,3 +92,22 @@ describe('L-1 — handleSendTransaction resolves the session chain before the ke
     expect(body).toContain('SESSION_CHAINID_INVALID');
   });
 });
+
+describe('L-3 — typed-data pre-modal chain binding uses the approved session chain', () => {
+  const raw = readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), '../WalletConnectProvider.jsx'),
+    'utf8',
+  );
+  const src = raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  it('resolves the modal chain through resolveSessionCaip2 instead of trusting request.params.chainId', () => {
+    const branchStart = src.indexOf("} else if (method === 'eth_signTypedData_v4') {");
+    const branchEnd = src.indexOf('        } else {', branchStart);
+    const body = src.slice(branchStart, branchEnd);
+    expect(body).toContain('resolveSessionCaip2(');
+    expect(body).toContain('SESSION_CHAINID_INVALID');
+    expect(body).not.toContain("const sessionChainRaw = (data.params?.chainId ?? '').split(':')[1]");
+  });
+});
