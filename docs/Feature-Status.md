@@ -292,62 +292,28 @@ Source of truth: `src/wallet-core/assets.js`. `canSend()` is a HARD gate — onl
 
 > Handoff checklist for all remaining device/Mac/browser/auditor-gated items: `docs/hardware-audit-handoff.md`.
 
-### KEK fast-path DEK cache (Android native, default-ON w/ first-run disclosure) — 🟡 BUILT, default-ON, informed-consent gated (issue #2019, 2026-08-24)
+### KEK fast-path DEK cache (Android native, opt-in) — 🟡 BUILT, opt-in, off by default (issue #2019, 2026-08-24)
 
-**Status:** BUILT / INTERNAL / default-ON with mandatory first-run disclosure
-card. Trades PIN-required-to-unlock for latency on Android native builds.
-Deliberately weaker than the today-shipping "PIN + hardware factor" posture —
-same security model as iCloud Keychain, Signal PIN-less unlock, and 1Password
-biometric unlock. **Independent-audit disclosure obligation now covers a
-"default weaker unlock" (not "opt-in weaker unlock").**
+**Status:** BUILT / INTERNAL / opt-in-gated. Trades PIN-required-to-unlock for
+latency on Android native builds. Deliberately weaker than the today-shipping
+"PIN + hardware factor" posture — same security model as iCloud Keychain,
+Signal PIN-less unlock, and 1Password biometric unlock. **Independent-audit
+disclosure obligation.**
 
 - **Owner rulings encoded** (design doc `docs/kek-fast-path-design.md`
-  §Open questions): Q1 coerced-biometric gap ACCEPTED; **Q3 REVERSED
-  2026-08-24 — default-ON with MANDATORY first-run disclosure card**
-  (informed consent preserved via the disclosure chokepoint; no fast-path
-  benefit activates before the card has been seen and answered). Q4
-  NATIVE-ONLY (web unchanged — WebAuthn PRF latency already low); Q5
-  SEPARATE Keystore slot from Personal Backup's `dek-cache/v1` with distinct
-  AAD `veyrnox/kek/fastpath/v1/aad`, cross-slot mixup fails closed.
-- **Tri-state storage** (`src/lib/fastpathUnlock.js`): key value `'1'` =
-  explicit ON, `'0'` = explicit OFF, absent = not-yet-chosen (treated as ON
-  under the default flip). `hasFastpathBeenExplicitlySet()` distinguishes
-  "chose OFF" from "not yet chosen"; `setFastpathEnabled(false)` writes
-  `'0'` (NOT remove) so the two absent-key meanings do not collapse.
-- **Informed-consent chokepoint — gated at THREE sites, all on
-  `hasSeenFastpathDisclosure()`:** (1) `populateFastpathBestEffort` in
-  `wallet-core/keystore/native.js` skips warming the wrapped-DEK cache
-  unless the marker is set (would otherwise silently downgrade unlock
-  posture on the default flip); (2) `WalletEntry.jsx` biometric button
-  hidden until the marker is set (user must not see a stronger-unlock
-  affordance before understanding what it does); (3) `FastpathToggle.jsx`
-  renders EFFECTIVE state (`isFastpathEnabled() && hasSeenFastpathDisclosure()`),
-  so a fresh install shows the toggle honestly UNCHECKED rather than lying
-  about a benefit not yet active.
-- **First-run card:** `src/components/onboarding/FastUnlockFirstRunCard.jsx`.
-  Mounts from `WalletEntry.jsx` on the post-unlock render branch
-  (sibling of `<Outlet />`, same TelemetryConsent-shape chokepoint). Renders
-  null unless the full gate matrix passes: native Android + biometric
-  available + KEK-wrapped vault + not deniability/demo + no passkey + no
-  explicit choice yet + disclosure not yet seen. Both buttons dismiss
-  permanently by marking the disclosure seen; "Enable Fast Unlock" writes
-  `'1'`, "Not now" writes `'0'` (tri-state OFF, so the migration honours
-  the decline through any future re-flip).
-- **Migration (pre-reversal explicit-OFF honoured):** `migrateFastpathState()`
-  runs at module init in `lib/fastpathUnlock.js`. Pre-reversal explicit-OFF
-  installs had the old setter do `remove()`, so their storage key is absent
-  — under the default-ON flip that reads as ON. If the disclosure marker
-  is set (proving they went through the old opt-in flow), the migration
-  promotes absent → explicit `'0'`. Genuine fresh installs are left alone.
-  Idempotent + I3-guarded (a decoy session must not migrate anything).
+  §Open questions): Q1 coerced-biometric gap ACCEPTED; Q3 opt-in, OFF by
+  default (Settings toggle "Fast unlock — uses Face ID/fingerprint without
+  PIN" + one-time disclosure card); Q4 NATIVE-ONLY (web unchanged — WebAuthn
+  PRF latency already low); Q5 SEPARATE Keystore slot from Personal Backup's
+  `dek-cache/v1` with distinct AAD `veyrnox/kek/fastpath/v1/aad`, cross-slot
+  mixup fails closed.
 - **Kotlin ACL:** new alias `com.veyrnox.app.biometricCacheFastpath.v1`,
   `setUserAuthenticationRequired(true)` + `setInvalidatedByBiometricEnrollment(true)`
   (STRONG form — any biometric add/remove wipes the key). Constants pinned
   by `AndroidBiometricCacheConfigTest.T5` JVM tripwire.
 - **JS primitives:** `src/wallet-core/keystore/fastpathDekCache.js` wrap/unwrap
   with distinct AAD + distinct `FASTPATH_UNWRAP_FAILED` error code (no oracle);
-  `src/lib/fastpathUnlock.js` tri-state gate with I3 write-guard on both the
-  enable setter and the disclosure marker + one-shot init migration.
+  `src/lib/fastpathUnlock.js` opt-in gate with I3 write-guard.
 - **Invariants preserved:** I3 deniability — write-gate blocks decoy/demo taps;
   panic-wipe sweeps both `veyrnox-fastpath-enabled` /
   `veyrnox-fastpath-disclosure-seen` (residue test) AND the Kotlin alias
@@ -355,54 +321,11 @@ biometric unlock. **Independent-audit disclosure obligation now covers a
   KeyPermanentlyInvalidatedException falls through silently to the slow path.
   H-1 timing equalizer on the slow path is untouched.
 - **Ship state:** primitives + Kotlin ACL + JVM tripwire + panic sweep +
-  opt-in gate + disclosure copy all landed. **Wiring — machine layer done
-  (2026-08-24, Option 1):** `keyStore.unlockBiometricOnly()` (native, no
-  password param, throws `FastpathError` with UI-only routing codes) and
-  slow-path populate at `_unlockInner`'s KEK-branch success (I3-gated,
-  RASP-ALLOW-gated, best-effort — cannot fail an unlock). PIN-entry path
-  and `_unlockInner(password)` UNCHANGED — duress / panic / wrong-PIN
-  routing survives by construction: `unlockBiometricOnly` accepts no
-  password, and populate only fires after the CORRECT primary PIN opens
-  the primary vault (WalletProvider routes duress via `tryDuressUnlock`
-  and panic via `panicWipe`, both outside `_unlockInner`). H is captured
-  as `hCopyForFastpath = H.slice()` BEFORE `combineKek` zeros the source,
-  copy is zeroed in the same `finally`. **UI wiring done (2026-08-24,
-  same day):** `WalletProvider.unlockBiometricOnly()` caller (race-guarded
-  via `unlockGenRef`; `FastpathError` → `{ ok:false, fallbackToPin:true,
-  code }` for the UI to fall back; success mounts the primary session; no
-  password path so duress/panic still route only through the PIN
-  keypad's `unlock()`); PinUnlock biometric button rendered above the
-  keypad on Android when opt-in is ON and biometrics available and not in
-  decoy/demo (I3); Settings toggle + one-time disclosure card in
-  `src/components/security/FastpathToggle.jsx` (tri-state effective state:
-  toggle reflects `isFastpathEnabled() && hasSeenFastpathDisclosure()` so
-  the visible switch never lies about a benefit not yet active; disable
-  writes explicit `'0'` and clears the wrapped-DEK cache best-effort;
-  renders null in decoy/demo and on non-Android); mandatory first-run
-  disclosure card
-  `src/components/onboarding/FastUnlockFirstRunCard.jsx` mounted from
-  WalletEntry post-unlock; first-unlock "one-time setup — this will be
-  faster next time" hint rendered above the PIN pad when the wrapped-DEK
-  cache is empty (decision extracted as pure `shouldShowFastpathWarmingHint`
-  helper for unit-testability).
-- **Test coverage added:** `native.unlockBiometricOnly.test.js` (17 —
-  gate matrix: DENIABILITY_BLOCKED/DISABLED/RASP_GATE ×3/NO_VAULT/NOT_KEK
-  ×2/MISS ×4/KEY_INVALIDATED; end-to-end HIT via real fastpathDekCache
-  primitives; safety invariants) + `native.slowPathPopulate.test.js` (8 —
-  populate ON ALLOW + skip in deniability/opt-in-off/WARN/BLOCK/unknown/
-  probe-throw + populate failure never fails unlock). **UI wiring
-  (2026-08-24):** `WalletProvider.unlockBiometricOnly.test.jsx` (6 —
-  exposed method, success mounts wallet, FASTPATH_MISS/DENIABILITY_BLOCKED
-  fallback-to-PIN without mounting, non-FASTPATH error rethrown, lock()
-  race → UNLOCK_SUPERSEDED); `WalletEntry.fastpathButton.test.jsx` (5 —
-  visibility matrix: all gates pass, opt-in-off hidden, decoy hidden; tap
-  invokes `unlockBiometricOnly` with no password argument; fallback-to-PIN
-  keeps keypad visible); `FastpathToggle.test.jsx` (6 — default OFF,
-  first-run disclosure gate + ack fires both writes, repeat-run no
-  re-disclosure, disable clears cache, decoy renders null, non-Android
-  renders null); `shouldShowFastpathWarmingHint` unit tests (5 — all
-  inputs met, non-android, opt-in off, cache populated, empty accepts
-  null/undefined/'').
+  opt-in gate + disclosure copy all landed. Unlock hot-path wiring
+  (`native.js unlock` fast-try; PIN-change invalidation; first-unlock
+  spinner; Settings UI toggle component) is a SEPARATE follow-up commit —
+  it touches the KEK-branch of `_unlockInner` which is on the locked-infra
+  list and needs device-verified before it can honestly BUILD-tag.
 - **Pending device verification (merge gate per design §Gates):** on-device
   P50/P95 unlock latency before/after on Pixel 4a, Pixel 3, Samsung A20 (Q4:
   iPhone SE out of scope, native-only means Android-only). Biometric
@@ -2647,170 +2570,69 @@ visibility, each turn the guard red). **Not verified:** no device run — the ra
 is a real-hardware timing artefact and only a device can confirm it is gone. Do not
 mark this device-verified without an iPhone reproduction.
 
-## 2026-08-24 — KDF profile v2 (96 MiB / t=6) — owner-ruled global raise-then-drop
+## 2026-08-25 — cold-unlock perf + deniability-KDF-parity + UX suite (tag `android-1.0.1-perf-suite-2026-08-25`, PRs #2039–#2106)
 
-**Status:** BUILT (parameter change SHIP-GLOBAL, migration hook SHIP-INERT
-behind `KDF_PROFILE_V2_MIGRATION_ENABLED=false`). **Not verified** — no
-independent audit review of the tradeoff yet; disclose to the outstanding
-third-party audit whenever it is scheduled.
+All BUILT / INTERNAL / unit-tested only unless noted. No on-chain txid applies to any
+item in this suite (unlock latency and KDF params, not signing). Not independently
+audited.
 
-**Parameters landed** (`src/wallet-core/vault.js`):
+- **Double-prompt collapse (#2039, +#2042 hardening) — BUILT.** Cold unlock on a
+  KEK-enrolled vault now surfaces exactly ONE OS biometric sheet instead of two.
+  #2042 landed the C1/C2/H1/H2 hardening the honest-reviewer required on #2039 before
+  merge.
+- **Perf trio (#2043, #2044, #2045) — BUILT.** Biometric-capability probe memoised
+  (6 IPC round-trips collapsed to 1); RASP mount-time probe deferred off the critical
+  path via `requestIdleCallback`; `SecurityAdvisor` lazy-loaded out of the entry chunk
+  (−246 KB initial bundle).
+- **Fast-path DEK cache (#2047 primitives, #2051 wiring) — BUILT, button HIDDEN
+  (#2106).** `src/lib/fastpathUnlock.js` (opt-in gate + I3 write-guard, mirrors
+  `lib/consent.js` three-writer discipline) + `src/wallet-core/keystore/fastpathDekCache.js`
+  + a Kotlin alias landed the primitives; #2051 wired `keyStore.unlockBiometricOnly()`,
+  a slow-path populate step, and a PinUnlock-screen button (Option 1 design). #2106
+  **hid the button**: it duplicated the pre-existing "Unlock with fingerprint" control
+  and errored on a cache-miss. The fast-path DEK cache stays wired end-to-end in code
+  and is exercised by unit tests, but is **not reachable from the UI today** — see the
+  honest-caveat note below.
+- **Grace window on brief screen-off (#2052) — BUILT, opt-in via Settings.**
+- **KDF v2 params (#2054) — BUILT, migration flag OFF.** New vaults get 96 MiB / t=6
+  Argon2id params (`KDF_PARAMS` in `vault.js`). `KDF_PROFILE_V2_MIGRATION_ENABLED`
+  stays false pending Gate 1 of issue #2101 (a real-device v2-vault unlock benchmark —
+  not yet captured; every trace taken this session was against a v1 vault). Existing
+  vaults are unaffected until that flag flips.
+- **Fast Unlock default-ON reversal (#2055) — BUILT.** Reverses the original Q3 ruling
+  ("OFF by default, opt-in toggle") to default-ON with a first-run disclosure card.
+  `fastpathUnlock.js`'s inline comment block documenting the old Q3 "OFF by default"
+  ruling is now stale prose describing a superseded decision — worth a follow-up
+  comment correction, flagged here rather than silently rewritten (judgment call,
+  not a docs-owner call).
+- **Fast Unlock ↔ Biometric Unlock pref linkage (#2057) — BUILT.** Enabling either
+  setting now auto-enables both.
+- **KEK-enroll progress bar (#2064) — BUILT.** Indeterminate progress bar rendered
+  under the existing Safe animation during enrollment.
+- **Deniability-KDF parity (#2103, Gate 2 of #2101) — BUILT.** Closes the KDF-profile
+  tell between real and decoy/duress vaults: writers use the shared `KDF_PARAMS`, and
+  reveal/duress/panic paths opportunistically rekey to the current profile on a
+  successful decrypt. Panic rekey is **deliberately dropped** (rekeying on wipe would
+  leave post-wipe residue) — a disclosed, intentional gap, not an oversight. A
+  transient tell during the rekey window is disclosed and pinned by a regression test
+  rather than silently accepted.
+- **Gate 1 of #2101 remains OPEN.** The KDF v2 migration flag cannot flip until a real
+  v2-vault unlock benchmark exists on-device. Gate 2 (#2103) is closed; Gate 1 is not.
 
-```
-KDF_PARAMS = {
-  parallelism: 1,
-  iterations: 6,
-  memorySize: 98304,   // KiB == 96 MiB
-  hashLength: 32,
-  kdfProfileVersion: 2,
-}
-```
-
-Previous default was 192 MiB / t=3 (PR #604, 2026-07-05).
-
-**Reasoning.** Real-device measurement on Note 20 showed the v1 (192 MiB / t=3)
-path spending >6 s of dead-window time even with biometric unlock available —
-the password path is still hit on setup, PIN change, and any biometric miss.
-The owner ruled this session to ship the reduced memory parameter globally on
-the explicit understanding of the honest security cost below (halving `m` and
-doubling `t` is not security-equivalent; this reduces per-guess memory an
-offline attacker's parallel-cracking rig must provision — a real reduction,
-not a wash).
-
-**Honest security cost.** Halving Argon2id memory and doubling iterations is
-NOT security-equivalent. Argon2id's GPU/ASIC-crack resistance is a function of
-MEMORY, not CPU-time — halving `m` roughly halves the per-guess memory a
-parallel-cracking rig must provision. This is an honestly weaker offline-crack
-posture in exchange for a usable unlock, sized and accepted by the owner
-rather than a default drifted into.
-
-**Precedent this overrides.** PR #465 (2026-06-28) had previously lowered the
-KDF for the same latency-vs-crack-resistance reason, and PR #604 (2026-07-05)
-raised it back to 192 MiB citing biometric unlock as the UX shield. This
-change overrides PR #604's raise: real-device data showed the biometric shield
-was leaky in practice (setup, PIN change, biometric miss all still surface the
-slow path). The vault.js head comment now records the full pendulum
-(v0 64 → v1-legacy 64 → v1-audit 192 → v2 96) so a future reader sees the
-whole tradeoff history in one place.
-
-**Backwards compat.** Existing v1 blobs (192 MiB / t=3) keep opening tomorrow
-via `paramsFromVault`, which reads each blob's own recorded `kdf` sub-object.
-`assertSaneKdfParams` ceilings (1 GiB / t=12) already cover v1 comfortably.
-New blobs stamp `kdfProfileVersion: 2` — an extra field on `kdf` that
-`deriveKey`/`assertSaneKdfParams` ignore (they only look at the four argon2id
-fields), so it rides along in the stored `kdf` object as a fast at-a-glance
-version tag.
-
-**Migration flag OFF at ship.** `KDF_PROFILE_V2_MIGRATION_ENABLED = false`.
-Once the owner flips it on (after real-device benchmark confirms the v2
-profile is a net UX win on the target device class), a successful slow-path
-unlock silently re-encrypts a v1 blob under v2 in
-`native._unlockInner` — best-effort, non-fatal, no user-visible step, mirrors
-the `AAD_V3_MIGRATION_ENABLED` pattern already in that file. Web already
-routes through `vaultNeedsRekey`, which is naturally gated by the same flag
-(AAD v:1→v:2 upgrade remains always-on, independent of the KDF-profile
-migration flag).
-
-**H-1 equaliser preserved on the v2 profile.** The structural equaliser
-(primary-success path runs the failure path's own `resolveDeniabilityUnlock`
-and discards the result) is unchanged — every KDF workload dimension (count +
-per-KDF memorySize multiset) matches across success / duress / miss on the
-v2 profile. Pinned by `src/lib/__tests__/unlockTimingEqualizer.h1.v2.native.test.jsx`
-alongside the existing v1-legacy `unlockTimingLegacyParams.p1.test.jsx` (which
-still passes because `KDF_PARAMS.memorySize` resolves dynamically). No wall-clock
-target constant is picked because the current equaliser is structural, not
-time-based (the pre-2026-07 `PRIMARY_UNLOCK_EQUALIZER_MS` magic number was
-retired for exactly the drift-with-KDF_PARAMS reason this change would
-otherwise have re-opened).
-
-**Independent audit disclosure obligation.** This is a security-relevant
-parameter change traded for UX. The outstanding independent third-party audit
-(referenced throughout this file as gating for RASP / hardware KEK / cloud
-recovery) must be told about the v1→v2 profile change with the same honest
-security-cost framing above — do not present the halved memory as a wash with
-doubled iterations.
-
-### Gate 2 — reveal-time opportunistic rekey (2026-08-25, owner-ruled)
-
-**Status:** BUILT. **Not verified** — no independent audit, no real-device
-migration trip, no on-chain evidence (this touches storage shape, not signing).
-The KDF_PROFILE_V2_MIGRATION_ENABLED flag stays OFF; that flip is issue #2101,
-a separate PR.
-
-**Context.** The Gate 1 investigation surfaced that the deniability keyspace
-carries REAL user data (hidden wallets, duress, panic) indistinguishable from
-chaff on disk. A naive "rewrite everything on unlock success" invariant would
-clobber the real slots the primary vault never touches. Four options were
-sized against the honest-data-loss risk (accept loss / reveal-time
-opportunistic rekey / owner-initiated re-provision UI / defer flip). The
-owner picked reveal-time opportunistic rekey as the smallest honest shape.
-
-**Shape X — writers stamp `KDF_PARAMS` uniformly.** Every deniability writer
-now takes the default `encryptVault(secret, password)` path — which stamps the
-current `KDF_PARAMS` — instead of `encryptDeniabilityVault`, which resolved
-this device's recorded era via `deniabilityKdfProfile`. Writers touched:
-`stealth.js` — `makeChaff` (backfill), `createHiddenWallet`, `moveWalletToHidden`,
-`setHiddenActionPasswordRecord`; `duress.js` — `setDuressVault`; `panic.js` —
-`setPanicVault`.
-
-**Reveal-time rekey — three success sites, fire-and-forget.** After a slot's
-owning secret successfully decrypts it, if the stored `kdf` profile disagrees
-with `KDF_PARAMS`, a `setTimeout(..., 250)` schedules a re-encrypt at
-`KDF_PARAMS` (same secret, same slot key) that runs OUTSIDE the current
-unlock's timing budget. Sites: `stealth.js tryRevealHidden`, `duress.js
-tryDuressUnlock`, `panic.js tryPanicUnlock`. The 250 ms delay is deliberate,
-NOT the fast path: an in-flight microtask (or `setTimeout(0)`) still
-interleaves with any IDB await inside `WalletProvider.unlock`, so the rekey's
-Argon2id derivation would blockingly extend the unlock's wall-clock on the
-duress-hit / panic-hit path — a real-vs-chaff timing tell exactly where the
-H-1 equaliser is meant to hide one. 250 ms is empirically past the unlock's
-await chain in tests, close enough to unlock in production that a panic wipe
-firing immediately after still preempts the rekey. Best-effort at every site
-— any storage or crypto failure leaves the original slot untouched and the
-reveal / duress-unlock / panic-detect still returns as before. The secret is
-already in scope for the decrypt; the re-encrypt uses it once more and it
-goes out of scope with the caller. No new prompt, no biometric surface change.
-Each module exports `_awaitPendingKdfRekey()` for tests that need to observe
-post-rekey storage state deterministically; the underscore prefix marks it as
-a test hook, not runtime contract.
-
-**`deniabilityKdfProfile.js` retained for the timing pads.** Three READ-side
-callers still resolve the device's recorded era for the constant-KDF unlock
-budget: `stealth.js tryRevealHidden`'s no-salt branch, `duress.js
-tryDuressUnlock`'s no-decoy branch, and `deniabilityUnlock.js`'s primary
-unlock chain. Those pads are the H-1 equaliser and are deliberately out of
-scope here — Gate 2 changes READ-then-WRITE side effects, not the primary
-unlock timing budget.
-
-**Honestly acknowledged transient tell.** New writes on a v1-era device stamp
-v2 while the 255 or so surrounding chaff slots stay v1 until each is
-individually opened with a real reveal secret (or wiped). During that window
-the storage dump shows two `kdf` fingerprints coexisting — a real-vs-chaff
-distinguisher for the specific case of an un-touched v1 slot beside a v2
-neighbour. This is the deniability weakening the owner accepted as the price
-of not clobbering unrecoverable data. Pinned by the transient-tell test in
-`src/wallet-core/__tests__/deniability-kdf-parity.test.js` — the assertion is
-that two fingerprints coexist, so a future change that silently sweeps unread
-slots (breaking the ruling in the safe direction) or regresses writers to
-per-device era (breaking it in the unsafe direction) BOTH fail this test and
-demand a re-read of this entry.
-
-**Coupling with issue #2101 (Gate 1 flag flip).** Deliberately decoupled.
-`KDF_PROFILE_V2_MIGRATION_ENABLED` stays false; the primary-vault migration
-hook in `native._unlockInner` still gates on it. Gate 2 lives entirely on the
-deniability side of the store, where each slot's owning secret is presented
-one-at-a-time and cannot cross-contaminate. When #2101 flips the flag, the
-primary vault picks up its own rekey path independently.
-
-**Test coverage.** `src/wallet-core/__tests__/deniability-kdf-parity.test.js`
-now pins: (i) writers stamp `KDF_PARAMS` on v1-era chaff (hidden + duress +
-panic); (ii) `tryRevealHidden` / `tryDuressUnlock` / `tryPanicUnlock` rekey a
-v1 slot after successful decrypt; (iii) a WRONG secret never touches the
-slot (rekey is structurally gated on a successful decrypt); (iv) the transient
-tell — an un-opened v1 slot beside new v2 writes — is pinned so it cannot be
-"fixed away" without a docs change. The four original v1-era-parity tests are
-gone; they described a claim the owner ruling explicitly no longer makes. The
-FRESH-device parity claim is kept — Gate 2 is a no-op there.
+**Real-device measurements (INTERNAL, not independently audited, no on-chain txid):**
+Samsung Galaxy Note 20 (SM-N981B, Android 13), firebase-test APK, cold unlock:
+pre-suite baseline ~7.6 s (double prompt) / ~8.5 s (single prompt, post-#2039);
+post-full-suite (this tag) **~3.8 s, one prompt** — roughly 50% faster than baseline.
+Pixel 10 Pro XL: ~2.5 s biometric-active time on the fix build (single trace, not a
+full cold-start comparison). **Honest caveats, not to be dropped in future edits:**
+(1) the firebase-test APK carries `FIREBASE_OBSERVABILITY_ENABLED=true` overhead
+(~1–2 s extra Firebase init on cold start) that a Play-distributed build will not
+have — these numbers are not the Play-build number; (2) the measured 3.8 s Samsung
+run was against a **v1 vault** (192 MiB / t=3) — the v2 KDF migration flag is off, so
+no measurement yet reflects v2 params; (3) the fast-path DEK cache is wired but its
+UI entry point is hidden (#2106) — the measured speedup comes from the perf trio +
+double-prompt collapse + an already-warm biometric-unlock cache, **not** from the
+fast-path cache actually being read at the UI layer.
 
 ## Related docs
 - `docs/WalletRoadmap.md` — build order + statuses
