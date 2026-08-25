@@ -20,6 +20,7 @@ const WC_TX_RISK_SIGNAL_IMPORTS = [
   () => import('@/risk/score'),
   () => import('@/risk/signals/s2-unlimited-approval'),
   () => import('@/risk/signals/s4-address-poisoning'),
+  () => import('@/risk/signals/s9-tip-threat'),
   () => import('@/risk/fromWalletConnect'),
   () => import('@/wallet-core/evm/simulate.js'),
 ];
@@ -81,11 +82,28 @@ export async function buildWcTransactionIntelligence({
     sessionMeta,
   });
 
+  // H-3 (2026-08-25 weekly audit) — fetched BEFORE score() so S9 can READ it.
+  // This used to sit after score(), and the WC registry omitted S9 entirely, so
+  // the TIP verdict was fetched, rendered as a "remote screening ran" notice,
+  // and then discarded: sanctions hits, the static OFAC fallback, and signal-less
+  // `block` verdicts all reached the pre-sign gate as LEVEL.OK. Hoisting it here
+  // also means the fallback path below reuses this result instead of issuing a
+  // second network call.
+  let tipResult = null;
+  try {
+    tipResult = await buildRemoteTipResult(tipApplicable, tipChain, txParams, signal);
+  } catch {
+    // I4: an un-fetchable verdict stays null, which leaves tipSettled false and
+    // the composed verdict 'pending' — it never reads as clean.
+    tipResult = null;
+  }
+
   try {
     const [
       { score },
       { s2UnlimitedApproval },
       { s4AddressPoisoning },
+      { s9TipThreat },
       { buildRiskInputsFromWcRequest },
       { simulateEvmTransaction },
     ] = await Promise.all(WC_TX_RISK_SIGNAL_IMPORTS.map((load) => load()));
@@ -112,6 +130,12 @@ export async function buildWcTransactionIntelligence({
       recipientCode,
     });
 
+    // Mirrors SendCrypto.jsx: inject the pre-fetched TIP result so S9 (pure,
+    // synchronous) can score it. Null when opt-out / deniability / unconfigured,
+    // in which case S9 returns OK and contributes nothing — but the static OFAC
+    // fallback inside S9 still runs on the recipient address either way.
+    riskInputs.chainData.tipResult = tipResult;
+
     const localVerdict = score(
       riskInputs.unsignedTx,
       riskInputs.activeSetLocalState,
@@ -119,10 +143,10 @@ export async function buildWcTransactionIntelligence({
       [
         { id: 'S2', fn: s2UnlimitedApproval },
         { id: 'S4', fn: s4AddressPoisoning },
+        { id: 'S9', fn: s9TipThreat },
       ],
     );
 
-    const tipResult = await buildRemoteTipResult(tipApplicable, tipChain, txParams, signal);
     const verdict = composeTransactionVerdict({
       localVerdict,
       localApplicable: true,
@@ -144,7 +168,6 @@ export async function buildWcTransactionIntelligence({
     };
   } catch {
     const localVerdict = fallbackLocalVerdict();
-    const tipResult = await buildRemoteTipResult(tipApplicable, tipChain, txParams, signal).catch(() => null);
     const verdict = composeTransactionVerdict({
       localVerdict,
       localApplicable: true,
