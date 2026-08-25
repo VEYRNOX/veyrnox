@@ -134,10 +134,8 @@ import {
 } from "@/lib/pinAttemptGuard";
 import { setPendingReferral } from "@/lib/referral";
 import { copySecret } from "@/lib/copySecret";
-import {
-  sensitiveGate, degrade, detect, selectPresignProbeSource,
-  nativeProbeSource, browserProbeSource, FRESH_PROBE_TIMEOUT_MS,
-} from "@/rasp";
+import { sensitiveGate } from "@/rasp";
+import { getFreshLocalRaspArtifact } from "@/lib/getFreshLocalRaspArtifact";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import PinSetup from "@/components/PinSetup";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
@@ -181,29 +179,22 @@ function FirstReceiveCardWithTelemetry(props) {
 // blocked, and the whole point of excludeAttestation is that a self-custody backup
 // must not hang on an unreachable remote check). So this composes the ON-DEVICE leg
 // only, exactly as useRaspArtifact({ excludeAttestation: true }) does — no egress
-// added on a seed path either. Fold it into a getFreshRaspArtifact({
-// excludeAttestation }) option next time src/rasp is opened; it lives here because
-// that module was owned elsewhere when this landed, not because it wants to be
-// duplicated.
+// added on a seed path either.
+//
+// CONSOLIDATED (2026-08-25): the probe chain this used to inline is now the SINGLE
+// implementation in @/lib/getFreshLocalRaspArtifact, landed by PR #2072 for the other
+// four seed surfaces. Two copies of one rule existed briefly because the two fixes were
+// written in parallel worktrees — the same drift hazard the 2026-08-25 audit flagged
+// against checkTypedDataChainId. The surviving copy is the stricter of the two: a named
+// timeout constant and a shape-drift guard that this one lacked. Do NOT re-inline a
+// probe chain here. Folding it into a getFreshRaspArtifact({ excludeAttestation })
+// option is still the eventual home, but that changes the sign hot-path's semantics and
+// is a separate, riskier change.
 //
 // I4: a throw, a timeout, or an unavailable probe all fail CLOSED — sensitiveGate's
 // null branch (P1-2) refuses the action rather than reading absence as clean.
 export async function freshSensitiveGate(action) {
-  try {
-    const isNative = Capacitor.isNativePlatform();
-    const nativeSource = isNative
-      ? await Promise.race([
-          nativeProbeSource().catch(() => ({ available: false })),
-          new Promise((r) => setTimeout(() => r({ available: false }), FRESH_PROBE_TIMEOUT_MS)),
-        ])
-      : null;
-    const artifact = degrade(
-      detect(selectPresignProbeSource(isNative, nativeSource, browserProbeSource)),
-    );
-    return sensitiveGate(artifact, action);
-  } catch {
-    return sensitiveGate(null, action);
-  }
+  return sensitiveGate(await getFreshLocalRaspArtifact(), action);
 }
 
 // Module-level so its identity is stable across WalletEntry re-renders — a
