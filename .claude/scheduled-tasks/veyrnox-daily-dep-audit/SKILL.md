@@ -141,11 +141,20 @@ its own.
 - **The "gains a path into `src/wallet-core/`" trigger already fired, on 2026-08-25,
   and this entry was re-scoped rather than retired.** That is a judgment call and is
   recorded as one: severity is unchanged (low), no fix exists at any version, and the
-  reachable-API analysis above says no `elliptic` code path is called. The daily audit
-  of 2026-08-25 therefore suppressed NOTHING and listed all 5 findings in full. Doing
-  that once is honest; doing it every day would turn "accepted residual" into
-  "permanently ignored". If the reachability analysis above ever stops holding, this
-  entry goes.
+  reachable-API analysis above says no `elliptic` code path is called. If the
+  reachability analysis ever stops holding, this entry goes.
+- **What each run should DO about that — unambiguous, because the previous wording was
+  not.** On 2026-08-25, the day the trigger fired, the audit suppressed NOTHING and
+  listed all 5 findings in full, so a reader that day saw the changed blast radius
+  rather than a one-line suppression note. **That was a one-off for the day of the
+  finding. From 2026-08-26 onward, suppress and state, per step 2a** — this entry is
+  under `## Accepted residuals`, its root is `elliptic`, its severity is still low, so
+  2a applies with no exception. The earlier wording ("doing that once is honest; doing
+  it every day would turn 'accepted residual' into 'permanently ignored'") left "that"
+  pointing at either behaviour and made the next run a coin flip; both readings produce
+  a defensible-looking widget, which is precisely how a rule stops constraining
+  anything. The guard against "permanently ignored" is the revisit-trigger list above
+  and the watcher, not a refusal to suppress.
 - **Tracked:** `veyrnox-elliptic-upstream-watch`, registered and enabled, weekly on
   Tuesdays 09:34 (not "Mondays ~10am" as this entry claimed until 2026-08-25).
   **Re-pointed at the Keystone chain 2026-08-25 by PR #2084** — its signals are now a
@@ -155,9 +164,20 @@ its own.
   re-derives the chain from the lockfile before probing. Until that PR it checked the
   Trezor and Ledger chains, which no longer exist — it could not have fired, while
   still reporting "no upstream movement". **It has not yet RUN under the new brief**
-  (last run 2026-08-18, next 2026-09-01); treat the first report as the confirmation,
+  (see below for what its 2026-08-25 run actually was); treat the first report under the
+  new brief as the confirmation,
   per the `brace-expansion` lesson below that a watcher existing is not evidence it
   watches the thing you care about.
+- **Its `lastRunAt` moved on 2026-08-25 and that run does NOT count as the
+  confirmation.** The scheduler records a run at `2026-08-25T08:52:21Z`; PR #2084 —
+  the re-point — merged at `2026-08-25T09:26:29Z`, i.e. **34 minutes later**. The task
+  resolves its runbook from `origin/main`, so that run executed the OLD two-chain
+  version and probed `@ledgerhq/hw-app-eth` and `@trezor/utxo-lib`, packages absent
+  from the tree. Whatever it reported, it cannot have been evidence about the Keystone
+  chain. This bullet exists because a bare `lastRunAt` of today's date is exactly the
+  thing a future reader will take as "it ran, we're covered" — check the timestamp
+  against the merge, not the date against the calendar. The next genuine run is
+  Tue 2026-09-01 09:34.
 - **Note:** the old `@ledgerhq/hw-app-eth@6.40.3` `fixAvailable` warning is retired
   with the Ledger chain. Kept as one line in case Ledger support returns: that version
   is a major *downgrade* and still declares `@ethersproject/*` v5, so it never cleared
