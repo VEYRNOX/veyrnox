@@ -32,13 +32,14 @@ vi.mock('@/lib/TierProvider', () => ({
 // Mount-time artifact is ALLOW — the case that matters is the FRESH probe
 // (mocked separately below) disagreeing with it.
 let mountArtifact = { tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false };
+/** @type {any} */
 let freshRaspArtifact = null; // null => falls back to mountArtifact
 vi.mock('@/rasp', async (importOriginal) => {
   const actual = /** @type {any} */ (await importOriginal());
   return { ...actual, useRaspArtifact: () => mountArtifact };
 });
 
-const getFreshLocalRaspArtifact = vi.fn(async () => freshRaspArtifact ?? mountArtifact);
+const getFreshLocalRaspArtifact = /** @type {any} */ (vi.fn(async () => freshRaspArtifact ?? mountArtifact));
 vi.mock('@/lib/getFreshLocalRaspArtifact', () => ({
   getFreshLocalRaspArtifact: (...a) => getFreshLocalRaspArtifact(...a),
 }));
@@ -48,8 +49,8 @@ vi.mock('@capacitor/core', () => ({
   registerPlugin: vi.fn(() => ({})),
 }));
 
-const verifyBackupEnvelope = vi.fn(async () => true);
-const downloadBackupFile = vi.fn(async () => ({ saved: true, path: 'Downloaded veyrnox.enc' }));
+const verifyBackupEnvelope = /** @type {any} */ (vi.fn(async () => true));
+const downloadBackupFile = /** @type {any} */ (vi.fn(async () => ({ saved: true, path: 'Downloaded veyrnox.enc' })));
 vi.mock('@/wallet-core/vaultBackup', () => ({
   downloadBackupFile: (...a) => downloadBackupFile(...a),
   downloadBackupFilePicker: vi.fn(),
