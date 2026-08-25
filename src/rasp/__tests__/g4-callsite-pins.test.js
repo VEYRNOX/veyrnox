@@ -41,9 +41,24 @@ describe('seed-material surfaces — excludeAttestation pin (backup not gated on
   // construction. Pinned on the composition rather than on the hook option, because
   // there is no longer a useRaspArtifact call here to carry the flag — and a regex
   // that a mere COMMENT can satisfy is not a pin.
-  it('WalletEntry gates on the on-device leg only (no attestation leg composed)', () => {
-    expect(entry).toMatch(/selectPresignProbeSource\(isNative, nativeSource, browserProbeSource\)/);
+  //
+  // CONSOLIDATED 2026-08-25: WalletEntry no longer inlines the probe chain — it
+  // delegates to @/lib/getFreshLocalRaspArtifact, which PR #2072 landed as the single
+  // implementation. The property being pinned is unchanged (on-device leg only); it now
+  // lives one file away, so the pin follows it. Both halves are asserted, and the
+  // delegation is matched with a LINE-ANCHORED import statement — `^import {` cannot be
+  // satisfied by a `//` comment, which is the trap the note above warns about.
+  it('WalletEntry delegates to the shared on-device-only fresh probe', () => {
+    expect(entry).toMatch(
+      /^import \{ getFreshLocalRaspArtifact \} from ["']@\/lib\/getFreshLocalRaspArtifact["'];$/m,
+    );
+    expect(entry).toMatch(/sensitiveGate\(await getFreshLocalRaspArtifact\(\), action\)/);
     expect(entry).not.toMatch(/composeConditions|detectAttestation/);
+  });
+  it('the shared fresh probe composes the on-device leg only', () => {
+    const fresh = readFileSync(join(src, 'lib/getFreshLocalRaspArtifact.js'), 'utf8');
+    expect(fresh).toMatch(/selectPresignProbeSource\(isNative, nativeSource, browserProbeSource\)/);
+    expect(fresh).not.toMatch(/composeConditions|detectAttestation/);
   });
   it('SeedGrid passes excludeAttestation', () => expect(seedgrid).toMatch(EXCL));
   it('HDWalletManager passes excludeAttestation', () => expect(hdwallet).toMatch(EXCL));
