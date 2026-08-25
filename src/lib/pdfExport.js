@@ -25,8 +25,7 @@ const BRAND = [255, 107, 53]; // Veyrnox orange (matches the old server template
  * @param {string} status - 'verified' | 'built' | 'roadmap' (or legacy 'available')
  */
 export function pdfStatusTag(status) {
-  if (status === "verified") return "[Verified]";
-  if (status === "built" || status === "available") return "[Live]";
+  if (status === "verified" || status === "built" || status === "available") return "[Live]";
   return "[Roadmap]";
 }
 
