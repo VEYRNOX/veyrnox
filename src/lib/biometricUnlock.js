@@ -99,6 +99,25 @@ async function nativeStore(pw) {
   //
   // iOS half remains TARGET: kSecAccessControlBiometryCurrentSet still needs a
   // native Swift/ObjC shim. We do NOT pretend parity that does not exist (I4).
+  //
+  // M-10 (weekly audit 2026-08-25) — NOT a mechanical port, and here is why, so the
+  // next reader does not re-derive it. On iOS there is no "invalidate on enrollment
+  // change but do not require biometry" access-control flag: kSecAccessControl-
+  // BiometryCurrentSet gives the auto-invalidation ONLY by making the item's DATA
+  // biometry-gated. Android got both halves because it binds a SEPARATE Keystore
+  // sentinel (AndroidBiometricCachePlugin invalidationAlias) and keeps the cache
+  // blob readable without a prompt; the iOS Keychain has no equivalent split.
+  //
+  // So binding this item to biometryCurrentSet would re-introduce an OS prompt on
+  // retrieveUnlockSecretDirect() — the KEK fast path (WalletProvider.jsx:2168),
+  // whose entire purpose is that the SE gate inside getHardwareFactor() is already
+  // the hardware-enforced biometric evaluation (see kek-single-prompt.test.js and
+  // biometricUnlock.kekSinglePrompt.test.js, which pin the single-prompt property).
+  // That is a product tradeoff — real enrollment-invalidation in exchange for a
+  // second Face ID sheet per unlock on every KEK vault — not a bug fix, and it is
+  // the owner's call, not an audit-remediation call. Deliberately NOT taken blind
+  // from a machine with no iPhone and no iOS build. biometricUnlockSecurityMode()
+  // stays 'app-gate' and this disclosure stays TARGET until it is really shipped.
   if (isAndroidNativePlatform()) {
     try {
       const cache = await import('@/plugins/androidBiometricCache.js');

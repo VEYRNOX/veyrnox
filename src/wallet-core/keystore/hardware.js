@@ -23,7 +23,9 @@
  *   Android: key invalidated on new biometric (setInvalidatedByBiometricEnrollment);
  *            KeyPermanentlyInvalidatedException → clear key + explicit error (fail closed)
  *   iOS:     SE key ACL is .biometryCurrentSet (adding/removing a biometric invalidates
- *            the key); every getHardwareFactor() decryption triggers Face ID / Touch ID
+ *            the key); every getHardwareFactor() decryption triggers Face ID / Touch ID.
+ *            That invalidation now routes to KEK_KEY_PERMANENTLY_INVALIDATED (seed
+ *            recovery) instead of a generic hardware-unavailable, matching Android (L-8).
  *   Per-use auth on both platforms: every getHardwareFactor() call requires biometric
  *
  * UNAUDITED-PROVISIONAL: awaiting independent third-party audit before mainnet
@@ -225,7 +227,18 @@ export async function getHardwareFactor(opts) {
     bridgeResult = await plugin.getHardwareFactor(pluginOpts);
   } catch (err) {
     const msg = String((err && err.message) ?? err ?? '');
-    if (msg.startsWith('KEK_KEY_PERMANENTLY_INVALIDATED')) {
+    // L-7/L-8 (weekly audit 2026-08-25): classify on the CODE slot as well as the message.
+    // Capacitor's reject is (message, code) on BOTH platforms, but the two natives use the
+    // slots differently: Android rejects single-arg with the code word PREFIXED into the
+    // message ("KEK_KEY_PERMANENTLY_INVALIDATED: …"), while iOS fills the real code slot.
+    // iOS used to pass its arguments swapped (L-7), so `err.code` was prose and the code
+    // word arrived in `err.message` — which is the only reason a message-only classifier
+    // ever worked there. With the swap corrected, an iOS-only code would be invisible to a
+    // message-only check, so read both. Checking BOTH is also what keeps this correct if
+    // either native's slot usage drifts again.
+    const errCode = String((err && err.code) ?? '');
+    if (errCode === KEK_ERR.KEY_PERMANENTLY_INVALIDATED
+        || msg.startsWith('KEK_KEY_PERMANENTLY_INVALIDATED')) {
       // OS permanently killed the key (biometric enrollment changed / screen lock removed).
       // Only recovery is seed restore — NEVER a wrong-PIN increment.
       throw Object.assign(new Error(KEK_ERR.KEY_PERMANENTLY_INVALIDATED), {
