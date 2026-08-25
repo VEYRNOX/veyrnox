@@ -50,6 +50,13 @@ describe('getHardwareFactor — bridge rejection classification (fail-closed, st
     });
   });
 
+  it('preserves a native KEK_USER_CANCELLED bridge code from iOS', async () => {
+    getHFFn.mockRejectedValueOnce({ code: KEK_ERR.USER_CANCELLED, message: 'User cancelled' });
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.USER_CANCELLED,
+    });
+  });
+
   it('maps any other bridge rejection to NO_HARDWARE_FACTOR (fail-closed)', async () => {
     getHFFn.mockRejectedValueOnce(new Error('KEK_BIOMETRIC_ERROR:7: Too many attempts'));
     await expect(getHardwareFactor()).rejects.toMatchObject({
