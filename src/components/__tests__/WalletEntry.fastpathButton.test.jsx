@@ -99,12 +99,21 @@ function armFastpath() {
 }
 
 describe('WalletEntry — fast-path biometric button visibility matrix', () => {
-  it('all gates pass on Android + PIN cohort → button rendered above PIN pad', async () => {
+  it('all gates pass → button STILL HIDDEN (owner ruling 2026-08-25 — duplicate-button UX bug)', async () => {
+    // Fast-path button is currently HARDCODED HIDDEN in WalletEntry.jsx
+    // (const fastpathButtonVisible = false). Even with every gate green,
+    // the button does not render — this prevents the "two Unlock with
+    // fingerprint" duplicate on the unlock screen where the fast-path
+    // button errored on cache-miss while the OLD Biometric Unlock button
+    // beneath it always worked. If this test starts failing (button
+    // rendering), whoever un-hid must first fix the duplicate-button issue
+    // (either merge the two buttons or gate the fast-path button on cache
+    // presence).
     armFastpath();
     vi.mocked(useWallet).mockReturnValue(makeCtx());
     render(<MemoryRouter><WalletEntry /></MemoryRouter>);
     await waitForPinPad();
-    expect(screen.getByTestId(FASTPATH_BUTTON_TESTID)).toBeTruthy();
+    expect(screen.queryByTestId(FASTPATH_BUTTON_TESTID)).toBeNull();
   });
 
   it('fastpath explicitly OFF ("0") → button hidden', async () => {
@@ -148,7 +157,10 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
     expect(screen.queryByTestId(FASTPATH_BUTTON_TESTID)).toBeNull();
   });
 
-  it('tap → invokes unlockBiometricOnly() (parallel to PIN, no password argument)', async () => {
+  // Skipped while fastpathButtonVisible is hardcoded false (owner ruling
+  // 2026-08-25 — see comment on the "all gates pass" test above). Un-skip
+  // once the button is re-enabled + duplicate-button bug is fixed.
+  it.skip('tap → invokes unlockBiometricOnly() (parallel to PIN, no password argument)', async () => {
     armFastpath();
     const ctx = makeCtx();
     vi.mocked(useWallet).mockReturnValue(ctx);
@@ -163,7 +175,8 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
     expect(typeof arg0).not.toBe('string');
   });
 
-  it('fallbackToPin → PIN keypad stays visible (I4 fail-closed)', async () => {
+  // Skipped for the same reason as the "tap" test above — button is hidden.
+  it.skip('fallbackToPin → PIN keypad stays visible (I4 fail-closed)', async () => {
     armFastpath();
     const ctx = makeCtx({
       unlockBiometricOnly: vi.fn(async () => ({ ok: false, fallbackToPin: true, code: 'FASTPATH_MISS' })),
