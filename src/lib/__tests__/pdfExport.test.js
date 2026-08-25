@@ -8,12 +8,12 @@ import { pdfStatusTag } from '../pdfExport';
 describe('pdfStatusTag — three honest states', () => {
   it('maps each state to its own tag', () => {
     expect(pdfStatusTag('verified')).toBe('[Verified]');
-    expect(pdfStatusTag('built')).toBe('[Built]');
+    expect(pdfStatusTag('built')).toBe('[Live]');
     expect(pdfStatusTag('roadmap')).toBe('[Roadmap]');
   });
 
-  it('degrades the retired "available" string to [Built], never dropped or mislabelled verified', () => {
-    expect(pdfStatusTag('available')).toBe('[Built]');
+  it('degrades the retired "available" string to [Live], never dropped or mislabelled verified', () => {
+    expect(pdfStatusTag('available')).toBe('[Live]');
   });
 
   it('falls back to [Roadmap] for an unknown status', () => {
