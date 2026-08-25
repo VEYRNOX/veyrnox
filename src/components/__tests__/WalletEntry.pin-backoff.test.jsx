@@ -76,7 +76,7 @@ beforeEach(() => {
   try { localStorage.clear(); } catch { /* shimmed */ }
   clearPinSessionFloor();
 });
-afterEach(() => { vi.restoreAllMocks(); cleanup(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); cleanup(); });
 
 describe('WalletEntry — the PIN timed backoff is enforced (M-7)', () => {
   it('persists a deadline on the miss that earns one, then REFUSES the next submission', async () => {
@@ -131,10 +131,22 @@ describe('WalletEntry — the PIN timed backoff is enforced (M-7)', () => {
 
 describe('WalletEntry — the attempt counter keeps a session floor (M-9)', () => {
   it('does not restart at 1 when the store cannot be written', async () => {
-    const realSet = globalThis.localStorage.setItem.bind(globalThis.localStorage);
-    vi.spyOn(globalThis.localStorage, 'setItem').mockImplementation((k, v) => {
-      if (k === PIN_ATTEMPTS_KEY || k === PIN_BACKOFF_KEY) throw new Error('QuotaExceeded');
-      return realSet(k, v);
+    // Stub the WHOLE storage object rather than spying on one instance's method.
+    // An instance spy is not portable: it patches the object this file happened to
+    // resolve, and CI resolved a different one — the simulated write failure never
+    // occurred, a real "2" landed, and the test failed on its own premise.
+    // A Map-backed fake makes the unwritable-store condition deterministic.
+    const backing = new Map();
+    vi.stubGlobal('localStorage', {
+      getItem: (k) => (backing.has(String(k)) ? backing.get(String(k)) : null),
+      setItem: (k, v) => {
+        if (k === PIN_ATTEMPTS_KEY || k === PIN_BACKOFF_KEY) throw new Error('QuotaExceeded');
+        backing.set(String(k), String(v));
+      },
+      removeItem: (k) => { backing.delete(String(k)); },
+      clear: () => { backing.clear(); },
+      key: (i) => Array.from(backing.keys())[i] ?? null,
+      get length() { return backing.size; },
     });
 
     const ctx = makeCtx({ unlock: wrongPin() });
