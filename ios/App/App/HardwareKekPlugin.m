@@ -335,9 +335,23 @@ static BOOL VeyrnoxKekIsCancelError(NSError *e) {
                 if (sePriv) CFRelease(sePriv);
                 [context invalidate];
                 context = nil;
+                // #2079: a DISMISSAL is not a hardware failure. errSecUserCanceled (-128)
+                // is the user backing out of the sheet; JS has a wipe-exempt USER_CANCELLED
+                // route that says "Unlock cancelled — try again when ready" instead of
+                // "hardware unavailable, restore from seed", and tells stepUpFactorOutcome
+                // the factor was never presented. NARROW: errSecAuthFailed (-25293) is a
+                // failed biometric MATCH, not a dismissal, and stays on the generic path.
+                //
+                // ARG ORDER: Capacitor's selector is reject:(message):(code). PR #2086
+                // added this site as reject:(@"KEK_USER_CANCELLED", @"User cancelled") —
+                // the L-7 swap that #2066 fixed across all 17 sites, reintroduced at a new
+                // one. That made the fix INERT: hardware.js saw code="User cancelled" and
+                // message="KEK_USER_CANCELLED", matched neither branch, and still returned
+                // NO_HARDWARE_FACTOR. The ios-reject-contract tripwire from #2066 catches
+                // exactly this — keep the order (message, code).
                 if (st == errSecUserCanceled) {
                     os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: USER CANCELLED (OSStatus %d)", (int)st);
-                    [call reject:@"KEK_USER_CANCELLED" :@"User cancelled" :nil :nil];
+                    [call reject:@"Unlock cancelled" :@"KEK_USER_CANCELLED" :nil :nil];
                     return;
                 }
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: SE key MISSING (OSStatus %d)", (int)st);
@@ -360,18 +374,6 @@ static BOOL VeyrnoxKekIsCancelError(NSError *e) {
                 // cannot make the wrong-PIN counter worse.
                 if (st == errSecItemNotFound) {
                     [call reject:@"KEK_KEY_PERMANENTLY_INVALIDATED: Hardware key invalidated — biometric enrollment changed" :@"KEK_KEY_PERMANENTLY_INVALIDATED" :nil :nil];
-                    return;
-                }
-                // #2079: a DISMISSAL is not a hardware failure. errSecUserCanceled (-128)
-                // is the user backing out of the sheet; JS already has a wipe-exempt
-                // USER_CANCELLED route that says "Unlock cancelled — try again when
-                // ready" instead of "hardware unavailable, restore from seed" and tells
-                // stepUpFactorOutcome the factor was never presented. Android reaches it
-                // via its exact "User cancelled" message; iOS could not, because it fills
-                // the code slot. NARROW: errSecAuthFailed (-25293) is a failed biometric
-                // MATCH, not a dismissal, and deliberately stays on the generic path.
-                if (st == errSecUserCanceled) {
-                    [call reject:@"Unlock cancelled" :@"KEK_USER_CANCELLED" :nil :nil];
                     return;
                 }
                 [call reject:@"Secure Enclave key not found — re-enrollment required" :@"SE_KEY_MISSING" :nil :nil];
