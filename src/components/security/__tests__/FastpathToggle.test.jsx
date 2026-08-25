@@ -73,6 +73,12 @@ describe('FastpathToggle', () => {
     expect(hasSeenFastpathDisclosure()).toBe(false);
     const ack = screen.getByTestId('fastpath-disclosure-ack');
     expect(ack).toBeTruthy();
+    // M-3 (audit-2026-08-25): the disclosure must say fast unlock bypasses the
+    // Emergency and panic PINs, not "everything else is unchanged" — that
+    // sentence read as a false all-clear to a duress-PIN user.
+    expect(screen.getByTestId('fastpath-disclosure').textContent).toMatch(
+      /Emergency PIN and panic PIN only apply when you unlock by typing a PIN/,
+    );
     await act(async () => { fireEvent.click(ack); });
     expect(isFastpathEnabled()).toBe(true);
     expect(hasSeenFastpathDisclosure()).toBe(true);
