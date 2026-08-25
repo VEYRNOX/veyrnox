@@ -79,6 +79,78 @@
 	     "photos", "video calls" — none of which apply. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Veyrnox uses the camera only when you tap "Scan QR code" — to read a recipient wallet address (Send) or a signed cold-key backup. Frames are processed on-device and never uploaded.</string>
+	<!--
+	    Certificate pinning — STATUS: HONEST-DISABLED (structure documented,
+	    pins NOT active). The NSAppTransportSecurity → NSPinnedDomains block
+	    below is COMMENTED OUT because a placeholder SPKI hash would reject
+	    every TLS handshake and brick the app in the field.
+
+	    To ACTIVATE:
+	      1) `node scripts/capture-spki.mjs <host>` for each domain — prints
+	         current-leaf + current-issuer SPKI SHA-256 in base64.
+	      2) Uncomment the NSAppTransportSecurity dict, replace REPLACE_...
+	         values with the captured hashes (leaf first, issuer second — a
+	         rotated leaf keeps working while the issuer stays the same).
+	      3) Ship an app update. A pin rotation without an app update WILL
+	         break installed users; iOS accepts that trade — keep a backup
+	         issuer pin one CA ahead.
+
+	    Requires iOS 14+ (NSPinnedDomains is a 14.0 addition). CapacitorHttp
+	    routes native requests through URLSession, which honours these pins.
+	    Vault seed / wallet-core signing never touch these hosts.
+
+	    <key>NSAppTransportSecurity</key>
+	    <dict>
+	        <key>NSPinnedDomains</key>
+	        <dict>
+	            <key>supabase.co</key>
+	            <dict>
+	                <key>NSIncludesSubdomains</key><true/>
+	                <key>NSPinnedCAIdentities</key>
+	                <array>
+	                    <dict>
+	                        <key>SPKI-SHA256-BASE64</key>
+	                        <string>REPLACE_WITH_LEAF_SPKI_SHA256_BASE64=</string>
+	                    </dict>
+	                    <dict>
+	                        <key>SPKI-SHA256-BASE64</key>
+	                        <string>REPLACE_WITH_ISSUER_SPKI_SHA256_BASE64=</string>
+	                    </dict>
+	                </array>
+	            </dict>
+	            <key>veyrnox.com</key>
+	            <dict>
+	                <key>NSIncludesSubdomains</key><true/>
+	                <key>NSPinnedCAIdentities</key>
+	                <array>
+	                    <dict>
+	                        <key>SPKI-SHA256-BASE64</key>
+	                        <string>REPLACE_WITH_LEAF_SPKI_SHA256_BASE64=</string>
+	                    </dict>
+	                    <dict>
+	                        <key>SPKI-SHA256-BASE64</key>
+	                        <string>REPLACE_WITH_ISSUER_SPKI_SHA256_BASE64=</string>
+	                    </dict>
+	                </array>
+	            </dict>
+	            <key>publicnode.com</key>
+	            <dict>
+	                <key>NSIncludesSubdomains</key><true/>
+	                <key>NSPinnedCAIdentities</key>
+	                <array>
+	                    <dict>
+	                        <key>SPKI-SHA256-BASE64</key>
+	                        <string>REPLACE_WITH_LEAF_SPKI_SHA256_BASE64=</string>
+	                    </dict>
+	                    <dict>
+	                        <key>SPKI-SHA256-BASE64</key>
+	                        <string>REPLACE_WITH_ISSUER_SPKI_SHA256_BASE64=</string>
+	                    </dict>
+	                </array>
+	            </dict>
+	        </dict>
+	    </dict>
+	-->
 	<!-- Custom URL scheme so dApps / WalletConnect can launch Veyrnox via
 	     veyrnox://wc?uri=<wc-uri>. Works on an installed app with no hosting or
 	     domain verification (unlike the universal link below). -->

@@ -1020,6 +1020,15 @@ export async function panicWipeLocal() {
   clearLocalAddressResidue();
   clearSessionResidue();  // C-1: sessionStorage tells (More-drawer recents)
   clearBrowserCookies(); // PW-02: expire known browser cookies (sidebar_state)
+  // NATIVE-1: erase every key we migrated to the OS secure store
+  // (iOS Keychain / Android Keystore). Without this, migrated items would
+  // survive both localStorage.clear() and an app UNINSTALL on iOS (Keychain
+  // items are not deleted on app removal by default) — a direct I3 tell.
+  // Await it so inspectKeyMaterial() reflects the true post-wipe state.
+  try {
+    const { secureWipeAll } = await import('@/lib/secureStore.js');
+    await secureWipeAll();
+  } catch { /* plugin unavailable on web / tests — no-op is correct there */ }
   // Write the next-open wipe marker AFTER the residue sweep (clearLocalAddressResidue
   // only touches ALL_RESIDUE_KEYS, which deliberately excludes WIPE_MARKER_KEY) so it
   // survives the wipe and the next app open can LOUDLY acknowledge the destruction.
