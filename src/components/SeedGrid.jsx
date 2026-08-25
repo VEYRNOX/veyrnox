@@ -27,6 +27,7 @@ import { toast } from '@/lib/toast';
 import { Eye, EyeOff, Copy, Check } from 'lucide-react';
 import { copySecret } from '@/lib/copySecret';
 import { useRaspArtifact, sensitiveGate } from '@/rasp';
+import { getFreshLocalRaspArtifact } from '@/lib/getFreshLocalRaspArtifact';
 
 export default function SeedGrid({ mnemonic, defaultHidden = true }) {
   const [show, setShow] = useState(!defaultHidden);
@@ -63,6 +64,19 @@ export default function SeedGrid({ mnemonic, defaultHidden = true }) {
               const gate = sensitiveGate(raspArtifact, 'seed-reveal');
               if (gate.blocked) {
                 toast.error(gate.sentence || 'Clipboard copy is disabled on this device right now.');
+                return;
+              }
+              // L-6 fix (audit 2026-08-25): raspArtifact above is a mount-time
+              // sample, up to ~60s stale. Probe FRESH at the confirm step —
+              // clipboard copy of the seed is a "highest-danger moment"
+              // (degrade.js) — mirroring the sign hot-path (SendCrypto.jsx
+              // getFreshRaspArtifact) but on-device-only, same as the
+              // mount-time hook above (local seed material — see
+              // getFreshLocalRaspArtifact.js).
+              const freshArtifact = await getFreshLocalRaspArtifact();
+              const freshGate = sensitiveGate(freshArtifact, 'seed-reveal');
+              if (freshGate.blocked) {
+                toast.error(freshGate.sentence || 'Clipboard copy is disabled on this device right now.');
                 return;
               }
               await copySecret(mnemonic);
