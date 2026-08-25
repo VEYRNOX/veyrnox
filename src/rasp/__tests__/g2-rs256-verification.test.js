@@ -17,7 +17,7 @@
 // PlayIntegrityPlugin into a standalone pure-JVM object so that
 // RawEcdsaDerTranscoderTest.kt can execute the actual Kotlin code on the JVM.
 // Layer (3) below pins both files and the CI step that runs them.
-// The Kotlin call-site binding is now proved by `./gradlew :app:testDebugUnitTest`
+// The Kotlin call-site binding is now proved by `./gradlew :app:testGoogleDebugUnitTest`
 // (android-unit-tests CI job). Device-verified Play Integrity token still outstanding.
 //
 // Issue: #951 (RASP H-2: ES256 verify inert on raw R‖S signatures).
@@ -389,9 +389,9 @@ describe('Kotlin JVM test harness — EcdsaDerTranscoder (#957)', () => {
     expect(transcoderTestKt).toContain('verifier.verify(reEncoded)');
   });
 
-  it('CI android-unit-tests job runs ./gradlew :app:testDebugUnitTest', () => {
+  it('CI android-unit-tests job runs ./gradlew :app:testGoogleDebugUnitTest', () => {
     expect(ciYml).toContain('android-unit-tests');
-    expect(ciYml).toContain('testDebugUnitTest');
+    expect(ciYml).toContain('testGoogleDebugUnitTest');
   });
 
   it('EcdsaDerTranscoder.kt is in the Kotlin src/main tree (compiled into the plugin)', () => {

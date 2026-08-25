@@ -1,16 +1,40 @@
 // src/lib/featureCatalogue.js
 //
-// FEATURE CATALOGUE — verified | roadmap.
+// FEATURE CATALOGUE — verified | built | roadmap.
 //
 // Scope contract: docs/WalletFeatures.spec.md. This catalogue lists ONLY
 // self-custody-safe, in-scope features. Everything in spec section C
-// (custodial / regulated — swaps, perps, staking/yield/lending, fiat ramps,
-// bank links, KYC/DID, NFT minting, DAO/payroll, encrypted messaging, etc.) is
-// deliberately NOT a Veyrnox feature and is not listed here.
+// (custodial / regulated — swaps, perps, staking/yield/lending, fiat OFF-ramp,
+// fiat wallets, bank links, KYC/DID, NFT minting, DAO/payroll, encrypted
+// messaging, etc.) is deliberately NOT a Veyrnox feature and is not listed here.
 //
-// Two states:
-//   verified — shipped and working.
+// ONE scoped exception, added 2026-08-24: the fiat ON-ramp hand-off (Buy /
+// Transak) was moved out of section C to spec item 56, on the basis that
+// Veyrnox never touches fiat, never custodies, and never runs KYC — it hands
+// off to a licensed provider and the crypto lands at an address the user's own
+// seed derives. Read the section C carve-out before adding anything else that
+// looks adjacent: off-ramp, fiat wallets, bank links, and CEX deposit are all
+// still barred, and the exception does NOT mean "regulated features are fine
+// now". Compliance posture for Buy lives in
+// docs/buy-uk-financial-promotions-checklist.md, not here.
+//
+// THREE states (see resolveStatus below):
+//   verified — a real, explorer-confirmed txid in docs/verified-evidence.json.
+//              Cannot be asserted by hand; resolveStatus downgrades an unbacked
+//              `verified` to `built`.
+//   built    — code shipped and working, no on-chain evidence yet.
 //   roadmap  — specced, not built.
+//
+// This is the SINGLE SOURCE for the user-facing catalogue. src/pages/
+// Documentation.jsx (/docs) renders it directly. It used to keep a second,
+// parallel list of its own with no evidence gate — merged 2026-08-24, and
+// src/pages/Features.jsx (the unrouted page that read this one) was deleted in
+// the same change. Do not re-fork it: a catalogue nobody renders is how the
+// honest one ended up being the dead one.
+//
+// `displayName` is optional and user-facing. `name` is the audit-stable key —
+// tests and verified-evidence entries are keyed on it, so rename via
+// displayName rather than editing name.
 import verifiedEvidence from '../../docs/verified-evidence.json';
 
 export const STATUS = Object.freeze({
@@ -74,6 +98,7 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Gas / Fee Control',
+        displayName: 'Network Fee Control',
         status: 'verified',
         summary: 'Per-chain fee tiers + custom before signing',
         explanation: 'Choose a fee tier (or set a custom fee) per chain before signing, using each chain’s native fee model (EIP-1559 for EVM, sat/vB for Bitcoin, priority fee for Solana). The selected fee flows into the signed transaction.',
@@ -91,6 +116,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'EVM Networks',
+        displayName: 'Ethereum-compatible Networks',
         status: 'verified',
         summary: 'Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain',
         explanation: 'Six EVM networks share one secp256k1 derivation and signing stack: Ethereum, Polygon, Arbitrum, Optimism, Avalanche, and BNB Chain. All verified on testnet; mainnet was unlocked 2026-06-17, with USDC/USDT mainnet sends confirmed on Ethereum (see Send Crypto).',
@@ -111,6 +137,7 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'ERC-20 Tokens',
+        displayName: 'Ethereum Token Standard (ERC-20) Tokens',
         status: 'verified',
         verifiedBy: 'USDC mainnet send (full UI path, build:release, Ethereum mainnet)',
         summary: 'USDC and USDT via the shared token path, mainnet-verified',
@@ -135,6 +162,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'Passkey Unlock',
+        displayName: 'FIDO2 Passkey Unlock',
         status: 'verified',
         summary: 'FIDO2 / WebAuthn unlock + cloned authenticator detection (M-K)',
         explanation: 'Unlock the app with a platform passkey (FIDO2 / WebAuthn). This is an unlock gate parallel to the password - it never holds or replaces the wallet keys, and a password escape hatch remains. M-K (cloned authenticator detection): WebAuthn assertions include a signCount that must strictly increase to detect replayed assertions from cloned or backed-up soft authenticators. Implementation: signCount persisted in localStorage, validated on each assertion (rejects if signCount does not increase), fail-closed on validation errors (I4 invariant). Status: BUILT 2026-06-30, ready for device verification with real cloned authenticator test.',
@@ -148,7 +176,7 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'PIN Unlock',
         status: 'verified',
-        summary: 'Numeric-PIN unlock over Argon2id (no hardware KEK yet)',
+        summary: "Numeric PIN onboarding and unlock with strong on-device encryption. On its own, a PIN can be repeatedly tried if someone extracts your device's storage; turning on Hardware Key Protection (off by default) closes that gap.",
         explanation: 'Built; the ECC independent review (2026-06-23) covered the PIN/Argon2id path with no findings (§24 satisfied). Numeric-PIN onboarding and returning-PIN unlock over the SAME Argon2id vault as the password path. Deniability model v2: real PIN opens the hidden real wallet; duress PIN opens the decoy; Face ID (opt-in) opens the decoy, never the real wallet; any other wrong PIN returns an explicit "Incorrect PIN" error (the old deterministic-decoy / no-oracle fallback was removed by design). 10 consecutive wrong PINs trigger an irreversible local wipe (pinAttemptGuard.js). HONEST LIMITATION: there is no hardware-bound key (Secure Enclave / StrongBox KEK) yet — a numeric PIN over Argon2id is offline-exhaustible on a seized device (the 10-attempt counter is a software counter, bypassable by imaging the storage). This residual gap is native, not review-related: the hardware-KEK fast-follow (a native build, real-device-verified, plus its own key-at-rest review pass since it expands crypto scope) is what closes it — it was out of reach of the source-level §24 review. Until then this is a convenience unlock gate with a wipe-on-brute-force mitigation, not a hardware guarantee.',
       },
       {
@@ -160,8 +188,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Native Secure Storage',
+        displayName: 'Hardware Key Protection',
         status: 'verified',
-        summary: 'iOS Secure Enclave ECIES + Android Keystore HMAC-SHA256 (StrongBox-preferred, TEE-accepted) KEK — device-verified (PARTIAL), internal review only, NOT independently reviewed',
+        summary: "Optional, off-by-default protection that ties your vault's encryption key to your device's secure hardware (iOS Secure Enclave or Android's secure hardware, using the strongest option your device supports). Once turned on, your PIN alone is no longer enough — the vault also needs your device's secure hardware to unlock. Checked by internal review only, NOT independently reviewed.",
         explanation: 'Built. Native hardware Key-Encryption-Key that wraps the PIN-derived vault DEK under KEK = HKDF-SHA256(H ‖ C) + AES-256-GCM, so an offline-seized vault blob cannot be PIN-exhausted without the device: the hardware factor H is released only per-use behind biometric auth and never leaves the secure element. iOS: Secure Enclave P-256 ECIES (non-extractable key, .biometryCurrentSet biometric ACL) shipped as a native Objective-C plugin (PR #495, registration blocker resolved via the two-file CAPPlugin split) and device-verified (PARTIAL) on iPhone 17 Pro Max. Android: AndroidKeyStore HMAC-SHA256, StrongBox-preferred but NOT enforced (honest tier reporting), device-verified on Pixel 10 Pro XL. NOT "verified": the iOS biometric re-enrollment invalidation test (Android PASSED 2026-07-01, Pixel 10 Pro XL) and the live iOS SE-unlock trace remain outstanding. OPEN GAP — StrongBox tier enforcement (TARGET, not built): non-StrongBox TEE keys are accepted (StrongBox preferred but not required); SOFTWARE/unknown tiers are already refused fail-closed (M2, KEK_ENROLL_INSECURE_TIER) so a software-only key can never enroll. Requiring StrongBox over TEE is a device-coverage-vs-assurance tradeoff. This is a distinct open residual gate, NOT the C-1 finding: the C-1 CRITICAL (global-fixed HMAC input / missing per-enrollment kekSalt binding) is FIXED / device-verified (v3, 2026-07-05, PR #568). REVIEW STATUS: internal static-analysis pass only (2026-07-01); NOT an independent review; "internal" must never be presented as "independent" (I4). An independent review is required before this control can be promoted. See docs/Feature-Status.md §4.',
       },
       {
@@ -179,8 +208,8 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Hardware Wallet',
         status: 'verified',
-        summary: 'Trezor — cold-key signing for ETH, BTC, SOL (send paths wired 2026-06-29)',
-        explanation: 'Built (/hardware-wallet): Trezor (WebUSB, Chrome/Edge desktop) supports address derivation and transaction signing for ETH (EIP-1559), BTC (PSBT), and SOL. trezorSignBtcTx and trezorSignSolTx are wired in SendCrypto (PR #475, 2026-06-29); broadcastBtcTx, buildUnsignedSolTx, and attachSolSignature added. Private key never leaves the hardware device (I1). Deniability sessions block all Trezor calls before any connect.trezor.io egress: demo/tour mode (veyrnox-demo) AND a real decoy/hidden (duress/stealth) session are both gated via the in-memory deniabilitySession marker (wallet-core/deniabilitySession.js, PR #476, 2026-06-29), fail-closed (I3). TrezorContext is the sole hardware wallet context (HardwareWalletContext deleted). Built, not device-verified — no physical-device txid. Non-WebUSB browsers (e.g. iOS WKWebView) fail soft to a "not available" card. ERC-20 hardware signing and multi-account paths not yet wired.',
+        summary: 'Digital Shield air-gapped QR signing — cold-key address derivation and transaction signing for ETH, BTC, and SOL. Private keys never leave the hardware device. Built and code-reviewed; not yet tested against a physical Digital Shield device.',
+        explanation: 'Built (/hardware-wallet): Digital Shield is the sole hardware-wallet path (Trezor and Ledger removed 2026-08-24 — the Trezor WebUSB bundle crashed the iOS webview Send page). Imports public account data via a crypto-multi-accounts UR QR, builds unsigned PSBT/EVM/SOL requests, and finalizes them from a scanned or pasted signed-response QR. Private key never leaves the air-gapped device (I1). Deniability sessions block Digital Shield calls the same way the removed Trezor path did, via the in-memory deniabilitySession marker (wallet-core/deniabilitySession.js), fail-closed (I3). Built, not device-verified — no physical-device txid. ERC-20 hardware signing and multi-account paths not yet wired.',
       },
     ],
   },
@@ -191,7 +220,7 @@ export const FEATURE_CATEGORIES = [
         name: 'Token Approvals (View + Revoke)',
         status: 'verified',
         summary: 'Inspect and revoke ERC-20 allowances',
-        explanation: 'List the token allowances granted to contracts, flag unlimited approvals, and build revoke calldata the user signs locally. Helps shut down drainer exposure from stale approvals.',
+        explanation: 'List the token allowances granted to contracts, flag unlimited approvals, and build revoke calldata the user signs locally. Helps shut down drainer exposure from stale approvals. Each spender also carries a one-line risk note: a local threat-intel hit is answered instantly on-device, and otherwise the SPENDER address (never your own — the sender field is sent as the zero address) is screened through the tip-screen proxy. That screening runs automatically when you open the page, not only when you act, and is suppressed entirely in deniability/demo. A lookup that fails returns "could not assess", never "safe" (I4). The page shows approvals on demand — it does not monitor for new ones in the background.',
       },
       {
         name: 'Address-Poisoning Warnings',
@@ -207,6 +236,7 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Calldata Decode & Approval Guard',
+        displayName: 'Transaction Data Decode & Approval Guard',
         status: 'verified',
         summary: 'Human-readable calldata before signing',
         explanation: 'Opaque transaction calldata is decoded into a structured, human-verifiable summary — including unlimited-approval detection — shown on the confirm screen before any signature. Holds no keys; inspects bytes only.',
@@ -258,6 +288,12 @@ export const FEATURE_CATEGORIES = [
         summary: 'Ciphertext-only vault backup',
         explanation: 'Built (/personal-backup). Client-side encrypt-then-export: the vault is serialised, sealed with a user-supplied password using strong on-device encryption, and written to an opaque file. Restore decrypts the file locally before any key material is loaded. Plaintext keys never leave the device. The ECC independent review (2026-06-23) confirmed key custody for this LOCAL path (plaintext seed never leaves the device; Argon2id (64 MiB / t=3, reviewed at 192 MiB then lowered for device latency — not yet re-reviewed at 64 MiB) + AES-256-GCM; verify-before-success) and the only finding (L-1, PIN floor 4→6 digits) was fixed in PR #340. Scope note: this is the local file path only — the BACKEND-ESCROW variant (a server-side ciphertext target) remains backend + review gated and is not built.',
       },
+      {
+        name: 'Shamir Shard Backup (2-of-3)',
+        status: 'verified',
+        summary: 'Split vault DEK into 2-of-3 Shamir shares for distributed recovery',
+        explanation: 'Built (/personal-backup, Advanced tab). The vault DEK is split into three Shamir Secret Sharing shares over GF(2^8); any two of three reconstruct the key. Each share is exported as a passphrase-wrapped, integrity-checked recovery bundle (SHARD_BUNDLE_VERSION 2, with nested-key-aware vault hash). Same-device and cross-device restore are supported. Gated behind Safety Plus subscription. Pre-audit preview: owner-authorized 2026-08-08 carve-out ahead of independent audit. Passphrase wrapping is mandatory (PR #1752 closed an earlier gap where the checkbox shipped unwired, silently producing unencrypted bundles). NOT verified: no real on-device recovery round-trip confirmed, no independent audit. Cross-platform cloud sync (iCloud/Google Backup) not shipped. Hand-rolled Shamir implementation — audited library replacement (#1833) parked.',
+      },
     ],
   },
   {
@@ -265,6 +301,7 @@ export const FEATURE_CATEGORIES = [
     features: [
       {
         name: 'RASP',
+        displayName: 'Runtime Protection',
         status: 'verified',
         summary: 'Runtime environment detection + graduated degradation',
         explanation: 'Built — UI-confirmed. Browser-level detection active: navigator.webdriver + legacy automation fingerprints → HOOKED → signing blocked. Normal browser → CLEAN → ALLOW (no friction). Degradation policy (condition → tier) and I3 response-symmetry guard built + tested in src/rasp/. Wired to the send path via detect(browserProbeSource) → degrade() → presignGate(). The ECC independent audit (2026-06-23) confirmed the browser-level lane genuinely blocks (not merely warns) at the wired send call-site with no network egress (I2/I3 clean), and that VITE_DEV_UNGATE_SEND cannot bypass it; the only fix was stale "NOT WIRED" comments (M-4, PR #340). The OS-level probes (root/jailbreak/tamper/emulator) are implemented in a native Capacitor plugin (RaspIntegrityPlugin) and run in the same pre-sign gate; they were device-exercised on Android (internal verification, not independently audited).',
@@ -374,6 +411,20 @@ export const FEATURE_CATEGORIES = [
     category: 'Payments & Utilities',
     features: [
       {
+        name: 'Buy Crypto (Third-Party On-Ramp)',
+        // Declares 'verified'; RESOLVES to 'built', because there is no txid
+        // entry for it in docs/verified-evidence.json and resolveStatus()
+        // downgrades any unbacked claim. That is the correct outcome — no
+        // purchase has ever completed on either store.
+        //
+        // (This comment previously explained that the enum had no third value
+        // and that the honesty had to live in the prose. The third state was
+        // restored on 2026-08-24, so the badge now carries it too.)
+        status: 'verified',
+        summary: 'Hand-off to Transak — regional, and no purchase proven yet',
+        explanation: 'Built (/buy). Buy crypto with fiat through Transak, a licensed third-party provider. Veyrnox never touches your money and never holds your crypto: you enter an amount, the app reads the deposit address from your own on-device wallet at the moment you press Continue, and hands off to Transak\'s hosted checkout in the system browser. The purchase is between you and Transak, under their terms and their identity checks, and the crypto is delivered to an address only your seed controls. Nothing about the return trip is trusted — /buy/in-progress reads nothing from the return URL, so a spoofed return cannot show a fake success; confirmation comes from the coin arriving at your address like any other incoming transaction. NOT available everywhere: the Buy entry is hidden in the UK for financial-promotions reasons (s.21 FSMA), and it is hidden entirely in decoy, duress, and demo sessions. The region check reads your device locale and timezone, so it is a good-faith regional suppression, not a security control, and it does not hide Buy when the region cannot be determined. NOT verified: no purchase has been completed on either store, so this is built-and-shipping, not proven end-to-end.',
+      },
+      {
         name: 'Address Book',
         status: 'verified',
         summary: 'Saved, labelled addresses with per-chain validation',
@@ -405,37 +456,51 @@ export const FEATURE_CATEGORIES = [
       {
         name: 'Referral Tracker',
         status: 'verified',
-        summary: 'Local referral-code tracking (conditional backend egress)',
+        summary: "Share your referral code to earn rewards; tier-based commissions and discounts apply to eligible paid subscriptions, including Safety Plus and AI Security Protection. Using this feature sends your referral code, chosen plan, and purchase/discount amounts to VEYRNOX's servers so earnings can be tracked — the referral service never receives your balances, your wallet addresses, or your seed phrase. Claiming a payout is separate and opens an email you write yourself, so you choose what payment details to include.",
         explanation: 'Built (/referrals). Generates a random referral code (crypto.getRandomValues — NOT seed-derived) and tracks code / tier / redeemed state in localStorage. Local-only by default: with no referral backend configured the network calls no-op. If VITE_SUPABASE_URL / ANON_KEY are set at build time, register/redeem/status send the referral code (not balances or seed) to that external backend — an opt-in egress, disclosed here per I2. Public ranking and public profiles remain cut on principle.',
       },
     ],
   },
   {
-    category: 'AI Assistant (Advisory-Only)',
+    // Merge note: keep the branch's renamed category and the unique roadmap
+    // items from both sides without promoting anything to a stronger status.
+    category: 'AI Security Protection',
     features: [
       {
-        name: 'Transaction Explanation',
+        name: 'AI Security Advisor',
         status: 'roadmap',
-        summary: 'Plain-language description of a transaction',
-        explanation: 'Explain in plain language what a pending transaction does. Advisory only — the AI never holds keys and never signs. Specced, not yet built.',
+        summary: 'LLM-powered security chat with local knowledge fallback',
+        explanation: 'Built. A floating chat panel (SecurityAdvisor) powered by the TIP backend via a server-side Supabase Edge Function proxy (tip-chat). The advisor answers wallet, crypto, and security questions with context-aware responses; streaming errors fall back to a bundled local knowledge base (I4 fail-closed). The system prompt (server-side) refuses seeds, keys, and PINs. User messages are scrubbed of secret material before sending. Requires explicit advisor consent (opt-in). Suppressed entirely in deniability/demo sessions (I3 — FAB hidden, zero egress). The wallet never ships TIP API keys (I1); the Edge Function holds them server-side. NOT independently audited.',
       },
       {
-        name: 'Scam & Phishing Explanation',
+        name: 'Address Threat Screening',
         status: 'roadmap',
-        summary: 'Explain why something looks risky',
-        explanation: 'Explain why an address, contract, or site looks risky. Advisory only; specced, not yet built.',
+        summary: 'Multi-source sanctions, phishing, and hack-registry screening on send',
+        explanation: 'Built. Before a send, the recipient address is screened via a multi-source aggregator (sanctions lists, phishing registries, hack-fund trackers, contract-risk signals, and transaction simulation) through the tip-screen Edge Function proxy. Covers EVM, BTC, and SOL address formats. A sanctioned-namespace cross-chain lane blocks known threat actors (Tornado Cash, Lazarus, Blender.io, Sinbad, Ronin bridge) on every EVM chain, not just Ethereum. Falls back to honest "unknown" when all sources are unavailable rather than defaulting to "clean" (I4). A locally-cached, Ed25519-signed IOC manifest provides offline/deniability screening. Advisory — warns rather than silently blocks. NOT independently audited.',
       },
       {
         name: 'Educational Assistant',
         status: 'roadmap',
-        summary: 'Answer wallet / crypto questions',
-        explanation: 'Answer questions about gas, approvals, address formats, and wallet concepts. Advisory only; specced, not yet built.',
+        summary: 'Answer wallet and crypto security questions',
+        explanation: 'Built. The AI Security Advisor doubles as an educational assistant — it answers questions about gas, approvals, address formats, wallet security, and crypto concepts. Responses are context-aware (the advisor knows which screen the user is on) and include follow-up suggestions. Falls back to the local knowledge base when offline. Advisory only — the AI never holds keys and never signs.',
       },
       {
         name: 'Portfolio Q&A',
         status: 'roadmap',
         summary: 'Questions over public on-chain data',
         explanation: 'Answer questions over the user’s public on-chain data. Advisory only — never autonomous trading or management. Specced, not yet built.',
+      },
+      {
+        name: 'Live Phishing Domain Feed',
+        status: 'roadmap',
+        summary: 'Remote-updatable dApp domain blocklist, layered over the local seed',
+        explanation: 'A phishing-domain list downloaded over https, cached in IndexedDB, and layered over the in-bundle seed list that screens dApp domains on WalletConnect connect and request. The seed is never replaced, so a missing feed URL, a failed fetch or an empty payload degrades to exactly the pre-feed behaviour rather than to "no list" (I4) — an empty payload is treated as a failed refresh, so a compromised feed cannot switch coverage off by serving []. A feed older than seven days is treated as absent rather than silently trusted. The domain being checked NEVER leaves the device (I2): the list is downloaded and matched locally. Feed text is length-capped and control-character-stripped before it can reach a warning dialog. I3: no fetch and no feed matches in deniability/demo — the local seed still runs, so screening never goes dark — and the cache database is erased by panic wipe, since its presence alone is a tell. STATUS: the implementation is complete, wired at app init and unit-tested, but it has NOT been observed running on a device or in a browser, and no feed URL is configured by default — so it stays roadmap rather than claiming to work. Coverage today is the seed list unless VITE_PHISHING_FEED_URL is set. This is a blocklist, not a classifier: it catches listed domains only and never asserts a site is safe.',
+      },
+      {
+        name: 'Approval Monitor',
+        status: 'roadmap',
+        summary: 'Periodic in-app check for new approvals and risky transfers',
+        explanation: 'While the app is open and unlocked, a 60-second poll re-reads the local approval and transaction rows and raises an alert for a newly-seen approval to a flagged spender, a newly-seen unlimited approval, or an incoming transfer from a flagged address. Alerts surface on the Token Approvals page; they are held in memory only (max 50, never persisted) and are cleared on lock and on entering deniability/demo, because they name real counterparties. It reads the same local entity stores the pages already read: no new backend surface and no new egress. A flagged verdict comes from the local threat-intel store, which returns matches only; an empty result is never treated as a hit. This is NOT a push-notification service — nothing is checked while the app is closed, and no alert is not evidence that nothing happened (I4). STATUS: the implementation is complete, wired in Layout via useBackgroundSecurity and unit-tested, but it has NOT been observed running on a device or in a browser, so it stays roadmap rather than claiming to work. Deleting the useBackgroundSecurity call would silently disable it with no test going red.',
       },
     ],
   },
@@ -484,21 +549,46 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'iOS App',
+        displayName: 'iOS App Store',
         status: 'roadmap',
-        summary: 'Native iOS shell',
-        explanation: 'A native iOS shell runs on the simulator; App Store submission is gated on an Apple organisation account. Roadmap.',
+        summary: 'Native iOS shell — TestFlight internal testing',
+        explanation: 'Built. Native iOS shell via Capacitor, published to TestFlight (1.0.1 Build 11, READY_FOR_BETA_TESTING). Apple Organisation account (Veyrnox LTD, Team R54268MWFV) verified. CLI archive + upload pipeline working (xcodebuild + altool). App Store review submission on hold pending pre-submission verification checklist (fresh-device golden-path walk, Organizer crash/hang check). NOT verified: no App Store review submission made, RASP on a TestFlight install not device-verified.',
       },
       {
         name: 'Android App',
+        displayName: 'Android Play Store',
         status: 'roadmap',
-        summary: 'Native Android shell',
-        explanation: 'A native Android shell is scaffolded (non-custodial = store-exempt in the relevant sense). Roadmap.',
+        summary: 'Native Android shell — Play internal testing',
+        explanation: 'Built. Native Android shell via Capacitor, current submission train 1.0.1 / versionCode 10 with Play internal-testing upload path wired in CI. Upload key reset completed. Play Billing (IAP) device-verified on the internal track. Release build end-to-end verified (signed AAB, jarsigner, release cert fingerprint guard). Submission remains on hold pending the pre-submission verification checklist (Play Pre-launch report, Android Vitals crash/ANR check, fresh-device golden-path walk). NOT verified: a clean Pre-launch report for versionCode 10 is still console-only and pending, RASP on a Play install not device-verified, no production review submission made.',
+      },
+      {
+        name: 'Samsung Galaxy Store',
+        status: 'roadmap',
+        summary: 'Samsung Galaxy Store distribution via Gradle product flavors',
+        explanation: 'Built. Samsung Galaxy Store integration via Gradle product flavors (google/samsung) and RevenueCat Samsung billing. The samsung flavor uses Samsung In-App Purchase SDK instead of Google Play Billing. CI produces Samsung-specific artifacts. NOT verified: no Galaxy Store submission made, no device-verified purchase on Samsung billing.',
       },
       {
         name: 'Voice Commands',
         status: 'verified',
         summary: 'Hands-free, read-only navigation',
         explanation: 'Built (/voice-commands). Voice navigation via the native @capacitor-community/speech-recognition plugin (Android SpeechRecognizer), with a Web Speech API fallback on web: recognises a fixed command set (go to dashboard, check balance, etc.) and navigates the app. Read-only navigation only — never initiates or signs transactions by voice. Transcription happens off-device on the platform speech service (Google on Android), and voice is disabled when locked or in a deniability/duress session (I3, fail closed).',
+      },
+    ],
+  },
+  {
+    // Carried over from Documentation.jsx's own catalogue when the two were
+    // merged (2026-08-24). This was the ONE category the parallel list had that
+    // this one did not — everything else was a rename. Without it the merge
+    // would have silently dropped the only place the app tells a user what it
+    // charges for.
+    category: 'Subscriptions',
+    features: [
+      {
+        name: 'Free & Safety Plus Plans',
+        displayName: 'Free & Safety Plus Plans',
+        status: 'verified',
+        summary: 'Optional paid tier — the only fee Veyrnox charges',
+        explanation: 'Built (/plans). Optional Free and Safety Plus plans gate a subset of features; Safety Plus is billed monthly or annually through the platform store (Apple / Google / Samsung) via RevenueCat, and it is the only fee Veyrnox charges. Self-custody is never gated: keys, send, receive, backup, duress and panic wipe all work on the free tier. NOT verified: no real purchase has been completed on any store, so the billing path is built and store-configured but unproven end-to-end.',
       },
     ],
   },
@@ -515,6 +605,34 @@ export function verifiedFeatureNames() {
  * @param {Set<string>} [verifiedNames] - kept for call-site compat; unused
  * @returns {'verified'|'built'|'roadmap'}
  */
+/**
+ * Resolve a feature's DISPLAYED status.
+ *
+ * `verified` is IMPOSSIBLE TO ASSERT BY INSPECTION. A hand-typed
+ * `status: 'verified'` with no matching txid entry in docs/verified-evidence.json
+ * is downgraded to `built`. Passing tests, clean review, and a green pipeline
+ * never promote anything here — only a real, explorer-confirmed txid does
+ * (CLAUDE.md, "Verify, don't assert").
+ *
+ * Restored 2026-08-24. This gate shipped in PR #145 and was deleted by PR #1185
+ * ("promote all Built features to Verified/Green"), which removed the
+ * evidence-gating and turned all 48 built features teal. Everything else needed
+ * for three states survived that change — STATUS.BUILT stayed in the enum,
+ * Features.jsx kept its amber Built token, verifiedFeatureNames() kept reading
+ * the evidence file, and the comment at Features.jsx:34 kept CLAIMING the gate
+ * existed. Only this function was gutted, so the claim became false.
+ *
+ * The evidence key is `verifiedBy` when present (the txid entry's exact name),
+ * falling back to the feature name.
+ *
+ * @param {{status: string, name: string, verifiedBy?: string}} feature
+ * @param {Set<string>} [verifiedNames]
+ * @returns {'verified'|'built'|'roadmap'}
+ */
 export function resolveStatus(feature, verifiedNames = verifiedFeatureNames()) {
-  return /** @type {'verified'|'built'|'roadmap'} */ (feature.status);
+  if (feature.status !== STATUS.VERIFIED) {
+    return /** @type {'verified'|'built'|'roadmap'} */ (feature.status);
+  }
+  const evidenceKey = feature.verifiedBy ?? feature.name;
+  return verifiedNames.has(evidenceKey) ? STATUS.VERIFIED : STATUS.BUILT;
 }

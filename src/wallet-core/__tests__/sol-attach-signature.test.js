@@ -1,6 +1,6 @@
 // src/wallet-core/__tests__/sol-attach-signature.test.js
 //
-// The Trezor SOL path returns ONLY a signature (the device signs the serialized
+// An external hardware signer returns ONLY a signature (the device signs the serialized
 // message). attachSolSignature reassembles a broadcastable signed tx from the
 // unsigned base64 + the device's signature, WITHOUT ever holding a private key.
 // This pins that the reattached signature verifies as the fee-payer's — proving
@@ -26,7 +26,7 @@ describe('attachSolSignature — reassemble a signed tx from a device signature'
     });
 
     // Simulate the device: sign with the (test-only) seed key and hand back a hex
-    // signature — exactly the shape trezorSignSolTx returns.
+    // signature — exactly the shape an external hardware signer returns.
     const unsigned = Transaction.from(Buffer.from(unsignedTxBase64, 'base64'));
     unsigned.sign(senderKp);
     const signatureHex = Buffer.from(unsigned.signature).toString('hex');

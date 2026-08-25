@@ -241,10 +241,22 @@
       "intro": "முக்கிய செயல்களுக்கு உங்கள் பின்னுடன் கூடுதலான ஒரு சரிபார்ப்பு. யாராவது நீங்கள் உங்கள் பின்னைத் தட்டச்சு செய்வதைப் பார்த்தாலும், இரண்டாவது படி இல்லாமல் இவற்றைச் செய்ய முடியாது.",
       "actions_protects_label": "இது பாதுகாக்கும் செயல்கள்",
       "gated_actions": [
-        { "label": "நிதி அனுப்புதல்", "desc": "பாதுகாப்புச் சரிபார்ப்புகளுக்குப் பிறகு ஒவ்வொரு அனுப்புதலும்" },
-        { "label": "உங்கள் மீட்பு சொற்றொடரை வெளிப்படுத்துதல்", "desc": "உங்கள் காப்புப்பிரதியைக் காணுதல் அல்லது ஏற்றுமதி செய்தல்" },
-        { "label": "அவசர பின்னை அமைத்தல்", "desc": "அவசர வாலட்டை உருவாக்குதல்" },
-        { "label": "வாலட்டை உருவாக்குதல் அல்லது மறைத்தல்", "desc": "மறைக்கப்பட்ட வாலட் மாற்றங்கள்" }
+        {
+          "label": "நிதி அனுப்புதல்",
+          "desc": "பாதுகாப்புச் சரிபார்ப்புகளுக்குப் பிறகு ஒவ்வொரு அனுப்புதலும்"
+        },
+        {
+          "label": "உங்கள் மீட்பு சொற்றொடரை வெளிப்படுத்துதல்",
+          "desc": "உங்கள் காப்புப்பிரதியைக் காணுதல் அல்லது ஏற்றுமதி செய்தல்"
+        },
+        {
+          "label": "அவசர பின்னை அமைத்தல்",
+          "desc": "அவசர வாலட்டை உருவாக்குதல்"
+        },
+        {
+          "label": "வாலட்டை உருவாக்குதல் அல்லது மறைத்தல்",
+          "desc": "மறைக்கப்பட்ட வாலட் மாற்றங்கள்"
+        }
       ],
       "currently_enforcing": "தற்போது அமல்படுத்துகிறது:",
       "badge_biometric": "பின் + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "சமீபத்தியவை",
     "tab_home": "முகப்பு",
     "tab_send": "அனுப்பு",
-    "tab_receive": "பெறு"
+    "tab_receive": "பெறு",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "பின்செல்"
@@ -343,8 +356,14 @@
     "heading": "கிரிப்டோ அனுப்பு",
     "subheading": "பாதுகாப்பாக நிதியை மாற்றுங்கள்",
     "wallet_fallback": "வாலட்",
-    "wallet_picker": { "label": "வாலட்டிலிருந்து", "placeholder": "வாலட்டைத் தேர்ந்தெடுக்கவும்" },
-    "asset_picker": { "label": "சொத்து", "placeholder": "சொத்தைத் தேர்ந்தெடுக்கவும்" },
+    "wallet_picker": {
+      "label": "வாலட்டிலிருந்து",
+      "placeholder": "வாலட்டைத் தேர்ந்தெடுக்கவும்"
+    },
+    "asset_picker": {
+      "label": "சொத்து",
+      "placeholder": "சொத்தைத் தேர்ந்தெடுக்கவும்"
+    },
     "recipient": {
       "label": "அனுப்புவது (முகவரி அல்லது பெயர்)",
       "placeholder": "ஒரு முகவரியை ஒட்டவும் அல்லது ஒரு பெயரை உள்ளிடவும் (எ.கா. vitalik.eth)",
@@ -404,18 +423,18 @@
       "dev_ungate_body": "— VITE_DEV_UNGATE_SEND (டெவ் பில்ட் மட்டும்) மூலம் {{currency}} க்கான அனுப்பு தடை புறக்கணிக்கப்பட்டுள்ளது. இந்த சொத்தின் நிலை மாறாதது (இன்னும் நேரடியில் இல்லை); மெயின்நெட் இன்னும் தடுக்கப்பட்டுள்ளது. டெஸ்ட்நெட் சரிபார்ப்புக்கு மட்டும் — இந்த பில்ட்டை ஒருபோதும் அனுப்ப வேண்டாம்.",
       "locked": "உங்கள் வாலட் பூட்டப்பட்டுள்ளது. கையொப்பமிட்டு அனுப்ப வாலட் அமைப்புகளில் திறக்கவும்."
     },
-    "note": { "label": "குறிப்பு (விருப்பத்தேர்வு)", "placeholder": "இது எதற்காக?" },
-    "trezor": {
-      "toggle_label": "Trezor உடன் கையொப்பமிடு",
-      "connected": "சாதனம் இணைக்கப்பட்டது",
-      "connect_button": "சாதனத்தை இணை"
+    "note": {
+      "label": "குறிப்பு (விருப்பத்தேர்வு)",
+      "placeholder": "இது எதற்காக?"
     },
     "buttons": {
       "continue": "தொடரவும்",
       "confirm_send": "உறுதிப்படுத்தி அனுப்பு",
       "back": "பின்செல்"
     },
-    "verify": { "summary_label": "நீங்கள் அனுப்புகிறீர்கள்" },
+    "verify": {
+      "summary_label": "நீங்கள் அனுப்புகிறீர்கள்"
+    },
     "fee": {
       "automatic": "{{currency}} ({{network}}) க்கான நெட்வொர்க் கட்டணம் தானாக அமைக்கப்படுகிறது.",
       "native_fee_note": "நெட்வொர்க் கட்டணம் {{symbol}} ({{network}}) இல் செலுத்தப்படுகிறது — {{token}} அனுப்பும்போதும் நெட்வொர்க் கட்டணத்திற்கு {{symbol}} தேவை."
@@ -708,5 +727,46 @@
     "allocation": "ஒதுக்கீடு",
     "holdings": "சொத்துக்கள்",
     "noHoldings": "இதுவரை சொத்துக்கள் இல்லை."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

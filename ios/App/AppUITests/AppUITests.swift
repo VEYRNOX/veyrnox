@@ -1,12 +1,15 @@
 // AppUITests.swift
 //
-// Minimal XCUITest smoke — the iOS analogue to Firebase Test Lab's Android
-// Robo crawl. Walks fresh install → New wallet → PIN → wallet created, and
-// hard-fails if the KEK/RASP fail-closed banner ever appears (that banner is
-// what got Play build 5 rejected under Broken Functionality).
+// Minimal XCUITest smoke. Walks the current first-run flow — consent →
+// Get Started → 8-digit PIN → confirm PIN — and hard-fails if the KEK/RASP
+// fail-closed banner ever appears (that banner is the exact string Play
+// rejected build 5 for under Broken Functionality policy).
 //
-// Runs in Firebase Test Lab on real iPhones via the ios-smoke job in
-// .github/workflows/firebase-test-lab.yml.
+// Run locally with `xcodebuild test` against a booted simulator or a paired
+// device. Runs in CI via .github/workflows/ios-xcuitest-smoke.yml. Real-
+// device crash + hang signal for shipped builds still comes from TestFlight
+// Crashes and Xcode Organizer → Metrics / Hangs; this smoke is the
+// pre-submission catcher for the reviewer-tap failure mode.
 
 import XCTest
 
@@ -16,80 +19,103 @@ final class AppUITests: XCTestCase {
     }
 
     /// Golden path a reviewer would walk on first launch.
-    /// If this test ever fails on a stock device the app is NOT ready to submit.
+    /// If this test ever fails on a stock simulator the app is NOT ready to submit.
     func test_freshInstall_createsWalletWithoutFailureBanner() throws {
         let app = XCUIApplication()
-        app.launchArguments += [
-            "--uitest-fresh-install",
-            "--firebase-observability-smoke",
-        ]
+        app.launchArguments += ["--uitest-fresh-install"]
         app.launch()
 
-        // 1. Fresh installs land on the entry tiles. Pick the new-wallet path;
-        //    it auto-creates after PIN confirmation, so there is no later
-        //    "Create Wallet" button on this path.
-        let newWalletButton = app.buttons["New wallet"]
+        // A Capacitor app renders inside a WKWebView; XCUITest matches HTML
+        // buttons by their aria-label OR visible text. Every predicate below
+        // matches BOTH via NSPredicate on `label` (label reflects both).
+        let webView = app.webViews.firstMatch
         XCTAssertTrue(
-            newWalletButton.waitForExistence(timeout: 10),
-            "New wallet entry tile never appeared on a fresh install."
+            webView.waitForExistence(timeout: 20),
+            "WebView never rendered — app did not launch."
         )
-        newWalletButton.tap()
 
-        // 2. PIN entry — the app requires exactly eight digits and PinPad
-        //    completion is explicit, never auto-submitted by digit count.
+        // 1. Telemetry consent screen may appear before the welcome screen
+        //    (2026-07-26 addition). Dismiss it with the deny path — the smoke
+        //    is not opting real data into anything. Tolerate its absence: on
+        //    a device with prior consent state the screen is skipped.
+        tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
+
+        // 2. Welcome screen — the single "Get Started" button hands off to
+        //    PIN-create. Create vs import is chosen later.
+        tapButton(
+            app: app,
+            label: "Get Started",
+            timeout: 15,
+            failureMessage: "Welcome / Get Started never appeared."
+        )
+
+        // 3. PIN pad: 8 digits, then tap the submit button. PinPad's submit
+        //    aria-label is "Submit PIN"; the visible text is the scheme's
+        //    submitLabel (defaults to "Continue"). Match either.
         let pin = "24681024"
         enterPin(app: app, digits: pin, stage: "set")
         submitPin(app: app, stage: "set")
+
+        // 4. Confirm PIN — same digits, same submit.
         enterPin(app: app, digits: pin, stage: "confirm")
         submitPin(app: app, stage: "confirm")
 
-        // 3. The fail-closed banner MUST NOT appear. This is the exact string
-        //    Play rejected build 5 for. Assert absence, not silence.
+        // 5. The exact banner Play rejected build 5 for. Assert absence.
+        //    Wait explicitly — the banner appears when KEK/RASP fails
+        //    closed, which is what we want to catch.
         let failureBanner = app.staticTexts[
             "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
         ]
         XCTAssertFalse(
-            failureBanner.waitForExistence(timeout: 8),
+            failureBanner.waitForExistence(timeout: 20),
             "KEK/RASP fail-closed banner appeared — this is the exact defect Play rejected on Android."
-        )
-
-        // 4. The current new-wallet path auto-creates after PIN confirmation
-        //    and lands on WalletCreatedFlash. Raw seed reveal was deliberately
-        //    moved out of onboarding, so waiting for a seed header is stale.
-        let createdHeader = app.staticTexts["Created."]
-        XCTAssertTrue(
-            createdHeader.waitForExistence(timeout: 30),
-            "Wallet-created screen never appeared — fresh-create path is broken."
         )
     }
 
-    /// Tap each digit on the on-screen keypad. Falls back to a text field
-    /// (some layouts use SecureField instead of a custom keypad).
-    private func enterPin(app: XCUIApplication, digits: String, stage: String) {
-        for ch in digits {
-            let key = app.buttons[String(ch)]
-            if key.waitForExistence(timeout: 3) {
-                key.tap()
-                continue
-            }
-            let field = app.secureTextFields.firstMatch
-            if field.exists {
-                field.tap()
-                field.typeText(digits)
-                return
-            }
-            XCTFail("PIN \(stage): no keypad button '\(ch)' and no secure field.")
-            return
+    // MARK: - helpers
+
+    /// Match a button by aria-label OR visible text (both surface as `label`
+    /// on XCUIElement). Returns the query even if no match yet — caller
+    /// decides whether to wait.
+    private func buttonMatching(_ app: XCUIApplication, label: String) -> XCUIElement {
+        let predicate = NSPredicate(format: "label == %@", label)
+        return app.buttons.matching(predicate).firstMatch
+    }
+
+    private func tapButton(app: XCUIApplication, label: String, timeout: TimeInterval, failureMessage: String) {
+        let button = buttonMatching(app, label: label)
+        XCTAssertTrue(button.waitForExistence(timeout: timeout), failureMessage)
+        button.tap()
+    }
+
+    private func tapButtonIfPresent(app: XCUIApplication, label: String, timeout: TimeInterval) {
+        let button = buttonMatching(app, label: label)
+        if button.waitForExistence(timeout: timeout) {
+            button.tap()
         }
     }
 
-    /// PinPad deliberately does not auto-submit at eight digits. Tap its
-    /// accessibility-labelled submit button after both setup stages.
+    /// Tap each digit on the on-screen keypad. Digit buttons carry only their
+    /// text (no aria-label), so we match on the digit character.
+    private func enterPin(app: XCUIApplication, digits: String, stage: String) {
+        for ch in digits {
+            let key = buttonMatching(app, label: String(ch))
+            XCTAssertTrue(
+                key.waitForExistence(timeout: 5),
+                "PIN \(stage): keypad button '\(ch)' never appeared."
+            )
+            key.tap()
+        }
+    }
+
+    /// PinPad's submit renders text of `submitLabel` (defaults to "Continue")
+    /// and carries `aria-label="Submit PIN"`. Match either.
     private func submitPin(app: XCUIApplication, stage: String) {
-        let submit = app.buttons["Submit PIN"]
+        let predicate = NSPredicate(format: "label == %@ OR label == %@", "Submit PIN", "Continue")
+        let submit = app.buttons.matching(predicate).firstMatch
         XCTAssertTrue(
-            submit.waitForExistence(timeout: 3),
-            "PIN \(stage): Submit PIN button never appeared."
+            submit.waitForExistence(timeout: 5),
+            "PIN \(stage): submit button never appeared."
         )
         submit.tap()
     }

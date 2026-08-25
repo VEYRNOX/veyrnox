@@ -51,6 +51,10 @@ describe('seedQr artifact seam', () => {
     await expect(decryptSeedBackup(art12, 'the wrong password')).rejects.toThrow();
   });
 
+  it('rejects a backup password shorter than the minimum floor at the module boundary', async () => {
+    await expect(encryptSeedBackup(MN12, 'short')).rejects.toThrow('at least 12 characters');
+  });
+
   it('B3: a tampered ciphertext is rejected', async () => {
     const tampered = { ...art12, blob: { ...art12.blob, ct: flipFirstChar(art12.blob.ct) } };
     await expect(decryptSeedBackup(tampered, PW)).rejects.toThrow();

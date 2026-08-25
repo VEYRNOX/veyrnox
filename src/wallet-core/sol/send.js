@@ -179,7 +179,7 @@ export function buildAndSignSol({ keypair, toPubkey, amountLamports, blockhash, 
 
 /**
  * Build an UNSIGNED System-transfer transaction and return it serialized as
- * base64. This is the build half for an EXTERNAL signer (the Trezor SOL path
+ * base64. This is the build half for an EXTERNAL signer (an air-gapped device
  * signs on-device, never exposing a key to this process — I1). A blockhash may
  * be supplied directly (network-free, for tests/precomputed) OR fetched live via
  * a connection (`{ getLatestBlockhash() }`) or a `networkKey`.
@@ -240,7 +240,7 @@ export function buildUnsignedSolTx({
 
 /**
  * Reassemble a broadcastable signed transaction from an unsigned base64 tx + an
- * EXTERNAL signer's signature (the Trezor SOL path returns only the signature
+ * EXTERNAL signer's signature (an air-gapped device returns only the signature
  * hex; the device holds the key — I1). The signature is attached for the
  * fee-payer; the result is verified before it is returned (fail closed, I4).
  *
@@ -263,7 +263,7 @@ export function attachSolSignature(unsignedTxBase64, fromAddress, signatureHex) 
 
 /**
  * Broadcast an ALREADY-SIGNED transaction (base64) and return its signature +
- * explorer URL. The broadcast half for an external signer (Trezor SOL path).
+ * explorer URL. The broadcast half for an external signer (an air-gapped device).
  * broadcastRawTx re-enforces the mainnet gate. The signature is read back from
  * the deserialized signed bytes (the device produced it); the RPC's returned
  * signature is preferred when present.

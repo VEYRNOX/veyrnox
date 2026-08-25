@@ -1,6 +1,7 @@
 // wallet-core/__tests__/vault-kdf-192-migration.test.js
 //
-// Argon2id at-rest cost raise: 64 MiB -> 192 MiB (m=196608 KiB).
+// Argon2id at-rest profile shift on this branch: legacy 64 MiB -> current
+// 96 MiB / t=6 (m=98304 KiB).
 //
 // RATIONALE: on web/native the seed vault is single-factor at rest against an
 // EXFILTRATED ciphertext blob (offline, GPU/ASIC-crackable). Now that Face ID /
@@ -8,11 +9,11 @@
 // memory-hard cost. Memory is the lever against parallel cracking hardware.
 //
 // These tests pin the raise WITHOUT locking anyone out of an existing vault:
-//   1. a NEW vault created with default params records m=192 MiB;
+//   1. a NEW vault created with default params records m=96 MiB;
 //   2. an OLD vault encrypted at m=64 MiB STILL decrypts (decrypt uses the blob's
 //      OWN recorded params — the M3 migration contract, unchanged);
 //   3. lazy migration: changing the password on a 64 MiB vault re-encrypts it at
-//      the current (192 MiB) params.
+//      the current (96 MiB) params.
 //
 // We forge the old-params blob with hash-wasm argon2id directly (the exact
 // construction encryptVault used at 64 MiB), since encryptVault now always emits
@@ -24,7 +25,7 @@ import { encryptVault, decryptVault, vaultNeedsRekey, KDF_PARAMS } from '../vaul
 import { webKeyStore } from '../keystore/web.js';
 import { saveVault, loadVault, clearVault } from '../evm/vaultStore.js';
 
-const NEW_MEMORY_KIB = 196608; // 192 * 1024 == 192 MiB
+const NEW_MEMORY_KIB = 98304; // 96 * 1024 == 96 MiB
 const OLD_64_PARAMS = { parallelism: 1, iterations: 3, memorySize: 65536, hashLength: 32 };
 const enc = new TextEncoder();
 
@@ -54,20 +55,20 @@ async function encryptAtParams(secret, password, params) {
 const SECRET = 'legal winner thank year wave sausage worth useful legal winner thank yellow';
 const PASSWORD = 'correct horse battery staple';
 
-describe('Argon2id raise to 192 MiB — default params', () => {
-  it('CASE 1: the current default KDF params are 192 MiB (m=196608 KiB)', () => {
+describe('Argon2id profile v2 at 96 MiB — default params', () => {
+  it('CASE 1: the current default KDF params are 96 MiB (m=98304 KiB)', () => {
     expect(KDF_PARAMS.memorySize).toBe(NEW_MEMORY_KIB);
-    expect(KDF_PARAMS.memorySize).toBe(192 * 1024);
+    expect(KDF_PARAMS.memorySize).toBe(96 * 1024);
   });
 
-  it('CASE 1: a freshly encrypted vault records the 192 MiB params and round-trips', async () => {
+  it('CASE 1: a freshly encrypted vault records the 96 MiB params and round-trips', async () => {
     const blob = await encryptVault(SECRET, PASSWORD);
     expect(blob.kdf.memorySize).toBe(NEW_MEMORY_KIB);
     expect(await decryptVault(blob, PASSWORD)).toBe(SECRET);
   });
 });
 
-describe('Argon2id raise to 192 MiB — backward compat with 64 MiB vaults', () => {
+describe('Argon2id profile v2 at 96 MiB — backward compat with 64 MiB vaults', () => {
   it('CASE 2: an OLD 64 MiB vault still decrypts after the default is raised', async () => {
     const oldBlob = await encryptAtParams(SECRET, PASSWORD, OLD_64_PARAMS);
     expect(oldBlob.kdf.memorySize).toBe(65536);
@@ -85,12 +86,12 @@ describe('Argon2id raise to 192 MiB — backward compat with 64 MiB vaults', () 
   });
 });
 
-describe('Argon2id raise to 192 MiB — lazy migration on password change', () => {
+describe('Argon2id profile v2 at 96 MiB — lazy migration on password change', () => {
   beforeEach(async () => {
     await clearVault();
   });
 
-  it('CASE 3: changing the password on a 64 MiB vault re-encrypts it at 192 MiB', async () => {
+  it('CASE 3: changing the password on a 64 MiB vault re-encrypts it at 96 MiB', async () => {
     const NEW_PW = 'a-different-much-longer-passphrase-9931';
     await saveVault(await encryptAtParams(SECRET, PASSWORD, OLD_64_PARAMS));
     expect(vaultNeedsRekey(await loadVault())).toBe(true);
@@ -103,7 +104,7 @@ describe('Argon2id raise to 192 MiB — lazy migration on password change', () =
     expect(await decryptVault(after, NEW_PW)).toBe(SECRET);
   });
 
-  it('CASE 3 (bonus): unlocking a 64 MiB vault lazily migrates it to 192 MiB', async () => {
+  it('CASE 3 (bonus): unlocking a 64 MiB vault lazily migrates it to 96 MiB', async () => {
     await saveVault(await encryptAtParams(SECRET, PASSWORD, OLD_64_PARAMS));
     expect(await webKeyStore.unlock(PASSWORD)).toBe(SECRET);
     const migrated = await loadVault();

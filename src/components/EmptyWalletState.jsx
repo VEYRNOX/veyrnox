@@ -5,6 +5,7 @@ import { Download, ArrowRightLeft, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { emit, FunnelEvent } from '@/lib/analytics';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const routes = [
   { key: 'exchange', icon: ArrowRightLeft, label: 'From an exchange', desc: 'Send from Coinbase, Binance, Kraken, or any exchange to your address.' },
@@ -17,6 +18,7 @@ const transakRoute = { key: 'card', icon: CreditCard, label: 'Buy with card', de
 // or QR of its own, it routes to Receive. Dropped rather than left as a prop
 // that implies this component renders something it does not.
 export default function EmptyWalletState({ onReceive, onBuy, transakReady = false }) {
+  const { t } = useTranslation('wallet');
   useEffect(() => {
     Promise.resolve(emit(FunnelEvent.RECEIVE_ADDRESS_VIEWED, { source: 'empty_state' })).catch(() => {});
   }, []);
@@ -30,18 +32,18 @@ export default function EmptyWalletState({ onReceive, onBuy, transakReady = fals
           <Download className="h-6 w-6 text-primary" />
         </div>
         <div className="space-y-1">
-          <p className="text-base font-semibold">Add funds to get started</p>
+          <p className="text-base font-semibold">{t('empty_state.add_funds_title', { defaultValue: 'Add funds to get started' })}</p>
           <p className="text-sm text-muted-foreground">
-            Scan or share your address to receive crypto. Your keys never leave this device.
+            {t('empty_state.add_funds_body', { defaultValue: 'Scan or share your address to receive crypto. Your keys never leave this device.' })}
           </p>
         </div>
         <div className={`grid gap-2 ${transakReady && onBuy ? 'grid-cols-2' : 'grid-cols-1'}`}>
           <Button className="w-full gap-2" onClick={onReceive}>
-            <Download className="h-4 w-4" /> Receive
+            <Download className="h-4 w-4" /> {t('nav.tab_receive')}
           </Button>
           {transakReady && onBuy && (
             <Button variant="secondary" className="w-full gap-2" onClick={onBuy}>
-              <CreditCard className="h-4 w-4" /> Buy
+              <CreditCard className="h-4 w-4" /> {t('nav.tab_buy')}
             </Button>
           )}
         </div>

@@ -241,10 +241,22 @@
       "intro": "Ylimääräinen tarkistus PIN-koodisi lisäksi arkaluontoisiin toimintoihin. Vaikka joku näkisi sinun kirjoittavan PIN-koodisi, hän ei silti voi tehdä näitä asioita ilman toista vaihetta.",
       "actions_protects_label": "Toiminnot, jotka se suojaa",
       "gated_actions": [
-        { "label": "Varojen lähettäminen", "desc": "jokainen lähetys, turvatarkistusten jälkeen" },
-        { "label": "Palautuslauseen paljastaminen", "desc": "varmuuskopion katselu tai vienti" },
-        { "label": "Hätä-PIN-koodin asettaminen", "desc": "hätälompakon luominen" },
-        { "label": "Lompakon luominen tai piilottaminen", "desc": "piilolompakon muutokset" }
+        {
+          "label": "Varojen lähettäminen",
+          "desc": "jokainen lähetys, turvatarkistusten jälkeen"
+        },
+        {
+          "label": "Palautuslauseen paljastaminen",
+          "desc": "varmuuskopion katselu tai vienti"
+        },
+        {
+          "label": "Hätä-PIN-koodin asettaminen",
+          "desc": "hätälompakon luominen"
+        },
+        {
+          "label": "Lompakon luominen tai piilottaminen",
+          "desc": "piilolompakon muutokset"
+        }
       ],
       "currently_enforcing": "Voimassa tällä hetkellä:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Viimeisimmät",
     "tab_home": "Koti",
     "tab_send": "Lähetä",
-    "tab_receive": "Vastaanota"
+    "tab_receive": "Vastaanota",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Takaisin"
@@ -343,8 +356,14 @@
     "heading": "Lähetä kryptoa",
     "subheading": "Siirrä varoja turvallisesti",
     "wallet_fallback": "Lompakko",
-    "wallet_picker": { "label": "Lähettävä lompakko", "placeholder": "Valitse lompakko" },
-    "asset_picker": { "label": "Omaisuuserä", "placeholder": "Valitse omaisuuserä" },
+    "wallet_picker": {
+      "label": "Lähettävä lompakko",
+      "placeholder": "Valitse lompakko"
+    },
+    "asset_picker": {
+      "label": "Omaisuuserä",
+      "placeholder": "Valitse omaisuuserä"
+    },
     "recipient": {
       "label": "Lähetä osoitteeseen (osoite tai nimi)",
       "placeholder": "Liitä osoite tai syötä nimi (esim. vitalik.eth)",
@@ -404,18 +423,18 @@
       "dev_ungate_body": "— lähetysesto on ohitettu valuutalle {{currency}} muuttujan VITE_DEV_UNGATE_SEND kautta (vain kehitysversio). Tämän omaisuuserän tila ei muutu (ei vieläkään live); mainnet pysyy estettynä. Vain testiverkon vahvistukseen — älä koskaan julkaise tätä versiota.",
       "locked": "Lompakkosi on lukittu. Avaa se Lompakkoasetuksissa allekirjoittaaksesi ja lähettääksesi."
     },
-    "note": { "label": "Muistiinpano (valinnainen)", "placeholder": "Mihin tämä on tarkoitettu?" },
-    "trezor": {
-      "toggle_label": "Allekirjoita Trezorilla",
-      "connected": "Laite yhdistetty",
-      "connect_button": "Yhdistä laite"
+    "note": {
+      "label": "Muistiinpano (valinnainen)",
+      "placeholder": "Mihin tämä on tarkoitettu?"
     },
     "buttons": {
       "continue": "Jatka",
       "confirm_send": "Vahvista ja lähetä",
       "back": "Takaisin"
     },
-    "verify": { "summary_label": "Olet lähettämässä" },
+    "verify": {
+      "summary_label": "Olet lähettämässä"
+    },
     "fee": {
       "automatic": "Verkkomaksu asetetaan automaattisesti valuutalle {{currency}} ({{network}}).",
       "native_fee_note": "Verkkomaksu maksetaan valuutalla {{symbol}} ({{network}}) — tarvitset {{symbol}}ia verkkomaksun kattamiseksi, vaikka lähetätkin {{token}}."
@@ -708,5 +727,46 @@
     "allocation": "Jakauma",
     "holdings": "Omistukset",
     "noHoldings": "Ei vielä omistuksia."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

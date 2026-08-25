@@ -3,6 +3,8 @@
 // Transak widget-URL proxy. The client sends (asset, network, address);
 // the edge authenticates with Transak's partner API (secret never leaves
 // the server) and returns a one-time widget URL with a sessionId.
+
+import { enforceRateLimit as sharedEnforceRateLimit, clientIpOf } from '../_lib/rate-limit.js';
 //
 // Flow:
 //   1. Refresh Partner Access Token (cached ~6 days via Cache API)
@@ -71,55 +73,13 @@ function upstreamErr(stage, res, text) {
 
 // Per-IP fixed-window cap on session creation.
 //
-// WHAT THIS IS: every POST here spends a real upstream
-// `POST /api/v2/auth/session` against the Veyrnox Transak partner account. The
-// endpoint is unauthenticated by design and had no cap of any kind, so a single
-// caller could burn partner quota at request rate. This bounds that.
-//
-// WHAT THIS IS NOT — do not upgrade the claim: `caches.default` is per-colo and
-// read-modify-write here is NOT atomic, so concurrent requests in the same
-// window can undercount, and an attacker spread across colos or IPs gets a
-// multiple of the limit. It raises the cost of casual and single-source abuse;
-// it is not a guarantee. The durable control is a Cloudflare Rate Limiting rule
-// at the zone level, which this does not replace.
+// Delegated to the shared limiter in functions/api/_lib/rate-limit.js so that
+// bucket semantics (fail-closed on cache error, unknown-IP handling, non-atomic
+// cross-colo caveats) stay identical to the other unauthenticated vendor-key
+// proxies. Prior local reimplementation drifted (10/60s hardcoded, separate
+// cache-key format) — consolidated 2026-08-16.
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_S = 60;
-
-async function enforceRateLimit(clientIp) {
-  // An absent client IP must not share one bucket with every other unknown
-  // caller — that would let one abuser exhaust the quota for all of them.
-  // Unknown IP gets no allowance at all rather than a shared one (I4).
-  if (!clientIp || clientIp === '0.0.0.0') err(429, 'Too many requests');
-
-  const window = Math.floor(Date.now() / 1000 / RATE_LIMIT_WINDOW_S);
-  const key = new Request(
-    `https://edge-cache.internal/buy-session-rl/${encodeURIComponent(clientIp)}/${window}`,
-  );
-  const cache = caches.default;
-
-  let count = 0;
-  try {
-    const hit = await cache.match(key);
-    if (hit) count = Number(await hit.text()) || 0;
-  } catch {
-    // FAIL CLOSED. If the limiter cannot decide, do NOT proceed to spend partner
-    // quota. Previously this failed open on the theory that a cache blip should
-    // not break Buy; but the 2026-08 audit rules that a cache outage silently
-    // exposing the paid vendor account is the worse failure, and matches the
-    // "fail closed on limiter error" rule now applied uniformly across
-    // functions/api/_lib/rate-limit.js. Buy briefly returning 429 during a
-    // Cache API incident is preferable to unmetered spend.
-    err(429, 'Too many requests');
-  }
-
-  if (count >= RATE_LIMIT_MAX) err(429, 'Too many requests');
-
-  try {
-    await cache.put(key, new Response(String(count + 1), {
-      headers: { 'Cache-Control': `max-age=${RATE_LIMIT_WINDOW_S}` },
-    }));
-  } catch { /* best-effort accounting */ }
-}
 
 async function getPartnerToken(env) {
   const environment = env.TRANSAK_ENVIRONMENT || 'STAGING';
@@ -188,15 +148,20 @@ export async function onRequestPost(context) {
 
   const product = productsAvailed === 'SELL' ? 'SELL' : 'BUY';
 
-  // Codex P3 2026-08-15: identical rationale to rate-limit.js clientIpOf —
-  // dropped the X-Forwarded-For fallback so a client cannot forge a rate-
-  // limit bucket by setting XFF. Missing CF-Connecting-IP now falls into
-  // the shared 'unknown' bucket, which is strictly more restrictive than
-  // an attacker-chosen private bucket.
-  const clientIp = request.headers.get('CF-Connecting-IP') || '';
+  // clientIpOf only trusts CF-Connecting-IP (spoofable XFF fallback removed
+  // by Codex P3 2026-08-15). Missing IP degrades to the shared "unknown"
+  // bucket, strictly more restrictive than attacker-chosen buckets.
+  const clientIp = clientIpOf(request);
 
   // Before any upstream call — the whole point is to not spend partner quota.
-  await enforceRateLimit(clientIp);
+  // Shared limiter throws an err-shaped object ({status, expose}) that the
+  // middleware surfaces as { error: 'Too many requests' }.
+  await sharedEnforceRateLimit({
+    bucket: 'buy-session',
+    clientIp,
+    max: RATE_LIMIT_MAX,
+    windowSeconds: RATE_LIMIT_WINDOW_S,
+  });
 
   const widgetParams = {
     apiKey,

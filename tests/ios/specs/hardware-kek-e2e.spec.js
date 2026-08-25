@@ -15,6 +15,15 @@
 // the evidence (no-fake-security / verify-don't-assert).
 import appHelper from '../helpers/appHelper.js';
 import walletHelper from '../helpers/walletHelper.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const pluginSource = readFileSync(
+  join(here, '../../../ios/App/App/HardwareKekPlugin.m'),
+  'utf8',
+);
 
 describe('Hardware KEK — iOS Secure Enclave', () => {
   before(async () => {
@@ -53,15 +62,9 @@ describe('Hardware KEK — iOS Secure Enclave', () => {
     expect(badge === null || typeof badge === 'string').toBe(true);
   });
 
-  it('should document the SE ECIES design anchor (H-NEW-D — CLOSED at native layer)', async () => {
-    console.log(`
-📐 SE-ECIES design (confirmed by 2026-07-01 internal audit):
-  - kSecAttrTokenIDSecureEnclave present at HardwareKekPlugin.m:78 (H-NEW-D CLOSED)
-  - KEK = HKDF(H || C): H = SE ECIES factor, C = Argon2id(PIN)
-  - Both factors required; missing either throws (fail-closed, I6)
-This spec cannot re-verify native ObjC — it is here as the traceability anchor
-for the runtime evidence the other tests in this file drive.`);
-    expect(true).toBe(true);
+  it('#2022 anchors the native SE design in shipped source', async () => {
+    expect(pluginSource).toContain('kSecAttrTokenIDSecureEnclave');
+    expect(pluginSource).toContain('kSecAccessControlBiometryCurrentSet');
   });
 
   it('should print the exact Mac-side os_log capture command for iOS-F9', async () => {

@@ -84,10 +84,24 @@ describe('KekEnrollmentGate — mode prop', () => {
     );
 
     expect(screen.getByTestId(GATE_TESTID)).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: /wallet setup progress/i })).toHaveAttribute('aria-valuenow', '100');
     fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
     expect(onSkip).toHaveBeenCalledTimes(1);
     expect(sessionStorage.getItem(SKIP_WARN_KEY)).toBe('1');
+  });
+
+  it('2b. mode="auto" still renders the wallet-setup progress bar (unconditional at the KEK step)', () => {
+    render(
+      <KekEnrollmentGate
+        origin="fresh"
+        mode="auto"
+        onEnroll={vi.fn(async () => ({ ok: true }))}
+        onSkip={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('progressbar', { name: /wallet setup progress/i })).toHaveAttribute('aria-valuenow', '100');
   });
 
   it('3. mode="onboarding" — warning renders on first skip; hidden on remount while session flag is set', () => {

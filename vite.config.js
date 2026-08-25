@@ -201,13 +201,6 @@ export default defineConfig(({ command }) => {
         // perf-score/FCP budget failures across /, /plans, /settings, /receive,
         // /calculator). Rollup's default automatic chunking already keeps
         // dynamic-import-only code out of the eager graph without this rule.
-        // The hardware-wallet libs (@ledgerhq/*) are OPTIONAL and not in
-        // package.json. Mark them external so a missing dep can't hard-fail the
-        // production build (rollup otherwise errors on the unresolved import).
-        // HardwareWalletPage.jsx imports them dynamically and guarded, so when
-        // they're absent the dynamic import rejects and the page degrades
-        // gracefully. Install the deps + remove this entry to bundle Ledger support.
-        external: [/^@ledgerhq\//],
       },
     },
   };

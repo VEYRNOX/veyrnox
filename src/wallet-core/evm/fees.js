@@ -97,8 +97,8 @@ export function buildEvmTiers({ baseFeePerGasWei, suggestedTipWei, gasLimit, min
   }
   // Codex P1 2026-08-15: clamp the RPC-suggested tip at MAX_TIP_WEI before
   // scaling. A hostile RPC returning e.g. 10_000 gwei would otherwise flow
-  // through unchanged (the Trezor branch clamps; the software branch did
-  // not). Also reject a negative BigInt (BigInt(-1) is legal), which no
+  // through unchanged (a hardware-signer branch clamped; the software branch
+  // did not). Also reject a negative BigInt (BigInt(-1) is legal), which no
   // real RPC returns but a stub / test / injected middleware could.
   const suggestedRaw = BigInt(suggestedTipWei);
   const suggested = suggestedRaw < 0n
@@ -207,13 +207,29 @@ export function evmFeeOverrides(fee) {
 export async function estimateEvmFeeTiers({ networkKey, from, to, value, data, gasLimit }) {
   const provider = getProvider(networkKey);
   const info = getNetworkInfo(networkKey);
+  // 2026-08-16 round-7: `data` (non-empty calldata) means a contract call —
+  // ALWAYS estimate live, even when the caller provides a gasLimit hint. The
+  // prior short-circuit accepted a hard-coded 65000n from the UI and never
+  // called estimateGas, so a token whose real cost exceeded the hint would
+  // out-of-gas at signing. The hint is now respected ONLY for pure ETH
+  // transfers (no calldata), where 21000 is the exact protocol constant.
+  const hasContractInteraction = data != null && data !== '0x';
   const [block, feeData, est] = await Promise.all([
     provider.getBlock('latest'),
     provider.getFeeData(),
-    gasLimit != null
+    (!hasContractInteraction && gasLimit != null)
       ? Promise.resolve(BigInt(gasLimit))
-      : to
-        ? provider.estimateGas({ from, to, value, data }).catch(() => 21000n)
+      // Also estimate for contract DEPLOYMENTS (to == null + non-empty data).
+      // Previous silent .catch(() => 21000n) returned a pure-transfer gas
+      // limit on ANY estimation error, leading to out-of-gas revert once
+      // signed. A live estimate failure is a signal we cannot safely default.
+      : (to || hasContractInteraction)
+        ? provider.estimateGas({ from, to, value, data }).catch((cause) => {
+            throw Object.assign(
+              new Error('Gas estimation failed, cannot safely sign contract call'),
+              { cause, code: 'GAS_ESTIMATION_FAILED' },
+            );
+          })
         : Promise.resolve(21000n),
   ]);
   // baseFeePerGas is null on pre-1559 chains; fall back to gasPrice as the floor.
