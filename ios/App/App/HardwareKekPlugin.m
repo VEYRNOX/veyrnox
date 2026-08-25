@@ -90,7 +90,7 @@ static os_log_t VeyrnoxKekLog(void) {
     // state. Match the Android HardwareKekPlugin posture: BLOCK tier
     // refuses before biometric prompt fires.
     if ([RaspIntegrityPlugin earlyCheck]) {
-        [call reject:@"RASP_BLOCK" :@"Device integrity check failed — hardware key access refused (I4)" :nil :nil];
+        [call reject:@"Device integrity check failed — hardware key access refused (I4)" :@"RASP_BLOCK" :nil :nil];
         return;
     }
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -126,7 +126,7 @@ static os_log_t VeyrnoxKekLog(void) {
                     @"create a second key under the same tag",
                     (int)preSeSt, (int)preEncSt];
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: PRE-CLEAR FAILED — %{public}s", msg.UTF8String);
-                [call reject:@"STALE_CLEAR_FAILED" :msg :nil :nil];
+                [call reject:msg :@"STALE_CLEAR_FAILED" :nil :nil];
                 return;
             }
 
@@ -138,7 +138,7 @@ static os_log_t VeyrnoxKekLog(void) {
                 kSecAccessControlPrivateKeyUsage | kSecAccessControlBiometryCurrentSet,
                 &aclErr);
             if (!access) {
-                [call reject:@"ACL_FAILED" :@"Failed to create Secure Enclave access control" :nil :nil];
+                [call reject:@"Failed to create Secure Enclave access control" :@"ACL_FAILED" :nil :nil];
                 if (aclErr) CFRelease(aclErr);
                 return;
             }
@@ -161,7 +161,7 @@ static os_log_t VeyrnoxKekLog(void) {
             if (!sePriv) {
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: SE key generation FAILED: %{public}s",
                     genErr ? ((__bridge NSError *)genErr).localizedDescription.UTF8String : "(no error object)");
-                [call reject:@"SE_KEYGEN_FAILED" :@"Secure Enclave key generation failed (device may lack SE or biometrics)" :nil :nil];
+                [call reject:@"Secure Enclave key generation failed (device may lack SE or biometrics)" :@"SE_KEYGEN_FAILED" :nil :nil];
                 if (genErr) CFRelease(genErr);
                 return;
             }
@@ -170,7 +170,7 @@ static os_log_t VeyrnoxKekLog(void) {
             SecKeyRef sePub = SecKeyCopyPublicKey(sePriv);
             CFRelease(sePriv);  // private key stays in the enclave, retrieved by tag on demand
             if (!sePub) {
-                [call reject:@"SE_PUBKEY_FAILED" :@"Failed to derive Secure Enclave public key" :nil :nil];
+                [call reject:@"Failed to derive Secure Enclave public key" :@"SE_PUBKEY_FAILED" :nil :nil];
                 return;
             }
 
@@ -178,7 +178,7 @@ static os_log_t VeyrnoxKekLog(void) {
             uint8_t hBytes[32];
             if (SecRandomCopyBytes(kSecRandomDefault, sizeof(hBytes), hBytes) != errSecSuccess) {
                 CFRelease(sePub);
-                [call reject:@"RANDOM_FAILED" :@"Secure random generation failed" :nil :nil];
+                [call reject:@"Secure random generation failed" :@"RANDOM_FAILED" :nil :nil];
                 return;
             }
             NSData *hData = [NSData dataWithBytes:hBytes length:sizeof(hBytes)];
@@ -187,7 +187,7 @@ static os_log_t VeyrnoxKekLog(void) {
             if (!SecKeyIsAlgorithmSupported(sePub, kSecKeyOperationTypeEncrypt, VEYRNOX_ECIES_ALGO)) {
                 memset(hBytes, 0, sizeof(hBytes));
                 CFRelease(sePub);
-                [call reject:@"ALGO_UNSUPPORTED" :@"ECIES algorithm not supported on this device" :nil :nil];
+                [call reject:@"ECIES algorithm not supported on this device" :@"ALGO_UNSUPPORTED" :nil :nil];
                 return;
             }
             CFErrorRef encErr = NULL;
@@ -195,7 +195,7 @@ static os_log_t VeyrnoxKekLog(void) {
             memset(hBytes, 0, sizeof(hBytes));  // zero the plaintext H copy
             CFRelease(sePub);
             if (!ct) {
-                [call reject:@"ECIES_ENCRYPT_FAILED" :@"ECIES encryption of hardware factor failed" :nil :nil];
+                [call reject:@"ECIES encryption of hardware factor failed" :@"ECIES_ENCRYPT_FAILED" :nil :nil];
                 if (encErr) CFRelease(encErr);
                 return;
             }
@@ -211,14 +211,14 @@ static os_log_t VeyrnoxKekLog(void) {
             if (storeSt != errSecSuccess) {
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: KEYCHAIN_STORE_FAILED (OSStatus=%d) — rolling back SE key", (int)storeSt);
                 [self deleteSecureEnclaveKey];
-                [call reject:@"KEYCHAIN_STORE_FAILED" :[NSString stringWithFormat:@"Failed to persist encrypted hardware factor (OSStatus=%d). SE key rolled back.", (int)storeSt] :nil :nil];
+                [call reject:[NSString stringWithFormat:@"Failed to persist encrypted hardware factor (OSStatus=%d). SE key rolled back.", (int)storeSt] :@"KEYCHAIN_STORE_FAILED" :nil :nil];
                 return;
             }
             os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] enroll: SUCCESS — ciphertext stored, SE privkey retained in enclave");
 
             [call resolve:@{@"keyTier": @"SecureEnclave"}];
         } @catch (NSException *exception) {
-            [call reject:@"ENROLL_EXCEPTION" :[NSString stringWithFormat:@"Enroll failed: %@", exception.reason] :nil :nil];
+            [call reject:[NSString stringWithFormat:@"Enroll failed: %@", exception.reason] :@"ENROLL_EXCEPTION" :nil :nil];
         }
     });
 }
@@ -260,7 +260,7 @@ static os_log_t VeyrnoxKekLog(void) {
         NSString *msg = [NSString stringWithFormat:
             @"Failed to fully remove hardware credential (SE key OSStatus %d, ciphertext OSStatus %d)",
             (int)seSt, (int)encSt];
-        [call reject:@"CLEAR_FAILED" :msg :nil :nil];
+        [call reject:msg :@"CLEAR_FAILED" :nil :nil];
         return;
     }
     [call resolve:@{}];
@@ -277,7 +277,7 @@ static os_log_t VeyrnoxKekLog(void) {
     // context. earlyCheck() runs the same dyld scan + CS_VALID + P_TRACED +
     // isCaptured probes AppDelegate uses at launch — cheap and BLOCK-tier.
     if ([RaspIntegrityPlugin earlyCheck]) {
-        [call reject:@"RASP_BLOCK" :@"Device integrity check failed — hardware key access refused (I4)" :nil :nil];
+        [call reject:@"Device integrity check failed — hardware key access refused (I4)" :@"RASP_BLOCK" :nil :nil];
         return;
     }
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -285,7 +285,7 @@ static os_log_t VeyrnoxKekLog(void) {
             NSData *encH = [self loadKeychainItem:KEY_ENC_H];
             if (!encH || encH.length == 0) {
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: NOT ENROLLED (no ciphertext)");
-                [call reject:@"NOT_ENROLLED" :@"No hardware key enrolled — call enroll() first" :nil :nil];
+                [call reject:@"No hardware key enrolled — call enroll() first" :@"NOT_ENROLLED" :nil :nil];
                 return;
             }
             os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: loaded ciphertext %lu bytes, retrieving SE key…", (unsigned long)encH.length);
@@ -310,7 +310,28 @@ static os_log_t VeyrnoxKekLog(void) {
                 [context invalidate];
                 context = nil;
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: SE key MISSING (OSStatus %d)", (int)st);
-                [call reject:@"SE_KEY_MISSING" :@"Secure Enclave key not found — re-enrollment required" :nil :nil];
+                // L-8 (weekly audit 2026-08-25): distinguish PERMANENT invalidation from a
+                // transient failure, matching the Android sibling's
+                // KeyPermanentlyInvalidatedException → KEK_KEY_PERMANENTLY_INVALIDATED route
+                // (HardwareKekPlugin.kt:371-382). We got here having ALREADY loaded a
+                // non-empty ciphertext, so the vault IS KEK-wrapped; if the SE private key
+                // is no longer in the keychain, H is unrecoverable and seed restore is the
+                // ONLY recovery. Telling that user "hardware unavailable" sends them into a
+                // device-credential fallback prompt against a key that does not exist.
+                //
+                // NARROW ON PURPOSE — errSecItemNotFound ONLY. errSecInteractionNotAllowed
+                // (device locked, our items are ThisDeviceOnly/passcode-gated),
+                // errSecAuthFailed (biometric mismatch) and errSecUserCanceled are all
+                // TRANSIENT and must keep the generic code; claiming "restore from seed" on
+                // a locked device would be a false, alarming instruction. Anything not
+                // provably permanent stays SE_KEY_MISSING → KEK_NO_HARDWARE_FACTOR, which is
+                // wipe-exempt either way (hardware.js), so this is a UX-routing fix that
+                // cannot make the wrong-PIN counter worse.
+                if (st == errSecItemNotFound) {
+                    [call reject:@"KEK_KEY_PERMANENTLY_INVALIDATED: Hardware key invalidated — biometric enrollment changed" :@"KEK_KEY_PERMANENTLY_INVALIDATED" :nil :nil];
+                    return;
+                }
+                [call reject:@"Secure Enclave key not found — re-enrollment required" :@"SE_KEY_MISSING" :nil :nil];
                 return;
             }
             os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: SE key retrieved, decrypting (Face ID prompt now)…");
@@ -319,7 +340,7 @@ static os_log_t VeyrnoxKekLog(void) {
                 CFRelease(sePriv);
                 [context invalidate];
                 context = nil;
-                [call reject:@"ALGO_UNSUPPORTED" :@"ECIES decrypt not supported on this device" :nil :nil];
+                [call reject:@"ECIES decrypt not supported on this device" :@"ALGO_UNSUPPORTED" :nil :nil];
                 return;
             }
 
@@ -334,12 +355,32 @@ static os_log_t VeyrnoxKekLog(void) {
             if (!pt) {
                 // Biometric cancel/failure or key-invalidated → fail closed.
                 NSString *msg = @"Face ID authentication failed or was cancelled";
+                // L-8: the SE ACL is .biometryCurrentSet, so an enrollment change destroys
+                // the key. Which call SURFACES that is not device-verified here — it may be
+                // the SecItemCopyMatching above (handled there) or this decrypt, depending
+                // on iOS version. Handle it in both places on the SAME narrow signal:
+                // errSecItemNotFound (-25300) means the enclave has no such key. A cancel is
+                // errSecUserCanceled (-128) and a biometric mismatch is errSecAuthFailed
+                // (-25293); neither can be confused with this, so the distinction cannot
+                // mislabel an ordinary failed unlock as "your key is gone".
+                BOOL permanentlyInvalidated = NO;
                 if (decErr) {
                     NSError *e = (__bridge NSError *)decErr;
                     if (e.localizedDescription) msg = e.localizedDescription;
+                    NSError *underlying = e.userInfo[NSUnderlyingErrorKey];
+                    permanentlyInvalidated =
+                        ([e.domain isEqualToString:NSOSStatusErrorDomain] && e.code == errSecItemNotFound)
+                        || (underlying != nil
+                            && [underlying.domain isEqualToString:NSOSStatusErrorDomain]
+                            && underlying.code == errSecItemNotFound);
                 }
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: DECRYPT FAILED — %{public}s", msg.UTF8String);
-                [call reject:@"DECRYPT_FAILED" :msg :nil :nil];
+                if (permanentlyInvalidated) {
+                    [call reject:@"KEK_KEY_PERMANENTLY_INVALIDATED: Hardware key invalidated — biometric enrollment changed" :@"KEK_KEY_PERMANENTLY_INVALIDATED" :nil :nil];
+                    if (decErr) CFRelease(decErr);
+                    return;
+                }
+                [call reject:msg :@"DECRYPT_FAILED" :nil :nil];
                 if (decErr) CFRelease(decErr);
                 return;
             }
@@ -378,7 +419,7 @@ static os_log_t VeyrnoxKekLog(void) {
 
             [call resolve:@{@"h": hB64}];
         } @catch (NSException *exception) {
-            [call reject:@"GETHF_EXCEPTION" :[NSString stringWithFormat:@"getHardwareFactor failed: %@", exception.reason] :nil :nil];
+            [call reject:[NSString stringWithFormat:@"getHardwareFactor failed: %@", exception.reason] :@"GETHF_EXCEPTION" :nil :nil];
         }
     });
 }
