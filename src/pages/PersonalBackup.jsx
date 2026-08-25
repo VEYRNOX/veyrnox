@@ -31,6 +31,7 @@ import BackButton from "@/components/BackButton";
 import { Link } from "react-router";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
+import { getFreshLocalRaspArtifact } from "@/lib/getFreshLocalRaspArtifact";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
 import PinPad from "@/components/security/PinPad";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -126,6 +127,14 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
   const runExport = async () => {
     const gate = sensitiveGate(raspArtifact, 'export');
     if (gate.blocked) { toast.error(gate.sentence || 'Backup export is disabled on this device right now.'); return; }
+    // L-6 fix (audit 2026-08-25): raspArtifact above is a mount-time sample, up
+    // to ~60s stale. Probe FRESH at the confirm step — export is a
+    // "highest-danger moment" (degrade.js) — mirroring the sign hot-path
+    // (SendCrypto.jsx getFreshRaspArtifact) but on-device-only, same as the
+    // mount-time hook above (local seed material — see getFreshLocalRaspArtifact.js).
+    const freshArtifact = await getFreshLocalRaspArtifact();
+    const freshGate = sensitiveGate(freshArtifact, 'export');
+    if (freshGate.blocked) { toast.error(freshGate.sentence || 'Backup export is disabled on this device right now.'); return; }
     setBusy(true);
     try {
       const env = await createBackup(password, pin);
@@ -541,6 +550,16 @@ function RecoveryRestorePanel({ restoreFromRecoveryShares, onFinish }) {
       toast.error(gate.sentence || "Recovery is disabled on this device right now.");
       return;
     }
+    // L-6 fix (audit 2026-08-25): fresh-at-confirm probe (see ExportTab.runExport
+    // above for the full rationale). This panel reuses the SAME local
+    // seed-material RASP surface as export (comment above), so it gets the
+    // same on-device-only treatment via getFreshLocalRaspArtifact.js.
+    const freshArtifact = await getFreshLocalRaspArtifact();
+    const freshGate = sensitiveGate(freshArtifact, "export");
+    if (freshGate.blocked) {
+      toast.error(freshGate.sentence || "Recovery is disabled on this device right now.");
+      return;
+    }
     setBusy(true);
     // Hoisted so finally reaches on any throw from unwrap or restore — same
     // discipline as export's runSplit (Codex P2, 2026-08-09).
@@ -754,6 +773,15 @@ function RecoveryShareTab({
     const gate = sensitiveGate(raspArtifact, "export");
     if (gate.blocked) {
       toast.error(gate.sentence || "Recovery share export is disabled on this device right now.");
+      return;
+    }
+    // L-6 fix (audit 2026-08-25): fresh-at-confirm probe (see ExportTab.runExport
+    // above for the full rationale). Same local seed-material, on-device-only
+    // treatment as ExportTab (owner decision 2026-07-16) via getFreshLocalRaspArtifact.js.
+    const freshArtifact = await getFreshLocalRaspArtifact();
+    const freshGate = sensitiveGate(freshArtifact, "export");
+    if (freshGate.blocked) {
+      toast.error(freshGate.sentence || "Recovery share export is disabled on this device right now.");
       return;
     }
     setBusy(true);
