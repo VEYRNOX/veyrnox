@@ -59,7 +59,13 @@
 // only encrypts, stores, and decrypts a decoy mnemonic locally. It cannot move
 // funds and adds no mainnet surface.
 
-import { encryptVault, decryptVault } from './vault.js';
+import { decryptVault } from './vault.js';
+// H-2 (weekly audit 2026-08-25): a personalised decoy must record the SAME
+// Argon2id profile as the chaff already in the store — otherwise setting a duress
+// PIN after an at-rest profile change leaves 'secondary' at the new params beside
+// a 'tertiary' panic chaff at the old ones, which announces that duress was
+// deliberately configured. See deniabilityKdfProfile.js.
+import { encryptDeniabilityVault } from './deniabilityKdfProfile.js';
 import { makeContainer, serializeContainer, newWalletId } from './multiVault.js';
 
 // Same database + store as the primary vault (see vaultStore.js). The decoy
@@ -130,7 +136,7 @@ export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswo
     [{ id: newWalletId(), mnemonic: decoyMnemonic }],
     actionPasswordRecord ?? undefined,
   );
-  const blob = await encryptVault(serializeContainer(container), duressPassword);
+  const blob = await encryptDeniabilityVault(serializeContainer(container), duressPassword);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -164,7 +170,10 @@ export async function tryDuressUnlock(password) {
     // Constant-time guard: run one full Argon2id KDF pass so the absence of a
     // duress vault is timing-indistinguishable from a wrong-password miss.
     // Mirrors stealth.js:tryRevealHidden's dummy decryptVault on no-salt path.
-    await encryptVault('__duress_timing_chaff__', password).catch(() => {});
+    // H-2: at the DEVICE's recorded era, so the pad costs what decrypting a real
+    // decoy on this device costs — at the current default it would under-spend on
+    // an installed-base device still holding v1 blobs.
+    await encryptDeniabilityVault('__duress_timing_chaff__', password).catch(() => {});
     return null;
   }
   try {
