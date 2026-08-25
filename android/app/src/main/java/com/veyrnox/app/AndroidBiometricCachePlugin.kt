@@ -212,13 +212,37 @@ class AndroidBiometricCachePlugin : Plugin() {
     // KeyPermanentlyInvalidatedException → we clear state and the JS layer
     // falls through to the slow path.
     //
-    // The alias is BIOMETRIC-REQUIRED, so both encrypt AND decrypt need a
-    // fresh biometric match. The JS layer fires the OS biometric prompt via
-    // the shared retrieveUnlockSecret / authenticateOrThrow path BEFORE
-    // calling in here; the alias key is created with a validity window
-    // (setUserAuthenticationValidityDurationSeconds — 30 s) so the
-    // Cipher.init inside encrypt/decrypt succeeds within that window
-    // without a second CryptoObject-bound BiometricPrompt.
+    // L-12 correction (2026-08-25): the paragraph this replaces asserted
+    // the JS layer always fires a Veyrnox prompt immediately before calling
+    // in here. It does not, and the real gate is different — read on.
+    //
+    // The alias is BIOMETRIC-REQUIRED with a 30-second validity window
+    // (setUserAuthenticationParameters(30, AUTH_BIOMETRIC_STRONG), below),
+    // so Cipher.init in encrypt/decrypt is satisfied by whatever
+    // BIOMETRIC_STRONG authentication last occurred DEVICE-WIDE within the
+    // last 30 s — the lockscreen fingerprint, an unrelated app — not
+    // necessarily a prompt Veyrnox fired. Outside that window Cipher.init
+    // throws UserNotAuthenticatedException, caught below and mapped to a
+    // silent wrappedDek=null miss (JS falls through to the slow PIN path).
+    //
+    // Call ordering is also the reverse of what the old comment claimed:
+    // getFastpathDek() (read/decrypt) is called from the JS layer BEFORE
+    // it requests a hardware factor for this unlock attempt at all — see
+    // native.js unlockBiometricOnly(), which reads the cache slot first so
+    // an empty/miss slot surfaces without any biometric prompt. So on a
+    // cold call there is nothing in THIS call chain that could have primed
+    // the 30 s window; it either rides a recent device-wide auth or misses.
+    // putFastpathDek() (write/encrypt) is the one call that reliably lands
+    // inside the window — it runs from populateFastpathBestEffort() right
+    // after a full slow-path unlock, using the H that unlock's own
+    // getHardwareFactor() prompt just produced.
+    //
+    // No secret is disclosed by a stale-but-successful decrypt here: the
+    // wrapped DEK is useless without H (KEK = HKDF(H ‖ C)), and the real
+    // hardware-gated prompt still fires later in the JS flow for H itself.
+    // The consequence is a hit-rate one, not a confidentiality one — see
+    // docs/kek-fast-path-design.md for the tradeoff this buys and its
+    // (unmeasured, statically-reasoned) cost.
     //
     // ponytail: 30 s validity window trades one class of freshness for less
     // Kotlin plumbing. Upgrade path is CryptoObject + per-use auth
