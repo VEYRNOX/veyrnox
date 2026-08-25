@@ -1729,14 +1729,18 @@ export default function WalletEntry() {
     // not see it before understanding what it enables. On a fresh install
     // isFastpathEnabled() defaults true; the disclosure marker is what gates
     // real activation.
-    const fastpathButtonVisible = (
-      Capacitor.getPlatform?.() === 'android'
-      && isFastpathEnabled()
-      && hasSeenFastpathDisclosure()
-      && bioStatus?.available === true
-      && !isDeniabilityOrDemoActive()
-      && !isPasskeyRegistered()
-    );
+    // TEMPORARILY HIDDEN (owner report 2026-08-25): the fast-path button
+    // appeared alongside the OLD Biometric Unlock button (cached-password +
+    // biometric-gated read), creating a duplicate "Unlock with fingerprint"
+    // where the top errors on cache-miss (until a slow-path unlock warms
+    // the wrapped-DEK alias) and the bottom always works. Owner ruled: hide
+    // the fast-path affordance until either (a) merge them so tap → try
+    // fast-path, transparently fall back to the biometric-cache path on
+    // miss, or (b) probe hasFastpathDek() before render so this button only
+    // shows when it will succeed. Fast-path CODE stays wired end-to-end
+    // (keyStore.unlockBiometricOnly + WalletProvider.unlockBiometricOnly +
+    // populate hook); this only drops the button.
+    const fastpathButtonVisible = false;
     const fastpathLabel = bioStatus?.label ? `Unlock with ${bioStatus.label}` : 'Unlock with biometric';
     const handleFastpathUnlock = async () => {
       setError(""); setBusy(true);
