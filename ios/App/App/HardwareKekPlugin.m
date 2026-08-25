@@ -309,6 +309,11 @@ static os_log_t VeyrnoxKekLog(void) {
                 if (sePriv) CFRelease(sePriv);
                 [context invalidate];
                 context = nil;
+                if (st == errSecUserCanceled) {
+                    os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: USER CANCELLED (OSStatus %d)", (int)st);
+                    [call reject:@"KEK_USER_CANCELLED" :@"User cancelled" :nil :nil];
+                    return;
+                }
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: SE key MISSING (OSStatus %d)", (int)st);
                 // L-8 (weekly audit 2026-08-25): distinguish PERMANENT invalidation from a
                 // transient failure, matching the Android sibling's
