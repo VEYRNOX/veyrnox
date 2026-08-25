@@ -1,18 +1,34 @@
-# Scheduled task definitions (mirror)
+# Scheduled task definitions
 
-These are **mirrors**, kept here for version control and review. They are not
-what runs.
+## ⚠️ Two shapes live here, and only one of them is still a mirror
 
-## Which copy is live
+Most tasks are now split into a **loader** and a **runbook**. Which shape a task
+uses decides whether the file in this repo is decorative or load-bearing:
 
-The Claude Code harness reads scheduled tasks from the user's home directory:
+| Shape | Live copy | This repo holds | Editing here… |
+|---|---|---|---|
+| **Loader + runbook** (10 of 12 task directories) | `~/.claude/…/SKILL.md` is a ~1 KB loader that resolves the runbook from `origin/main` | `SKILL.md` = **the executing runbook**; `LOADER.md` = mirror of the home loader | `SKILL.md` **changes what runs**, on the next run, with no copy-back. `LOADER.md` changes nothing. |
+| **Full runbook in home** (`veyrnox-brace-expansion-watch`, `veyrnox-extract-zip-watch` — both retired) | `~/.claude/…/SKILL.md` | `SKILL.md` = a mirror | changes nothing until copied back |
 
-```
-~/.claude/scheduled-tasks/<task-name>/SKILL.md
-```
+For a loader-shaped task the "this repo is a mirror" framing is exactly
+backwards: `.claude/scheduled-tasks/<task>/SKILL.md` on `origin/main` IS what
+executes, which is why the runbooks now go through PRs. The loader is the only
+part still living solely in `~/.claude`, and `LOADER.md` gives its content
+history too.
 
-That is the **live** copy. Editing a file in this repo changes nothing about
-what the scheduled task does until it is copied back:
+**`LOADER.md` is mirrored for `veyrnox-elliptic-upstream-watch` only so far.**
+The other nine loaders are not in the repo; read their absence as "not
+mirrored", not as "no loader".
+
+A directory here is not evidence a task is registered — `appium-shellquote` and
+`brace-expansion` are retired but still have directories, here and in
+`~/.claude`, which is exactly how a retired watcher keeps looking live.
+`list_scheduled_tasks` is the authority.
+
+## Copy-back applies to the full-runbook shape only
+
+For the two full-runbook tasks (and for any `LOADER.md` change), the live copy
+is in the home directory and this repo is downstream of it:
 
 ```powershell
 # repo -> live

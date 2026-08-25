@@ -95,6 +95,24 @@ requires a package that does not exist yet.
    only the paths they actually name. Do not report a clean result for a path you did not
    examine. Re-pointing the signals is a follow-up for the owner, not something to
    improvise mid-run.
+
+   **If the command prints NOTHING, `elliptic` is absent from the tree entirely.** That is
+   a distinct outcome from "the chain changed", and it has its own instruction, because it
+   is the one case where the tempting conclusion is also the dangerous one:
+
+   - Say the lockfile at `origin/main` no longer contains any requirer of `elliptic`, and
+     give the SHA you read.
+   - Do NOT report the residual as cleared, and do NOT retire anything. Retirement belongs
+     to the daily dep-audit's rule, which requires `npm audit` on a resolved tree — see
+     the "Retired residuals" section of
+     `.claude/scheduled-tasks/veyrnox-daily-dep-audit/SKILL.md`, where `shell-quote` was
+     retired on a fired trigger in 2026-07 and reinstated the same day. **An absent
+     lockfile entry is a strong hint, not that evidence.**
+   - Skip signals 1–4 rather than running them: with no chain in the tree, "no upstream
+     movement" describes nothing. Steps 1–4 answer whether upstream moved; they cannot
+     tell you whether the residual still exists here.
+   - Hand it to the owner as "candidate for retirement, needs an `npm audit` on the
+     resolved tree", not as a result.
 1. `npm view elliptic version` — and confirm it is the newest published, not just the
    `latest` tag: `npm view elliptic versions --json | tail -5`.  (SIGNAL 1)
 2. `npm view secp256k1@latest version` and `npm view secp256k1@latest dependencies.elliptic`.  (SIGNAL 2a)
