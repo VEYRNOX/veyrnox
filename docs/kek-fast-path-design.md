@@ -136,6 +136,56 @@ The cache slot MUST be cleared on:
 - Any KEK error other than `DEK_CACHE_UNWRAP_FAILED` — treat as tamper,
   clear + full path.
 
+### Android 30-second device-wide auth window (L-12, BUILT)
+
+**Status: BUILT (Android only) — Issue #2019, `AndroidBiometricCachePlugin.kt`
+`getFastpathDek`/`putFastpathDek`.** The design above (`H` from a Veyrnox-fired
+prompt, HKDF, unwrap) is accurate for the hardware-factor derivation step, but
+the Android Keystore alias backing the cache slot does not gate on a
+Veyrnox-fired prompt at all — it gates on **any** `BIOMETRIC_STRONG`
+authentication that occurred anywhere on the device in the preceding 30
+seconds (`setUserAuthenticationParameters(30, AUTH_BIOMETRIC_STRONG)`,
+`AndroidBiometricCachePlugin.kt`). Corrected 2026-08-25 (audit finding L-12);
+the plugin's own comment previously asserted the opposite ordering.
+
+Call ordering, as it actually runs (`native.js unlockBiometricOnly`,
+`AndroidBiometricCachePlugin.kt getFastpathDek`):
+
+1. JS reads the cache slot (`getFastpathDek`, decrypt) **first**, before
+   requesting a hardware factor for this unlock attempt at all — so an empty
+   slot surfaces as a bare miss with zero prompts.
+2. The Keystore `Cipher.init` inside that read is satisfied only if some
+   `BIOMETRIC_STRONG` auth landed on the device in the last 30 s — the
+   lockscreen fingerprint, an unrelated app's prompt, or (on a slow-path
+   unlock a few seconds earlier) Veyrnox's own `getHardwareFactor` prompt for
+   `H`. Nothing in step 1 itself fires a prompt to satisfy this.
+3. Outside that window, `Cipher.init` throws `UserNotAuthenticatedException`,
+   mapped to a silent `wrappedDek: null` miss → PIN fallback (I4, no oracle).
+4. The cache is reliably WARM immediately after a slow-path unlock:
+   `putFastpathDek` (write) runs from `populateFastpathBestEffort()` right
+   after full unlock, reusing the `H` that unlock's own biometric prompt just
+   produced — so the write always lands inside the window.
+
+**Consequence for hit rate (STATIC READING, NOT A MEASUREMENT — nobody has
+run this on a device):** the fast path's win condition is not "the user
+biometrics into Veyrnox" but "some BIOMETRIC_STRONG event happened on this
+device in the last 30 seconds, for any reason." In the steady state described
+in §What runs when — app already backgrounded a while, screen was off, user
+taps the app icon cold — the 30 s window has very likely already elapsed
+(screen-off-to-tap latency alone is commonly longer), so `getFastpathDek`
+misses and the unlock falls through to the full 10–30 s Argon2id path with no
+user-visible difference from the fast path never having existed for that
+unlock. The window is far more likely to still be open right after unlocking
+the phone itself (lockscreen fingerprint → open Veyrnox within seconds), which
+is a real and common flow, but not the only one the feature is meant to help.
+This does not change the security analysis above (§Security model change) —
+no secret is released by a stale-but-successful decrypt; the wrapped DEK is
+still useless without `H`, and `H` still requires its own hardware-gated
+prompt — it only means the *latency* benefit the whole design doc exists to
+deliver is narrower and less predictable than "steady state = 0 KDFs" implies
+until confirmed by the real-device benchmark already required in §Test plan
+and §Gates before code.
+
 ### RASP tier interaction
 
 WARN/BLOCK RASP tiers must bypass the fast path and force full Argon2id
