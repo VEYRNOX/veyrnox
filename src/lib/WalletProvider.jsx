@@ -163,6 +163,7 @@ import { DECOY_BIOMETRIC_MARKER_KEY, clearFastpathDekBestEffort } from '@/lib/du
 import {
   storeUnlockSecret,
   retrieveUnlockSecret,
+  retrieveUnlockSecretDirect,
   clearUnlockSecret,
 } from '@/lib/biometricUnlock';
 // PASSKEY UNLOCK GATE (S1). The dual of the biometric gate: an ADDITIONAL
