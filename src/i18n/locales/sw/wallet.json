@@ -241,10 +241,22 @@
       "intro": "Ukaguzi wa ziada juu ya PIN yako kwa vitendo nyeti. Hata kama mtu ataona ukiandika PIN yako, bado hawawezi kufanya vitu hivi bila hatua ya pili.",
       "actions_protects_label": "Vitendo inavyolinda",
       "gated_actions": [
-        { "label": "Kutuma fedha", "desc": "kila utumaji, baada ya ukaguzi wa usalama" },
-        { "label": "Kufichua kifungu chako cha urejeshaji", "desc": "kutazama au kuhamisha hifadhi mbadala yako" },
-        { "label": "Kuweka PIN ya Dharura", "desc": "kuunda pochi ya Dharura" },
-        { "label": "Kuunda au kuficha pochi", "desc": "mabadiliko ya pochi iliyofichwa" }
+        {
+          "label": "Kutuma fedha",
+          "desc": "kila utumaji, baada ya ukaguzi wa usalama"
+        },
+        {
+          "label": "Kufichua kifungu chako cha urejeshaji",
+          "desc": "kutazama au kuhamisha hifadhi mbadala yako"
+        },
+        {
+          "label": "Kuweka PIN ya Dharura",
+          "desc": "kuunda pochi ya Dharura"
+        },
+        {
+          "label": "Kuunda au kuficha pochi",
+          "desc": "mabadiliko ya pochi iliyofichwa"
+        }
       ],
       "currently_enforcing": "Kwa sasa inatekeleza:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "Hivi Karibuni",
     "tab_home": "Nyumbani",
     "tab_send": "Tuma",
-    "tab_receive": "Pokea"
+    "tab_receive": "Pokea",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "Rudi"
@@ -343,8 +356,14 @@
     "heading": "Tuma Sarafu ya Kripto",
     "subheading": "Hamisha fedha kwa usalama",
     "wallet_fallback": "Pochi",
-    "wallet_picker": { "label": "Kutoka Pochi", "placeholder": "Chagua pochi" },
-    "asset_picker": { "label": "Rasilimali", "placeholder": "Chagua rasilimali" },
+    "wallet_picker": {
+      "label": "Kutoka Pochi",
+      "placeholder": "Chagua pochi"
+    },
+    "asset_picker": {
+      "label": "Rasilimali",
+      "placeholder": "Chagua rasilimali"
+    },
     "recipient": {
       "label": "Tuma kwa (anwani au jina)",
       "placeholder": "Bandika anwani au ingiza jina (mfano vitalik.eth)",
@@ -404,18 +423,18 @@
       "dev_ungate_body": "— mlango wa utumaji umepitwa kwa {{currency}} kupitia VITE_DEV_UNGATE_SEND (toleo la maendeleo tu). Hali ya rasilimali hii haijabadilika (bado si hai); mainnet inabaki imezuiwa. Uthibitishaji wa mtandao wa majaribio tu — kamwe usisambaze toleo hili.",
       "locked": "Pochi yako imefungwa. Ifungue katika Mipangilio ya Pochi ili kutia saini na kutuma."
     },
-    "note": { "label": "Maelezo (hiari)", "placeholder": "Hii ni ya nini?" },
-    "trezor": {
-      "toggle_label": "Tia saini kwa Trezor",
-      "connected": "Kifaa kimeunganishwa",
-      "connect_button": "Unganisha kifaa"
+    "note": {
+      "label": "Maelezo (hiari)",
+      "placeholder": "Hii ni ya nini?"
     },
     "buttons": {
       "continue": "Endelea",
       "confirm_send": "Thibitisha & Tuma",
       "back": "Rudi"
     },
-    "verify": { "summary_label": "Unatuma" },
+    "verify": {
+      "summary_label": "Unatuma"
+    },
     "fee": {
       "automatic": "Ada ya mtandao imewekwa kiotomatiki kwa {{currency}} ({{network}}).",
       "native_fee_note": "Ada ya mtandao inalipwa kwa {{symbol}} ({{network}}) — unahitaji {{symbol}} ili kulipia ada ya mtandao hata unapotuma {{token}}."
@@ -708,5 +727,46 @@
     "allocation": "Ugawaji",
     "holdings": "Umiliki",
     "noHoldings": "Hakuna umiliki bado."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

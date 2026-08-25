@@ -1,0 +1,173 @@
+name: iOS XCUITest Smoke
+
+# Machine-driven iOS crash catcher. macOS runner boots an iPhone simulator,
+# builds the App scheme, and runs AppUITests → test_freshInstall_creates
+# WalletWithoutFailureBanner. The test walks fresh install → New wallet →
+# PIN → WalletCreatedFlash and hard-fails on the exact KEK/RASP fail-closed
+# banner Play rejected build 5 for. Any XCTest failure OR crash goes red at
+# PR time. (No seed-reveal step: raw reveal was deliberately moved out of
+# onboarding — see the comment on step 4 in AppUITests.swift.)
+#
+# HONESTY SCOPE: simulator-only. Real-device-only failure modes (StrongBox,
+# Secure Enclave attestation, RASP dyld scans) will not fire here. Crashes
+# do NOT populate ASC / Organizer — those are real-install-only telemetry.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/ios-xcuitest-smoke.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/ios-xcuitest-smoke.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-xcuitest-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+  VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
+
+jobs:
+  xcuitest:
+    continue-on-error: true
+    runs-on: macos-latest
+    # Budget note (see issue #2008). A JOB-level timeout kills the whole job,
+    # including `Upload test log` — which is why 26 consecutive runs produced
+    # zero artifacts and nobody could see why the test step never finished.
+    # The test step now carries its own smaller timeout, so when it blows the
+    # budget the job survives long enough to upload the evidence.
+    # Job budget must stay comfortably ABOVE the test step's, never equal to it.
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Pin npm to 11
+        run: npm install -g npm@11
+
+      - name: Install deps
+        # `npm ci`, matching the Android job and the rest of the repo.
+        # --legacy-peer-deps has been unnecessary since #1372/#1376 and it
+        # strips the appium peer subtree, so this job would have proved the
+        # bundle works against a dep tree no other job builds.
+        run: npm ci
+
+      - name: Build webview payload
+        run: |
+          npm run build
+          npx cap sync ios
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Resolve SPM packages
+        working-directory: ios/App
+        run: xcodebuild -project App.xcodeproj -resolvePackageDependencies
+
+      - name: Run AppUITests
+        working-directory: ios/App
+        # MUST stay below the job's timeout-minutes. If this step is killed by
+        # the JOB timeout instead of its own, the steps below never run and the
+        # failure is invisible again — the exact regression issue #2008 describes.
+        timeout-minutes: 25
+        run: |
+          set -o pipefail
+          # xcodebuild refuses to overwrite an existing result bundle.
+          rm -rf TestResults.xcresult
+          xcodebuild test \
+            -project App.xcodeproj \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -only-testing:AppUITests/AppUITests/test_freshInstall_createsWalletWithoutFailureBanner \
+            -resultBundlePath TestResults.xcresult \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 300 \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee xcodebuild.log | xcbeautify --renderer github-actions || {
+              echo "xcodebuild test failed"
+              exit 1
+            }
+
+      # Puts the assertion text in the job summary, so the reason a run failed
+      # is readable without downloading an artifact. `xcresulttool` on a local
+      # bundle produced the first real diagnosis of this test (issue #2008).
+      - name: Summarise test failures
+        if: always()
+        working-directory: ios/App
+        run: |
+          # The LOG is the primary source, not the result bundle. On run
+          # 32647666200 xcodebuild left TestResults.xcresult without an
+          # Info.plist on the failure path, so xcresulttool could not read it
+          # and the summary said nothing — while xcodebuild.log carried the
+          # exact assertion. Read the reliable one first.
+          if [ -f xcodebuild.log ]; then
+            {
+              echo '### xcuitest failures'
+              echo '```'
+              grep -aE '(error: -\[|Test Case .* failed|Testing failed|\*\* TEST .* \*\*)' \
+                xcodebuild.log | tail -40 || echo 'No failure lines matched.'
+              echo '```'
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No xcodebuild.log — the test step died before writing one.' \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # Bonus only. Never gate the summary on this: the bundle is finalised
+          # by xcodebuild at the end of the test action and is routinely
+          # unreadable exactly when a run fails, which is when it is wanted.
+          if [ -f TestResults.xcresult/Info.plist ]; then
+            {
+              echo '### result bundle summary'
+              xcrun xcresulttool get test-results summary \
+                --path TestResults.xcresult 2>&1 || true
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo '_Result bundle unreadable (no Info.plist) — see the log lines above._' \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: xcodebuild-log
+          path: ios/App/xcodebuild.log
+          if-no-files-found: warn
+
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: xcuitest-result-bundle
+          path: ios/App/TestResults.xcresult
+          if-no-files-found: warn
+          retention-days: 7

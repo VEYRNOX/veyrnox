@@ -13,6 +13,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const raspState = { tier: 'allow' };
 vi.mock('@/rasp', () => ({
@@ -103,15 +104,20 @@ const PROPOSAL = {
 
 async function setup() {
   const out = {};
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   function Grab() {
     out.ctx = useWalletConnect();
     return null;
   }
   await act(async () => {
     render(
-      <WalletConnectProvider>
-        <Grab />
-      </WalletConnectProvider>,
+      <QueryClientProvider client={qc}>
+        <WalletConnectProvider>
+          <Grab />
+        </WalletConnectProvider>
+      </QueryClientProvider>,
     );
   });
   await act(async () => { wcEventCb?.('session_proposal', PROPOSAL); });

@@ -64,7 +64,7 @@ export function buildAndSignTx({ plan, privateKey, publicKey, params }) {
 
 /**
  * PURE: re-derive the canonical txid from already-signed raw tx bytes. The signed
- * hex may come from an external signer (e.g. a Trezor device on the BTC path), so
+ * hex may come from an external signer (e.g. an air-gapped hardware device), so
  * we recompute the id LOCALLY from the bytes rather than trusting the untrusted
  * indexer's echoed value. Throws on malformed hex (fail closed, I4).
  * @param {string} signedTxHex - fully-signed, finalized raw transaction (hex).
@@ -78,7 +78,7 @@ export function btcTxidFromHex(signedTxHex) {
 /**
  * Broadcast an ALREADY-SIGNED raw transaction (hex) and return the canonical
  * txid + explorer URL. This is the broadcast-only half of signAndBroadcastBtc,
- * for signers that produce the signed bytes elsewhere (the Trezor BTC path signs
+ * for signers that produce the signed bytes elsewhere (an air-gapped device signs
  * on-device, never exposing a key to this process — I1). The txid is re-derived
  * locally from the signed bytes; broadcastTx re-enforces the mainnet gate and
  * throws on a rejected/empty broadcast (no silent unbroadcast "success").

@@ -1,0 +1,158 @@
+name: Android Monkey Smoke
+
+# Machine-driven crash catcher. Spins the Android emulator, installs the
+# Google-flavour debug APK, and fires 500 pseudo-random UI events at it via
+# `adb shell monkey`. Any uncaught JVM/native crash exits monkey non-zero, so
+# the job goes red at PR time — the same class of failure Play rejected build
+# 5 for (Broken Functionality / unresponsive UI).
+#
+# HONESTY SCOPE: emulator-only. Crashes here do NOT populate Play Vitals
+# (Vitals accepts only real-user, real-device installs opted into Usage &
+# diagnostics). This is a pre-submission catcher, not a replacement.
+
+# Path-filtered to mirror ios-xcuitest-smoke.yml. Without this the job booted
+# a second emulator on EVERY pull request — docs-only ones included — beside
+# the one android-e2e-emulator.yml already boots. The paths are the inputs
+# that can actually change what monkey exercises: the native shell, the web
+# bundle it loads, the dependency set, the Capacitor bridge config, and this
+# workflow itself.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/android-monkey-smoke.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/android-monkey-smoke.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: android-monkey-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '22'
+  GRADLE_OPTS: '-Xmx6g -Dorg.gradle.daemon=false'
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+  # Backend egress is deliberately BLANKED for this job, unlike every other
+  # Android workflow. Those run scripted, deterministic suites; monkey fires
+  # 500 RANDOM taps at a first-run build. Random taps land on the telemetry
+  # consent screen and can grant it, after which the run mints a fresh
+  # `veyrnox-device-id` and writes real rows to PRODUCTION Supabase — one
+  # phantom device per CI run. That is PR #1328 (test suite writing to prod,
+  # 126 rows / 114 phantom device_ids) re-entering through a different door.
+  #
+  # Blanking VITE_EDGE_BASE is the effective lever: on native every /api/*
+  # call goes through the Pages proxy, and src/api/edgeApi.js `edgeUrl()`
+  # throws EDGE_BASE_UNSET rather than emitting a request (I4, fail honest).
+  # The Supabase pair is blanked too, matching the rule vitest.config.js
+  # already states: any VITE_ var added to a workflow-level `env:` gets
+  # blanked unless it is needed.
+  #
+  # Trade-off, stated rather than hidden: the app under monkey runs with all
+  # network dead, so this exercises the offline path, not the reviewer's
+  # online one. Accepted because the crash/ANR surface this job exists for —
+  # PIN, KEK enrolment, vault create — is entirely local. If online fidelity
+  # is wanted later, point VITE_EDGE_BASE at the STAGING Pages project rather
+  # than restoring production.
+  VITE_TIP_BASE_URL: ''
+  VITE_SUPABASE_URL: ''
+  VITE_SUPABASE_ANON_KEY: ''
+  VITE_EDGE_BASE: ''
+
+jobs:
+  monkey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Pin npm to 11
+        run: npm install -g npm@11
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build debug APK
+        run: |
+          npm run android:sync
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleGoogleDebug --build-cache
+
+      - name: Run monkey on emulator
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 31
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb install -r android/app/build/outputs/apk/google/debug/app-google-debug.apk
+            # Debug builds carry `applicationIdSuffix ".debug"` — the installed
+            # package is com.veyrnox.app.debug, not com.veyrnox.app. Monkey
+            # errored "No activities found to run" when targeting the wrong id.
+            # 500 pseudo-random events, throttled to 100ms between events,
+            # constrained to our package. --kill-process-after-error and
+            # --monitor-native-crashes make ANY crash a non-zero exit.
+            #
+            # EVERY statement must stay on ONE line. The emulator-runner action
+            # splits `script:` on newlines and hands each line to a fresh
+            # `sh -c`, so a backslash continuation runs as its own command
+            # (monkey saw two args, no COUNT → "Error: Count not specified")
+            # and a multi-line `if..fi` dies on "unexpected EOF". A fresh shell
+            # per line also means no variable survives to the next line.
+            #
+            # Redirect rather than `| tee`: in a pipeline the exit status is
+            # tee's, always 0, which silently discarded the non-zero exit that
+            # --kill-process-after-error / --monitor-native-crashes exist to
+            # produce. `set -o pipefail` is not an option — it would not
+            # outlive the line it is set on. Capture, print, then gate on it.
+            adb shell "monkey -p com.veyrnox.app.debug -v --throttle 100 --kill-process-after-error --monitor-native-crashes --pct-touch 60 --pct-motion 20 --pct-nav 10 --pct-syskeys 10 500" > monkey.log 2>&1; rc=$?; cat monkey.log; [ "$rc" -eq 0 ] || { echo "Monkey exited $rc — failing job"; exit "$rc"; }
+            # Second guard: monkey returns 0 on some crash types but still
+            # prints "// CRASH:" or "// NOT RESPONDING:" into the log.
+            grep -E "^// (CRASH|NOT RESPONDING):" monkey.log && { echo "Monkey detected a crash / ANR — failing job"; exit 1; } || true
+
+      - name: Upload monkey log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: monkey-log
+          path: monkey.log
+          if-no-files-found: warn

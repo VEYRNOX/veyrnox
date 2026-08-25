@@ -1,8 +1,8 @@
 [
   {
-    "description": "Wait for the fresh-install entry tiles",
+    "description": "Let Firebase finish its companion-device handoff before the entry tiles appear",
     "eventType": "WAIT",
-    "delayTime": 1500
+    "delayTime": 8000
   },
   {
     "description": "Choose the fresh wallet path",
@@ -51,11 +51,11 @@
     "elementDescriptors": [{ "text": "4" }]
   },
   {
-    "description": "Explicitly submit the eight-digit PIN",
+    "description": "Explicitly submit the eight-digit PIN via the stable visible button text",
     "eventType": "VIEW_CLICKED",
     "elementDescriptors": [
       {
-        "contentDescription": "Submit PIN"
+        "text": "Submit PIN"
       }
     ]
   },
@@ -97,11 +97,11 @@
     "elementDescriptors": [{ "text": "4" }]
   },
   {
-    "description": "Explicitly submit PIN confirmation",
+    "description": "Explicitly submit PIN confirmation via the stable visible button text",
     "eventType": "VIEW_CLICKED",
     "elementDescriptors": [
       {
-        "contentDescription": "Submit PIN"
+        "text": "Submit PIN"
       }
     ]
   },
@@ -124,13 +124,13 @@
     }
   },
   {
-    "description": "Fresh create must reach the wallet-created screen",
+    "description": "Fresh create must reach the post-onboard telemetry decision screen",
     "eventType": "ASSERTION",
     "contextDescriptor": {
       "condition": "element_present",
       "elementDescriptors": [
         {
-          "text": "Created."
+          "text": "Help improve Veyrnox"
         }
       ]
     }

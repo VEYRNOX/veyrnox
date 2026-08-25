@@ -4,7 +4,7 @@
 // 21000n/65000n gasLimit hint, provider.estimateGas rejections stopped being
 // papered over by ethers' auto-fill — hw-send has no ethers.Wallet auto-fill.
 // The consequence was a downstream `toHex(undefined)` crash with the confusing
-// message "Cannot convert undefined to a BigInt" on any Trezor send during an
+// message "Cannot convert undefined to a BigInt" on any hardware-signer send during an
 // RPC hiccup.
 //
 // I4 fail-closed: when estimation fails AND the caller did not supply a

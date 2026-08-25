@@ -12,6 +12,7 @@ import { LEVEL } from '../levels.js';
 
 const TO = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
 const A  = '0xa11ce1234567890abcdef1234567890abcc0ffee';
+const TORNADO_01_ETH = '0x8589427373D6D84E98730D7795D8f6f8731FDA16';
 
 describe('buildRiskInputs — unsignedTx', () => {
   it('native send: value is parseEther(amount) wei and data is 0x', () => {
@@ -133,6 +134,27 @@ describe('buildRiskInputs — integrates with score()', () => {
     const verdict = score(inputs.unsignedTx, inputs.activeSetLocalState, inputs.chainData);
     expect(verdict.level).toBe(LEVEL.RISK);
     expect(verdict.signalId).toBe('S5');
+  });
+
+  it('a static-OFAC recipient stays RISK even when TIP drift says allow (#1664)', () => {
+    const inputs = buildRiskInputs({
+      to: TORNADO_01_ETH,
+      amountText: '0.001',
+      assetCurrency: 'ETH',
+      recipientCode: '0x', // EOA/contract distinction is irrelevant to the static OFAC fallback
+    });
+    const verdict = score(
+      inputs.unsignedTx,
+      inputs.activeSetLocalState,
+      {
+        ...inputs.chainData,
+        tipResult: { verdict: 'allow', sanctions: false, signals: [] },
+      },
+    );
+    expect(verdict.level).toBe(LEVEL.RISK);
+    expect(verdict.signalId).toBe('S9');
+    expect(verdict.requiresConfirmation).toBe(true);
+    expect(verdict.sentence).toMatch(/OFAC sanctions list/i);
   });
 
   it('CAUTION verdict requires confirmation so the presign gate can be cleared', () => {

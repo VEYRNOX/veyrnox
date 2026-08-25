@@ -3,16 +3,15 @@
 // SAST M3 — changing the at-rest Argon2id params must NOT lock users out of
 // existing vaults. These tests assert the migration contract:
 //   - a vault encrypted with the OLD (64 MiB) params still decrypts after the
-//     default is raised to 192 MiB (decrypt uses the blob's OWN recorded params);
-//   - new encryptions use the current (192 MiB) params;
+//     default shifts to 96 MiB / t=6 (decrypt uses the blob's OWN recorded params);
+//   - new encryptions use the current (96 MiB) params;
 //   - vaultNeedsRekey flags an old blob and not a current one;
 //   - webKeyStore.unlock transparently re-encrypts an old vault at the new params
 //     on first unlock, while still returning the secret, and is a no-op after.
 //
-// Direction note: an earlier pass lowered the default 192 MiB -> 64 MiB (PR #465)
-// purely for unlock latency; with biometric unlock (device-verified 2026-07-05)
-// absorbing the ~6-8 s cost, the default was raised back to 192 MiB. So the live
-// migration direction is UP: 64 MiB legacy blobs rekey to 192 MiB.
+// Direction note: an earlier pass lowered the default 192 MiB -> 64 MiB (PR #465).
+// This branch lands the owner-approved KDF profile v2 at 96 MiB / t=6, so the
+// live migration direction here is UP: 64 MiB legacy blobs rekey to 96 MiB.
 //
 // We craft an old-params blob with hash-wasm argon2id directly (the exact
 // construction encryptVault used at 64 MiB), since encryptVault now always emits
@@ -58,8 +57,8 @@ describe('SAST M3 — KDF parameter migration', () => {
     await clearVault();
   });
 
-  it('the current default params are 192 MiB (raised from 64 MiB; biometric-mitigated)', () => {
-    expect(KDF_PARAMS.memorySize).toBe(196608);
+  it('the current default params are 96 MiB (raised from 64 MiB under profile v2)', () => {
+    expect(KDF_PARAMS.memorySize).toBe(98304);
     expect(KDF_PARAMS.memorySize).toBeGreaterThan(OLD_PARAMS.memorySize);
   });
 

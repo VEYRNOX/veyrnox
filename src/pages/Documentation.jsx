@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState } from "react";
 import { exportCataloguePdf } from "@/lib/pdfExport";
+import { FEATURE_CATEGORIES, STATUS, resolveStatus, verifiedFeatureNames } from "@/lib/featureCatalogue";
 import { toast } from "@/lib/toast";
 import { Link } from "react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,101 +21,59 @@ import {
   LayoutDashboard, Send, Download, Image as ImageIcon, Coins
 } from "lucide-react";
 
-// Feature catalogue for user-facing documentation.
-// Only self-custody-safe features are listed. Custodial / regulated features
-// (swaps, perps, staking/yield/lending, fiat ramps, bank links, KYC/DID, NFT
-// minting, etc.) are deliberately not built.
+// Feature catalogue — SINGLE SOURCE OF TRUTH is src/lib/featureCatalogue.js.
 //
-// Status keys:
-//   "built"   — shipped and working
-//   "target"  — designed, coming soon
-//   "planned" — on the roadmap
-const features = [
-  { category: "Core Wallet", icon: Wallet, items: [
-    { name: "Multi-Account HD Wallet", desc: "Recovery phrase standard (BIP-39) seed with multi-account derivation; keys held locally", status: "built" },
-    { name: "Import Wallet", desc: "Restore from seed phrase or private key", status: "built" },
-    { name: "Encrypted Vault", desc: "Strong on-device encryption at rest; plaintext keys never leave device", status: "built" },
-    { name: "Backup & Reveal Seed", desc: "Seed phrase display for manual write-down. Encrypted scannable backup is Personal Backup (2-of-3 shard export at /personal-backup, Argon2id-AES-GCM)", status: "built" },
-    { name: "Send Crypto", desc: "Locally-signed transfers for all 10 assets (ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, USDT) on mainnet", status: "built" },
-    { name: "Receive Crypto", desc: "Per-chain derived address + locally-generated QR", status: "built" },
-    { name: "Live Balances", desc: "Read live from chain network connection / explorer providers", status: "built" },
-    { name: "Transaction History", desc: "Per-chain read-only history with privacy disclosures", status: "built" },
-    { name: "Network Fee Control", desc: "Per-chain fee tiers + custom fee before signing", status: "built" },
-    { name: "ENS / SNS Resolution", desc: "Resolve .eth and .sol names on send (resolution only)", status: "built" },
-  ]},
-  { category: "Networks & Assets", icon: Coins, items: [
-    { name: "Ethereum-compatible Networks", desc: "Ethereum, Polygon, Arbitrum, Optimism, Avalanche, BNB Chain", status: "built" },
-    { name: "Bitcoin", desc: "Native segwit (BIP-84) Bitcoin support", status: "built" },
-    { name: "Solana", desc: "Full Solana support with ed25519 signing", status: "built" },
-    { name: "Ethereum Token Standard (ERC-20) Tokens", desc: "USDC and USDT via the shared token path", status: "built" },
-  ]},
-  { category: "Access & Authentication", icon: KeyRound, items: [
-    { name: "FIDO2 Passkey Unlock", desc: "FIDO2/WebAuthn passkey unlock gate — phishing-resistant, device-bound credential; keys are never held by the passkey system", status: "built" },
-    { name: "Biometric Unlock", desc: "Face ID / Touch ID / Android fingerprint unlock — native on iOS and Android. Optionally opens the decoy wallet under duress settings.", status: "built" },
-    { name: "PIN Unlock", desc: "Numeric PIN onboarding and unlock with strong on-device encryption. On its own, a PIN can be repeatedly tried if someone extracts your device's storage; turning on Hardware Key Protection (off by default) closes that gap.", status: "built" },
-    { name: "Two-Factor at Critical Actions", desc: "Opt-in second factor before sensitive actions (send, reveal seed, duress/hidden setup): PIN + Action Password, PIN + Passkey, or PIN + Face ID / biometric.", status: "built" },
-    { name: "Session Manager & Auto-Lock", desc: "Idle / background auto-lock + session view", status: "built" },
-    { name: "Account Access & Recovery", desc: "Non-custodial change-password (re-encrypts seed) + seed-phrase recovery; no custodial reset", status: "built" },
-    { name: "Hardware Wallet", desc: "Trezor support (WebUSB, Chrome/Edge) — cold-key address derivation and transaction signing for ETH, BTC, and SOL. Private keys never leave the hardware device. Built and code-reviewed; not yet tested against a physical Trezor device.", status: "built" },
-    { name: "Hardware Key Protection", desc: "Optional, off-by-default protection that ties your vault's encryption key to your device's secure hardware (iOS Secure Enclave or Android's secure hardware, using the strongest option your device supports). Once turned on, your PIN alone is no longer enough — the vault also needs your device's secure hardware to unlock.", status: "built" },
-  ]},
-  { category: "Transaction Safety", icon: ShieldAlert, items: [
-    { name: "Token Approvals (View + Revoke)", desc: "Inspect and revoke token allowances; flag unlimited", status: "built" },
-    { name: "Address-Poisoning Warnings", desc: "Look-alike recipient detection on send", status: "built" },
-    { name: "Spam Token Filter", desc: "Auto-hide airdropped scam tokens with override", status: "built" },
-    { name: "Transaction Data Decode & Approval Guard", desc: "Human-readable transaction data before signing", status: "built" },
-    { name: "Suspicious-Address Screening", desc: "Local blocklist screening of burn and known-bad addresses; warns before signing, never blocks", status: "built" },
-    { name: "Transaction Simulation", desc: "Local-first pre-sign preview of balance / approval changes with risk flags", status: "built" },
-    { name: "Anomaly / Fraud Detection", desc: "Local rule-based flags for deviations from your own history (unusual amount, new-recipient-large, approve-then-transfer)", status: "built" },
-    { name: "Pre-Sign Risk Verdict", desc: "Multiple on-device signals combine into one pre-sign verdict. High-risk transactions require explicit acknowledgement. Local-only, warns before signing, never claims 'safe'.", status: "built" },
-  ]},
-  { category: "Recovery & Duress", icon: LifeBuoy, items: [
-    { name: "Duress PIN", desc: "Decoy wallet under coercion (genuine separate vault)", status: "built" },
-    { name: "Stealth / Hidden Wallets", desc: "Deniable hidden-wallet pool; count-hiding", status: "built" },
-    { name: "Panic Wipe", desc: "Irreversible local key-material destruction + 10-attempt auto-wipe", status: "built" },
-    { name: "Encrypted Personal Backup", desc: "Export/import vault as a strongly encrypted file; plaintext keys never leave device.", status: "built" },
-  ]},
-  { category: "Monitoring & Risk", icon: Shield, items: [
-    { name: "Runtime Protection (Browser)", desc: "Automation and tampering detection that blocks signing when threats are detected", status: "built" },
-    { name: "Runtime Protection (OS-Level)", desc: "Root, jailbreak, and tamper detection on iOS and Android devices", status: "built" },
-    { name: "Audit Log", desc: "Opt-in local activity log encrypted in the vault. No amounts, addresses, or wallet identity are stored. Off by default.", status: "built" },
-    { name: "Spending Limits", desc: "Rule-based per-transaction and daily spending limits (warn-with-acknowledgement)", status: "built" },
-  ]},
-  { category: "Portfolio & Analytics", icon: BarChart3, items: [
-    { name: "Portfolio Dashboard", desc: "Read-only net-worth view across wallets and chains with opt-in live prices", status: "built" },
-    { name: "Net-Worth Tracker", desc: "Aggregate crypto net worth from on-device portfolio balances with live price conversion", status: "built" },
-    { name: "On-Chain Analytics", desc: "Address-level transaction lookup and inbound/outbound activity breakdown", status: "built" },
-    { name: "Fee Analytics", desc: "Network fee totals computed on-device from your chain history", status: "built" },
-    { name: "Tax Report", desc: "Exports raw tx data (date/type/asset/amount/fee/tx_hash) as CSV — no invented prices. Directs to Koinly/CoinTracker. Not tax advice.", status: "built" },
-  ]},
-  { category: "Prices & Alerts", icon: Bell, items: [
-    { name: "Price Charts", desc: "Real OHLCV candlestick data with multiple timeframes", status: "built" },
-    { name: "Price Alerts", desc: "Threshold notifications (advisory only; never trades on your behalf)", status: "built" },
-    { name: "Watchlist", desc: "Track assets you don't hold with opt-in live price feeds", status: "built" },
-    { name: "Notifications & Push", desc: "Web Push API opt-in subscription with test trigger; advisory only, never initiates transactions", status: "built" },
-  ]},
-  { category: "NFTs", icon: ImageIcon, items: [
-    { name: "NFT Gallery (Display-Only)", desc: "View owned NFTs; no minting or marketplace. Records stored locally.", status: "built" },
-    { name: "Multi-Chain NFT Viewing", desc: "Cross-chain NFT display with chain filtering (display only)", status: "built" },
-  ]},
-  { category: "Payments & Utilities", icon: CreditCard, items: [
-    { name: "Address Book", desc: "Saved, labelled addresses with per-chain validation for safer sends", status: "built" },
-    { name: "Message Signing", desc: "Sign plain messages with wallet key (ethers.js); proof-of-ownership / off-chain auth. No dApp-initiated signing.", status: "built" },
-    { name: "Recurring Payments", desc: "Recurring payment schedule reminders; user signs each time. No autonomous auto-debit.", status: "built" },
-  ]},
-  { category: "Referrals", icon: Users, items: [
-    { name: "Referral Tracker", desc: "Share your referral code to earn rewards; tier-based commissions and discounts apply to Safety Plus subscriptions. Using this feature sends your referral code, chosen plan, and purchase/discount amounts to VEYRNOX's servers so earnings can be tracked — the referral service never receives your balances, your wallet addresses, or your seed phrase. Claiming a payout is separate and opens an email you write yourself, so you choose what payment details to include.", status: "built" },
-  ]},
-  { category: "Platform", icon: Smartphone, items: [
-    { name: "Demo Mode", desc: "Browse without a backend or funded wallet", status: "built" },
-    { name: "Voice Commands", desc: "Web Speech API navigation commands; read-only (navigate, check balances). Never initiates or signs transactions.", status: "built" },
-    { name: "iOS App Store", desc: "Native iOS app coming soon", status: "planned" },
-    { name: "Android Play Store", desc: "Native Android app coming soon", status: "planned" },
-  ]},
-  { category: "Subscriptions", icon: CreditCard, items: [
-    { name: "Free & Safety Plus Plans", desc: "Optional Free & Safety Plus plans to unlock features — the only fee VEYRNOX charges", status: "built" },
-  ]},
-];
+// This page used to carry its OWN parallel list of 58 features with its own
+// three labels (built/target/planned -> Available/Coming Soon/Roadmap) and no
+// evidence gating, while src/lib/featureCatalogue.js carried a second list of
+// 70 with the txid-backed gate. Two catalogues, and the honest one was the
+// unrouted one (src/pages/Features.jsx, which nothing imported). Merged
+// 2026-08-24: this page now renders the catalogue, and Features.jsx is deleted.
+//
+// Nothing from the old list was dropped. 44 names matched outright; 9 were
+// renames, preserved via the catalogue's optional `displayName` so users keep
+// the plainer wording while the audit-stable `name` (which tests and
+// verified-evidence keys are keyed on) is untouched; and the one genuinely
+// missing category, Subscriptions, was added to the catalogue.
+//
+// Status labels come from resolveStatus(), so `verified` is earned by a real
+// txid in docs/verified-evidence.json and can never be typed by hand.
+const CATEGORY_ICONS = {
+  'Core Wallet': Wallet,
+  'Networks & Assets': Coins,
+  'Access & Authentication': KeyRound,
+  'Transaction Safety': ShieldAlert,
+  'Recovery & Duress': LifeBuoy,
+  'Monitoring & Risk': Shield,
+  'Portfolio & Analytics': BarChart3,
+  'Prices & Alerts': Bell,
+  'NFTs': ImageIcon,
+  'Payments & Utilities': CreditCard,
+  'Referrals': Users,
+  'AI Security Protection': ShieldAlert,
+  'dApp Connectivity': Layers,
+  'Platform': Smartphone,
+  'Subscriptions': CreditCard,
+};
+
+const features = FEATURE_CATEGORIES.map((c) => ({
+  category: c.category,
+  icon: CATEGORY_ICONS[c.category] ?? Book,
+  items: c.features.map((f) => ({
+    key: f.name,
+    name: f.displayName ?? f.name,
+    desc: f.summary,
+    // `explanation` is DELIBERATELY NOT RENDERED. Those fields are written in
+    // the audit voice and carry 39 matches across 10 of the internal-wording
+    // patterns that documentation-honesty.test.js bans — testnet names, change
+    // numbers, transaction hashes, subsystem codenames, device models.
+    // Rendering them here would undo the copy pass that removed exactly that
+    // wording from this page. Summaries carry the user-facing copy, and the
+    // honesty guard now scans them too, so the catalogue cannot leak audit
+    // prose onto this page through a later edit.
+    feature: f,
+  })),
+}));
 
 const workflows = [
   {
@@ -163,29 +122,38 @@ const workflows = [
 ];
 
 const STATUS_META = {
-  built:   { label: "Available",   className: "bg-success/10 text-success border-success/20" },
-  target:  { label: "Coming Soon", className: "bg-primary/10 text-primary border-primary/20" },
-  planned: { label: "Roadmap",     className: "bg-muted/50 text-muted-foreground border-border" },
+  [STATUS.VERIFIED]: { label: "Verified",  className: "bg-accent/10 text-accent border-accent/20" },
+  [STATUS.BUILT]:    { label: "Built",     className: "bg-caution/10 text-caution border-caution/20" },
+  [STATUS.ROADMAP]:  { label: "Roadmap",   className: "bg-muted/50 text-muted-foreground border-border" },
 };
 
 export default function Documentation() {
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Resolve once: `verified` is honoured only with a txid evidence entry, so a
+  // code-ready feature can never render as verified by inspection.
+  const verifiedNames = verifiedFeatureNames();
+  const statusOf = (item) => resolveStatus(item.feature, verifiedNames);
+
+  const q = searchTerm.toLowerCase();
   const filteredFeatures = features
     .map(cat => ({
       ...cat,
       items: cat.items.filter(item =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.desc.toLowerCase().includes(searchTerm.toLowerCase())
+        // Search matches the displayed name, the audit-stable name (so an
+        // internal name still finds its feature), and the shown description.
+        item.name.toLowerCase().includes(q) ||
+        item.key.toLowerCase().includes(q) ||
+        (item.desc ?? "").toLowerCase().includes(q)
       )
     }))
     .filter(cat => cat.items.length > 0);
 
   const allItems = features.flatMap(cat => cat.items);
   const totalFeatures = allItems.length;
-  const builtCount   = allItems.filter(i => i.status === "built").length;
-  const targetCount  = allItems.filter(i => i.status === "target").length;
-  const plannedCount = allItems.filter(i => i.status === "planned").length;
+  const verifiedCount = allItems.filter(i => statusOf(i) === STATUS.VERIFIED).length;
+  const builtCount    = allItems.filter(i => statusOf(i) === STATUS.BUILT).length;
+  const roadmapCount  = allItems.filter(i => statusOf(i) === STATUS.ROADMAP).length;
 
   return (
     <div className="max-w-[1600px] mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8">
@@ -207,7 +175,7 @@ export default function Documentation() {
                 subtitle: "Feature guide for VEYRNOX — a self-custody multi-currency wallet with FIDO2 authentication.",
                 categories: features.map(c => ({
                   category: c.category,
-                  items: c.items.map(i => ({ name: i.name, desc: i.desc, status: i.status })),
+                  items: c.items.map(i => ({ name: i.name, desc: i.desc, status: statusOf(i) })),
                 })),
               });
               toast.success("Documentation PDF downloaded");
@@ -278,17 +246,19 @@ export default function Documentation() {
             Feature Catalog
           </CardTitle>
           <CardDescription>
-            {totalFeatures} features across {features.length} categories. Custodial features (swaps, fiat ramps, KYC) are not built by design.
+            {totalFeatures} features across {features.length} categories. Custodial features (swaps, fiat off-ramp, KYC) are not built by design; the fiat on-ramp is a hand-off to a licensed third party.
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant="outline" className={STATUS_META.built.className}>{builtCount} Available</Badge>
-            {targetCount > 0 && <Badge variant="outline" className={STATUS_META.target.className}>{targetCount} Coming Soon</Badge>}
-            {plannedCount > 0 && <Badge variant="outline" className={STATUS_META.planned.className}>{plannedCount} Roadmap</Badge>}
+            <Badge variant="outline" className={STATUS_META[STATUS.VERIFIED].className}>{verifiedCount} Verified</Badge>
+            <Badge variant="outline" className={STATUS_META[STATUS.BUILT].className}>{builtCount} Built</Badge>
+            {roadmapCount > 0 && <Badge variant="outline" className={STATUS_META[STATUS.ROADMAP].className}>{roadmapCount} Roadmap</Badge>}
           </div>
           <p className="text-xs text-muted-foreground pt-2 max-w-3xl">
-            <b>Available</b> means shipped and working today. <b>Coming Soon</b> means designed but not yet
-            released. <b>Roadmap</b> means planned for later. These labels describe what's built, not an
-            independent security review.
+            <b>Verified</b> means a real, explorer-confirmed transaction proves it — this page reads a
+            txid evidence file and nothing else, so passing tests and code review can never turn a
+            feature green. <b>Built</b> means the code is shipped and working but no on-chain evidence
+            exists yet. <b>Roadmap</b> means planned for later. These labels describe what is built —
+            they are not an independent security review.
           </p>
         </CardHeader>
         <CardContent>
@@ -314,17 +284,20 @@ export default function Documentation() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {category.items.map((feature) => (
-                        <TableRow key={feature.name}>
-                          <TableCell className="font-medium" data-label="Feature">{feature.name}</TableCell>
-                          <TableCell className="text-muted-foreground" data-label="Description">{feature.desc}</TableCell>
-                          <TableCell data-label="Status">
-                            <Badge variant="outline" className={STATUS_META[feature.status].className}>
-                              {STATUS_META[feature.status].label}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {category.items.map((item) => {
+                        const status = statusOf(item);
+                        return (
+                          <TableRow key={item.key}>
+                            <TableCell className="font-medium" data-label="Feature">{item.name}</TableCell>
+                            <TableCell className="text-muted-foreground" data-label="Description">{item.desc}</TableCell>
+                            <TableCell data-label="Status">
+                              <Badge variant="outline" className={STATUS_META[status].className}>
+                                {STATUS_META[status].label}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </AccordionContent>
