@@ -59,12 +59,12 @@
 // only encrypts, stores, and decrypts a decoy mnemonic locally. It cannot move
 // funds and adds no mainnet surface.
 
-import { decryptVault } from './vault.js';
-// H-2 (weekly audit 2026-08-25): a personalised decoy must record the SAME
-// Argon2id profile as the chaff already in the store — otherwise setting a duress
-// PIN after an at-rest profile change leaves 'secondary' at the new params beside
-// a 'tertiary' panic chaff at the old ones, which announces that duress was
-// deliberately configured. See deniabilityKdfProfile.js.
+import { decryptVault, encryptVault, vaultNeedsKdfMigration } from './vault.js';
+// Gate 2 (H-2, owner ruling 2026-08-25): the decoy is stamped at the CURRENT
+// KDF_PARAMS on write; a v1 decoy carried across a profile change silently
+// rekeys on the next successful duress unlock. The timing pad for the "no
+// decoy configured" branch still resolves this device's recorded era via
+// deniabilityKdfProfile.js — READ-side use, not a writer.
 import { encryptDeniabilityVault } from './deniabilityKdfProfile.js';
 import { makeContainer, serializeContainer, newWalletId } from './multiVault.js';
 
@@ -136,7 +136,7 @@ export async function setDuressVault(decoyMnemonic, duressPassword, actionPasswo
     [{ id: newWalletId(), mnemonic: decoyMnemonic }],
     actionPasswordRecord ?? undefined,
   );
-  const blob = await encryptDeniabilityVault(serializeContainer(container), duressPassword);
+  const blob = await encryptVault(serializeContainer(container), duressPassword);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -176,12 +176,56 @@ export async function tryDuressUnlock(password) {
     await encryptDeniabilityVault('__duress_timing_chaff__', password).catch(() => {});
     return null;
   }
+  let plaintext;
   try {
-    return await decryptVault(blob, password); // throws on wrong password
+    plaintext = await decryptVault(blob, password); // throws on wrong password
   } catch {
     return null;
   }
+  // Gate 2 (H-2, owner ruling 2026-08-25): OPPORTUNISTIC REKEY, FIRE-AND-FORGET.
+  // If the decoy's recorded profile disagrees with the current one, kick off a
+  // re-encrypt at KDF_PARAMS with the SAME password that just decrypted it, but
+  // do NOT await it — the H-1 equaliser requires the duress-hit KDF budget to
+  // stay identical to the primary-miss budget on the SAME state, and awaiting
+  // the rekey's Argon2id derivation would add one observable KDF to duress-hit
+  // only, becoming a real-vs-chaff tell exactly where the equaliser hides one.
+  // Best-effort: any failure leaves the original blob untouched; correctness is
+  // preserved (both writers write to the same key; last write wins).
+  if (vaultNeedsKdfMigration(blob)) {
+    // Deferred to a macrotask so the Argon2id re-derivation runs AFTER the
+    // current unlock's timing budget has closed. See stealth.js:tryRevealHidden
+    // for the full rationale — the H-1 equaliser holds only if duress-hit costs
+    // the same as primary-miss on the same state.
+    _lastKdfRekey = new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          const fresh = await encryptVault(plaintext, password);
+          if (fresh && fresh.ct && fresh.iv && fresh.salt) {
+            const db = await openDb();
+            try {
+              await /** @type {Promise<void>} */ (new Promise((res, rej) => {
+                const r = store(db, 'readwrite').put(fresh, DECOY_KEY);
+                r.onsuccess = () => res();
+                r.onerror = () => rej(r.error);
+              }));
+            } finally {
+              db.close();
+            }
+          }
+        } catch { /* best-effort — duress unlock already returned the payload */ }
+        resolve();
+      }, 250);
+    });
+  }
+  return plaintext;
 }
+
+// Test hook: mirrors stealth.js:_awaitPendingKdfRekey. Fire-and-forget rekey
+// keeps the H-1 timing budget; tests reading post-decoy-unlock storage state
+// use this to wait deterministically.
+let _lastKdfRekey = /** @type {Promise<void>} */ (Promise.resolve());
+/** @returns {Promise<void>} */
+export function _awaitPendingKdfRekey() { return _lastKdfRekey; }
 
 /** Remove the decoy vault. */
 export async function clearDuressVault() {

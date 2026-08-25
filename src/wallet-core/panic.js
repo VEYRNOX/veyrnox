@@ -90,13 +90,12 @@
 // vault crypto internals (vault.js / vaultStore.js / signing.js); it reuses
 // encryptVault/decryptVault verbatim for the panic marker.
 
-import { decryptVault } from './vault.js';
-// H-2 (weekly audit 2026-08-25): the panic marker must record the SAME Argon2id
-// profile as the duress blob and the stealth pool it sits beside, or personalising
-// one slot after an at-rest profile change makes it the odd one out in a storage
-// dump. This is a params READER over the shared store, not a dependency on the
-// deniability modules this file erases — panic.js stays decoupled from those.
-import { encryptDeniabilityVault } from './deniabilityKdfProfile.js';
+import { decryptVault, encryptVault, vaultNeedsKdfMigration } from './vault.js';
+// Gate 2 (H-2, owner ruling 2026-08-25): the panic marker is stamped at the
+// CURRENT KDF_PARAMS on write; a v1 marker carried across a profile change
+// silently rekeys on the next successful panic unlock (before the wipe fires).
+// deniabilityKdfProfile.js is no longer imported here — panic.js stays fully
+// decoupled from the deniability modules it erases.
 import { generateMnemonic } from './mnemonic.js';
 import { padToFixedLen, stripPad } from './multiVault.js';
 // BIO-05: biometric-2FA enabled tell. Imported (not hardcoded) so a rename in
@@ -651,7 +650,7 @@ export async function setPanicVault(panicPassword) {
   // still strip on decrypt for cleanliness/forward-safety. The marker is not a
   // container, so it uses the string-level padToFixedLen helper (NOT the JSON `pad`
   // field); the container FORMAT is unchanged.
-  const blob = await encryptDeniabilityVault(padToFixedLen(marker), panicPassword);
+  const blob = await encryptVault(padToFixedLen(marker), panicPassword);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -707,18 +706,58 @@ export async function tryPanicUnlock(password) {
     db.close();
   }
   if (!blob) return false;
+  let plaintext;
   try {
-    const plaintext = await decryptVault(blob, password); // throws on wrong PIN
-    // H2: strip the FIXED_LEN padding before any detection logic. Detection here is
-    // purely "did GCM auth succeed" (an exact-match decrypt), so the marker is
-    // recognisable after pad+strip; stripPad tolerates legacy unpadded markers
-    // (returns them unchanged), so panic still fires for blobs written before H2.
-    stripPad(plaintext);
-    return true;
+    plaintext = await decryptVault(blob, password); // throws on wrong PIN
   } catch {
     return false;
   }
+  // H2: strip the FIXED_LEN padding before any detection logic. Detection here
+  // is purely "did GCM auth succeed" (an exact-match decrypt), so the marker
+  // is recognisable after pad+strip; stripPad tolerates legacy unpadded markers.
+  stripPad(plaintext);
+  // Gate 2 (H-2, owner ruling 2026-08-25): OPPORTUNISTIC REKEY, FIRE-AND-FORGET.
+  // If the marker's recorded profile disagrees with the current one, kick off a
+  // re-encrypt at KDF_PARAMS with the SAME PIN that just decrypted it, but do
+  // NOT await it — the H-1 equaliser requires the panic-hit KDF budget to stay
+  // identical to the primary-miss budget on the SAME state. The marker's
+  // plaintext is a padded throwaway mnemonic (setPanicVault); we re-encrypt
+  // what we just decrypted so the stored bytes stay padded to FIXED_LEN.
+  // Best-effort: any failure leaves the original marker untouched; the wipe
+  // proceeds regardless because tryPanicUnlock has already returned true.
+  if (vaultNeedsKdfMigration(blob)) {
+    // Deferred to a macrotask so the Argon2id re-derivation runs AFTER the
+    // current unlock's timing budget has closed. See stealth.js:tryRevealHidden
+    // for the full rationale.
+    _lastKdfRekey = new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          const fresh = await encryptVault(plaintext, password);
+          if (fresh && fresh.ct && fresh.iv && fresh.salt) {
+            const wdb = await openDb();
+            try {
+              await /** @type {Promise<void>} */ (new Promise((res, rej) => {
+                const r = store(wdb, 'readwrite').put(fresh, PANIC_KEY);
+                r.onsuccess = () => res();
+                r.onerror = () => rej(r.error);
+              }));
+            } finally {
+              wdb.close();
+            }
+          }
+        } catch { /* best-effort — panic detection already returned true */ }
+        resolve();
+      }, 250);
+    });
+  }
+  return true;
 }
+
+// Test hook: mirrors stealth.js:_awaitPendingKdfRekey / duress.js — same
+// fire-and-forget shape, same rationale (H-1 timing budget).
+let _lastKdfRekey = /** @type {Promise<void>} */ (Promise.resolve());
+/** @returns {Promise<void>} */
+export function _awaitPendingKdfRekey() { return _lastKdfRekey; }
 
 // Clear every residue key in localStorage — the DEMO address maps AND the
 // deniability tells (C-1). Guarded for non-browser/test environments.
