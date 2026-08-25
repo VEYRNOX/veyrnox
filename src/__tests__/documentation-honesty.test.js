@@ -108,10 +108,11 @@ describe('Documentation page — restored honesty caveats (S-1)', () => {
   });
 
   // The legend gained a third state on 2026-08-24 (verified | built | roadmap),
-  // so the label being explained changed from "Available" to "Built". The
+  // and this PR relabels the user-facing shipped state from "Built" to "Live".
   // load-bearing half is unchanged and still pinned: the page must say these
   // labels are not an independent security review.
-  it('status legend explains the shipped-and-working label and disclaims independent review', () => {
+  it('status legend explains the Live label and disclaims independent review', () => {
+    expect(page).toContain('<b>Live</b>');
     expect(page).toContain('the code is shipped and working');
     expect(page).toContain('not an independent security review');
   });

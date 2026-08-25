@@ -20,13 +20,13 @@ const BRAND = [255, 107, 53]; // Veyrnox orange (matches the old server template
 
 /**
  * Map a catalogue status to its PDF tag. Three honest states; the retired
- * two-state "available" string degrades to [Built] so an older caller's
+ * two-state "available" string degrades to [Live] so an older caller's
  * code-complete features are never silently dropped or mislabelled verified.
  * @param {string} status - 'verified' | 'built' | 'roadmap' (or legacy 'available')
  */
 export function pdfStatusTag(status) {
   if (status === "verified") return "[Verified]";
-  if (status === "built" || status === "available") return "[Built]";
+  if (status === "built" || status === "available") return "[Live]";
   return "[Roadmap]";
 }
 
@@ -72,18 +72,20 @@ export function exportCataloguePdf({ title, subtitle, categories = [], fileName 
     y += lines.length * 5 + 4;
   }
 
-  // ── Totals ── three honest states (verified / built / roadmap). Older
-  // callers that still pass the retired "available" string are counted as built
-  // (code-complete) so the PDF degrades honestly rather than dropping them.
+  // ── Totals ── mirrors the on-screen catalogue: "verified" and "built" both
+  // count as Live. Older callers that still pass the retired "available" string
+  // are counted the same way so the PDF degrades honestly rather than dropping
+  // them.
   const allItems = categories.flatMap((c) => c.items || []);
-  const verified = allItems.filter((i) => i.status === "verified").length;
-  const built = allItems.filter((i) => i.status === "built" || i.status === "available").length;
-  const roadmap = allItems.length - verified - built;
+  const live = allItems.filter(
+    (i) => i.status === "verified" || i.status === "built" || i.status === "available",
+  ).length;
+  const roadmap = allItems.length - live;
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(
-    `${allItems.length} features across ${categories.length} categories — ${verified} verified on-chain, ${built} built (code-complete, unproven on-chain), ${roadmap} on the roadmap.`,
+    `${allItems.length} features across ${categories.length} categories — ${live} live, ${roadmap} on the roadmap.`,
     margin,
     y,
   );

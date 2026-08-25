@@ -123,7 +123,7 @@ const workflows = [
 
 const STATUS_META = {
   [STATUS.VERIFIED]: { label: "Verified",  className: "bg-accent/10 text-accent border-accent/20" },
-  [STATUS.BUILT]:    { label: "Built",     className: "bg-caution/10 text-caution border-caution/20" },
+  [STATUS.BUILT]:    { label: "Live",      className: "bg-caution/10 text-caution border-caution/20" },
   [STATUS.ROADMAP]:  { label: "Roadmap",   className: "bg-muted/50 text-muted-foreground border-border" },
 };
 
@@ -250,13 +250,13 @@ export default function Documentation() {
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
             <Badge variant="outline" className={STATUS_META[STATUS.VERIFIED].className}>{verifiedCount} Verified</Badge>
-            <Badge variant="outline" className={STATUS_META[STATUS.BUILT].className}>{builtCount} Built</Badge>
+            <Badge variant="outline" className={STATUS_META[STATUS.BUILT].className}>{builtCount} Live</Badge>
             {roadmapCount > 0 && <Badge variant="outline" className={STATUS_META[STATUS.ROADMAP].className}>{roadmapCount} Roadmap</Badge>}
           </div>
           <p className="text-xs text-muted-foreground pt-2 max-w-3xl">
             <b>Verified</b> means a real, explorer-confirmed transaction proves it — this page reads a
             txid evidence file and nothing else, so passing tests and code review can never turn a
-            feature green. <b>Built</b> means the code is shipped and working but no on-chain evidence
+            feature green. <b>Live</b> means the code is shipped and working but no on-chain evidence
             exists yet. <b>Roadmap</b> means planned for later. These labels describe what is built —
             they are not an independent security review.
           </p>
