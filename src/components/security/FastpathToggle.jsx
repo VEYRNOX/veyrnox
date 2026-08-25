@@ -22,6 +22,7 @@ import {
   setFastpathEnabled,
   hasSeenFastpathDisclosure,
   markFastpathDisclosureSeen,
+  enableFastpathAndBiometricUnlock,
 } from '@/lib/fastpathUnlock';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { isPasskeyRegistered } from '@/lib/passkey';
@@ -71,7 +72,9 @@ export default function FastpathToggle() {
       setShowDisclosure(true);
       return;
     }
-    setFastpathEnabled(true);
+    // #2037 follow-up — repeat-enable path (disclosure already seen). Link
+    // Biometric Unlock in the same tap. See handleAck for first-run path.
+    enableFastpathAndBiometricUnlock();
     setEnabled(true);
   };
 
@@ -80,7 +83,8 @@ export default function FastpathToggle() {
     if (isDeniabilityOrDemoActive()) { setShowDisclosure(false); return; }
     if (isPasskeyRegistered()) { setShowDisclosure(false); return; }
     markFastpathDisclosureSeen();
-    setFastpathEnabled(true);
+    // #2037 follow-up — links Biometric Unlock ON in the same tap.
+    enableFastpathAndBiometricUnlock();
     setEnabled(true);
     setShowDisclosure(false);
   };

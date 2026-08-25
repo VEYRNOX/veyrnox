@@ -32,6 +32,10 @@ vi.mock('@/wallet-core/deniabilitySession', () => ({
 
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import {
+  isBiometricUnlockEnabled,
+  BIOMETRIC_PREF_KEY,
+} from '@/lib/biometric';
+import {
   FASTPATH_ENABLED_STORAGE_KEY,
   FASTPATH_DISCLOSURE_SEEN_KEY,
   isFastpathEnabled,
@@ -41,6 +45,7 @@ import {
   hasSeenFastpathDisclosure,
   migrateFastpathState,
   shouldShowFastpathWarmingHint,
+  enableFastpathAndBiometricUnlock,
 } from '../fastpathUnlock.js';
 
 describe('fastpathUnlock — tri-state opt-in gate (default-ON, session reversal)', () => {
@@ -188,6 +193,74 @@ describe('fastpathUnlock — migration (pre-reversal explicit-OFF honoured)', ()
     vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
     migrateFastpathState();
     expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('fastpathUnlock — linked biometric-unlock enablement (#2037 follow-up)', () => {
+  // User-reported bug: Fast Unlock ON + Biometric Unlock OFF made the
+  // "Unlock with fingerprint" button fail. Enabling Fast Unlock must ALSO
+  // enable Biometric Unlock (pure preference flip — Shape A). The password
+  // cache warms on the next successful PIN unlock via the pref-gated path
+  // in WalletProvider.unlock().
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(false);
+  });
+
+  it('enableFastpathAndBiometricUnlock() flips BOTH prefs to ON', () => {
+    enableFastpathAndBiometricUnlock();
+    expect(isFastpathEnabled()).toBe(true);
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('1');
+    expect(isBiometricUnlockEnabled()).toBe(true);
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBe('1');
+  });
+
+  it('enableFastpathAndBiometricUnlock is a NO-OP in decoy/demo (I3, both writers)', () => {
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
+    enableFastpathAndBiometricUnlock();
+    expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBeNull();
+  });
+
+  it('migration: pre-follow-up state (fastpath ON + biometric OFF) is repaired', () => {
+    // The buggy state existing users may be in — Fast Unlock explicitly on
+    // but Biometric Unlock never enabled. Migration flips biometric-unlock
+    // ON so the next PIN unlock warms the password cache.
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+    expect(isBiometricUnlockEnabled()).toBe(false);
+    migrateFastpathState();
+    expect(isBiometricUnlockEnabled()).toBe(true);
+  });
+
+  it('migration: default-on (key absent) + disclosure seen does NOT touch biometric-unlock', () => {
+    // Absent key + disclosure seen → the pre-#2051 explicit-OFF migration
+    // writes '0' and Fast Unlock ends up OFF; biometric-unlock must remain
+    // untouched (asymmetric disable — do not enable biometric here).
+    localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+    migrateFastpathState();
+    expect(isFastpathEnabled()).toBe(false);
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBeNull();
+  });
+
+  it('migration: fastpath OFF ("0") does NOT enable biometric-unlock', () => {
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '0');
+    migrateFastpathState();
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBeNull();
+  });
+
+  it('migration: biometric-unlock already ON is idempotent', () => {
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    localStorage.setItem(BIOMETRIC_PREF_KEY, '1');
+    migrateFastpathState();
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBe('1');
+  });
+
+  it('migration: NO-OP in decoy/demo (I3)', () => {
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
+    migrateFastpathState();
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBeNull();
   });
 });
 

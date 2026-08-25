@@ -33,6 +33,7 @@
 // panic-residue-fastpath.test.js).
 
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+import { isBiometricUnlockEnabled, setBiometricUnlockEnabled } from '@/lib/biometric';
 
 /** Storage key mirrored in wallet-core/panic.js METADATA_RESIDUE_KEYS. */
 export const FASTPATH_ENABLED_STORAGE_KEY = 'veyrnox-fastpath-enabled';
@@ -115,9 +116,35 @@ export function markFastpathDisclosureSeen() {
  */
 export function migrateFastpathState() {
   if (isDeniabilityOrDemoActive()) return;
-  if (hasFastpathBeenExplicitlySet()) return;
-  if (!hasSeenFastpathDisclosure()) return;
-  safeSet(FASTPATH_ENABLED_STORAGE_KEY, OFF);
+  if (!hasFastpathBeenExplicitlySet() && hasSeenFastpathDisclosure()) {
+    safeSet(FASTPATH_ENABLED_STORAGE_KEY, OFF);
+  }
+  // #2037 follow-up — repair the "Fast Unlock ON, Biometric Unlock OFF"
+  // state a user could reach before the two toggles were linked. Both
+  // preferences flip together on enable now, so a fresh install cannot
+  // land there; existing installs get flipped forward here. Pure
+  // preference flip (Shape A) — the actual password cache warms on the
+  // next successful PIN unlock via the pref-gated path in
+  // WalletProvider.unlock(). Asymmetric: fastpath OFF does NOT touch the
+  // biometric-unlock pref (they are independent user-facing features).
+  if (isFastpathEnabled() && !isBiometricUnlockEnabled()) {
+    setBiometricUnlockEnabled(true);
+  }
+}
+
+/**
+ * Enable Fast Unlock AND Biometric Unlock in one call (#2037 follow-up).
+ * Both UI chokepoints (FastUnlockFirstRunCard "Enable" + FastpathToggle
+ * enable path) route through here so a user cannot end up with Fast Unlock
+ * on while Biometric Unlock is off — the exact state that produced the
+ * user-reported "Biometric unlock didn't work" failure. Pure preference
+ * flip on both; both setters are individually I3-guarded, this helper
+ * additionally short-circuits at the top for clarity.
+ */
+export function enableFastpathAndBiometricUnlock() {
+  if (isDeniabilityOrDemoActive()) return;
+  setFastpathEnabled(true);
+  setBiometricUnlockEnabled(true);
 }
 
 // Run the migration at import time so any consumer of isFastpathEnabled sees

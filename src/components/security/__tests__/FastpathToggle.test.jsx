@@ -39,6 +39,7 @@ import {
   hasSeenFastpathDisclosure,
   hasFastpathBeenExplicitlySet,
 } from '@/lib/fastpathUnlock';
+import { isBiometricUnlockEnabled, BIOMETRIC_PREF_KEY } from '@/lib/biometric';
 import { setDeniabilitySession } from '@/wallet-core/deniabilitySession';
 import FastpathToggle from '@/components/security/FastpathToggle';
 
@@ -92,6 +93,34 @@ describe('FastpathToggle', () => {
     expect(screen.queryByTestId('fastpath-disclosure')).toBeNull();
     expect(isFastpathEnabled()).toBe(true);
     expect(localStorage.getItem(FASTPATH_ENABLED_STORAGE_KEY)).toBe('1');
+  });
+
+  it('enable path FIRST run: ack ALSO enables Biometric Unlock (#2037 linked)', async () => {
+    render(<FastpathToggle />);
+    await act(async () => { fireEvent.click(screen.getByTestId('fastpath-toggle')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('fastpath-disclosure-ack')); });
+    expect(isBiometricUnlockEnabled()).toBe(true);
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBe('1');
+  });
+
+  it('enable path REPEAT run: straight enable ALSO enables Biometric Unlock (#2037 linked)', async () => {
+    localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '0');
+    render(<FastpathToggle />);
+    await act(async () => { fireEvent.click(screen.getByTestId('fastpath-toggle')); });
+    expect(isBiometricUnlockEnabled()).toBe(true);
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBe('1');
+  });
+
+  it('disable: does NOT touch Biometric Unlock pref (asymmetric — independent user features)', async () => {
+    localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '1');
+    localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
+    localStorage.setItem(BIOMETRIC_PREF_KEY, '1');
+    render(<FastpathToggle />);
+    await act(async () => { fireEvent.click(screen.getByTestId('fastpath-toggle')); });
+    expect(isFastpathEnabled()).toBe(false);
+    expect(isBiometricUnlockEnabled()).toBe(true);
+    expect(localStorage.getItem(BIOMETRIC_PREF_KEY)).toBe('1');
   });
 
   it('disable: writes explicit "0" (tri-state) + best-effort cache clear', async () => {
