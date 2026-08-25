@@ -122,7 +122,8 @@ export default function FastUnlockFirstRunCard() {
               This lets Face ID or your fingerprint unlock the wallet without asking for your PIN.
               It&rsquo;s faster. If someone else has your phone AND can pass your device&rsquo;s
               biometric (for example, if they added their own face), they can unlock the wallet.
-              Your PIN still works and everything else is unchanged.
+              Your PIN still works. Note: fast unlock opens your real wallet directly &mdash; your
+              Emergency PIN and panic PIN only apply when you unlock by typing a PIN.
             </p>
           </div>
         </div>

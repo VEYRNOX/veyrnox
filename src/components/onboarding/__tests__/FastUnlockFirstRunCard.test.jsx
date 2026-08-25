@@ -71,6 +71,16 @@ describe('FastUnlockFirstRunCard — gate matrix', () => {
     await waitFor(() => expect(screen.getByTestId(CARD)).toBeTruthy());
   });
 
+  it('discloses the duress/panic-PIN bypass instead of claiming "everything else is unchanged" (M-3, audit-2026-08-25)', async () => {
+    render(<FastUnlockFirstRunCard />);
+    await waitFor(() => expect(screen.getByTestId(CARD)).toBeTruthy());
+    const text = screen.getByTestId(CARD).textContent;
+    expect(text).toMatch(
+      /Emergency PIN and panic PIN only apply when you unlock by typing a PIN/,
+    );
+    expect(text).not.toMatch(/everything else is unchanged/i);
+  });
+
   it('hidden when disclosure has already been seen (one-time)', async () => {
     localStorage.setItem(FASTPATH_DISCLOSURE_SEEN_KEY, '1');
     render(<FastUnlockFirstRunCard />);
