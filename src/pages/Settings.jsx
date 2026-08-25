@@ -9,6 +9,7 @@ import { useTheme } from 'next-themes';
 import { base44, WALLET_GATE } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import { useTier } from "@/lib/TierProvider";
+import { hasSafetyPlusAccess, tierLabel, TIER } from "@/lib/tier";
 import { getAuthModel } from "@/lib/authModel";
 import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle, Network, CloudUpload, Key, KeyRound, Sparkles, Scale, ScrollText, FileSignature, BarChart3 } from "lucide-react";
 import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
@@ -22,6 +23,7 @@ import BiometricUnlockSettings from "../components/security/BiometricUnlockSetti
 import PasskeyUnlockSettings from "../components/security/PasskeyUnlockSettings";
 import TwoFactorSettings from "../components/security/TwoFactorSettings";
 import HardwareKekSettings from "../components/security/HardwareKekSettings";
+import FastpathToggle from "../components/security/FastpathToggle";
 import SessionSettings from "../components/security/SessionSettings";
 import RehearsalSettingsRow from "@/rehearsal/RehearsalSettingsRow";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -37,7 +39,8 @@ export default function Settings() {
     auditLogWritable = true,
   } = useWallet();
   const { currentTier } = useTier();
-  const isSafetyPlus = currentTier === "safety_plus";
+  const isSafetyPlus = hasSafetyPlusAccess(currentTier);
+  const planLabel = tierLabel(currentTier);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -291,11 +294,26 @@ export default function Settings() {
         </div>
       ) : (
         <>
-          <BiometricUnlockSettings />
-          <PasskeyUnlockSettings />
+          <div className="p-5 rounded-xl border border-border bg-card space-y-5">
+            <div className="flex items-center gap-2">
+              <Fingerprint className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">
+                {isNative ? "Biometric" : "Unlock Methods"}
+              </h2>
+            </div>
+
+            <div className="space-y-5">
+              <BiometricUnlockSettings embedded />
+              <div className="border-t border-border" />
+              <PasskeyUnlockSettings embedded />
+            </div>
+          </div>
           <TwoFactorSettings />
 
           <HardwareKekSettings />
+          {/* Fast unlock (#2019): Android-only opt-in biometric-only unlock
+              path. Renders null on non-Android and in decoy/demo (I3). */}
+          <FastpathToggle />
           <SessionSettings />
           <RehearsalSettingsRow />
         </>
@@ -335,9 +353,15 @@ export default function Settings() {
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-semibold">Current plan: {isSafetyPlus ? "Safety Plus" : "Free"}</p>
+            <p className="text-sm font-semibold">Current plan: {planLabel}</p>
             <p className="text-xs text-muted-foreground">
-              {isSafetyPlus ? "Deeper security controls & advanced analytics" : "Upgrade to Safety Plus — $5.99/mo"}
+              {isSafetyPlus
+                ? currentTier === TIER.AI_SECURITY_PROTECTION
+                  ? "Includes every Safety Plus feature plus live TIP-backed Vigil answers"
+                  : "Deeper security controls & advanced analytics"
+                : currentTier === TIER.AI_SECURITY_PROTECTION
+                  ? "Live TIP-backed Vigil answers"
+                  : "Upgrade to Safety Plus or AI Security Protection"}
             </p>
           </div>
         </div>

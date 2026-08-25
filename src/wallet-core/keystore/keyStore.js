@@ -60,6 +60,37 @@
  *   legacy v1. The settings UI reads this to decide whether to offer the explicit
  *   "Upgrade protection" action (upgradeKekToV3, native only).
  *
+ * @property {() => Promise<{
+ *   platform: 'android' | 'ios',
+ *   manufacturer: string | null,
+ *   model: string | null,
+ *   sdkInt: number | null,
+ *   hardwareBacking: string | null,
+ *   biometryEnrolled: boolean,
+ *   biometricAvailable: boolean,
+ *   deviceIsSecure: boolean,
+ *   secureHardwareAvailable: boolean
+ * } | null>} [getNativeSecuritySnapshot]
+ *   Native-only. A read-only diagnostics snapshot for compatibility triage,
+ *   especially on vendor Android builds where biometric / keystore behavior can
+ *   differ from Pixel. No biometric prompt, no secret read, no vault mutation.
+ *   Returns null on web or when the snapshot cannot be resolved honestly.
+ *
+ * @property {() => Promise<{
+ *   platform: 'android' | 'ios',
+ *   manufacturer: string | null,
+ *   model: string | null,
+ *   sdkInt: number | null,
+ *   hardwareBacking: string | null,
+ *   biometryEnrolled: boolean,
+ *   biometricAvailable: boolean,
+ *   deviceIsSecure: boolean,
+ *   secureHardwareAvailable: boolean
+ * } | null>} [refreshNativeSecuritySnapshot]
+ *   Native-only. Re-runs the compatibility probes and replaces any cached
+ *   diagnostics snapshot. Used by the "Retest device security" action after an
+ *   OS update, a newly-enrolled biometric, or a vendor settings change.
+ *
  * @property {(password: string, opts?: { getHardwareFactor?: (hfOpts?: { kekSalt?: Uint8Array }) => Promise<Uint8Array> }) => Promise<{ upgraded: boolean, version: number|null }>} [upgradeKekToV3]
  *   Native-only in effect. EXPLICIT, consented, FAIL-CLOSED re-enroll of a non-v3
  *   KEK vault to a genuinely salt-bound v3 wrap (fixes C-1 fixed-salt binding).

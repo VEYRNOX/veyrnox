@@ -16,16 +16,18 @@ import { useWallet } from '@/lib/WalletProvider';
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { DEMO } from '@/api/demoClient';
 
-// localStorage opt-in pref. "1" = on / ABSENT = off (mirrors lib/biometric.js,
-// wallet-core/auditLog.js). Absence = off is deliberate: a fresh device makes no
-// price call. Device-global and holdings-blind — reveals nothing about holdings.
+// localStorage pref. ABSENT = on (default), "0" = explicit off. Owner-authorized
+// 2026-08-25: default flipped ON so the token list shows live 24h % without an
+// opt-in tap. Decoy/hidden/demo sessions still make ZERO egress — every consumer
+// hook (useBasketPrices, useLivePrices) gates on !isDecoy && !isHidden && !DEMO
+// in addition to this pref, and setLivePricesEnabled() no-ops in those sessions.
+// Panic-wipe still removes the key; post-wipe default = ON, which matches intent.
 export const LIVE_PRICE_PREF_KEY = 'veyrnox-live-prices';
 
-/** @returns {boolean} whether live prices are enabled (OFF by default; on only if explicitly enabled). */
+/** @returns {boolean} whether live prices are enabled (ON by default; off only when explicitly disabled). */
 export function isLivePricesEnabled() {
-  // I2-LIVEPRICE-DEFAULT-ON fix: ABSENT = off. '1' = on. Never egress on a fresh device.
-  try { return localStorage.getItem(LIVE_PRICE_PREF_KEY) === '1'; }
-  catch { return false; } // storage unavailable → treat as OFF (I2: fail closed)
+  try { return localStorage.getItem(LIVE_PRICE_PREF_KEY) !== '0'; }
+  catch { return true; } // storage unavailable → default ON (owner-authorized 2026-08-25)
 }
 
 /**
@@ -45,8 +47,8 @@ export function isLivePricesEnabled() {
 export function setLivePricesEnabled(on) {
   if (isDeniabilityOrDemoActive()) return; // I3/K-2: decoy/hidden/demo never mutates real prefs
   try {
-    if (on) localStorage.setItem(LIVE_PRICE_PREF_KEY, '1');
-    else localStorage.removeItem(LIVE_PRICE_PREF_KEY);
+    if (on) localStorage.removeItem(LIVE_PRICE_PREF_KEY); // absence = default ON
+    else localStorage.setItem(LIVE_PRICE_PREF_KEY, '0');   // explicit off
   } catch { /* best-effort */ }
 }
 

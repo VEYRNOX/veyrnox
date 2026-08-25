@@ -1,7 +1,7 @@
-// BackupNagSheet — Slice G+H plan §3. Wraps <WalletCreatedFlash compact/>.
+// BackupNagSheet — gentle Safety Plus nudge (replaces former Personal Backup push).
 //
-// RED phase: component does not yet exist. Pins the mount-does-nothing rule
-// (mount MUST NOT call markBackupNagShown) and the two user-action paths.
+// Pins: mount does NOT call markBackupNagShown, dismiss button works,
+// CTA navigates to /plans (not /personal-backup), I3 suppression.
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -51,25 +51,18 @@ describe('BackupNagSheet', () => {
     expect(backupNagMock.markBackupNagShown).not.toHaveBeenCalled();
   });
 
-  it('"Not now" click calls dismissForSession', async () => {
+  it('dismiss button calls dismissForSession', async () => {
     const Sheet = await loadSheet();
     render(<Sheet addrs={['0xaaa']} />);
-    fireEvent.click(screen.getByRole('button', { name: /Not now|Skip/i }));
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
     expect(backupNagMock.dismissForSession).toHaveBeenCalledTimes(1);
   });
 
-  it('"Set up now" click navigates to /personal-backup', async () => {
+  it('"Learn about Safety Plus" navigates to /plans', async () => {
     const Sheet = await loadSheet();
     render(<Sheet addrs={['0xaaa']} />);
-    fireEvent.click(screen.getByRole('button', { name: /Set up|Open backup screen/i }));
-    expect(navigateMock).toHaveBeenCalledWith('/personal-backup');
-  });
-
-  it('remains rendered across 3 re-renders with no interaction', async () => {
-    const Sheet = await loadSheet();
-    const { rerender } = render(<Sheet addrs={['0xaaa']} />);
-    for (let i = 0; i < 3; i++) rerender(<Sheet addrs={['0xaaa']} />);
-    expect(screen.getByRole('button', { name: /Not now|Skip/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /learn about safety plus/i }));
+    expect(navigateMock).toHaveBeenCalledWith('/plans');
   });
 
   it('I3: in decoy/demo the sheet does not render', async () => {
@@ -78,6 +71,6 @@ describe('BackupNagSheet', () => {
     backupNagMock.shouldShowBackupNag.mockReturnValue(false);
     const Sheet = await loadSheet();
     const { container } = render(<Sheet addrs={['0xaaa']} />);
-    expect(container.textContent ?? '').not.toMatch(/Set up Personal Backup|Not now/i);
+    expect(container.textContent ?? '').not.toMatch(/Safety Plus|Protect/i);
   });
 });

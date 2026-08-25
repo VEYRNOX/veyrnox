@@ -14,6 +14,17 @@ if (typeof globalThis.Buffer === 'undefined') {
   globalThis.Buffer = NodeBuffer
 }
 
+// Same class as the Buffer polyfill above. Digital Shield chunk (Keystone SDK
+// / bc-ur-registry / uuid transitively) reads bare `process` at runtime. WKWebView
+// has no `process` global, so the Send route ErrorBoundary'd on iOS with
+// `ReferenceError: Can't find variable: process` on 1.0.1(31) / (32).
+// Vite's `define: 'process.env': '{}'` covers property reads only, not
+// bare-identifier reads. Install a minimal shim before any lazy chunk can load
+// (Send/Receive/Buy chunks are all lazy — this runs before any of them).
+if (typeof globalThis.process === 'undefined') {
+  globalThis.process = { env: {}, browser: true, versions: {}, platform: 'browser' }
+}
+
 import { applyRpcEnvOverrides } from '@/wallet-core/rpcConfig.js'
 applyRpcEnvOverrides()
 

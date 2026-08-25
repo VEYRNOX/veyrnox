@@ -7,6 +7,7 @@ import { CheckCircle2, Loader2, AlertCircle, ExternalLink, Plug } from "lucide-r
 import { toast } from "@/lib/toast";
 import { useNavigate } from "react-router";
 import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
+import { connectWalletConnectImportPreview } from "@/lib/walletConnectAppSdk";
 
 const PROVIDERS = [
   {
@@ -37,6 +38,14 @@ const PROVIDERS = [
     currencies: ["ETH", "USDC"],
     detect: () => typeof window.ethereum !== "undefined" && window.ethereum.isCoinbaseWallet,
     installUrl: "https://www.coinbase.com/wallet",
+  },
+  {
+    id: "walletconnect-appkit",
+    name: "WalletConnect",
+    description: "Connect an external EVM wallet through the WalletConnect modal",
+    emoji: "🔗",
+    currencies: ["ETH", "POL", "AVAX", "BNB"],
+    detect: () => true,
   },
 ];
 
@@ -73,7 +82,17 @@ async function connectCoinbase() {
   return [{ currency: "ETH", address, balance }];
 }
 
-const CONNECTORS = { metamask: connectMetaMask, phantom: connectPhantom, coinbase: connectCoinbase };
+async function connectWalletConnectAppKit() {
+  const { assets } = await connectWalletConnectImportPreview();
+  return assets;
+}
+
+const CONNECTORS = {
+  metamask: connectMetaMask,
+  phantom: connectPhantom,
+  coinbase: connectCoinbase,
+  "walletconnect-appkit": connectWalletConnectAppKit,
+};
 
 export default function ConnectWallet() {
   const queryClient = useQueryClient();
@@ -106,7 +125,7 @@ export default function ConnectWallet() {
   });
 
   const handleConnect = async (provider) => {
-    if (!provider.detect()) {
+    if (!provider.detect() && provider.installUrl) {
       window.open(provider.installUrl, "_blank");
       return;
     }
@@ -157,11 +176,20 @@ export default function ConnectWallet() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">{asset.currency}</p>
+                {asset.networkName ? (
+                  <p className="text-[11px] text-muted-foreground">{asset.networkName}</p>
+                ) : null}
                 <p className="text-xs text-muted-foreground font-mono truncate">{asset.address}</p>
               </div>
               <div className="text-end shrink-0">
-                <p className="text-sm font-bold">{formatCryptoAmount(asset.balance, resolveLocale(), { maximumFractionDigits: 6 })}</p>
-                <p className="text-xs text-muted-foreground">{asset.currency}</p>
+                <p className="text-sm font-bold">
+                  {asset.balanceUnavailable
+                    ? "Balance unavailable"
+                    : formatCryptoAmount(asset.balance, resolveLocale(), { maximumFractionDigits: 6 })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {asset.balanceUnavailable ? "Address only" : asset.currency}
+                </p>
               </div>
             </div>
           ))}
@@ -169,6 +197,9 @@ export default function ConnectWallet() {
 
         <div className="p-3 rounded-lg bg-secondary text-xs text-muted-foreground space-y-1">
           <p className="flex items-start gap-1.5"><AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />This imports a read-only snapshot of your on-chain balance. Transactions within this app are tracked separately.</p>
+          {preview.assets.some(asset => asset.balanceUnavailable) ? (
+            <p className="flex items-start gap-1.5"><AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />Some balances could not be read during import. Those entries will still be added as watch-only addresses.</p>
+          ) : null}
         </div>
 
         <div className="flex gap-2">
@@ -238,7 +269,7 @@ export default function ConnectWallet() {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">How it works</p>
         {[
           "Your wallet extension signs a connection request",
-          "We read your public address and on-chain balance",
+          "We read your public address and a public balance snapshot",
           "Your private keys never leave your device",
         ].map((s, i) => (
           <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">

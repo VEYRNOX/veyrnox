@@ -10,6 +10,8 @@
 import { createTipClient, verdictToRiskLevel, signalsToRiskRows } from './tipClient.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { hydrateFromCache, lookupLocal } from '@/lib/localIocCache.js';
+import { ZERO_FROM_ADDRESS } from '@/lib/tipZeroFrom.js';
+import { getRcUserId } from '@/lib/purchases.js';
 
 let _client = null;
 
@@ -47,6 +49,7 @@ function getClient() {
   _client = createTipClient({
     proxyUrl: `${String(supabaseUrl).replace(/\/$/, '')}/functions/v1/tip-screen`,
     anonKey,
+    getRcUserId,
   });
   return _client;
 }
@@ -88,6 +91,7 @@ export async function screenTransaction(params, { signal } = {}) {
       from_address: params.from,
       to_address: params.to,
       ...(params.contractAddress && { contract_address: params.contractAddress }),
+      ...(params.tokenAddress && { token_address: params.tokenAddress }),
       ...(params.calldata && { calldata: params.calldata }),
       ...(params.valueWei && { value_wei: params.valueWei }),
       // Solana + Bitcoin lanes on the Worker consume a base64/hex serialized
@@ -137,6 +141,119 @@ export async function screenTransaction(params, { signal } = {}) {
   } catch (err) {
     // I4 fail closed: a TIP error returns CAUTION, never a silent pass.
     if (import.meta.env.DEV) console.error('[TIP] screenTransaction error:', err);
+    return unavailableResult();
+  }
+}
+
+function isWellFormedAssetReviewResult(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return false;
+  if (result.kind !== 'asset_review') return false;
+  if (typeof result.verdict !== 'string' || !KNOWN_VERDICTS.includes(result.verdict)) return false;
+  if (!Array.isArray(result.findings)) return false;
+  if (result.sources_consulted != null && !Array.isArray(result.sources_consulted)) return false;
+  return true;
+}
+
+function normalizeAssetReviewResult(result) {
+  if (!isWellFormedAssetReviewResult(result)) return null;
+  const findings = result.findings
+    .filter((row) => row && typeof row === 'object' && !Array.isArray(row))
+    .map((row, index) => ({
+      level: row.severity === 'critical' ? 'high' : row.severity === 'high' ? 'high' : row.severity === 'medium' ? 'medium' : 'info',
+      title: typeof row.title === 'string' && row.title.trim() ? row.title : `asset finding ${index + 1}`,
+      detail: typeof row.detail === 'string' ? row.detail : '',
+      code: typeof row.code === 'string' ? row.code : null,
+      confidence: typeof row.confidence === 'number' ? row.confidence : null,
+    }));
+  const sourcesConsulted = Array.isArray(result.sources_consulted)
+    ? result.sources_consulted.filter(isWellFormedSource)
+    : [];
+  return {
+    verdict: result.verdict,
+    level: verdictToRiskLevel(result.verdict),
+    risks: findings,
+    signals: [],
+    findings,
+    reviewSummary: typeof result.review_summary === 'string' ? result.review_summary : null,
+    sourcesConsulted,
+    verdictReason: typeof result.verdict_reason === 'string' ? result.verdict_reason : null,
+    sanctions: result.sanctions_hit === true,
+    raw: result,
+    kind: 'asset_review',
+  };
+}
+
+function normalizeGenericScreenResult(result) {
+  if (!isWellFormedScreenResult(result)) return null;
+  const signals = Array.isArray(result.risk_data?.threat_signals)
+    ? result.risk_data.threat_signals
+    : [];
+  const sourcesConsulted = Array.isArray(result.risk_data?.sources_consulted)
+    ? result.risk_data.sources_consulted.filter(isWellFormedSource)
+    : [];
+  return {
+    verdict: result.verdict,
+    level: verdictToRiskLevel(result.verdict),
+    risks: signalsToRiskRows(signals),
+    signals,
+    sourcesConsulted,
+    verdictReason: typeof result.verdict_reason === 'string' ? result.verdict_reason : null,
+    sanctions: result.risk_data?.sanctions_hit === true,
+    raw: result,
+  };
+}
+
+function normalizeAssetIntelChain(chain, contractAddress) {
+  const raw = String(chain || '').trim().toLowerCase();
+  if (raw === 'evm' || raw === 'eth' || raw === 'ethereum') return 'ethereum';
+  if (raw === 'btc' || raw === 'bitcoin') return 'bitcoin';
+  if (raw === 'sol' || raw === 'solana') return 'solana';
+  if (!raw && String(contractAddress || '').startsWith('0x')) return 'ethereum';
+  return raw || null;
+}
+
+/**
+ * Deeper contract review through TIP for suspicious-assets rows.
+ *
+ * This remains separate from pre-send screening so the suspicious-assets page
+ * can ask for extra contract intelligence without sending wallet addresses,
+ * balances, or user-entered destinations. Only the chain + contract/token
+ * address leave the device, and only after the page-level opt-in gate allows
+ * it. The same tip-screen proxy, response validation, and fail-closed posture
+ * are reused.
+ *
+ * @param {{ chain?: string, contractAddress: string, tokenAddress?: string }} params
+ * @returns {Promise<{ verdict: string, level: string, risks: Array, signals: Array, sanctions: boolean, raw: object } | null>}
+ */
+export async function screenAssetContract(params, { signal } = {}) {
+  const contractAddress = String(params?.contractAddress || '').trim();
+  if (!contractAddress) return null;
+  const chain = normalizeAssetIntelChain(params?.chain, contractAddress);
+  if (!chain) return null;
+  const from = ZERO_FROM_ADDRESS[chain];
+  if (!from) return null;
+  const client = getClient();
+  if (!client || isDeniabilityOrDemoActive()) return null;
+  try {
+    const result = await client.screen({
+      chain,
+      action_type: 'asset_review',
+      from_address: from,
+      to_address: contractAddress,
+      contract_address: contractAddress,
+      token_address: params?.tokenAddress || contractAddress,
+    }, { signal });
+    const normalized = normalizeAssetReviewResult(result);
+    if (normalized) return normalized;
+    if (!isWellFormedScreenResult(result)) {
+      if (import.meta.env.DEV) console.error('[TIP] unrecognised asset-review response shape');
+      return unavailableResult();
+    }
+    const fallback = normalizeGenericScreenResult(result);
+    if (fallback) fallback.kind = 'generic_screen';
+    return fallback;
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[TIP] screenAssetContract error:', err);
     return unavailableResult();
   }
 }

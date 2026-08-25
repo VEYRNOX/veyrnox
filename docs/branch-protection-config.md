@@ -24,24 +24,33 @@ regression signal rather than a workflow).
 
 ---
 
-## 2026-08-25 — `web-e2e-tests` is no longer a required check
+## 2026-08-21 — retire stale `web-e2e-tests` gate
 
-**Current state.** Re-read both live protection layers on 2026-08-25:
+**Change.** Removed `web-e2e-tests` from both protection layers:
 
-- Ruleset `17946638` required contexts: `verify`, `mainnet-flag-gate`, `unit-tests`,
-  `Release-cert guard rejects wrong fingerprints`, `staging-gate`
-- Classic branch protection required contexts: `verify`, `unit-tests`,
-  `Release-cert guard rejects wrong fingerprints`
+- ruleset `17946638` required checks
+- classic `main` branch protection required checks
 
-Effective union: **five** contexts. `web-e2e-tests` appears on neither layer.
+**Why.** By 2026-08-21 there was no active workflow job or required pipeline lane
+reporting a `web-e2e-tests` status. Keeping it in branch protection blocked mobile PRs
+behind a check they could never satisfy. The deployed-preview lane still runs
+`e2e/staging-smoke.spec.js`, but that is a scoped smoke check inside `deploy-preview.yml`,
+not a standalone `web-e2e-tests` pipeline.
 
-**Why this note exists.** The section below recorded the 2026-08-15 add correctly at the
-time, but the live config later changed and the docs drifted. The owner decision behind
-the removal is not recorded here; this file only records the verified current gate.
+**Result.** The effective required-check union returned to the checks that actually report:
+
+- `verify`
+- `mainnet-flag-gate`
+- `unit-tests`
+- `Release-cert guard rejects wrong fingerprints`
+- `staging-gate`
+
+**Follow-through.** Comments in `deploy-preview.yml` and `e2e/staging-smoke.spec.js` were
+updated the same day so the repo no longer claims a retired `web-e2e-tests` lane exists.
 
 ---
 
-## 2026-08-15 — `web-e2e-tests` added as a required check (historical)
+## 2026-08-15 — `web-e2e-tests` added as a required check (both layers)
 
 **Change.** `web-e2e-tests` added to `required_status_checks` on ruleset `17946638`
 (five contexts → six) and to classic branch protection (three → four). Effective union:

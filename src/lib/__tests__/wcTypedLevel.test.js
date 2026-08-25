@@ -144,6 +144,17 @@ describe('scoreWcTypedDataLevel', () => {
     expect(scoreWcTypedDataLevel({ primaryType: 'Permit' })).toBe(LEVEL.CAUTION);
   });
 
+  // H-4 (2026-08-25): a canonical Permit struct declared under a benign
+  // primaryType scored LEVEL.OK, because both this scorer and
+  // detectAssetAuthorising key off the dApp-declared string while ethers signs
+  // the Permit typehash derived from `types`. parseTypedData now rejects the
+  // payload, so the un-scoreable body lands on the fail-closed CAUTION branch.
+  it('CAUTION (never OK) when primaryType does not match the declared type graph', () => {
+    const masquerade = { ...permit({ value: MAX_UINT256 }), primaryType: 'Vote' };
+    expect(scoreWcTypedDataLevel(masquerade)).toBe(LEVEL.CAUTION);
+    expect(scoreWcTypedDataLevel(JSON.stringify(masquerade))).toBe(LEVEL.CAUTION);
+  });
+
   it('CAUTION on Seaport marketplace orders (asset-authorising but not permit-shape)', () => {
     const seaport = {
       types: {

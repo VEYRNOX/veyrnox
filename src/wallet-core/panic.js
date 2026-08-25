@@ -90,7 +90,12 @@
 // vault crypto internals (vault.js / vaultStore.js / signing.js); it reuses
 // encryptVault/decryptVault verbatim for the panic marker.
 
-import { encryptVault, decryptVault } from './vault.js';
+import { decryptVault, encryptVault, vaultNeedsKdfMigration } from './vault.js';
+// Gate 2 (H-2, owner ruling 2026-08-25): the panic marker is stamped at the
+// CURRENT KDF_PARAMS on write; a v1 marker carried across a profile change
+// silently rekeys on the next successful panic unlock (before the wipe fires).
+// deniabilityKdfProfile.js is no longer imported here — panic.js stays fully
+// decoupled from the deniability modules it erases.
 import { generateMnemonic } from './mnemonic.js';
 import { padToFixedLen, stripPad } from './multiVault.js';
 // BIO-05: biometric-2FA enabled tell. Imported (not hardcoded) so a rename in
@@ -132,6 +137,13 @@ const THREATINTEL_STORE = 'threats';
 // this device has done screening, and its ROWS name addresses (public but
 // still linkable to on-device wallet history).
 const IOC_CACHE_DB_NAME = 'veyrnox-ioc-cache';
+// Phishing-domain feed cache (src/risk/phishingFeed.js) — a downloaded list of
+// known-bad dApp domains. Wiped for the same reason as the two above: it is not
+// the CONTENTS that incriminate (the list is public), it is the PRESENCE. This
+// database only exists if the app ran outside deniability long enough to fetch
+// a feed, so finding it contradicts a decoy story. Deleting it costs nothing
+// functionally — dApp screening falls back to the in-bundle seed list.
+const PHISHING_FEED_DB_NAME = 'veyrnox-phishing-feed';
 // Neutral, non-incriminating key (follows 'primary'/'secondary'); a forensic dump
 // sees one more vault-shaped blob, not a key literally named "panic". The marker
 // is byte-shaped like every other vault blob, so it does not stand out.
@@ -278,6 +290,9 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-portfolios',
   'veyrnox-active-portfolio',
   'veyrnox-spam-overrides',
+  'veyrnox-contract-intel-consent', // lib/suspiciousAssetPrefs.js CONTRACT_INTEL_CONSENT_KEY
+  'veyrnox-contract-intel-cache', // lib/suspiciousAssetPrefs.js CONTRACT_INTEL_CACHE_KEY
+  'veyrnox-dismissed-suspicious-nfts', // lib/suspiciousAssetPrefs.js DISMISSED_SUSPICIOUS_NFTS_KEY
   // GAP-4 (LOW): app-usage tells that describe how the primary vault was configured.
   // Not deniability secrets, but each ties this device to a Veyrnox installation.
   'veyrnox-autolock-timeout',       // lib/session.js AUTO_LOCK_PREF_KEY
@@ -404,6 +419,25 @@ const METADATA_RESIDUE_KEYS = Object.freeze([
   'veyrnox-fiat-currency',
   'veyrnox-paywall-outcome-seen',
   'dashboard-widget-config',
+  // Issue #2019 — fast-path DEK cache opt-in toggle (Q3, off by default).
+  // Writer: lib/fastpathUnlock.js FASTPATH_ENABLED_STORAGE_KEY. PRESENCE
+  // proves a real Veyrnox install existed on this device AND enabled the
+  // fast unlock path — same tell class as veyrnox-first-run-tour-seen /
+  // veyrnox-personal-backup-exported. Writer is already I3-guarded
+  // (setFastpathEnabled no-ops in decoy/demo); this closes the residue gap.
+  // The paired disclosure marker is swept alongside for the same reason:
+  // presence of veyrnox-fastpath-disclosure-seen proves the Security
+  // settings screen was visited on a real (non-decoy) session.
+  'veyrnox-fastpath-enabled',
+  'veyrnox-fastpath-disclosure-seen',
+  // Configurable re-lock grace window (screen-off deferral, off by default).
+  // Writers: lib/relockGrace.js RELOCK_GRACE_STORAGE_KEY / RELOCK_GRACE_DISCLOSED_KEY.
+  // PRESENCE proves a real Veyrnox install existed on this device AND opted
+  // into a non-default re-lock behaviour — same tell class as
+  // veyrnox-fastpath-enabled above. Writers are already I3-guarded
+  // (setRelockGraceMs no-ops in decoy/demo); this closes the residue gap.
+  'veyrnox-relock-grace-ms',
+  'veyrnox-relock-grace-disclosed',
 ]);
 
 // Every localStorage key a wipe must remove + the inspection must account for.
@@ -672,18 +706,34 @@ export async function tryPanicUnlock(password) {
     db.close();
   }
   if (!blob) return false;
+  let plaintext;
   try {
-    const plaintext = await decryptVault(blob, password); // throws on wrong PIN
-    // H2: strip the FIXED_LEN padding before any detection logic. Detection here is
-    // purely "did GCM auth succeed" (an exact-match decrypt), so the marker is
-    // recognisable after pad+strip; stripPad tolerates legacy unpadded markers
-    // (returns them unchanged), so panic still fires for blobs written before H2.
-    stripPad(plaintext);
-    return true;
+    plaintext = await decryptVault(blob, password); // throws on wrong PIN
   } catch {
     return false;
   }
+  // H2: strip the FIXED_LEN padding before any detection logic. Detection here
+  // is purely "did GCM auth succeed" (an exact-match decrypt), so the marker
+  // is recognisable after pad+strip; stripPad tolerates legacy unpadded markers.
+  stripPad(plaintext);
+  // Gate 2 (H-2, owner ruling 2026-08-25): OPPORTUNISTIC REKEY, FIRE-AND-FORGET.
+  // NO REKEY on the panic path — reviewer C-1 on PR #2103. tryPanicUnlock's
+  // caller (WalletProvider.unlock catch) fires panicWipeLocal() immediately
+  // after we return true, which deleteVaultDatabase()s the whole vault DB
+  // well inside a 250 ms deferred window. A deferred rekey would openDb()
+  // AFTER the wipe, re-creating veyrnox-vault with a lone tertiary blob —
+  // the exact residue panic-wipe exists to prevent. Cost of not rekeying:
+  // the panic marker's kdf profile may lag the primary post-migration until
+  // the user's next setPanicVault() call. Comparatively cheap tell (1 blob
+  // among 258) vs. residue-after-wipe.
+  return true;
 }
+
+// Test hook: mirrors stealth.js:_awaitPendingKdfRekey / duress.js — same
+// fire-and-forget shape, same rationale (H-1 timing budget).
+let _lastKdfRekey = /** @type {Promise<void>} */ (Promise.resolve());
+/** @returns {Promise<void>} */
+export function _awaitPendingKdfRekey() { return _lastKdfRekey; }
 
 // Clear every residue key in localStorage — the DEMO address maps AND the
 // deniability tells (C-1). Guarded for non-browser/test environments.
@@ -919,6 +969,35 @@ async function eraseIocCacheDatabase() {
   });
 }
 
+// Best-effort erase of the phishing-feed cache database. Exists only once a
+// feed has actually been downloaded, so on a device that never fetched one the
+// delete is a no-op — success and "no such database" are both accepted.
+async function erasePhishingFeedDatabase() {
+  // Drop the in-memory map and withdraw the feed from knownBadDapps first, so a
+  // post-wipe lookup cannot answer from RAM after the database is gone.
+  try {
+    const mod = await import('../risk/phishingFeed.js');
+    if (typeof mod.resetPhishingFeed === 'function') mod.resetPhishingFeed();
+  } catch {
+    // Best-effort; fall through to the authoritative delete below.
+  }
+
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    let req;
+    try {
+      req = indexedDB.deleteDatabase(PHISHING_FEED_DB_NAME);
+    } catch {
+      finish();
+      return;
+    }
+    req.onsuccess = finish;
+    req.onerror = finish;
+    req.onblocked = finish;
+  });
+}
+
 /**
  * NON-DESTRUCTIVE inspection of what local key material currently exists. Used
  * BEFORE a wipe (to show what is there) and AFTER (to prove nothing recoverable
@@ -952,12 +1031,12 @@ export async function inspectKeyMaterial() {
   // `onblocked` (a lingering handle in another module pends the delete
   // until it closes), so the previous `clean` verdict was returning true
   // WITHOUT proving those DBs were actually gone. Enumerate IndexedDB
-  // and treat any of the three names surviving as `sideDatabasesResidue`;
+  // and treat any of the SIDE_DB_NAMES surviving as `sideDatabasesResidue`;
   // `clean` becomes false when we can verify AND at least one survived.
   // `sideDatabasesVerified` is false when the platform lacks
   // indexedDB.databases() (Firefox pre-126 still doesn't ship it), so a
   // failure to enumerate is reported honestly instead of falsely clean.
-  const SIDE_DB_NAMES = [APPDATA_DB_NAME, THREATINTEL_DB_NAME, IOC_CACHE_DB_NAME];
+  const SIDE_DB_NAMES = [APPDATA_DB_NAME, THREATINTEL_DB_NAME, IOC_CACHE_DB_NAME, PHISHING_FEED_DB_NAME];
   let sideDatabasesResidue = [];
   let sideDatabasesVerified = false;
   try {
@@ -1017,6 +1096,7 @@ export async function panicWipeLocal() {
   await deleteAppDataDatabase();
   await eraseThreatIntelDatabase();
   await eraseIocCacheDatabase();
+  await erasePhishingFeedDatabase();
   clearLocalAddressResidue();
   clearSessionResidue();  // C-1: sessionStorage tells (More-drawer recents)
   clearBrowserCookies(); // PW-02: expire known browser cookies (sidebar_state)

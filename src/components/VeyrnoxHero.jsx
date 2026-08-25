@@ -39,7 +39,7 @@ export default function VeyrnoxHero({ children, className = "" }) {
         variants={container}
         initial="hidden"
         animate="show"
-        className="relative w-full max-w-sm mx-auto flex flex-col items-center text-center pt-10"
+        className="relative w-full max-w-sm mx-auto flex flex-col items-center text-center pt-6"
       >
         <motion.div variants={item} className="relative mb-4">
           <div
@@ -57,14 +57,17 @@ export default function VeyrnoxHero({ children, className = "" }) {
                   "radial-gradient(circle, rgba(74,218,194,0.5) 0%, rgba(74,218,194,0.12) 45%, transparent 70%)",
               }}
             />
-            <div className="relative z-10">
+            <div
+              className="relative z-10"
+              style={reduce ? undefined : { animation: "vx-logo-spin 1.4s cubic-bezier(0.22,1,0.36,1) 0.1s both" }}
+            >
               <VeyrnoxLogo size={76} />
             </div>
           </div>
         </motion.div>
 
         <motion.div variants={item}>
-          <VeyrnoxWordmark className="text-2xl block" />
+          <VeyrnoxWordmark className="text-2xl block" animated={!reduce} />
         </motion.div>
 
         <motion.p variants={item} className="mt-2 text-sm leading-relaxed text-muted-foreground max-w-[18rem]">

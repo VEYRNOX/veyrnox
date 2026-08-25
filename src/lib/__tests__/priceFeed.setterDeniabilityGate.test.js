@@ -31,42 +31,44 @@ describe('setLivePricesEnabled — deniability write gate (C-1)', () => {
   });
 
   it('writes normally in a primary session (the guard must not break the real path)', () => {
+    setLivePricesEnabled(false);
+    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBe('0');
+    expect(isLivePricesEnabled()).toBe(false);
     setLivePricesEnabled(true);
-    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBe('1');
+    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBeNull();
     expect(isLivePricesEnabled()).toBe(true);
   });
 
-  it('does NOT mint the key in a decoy/hidden session', () => {
-    setDeniabilitySession(true);
-    setLivePricesEnabled(true);
-    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBeNull();
-  });
-
-  it('does NOT mint the key in a demo session (persisted veyrnox-demo flag)', () => {
-    // isDeniabilityOrDemoActive reads the flag LIVE, so a demo tour with no
-    // unlocked vault (isDecoy/isHidden both false) is still covered.
-    localStorage.setItem('veyrnox-demo', '1');
-    setLivePricesEnabled(true);
-    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBeNull();
-  });
-
-  it('does not CLEAR a real preference from a decoy session either', () => {
-    // The four UI buttons only ever pass `true`, but the writer is shared: a
-    // decoy session must not be able to turn the real user's pref off.
-    setLivePricesEnabled(true);
-    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBe('1');
-
+  it('does NOT mint the off-key in a decoy/hidden session', () => {
+    // Default = ON (absence). A decoy tapping "Disable" must not persist '0'.
     setDeniabilitySession(true);
     setLivePricesEnabled(false);
-    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBe('1');
+    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBeNull();
+  });
+
+  it('does NOT mutate the pref in a demo session (persisted veyrnox-demo flag)', () => {
+    localStorage.setItem('veyrnox-demo', '1');
+    setLivePricesEnabled(false);
+    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBeNull();
+  });
+
+  it('does not FLIP a real off-preference from a decoy session either', () => {
+    // Real user explicitly opted out ('0'). A decoy tapping "Enable" must not
+    // clear that pref back to the ON default.
+    setLivePricesEnabled(false);
+    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBe('0');
+
+    setDeniabilitySession(true);
+    setLivePricesEnabled(true);
+    expect(localStorage.getItem(LIVE_PRICE_PREF_KEY)).toBe('0');
   });
 
   it('the real preference is untouched across a decoy round-trip', () => {
     setDeniabilitySession(true);
-    setLivePricesEnabled(true);
+    setLivePricesEnabled(false);
     setDeniabilitySession(false);
-    // Fresh device + a coerced decoy session that tapped "Enable" must leave
-    // the device indistinguishable from one that never had a wallet.
-    expect(isLivePricesEnabled()).toBe(false);
+    // Fresh device + a coerced decoy session that tapped "Disable" must leave
+    // the device on the ON default (indistinguishable from never-touched).
+    expect(isLivePricesEnabled()).toBe(true);
   });
 });

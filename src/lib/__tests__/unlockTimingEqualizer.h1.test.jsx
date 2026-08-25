@@ -44,6 +44,16 @@ vi.mock('hash-wasm', async (importOriginal) => {
   };
 });
 
+// Mock the credential verifier to a no-op so this suite isolates the unlock-path
+// equalizer itself. Verifier behavior has dedicated tests elsewhere; this file is
+// strictly about success/duress/miss count parity through WalletProvider.unlock().
+vi.mock('@/wallet-core/credentialVerifier', () => ({
+  captureVerifierSafe: vi.fn(async () => null),
+  verifyCredential: vi.fn(async () => false),
+  verifyCredentialDetailed: vi.fn(async () => ({ ok: false, reason: 'mocked' })),
+  createCredentialVerifier: vi.fn(async () => null),
+}));
+
 // The primary vault password (correct real PIN). Anything else -> the mock unlock
 // throws, exactly like a real keystore decrypt (1 KDF spent, GCM auth fails).
 const PRIMARY_PW = 'correct-horse-battery-staple-pin';

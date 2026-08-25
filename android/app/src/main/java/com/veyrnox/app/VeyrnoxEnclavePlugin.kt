@@ -69,13 +69,13 @@ package com.veyrnox.app
 //     RSA-OAEP asymmetric ("wrap without prompt") deferred; revisit criterion
 //     is the M2d-1c/-1d device runbook surfacing UX pain.
 
-import android.os.Build
 import androidx.fragment.app.FragmentActivity
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import android.os.Build
 
 @CapacitorPlugin(name = "VeyrnoxEnclave")
 class VeyrnoxEnclavePlugin : Plugin() {
@@ -127,6 +127,9 @@ class VeyrnoxEnclavePlugin : Plugin() {
         val response = JSObject().apply {
             put("backing", capability.backing)
             put("biometryEnrolled", capability.biometryEnrolled)
+            put("manufacturer", Build.MANUFACTURER ?: "")
+            put("model", Build.MODEL ?: "")
+            put("sdkInt", Build.VERSION.SDK_INT)
         }
         call.resolve(response)
     }

@@ -76,6 +76,14 @@ const NATIVE_PREFIX = 'veyrnox_';
 
 let _demoCache = null; // in-memory only; cleared when the module unloads
 
+function isAndroidNativePlatform() {
+  try {
+    return Capacitor.isNativePlatform() && Capacitor.getPlatform?.() === 'android';
+  } catch {
+    return false;
+  }
+}
+
 function demoStore(pw) { _demoCache = pw; }
 function demoGet() { return _demoCache; }
 function demoClear() { _demoCache = null; }
@@ -83,21 +91,97 @@ function demoClear() { _demoCache = null; }
 // Native secure-storage helpers. Loaded lazily so the Capacitor plugin never
 // reaches the web/test bundle (exactly like keystore/index.js does for native).
 async function nativeStore(pw) {
-  // H-NEW-5 (ANDROID): @aparajita/capacitor-secure-storage (^8.0.0) does not expose
-  // setInvalidatedByBiometricEnrollment(true) — per its published Android source
-  // (aparajita/capacitor-secure-storage, SecureStorage.java, KeyGenParameterSpec builder)
-  // the Android KeyGenParameterSpec is built WITHOUT
-  // setUserAuthenticationRequired/setInvalidatedByBiometricEnrollment — so a new
-  // fingerprint enrollment does NOT invalidate this cache on Android. Mitigation
-  // requires a custom Capacitor plugin using Android Keystore with
-  // setInvalidatedByBiometricEnrollment(true) (key destroyed on enrollment change).
-  // iOS (separate half): requires kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly +
-  // a biometryCurrentSet (SecAccessControl) ACL via a native Swift shim (needs a Mac).
-  // Both are TARGET — see audit H-NEW-5. We do NOT fake it here (I4): the release-time
-  // OS biometric match in nativeAuthenticateOrThrow() still gates reads, but that is a
-  // live match, NOT a key bound to the current biometric enrollment set.
-  // HONEST STATUS: biometric cache is device-PIN/passcode-gated only; a biometric
-  // enrollment change does not wipe it. Not active; TARGET for a custom plugin.
+  // H-NEW-5 STATUS (2026-08-20): ANDROID HALF is now shipped via the custom
+  // AndroidBiometricCache plugin, which stores the cached secret encrypted at rest
+  // and binds a separate Android Keystore invalidation sentinel to
+  // setInvalidatedByBiometricEnrollment(true). If a biometric is added/changed, the
+  // sentinel key invalidates and the cache is wiped on the next presence/read check.
+  //
+  // iOS half remains TARGET: kSecAccessControlBiometryCurrentSet still needs a
+  // native Swift/ObjC shim. We do NOT pretend parity that does not exist (I4).
+  //
+  // M-10 (weekly audit 2026-08-25) — NOT a mechanical port, and here is why, so the
+  // next reader does not re-derive it. On iOS there is no "invalidate on enrollment
+  // change but do not require biometry" access-control flag: kSecAccessControl-
+  // BiometryCurrentSet gives the auto-invalidation ONLY by making the item's DATA
+  // biometry-gated. Android got both halves because it binds a SEPARATE Keystore
+  // sentinel (AndroidBiometricCachePlugin invalidationAlias) and keeps the cache
+  // blob readable without a prompt; the iOS Keychain has no equivalent split.
+  //
+  // So binding this item to biometryCurrentSet would re-introduce an OS prompt on
+  // retrieveUnlockSecretDirect() — the KEK fast path (WalletProvider.jsx:2168),
+  // whose entire purpose is that the SE gate inside getHardwareFactor() is already
+  // the hardware-enforced biometric evaluation (see kek-single-prompt.test.js and
+  // biometricUnlock.kekSinglePrompt.test.js, which pin the single-prompt property).
+  // That is a product tradeoff — real enrollment-invalidation in exchange for a
+  // second Face ID sheet per unlock on every KEK vault — not a bug fix, and it is
+  // the owner's call, not an audit-remediation call. Deliberately NOT taken blind
+  // from a machine with no iPhone and no iOS build. biometricUnlockSecurityMode()
+  // stays 'app-gate' and this disclosure stays TARGET until it is really shipped.
+  //
+  // ORDERING (2026-08-25, second look — the fact that makes this a RESTRUCTURE and
+  // not a shim). The cache is read BEFORE H exists: WalletProvider.jsx:2176-2181
+  // calls retrieveUnlockSecretDirect() to obtain the password, and only then does
+  // keyStore.unlock(password) fetch the hardware factor, which is where the single
+  // Face ID sheet lives. So all three routes touch the unlock path itself:
+  //
+  //   1. Bind this item to biometryCurrentSet — auto-invalidation, but the read now
+  //      needs biometry, so a SECOND sheet fires and #2037 is reverted.
+  //   2. Encrypt the cached secret under H — invalidation becomes CRYPTOGRAPHIC (an
+  //      enrollment change destroys the SE key, so H is unrecoverable and the blob
+  //      is dead) and needs no new OSStatus semantics. But H arrives after the cache
+  //      read, so unlock() must fetch H once and thread it down, or you get two
+  //      sheets anyway.
+  //   3. Reuse one LAContext across both operations — Apple's intended answer, and
+  //      new Objective-C holding auth state across two plugin calls.
+  //
+  // (2) is the one to build when a device is available: it does not depend on how
+  // the Keychain REPORTS an invalidated item. That reporting assumption is still
+  // unverified even where HardwareKekPlugin.m already relies on it (errSecItemNotFound
+  // → KEK_KEY_PERMANENTLY_INVALIDATED, #2085) — so a probe-based design would stack
+  // an unverified assumption on an unverified assumption.
+  //
+  // PRECONDITION for any of them, owner-set 2026-08-25: a real iPhone in the loop.
+  // Getting this wrong does not weaken a control, it locks users out of their own
+  // wallets — the one failure this path must not have.
+  if (isAndroidNativePlatform()) {
+    try {
+      const cache = await import('@/plugins/androidBiometricCache.js');
+      const available = await cache.isAvailable();
+      if (available?.available === true) {
+        await cache.putSecret(pw);
+        // Issue #2039 C1 — dual-write to the unauth alias ONLY when the vault is
+        // KEK-wrapped. On a KEK vault the cached PIN is the C-factor of DEK =
+        // HKDF(H ‖ C) and H is producible only inside a StrongBox-gated Secure
+        // Enclave op; the cached C alone is useless, so an unauth-alias entry
+        // (whose read path skips the biometric prompt) is safe. On a NON-KEK
+        // vault the cached PIN IS the vault password and the unauth alias
+        // would strip the SOLE biometric gate — do NOT write it there.
+        // hasVaultKekWrap() is consulted at write time; a caller-attested
+        // "isEnrolled" flag would not be trustworthy here.
+        // Fail-closed: any probe failure is treated as NOT wrapped.
+        let kekWrapped = false;
+        try {
+          const { getKeyStore } = await import('@/wallet-core/keystore');
+          const ks = getKeyStore();
+          kekWrapped = typeof ks.hasVaultKekWrap === 'function'
+            ? (await ks.hasVaultKekWrap()) === true
+            : false;
+        } catch { kekWrapped = false; }
+        if (kekWrapped) {
+          try {
+            if (typeof cache.putSecretUnauth === 'function') {
+              await cache.putSecretUnauth(pw);
+            }
+          } catch { /* unauth cache unavailable; migration path handles this on read */ }
+        }
+        return;
+      }
+    } catch {
+      // Fall back to the generic secure-storage path on older/unsupported Android
+      // builds so the cache remains usable instead of failing hard.
+    }
+  }
   const { SecureStorage, KeychainAccess } = await import('@aparajita/capacitor-secure-storage');
   await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
   await SecureStorage.setSynchronize(false);
@@ -110,6 +194,17 @@ async function nativeStore(pw) {
 // match. This single-caller structure is what makes the biometric gate
 // non-bypassable in app code; a test pins it (biometricUnlock-native.test.js).
 async function nativeReadSecret() {
+  if (isAndroidNativePlatform()) {
+    try {
+      const cache = await import('@/plugins/androidBiometricCache.js');
+      const available = await cache.isAvailable();
+      if (available?.available === true) {
+        return await cache.getSecret();
+      }
+    } catch {
+      // Fall through to the generic secure-storage path for compatibility.
+    }
+  }
   const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
   await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
   const v = await SecureStorage.get(NATIVE_KEY, false);
@@ -119,10 +214,85 @@ async function nativeReadSecret() {
   return (s != null && s.length > 0) ? s : null;
 }
 
+// PRIVATE unauth-alias read — releases the cached PLAINTEXT password WITHOUT
+// firing an OS biometric prompt. Only safe to call from the KEK-enrolled unlock
+// path (retrieveUnlockSecretDirect({ kekEnrolled: true })); see the security
+// contract on that export. Fail-closed migration behaviour: if the unauth alias
+// returns null (fresh install, first unlock after upgrade, alias not yet
+// present) we fall through to nativeReadSecret() so wrong-PIN / no-secret
+// semantics stay identical for the caller. On a successful fallback we
+// re-persist to the unauth alias so the next unlock skips the prompt.
+async function nativeReadSecretUnauth() {
+  if (isAndroidNativePlatform()) {
+    let cache;
+    try {
+      cache = await import('@/plugins/androidBiometricCache.js');
+    } catch {
+      // Plugin bundle import itself failed — degrade to the legacy path.
+      return nativeReadSecret();
+    }
+    let available;
+    try {
+      available = await cache.isAvailable();
+    } catch {
+      return nativeReadSecret();
+    }
+    if (available?.available === true && typeof cache.getSecretUnauth === 'function') {
+      // Issue #2039 H2 — distinguish "not present" (null return) from
+      // Keystore fault (throw). Null is a legit fresh install / pre-#2037
+      // migration state; throws are corrupt entry, alias clash, or
+      // KeyPermanentlyInvalidatedException and MUST NOT be swallowed —
+      // otherwise a wedged alias re-persists silently on every unlock.
+      let s;
+      try {
+        s = await cache.getSecretUnauth();
+      } catch (err) {
+        // Wipe BOTH aliases (Kotlin plugin's clearAllState() sweeps
+        // storageAlias, invalidationAlias, and storageUnauthAlias plus
+        // both pref pairs) and surface the fault.
+        try { await cache.clearSecret(); } catch { /* best-effort sweep */ }
+        const surfaced = new Error(
+          'AndroidBiometricCache unauth-alias read failed; cache wiped. '
+          + 'Underlying: ' + (err && err.message ? err.message : String(err)),
+        );
+        surfaced.code = 'BIOMETRIC_CACHE_UNAUTH_FAULT';
+        throw surfaced;
+      }
+      if (s != null && String(s).length > 0) return String(s);
+      // Migration fallback: legacy vaults were written before the unauth
+      // alias existed. Read via the auth-gated path (which on the current
+      // Kotlin plugin does not itself fire a JS-layer prompt — the JS gate
+      // lives in retrieveUnlockSecret, not here) and dual-write for next
+      // time.
+      const legacy = await nativeReadSecret();
+      if (legacy != null && legacy.length > 0) {
+        try {
+          if (typeof cache.putSecretUnauth === 'function') {
+            await cache.putSecretUnauth(legacy);
+          }
+        } catch { /* migration best-effort; next unlock will retry */ }
+      }
+      return legacy;
+    }
+  }
+  return nativeReadSecret();
+}
+
 // PRIVATE presence check — metadata only (lists keys, never reads the value), so
 // it neither releases the secret nor triggers a biometric prompt. Mirrors
 // keystore/native.js's "hasVault is a presence check that does NOT prompt".
 async function nativeHasSecret() {
+  if (isAndroidNativePlatform()) {
+    try {
+      const cache = await import('@/plugins/androidBiometricCache.js');
+      const available = await cache.isAvailable();
+      if (available?.available === true) {
+        return await cache.hasSecret();
+      }
+    } catch {
+      // Fall through to the generic secure-storage path for compatibility.
+    }
+  }
   try {
     const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
     await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
@@ -145,7 +315,8 @@ async function nativeHasSecret() {
 // cancel/failure/lockout so the secret is never read on a failed match.
 async function nativeAuthenticateOrThrow() {
   const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
-  const info = await BiometricAuth.checkBiometry();
+  const { getCachedBiometry } = await import('./biometricProbe.js');
+  const info = (await getCachedBiometry()) ?? { isAvailable: false, deviceIsSecure: false };
 
   // No device security at all → a passcode-gated item cannot have been stored,
   // and there is nothing to authenticate against.
@@ -182,6 +353,18 @@ async function nativeAuthenticateOrThrow() {
 }
 
 async function nativeClear() {
+  if (isAndroidNativePlatform()) {
+    try {
+      const cache = await import('@/plugins/androidBiometricCache.js');
+      const available = await cache.isAvailable();
+      if (available?.available === true) {
+        await cache.clearSecret();
+        return;
+      }
+    } catch {
+      // Fall through to the generic secure-storage path for compatibility.
+    }
+  }
   try {
     const { SecureStorage } = await import('@aparajita/capacitor-secure-storage');
     await SecureStorage.setKeyPrefix(NATIVE_PREFIX);
@@ -205,11 +388,9 @@ export function biometricUnlockSupported() {
  * this. Storing does NOT release a secret, so it does not itself prompt for
  * biometrics. No-op on plain web (returns false).
  *
- * H-NEW-5 honest limit: on Android the cached item is NOT bound to the biometric
- * enrollment set — enrolling a new fingerprint does NOT wipe this cache, because the
- * secure-storage plugin does not expose setInvalidatedByBiometricEnrollment(true).
- * A real fix is TARGET (custom Capacitor/Android Keystore plugin; iOS biometryCurrentSet
- * Swift shim). See the comment block in nativeStore() and audit H-NEW-5.
+ * H-NEW-5 honest limit: Android now uses a custom native cache plugin with a real
+ * biometric-enrollment invalidation sentinel, but iOS still does NOT bind the cache
+ * to biometryCurrentSet. Full cross-platform parity remains TARGET.
  * @returns {Promise<boolean>} true if stored.
  */
 export async function storeUnlockSecret(password) {
@@ -285,7 +466,32 @@ export async function retrieveUnlockSecretDirect(assert) {
     );
   }
   if (DEMO) return demoGet();
-  if (Capacitor.isNativePlatform()) return nativeReadSecret();
+  if (Capacitor.isNativePlatform()) {
+    // Issue #2039 C2 — verify hasVaultKekWrap() in-function, do NOT trust the
+    // caller's kekEnrolled hint alone. A buggy or hostile caller that passes
+    // { kekEnrolled: true } on a NON-KEK vault would otherwise bypass the SOLE
+    // biometric gate (auth-gated cache read) with no OS prompt. The caller's
+    // flag is now a hint; the keystore is the source of truth. If a legit
+    // caller reasonably passes it and it does not hold, that is a bug the
+    // caller needs to hear about — throw, do not silently degrade.
+    let kekWrapped = false;
+    try {
+      const { getKeyStore } = await import('@/wallet-core/keystore');
+      const ks = getKeyStore();
+      kekWrapped = typeof ks.hasVaultKekWrap === 'function'
+        ? (await ks.hasVaultKekWrap()) === true
+        : false;
+    } catch { kekWrapped = false; }
+    if (!kekWrapped) {
+      throw new Error(
+        'retrieveUnlockSecretDirect: hasVaultKekWrap() did not confirm a KEK-wrapped vault. '
+        + 'The kekEnrolled assertion is a hint, not the gate — this function itself checks '
+        + 'the keystore because the unauth cache read has no OS prompt. Refusing to release '
+        + 'the cached secret.',
+      );
+    }
+    return nativeReadSecretUnauth();
+  }
   return null;
 }
 
@@ -321,9 +527,10 @@ export async function hasStoredUnlockSecret() {
  *   'key-bound' — Keychain item pinned to `kSecAccessControlBiometryCurrentSet`
  *                 (iOS) / `setUserAuthenticationRequired`+
  *                 `setInvalidatedByBiometricEnrollment` (Android). Biometric-
- *                 enrollment change wipes the item at the OS. TARGET status —
- *                 needs a native shim (@aparajita/capacitor-secure-storage
- *                 does not expose these flags today).
+ *                 enrollment change wipes the item at the OS. Android now has
+ *                 a PARTIAL native cache plugin that ships the invalidation half,
+ *                 but the release gate is still the JS chokepoint and iOS still
+ *                 lacks the biometryCurrentSet shim.
  *   'demo'      — non-native fallback: in-memory only, no cryptographic gate.
  *   'unavailable' — web (no cache, no gate).
  *
@@ -332,6 +539,7 @@ export async function hasStoredUnlockSecret() {
 export function biometricUnlockSecurityMode() {
   if (DEMO) return 'demo';
   if (!Capacitor.isNativePlatform()) return 'unavailable';
-  // No `key-bound` shim shipped yet — see LIMITATION in the header comment.
+  // Android now ships enrollment invalidation via a native plugin, but the release
+  // gate is still app-layer and iOS still lacks a biometryCurrentSet item ACL.
   return 'app-gate';
 }

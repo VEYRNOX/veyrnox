@@ -3,7 +3,8 @@
 // The device tests are authored in Swift / workflow YAML / Robo Script JSON, so
 // Vitest cannot execute them locally. This static guard pins the pieces that
 // previously drifted independently: Veyrnox's eight-digit explicit-submit
-// PinPad, the fresh-install "New wallet" route, and the exact-SHA APK handoff.
+// PinPad, the fresh-install iOS "Get Started" route, the Android "New wallet"
+// Robo flow, and the exact-SHA APK handoff.
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -26,21 +27,23 @@ function indexOrFail(source, needle) {
 }
 
 describe('Firebase Test Lab first-run PIN smoke', () => {
-  it('drives iOS through New wallet and explicitly submits both 8-digit PIN stages', () => {
+  it('drives iOS through Get Started and explicitly submits both 8-digit PIN stages', () => {
     const pin = swift.match(/let pin = "(\d+)"/)?.[1];
     expect(pin).toBe('24681024');
 
-    const newWallet = indexOrFail(swift, 'app.buttons["New wallet"]');
+    const getStarted = indexOrFail(swift, 'tapButton(');
+    const getStartedLabel = indexOrFail(swift, 'label: "Get Started"');
     const setDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "set")');
     const setSubmit = indexOrFail(swift, 'submitPin(app: app, stage: "set")');
     const confirmDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "confirm")');
     const confirmSubmit = indexOrFail(swift, 'submitPin(app: app, stage: "confirm")');
 
-    expect(newWallet).toBeLessThan(setDigits);
+    expect(getStarted).toBeLessThan(getStartedLabel);
+    expect(getStartedLabel).toBeLessThan(setDigits);
     expect(setDigits).toBeLessThan(setSubmit);
     expect(setSubmit).toBeLessThan(confirmDigits);
     expect(confirmDigits).toBeLessThan(confirmSubmit);
-    expect(swift).toContain('app.buttons["Submit PIN"]');
+    expect(swift).toContain('"Submit PIN", "Continue"');
   });
 
   it('uses a Robo script to click the custom Android PinPad instead of inventing text fields', () => {
@@ -54,16 +57,16 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(clicks).toEqual([
       { text: 'New wallet' },
       ...[...pin].map(text => ({ text })),
-      { contentDescription: 'Submit PIN' },
+      { text: 'Submit PIN' },
       ...[...pin].map(text => ({ text })),
-      { contentDescription: 'Submit PIN' },
+      { text: 'Submit PIN' },
     ]);
     expect(roboScript.every(({ visionText }) => visionText == null)).toBe(true);
     expect(roboScript.some(({ eventType }) => eventType === 'VIEW_TEXT_CHANGED')).toBe(false);
     expect(roboScript).toContainEqual(expect.objectContaining({
       eventType: 'ASSERTION',
       contextDescriptor: expect.objectContaining({
-        elementDescriptors: [{ text: 'Created.' }],
+        elementDescriptors: [{ text: 'Help improve Veyrnox' }],
       }),
     }));
   });
@@ -87,7 +90,7 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(ciWorkflow).toContain("inputs.build_firebase_test == true");
     expect(ciWorkflow).toContain("github.ref == 'refs/heads/main' && github.event_name == 'push'");
     expect(ciWorkflow).toContain('android-firebase-test:');
-    expect(ciWorkflow).toContain('./gradlew assembleFirebaseTest');
+    expect(ciWorkflow).toContain('./gradlew assembleGoogleFirebaseTest');
     expect(ciWorkflow).toContain('name: veyrnox-firebase-test-apk');
     expect(ciWorkflow).not.toContain('./gradlew bundleFirebaseTest');
 
@@ -95,9 +98,11 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(androidBuild).toContain('initWith release');
     expect(androidBuild).toContain('applicationIdSuffix ".firebase.testlab"');
     expect(androidBuild).toContain("project.findProperty('FIREBASE_TEST_CERT_SHA256')");
-    expect(androidBuild).toContain("it.name == 'assembleFirebaseTest'");
+    expect(androidBuild).toContain("it.name == 'assembleGoogleFirebaseTest'");
     expect(androidBuild).toContain('cert.equalsIgnoreCase(uploadSha)');
-    expect(androidBuild).toContain("it.name == 'bundleFirebaseTest'");
+    // Non-google flavors and all bundle tasks are disabled by pattern match,
+    // not per-task name, so assert the pattern the multi-flavor build uses.
+    expect(androidBuild).toContain("it.name.contains('FirebaseTest') && it.name.startsWith('bundle')");
     expect(androidBuild).toContain('enabled = false');
   });
 
@@ -131,13 +136,11 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(workflow).not.toContain('Build unsigned app + test bundle');
   });
 
-  it('gates both staging store uploads on both Firebase device suites', () => {
+  it('gates iOS staging store upload on both Firebase device suites', () => {
     expect(workflow).toContain('publish_staging:');
-    expect(workflow).toContain('publish-android-staging:');
+    expect(workflow).not.toContain('publish-android-staging:');
     expect(workflow).toContain('publish-ios-staging:');
-    expect(workflow.match(/needs: \[android-robo, ios-smoke\]/g)).toHaveLength(2);
-    expect(workflow).toContain('name: veyrnox-staging-aab');
-    expect(workflow).toContain('track: internal');
+    expect(workflow.match(/needs: \[android-robo, ios-smoke\]/g)).toHaveLength(1);
     expect(workflow).toContain('xcrun altool --upload-app');
     expect(workflow).toContain('npm run build:staging');
     expect(ciWorkflow).toContain('build_staging_release:');

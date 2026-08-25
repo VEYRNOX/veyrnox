@@ -100,10 +100,12 @@ import SeedGrid from "@/components/SeedGrid";
 import SeedInputGrid from "@/components/SeedInputGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
 import TelemetryConsent from "@/components/TelemetryConsent";
+import FastUnlockFirstRunCard from "@/components/onboarding/FastUnlockFirstRunCard";
 import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { isFastpathEnabled, hasSeenFastpathDisclosure, shouldShowFastpathWarmingHint } from "@/lib/fastpathUnlock";
 import { useWallet } from "@/lib/WalletProvider";
-import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS } from "@/lib/passkey";
+import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS, isPasskeyRegistered } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
 import {
   isBiometricGateError,
@@ -123,17 +125,23 @@ import { isRecoverableSeedInputError } from "@/lib/pendingPinFlow";
 import {
   registerFailedPinAttempt,
   pinAttemptWarning,
+  pinBackoffRemainingMs,
+  pinLockoutMessage,
+  pinSessionFloor,
+  raisePinSessionFloor,
+  clearPinSessionFloor,
+  PIN_COUNTER_DEGRADED_NOTE,
 } from "@/lib/pinAttemptGuard";
 import { setPendingReferral } from "@/lib/referral";
 import { copySecret } from "@/lib/copySecret";
-import { useRaspArtifact, sensitiveGate } from "@/rasp";
+import { sensitiveGate } from "@/rasp";
+import { getFreshLocalRaspArtifact } from "@/lib/getFreshLocalRaspArtifact";
 import KekEnrollmentGate from "@/components/KekEnrollmentGate";
 import PinSetup from "@/components/PinSetup";
 import { useKekEnrollmentGate } from "@/lib/useKekEnrollmentGate";
 import RestoreFromFile from "@/components/backup/RestoreFromFile";
 import { errorHaptic } from "@/lib/haptics";
 import FirstReceiveCard from "@/components/FirstReceiveCard";
-import WalletCreatedFlash from "@/components/WalletCreatedFlash";
 import BackupNagSheet from "@/components/BackupNagSheet";
 import * as backupNag from "@/lib/backupNag";
 import { resolveReceive } from "@/lib/receiveAddress";
@@ -156,6 +164,39 @@ function FirstReceiveCardWithTelemetry(props) {
   return <FirstReceiveCard {...props} />;
 }
 
+// L-6 (audit 2026-08-25) — FRESH-AT-THE-TAP gate for seed material.
+//
+// useRaspArtifact() samples at mount and refreshes on foreground plus a 60 s
+// heartbeat, so a hook injected after the last probe but before the user taps was
+// judged under a verdict that never saw it. The sign hot-path was hardened for
+// exactly this (SendCrypto.jsx awaits getFreshRaspArtifact()); degrade.js calls seed
+// reveal / export / import "the highest-danger moments" and they still had the
+// weaker guarantee. This probes at the confirm step instead.
+//
+// WHY NOT getFreshRaspArtifact() ITSELF: it composes the REMOTE attestation leg,
+// which these surfaces deliberately exclude (owner decision 2026-07-16 — a sideloaded
+// build gets HTTP 404 from Play Integrity → INTEGRITY_UNAVAILABLE → seed backup
+// blocked, and the whole point of excludeAttestation is that a self-custody backup
+// must not hang on an unreachable remote check). So this composes the ON-DEVICE leg
+// only, exactly as useRaspArtifact({ excludeAttestation: true }) does — no egress
+// added on a seed path either.
+//
+// CONSOLIDATED (2026-08-25): the probe chain this used to inline is now the SINGLE
+// implementation in @/lib/getFreshLocalRaspArtifact, landed by PR #2072 for the other
+// four seed surfaces. Two copies of one rule existed briefly because the two fixes were
+// written in parallel worktrees — the same drift hazard the 2026-08-25 audit flagged
+// against checkTypedDataChainId. The surviving copy is the stricter of the two: a named
+// timeout constant and a shape-drift guard that this one lacked. Do NOT re-inline a
+// probe chain here. Folding it into a getFreshRaspArtifact({ excludeAttestation })
+// option is still the eventual home, but that changes the sign hot-path's semantics and
+// is a separate, riskier change.
+//
+// I4: a throw, a timeout, or an unavailable probe all fail CLOSED — sensitiveGate's
+// null branch (P1-2) refuses the action rather than reading absence as clean.
+export async function freshSensitiveGate(action) {
+  return sensitiveGate(await getFreshLocalRaspArtifact(), action);
+}
+
 // Module-level so its identity is stable across WalletEntry re-renders — a
 // component defined inside render would remount its subtree on every keystroke,
 // dropping focus from the password/seed inputs.
@@ -163,7 +204,7 @@ function EntryShell({ error, children, chromeless = false }) {
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 bg-background overflow-hidden">
       <VeyrnoxAmbient />
-      <div className="relative w-full max-w-sm space-y-6" style={{ zIndex: 1 }}>
+      <div className="relative w-full max-w-sm space-y-4" style={{ zIndex: 1 }}>
         {/* Slice K: single shared <VeyrnoxHero> for every pre-vault surface.
             chromeless still supported (entry-tiles view passes it because
             EntryTiles renders its own <VeyrnoxHero> inside — avoids stacking
@@ -348,11 +389,13 @@ function WelcomeHero({ onGetStarted, onRestore }) {
             aria-hidden
             className="absolute inset-0 -z-10 rounded-full bg-primary/25 blur-3xl motion-safe:animate-pulse"
           />
-          <VeyrnoxLogo size={76} />
+          <div style={reduce ? undefined : { animation: "vx-logo-spin 1.4s cubic-bezier(0.22,1,0.36,1) 0.1s both" }}>
+            <VeyrnoxLogo size={76} />
+          </div>
         </motion.div>
 
         <motion.div variants={item}>
-          <VeyrnoxWordmark className="text-3xl block" />
+          <VeyrnoxWordmark className="text-3xl block" animated={!reduce} />
         </motion.div>
 
         <motion.p variants={item} className="mt-3 text-sm leading-relaxed text-muted-foreground max-w-[18rem]">
@@ -464,6 +507,7 @@ export default function WalletEntry() {
   const {
     isUnlocked, isDecoy, createWallet, importWallet, unlock, hasVault,
     enableBiometricUnlock, unlockWithBiometric,
+    unlockBiometricOnly,
     exploreMode, enterExplore, leaveExplore, confirmWalletBackup,
     setupPin, createWalletFromPendingPin, importWalletForPendingPin,
     clearPendingPin, hasPendingPin, panicWipe,
@@ -524,9 +568,10 @@ export default function WalletEntry() {
   // localStorage read) so the screen renders at most once per onboarding pass.
   const [consentDone, setConsentDone] = useState(() => getConsentState() !== null);
   // True only across a fresh onboarding pass (finishPinSetup → Phase-2 create/import
-  // → KEK gate → consent). Drives the one-time FirstReceiveCard branch below. NOT set
-  // on the PIN-recovery path (finishPinRecover) — restore flows don't get this card
-  // this slice. Cleared on the card's "You're set" dismissal.
+  // → KEK gate → consent). Drives the one-time post-onboard import hold below. NOT
+  // set on the PIN-recovery path (finishPinRecover) — restore flows don't get this
+  // card this slice. CREATE clears it automatically once the dashboard is allowed
+  // through; IMPORT clears it on the card dismissal.
   const [justOnboarded, setJustOnboarded] = useState(false);
   // SAST M-3 escape hatch: null until the passkey gate has actually FAILED on an
   // unlock attempt; then { reason } so we can offer a signposted password-only
@@ -537,6 +582,13 @@ export default function WalletEntry() {
   // vault password is still required, so this is NEVER a weaker path.
   const [biometricFailed, setBiometricFailed] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Fast-path (#2019) one-time-setup hint. Set to true only when a PIN unlock
+  // is about to run, fastpath is enabled, AND the wrapped-DEK cache is empty
+  // (so this unlock is the slow-path populate that primes the fast-path
+  // cache). Cleared in the runPinUnlock finally so it never lingers past the
+  // unlock. Renders a short hint alongside the busy state — no security value,
+  // purely a UX signal for the first unlock after enabling the feature.
+  const [fastpathWarmingHint, setFastpathWarmingHint] = useState(false);
   const [error, setError] = useState("");
   // Biometric availability for THIS platform (resolved once on mount). Drives the
   // onboarding offer and the returning-user one-tap button label.
@@ -553,10 +605,12 @@ export default function WalletEntry() {
 
   // Check biometric preference fresh every render (not cached), so preference changes take effect immediately
   const biometricEnabled = vaultExists && isBiometricUnlockEnabled() && bioReady;
-  // excludeAttestation: this surface gates seed-reveal + seed import (local seed
-  // material) — not gated on the remote attestation leg (unavailable on sideloaded
-  // builds → would block reveal/import). On-device threats still block. (2026-07-16)
-  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
+  // L-6 (2026-08-25): the mount-time useRaspArtifact({ excludeAttestation: true })
+  // sample used to live here and feed all three seed-material gates. It is gone
+  // because every one of them now probes fresh at the tap (freshSensitiveGate above,
+  // which keeps the same on-device-only composition and the same 2026-07-16 owner
+  // decision behind excludeAttestation). Nothing on this surface reads a RASP verdict
+  // at render time, so a <=60 s-stale sample had no remaining honest use.
 
   // Transiently holds the just-set vault password between "Generate" and the
   // "Enable Face ID" decision on the SAME screen, so we can cache it for biometric
@@ -608,7 +662,12 @@ export default function WalletEntry() {
   // in the wallet. Detection + enrollment logic live in useKekEnrollmentGate
   // (src/lib) to stay within the ring boundary (components cannot import
   // wallet-core directly).
-  const { gateActive: kekGatePending, enroll: kekEnroll, dismiss: kekDismiss } =
+  const {
+    gateActive: kekGatePending,
+    enroll: kekEnroll,
+    dismiss: kekDismiss,
+    suppressInsecureTier: kekSuppressInsecureTier,
+  } =
     useKekEnrollmentGate({ isUnlocked });
 
   // Shake feedback counter — increment on any wrong-PIN / PIN-mismatch moment
@@ -723,13 +782,29 @@ export default function WalletEntry() {
     return result;
   }, [kekEnroll, kekDismiss]);
 
-  const handleKekSkip = useCallback(() => {
+  const handleKekSkip = useCallback((opts = {}) => {
+    if (opts.insecureDevice) kekSuppressInsecureTier();
     autoEnrollPinRef.current = null;
     kekDismiss();
-  }, [kekDismiss]);
+  }, [kekDismiss, kekSuppressInsecureTier]);
+
+  // Fresh CREATE onboarding should land on the dashboard immediately. Once the
+  // user is genuinely unlocked and past the KEK gate, clear the transient
+  // justOnboarded flag so later renders can show the regular backup nag sheet.
+  useEffect(() => {
+    if (
+      isUnlocked &&
+      !generatedSeed &&
+      !kekGatePending &&
+      justOnboarded &&
+      chosenPath === "new"
+    ) {
+      setJustOnboarded(false);
+    }
+  }, [chosenPath, generatedSeed, isUnlocked, justOnboarded, kekGatePending]);
 
   const copySeed = async () => {
-    const gate = sensitiveGate(raspArtifact, 'seed-reveal');
+    const gate = await freshSensitiveGate('seed-reveal');
     if (gate.blocked) {
       toast.error(gate.sentence || 'Clipboard copy is disabled on this device right now.');
       return;
@@ -833,13 +908,34 @@ export default function WalletEntry() {
   // clear it out-of-band to dodge the wipe. This raises the cost of online/over-the-
   // shoulder guessing and gives a lost/stolen-device auto-destruct; it does NOT replace
   // the Argon2id offline cost or planned hardware binding. Accepted software limit.
+  //
+  // M-9 (audit 2026-08-25): both accesses below used to swallow their exception with no
+  // fallback, so an UNWRITABLE store was a silent fail-OPEN — every miss read 0 and
+  // wrote nothing, giving unlimited attempts with shouldWipe never true. That is a
+  // different thing from the disclosed limit above (attacker deliberately clears the
+  // key): it needs no attacker and produces no signal. The session floor
+  // (lib/pinAttemptGuard) is the mitigation — a high-water mark max()ed against the
+  // stored value so a failed write cannot reset progress within a session. It is NOT
+  // persistence and is not written up as such; a reload still clears it. What it kills
+  // is the SILENT version, hence storageDegraded, surfaced to the user below.
   const PIN_ATTEMPTS_KEY = 'veyrnox-pin-attempts';
   const PIN_BACKOFF_KEY = 'veyrnox-pin-backoff-until';
   const readPinAttempts = () => {
-    try { return parseInt(localStorage.getItem(PIN_ATTEMPTS_KEY) || '0', 10) || 0; }
-    catch { return 0; }
+    let stored = 0;
+    try { stored = parseInt(localStorage.getItem(PIN_ATTEMPTS_KEY) || '0', 10) || 0; }
+    catch { raisePinSessionFloor({ storageDegraded: true }); }
+    return Math.max(stored, pinSessionFloor().attempts);
+  };
+  // M-7: the lockout deadline, floored the same way — a store that cannot be READ must
+  // not hand a locked-out attacker a free retry.
+  const readPinBackoffUntil = () => {
+    let stored = 0;
+    try { stored = parseInt(localStorage.getItem(PIN_BACKOFF_KEY) || '0', 10) || 0; }
+    catch { raisePinSessionFloor({ storageDegraded: true }); }
+    return Math.max(stored, pinSessionFloor().backoffUntil);
   };
   const clearPinAttempts = () => {
+    clearPinSessionFloor();
     try { localStorage.removeItem(PIN_ATTEMPTS_KEY); localStorage.removeItem(PIN_BACKOFF_KEY); }
     catch { /* best-effort */ }
   };
@@ -850,7 +946,38 @@ export default function WalletEntry() {
   // change). pinModel:true is kept on the unlock() call as the cohort marker.
   const runPinUnlock = async (pin) => {
     if (!pin) { setError("Enter your PIN."); return; }
+    // M-7 (audit 2026-08-25): ENFORCE the timed backoff. pinBackoffMs has defined the
+    // tiers since VULN-8 and had its own passing unit test, but no production code ever
+    // read the value — the 5-minute lockout at >= 7 misses did not exist at runtime.
+    // The check sits BEFORE the attempt is spent, so a lockout costs the attacker wall
+    // time without consuming one of the ten attempts, and the wipe stays reachable
+    // (delayed, never suppressed). Honest remaining-time message, rounded up.
+    const lockoutMs = pinBackoffRemainingMs(readPinBackoffUntil());
+    if (lockoutMs > 0) {
+      errorHaptic();
+      setError(pinLockoutMessage(lockoutMs));
+      setUnlockPin("");
+      setPinShakeKey((k) => k + 1);
+      return;
+    }
     setError(""); setBusy(true);
+    // Fast-path (#2019) one-time-setup hint: probe the wrapped-DEK cache
+    // BEFORE unlock so we can tell the user THIS unlock will populate the
+    // cache and the next one will be faster. The three-input decision lives
+    // in the pure shouldShowFastpathWarmingHint helper (unit-tested in
+    // fastpathUnlock.test.js). Best-effort — a probe failure just means no
+    // hint, unlock proceeds normally.
+    try {
+      let existing = null;
+      const platform = Capacitor.getPlatform?.();
+      if (platform === 'android' && isFastpathEnabled()) {
+        const mod = await import('@/plugins/androidBiometricCache');
+        if (typeof mod.getFastpathDek === 'function') existing = await mod.getFastpathDek();
+      }
+      if (shouldShowFastpathWarmingHint({
+        platform, enabled: isFastpathEnabled(), existingCacheValue: existing,
+      })) setFastpathWarmingHint(true);
+    } catch { /* best-effort */ }
     try {
       await unlock(pin, { pinModel: true, skipBiometric: true });
       setUnlockPin("");
@@ -942,14 +1069,30 @@ export default function WalletEntry() {
         setError("Unlock cancelled — try again when ready.");
         return;
       }
+      if (e?.code === KEK_UI_ERR.MALFORMED_VAULT) {
+        setError(
+          "Your wallet data appears corrupted and can't be read. " +
+          "Restore your wallet from your seed phrase to regain access."
+        );
+        setPinStep('seed');
+        setView('pin-recover');
+        return;
+      }
       if (e?.code === 'UNLOCK_SUPERSEDED') {
         setError("Unlock interrupted — please try again.");
         return;
       }
       // A real wrong-PIN miss. Register it and persist the new count; the pure guard
-      // decides whether this miss is the wipe trigger and what to warn.
-      const { attempts, shouldWipe } = registerFailedPinAttempt(readPinAttempts());
-      try { localStorage.setItem(PIN_ATTEMPTS_KEY, String(attempts)); } catch { /* best-effort */ }
+      // decides whether this miss is the wipe trigger, how long to lock out (M-7), and
+      // what to warn. The session floor is raised FIRST so the progress survives a
+      // storage write that fails immediately after (M-9).
+      const { attempts, shouldWipe, backoffMs } = registerFailedPinAttempt(readPinAttempts());
+      const backoffUntil = backoffMs > 0 ? Date.now() + backoffMs : 0;
+      raisePinSessionFloor({ attempts, backoffUntil });
+      try {
+        localStorage.setItem(PIN_ATTEMPTS_KEY, String(attempts));
+        if (backoffUntil > 0) localStorage.setItem(PIN_BACKOFF_KEY, String(backoffUntil));
+      } catch { raisePinSessionFloor({ storageDegraded: true }); }
 
       if (shouldWipe) {
         // HARD STOP: PIN_WIPE_AFTER consecutive misses. Fire the REAL irreversible local
@@ -970,12 +1113,19 @@ export default function WalletEntry() {
       }
 
       // Not yet at the limit: honest "Incorrect PIN", upgraded to the iOS-style
-      // remaining-count warning once within a few attempts of the wipe.
+      // remaining-count warning once within a few attempts of the wipe, then the
+      // lockout wait if this miss earned one (M-7), then the degraded-storage note if
+      // the count could not be saved (M-9 — say it rather than fail open in silence).
       errorHaptic();
-      setError(pinAttemptWarning(attempts) || "Incorrect PIN. Try again.");
+      const missLines = [
+        pinAttemptWarning(attempts) || "Incorrect PIN. Try again.",
+        pinLockoutMessage(backoffUntil ? backoffUntil - Date.now() : 0),
+        pinSessionFloor().storageDegraded ? PIN_COUNTER_DEGRADED_NOTE : null,
+      ].filter(Boolean);
+      setError(missLines.join(' '));
       setUnlockPin("");                    // clear the entered digits
       setPinShakeKey((k) => k + 1);        // shake the pad
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setFastpathWarmingHint(false); }
   };
 
   // PHASE 1: PIN setup writes credential markers only (provider.setupPin) and enters
@@ -1020,6 +1170,7 @@ export default function WalletEntry() {
     setBusy(true); setProvisioning(true); setError("");
     try { setKekOrigin('fresh'); await createWalletFromPendingPin(); setProvisioning(false); }
     catch (e) {
+      if (import.meta.env.DEV) console.error('[VEYRNOX-CREATE-FAIL]', e?.code || e?.name, e?.message);
       autoEnrollPinRef.current = null;
       setProvisioning(false);
       // Slice D1: an auto-fired create (chosenPath==='new') failed — clear the
@@ -1119,7 +1270,7 @@ export default function WalletEntry() {
   // Fail-closed: a bad phrase throws inside the import, leaving the existing vault
   // untouched; we clear the bridged pendingPin so no stale PIN lingers.
   const finishPinRecover = async (pin) => {
-    const gate = sensitiveGate(raspArtifact, 'import');
+    const gate = await freshSensitiveGate('import');
     if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setBusy(true); setProvisioning(true); setError("");
     try {
@@ -1210,7 +1361,7 @@ export default function WalletEntry() {
 
   // ---- Import an existing seed (vault password mandatory) ----
   const handleImport = async (mnemonicOverride) => {
-    const gate = sensitiveGate(raspArtifact, 'import');
+    const gate = await freshSensitiveGate('import');
     if (gate.blocked) { setError(gate.sentence || 'Seed import is disabled on this device right now.'); return; }
     setError("");
     const pw = checkVaultPasswordStrength(importPassword);
@@ -1282,14 +1433,11 @@ export default function WalletEntry() {
   }
 
   // ONE-TIME FIRST-RECEIVE CARD for the IMPORT path — fresh onboarding only
-  // (justOnboarded, set in finishPinSetup). Shows the newly-imported wallet's
-  // EVM receive address + QR so a new user's fastest path is funding it.
-  // EVM only this slice (see plan's non-goals); resolveReceive owns the
-  // address lookup so a future accounts-shape refactor is one edit, not a
-  // hand-rolled accounts?.[0]?.address here. Extracted to a function (rather
-  // than inlined in the branch below) so the CREATE branch's post-onboard
-  // condition reads as WalletCreatedFlash-only in source, matching the
-  // WalletEntry.wallet-created-flash regression test.
+  // (justOnboarded, set in finishPinSetup). CREATE now falls straight through
+  // to the dashboard; only IMPORT keeps the funding nudge here. EVM only this
+  // slice (see plan's non-goals); resolveReceive owns the address lookup so a
+  // future accounts-shape refactor is one edit, not a hand-rolled
+  // accounts?.[0]?.address here.
   const renderImportFirstReceive = () => {
     const receive = resolveReceive('ETH', { accounts, btcAccount, solAccount });
     return (
@@ -1308,26 +1456,14 @@ export default function WalletEntry() {
   // mint, so removing the prompt does not enable telemetry. Opt-in path is
   // Settings → Privacy.
   //
-  // ONE-TIME POST-CREATE CELEBRATION — fresh onboarding only, after consent
-  // and past the KEK gate, before FirstRunTour/<Outlet>. CREATE
-  // (chosenPath==='new') gets the honest WalletCreatedFlash celebration +
-  // backup nudge; IMPORT (chosenPath==='have') keeps the FirstReceiveCard
-  // funding nudge (renderImportFirstReceive above) — unchanged behaviour.
-  // Gated on !isDeniabilityOrDemoActive() (I3) — structurally unreachable in
-  // decoy anyway (post-KEK ladder order), but defensive-in-depth matches the
-  // consent/FirstRunTour branches around it.
+  // ONE-TIME POST-ONBOARD IMPORT HOLD — fresh onboarding only, after consent
+  // and past the KEK gate, before <Outlet>. CREATE should land on the
+  // dashboard immediately; only IMPORT keeps the FirstReceiveCard funding
+  // nudge here. Gated on !isDeniabilityOrDemoActive() (I3) — structurally
+  // unreachable in decoy anyway (post-KEK ladder order), but
+  // defensive-in-depth matches the surrounding onboarding branches.
   if (isUnlocked && !generatedSeed && !kekGatePending && justOnboarded && !isDeniabilityOrDemoActive()) {
-    if (chosenPath === "new") {
-      return (
-        <EntryShell chromeless>
-          <WalletCreatedFlash
-            onPrimary={() => { setJustOnboarded(false); backupNag.markBackupNagShown(); navigate("/personal-backup"); }}
-            onDismiss={() => { setJustOnboarded(false); backupNag.dismissForSession(); }}
-          />
-        </EntryShell>
-      );
-    }
-    return renderImportFirstReceive();
+    if (chosenPath === "have") return renderImportFirstReceive();
   }
 
   // One-time telemetry consent screen: after backup confirmation (create path)
@@ -1357,6 +1493,12 @@ export default function WalletEntry() {
         {!justOnboarded && !isDeniabilityOrDemoActive() && (
           <BackupNagSheet publicAddresses={getBackupPublicAddresses ? getBackupPublicAddresses() : []} />
         )}
+        {/* Fast Unlock first-run disclosure card — informed-consent chokepoint
+            for the default-ON reversal (#2019). Renders null unless the full
+            gate matrix passes (native Android + biometric available + KEK
+            vault + not deniability/demo + no passkey + no explicit choice
+            yet + not previously seen). See FastUnlockFirstRunCard.jsx. */}
+        <FastUnlockFirstRunCard />
         <Outlet />
       </>
     );
@@ -1568,9 +1710,80 @@ export default function WalletEntry() {
   // ---- View: Unlock (PIN cohort) ----
   if (view === "unlock" && authModel === "pin") {
     const bioLabel = bioStatus?.label || "Face ID";
+    // FAST-PATH BIOMETRIC UNLOCK BUTTON (#2019). PARALLEL to the PIN pad — never
+    // replaces PIN entry. FIVE AND-gates below; missing any → button not rendered
+    // (fail-closed visibility). Uses Capacitor.getPlatform() (not
+    // isNativePlatform) because the fast-path keystore branch is Android-only
+    // (StrongBox/TEE aliased key). On tap: unlockBiometricOnly() opens the
+    // vault; any FASTPATH_ code returns { fallbackToPin:true } and the PIN pad
+    // stays visible (I4). Duress/panic/wrong-PIN still route only through the
+    // PIN keypad's runPinUnlock → unlock() path — this branch never carries a
+    // password.
+    //
+    // isPasskeyRegistered() gate: owner ruling — a user with a passkey enrolled
+    // has explicitly chosen a stronger unlock factor. Fast-path bypasses the
+    // passkey gate (no runPasskeyGate() call), so hiding the button preserves
+    // the passkey's role. Users who want fast-path unenrol the passkey first.
+    // Default-ON reversal: hasSeenFastpathDisclosure() is the informed-consent
+    // chokepoint. The button is a visible benefit of fast-path — users must
+    // not see it before understanding what it enables. On a fresh install
+    // isFastpathEnabled() defaults true; the disclosure marker is what gates
+    // real activation.
+    const fastpathButtonVisible = (
+      Capacitor.getPlatform?.() === 'android'
+      && isFastpathEnabled()
+      && hasSeenFastpathDisclosure()
+      && bioStatus?.available === true
+      && !isDeniabilityOrDemoActive()
+      && !isPasskeyRegistered()
+    );
+    const fastpathLabel = bioStatus?.label ? `Unlock with ${bioStatus.label}` : 'Unlock with biometric';
+    const handleFastpathUnlock = async () => {
+      setError(""); setBusy(true);
+      try {
+        const res = await unlockBiometricOnly();
+        if (res && res.ok === false && res.fallbackToPin) {
+          // Silent fall-back: keypad is already visible. Small hint below.
+          setError("Enter your PIN");
+        }
+      } catch (e) {
+        // UNLOCK_SUPERSEDED or any unexpected error: honest generic message; PIN
+        // pad remains available.
+        if (e && e.code === 'UNLOCK_SUPERSEDED') {
+          // Silent — another action already took over the unlock.
+        } else {
+          // Honest copy: unlockBiometricOnly() failures are dominated by
+          // FASTPATH_CODE.MISS (empty wrapped-DEK cache — expected on first
+          // run after enabling Fast Unlock, populates on the next PIN
+          // unlock) rather than a real biometric-hardware fault. The user
+          // saw "Biometric unlock didn't work" and read it as broken; the
+          // fast-path is simply not warm yet.
+          setError("Enter your PIN once and Fast Unlock will work next time.");
+        }
+      } finally {
+        setBusy(false);
+      }
+    };
     return (
       <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-4">
+          {fastpathButtonVisible && (
+            <>
+              <Button
+                data-testid="fastpath-unlock-button"
+                className="w-full gap-2 h-12 text-base"
+                disabled={busy}
+                onClick={handleFastpathUnlock}
+              >
+                {busy ? <RefreshCw className="h-5 w-5 motion-safe:animate-spin" /> : <ScanFace className="h-5 w-5" />} {fastpathLabel}
+              </Button>
+              <div className="flex items-center gap-2 py-1">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-[11px] text-muted-foreground">or enter your PIN</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          )}
           {biometricEnabled && !biometricFailed && (
             <>
               <Button className="w-full gap-2 h-12 text-base" disabled={busy} onClick={handleBiometricUnlock}>
@@ -1591,6 +1804,15 @@ export default function WalletEntry() {
           <div className="flex items-center justify-center gap-2 text-sm font-medium">
             <Lock className="h-4 w-4 text-muted-foreground" /> Enter your PIN
           </div>
+          {fastpathWarmingHint && (
+            <p
+              data-testid="fastpath-warming-hint"
+              className="text-[11px] text-center text-muted-foreground"
+              role="status"
+            >
+              One-time setup &mdash; this will be faster next time
+            </p>
+          )}
           <ShakeOnKey shakeKey={pinShakeKey}>
             <PinPad value={unlockPin} onChange={setUnlockPin} onComplete={runPinUnlock} disabled={busy} submitLabel="Unlock" />
           </ShakeOnKey>
@@ -1832,7 +2054,7 @@ export default function WalletEntry() {
   if (view === "pin-create") {
     return (
       <EntryShell error={error}>
-        <div className="space-y-5">
+        <div className="space-y-3">
           {/* PIN-FIRST: Back returns to the entry-tiles picker (the fresh-device
               landing ahead of the PIN), NOT a dashboard — the empty dashboard is
               only reachable AFTER the PIN is set. */}

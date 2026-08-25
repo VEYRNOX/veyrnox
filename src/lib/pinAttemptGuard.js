@@ -32,14 +32,119 @@ export const PIN_WIPE_WARN_AT = 6;
 
 // Timed backoff tiers (unchanged from the prior VULN-8 rate-limit): a soft delay on
 // top of Argon2id. The wipe is the HARD stop and is independent of this — backoff
-// must never prevent reaching attempt 10 (the caller checks shouldWipe regardless of
-// any remaining backoff window).
+// must never prevent reaching attempt 10. It DELAYS the tenth attempt; it never
+// suppresses it, because the lockout is checked BEFORE an attempt is spent and the
+// counter survives the wait (the caller acts on shouldWipe for whatever attempt does
+// run).
+//
+// M-7 (audit 2026-08-25): these tiers existed and were unit-tested from the day they
+// landed, but nothing in production ever read the value — runPinUnlock destructured
+// `backoffMs` away, so the 5-minute lockout did not exist at runtime. The helpers
+// below are what the caller needs to actually enforce it: WalletEntry persists
+// `Date.now() + backoffMs` and refuses a submission while the deadline is running.
 export function pinBackoffMs(attempts) {
   if (attempts >= 7) return 5 * 60 * 1000;
   if (attempts >= 5) return 30 * 1000;
   if (attempts >= 3) return 5 * 1000;
   return 0;
 }
+
+// The longest lockout the tiers can produce. Also the CEILING applied to a persisted
+// deadline: that deadline lives in localStorage, so corruption or tampering could set
+// it years out. Honouring such a value locks the OWNER out of their own wallet with
+// no recovery — data loss wearing a security costume. Clamping keeps the real control
+// intact (an attacker still cannot shorten a live lockout) while bounding the damage.
+export const PIN_BACKOFF_MAX_MS = 5 * 60 * 1000;
+
+/**
+ * How much of a persisted lockout deadline is still running, clamped to
+ * [0, PIN_BACKOFF_MAX_MS]. Absent/garbage/past deadlines are simply "not locked out"
+ * — the deadline is a DELAY, not the attempt limit, so an unreadable one must not
+ * become an unbounded lock (the wipe counter is the control that fails closed).
+ *
+ * @param {number|null|undefined} untilTs  epoch ms the lockout ends
+ * @param {number} [now]
+ * @returns {number} remaining ms (0 when not locked out)
+ */
+export function pinBackoffRemainingMs(untilTs, now = Date.now()) {
+  const until = Number(untilTs);
+  if (!Number.isFinite(until)) return 0;
+  const remaining = until - now;
+  if (!(remaining > 0)) return 0;
+  return Math.min(remaining, PIN_BACKOFF_MAX_MS);
+}
+
+/**
+ * The honest lockout sentence, or null when there is nothing left to wait. Rounds UP
+ * so the message can never promise an earlier retry than the gate will actually
+ * allow (a message that under-states the wait reads as a broken button).
+ *
+ * @param {number} remainingMs
+ * @returns {string|null}
+ */
+export function pinLockoutMessage(remainingMs) {
+  const secs = Math.ceil(Math.max(0, Number(remainingMs) || 0) / 1000);
+  if (secs <= 0) return null;
+  if (secs < 60) {
+    return `Too many incorrect PINs. Try again in ${secs} second${secs === 1 ? '' : 's'}.`;
+  }
+  const mins = Math.ceil(secs / 60);
+  return `Too many incorrect PINs. Try again in ${mins} minute${mins === 1 ? '' : 's'}.`;
+}
+
+// ── SESSION FLOOR (M-9, audit 2026-08-25) ────────────────────────────────────
+// Deliberately STATEFUL, in a module whose header promises purity — so here is the
+// reason it earns the exception.
+//
+// The attempt counter and the lockout deadline live in localStorage, and BOTH access
+// paths swallowed their exception with no fallback. Under an unwritable store every
+// miss read 0 and wrote nothing: unlimited attempts, shouldWipe never true, no signal
+// anywhere. That is a fail-OPEN in the one control that makes the wrong-PIN oracle
+// survivable.
+//
+// This is a session-scoped high-water mark the caller max()es the stored value
+// against, so a failed write cannot reset progress WITHIN a session. State it
+// plainly: it is NOT persistence. A reload, a tab close or an app restart clears it,
+// which is exactly the bypass the disclosed threat model already covers (a determined
+// attacker with the seized device can clear the key out-of-band anyway). What it
+// removes is the SILENT version of that bypass — hence storageDegraded, which the
+// caller surfaces to the user rather than pretending a durable limit exists.
+let sessionFloor = { attempts: 0, backoffUntil: 0, storageDegraded: false };
+
+/** @returns {{ attempts: number, backoffUntil: number, storageDegraded: boolean }} */
+export function pinSessionFloor() {
+  return { ...sessionFloor };
+}
+
+/**
+ * Raise the floor. MONOTONIC by construction: a lower attempts/backoffUntil is
+ * ignored and storageDegraded latches, so no caller ordering can walk the floor
+ * back down. Only clearPinSessionFloor() lowers it.
+ *
+ * @param {{ attempts?: number, backoffUntil?: number, storageDegraded?: boolean }} patch
+ */
+export function raisePinSessionFloor(patch = {}) {
+  const attempts = Number(patch.attempts);
+  const backoffUntil = Number(patch.backoffUntil);
+  sessionFloor = {
+    attempts: Number.isFinite(attempts) ? Math.max(sessionFloor.attempts, attempts) : sessionFloor.attempts,
+    backoffUntil: Number.isFinite(backoffUntil)
+      ? Math.max(sessionFloor.backoffUntil, backoffUntil)
+      : sessionFloor.backoffUntil,
+    storageDegraded: sessionFloor.storageDegraded || patch.storageDegraded === true,
+  };
+  return pinSessionFloor();
+}
+
+/** Reset the floor. Called on a SUCCESSFUL unlock, alongside clearing the stored keys. */
+export function clearPinSessionFloor() {
+  sessionFloor = { attempts: 0, backoffUntil: 0, storageDegraded: false };
+}
+
+// Shown alongside the incorrect-PIN error when the store could not be written. Says
+// what is true and nothing more: the limit still applies, but only for this session.
+export const PIN_COUNTER_DEGRADED_NOTE =
+  "This device couldn't save the attempt count, so the limit only holds until the app closes.";
 
 /**
  * Register one wrong-PIN miss on top of `prevAttempts` and return the resulting

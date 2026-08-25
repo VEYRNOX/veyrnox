@@ -241,10 +241,22 @@
       "intro": "민감한 작업에 PIN 외에 추가 확인을 더합니다. 누군가 회원님이 PIN을 입력하는 것을 보더라도 두 번째 단계 없이는 이 작업들을 할 수 없습니다.",
       "actions_protects_label": "보호되는 작업",
       "gated_actions": [
-        { "label": "자금 전송", "desc": "안전 점검 이후의 모든 전송" },
-        { "label": "복구 구문 노출", "desc": "백업을 보거나 내보내기" },
-        { "label": "긴급 PIN 설정", "desc": "긴급 지갑 생성" },
-        { "label": "지갑 생성 또는 숨기기", "desc": "숨김 지갑 변경" }
+        {
+          "label": "자금 전송",
+          "desc": "안전 점검 이후의 모든 전송"
+        },
+        {
+          "label": "복구 구문 노출",
+          "desc": "백업을 보거나 내보내기"
+        },
+        {
+          "label": "긴급 PIN 설정",
+          "desc": "긴급 지갑 생성"
+        },
+        {
+          "label": "지갑 생성 또는 숨기기",
+          "desc": "숨김 지갑 변경"
+        }
       ],
       "currently_enforcing": "현재 적용 중:",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "최근",
     "tab_home": "홈",
     "tab_send": "보내기",
-    "tab_receive": "받기"
+    "tab_receive": "받기",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "뒤로"
@@ -343,8 +356,14 @@
     "heading": "암호화폐 보내기",
     "subheading": "안전하게 자금 전송",
     "wallet_fallback": "지갑",
-    "wallet_picker": { "label": "보내는 지갑", "placeholder": "지갑 선택" },
-    "asset_picker": { "label": "자산", "placeholder": "자산 선택" },
+    "wallet_picker": {
+      "label": "보내는 지갑",
+      "placeholder": "지갑 선택"
+    },
+    "asset_picker": {
+      "label": "자산",
+      "placeholder": "자산 선택"
+    },
     "recipient": {
       "label": "받는 사람 (주소 또는 이름)",
       "placeholder": "주소를 붙여넣거나 이름을 입력하세요 (예: vitalik.eth)",
@@ -404,18 +423,18 @@
       "dev_ungate_body": "— VITE_DEV_UNGATE_SEND를 통해 {{currency}}의 전송 게이트가 우회되었습니다(개발 빌드 전용). 이 자산의 상태는 변경되지 않았습니다(여전히 라이브 상태 아님). 메인넷은 계속 차단됩니다. 테스트넷 검증 전용이며, 이 빌드는 절대 출시하지 마세요.",
       "locked": "지갑이 잠겨 있습니다. 서명하고 전송하려면 지갑 설정에서 잠금을 해제하세요."
     },
-    "note": { "label": "메모 (선택)", "placeholder": "무엇을 위한 것인가요?" },
-    "trezor": {
-      "toggle_label": "Trezor로 서명",
-      "connected": "기기 연결됨",
-      "connect_button": "기기 연결"
+    "note": {
+      "label": "메모 (선택)",
+      "placeholder": "무엇을 위한 것인가요?"
     },
     "buttons": {
       "continue": "계속",
       "confirm_send": "확인 및 전송",
       "back": "뒤로"
     },
-    "verify": { "summary_label": "전송 내용" },
+    "verify": {
+      "summary_label": "전송 내용"
+    },
     "fee": {
       "automatic": "{{currency}} ({{network}})의 네트워크 수수료는 자동으로 설정됩니다.",
       "native_fee_note": "네트워크 수수료는 {{symbol}} ({{network}})로 지불됩니다 — {{token}}을(를) 보낼 때도 네트워크 수수료를 위해 {{symbol}}이 필요합니다."
@@ -708,5 +727,46 @@
     "allocation": "배분",
     "holdings": "보유 자산",
     "noHoldings": "아직 보유 자산이 없습니다."
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

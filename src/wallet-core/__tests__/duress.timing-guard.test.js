@@ -29,9 +29,23 @@ describe('tryDuressUnlock — constant-time guard (no duress vault)', () => {
     expect(result).toBeNull();
 
     // The guard must have fired: encryptVault called at least once with the real password.
+    // H-2 (2026-08-25): the pad now routes through encryptDeniabilityVault, which
+    // supplies a THIRD argument — this device's recorded KDF profile — so that the
+    // pad costs what decrypting a real decoy on this device costs. The assertion is
+    // widened to admit that argument and then checks it, rather than being loosened:
+    // a pad at the wrong work factor is exactly the tell this test exists to catch.
     expect(spy).toHaveBeenCalledWith(
       expect.any(String), // chaff secret — content doesn't matter
       'any-password',     // must use the REAL password so KDF cost is identical
+      expect.objectContaining({
+        memorySize: expect.any(Number),
+        iterations: expect.any(Number),
+      }),
     );
+    // On a store with no deniability blobs to read an era from, the profile
+    // resolves to the current at-rest params (the pre-H-2 behaviour).
+    const [, , params] = spy.mock.calls[0];
+    expect(params.memorySize).toBe(vaultMod.KDF_PARAMS.memorySize);
+    expect(params.iterations).toBe(vaultMod.KDF_PARAMS.iterations);
   });
 });
