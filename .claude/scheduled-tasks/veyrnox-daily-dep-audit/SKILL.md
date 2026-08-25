@@ -164,9 +164,20 @@ its own.
   re-derives the chain from the lockfile before probing. Until that PR it checked the
   Trezor and Ledger chains, which no longer exist — it could not have fired, while
   still reporting "no upstream movement". **It has not yet RUN under the new brief**
-  (last run 2026-08-18, next 2026-09-01); treat the first report as the confirmation,
+  (see below for what its 2026-08-25 run actually was); treat the first report under the
+  new brief as the confirmation,
   per the `brace-expansion` lesson below that a watcher existing is not evidence it
   watches the thing you care about.
+- **Its `lastRunAt` moved on 2026-08-25 and that run does NOT count as the
+  confirmation.** The scheduler records a run at `2026-08-25T08:52:21Z`; PR #2084 —
+  the re-point — merged at `2026-08-25T09:26:29Z`, i.e. **34 minutes later**. The task
+  resolves its runbook from `origin/main`, so that run executed the OLD two-chain
+  version and probed `@ledgerhq/hw-app-eth` and `@trezor/utxo-lib`, packages absent
+  from the tree. Whatever it reported, it cannot have been evidence about the Keystone
+  chain. This bullet exists because a bare `lastRunAt` of today's date is exactly the
+  thing a future reader will take as "it ran, we're covered" — check the timestamp
+  against the merge, not the date against the calendar. The next genuine run is
+  Tue 2026-09-01 09:34.
 - **Note:** the old `@ledgerhq/hw-app-eth@6.40.3` `fixAvailable` warning is retired
   with the Ledger chain. Kept as one line in case Ledger support returns: that version
   is a major *downgrade* and still declares `@ethersproject/*` v5, so it never cleared
