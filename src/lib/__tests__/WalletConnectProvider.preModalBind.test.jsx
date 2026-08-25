@@ -232,4 +232,43 @@ describe('WC pre-modal binds (L-1, L-2, L-3)', () => {
     expect(rejectRequest).not.toHaveBeenCalled();
     expect(out.ctx.pendingRequests).toHaveLength(1);
   });
+
+  // ---- #2076 ---------------------------------------------------------------
+  // L-3 bound the SEND branch to the session's approved chains. The typed-data
+  // branch was left comparing domain.chainId against the chain the REQUEST
+  // carries, so the two agree with each other and neither is checked against
+  // what the session actually approved. CHAIN_ID_MISMATCH therefore cannot fire
+  // on a self-consistent payload, and the request reaches the modal.
+  it('#2076: rejects SESSION_CHAINID_INVALID for typed data self-consistent on an unapproved chain', () => {
+    const out = renderWithCapture();
+    fireRequest({
+      topic: TOPIC,
+      id: 7,
+      params: {
+        chainId: MAINNET, // session approved SEPOLIA only
+        request: {
+          method: 'eth_signTypedData_v4',
+          // domain.chainId AGREES with params.chainId — the pre-#2076 check
+          // compared these two to each other and passed.
+          params: [WALLET_ADDR, typedData(1)],
+        },
+      },
+    });
+    expect(rejectRequest).toHaveBeenCalledWith(TOPIC, 7, 'SESSION_CHAINID_INVALID');
+    expect(out.ctx.pendingRequests).toHaveLength(0);
+  });
+
+  it('#2076: still queues typed data whose domain matches the session-approved chain', () => {
+    const out = renderWithCapture();
+    fireRequest({
+      topic: TOPIC,
+      id: 8,
+      params: {
+        chainId: SEPOLIA,
+        request: { method: 'eth_signTypedData_v4', params: [WALLET_ADDR, typedData(11155111)] },
+      },
+    });
+    expect(rejectRequest).not.toHaveBeenCalled();
+    expect(out.ctx.pendingRequests).toHaveLength(1);
+  });
 });

@@ -817,10 +817,15 @@ export function WalletConnectProvider({ children }) {
           const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
           const fromAddr = typeof txParam.from === 'string' ? txParam.from.toLowerCase() : null;
           // L-3 (audit 2026-08-25) pre-modal chain bind. This branch checked
-          // `from` and nothing else, while the typed-data branch below already
-          // bound the chain — so a chain the session never approved reached the
-          // modal and was only caught at sign time (:895). Same helper, same
-          // fail-closed shape: an unapproved or ambiguous chain resolves to null.
+          // `from` and nothing else, so a chain the session never approved
+          // reached the modal and was only caught at sign time (:895). Same
+          // helper, same fail-closed shape: an unapproved or ambiguous chain
+          // resolves to null.
+          //
+          // The original note here said the typed-data branch "already bound the
+          // chain". It did not — it compared two dApp-supplied values to each
+          // other and never consulted the session (#2076). Both branches now
+          // resolve through resolveSessionCaip2; keep them that way.
           const boundCaip2 = resolveSessionCaip2(
             getActiveSessions().find((s) => s.topic === data.topic),
             data.params?.chainId,
@@ -858,12 +863,28 @@ export function WalletConnectProvider({ children }) {
             // Invalid payload: leave it queued so _handleSignTypedData rejects
             // with the real parse error, exactly as before.
             if (parsed.valid) {
-              const domainChainId = toNumericChainId(parsed?.domain?.chainId);
-              const sessionChainId = toNumericChainId(
-                typeof data.params?.chainId === 'string'
-                  ? data.params.chainId.split(':')[1] : null,
+              // #2076: this used to compare domain.chainId against the chain the
+              // REQUEST carries (data.params.chainId). Those two are both dApp-
+              // supplied, so a self-consistent payload naming a chain the session
+              // never approved agreed with itself and passed — CHAIN_ID_MISMATCH
+              // could not fire, and the user walked a whole approval modal for a
+              // request sign time was always going to refuse (:1000/:1022).
+              // Resolve the SESSION's approved chain first, exactly as the send
+              // branch above does, then bind the domain to THAT.
+              const boundCaip2 = resolveSessionCaip2(
+                getActiveSessions().find((s) => s.topic === data.topic),
+                data.params?.chainId,
               );
-              if (domainChainId == null || sessionChainId == null || domainChainId !== sessionChainId) {
+              const sessionChainId = boundCaip2 == null
+                ? null
+                : toNumericChainId(boundCaip2.split(':')[1]);
+              const domainChainId = toNumericChainId(parsed?.domain?.chainId);
+              if (boundCaip2 == null) {
+                // Unapproved or ambiguous session chain — same code and same
+                // fail-closed shape the send branch uses.
+                rejectRequest(data.topic, data.id, 'SESSION_CHAINID_INVALID').catch(() => {});
+                rejected = true;
+              } else if (domainChainId == null || sessionChainId == null || domainChainId !== sessionChainId) {
                 rejectRequest(data.topic, data.id, 'CHAIN_ID_MISMATCH').catch(() => {});
                 rejected = true;
               }
