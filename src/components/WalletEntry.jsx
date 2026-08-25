@@ -103,9 +103,9 @@ import TelemetryConsent from "@/components/TelemetryConsent";
 import FastUnlockFirstRunCard from "@/components/onboarding/FastUnlockFirstRunCard";
 import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
-import { isFastpathEnabled, hasSeenFastpathDisclosure, shouldShowFastpathWarmingHint } from "@/lib/fastpathUnlock";
+import { isFastpathEnabled, shouldShowFastpathWarmingHint } from "@/lib/fastpathUnlock";
 import { useWallet } from "@/lib/WalletProvider";
-import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS, isPasskeyRegistered } from "@/lib/passkey";
+import { isPasskeyGateError, PASSKEY_GATE_MESSAGES, PASSKEY_ESCAPE_HATCH_BLURBS } from "@/lib/passkey";
 import { KEK_UI_ERR } from "@/lib/vaultErrors";
 import {
   isBiometricGateError,
