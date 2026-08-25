@@ -1,37 +1,132 @@
 ---
 name: veyrnox-elliptic-upstream-watch
-description: Weekly watch for upstream resolution of the Veyrnox elliptic low-severity residual (patched elliptic, or Ledger/Trezor dropping the elliptic path)
+description: Weekly watch for upstream resolution of the Veyrnox elliptic low-severity residual (patched elliptic, or the Keystone chain dropping the elliptic path)
 ---
 
-Upstream watcher for the Veyrnox wallet's accepted `elliptic` security residual. Run entirely with read-only `npm view` registry queries — do NOT modify files, run `npm install`, or touch the repo at `C:\Users\aljob\Downloads\Veyrnox`. Use the Bash tool (Git Bash) for npm commands.
+Upstream watcher for the Veyrnox wallet's accepted `elliptic` security residual. Run entirely with read-only `npm view` registry queries — do NOT modify files, run `npm install`, or touch the repo working tree. Use the Bash tool for npm commands.
+
+> **Shared-checkout note (2026-07-28): this task needs no worktree, deliberately.** The
+> primary checkout is shared by ~10 worktrees and several other scheduled tasks, so
+> sibling watchers now read `package.json`/`package-lock.json` from `origin/main` rather
+> than its working tree. This task reads **no repo file at all** — every signal comes from
+> the npm registry — so it has no exposure to that state and nothing to pin. Do not add
+> worktree ceremony here to match the others; it would be noise, not safety. If a future
+> check ever needs the lockfile, pin it to the ref
+> (`git show origin/main:package-lock.json`, with `MSYS_NO_PATHCONV=1` set) rather than
+> reading the checkout.
 
 ## Background (why this task exists)
-The Veyrnox `npm audit` shows 18 LOW findings all rooted in ONE advisory (confirmed at exactly 18 on 2026-07-28; the count is descriptive context, never a trigger — the Decision section below holds the only firing conditions): `elliptic` GHSA-848j-6mx2-7j84 ("Uses a Cryptographic Primitive with a Risky Implementation", vulnerable `<= 6.6.1`). There is currently NO patched `elliptic` at any version — latest published is `6.6.1`, which is itself inside the vulnerable range. The project already pins `elliptic` to `^6.6.1` via a package.json override (the only available mitigation). `elliptic` is OFF the wallet's own signing path (wallet-core uses `@noble`/`@scure`); it reaches the tree solely through two hardware-wallet transport dependencies:
-  - Ledger: `@ledgerhq/hw-app-eth` -> `@ethersproject/transactions` (v5) -> `signing-key` -> `elliptic`
-  - Trezor: `@trezor/connect-web` -> `@trezor/utxo-lib` -> `tiny-secp256k1` (v1) -> `elliptic`
-It's a documented accepted residual (`package.json` `//overrides-audit-notes`; Dependabot alert #1 dismissed as `tolerable_risk`). This task watches for any upstream change that would let the residual be reduced or cleared.
 
-## Baseline — created 2026-07-21, all three signals last verified 2026-07-28
-Each signal below carries its own verification date. Re-verify rather than trusting the line; a baseline nobody re-queries is how a signal silently goes stale.
-- SIGNAL 1 — REFRESHED 2026-07-28, unchanged from creation: `elliptic@latest` = `6.6.1`, which is the newest version published at all (`dist-tags` has only `latest`, and `6.6.1` is the last entry in the full version list) and is itself inside the advisory range `<= 6.6.1`. NO patched release exists, so the signal has NOT fired. The repo resolves a single `elliptic@6.6.1` at `node_modules/elliptic` under the `^6.6.1` override — i.e. the only available mitigation is already fully applied, and there is nothing to bump to.
-- SIGNAL 2a (Ledger) — REFRESHED 2026-07-28: `@ledgerhq/hw-app-eth@latest` = `7.8.11`; the repo declares `^7.8.10` and resolves `7.8.10`. `7.8.11` STILL declares `@ethersproject/abi`, `@ethersproject/rlp`, `@ethersproject/transactions` at `^5.7.0` (the v5 chain that pulls elliptic), so the signal has NOT fired. (Was recorded at `7.8.9` = repo `^7.8.9` when this task was created 2026-07-21.) The version numbers are context, NOT the trigger — see the Decision section: a newer release only fires 2a if the `@ethersproject/*` keys are actually gone.
-- SIGNAL 2b (Trezor) — REFRESHED 2026-07-28, unchanged from creation: `@trezor/utxo-lib@latest` = `2.5.0` and STILL pins `tiny-secp256k1` at `^1.1.7`, so the signal has NOT fired. Note the repo already resolves `@trezor/utxo-lib@2.5.0` — i.e. utxo-lib is ALREADY at latest, and the blocker is the pin inside it, not our version of it. Bumping utxo-lib therefore achieves nothing until upstream moves that pin. Our tree resolves `tiny-secp256k1@1.1.7` (old, uses elliptic). `@trezor/connect-web@latest` = `9.7.3` (= installed, unchanged since 2026-07-21) — context only, see step 3b. NOTE: `tiny-secp256k1@latest` (2.2.4, unchanged) has already DROPPED elliptic (WASM/@noble), so this path clears as soon as `@trezor/utxo-lib` bumps to a tiny-secp256k1 v2.x line.
+The Veyrnox `npm audit` reports 5 LOW findings, all rooted in ONE advisory: `elliptic`
+GHSA-848j-6mx2-7j84 ("Uses a Cryptographic Primitive with a Risky Implementation",
+vulnerable `<= 6.6.1`). There is NO patched `elliptic` at any version — `latest` is
+`6.6.1`, itself inside the vulnerable range. The project already pins `elliptic` to
+`^6.6.1` via a `package.json` override, which is the only available mitigation.
+
+**Re-pointed 2026-08-25. This task used to watch the Ledger and Trezor chains; both are
+gone.** `@trezor/connect-web`, `@trezor/utxo-lib`, `tiny-secp256k1`,
+`@ledgerhq/hw-app-eth` and `@ethersproject/signing-key` are all ABSENT from
+`origin/main`'s `package-lock.json` (checked at `24333ad9`). The old SIGNAL 2a/2b probed
+packages the tree no longer contains, so they could never fire — and a "no upstream
+movement" report from them read as coverage while covering nothing. That is the
+`brace-expansion` failure mode recorded in the daily audit's retired-residuals section:
+a watcher existing is not evidence it watches the thing you care about.
+
+`elliptic` now reaches the tree through exactly ONE chain:
+
+```
+@keystonehq/keystone-sdk -> @keystonehq/bc-ur-registry-eth -> hdkey
+  -> secp256k1 -> elliptic
+```
+
+**This chain is in `src/wallet-core/`, unlike the two it replaced.**
+`src/wallet-core/hw/digitalShield.js:12` imports `ETHSignature` from
+`@keystonehq/bc-ur-registry-eth`, and `src/wallet-core/hw/__tests__/digitalShield.deps.test.js`
+calls that package a signing-path dependency pin. What keeps the residual at low is
+narrower than "off the signing path": only `ETHSignature.fromCBOR` is called; `hdkey`
+backs `generateAddressFromXpub` / `findHDPathFromAddress`, neither of which appears
+anywhere in `src/`; the Keystone device performs the signing. Full reasoning lives in the
+`elliptic` entry of `.claude/scheduled-tasks/veyrnox-daily-dep-audit/SKILL.md` — read it
+before acting on any signal here.
+
+## Baseline (re-measured 2026-08-25, registry `latest`)
+
+- SIGNAL 1 — `elliptic@latest` = `6.6.1`. Still vulnerable; no patched release exists.
+- SIGNAL 2 — `@keystonehq/bc-ur-registry-eth@latest` = `0.22.1` (= the repo's exact pin)
+  and STILL declares `hdkey: ^2.0.1`.
+- SIGNAL 3 — `hdkey@latest` = `2.1.0` (= the resolved version) and STILL declares
+  `secp256k1: ^4.0.0`.
+- SIGNAL 4 — `secp256k1@latest` = `5.0.2`; the tree resolves `4.0.5`. **`5.0.2` STILL
+  declares `elliptic: ^6.5.7`**, so the newer major does not clear anything. Recorded
+  explicitly because it is the exact shape of trap this file keeps hitting: a version
+  number ahead of ours looks like progress and is not.
+- Context — `@keystonehq/keystone-sdk@latest` = `0.12.3` (= the repo's exact pin),
+  depending on `@keystonehq/bc-ur-registry-eth: ^0.22.0`.
 
 ## The check (run these)
-1. `npm view elliptic version`  (SIGNAL 1)
-2. `npm view @ledgerhq/hw-app-eth@latest version` and `npm view @ledgerhq/hw-app-eth@latest dependencies --json` — inspect for any `@ethersproject/*` keys.  (SIGNAL 2a)
-3. `npm view @trezor/utxo-lib@latest dependencies.tiny-secp256k1` — THE trigger for SIGNAL 2b: has the pin moved to `>= 2.0.0`?  (SIGNAL 2b)
-3b. `npm view @trezor/connect-web@latest version` — CONTEXT ONLY, not a trigger. Record it so the report can say which `connect-web` release was current, but a bump here never fires 2b on its own. See the Decision section.
+
+1. `npm view elliptic version` — (SIGNAL 1)
+2. `npm view @keystonehq/bc-ur-registry-eth@latest version` and
+   `npm view @keystonehq/bc-ur-registry-eth@latest dependencies --json` — is the `hdkey`
+   key still there? (SIGNAL 2)
+3. `npm view hdkey@latest version` and `npm view hdkey@latest dependencies --json` — is
+   the `secp256k1` key still there? (SIGNAL 3)
+4. `npm view secp256k1@latest version` and `npm view secp256k1@latest dependencies --json`
+   — is the `elliptic` key still there? (SIGNAL 4)
+5. `npm view @keystonehq/keystone-sdk@latest version` — CONTEXT ONLY, never a trigger.
 
 ## Decision
-- SIGNAL 1 FIRED (best outcome — clears ALL 18 at once) if `elliptic@latest` resolves to `> 6.6.1`. Remediation: bump the `elliptic` override in `package.json` from `^6.6.1` to the patched range, then regenerate the lockfile with `npm install --package-lock-only` (do NOT pass `--legacy-peer-deps` — as of 2026-07-26 it is no longer needed, and it strips the entire `appium` peer subtree, ~3,700 lockfile lines), and run `npm audit` to confirm the elliptic LOWs drop to 0. Check the lockfile diff contains only the elliptic change.
-- SIGNAL 2a FIRED (partial — clears the Ledger sub-tree, 8 findings, leaving 10: the 9-package Trezor sub-tree plus `elliptic` itself) if `@ledgerhq/hw-app-eth@latest` NO LONGER declares any `@ethersproject/*` dependency (migrated to ethers v6 or dropped the signing-key path). Remediation, once 2a genuinely fires: on a new branch, bump `@ledgerhq/hw-app-eth`, regenerate with `npm install --package-lock-only` — do NOT pass `--legacy-peer-deps`, same reason as SIGNAL 1 above — then `npm audit` to confirm the Ledger-side elliptic LOWs are gone, and verify the resolved tree no longer contains any `@ethersproject/*`. Keep the lockfile diff surgical.
-- SIGNAL 2b FIRED (partial — clears the Trezor sub-tree, 9 findings, leaving 9: the 8-package Ledger sub-tree plus `elliptic` itself) ONLY if `@trezor/utxo-lib@latest` pins `tiny-secp256k1` at `>= 2.0.0`. That is the whole trigger. A new `@trezor/connect-web` release above `9.7.3` is NOT sufficient and does NOT fire this signal — `connect-web` ships for unrelated reasons while `utxo-lib` keeps its `tiny-secp256k1@1.x` pin, and the elliptic path survives the bump untouched. (An earlier version of this line accepted a bare `connect-web` version bump as a trigger; that is the same version-number-as-evidence mistake that caused the `shell-quote` residual to be falsely retired on 2026-07-27. Removed 2026-07-28.) Report a `connect-web` release as context only, and say the signal has not fired.
-  Remediation, once 2b genuinely fires: on a new branch, bump `@trezor/connect-web` (and `@trezor/utxo-lib` if it is reachable as a direct pin), regenerate with `npm install --package-lock-only` — do NOT pass `--legacy-peer-deps`, same reason as SIGNAL 1 above — then `npm audit` to confirm the Trezor-side elliptic LOWs are gone, and verify the resolved tree no longer contains `tiny-secp256k1@1.x`. Keep the lockfile diff surgical.
-- Otherwise NO CHANGE.
-- IMPORTANT: `elliptic` is only fully removed when BOTH 2a AND 2b clear (or when SIGNAL 1 ships a patched elliptic). A single partial signal reduces the count but the `elliptic` finding itself persists via the other path — say so explicitly.
+
+**Every signal below fires on a dependency KEY DISAPPEARING, never on a version number
+moving.** A new release of any of these packages that still declares the same dependency
+has not fired anything. Say "no movement" and give the version as context.
+
+- **SIGNAL 1 FIRED** (best outcome — clears all 5 findings at once) if `elliptic@latest`
+  resolves to `> 6.6.1`. Remediation: bump the `elliptic` override in `package.json` from
+  `^6.6.1` to the patched range, regenerate with `npm install --package-lock-only` (NOT
+  `--legacy-peer-deps` — it strips the appium subtree), `npm audit` to confirm the LOWs
+  drop to 0.
+- **SIGNAL 2 FIRED** (FULL — clears all 5) if `@keystonehq/bc-ur-registry-eth@latest` NO
+  LONGER declares `hdkey`. Remediation is NOT a plain bump — see "Remediation is
+  pin-aware" below.
+- **SIGNAL 3 FIRED** (FULL — clears all 5) if `hdkey@latest` NO LONGER declares
+  `secp256k1`. **A bump to a `secp256k1` v5 line does NOT fire this** — `5.0.2` still
+  carries `elliptic` (see baseline). The trigger is the key being gone, or the pin moving
+  to a `secp256k1` range that itself no longer declares `elliptic`, which you must verify
+  with check 4 rather than assume.
+- **SIGNAL 4 FIRED** (FULL — clears all 5) if `secp256k1@latest` NO LONGER declares
+  `elliptic`. Remediation: an `overrides` entry forcing `secp256k1` to that version, then
+  regenerate and re-audit. Note `secp256k1` is a native module (`node-gyp-build`), so
+  confirm the install still builds before proposing the override.
+- **Otherwise NO CHANGE.**
+- Unlike the old two-chain shape, **any one of signals 1-4 clears the residual
+  completely** — there is no partial outcome any more, because there is only one chain.
+  Do not describe a fired signal as "partial".
+
+### Remediation is pin-aware (SIGNAL 2 and 3)
+
+The Keystone packages are pinned EXACTLY in `package.json` (`@keystonehq/keystone-sdk`
+`0.12.3`, `@keystonehq/bc-ur-registry` `0.8.0`, `@keystonehq/bc-ur-registry-eth`
+`0.22.1`, `@keystonehq/bc-ur-registry-sol` `0.9.5`) and are excluded from grouped
+Dependabot bumps. `src/wallet-core/hw/__tests__/digitalShield.deps.test.js` asserts both
+facts. So a remediation that bumps one of these pins MUST also update that test's
+expected versions in the same PR, or CI goes red for the right reason. Say this in the
+report — do not hand over a bump instruction that looks like a one-line change.
+
+## Out of scope for this task
+
+A Trezor or Ledger integration returning would reintroduce a second chain. That is not a
+registry signal and this watcher cannot see it; the daily dep-audit's blast-radius check
+covers it. Do not add repo-reading ceremony here to chase it.
 
 ## Output
-- If NO CHANGE: one or two low-noise lines — e.g. "elliptic residual: no upstream movement. elliptic still 6.6.1 (no patch); hw-app-eth still on @ethersproject v5; @trezor/utxo-lib still on tiny-secp256k1 v1. No action."
-- If ANY signal FIRED: state which signal(s), show the old vs new versions/deps, whether it's a FULL or PARTIAL fix, and the remediation steps to hand to the developer (do NOT apply them yourself — this is a report). Always apply changes on a new branch, run `npm audit` to confirm, keep the lockfile diff surgical (restore the committed lock and do in-place `--package-lock-only` updates rather than a full regeneration), update `//overrides-audit-notes`, and note Dependabot alert #1 will reconcile automatically.
+
+- If NO CHANGE: one or two low-noise lines — e.g. "elliptic residual: no upstream
+  movement. elliptic still 6.6.1 (no patch); bc-ur-registry-eth still declares hdkey;
+  hdkey still declares secp256k1; secp256k1 latest still declares elliptic. No action."
+- If ANY signal FIRED: state which, show old vs new dependency declarations (not just
+  versions), say it is a FULL clear, and give the remediation steps — including the
+  pin-aware note above where it applies. Always on a new branch, `npm audit` to confirm,
+  keep the lockfile diff surgical, update `//overrides-audit-notes` and the `elliptic`
+  entry in the daily-dep-audit runbook in the same commit.
 - Do NOT run `npm audit fix`, do NOT edit files. Read-only report only.

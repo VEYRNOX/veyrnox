@@ -146,13 +146,17 @@ its own.
   that once is honest; doing it every day would turn "accepted residual" into
   "permanently ignored". If the reachability analysis above ever stops holding, this
   entry goes.
-- **Tracked — but the watcher's brief is stale, so treat this as PARTIAL tracking.**
-  `veyrnox-elliptic-upstream-watch` is registered and enabled (weekly, Tuesdays 09:34
-  — not "Mondays ~10am" as this entry claimed until 2026-08-25; last ran 2026-08-18).
-  Its runbook checks the Trezor and Ledger chains, both of which no longer exist, and
-  it was never taught the Keystone chain. Until it is re-pointed, it can only catch
-  the upstream-`elliptic`-release signal. Per the `brace-expansion` lesson below: a
-  watcher existing is not evidence it watches the thing you care about.
+- **Tracked:** `veyrnox-elliptic-upstream-watch`, registered and enabled, weekly on
+  Tuesdays 09:34 (not "Mondays ~10am" as this entry claimed until 2026-08-25).
+  **Re-pointed at the Keystone chain 2026-08-25** — its four signals are now a patched
+  `elliptic`, `@keystonehq/bc-ur-registry-eth` dropping `hdkey`, `hdkey` dropping
+  `secp256k1`, and `secp256k1` dropping `elliptic`; each fires on a dependency KEY
+  disappearing, never on a version number moving. Until then it probed the Trezor and
+  Ledger chains, which no longer exist — it could not have fired, while still reporting
+  "no upstream movement". **It has not yet RUN under the new brief** (last run
+  2026-08-18, next 2026-09-01); treat the first green report as the confirmation, per
+  the `brace-expansion` lesson below that a watcher existing is not evidence it watches
+  the thing you care about.
 - **Note:** the old `@ledgerhq/hw-app-eth@6.40.3` `fixAvailable` warning is retired
   with the Ledger chain. Kept as one line in case Ledger support returns: that version
   is a major *downgrade* and still declares `@ethersproject/*` v5, so it never cleared
