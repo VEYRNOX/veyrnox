@@ -206,6 +206,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
       <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-background overflow-hidden" data-testid="kek-auto-enroll">
         <div className="w-full max-w-sm flex flex-col items-center text-center space-y-5">
           <VaultIllustration size={200} label="Hardware-protected vault" />
+          <OnboardingProgressBar inline indeterminate label="Sealing into hardware" />
           <h1 className="text-2xl font-semibold tracking-tight">Sealing into hardware</h1>
           <p
             role="status"
@@ -215,7 +216,6 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
             <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> Approve the prompt on your device…
           </p>
         </div>
-        {onboardingFooter}
       </div>
     );
   }

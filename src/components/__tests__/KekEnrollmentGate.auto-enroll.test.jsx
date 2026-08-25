@@ -61,7 +61,7 @@ describe('KekEnrollmentGate — auto-enrollment', () => {
     // Should show auto-enroll progress view.
     expect(screen.getByTestId(AUTO_ENROLL_TESTID)).toBeTruthy();
     expect(screen.queryByTestId(GATE_TESTID)).toBeNull();
-    expect(screen.getByText(/sealing into hardware/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /sealing into hardware/i })).toBeTruthy();
 
     // Should call onEnroll with the stashed PIN.
     await waitFor(() => expect(onEnroll).toHaveBeenCalledWith('12345678'));
