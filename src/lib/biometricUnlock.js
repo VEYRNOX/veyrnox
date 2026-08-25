@@ -118,6 +118,32 @@ async function nativeStore(pw) {
   // the owner's call, not an audit-remediation call. Deliberately NOT taken blind
   // from a machine with no iPhone and no iOS build. biometricUnlockSecurityMode()
   // stays 'app-gate' and this disclosure stays TARGET until it is really shipped.
+  //
+  // ORDERING (2026-08-25, second look — the fact that makes this a RESTRUCTURE and
+  // not a shim). The cache is read BEFORE H exists: WalletProvider.jsx:2176-2181
+  // calls retrieveUnlockSecretDirect() to obtain the password, and only then does
+  // keyStore.unlock(password) fetch the hardware factor, which is where the single
+  // Face ID sheet lives. So all three routes touch the unlock path itself:
+  //
+  //   1. Bind this item to biometryCurrentSet — auto-invalidation, but the read now
+  //      needs biometry, so a SECOND sheet fires and #2037 is reverted.
+  //   2. Encrypt the cached secret under H — invalidation becomes CRYPTOGRAPHIC (an
+  //      enrollment change destroys the SE key, so H is unrecoverable and the blob
+  //      is dead) and needs no new OSStatus semantics. But H arrives after the cache
+  //      read, so unlock() must fetch H once and thread it down, or you get two
+  //      sheets anyway.
+  //   3. Reuse one LAContext across both operations — Apple's intended answer, and
+  //      new Objective-C holding auth state across two plugin calls.
+  //
+  // (2) is the one to build when a device is available: it does not depend on how
+  // the Keychain REPORTS an invalidated item. That reporting assumption is still
+  // unverified even where HardwareKekPlugin.m already relies on it (errSecItemNotFound
+  // → KEK_KEY_PERMANENTLY_INVALIDATED, #2085) — so a probe-based design would stack
+  // an unverified assumption on an unverified assumption.
+  //
+  // PRECONDITION for any of them, owner-set 2026-08-25: a real iPhone in the loop.
+  // Getting this wrong does not weaken a control, it locks users out of their own
+  // wallets — the one failure this path must not have.
   if (isAndroidNativePlatform()) {
     try {
       const cache = await import('@/plugins/androidBiometricCache.js');
