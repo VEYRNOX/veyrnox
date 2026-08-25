@@ -35,7 +35,21 @@ on:
 
 concurrency:
   group: ios-xcuitest-${{ github.ref }}
-  cancel-in-progress: true
+  # #2100 — do NOT cancel runs on `main`. This job's ceiling is 45 min and the repo
+  # merges 10+ times a day, so an unconditional cancel-in-progress meant a main run was
+  # almost always superseded before it finished: 26 of 30 consecutive runs ended
+  # `cancelled`, 2 succeeded, 0 failed. A suite that completes once in fifteen attempts
+  # cannot tell anyone whether iOS is healthy.
+  #
+  # PR refs keep cancelling — `github.ref` is refs/pull/N/merge there, so pushing twice
+  # to a PR still supersedes the first run, which is the churn worth saving.
+  #
+  # COST, stated: main runs no longer cancel each other, so several can be in flight at
+  # once on the scarce macOS runners. The path filter above (ios/**, src/**, the two
+  # manifests, capacitor.config.json, this file) is what keeps that bounded. If runner
+  # contention becomes the problem, narrow the paths before re-enabling the cancel —
+  # re-enabling it puts the suite straight back to reporting nothing.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
