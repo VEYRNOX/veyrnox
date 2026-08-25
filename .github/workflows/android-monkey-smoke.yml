@@ -144,10 +144,21 @@ jobs:
             # --kill-process-after-error / --monitor-native-crashes exist to
             # produce. `set -o pipefail` is not an option — it would not
             # outlive the line it is set on. Capture, print, then gate on it.
-            adb shell "monkey -p com.veyrnox.app.debug -v --throttle 100 --kill-process-after-error --monitor-native-crashes --pct-touch 60 --pct-motion 20 --pct-nav 10 --pct-syskeys 10 500" > monkey.log 2>&1; rc=$?; cat monkey.log; [ "$rc" -eq 0 ] || { echo "Monkey exited $rc — failing job"; exit "$rc"; }
-            # Second guard: monkey returns 0 on some crash types but still
-            # prints "// CRASH:" or "// NOT RESPONDING:" into the log.
-            grep -E "^// (CRASH|NOT RESPONDING):" monkey.log && { echo "Monkey detected a crash / ANR — failing job"; exit 1; } || true
+            # CRASH ATTRIBUTION (2026-08-25). Both guards used to be package-BLIND:
+            # monkey exits 174 for a crash in ANY process on the device, and the
+            # grep matched any "// CRASH:" line. `-p` scopes which activities get
+            # LAUNCHED, not which crashes get COUNTED. The emulator's own
+            # com.android.systemui crashes under --pct-syskeys ("Can't create
+            # handler inside thread … Looper.prepare()"), which reddened ~1 run in
+            # 5 on main with no Veyrnox involvement. A non-required gate that cries
+            # wolf gets merged past, and then a REAL crash is invisible too — the
+            # same erosion that hit the debug-cert guard (CLAUDE.md).
+            #
+            # So: OUR crash fails; another package's crash warns and passes; and a
+            # non-zero exit with no crash line still fails, which keeps exit-code
+            # strictness for native crashes and anything else monkey reports only
+            # through rc. One line, per the constraint above.
+            adb shell "monkey -p com.veyrnox.app.debug -v --throttle 100 --kill-process-after-error --monitor-native-crashes --pct-touch 60 --pct-motion 20 --pct-nav 10 --pct-syskeys 10 500" > monkey.log 2>&1; rc=$?; cat monkey.log; if grep -qE "^// (CRASH|NOT RESPONDING): com\.veyrnox\." monkey.log; then echo "Veyrnox crash / ANR detected — failing job"; grep -E "^// (CRASH|NOT RESPONDING):" monkey.log; exit 1; elif grep -qE "^// (CRASH|NOT RESPONDING):" monkey.log; then echo "::warning::Crash in a NON-Veyrnox process (emulator noise, monkey rc=$rc) — not failing"; grep -E "^// (CRASH|NOT RESPONDING):" monkey.log; elif [ "$rc" -ne 0 ]; then echo "Monkey exited $rc with no crash line — failing job"; exit "$rc"; fi
 
       - name: Upload monkey log
         if: always()
