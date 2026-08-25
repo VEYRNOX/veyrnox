@@ -3,6 +3,7 @@
 // Organised by screen/topic so the advisor can give contextual answers.
 
 import advisories from '../data/security-advisories.json';
+import { FEATURE_CATEGORIES } from './featureCatalogue.js';
 
 export const KNOWLEDGE_BASE = {
   wallet_basics: {
@@ -388,7 +389,100 @@ export function buildAdvisorSystemContext(screen) {
       lines.push('');
     }
   }
+  const catalogueBlock = buildFeatureCatalogueDigest();
+  if (catalogueBlock) lines.push(catalogueBlock);
+  const pagesBlock = buildAppPagesDigest();
+  if (pagesBlock) lines.push(pagesBlock);
   const advisoriesBlock = buildAdvisoriesBlock();
   if (advisoriesBlock) lines.push(advisoriesBlock);
+  return lines.join('\n');
+}
+
+// Full feature catalogue as a compact digest. One line per feature:
+// "- Feature Name [status]: summary". Grouped by category. Fits within the
+// 32 KB system-prompt cap even at ~50 features. Sourced from the same
+// featureCatalogue.js that Documentation renders, so the Advisor never drifts
+// from what the user can see on /docs. Long explanations are intentionally
+// dropped — the summary is what a user needs; deep detail belongs on the page.
+export function buildFeatureCatalogueDigest() {
+  const lines = ['## Veyrnox Feature Catalogue (from /docs)'];
+  for (const cat of FEATURE_CATEGORIES) {
+    lines.push('');
+    lines.push(`### ${cat.category}`);
+    for (const f of cat.features) {
+      const status = f.status === 'roadmap' ? 'Roadmap' : 'Live';
+      lines.push(`- ${f.name} [${status}]: ${f.summary}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+// User-facing app routes with a one-line purpose per page. Kept as a small
+// hardcoded list rather than parsing App.jsx — the routing table has 89
+// entries including redirects and auth-shell paths that a user never asks
+// the Advisor about. Keep this in step with App.jsx when a NEW user-facing
+// page ships (Documentation.jsx quick-links section is the canonical list).
+export const APP_PAGES = [
+  { path: '/', label: 'Dashboard — portfolio overview, balances, quick actions' },
+  { path: '/send', label: 'Send Crypto — build, sign, broadcast transfers' },
+  { path: '/receive', label: 'Receive Crypto — per-chain address + QR' },
+  { path: '/buy', label: 'Buy Crypto — on-ramp via Transak' },
+  { path: '/tx-history', label: 'Transaction History — per-chain history (read-only)' },
+  { path: '/token-approvals', label: 'Token Approvals — inspect and revoke ERC-20 allowances' },
+  { path: '/security', label: 'Security Center — security controls and status' },
+  { path: '/security-dashboard', label: 'Security Dashboard — signal summary and risk posture' },
+  { path: '/rasp-security', label: 'Runtime Protection — automation, root/jailbreak, tamper detection' },
+  { path: '/duress-pin', label: 'Duress PIN — set a decoy-wallet PIN for coercion' },
+  { path: '/stealth-wallets', label: 'Stealth Wallets — deniable hidden wallets' },
+  { path: '/panic-wipe', label: 'Panic Wipe — irreversibly destroy local key material' },
+  { path: '/personal-backup', label: 'Personal Backup — encrypt-then-export vault file' },
+  { path: '/wallet-seed-qr', label: 'Wallet Seed QR — reveal / scan encrypted seed QR' },
+  { path: '/wallet-access', label: 'Account Access & Recovery — change password, re-import seed' },
+  { path: '/hardware-wallet', label: 'Hardware Wallet — Trezor via WebUSB (Chrome/Edge)' },
+  { path: '/biometric-auth', label: 'Biometric Unlock — Face ID / Touch ID / fingerprint gate' },
+  { path: '/session-manager', label: 'Session Manager — view and revoke device sessions' },
+  { path: '/login-activity', label: 'Login Activity — previous unlock history' },
+  { path: '/audit-log', label: 'Audit Log — opt-in encrypted local activity log' },
+  { path: '/address-book', label: 'Address Book — labelled trusted addresses' },
+  { path: '/address-checker', label: 'Suspicious Address Checker — local blocklist screening' },
+  { path: '/anomaly-detection', label: 'Anomaly Detection — deviations from your history' },
+  { path: '/fraud', label: 'Fraud Detection — drainer and approve-then-transfer patterns' },
+  { path: '/risk-score', label: 'Portfolio Risk Score — rule-based, on-device' },
+  { path: '/dapp-alerts', label: 'dApp Security Alerts — WalletConnect risk verdicts' },
+  { path: '/walletconnect', label: 'WalletConnect — connect to dApps (v2 transport)' },
+  { path: '/crypto-signing', label: 'Message Signing — proof-of-ownership' },
+  { path: '/plans', label: 'Subscription — Free and Safety Plus plans' },
+  { path: '/safety-plus', label: 'Safety Plus — premium tier feature list' },
+  { path: '/referrals', label: 'Referral Tracker — share your code, earn discounts' },
+  { path: '/notifications', label: 'Notification Centre — alerts and reminders' },
+  { path: '/alerts', label: 'Price Alerts — threshold-based (advisory only)' },
+  { path: '/price-charts', label: 'Price Charts — OHLCV candlesticks (opt-in prices)' },
+  { path: '/watchlist', label: 'Watchlist — track assets you do not hold' },
+  { path: '/analytics', label: 'Analytics — portfolio analytics' },
+  { path: '/advanced-analytics', label: 'Advanced Analytics — deeper portfolio breakdowns' },
+  { path: '/onchain', label: 'On-Chain Analytics — inbound/outbound activity' },
+  { path: '/net-worth', label: 'Net-Worth Tracker — aggregate net worth' },
+  { path: '/fee-analytics', label: 'Fee Analytics — network fees paid (native units)' },
+  { path: '/tax', label: 'Tax Report — raw CSV export (not tax advice)' },
+  { path: '/spending', label: 'Spending Patterns — outbound activity by recipient' },
+  { path: '/budget', label: 'Spending Limits — per-tx and daily rules' },
+  { path: '/recurring', label: 'Recurring Payments — reminder schedules' },
+  { path: '/invoices', label: 'Invoice Generator — request-for-payment invoices' },
+  { path: '/savings', label: 'Savings Goals — self-tracking savings targets' },
+  { path: '/nft', label: 'NFT Gallery — display-only owned NFTs' },
+  { path: '/nft-multichain', label: 'Multi-Chain NFT — cross-chain NFT display' },
+  { path: '/voice-commands', label: 'Voice Commands — hands-free navigation (read-only)' },
+  { path: '/settings', label: 'Settings — preferences, security, auto-lock' },
+  { path: '/what-this-protects', label: 'What This Protects — plain-language threat model' },
+  { path: '/docs', label: 'Documentation — full feature catalogue and workflows' },
+  { path: '/terms-legal', label: 'Terms & Legal — TOS and privacy' },
+  { path: '/demo', label: 'Demo Mode — browse without a backend or funded wallet' },
+];
+
+export function buildAppPagesDigest() {
+  const lines = ['## Veyrnox App Pages'];
+  for (const p of APP_PAGES) {
+    lines.push(`- ${p.path} — ${p.label}`);
+  }
   return lines.join('\n');
 }

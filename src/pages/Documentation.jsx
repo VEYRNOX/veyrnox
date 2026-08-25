@@ -163,7 +163,7 @@ const workflows = [
 ];
 
 const STATUS_META = {
-  built:   { label: "Available",   className: "bg-success/10 text-success border-success/20" },
+  built:   { label: "Live",        className: "bg-success/10 text-success border-success/20" },
   target:  { label: "Coming Soon", className: "bg-primary/10 text-primary border-primary/20" },
   planned: { label: "Roadmap",     className: "bg-muted/50 text-muted-foreground border-border" },
 };
@@ -281,12 +281,12 @@ export default function Documentation() {
             {totalFeatures} features across {features.length} categories. Custodial features (swaps, fiat ramps, KYC) are not built by design.
           </CardDescription>
           <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant="outline" className={STATUS_META.built.className}>{builtCount} Available</Badge>
+            <Badge variant="outline" className={STATUS_META.built.className}>{builtCount} Live</Badge>
             {targetCount > 0 && <Badge variant="outline" className={STATUS_META.target.className}>{targetCount} Coming Soon</Badge>}
             {plannedCount > 0 && <Badge variant="outline" className={STATUS_META.planned.className}>{plannedCount} Roadmap</Badge>}
           </div>
           <p className="text-xs text-muted-foreground pt-2 max-w-3xl">
-            <b>Available</b> means shipped and working today. <b>Coming Soon</b> means designed but not yet
+            <b>Live</b> means shipped and working today. <b>Coming Soon</b> means designed but not yet
             released. <b>Roadmap</b> means planned for later. These labels describe what's built, not an
             independent security review.
           </p>

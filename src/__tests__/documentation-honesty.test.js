@@ -90,7 +90,7 @@ describe('Documentation page — restored honesty caveats (S-1)', () => {
     expect(page).not.toContain('your balances, addresses, and seed phrase are never sent');
   });
 
-  it('status legend explains what "Available" means and disclaims independent review', () => {
+  it('status legend explains what "Live" means and disclaims independent security review', () => {
     expect(page).toContain('means shipped and working today');
     expect(page).toContain("not an independent security review");
   });

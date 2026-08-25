@@ -20,13 +20,13 @@ const BRAND = [255, 107, 53]; // Veyrnox orange (matches the old server template
 
 /**
  * Map a catalogue status to its PDF tag. Three honest states; the retired
- * two-state "available" string degrades to [Built] so an older caller's
+ * two-state "available" string degrades to [Live] so an older caller's
  * code-complete features are never silently dropped or mislabelled verified.
  * @param {string} status - 'verified' | 'built' | 'roadmap' (or legacy 'available')
  */
 export function pdfStatusTag(status) {
   if (status === "verified") return "[Verified]";
-  if (status === "built" || status === "available") return "[Built]";
+  if (status === "built" || status === "available") return "[Live]";
   return "[Roadmap]";
 }
 
