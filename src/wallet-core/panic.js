@@ -717,39 +717,15 @@ export async function tryPanicUnlock(password) {
   // is recognisable after pad+strip; stripPad tolerates legacy unpadded markers.
   stripPad(plaintext);
   // Gate 2 (H-2, owner ruling 2026-08-25): OPPORTUNISTIC REKEY, FIRE-AND-FORGET.
-  // If the marker's recorded profile disagrees with the current one, kick off a
-  // re-encrypt at KDF_PARAMS with the SAME PIN that just decrypted it, but do
-  // NOT await it — the H-1 equaliser requires the panic-hit KDF budget to stay
-  // identical to the primary-miss budget on the SAME state. The marker's
-  // plaintext is a padded throwaway mnemonic (setPanicVault); we re-encrypt
-  // what we just decrypted so the stored bytes stay padded to FIXED_LEN.
-  // Best-effort: any failure leaves the original marker untouched; the wipe
-  // proceeds regardless because tryPanicUnlock has already returned true.
-  if (vaultNeedsKdfMigration(blob)) {
-    // Deferred to a macrotask so the Argon2id re-derivation runs AFTER the
-    // current unlock's timing budget has closed. See stealth.js:tryRevealHidden
-    // for the full rationale.
-    _lastKdfRekey = new Promise((resolve) => {
-      setTimeout(async () => {
-        try {
-          const fresh = await encryptVault(plaintext, password);
-          if (fresh && fresh.ct && fresh.iv && fresh.salt) {
-            const wdb = await openDb();
-            try {
-              await /** @type {Promise<void>} */ (new Promise((res, rej) => {
-                const r = store(wdb, 'readwrite').put(fresh, PANIC_KEY);
-                r.onsuccess = () => res();
-                r.onerror = () => rej(r.error);
-              }));
-            } finally {
-              wdb.close();
-            }
-          }
-        } catch { /* best-effort — panic detection already returned true */ }
-        resolve();
-      }, 250);
-    });
-  }
+  // NO REKEY on the panic path — reviewer C-1 on PR #2103. tryPanicUnlock's
+  // caller (WalletProvider.unlock catch) fires panicWipeLocal() immediately
+  // after we return true, which deleteVaultDatabase()s the whole vault DB
+  // well inside a 250 ms deferred window. A deferred rekey would openDb()
+  // AFTER the wipe, re-creating veyrnox-vault with a lone tertiary blob —
+  // the exact residue panic-wipe exists to prevent. Cost of not rekeying:
+  // the panic marker's kdf profile may lag the primary post-migration until
+  // the user's next setPanicVault() call. Comparatively cheap tell (1 blob
+  // among 258) vs. residue-after-wipe.
   return true;
 }
 

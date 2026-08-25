@@ -285,7 +285,16 @@ describe('H-2 gate 2 — reveal-time opportunistic rekey', () => {
     expect(JSON.stringify(after.kdf)).toBe(CURRENT_KDF_FINGERPRINT);
   }, 300_000);
 
-  it('tryPanicUnlock rekeys the panic marker to the current profile after a successful decrypt', async () => {
+  it('tryPanicUnlock DELIBERATELY does NOT rekey the panic marker (reviewer C-1 on PR #2103)', async () => {
+    // The panic path is followed by panicWipeLocal() → deleteVaultDatabase()
+    // in WalletProvider.unlock's catch, immediately after tryPanicUnlock
+    // returns true. Any deferred rekey (originally 250ms) would openDb()
+    // AFTER the wipe, re-creating veyrnox-vault with a lone `tertiary` blob
+    // decryptable with the panic PIN — the exact residue panic-wipe exists
+    // to prevent. So the panic path is EXCLUDED from opportunistic rekey.
+    // Cost: post-migration, the panic marker's kdf profile may lag the
+    // primary until the next explicit setPanicVault() call. Comparatively
+    // cheap tell (1 blob among 258) vs. residue-after-wipe.
     const password = '12345678';
     const marker = generateMnemonic(128);
     const v1Blob = await encryptVault(padToFixedLen(marker), password, V1_PARAMS);
@@ -293,11 +302,14 @@ describe('H-2 gate 2 — reveal-time opportunistic rekey', () => {
 
     const ok = await tryPanicUnlock(password);
     expect(ok).toBe(true);
-    await awaitPanicRekey();
+    await awaitPanicRekey(); // resolves immediately — no rekey scheduled
 
+    // Marker on disk is UNCHANGED (still v1). The caller will wipe the whole
+    // DB in a moment; the tell only exists on disk if wipe doesn't fire —
+    // and that is a wipe-path failure, not a rekey-path failure.
     const after = await get('tertiary');
-    expect(vaultNeedsKdfMigration(after)).toBe(false);
-    expect(JSON.stringify(after.kdf)).toBe(CURRENT_KDF_FINGERPRINT);
+    expect(vaultNeedsKdfMigration(after)).toBe(true);
+    expect(JSON.stringify(after.kdf)).not.toBe(CURRENT_KDF_FINGERPRINT);
   }, 300_000);
 
   it('a WRONG secret does not touch the slot (rekey is gated on successful decrypt)', async () => {

@@ -203,6 +203,21 @@ export async function tryDuressUnlock(password) {
           if (fresh && fresh.ct && fresh.iv && fresh.salt) {
             const db = await openDb();
             try {
+              // Reviewer C-1 sibling fix on PR #2103: before writing, verify
+              // the DECOY_KEY still exists. If clearDuressVault() or
+              // panicWipeLocal() (which calls deleteVaultDatabase and
+              // therefore removes DECOY_KEY too) ran inside the 250 ms
+              // window, re-inserting the blob would re-create wiped state.
+              // Missing → skip. Race window with a legitimate
+              // setDuressVault() replacing the blob concurrently is
+              // acceptable — that write also stamps KDF_PARAMS, so a
+              // dropped rekey there is a no-op.
+              const existing = await /** @type {Promise<any>} */ (new Promise((res, rej) => {
+                const rg = store(db, 'readonly').get(DECOY_KEY);
+                rg.onsuccess = () => res(rg.result);
+                rg.onerror = () => rej(rg.error);
+              }));
+              if (existing == null) { db.close(); resolve(); return; }
               await /** @type {Promise<void>} */ (new Promise((res, rej) => {
                 const r = store(db, 'readwrite').put(fresh, DECOY_KEY);
                 r.onsuccess = () => res();

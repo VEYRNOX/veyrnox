@@ -635,7 +635,16 @@ export async function tryRevealHidden(secret) {
           const fresh = await encryptVault(plaintext, secret);
           if (fresh && fresh.ct && fresh.iv && fresh.salt) {
             const wdb = await openDb();
-            try { await putKey(wdb, slot, fresh); } finally { wdb.close(); }
+            try {
+              // Reviewer C-1 sibling fix on PR #2103: before writing, verify
+              // the target slot still exists. If a panic-wipe (which calls
+              // deleteVaultDatabase) fires inside the 250 ms window, the
+              // slot is gone; re-inserting would re-create part of the wiped
+              // state. Missing → skip.
+              const existing = await getKey(wdb, slot);
+              if (existing == null) return;
+              await putKey(wdb, slot, fresh);
+            } finally { wdb.close(); }
           }
         } catch { /* best-effort — reveal already returned the plaintext */ }
         resolve();
