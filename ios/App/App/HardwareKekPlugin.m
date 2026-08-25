@@ -63,6 +63,32 @@ static os_log_t VeyrnoxKekLog(void) {
     return log;
 }
 
+// #2079 — is this error the user DISMISSING the biometric sheet, as opposed to the
+// sheet being presented and failing to match?
+//
+// The distinction is load-bearing downstream, not cosmetic: a cancel routes to
+// KEK_ERR.USER_CANCELLED, which WalletEntry renders as "Unlock cancelled — try again
+// when ready" (never "restore from your seed phrase"), and which stepUpFactorOutcome
+// counts as a dismissal rather than a presented-and-failed factor.
+//
+// Deliberately NARROW. errSecAuthFailed (-25293) and LAErrorAuthenticationFailed are a
+// failed MATCH — a wrong face is not a cancellation, and reporting it as one would tell
+// the step-up layer no factor was ever presented. Both stay on the generic path.
+// LAErrorUserFallback ("Use passcode") is likewise excluded here: it is a request for
+// another factor, not an abort, and the caller's own fallback path handles it.
+static BOOL VeyrnoxKekIsCancelError(NSError *e) {
+    if (e == nil) return NO;
+    if ([e.domain isEqualToString:NSOSStatusErrorDomain]) {
+        return e.code == errSecUserCanceled;
+    }
+    if ([e.domain isEqualToString:LAErrorDomain]) {
+        return e.code == LAErrorUserCancel
+            || e.code == LAErrorSystemCancel
+            || e.code == LAErrorAppCancel;
+    }
+    return NO;
+}
+
 // Apple ECIES: ephemeral ECDH + X9.63-SHA256 KDF + AES-GCM, in one primitive.
 #define VEYRNOX_ECIES_ALGO kSecKeyAlgorithmECIESEncryptionCofactorX963SHA256AESGCM
 
@@ -336,6 +362,18 @@ static os_log_t VeyrnoxKekLog(void) {
                     [call reject:@"KEK_KEY_PERMANENTLY_INVALIDATED: Hardware key invalidated — biometric enrollment changed" :@"KEK_KEY_PERMANENTLY_INVALIDATED" :nil :nil];
                     return;
                 }
+                // #2079: a DISMISSAL is not a hardware failure. errSecUserCanceled (-128)
+                // is the user backing out of the sheet; JS already has a wipe-exempt
+                // USER_CANCELLED route that says "Unlock cancelled — try again when
+                // ready" instead of "hardware unavailable, restore from seed" and tells
+                // stepUpFactorOutcome the factor was never presented. Android reaches it
+                // via its exact "User cancelled" message; iOS could not, because it fills
+                // the code slot. NARROW: errSecAuthFailed (-25293) is a failed biometric
+                // MATCH, not a dismissal, and deliberately stays on the generic path.
+                if (st == errSecUserCanceled) {
+                    [call reject:@"Unlock cancelled" :@"KEK_USER_CANCELLED" :nil :nil];
+                    return;
+                }
                 [call reject:@"Secure Enclave key not found — re-enrollment required" :@"SE_KEY_MISSING" :nil :nil];
                 return;
             }
@@ -369,6 +407,16 @@ static os_log_t VeyrnoxKekLog(void) {
                 // (-25293); neither can be confused with this, so the distinction cannot
                 // mislabel an ordinary failed unlock as "your key is gone".
                 BOOL permanentlyInvalidated = NO;
+                // #2079: cancel is a DISMISSAL, not a hardware failure — see the note at
+                // the SecItemCopyMatching site above. Checked on BOTH the top-level error
+                // and NSUnderlyingErrorKey, mirroring permanentlyInvalidated, because
+                // SecKeyCreateDecryptedData wraps the LocalAuthentication error. Two
+                // domains carry a cancel: NSOSStatusErrorDomain errSecUserCanceled (-128)
+                // and LAErrorDomain LAErrorUserCancel / LAErrorSystemCancel / LAErrorAppCancel.
+                // errSecAuthFailed (-25293) and LAErrorAuthenticationFailed are a failed
+                // MATCH and are deliberately NOT in this set — reporting a wrong face as
+                // "you cancelled" would tell stepUpFactorOutcome no factor was presented.
+                BOOL userCancelled = NO;
                 if (decErr) {
                     NSError *e = (__bridge NSError *)decErr;
                     if (e.localizedDescription) msg = e.localizedDescription;
@@ -378,10 +426,20 @@ static os_log_t VeyrnoxKekLog(void) {
                         || (underlying != nil
                             && [underlying.domain isEqualToString:NSOSStatusErrorDomain]
                             && underlying.code == errSecItemNotFound);
+                    userCancelled =
+                        VeyrnoxKekIsCancelError(e) || (underlying != nil && VeyrnoxKekIsCancelError(underlying));
                 }
                 os_log_info(VeyrnoxKekLog(), "[VEYRNOX-KEK] getHardwareFactor: DECRYPT FAILED — %{public}s", msg.UTF8String);
                 if (permanentlyInvalidated) {
                     [call reject:@"KEK_KEY_PERMANENTLY_INVALIDATED: Hardware key invalidated — biometric enrollment changed" :@"KEK_KEY_PERMANENTLY_INVALIDATED" :nil :nil];
+                    if (decErr) CFRelease(decErr);
+                    return;
+                }
+                // Checked AFTER permanentlyInvalidated: an invalidated key is the more
+                // specific and more actionable verdict, and the two signals are disjoint
+                // anyway (errSecItemNotFound vs the cancel set).
+                if (userCancelled) {
+                    [call reject:@"Unlock cancelled" :@"KEK_USER_CANCELLED" :nil :nil];
                     if (decErr) CFRelease(decErr);
                     return;
                 }

@@ -246,6 +246,14 @@ export async function getHardwareFactor(opts) {
       });
     }
     if (errCode === KEK_ERR.USER_CANCELLED || msg === 'User cancelled') {
+      // #2079: the message match is Android's EXACT reject string. iOS rejects with a
+      // localised description in the message slot and the machine code in the code slot,
+      // so a cancelled Face ID sheet used to fall through to NO_HARDWARE_FACTOR below.
+      // Both codes are wipe-exempt, so nothing unsafe happened — but the user who tapped
+      // Cancel was told "Hardware protection is unavailable … restore from seed phrase"
+      // (WalletEntry.jsx:1058) rather than "Unlock cancelled", and stepUpFactorOutcome
+      // could not see the dismissal. Read the code slot too, for the same reason L-7/L-8
+      // above read both: the two natives use the slots differently.
       // User-initiated abort of the per-use biometric sheet. A raw re-throw carries NO
       // .code, so WalletEntry's KEK exemptions miss it and it falls through to the
       // wrong-PIN counter — a correct-PIN user who cancels the sheet 10 times triggers the
