@@ -162,4 +162,58 @@ describe('getHardwareFactor — classifies on the CODE slot, not only the messag
       code: KEK_ERR.USER_CANCELLED,
     });
   });
+
+  // ---- #2079 ---------------------------------------------------------------
+  // The cancel classifier matched Android's message EXACTLY ('User cancelled').
+  // iOS never emits that string — it rejects with a localised description and
+  // the code slot, so a cancelled Face ID sheet fell through to the generic
+  // NO_HARDWARE_FACTOR branch. Both are wipe-exempt, so nothing unsafe happened,
+  // but the user who tapped Cancel was told "Hardware protection is unavailable
+  // … restore from seed phrase" instead of "Unlock cancelled".
+  it('#2079: an iOS cancel arrives on the CODE slot and classifies as USER_CANCELLED', async () => {
+    getHFFn.mockRejectedValueOnce(
+      bridgeError('Face ID was cancelled', KEK_ERR.USER_CANCELLED),
+    );
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.USER_CANCELLED,
+    });
+  });
+
+  it('#2079: a biometric MISMATCH is not reclassified as a cancel', async () => {
+    // errSecAuthFailed is a real failed match, not a dismissal. It must stay in
+    // the generic wipe-exempt branch — mislabelling it a cancel would tell the
+    // step-up outcome layer a factor was never presented when it was.
+    getHFFn.mockRejectedValueOnce(
+      bridgeError('Face ID did not match', 'DECRYPT_FAILED'),
+    );
+    await expect(getHardwareFactor()).rejects.toMatchObject({
+      code: KEK_ERR.NO_HARDWARE_FACTOR,
+    });
+  });
+});
+
+describe('HardwareKekPlugin.m — #2079: iOS emits a distinct user-cancel code', () => {
+  it('rejects with the KEK_USER_CANCELLED code', () => {
+    expect(code).toMatch(/KEK_USER_CANCELLED/);
+  });
+
+  it('gates the cancel code on cancel signals only — never on a failed MATCH', () => {
+    // errSecUserCanceled (-128) / LAErrorUserCancel|SystemCancel|AppCancel are
+    // dismissals. errSecAuthFailed (-25293) and LAErrorAuthenticationFailed are a failed
+    // biometric MATCH: a wrong face reported as "you cancelled" would tell
+    // stepUpFactorOutcome that no factor was ever presented, when one was.
+    //
+    // Pinned on the CLASSIFIER'S OWN BODY, not on text near the reject site. An earlier
+    // version of this test sliced a window before the reject call and could not see the
+    // helper at all — widening the helper to accept errSecAuthFailed left it green. If
+    // the predicate moves or is renamed, this fails loudly rather than silently passing.
+    const fn = code.match(
+      /static BOOL VeyrnoxKekIsCancelError\(NSError \*e\)\s*\{[\s\S]*?\n\}/,
+    );
+    expect(fn, 'VeyrnoxKekIsCancelError not found — did it move or get renamed?').not.toBeNull();
+    const body = fn[0];
+    expect(body).toMatch(/errSecUserCanceled/);
+    expect(body).toMatch(/LAErrorUserCancel/);
+    expect(body).not.toMatch(/errSecAuthFailed|LAErrorAuthenticationFailed/);
+  });
 });
