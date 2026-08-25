@@ -83,6 +83,7 @@ import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, pars
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
 import { wrapForFastpath, unwrapFromFastpath, deriveFastpathKek } from './fastpathDekCache.js';
 import { isFastpathEnabled, hasSeenFastpathDisclosure } from '@/lib/fastpathUnlock.js';
+import { isDuressConfigured } from '@/lib/duressBiometricGuard.js';
 import { isPasskeyRegistered } from '@/lib/passkey.js';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { getFreshRaspArtifact } from '@/rasp/getFreshRaspArtifact.js';
@@ -553,10 +554,24 @@ async function clearFastpathDekBestEffort() {
 // falling back to the PIN keypad. They MUST NEVER be logged or emitted to
 // telemetry: `unlockBiometricOnly()` is a NEW UI branch that runs BEFORE PIN
 // entry; if a code reached a backend it would be a "primary vault exists on
-// this device" oracle (I2). Duress / panic / wrong-PIN still ONLY live in
-// the PIN-entry path (WalletProvider.unlock → _unlockInner), which this new
-// branch does NOT touch — verified by native.duressStillWorks / .panicStillWorks
-// / .wrongPinStillFails tests.
+// this device" oracle (I2).
+//
+// Duress / panic / wrong-PIN routing lives in the PIN-entry path
+// (WalletProvider.unlock → resolveDeniabilityUnlock → _unlockInner), and this
+// branch accepts no PIN — but "it cannot be reached from here" was NEVER the
+// whole answer, and stating it as one is what let H-1 (weekly audit
+// 2026-08-25) ship: a second door was added BESIDE the one duress guards, so a
+// coercer could tap the fingerprint button and open the REAL vault without the
+// Emergency PIN ever being reachable. Both the write side
+// (populateFastpathBestEffort) and the read side (unlockBiometricOnly) are
+// therefore gated on isDuressConfigured().
+//
+// Verified by native.duressFastpathGate.test.js (this module's gates) and
+// WalletProvider.duressFastpathClear.test.jsx (the teardown at setDuressPin /
+// enforceDuressBiometricInvariant). An earlier version of this comment cited
+// three files — native.duressStillWorks / .panicStillWorks / .wrongPinStillFails
+// — that never existed (M-2, same audit). Cite files that exist, or say
+// nothing.
 export const FASTPATH_CODE = Object.freeze({
   DENIABILITY_BLOCKED: 'FASTPATH_DENIABILITY_BLOCKED',
   DISABLED: 'FASTPATH_DISABLED',
@@ -592,6 +607,7 @@ export class FastpathError extends Error {
 // Gating (evaluated at write time, live):
 //   - opt-in ON  (isFastpathEnabled)
 //   - not deniability/demo  (isDeniabilityOrDemoActive false — I3)
+//   - no duress PIN configured  (H-3 invariant — see below)
 //   - passkey NOT registered  (owner ruling — passkey users are hidden from
 //     fast-path at the UI; the populate gate here closes the "enable fast-path,
 //     then enrol passkey, then unenrol passkey → fast-path silently warm"
@@ -602,6 +618,19 @@ async function populateFastpathBestEffort(hCopy, dek) {
   try {
     if (!hCopy || !dek) return;
     if (isDeniabilityOrDemoActive()) return;      // I3
+    // H-1 (weekly audit 2026-08-25) — THE load-bearing duress gate. This is the
+    // WRITE chokepoint: the fast-unlock button can only ever release what
+    // populate put here, so a device that never warms the cache cannot have it
+    // read out under coercion. Without this, both orderings reached the bypass
+    // — warm-then-configure (nothing cleared it) and configure-then-warm (the
+    // next real-PIN unlock re-warmed it).
+    //
+    // Reads the same deliberate-configuration marker as the rest of the duress
+    // stack (`veyrnox-duress-configured`, NOT hasDuressVault() which chaff
+    // provisioning makes permanently true — see duressBiometricGuard.js's
+    // header on PR #714), and inherits its fail-closed catch: an unreadable
+    // signal counts as configured and suppresses the write.
+    if (isDuressConfigured()) return;             // H-3 invariant
     if (!isFastpathEnabled()) return;             // Q3 explicit-OFF
     // Default-ON reversal: informed-consent chokepoint. Populate MUST NOT
     // warm the wrapped-DEK cache before the user has seen the first-run
@@ -1280,6 +1309,23 @@ export const nativeKeyStore = {
     // Q3 opt-in check. Toggle is OFF by default; without it we behave as
     // though the feature does not exist on this device (no biometric prompt).
     if (!isFastpathEnabled()) throw new FastpathError(FASTPATH_CODE.DISABLED);
+    // M-4 (weekly audit 2026-08-25) — defence in depth for the informed-consent
+    // chokepoint. "Nothing warms before the disclosure card is answered" was
+    // true only as an EMERGENT property of populate's gate; asserting it here
+    // makes it local to the path that actually releases the DEK, so a future
+    // populate refactor cannot quietly reopen it. Same code as the toggle:
+    // an un-consented device behaves as though the feature is not present.
+    if (!hasSeenFastpathDisclosure()) throw new FastpathError(FASTPATH_CODE.DISABLED);
+    // H-1 — the read-side half of the duress gate. Populate is the load-bearing
+    // one; this covers the cache that is ALREADY warm when the Emergency PIN is
+    // configured and the clear does not land: the installed base, a
+    // secure-store refusal, or a device that was warmed before this fix shipped.
+    //
+    // Deliberately MISS, not a new code: a coercer must not be able to tell a
+    // duress-configured device from one with a cold cache. The button stays
+    // visible and still falls through to the PIN keypad — hiding it would
+    // itself be the tell, and warming the cache instead is never the answer.
+    if (isDuressConfigured()) throw new FastpathError(FASTPATH_CODE.MISS);
     // RASP tier gate: fast-path is a live DEK, same trust bar as unlock.
     // WARN/BLOCK/UNKNOWN → force PIN fallback (design doc §RASP tier).
     let tier = TIER.BLOCK;

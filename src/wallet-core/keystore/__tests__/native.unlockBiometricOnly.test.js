@@ -65,8 +65,13 @@ vi.mock('@/plugins/androidBiometricCache', () => ({
 }));
 
 const isFastpathEnabledMock = vi.fn(() => true);
+// M-4 (2026-08-25): unlockBiometricOnly now asserts the disclosure marker
+// itself instead of inheriting it from populate's gate, so this mock must
+// carry it. The DISCLOSURE-off case is covered in native.duressFastpathGate.test.js.
+const hasSeenFastpathDisclosureMock = vi.fn(() => true);
 vi.mock('@/lib/fastpathUnlock.js', () => ({
   isFastpathEnabled: () => isFastpathEnabledMock(),
+  hasSeenFastpathDisclosure: () => hasSeenFastpathDisclosureMock(),
   FASTPATH_ENABLED_STORAGE_KEY: 'veyrnox-fastpath-enabled',
   FASTPATH_DISCLOSURE_SEEN_KEY: 'veyrnox-fastpath-disclosure-seen',
 }));

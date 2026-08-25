@@ -152,7 +152,10 @@ import { incrementSessionDayCount } from '@/components/PaywallNudge';
 // untouched. Best-effort (a preference, never key material).
 // Single source of truth lives in lib/duressBiometricGuard.js, which also reads it as
 // positive evidence that the biometric cache holds the DECOY secret (H-3 / P1-A).
-import { DECOY_BIOMETRIC_MARKER_KEY } from '@/lib/duressBiometricGuard';
+// clearFastpathDekBestEffort disarms the OTHER one-tap door — the #2019
+// fast-path wrapped-DEK alias — which the duress teardown below did not know
+// about until H-1 (weekly audit 2026-08-25).
+import { DECOY_BIOMETRIC_MARKER_KEY, clearFastpathDekBestEffort } from '@/lib/duressBiometricGuard';
 // BIOMETRIC ONE-TAP UNLOCK CACHE (convenience over the existing vault). Stores
 // the vault password behind the biometric gate so a returning user can unlock
 // with Face ID instead of re-typing it. The password remains THE secret and the
@@ -1641,6 +1644,14 @@ export function WalletProvider({ children }) {
     // unchanged (re-cache the new password so Face ID keeps working).
     if (shouldCacheUnlockSecret({ authModel: getAuthModel(), biometricEnabled: isBiometricUnlockEnabled() })) {
       try { await storeUnlockSecret(newPassword); } catch { /* fall back to password */ }
+    } else {
+      // L-9 (weekly audit 2026-08-25): the PIN cohort correctly declines to
+      // cache the NEW pin — but said nothing about the OLD one, which stayed in
+      // the biometric cache. It no longer opens the vault (fail-closed
+      // direction), yet it is a plaintext credential at rest that the user may
+      // have reused elsewhere. Best-effort: a store that refuses the delete must
+      // not fail a password change the keystore has already completed.
+      try { await clearUnlockSecret(); } catch { /* residual: secret may remain at rest */ }
     }
     sessionUnlockSecretRef.current = newPassword;
     // Keep the session alive on its existing in-memory secret. touch() resets the
@@ -2401,6 +2412,18 @@ export function WalletProvider({ children }) {
     // ambiguous-looking state is the one we are removing, not creating.
     setBiometricUnlockEnabled(false);
     await clearUnlockSecret();
+    // H-1 (weekly audit 2026-08-25): the two calls above disarm the LEGACY
+    // biometric cache only. The #2019 fast-path alias holds a wrapped DEK that
+    // opens the REAL vault with no PIN at all, so leaving it warm reproduced the
+    // exact bypass the block above exists to prevent — "just use your
+    // fingerprint" opening the real wallet after a duress PIN was set.
+    //
+    // Best-effort, unlike the clear above, because the plugin only exists on
+    // Android and rejects at call time everywhere else — a hard failure here
+    // would break duress setup on iOS and web. The invariant does not rest on
+    // this call landing: keystore/native.js refuses to warm the alias AND
+    // refuses to read it while `veyrnox-duress-configured` is set.
+    await clearFastpathDekBestEffort();
     // Any lingering "the biometric pref was flipped on for the decoy" marker is
     // now stale — the cache it described is gone. enableDecoyBiometricUnlock
     // re-sets it if the user re-arms Face-ID-for-decoy on this pass.
