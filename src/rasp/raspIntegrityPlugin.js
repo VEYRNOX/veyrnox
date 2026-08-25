@@ -51,6 +51,11 @@ import { registerPlugin } from '@capacitor/core';
  * under the hooked axis and overlayActive under elevated; neither matched
  * src/rasp/nativeProbe.js, which is the authority:
  *   - #1108 re-bucketed screenCapture from hooked (BLOCK) to elevated (WARN)
+ *   - #2065 split that signal by platform: Android keeps it on the shared
+ *     elevated axis because MainActivity's unconditional FLAG_SECURE still
+ *     blocks capture of the sensitive view, while iOS now surfaces active
+ *     mirroring as its own CONDITION.SCREEN_CAPTURE (WARN-tier, seed-reveal
+ *     blocked) because there is no FLAG_SECURE-equivalent backstop there
  *   - #1104 DROPPED overlayActive entirely — it feeds no signal and cannot
  *     affect the tier, so it is listed on its own below rather than under an
  *     axis it does not belong to
