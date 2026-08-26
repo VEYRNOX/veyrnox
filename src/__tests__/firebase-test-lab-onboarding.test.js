@@ -3,8 +3,19 @@
 // The device tests are authored in Swift / workflow YAML / Robo Script JSON, so
 // Vitest cannot execute them locally. This static guard pins the pieces that
 // previously drifted independently: Veyrnox's eight-digit explicit-submit
-// PinPad, the fresh-install iOS "Get Started" route, the Android "New wallet"
-// Robo flow, and the exact-SHA APK handoff.
+// PinPad, the fresh-install entry-tile route on BOTH platforms, and the
+// exact-SHA APK handoff.
+//
+// It used to pin the iOS label as the literal "Get Started" while Android's
+// Robo script clicked "New wallet". Both platforms render the same web UI, so
+// that difference was never real — it was drift, and pinning it here is what
+// made it durable. Slice D1 replaced the welcome hero with entry tiles on
+// 2026-08-10; iOS then waited 15s for a button that could not appear, for
+// sixteen days, because the xcuitest job never completed (#2109).
+//
+// So the label is no longer hardcoded twice. It is read out of the Swift and
+// checked against src/components/EntryTiles.jsx, the component that actually
+// renders it. Rename a tile and this test fails, which is the point.
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -14,6 +25,7 @@ const root = process.cwd();
 const read = (path) => readFileSync(resolve(root, path), 'utf8');
 
 const swift = read('ios/App/AppUITests/AppUITests.swift');
+const entryTiles = read('src/components/EntryTiles.jsx');
 const workflow = read('.github/workflows/firebase-test-lab.yml');
 const ciWorkflow = read('.github/workflows/ci.yml');
 const androidBuild = read('android/app/build.gradle');
@@ -27,12 +39,38 @@ function indexOrFail(source, needle) {
 }
 
 describe('Firebase Test Lab first-run PIN smoke', () => {
-  it('drives iOS through Get Started and explicitly submits both 8-digit PIN stages', () => {
+  it('drives iOS through the entry tile it actually renders, and explicitly submits both 8-digit PIN stages', () => {
     const pin = swift.match(/let pin = "(\d+)"/)?.[1];
     expect(pin).toBe('24681024');
 
+    // Read the label out of the Swift rather than asserting a second copy of
+    // it. `tapButton` is the only call that takes a bare `label:` followed by
+    // a `timeout:` — the optional-tap helper below it passes them inline.
+    const tileLabel = swift.match(/label: "([^"]+)",\s*\n\s*timeout:/)?.[1];
+    expect(tileLabel, 'no tapButton(label:timeout:) call found in the Swift').toBeTruthy();
+
+    // …and hold it against the component that renders it. EntryTiles sets an
+    // explicit aria-label per tile, so this string IS the accessible name
+    // XCUITest matches on. If a tile is renamed, this fails here — on every
+    // PR — instead of on a device suite that may not complete for weeks.
+    expect(
+      entryTiles,
+      `AppUITests.swift taps "${tileLabel}", which src/components/EntryTiles.jsx does not render. `
+      + 'Slice D1 already broke this once (#2109) — retarget the Swift at a live tile label.',
+    ).toContain(`label: "${tileLabel}"`);
+
+    // The create path specifically: "New wallet" is the tile that routes to
+    // PIN-create, which is the flow the two PIN stages below depend on.
+    expect(tileLabel).toBe('New wallet');
+
+    // Both platforms drive the same web UI, so the Android Robo script's first
+    // click and the iOS tap must be the same label. They disagreed for sixteen
+    // days and nothing caught it.
+    const roboFirstClick = roboScript.find(({ eventType }) => eventType === 'VIEW_CLICKED');
+    expect(roboFirstClick?.elementDescriptors?.[0]).toEqual({ text: tileLabel });
+
     const getStarted = indexOrFail(swift, 'tapButton(');
-    const getStartedLabel = indexOrFail(swift, 'label: "Get Started"');
+    const getStartedLabel = indexOrFail(swift, `label: "${tileLabel}"`);
     const setDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "set")');
     const setSubmit = indexOrFail(swift, 'submitPin(app: app, stage: "set")');
     const confirmDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "confirm")');
