@@ -84,9 +84,23 @@ export function hydrateSecureStore() {
         native = (s && s.length > 0) ? s : null;
       } catch { /* missing entry — noop */ }
 
-      // One-shot migration: legacy localStorage value → native store.
-      // Only if native has nothing (never overwrite an existing native value).
-      if (native == null) {
+      // A caller can write this key WHILE we are on the bridge — secureSet()
+      // populates the cache SYNCHRONOUSLY and persists async — so this has to
+      // be re-read AFTER the await, not before the loop. A present entry is
+      // newer than anything the store held when hydrate started, and it wins:
+      // clobbering it hands callers a stale token they have already stopped
+      // using. Concretely, ensureSessionToken() mints a token on a cold native
+      // boot and SecurityCenter registers a UserSession record under it; if
+      // getSessionToken() then reverts to the older value,
+      // SessionRevocationGuard polls a record that does not exist and revoking
+      // that device silently stops locking the wallet.
+      const fresher = _cache.has(k);
+
+      // One-shot migration: legacy localStorage value → native store. Only if
+      // native has nothing (never overwrite an existing native value) and no
+      // caller got there first — writing the legacy value here would race
+      // secureSet's own write-through for the same key.
+      if (native == null && !fresher) {
         let legacy = null;
         try { legacy = localStorage.getItem(k); } catch { /* storage unavailable */ }
         if (legacy != null && legacy.length > 0) {
@@ -97,13 +111,13 @@ export function hydrateSecureStore() {
         }
       }
 
-      // Whether or not the migration succeeded, remove the legacy copy IF the
-      // native side now holds the value — deniability requires the plaintext
-      // not to sit in localStorage once it is in the OS store.
-      if (native != null) {
+      // Remove the legacy copy IF the value now lives in the OS store —
+      // deniability requires the plaintext not to sit in localStorage once it
+      // does. A fresher in-session write counts: secureSet already persisted it.
+      if (native != null || fresher) {
         try { localStorage.removeItem(k); } catch { /* noop */ }
-        _cache.set(k, native);
       }
+      if (native != null && !fresher) _cache.set(k, native);
     }
   })();
   return _hydratePromise;
@@ -181,6 +195,42 @@ export async function secureWipeAll() {
   for (const k of MIGRATED_KEYS) {
     try { await plugin.remove(k); } catch { /* may already be gone */ }
   }
+}
+
+/**
+ * Read the native store back and report what SURVIVED — the honest counterpart
+ * to secureWipeAll(), which swallows every failure by design (a wipe must not
+ * throw). Without this, panic.js's inspectKeyMaterial() had no way to see the
+ * OS store at all: a Keychain/Keystore delete that silently failed still
+ * produced `clean: true`, and because hydrate removes the localStorage copy the
+ * moment the native store holds the value, the localStorage sweep could not
+ * catch it either. Same shape as inspectKeyMaterial's sideDatabases* pair — a
+ * store we could not read is reported UNVERIFIED, never as clean (I4).
+ *
+ * HONEST LIMITATION. The plugin signals "no such entry" by throwing, and gives
+ * us no way to tell that apart from a genuine read error, so a throw is counted
+ * as absent. A value that READS BACK is definitely residue; a read that fails
+ * for an unexpected reason is not detected. Widening this needs a plugin API
+ * that distinguishes the two.
+ *
+ * On web there is no native store, so the result is vacuously verified+empty;
+ * the localStorage residue sweep already covers that platform.
+ *
+ * @returns {Promise<{residue: string[], verified: boolean}>}
+ */
+export async function inspectSecureStore() {
+  if (!Capacitor.isNativePlatform()) return { residue: [], verified: true };
+  let plugin = null;
+  try { plugin = await loadPlugin(); } catch { return { residue: [], verified: false }; }
+  if (!plugin) return { residue: [], verified: false };
+  const residue = [];
+  for (const k of MIGRATED_KEYS) {
+    try {
+      const v = await plugin.get(k, false);
+      if (v != null && String(v).length > 0) residue.push(k);
+    } catch { /* absent — the desired post-wipe state; see limitation above */ }
+  }
+  return { residue, verified: true };
 }
 
 /** Test-only: reset internal state so unit tests can re-hydrate cleanly. */

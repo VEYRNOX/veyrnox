@@ -18,11 +18,12 @@
 // revoked. This component performs NO crypto and touches NO key material; lock()
 // is the EXISTING WalletProvider path.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useWallet } from '@/lib/WalletProvider';
 import { toast } from '@/lib/toast';
+import { hydrateSecureStore } from '@/lib/secureStore';
 import {
   getSessionToken,
   clearSessionToken,
@@ -31,7 +32,23 @@ import {
 
 export default function SessionRevocationGuard() {
   const { lock } = useWallet();
-  const token = getSessionToken();
+  // getSessionToken() is a SYNCHRONOUS read of secureStore's cache, and on
+  // native that cache is filled by an async boot hydrate. Reading it once at
+  // render is therefore not enough on its own: if this component mounts before
+  // hydrate settles, the token is null, the query below is disabled, and
+  // nothing re-subscribes when the value later arrives — the guard would sit
+  // dormant until some unrelated re-render happened to re-read it. In practice
+  // Layout only mounts after unlock, by which point hydrate has long finished,
+  // so this was a latent fragility rather than an observed failure; awaiting
+  // the (memoised, never-rejecting) hydrate promise makes it deterministic
+  // instead of incidental.
+  const [token, setToken] = useState(() => getSessionToken());
+  useEffect(() => {
+    if (token) return undefined;
+    let alive = true;
+    hydrateSecureStore().then(() => { if (alive) setToken(getSessionToken()); });
+    return () => { alive = false; };
+  }, [token]);
   // Guard against locking more than once per revocation event.
   const handledRef = useRef(false);
 

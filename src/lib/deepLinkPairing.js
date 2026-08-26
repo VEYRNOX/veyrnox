@@ -101,8 +101,9 @@ export function extractWcUri(rawUrl) {
   const result = _extract(rawUrl);
   emitDeepLinkAudit(result != null ? 'accept' : 'reject', {
     // NEVER log the wc: URI itself (contains sym-key material). Only the
-    // ORIGIN of the URL and the outcome — enough for a monitor to spot
-    // repeated rejects without leaking key material.
+    // ORIGIN of the URL and the outcome — enough for a future monitor to spot
+    // repeated rejects without leaking key material. Nothing subscribes to
+    // this today; see emitDeepLinkAudit's status note below.
     origin: safeOrigin(rawUrl),
     length: typeof rawUrl === 'string' ? rawUrl.length : 0,
   });
@@ -135,11 +136,24 @@ function safeOrigin(rawUrl) {
 }
 
 /**
- * Fire a same-tab audit event for every deep-link decision. The origin allow-
- * list in isVeyrnoxPairingUrl() is the security control; this event is the
- * evidence trail — a monitor (or a future rate-limiter) can subscribe without
- * this module having to know about it. Best-effort; a missing bus never
- * blocks pairing.
+ * Fire a same-tab audit event for every deep-link decision.
+ *
+ * STATUS: HOOK POINT — NOTHING CONSUMES THIS YET. Outside its own regression
+ * test, no production code registers a `veyrnox:deeplink` listener, so in a
+ * shipped build the event fires into the void: nothing persists it, counts it,
+ * rate-limits on it, or shows it to anyone. Do not describe it as an audit
+ * TRAIL or as evidence — there is no record. It is a seam a future monitor or
+ * reject-rate-limiter can attach to without this module having to know about
+ * it, and until one exists it buys observability of exactly nothing.
+ *
+ * That is a deliberate scoping call, not an oversight: the origin allowlist in
+ * isVeyrnoxPairingUrl() is the actual security control and is unaffected by
+ * this either way, and inventing a consumer with no one to read it would be
+ * speculative work — and a rate-limiter driven off these events would be new
+ * security BEHAVIOUR, which belongs in its own change with its own review.
+ *
+ * Best-effort; a missing bus never blocks pairing.
+ *
  * @param {'accept'|'reject'} decision
  * @param {{origin:string|null, length:number}} meta
  */

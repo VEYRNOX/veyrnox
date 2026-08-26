@@ -1051,6 +1051,25 @@ export async function inspectKeyMaterial() {
     sideDatabasesResidue = [];
     sideDatabasesVerified = false;
   }
+  // NATIVE-1: the OS secure store (iOS Keychain / Android Keystore). The keys
+  // lib/secureStore.js migrates there are invisible to BOTH sweeps above —
+  // hydrate deletes the localStorage copy as soon as the native store holds the
+  // value, so `residue` reports the key absent whether or not the Keychain
+  // delete actually succeeded, and secureWipeAll() swallows delete failures by
+  // design. Read the store back instead, and treat an unreadable store as
+  // UNVERIFIED rather than clean — the same honesty rule as sideDatabases*.
+  let secureStoreResidue = [];
+  let secureStoreVerified = false;
+  try {
+    const { inspectSecureStore } = await import('@/lib/secureStore.js');
+    const probe = await inspectSecureStore();
+    secureStoreResidue = probe.residue;
+    secureStoreVerified = probe.verified;
+  } catch {
+    // Module unavailable — report honestly instead of pretending clean.
+    secureStoreResidue = [];
+    secureStoreVerified = false;
+  }
   return {
     indexedDbKeys: keys,
     vaultBlobCount: keys.length,
@@ -1059,13 +1078,17 @@ export async function inspectKeyMaterial() {
     sessionStorageVerified: sessionResidue.verified,
     sideDatabasesResidue,
     sideDatabasesVerified,
+    secureStoreResidue,
+    secureStoreVerified,
     clean:
       keys.length === 0 &&
       residue.length === 0 &&
       sessionResidue.keys.length === 0 &&
       sessionResidue.verified === true &&
       sideDatabasesResidue.length === 0 &&
-      sideDatabasesVerified === true,
+      sideDatabasesVerified === true &&
+      secureStoreResidue.length === 0 &&
+      secureStoreVerified === true,
   };
 }
 
@@ -1104,7 +1127,10 @@ export async function panicWipeLocal() {
   // (iOS Keychain / Android Keystore). Without this, migrated items would
   // survive both localStorage.clear() and an app UNINSTALL on iOS (Keychain
   // items are not deleted on app removal by default) — a direct I3 tell.
-  // Await it so inspectKeyMaterial() reflects the true post-wipe state.
+  // Await it so the deletes are done before we inspect. secureWipeAll() itself
+  // reports nothing (it swallows failures so a wipe can never throw) — the
+  // proof that the store is actually empty comes from inspectKeyMaterial()
+  // reading it back via inspectSecureStore(), below.
   try {
     const { secureWipeAll } = await import('@/lib/secureStore.js');
     await secureWipeAll();
