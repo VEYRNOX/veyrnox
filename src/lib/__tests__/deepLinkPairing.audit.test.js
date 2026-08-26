@@ -1,8 +1,12 @@
-// Pins the deep-link audit trail: every extractWcUri decision must fire a
-// veyrnox:deeplink CustomEvent so a monitor can spot repeated rejects (the
-// existing origin allowlist is the security control; this is the evidence
-// trail) — and the event must NEVER carry the wc: pairing URI itself, only
-// its origin + length (the URI contains sym-key material).
+// Pins the deep-link audit HOOK: every extractWcUri decision must fire a
+// veyrnox:deeplink CustomEvent, and the event must NEVER carry the wc: pairing
+// URI itself — only its origin + length (the URI contains sym-key material).
+//
+// The listener below is this test's own. NOTHING in production subscribes to
+// this event yet, so it records nothing in a shipped build; see the status note
+// on emitDeepLinkAudit. The security control is the origin allowlist in
+// isVeyrnoxPairingUrl(), which these cases exercise through extractWcUri and
+// which does not depend on the event at all.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { extractWcUri } from '@/lib/deepLinkPairing';
