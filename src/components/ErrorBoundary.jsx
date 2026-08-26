@@ -8,6 +8,7 @@ import { Component } from "react";
 import { RefreshCw, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { reportError } from "@/lib/sentry";
 
 export class ErrorBoundary extends Component {
   constructor(props) {
@@ -21,6 +22,7 @@ export class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("[ErrorBoundary] Caught error:", error, errorInfo);
+    reportError(error, errorInfo);
     this.setState({ error, errorInfo });
   }
 

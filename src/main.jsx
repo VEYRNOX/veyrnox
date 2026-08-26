@@ -35,6 +35,12 @@ applyRpcEnvOverrides()
 import { hydrateSecureStore } from '@/lib/secureStore.js'
 hydrateSecureStore()
 
+// Sentry init — NO-OP unless VITE_SENTRY_DSN is set AND consent granted AND
+// not in a demo/deniability session. Runs before React renders so global
+// error handlers are installed early. See src/lib/sentry.js for guards.
+import { initSentry } from '@/lib/sentry'
+initSentry()
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'

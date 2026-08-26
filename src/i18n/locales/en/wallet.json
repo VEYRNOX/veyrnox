@@ -89,11 +89,11 @@
       "disable_aria": "Disable message signing"
     },
     "telemetry": {
-      "label": "Anonymous usage data",
+      "label": "Anonymous usage data & crash reports",
       "description": "Opt-in · never includes balances or addresses",
-      "help": "Helps us find bugs and improve the app. A random device ID is used — never linked to your wallet, keys, or identity. Turning this off stops all usage data leaving this device.",
-      "enable_aria": "Turn on anonymous usage data",
-      "disable_aria": "Turn off anonymous usage data"
+      "help": "Helps us find bugs and improve the app. Sends anonymous usage events and, if the app crashes, a scrubbed stack trace. A random device ID is used — never linked to your wallet, keys, or identity. Turning this off stops all usage data and crash reports leaving this device.",
+      "enable_aria": "Turn on anonymous usage data and crash reports",
+      "disable_aria": "Turn off anonymous usage data and crash reports"
     },
     "delete_account": {
       "title": "Danger Zone",

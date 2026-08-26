@@ -149,6 +149,7 @@
     "@scure/bip32": "2.2.0",
     "@scure/bip39": "1.6.0",
     "@scure/btc-signer": "2.2.0",
+    "@sentry/react": "10.71.0",
     "@solana/web3.js": "^1.98.4",
     "@stablelib/tss": "^2.0.1",
     "@supabase/supabase-js": "^2.112.3",
