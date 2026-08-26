@@ -72,7 +72,9 @@ jobs:
     # The test step now carries its own smaller timeout, so when it blows the
     # budget the job survives long enough to upload the evidence.
     # Job budget must stay comfortably ABOVE the test step's, never equal to it.
-    timeout-minutes: 45
+    # A clean macOS runner can spend more than 25 minutes compiling the full
+    # Capacitor dependency graph before the single smoke test starts.
+    timeout-minutes: 75
 
     steps:
       - name: Checkout
@@ -111,7 +113,7 @@ jobs:
         # MUST stay below the job's timeout-minutes. If this step is killed by
         # the JOB timeout instead of its own, the steps below never run and the
         # failure is invisible again — the exact regression issue #2008 describes.
-        timeout-minutes: 25
+        timeout-minutes: 45
         run: |
           set -o pipefail
           # xcodebuild refuses to overwrite an existing result bundle.
