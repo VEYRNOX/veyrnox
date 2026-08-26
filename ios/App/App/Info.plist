@@ -85,12 +85,25 @@
 	    below is COMMENTED OUT because a placeholder SPKI hash would reject
 	    every TLS handshake and brick the app in the field.
 
+	    ATS HAS TWO SEPARATE PIN ARRAYS AND THEY ARE NOT INTERCHANGEABLE.
+	    NSPinnedLeafIdentities is matched against the LEAF certificate;
+	    NSPinnedCAIdentities is matched against a CA in the chain and NEVER
+	    against the leaf. A leaf SPKI hash placed in NSPinnedCAIdentities
+	    matches nothing, so every connection to that domain fails — which is
+	    exactly the brick this HONEST-DISABLED gate exists to prevent. Each
+	    domain below therefore carries BOTH arrays: leaf hash in the leaf
+	    array, issuer hash in the CA array. (Android's <pin-set> has no such
+	    split — one list, any cert in the chain — so do not mirror this
+	    structure back into network_security_config.xml.)
+
 	    To ACTIVATE:
 	      1) `node scripts/capture-spki.mjs <host>` for each domain — prints
 	         current-leaf + current-issuer SPKI SHA-256 in base64.
-	      2) Uncomment the NSAppTransportSecurity dict, replace REPLACE_...
-	         values with the captured hashes (leaf first, issuer second — a
-	         rotated leaf keeps working while the issuer stays the same).
+	      2) Uncomment the NSAppTransportSecurity dict. Put the LEAF hash in
+	         NSPinnedLeafIdentities and the ISSUER hash in
+	         NSPinnedCAIdentities — see the warning above; do not put both in
+	         one array. A rotated leaf keeps working while the issuer stays
+	         the same, because the CA pin still matches.
 	      3) Ship an app update. A pin rotation without an app update WILL
 	         break installed users; iOS accepts that trade — keep a backup
 	         issuer pin one CA ahead.
@@ -106,12 +119,15 @@
 	            <key>supabase.co</key>
 	            <dict>
 	                <key>NSIncludesSubdomains</key><true/>
-	                <key>NSPinnedCAIdentities</key>
+	                <key>NSPinnedLeafIdentities</key>
 	                <array>
 	                    <dict>
 	                        <key>SPKI-SHA256-BASE64</key>
 	                        <string>REPLACE_WITH_LEAF_SPKI_SHA256_BASE64=</string>
 	                    </dict>
+	                </array>
+	                <key>NSPinnedCAIdentities</key>
+	                <array>
 	                    <dict>
 	                        <key>SPKI-SHA256-BASE64</key>
 	                        <string>REPLACE_WITH_ISSUER_SPKI_SHA256_BASE64=</string>
@@ -121,12 +137,15 @@
 	            <key>veyrnox.com</key>
 	            <dict>
 	                <key>NSIncludesSubdomains</key><true/>
-	                <key>NSPinnedCAIdentities</key>
+	                <key>NSPinnedLeafIdentities</key>
 	                <array>
 	                    <dict>
 	                        <key>SPKI-SHA256-BASE64</key>
 	                        <string>REPLACE_WITH_LEAF_SPKI_SHA256_BASE64=</string>
 	                    </dict>
+	                </array>
+	                <key>NSPinnedCAIdentities</key>
+	                <array>
 	                    <dict>
 	                        <key>SPKI-SHA256-BASE64</key>
 	                        <string>REPLACE_WITH_ISSUER_SPKI_SHA256_BASE64=</string>
@@ -136,12 +155,15 @@
 	            <key>publicnode.com</key>
 	            <dict>
 	                <key>NSIncludesSubdomains</key><true/>
-	                <key>NSPinnedCAIdentities</key>
+	                <key>NSPinnedLeafIdentities</key>
 	                <array>
 	                    <dict>
 	                        <key>SPKI-SHA256-BASE64</key>
 	                        <string>REPLACE_WITH_LEAF_SPKI_SHA256_BASE64=</string>
 	                    </dict>
+	                </array>
+	                <key>NSPinnedCAIdentities</key>
+	                <array>
 	                    <dict>
 	                        <key>SPKI-SHA256-BASE64</key>
 	                        <string>REPLACE_WITH_ISSUER_SPKI_SHA256_BASE64=</string>
