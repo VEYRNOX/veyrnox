@@ -641,9 +641,15 @@ export async function tryRevealHidden(secret) {
               // deleteVaultDatabase) fires inside the 250 ms window, the
               // slot is gone; re-inserting would re-create part of the wiped
               // state. Missing → skip.
+              //
+              // Skip by NOT writing, never by returning early: a `return` here
+              // exits the setTimeout callback and jumps straight past the
+              // resolve() below, so _lastKdfRekey would never settle and any
+              // test awaiting _awaitPendingKdfRekey() on the wipe-raced path
+              // hangs to timeout. duress.js's mirror of this block resolves
+              // explicitly before returning; this shape needs no early exit.
               const existing = await getKey(wdb, slot);
-              if (existing == null) return;
-              await putKey(wdb, slot, fresh);
+              if (existing != null) await putKey(wdb, slot, fresh);
             } finally { wdb.close(); }
           }
         } catch { /* best-effort — reveal already returned the plaintext */ }
