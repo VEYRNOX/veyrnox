@@ -86,7 +86,6 @@ export function initSentry() {
       Sentry.functionToStringIntegration(),
     ],
     sendDefaultPii: false,
-    autoSessionTracking: false,
     tracesSampleRate: 0,
     beforeSend: scrub,
     beforeBreadcrumb: () => null,
