@@ -28,6 +28,13 @@ if (typeof globalThis.process === 'undefined') {
 import { applyRpcEnvOverrides } from '@/wallet-core/rpcConfig.js'
 applyRpcEnvOverrides()
 
+// Hydrate the native-secure-storage cache (iOS Keychain / Android Keystore)
+// before render so sync accessors (getSessionToken) see the persisted value on
+// the very first read. Fire-and-forget: fail-open (a missed hydrate degrades
+// to "no cached secret" and callers regenerate — see secureStore.js).
+import { hydrateSecureStore } from '@/lib/secureStore.js'
+hydrateSecureStore()
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from '@/App.jsx'

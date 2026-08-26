@@ -18,6 +18,7 @@ import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { sumSentTodayUSD } from "@/lib/txLimits";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
+import { getSessionToken, ensureSessionToken } from "@/lib/sessionRevocation";
 
 
 function getDeviceInfo() {
@@ -89,11 +90,7 @@ export default function SecurityCenter() {
     if (deniable) return;
     const registerSession = async () => {
       const info = getDeviceInfo();
-      const token = localStorage.getItem("sdw_session_token") || (() => {
-        const t = crypto.randomUUID();
-        localStorage.setItem("sdw_session_token", t);
-        return t;
-      })();
+      const token = ensureSessionToken();
       const existing = await base44.entities.UserSession.filter({ session_token: token, status: "active" });
       if (existing.length === 0) {
         await base44.entities.UserSession.create({
@@ -166,7 +163,7 @@ export default function SecurityCenter() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tx-limits"] }),
   });
 
-  const currentToken = localStorage.getItem("sdw_session_token");
+  const currentToken = getSessionToken();
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

@@ -98,6 +98,18 @@ function isVeyrnoxPairingUrl(u) {
  * @returns {string|null}
  */
 export function extractWcUri(rawUrl) {
+  const result = _extract(rawUrl);
+  emitDeepLinkAudit(result != null ? 'accept' : 'reject', {
+    // NEVER log the wc: URI itself (contains sym-key material). Only the
+    // ORIGIN of the URL and the outcome — enough for a monitor to spot
+    // repeated rejects without leaking key material.
+    origin: safeOrigin(rawUrl),
+    length: typeof rawUrl === 'string' ? rawUrl.length : 0,
+  });
+  return result;
+}
+
+function _extract(rawUrl) {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   if (rawUrl.length > MAX_WC_URI_LEN) return null;
   if (rawUrl.startsWith('wc:')) return rawUrl;
@@ -113,4 +125,29 @@ export function extractWcUri(rawUrl) {
   } catch {
     return null;
   }
+}
+
+function safeOrigin(rawUrl) {
+  if (typeof rawUrl !== 'string') return null;
+  if (rawUrl.startsWith('wc:')) return 'wc-raw';
+  try { const u = new URL(rawUrl); return `${u.protocol}//${u.hostname}`; }
+  catch { return null; }
+}
+
+/**
+ * Fire a same-tab audit event for every deep-link decision. The origin allow-
+ * list in isVeyrnoxPairingUrl() is the security control; this event is the
+ * evidence trail — a monitor (or a future rate-limiter) can subscribe without
+ * this module having to know about it. Best-effort; a missing bus never
+ * blocks pairing.
+ * @param {'accept'|'reject'} decision
+ * @param {{origin:string|null, length:number}} meta
+ */
+export function emitDeepLinkAudit(decision, meta) {
+  try {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+    window.dispatchEvent(new CustomEvent('veyrnox:deeplink', {
+      detail: { decision, ...meta, at: Date.now() },
+    }));
+  } catch { /* noop */ }
 }
