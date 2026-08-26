@@ -178,7 +178,12 @@ export async function deniabilityKdfProfile() {
       seen.set(fp, kdf);
       votes.set(fp, (votes.get(fp) ?? 0) + 1);
     }
-    let bestFp = null;
+    // Annotated because `let x = null` infers the type `null`, and the
+    // assignment below is then a TS2322. Same refinement trap the Sol
+    // zeroization fix hit (weekly audit 2026-07-28, M-2) — typecheck runs in
+    // `verify` and `lint-and-build`, so it is a required-check failure, not a
+    // lint nit.
+    let bestFp = /** @type {string|null} */ (null);
     let bestCount = 0;
     for (const [fp, n] of votes) {
       // Strict > keeps the FIRST-probed profile on a tie, which preserves the

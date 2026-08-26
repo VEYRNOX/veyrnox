@@ -2635,9 +2635,15 @@ audited.
     `secondary`/`tertiary` and takes a majority vote, because #2103 rewrote those two
     and a poisoned probe would defeat the repair.
   - **Honest cost, stated plainly:** a device provisioned before 2026-08-24 keeps paying
-    the v1 (192 MiB) KDF on its deniability slots, permanently. That is latency, not
-    weaker crack-resistance — v1 is the *stronger* profile — and uniformity is the
-    load-bearing property. Fresh installs are all-v2.
+    the v1 profile (192 MiB / t=3) on its deniability slots, permanently, rather than v2
+    (96 MiB / t=6). Fresh installs are all-v2.
+    **The two profiles are the same total work — 192×3 = 96×6 = 576 MiB-passes.** So this
+    is not weaker crack-resistance in the aggregate; it is higher peak memory. If
+    anything v1 resists massively-parallel hardware slightly better (memory is the scarce
+    resource for a GPU/ASIC attacker), and v2 exists to halve peak memory for unlock
+    latency and memory pressure on mobile (#2054, the cold-unlock perf suite). The real
+    cost of holding the era is therefore latency and RAM on old installs, not security —
+    and uniformity is the load-bearing property either way.
   - **Gate 2's goal is not achievable for this data structure, and should not be
     re-attempted.** A pool cannot be migrated to a new era: chaff is indistinguishable
     from a real slot by construction (that is what hides the *count*), so it cannot be
