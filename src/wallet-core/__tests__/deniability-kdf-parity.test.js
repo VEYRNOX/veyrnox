@@ -15,16 +15,47 @@
 // pool stayed v1 across chaff and real alike. That preserved uniformity today
 // but pinned the whole footprint at v1 forever with no path forward.
 //
-// GATE 2 — REVEAL-TIME OPPORTUNISTIC REKEY (owner ruling, 2026-08-25):
-//   - Every writer stamps the CURRENT `KDF_PARAMS` (v2). No more per-device
-//     era lookup on the write path.
-//   - Reveal, duress-unlock, and panic-unlock silently rekey the slot they
-//     just opened to the current profile, if it disagrees.
-//   - HONEST COST: on a v1-era device, a hidden wallet the user never opens
-//     again keeps its v1 slot while everything around it migrates. That
-//     specific slot becomes a transient tell for the length of time it takes
-//     the user to actively reveal it. The owner accepted this as the smallest
-//     honest shape that does not clobber real data.
+// GATE 2 was that path forward, and it did not work (owner ruling 2026-08-25,
+// REVERTED for the write path 2026-08-26 after the daily security diff #2111).
+// It pointed every writer at the current `KDF_PARAMS` and had reveal/duress
+// opportunistically rekey the slot just opened. Its stated cost was "a transient
+// tell during the rekey window", attached to the slot the user never opens.
+//
+// BOTH HALVES OF THAT WERE INVERTED, which is why this suite now reads the way
+// it does:
+//   - NOT TRANSIENT. Chaff cannot be rekeyed — nothing can decrypt it — and
+//     ensureStealthPool only fills MISSING slots, never rewrites one. So a v1
+//     pool stays v1 permanently. There is no window.
+//   - THE TELL IS ON THE REAL SLOT, NOT THE UNOPENED ONE. Since everything
+//     around it stays v1, the slot that gets written or revealed becomes the
+//     only v2 blob among 257. The minority `kdf` object IS the hidden wallet.
+//     For 'secondary' it is worse still: that key's meaning is unambiguous, so a
+//     v2 'secondary' announces "this user configured a duress PIN".
+//
+// WHY THE POOL SIMPLY CANNOT MIGRATE (the constraint that decides everything
+// here — do not re-derive it, and do not "fix" these tests by sweeping):
+//   - You cannot sweep chaff forward to match: chaff is indistinguishable from a
+//     real slot by construction, so a sweep cannot select its targets and would
+//     overwrite other hidden wallets whose mnemonics exist nowhere else.
+//   - You cannot edit the `kdf` field in place: paramsFromVault derives the key
+//     from it, and v:2 AAD-binds it into the GCM tag.
+//   - You cannot re-encrypt an UNREVEALED hidden wallet at all — that needs its
+//     secret. So a pool holding one can never be uniform at a new era.
+// Holding the era is the only option that neither destroys wallets nor moves the
+// tell onto the wallets hidden hardest.
+//
+// THE INVARIANT THIS SUITE NOW DEFENDS:
+//   - Every writer stamps THIS DEVICE'S recorded era via encryptDeniabilityVault
+//     / makeChaff(era) — stealth create/move/AP-record, setDuressVault,
+//     setPanicVault. A fresh device's era IS KDF_PARAMS, so new installs are
+//     all-v2 and self-consistent.
+//   - Reveal and duress-unlock still carry an opportunistic re-encrypt, but it
+//     is now a REPAIR toward the footprint's era rather than a migration toward
+//     the current default. Its job is healing a device that already ran #2103
+//     and wrote a v2 blob into a v1 footprint. On a device that never did, it
+//     never fires.
+//   - Panic-unlock does NOT rekey. That exclusion is unrelated to any of the
+//     above and stands on its own (reviewer C-1 on #2103) — see its test.
 //
 // These tests write REAL v1-era encrypted blobs into the shared store to stand
 // in for a pre-2026-08-24 device, then exercise the genuine write and reveal
@@ -57,6 +88,7 @@ import {
   vaultNeedsKdfMigration,
 } from '../vault.js';
 import { FIXED_LEN, padToFixedLen, makeContainer, serializeContainer, newWalletId } from '../multiVault.js';
+import { deniabilityKdfProfile } from '../deniabilityKdfProfile.js';
 
 const POOL_SIZE = 256;
 const SLOT_KEYS = Array.from({ length: POOL_SIZE }, (_, i) => `vault:${i + 1}`);
@@ -147,6 +179,24 @@ async function clearStore() {
   }
 }
 
+// Delete SPECIFIC slots, leaving the rest of the footprint intact — used to
+// stage the backfill case (a pool that grew, or lost a slot) on a device whose
+// remaining blobs still record the old era.
+async function clearSlots(keys) {
+  const db = await openStore();
+  try {
+    for (const key of keys) {
+      await new Promise((res, rej) => {
+        const r = db.transaction('vault', 'readwrite').objectStore('vault').delete(key);
+        r.onsuccess = () => res();
+        r.onerror = () => rej(r.error);
+      });
+    }
+  } finally {
+    db.close();
+  }
+}
+
 async function dumpStore() {
   const db = await openStore();
   try {
@@ -183,90 +233,193 @@ function kdfFingerprints(store, keys) {
 
 const CURRENT_KDF_FINGERPRINT = JSON.stringify({ name: 'argon2id', ...KDF_PARAMS });
 
-describe('H-2 gate 2 — writers stamp current KDF_PARAMS uniformly (Shape X)', () => {
+const V1_KDF_FINGERPRINT = JSON.stringify({ ...V1_KDF });
+
+describe('H-2 — writers stamp THIS DEVICE\'S era, so the footprint stays uniform', () => {
   beforeEach(async () => {
     await clearStore();
     try { localStorage.clear(); } catch { /* jsdom */ }
   });
 
-  it('a hidden wallet created on any device stamps the current v2 profile (not the device era)', async () => {
+  // Each of the three writers gets its own case rather than one combined
+  // assertion, so a regression names the writer that broke. #2103 broke all
+  // three at once and a single test would have said only "something drifted".
+  it('createHiddenWallet stamps the device era, NOT the current default', async () => {
     await seedV1ChaffOnly();
     await createHiddenWallet('kdf-parity-secret-writer');
 
+    // The whole point: after a real write, the pool is STILL uniform. There is
+    // no slot whose kdf differs, so there is nothing to sort the dump by.
     const store = await dumpStore();
-    // Find the slot that is no longer chaff — the one whose kdf matches current.
-    const realSlots = SLOT_KEYS.filter((k) => JSON.stringify(store[k].kdf) === CURRENT_KDF_FINGERPRINT);
-    expect(realSlots.length).toBe(1);
+    expect([...kdfFingerprints(store, SLOT_KEYS)]).toEqual([V1_KDF_FINGERPRINT]);
+    // Stated the other way round, because this is the exact failure #2103 had:
+    // no slot may match the current default on a v1-era device.
+    const odd = SLOT_KEYS.filter((k) => JSON.stringify(store[k].kdf) === CURRENT_KDF_FINGERPRINT);
+    expect(odd).toEqual([]);
   }, 300_000);
 
-  it('setDuressVault stamps the current v2 profile even on a v1-era device', async () => {
+  it('setDuressVault stamps the device era on a v1-era device', async () => {
+    // The sharpest case in the suite. 'secondary' is the duress key by name, so
+    // an odd `kdf` here does not merely hint that some slot is real — it says
+    // the user deliberately configured a duress PIN, which is precisely what
+    // duress exists to deny.
     await seedV1ChaffOnly();
     await setDuressVault(generateMnemonic(128), 'duress-password-1234');
 
     const decoy = await get('secondary');
-    expect(JSON.stringify(decoy.kdf)).toBe(CURRENT_KDF_FINGERPRINT);
+    expect(JSON.stringify(decoy.kdf)).toBe(V1_KDF_FINGERPRINT);
+    expect(JSON.stringify(decoy.kdf)).not.toBe(CURRENT_KDF_FINGERPRINT);
   }, 300_000);
 
-  it('setPanicVault stamps the current v2 profile even on a v1-era device', async () => {
+  it('setPanicVault stamps the device era on a v1-era device', async () => {
     await seedV1ChaffOnly();
     await setPanicVault('12345678');
 
     const marker = await get('tertiary');
-    expect(JSON.stringify(marker.kdf)).toBe(CURRENT_KDF_FINGERPRINT);
+    expect(JSON.stringify(marker.kdf)).toBe(V1_KDF_FINGERPRINT);
+    expect(JSON.stringify(marker.kdf)).not.toBe(CURRENT_KDF_FINGERPRINT);
   }, 300_000);
 
-  it('a fresh device writes the current v2 profile everywhere it writes', async () => {
+  it('backfilled chaff matches the pool it lands in, not the current default', async () => {
+    // ensureStealthPool only refills MISSING slots, so this is what happens when
+    // the pool grows or a slot is lost on an established device. Under #2103 the
+    // fresh chaff stamped current params and became the odd one out — chaff
+    // failing at the one job chaff has.
+    await seedV1ChaffOnly();
+    await clearSlots(SLOT_KEYS.slice(0, 3));
+    await ensureStealthPool();
+
+    const store = await dumpStore();
+    expect([...kdfFingerprints(store, SLOT_KEYS)]).toEqual([V1_KDF_FINGERPRINT]);
+  }, 300_000);
+
+  it('a FRESH device writes the current v2 profile everywhere — era resolves to KDF_PARAMS', async () => {
+    // The other half of the invariant, and the reason holding the era is not a
+    // permanent v1 sentence for the product: a device with nothing to read back
+    // gets KDF_PARAMS, so new installs are all-v2 and self-consistent. Only
+    // devices provisioned before 2026-08-24 stay at v1.
     await ensureStealthPool();
     await createHiddenWallet('kdf-parity-fresh-writer');
 
     const store = await dumpStore();
     const slots = Object.keys(store).filter((k) => k.startsWith('vault:'));
-    const fingerprints = kdfFingerprints(store, slots);
-    // Every slot the pool wrote goes at the current profile — the fresh-device
-    // property is unchanged by Gate 2.
-    expect([...fingerprints]).toEqual([CURRENT_KDF_FINGERPRINT]);
+    expect([...kdfFingerprints(store, slots)]).toEqual([CURRENT_KDF_FINGERPRINT]);
   }, 300_000);
 });
 
-describe('H-2 gate 2 — reveal-time opportunistic rekey', () => {
+describe('H-2 — the era probe reads the POOL, not a rewritable slot', () => {
+  // Direct coverage for deniabilityKdfProfile(). The repair and writer tests
+  // exercise it only as a proxy, and both of their scenarios survive a probe
+  // that is wrong in isolation — so without these the probe's two protections
+  // (pool-first ordering, majority vote) would be untested machinery. That is
+  // the same shape of gap the fastpath tests had.
   beforeEach(async () => {
     await clearStore();
     try { localStorage.clear(); } catch { /* jsdom */ }
   });
 
-  it('revealHidden rekeys a v1 hidden slot to the current profile after a successful decrypt', async () => {
-    // Establish the per-device slot salt so slotForSecret is deterministic here
-    // — createHiddenWallet on some placeholder secret provisions it and gives us
-    // a known primary slot to inspect. That real wallet is unrelated to what we
-    // test next; we clear it out and drop a v1-encrypted blob under a KNOWN slot.
-    await createHiddenWallet('placeholder-secret-12345', 128);
-    await clearStore();
+  it('a #2103-rewritten v2 "secondary" does not poison the device era', async () => {
+    // The failure this ordering exists to prevent. setDuressVault/setPanicVault
+    // DO rewrite secondary/tertiary — the old probe order assumed they never
+    // did — so on a device that ran #2103 with a duress PIN set, reading
+    // 'secondary' first reports v2 with total confidence. Every later write
+    // then lands at v2 while the 256 stealth slots stay v1, and the repair path
+    // concludes there is nothing to fix.
+    await seedV1ChaffOnly();
+    await put('secondary', chaffAt({ name: 'argon2id', ...KDF_PARAMS }));
+    await put('tertiary', chaffAt({ name: 'argon2id', ...KDF_PARAMS }));
 
-    // Compute the slot for our test secret (relies on the salt just provisioned).
+    const era = await deniabilityKdfProfile();
+    expect(JSON.stringify({ name: 'argon2id', ...era })).toBe(V1_KDF_FINGERPRINT);
+  }, 300_000);
+
+  it('one drifted slot inside the sample loses the vote to the pool', async () => {
+    // A sampled slot may hold a REAL hidden wallet rather than chaff, and if it
+    // was written by the #2103 build it records v2. First-match-wins would let
+    // that single slot decide the era for the whole footprint; the majority
+    // vote needs 3 of the 5 sampled slots to be drifted before it flips.
+    await seedV1ChaffOnly();
+    await put('vault:1', chaffAt({ name: 'argon2id', ...KDF_PARAMS }));
+
+    const era = await deniabilityKdfProfile();
+    expect(JSON.stringify({ name: 'argon2id', ...era })).toBe(V1_KDF_FINGERPRINT);
+  }, 300_000);
+
+  it('a fresh device with no footprint answers KDF_PARAMS', async () => {
+    // The fallback that keeps new installs on v2 — without it, holding the era
+    // really would be a permanent v1 sentence rather than a per-device one.
+    const era = await deniabilityKdfProfile();
+    expect(JSON.stringify({ name: 'argon2id', ...era })).toBe(CURRENT_KDF_FINGERPRINT);
+  }, 300_000);
+});
+
+describe('H-2 — reveal-time REPAIR toward the footprint era', () => {
+  beforeEach(async () => {
+    await clearStore();
+    try { localStorage.clear(); } catch { /* jsdom */ }
+  });
+
+  it('revealHidden REPAIRS a #2103-drifted v2 slot back to the pool era', async () => {
+    // The repair path's actual job. Stage a device that ran #2103: a v1 pool,
+    // with ONE slot at the current default because a build in that window wrote
+    // or revealed it. That slot is the tell — the only v2 blob among 257 — and
+    // revealing it should pull it back into line with its neighbours.
+    //
+    // Note the direction. Under #2103 this test asserted the opposite: that a
+    // v1 slot is rekeyed UP to the current profile, which is what created the
+    // tell in the first place. Do not "restore" it.
+    await createHiddenWallet('placeholder-secret-12345', 128); // provisions the slot salt
+    await clearStore();
+    await seedV1ChaffOnly();
+
     const { slotForSecret } = await import('../stealth.js');
-    const secret = 'v1-hidden-secret-abcd';
+    const secret = 'drifted-hidden-secret-abcd';
     const slot = await slotForSecret(secret);
     const mnemonic = generateMnemonic(128);
     const container = makeContainer([{ id: newWalletId(), mnemonic }]);
-    const v1Blob = await encryptVault(serializeContainer(container), secret, V1_PARAMS);
-    // Sanity: the seeded blob really is at v1.
-    expect(vaultNeedsKdfMigration(v1Blob)).toBe(true);
-    await put(slot, v1Blob);
+    // The drifted blob: encrypted at the CURRENT default, sitting in a v1 pool.
+    const v2Blob = await encryptVault(serializeContainer(container), secret);
+    expect(JSON.stringify(v2Blob.kdf)).toBe(CURRENT_KDF_FINGERPRINT);
+    await put(slot, v2Blob);
 
-    // Act: reveal it.
     const revealed = await tryRevealHidden(secret);
     expect(revealed).not.toBeNull();
-
-    // Fire-and-forget rekey (H-1 timing budget) — wait for it to settle.
     await awaitStealthRekey();
 
-    // After a successful reveal, the slot should have been silently rekeyed.
+    // Repaired to match the pool, not moved further away from it.
     const after = await get(slot);
-    expect(vaultNeedsKdfMigration(after)).toBe(false);
-    expect(JSON.stringify(after.kdf)).toBe(CURRENT_KDF_FINGERPRINT);
-    // The blob still decrypts under the same secret (rekey preserves plaintext).
-    const revealedAgain = await tryRevealHidden(secret);
-    expect(revealedAgain).toBe(revealed);
+    expect(JSON.stringify(after.kdf)).toBe(V1_KDF_FINGERPRINT);
+
+    // The footprint is uniform again — which is the whole point, and is the
+    // assertion that would have caught #2103 on day one.
+    const store = await dumpStore();
+    expect([...kdfFingerprints(store, SLOT_KEYS)]).toEqual([V1_KDF_FINGERPRINT]);
+
+    // Repair preserves the plaintext — the wallet still opens under its secret.
+    expect(await tryRevealHidden(secret)).toBe(revealed);
+  }, 300_000);
+
+  it('revealHidden leaves an already-uniform slot ALONE (no needless rewrite)', async () => {
+    // On a device that never ran #2103 the predicate is false and nothing fires.
+    // Worth pinning: a rewrite-on-every-reveal would be a write-time observable
+    // (see the module header's WRITE-TIME OBSERVATION limitation) for no gain.
+    await createHiddenWallet('placeholder-secret-12345', 128);
+    await clearStore();
+    await seedV1ChaffOnly();
+
+    const { slotForSecret } = await import('../stealth.js');
+    const secret = 'uniform-hidden-secret-abcd';
+    const slot = await slotForSecret(secret);
+    const container = makeContainer([{ id: newWalletId(), mnemonic: generateMnemonic(128) }]);
+    const v1Blob = await encryptVault(serializeContainer(container), secret, V1_PARAMS);
+    await put(slot, v1Blob);
+
+    const before = JSON.stringify(await get(slot));
+    expect(await tryRevealHidden(secret)).not.toBeNull();
+    await awaitStealthRekey();
+
+    // Byte-identical, not merely same-profile: no re-encrypt happened at all.
+    expect(JSON.stringify(await get(slot))).toBe(before);
   }, 300_000);
 
   it('the stealth rekey SETTLES when the slot vanishes inside the window (wipe race)', async () => {
@@ -313,20 +466,29 @@ describe('H-2 gate 2 — reveal-time opportunistic rekey', () => {
     expect(await get(slot)).toBeNull();
   }, 300_000);
 
-  it('tryDuressUnlock rekeys the decoy slot to the current profile after a successful decrypt', async () => {
-    const decoyMnemonic = generateMnemonic(128);
+  it('tryDuressUnlock REPAIRS a #2103-drifted v2 decoy back to the pool era', async () => {
+    // Same repair, on the slot where the tell is most damaging: 'secondary' is
+    // the duress key by name, so a v2 blob there among 257 v1 ones does not just
+    // suggest something is real — it says a duress PIN was configured.
+    //
+    // This case is also why the era probe reads the stealth pool BEFORE
+    // 'secondary' (deniabilityKdfProfile.js PROBE_KEYS). With the old order the
+    // drifted decoy would be the first thing read, report v2 as the device era,
+    // and the repair would conclude there was nothing to fix.
+    await seedV1ChaffOnly();
     const password = 'duress-password-1234';
-    const container = makeContainer([{ id: newWalletId(), mnemonic: decoyMnemonic }]);
-    const v1Blob = await encryptVault(serializeContainer(container), password, V1_PARAMS);
-    await put('secondary', v1Blob);
+    const container = makeContainer([{ id: newWalletId(), mnemonic: generateMnemonic(128) }]);
+    const v2Blob = await encryptVault(serializeContainer(container), password);
+    expect(JSON.stringify(v2Blob.kdf)).toBe(CURRENT_KDF_FINGERPRINT);
+    await put('secondary', v2Blob);
 
-    const out = await tryDuressUnlock(password);
-    expect(out).not.toBeNull();
+    expect(await tryDuressUnlock(password)).not.toBeNull();
     await awaitDuressRekey();
 
     const after = await get('secondary');
-    expect(vaultNeedsKdfMigration(after)).toBe(false);
-    expect(JSON.stringify(after.kdf)).toBe(CURRENT_KDF_FINGERPRINT);
+    expect(JSON.stringify(after.kdf)).toBe(V1_KDF_FINGERPRINT);
+    // And it still opens under the duress password.
+    expect(await tryDuressUnlock(password)).not.toBeNull();
   }, 300_000);
 
   it('tryPanicUnlock DELIBERATELY does NOT rekey the panic marker (reviewer C-1 on PR #2103)', async () => {
@@ -382,32 +544,41 @@ describe('H-2 gate 2 — reveal-time opportunistic rekey', () => {
   }, 300_000);
 });
 
-describe('H-2 gate 2 — the accepted transient tell (honest limit)', () => {
+describe('H-2 — the footprint stays uniform (the property Gate 2 lost)', () => {
   beforeEach(async () => {
     await clearStore();
     try { localStorage.clear(); } catch { /* jsdom */ }
   });
 
-  it('an UN-OPENED v1 slot retains its v1 profile after new v2 writes land — this IS a transient distinguisher', async () => {
-    // Seed a v1-era device.
+  it('a real write into a v1-era pool leaves EXACTLY ONE fingerprint — no distinguisher at all', async () => {
+    // This test used to assert the opposite (`uniq.size === 2`), pinning the
+    // mixed state Gate 2 produced. Its own comment said that if it ever
+    // collapsed to one, the writer path had "regressed to per-device era
+    // (breaking it in the unsafe direction)".
+    //
+    // That framing was backwards, and this is the correction. The mixed state is
+    // not a smaller cost than a uniform v1 pool — it is a total loss of the
+    // property the pool exists for. In a two-fingerprint pool the MINORITY
+    // fingerprint is the real hidden wallet, readable from a dump with no secret
+    // by sorting on kdf.memorySize. Uniform-at-v1 costs latency (192 MiB vs 96);
+    // mixed costs the whole deniability guarantee. Per-device era is the SAFE
+    // direction.
     await seedV1ChaffOnly();
-
-    // Land a v2 write (a real hidden wallet under an unrelated secret) alongside
-    // the untouched v1 chaff. This is the mixed state the owner ruling accepted.
     await createHiddenWallet('gate-2-writer-secret-9999');
 
     const store = await dumpStore();
-    // The slot that was written stamps v2. The other 255 slots STILL stamp v1
-    // — nothing rewrote them, and Gate 2 explicitly does not.
-    const slotFingerprints = SLOT_KEYS.map((k) => JSON.stringify(store[k].kdf));
-    const uniq = new Set(slotFingerprints);
-    // TWO fingerprints coexist. If this test ever collapses to one, either
-    // Gate 2 has silently started sweeping unread slots (breaking the ruling
-    // in the safe direction but demanding a docs update), or the writer path
-    // regressed to per-device era (breaking it in the unsafe direction). Both
-    // matter — read the diff before "fixing" this test.
-    expect(uniq.size).toBe(2);
-    expect(uniq.has(CURRENT_KDF_FINGERPRINT)).toBe(true);
-    expect(uniq.has(JSON.stringify({ ...V1_KDF }))).toBe(true);
+    const uniq = new Set(SLOT_KEYS.map((k) => JSON.stringify(store[k].kdf)));
+    expect(uniq.size).toBe(1);
+    expect(uniq.has(V1_KDF_FINGERPRINT)).toBe(true);
+    expect(uniq.has(CURRENT_KDF_FINGERPRINT)).toBe(false);
+
+    // 'secondary' and 'tertiary' share the store and the dump, so they are part
+    // of the same uniformity claim — a reader sees all 258 blobs at once.
+    await setDuressVault(generateMnemonic(128), 'duress-password-1234');
+    await setPanicVault('12345678');
+    const full = await dumpStore();
+    const all = new Set([...SLOT_KEYS, 'secondary', 'tertiary'].map((k) => JSON.stringify(full[k].kdf)));
+    expect(all.size).toBe(1);
+    expect(all.has(V1_KDF_FINGERPRINT)).toBe(true);
   }, 300_000);
 });

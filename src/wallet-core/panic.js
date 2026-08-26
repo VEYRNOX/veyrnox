@@ -90,12 +90,22 @@
 // vault crypto internals (vault.js / vaultStore.js / signing.js); it reuses
 // encryptVault/decryptVault verbatim for the panic marker.
 
-import { decryptVault, encryptVault, vaultNeedsKdfMigration } from './vault.js';
-// Gate 2 (H-2, owner ruling 2026-08-25): the panic marker is stamped at the
-// CURRENT KDF_PARAMS on write; a v1 marker carried across a profile change
-// silently rekeys on the next successful panic unlock (before the wipe fires).
-// deniabilityKdfProfile.js is no longer imported here — panic.js stays fully
-// decoupled from the deniability modules it erases.
+import { decryptVault } from './vault.js';
+// H-2 (weekly audit 2026-08-25): the panic marker must record the SAME Argon2id
+// profile as the duress blob and the stealth pool it sits beside, or personalising
+// one slot after an at-rest profile change makes it the odd one out in a storage
+// dump. This is a params READER over the shared store, not a dependency on the
+// deniability modules this file erases — panic.js stays decoupled from those.
+//
+// GATE 2 REVERTED FOR THE WRITE PATH (2026-08-26). #2103 pointed setPanicVault at
+// the current KDF_PARAMS, which on a pre-2026-08-25 device made 'tertiary' the
+// odd blob among 257. Reverted for the same reason as its two siblings; see
+// stealth.js's header for why sweeping the rest forward is not available.
+//
+// There is still NO REKEY on the panic READ path — that exclusion (reviewer C-1
+// on #2103) is unrelated and stands, see tryPanicUnlock. `vaultNeedsKdfMigration`
+// was imported for a rekey that C-1 removed and was never referenced; dropped.
+import { encryptDeniabilityVault } from './deniabilityKdfProfile.js';
 import { generateMnemonic } from './mnemonic.js';
 import { padToFixedLen, stripPad } from './multiVault.js';
 // BIO-05: biometric-2FA enabled tell. Imported (not hardcoded) so a rename in
@@ -650,7 +660,7 @@ export async function setPanicVault(panicPassword) {
   // still strip on decrypt for cleanliness/forward-safety. The marker is not a
   // container, so it uses the string-level padToFixedLen helper (NOT the JSON `pad`
   // field); the container FORMAT is unchanged.
-  const blob = await encryptVault(padToFixedLen(marker), panicPassword);
+  const blob = await encryptDeniabilityVault(padToFixedLen(marker), panicPassword);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');

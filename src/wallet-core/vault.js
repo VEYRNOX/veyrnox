@@ -492,14 +492,38 @@ export function vaultNeedsRekey(vault) {
  * @returns {boolean}
  */
 export function vaultNeedsKdfMigration(vault) {
+  return vaultKdfDiffersFrom(vault, KDF_PARAMS);
+}
+
+/**
+ * Whether a blob's recorded Argon2id params differ from an ARBITRARY profile.
+ * The general form of `vaultNeedsKdfMigration`, which is now this with
+ * `KDF_PARAMS` bound.
+ *
+ * The deniability layer needs the general form because "correct" there is not
+ * the current at-rest default — it is whatever era the rest of the footprint is
+ * already recorded under (`deniabilityKdfProfile()`). A stealth slot that
+ * matches KDF_PARAMS while the 257 blobs beside it are at v1 is the DEFECT, not
+ * the goal: the odd `kdf` object is plaintext in a storage dump and picks that
+ * slot out. See deniabilityKdfProfile.js for the full rationale.
+ *
+ * Reads each blob's own recorded params through `paramsFromVault`, so the
+ * missing-field fallbacks stay in one place and cannot drift between the two
+ * comparisons.
+ *
+ * @param {Record<string, unknown>} vault
+ * @param {{memorySize:number, iterations:number, parallelism:number, hashLength:number}} params
+ * @returns {boolean}
+ */
+export function vaultKdfDiffersFrom(vault, params) {
   const k = /** @type {unknown} */ (vault && vault.kdf);
   if (k === 'kek-dek') return false;
   if (!k || typeof k !== 'object') return false;
   const p = paramsFromVault(vault);
-  return p.memorySize !== KDF_PARAMS.memorySize
-    || p.iterations !== KDF_PARAMS.iterations
-    || p.parallelism !== KDF_PARAMS.parallelism
-    || p.hashLength !== KDF_PARAMS.hashLength;
+  return p.memorySize !== params.memorySize
+    || p.iterations !== params.iterations
+    || p.parallelism !== params.parallelism
+    || p.hashLength !== params.hashLength;
 }
 
 /**
