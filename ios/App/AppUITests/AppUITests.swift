@@ -1,9 +1,16 @@
 // AppUITests.swift
 //
 // Minimal XCUITest smoke. Walks the current first-run flow — consent →
-// Get Started → 8-digit PIN → confirm PIN — and hard-fails if the KEK/RASP
-// fail-closed banner ever appears (that banner is the exact string Play
-// rejected build 5 for under Broken Functionality policy).
+// "New wallet" tile → 8-digit PIN → confirm PIN — and hard-fails if the
+// KEK/RASP fail-closed banner ever appears (that banner is the exact string
+// Play rejected build 5 for under Broken Functionality policy).
+//
+// Every label below is UI copy, which means this file rots silently whenever
+// the app's copy changes. It already did once: Slice D1 replaced the welcome
+// hero with entry tiles on 2026-08-10 and this test kept waiting for a button
+// that no longer existed (#2109). If you change a label here, change it in
+// src/__tests__/firebase-test-lab-onboarding.test.js too — that guard runs on
+// every PR and is what catches the drift while this suite is unreliable.
 //
 // Run locally with `xcodebuild test` against a booted simulator or a paired
 // device. Runs in CI via .github/workflows/ios-xcuitest-smoke.yml. Real-
@@ -34,19 +41,39 @@ final class AppUITests: XCTestCase {
             "WebView never rendered — app did not launch."
         )
 
-        // 1. Telemetry consent screen may appear before the welcome screen
+        // 1. Telemetry consent screen may appear before the entry tiles
         //    (2026-07-26 addition). Dismiss it with the deny path — the smoke
         //    is not opting real data into anything. Tolerate its absence: on
         //    a device with prior consent state the screen is skipped.
+        //    "No thanks" is telemetry_consent.cta_deny in
+        //    src/i18n/locales/en/security.json.
         tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
 
-        // 2. Welcome screen — the single "Get Started" button hands off to
-        //    PIN-create. Create vs import is chosen later.
+        // 2. Entry tiles — the fresh-device landing. Slice D1 (2026-08-10)
+        //    replaced WelcomeHero's single "Get Started" action with a 4-tile
+        //    picker; "New wallet" is the create path and hands off to
+        //    PIN-create exactly as Get Started used to. WalletEntry.jsx still
+        //    contains the old hero, but its `view === "welcome"` branch is
+        //    documented there as dead — "no live path sets this view any
+        //    more" — so the button this test used to wait for could never
+        //    appear. It waited 15s for it on every run from 2026-08-10 until
+        //    #2109, and nobody saw, because the job never completed.
+        //
+        //    The label is EntryTiles.jsx's explicit `aria-label={label}`, so
+        //    the accessible name is exactly this string rather than a
+        //    concatenation of the tile's title and subtitle. Source of truth
+        //    is the TILES array in src/components/EntryTiles.jsx, and the
+        //    guard in src/__tests__/firebase-test-lab-onboarding.test.js ties
+        //    the two together so they cannot drift apart again.
+        //
+        //    Android's Robo script already clicked "New wallet"; only iOS was
+        //    left behind. Both platforms render the same web UI — if these two
+        //    ever disagree again, one of them is wrong.
         tapButton(
             app: app,
-            label: "Get Started",
+            label: "New wallet",
             timeout: 15,
-            failureMessage: "Welcome / Get Started never appeared."
+            failureMessage: "Entry tiles / 'New wallet' never appeared."
         )
 
         // 3. PIN pad: 8 digits, then tap the submit button. PinPad's submit
