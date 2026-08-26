@@ -60,14 +60,41 @@ import { KDF_PARAMS, assertSaneKdfParams, encryptVault } from './vault.js';
 const DB_NAME = 'veyrnox-vault';
 const STORE = 'vault';
 
-// Probe order. Deniability slots first — they are the blobs that MUST agree with
-// each other. 'primary' is the last-resort anchor for a device that has a wallet
-// but no deniability footprint yet (e.g. the WalletEntry path that skips
-// provisionDeniabilityChaff), so the first chaff written there still matches the
-// era of the vault beside it. 'quaternary' (the audit-log blob) is deliberately
-// NOT probed: it is rewritten on ordinary use, so it tracks recency rather than
-// the device's provisioning era.
-const PROBE_KEYS = Object.freeze(['secondary', 'tertiary', 'vault:1', 'primary']);
+// Probe order. STEALTH-POOL SLOTS FIRST (changed 2026-08-26), then the duress
+// and panic slots, then 'primary' as a last-resort anchor for a device that has
+// a wallet but no deniability footprint yet (e.g. the WalletEntry path that
+// skips provisionDeniabilityChaff). 'quaternary' (the audit-log blob) is
+// deliberately NOT probed: it is rewritten on ordinary use, so it tracks
+// recency rather than the device's provisioning era.
+//
+// WHY THE POOL AND NOT 'secondary' (this order was the other way round until
+// #2103 invalidated its premise). The original reasoning was that secondary and
+// tertiary "are written once at PIN creation and effectively never rewritten,
+// so they are the most faithful record of the device's era". setDuressVault and
+// setPanicVault DO rewrite them — and #2103 pointed those writers at the current
+// default. So on any device that ran that build and set a duress PIN, 'secondary'
+// records v2 while the 256 stealth slots beside it are still v1, and probing it
+// first reports the wrong era with total confidence. That poisons every
+// subsequent write AND the repair path that is supposed to heal it.
+//
+// The stealth slots carry no such hazard: ensureStealthPool only ever fills a
+// MISSING slot and never rewrites one, so a chaff slot really is written once
+// and is the faithful record the old comment wanted.
+const PROBE_KEYS = Object.freeze([
+  'vault:1', 'vault:2', 'vault:3', 'vault:4', 'vault:5',
+  'secondary', 'tertiary', 'primary',
+]);
+
+// How many leading PROBE_KEYS are stealth-pool slots. Those are voted on rather
+// than first-match-wins: a slot may hold a REAL hidden wallet rather than chaff,
+// and if that wallet was written by the #2103 build it records the current
+// default instead of the pool's era. One such slot among the sample would
+// otherwise steer every future write wrong. Reading 5 and taking the majority
+// makes that need 3 of the 5 sampled slots to be #2103-written real wallets,
+// which is vanishingly unlikely (a user has a handful of hidden wallets spread
+// over 256 slots). The remaining keys stay first-match-wins — by the time we
+// reach them there is no pool to vote over.
+const POOL_PROBE_COUNT = 5;
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -87,6 +114,35 @@ function getKey(db, key) {
     r.onsuccess = () => res(r.result ?? null);
     r.onerror = () => rej(r.error);
   });
+}
+
+/**
+ * One probe: the `kdf` object recorded by the blob at `key`, or null if there is
+ * nothing usable there. Null covers absent, unreadable, a 'kek-dek' blob (its
+ * kdf is the STRING 'kek-dek' — it derives no Argon2id key, so it records no
+ * profile), and a malformed or out-of-range record. The range check is the same
+ * `assertSaneKdfParams` the read path applies, so a corrupt or hostile blob
+ * cannot steer a new write to an OOM-sized memorySize.
+ *
+ * @param {IDBDatabase} db
+ * @param {string} key
+ * @returns {Promise<Record<string, unknown>|null>}
+ */
+async function readProfile(db, key) {
+  let blob;
+  try {
+    blob = await getKey(db, key);
+  } catch {
+    return null;
+  }
+  const kdf = blob && blob.kdf;
+  if (!kdf || typeof kdf !== 'object') return null;
+  try {
+    assertSaneKdfParams(/** @type {any} */ (kdf));
+  } catch {
+    return null;
+  }
+  return /** @type {Record<string, unknown>} */ (kdf);
 }
 
 /**
@@ -110,23 +166,38 @@ export async function deniabilityKdfProfile() {
     return KDF_PARAMS;
   }
   try {
-    for (const key of PROBE_KEYS) {
-      let blob;
-      try {
-        blob = await getKey(db, key);
-      } catch {
-        continue;
-      }
-      // Absent, or a 'kek-dek' blob (kdf is the STRING 'kek-dek' — it derives no
-      // Argon2id key, so it records no profile).
-      const kdf = blob && blob.kdf;
-      if (!kdf || typeof kdf !== 'object') continue;
-      try {
-        assertSaneKdfParams(/** @type {any} */ (kdf));
-      } catch {
-        continue; // malformed/out-of-range record — keep looking
-      }
-      return Object.freeze({ ...kdf });
+    // Pass 1 — vote over the stealth-pool sample. See POOL_PROBE_COUNT.
+    /** @type {Map<string, Record<string, unknown>>} */
+    const seen = new Map();
+    /** @type {Map<string, number>} */
+    const votes = new Map();
+    for (const key of PROBE_KEYS.slice(0, POOL_PROBE_COUNT)) {
+      const kdf = await readProfile(db, key);
+      if (!kdf) continue;
+      const fp = JSON.stringify(kdf);
+      seen.set(fp, kdf);
+      votes.set(fp, (votes.get(fp) ?? 0) + 1);
+    }
+    // Annotated because `let x = null` infers the type `null`, and the
+    // assignment below is then a TS2322. Same refinement trap the Sol
+    // zeroization fix hit (weekly audit 2026-07-28, M-2) — typecheck runs in
+    // `verify` and `lint-and-build`, so it is a required-check failure, not a
+    // lint nit.
+    let bestFp = /** @type {string|null} */ (null);
+    let bestCount = 0;
+    for (const [fp, n] of votes) {
+      // Strict > keeps the FIRST-probed profile on a tie, which preserves the
+      // old first-match-wins behaviour for a 1-1 split rather than picking
+      // arbitrarily by Map order.
+      if (n > bestCount) { bestFp = fp; bestCount = n; }
+    }
+    if (bestFp != null) return Object.freeze({ .../** @type {any} */ (seen.get(bestFp)) });
+
+    // Pass 2 — no readable pool (fresh device, wiped, or a storage fault).
+    // First match wins among the remaining anchors.
+    for (const key of PROBE_KEYS.slice(POOL_PROBE_COUNT)) {
+      const kdf = await readProfile(db, key);
+      if (kdf) return Object.freeze({ ...kdf });
     }
   } finally {
     try { db.close(); } catch { /* best-effort */ }
