@@ -116,7 +116,37 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
     expect(screen.queryByTestId(FASTPATH_BUTTON_TESTID)).toBeNull();
   });
 
-  it('fastpath explicitly OFF ("0") → button hidden', async () => {
+  // ── THE GATE MATRIX BELOW IS SKIPPED, NOT DELETED ─────────────────────────
+  //
+  // UN-SKIP CONDITION: the moment `fastpathButtonVisible` in WalletEntry.jsx
+  // stops being a literal `false` and becomes a real expression again, remove
+  // the `.skip` from all four tests below and confirm each one still fails for
+  // ITS OWN reason (flip the single gate it names and watch exactly that test
+  // go red — not all four at once).
+  //
+  // WHY THEY CANNOT STAY ACTIVE. #2106 replaced the six-condition gate with
+  // `const fastpathButtonVisible = false`, so every one of these passes for the
+  // same reason the "all gates pass" test above does: nothing renders, ever.
+  // Their localStorage / decoy / passkey setup is inert — the conditions they
+  // name (explicit opt-out, disclosure unseen, I3 decoy session, passkey
+  // registered) are no longer read by any code path. Left active they read as
+  // live coverage of an I3 chokepoint while asserting nothing about it, which is
+  // the failure mode CLAUDE.md's 2026-07-28 entry (PR #1418) documents: a test
+  // asserting a behaviour that can no longer occur is coverage that READS as
+  // present and is not.
+  //
+  // Skipped rather than deleted because the gate expression itself was removed
+  // from WalletEntry.jsx, not merely short-circuited — `isDeniabilityOrDemoActive()`
+  // and `hasSeenFastpathDisclosure()` no longer appear in it at all. Whoever
+  // restores the button has to re-author the I3 chokepoint from scratch, and
+  // these are the specs that say what it has to do. Deleting them would take
+  // that with it.
+  //
+  // The tripwire that sends you back here is the "all gates pass" test above:
+  // it is bidirectional and goes red the moment the button renders.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  it.skip('fastpath explicitly OFF ("0") → button hidden', async () => {
     // Explicit opt-out under the tri-state semantics. Disclosure is set so
     // the ONLY reason for hiding here is the explicit "0".
     localStorage.setItem(FASTPATH_ENABLED_STORAGE_KEY, '0');
@@ -127,7 +157,7 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
     expect(screen.queryByTestId(FASTPATH_BUTTON_TESTID)).toBeNull();
   });
 
-  it('disclosure not seen → button hidden (informed-consent chokepoint for default-ON)', async () => {
+  it.skip('disclosure not seen → button hidden (informed-consent chokepoint for default-ON)', async () => {
     // Under the default-ON reversal, isFastpathEnabled() returns true here
     // (absent key = default-on). The disclosure marker is the ONLY thing
     // preventing the button from appearing on a fresh install before the
@@ -139,7 +169,7 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
     expect(screen.queryByTestId(FASTPATH_BUTTON_TESTID)).toBeNull();
   });
 
-  it('decoy session → button hidden (I3 chokepoint)', async () => {
+  it.skip('decoy session → button hidden (I3 chokepoint)', async () => {
     armFastpath();
     setDeniabilitySession(true);
     vi.mocked(useWallet).mockReturnValue(makeCtx({ isDecoy: true }));
@@ -148,7 +178,7 @@ describe('WalletEntry — fast-path biometric button visibility matrix', () => {
     expect(screen.queryByTestId(FASTPATH_BUTTON_TESTID)).toBeNull();
   });
 
-  it('passkey registered → button hidden (owner ruling — passkey stays the sole biometric-adjacent factor)', async () => {
+  it.skip('passkey registered → button hidden (owner ruling — passkey stays the sole biometric-adjacent factor)', async () => {
     armFastpath();
     isPasskeyRegisteredMock.mockReturnValue(true);
     vi.mocked(useWallet).mockReturnValue(makeCtx());
