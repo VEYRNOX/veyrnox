@@ -66,14 +66,15 @@ jobs:
   xcuitest:
     continue-on-error: true
     runs-on: macos-latest
-    # Budget note (see issue #2008). A JOB-level timeout kills the whole job,
-    # including `Upload test log` — which is why 26 consecutive runs produced
-    # zero artifacts and nobody could see why the test step never finished.
-    # The test step now carries its own smaller timeout, so when it blows the
-    # budget the job survives long enough to upload the evidence.
-    # Job budget must stay comfortably ABOVE the test step's, never equal to it.
-    # A clean macOS runner can spend more than 25 minutes compiling the full
-    # Capacitor dependency graph before the single smoke test starts.
+    # Budget note (issues #2008, #2109). A JOB-level timeout kills the whole
+    # job, including `Upload test log` — which is why run after run produced
+    # zero artifacts and nobody could see why the test never finished. Each
+    # long step therefore carries its OWN smaller timeout, so when one blows its
+    # budget the job survives to upload the evidence.
+    #
+    # The job budget must stay comfortably above the SUM of the step budgets it
+    # contains, never equal to it: build 35 + test 20 = 55, plus ~3 min of
+    # setup and the cache save, inside 75. If you raise a step, raise this too.
     timeout-minutes: 75
 
     steps:
@@ -104,31 +105,148 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      # hashFiles() cannot live in job-level `env:` — that is evaluated before
+      # checkout, when the files do not exist yet and it returns empty. Computed
+      # here instead, after checkout, and reused by the restore and save keys so
+      # the two cannot drift apart.
+      - name: Compute build cache key
+        # Kept on one line on purpose: a newline inside ${{ }} is the kind of
+        # thing that only fails at runtime, and a runtime failure here costs a
+        # scarce 75-minute macOS slot to discover.
+        run: echo "DD_HASH=${{ hashFiles('ios/App/App.xcodeproj/project.pbxproj', 'ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}" >> "$GITHUB_ENV"
+
+      # ── Build caching + build/test split (#2109) ─────────────────────────
+      # `Run AppUITests` used to cover BOTH the compile and the test, and it has
+      # never once completed: 55 min on main (four consecutive runs, to the
+      # second), 57 min after the budget went to 75/45. Nobody knows which half
+      # is slow, because on that path NOTHING after it runs — not the
+      # `if: always()` upload steps, not even `Post Checkout`.
+      #
+      # That last fact is why the caching below is written the long way. A plain
+      # `actions/cache` saves in a POST step, and post steps never run here — so
+      # the cache would never be written on exactly the runs that did the
+      # compiling, and would sit empty forever. The save has to happen BEFORE
+      # the step that kills the job, which means the build has to be its own
+      # step. Hence restore/save split, and build-for-testing separated from
+      # test-without-building.
+      #
+      # The split pays for itself either way: two step durations answer #2109's
+      # open question directly. Slow build → caching is the right lever. Fast
+      # build, hung test → the compile is exonerated and the hang is the thing
+      # to chase, with a log that now actually gets uploaded.
+      - name: Restore SPM packages cache
+        id: spm-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ios/App/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      # Only Build/ and the module cache — NOT Index.noindex, which is the bulk
+      # of DerivedData, is useless to a build, and would evict other caches from
+      # the repo's shared 10 GB budget (npm's included) via LRU.
+      #
+      # HONEST CAVEAT: DerivedData reuse across runners is unreliable. Clang
+      # module hashes and absolute paths make Xcode discard a restored cache and
+      # rebuild anyway more often than the artifact size suggests. Pinning
+      # -derivedDataPath is what makes reuse possible at all, but a restored
+      # cache is NOT a guaranteed hit. Read the build step's duration, not the
+      # "cache restored" line — and if the duration does not move across two or
+      # three runs, delete this rather than leaving a cache that only costs.
+      - name: Restore DerivedData cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ios/App/DerivedData/Build
+            ios/App/DerivedData/ModuleCache.noindex
+          key: xcode-dd-${{ runner.os }}-${{ env.DD_HASH }}-${{ github.sha }}
+          restore-keys: |
+            xcode-dd-${{ runner.os }}-${{ env.DD_HASH }}-
+            xcode-dd-${{ runner.os }}-
+
       - name: Resolve SPM packages
         working-directory: ios/App
-        run: xcodebuild -project App.xcodeproj -resolvePackageDependencies
+        # -clonedSourcePackagesDirPath puts the checkouts where the cache above
+        # can find them. Without it they land under a build-hash-keyed
+        # DerivedData path, i.e. nowhere a cache can be pinned to. Every later
+        # xcodebuild invocation MUST pass the same flag or it re-clones them.
+        run: |
+          xcodebuild -project App.xcodeproj \
+            -resolvePackageDependencies \
+            -clonedSourcePackagesDirPath SourcePackages
+
+      - name: Build for testing
+        working-directory: ios/App
+        # Its own budget, well under the job's 75. If the compile alone cannot
+        # fit here, that is the finding — and unlike the old combined step, the
+        # save + upload steps below still run to tell you so.
+        timeout-minutes: 35
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project App.xcodeproj \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -clonedSourcePackagesDirPath SourcePackages \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee xcodebuild-build.log | xcbeautify --renderer github-actions || {
+              echo "xcodebuild build-for-testing failed"
+              exit 1
+            }
+
+      # SAVE BEFORE THE TEST RUNS. This is the whole point of the restructure:
+      # once the test step starts, nothing after it is guaranteed to execute.
+      # `if: always()` so a build that times out still banks whatever it
+      # managed to compile — a partial cache makes the NEXT run cheaper, which
+      # is how a job that cannot finish in one sitting ever converges.
+      - name: Save DerivedData cache
+        if: always()
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ios/App/DerivedData/Build
+            ios/App/DerivedData/ModuleCache.noindex
+          # github.sha makes the key unique per commit, so this never collides
+          # with an existing entry and never needs the "already exists" warning.
+          key: xcode-dd-${{ runner.os }}-${{ env.DD_HASH }}-${{ github.sha }}
+
+      - name: Save SPM packages cache
+        if: always() && steps.spm-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ios/App/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
       - name: Run AppUITests
         working-directory: ios/App
-        # MUST stay below the job's timeout-minutes. If this step is killed by
-        # the JOB timeout instead of its own, the steps below never run and the
-        # failure is invisible again — the exact regression issue #2008 describes.
-        timeout-minutes: 45
+        # test-without-building: the compile already happened in its own step
+        # above, so this budget covers the TEST only. Keeping it well under the
+        # job's 75 matters for the reason #2008 documents — a step killed by the
+        # JOB timeout takes the upload steps with it and the failure goes
+        # invisible again. With the build split out, 20 min is generous for one
+        # smoke test whose own per-test allowance is 300s.
+        timeout-minutes: 20
         run: |
           set -o pipefail
           # xcodebuild refuses to overwrite an existing result bundle.
           rm -rf TestResults.xcresult
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project App.xcodeproj \
             -scheme App \
             -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
             -only-testing:AppUITests/AppUITests/test_freshInstall_createsWalletWithoutFailureBanner \
             -resultBundlePath TestResults.xcresult \
+            -clonedSourcePackagesDirPath SourcePackages \
+            -derivedDataPath DerivedData \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 300 \
             CODE_SIGNING_ALLOWED=NO \
             | tee xcodebuild.log | xcbeautify --renderer github-actions || {
-              echo "xcodebuild test failed"
+              echo "xcodebuild test-without-building failed"
               exit 1
             }
 
@@ -152,8 +270,17 @@ jobs:
                 xcodebuild.log | tail -40 || echo 'No failure lines matched.'
               echo '```'
             } | tee -a "$GITHUB_STEP_SUMMARY"
+          elif [ -f xcodebuild-build.log ]; then
+            # No test log but a build log means the split did its job: the
+            # COMPILE is what ran out of budget, not the test.
+            {
+              echo '### xcuitest never reached the test — build step did not finish'
+              echo '```'
+              tail -40 xcodebuild-build.log
+              echo '```'
+            } | tee -a "$GITHUB_STEP_SUMMARY"
           else
-            echo 'No xcodebuild.log — the test step died before writing one.' \
+            echo 'Neither xcodebuild.log nor xcodebuild-build.log — the job died before either step wrote one.' \
               | tee -a "$GITHUB_STEP_SUMMARY"
           fi
 
@@ -176,7 +303,12 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: xcodebuild-log
-          path: ios/App/xcodebuild.log
+          # Both halves of the split: the build log is the one that matters when
+          # the COMPILE is what blew the budget, and it is written even when the
+          # test step never starts.
+          path: |
+            ios/App/xcodebuild.log
+            ios/App/xcodebuild-build.log
           if-no-files-found: warn
 
       - name: Upload result bundle
