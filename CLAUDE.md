@@ -150,7 +150,11 @@ outstanding.
 C-01 native fail-closed gate fixed (PR #825). Play Integrity ES256 JWS verification +
 nonce binding fixed (PRs #955, #1009).
 
-**Vault:** AES-256-GCM, Argon2id 192 MiB KDF. v:2 blobs with AAD binding (PR #1076).
+**Vault:** AES-256-GCM, Argon2id KDF — **96 MiB / t=6 for vaults created from
+2026-08-24 (#2054); 192 MiB / t=3 for older ones**, which stay there until the v2
+migration flag flips (Gate 1 of #2101, still OPEN). Same total work either way
+(192×3 = 96×6); v2 halves peak memory for mobile unlock latency. v:2 blobs with AAD
+binding (PR #1076).
 KEK-DEK AAD salt exclusion P1 fixed (PR #1079).
 
 **WalletConnect:** C3 RASP gate, H7 chain binding (pre-modal), H8 address binding
@@ -975,7 +979,8 @@ OWASP Top 10 for LLM Applications.
 
 ### Cryptographic standards (A04)
 - TLS 1.2+ for all network traffic; certificate pinning on native builds (Capacitor).
-- Vault: AES-256-GCM only; Argon2id KDF (192 MiB, already in place).
+- Vault: AES-256-GCM only; Argon2id KDF (96 MiB / t=6 for new vaults, 192 MiB / t=3
+  for pre-2026-08-24 ones — both already in place; see the Vault line above).
 - Key derivation: @noble/@scure only — never Web Crypto for seed/key derivation.
 - No custom crypto primitives. If a new algorithm is needed, it comes from an audited
   library (@noble, @scure, or ethers built-ins).

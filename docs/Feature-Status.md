@@ -2609,15 +2609,52 @@ audited.
   setting now auto-enables both.
 - **KEK-enroll progress bar (#2064) — BUILT.** Indeterminate progress bar rendered
   under the existing Safe animation during enrollment.
-- **Deniability-KDF parity (#2103, Gate 2 of #2101) — BUILT.** Closes the KDF-profile
-  tell between real and decoy/duress vaults: writers use the shared `KDF_PARAMS`, and
-  reveal/duress/panic paths opportunistically rekey to the current profile on a
-  successful decrypt. Panic rekey is **deliberately dropped** (rekeying on wipe would
-  leave post-wipe residue) — a disclosed, intentional gap, not an oversight. A
-  transient tell during the rekey window is disclosed and pinned by a regression test
-  rather than silently accepted.
+- **Deniability-KDF parity (#2103, Gate 2 of #2101) — WRITE PATH REVERTED 2026-08-26.**
+  **This entry previously read: "A transient tell during the rekey window is disclosed
+  and pinned by a regression test rather than silently accepted." That was wrong in both
+  halves, and is corrected here rather than quietly reworded.** The daily security diff
+  (#2111) found it; the correction and remediation are #2114 and the PR that carries
+  this edit.
+  - **Not transient.** Chaff can never be rekeyed — nothing can decrypt it — and
+    `ensureStealthPool()` only fills MISSING slots, never rewrites one. A v1-era pool
+    stays v1 permanently. There was no window.
+  - **The tell was on the REAL slot, not the unopened one.** Because everything around
+    it stayed v1, the slot a write or reveal touched became the only v2 blob among 257.
+    The minority `kdf` object — plaintext in a storage dump, no secret required — *was*
+    the hidden wallet. Under `secondary` it was worse still: that key's meaning is
+    unambiguous, so a v2 blob there announced that a duress PIN had been configured,
+    which is the original H-2 finding in its sharpest form.
+  - **What ships now.** Every deniability writer is back on this device's recorded era
+    (`encryptDeniabilityVault` / `makeChaff(era)`) — stealth create/move/AP-record,
+    `setDuressVault`, `setPanicVault` — so the footprint stays uniform. The
+    reveal/duress re-encrypt is kept but **retargeted**: it is now a REPAIR toward the
+    footprint's era, whose job is healing devices that already ran #2103, not a
+    migration toward the current default. Panic still does not rekey (reviewer C-1 on
+    #2103 — rekeying on the wipe path would leave post-wipe residue); that exclusion is
+    unrelated and stands. The era probe now reads the stealth pool before
+    `secondary`/`tertiary` and takes a majority vote, because #2103 rewrote those two
+    and a poisoned probe would defeat the repair.
+  - **Honest cost, stated plainly:** a device provisioned before 2026-08-24 keeps paying
+    the v1 profile (192 MiB / t=3) on its deniability slots, permanently, rather than v2
+    (96 MiB / t=6). Fresh installs are all-v2.
+    **The two profiles are the same total work — 192×3 = 96×6 = 576 MiB-passes.** So this
+    is not weaker crack-resistance in the aggregate; it is higher peak memory. If
+    anything v1 resists massively-parallel hardware slightly better (memory is the scarce
+    resource for a GPU/ASIC attacker), and v2 exists to halve peak memory for unlock
+    latency and memory pressure on mobile (#2054, the cold-unlock perf suite). The real
+    cost of holding the era is therefore latency and RAM on old installs, not security —
+    and uniformity is the load-bearing property either way.
+  - **Gate 2's goal is not achievable for this data structure, and should not be
+    re-attempted.** A pool cannot be migrated to a new era: chaff is indistinguishable
+    from a real slot by construction (that is what hides the *count*), so it cannot be
+    swept forward without overwriting other hidden wallets whose mnemonics exist
+    nowhere else; the `kdf` field cannot be edited in place (`paramsFromVault` derives
+    the key from it and v:2 AAD-binds it into the GCM tag); and an *unrevealed* hidden
+    wallet can never be re-encrypted at all, since that needs its secret.
 - **Gate 1 of #2101 remains OPEN.** The KDF v2 migration flag cannot flip until a real
-  v2-vault unlock benchmark exists on-device. Gate 2 (#2103) is closed; Gate 1 is not.
+  v2-vault unlock benchmark exists on-device. **Gate 2 is now CLOSED-AS-WONTFIX rather
+  than closed-as-done** — see above; the reverted write path is the end state, not a
+  step toward one.
 
 **Real-device measurements (INTERNAL, not independently audited, no on-chain txid):**
 Samsung Galaxy Note 20 (SM-N981B, Android 13), firebase-test APK, cold unlock:

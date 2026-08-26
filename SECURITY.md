@@ -36,7 +36,10 @@ S1–S4 + crypto audit, finding M-9)** — they are not independently verified a
 guarantee.
 
 **If you unlock with an 8-digit numeric PIN and have NOT enrolled a hardware factor:**
-Your vault key is derived from your PIN alone using Argon2id at 192 MiB memory cost. An
+Your vault key is derived from your PIN alone using Argon2id — 96 MiB memory cost and 6
+iterations on a vault created from 2026-08-24 onward, 192 MiB and 3 iterations on an
+older one. The total work is the same either way (192×3 = 96×6), so the figures below
+apply to both. An
 8-digit PIN has roughly 100 million possible combinations. Estimated offline exhaustion
 time against the vault blob:
 
