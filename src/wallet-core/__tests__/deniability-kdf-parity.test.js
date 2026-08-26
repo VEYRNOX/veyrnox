@@ -269,6 +269,50 @@ describe('H-2 gate 2 — reveal-time opportunistic rekey', () => {
     expect(revealedAgain).toBe(revealed);
   }, 300_000);
 
+  it('the stealth rekey SETTLES when the slot vanishes inside the window (wipe race)', async () => {
+    // Two things at once, and the second is the one that regressed:
+    //   1. a panic-wipe landing inside the 250 ms deferred window must not have
+    //      its slot re-created by the rekey — reviewer C-1's sibling fix;
+    //   2. the fire-and-forget promise must still RESOLVE on that path.
+    //
+    // (2) was broken: the guard read `if (existing == null) return;`, and that
+    // `return` exits the setTimeout callback past the resolve() at the end of
+    // the block, so _lastKdfRekey never settled. duress.js's mirror of the same
+    // guard resolves explicitly before returning; stealth.js's did not. Nothing
+    // in production awaits the hook, so the blast radius was tests — but a test
+    // that hangs to timeout instead of failing is the worst shape to leave.
+    await createHiddenWallet('placeholder-secret-12345', 128);
+    await clearStore();
+
+    const { slotForSecret } = await import('../stealth.js');
+    const secret = 'wipe-race-secret-abcd';
+    const slot = await slotForSecret(secret);
+    const mnemonic = generateMnemonic(128);
+    const container = makeContainer([{ id: newWalletId(), mnemonic }]);
+    const v1Blob = await encryptVault(serializeContainer(container), secret, V1_PARAMS);
+    expect(vaultNeedsKdfMigration(v1Blob)).toBe(true);
+    await put(slot, v1Blob);
+
+    expect(await tryRevealHidden(secret)).not.toBeNull();
+
+    // Panic wipe lands before the deferred rekey wakes. Reliable rather than
+    // flaky: the callback's own encryptVault() is a full Argon2id derivation at
+    // 96 MiB, so this clear is long done by the time it reaches the slot check.
+    await clearStore();
+
+    // Race the hook against a deadline. Asserting on the WINNER rather than
+    // just awaiting means a never-settling promise fails LOUDLY here instead of
+    // hanging until vitest's own timeout, where it reads as an infra problem.
+    const outcome = await Promise.race([
+      awaitStealthRekey().then(() => 'settled'),
+      new Promise((res) => setTimeout(() => res('hung'), 15_000)),
+    ]);
+    expect(outcome).toBe('settled');
+
+    // C-1's original point still holds: the wiped slot stays wiped.
+    expect(await get(slot)).toBeNull();
+  }, 300_000);
+
   it('tryDuressUnlock rekeys the decoy slot to the current profile after a successful decrypt', async () => {
     const decoyMnemonic = generateMnemonic(128);
     const password = 'duress-password-1234';
