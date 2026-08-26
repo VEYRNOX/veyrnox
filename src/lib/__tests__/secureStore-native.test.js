@@ -16,6 +16,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   store: new Map(),
+  // When true, plugin.remove() throws — models a Keychain/Keystore delete that
+  // fails. secureWipeAll() swallows it by design, so only a read-back can tell.
+  removeFails: false,
 }));
 
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true } }));
@@ -28,7 +31,10 @@ vi.mock('@aparajita/capacitor-secure-storage', () => ({
     setDefaultKeychainAccess: vi.fn(async () => {}),
     set: vi.fn(async (k, v) => { h.store.set(k, String(v)); }),
     get: vi.fn(async (k) => (h.store.has(k) ? h.store.get(k) : null)),
-    remove: vi.fn(async (k) => { h.store.delete(k); }),
+    remove: vi.fn(async (k) => {
+      if (h.removeFails) throw new Error('keychain unavailable');
+      h.store.delete(k);
+    }),
   },
 }));
 
@@ -40,6 +46,7 @@ async function loadFresh() {
 
 beforeEach(() => {
   h.store.clear();
+  h.removeFails = false;
   try { localStorage.clear(); } catch { /* noop */ }
 });
 
@@ -84,5 +91,36 @@ describe('secureStore — native', () => {
     expect(mod.secureGet('sdw_session_token')).toBe('native-authoritative');
     // Legacy copy still removed once the native side holds the value
     expect(localStorage.getItem('sdw_session_token')).toBeNull();
+  });
+
+  // REVIEW-C. secureWipeAll() swallows every failure so a panic wipe can never
+  // throw — which means it cannot be the thing that proves the store is empty.
+  // inspectSecureStore() reads the store back, and panic.js's
+  // inspectKeyMaterial() folds that into `clean`. Without it a failed Keychain
+  // delete reports clean:true, and the localStorage sweep cannot catch it
+  // either because hydrate removed that copy at migration time (I4).
+  it('inspectSecureStore reports residue when the native delete silently failed', async () => {
+    localStorage.setItem('sdw_session_token', 'live-uuid');
+    const mod = await loadFresh();
+    await mod.hydrateSecureStore();
+
+    h.removeFails = true;
+    await mod.secureWipeAll(); // swallows the failure, as designed
+
+    const probe = await mod.inspectSecureStore();
+    expect(probe.verified).toBe(true);
+    expect(probe.residue).toContain('sdw_session_token');
+  });
+
+  it('inspectSecureStore reports no residue after a wipe that actually succeeded', async () => {
+    localStorage.setItem('sdw_session_token', 'live-uuid');
+    const mod = await loadFresh();
+    await mod.hydrateSecureStore();
+
+    await mod.secureWipeAll();
+
+    const probe = await mod.inspectSecureStore();
+    expect(probe.verified).toBe(true);
+    expect(probe.residue).toEqual([]);
   });
 });
