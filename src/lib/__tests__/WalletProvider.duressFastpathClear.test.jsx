@@ -37,6 +37,7 @@ vi.mock('@/lib/biometricUnlock', () => ({
   clearUnlockSecret: (...a) => clearUnlockSecret(...a),
   hasStoredUnlockSecret: vi.fn(async () => _cache != null),
   biometricUnlockSupported: () => true,
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 
 // In-memory stand-in for the Android Keystore fast-path alias (#2019).

@@ -75,6 +75,7 @@ vi.mock('@/lib/biometric', () => ({
     mode: 'web', available: false, label: 'Biometrics', simulated: false, detail: '',
   })),
   isBiometricUnlockEnabled: () => false,
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 
 vi.mock('@/lib/authModel', () => ({ getAuthModel: () => 'pin', isPinModel: () => true }));

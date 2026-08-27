@@ -247,6 +247,30 @@ export function setBiometricUnlockEnabled(on) {
   }
 }
 
+// One-time onboarding consent for biometric unlock. Rendered by
+// BiometricConsent.jsx after TelemetryConsent, before wallet setup. Marker
+// distinguishes "user has been asked" from "biometric pref is unset" (the
+// default-ON native path leaves the pref unset for fresh installs). Skipped
+// in deniable/demo — same K-2 discipline as consent.js writers.
+export const BIOMETRIC_CONSENT_SEEN_KEY = 'veyrnox-biometric-consent-seen';
+
+/** @returns {boolean} whether the user has been shown the biometric-consent screen. */
+export function hasBiometricConsentBeenRecorded() {
+  try {
+    return localStorage.getItem(BIOMETRIC_CONSENT_SEEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Mark the biometric-consent screen as answered. I3-guarded like the other consent writers. */
+export function markBiometricConsentRecorded() {
+  if (isDeniabilityOrDemoActive()) return;
+  try {
+    localStorage.setItem(BIOMETRIC_CONSENT_SEEN_KEY, '1');
+  } catch { /* best-effort */ }
+}
+
 // Map the plugin's BiometryType enum to a human label for the settings screen
 // and the prompt. Defensive default so an unknown/future enum value still
 // renders something sensible.

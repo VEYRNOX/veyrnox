@@ -31,6 +31,7 @@ vi.mock('@/lib/passkey', () => ({
 vi.mock('@/lib/biometric', () => ({
   is2faBiometricEnabled: vi.fn(() => false),
   verifyBiometric2fa: vi.fn(),
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 

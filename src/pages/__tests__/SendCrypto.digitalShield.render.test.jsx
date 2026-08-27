@@ -308,6 +308,7 @@ vi.mock('@/notify/sources', () => ({
   notifySendConfirmed: vi.fn(),
   notifyRaspAlert: vi.fn(),
   notifyTxRiskAlert: vi.fn(),
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 vi.mock('@/lib/sendWalletSource', () => ({
   defaultWalletId: () => 'w1',
