@@ -1728,6 +1728,13 @@ export default function WalletEntry() {
   // ---- View: Unlock (PIN cohort) ----
   if (view === "unlock" && authModel === "pin") {
     const bioLabel = bioStatus?.label || (Capacitor.getPlatform?.() === "ios" ? "Face ID" : "Fingerprint");
+    // Android hides the manual "Unlock with {label}" button entirely — the
+    // #2120 auto-fire already invokes BiometricPrompt on mount, which shows
+    // the system sheet accepting BOTH Face Unlock and Fingerprint on devices
+    // that have both enrolled. The manual button was redundant AND wrong
+    // (labelled "Fingerprint" even when Face Unlock was the primary sensor).
+    // iOS keeps the button as an explicit retry after a Face ID cancel.
+    const showBioButton = biometricEnabled && !biometricFailed && Capacitor.getPlatform?.() !== 'android';
     // FAST-PATH BIOMETRIC UNLOCK BUTTON (#2019). PARALLEL to the PIN pad — never
     // replaces PIN entry. FIVE AND-gates below; missing any → button not rendered
     // (fail-closed visibility). Uses Capacitor.getPlatform() (not
@@ -1806,7 +1813,7 @@ export default function WalletEntry() {
               </div>
             </>
           )}
-          {biometricEnabled && !biometricFailed && (
+          {showBioButton && (
             <>
               <Button className="w-full gap-2 h-12 text-base" disabled={busy} onClick={handleBiometricUnlock}>
                 {busy ? <RefreshCw className="h-5 w-5 motion-safe:animate-spin" /> : <ScanFace className="h-5 w-5" />} Unlock with {bioLabel}
@@ -1863,11 +1870,14 @@ export default function WalletEntry() {
   // ---- View: Unlock existing vault (returning user) ----
   if (view === "unlock") {
     const bioLabel = bioStatus?.label || (Capacitor.getPlatform?.() === "ios" ? "Face ID" : "Fingerprint");
+    // See PIN-cohort branch above — Android relies on #2120 auto-fire and hides
+    // the manual button. iOS keeps it as a retry after a Face ID cancel.
+    const showBioButton = biometricEnabled && !biometricFailed && Capacitor.getPlatform?.() !== 'android';
     return (
       <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-3">
           {/* PROMINENT one-tap Face ID entry (only when it can actually run). */}
-          {biometricEnabled && !biometricFailed && (
+          {showBioButton && (
             <>
               <div className="flex items-center gap-2 text-sm font-medium">
                 <ScanFace className="h-4 w-4 text-primary" /> Welcome back
