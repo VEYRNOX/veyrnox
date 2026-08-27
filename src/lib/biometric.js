@@ -34,10 +34,19 @@ export const BIOMETRIC_PREF_KEY = 'veyrnox-biometric-unlock';
 // requiring them to unlock, and vice-versa. Stored as "1" (on) / absent (off).
 export const TWOFACTOR_BIOMETRIC_KEY = 'veyrnox-2fa-biometric';
 
-/** @returns {boolean} whether the user has required biometric unlock. */
+/** @returns {boolean} whether the user has required biometric unlock.
+ *
+ * Default ON for native (iOS/Android) — users expect Face ID / Fingerprint
+ * to be the unlock path without hunting Settings. Explicit opt-out stored
+ * as '0' so an old "unset" state maps to the new default. Web/non-native
+ * stays OFF: no OS biometric available.
+ */
 export function isBiometricUnlockEnabled() {
   try {
-    return localStorage.getItem(BIOMETRIC_PREF_KEY) === '1';
+    const v = localStorage.getItem(BIOMETRIC_PREF_KEY);
+    if (v === '1') return true;
+    if (v === '0') return false;
+    return Capacitor.isNativePlatform();
   } catch {
     return false;
   }
@@ -202,7 +211,9 @@ export function setBiometricUnlockEnabled(on) {
   if (isDeniabilityOrDemoActive()) return;
   try {
     if (on) localStorage.setItem(BIOMETRIC_PREF_KEY, '1');
-    else localStorage.removeItem(BIOMETRIC_PREF_KEY);
+    // Explicit opt-out is '0', not remove — otherwise the new native default
+    // (unset → ON) would silently re-enable a user who deliberately turned it off.
+    else localStorage.setItem(BIOMETRIC_PREF_KEY, '0');
   } catch {
     /* storage unavailable — preference is best-effort, non-fatal. */
   }
