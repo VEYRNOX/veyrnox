@@ -100,7 +100,6 @@ import SeedGrid from "@/components/SeedGrid";
 import SeedInputGrid from "@/components/SeedInputGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
 import TelemetryConsent from "@/components/TelemetryConsent";
-import FastUnlockFirstRunCard from "@/components/onboarding/FastUnlockFirstRunCard";
 import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { isFastpathEnabled, shouldShowFastpathWarmingHint } from "@/lib/fastpathUnlock";
@@ -1511,12 +1510,6 @@ export default function WalletEntry() {
         {!justOnboarded && !isDeniabilityOrDemoActive() && (
           <BackupNagSheet publicAddresses={getBackupPublicAddresses ? getBackupPublicAddresses() : []} />
         )}
-        {/* Fast Unlock first-run disclosure card — informed-consent chokepoint
-            for the default-ON reversal (#2019). Renders null unless the full
-            gate matrix passes (native Android + biometric available + KEK
-            vault + not deniability/demo + no passkey + no explicit choice
-            yet + not previously seen). See FastUnlockFirstRunCard.jsx. */}
-        <FastUnlockFirstRunCard />
         <Outlet />
       </>
     );

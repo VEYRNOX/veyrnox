@@ -134,12 +134,11 @@ export function migrateFastpathState() {
 
 /**
  * Enable Fast Unlock AND Biometric Unlock in one call (#2037 follow-up).
- * Both UI chokepoints (FastUnlockFirstRunCard "Enable" + FastpathToggle
- * enable path) route through here so a user cannot end up with Fast Unlock
- * on while Biometric Unlock is off — the exact state that produced the
- * user-reported "Biometric unlock didn't work" failure. Pure preference
- * flip on both; both setters are individually I3-guarded, this helper
- * additionally short-circuits at the top for clarity.
+ * FastpathToggle's enable path routes through here so a user cannot end
+ * up with Fast Unlock on while Biometric Unlock is off — the exact state
+ * that produced the user-reported "Biometric unlock didn't work" failure.
+ * Pure preference flip on both; both setters are individually I3-guarded,
+ * this helper additionally short-circuits at the top for clarity.
  */
 export function enableFastpathAndBiometricUnlock() {
   if (isDeniabilityOrDemoActive()) return;
