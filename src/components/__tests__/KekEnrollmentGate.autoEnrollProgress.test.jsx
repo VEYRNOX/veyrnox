@@ -1,9 +1,8 @@
-// KekEnrollmentGate — auto-enroll progress bar position + shape.
+// KekEnrollmentGate — honest auto-enrollment status.
 //
-// Bug: the progress bar rendered as a fixed page footer, OUTSIDE the
-// centered content stack, and reported value=100 (looked "done") while KEK
-// enrollment was still running. Fix: bar moves inline, directly under the
-// VaultIllustration inside the centered flex column, and is indeterminate.
+// The former progress bar suggested measurable completion while a biometric
+// approval could still be pending. The gate now reports only the true state:
+// waiting for approval on this device.
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
@@ -36,8 +35,8 @@ import KekEnrollmentGate from '@/components/KekEnrollmentGate';
 
 afterEach(() => { cleanup(); });
 
-describe('KekEnrollmentGate — auto-enroll progress bar', () => {
-  it('renders the bar as a sibling of VaultIllustration, inside the centered content stack', () => {
+describe('KekEnrollmentGate — auto-enroll status', () => {
+  it('reports that device approval is pending without a fake progress bar', () => {
     render(
       <KekEnrollmentGate
         origin="fresh"
@@ -47,13 +46,12 @@ describe('KekEnrollmentGate — auto-enroll progress bar', () => {
       />,
     );
 
-    const vault = screen.getByTestId('vault-illus');
-    const bar = screen.getByRole('progressbar');
-    // Same parent (the centered flex column), not a page-level fixed footer sibling.
-    expect(bar.closest('.flex.flex-col.items-center')).toBe(vault.closest('.flex.flex-col.items-center'));
+    expect(screen.getByTestId('vault-illus')).toBeTruthy();
+    expect(screen.getByRole('status')).toHaveTextContent('Approve the prompt on your device');
+    expect(screen.queryByRole('progressbar')).toBeNull();
   });
 
-  it('is indeterminate — no aria-valuenow (not a fake 100%)', () => {
+  it('keeps the status live for assistive technology', () => {
     render(
       <KekEnrollmentGate
         origin="fresh"
@@ -63,11 +61,10 @@ describe('KekEnrollmentGate — auto-enroll progress bar', () => {
       />,
     );
 
-    const bar = screen.getByRole('progressbar');
-    expect(bar).not.toHaveAttribute('aria-valuenow');
+    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
   });
 
-  it('animated fill honours motion-reduce', () => {
+  it('uses a motion-safe spinner while approval is pending', () => {
     const { container } = render(
       <KekEnrollmentGate
         origin="fresh"
@@ -77,7 +74,7 @@ describe('KekEnrollmentGate — auto-enroll progress bar', () => {
       />,
     );
 
-    const fill = container.querySelector('[role="progressbar"] [aria-hidden="true"]');
-    expect(fill.className).toMatch(/motion-reduce:animate-none/);
+    const spinner = container.querySelector('[role="status"] [aria-hidden="true"]');
+    expect(spinner.getAttribute('class')).toMatch(/motion-safe:animate-spin/);
   });
 });
