@@ -64,7 +64,6 @@ env:
 
 jobs:
   xcuitest:
-    continue-on-error: true
     runs-on: macos-latest
     # Budget note (issues #2008, #2109). A JOB-level timeout kills the whole
     # job, including `Upload test log` — which is why run after run produced
