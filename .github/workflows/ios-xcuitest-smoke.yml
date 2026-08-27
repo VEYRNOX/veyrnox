@@ -189,7 +189,12 @@ jobs:
           set -o pipefail
           # xcodebuild refuses to overwrite an existing result bundle.
           rm -rf TestResults.xcresult
-          xcodebuild test-without-building \
+          # GitHub's step timeout did not stop runs 33109374237/33114316303,
+          # leaving the required PR gate hung in Xcode teardown. `alarm`
+          # survives exec, so it terminates xcodebuild itself after 25 minutes;
+          # the following `||` still makes the step fail and preserves artifacts.
+          perl -e 'alarm shift; exec @ARGV or die "exec xcodebuild: $!\\n"' 1500 \
+            xcodebuild test-without-building \
             -project App.xcodeproj \
             -scheme App \
             -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
