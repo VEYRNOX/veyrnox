@@ -41,7 +41,7 @@ function indexOrFail(source, needle) {
 describe('Firebase Test Lab first-run PIN smoke', () => {
   it('drives iOS through the entry tile it actually renders, and explicitly submits both 8-digit PIN stages', () => {
     const pin = swift.match(/let pin = "(\d+)"/)?.[1];
-    expect(pin).toBe('24681024');
+    expect(pin).toBe('19283746');
 
     // Read the label out of the Swift rather than asserting a second copy of
     // it. `tapButton` is the only call that takes a bare `label:` followed by
@@ -81,7 +81,7 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     expect(setDigits).toBeLessThan(setSubmit);
     expect(setSubmit).toBeLessThan(confirmDigits);
     expect(confirmDigits).toBeLessThan(confirmSubmit);
-    expect(swift).toContain('"Submit PIN", "Continue"');
+    expect(swift).toContain('app.buttons["Submit PIN"]');
   });
 
   it('uses a Robo script to click the custom Android PinPad instead of inventing text fields', () => {
@@ -91,7 +91,7 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     const clicks = roboScript
       .filter(({ eventType }) => eventType === 'VIEW_CLICKED')
       .map(({ elementDescriptors }) => elementDescriptors?.[0]);
-    const pin = '24681024';
+    const pin = '19283746';
     expect(clicks).toEqual([
       { text: 'New wallet' },
       ...[...pin].map(text => ({ text })),

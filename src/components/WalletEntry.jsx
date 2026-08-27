@@ -1727,7 +1727,7 @@ export default function WalletEntry() {
 
   // ---- View: Unlock (PIN cohort) ----
   if (view === "unlock" && authModel === "pin") {
-    const bioLabel = bioStatus?.label || "Face ID";
+    const bioLabel = bioStatus?.label || (Capacitor.getPlatform?.() === "ios" ? "Face ID" : "Fingerprint");
     // FAST-PATH BIOMETRIC UNLOCK BUTTON (#2019). PARALLEL to the PIN pad — never
     // replaces PIN entry. FIVE AND-gates below; missing any → button not rendered
     // (fail-closed visibility). Uses Capacitor.getPlatform() (not
@@ -1862,7 +1862,7 @@ export default function WalletEntry() {
 
   // ---- View: Unlock existing vault (returning user) ----
   if (view === "unlock") {
-    const bioLabel = bioStatus?.label || "Face ID";
+    const bioLabel = bioStatus?.label || (Capacitor.getPlatform?.() === "ios" ? "Face ID" : "Fingerprint");
     return (
       <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-3">
