@@ -61,9 +61,9 @@ function makeCtx(overrides = {}) {
     createWallet: vi.fn(), importWallet: vi.fn(),
     enableBiometricUnlock: vi.fn(async () => true),
     // The lock-screen auto-prompt is deliberately outside this suite's typed-PIN
-    // cache contract. Reject it as a user cancellation so the PIN fallback is
-    // enabled before this test drives the keypad.
-    unlockWithBiometric: vi.fn(async () => { throw new Error('BIOMETRIC_CANCELLED'); }),
+    // cache contract. A successful stub lets it settle without exercising the
+    // stale-cache recovery path, which owns separate coverage.
+    unlockWithBiometric: vi.fn(async () => ({ ok: true })),
     exploreMode: false, enterExplore: vi.fn(), leaveExplore: vi.fn(),
     confirmWalletBackup: vi.fn(), setupPin: vi.fn(),
     createWalletFromPendingPin: vi.fn(), importWalletForPendingPin: vi.fn(),
@@ -79,9 +79,8 @@ async function enterPin(pin = '13572468') {
 }
 
 async function waitForPinPad() {
-  // Let the mount-time biometric prompt fail first. The cache-guard assertions
-  // exercise the typed PIN fallback, not the parallel auto-prompt race.
-  await waitFor(() => expect(screen.getByText(/Face ID was out of date and has been reset/i)).toBeTruthy());
+  // If a cache exists, let the mount-time prompt settle before driving the
+  // typed-PIN fallback. A cache-free device never starts that prompt.
   await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).not.toBeDisabled());
 }
 
