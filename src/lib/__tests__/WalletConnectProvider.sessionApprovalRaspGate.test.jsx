@@ -23,6 +23,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // RASP mock — per-test control of the degraded tier, mirroring
 // WalletConnectProvider.raspGate.test.js. presignGate itself is NOT mocked: the
@@ -125,15 +126,20 @@ const PROPOSAL = {
 // hand back the context's approveSession (i.e. handleApproveSession).
 async function setup() {
   const out = {};
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   function Grab() {
     out.ctx = useWalletConnect();
     return null;
   }
   await act(async () => {
     render(
-      <WalletConnectProvider>
-        <Grab />
-      </WalletConnectProvider>,
+      <QueryClientProvider client={qc}>
+        <WalletConnectProvider>
+          <Grab />
+        </WalletConnectProvider>
+      </QueryClientProvider>,
     );
   });
   // Push a genuine session_proposal through the provider's own event handler.

@@ -339,6 +339,20 @@
   }
 }
 
+/* Onboarding entrance animations */
+@keyframes vx-letter-flip {
+  0% { transform: rotateY(180deg) translateY(10px); opacity: 0; }
+  60% { transform: rotateY(-8deg) translateY(-2px); opacity: 1; }
+  100% { transform: rotateY(0deg) translateY(0); opacity: 1; }
+}
+@keyframes vx-logo-spin {
+  0% { transform: scale(0.3) rotate(-180deg); opacity: 0; filter: blur(8px); }
+  35% { transform: scale(1.12) rotate(18deg); opacity: 1; filter: blur(0); }
+  55% { transform: scale(0.94) rotate(-6deg); }
+  75% { transform: scale(1.03) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; filter: blur(0); }
+}
+
 /* Responsive stacked table layout on mobile */
 @layer utilities {
   @media (max-width: 640px) {

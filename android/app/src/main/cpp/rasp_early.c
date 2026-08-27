@@ -23,6 +23,11 @@
 #include <sys/ptrace.h>
 #include <errno.h>
 
+static jboolean native_early_traceme_impl(void) {
+    int rc = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+    return (jboolean)(rc != 0);
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_veyrnox_app_RaspIntegrityPlugin_00024Companion_nativeEarlyTraceme(
     JNIEnv *env, jobject thiz) {
@@ -31,6 +36,14 @@ Java_com_veyrnox_app_RaspIntegrityPlugin_00024Companion_nativeEarlyTraceme(
     //   other  → kernel refused for an unexpected reason; treat as suspicious.
     // Returns JNI_FALSE (hardening applied) on success: the parent now owns
     // the tracing slot and external ptrace-attach will be blocked.
-    int rc = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-    return (jboolean)(rc != 0);
+    return native_early_traceme_impl();
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_veyrnox_app_RaspIntegrityPlugin_nativeEarlyTraceme(
+    JNIEnv *env, jobject thiz) {
+    // Android 2026-08-19 device trace showed the runtime resolving the plain
+    // class symbol rather than the companion-mangled one. Export both names so
+    // startup cannot crash on a symbol-resolution mismatch.
+    return native_early_traceme_impl();
 }

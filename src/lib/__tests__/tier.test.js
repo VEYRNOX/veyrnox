@@ -1,10 +1,17 @@
 // src/lib/__tests__/tier.test.js
 import { describe, it, expect } from 'vitest';
-import { getCurrentTier, TIERS, FREE_FEATURES, SAFETY_PLUS_FEATURES } from '../tier';
+import {
+  getCurrentTier,
+  TIERS,
+  FREE_FEATURES,
+  SAFETY_PLUS_FEATURES,
+  AI_SECURITY_PROTECTION_FEATURES,
+  hasSafetyPlusAccess,
+} from '../tier';
 
 describe('tier catalogue', () => {
-  it('is the two-tier model in order: free, safety_plus', () => {
-    expect(TIERS.map((t) => t.id)).toEqual(['free', 'safety_plus']);
+  it('is the three-tier model in order: free, safety_plus, ai_security_protection', () => {
+    expect(TIERS.map((t) => t.id)).toEqual(['free', 'safety_plus', 'ai_security_protection']);
   });
 
   it('every tier has a name, price, and tagline', () => {
@@ -15,11 +22,13 @@ describe('tier catalogue', () => {
     }
   });
 
-  it('Free tier is $0 and Safety Plus is $5.99/mo', () => {
+  it('Free tier is $0, Safety Plus is $5.99/mo, and AI Security Protection is separately listed', () => {
     const free = TIERS.find((t) => t.id === 'free');
     const plus = TIERS.find((t) => t.id === 'safety_plus');
+    const ai = TIERS.find((t) => t.id === 'ai_security_protection');
     expect(free.price).toBe('$0');
     expect(plus.price).toBe('$5.99/mo');
+    expect(ai.price).toBeTruthy();
   });
 
   it('getCurrentTier is a legacy display stub that always returns free (real tier comes from resolveTier)', () => {
@@ -40,5 +49,19 @@ describe('tier catalogue', () => {
       expect(f.name, 'name').toBeTruthy();
       expect(f.summary, `${f.name} summary`).toBeTruthy();
     }
+  });
+
+  it('AI_SECURITY_PROTECTION_FEATURES lists at least one feature with name and summary', () => {
+    expect(AI_SECURITY_PROTECTION_FEATURES.length).toBeGreaterThan(0);
+    for (const f of AI_SECURITY_PROTECTION_FEATURES) {
+      expect(f.name, 'name').toBeTruthy();
+      expect(f.summary, `${f.name} summary`).toBeTruthy();
+    }
+  });
+
+  it('treats ai_security_protection as having Safety Plus access', () => {
+    expect(hasSafetyPlusAccess('free')).toBe(false);
+    expect(hasSafetyPlusAccess('safety_plus')).toBe(true);
+    expect(hasSafetyPlusAccess('ai_security_protection')).toBe(true);
   });
 });

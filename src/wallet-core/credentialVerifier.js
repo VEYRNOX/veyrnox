@@ -13,6 +13,22 @@ import { KDF_PARAMS } from './vault.js';
 
 const enc = new TextEncoder();
 
+// L-10 (weekly audit 2026-08-25): upper bound on a credential before it reaches
+// Argon2id. `deriveRaw` runs on the unlock path and again at every step-up, and an
+// unbounded input feeds an unbounded encode into a memory-hard KDF — a local
+// resource-exhaustion vector, the same class the MAX_KDF_PARAMS ceiling closes on
+// the vault's read side.
+//
+// NOT UI-reachable today: the only unlock cohort is the numeric PinPad, and
+// `captureVerifierSafe` already degrades an OOM to null. This is the guard that
+// survives a future free-text password cohort, placed at the single derivation
+// boundary rather than at the call sites (scattering it is how one path ends up
+// unguarded — see the same reasoning above decryptVault's validation block).
+//
+// 1024 is far above any usable passphrase and far below anything that costs
+// meaningful work, so it constrains nothing a real user types.
+const MAX_CREDENTIAL_LEN = 1024;
+
 function randomSalt() {
   const s = new Uint8Array(16);
   crypto.getRandomValues(s);
@@ -24,7 +40,15 @@ async function deriveRaw(credential, salt, params) {
   // finally — mirrors src/wallet-core/vault.js deriveKey(). Without this, the
   // NFKC-encoded credential lingers on the heap until GC (or forever if the
   // argon2id call throws), giving a memory-inspection attacker a wider window.
-  const pw = enc.encode(String(credential).normalize('NFKC'));
+  const text = String(credential);
+  // L-10: reject BEFORE the encode and before argon2id allocates. Generic message,
+  // no oracle — a credential this long is structurally out of contract, not a
+  // wrong-PIN signal. Both callers already fail closed on a throw
+  // (captureVerifierSafe -> null -> send path denies; verifyCredential -> false).
+  if (text.length > MAX_CREDENTIAL_LEN) {
+    throw new Error('Credential too long — refusing to derive verifier');
+  }
+  const pw = enc.encode(text.normalize('NFKC'));
   let raw;
   try {
     raw = await argon2id({
@@ -41,8 +65,10 @@ async function deriveRaw(credential, salt, params) {
   }
   // DEFECT-A memory management (mirrors wallet-core/vault.js deriveKey). At unlock the
   // vault decrypt KDF and THIS verifier KDF run back-to-back; both allocate
-  // KDF_PARAMS.memorySize (currently 64 MiB) in
-  // hash-wasm. Yield to a macrotask so this derivation's WASM instance becomes
+  // KDF_PARAMS.memorySize in hash-wasm — read the constant, do not restate the
+  // figure here (L-13, 2026-08-25: this line said "currently 64 MiB", two profile
+  // changes out of date, on the surface where the numbers ARE the argument).
+  // Yield to a macrotask so this derivation's WASM instance becomes
   // GC-eligible BEFORE the next sequential allocation — without it, that is the
   // exact two-concurrent-allocation pattern that caused the Defect-A RangeError in
   // onboarding. Keeps peak memory one-KDF-at-a-time. Negligible latency.
@@ -95,8 +121,9 @@ export async function verifyCredential(verifier, entered) {
     .every((n) => Number.isInteger(n) && n > 0);
   if (!wellFormed) return false;
   // Audit 2026-08-08: honour the docstring's "never throws" contract. Under
-  // memory pressure at step-up time (two concurrent 192 MiB Argon2id allocs,
-  // Defect-A) deriveRaw can throw RangeError; propagating it broke callers
+  // memory pressure at step-up time (two concurrent KDF_PARAMS.memorySize
+  // Argon2id allocs, Defect-A) deriveRaw can throw RangeError; and since
+  // L-10 it also throws on an over-long credential. Propagating either broke callers
   // wired to "false = deny" (I4). Fail closed on any throw.
   let h;
   try {

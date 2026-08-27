@@ -39,7 +39,13 @@ export function parseQrData(raw) {
   return null;
 }
 
-export default function QRScanner({ onScan, onClose }) {
+export default function QRScanner({
+  onScan,
+  onClose,
+  parse = parseQrData,
+  title = "Scan QR Code",
+  helperText = "Point your camera at a wallet address QR code",
+}) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -95,7 +101,7 @@ export default function QRScanner({ onScan, onClose }) {
       // the user had no signal that the QR they scanned was rejected. Keep
       // the camera live and show an inline error banner instead, so the
       // user can re-aim at a real address QR without reopening the scanner.
-      const parsed = parseQrData(code.data);
+      const parsed = parse(code.data);
       if (!parsed) {
         setWarn("This QR isn't a wallet address in a supported scheme.");
         rafRef.current = requestAnimationFrame(tick);
@@ -112,11 +118,11 @@ export default function QRScanner({ onScan, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-4">
+        <div className="w-full max-w-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Camera className="h-5 w-5 text-primary" />
-            <span className="font-semibold">Scan QR Code</span>
+            <span className="font-semibold">{title}</span>
           </div>
           <Button size="icon" variant="ghost" className="text-white hover:text-white hover:bg-white/10" onClick={onClose}>
             <X className="h-5 w-5" />
@@ -152,7 +158,7 @@ export default function QRScanner({ onScan, onClose }) {
         )}
 
         <canvas ref={canvasRef} className="hidden" />
-        <p className="text-center text-xs text-white/50">Point your camera at a wallet address QR code</p>
+        <p className="text-center text-xs text-white/50">{helperText}</p>
       </div>
 
       <style>{`

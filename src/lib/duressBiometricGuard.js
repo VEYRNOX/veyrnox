@@ -51,6 +51,13 @@
 //   3. If the platform secure store refuses the delete, the cached secret remains at
 //      rest; JS cannot force its removal. We drop the preference FIRST so one-tap unlock
 //      is no longer offered, and report the disarm honestly.
+//   4. The #2019 FAST-PATH wrapped-DEK alias is a SECOND one-tap door and was outside
+//      this guard entirely until H-1 (weekly audit 2026-08-25). It is now swept here
+//      too, but that sweep is best-effort (the Keystore plugin can refuse, and it does
+//      not exist off Android). The gate that actually holds the invariant is in
+//      keystore/native.js: populate refuses to warm the alias while a duress PIN is
+//      configured, and unlockBiometricOnly refuses to read it. A failed sweep is a
+//      stale blob nothing will open, not a live bypass.
 
 import { isBiometricUnlockEnabled, setBiometricUnlockEnabled } from '@/lib/biometric';
 import { clearUnlockSecret } from '@/lib/biometricUnlock';
@@ -132,6 +139,32 @@ export async function forceDisarmBiometricUnlock() {
 }
 
 /**
+ * Best-effort clear of the #2019 FAST-PATH wrapped-DEK alias (Android Keystore).
+ *
+ * This is the lib-side twin of keystore/native.js's clearFastpathDekBestEffort().
+ * It is duplicated rather than shared for one reason: native.js is the
+ * native-only keystore branch with top-level Capacitor plugin imports, and this
+ * module is imported by WalletEntry on WEB. A static import of native.js from
+ * here would drag those into the web bundle (see web.native-fence.test.js).
+ * Both call the SAME exported plugin shim, so there is only one clearing path.
+ *
+ * Best-effort by construction: the plugin registers on Android only, so iOS /
+ * web / JSDOM reject at CALL time — swallowed, exactly as native.js does. The
+ * fast-path READ side treats a wrapped DEK it cannot re-derive as a miss, and
+ * since H-1 it also refuses outright while a duress PIN is configured, so a
+ * clear that does not land degrades to "PIN keypad", never to an open vault.
+ *
+ * @returns {Promise<void>}
+ */
+export async function clearFastpathDekBestEffort() {
+  try {
+    // Lazy import: registerPlugin() must not run at module load on web.
+    const mod = await import('@/plugins/androidBiometricCache');
+    if (typeof mod.clearFastpathDek === 'function') await mod.clearFastpathDek();
+  } catch { /* absent plugin / bridge rejection / non-Android host */ }
+}
+
+/**
  * Enforce the invariant on the live device. Idempotent (a second call is a no-op,
  * because the first turned the preference off) and safe to call on every lock-screen
  * mount / app start.
@@ -144,14 +177,29 @@ export async function forceDisarmBiometricUnlock() {
  * @returns {Promise<boolean>} true if this call disarmed the device.
  */
 export async function enforceDuressBiometricInvariant() {
-  let armed = false;
-  try { armed = isBiometricUnlockEnabled(); } catch { return false; }
   // Cheapest signal first: a device with no duress PIN does zero further work and
   // zero writes — identical behaviour to a build without this guard.
+  const duressConfigured = isDuressConfigured();
+
+  // H-1 (weekly audit 2026-08-25) — sweep the #2019 FAST-PATH alias, which is a
+  // SECOND one-tap door beside the legacy `veyrnox-biometric-unlock` cache.
+  //
+  // This sits ABOVE the `armed` check on purpose: the fast path is armed
+  // independently of that preference (populate runs off a successful primary
+  // PIN unlock, not off the Face-ID-for-unlock opt-in), so a user who never
+  // enabled legacy one-tap can still have a warm wrapped-DEK alias. Gating the
+  // sweep behind `armed` would miss exactly the cohort this guard exists for.
+  // No decoy exemption either: unlike the legacy cache there is no
+  // Face-ID-opens-the-decoy variant of the fast path — populate only ever runs
+  // in a REAL session, so anything in that alias is the real DEK.
+  if (duressConfigured) await clearFastpathDekBestEffort();
+
+  let armed = false;
+  try { armed = isBiometricUnlockEnabled(); } catch { return false; }
   if (!armed) return false;
   if (!shouldDisarmBiometricUnlock({
     biometricEnabled: true,
-    duressConfigured: isDuressConfigured(),
+    duressConfigured,
     decoyCacheMarked: isDecoyBiometricCache(),
   })) return false;
 

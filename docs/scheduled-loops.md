@@ -16,7 +16,7 @@ Registry of the recurring skills under `.claude/scheduled-tasks/`. Each has its 
 ## Weekly — upstream residual watchers (read-only, evidence-based)
 - `veyrnox-brace-expansion-watch` — probes whether `^5.0.8` override still breaks minimatch/eslint
 - `veyrnox-appium-shellquote-watch` — re-resolves nested `shell-quote`/`body-parser` copy
-- `veyrnox-elliptic-upstream-watch` — waits for patched `elliptic` or Ledger/Trezor dropping the path
+- `veyrnox-elliptic-upstream-watch` — waits for a patched `elliptic`, or the Keystone chain (`bc-ur-registry-eth` → `hdkey` → `secp256k1`) dropping the path. Re-pointed 2026-08-25; it used to watch the Ledger and Trezor chains, both since gone from the tree.
 
 ## One-shot notifier (self-disabling)
 - `watch-risk-wire-merge` — fires once when `feat/wire-risk-score-send-flow` merges to main

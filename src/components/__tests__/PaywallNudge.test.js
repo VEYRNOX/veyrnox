@@ -41,6 +41,11 @@ describe('shouldShowPaywallNudge', () => {
     expect(shouldShowPaywallNudge('safety_plus')).toBe(false);
   });
 
+  it('returns false for AI Security Protection because it is also a paid tier', () => {
+    localStorage.setItem(SESSION_COUNT_KEY, '5');
+    expect(shouldShowPaywallNudge('ai_security_protection')).toBe(false);
+  });
+
   it('returns false in deniability mode', () => {
     vi.mocked(isDeniabilityOrDemoActive).mockReturnValue(true);
     localStorage.setItem(SESSION_COUNT_KEY, '5');

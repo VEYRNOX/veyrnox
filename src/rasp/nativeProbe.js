@@ -58,7 +58,7 @@ const UNAVAILABLE = Object.freeze({ available: false });
  * shape detect()/classifyEnvironment() understand.
  *
  * Async because the native bridge is async. Returns a ProbeSource:
- *   { available: true, signals: { rooted, hooked, emulator, tampered, elevated } }
+ *   { available: true, signals: { rooted, hooked, emulator, tampered, elevated, screenCapture } }
  *                                                                        on success
  *   { available: false }                                                  fail-closed
  *
@@ -160,12 +160,34 @@ export async function nativeProbeSource() {
     return UNAVAILABLE;
   }
 
+  // M-5 (weekly audit 2026-08-25) — screenCapture is graded PER PLATFORM, and the
+  // asymmetry is deliberate. Do NOT fold the two branches back together.
+  //
+  //   Android — stays on the `elevated` axis (WARN, seed backup allowed), exactly
+  //     as #1108 set it. Justified: MainActivity applies FLAG_SECURE
+  //     unconditionally, so the OS itself blocks the capture and the phrase never
+  //     reaches the mirror. Detection is belt-and-braces there.
+  //   iOS     — its OWN signal → CONDITION.SCREEN_CAPTURE → seed-reveal blocked.
+  //     iOS has NO FLAG_SECURE equivalent; applyScreenshotProtection in
+  //     RaspIntegrityPlugin.m is an HONEST-DISABLED placeholder for that exact
+  //     reason. earlyCheckScreenCapture only gates mirroring active AT LAUNCH, so
+  //     a session where AirPlay/ReplayKit starts LATER arrives here — and before
+  //     this split it graded ELEVATED (blockedActions: []) and rendered the whole
+  //     mnemonic to the remote screen.
+  //
+  // Scope is seed REVEAL only (see degrade.js): export/import write to a file, not
+  // to the screen. Optional chaining because getPlatform is absent from some test
+  // doubles; anything other than 'ios' takes the Android/legacy path.
+  const isIos = Capacitor.getPlatform?.() === 'ios';
+  const screenCaptureActive = verdict.screenCapture === true;
+
   const signals = {
     // GENUINE root/jailbreak ONLY (2026-07-16 fix) — the 8 soft signals below
     // no longer widen this axis; see signals.elevated instead.
     rooted: verdict.rooted === true || verdict.jailbroken === true,
-    // The 8 soft environment signals (items 19/25/27/29/31/33/35/37) — WARN +
-    // biometric re-confirm via CONDITION.ELEVATED, but seed backup is allowed.
+    // The soft environment signals (items 25/27/29/31/33/35/37, plus screenCapture
+    // on Android only) — WARN + biometric re-confirm via CONDITION.ELEVATED, with
+    // seed backup allowed.
     elevated: verdict.developerMode === true
          || verdict.virtualApp === true
          || verdict.suspiciousPackage === true
@@ -173,15 +195,20 @@ export async function nativeProbeSource() {
          || verdict.mockLocation === true
          || verdict.networkProxy === true
          || verdict.accessibilityService === true
-         || verdict.screenCapture === true,
+         || (!isIos && screenCaptureActive),
+    // M-5: iOS-only axis (see the block above) → CONDITION.SCREEN_CAPTURE, which
+    // blocks seed-reveal and nothing else.
+    screenCapture: isIos && screenCaptureActive,
     // Item 13: fold debuggerAttached (iOS sysctl P_TRACED, item 12) into the
     // hooked signal so a detected debugger drives presignGate → HOOKED → BLOCK.
-    // #1108: screenCapture moved to elevated (WARN) — not Frida-severity.
+    // #1108: screenCapture is NOT Frida-severity and stays off this axis.
     hooked: verdict.hookedProcess === true
          || verdict.debuggerAttached === true,
     emulator: verdict.emulator === true,
-    // Binary-tamper is a separate native probe not yet wired (see TODO). Until the
-    // plugin reports it, it is not observed.
+    // Binary tamper as reported by the plugin: Android re-sign / cert-fingerprint
+    // mismatch (RaspIntegrityPlugin.kt), iOS detectTamper (RaspIntegrityPlugin.m).
+    // Both platforms emit this key, and the shape check above REQUIRES it as a
+    // boolean — an absent `tampered` fails the whole verdict closed.
     tampered: verdict.tampered === true,
   };
 

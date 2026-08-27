@@ -93,5 +93,5 @@ describe('buildUnsignedEvmTx — EVM unsigned tx serialisation', () => {
 // only consumed by ColdSign.jsx (deleted in PR #1796); with the caller gone the
 // module was dead code AND a JSON.parse-on-arbitrary-QR-text surface (Codex P2
 // 2026-08-15). Deleting it closes the surface entirely. psbt.js + evmUnsigned.js
-// stay — they still back the hardware-wallet send path (see
-// src/wallet-core/evm/hw-send.js).
+// stay — they still back the Digital Shield hardware-wallet send path (see
+// src/wallet-core/hw/digitalShield.js).

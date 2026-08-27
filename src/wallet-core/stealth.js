@@ -120,7 +120,32 @@
 // only encrypts, stores, and decrypts hidden-wallet mnemonics locally. It cannot
 // move funds and adds no mainnet surface.
 
-import { encryptVault, decryptVault, KDF_PARAMS } from './vault.js';
+import { decryptVault, encryptVault, KDF_PARAMS, vaultKdfDiffersFrom } from './vault.js';
+// H-2 (weekly audit 2026-08-25): chaff and real slots must record an IDENTICAL
+// `kdf`, and the era that has to match is THIS DEVICE'S — not the current
+// at-rest default. Every writer here therefore goes through
+// encryptDeniabilityVault / makeChaff(era); see deniabilityKdfProfile.js.
+//
+// GATE 2 REVERTED FOR THE WRITE PATH (2026-08-26). #2103 pointed these writers
+// at the current KDF_PARAMS instead. On any device provisioned before
+// 2026-08-25 that reopened H-2 in its worst form: the pool stays v1 (chaff can
+// never be rekeyed — see below), so the ONE slot a write touches becomes the
+// only v2 blob among 257 v1 ones, and the minority `kdf` object in a storage
+// dump IS the real hidden wallet. Sorting the dump by kdf.memorySize picks it
+// out with no secret at all.
+//
+// WHY THE OBVIOUS FIX IS UNAVAILABLE, so nobody re-derives it: you cannot sweep
+// the chaff forward to match. Chaff is indistinguishable from a real slot by
+// construction (makeChaff is pure randomBytes, and that is what hides the COUNT
+// of hidden wallets), so "rewrite the chaff" has no way to select its targets —
+// it would overwrite every other hidden wallet on the device, and those
+// mnemonics exist nowhere else. Nor can the `kdf` field be edited in place:
+// paramsFromVault derives the key from it, and v:2 AAD-binds it into the GCM
+// tag. And an UNREVEALED hidden wallet can never be re-encrypted at all,
+// because that needs its secret. So a pool holding one can never be made
+// uniform at a new era; holding the era is the only option that neither
+// destroys wallets nor moves the tell onto the wallets hidden hardest.
+import { deniabilityKdfProfile, encryptDeniabilityVault } from './deniabilityKdfProfile.js';
 import { generateMnemonic, validateMnemonic } from './mnemonic.js';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
@@ -321,7 +346,7 @@ function readSlotForSecret(secret) {
 // same distribution as real hidden-wallet slots. The salt/iv/ct are all random,
 // which is indistinguishable from genuine AES-GCM output to anyone without the
 // secret. Mirrors the { v, kdf, salt, iv, ct } shape of vault.js exactly.
-function makeChaff() {
+function makeChaff(kdfProfile = KDF_PARAMS) {
   // H2: a real hidden-wallet slot now encrypts a FIXED-LENGTH multi-seed container
   // (always exactly FIXED_LEN plaintext bytes — independent of mnemonic word-count
   // and of whether the set carries an Action-Password record). So chaff must size
@@ -332,11 +357,17 @@ function makeChaff() {
   const GCM_TAG = 16;
   return {
     v: 1,
-    // Advertise the CURRENT KDF params (imported from vault.js) so chaff blobs are
-    // byte-shaped identically to real hidden-wallet blobs. If these were hardcoded
-    // they would diverge when the at-rest params are raised (SAST M3), making the
-    // kdf field a real-vs-chaff distinguisher — a deniability tell.
-    kdf: { name: 'argon2id', ...KDF_PARAMS },
+    // Advertise THIS DEVICE's recorded KDF params so chaff blobs are byte-shaped
+    // identically to real hidden-wallet blobs. Hardcoding them would diverge when
+    // the at-rest params are raised (SAST M3), making the kdf field a real-vs-chaff
+    // distinguisher — a deniability tell.
+    //
+    // H-2 (2026-08-25): tracking the CURRENT KDF_PARAMS instead was the same bug
+    // one level up. Persisted blobs are frozen at write time, so on a device whose
+    // pool predates a profile change, current-params chaff diverges from the 255
+    // slots already on disk just as badly as a hardcoded value would. The caller
+    // passes deniabilityKdfProfile(); it resolves to KDF_PARAMS on a fresh device.
+    kdf: { name: 'argon2id', ...kdfProfile },
     salt: b64(randomBytes(16)),
     iv: b64(randomBytes(12)),
     ct: b64(randomBytes(ptLen + GCM_TAG)),
@@ -365,11 +396,22 @@ export async function ensureStealthPool() {
   // shape universal too. getOrCreateStealthSalt is idempotent — a
   // pre-existing salt is returned unchanged.
   try { getOrCreateStealthSalt(); } catch { /* best-effort — matches chaff loop */ }
+  // H-2: read the device's recorded KDF era ONCE, before the write connection is
+  // open, and stamp every backfilled slot with it. Read once rather than per slot
+  // both for cost and for consistency — a profile resolved mid-loop could differ
+  // from the one the first slots were written with.
+  //
+  // Backfill is where this matters most. A slot is only refilled here when it is
+  // MISSING, which on an established device means the pool grew or a slot was
+  // lost — so the fresh chaff lands beside 255 blobs already frozen at the old
+  // era. Stamping the current default there (Gate 2, #2103) made the new chaff
+  // the odd one out instead of the camouflage it exists to be.
+  const kdfProfile = await deniabilityKdfProfile();
   const db = await openDb();
   try {
     for (const key of SLOT_KEYS) {
       const existing = await getKey(db, key);
-      if (existing == null) await putKey(db, key, makeChaff());
+      if (existing == null) await putKey(db, key, makeChaff(kdfProfile));
     }
   } finally {
     db.close();
@@ -434,7 +476,7 @@ export async function createHiddenWallet(secret, strength = 128) {
   // A hidden wallet has no Action Password today (the UI does not yet collect one),
   // so the record is absent; presence still means "configured" inside the container.
   const container = makeContainer([{ id: newWalletId(), mnemonic }]);
-  const blob = await encryptVault(serializeContainer(container), secret);
+  const blob = await encryptDeniabilityVault(serializeContainer(container), secret);
   // Mirror vaultStore's guard: refuse anything that is not an encrypted blob.
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
@@ -507,7 +549,7 @@ export async function moveWalletToHidden(mnemonic, secret) {
   // H2: same FIXED-LENGTH container wrapping as createHiddenWallet, so a moved
   // wallet is byte-shaped identically to a fresh hidden wallet and to chaff.
   const container = makeContainer([{ id: newWalletId(), mnemonic }]);
-  const blob = await encryptVault(serializeContainer(container), secret);
+  const blob = await encryptDeniabilityVault(serializeContainer(container), secret);
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
   }
@@ -568,8 +610,17 @@ export async function tryRevealHidden(secret) {
     // matching P2 fix (ensureStealthPool now provisions the salt universally)
     // means real devices essentially never hit this branch, but keeping the
     // IO shape identical closes the residual signal at zero user cost.
-    try { const db = await openDb(); db.close(); } catch { /* IO-cost only */ }
-    try { await decryptVault(makeChaff(), secret); } catch { /* KDF-cost only */ }
+    //
+    // H-2 (2026-08-25): the throwaway blob is now stamped at the DEVICE's recorded
+    // era, so the pad costs what decrypting a real slot on this device costs. At
+    // the CURRENT params it would under-spend by ~2× on an installed-base device
+    // whose pool is still v1 — a pad that no longer pads. deniabilityKdfProfile()
+    // does the IDB open + one get itself, which is also a closer match to the
+    // salted path's IO shape than the bare open/close it replaces.
+    // (deniabilityKdfProfile is total: it swallows storage faults and answers
+    // KDF_PARAMS, so it cannot turn a miss here into a thrown unlock.)
+    const kdfProfile = await deniabilityKdfProfile();
+    try { await decryptVault(makeChaff(kdfProfile), secret); } catch { /* KDF-cost only */ }
     return null;
   }
   const db = await openDb();
@@ -580,12 +631,89 @@ export async function tryRevealHidden(secret) {
     db.close();
   }
   if (!blob) return null;
+  let plaintext;
   try {
-    return await decryptVault(blob, secret); // throws on wrong secret / chaff
+    plaintext = await decryptVault(blob, secret); // throws on wrong secret / chaff
   } catch {
     return null;
   }
+  // OPPORTUNISTIC REPAIR, FIRE-AND-FORGET. If this slot's recorded KDF profile
+  // disagrees with the era the REST OF THE FOOTPRINT is recorded under, re-encrypt
+  // it at that era using the SAME secret that just decrypted it — but do NOT
+  // await it. The H-1 equaliser holds only if a reveal HIT costs the same as a
+  // reveal MISS on the same state, and awaiting an extra Argon2id derivation on
+  // the hit path would be a real-vs-chaff timing tell.
+  //
+  // TARGET IS THE POOL'S ERA, NOT KDF_PARAMS (changed 2026-08-26). Under #2103
+  // this re-encrypted to the current default, which on a v1-era device moved the
+  // slot AWAY from its 257 neighbours and made the revealed — i.e. real — wallet
+  // the unique v2 blob in the dump. Inverted: the pool is the reference, and a
+  // slot that disagrees with it is the thing to fix.
+  //
+  // So this is now a REPAIR path rather than a migration path, and it has real
+  // work to do: it heals devices that already ran #2103 and wrote a v2 blob into
+  // a v1 pool. On a device that never did, the predicate is false and nothing
+  // fires. It cannot migrate a pool forward — see the header for why that is not
+  // achievable for this data structure at all.
+  //
+  // Best-effort: any failure leaves the original slot untouched; correctness is
+  // preserved (both writers write the same key; last write wins). The secret is
+  // already in scope for the decrypt above; the re-encrypt uses it once more and
+  // then it goes out of scope with the caller. No new prompt.
+  //
+  // The era is resolved INSIDE the deferred callback: it costs an IndexedDB
+  // probe, and out here that would land inside the very timing budget the defer
+  // exists to protect.
+  {
+    // Deferred to a macrotask so the rekey's Argon2id derivation runs AFTER the
+    // current unlock's timing budget has closed — an in-flight microtask would
+    // still be observed by a stopwatch or CPU monitor pinned to this unlock. The
+    // scheduling is fire-and-forget; the Promise is only retained for a
+    // test-only await hook (see _awaitPendingKdfRekey below).
+    _lastKdfRekey = new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          // Nest rather than early-return, for the same reason the slot check
+          // below does: every exit from this callback has to reach resolve().
+          const era = await deniabilityKdfProfile();
+          const fresh = vaultKdfDiffersFrom(blob, era)
+            ? await encryptVault(plaintext, secret, era)
+            : null;
+          if (fresh && fresh.ct && fresh.iv && fresh.salt) {
+            const wdb = await openDb();
+            try {
+              // Reviewer C-1 sibling fix on PR #2103: before writing, verify
+              // the target slot still exists. If a panic-wipe (which calls
+              // deleteVaultDatabase) fires inside the 250 ms window, the
+              // slot is gone; re-inserting would re-create part of the wiped
+              // state. Missing → skip.
+              //
+              // Skip by NOT writing, never by returning early: a `return` here
+              // exits the setTimeout callback and jumps straight past the
+              // resolve() below, so _lastKdfRekey would never settle and any
+              // test awaiting _awaitPendingKdfRekey() on the wipe-raced path
+              // hangs to timeout. duress.js's mirror of this block resolves
+              // explicitly before returning; this shape needs no early exit.
+              const existing = await getKey(wdb, slot);
+              if (existing != null) await putKey(wdb, slot, fresh);
+            } finally { wdb.close(); }
+          }
+        } catch { /* best-effort — reveal already returned the plaintext */ }
+        resolve();
+      }, 250);
+    });
+  }
+  return plaintext;
 }
+
+// Test hook: the deniability rekey is fire-and-forget so the H-1 unlock KDF
+// budget stays identical between reveal-hit and reveal-miss. Tests that assert
+// post-reveal storage state need a deterministic wait — this returns a promise
+// that resolves once the most recent rekey (if any) has settled. Not part of
+// the app's runtime contract; safe to remove if the equaliser ever moves.
+let _lastKdfRekey = /** @type {Promise<void>} */ (Promise.resolve());
+/** @returns {Promise<void>} */
+export function _awaitPendingKdfRekey() { return _lastKdfRekey; }
 
 // INTERNAL: reveal a hidden wallet's first (and only) MNEMONIC, or null. Used by
 // create/move (idempotency, clobber-guard, self-verify) which reason about the
@@ -644,7 +772,7 @@ export async function setHiddenActionPasswordRecord(secret, mnemonic, record) {
     throw new Error('Hidden wallet not found — cannot set action password record');
   }
   const container = makeContainer([{ id: newWalletId(), mnemonic }], record ?? undefined);
-  const blob = await encryptVault(serializeContainer(container), secret);
+  const blob = await encryptDeniabilityVault(serializeContainer(container), secret);
   if (typeof blob !== 'object' || !blob.ct || !blob.iv || !blob.salt) {
     throw new Error('Refusing to store: not a valid encrypted vault blob');
   }

@@ -105,6 +105,32 @@ describe('createCredentialVerifier / verifyCredential', () => {
   });
 });
 
+// L-10 (weekly audit 2026-08-25): deriveRaw fed argon2id an unbounded credential.
+// Not UI-reachable today (the only unlock cohort is the numeric PinPad), and
+// captureVerifierSafe already swallows the resulting OOM — this is the guard that
+// survives a future free-text password cohort, so it is asserted at the boundary
+// rather than at any call site.
+describe('credential length cap (L-10)', () => {
+  it('rejects an over-long credential instead of deriving on it', async () => {
+    const huge = 'a'.repeat(1025);
+    await expect(createCredentialVerifier(huge, { params: CHEAP })).rejects.toThrow(/too long/i);
+  });
+
+  it('accepts a credential at the 1024-char boundary', async () => {
+    const atLimit = 'a'.repeat(1024);
+    const v = await createCredentialVerifier(atLimit, { params: CHEAP });
+    expect(await verifyCredential(v, atLimit)).toBe(true);
+  });
+
+  it('fails CLOSED, not open: an over-long entry never verifies and never throws out', async () => {
+    const v = await createCredentialVerifier('123456', { params: CHEAP });
+    // verifyCredential's contract is "never throws" — the cap must deny, not escape.
+    expect(await verifyCredential(v, 'a'.repeat(5000))).toBe(false);
+    // And capture degrades to null rather than aborting an in-flight unlock.
+    expect(await captureVerifierSafe('a'.repeat(5000), { params: CHEAP })).toBeNull();
+  });
+});
+
 describe('captureVerifierSafe (graceful degrade — load-bearing)', () => {
   it('returns the verifier on success', async () => {
     const v = await captureVerifierSafe('123456', { params: CHEAP });

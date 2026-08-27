@@ -26,8 +26,14 @@ updates:
     # require named crypto reviewer approval via CODEOWNERS on /package.json.
     ignore:
       - dependency-name: "ethers"
+      - dependency-name: "@keystonehq/keystone-sdk"
+      - dependency-name: "@keystonehq/bc-ur-registry"
+      - dependency-name: "@keystonehq/bc-ur-registry-eth"
+      - dependency-name: "@keystonehq/bc-ur-registry-sol"
+      - dependency-name: "@ngraveio/bc-ur"
       - dependency-name: "@noble/curves"
       - dependency-name: "@noble/hashes"
+      - dependency-name: "@scure/base"
       - dependency-name: "@scure/bip32"
       - dependency-name: "@scure/bip39"
       - dependency-name: "@scure/btc-signer"

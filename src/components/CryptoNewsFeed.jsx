@@ -56,18 +56,18 @@ function NewsCard({ article }) {
       rel="noopener noreferrer"
       className="flex gap-3 p-3 rounded-xl hover:bg-secondary transition-colors group"
     >
-      {/* M-10: rss2json is a third-party JSON proxy — the thumbnail URL is
-          attacker-influenced. `safeNewsThumbUrl` narrows the render to the
-          publisher CDNs in ALLOWED_NEWS_THUMB_HOSTS (or a data: placeholder);
-          anything else falls back to the neutral placeholder so no request
-          leaves the device. `no-referrer` + `crossOrigin=anonymous` also
-          strip URL/state from the fetch for the allowlisted case. */}
+      {/* M-10: thumbnail URL is attacker-influenced (upstream RSS).
+          `safeNewsThumbUrl` narrows to publisher CDNs in
+          ALLOWED_NEWS_THUMB_HOSTS (or a data: placeholder); anything else
+          falls back to the neutral placeholder so no request leaves the
+          device. `no-referrer` strips URL/state from the fetch. Do NOT set
+          crossOrigin — publisher CDNs don't send CORS headers, so an
+          anonymous request fails and every thumbnail disappears via onError. */}
       {thumbnail && (
         <img
           src={safeNewsThumbUrl(thumbnail)}
           alt=""
           referrerPolicy="no-referrer"
-          crossOrigin="anonymous"
           className="h-14 w-14 rounded-lg object-cover shrink-0 bg-secondary"
           onError={e => { (/** @type {any} */ (e.target)).style.display = "none"; }}
         />

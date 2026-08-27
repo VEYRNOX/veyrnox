@@ -90,6 +90,10 @@ const MAX_USER_CONTENT = 8192;
 // vendor advisories block, which routinely runs 12-20 KB. Cap high enough to
 // fit that but well under the Llama-3.1-8B ~24K-token context window.
 const MAX_SYSTEM_CONTENT = 32768;
+const ENTITLEMENT_CACHE_TTL_MS = 60_000;
+const REVENUECAT_TIMEOUT_MS = 3_000;
+const REQUIRED_ENTITLEMENT = 'ai_security_protection';
+const entitlementCache = new Map<string, { ok: boolean, expiresAt: number }>();
 
 // Kept identical to tip-screen so both proxies accept the same set of origins.
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -113,7 +117,7 @@ function allowedOrigins(): Set<string> {
 
 function corsHeaders(origin: string | null): Record<string, string> {
   const base: Record<string, string> = {
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-rc-user-id',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   };
@@ -128,6 +132,43 @@ function json(body: unknown, status: number, origin: string | null): Response {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders(origin) },
   });
+}
+
+async function hasRequiredEntitlement(appUserId: string): Promise<boolean> {
+  const now = Date.now();
+  const cached = entitlementCache.get(appUserId);
+  if (cached && cached.expiresAt > now) return cached.ok;
+
+  const secret = Deno.env.get('REVENUECAT_V1_SECRET_KEY') ?? '';
+  if (!secret) return false;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REVENUECAT_TIMEOUT_MS);
+  try {
+    const resp = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`, {
+      headers: {
+        'Authorization': `Bearer ${secret}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    });
+    if (!resp.ok) return false;
+    const body = await resp.json().catch(() => null) as Record<string, unknown> | null;
+    const subscriber = body?.subscriber;
+    const entitlements = subscriber && typeof subscriber === 'object'
+      ? (subscriber as Record<string, unknown>).entitlements
+      : null;
+    const active = entitlements && typeof entitlements === 'object'
+      ? (entitlements as Record<string, unknown>).active
+      : null;
+    const ok = !!(active && typeof active === 'object' && REQUIRED_ENTITLEMENT in active);
+    entitlementCache.set(appUserId, { ok, expiresAt: now + ENTITLEMENT_CACHE_TTL_MS });
+    return ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 serve(async (req) => {
@@ -146,6 +187,13 @@ serve(async (req) => {
   const apikey = req.headers.get('apikey') ?? '';
   if (!bearer && !apikey) {
     return json({ error: 'unauthorized' }, 401, origin);
+  }
+  const rcUserId = (req.headers.get('x-rc-user-id') ?? '').trim();
+  if (!rcUserId) {
+    return json({ error: 'entitlement_required' }, 403, origin);
+  }
+  if (!(await hasRequiredEntitlement(rcUserId))) {
+    return json({ error: 'entitlement_required' }, 403, origin);
   }
 
   // TIP_CHAT_BASE_URL overrides TIP_BASE_URL for the chat route only.

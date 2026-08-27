@@ -14,6 +14,7 @@ import { Link } from "react-router";
 import { ShieldCheck, TrendingUp, Link2, Lock, Sparkles, ArrowRight, Check } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";
+import { hasSafetyPlusAccess, TIER } from "@/lib/tier";
 
 // Safety Plus hub, grouped by nav section to mirror the public plans page at
 // https://veyrnox.com/plans. Every route below is in the SAFETY_PLUS_ROUTES
@@ -29,7 +30,7 @@ const SECTIONS = [
       { name: "Duress PIN", summary: "Decoy wallet under coercion", route: "/duress-pin" },
       { name: "Stealth / Hidden Wallets", summary: "Deniable hidden-wallet pool", route: "/stealth-wallets" },
       { name: "Panic Wipe", summary: "Irreversible local key destruction", route: "/panic-wipe" },
-      { name: "Hardware Wallet (Trezor)", summary: "Cold-key signing — keys never leave the device", route: "/hardware-wallet" },
+      { name: "Hardware Wallet (Digital Shield)", summary: "Cold-key signing — keys never leave the device", route: "/hardware-wallet" },
       { name: "Anomaly / Fraud Detection", summary: "Rule-based deviation flags over your own history", route: "/anomaly-detection" },
       { name: "Suspicious-Address Screening", summary: "Local blocklist + sanctioned-address checks", route: "/address-checker" },
       { name: "Token Approvals (View + Revoke)", summary: "Inspect and revoke ERC-20 allowances", route: "/token-approvals" },
@@ -92,7 +93,8 @@ function FeatureTile({ feature, isUnlocked }) {
 
 export default function SafetyPlus() {
   const { currentTier } = useTier();
-  const isUnlocked = currentTier === "safety_plus";
+  const isUnlocked = hasSafetyPlusAccess(currentTier);
+  const isAiPlan = currentTier === TIER.AI_SECURITY_PROTECTION;
 
   return (
     <div className="max-w-lg mx-auto space-y-8 pb-10">
@@ -105,7 +107,9 @@ export default function SafetyPlus() {
         </div>
         <p className="text-sm text-muted-foreground">
           {isUnlocked
-            ? "Your Safety Plus features — tap any to open."
+            ? isAiPlan
+              ? "AI Security Protection includes every Safety Plus feature below — tap any to open."
+              : "Your Safety Plus features — tap any to open."
             : "Deeper security controls and advanced analytics. Features below unlock when you upgrade."}
         </p>
       </div>

@@ -99,6 +99,20 @@ describe('Anti-debug — Android checkTracerPid', () => {
   it('checkTracerPid fails closed (getOrDefault(false))', () => {
     expect(kt).toContain('getOrDefault(false)');
   });
+
+  it('isBlockTier does not bypass the gate in debug builds', () => {
+    expect(kt).not.toContain('if (BuildConfig.DEBUG) {\n                false');
+  });
+
+  it('isBlockTier logs only a generic release message when BLOCK fires', () => {
+    expect(kt).toContain('"BLOCK tier fired"');
+  });
+
+  it('isBlockTier does not log per-detector attribution', () => {
+    expect(kt).not.toContain('hook=');
+    expect(kt).not.toContain('tamper=');
+    expect(kt).not.toContain('screenCapture=');
+  });
 });
 
 // ── 2. iOS: PT_DENY_ATTACH ───────────────────────────────────────────────────
@@ -352,15 +366,25 @@ describe('Android anti-dump — prctl(PR_SET_DUMPABLE, 0)', () => {
     expect(fnBody).toContain('runCatching');
   });
 
-  it('earlyCheck calls earlyAntiDump() before earlyDetectHook()', () => {
+  it('earlyCheck probes hook state before claiming the ptrace slot', () => {
     const checkStart = kt.indexOf('fun earlyCheck(');
     expect(checkStart).toBeGreaterThan(-1);
-    const checkBody = kt.slice(checkStart, checkStart + 400);
+    const checkBody = kt.slice(checkStart, checkStart + 800);
     const antiDumpIdx = checkBody.indexOf('earlyAntiDump()');
     const hookIdx = checkBody.indexOf('earlyDetectHook()');
+    const ptraceIdx = checkBody.indexOf('earlyPtraceTraceme()');
     expect(antiDumpIdx).toBeGreaterThan(-1);
     expect(hookIdx).toBeGreaterThan(-1);
-    expect(antiDumpIdx).toBeLessThan(hookIdx);
+    expect(ptraceIdx).toBeGreaterThan(-1);
+    expect(antiDumpIdx).toBeLessThan(ptraceIdx);
+    expect(hookIdx).toBeLessThan(ptraceIdx);
+  });
+
+  it('earlyCheck documents why TracerPid must be read before nativeEarlyTraceme', () => {
+    const checkStart = kt.indexOf('fun earlyCheck(');
+    expect(checkStart).toBeGreaterThan(-1);
+    const checkBody = kt.slice(checkStart, checkStart + 500);
+    expect(checkBody).toContain('TracerPid probe self-detects on a clean device');
   });
 });
 
@@ -623,11 +647,11 @@ describe('Item 8 — Android preventive ptrace self-attach via JNI', () => {
     expect(window).toContain('runCatching');
   });
 
-  it('earlyDetectHook chains earlyPtraceTraceme', () => {
+  it('earlyDetectHook does NOT chain earlyPtraceTraceme', () => {
     const hookIdx = kt.indexOf('private fun earlyDetectHook()');
     expect(hookIdx).toBeGreaterThan(-1);
     const hookBody = kt.slice(hookIdx, hookIdx + 300);
-    expect(hookBody).toContain('earlyPtraceTraceme');
+    expect(hookBody).not.toContain('earlyPtraceTraceme');
   });
 
   it('stale "not yet implemented" comment is removed from checkTracerPid context', () => {
@@ -683,15 +707,22 @@ describe('Native signing gate — RaspIntegrityPlugin.isBlockTier + HardwareKekP
   it('isBlockTier delegates to earlyDetectHook()', () => {
     const start = kt.indexOf('fun isBlockTier(');
     expect(start).toBeGreaterThan(-1);
-    const body = kt.slice(start, start + 300);
+    const body = kt.slice(start, start + 800);
     expect(body).toContain('earlyDetectHook()');
   });
 
   it('isBlockTier delegates to earlyDetectTamper(context)', () => {
     const start = kt.indexOf('fun isBlockTier(');
     expect(start).toBeGreaterThan(-1);
-    const body = kt.slice(start, start + 300);
+    const body = kt.slice(start, start + 800);
     expect(body).toContain('earlyDetectTamper(');
+  });
+
+  it('isBlockTier chains earlyCheckScreenCapture(context)', () => {
+    const start = kt.indexOf('fun isBlockTier(');
+    expect(start).toBeGreaterThan(-1);
+    const body = kt.slice(start, start + 800);
+    expect(body).toContain('earlyCheckScreenCapture(context)');
   });
 
   it('HardwareKekPlugin.getHardwareFactor calls isBlockTier', () => {
@@ -709,13 +740,13 @@ describe('Native signing gate — RaspIntegrityPlugin.isBlockTier + HardwareKekP
 // signatures (RFC 7518 §3.4, 64 bytes) to ASN.1 DER before calling JCA
 // SHA256withECDSA.verify(). The algorithm was extracted into EcdsaDerTranscoder.kt
 // (pure JVM, no Android context) so that RawEcdsaDerTranscoderTest.kt can
-// execute it with real P-256 keypairs on `./gradlew :app:testDebugUnitTest`.
+// execute it with real P-256 keypairs on `./gradlew :app:testGoogleDebugUnitTest`.
 // The CI job android-unit-tests runs it on every push.
 //
 // These structural pins confirm the three artefacts are all present and wired:
 //   1. EcdsaDerTranscoder.kt — extracted pure-JVM object
 //   2. RawEcdsaDerTranscoderTest.kt — JUnit test class with roundtrip fuzz
-//   3. ci.yml android-unit-tests job — `./gradlew :app:testDebugUnitTest`
+//   3. ci.yml android-unit-tests job — `./gradlew :app:testGoogleDebugUnitTest`
 
 describe('Item 38 — Kotlin JVM test harness: EcdsaDerTranscoder + CI gate', () => {
   it('EcdsaDerTranscoder.kt defines rawEcdsaSignatureToDer', () => {
@@ -736,9 +767,9 @@ describe('Item 38 — Kotlin JVM test harness: EcdsaDerTranscoder + CI gate', ()
     expect(ecdsaTestKt).toContain('secp256r1');
   });
 
-  it('ci.yml android-unit-tests job runs testDebugUnitTest', () => {
+  it('ci.yml android-unit-tests job runs testGoogleDebugUnitTest', () => {
     expect(ciYml).toContain('android-unit-tests');
-    expect(ciYml).toContain('testDebugUnitTest');
+    expect(ciYml).toContain('testGoogleDebugUnitTest');
   });
 });
 
@@ -1177,7 +1208,7 @@ describe('Item 22 — Android earlyCheckScreenCapture in companion earlyCheck()'
   it('earlyCheck() chains earlyCheckScreenCapture(context)', () => {
     const start = kt.indexOf('fun earlyCheck(context');
     expect(start).toBeGreaterThan(-1);
-    const body = kt.slice(start, start + 400);
+    const body = kt.slice(start, start + 1200);
     expect(body).toContain('earlyCheckScreenCapture(context)');
   });
 
@@ -1194,8 +1225,7 @@ describe('Item 22 — Android earlyCheckScreenCapture in companion earlyCheck()'
 //
 // iOS has -checkScreenCapture (UIScreen.isCaptured) which surfaces a
 // screenCapture:true verdict field when the screen is being mirrored via AirPlay
-// or captured via iOS screen recording (item 16 wired it into nativeProbe.js
-// signals.hooked → BLOCK; item 17 added it to the iOS pre-bridge early gate).
+// or captured via iOS screen recording.
 //
 // Android's analogue is DISPLAY_CATEGORY_PRESENTATION: the DisplayManager API
 // returns non-empty virtual/presentation displays when the screen is being
@@ -1275,11 +1305,10 @@ describe('Item 20 — Android earlyCheckJdwp in earlyDetectHook()', () => {
     expect(hookStart).toBeGreaterThan(-1);
     const hookBody = kt.slice(hookStart, hookStart + 300);
     expect(hookBody).toContain('earlyCheckJdwp()');
-    // Must still chain the existing early checks
-    expect(hookBody).toContain('earlyPtraceTraceme()');
-    const ptraceIdx = hookBody.indexOf('earlyPtraceTraceme()');
-    const jdwpIdx   = hookBody.indexOf('earlyCheckJdwp()');
-    expect(jdwpIdx).toBeGreaterThan(ptraceIdx);
+    const fdIdx = hookBody.indexOf('earlyFridaPipes()');
+    const jdwpIdx = hookBody.indexOf('earlyCheckJdwp()');
+    expect(fdIdx).toBeGreaterThan(-1);
+    expect(jdwpIdx).toBeGreaterThan(fdIdx);
   });
 
   it('earlyCheckJdwp() uses getOrDefault(false) — fail-open on exception', () => {

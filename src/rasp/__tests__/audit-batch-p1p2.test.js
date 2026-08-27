@@ -191,7 +191,12 @@ describe('P2-6b — nativeProbe rejects partial bridge verdicts (structural test
     const src = await nativeProbeSource();
     expect(src.available).toBe(true);
     // 2026-07-16: `elevated` is now a fifth signal alongside the original four.
-    expect(src.signals).toEqual({ rooted: false, hooked: false, emulator: false, tampered: false, elevated: false });
+    // M-5 (2026-08-25): `screenCapture` is a sixth — iOS-only, false on every
+    // other platform (this mock has no getPlatform, so it takes the non-iOS path).
+    expect(src.signals).toEqual({
+      rooted: false, hooked: false, emulator: false, tampered: false,
+      elevated: false, screenCapture: false,
+    });
   });
   it('full Android-shape → available:true, correctly mapped', async () => {
     state.verdict = { rooted: true, hookedProcess: false, emulator: false, tampered: false };

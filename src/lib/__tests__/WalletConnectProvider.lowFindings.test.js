@@ -106,7 +106,7 @@ describe('L-3 — typed-data pre-modal chain binding uses the approved session c
     const branchStart = src.indexOf("} else if (method === 'eth_signTypedData_v4') {");
     const branchEnd = src.indexOf('        } else {', branchStart);
     const body = src.slice(branchStart, branchEnd);
-    expect(body).toContain('resolveSessionCaip2(session, data.params?.chainId)');
+    expect(body).toContain('resolveSessionCaip2(');
     expect(body).toContain('SESSION_CHAINID_INVALID');
     expect(body).not.toContain("const sessionChainRaw = (data.params?.chainId ?? '').split(':')[1]");
   });

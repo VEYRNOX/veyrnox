@@ -96,18 +96,18 @@ export default function SessionManager() {
         Revoking signs out a device: locks wallet, requires password. Takes effect immediately on that device, next open on others.
       </p>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="p-4 rounded-xl border border-border bg-card text-center">
-          <p className="text-2xl font-bold text-success">{activeSessions.length}</p>
-          <p className="text-xs text-muted-foreground">Active Sessions</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="p-4 rounded-xl border border-border bg-card text-center min-w-0">
+          <p className="text-2xl font-bold text-success break-words">{activeSessions.length}</p>
+          <p className="text-xs text-muted-foreground break-words">Active Sessions</p>
         </div>
-        <div className="p-4 rounded-xl border border-border bg-card text-center">
-          <p className="text-2xl font-bold">{sessions.length}</p>
-          <p className="text-xs text-muted-foreground">Total Sessions</p>
+        <div className="p-4 rounded-xl border border-border bg-card text-center min-w-0">
+          <p className="text-2xl font-bold break-words">{sessions.length}</p>
+          <p className="text-xs text-muted-foreground break-words">Total Sessions</p>
         </div>
-        <div className="p-4 rounded-xl border border-border bg-card text-center">
-          <p className="text-2xl font-bold text-muted-foreground">{revokedSessions.length}</p>
-          <p className="text-xs text-muted-foreground">Revoked</p>
+        <div className="p-4 rounded-xl border border-border bg-card text-center min-w-0">
+          <p className="text-2xl font-bold text-muted-foreground break-words">{revokedSessions.length}</p>
+          <p className="text-xs text-muted-foreground break-words">Revoked</p>
         </div>
       </div>
 

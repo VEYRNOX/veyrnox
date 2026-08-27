@@ -55,7 +55,8 @@
 
 import { Capacitor } from '@capacitor/core';
 // P2-3 (audit batch, 2026-07-15): use the LIVE deniability-OR-demo helper (added
-// in PR #978, mirrors the Trezor I3 hotfix). isDeniabilitySessionActive alone
+// in PR #978, mirrors the I3 egress-gate pattern used elsewhere in wallet-core).
+// isDeniabilitySessionActive alone
 // misses the persisted `veyrnox-demo=1` localStorage flag — under demo mode the
 // attestation bridge would still fire, potentially leaking a wallet-set oracle
 // via the DEMO/real contrast. isDeniabilityOrDemoActive checks both signals fresh
@@ -81,7 +82,17 @@ const UNAVAILABLE = Object.freeze({ available: false });
 // silently treated as the weaker/safer one.
 //
 //   TAMPERED > HOOKED > INTEGRITY_FAIL > EMULATOR > ROOTED >
-//   INTEGRITY_UNAVAILABLE > ELEVATED > CLEAN
+//   INTEGRITY_UNAVAILABLE > SCREEN_CAPTURE > ELEVATED > CLEAN
+//
+// SCREEN_CAPTURE (added 2026-08-25, M-5): active mirroring/recording on iOS. Ranks
+// just above ELEVATED — it blocks strictly more (seed-reveal) — and below every
+// condition that indicates a compromised runtime.
+//
+// L-5 (same audit): the ranks here and degrade.js's blockedActions must stay
+// MONOTONIC — a higher rank must block a superset of every lower rank. EMULATOR
+// violated that (rank 5, but ['sign'] only, vs ROOTED rank 4 blocking seed
+// material). l5-tier-monotonicity.test.js now asserts the invariant over every
+// ordered pair, so adding a condition here with a too-small blocked set turns red.
 //
 // ELEVATED (added 2026-07-16, owner-approved fix): the 8 "soft" environment
 // signals split out of ROOTED (see nativeProbe.js / conditions.js / degrade.js).
@@ -93,12 +104,13 @@ const UNAVAILABLE = Object.freeze({ available: false });
 const DANGER_RANK = Object.freeze({
   [CONDITION.CLEAN]: 0,
   [CONDITION.ELEVATED]: 1,
-  [CONDITION.INTEGRITY_UNAVAILABLE]: 2,
-  [CONDITION.ROOTED]: 3,
-  [CONDITION.EMULATOR]: 4,
-  [CONDITION.INTEGRITY_FAIL]: 5,
-  [CONDITION.HOOKED]: 6,
-  [CONDITION.TAMPERED]: 7,
+  [CONDITION.SCREEN_CAPTURE]: 2,
+  [CONDITION.INTEGRITY_UNAVAILABLE]: 3,
+  [CONDITION.ROOTED]: 4,
+  [CONDITION.EMULATOR]: 5,
+  [CONDITION.INTEGRITY_FAIL]: 6,
+  [CONDITION.HOOKED]: 7,
+  [CONDITION.TAMPERED]: 8,
 });
 
 function dangerRank(condition) {

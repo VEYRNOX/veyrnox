@@ -61,7 +61,7 @@ describe('KekEnrollmentGate — auto-enrollment', () => {
     // Should show auto-enroll progress view.
     expect(screen.getByTestId(AUTO_ENROLL_TESTID)).toBeTruthy();
     expect(screen.queryByTestId(GATE_TESTID)).toBeNull();
-    expect(screen.getByText(/sealing into hardware/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /sealing into hardware/i })).toBeTruthy();
 
     // Should call onEnroll with the stashed PIN.
     await waitFor(() => expect(onEnroll).toHaveBeenCalledWith('12345678'));
@@ -136,6 +136,29 @@ describe('KekEnrollmentGate — auto-enrollment', () => {
     expect(screen.getByRole('button', { name: /continue with pin protection/i })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByRole('status')).toBeTruthy();
+  });
+
+  it('4b. insecure-tier continue passes insecureDevice=true to onSkip', async () => {
+    const onEnroll = vi.fn(async () => ({
+      ok: false,
+      msg: "This device doesn't meet the hardware security requirement.",
+      isInsecureTier: true,
+      isWrongPin: false,
+    }));
+    const onSkip = vi.fn();
+
+    render(
+      <KekEnrollmentGate
+        origin="fresh"
+        autoEnrollPin="12345678"
+        onEnroll={onEnroll}
+        onSkip={onSkip}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByTestId(GATE_TESTID)).toBeTruthy());
+    screen.getByRole('button', { name: /continue with pin protection/i }).click();
+    expect(onSkip).toHaveBeenCalledWith({ insecureDevice: true });
   });
 
   it('5. no autoEnrollPin → shows manual gate immediately (no auto-enroll attempt)', async () => {

@@ -132,13 +132,32 @@
 ## 10. High-risk / deferred
 55. WalletConnect / dApp connection — 📋 (Phase D; POST-AUDIT only; gateway to
     swap/DeFi which themselves stay OUT — see do-not-build line)
+56. Fiat on-ramp — third-party hand-off (Transak) — ✅ BUILT, ⚠️ conditions below.
+    **Moved out of section C on 2026-08-24. Read the carve-out there before
+    changing anything here.** Veyrnox never touches fiat, never custodies, never
+    KYCs: `/buy` collects amount/asset, `buildTransakUrl()` reads the deposit
+    address from the on-device wallet at press-time, and `Browser.open()` hands
+    off to Transak's hosted widget. The purchase is between the user and
+    Transak; the crypto lands at an address the user's own seed derives.
+    Off-ramp, fiat wallets, and bank links stay in section C — the carve-out is
+    the **on-ramp hand-off only**.
+    - Ship gate `VITE_BUY_ENABLED` — `true` in `.env.production` since PR #2030.
+    - UK suppressed for financial-promotions reasons (s.21 FSMA) —
+      `docs/buy-uk-financial-promotions-checklist.md`. **That block fails OPEN
+      on an undetectable region and is device-reported, so it is a good-faith
+      suppression, not an access control.**
+    - **NOT verified**: no purchase has ever completed on either store.
+    - Counsel sign-off on the promotions posture is still an owner action; the
+      checklist tracks it.
 
 ---
 
 ## What is deliberately NOT a feature (the discipline)
 Saying no is part of the product. Excluded because they break non-custodial /
 trigger licensing / are a different regulated business:
-- Swaps/DEX, DeFi yield, lending, bridges, fiat ramps, CEX deposit
+- Swaps/DEX, DeFi yield, lending, bridges, CEX deposit
+- Fiat OFF-ramp, fiat wallets, bank links. (Fiat **on**-ramp is now a scoped
+  exception — third-party hand-off only, item 56 + the section C carve-out.)
 - Trading bots, perps, options/derivatives, tokenized stocks
 - Custodial / institutional custody
 - KYC / VASP / Travel Rule / AML / geo-blocking / DID
@@ -241,8 +260,28 @@ Bots, Perps Trading, Options Derivatives, Tokenized Stocks, Social Trading, Trad
 Signals, DCA.
 
 Custody/banking (breaks non-custody): Institutional Custody, Bank Link, Fiat
-Wallets, Fiat Ramp, Live Fiat Ramp, Crypto Off-Ramp, CEX Deposit, Exchange
-Connections, Native Pay Ramp.
+Wallets, Crypto Off-Ramp, CEX Deposit, Exchange Connections, Native Pay Ramp.
+
+> **CARVE-OUT, 2026-08-24 — fiat ON-ramp via third-party hand-off.**
+> "Fiat Ramp / Live Fiat Ramp" was listed here and has been moved to item 56
+> (section 10). The distinction this rests on, stated plainly so it can be
+> challenged rather than assumed:
+>
+> - What section C exists to prevent is **Veyrnox** holding fiat, custodying
+>   user funds, or operating the regulated activity itself. The Transak
+>   integration does none of those — it is a hand-off to a licensed provider,
+>   the purchase contract is between the user and Transak, and the crypto is
+>   delivered to an address the user's own seed derives. Non-custody is intact.
+> - **This is not the same as "no obligations".** Presenting an on-ramp to
+>   consumers can be a financial promotion in its own right, which is precisely
+>   why the UK is suppressed under s.21 FSMA
+>   (`docs/buy-uk-financial-promotions-checklist.md`). That checklist, not this
+>   line, is where the compliance posture actually lives, and counsel sign-off
+>   on it remains an open owner action.
+> - **Only the on-ramp hand-off moved.** Off-ramp, fiat wallets, bank links, and
+>   CEX deposit stay in this section. If a future change would have Veyrnox
+>   take fiat, hold a balance, run KYC, or take a cut of the conversion, it is
+>   back in section C and the decision rule below applies.
 
 Lending/yield/DeFi (regulated): Crypto Loans, Lending/Borrowing, Loan Calculator,
 DeFi Yield, Yield Farming, Staking (staking-as-a-service regulated; non-custodial

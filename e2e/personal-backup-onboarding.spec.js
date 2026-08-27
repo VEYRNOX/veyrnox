@@ -65,7 +65,8 @@ test.describe('Personal Backup — onboarding with owner PIN 30081977', () => {
     // to reach the authenticated shell. Keep the older card selector so the
     // helper remains valid across an in-flight UI rollout.
     const dismiss = page
-      .getByRole('button', { name: /skip for now/i })
+      .getByRole('button', { name: /go to my wallet/i })
+      .or(page.getByRole('button', { name: /skip for now/i }))
       .or(page.getByRole('button', { name: "You're set" }));
     const sendLink = page.getByRole('link', { name: 'Send', exact: true });
     // .first(): the created-flash overlay renders on top of an already-painted

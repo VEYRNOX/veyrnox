@@ -34,26 +34,68 @@ import { argon2id } from 'hash-wasm';
 // we want a conservative, memory-hard cost (memory is the lever against parallel
 // cracking hardware).
 //
-// CHOSEN: 192 MiB / t=3 — the deliberate at-rest cost for a single-factor seed
-// vault. 192 MiB produces ~6-8 s unlock times on real Capacitor WebView devices
-// (the WASM KDF runs ~3-5x slower there than a desktop browser due to WebView
-// JIT/memory constraints). That latency is now an ACCEPTED trade-off: Face ID /
-// biometric unlock (device-verified 2026-07-05) mitigates the UX cost of the slow
-// password path, so the stronger offline-seizure resistance is worth it. History:
-// an earlier pass lowered this to 64 MiB (PR #465, 2026-06-28) purely for unlock
-// latency before biometric unlock existed; with biometrics now available the raise
-// back to 192 MiB is intentional, applied to existing 64 MiB vaults via the
-// lazy-rekey migration below (no lockout). EXPORTED so stealth chaff advertises the
-// SAME params (otherwise chaff vs real blobs differ on the kdf field — a
-// deniability tell).
+// HISTORY (kept whole so future readers see the full tradeoff pendulum):
+//   * v0 (pre-2026-06-28): 64 MiB / t=3 (initial ship).
+//   * PR #465 (2026-06-28): dropped to 64 MiB for onboarding latency — the
+//     precedent this file's next entry overrides. See PR #465 commit for scope.
+//   * PR #604 (2026-07-05, v1): raised to 192 MiB / t=3 once biometric unlock
+//     was device-verified — the biometric path masked the slow password path, so
+//     the stronger offline-seizure resistance was worth the ~6–8 s Capacitor
+//     WebView unlock. Applied to existing 64 MiB vaults via the lazy-rekey
+//     migration below (no lockout).
+//   * v2 (2026-08-24, OWNER-RULED — this file): dropped to 96 MiB / t=6.
+//     Real-device measurement on Note 20 showed the 192 MiB path spending >6 s
+//     of dead-window time even with biometric unlock available (the password
+//     path is still hit on setup, PIN change, and any biometric miss). Halving
+//     memory + doubling iterations is NOT security-equivalent: Argon2id's
+//     GPU/ASIC-crack resistance is a function of MEMORY, not CPU-time. Halving
+//     `m` roughly halves the per-guess memory a parallel-cracking rig must
+//     provision — an honestly weaker offline-crack posture in exchange for a
+//     usable unlock. This overrides PR #465's precedent for the same
+//     latency-vs-crack-resistance tradeoff, but at a cost the owner sized and
+//     accepted rather than a default someone drifted into. See
+//     docs/Feature-Status.md 2026-08-24 entry for the disclosure to the
+//     outstanding independent audit.
+//
+// EXPORTED so stealth chaff advertises the SAME params (otherwise chaff vs real
+// blobs differ on the kdf field — a deniability tell).
+//
+// The `kdfProfileVersion` field is stamped into every new blob's `kdf` sub-object
+// so a future reader can distinguish v2 blobs from v1 blobs at a glance, without
+// re-deriving the profile from `(memorySize, iterations)`. `deriveKey` and
+// `assertSaneKdfParams` only look at the four argon2id fields — the extra field
+// rides along in the stored `kdf` object and is ignored on read.
 export const VAULT_ERR = Object.freeze({ MALFORMED: 'VAULT_MALFORMED' });
 
 export const KDF_PARAMS = Object.freeze({
   parallelism: 1,
+  iterations: 6,
+  memorySize: 98304, // KiB == 96 MiB
+  hashLength: 32,    // 256-bit key for AES-256
+  kdfProfileVersion: 2,
+});
+
+// v1 profile — kept for `vaultNeedsKdfMigration` comparison and for docs. NOT used
+// as a WRITE default anywhere: v1 blobs are only ever READ (via paramsFromVault,
+// which uses each blob's own recorded `kdf`).
+const KDF_PROFILE_V1_LEGACY = Object.freeze({
+  parallelism: 1,
   iterations: 3,
   memorySize: 196608, // KiB == 192 MiB
-  hashLength: 32,    // 256-bit key for AES-256
+  hashLength: 32,
 });
+
+/**
+ * Silent-migration flag for the v1 → v2 KDF-profile transition. Default OFF at
+ * ship: existing v1 (192 MiB / t=3) vaults keep opening at their own recorded
+ * params via paramsFromVault. New vaults are already written at v2.
+ *
+ * Owner flips this to `true` after real-device benchmark confirms the v2 profile
+ * is a net UX win on the target device class. Once on, a successful slow-path
+ * unlock silently re-encrypts a v1 blob under v2 (mirrors the AAD_V3_MIGRATION
+ * pattern in native.js — best-effort, non-fatal, no user-visible step).
+ */
+export const KDF_PROFILE_V2_MIGRATION_ENABLED = false;
 
 // LEGACY params used by vaults encrypted before M3. We do NOT decrypt with the
 // CURRENT params — we read each blob's OWN recorded params (paramsFromVault), so
@@ -76,7 +118,7 @@ const LEGACY_KDF_PARAMS = Object.freeze({
 const MAX_KDF_PARAMS = Object.freeze({
   parallelism: 4,
   iterations: 12,
-  memorySize: 1048576, // KiB == 1 GiB (CURRENT is 192 MiB)
+  memorySize: 1048576, // KiB == 1 GiB (CURRENT v2 is 96 MiB; v1 legacy 192 MiB still opens)
   hashLength: 64,
 });
 
@@ -117,8 +159,9 @@ function randomBytes(n) {
 }
 
 // --- Off-main-thread Argon2id (perceived-perf only; crypto + params UNCHANGED) ---
-// The KDF derivation (KDF_PARAMS.memorySize, currently 192 MiB) blocks the UI
-// thread, so the unlock spinner can't animate
+// The KDF derivation (KDF_PARAMS.memorySize — read the constant; the profile has
+// moved three times and every restated figure here has gone stale, L-13) blocks
+// the UI thread, so the unlock spinner can't animate
 // and the app looks frozen. Run it in a Web Worker when one is available; ALWAYS
 // fall back to the exact in-thread argon2id on ANY worker problem (unsupported,
 // error, or timeout), so unlock can never break (I4, fail closed). The worker runs
@@ -223,7 +266,8 @@ async function deriveKey(password, salt, params = KDF_PARAMS) {
   const key = await crypto.subtle.importKey('raw', /** @type {BufferSource} */ (raw), { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
   zero(raw);
   // DEFECT-A defense-in-depth: yield to a macrotask so hash-wasm's Argon2 WASM
-  // instance (KDF_PARAMS.memorySize, currently 192 MiB) from THIS derivation becomes
+  // instance (KDF_PARAMS.memorySize — or, on the deniability path, the device's
+  // recorded profile passed in as `params`) from THIS derivation becomes
   // GC-eligible before the next sequential derivation allocates its own
   // KDF_PARAMS.memorySize — keeping peak memory one-at-a-time rather
   // than concurrent. Best-effort (GC is non-deterministic) and negligible latency;
@@ -426,33 +470,95 @@ export function vaultNeedsAAD(vault) {
  * @param {Record<string, unknown>} vault
  * @returns {boolean}
  */
-// Direction now UP: existing 64 MiB vaults rekey to 192 MiB on first unlock (deliberate, biometric-mitigated).
-// M-8: v:1 blobs also trigger rekey so AAD binding is added on first unlock.
+// AAD upgrade (v:1 → v:2) is ALWAYS-ON — it is independent of the KDF-profile
+// migration flag: an unauthenticated header is a discrete security bug and its fix
+// must not ride on an unrelated toggle. The KDF-profile mismatch (v1 192 MiB / t=3
+// vs v2 96 MiB / t=6) only triggers a rekey when KDF_PROFILE_V2_MIGRATION_ENABLED
+// is on — until the owner flips that, existing v1 blobs stay at 192 MiB and open
+// via paramsFromVault (backwards-compat safety net).
 export function vaultNeedsRekey(vault) {
   if (vaultNeedsAAD(vault)) return true;
+  if (!KDF_PROFILE_V2_MIGRATION_ENABLED) return false;
+  return vaultNeedsKdfMigration(vault);
+}
+
+/**
+ * Whether a blob's recorded Argon2id params differ from the CURRENT KDF_PARAMS
+ * (the v2 profile). Ignores the AAD-version question and the migration flag —
+ * pure profile-mismatch check. `kek-dek` blobs derive no Argon2id key, so they
+ * are never flagged. Callers gate the ACTUAL rekey on
+ * `KDF_PROFILE_V2_MIGRATION_ENABLED`.
+ * @param {Record<string, unknown>} vault
+ * @returns {boolean}
+ */
+export function vaultNeedsKdfMigration(vault) {
+  return vaultKdfDiffersFrom(vault, KDF_PARAMS);
+}
+
+/**
+ * Whether a blob's recorded Argon2id params differ from an ARBITRARY profile.
+ * The general form of `vaultNeedsKdfMigration`, which is now this with
+ * `KDF_PARAMS` bound.
+ *
+ * The deniability layer needs the general form because "correct" there is not
+ * the current at-rest default — it is whatever era the rest of the footprint is
+ * already recorded under (`deniabilityKdfProfile()`). A stealth slot that
+ * matches KDF_PARAMS while the 257 blobs beside it are at v1 is the DEFECT, not
+ * the goal: the odd `kdf` object is plaintext in a storage dump and picks that
+ * slot out. See deniabilityKdfProfile.js for the full rationale.
+ *
+ * Reads each blob's own recorded params through `paramsFromVault`, so the
+ * missing-field fallbacks stay in one place and cannot drift between the two
+ * comparisons.
+ *
+ * @param {Record<string, unknown>} vault
+ * @param {{memorySize:number, iterations:number, parallelism:number, hashLength:number}} params
+ * @returns {boolean}
+ */
+export function vaultKdfDiffersFrom(vault, params) {
+  const k = /** @type {unknown} */ (vault && vault.kdf);
+  if (k === 'kek-dek') return false;
+  if (!k || typeof k !== 'object') return false;
   const p = paramsFromVault(vault);
-  return p.memorySize !== KDF_PARAMS.memorySize
-    || p.iterations !== KDF_PARAMS.iterations
-    || p.parallelism !== KDF_PARAMS.parallelism
-    || p.hashLength !== KDF_PARAMS.hashLength;
+  return p.memorySize !== params.memorySize
+    || p.iterations !== params.iterations
+    || p.parallelism !== params.parallelism
+    || p.hashLength !== params.hashLength;
 }
 
 /**
  * Encrypt a plaintext secret (e.g. the mnemonic) into a portable vault blob.
  * The returned object is safe to persist locally and to sync to a backend.
  * GCM additionalData binds v, kdf, and salt into the auth-tag (M-8).
+ *
+ * `params` defaults to the CURRENT at-rest profile and every ordinary caller
+ * leaves it alone. It exists for the DENIABILITY layer (H-2, weekly audit
+ * 2026-08-25): a blob's `kdf` field is plaintext in a storage dump, so a chaff
+ * slot written under the old profile and a real slot written under the new one
+ * are trivially distinguishable — which is the one thing the stealth pool and
+ * the duress/panic chaff must never be. Those writers pass this device's
+ * recorded era via deniabilityKdfProfile.js's encryptDeniabilityVault(); see
+ * that module for the full rationale. Params are stamped into the blob AND used
+ * for the derivation, so the result stays self-describing and decryptVault
+ * re-derives correctly with no special case.
+ *
  * @param {string} secret - LIVE SECRET (mnemonic / seed material)
  * @param {string} password
+ * @param {Record<string, unknown>} [params] - Argon2id profile; defaults to KDF_PARAMS
  * @returns {Promise<object>} serializable vault { v, kdf, salt, iv, ct }
  */
-export async function encryptVault(secret, password) {
+export async function encryptVault(secret, password, params = KDF_PARAMS) {
   const salt = randomBytes(16);
   const iv = randomBytes(12); // 96-bit nonce for GCM
-  const key = await deriveKey(password, salt);
+  // Range-check before argon2id sees it: on the deniability path these come from
+  // a STORED blob, and a corrupt record must not steer an OOM-sized allocation
+  // (same guard paramsFromVault applies on the read side, B-1/B-2).
+  const kdfParams = assertSaneKdfParams(/** @type {any} */ (params));
+  const key = await deriveKey(password, salt, /** @type {any} */ (kdfParams));
   const ptBytes = enc.encode(secret);
   const blob = {
     v: VAULT_VERSION,
-    kdf: { name: 'argon2id', ...KDF_PARAMS },
+    kdf: { name: 'argon2id', ...kdfParams },
     salt: b64(salt),
     iv: b64(iv),
   };
@@ -633,6 +739,11 @@ export async function decryptVaultWithDek(vault, dek) {
  * @returns {Promise<Uint8Array>} 32-byte C factor
  */
 export async function deriveKekC(password, salt) {
+  // Reverted the #1989 worker-route (was: runArgon2idBinary) — that path broke
+  // wallet CREATE on iOS: the very first KEK-C derivation on a fresh install
+  // failed inside the worker/hash-wasm bootstrap, teardown ran, banner showed
+  // "Wallet setup couldn't finish securely". In-thread argon2id is the pre-#1989
+  // shape and known-good. Keeps the trailing setTimeout(0) yield.
   const { argon2id: _argon2id } = await import('hash-wasm');
   const pw = enc.encode(password.normalize('NFKC'));
   let raw;

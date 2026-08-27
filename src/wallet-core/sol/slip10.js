@@ -117,8 +117,8 @@ export function deriveEd25519(seed, path) {
     // dropping the reference. Without this, ancestor SLIP-0010 material
     // (parent private scalars + chain codes — enough to derive sibling
     // Solana accounts under the same branch) sits in heap until GC.
-    // matches the try/finally zeroization pattern used in sol/send.js and
-    // sol/hw-send.js around this call.
+    // matches the try/finally zeroization pattern used in sol/send.js
+    // around this call.
     if (node.key && node.key.fill) node.key.fill(0);
     if (node.chainCode && node.chainCode.fill) node.chainCode.fill(0);
     node = next;
