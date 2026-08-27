@@ -72,9 +72,11 @@ jobs:
     # budget the job survives to upload the evidence.
     #
     # The job budget must stay comfortably above the SUM of the step budgets it
-    # contains, never equal to it: build 15 + test 25 = 40, plus ~5 min of
-    # setup, inside 75. If you raise a step, raise this too.
-    timeout-minutes: 75
+    # contains, never equal to it: build 15 + test 25 = 40, plus macOS setup
+    # and artifact upload. A 75-minute ceiling cancelled run 33100756767 before
+    # its bounded test step could report evidence, so retain 30 minutes of
+    # infrastructure headroom inside 105. If you raise a step, raise this too.
+    timeout-minutes: 105
 
     steps:
       - name: Checkout
@@ -172,7 +174,7 @@ jobs:
         working-directory: ios/App
         # test-without-building: the compile already happened in its own step
         # above, so this budget covers the TEST only. Keeping it well under the
-        # job's 75 matters for the reason #2008 documents — a step killed by the
+        # job's 105 matters for the reason #2008 documents — a step killed by the
         # JOB timeout takes the upload steps with it and the failure goes
         # invisible again.
         #
