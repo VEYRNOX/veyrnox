@@ -24,6 +24,7 @@ vi.mock('@/lib/biometricUnlock', () => ({
   clearUnlockSecret: (...a) => clearUnlockSecret(...a),
   hasStoredUnlockSecret: vi.fn(async () => _cache != null),
   biometricUnlockSupported: () => true,
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 
 vi.mock('@/lib/biometric', async (orig) => {

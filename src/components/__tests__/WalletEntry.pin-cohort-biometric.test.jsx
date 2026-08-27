@@ -36,6 +36,7 @@ vi.mock('@/lib/biometric', () => ({
   isBiometricUnlockEnabled: vi.fn(() => true),
   setBiometricUnlockEnabled: vi.fn(() => {}),
   getBiometricStatus: vi.fn(async () => ({ available: true, label: 'Face ID', mode: 'native' })),
+  hasBiometricConsentBeenRecorded: vi.fn(() => true),
 }));
 // Cache is EMPTY (no stored secret yet) — the condition the auto-cache fires on.
 vi.mock('@/lib/biometricUnlock', () => ({

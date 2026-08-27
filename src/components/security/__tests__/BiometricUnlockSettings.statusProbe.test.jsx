@@ -35,6 +35,7 @@ vi.mock('@/lib/biometric', () => ({
   isBiometricUnlockEnabled: () => false,
   setBiometricUnlockEnabled: vi.fn(),
   getBiometricStatus: () => Promise.reject(new Error('probe unavailable')),
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 
 vi.mock('@/lib/WalletProvider', () => ({
