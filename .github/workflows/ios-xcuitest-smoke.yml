@@ -190,10 +190,22 @@ jobs:
           # xcodebuild refuses to overwrite an existing result bundle.
           rm -rf TestResults.xcresult
           # GitHub's step timeout did not stop runs 33109374237/33114316303,
-          # leaving the required PR gate hung in Xcode teardown. `alarm`
-          # survives exec, so it terminates xcodebuild itself after 25 minutes;
-          # the following `||` still makes the step fail and preserves artifacts.
-          perl -e 'alarm shift; exec @ARGV or die "exec xcodebuild: $!\\n"' 1500 \
+          # and signalling only xcodebuild left its test children holding this
+          # pipeline open. Run the command in its own process group, then kill
+          # that whole group at the measured 25-minute ceiling. The following
+          # `||` still makes the step fail and preserves artifacts.
+          python3 -c '
+          import os, signal, subprocess, sys
+          timeout, command = int(sys.argv[1]), sys.argv[2:]
+          child = subprocess.Popen(command, start_new_session=True)
+          try:
+              raise SystemExit(child.wait(timeout))
+          except subprocess.TimeoutExpired:
+              print(f"xcodebuild exceeded {timeout}s; killing its process group", file=sys.stderr)
+              os.killpg(child.pid, signal.SIGKILL)
+              child.wait()
+              raise SystemExit(124)
+          ' 1500 \
             xcodebuild test-without-building \
             -project App.xcodeproj \
             -scheme App \
