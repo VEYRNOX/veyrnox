@@ -12,16 +12,19 @@ import { render, act, cleanup } from '@testing-library/react';
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true } }));
 
 const kdf = vi.hoisted(() => ({ count: 0 }));
-vi.mock('hash-wasm', async (importOriginal) => {
-  const orig = await importOriginal();
-  return {
-    ...orig,
-    argon2id: (opts, ...rest) => {
-      kdf.count += 1;
-      return orig.argon2id(opts, ...rest);
-    },
-  };
-});
+vi.mock('hash-wasm', () => ({
+  argon2id: async (opts) => {
+    kdf.count += 1;
+    // The invariant here is call-count parity, not Argon2 correctness. Avoiding
+    // real 96 MiB allocations keeps this structural regression test CI-safe.
+    const input = opts?.password ?? new Uint8Array();
+    let state = 0x811c9dc5;
+    for (const byte of input) state = Math.imul(state ^ byte, 0x01000193) >>> 0;
+    return Uint8Array.from({ length: opts?.hashLength ?? 32 }, (_, i) =>
+      (state >>> ((i % 4) * 8)) & 0xff,
+    );
+  },
+}));
 
 // Keep the verifier out of scope so this test pins the native unlock equalizer only.
 vi.mock('@/wallet-core/credentialVerifier', () => ({
@@ -115,6 +118,9 @@ async function countUnlockKdfs(password, { expectThrow = false } = {}) {
 
 beforeEach(async () => {
   try { localStorage.clear(); } catch { /* shimmed */ }
+  // This suite exercises the timing equalizer, not the new fresh-native
+  // biometric default. Keep the app-layer prompt out of its unlock scenarios.
+  try { localStorage.setItem('veyrnox-biometric-unlock', '0'); } catch { /* shimmed */ }
   await resetDevice();
 });
 
