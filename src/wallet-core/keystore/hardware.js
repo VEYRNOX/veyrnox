@@ -225,14 +225,19 @@ export async function getHardwareFactor(opts) {
     bridgeResult = await plugin.getHardwareFactor(pluginOpts);
   } catch (err) {
     const msg = String((err && err.message) ?? err ?? '');
-    if (msg.startsWith('KEK_KEY_PERMANENTLY_INVALIDATED')) {
+    // Read both slots — see L-7/L-8 (weekly audit 2026-08-25): Android prefixes
+    // the code into the message, iOS fills err.code. A message-only check
+    // misses an iOS-only code word; a code-only check misses Android's prefix.
+    const errCode = String((err && err.code) ?? '');
+    if (errCode === KEK_ERR.KEY_PERMANENTLY_INVALIDATED
+        || msg.startsWith('KEK_KEY_PERMANENTLY_INVALIDATED')) {
       // OS permanently killed the key (biometric enrollment changed / screen lock removed).
       // Only recovery is seed restore — NEVER a wrong-PIN increment.
       throw Object.assign(new Error(KEK_ERR.KEY_PERMANENTLY_INVALIDATED), {
         code: KEK_ERR.KEY_PERMANENTLY_INVALIDATED,
       });
     }
-    if (rawCode === KEK_ERR.USER_CANCELLED || msg === 'User cancelled') {
+    if (errCode === KEK_ERR.USER_CANCELLED || msg === 'User cancelled') {
       // User-initiated abort of the per-use biometric sheet. A raw re-throw carries NO
       // .code, so WalletEntry's KEK exemptions miss it and it falls through to the
       // wrong-PIN counter — a correct-PIN user who cancels the sheet 10 times triggers the
