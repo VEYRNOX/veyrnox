@@ -23,18 +23,19 @@ import { render, act, cleanup } from '@testing-library/react';
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => true } }));
 
 const kdf = vi.hoisted(() => ({ count: 0, memorySizes: [] }));
-vi.mock('hash-wasm', async (importOriginal) => {
-  const orig = await importOriginal();
-  return {
-    ...orig,
-    argon2id: (opts, ...rest) => {
-      kdf.count += 1;
-      kdf.memorySizes.push(opts && opts.memorySize);
-      // Run cheap so the suite stays fast; the RECORDED value is the true request.
-      return orig.argon2id({ ...opts, memorySize: 256 }, ...rest);
-    },
-  };
-});
+vi.mock('hash-wasm', () => ({
+  argon2id: async (opts) => {
+    kdf.count += 1;
+    kdf.memorySizes.push(opts && opts.memorySize);
+    // This suite asserts requested profile parity, not Argon2 correctness.
+    const input = opts?.password ?? new Uint8Array();
+    let state = 0x811c9dc5;
+    for (const byte of input) state = Math.imul(state ^ byte, 0x01000193) >>> 0;
+    return Uint8Array.from({ length: opts?.hashLength ?? 32 }, (_, i) =>
+      (state >>> ((i % 4) * 8)) & 0xff,
+    );
+  },
+}));
 
 vi.mock('@/wallet-core/credentialVerifier', () => ({
   captureVerifierSafe: vi.fn(async () => null),
@@ -119,6 +120,8 @@ async function measureUnlock(password, { expectThrow = false } = {}) {
 
 beforeEach(async () => {
   try { localStorage.clear(); } catch { /* shimmed */ }
+  // Keep this KDF-profile test focused on timing work, not the native prompt.
+  try { localStorage.setItem('veyrnox-biometric-unlock', '0'); } catch { /* shimmed */ }
   await resetDevice();
 });
 afterEach(() => { cleanup(); });
