@@ -79,7 +79,9 @@ final class AppUITests: XCTestCase {
         // 3. PIN pad: 8 digits, then tap the submit button. PinPad's submit
         //    aria-label is "Submit PIN"; the visible text is the scheme's
         //    submitLabel (defaults to "Continue"). Match either.
-        let pin = "24681024"
+        // Must satisfy PinSetup's strength guard: sequential patterns such as
+        // 24681024 are intentionally rejected before the confirmation step.
+        let pin = "19283746"
         enterPin(app: app, digits: pin, stage: "set")
         submitPin(app: app, stage: "set")
 
