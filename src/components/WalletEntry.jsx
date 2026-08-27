@@ -843,6 +843,24 @@ export default function WalletEntry() {
     } finally { setBusy(false); }
   };
 
+  // AUTO-PROMPT Face ID / biometric on the lock screen — same behaviour users
+  // expect from iOS Wallet, 1Password, Bitwarden: no tap needed to raise the OS
+  // sheet on entry to the unlock view. Fires exactly once per view entry (ref
+  // resets when view leaves `unlock`), and only when the same button-visibility
+  // gate is satisfied. `biometricFailed` blocks re-fire after a cancel/error, so
+  // the user can fall through to PIN/password without the sheet re-popping.
+  // Invokes the same `handleBiometricUnlock` handler the button already runs —
+  // no new gate loosened, no new code path.
+  const autoBioTriedRef = useRef(false);
+  useEffect(() => {
+    if (view !== "unlock") { autoBioTriedRef.current = false; return; }
+    if (!biometricEnabled || biometricFailed || busy) return;
+    if (autoBioTriedRef.current) return;
+    autoBioTriedRef.current = true;
+    handleBiometricUnlock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, biometricEnabled, biometricFailed]);
+
   // ---- Unlock with the typed vault password (the always-available fallback) ----
   // opts: { skipPasskey, skipBiometric } — escape hatches, each only ever set by
   // the explicit "Unlock with password only" buttons surfaced AFTER the matching

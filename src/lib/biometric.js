@@ -34,10 +34,46 @@ export const BIOMETRIC_PREF_KEY = 'veyrnox-biometric-unlock';
 // requiring them to unlock, and vice-versa. Stored as "1" (on) / absent (off).
 export const TWOFACTOR_BIOMETRIC_KEY = 'veyrnox-2fa-biometric';
 
-/** @returns {boolean} whether the user has required biometric unlock. */
+// One-time migration: before this file switched to default-ON for native,
+// turning biometric unlock off REMOVED the pref key. A user who deliberately
+// opted out therefore had an unset value — indistinguishable, post-flip, from
+// a fresh install. Codex 2026-08-27 P1b: without a migration those legacy
+// opt-outs would silently re-enable on upgrade. This runs once per device:
+// if the user is already past onboarding (auth-model marker present) AND the
+// pref is unset, we lock them at '0' (explicit off). Fresh installs (no
+// auth-model) fall through and get the new default-ON. Skipped inside a
+// deniable/demo session — writing there would be a decoy-side tell.
+const BIOMETRIC_PREF_MIGRATED_KEY = 'veyrnox-biometric-pref-v2';
+let __bioMigrated = false;
+function ensureLegacyOptOutPreserved() {
+  if (__bioMigrated) return;
+  try {
+    if (isDeniabilityOrDemoActive()) return;
+    if (localStorage.getItem(BIOMETRIC_PREF_MIGRATED_KEY) === '1') { __bioMigrated = true; return; }
+    const pref = localStorage.getItem(BIOMETRIC_PREF_KEY);
+    const hasAuthModel = !!localStorage.getItem('veyrnox-auth-model');
+    if (pref === null && hasAuthModel) {
+      localStorage.setItem(BIOMETRIC_PREF_KEY, '0');
+    }
+    localStorage.setItem(BIOMETRIC_PREF_MIGRATED_KEY, '1');
+    __bioMigrated = true;
+  } catch { /* best-effort; idempotent, retries next read */ }
+}
+
+/** @returns {boolean} whether the user has required biometric unlock.
+ *
+ * Default ON for native (iOS/Android) FRESH installs — users expect Face ID /
+ * Fingerprint to be the unlock path without hunting Settings. Explicit opt-out
+ * stored as '0'. Legacy opt-outs (unset + existing user) are preserved by
+ * ensureLegacyOptOutPreserved() above. Web/non-native stays OFF.
+ */
 export function isBiometricUnlockEnabled() {
   try {
-    return localStorage.getItem(BIOMETRIC_PREF_KEY) === '1';
+    ensureLegacyOptOutPreserved();
+    const v = localStorage.getItem(BIOMETRIC_PREF_KEY);
+    if (v === '1') return true;
+    if (v === '0') return false;
+    return Capacitor.isNativePlatform();
   } catch {
     return false;
   }
@@ -203,7 +239,9 @@ export function setBiometricUnlockEnabled(on) {
   if (isDeniabilityOrDemoActive()) return;
   try {
     if (on) localStorage.setItem(BIOMETRIC_PREF_KEY, '1');
-    else localStorage.removeItem(BIOMETRIC_PREF_KEY);
+    // Explicit opt-out is '0', not remove — otherwise the new native default
+    // (unset → ON) would silently re-enable a user who deliberately turned it off.
+    else localStorage.setItem(BIOMETRIC_PREF_KEY, '0');
   } catch {
     /* storage unavailable — preference is best-effort, non-fatal. */
   }
