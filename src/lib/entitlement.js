@@ -21,7 +21,7 @@ import { isDeniabilitySessionActive } from '@/wallet-core/deniabilitySession.js'
 // Gate on import.meta.env.DEV — same pattern as VITE_DEV_UNGATE_SEND
 // (src/lib/devSendOverride.js). Production evaluates FORCED_TIER to null;
 // dead-code-eliminated in release builds regardless of the env string.
-const FORCED_TIER = import.meta.env.DEV
+const FORCED_TIER = (import.meta.env.DEV || import.meta.env.VITE_ALLOW_FORCE_TIER === '1')
   ? (import.meta.env.VITE_FORCE_TIER || null)
   : null;
 
