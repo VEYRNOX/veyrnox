@@ -79,7 +79,9 @@ final class AppUITests: XCTestCase {
         // 3. PIN pad: 8 digits, then tap the submit button. PinPad's submit
         //    aria-label is "Submit PIN"; the visible text is the scheme's
         //    submitLabel (defaults to "Continue"). Match either.
-        let pin = "24681024"
+        // Must satisfy PinSetup's strength guard: sequential patterns such as
+        // 24681024 are intentionally rejected before the confirmation step.
+        let pin = "19283746"
         enterPin(app: app, digits: pin, stage: "set")
         submitPin(app: app, stage: "set")
 
@@ -101,12 +103,11 @@ final class AppUITests: XCTestCase {
 
     // MARK: - helpers
 
-    /// Match a button by aria-label OR visible text (both surface as `label`
-    /// on XCUIElement). Returns the query even if no match yet — caller
-    /// decides whether to wait.
+    /// HTML aria-labels surface as XCUIElement identifiers. A direct identifier
+    /// query avoids WebKit's full accessibility snapshot walk, which can stall
+    /// on cold CI simulators when evaluating a broad predicate.
     private func buttonMatching(_ app: XCUIApplication, label: String) -> XCUIElement {
-        let predicate = NSPredicate(format: "label == %@", label)
-        return app.buttons.matching(predicate).firstMatch
+        app.buttons[label]
     }
 
     private func tapButton(app: XCUIApplication, label: String, timeout: TimeInterval, failureMessage: String) {
@@ -135,11 +136,9 @@ final class AppUITests: XCTestCase {
         }
     }
 
-    /// PinPad's submit renders text of `submitLabel` (defaults to "Continue")
-    /// and carries `aria-label="Submit PIN"`. Match either.
+    /// PinPad always exposes the explicit submit control as `Submit PIN`.
     private func submitPin(app: XCUIApplication, stage: String) {
-        let predicate = NSPredicate(format: "label == %@ OR label == %@", "Submit PIN", "Continue")
-        let submit = app.buttons.matching(predicate).firstMatch
+        let submit = app.buttons["Submit PIN"]
         XCTAssertTrue(
             submit.waitForExistence(timeout: 5),
             "PIN \(stage): submit button never appeared."
