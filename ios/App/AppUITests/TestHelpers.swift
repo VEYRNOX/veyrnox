@@ -5,7 +5,8 @@ import XCTest
 // exposed through WKWebView's accessibility bridge.
 
 enum TestPin {
-    static let standard = "24681024"
+    // Must remain accepted by checkPinStrength() for the real create flow.
+    static let standard = "19283746"
     static let alternate = "13579135"
     static let backupPin = "246810246810"  // 12-digit backup PIN
 }

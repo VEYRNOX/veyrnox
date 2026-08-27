@@ -20,7 +20,27 @@
   },
   {
     "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "1" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "9" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
     "elementDescriptors": [{ "text": "2" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "8" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "3" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "7" }]
   },
   {
     "eventType": "VIEW_CLICKED",
@@ -29,26 +49,6 @@
   {
     "eventType": "VIEW_CLICKED",
     "elementDescriptors": [{ "text": "6" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "8" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "1" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "0" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "2" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "4" }]
   },
   {
     "description": "Explicitly submit the eight-digit PIN via the stable visible button text",
@@ -66,7 +66,27 @@
   },
   {
     "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "1" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "9" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
     "elementDescriptors": [{ "text": "2" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "8" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "3" }]
+  },
+  {
+    "eventType": "VIEW_CLICKED",
+    "elementDescriptors": [{ "text": "7" }]
   },
   {
     "eventType": "VIEW_CLICKED",
@@ -75,26 +95,6 @@
   {
     "eventType": "VIEW_CLICKED",
     "elementDescriptors": [{ "text": "6" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "8" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "1" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "0" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "2" }]
-  },
-  {
-    "eventType": "VIEW_CLICKED",
-    "elementDescriptors": [{ "text": "4" }]
   },
   {
     "description": "Explicitly submit PIN confirmation via the stable visible button text",
