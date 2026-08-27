@@ -100,7 +100,7 @@ import SeedGrid from "@/components/SeedGrid";
 import SeedInputGrid from "@/components/SeedInputGrid";
 import ShakeOnKey from "@/components/ShakeOnKey";
 import TelemetryConsent from "@/components/TelemetryConsent";
-import FastUnlockFirstRunCard from "@/components/onboarding/FastUnlockFirstRunCard";
+import BiometricConsent from "@/components/BiometricConsent";
 import { getConsentState, clearConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { isFastpathEnabled, shouldShowFastpathWarmingHint } from "@/lib/fastpathUnlock";
@@ -111,6 +111,7 @@ import {
   isBiometricGateError,
   isBiometricUnlockEnabled,
   getBiometricStatus,
+  hasBiometricConsentBeenRecorded,
 } from "@/lib/biometric";
 import { hasStoredUnlockSecret, clearUnlockSecret } from "@/lib/biometricUnlock";
 import { enforceDuressBiometricInvariant, isDuressConfigured } from "@/lib/duressBiometricGuard";
@@ -567,6 +568,7 @@ export default function WalletEntry() {
   // this device. Evaluated once at mount (getConsentState is a synchronous
   // localStorage read) so the screen renders at most once per onboarding pass.
   const [consentDone, setConsentDone] = useState(() => getConsentState() !== null);
+  const [bioConsentDone, setBioConsentDone] = useState(() => hasBiometricConsentBeenRecorded());
   // True only across a fresh onboarding pass (finishPinSetup → Phase-2 create/import
   // → KEK gate → consent). Drives the one-time post-onboard import hold below. NOT
   // set on the PIN-recovery path (finishPinRecover) — restore flows don't get this
@@ -699,7 +701,13 @@ export default function WalletEntry() {
     getBiometricStatus().then(s => {
       if (!active) return;
       setBioStatus(s);
-      if (s?.available && Capacitor.isNativePlatform()) setBioEnabled(true);
+      // Default the "cache my PIN on submit" checkbox to ON only when the user
+      // has NOT explicitly declined biometric unlock. BiometricConsent writes
+      // '0' on decline; without this gate the wallet-create path would still
+      // cache the PIN behind biometrics for a user who just said no.
+      if (s?.available && Capacitor.isNativePlatform() && isBiometricUnlockEnabled()) {
+        setBioEnabled(true);
+      }
     }).catch(() => { if (active) setBioStatus(null); });
     return () => { active = false; };
   }, []);
@@ -1501,6 +1509,21 @@ export default function WalletEntry() {
     );
   }
 
+  // Biometric-consent chokepoint — rendered ONCE per install, immediately after
+  // TelemetryConsent, before any wallet-setup step. Owner ruling 2026-08-27:
+  // ask the user to opt into biometric unlock explicitly instead of the
+  // silent default-ON + removed disclosure card. Accept → Security Center
+  // toggle reads ON + Fast Unlock caches on first PIN. Decline → explicit '0'.
+  // Native platforms only; the BiometricConsent component skips itself if the
+  // device has no available biometric.
+  if (isUnlocked && !generatedSeed && consentDone && !bioConsentDone && !isDeniabilityOrDemoActive() && Capacitor.isNativePlatform()) {
+    return (
+      <EntryShell error={error}>
+        <BiometricConsent onChoice={() => setBioConsentDone(true)} />
+      </EntryShell>
+    );
+  }
+
   // FirstRunTour removed 2026-08-11 (owner decision, tap-reduction). Reopens
   // ECC F-P3-3 (#1160). Panic-residue scrub for the old tour keys stays in
   // wallet-core/panic.js so legacy installs still get wiped.
@@ -1511,12 +1534,6 @@ export default function WalletEntry() {
         {!justOnboarded && !isDeniabilityOrDemoActive() && (
           <BackupNagSheet publicAddresses={getBackupPublicAddresses ? getBackupPublicAddresses() : []} />
         )}
-        {/* Fast Unlock first-run disclosure card — informed-consent chokepoint
-            for the default-ON reversal (#2019). Renders null unless the full
-            gate matrix passes (native Android + biometric available + KEK
-            vault + not deniability/demo + no passkey + no explicit choice
-            yet + not previously seen). See FastUnlockFirstRunCard.jsx. */}
-        <FastUnlockFirstRunCard />
         <Outlet />
       </>
     );

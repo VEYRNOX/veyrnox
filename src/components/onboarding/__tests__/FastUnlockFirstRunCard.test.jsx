@@ -35,6 +35,7 @@ vi.mock('@/lib/biometric', () => ({
       else localStorage.removeItem('veyrnox-biometric-unlock');
     } catch { /* noop */ }
   },
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 
 const isPasskeyRegisteredMock = vi.fn(() => false);

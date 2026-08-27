@@ -61,6 +61,7 @@ vi.mock('@/lib/biometric', () => ({
       mode: 'demo',
       simulated: false,
     }),
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 
 vi.mock('@/lib/WalletProvider', () => ({

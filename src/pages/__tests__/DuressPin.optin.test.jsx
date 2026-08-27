@@ -87,6 +87,7 @@ const { getBiometricStatus, isBiometricUnlockEnabled } = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/biometric', () => ({
   getBiometricStatus, isBiometricUnlockEnabled, setBiometricUnlockEnabled: vi.fn(),
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 
 vi.mock('@/lib/authModel', () => ({ getAuthModel: () => 'pin', isPinModel: () => true }));
