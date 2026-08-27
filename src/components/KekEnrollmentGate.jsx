@@ -49,7 +49,6 @@ import { ShieldCheck, ShieldAlert, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PinPad from '@/components/security/PinPad';
 import VaultIllustration from '@/components/VaultIllustration';
-import OnboardingProgressBar from '@/components/OnboardingProgressBar';
 import ShakeOnKey from '@/components/ShakeOnKey';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
@@ -114,11 +113,6 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
   const [showSkipWarning, setShowSkipWarning] = useState(false);
 
   const copy = COPY[origin] || COPY.restored;
-  // Progress bar is scoped to THIS step only (WalletEntry no longer renders
-  // the pre-KEK bar). Unconditional here — mode='auto' vs 'onboarding' is a
-  // one-time-warning policy axis, not a "should the bar exist" axis, and gating
-  // the bar on it hid it whenever kekOrigin defaulted to 'restored'.
-  const onboardingFooter = <OnboardingProgressBar value={100} label="Wallet setup progress" />;
 
   const clearOnboardingSkipWarning = () => {
     if (mode !== 'onboarding') return;
@@ -206,7 +200,6 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
       <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-background overflow-hidden" data-testid="kek-auto-enroll">
         <div className="w-full max-w-sm flex flex-col items-center text-center space-y-5">
           <VaultIllustration size={200} label="Hardware-protected vault" />
-          <OnboardingProgressBar inline indeterminate label="Sealing into hardware" />
           <h1 className="text-2xl font-semibold tracking-tight">Sealing into hardware</h1>
           <p
             role="status"
@@ -329,7 +322,6 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
           </motion.p>
         )}
       </motion.div>
-      {onboardingFooter}
     </div>
   );
 }

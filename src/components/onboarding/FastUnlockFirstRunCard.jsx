@@ -49,6 +49,7 @@ const GATE_SHOW = 2;
 
 export default function FastUnlockFirstRunCard() {
   const [gate, setGate] = useState(GATE_LOADING);
+  const [bioLabel, setBioLabel] = useState('Biometric');
 
   useEffect(() => {
     let live = true;
@@ -63,6 +64,9 @@ export default function FastUnlockFirstRunCard() {
         const bio = await getBiometricStatus();
         if (!live) return;
         if (!bio?.available) { setGate(GATE_HIDE); return; }
+        // Prefer the resolved biometric label ("Fingerprint" / "Face Unlock");
+        // fall back to generic "Biometric" on unknown/missing sensor types.
+        if (bio.label) setBioLabel(bio.label);
 
         const wrapped = await isHardwareKekEnrolled();
         if (!live) return;
@@ -116,14 +120,14 @@ export default function FastUnlockFirstRunCard() {
           <Zap className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div className="space-y-1">
             <h3 id="fastpath-first-run-title" className="font-semibold text-sm">
-              Fast unlock is on
+              Enable {bioLabel}
             </h3>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              This lets Face ID or your fingerprint unlock the wallet without asking for your PIN.
-              It&rsquo;s faster. If someone else has your phone AND can pass your device&rsquo;s
-              biometric (for example, if they added their own face), they can unlock the wallet.
-              Your PIN still works. Note: fast unlock opens your real wallet directly &mdash; your
-              Emergency PIN and panic PIN only apply when you unlock by typing a PIN.
+              Unlock the wallet with {bioLabel} instead of typing your PIN. Faster,
+              but anyone who can pass your device&rsquo;s biometric (for example, if they
+              added their own face) can open the wallet. Your PIN still works and
+              opens your real wallet directly &mdash; your Emergency PIN and panic PIN
+              only apply when you unlock by typing a PIN.
             </p>
           </div>
         </div>
@@ -142,7 +146,7 @@ export default function FastUnlockFirstRunCard() {
             onClick={guardedEnable}
             className="px-3 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:opacity-90"
           >
-            Enable Fast Unlock
+            Enable {bioLabel}
           </button>
         </div>
       </div>
