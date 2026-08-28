@@ -128,12 +128,10 @@ const getHF = async () => H_BYTES.slice();
 let keyStore;
 let FASTPATH_CODE;
 
-/** Put a genuinely openable wrapped DEK in the alias, as a warm cache would hold. */
+/** Put an openable DEK in the alias, as a warm cache holds after the
+ *  2026-08-28 silent-fastpath refactor (raw base64 DEK, no HKDF wrap). */
 async function seedWarmCache() {
-  const { wrapForFastpath, deriveFastpathKek } = await import('../fastpathDekCache.js');
-  const kekFp = await deriveFastpathKek(H_BYTES.slice());
-  const wrapped = await wrapForFastpath(kekFp, FIXED_DEK);
-  getFastpathDek.mockResolvedValue(JSON.stringify(wrapped));
+  getFastpathDek.mockResolvedValue(Buffer.from(FIXED_DEK).toString('base64'));
 }
 
 beforeEach(async () => {

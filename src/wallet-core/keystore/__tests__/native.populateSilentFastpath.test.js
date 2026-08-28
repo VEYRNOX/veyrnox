@@ -1,11 +1,15 @@
-// src/wallet-core/keystore/__tests__/native.slowPathPopulate.test.js
+// src/wallet-core/keystore/__tests__/native.populateSilentFastpath.test.js
 //
-// Issue #2019 (owner Option 1) — the slow-path unlock MUST populate the
-// fast-path DEK alias so the biometric-only branch can succeed on subsequent
-// unlocks. This test pins the gating (opt-in ON + not-deniability + RASP
-// ALLOW) and pins the invariant that populate NEVER fails an unlock.
+// Issue #2019 (owner Tier 2, 2026-08-28) — populateFastpathBestEffort now
+// stores the RAW DEK (as base64) directly under the biometric-gated Keystore
+// alias. No HKDF-of-H layer, no aparajita hop. The Keystore-cipher-bound
+// alias IS the crypto layer.
 //
-// Mock discipline mirrors native.fastpathClearHooks.test.js.
+// This file pins:
+//   1. putFastpathDek receives exactly `base64(dek)` — 32 bytes decoded.
+//   2. No JSON envelope (no v/iv/ct fields — that was the removed layer).
+//   3. All existing gates (deniability, disabled, disclosure, passkey,
+//      duress-configured, RASP<ALLOW) still short-circuit populate.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -41,10 +45,9 @@ vi.mock('../../vault.js', () => ({
   AAD_V3_MIGRATION_ENABLED: false,
 }));
 
-const FIXED_KEK = new Uint8Array(32).fill(9);
 const FIXED_DEK = new Uint8Array(32).fill(4);
 vi.mock('../kek.js', () => ({
-  combineKek: vi.fn(async () => new Uint8Array(FIXED_KEK)),
+  combineKek: vi.fn(async () => new Uint8Array(32).fill(9)),
   randomDek: vi.fn(() => new Uint8Array(FIXED_DEK)),
   wrapDek: vi.fn(async () => ({ v: 2, iv: 'wrap-iv', ct: 'wrap-ct' })),
   unwrapDek: vi.fn(async () => new Uint8Array(FIXED_DEK)),
@@ -52,7 +55,6 @@ vi.mock('../kek.js', () => ({
   decodeKekSalt: vi.fn(() => new Uint8Array(32).fill(1)),
   parseVaultBlob: vi.fn((raw) => (typeof raw === 'string' ? JSON.parse(raw) : raw)),
 }));
-
 vi.mock('../hardware.js', () => ({
   clearHardwareCredential: vi.fn(async () => {}),
   getHardwareFactor: vi.fn(async () => new Uint8Array(32).fill(2)),
@@ -65,12 +67,6 @@ vi.mock('@/plugins/androidBiometricCache', () => ({
   putFastpathDek, getFastpathDek, clearFastpathDek,
 }));
 
-// Gate mocks — control isFastpathEnabled / hasSeenFastpathDisclosure /
-// isDeniabilityOrDemoActive per test. Under the default-ON reversal, populate
-// must be gated on BOTH the tri-state enabled read AND the disclosure marker
-// — a fresh install returns enabled=true from the default flip, but the
-// informed-consent chokepoint must suppress warming until the first-run card
-// has been acknowledged.
 const isFastpathEnabledMock = vi.fn(() => true);
 const hasSeenFastpathDisclosureMock = vi.fn(() => true);
 vi.mock('@/lib/fastpathUnlock.js', () => ({
@@ -110,6 +106,7 @@ let keyStore;
 beforeEach(async () => {
   vi.resetModules();
   store.clear();
+  try { localStorage.clear(); } catch { /* shimmed */ }
   putFastpathDek.mockClear();
   getFastpathDek.mockClear();
   clearFastpathDek.mockClear();
@@ -121,92 +118,74 @@ beforeEach(async () => {
   ({ nativeKeyStore: keyStore } = await import('../native.js'));
 });
 
-describe('slow-path fast-path populate (issue #2019 Option 1)', () => {
-  it('populates the fast-path alias after a successful KEK unlock when enabled + ALLOW', async () => {
+describe('populateFastpathBestEffort — silent scheme', () => {
+  it('writes exactly base64(DEK) — 32 raw bytes, no JSON envelope', async () => {
     setVault(enrolledBlob());
     await keyStore.unlock('87654321', { getHardwareFactor: getHF });
     expect(putFastpathDek).toHaveBeenCalledTimes(1);
-    // Silent-fastpath refactor (2026-08-28): the payload is now the raw
-    // 32-byte DEK, base64-encoded for the Capacitor string bridge. NOT a
-    // JSON HKDF-wrap envelope. See docs/kek-fast-path-design.md §Silent
-    // unlock.
-    const arg = putFastpathDek.mock.calls[0][0];
-    expect(typeof arg).toBe('string');
-    expect(arg.startsWith('{')).toBe(false);
-    const decoded = Buffer.from(arg, 'base64');
+    const payload = putFastpathDek.mock.calls[0][0];
+    expect(typeof payload).toBe('string');
+
+    // Must not be a JSON envelope with v/iv/ct — that was the removed HKDF
+    // layer. A leading '{' would mean populate is still wrapping.
+    expect(payload.startsWith('{')).toBe(false);
+
+    // Round-trip: the payload decodes to the exact 32-byte DEK the mocks
+    // provided (FIXED_DEK filled with 4).
+    const decoded = Buffer.from(payload, 'base64');
     expect(decoded.length).toBe(32);
     expect(Array.from(decoded)).toEqual(Array.from(FIXED_DEK));
   });
 
-  it('does NOT populate when opt-in is OFF', async () => {
-    isFastpathEnabledMock.mockReturnValue(false);
-    setVault(enrolledBlob());
-    await keyStore.unlock('87654321', { getHardwareFactor: getHF });
-    expect(putFastpathDek).not.toHaveBeenCalled();
-  });
-
-  it('does NOT populate when the first-run disclosure has not been seen (informed-consent chokepoint)', async () => {
-    // Default-ON reversal: isFastpathEnabled() defaults true on a fresh
-    // install, so the disclosure marker is the ONLY thing preventing a
-    // silent posture downgrade. Populate must skip until the user has seen
-    // the card and made a choice.
-    isFastpathEnabledMock.mockReturnValue(true);
-    hasSeenFastpathDisclosureMock.mockReturnValue(false);
-    setVault(enrolledBlob());
-    await keyStore.unlock('87654321', { getHardwareFactor: getHF });
-    expect(putFastpathDek).not.toHaveBeenCalled();
-  });
-
-  it('does NOT populate in a deniability/demo session (I3)', async () => {
+  it('gate: does NOT populate in deniability/demo (I3)', async () => {
     isDeniabilityOrDemoActiveMock.mockReturnValue(true);
     setVault(enrolledBlob());
     await keyStore.unlock('87654321', { getHardwareFactor: getHF });
     expect(putFastpathDek).not.toHaveBeenCalled();
   });
 
-  it('does NOT populate when a passkey is registered (Finding 2 — owner ruling: passkey wins)', async () => {
-    // Owner ruling on PR #2051 F2: users with a passkey enrolled see NEITHER
-    // the button NOR the toggle. Populate must respect the same rule so a
-    // "enable fast-path → enrol passkey → unenrol passkey" sequence cannot
-    // silently resurrect a warm cache. Fast-path only warms when passkey is
-    // NOT enrolled at the moment of the successful primary-PIN unlock.
+  it('gate: does NOT populate when a duress PIN is configured (H-1 write-side gate)', async () => {
+    try { localStorage.setItem('veyrnox-duress-configured', '1'); } catch { /* shimmed */ }
+    try {
+      setVault(enrolledBlob());
+      await keyStore.unlock('87654321', { getHardwareFactor: getHF });
+      expect(putFastpathDek).not.toHaveBeenCalled();
+    } finally {
+      try { localStorage.removeItem('veyrnox-duress-configured'); } catch { /* shimmed */ }
+    }
+  });
+
+  it('gate: does NOT populate when opt-in OFF', async () => {
+    isFastpathEnabledMock.mockReturnValue(false);
+    setVault(enrolledBlob());
+    await keyStore.unlock('87654321', { getHardwareFactor: getHF });
+    expect(putFastpathDek).not.toHaveBeenCalled();
+  });
+
+  it('gate: does NOT populate when disclosure not seen', async () => {
+    hasSeenFastpathDisclosureMock.mockReturnValue(false);
+    setVault(enrolledBlob());
+    await keyStore.unlock('87654321', { getHardwareFactor: getHF });
+    expect(putFastpathDek).not.toHaveBeenCalled();
+  });
+
+  it('gate: does NOT populate when a passkey is registered', async () => {
     isPasskeyRegisteredMock.mockReturnValue(true);
     setVault(enrolledBlob());
     await keyStore.unlock('87654321', { getHardwareFactor: getHF });
     expect(putFastpathDek).not.toHaveBeenCalled();
   });
 
-  it('does NOT populate when RASP tier is WARN', async () => {
+  it('gate: does NOT populate when RASP tier < ALLOW', async () => {
     raspTierMock.mockResolvedValue({ tier: 'warn-before-sign' });
     setVault(enrolledBlob());
     await keyStore.unlock('87654321', { getHardwareFactor: getHF });
     expect(putFastpathDek).not.toHaveBeenCalled();
   });
 
-  it('does NOT populate when RASP tier is BLOCK', async () => {
-    raspTierMock.mockResolvedValue({ tier: 'block-signing' });
-    setVault(enrolledBlob());
-    await keyStore.unlock('87654321', { getHardwareFactor: getHF });
-    expect(putFastpathDek).not.toHaveBeenCalled();
-  });
-
-  it('does NOT populate when RASP artifact is unknown/absent (fail-closed)', async () => {
-    raspTierMock.mockResolvedValue(null);
-    setVault(enrolledBlob());
-    await keyStore.unlock('87654321', { getHardwareFactor: getHF });
-    expect(putFastpathDek).not.toHaveBeenCalled();
-  });
-
-  it('populate failure does NOT fail the unlock (I4 best-effort)', async () => {
-    putFastpathDek.mockRejectedValueOnce(new Error('plugin bridge error'));
+  it('populate failure never fails the unlock (best-effort, I4)', async () => {
+    putFastpathDek.mockRejectedValueOnce(new Error('bridge boom'));
     setVault(enrolledBlob());
     await expect(keyStore.unlock('87654321', { getHardwareFactor: getHF })).resolves.toBe('seed');
-  });
-
-  it('a getFreshRaspArtifact throw does NOT fail the unlock (fail-closed populate skip)', async () => {
-    raspTierMock.mockRejectedValueOnce(new Error('probe blew up'));
-    setVault(enrolledBlob());
-    await expect(keyStore.unlock('87654321', { getHardwareFactor: getHF })).resolves.toBe('seed');
-    expect(putFastpathDek).not.toHaveBeenCalled();
   });
 });

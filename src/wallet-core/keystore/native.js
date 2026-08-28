@@ -81,6 +81,14 @@ import { App } from '@capacitor/app';
 import { encryptVault, decryptVault, deriveKekC, encryptVaultWithDek, encryptVaultWithDekV3, decryptVaultWithDek, VAULT_VERSION_V3, AAD_V3_MIGRATION_ENABLED, KDF_PROFILE_V2_MIGRATION_ENABLED, vaultNeedsKdfMigration } from '../vault.js';
 import { combineKek, randomDek, wrapDek, unwrapDek, KEK_ERR, decodeKekSalt, parseVaultBlob } from './kek.js';
 import { wrapDekForCache, unwrapDekFromCache, DEK_CACHE_STORAGE_KEY } from './dekCache.js';
+// Fast-path DEK cache primitives — kept exported for tests + potential
+// migration tooling. NOT imported on the hot path any more (2026-08-28,
+// silent-fastpath refactor): the DEK is now stored raw-base64 under the
+// biometric-gated Keystore alias, whose 30-s STRONG validity window IS the
+// crypto layer. The HKDF(H)+AES-GCM primitives below were a second layer
+// that added a redundant aparajita prompt for zero attacker-model gain.
+// See docs/kek-fast-path-design.md §Silent unlock.
+// eslint-disable-next-line no-unused-vars
 import { wrapForFastpath, unwrapFromFastpath, deriveFastpathKek } from './fastpathDekCache.js';
 import { isFastpathEnabled, hasSeenFastpathDisclosure } from '@/lib/fastpathUnlock.js';
 import { isDuressConfigured } from '@/lib/duressBiometricGuard.js';
@@ -613,46 +621,41 @@ export class FastpathError extends Error {
 //     then enrol passkey, then unenrol passkey → fast-path silently warm"
 //     window the honest-reviewer flagged as Finding 2 on PR #2051)
 //   - RASP tier ALLOW  (WARN/BLOCK bypass, per design doc §RASP tier)
-async function populateFastpathBestEffort(hCopy, dek) {
-  let kekFp;
+async function populateFastpathBestEffort(dek) {
+  // Silent-fastpath refactor (2026-08-28, owner Tier 2): the wrapped-DEK
+  // JSON envelope + HKDF(H) layer is gone. The DEK is stored as raw bytes
+  // (base64-encoded for the Capacitor string bridge) under the
+  // `veyrnox_fastpath_dek.v2` Keystore alias, whose STRONG + 30 s validity
+  // window is the crypto layer. See docs/kek-fast-path-design.md §Silent
+  // unlock and the module header on AndroidBiometricCachePlugin.kt.
   try {
-    if (!hCopy || !dek) return;
+    if (!dek) return;
     if (isDeniabilityOrDemoActive()) return;      // I3
-    // H-1 (weekly audit 2026-08-25) — THE load-bearing duress gate. This is the
-    // WRITE chokepoint: the fast-unlock button can only ever release what
-    // populate put here, so a device that never warms the cache cannot have it
-    // read out under coercion. Without this, both orderings reached the bypass
-    // — warm-then-configure (nothing cleared it) and configure-then-warm (the
-    // next real-PIN unlock re-warmed it).
-    //
-    // Reads the same deliberate-configuration marker as the rest of the duress
-    // stack (`veyrnox-duress-configured`, NOT hasDuressVault() which chaff
-    // provisioning makes permanently true — see duressBiometricGuard.js's
-    // header on PR #714), and inherits its fail-closed catch: an unreadable
-    // signal counts as configured and suppresses the write.
+    // H-1 (weekly audit 2026-08-25) — the load-bearing write-side duress
+    // gate. See `veyrnox-duress-configured` in duressBiometricGuard.js and
+    // native.duressFastpathGate.test.js.
     if (isDuressConfigured()) return;             // H-3 invariant
     if (!isFastpathEnabled()) return;             // Q3 explicit-OFF
-    // Default-ON reversal: informed-consent chokepoint. Populate MUST NOT
-    // warm the wrapped-DEK cache before the user has seen the first-run
-    // disclosure card and made a choice. Otherwise the default-on flip
-    // silently downgrades a device's unlock posture.
+    // Default-ON reversal: informed-consent chokepoint. See slowPathPopulate
+    // test "does NOT populate when the first-run disclosure has not been seen".
     if (!hasSeenFastpathDisclosure()) return;
     if (isPasskeyRegistered()) return;            // owner ruling — passkey wins
     let tier = TIER.BLOCK;
     try { tier = (await getFreshRaspArtifact())?.tier ?? TIER.BLOCK; } catch { tier = TIER.BLOCK; }
     if (tier !== TIER.ALLOW) return;              // fail-closed on WARN/BLOCK/unknown
-    kekFp = await deriveFastpathKek(hCopy);
-    const wrapped = await wrapForFastpath(kekFp, dek);
     const mod = await import('@/plugins/androidBiometricCache');
     if (typeof mod.putFastpathDek === 'function') {
-      await mod.putFastpathDek(JSON.stringify(wrapped));
+      // base64(dek) — the plugin encrypts the UTF-8 bytes of this string
+      // under the biometric-gated Keystore key. Read side base64-decodes
+      // back to the same 32-byte DEK.
+      let b64 = '';
+      for (let i = 0; i < dek.length; i++) b64 += String.fromCharCode(dek[i]);
+      await mod.putFastpathDek(btoa(b64));
     }
   } catch {
     // Best-effort — populate NEVER fails an unlock. Any failure means the
     // NEXT unlock takes the slow path again (correct fallback), and a
     // stale cache is invalidated at rotation sites by clearFastpathDekBestEffort.
-  } finally {
-    if (kekFp && kekFp.fill) kekFp.fill(0);
   }
 }
 
@@ -754,7 +757,6 @@ async function _unlockInner(password, opts = {}) {
     // from decodeKekSalt (never allocates) is safe. malformed kekSalt → MALFORMED_VAULT.
     let saltBytes;
     let H;
-    let hCopyForFastpath;
     let C;
     let kek;
     let dek;
@@ -766,12 +768,9 @@ async function _unlockInner(password, opts = {}) {
       // C-1 (v3): bind H to this vault's kekSalt (v3 only) or fall back to the fixed salt
       // (v2 inert-binding / v1 legacy). See hfOptsForBlob.
       H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
-      // #2019 fast-path populate: snapshot H BEFORE combineKek consumes it so
-      // populateFastpathBestEffort can HKDF a distinct kek_fp AFTER the primary
-      // decrypt succeeds. The copy lives inside the same try/finally, so it is
-      // zeroed on every exit — including if unwrapDek or decryptVaultWithDek
-      // throws before populate runs.
-      hCopyForFastpath = H.slice();
+      // Silent-fastpath refactor (2026-08-28): populate no longer needs H —
+      // the DEK is stored as raw bytes under a biometric-gated Keystore key.
+      // See populateFastpathBestEffort below.
       C = await deriveKekC(password, saltBytes);
       kek = await combineKek(H, C);
       // combineKek zeroes H/C internally; wipe again at the call site so the guarantee
@@ -798,7 +797,7 @@ async function _unlockInner(password, opts = {}) {
       // i.e. correct primary PIN — so it can never be reached by duress/panic
       // (WalletProvider routes those before/around _unlockInner) or wrong-PIN
       // (unwrapDek would have thrown above).
-      await populateFastpathBestEffort(hCopyForFastpath, dek);
+      await populateFastpathBestEffort(dek);
       // AAD v:3 migration (#1111, docs/vault-aad-v3-plan.md): silently
       // reseal a v:2 kek-dek blob under the v:3 AAD (which additionally
       // binds kekWrap/kekSalt/hardwareKekVersion). Same DEK — no new key
@@ -834,7 +833,6 @@ async function _unlockInner(password, opts = {}) {
       return plaintext;
     } finally {
       if (H && H.fill) H.fill(0);
-      if (hCopyForFastpath && hCopyForFastpath.fill) hCopyForFastpath.fill(0);
       if (C) C.fill(0);
       if (kek) kek.fill(0);
       if (dek) dek.fill(0);
@@ -1337,72 +1335,70 @@ export const nativeKeyStore = {
     let blob;
     try { blob = parseVaultBlob(rawPeek); } catch { throw new FastpathError(FASTPATH_CODE.NOT_KEK); }
     if (!blob || !blob.kekWrap) throw new FastpathError(FASTPATH_CODE.NOT_KEK);
-    // withLockSuppressed: getHardwareFactor triggers a Face ID / fingerprint
-    // sheet which appStateChange-flushes on resume, and we must not fire
-    // the background lock hook while our own biometric prompt is up.
+    // Silent-fastpath refactor (2026-08-28, owner Tier 2). No aparajita
+    // BiometricAuth.authenticate call, no HKDF-of-H, no getHardwareFactor
+    // call: the whole biometric gate is the 30 s STRONG validity window
+    // on the `veyrnox_fastpath_dek.v2` Keystore alias. Cipher.doFinal
+    // silently succeeds when the device saw a STRONG biometric (e.g.
+    // lockscreen Face-unlock) within 30 s; outside the window it throws
+    // UserNotAuthenticatedException which the plugin maps to a null miss.
+    //
+    // withLockSuppressed is still worth keeping — a KEY_PERMANENTLY_
+    // INVALIDATED throw or a plugin bridge error can race the app-state
+    // pause/resume hooks; suppressing the background lock keeps state
+    // consistent across a fastpath miss → PIN keypad handoff.
     return withLockSuppressed(async () => {
-      const getHF = opts && opts.getHardwareFactor;
-      if (typeof getHF !== 'function') throw new FastpathError(FASTPATH_CODE.MISS);
-      let saltBytes, H, kekFp, dek;
+      let dek;
       let wrappedRaw = null;
       try {
-        // Read the cache slot BEFORE prompting for H, so an empty-cache
-        // condition (uninstalled/first-run/rotated) surfaces as a bare miss
-        // without a biometric prompt at all. Best-effort on plugin absence
-        // — iOS / web reject at CALL time (registerPlugin's web branch),
-        // caught here and mapped to MISS.
+        // Silent read: on a device that saw a STRONG biometric in the
+        // last 30 s this returns the base64 DEK with no OS prompt; else
+        // the plugin catches UserNotAuthenticatedException and resolves
+        // wrappedDek=null. On iOS/web the plugin registration rejects.
         try {
           const mod = await import('@/plugins/androidBiometricCache');
           if (typeof mod.getFastpathDek === 'function') {
             wrappedRaw = await mod.getFastpathDek();
           }
         } catch (readErr) {
-          // Let key-invalidated escape so the outer catch clears the alias;
-          // any other bridge failure (iOS/web reject, plugin absent) is a
-          // MISS (fall through to the null check below).
           if (readErr && readErr.code === 'KEY_PERMANENTLY_INVALIDATED') throw readErr;
           wrappedRaw = null;
         }
         if (wrappedRaw == null || wrappedRaw === '') throw new FastpathError(FASTPATH_CODE.MISS);
-        let wrapped;
-        try { wrapped = JSON.parse(wrappedRaw); }
-        catch { throw new FastpathError(FASTPATH_CODE.MISS); }
-        saltBytes = decodeKekSalt(blob.kekSalt);
-        // ONE OS prompt: the 30-s hardware-backed validity window on Android
-        // covers the subsequent HKDF + AES-GCM (no second prompt). See owner
-        // Option 4 ruling — the per-use CryptoObject upgrade is deliberately
-        // NOT taken.
-        H = await getHardwareFactorWithLockoutFallback(getHF, hfOptsForBlob(blob, saltBytes));
-        kekFp = await deriveFastpathKek(H);
+        // Decode base64 → raw 32-byte DEK. Any malformed input (legacy
+        // JSON wrap blob from the pre-2026-08-28 .v1 alias, tampered
+        // ciphertext, non-base64 characters) fails-closed to MISS with no
+        // oracle vs empty.
+        let raw;
         try {
-          dek = await unwrapFromFastpath(kekFp, wrapped);
+          const bin = atob(wrappedRaw);
+          raw = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) raw[i] = bin.charCodeAt(i);
         } catch {
-          // Wrong KEK / tampered / cross-slot blob — all surface as MISS
-          // (never distinguish, no oracle). Rotated-KEK case is legitimate
-          // (populate re-runs on next slow-path success).
           throw new FastpathError(FASTPATH_CODE.MISS);
         }
+        if (raw.length !== 32) throw new FastpathError(FASTPATH_CODE.MISS);
+        dek = new Uint8Array(32);
+        dek.set(raw);
+        raw.fill(0);
         try {
           return await decryptVaultWithDek(blob, dek);
         } catch {
           // Cache authenticated but the vault CT no longer decrypts under
-          // this DEK — treat as a corrupted cache miss.
+          // this DEK — rotated KEK on the slow path, corrupted cache, etc.
           throw new FastpathError(FASTPATH_CODE.MISS);
         }
       } catch (err) {
         if (err && err.code === 'KEY_PERMANENTLY_INVALIDATED') {
-          // Biometric re-enroll on Android invalidates the alias key. Best-
-          // effort sweep so the next slow-path unlock repopulates cleanly.
+          // Biometric re-enroll on Android invalidates the alias key.
+          // Best-effort sweep so the next slow-path unlock repopulates.
           try { await clearFastpathDekBestEffort(); } catch { /* best-effort */ }
           throw new FastpathError(FASTPATH_CODE.KEY_INVALIDATED, err);
         }
         if (err instanceof FastpathError) throw err;
         throw new FastpathError(FASTPATH_CODE.MISS, err);
       } finally {
-        if (H && H.fill) H.fill(0);
-        if (kekFp && kekFp.fill) kekFp.fill(0);
         if (dek && dek.fill) dek.fill(0);
-        if (saltBytes && saltBytes.fill) saltBytes.fill(0);
       }
     });
   },

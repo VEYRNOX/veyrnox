@@ -91,12 +91,20 @@ object AndroidBiometricCacheConfig {
     //       AAD, distinct alias name, distinct AAD-per-purpose fails closed
     //       on any slot mixup.
     //
-    // Alias name pinned by AndroidBiometricCacheConfigTest.T5. The .v1
-    // suffix IS the ACL-policy stamp: any change to the auth flags, cipher,
-    // key size, or invalidation policy MUST bump to .v2 — a key existing
-    // under .v1 is a proof-of-provenance that it was minted with the ACL
-    // this file declares.
-    const val FASTPATH_ALIAS: String = "com.veyrnox.app.biometricCacheFastpath.v1"
+    // Alias name pinned by AndroidBiometricCacheConfigTest.T5. The .vN
+    // suffix IS the ACL-policy / stored-payload stamp: any change to the
+    // auth flags, cipher, key size, invalidation policy, OR the shape of
+    // the wrapped payload MUST bump the suffix — a key existing under a
+    // given version is a proof-of-provenance that it was minted with the
+    // ACL AND payload scheme this file declares.
+    //
+    // .v2 (2026-08-28, silent-fastpath refactor): payload changed from a
+    // JSON envelope { v, iv, ct } wrapped by HKDF(H)+AES-GCM to the raw
+    // 32-byte DEK stored base64 under this alias's Keystore key. The ACL
+    // (STRONG + 30 s validity + invalidate-on-enrollment) is unchanged.
+    // The .v1 alias is orphaned in Keystore on upgrade; harmless since it
+    // is biometric-bound and cannot be read outside this app.
+    const val FASTPATH_ALIAS: String = "com.veyrnox.app.biometricCacheFastpath.v2"
 
     // MUST stay true. Flipping to false removes the sole biometric gate on
     // the fast-path DEK release (design doc §Security model). Tripwire in
