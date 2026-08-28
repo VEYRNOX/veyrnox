@@ -144,6 +144,18 @@ export function enableFastpathAndBiometricUnlock() {
   if (isDeniabilityOrDemoActive()) return;
   setFastpathEnabled(true);
   setBiometricUnlockEnabled(true);
+  // The wrapped-DEK cache populate path (populateFastpathBestEffort in
+  // wallet-core/keystore/native.js) gates on hasSeenFastpathDisclosure() as
+  // the informed-consent chokepoint from the default-ON reversal. Any UI
+  // path that reaches this helper HAS asked the user, so mark the disclosure
+  // seen here — otherwise the cache never warms and every unlock falls back
+  // to the slow-path Argon2 KDF (~1.5s), silently defeating the whole point.
+  //
+  // Regression from the FastUnlockFirstRunCard removal (#2128) → BiometricConsent
+  // migration (#2129): the old card called markFastpathDisclosureSeen() at its
+  // click site; the new consent screen forgot, so on-device unlocks measured
+  // ~5s post-tap instead of the expected ~200ms fast-path.
+  markFastpathDisclosureSeen();
 }
 
 // Run the migration at import time so any consumer of isFastpathEnabled sees
