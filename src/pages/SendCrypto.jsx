@@ -694,7 +694,15 @@ export default function SendCrypto() {
   // Unlimited-approval extra confirmation. Send flows are transfer-only, so this
   // stays false in normal use; it hard-gates the action only if an unlimited
   // `approve` is ever decoded.
+  //
+  // The reset useEffect below matches the freshness guarantee the other acks
+  // (limitAck, riskAck, raspWarnBioOk, btcRiskAck) already carry: any change to
+  // amount / currency / recipient invalidates a prior acknowledgement. Without
+  // it a stale approvalAck could survive an in-place amount edit on the review
+  // step and authorise a larger permission than the user last saw (wizard-split
+  // recon 2026-08-28).
   const [approvalAck, setApprovalAck] = useState(false);
+  useEffect(() => { setApprovalAck(false); }, [amount, selectedWallet?.currency, toAddress]);
   const blockedByApproval = tokenCalldata?.kind === "approve" && tokenCalldata.unlimited && !approvalAck;
 
   // Spend-limit acknowledgement. The cap is a warn-not-block control (matching
@@ -815,7 +823,7 @@ export default function SendCrypto() {
   // enables each query. Previously the gate was written independently of the
   // queries and drifted from them; declaring the condition once makes that
   // impossible. Both `enabled:` props below read these constants.
-  const tipScreenApplies = remoteScreen && step === 'verify' && !!toAddress
+  const tipScreenApplies = remoteScreen && (step === "review" || step === "confirm") && !!toAddress
     && !!selectedWallet?.address && addressFormatValid;
 
   // Unsigned SOL transaction for the TIP `solana-sim` lane. The Worker's
@@ -830,7 +838,7 @@ export default function SendCrypto() {
   // egress must NOT fire when remote screening is off, in demo, or in a
   // decoy/hidden session — mirrors the same suppression the other simulation
   // queries apply. Codex 2nd-review flagged this as [P1] in the first pass.
-  const solUnsignedTxApplies = isSolana && remoteScreen && step === 'verify'
+  const solUnsignedTxApplies = isSolana && remoteScreen && (step === "review" || step === "confirm")
     && !!toAddress && !!selectedWallet?.address && addressFormatValid
     && !!canonicalAmount && parseFloat(canonicalAmount) > 0
     && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive();
@@ -957,7 +965,7 @@ export default function SendCrypto() {
   // NOTE the EVM-family clause — this simulation NEVER runs for BTC/SOL, which
   // is exactly why keying readiness off it alone blocked those sends forever
   // (L-4).
-  const txSimApplies = simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden
+  const txSimApplies = simEnabled && (step === "review" || step === "confirm") && !DEMO && !isDecoy && !isHidden
     && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
     && !!selectedWallet?.address && !!toAddress && addressFormatValid
     && parseFloat(canonicalAmount) > 0;
@@ -1004,7 +1012,7 @@ export default function SendCrypto() {
       return describeBtcPlan({ plan, fromAddress });
     },
     // I3: never issue Esplora estimate RPC in a decoy/hidden (deniability) session.
-    enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && isBtc
+    enabled: simEnabled && (step === "review" || step === "confirm") && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && isBtc
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(canonicalAmount) > 0,
     retry: false,
     staleTime: 10000,
@@ -1114,15 +1122,17 @@ export default function SendCrypto() {
   // G4-A foreground re-probe, G4-B 60 s heartbeat, and the attestation-on-
   // probeKey re-sample (the attestation freshness gap the inline version had).
   //
-  // P2-4 (audit 2026-07-15): deferAttestation is bound to step === "verify" so
-  // the attestation network call (Google Play Integrity / Apple App Attest)
-  // does NOT fire on Send-page mount — it fires only once the user has
-  // committed sign intent by entering the verify step. This matches the
-  // documented "attestation only on explicit pre-sign egress" boundary.
+  // P2-4 (audit 2026-07-15): deferAttestation is bound to the review + confirm
+  // steps so the attestation network call (Google Play Integrity / Apple App
+  // Attest) does NOT fire on Send-page mount — it fires only once the user has
+  // committed sign intent by entering the review step (the wizard's step 2).
+  // This matches the documented "attestation only on explicit pre-sign egress"
+  // boundary and stays the same under the 3-step wizard split (2026-08-28) —
+  // review + confirm together == the old "verify".
   //
   // I3: attestationProbeSource() checks isDeniabilityOrDemoActive() FIRST — no
   // egress under decoy/hidden/demo. I4: a RASP crash fails closed (BLOCK).
-  const raspArtifact = useRaspArtifact({ deferAttestation: step !== 'verify' });
+  const raspArtifact = useRaspArtifact({ deferAttestation: step !== "review" && step !== "confirm" });
   // I4 FAIL CLOSED (RASP-A2): missing tier → strongest BLOCK, never ALLOW.
   const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
 
@@ -1190,7 +1200,7 @@ export default function SendCrypto() {
   }), [txIntelVerdict, presign, riskAck, raspNeedsBio, raspWarnBioOk]);
 
   const advisorTxContext = useMemo(() => {
-    if (step !== 'verify' || !selectedWallet?.currency) return null;
+    if ((step !== "review" && step !== "confirm") || !selectedWallet?.currency) return null;
     return {
       transaction_intelligence: {
         asset: selectedWallet.currency,
@@ -1554,7 +1564,7 @@ export default function SendCrypto() {
       // UI step is rendered, not relaxing any security check.
       if (/** @type {Error & {code?: string}} */ (err)?.code === SEND_GATE.TWO_FACTOR) {
         toast.info(tw("send.toasts.two_factor_retry"));
-        setStep("verify");
+        setStep("confirm");
         return;
       }
       toast.error(err?.message || tw("send.toasts.send_failed_fallback"));
@@ -1833,6 +1843,39 @@ export default function SendCrypto() {
         <h1 className="text-2xl font-bold tracking-tight">{tw("send.heading")}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{tw("send.subheading")}</p>
       </div>
+
+      {/* Wizard progress indicator — three dots + step label. Signals where
+          the user is without adding an extra header row. Hidden on the done
+          screen (that view is its own composition). */}
+      {step !== "done" && (() => {
+        const stepIndex = step === "form" ? 0 : step === "review" ? 1 : 2;
+        const stepLabels = [
+          tw("send.wizard.step_recipient"),
+          tw("send.wizard.step_review"),
+          tw("send.wizard.step_confirm"),
+        ];
+        return (
+          <div className="flex items-center justify-center gap-2" aria-label={`Step ${stepIndex + 1} of 3: ${stepLabels[stepIndex]}`}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === stepIndex
+                      ? "w-8 bg-primary"
+                      : i < stepIndex
+                        ? "w-4 bg-primary/60"
+                        : "w-4 bg-border"
+                  }`}
+                  aria-hidden="true"
+                />
+              </div>
+            ))}
+            <span className="ms-2 text-[11px] text-muted-foreground font-medium uppercase tracking-widest">
+              {stepLabels[stepIndex]}
+            </span>
+          </div>
+        );
+      })()}
 
       <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
         {fromDetail ? (
@@ -2284,7 +2327,7 @@ export default function SendCrypto() {
                 || (limitEval.blocked && !limitAck);
               if (invalid) { setShowErrors(true); return; }
               setShowErrors(false);
-              setStep("verify");
+              setStep("review");
             }}
           >
             <ArrowUpRight className="h-4 w-4 me-1.5" />
@@ -2292,7 +2335,16 @@ export default function SendCrypto() {
           </Button>
         )}
 
-        {step === "verify" && (
+        {/* WIZARD STEP 2 — Review + simulation.
+            Owns the RASP composite banner, TransactionIntelligencePanel, the
+            simulation preview, all high-severity acks, the ERC-20 calldata
+            fold, the unlimited-approval red banner, and the fee selector.
+            The Continue button re-uses the SAME `blockedBy*` composite flags
+            the old single-page Confirm button gated on — advancing to confirm
+            is only permitted once every ack the user must set is set. This
+            keeps enforcement identical to the pre-wizard shape: no new gate,
+            just moved. `resetVerify()` on Back drops step-3 state + reauth. */}
+        {step === "review" && (
           <div className="space-y-3">
             {/* Summary */}
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
@@ -2494,6 +2546,51 @@ export default function SendCrypto() {
                 the static USD_RATES table, so disclose it's a reference rate. */}
             <ReferenceRateNote className="text-center" />
 
+            {/* Advance to Confirm. The condition is the SAME `blockedBy*`
+                composite the pre-wizard Confirm button gated on — every ack
+                the user must satisfy on this step must be satisfied before we
+                render the PIN / TwoFactorGate / passkey on the next step. No
+                new gate; identical enforcement, one screen later. */}
+            {(() => {
+              const advanceDisabled =
+                blockedByApproval ||
+                blockedByRisk ||
+                blockedByRaspBio ||
+                blockedByBtcRisk;
+              return (
+                <Button
+                  className="w-full gap-2"
+                  disabled={advanceDisabled}
+                  onClick={() => { actionHaptic(); setStep("confirm"); }}
+                >
+                  <ArrowUpRight className="h-4 w-4" />
+                  {tw("send.buttons.continue")}
+                </Button>
+              );
+            })()}
+
+            <Button variant="ghost" className="w-full" onClick={() => { setStep("form"); resetVerify(); }}>{tw("send.buttons.back")}</Button>
+          </div>
+        )}
+
+        {/* WIZARD STEP 3 — Confirm & sign.
+            Renders a compact recap + the TwoFactorGate / PIN reauth / Confirm
+            & Send button IIFE that used to live inside the verify step. The
+            IIFE is BYTE-EQUIVALENT to the pre-wizard shape — the four-flag AND
+            visibility condition (audit-fixed 2026-07-14), the biometric
+            evaluate branch, the reauth window handling — all preserved. Back
+            returns to review WITHOUT dropping acks (user just wants to look at
+            the sim again); returning to step 1 must go via review's Back. */}
+        {step === "confirm" && (
+          <div className="space-y-3">
+            {/* Compact recap — same summary card the review step opens with. */}
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
+              <p className="text-xs text-muted-foreground mb-1">{tw("send.verify.summary_label")}</p>
+              <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
+              {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
+              <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
+            </div>
+
             {/* STEP-UP RE-AUTH: friction-free within the recent-auth window; re-enter the
                 vault credential once it has lapsed. Skipped in demo (fake sends, no vault).
                 The #137 risk gate (blockedByRisk) ALSO hard-disables the send action here, so
@@ -2624,7 +2721,7 @@ export default function SendCrypto() {
               );
             })()}
 
-            <Button variant="ghost" className="w-full" onClick={() => { setStep("form"); resetVerify(); }}>{tw("send.buttons.back")}</Button>
+            <Button variant="ghost" className="w-full" onClick={() => setStep("review")}>{tw("send.buttons.back")}</Button>
           </div>
         )}
       </div>

@@ -477,6 +477,11 @@
     "verify": {
       "summary_label": "You're sending"
     },
+    "wizard": {
+      "step_recipient": "Recipient & amount",
+      "step_review": "Review",
+      "step_confirm": "Confirm"
+    },
     "fee": {
       "automatic": "Network fee is set automatically for {{currency}} ({{network}}).",
       "native_fee_note": "Network fee is paid in {{symbol}} ({{network}}) — you need {{symbol}} to cover the network fee even when sending {{token}}."
