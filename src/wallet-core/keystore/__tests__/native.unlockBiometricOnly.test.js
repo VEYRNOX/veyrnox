@@ -116,13 +116,14 @@ beforeEach(async () => {
   FASTPATH_CODE = mod.FASTPATH_CODE;
 });
 
-// Seed the alias with a REAL wrapped DEK for the given H, so the happy-path
-// end-to-end (getFastpathDek → HKDF → unwrap → decrypt) genuinely works.
-async function seedCache(H) {
-  const { wrapForFastpath, deriveFastpathKek } = await import('../fastpathDekCache.js');
-  const kekFp = await deriveFastpathKek(H);
-  const wrapped = await wrapForFastpath(kekFp, FIXED_DEK);
-  getFastpathDek.mockResolvedValue(JSON.stringify(wrapped));
+// Silent-fastpath refactor (2026-08-28): the alias now stores base64(DEK)
+// directly. Seed the mock with that so unlockBiometricOnly → base64-decode
+// → decryptVaultWithDek succeeds. H is no longer read on this path — the
+// argument is preserved only so pre-existing call sites still typecheck.
+// eslint-disable-next-line no-unused-vars
+async function seedCache(_H) {
+  const b64 = Buffer.from(FIXED_DEK).toString('base64');
+  getFastpathDek.mockResolvedValue(b64);
 }
 
 describe('unlockBiometricOnly — gate matrix', () => {
@@ -209,25 +210,21 @@ describe('unlockBiometricOnly — cache flow', () => {
     });
   });
 
-  it('throws MISS on a tampered/parse-fail cache blob (no oracle vs empty)', async () => {
+  it('throws MISS on a malformed base64 payload (no oracle vs empty)', async () => {
     setVault(enrolledBlob());
-    getFastpathDek.mockResolvedValue('not-json');
+    getFastpathDek.mockResolvedValue('not-base64@@');
     await expect(keyStore.unlockBiometricOnly({ getHardwareFactor: getHF })).rejects.toMatchObject({
       code: FASTPATH_CODE.MISS,
     });
   });
 
-  it('throws MISS when the wrapped DEK does not authenticate under the derived kek_fp', async () => {
+  it('throws MISS on a legacy .v1 JSON-wrap payload (silent-fastpath refactor 2026-08-28)', async () => {
+    // Post-migration: a stale .v1 blob that somehow slipped past the alias
+    // bump decodes to non-32 bytes → MISS. Confirms the read path treats
+    // legacy shapes as fail-closed, not as an oracle.
     setVault(enrolledBlob());
     getFastpathDek.mockResolvedValue(JSON.stringify({ v: 1, iv: 'AAAA', ct: 'BBBB' }));
     await expect(keyStore.unlockBiometricOnly({ getHardwareFactor: getHF })).rejects.toMatchObject({
-      code: FASTPATH_CODE.MISS,
-    });
-  });
-
-  it('throws MISS when getHardwareFactor is not provided', async () => {
-    setVault(enrolledBlob());
-    await expect(keyStore.unlockBiometricOnly({})).rejects.toMatchObject({
       code: FASTPATH_CODE.MISS,
     });
   });

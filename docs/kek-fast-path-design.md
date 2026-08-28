@@ -3,6 +3,22 @@
 Status: **DRAFT — pre-audit, pre-owner-approval, non-implemented.**
 Owner action required before any code lands. No user-facing status changes from this doc.
 
+> **2026-08-28 silent-fastpath refactor (Tier 2, owner-approved).** The
+> hot-path aparajita `BiometricAuth.authenticate` hop and the HKDF(H)+
+> AES-GCM JS layer were removed. `populateFastpathBestEffort` now stores
+> the raw 32-byte DEK (base64) directly under the biometric-gated
+> Keystore alias, and `unlockBiometricOnly` reads it back through
+> `Cipher.doFinal`. The alias's existing STRONG + 30 s validity window
+> is the sole biometric gate. A phone that saw a STRONG biometric
+> (typically the lockscreen Face-unlock) within 30 s opens the vault
+> with NO visible prompt at all — sub-1 s cold second unlock on Pixel;
+> outside the window the plugin's `UserNotAuthenticatedException`
+> handler surfaces a silent null miss and JS falls through to the slow
+> path (~3 s including Argon2 + BiometricAuth prompt). Alias bumped
+> `.v1 → .v2` per the versioning contract (payload shape change).
+> Security tradeoff — the H-layer defence-in-depth is gone; F-2
+> (invalidate-on-enrollment) and STRONG remain on the Keystore key.
+>
 > **2026-08-25 implementation update.** The DEK-cache primitives and wiring
 > described below landed (`android-1.0.1-perf-suite-2026-08-25`, PRs #2039–#2106;
 > see `docs/Feature-Status.md`'s 2026-08-25 entry). The UI entry point (PinUnlock
