@@ -1,3 +1,10 @@
+// TransactionIntelligencePanel
+//
+// LAYOUT (2026-08-28, MetaMask/Trust pattern): primary view = header + one-line
+// verdict + policy label + acknowledgement checkbox + hardware-signer nudge.
+// Contributors grid, active-signal chips, evidence rows, threat-intel sources,
+// unknowns, and the Ask Advisor button all live behind a single Advanced fold
+// so a clean send is one glance instead of a scroll.
 import { Activity, AlertTriangle, CheckCircle2, Radar, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 const LEVEL_STYLES = {
@@ -35,6 +42,13 @@ export default function TransactionIntelligencePanel({
   const style = LEVEL_STYLES[verdict.level] || LEVEL_STYLES.CAUTION;
   const { Icon } = style;
   const monoEntries = Object.entries(verdict.evidence?.values || {}).filter(([, v]) => typeof v === 'string');
+  const hasAdvanced =
+    (verdict.contributors && verdict.contributors.length > 0) ||
+    (verdict.localSignals && verdict.localSignals.length > 0) ||
+    monoEntries.length > 0 ||
+    (verdict.sourcesConsulted && verdict.sourcesConsulted.length > 0) ||
+    (verdict.unknowns && verdict.unknowns.length > 0) ||
+    !!onAskAdvisor;
 
   return (
     <div className={`rounded-xl border p-3 space-y-3 ${style.box}`}>
@@ -59,29 +73,6 @@ export default function TransactionIntelligencePanel({
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-3">
-        {verdict.contributors.map((contributor) => (
-          <div
-            key={contributor.id}
-            className={`rounded-lg border p-2 text-xs space-y-1 ${CONTRIBUTOR_STYLES[contributorTone(contributor)] || CONTRIBUTOR_STYLES.PENDING}`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">{contributor.label}</span>
-              <span className="uppercase tracking-wide text-[10px] opacity-80">
-                {contributor.applicable ? (contributor.settled ? contributor.level || 'OK' : 'PENDING') : 'N/A'}
-              </span>
-            </div>
-            <p className="opacity-90">
-              {contributor.applicable
-                ? (contributor.settled
-                    ? (contributor.summary || 'No elevated findings.')
-                    : 'Still evaluating this contributor.')
-                : 'Not used for this transaction.'}
-            </p>
-          </div>
-        ))}
-      </div>
-
       {policy.reason && (
         <div className="rounded-lg border border-border/70 bg-background/40 p-2 text-xs text-foreground/90">
           <span className="font-medium">Next action:</span> {policy.reason}
@@ -100,63 +91,6 @@ export default function TransactionIntelligencePanel({
         </label>
       )}
 
-      {(verdict.localSignals.length > 0 || monoEntries.length > 0) && (
-        <div className="space-y-2">
-          {verdict.localSignals.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Active signals</p>
-              <div className="flex flex-wrap gap-1.5">
-                {verdict.localSignals.map((signal) => (
-                  <span
-                    key={signal.id}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${CONTRIBUTOR_STYLES[signal.level] || CONTRIBUTOR_STYLES.PENDING}`}
-                  >
-                    <Radar className="h-3 w-3" aria-hidden="true" />
-                    {signal.id}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          {monoEntries.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Evidence</p>
-              {monoEntries.map(([key, value]) => (
-                <div key={key} className="flex gap-2 text-xs min-w-0">
-                  <span className="uppercase tracking-wide text-[10px] text-muted-foreground shrink-0">{key}</span>
-                  <span className="mono-value break-all">{value}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {verdict.sourcesConsulted.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Threat-intel sources</p>
-          <div className="space-y-1">
-            {verdict.sourcesConsulted.map((source) => (
-              <div key={`${source.source}-${source.status}`} className="flex items-center justify-between gap-2 text-xs rounded-md border border-border/60 bg-background/40 px-2 py-1">
-                <span>{source.source}</span>
-                <span className="text-muted-foreground">
-                  {source.status}
-                  {typeof source.latency_ms === 'number' ? ` · ${source.latency_ms} ms` : ''}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {verdict.unknowns.length > 0 && (
-        <div className="rounded-lg border border-border/70 bg-background/40 p-2 text-xs text-muted-foreground">
-          {verdict.unknowns.map((u) => (
-            <p key={u.id}>{u.reason}</p>
-          ))}
-        </div>
-      )}
-
       {policy.recommendHardwareSigner && (
         <div className="rounded-lg border border-border/70 bg-background/40 p-2 text-xs flex items-start gap-2">
           <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" aria-hidden="true" />
@@ -164,16 +98,108 @@ export default function TransactionIntelligencePanel({
         </div>
       )}
 
-      {onAskAdvisor && (
-        <div className="flex justify-end pt-1">
-          <button
-            type="button"
-            onClick={onAskAdvisor}
-            className="rounded-full border border-border bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-background transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            Ask Advisor About This Transaction
-          </button>
-        </div>
+      {hasAdvanced && (
+        <details className="group">
+          <summary className="cursor-pointer select-none list-none flex items-center justify-between py-1 text-[11px] uppercase tracking-wide text-muted-foreground border-t border-border/40">
+            <span className="font-medium">Advanced details</span>
+            <span className="group-open:rotate-180 transition-transform">▾</span>
+          </summary>
+          <div className="pt-2 space-y-3">
+            {verdict.contributors && verdict.contributors.length > 0 && (
+              <div className="grid gap-2 sm:grid-cols-3">
+                {verdict.contributors.map((contributor) => (
+                  <div
+                    key={contributor.id}
+                    className={`rounded-lg border p-2 text-xs space-y-1 ${CONTRIBUTOR_STYLES[contributorTone(contributor)] || CONTRIBUTOR_STYLES.PENDING}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{contributor.label}</span>
+                      <span className="uppercase tracking-wide text-[10px] opacity-80">
+                        {contributor.applicable ? (contributor.settled ? contributor.level || 'OK' : 'PENDING') : 'N/A'}
+                      </span>
+                    </div>
+                    <p className="opacity-90">
+                      {contributor.applicable
+                        ? (contributor.settled
+                            ? (contributor.summary || 'No elevated findings.')
+                            : 'Still evaluating this contributor.')
+                        : 'Not used for this transaction.'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(verdict.localSignals.length > 0 || monoEntries.length > 0) && (
+              <div className="space-y-2">
+                {verdict.localSignals.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Active signals</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {verdict.localSignals.map((signal) => (
+                        <span
+                          key={signal.id}
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${CONTRIBUTOR_STYLES[signal.level] || CONTRIBUTOR_STYLES.PENDING}`}
+                        >
+                          <Radar className="h-3 w-3" aria-hidden="true" />
+                          {signal.id}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {monoEntries.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Evidence</p>
+                    {monoEntries.map(([key, value]) => (
+                      <div key={key} className="flex gap-2 text-xs min-w-0">
+                        <span className="uppercase tracking-wide text-[10px] text-muted-foreground shrink-0">{key}</span>
+                        <span className="mono-value break-all">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {verdict.sourcesConsulted.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Threat-intel sources</p>
+                <div className="space-y-1">
+                  {verdict.sourcesConsulted.map((source) => (
+                    <div key={`${source.source}-${source.status}`} className="flex items-center justify-between gap-2 text-xs rounded-md border border-border/60 bg-background/40 px-2 py-1">
+                      <span>{source.source}</span>
+                      <span className="text-muted-foreground">
+                        {source.status}
+                        {typeof source.latency_ms === 'number' ? ` · ${source.latency_ms} ms` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {verdict.unknowns.length > 0 && (
+              <div className="rounded-lg border border-border/70 bg-background/40 p-2 text-xs text-muted-foreground">
+                {verdict.unknowns.map((u) => (
+                  <p key={u.id}>{u.reason}</p>
+                ))}
+              </div>
+            )}
+
+            {onAskAdvisor && (
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={onAskAdvisor}
+                  className="rounded-full border border-border bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-background transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  Ask Advisor About This Transaction
+                </button>
+              </div>
+            )}
+          </div>
+        </details>
       )}
     </div>
   );

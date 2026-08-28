@@ -37,7 +37,6 @@ import UrQrPlayer from "@/components/hw/UrQrPlayer";
 import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
 import TransactionPreview from "@/components/TransactionPreview";
-import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
 import TransactionIntelligencePanel from "@/components/TransactionIntelligencePanel";
 import { toast } from "@/lib/toast";
 import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
@@ -193,6 +192,59 @@ function PoisonWarning({ screen }) {
 function SendDoneView({ amount, currency, txResult, onSendAnother }) {
   const { t: tw } = useTranslation("wallet");
   const reduce = useReducedMotion();
+
+  // Celebrate. Sustained confetti bursts + raining balloons falling from the
+  // top of the viewport behind the beacon. Both suppressed under prefers-
+  // reduced-motion (I4-adjacent — never surprise a user who asked the OS to
+  // hush motion). Confetti is fire-and-forget; the interval is cleared on
+  // unmount.
+  // Funk palette — bold, saturated, wide gamut. Confetti-only celebration
+  // now (balloons removed 2026-08-28); the check-mark is the one bold moment.
+  const CONFETTI_COLORS = [
+    "#4ADAC2", "#F5D061", "#F28FAD", "#8B5CF6", "#F97316",
+    "#3B82F6", "#22C55E", "#FDE68A", "#FCA5A5", "#A5F3FC",
+  ];
+
+  useEffect(() => {
+    if (reduce) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { default: confetti } = await import("canvas-confetti");
+        if (cancelled) return;
+        // Locate the checkmark beacon so the explosion emanates from IT, not
+        // a fixed screen coordinate. Falls back to top-third if the beacon
+        // hasn't rendered yet (first paint race).
+        const beacon = document.querySelector("[data-vx-beacon]");
+        let ox = 0.5, oy = 0.3;
+        if (beacon) {
+          const r = beacon.getBoundingClientRect();
+          ox = (r.left + r.width / 2) / window.innerWidth;
+          oy = (r.top + r.height / 2) / window.innerHeight;
+        }
+        const shoot = (opts) => confetti({
+          particleCount: 90,
+          spread: 360,             // radial in every direction
+          startVelocity: 42,
+          scalar: 1,
+          ticks: 220,
+          gravity: 0.9,
+          colors: CONFETTI_COLORS,
+          shapes: ["square", "circle"],
+          origin: { x: ox, y: oy },
+          disableForReducedMotion: true,
+          ...opts,
+        });
+        // One big explosion, then a smaller aftershock 180ms later.
+        shoot();
+        setTimeout(() => shoot({ particleCount: 40, startVelocity: 28, spread: 360 }), 180);
+      } catch { /* preview-only sparkle; a load failure is not worth surfacing */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduce]);
+
+
   const container = {
     hidden: {},
     show: { transition: reduce ? {} : { staggerChildren: 0.08, delayChildren: 0.15 } },
@@ -208,9 +260,9 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
       variants={container}
       initial="hidden"
       animate="show"
-      className="max-w-md mx-auto text-center py-16 space-y-5"
+      className="max-w-md mx-auto text-center py-16 space-y-5 relative"
     >
-      <motion.div variants={item} className="flex justify-center">
+      <motion.div variants={item} className="flex justify-center relative" data-vx-beacon="true">
         <SuccessBeacon size={112} label={tw("send.done.beacon_label")} />
       </motion.div>
       <motion.h2 variants={item} className="text-xl font-bold tracking-tight">{tw("send.done.heading")}</motion.h2>
@@ -2007,51 +2059,23 @@ export default function SendCrypto() {
             </div>
           </div>
         )}
-        {/* Transaction Simulation / Screening — toggle visible in both demo and
-            live mode. In demo the panel body shows representative risk samples;
-            in live mode it shows the feature teaser (real sim runs at verify). */}
+        {/* Compact simulation toggle (MetaMask/Trust pattern, 2026-08-28).
+            Replaces the full-card teaser + checks-chip grid + hint block that
+            used to sit here. Sim still runs on the verify step; this is the
+            only opt-out affordance outside the "taking too long" hint below. */}
         {step === "form" && (
-          <div className={`space-y-2.5 p-3 rounded-xl border border-dashed ${simEnabled ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium flex items-center gap-1.5">
-                <Activity className={`h-3.5 w-3.5 ${simEnabled ? "text-primary" : "text-muted-foreground"}`} />
-                {tw("send.simulation.title")}
-              </p>
-              <Switch
-                id="sim-toggle"
-                checked={simEnabled}
-                onCheckedChange={toggleSim}
-                aria-label={tw("send.simulation.toggle_aria")}
-              />
-            </div>
-            {simEnabled && (
-              DEMO ? <TransactionSimulationDemo /> : (
-                <>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {tw("send.simulation.description")}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {/** @type {string[]} */ (tw("send.simulation.checks", { returnObjects: true })).map((label) => (
-                      <span
-                        key={label}
-                        className="text-[11px] px-2 py-1 rounded-md border border-border text-muted-foreground"
-                      >
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {tw("send.simulation.results_hint")}
-                  </p>
-                </>
-              )
-            )}
-            {!simEnabled && (
-              <p className="text-[11px] text-muted-foreground">
-                {tw("send.simulation.off_hint")}
-              </p>
-            )}
-          </div>
+          <label className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground py-1.5 cursor-pointer">
+            <span className="flex items-center gap-1.5">
+              <Activity className={`h-3 w-3 ${simEnabled ? "text-primary" : "text-muted-foreground"}`} />
+              {tw("send.simulation.title")}
+            </span>
+            <Switch
+              id="sim-toggle"
+              checked={simEnabled}
+              onCheckedChange={toggleSim}
+              aria-label={tw("send.simulation.toggle_aria")}
+            />
+          </label>
         )}
 
         {showScanner && (
@@ -2377,37 +2401,52 @@ export default function SendCrypto() {
             )}
 
             {/* Decoded calldata for ERC-20 sends — show EXACTLY what will be
-                signed before any signature (anti-blind-signing control). */}
-            {isErc20 && tokenCalldata && (
-              <div className="p-3 rounded-lg bg-secondary/30 border border-border space-y-2">
-                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
-                  <FileText className="h-3 w-3" /> {tw("send.decode.heading")}
-                </p>
-                {tokenCalldata.kind === "transfer" && (
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.send_tokens")}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.amount")}</span><span className="mono-value font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.recipient")}</span><span className="mono-value break-all">{tokenCalldata.to}</span></div>
-                  </div>
-                )}
-                {tokenCalldata.kind === "approve" && (
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.grant_permission")}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.permission")}</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.unlimited ? tw("send.decode.unlimited_permission") : tokenCalldata.amount}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.spender")}</span><span className="mono-value break-all">{tokenCalldata.spender}</span></div>
-                  </div>
-                )}
-                {tokenCalldata.kind === "unknown" && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {t("send_gates.tx_sim.unknown_tx")}</p>
-                )}
-                {/* Gas is always paid in the chain's native coin, even for tokens —
-                    and that coin is NOT always ETH (Phase C). Read it per-chain. */}
-                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
-                  <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.native_fee_note", { symbol: nativeSymbol, network: networkName, token: tokenCalldata.tokenSymbol || selectedWallet?.currency })}
+                signed before any signature (anti-blind-signing control).
+                MM/Trust pattern (2026-08-28): for transfer/approve the summary
+                sits behind an Advanced fold; `unknown` stays visible because it
+                is a red-flag surface. TransactionPreview above already shows
+                the balance change and (in Advanced) the "ERC-20 transfer" /
+                "ERC-20 approve" action — this block adds the exact spender,
+                permission amount and native-fee note underneath. */}
+            {isErc20 && tokenCalldata && tokenCalldata.kind === "unknown" && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/40">
+                <p className="text-xs text-destructive flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {t("send_gates.tx_sim.unknown_tx")}
                 </p>
               </div>
+            )}
+            {isErc20 && tokenCalldata && tokenCalldata.kind !== "unknown" && (
+              <details className="group p-3 rounded-lg bg-secondary/30 border border-border">
+                <summary className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest cursor-pointer select-none list-none flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="h-3 w-3" /> {tw("send.decode.heading")}
+                  </span>
+                  <span className="group-open:rotate-180 transition-transform">▾</span>
+                </summary>
+                <div className="pt-2 space-y-2">
+                  {tokenCalldata.kind === "transfer" && (
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.send_tokens")}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.amount")}</span><span className="mono-value font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
+                      <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.recipient")}</span><span className="mono-value break-all">{tokenCalldata.to}</span></div>
+                    </div>
+                  )}
+                  {tokenCalldata.kind === "approve" && (
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.grant_permission")}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.permission")}</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.unlimited ? tw("send.decode.unlimited_permission") : tokenCalldata.amount}</span></div>
+                      <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.spender")}</span><span className="mono-value break-all">{tokenCalldata.spender}</span></div>
+                    </div>
+                  )}
+                  {/* Gas is always paid in the chain's native coin, even for tokens —
+                      and that coin is NOT always ETH (Phase C). Read it per-chain. */}
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
+                    <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.native_fee_note", { symbol: nativeSymbol, network: networkName, token: tokenCalldata.tokenSymbol || selectedWallet?.currency })}
+                  </p>
+                </div>
+              </details>
             )}
 
             {/* Unlimited-approval red warning + required extra confirmation. */}
