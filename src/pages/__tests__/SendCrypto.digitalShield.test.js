@@ -23,7 +23,11 @@ describe('SendCrypto — Digital Shield air-gap branch', () => {
   });
 
   it('offers a dedicated Digital Shield toggle and routes confirm through startSendAttempt', () => {
-    expect(src).toContain('Use Digital Shield air-gap signing');
+    // Progressive-disclosure wizard (2026-08-28) renders the row on step 3
+    // with the tighter "Digital Shield" name + subtitle instead of the
+    // pre-wizard checkbox label.
+    expect(src).toContain('Digital Shield');
+    expect(src).toContain('Sign offline via QR');
     expect(src).toMatch(/useDigitalShieldMode/);
     expect(src).toMatch(/startSendAttempt/);
     expect(src).toMatch(/Prepare Digital Shield QR/);

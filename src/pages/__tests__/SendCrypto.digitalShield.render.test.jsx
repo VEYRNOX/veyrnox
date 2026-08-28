@@ -372,15 +372,26 @@ function renderPage() {
   );
 }
 
-async function advanceToConfirm() {
+async function advanceToConfirm({ enableDigitalShield = true } = {}) {
+  // Step 1 → Step 2
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   await waitFor(() => {
+    // Step 2 renders its own Continue button too.
     expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy();
   });
+  // Step 2 → Step 3
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  // Wait for the confirm step-3 CTA (Digital Shield row + Confirm/Prepare button).
   await waitFor(() => {
-    expect(screen.getByRole('button', { name: 'Prepare Digital Shield QR' })).toBeTruthy();
+    expect(screen.getByTestId('digital-shield-row')).toBeTruthy();
   });
+  if (enableDigitalShield) {
+    // Digital Shield toggle moved to step 3 (progressive-disclosure wizard).
+    fireEvent.click(screen.getByRole('checkbox', { name: /digital shield/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Prepare Digital Shield QR' })).toBeTruthy();
+    });
+  }
 }
 
 describe('SendCrypto — Digital Shield render flow', () => {
@@ -401,7 +412,6 @@ describe('SendCrypto — Digital Shield render flow', () => {
   it('opens the Digital Shield signing dialog after prepare on the confirm step', async () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /use digital shield air-gap signing/i }));
     fireEvent.change(screen.getByLabelText('Recipient'), {
       target: { value: '0x2222222222222222222222222222222222222222' },
     });
@@ -433,7 +443,6 @@ describe('SendCrypto — Digital Shield render flow', () => {
     );
     renderPage();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /use digital shield air-gap signing/i }));
     fireEvent.change(screen.getByLabelText('Recipient'), {
       target: { value: '0x2222222222222222222222222222222222222222' },
     });
@@ -466,7 +475,6 @@ describe('SendCrypto — Digital Shield render flow', () => {
 
     renderPage();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /use digital shield air-gap signing/i }));
     fireEvent.change(screen.getByLabelText('Recipient'), {
       target: { value: '0x2222222222222222222222222222222222222222' },
     });
