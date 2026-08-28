@@ -112,15 +112,10 @@ export const fetchReferrerTier = fetchStatus;
 export async function fetchPaidCount(code) {
   if (!isValidCode(code)) return null;
   if (isDeniabilityOrDemoActive()) return null;
-  try {
-    const data = await rpc('get_referral_paid_count', {
-      p_code: code,
-    });
-    if (data == null) return null;
-    return data;
-  } catch {
-    return null;
-  }
+  // Strix H-2 / H-3 follow-up (2026-08-28): the owner-bound replacement for
+  // paid-count reads is not deployed yet. Fail closed rather than expose
+  // referral sales metadata through a public-code lookup.
+  return null;
 }
 
 export async function recordAttribution(referralCode, planId, billingPeriod, revenueCents, discountCents) {
@@ -128,30 +123,21 @@ export async function recordAttribution(referralCode, planId, billingPeriod, rev
   if (isDeniabilityOrDemoActive()) return;
   const encodedPlan = encodeAttributionPlan(planId, billingPeriod);
   if (!encodedPlan) return;
-  try {
-    await rpc('record_attribution', {
-      p_code: referralCode,
-      p_plan: encodedPlan,
-      p_revenue_cents: revenueCents,
-      p_discount_cents: discountCents || 0,
-    });
-  } catch {
-    // Best-effort: don't block the purchase flow on attribution failure.
-  }
+  void encodedPlan;
+  void revenueCents;
+  void discountCents;
+  // Strix H-3 follow-up (2026-08-28): revenue attribution must be
+  // server-authored. The client-callable RPC is disabled until the verified
+  // webhook path is live, so purchases proceed without booking attribution.
 }
 
 export async function fetchEarnings(code) {
   if (!isValidCode(code)) return null;
   if (isDeniabilityOrDemoActive()) return null;
-  try {
-    const data = await rpc('get_referral_earnings', {
-      p_code: code,
-    });
-    if (!data) return null;
-    return data;
-  } catch {
-    return null;
-  }
+  // Strix H-2 / H-3 follow-up (2026-08-28): earnings must be scoped to the
+  // referral owner, not a public referral code. Until that owner-bound server
+  // path exists, suppress the read entirely.
+  return null;
 }
 
 export async function claimFirstReferralBonus(referralCode) {

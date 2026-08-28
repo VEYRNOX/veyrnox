@@ -98,6 +98,9 @@ import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { trackEvent, EVENT } from '@/api/trackEvent';
 import { evaluateSendAgainstLimits } from '@/lib/txLimits';
 import { USD_RATES } from '@/lib/cryptos';
+import { is2faPasskeyEnabled, isPasskeyRegistered } from '@/lib/passkey';
+import { is2faBiometricEnabled } from '@/lib/biometric';
+import { resolveSend2faMethod, SEND_2FA } from '@/lib/send2faMethod';
 // M-6: the per-chain VERIFIED token registry (address + decimals). Data only —
 // no ethers Interface at module init, so it is safe to import statically here.
 import { TOKENS } from '@/wallet-core/evm/tokens.js';
@@ -549,7 +552,7 @@ export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic
 }
 
 export async function _handleSendTransaction(
-  { withPrivateKey, evmAddress, actionPasswordConfigured = false, txLimits = [], history = [], knownAddresses = [], whitelist = [], usdRates = USD_RATES, remoteScreenEnabled = false },
+  { withPrivateKey, evmAddress, send2faMethod = SEND_2FA.NONE, txLimits = [], history = [], knownAddresses = [], whitelist = [], usdRates = USD_RATES, remoteScreenEnabled = false },
   topic, id, params, caip2ChainId,
 ) {
   const txParams = params[0] ?? {};
@@ -596,15 +599,14 @@ export async function _handleSendTransaction(
   const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
   const net = getNetworkByChainId(chainId);
 
-  // #1090 — Action Password 2FA gate. The in-app Send flow requires the second
-  // factor at the sign chokepoint (see sendGate.js §6b). The WC surface has NO
-  // in-band affordance to collect the Action Password mid-flow; the honest
-  // fail-closed path (I4) is to REJECT so the user routes through the in-app
-  // Send screen where the full 2FA dance runs. Never bypass.
-  if (actionPasswordConfigured === true) {
+  // #1090 / Strix-13 — the WC surface has NO in-band affordance to satisfy any
+  // configured second factor (Action Password, passkey, or native biometric).
+  // The honest fail-closed path (I4) is to REJECT so the user completes the
+  // send in-app, where the real 2FA flow exists.
+  if (send2faMethod !== SEND_2FA.NONE) {
     await rejectRequest(topic, id, 'WC_TWO_FACTOR_REQUIRED').catch(() => {});
     throw new Error(
-      `Rejected transaction [WC_TWO_FACTOR_REQUIRED]: an Action Password ` +
+      `Rejected transaction [WC_TWO_FACTOR_REQUIRED]: a second factor ` +
       `is configured for this wallet. Complete the send from the in-app ` +
       `Send screen so the second factor can be entered.`,
     );
@@ -717,6 +719,15 @@ export function WalletConnectProvider({ children }) {
   // that reads it. We expose isSendReauthRequired to the modal instead.
   const { accounts, isUnlocked, isDecoy, isHidden, withPrivateKey, isSendReauthRequired, actionPasswordConfigured } = useWallet();
   const evmAddress = accounts?.[0]?.address ?? null;
+  const send2faMethod = resolveSend2faMethod({
+    isNative: Capacitor.isNativePlatform(),
+    biometric2faEnabled: is2faBiometricEnabled(),
+    passkey2faEnabled: is2faPasskeyEnabled(),
+    passkeyRegistered: isPasskeyRegistered(),
+    actionPasswordConfigured,
+    isDecoy,
+    isHidden,
+  });
 
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState(null);
@@ -1055,7 +1066,7 @@ export function WalletConnectProvider({ children }) {
       {
         withPrivateKey,
         evmAddress,
-        actionPasswordConfigured,
+        send2faMethod,
         txLimits,
         history,
         knownAddresses,
@@ -1066,7 +1077,7 @@ export function WalletConnectProvider({ children }) {
       topic, id, params, boundCaip2,
     );
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, evmAddress, actionPasswordConfigured, assertSessionLive, isSendReauthRequired, knownAddresses, whitelist]);
+  }, [withPrivateKey, evmAddress, send2faMethod, assertSessionLive, isSendReauthRequired, knownAddresses, whitelist]);
 
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);

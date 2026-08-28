@@ -11,6 +11,10 @@ import { useApprovalMonitor } from "@/hooks/useApprovalMonitor";
 import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X, MessageSquare, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "@/lib/toast";
+import { useActionGuard } from "@/components/security/useActionGuard";
+import { useRaspArtifact, sensitiveGate } from "@/rasp";
+import { getFreshLocalRaspArtifact } from "@/lib/getFreshLocalRaspArtifact";
 
 const RISK_CFG = {
   low: { cls: "bg-success/10 text-success", label: "Low Risk" },
@@ -42,6 +46,8 @@ function decorate(a) {
 export default function TokenApprovals() {
   const qc = useQueryClient();
   const wallet = useWallet();
+  const { requireTwoFactor, gateModal } = useActionGuard();
+  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
   const [filter, setFilter] = useState("active");
   const [result, setResult] = useState(null); // post-revoke summary dialog
   const [error, setError] = useState(null);
@@ -124,6 +130,26 @@ export default function TokenApprovals() {
 
   const visible = approvals.filter((a) => filter === "all" || a.status === filter);
   const activeHigh = approvals.filter((a) => a.status === "active" && a.risk === "high").length;
+  const guardedRevoke = (approval) => {
+    const gate = sensitiveGate(raspArtifact, 'sign');
+    if (gate.blocked) {
+      toast.error(gate.sentence || 'Approval revocation is disabled on this device right now.');
+      return;
+    }
+    requireTwoFactor(async () => {
+      if (wallet.isSendReauthRequired?.()) {
+        setError('Re-enter your PIN or password to authorise this revoke.');
+        return;
+      }
+      const freshArtifact = await getFreshLocalRaspArtifact();
+      const freshGate = sensitiveGate(freshArtifact, 'sign');
+      if (freshGate.blocked) {
+        toast.error(freshGate.sentence || 'Approval revocation is disabled on this device right now.');
+        return;
+      }
+      revoke.mutate(approval);
+    }, { title: 'Revoke token approval' });
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -131,7 +157,7 @@ export default function TokenApprovals() {
         <div>
           <h1 className="text-xl font-bold">Token Approvals</h1>
           <p className="text-sm text-muted-foreground">
-            Review spending permissions you've granted. Revoke the risky ones.
+            Review spending permissions you&apos;ve granted. Revoke the risky ones.
           </p>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
@@ -312,7 +338,7 @@ export default function TokenApprovals() {
                       variant="destructive"
                       className="gap-1 text-xs h-8"
                       disabled={pending}
-                      onClick={() => revoke.mutate(a)}
+                      onClick={() => guardedRevoke(a)}
                     >
                       {pending ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> : <ShieldAlert className="h-3.5 w-3.5" />}
                       Revoke
@@ -344,7 +370,7 @@ export default function TokenApprovals() {
               </p>
               {result.simulated && (
                 <p className="text-xs text-muted-foreground">
-                  Demo mode — no broadcast. Here's what a native build would sign and send:
+                  Demo mode — no broadcast. Here&apos;s what a native build would sign and send:
                 </p>
               )}
               <div className="rounded-lg border border-border bg-secondary/40 p-3">
@@ -366,6 +392,7 @@ export default function TokenApprovals() {
           )}
         </DialogContent>
       </Dialog>
+      {gateModal}
     </div>
   );
 }
