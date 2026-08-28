@@ -4,11 +4,14 @@
 //   3. Deniability/demo session => no init even with DSN + consent.
 //   4. reportError is a no-op until init has run.
 //   5. Scrubber drops events whose exception message looks like a secret.
+//   6. Deniability is re-checked at send time, not only at init time.
+//   7. ErrorBoundary reporting is denied during deniability sessions.
+//   8. event.extra is stripped so component stacks do not egress.
 //
 // We do not exercise Sentry.init's network behaviour — the point is that
 // initSentry() must not CALL Sentry.init at all when a guard is missing.
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('@sentry/react', () => ({
   init: vi.fn(),
@@ -43,9 +46,26 @@ async function withEnv(env, fn) {
   }
 }
 
-describe('initSentry guards', () => {
-  beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubGlobal('localStorage', {
+    getItem: vi.fn(() => null),
+  });
+  return Promise.all([
+    import('@/wallet-core/deniabilitySession').then((m) => {
+      m.isDeniabilityOrDemoActive.mockReturnValue(false);
+    }),
+    import('@/lib/consent').then((m) => {
+      m.hasConsent.mockReturnValue(true);
+    }),
+  ]);
+});
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('initSentry guards', () => {
   it('does nothing without a DSN', async () => {
     const Sentry = await import('@sentry/react');
     await withEnv({ VITE_SENTRY_DSN: '' }, async () => {
@@ -93,18 +113,24 @@ describe('initSentry guards', () => {
     reportError(new Error('boom'), { componentStack: 'x' });
     expect(Sentry.captureException).not.toHaveBeenCalled();
   });
+
+  it('reportError refuses to capture during a deniability session after init', async () => {
+    const Sentry = await import('@sentry/react');
+    const dsession = await import('@/wallet-core/deniabilitySession');
+    await withEnv({ VITE_SENTRY_DSN: 'https://x@y/1' }, async () => {
+      const { initSentry, reportError } = await loadFresh();
+      initSentry();
+      dsession.isDeniabilityOrDemoActive.mockReturnValue(true);
+      reportError(new Error('boom'), { componentStack: 'StealthWallets > HiddenSlotRow' });
+      expect(Sentry.captureException).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('scrubber', () => {
   async function getBeforeSend() {
-    const Sentry = await import('@sentry/react');
-    let captured;
-    Sentry.init.mockImplementationOnce((cfg) => { captured = cfg.beforeSend; });
-    await withEnv({ VITE_SENTRY_DSN: 'https://x@y/1' }, async () => {
-      const { initSentry } = await loadFresh();
-      initSentry();
-    });
-    return captured;
+    const { __TEST_ONLY__ } = await loadFresh();
+    return __TEST_ONLY__.scrub;
   }
 
   it('drops events whose exception looks like a secret', async () => {
@@ -126,6 +152,7 @@ describe('scrubber', () => {
     const event = {
       request: { url: 'https://app/secrets?pin=1234', cookies: 'x' },
       user: { id: '42', ip_address: '1.2.3.4' },
+      extra: { componentStack: 'StealthWallets > HiddenSlotRow' },
       breadcrumbs: [{ category: 'ui.input', message: 'typed something' }],
       contexts: { device: { name: 'iPhone' }, culture: { locale: 'en' } },
       exception: {
@@ -145,12 +172,21 @@ describe('scrubber', () => {
     expect(out).not.toBeNull();
     expect(out.request).toBeUndefined();
     expect(out.user).toBeUndefined();
+    expect(out.extra).toBeUndefined();
     expect(out.breadcrumbs).toEqual([]);
     expect(out.contexts.device).toBeUndefined();
     const frame = out.exception.values[0].stacktrace.frames[0];
     expect(frame.vars).toBeUndefined();
     expect(frame.context_line).toBeUndefined();
     expect(frame.filename).toBe('app.js');
+  });
+
+  it('drops events when deniability becomes active after init', async () => {
+    const beforeSend = await getBeforeSend();
+    const dsession = await import('@/wallet-core/deniabilitySession');
+    dsession.isDeniabilityOrDemoActive.mockReturnValue(true);
+    const event = { exception: { values: [{ value: 'plain crash' }] } };
+    expect(beforeSend(event)).toBeNull();
   });
 
   it('truncates long exception messages', async () => {
