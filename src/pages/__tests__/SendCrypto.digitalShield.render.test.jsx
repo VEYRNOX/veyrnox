@@ -372,6 +372,17 @@ function renderPage() {
   );
 }
 
+async function advanceToConfirm() {
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Prepare Digital Shield QR' })).toBeTruthy();
+  });
+}
+
 describe('SendCrypto — Digital Shield render flow', () => {
   beforeEach(() => {
     cleanup();
@@ -387,7 +398,7 @@ describe('SendCrypto — Digital Shield render flow', () => {
     } catch {}
   });
 
-  it('opens the Digital Shield signing dialog after prepare on the verify step', async () => {
+  it('opens the Digital Shield signing dialog after prepare on the confirm step', async () => {
     renderPage();
 
     fireEvent.click(screen.getByRole('checkbox', { name: /use digital shield air-gap signing/i }));
@@ -404,11 +415,7 @@ describe('SendCrypto — Digital Shield render flow', () => {
       expect(screen.getByText('≈$16,000')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Prepare Digital Shield QR' })).toBeTruthy();
-    });
+    await advanceToConfirm();
 
     fireEvent.click(screen.getByRole('button', { name: 'Prepare Digital Shield QR' }));
 
@@ -440,10 +447,7 @@ describe('SendCrypto — Digital Shield render flow', () => {
       expect(screen.getByText('≈$16,000')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Prepare Digital Shield QR' })).toBeTruthy();
-    });
+    await advanceToConfirm();
     fireEvent.click(screen.getByRole('button', { name: 'Prepare Digital Shield QR' }));
 
     await waitFor(() => {
@@ -475,10 +479,7 @@ describe('SendCrypto — Digital Shield render flow', () => {
     await waitFor(() => {
       expect(screen.getByText('≈$16,000')).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Prepare Digital Shield QR' })).toBeTruthy();
-    });
+    await advanceToConfirm();
     fireEvent.click(screen.getByRole('button', { name: 'Prepare Digital Shield QR' }));
 
     await waitFor(() => {
