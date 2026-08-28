@@ -158,10 +158,15 @@ jobs:
         timeout-minutes: 15
         run: |
           set -o pipefail
+          # Xcode 26 reports both arm64 and x86_64 for the same simulator ID.
+          # Leaving architecture implicit selected an ambiguous destination and
+          # later wedged the WebKit accessibility tap. Build and test must use
+          # the runner-native architecture so their test bundle stays compatible.
+          destination="platform=iOS Simulator,name=iPhone 17,OS=latest,arch=$(uname -m)"
           xcodebuild build-for-testing \
             -project App.xcodeproj \
             -scheme App \
-            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -destination "$destination" \
             -clonedSourcePackagesDirPath SourcePackages \
             -derivedDataPath DerivedData \
             CODE_SIGNING_ALLOWED=NO \
@@ -189,6 +194,8 @@ jobs:
           set -o pipefail
           # xcodebuild refuses to overwrite an existing result bundle.
           rm -rf TestResults.xcresult
+          # Match the build target exactly; see Build for testing above.
+          destination="platform=iOS Simulator,name=iPhone 17,OS=latest,arch=$(uname -m)"
           # GitHub's step timeout did not stop runs 33109374237/33114316303,
           # and signalling only xcodebuild left its test children holding this
           # pipeline open. Run the command in its own process group, then kill
@@ -209,7 +216,7 @@ jobs:
             xcodebuild test-without-building \
             -project App.xcodeproj \
             -scheme App \
-            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -destination "$destination" \
             -only-testing:AppUITests/AppUITests/test_freshInstall_createsWalletWithoutFailureBanner \
             -resultBundlePath TestResults.xcresult \
             -clonedSourcePackagesDirPath SourcePackages \
