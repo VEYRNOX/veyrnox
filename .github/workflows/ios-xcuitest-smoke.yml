@@ -198,11 +198,12 @@ jobs:
           rm -rf TestResults.xcresult
           # Match the build target exactly; see Build for testing above.
           destination="platform=iOS Simulator,name=iPhone 16,OS=latest,arch=$(uname -m)"
-          # GitHub's step timeout did not stop runs 33109374237/33114316303,
-          # and signalling only xcodebuild left its test children holding this
-          # pipeline open. Run the command in its own process group, then kill
-          # that whole group at the measured 25-minute ceiling. The following
-          # `||` still makes the step fail and preserves artifacts.
+          # GitHub's step timeout did not stop runs 33109374237/33114316303.
+          # Keep xcodebuild out of a shell pipeline while the watchdog owns it:
+          # a `tee | xcbeautify` pipeline creates sibling processes outside the
+          # xcodebuild process group, which can keep the step alive after the
+          # watchdog kills xcodebuild. Format the completed log afterwards.
+          set +e
           python3 -c '
           import os, signal, subprocess, sys
           timeout, command = int(sys.argv[1]), sys.argv[2:]
@@ -226,10 +227,14 @@ jobs:
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 300 \
             CODE_SIGNING_ALLOWED=NO \
-            | tee xcodebuild.log | xcbeautify --renderer github-actions || {
+            > xcodebuild.log 2>&1
+          status=$?
+          set -e
+          xcbeautify --renderer github-actions < xcodebuild.log || true
+          if [ "$status" -ne 0 ]; then
               echo "xcodebuild test-without-building failed"
-              exit 1
-            }
+              exit "$status"
+          fi
 
       # Puts the assertion text in the job summary, so the reason a run failed
       # is readable without downloading an artifact. `xcresulttool` on a local
