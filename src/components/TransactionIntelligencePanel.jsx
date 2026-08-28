@@ -73,12 +73,10 @@ export default function TransactionIntelligencePanel({
         </div>
       </div>
 
-      {policy.reason && (
-        <div className="rounded-lg border border-border/70 bg-background/40 p-2 text-xs text-foreground/90">
-          <span className="font-medium">Next action:</span> {policy.reason}
-        </div>
-      )}
-
+      {/* "Next action" prose intentionally removed 2026-08-28 — the top-of-card
+          primaryReason + Policy label already convey what the user must do; a
+          third repeat added scroll without meaning. Progressive-disclosure
+          wizard step 2 owns the single verdict card. */}
       {policy.requiresAcknowledgement && (
         <label className="flex items-start gap-2 cursor-pointer rounded-lg border border-border/70 bg-background/40 p-2 text-xs text-foreground/90">
           <input

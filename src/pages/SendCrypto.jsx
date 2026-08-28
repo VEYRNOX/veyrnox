@@ -29,13 +29,13 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet, Activity } from "lucide-react";
+import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet } from "lucide-react";
 import QRScanner from "../components/QRScanner";
 import UrQrPlayer from "@/components/hw/UrQrPlayer";
-import FeeSelector from "@/components/FeeSelector";
 import CoinLogo from "@/components/CoinLogo";
+import WalletAssetPickerSheet from "@/components/send/WalletAssetPickerSheet";
+import NoteEditorSheet from "@/components/send/NoteEditorSheet";
+import FeeSheet from "@/components/send/FeeSheet";
 import TransactionPreview from "@/components/TransactionPreview";
 import TransactionIntelligencePanel from "@/components/TransactionIntelligencePanel";
 import { toast } from "@/lib/toast";
@@ -396,6 +396,11 @@ export default function SendCrypto() {
 
   const { connected: digitalShieldConnected, evmAccount: digitalShieldEvmAccount, btcAccount: digitalShieldBtcAccount, solAccount: digitalShieldSolAccount } = useDigitalShield();
   const [useDigitalShieldMode, setUseDigitalShieldMode] = useState(false);
+  // Progressive-disclosure wizard sheet open flags (2026-08-28). Pure UI state:
+  // no security invariants touched, no persistence. Sheets close on selection.
+  const [walletAssetSheetOpen, setWalletAssetSheetOpen] = useState(false);
+  const [noteSheetOpen, setNoteSheetOpen] = useState(false);
+  const [feeSheetOpen, setFeeSheetOpen] = useState(false);
   const [digitalShieldDialogOpen, setDigitalShieldDialogOpen] = useState(false);
   const [digitalShieldScannerOpen, setDigitalShieldScannerOpen] = useState(false);
   const [digitalShieldResponseDraft, setDigitalShieldResponseDraft] = useState("");
@@ -1906,65 +1911,31 @@ export default function SendCrypto() {
             </div>
           </div>
         ) : (
-          <>
-            <div>
-              <Label id="send-wallet-label">{tw("send.wallet_picker.label")}</Label>
-              <Select value={walletId} onValueChange={setWalletId}>
-                <SelectTrigger className="mt-1.5" aria-labelledby="send-wallet-label">
-                  <SelectValue placeholder={tw("send.wallet_picker.placeholder")}>
-                    {selectedWalletName ? (
-                      <span className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-primary/20 border border-primary/40">
-                          <Wallet className="h-3 w-3 text-primary" />
-                        </span>
-                        {selectedWalletName}
-                      </span>
-                    ) : null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {wallets.map(w => (
-                    <SelectItem key={w.id} value={w.id}>
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-primary/20 border border-primary/40">
-                          <Wallet className="h-3 w-3 text-primary" />
-                        </span>
-                        <span>{w.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          // Wizard step-1 header chip (2026-08-28). Replaces the two stacked
+          // Select dropdowns with one tap-target that opens WalletAssetPickerSheet.
+          // Same underlying state (walletId + assetSymbol) — pure UI collapse.
+          <button
+            type="button"
+            data-testid="wallet-asset-chip"
+            onClick={() => setWalletAssetSheetOpen(true)}
+            className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-secondary/40 text-start"
+            aria-label="Change wallet or asset"
+          >
+            {assetSymbol ? <CoinLogo symbol={assetSymbol} size={32} /> : (
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-primary/20 border border-primary/40">
+                <Wallet className="h-4 w-4 text-primary" />
+              </span>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">
+                {assetSymbol ? `${getAsset(assetSymbol)?.name || assetSymbol} — ${assetSymbol}` : tw("send.asset_picker.placeholder")}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {selectedWalletName || tw("send.wallet_picker.placeholder")}
+              </p>
             </div>
-            <div>
-              <Label id="send-asset-label">{tw("send.asset_picker.label")}</Label>
-              <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={/** @type {any} */ (!walletId)}>
-                <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="send-asset-label">
-                  <SelectValue placeholder={tw("send.asset_picker.placeholder")}>
-                    {assetSymbol ? (
-                      <>
-                        <CoinLogo symbol={assetSymbol} size={32} />
-                        <span>{getAsset(assetSymbol)?.name || assetSymbol} — {assetSymbol}</span>
-                      </>
-                    ) : null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {enabledAssets.map(sym => {
-                    const a = getAsset(sym);
-                    return (
-                      <SelectItem key={sym} value={sym}>
-                        <div className="flex items-center gap-2">
-                          <CoinLogo symbol={sym} size={20} />
-                          <span>{a?.name || sym} — {sym}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-          </>
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Change</span>
+          </button>
         )}
         <div>
           <Label htmlFor="send-recipient">{tw("send.recipient.label")}</Label>
@@ -2069,57 +2040,26 @@ export default function SendCrypto() {
           <div className="-mt-2"><SecurityAdvisorBanner address={toAddress} /></div>
         )}
 
-        {/* Local-first screening disclosure + the off-by-default remote opt-in.
-            Only relevant for EVM recipients (the look-alike screen targets EVM
-            addresses). The DEMO helper makes the warning trivially reproducible. */}
+        {/* On-device screening disclosure collapsed to a shield-icon tooltip
+            (2026-08-28). The remote-screening checkbox was removed from this
+            wizard step; `remoteScreen` state and its default from
+            `readRemoteScreenPreference()` still gate the TIP RPC. Surfacing the
+            opt-in inside Security Center is deferred — noted in the PR body.
+            The DEMO poison-address helper stays as a dev affordance. */}
         {selectedWallet && (isEvmFamily(selectedAsset) || isErc20) && (
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border -mt-2">
-            <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <div className="text-[11px] text-muted-foreground space-y-1.5 flex-1 min-w-0">
-              <p>{tw("send.screening.local_disclosure")}</p>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input type="checkbox" className="mt-0.5" checked={remoteScreen} onChange={e => toggleRemoteScreen(e.target.checked)} />
-                <span>{tw("send.screening.remote_opt_in")}</span>
-              </label>
-              {remoteScreen && !import.meta.env.VITE_TIP_BASE_URL && (
-                <p className="text-destructive/80">{tw("send.screening.remote_unavailable")}</p>
-              )}
-              {/* H-5 — the disclosure must name what actually leaves the device.
-                  The historical-counterparties leak (up to 20 addresses per
-                  request, sold as look-alike detection) was dropped by the
-                  send-leak fix in this PR; the copy no longer needs to
-                  disclose it. `remote_enabled` still names every field the
-                  payload actually carries (recipient, own address, amount,
-                  contract/calldata for token transfers). */}
-              {remoteScreen && import.meta.env.VITE_TIP_BASE_URL && (
-                <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
-              )}
-              {DEMO && (
-                <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">
-                  {tw("send.screening.demo_poison_button")}
-                </button>
-              )}
-            </div>
+          <div className="flex items-center gap-2 -mt-2 text-[11px] text-muted-foreground" title={tw("send.screening.local_disclosure")}>
+            <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            <span>Checked on your device</span>
+            {DEMO && (
+              <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="ms-auto underline hover:text-foreground">
+                {tw("send.screening.demo_poison_button")}
+              </button>
+            )}
           </div>
         )}
-        {/* Compact simulation toggle (MetaMask/Trust pattern, 2026-08-28).
-            Replaces the full-card teaser + checks-chip grid + hint block that
-            used to sit here. Sim still runs on the verify step; this is the
-            only opt-out affordance outside the "taking too long" hint below. */}
-        {step === "form" && (
-          <label className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground py-1.5 cursor-pointer">
-            <span className="flex items-center gap-1.5">
-              <Activity className={`h-3 w-3 ${simEnabled ? "text-primary" : "text-muted-foreground"}`} />
-              {tw("send.simulation.title")}
-            </span>
-            <Switch
-              id="sim-toggle"
-              checked={simEnabled}
-              onCheckedChange={toggleSim}
-              aria-label={tw("send.simulation.toggle_aria")}
-            />
-          </label>
-        )}
+        {/* Simulation toggle deliberately removed from step 1 (2026-08-28).
+            `simEnabled` state remains — default true from localStorage; the
+            "taking too long" hint on step 2 still exposes a one-tap escape. */}
 
         {showScanner && (
           <QRScanner
@@ -2238,10 +2178,17 @@ export default function SendCrypto() {
             <p className="text-xs text-caution">{tw("send.status.locked")}</p>
           </div>
         )}
-        <div>
-          <Label htmlFor="send-note">{tw("send.note.label")}</Label>
-          <Input id="send-note" value={note} onChange={e => setNote(e.target.value)} placeholder={tw("send.note.placeholder")} className="mt-1.5" />
-        </div>
+        {/* Note chip (2026-08-28) — inline pill that opens NoteEditorSheet.
+            Same `note` state; only the entry surface collapses. */}
+        <button
+          type="button"
+          data-testid="note-chip"
+          onClick={() => setNoteSheetOpen(true)}
+          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:bg-secondary/40"
+        >
+          <FileText className="h-3 w-3" />
+          {note ? <span className="max-w-[12rem] truncate">{note}</span> : <span>{tw("send.note.label")}</span>}
+        </button>
 
         {/* Spend-limit breach — explicit, specific message. Per-transaction AND
             daily caps from Security Center, both now enforced (see lib/txLimits.js).
@@ -2291,27 +2238,9 @@ export default function SendCrypto() {
           </div>
         )}
 
-        <div className="flex items-center gap-3 my-4">
-          <label className="flex items-center gap-2 text-muted-foreground text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useDigitalShieldMode}
-              disabled={digitalShieldBtcUnsupported}
-              onChange={(e) => {
-                setUseDigitalShieldMode(e.target.checked);
-              }}
-              className="accent-primary"
-            />
-            Use Digital Shield air-gap signing
-          </label>
-          {digitalShieldBtcUnsupported && (
-            <span className="text-xs text-caution">Bitcoin testnet and signet are not supported for Digital Shield yet.</span>
-          )}
-          {useDigitalShieldMode && digitalShieldConnected && <span className="text-primary text-xs">✓ Imported</span>}
-          {useDigitalShieldMode && !digitalShieldConnected && (
-            <span className="text-xs text-caution">Import it first on Hardware Wallet</span>
-          )}
-        </div>
+        {/* Digital Shield toggle relocated to step 3 (2026-08-28) — see the
+            full-width row card above the Confirm/Prepare-QR button. Step 1
+            stays focused on WHO + HOW MUCH. */}
 
         {step === "form" && (
           <Button
@@ -2514,37 +2443,10 @@ export default function SendCrypto() {
               </div>
             )}
 
-            {/* Per-chain fee control. The EVM send path is EIP-1559; the chosen
-                tier/custom fee is passed into signAndBroadcast/sendToken. BTC/SOL
-                use an automatic fee this slice (no selector). */}
-            {!isBtc && !isSolana ? (
-              /* 2026-08-16 round-7: for ERC-20 we STOP hinting 65000 —
-                 the estimator now reaches provider.estimateGas against
-                 the token contract (to=contractAddress, data=riskCalldata)
-                 and surfaces GAS_ESTIMATION_FAILED if the RPC/contract
-                 can't quote a real number. Pure ETH transfers still pin
-                 the exact protocol constant 21000. */
-              <FeeSelector
-                chain="evm"
-                networkKey={networkKey}
-                symbol={nativeSymbol}
-                decimals={activeNetwork?.decimals ?? 18}
-                usdRate={USD_RATES[nativeSymbol] ?? USD_RATES[selectedWallet?.currency]}
-                gasLimitHint={isErc20 ? undefined : 21000}
-                from={selectedWallet?.address || undefined}
-                to={isErc20 ? (selectedAsset?.contractAddress || undefined) : (toAddress || undefined)}
-                txData={isErc20 ? (riskCalldata || undefined) : undefined}
-                value={isErc20 ? "0x0" : undefined}
-                onChange={setSelectedFee}
-              />
-            ) : (
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.automatic", { currency: selectedWallet?.currency, network: networkName })}
-              </p>
-            )}
-            {/* The fee's fiat estimate (and the spend-cap previews) convert via
-                the static USD_RATES table, so disclose it's a reference rate. */}
-            <ReferenceRateNote className="text-center" />
+            {/* Fee selection moved to step 3 (2026-08-28) as a compact row that
+                opens FeeSheet. The pre-sign RASP/tx-intel/preview surface on this
+                step no longer competes with fee controls. Reference-rate
+                disclosure moves alongside the fee row on step 3. */}
 
             {/* Advance to Confirm. The condition is the SAME `blockedBy*`
                 composite the pre-wizard Confirm button gated on — every ack
@@ -2590,6 +2492,64 @@ export default function SendCrypto() {
               {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
               <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
             </div>
+
+            {/* Network fee — compact row that opens FeeSheet (2026-08-28).
+                BTC/SOL still use an automatic fee this slice (no selector),
+                so the row shows the note inline and does not open a sheet. */}
+            {!isBtc && !isSolana ? (
+              <>
+                <button
+                  type="button"
+                  data-testid="fee-row"
+                  onClick={() => setFeeSheetOpen(true)}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/40 text-start"
+                >
+                  <Fuel className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs font-medium flex-1">Network fee</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {selectedFee?.label || selectedFee?.tier || "Standard"}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-widest text-primary">Change</span>
+                </button>
+                <ReferenceRateNote className="text-center" />
+              </>
+            ) : (
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.automatic", { currency: selectedWallet?.currency, network: networkName })}
+              </p>
+            )}
+
+            {/* Digital Shield row — first-class per-transaction choice,
+                visually equal weight to the CTA below (full-width, same
+                border/padding). Kept in the wizard, NOT hidden behind
+                Security Center: air-gap signing is something we actively
+                promote at signing time. State + gating logic unchanged. */}
+            <label
+              className={`flex items-start gap-3 p-3 rounded-lg border ${useDigitalShieldMode ? "border-primary bg-primary/5" : "border-border"} ${digitalShieldBtcUnsupported ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:bg-secondary/30"}`}
+              data-testid="digital-shield-row"
+            >
+              <input
+                type="checkbox"
+                checked={useDigitalShieldMode}
+                disabled={digitalShieldBtcUnsupported}
+                onChange={(e) => setUseDigitalShieldMode(e.target.checked)}
+                className="mt-0.5 accent-primary"
+              />
+              <ShieldCheck className={`h-5 w-5 mt-0.5 shrink-0 ${useDigitalShieldMode ? "text-primary" : "text-muted-foreground"}`} aria-hidden="true" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Digital Shield</p>
+                <p className="text-xs text-muted-foreground">Sign offline via QR — your seed never touches the internet</p>
+                {digitalShieldBtcUnsupported && (
+                  <p className="text-[11px] text-caution mt-1">Bitcoin testnet and signet are not supported for Digital Shield yet.</p>
+                )}
+                {useDigitalShieldMode && digitalShieldConnected && (
+                  <p className="text-[11px] text-primary mt-1">✓ Imported</p>
+                )}
+                {useDigitalShieldMode && !digitalShieldConnected && (
+                  <p className="text-[11px] text-caution mt-1">Import it first on Hardware Wallet</p>
+                )}
+              </div>
+            </label>
 
             {/* STEP-UP RE-AUTH: friction-free within the recent-auth window; re-enter the
                 vault credential once it has lapsed. Skipped in demo (fake sends, no vault).
@@ -2726,6 +2686,45 @@ export default function SendCrypto() {
         )}
       </div>
     </div>
+    {/* Progressive-disclosure sheets. Selecting a wallet closes the sheet;
+        selecting an asset does the same. Note sheet closes via its Done
+        button. Fee sheet stays open across FeeSelector interactions so the
+        user can preview tiers, and closes via Done. */}
+    <WalletAssetPickerSheet
+      open={walletAssetSheetOpen}
+      onOpenChange={setWalletAssetSheetOpen}
+      wallets={wallets}
+      enabledAssets={enabledAssets}
+      selectedWalletId={walletId}
+      selectedAssetSymbol={assetSymbol}
+      onSelectWallet={(id) => { setWalletId(id); }}
+      onSelectAsset={(sym) => { setAssetSymbol(sym); setWalletAssetSheetOpen(false); }}
+    />
+    <NoteEditorSheet
+      open={noteSheetOpen}
+      onOpenChange={setNoteSheetOpen}
+      value={note}
+      onChange={setNote}
+      label={tw("send.note.label")}
+      placeholder={tw("send.note.placeholder")}
+    />
+    {!isBtc && !isSolana && (
+      <FeeSheet
+        open={feeSheetOpen}
+        onOpenChange={setFeeSheetOpen}
+        chain="evm"
+        networkKey={networkKey}
+        symbol={nativeSymbol}
+        decimals={activeNetwork?.decimals ?? 18}
+        usdRate={USD_RATES[nativeSymbol] ?? USD_RATES[selectedWallet?.currency]}
+        gasLimitHint={isErc20 ? undefined : 21000}
+        from={selectedWallet?.address || undefined}
+        to={isErc20 ? (selectedAsset?.contractAddress || undefined) : (toAddress || undefined)}
+        txData={isErc20 ? (riskCalldata || undefined) : undefined}
+        value={isErc20 ? "0x0" : undefined}
+        onChange={setSelectedFee}
+      />
+    )}
     <Dialog open={digitalShieldDialogOpen} onOpenChange={(open) => { if (!open) resetDigitalShieldFlow(); }}>
       <DialogContent>
         <DialogHeader>
