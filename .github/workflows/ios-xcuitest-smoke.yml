@@ -68,7 +68,9 @@ jobs:
     # the Capacitor WKWebView accessibility bridge intermittently wedges before
     # a test action can complete. Keep this smoke on the stable Xcode 16 image
     # until the newer simulator stack is reliable.
-    runs-on: macos-14
+    # macOS 15 provides Xcode 16, the minimum Swift tools version required by
+    # Firebase 12, while avoiding the Xcode 26 simulator regression.
+    runs-on: macos-15
     # Budget note (issues #2008, #2109). A JOB-level timeout kills the whole
     # job, including `Upload test log` — which is why run after run produced
     # zero artifacts and nobody could see why the test never finished. Each
@@ -166,7 +168,7 @@ jobs:
           # Leaving architecture implicit selected an ambiguous destination and
           # later wedged the WebKit accessibility tap. Build and test must use
           # the runner-native architecture so their test bundle stays compatible.
-          destination="platform=iOS Simulator,name=iPhone 15,OS=latest,arch=$(uname -m)"
+          destination="platform=iOS Simulator,name=iPhone 16,OS=latest,arch=$(uname -m)"
           xcodebuild build-for-testing \
             -project App.xcodeproj \
             -scheme App \
@@ -199,7 +201,7 @@ jobs:
           # xcodebuild refuses to overwrite an existing result bundle.
           rm -rf TestResults.xcresult
           # Match the build target exactly; see Build for testing above.
-          destination="platform=iOS Simulator,name=iPhone 15,OS=latest,arch=$(uname -m)"
+          destination="platform=iOS Simulator,name=iPhone 16,OS=latest,arch=$(uname -m)"
           # GitHub's step timeout did not stop runs 33109374237/33114316303,
           # and signalling only xcodebuild left its test children holding this
           # pipeline open. Run the command in its own process group, then kill
