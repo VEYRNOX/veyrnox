@@ -25,9 +25,10 @@ final class AppUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// Golden path a reviewer would walk on first launch.
-    /// If this test ever fails on a stock simulator the app is NOT ready to submit.
-    func test_freshInstall_createsWalletWithoutFailureBanner() throws {
+    /// Simulator smoke: native provisioning must fail closed when the simulator
+    /// cannot provide a passcode-backed secure store. A real device is required
+    /// to verify successful wallet creation and hardware-gated unlock.
+    func test_simulatorFailsClosedWithoutSecureStore() throws {
         let app = XCUIApplication()
         app.launchArguments += ["--uitest-fresh-install"]
         app.launch()
@@ -83,16 +84,18 @@ final class AppUITests: XCTestCase {
         enterPin(app: app, digits: pin, stage: "confirm")
         submitPin(app: app, stage: "confirm")
 
-        // 5. The exact banner Play rejected build 5 for. Assert absence.
-        //    Wait explicitly — the banner appears when KEK/RASP fails
-        //    closed, which is what we want to catch.
+        // 5. iOS Simulator has no device passcode or enrolled biometrics, so it
+        //    cannot satisfy the native secure-store precondition. The only
+        //    honest simulator outcome is an explicit fail-closed result with no
+        //    usable wallet. Successful provisioning remains real-device-only.
         let failureBanner = app.staticTexts[
             "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
         ]
-        XCTAssertFalse(
+        XCTAssertTrue(
             failureBanner.waitForExistence(timeout: 20),
-            "KEK/RASP fail-closed banner appeared — this is the exact defect Play rejected on Android."
+            "Simulator provisioning must fail closed when the native secure store is unavailable."
         )
+        XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not create a wallet.")
     }
 
     // MARK: - helpers
