@@ -167,12 +167,18 @@ class AndroidBiometricCacheConfigTest {
     }
 
     @Test
-    fun `T5 fast-path alias matches reserved value and includes v1 stamp`() {
+    fun `T5 fast-path alias matches reserved value and includes v2 stamp`() {
+        // Bumped to .v2 in the 2026-08-28 silent-fastpath refactor. The
+        // Keystore ACL is unchanged (STRONG + 30 s validity + invalidate-
+        // on-enrollment) but the payload changed from a JSON HKDF wrap to
+        // raw base64 DEK, and the versioning contract requires a bump on
+        // any change discoverable in device debug artifacts. See the
+        // AndroidBiometricCacheConfig.FASTPATH_ALIAS doc-comment.
         assertEquals(
-            "com.veyrnox.app.biometricCacheFastpath.v1",
+            "com.veyrnox.app.biometricCacheFastpath.v2",
             AndroidBiometricCacheConfig.FASTPATH_ALIAS,
         )
-        assertTrue(AndroidBiometricCacheConfig.FASTPATH_ALIAS.endsWith(".v1"))
+        assertTrue(AndroidBiometricCacheConfig.FASTPATH_ALIAS.endsWith(".v2"))
     }
 
     @Test
