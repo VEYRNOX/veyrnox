@@ -126,10 +126,16 @@ final class AppUITests: XCTestCase {
     /// Tap each digit on the on-screen keypad. Digit buttons carry only their
     /// text (no aria-label), so we match on the digit character.
     private func enterPin(app: XCUIApplication, digits: String, stage: String) {
-        for ch in digits {
+        for (index, ch) in digits.enumerated() {
             let key = buttonMatching(app, label: String(ch))
+            // WKWebView publishes the first control in the newly rendered PIN
+            // screen asynchronously. The CI trace reached New wallet but the
+            // bridge had not exposed "1" within the old five-second window.
+            // Once the first key exists, the rest of the keypad is one DOM
+            // render and should remain promptly available.
+            let timeout: TimeInterval = index == 0 ? 20 : 5
             XCTAssertTrue(
-                key.waitForExistence(timeout: 5),
+                key.waitForExistence(timeout: timeout),
                 "PIN \(stage): keypad button '\(ch)' never appeared."
             )
             key.tap()
