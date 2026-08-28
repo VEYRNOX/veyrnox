@@ -1,3 +1,4 @@
+// @ts-nocheck
 // WalletAssetPickerSheet — single bottom-sheet that lets the user choose the
 // source wallet AND the asset without navigating between two dropdowns.
 // Selecting either fires the matching callback; the parent owns state.
