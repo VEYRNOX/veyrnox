@@ -27,6 +27,7 @@ import {
   readSpamTokenOverrides,
   setSpamTokenOverride,
 } from '@/lib/spamTokenIntel';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 
 function SeverityChip({ severity, children }) {
   const cls = severity === 'high'
@@ -55,6 +56,9 @@ function formatIssueKind(kind) {
 }
 
 export default function SuspiciousAssets() {
+  const localReviewEnabled = (() => {
+    try { return !isDeniabilityOrDemoActive(); } catch { return false; }
+  })();
   const [spamOverrides, setSpamOverrides] = useState(() => readSpamTokenOverrides());
   const [dismissedNftIds, setDismissedNftIds] = useState(() => readDismissedSuspiciousNfts());
   const [contractIntelConsentState, setContractIntelConsentState] = useState(() => getContractIntelConsentState());
@@ -62,14 +66,18 @@ export default function SuspiciousAssets() {
   const [remoteContractIntel, setRemoteContractIntel] = useState({});
   const [remoteContractIntelLoading, setRemoteContractIntelLoading] = useState({});
   const [remoteContractIntelMeta, setRemoteContractIntelMeta] = useState({});
-  const { data: tokenRows = [], isLoading: loadingTokens, isError: errorTokens } = useQuery({
+  const { data: tokenRowsRaw = [], isLoading: loadingTokens, isError: errorTokens } = useQuery({
     queryKey: ['wallet-tokens'],
     queryFn: () => base44.entities.WalletToken.list('-created_date'),
+    enabled: localReviewEnabled,
   });
-  const { data: nftRows = [], isLoading: loadingNfts, isError: errorNfts } = useQuery({
+  const { data: nftRowsRaw = [], isLoading: loadingNfts, isError: errorNfts } = useQuery({
     queryKey: ['nft-assets'],
     queryFn: () => base44.entities.NFTAsset.list('-created_date'),
+    enabled: localReviewEnabled,
   });
+  const tokenRows = localReviewEnabled ? tokenRowsRaw : [];
+  const nftRows = localReviewEnabled ? nftRowsRaw : [];
 
   const snapshot = useMemo(
     () => buildSuspiciousAssetSnapshot({ tokens: tokenRows, nfts: nftRows, spamOverrides, dismissedNftIds }),
@@ -108,7 +116,7 @@ export default function SuspiciousAssets() {
     setContractIntelConsentState(getContractIntelConsentState());
   };
   const fetchRemoteContractIntel = async (token, { force = false } = {}) => {
-    if (!token?.id || remoteContractIntelLoading[token.id] || !contractIntelConfigured || !contractIntelEnabled) return;
+    if (!localReviewEnabled || !token?.id || remoteContractIntelLoading[token.id] || !contractIntelConfigured || !contractIntelEnabled) return;
     if (!force && remoteContractIntel[token.id]) return;
     if (!force) {
       const cached = readCachedContractIntelEntry(token.id);
@@ -161,6 +169,10 @@ export default function SuspiciousAssets() {
   };
 
   useEffect(() => {
+    if (!localReviewEnabled) {
+      publishAdvisorContext(null);
+      return () => publishAdvisorContext(null);
+    }
     publishAdvisorContext({
       suspicious_asset_total: snapshot.totals.total,
       suspicious_token_total: snapshot.totals.suspiciousTokens,
@@ -187,13 +199,21 @@ export default function SuspiciousAssets() {
       })),
     });
     return () => publishAdvisorContext(null);
-  }, [snapshot, dismissedNftIds.length, contractIntelConsentState, contractIntelConfigured]);
+  }, [snapshot, dismissedNftIds.length, contractIntelConsentState, contractIntelConfigured, localReviewEnabled]);
 
   const loading = loadingTokens || loadingNfts;
   const visibleTokenCount = snapshot.totals.visibleTokens;
   const hiddenTokenCount = snapshot.totals.hiddenTokens;
   const visibleCollectibleCount = snapshot.totals.suspiciousNfts;
   const dismissedCollectibleCount = dismissedNftIds.length;
+
+  if (!localReviewEnabled) {
+    return (
+      <div className="max-w-3xl mx-auto py-16 text-center text-sm text-muted-foreground">
+        This page isn&apos;t available right now.
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

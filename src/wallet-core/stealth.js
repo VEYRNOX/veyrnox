@@ -120,7 +120,7 @@
 // only encrypts, stores, and decrypts hidden-wallet mnemonics locally. It cannot
 // move funds and adds no mainnet surface.
 
-import { decryptVault, encryptVault, KDF_PARAMS, vaultKdfDiffersFrom } from './vault.js';
+import { decryptVault, encryptVault, KDF_PARAMS, VAULT_VERSION, vaultKdfDiffersFrom } from './vault.js';
 // H-2 (weekly audit 2026-08-25): chaff and real slots must record an IDENTICAL
 // `kdf`, and the era that has to match is THIS DEVICE'S — not the current
 // at-rest default. Every writer here therefore goes through
@@ -356,7 +356,7 @@ function makeChaff(kdfProfile = KDF_PARAMS) {
   const ptLen = FIXED_LEN;
   const GCM_TAG = 16;
   return {
-    v: 1,
+    v: VAULT_VERSION,
     // Advertise THIS DEVICE's recorded KDF params so chaff blobs are byte-shaped
     // identically to real hidden-wallet blobs. Hardcoding them would diverge when
     // the at-rest params are raised (SAST M3), making the kdf field a real-vs-chaff

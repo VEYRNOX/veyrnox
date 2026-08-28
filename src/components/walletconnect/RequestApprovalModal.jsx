@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ethers } from 'ethers';
 import styles from './RequestApprovalModal.module.css';
 import { successHaptic, errorHaptic, tapHaptic } from '@/lib/haptics';
-import { useWalletConnect, resolvePersonalSignMessage } from '@/lib/WalletConnectProvider.jsx';
+import { useWalletConnect, resolvePersonalSignMessage, resolveWcSpendAmount } from '@/lib/WalletConnectProvider.jsx';
 import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
 // Imported from wallet-core, NOT from WalletConnectProvider: this is the same
 // helper the provider uses to CAP the fee, so the ceiling shown here and the
@@ -70,6 +70,17 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
     try { return resolveWcWorstCaseFeeWei(reqParams?.[0], wcNetwork?.key); } catch { return null; }
   })();
   const worstCaseFeeText = worstCaseFeeWei == null ? null : ethers.formatEther(worstCaseFeeWei);
+  const spendDisplay = (() => {
+    if (type !== REQUEST_TYPES.SEND_TRANSACTION) return null;
+    try { return resolveWcSpendAmount(reqParams?.[0], wcNetwork); } catch { return null; }
+  })();
+  const valueRowText = (() => {
+    if (spendDisplay?.valued && Number.isFinite(spendDisplay.amount) && spendDisplay.currency) {
+      return `${spendDisplay.amount.toLocaleString(undefined, { maximumFractionDigits: 8 })} ${spendDisplay.currency}`;
+    }
+    if (reqParams[0]?.value) return `${ethers.formatEther(BigInt(reqParams[0].value))} ${nativeSymbol}`;
+    return `0 ${nativeSymbol}`;
+  })();
 
   const needsReauth = isSendReauthRequired();
 
@@ -355,11 +366,7 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
               </div>
               <div className={styles.txRow}>
                 <span>{t('wc.request_approval.value_row_label')}</span>
-                <span className={styles.mono}>
-                  {reqParams[0]?.value
-                    ? ethers.formatEther(BigInt(reqParams[0].value)) + ' ' + nativeSymbol
-                    : '0 ' + nativeSymbol}
-                </span>
+                <span className={styles.mono}>{valueRowText}</span>
               </div>
               {worstCaseFeeText != null && (
                 <div className={styles.txRow}>

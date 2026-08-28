@@ -91,6 +91,7 @@ class AndroidBiometricCachePlugin : Plugin() {
             call.reject("Plugin context unavailable", "NO_CONTEXT")
             return
         }
+        if (rejectIfBlockTier(ctx, call)) return
         try {
             if (!isCacheStructurallyPresent(ctx)) {
                 call.resolve(JSObject().put("secret", null))
@@ -178,6 +179,7 @@ class AndroidBiometricCachePlugin : Plugin() {
             call.reject("Plugin context unavailable", "NO_CONTEXT")
             return
         }
+        if (rejectIfBlockTier(ctx, call)) return
         try {
             val p = prefs(ctx)
             val ctB64 = p.getString(dataUnauthKey, null)
@@ -291,6 +293,7 @@ class AndroidBiometricCachePlugin : Plugin() {
             call.reject("Plugin context unavailable", "NO_CONTEXT")
             return
         }
+        if (rejectIfBlockTier(ctx, call)) return
         try {
             val p = prefs(ctx)
             val ctB64 = p.getString(dataFastpathKey, null)
@@ -355,6 +358,12 @@ class AndroidBiometricCachePlugin : Plugin() {
 
     private fun prefs(ctx: Context) =
         ctx.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+
+    private fun rejectIfBlockTier(ctx: Context, call: PluginCall): Boolean {
+        if (!RaspIntegrityPlugin.isBlockTier(ctx)) return false
+        call.reject("Device integrity check failed — biometric cache access refused (I4)", "RASP_BLOCK")
+        return true
+    }
 
     private fun hasStrongBiometry(ctx: Context): Boolean {
         val biometricManager = BiometricManager.from(ctx)
