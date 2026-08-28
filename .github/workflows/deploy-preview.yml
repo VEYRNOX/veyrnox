@@ -283,6 +283,47 @@ jobs:
               });
             }
 
+  # Passive DAST against the deployed preview. Baseline mode spiders the site
+  # and reports passive findings only — no active attacks — so it is safe to run
+  # on every preview build. The rules file promotes only the security headers
+  # this host already claims to emit (X-Frame-Options, X-Content-Type-Options,
+  # CSP) to FAIL; everything else stays WARN for now so the gate is narrow and
+  # intentional rather than "any passive finding blocks the PR".
+  zap-baseline:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: ${{ needs.deploy.outputs.deployment_url != '' }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Wait for preview to be reachable
+        env:
+          URL: ${{ needs.deploy.outputs.deployment_url }}
+        run: |
+          echo "Waiting for $URL to respond before ZAP scan..."
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null "$URL"; then
+              echo "Preview is up"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Preview at $URL did not become reachable within 5 minutes"
+          exit 1
+
+      - name: OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: ${{ needs.deploy.outputs.deployment_url }}
+          docker_name: ghcr.io/zaproxy/zaproxy:stable
+          rules_file_name: .zap/rules.tsv
+          cmd_options: -I
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-baseline-report
+
   # E2E runs HERE, in the same PR-triggered workflow, rather than in a separate
   # `workflow_run` workflow. A workflow_run job executes in the BASE repo's
   # privileged context (write-scoped token, secrets) while checking out the PR
@@ -363,7 +404,7 @@ jobs:
   # it is missing, and GitHub blocks the merge forever waiting for it. The
   # skipping happens in `deploy`/`e2e`; this job always reports.
   staging-gate:
-    needs: [changes, deploy, e2e]
+    needs: [changes, deploy, zap-baseline, e2e]
     runs-on: ubuntu-latest
     if: always()
     permissions:
@@ -372,10 +413,12 @@ jobs:
       - name: Evaluate staging result
         run: |
           DEPLOY_RESULT="${{ needs.deploy.result }}"
+          ZAP_RESULT="${{ needs.zap-baseline.result }}"
           E2E_RESULT="${{ needs.e2e.result }}"
           DOCS_ONLY="${{ needs.changes.outputs.docs_only }}"
 
           echo "deploy:    $DEPLOY_RESULT"
+          echo "zap:       $ZAP_RESULT"
           echo "e2e:       $E2E_RESULT"
           echo "docs_only: $DOCS_ONLY"
 
@@ -397,9 +440,14 @@ jobs:
             exit 1
           fi
 
+          if [ "$ZAP_RESULT" != "success" ]; then
+            echo "::error::ZAP baseline $ZAP_RESULT — staging gate blocked"
+            exit 1
+          fi
+
           if [ "$E2E_RESULT" != "success" ]; then
             echo "::error::Staging e2e $E2E_RESULT — staging gate blocked"
             exit 1
           fi
 
-          echo "Staging deployed and e2e passed — gate open"
+          echo "Staging deployed, ZAP passed, and e2e passed — gate open"
