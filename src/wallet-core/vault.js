@@ -299,7 +299,7 @@ function paramsFromVault(vault) {
 // require matching AAD at both encrypt and decrypt time (GCM auth-tag covers the
 // entire blob header, not just the ciphertext). An in-place field swap that does
 // not re-encrypt can no longer produce a valid v:2 blob.
-const VAULT_VERSION = 2;
+export const VAULT_VERSION = 2;
 
 // Version 3 kek-dek AAD additionally binds `kekWrap`, `kekSalt`, and
 // `hardwareKekVersion` (see docs/vault-aad-v3-plan.md, #1111). The READER
@@ -774,4 +774,3 @@ function zero(u8) { if (u8 && u8.fill) u8.fill(0); }
 // base64 helpers (no Buffer dependency; browser-safe)
 function b64(u8) { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); }
 function unb64(str) { const s = atob(str); const u8 = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i); return u8; }
-

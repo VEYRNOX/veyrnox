@@ -77,4 +77,17 @@ class AndroidBiometricCachePluginSourceTest {
             badLiteral.containsMatchIn(ensureUnauthBody),
         )
     }
+
+    @Test
+    fun `Strix-3 getSecret chokepoints enforce the native RASP block-tier gate`() {
+        for (method in listOf("getSecret", "getSecretUnauth", "getFastpathDek")) {
+          val re = Regex("""fun\s+$method\s*\([^)]*\)\s*\{([\s\S]*?)\n\s{4}@PluginMethod""")
+          val body = re.find(src)?.groupValues?.get(1)
+              ?: throw IllegalStateException("Could not locate $method() body in plugin source")
+          assertTrue(
+              "$method() must reject on RaspIntegrityPlugin BLOCK tier before releasing cached secret material.",
+              body.contains("rejectIfBlockTier(ctx, call)"),
+          )
+        }
+    }
 }
