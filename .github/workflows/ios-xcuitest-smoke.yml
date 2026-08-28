@@ -205,7 +205,9 @@ jobs:
               os.killpg(child.pid, signal.SIGKILL)
               child.wait()
               raise SystemExit(124)
-          ' 1080 \
+          # Fire before the step's 18-minute GitHub timeout, which otherwise
+          # kills this shell before the summary and artifact steps can run.
+          ' 900 \
             xcodebuild test-without-building \
             -project App.xcodeproj \
             -scheme App \
