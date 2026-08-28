@@ -15,6 +15,7 @@ import {
   ensureStealthPool, createHiddenWallet, moveWalletToHidden, tryRevealHidden,
   hasStealthPool, wipeStealthPool, slotForSecret, setHiddenActionPasswordRecord,
 } from '../stealth.js';
+import { VAULT_VERSION } from '../vault.js';
 import { deriveEvmAccount } from '../derivation.js';
 import { generateMnemonic } from '../mnemonic.js';
 import { deriveBtcAddress } from '../btc/derivation.js';
@@ -88,6 +89,8 @@ describe('stealth / hidden wallets', () => {
     const shapes = new Set(slots.map((k) => Object.keys(store[k]).sort().join(',')));
     expect(shapes.size).toBe(1);
     expect([...shapes][0]).toBe('ct,iv,kdf,salt,v');
+    const versions = new Set(slots.map((k) => store[k].v));
+    expect(versions).toEqual(new Set([VAULT_VERSION]));
   });
 
   it('H2: a real hidden slot and a chaff slot have BYTE-IDENTICAL ct length (deniability)', async () => {
