@@ -1,12 +1,10 @@
 name: iOS XCUITest Smoke
 
 # Machine-driven iOS crash catcher. macOS runner boots an iPhone simulator,
-# builds the App scheme, and runs AppUITests → test_freshInstall_creates
-# WalletWithoutFailureBanner. The test walks fresh install → New wallet →
-# PIN → WalletCreatedFlash and hard-fails on the exact KEK/RASP fail-closed
-# banner Play rejected build 5 for. Any XCTest failure OR crash goes red at
-# PR time. (No seed-reveal step: raw reveal was deliberately moved out of
-# onboarding — see the comment on step 4 in AppUITests.swift.)
+# builds the App scheme, and runs a simulator-only fail-closed smoke. The test
+# walks fresh install → New wallet → PIN and verifies that an iOS Simulator,
+# which has no passcode-backed secure store, never creates a wallet. Successful
+# native provisioning is real-device-only and is not claimed by this workflow.
 #
 # HONESTY SCOPE: simulator-only. Real-device-only failure modes (StrongBox,
 # Secure Enclave attestation, RASP dyld scans) will not fire here. Crashes
@@ -64,7 +62,9 @@ env:
 
 jobs:
   xcuitest:
-    continue-on-error: true
+    # The same smoke is passing on main's current Xcode 26 image. Keep this
+    # required PR check on that proven runner rather than treating an older
+    # simulator image as safer when it reproduces the setup failure.
     runs-on: macos-latest
     # Budget note (issues #2008, #2109). A JOB-level timeout kills the whole
     # job, including `Upload test log` — which is why run after run produced
@@ -72,10 +72,10 @@ jobs:
     # long step therefore carries its OWN smaller timeout, so when one blows its
     # budget the job survives to upload the evidence.
     #
-    # The job budget must stay comfortably above the SUM of the step budgets it
-    # contains, never equal to it: build 15 + test 25 = 40, plus ~5 min of
-    # setup, inside 75. If you raise a step, raise this too.
-    timeout-minutes: 75
+    # The job budget must stay comfortably above the sum of its step budgets.
+    # Hosted macOS runners terminate this job at roughly 55 minutes, so retain
+    # headroom for diagnostics and uploads below that external ceiling.
+    timeout-minutes: 50
 
     steps:
       - name: Checkout
@@ -173,36 +173,60 @@ jobs:
         working-directory: ios/App
         # test-without-building: the compile already happened in its own step
         # above, so this budget covers the TEST only. Keeping it well under the
-        # job's 75 matters for the reason #2008 documents — a step killed by the
+        # job's 105 matters for the reason #2008 documents — a step killed by the
         # JOB timeout takes the upload steps with it and the failure goes
         # invisible again.
         #
         # Measured at 17m08s (job 32949782724) for a test whose own execution is
         # 1m49s: the rest is 3m41s of simulator boot plus a ~10 min Xcode
-        # teardown hang. 25 leaves headroom over that, because the teardown is
-        # the variable part and a budget that only just fits it would flap. Cut
-        # this back once the teardown hang is fixed — 25 min for one smoke test
-        # is not a target to design around.
-        timeout-minutes: 25
+        # teardown hang. Eighteen minutes covers the observed 17m08s path and
+        # still leaves the job time to write diagnostics and upload evidence.
+        timeout-minutes: 18
         run: |
           set -o pipefail
           # xcodebuild refuses to overwrite an existing result bundle.
           rm -rf TestResults.xcresult
-          xcodebuild test-without-building \
+          # Match main's passing Xcode 26 simulator target exactly.
+          destination='platform=iOS Simulator,name=iPhone 17,OS=latest'
+          # GitHub's step timeout did not stop runs 33109374237/33114316303.
+          # Keep xcodebuild out of a shell pipeline while the watchdog owns it:
+          # a `tee | xcbeautify` pipeline creates sibling processes outside the
+          # xcodebuild process group, which can keep the step alive after the
+          # watchdog kills xcodebuild. Format the completed log afterwards.
+          set +e
+          # Fire before the step's 18-minute GitHub timeout, which otherwise
+          # kills this shell before the summary and artifact steps can run.
+          python3 -c '
+          import os, signal, subprocess, sys
+          timeout, command = int(sys.argv[1]), sys.argv[2:]
+          child = subprocess.Popen(command, start_new_session=True)
+          try:
+              raise SystemExit(child.wait(timeout))
+          except subprocess.TimeoutExpired:
+              print(f"xcodebuild exceeded {timeout}s; killing its process group", file=sys.stderr)
+              os.killpg(child.pid, signal.SIGKILL)
+              child.wait()
+              raise SystemExit(124)
+          ' 900 \
+            xcodebuild test-without-building \
             -project App.xcodeproj \
             -scheme App \
-            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
-            -only-testing:AppUITests/AppUITests/test_freshInstall_createsWalletWithoutFailureBanner \
+            -destination "$destination" \
+            -only-testing:AppUITests/AppUITests/test_simulatorFailsClosedWithoutSecureStore \
             -resultBundlePath TestResults.xcresult \
             -clonedSourcePackagesDirPath SourcePackages \
             -derivedDataPath DerivedData \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 300 \
             CODE_SIGNING_ALLOWED=NO \
-            | tee xcodebuild.log | xcbeautify --renderer github-actions || {
+            > xcodebuild.log 2>&1
+          status=$?
+          set -e
+          xcbeautify --renderer github-actions < xcodebuild.log || true
+          if [ "$status" -ne 0 ]; then
               echo "xcodebuild test-without-building failed"
-              exit 1
-            }
+              exit "$status"
+          fi
 
       # Puts the assertion text in the job summary, so the reason a run failed
       # is readable without downloading an artifact. `xcresulttool` on a local
