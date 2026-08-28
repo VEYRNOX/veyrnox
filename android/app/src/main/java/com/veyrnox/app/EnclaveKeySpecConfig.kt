@@ -44,11 +44,14 @@ package com.veyrnox.app
 
 object EnclaveKeySpecConfig {
 
-    // The single AES-GCM wrapping key alias. Mirrors iOS EnclaveKeyService's
-    // com.veyrnox.app.enclaveWrappingKey.v1 for cross-platform consistency —
-    // both platforms use the same versioned name to make the ACL policy
-    // discoverable in device debug artifacts.
-    const val KEY_ALIAS: String = "com.veyrnox.app.enclaveWrappingKey.v1"
+    // The single AES-GCM wrapping key alias. Version suffix bumped .v1 → .v2
+    // for the AUTH_VALIDITY_SECONDS change below: the ACL policy contract in
+    // this file's header says any change to the KeyGenParameterSpec MUST bump
+    // the suffix, so a device running old code cannot accidentally read the
+    // new key or vice-versa. On upgrade a returning user encounters an
+    // absent .v2 alias and re-enrolls KEK on their next PIN unlock (existing
+    // KEY_INVALIDATED handler in useKekEnrollmentGate).
+    const val KEY_ALIAS: String = "com.veyrnox.app.enclaveWrappingKey.v2"
 
     // Cipher shape. Values are string-equal to KeyProperties.KEY_ALGORITHM_AES /
     // BLOCK_MODE_GCM / ENCRYPTION_PADDING_NONE. Pinned as plain strings so this
@@ -58,11 +61,25 @@ object EnclaveKeySpecConfig {
     const val PADDING: String = "NoPadding"
     const val KEY_SIZE: Int = 256
 
-    // ACL — per-use auth, BIOMETRIC_STRONG only, invalidated on new biometric.
+    // ACL — auth required, BIOMETRIC_STRONG only, invalidated on new biometric.
     // These are `const` (not `var`) so no code path can flip them at runtime —
     // pinned by EnclaveKeySpecConfigTest T3.
     const val REQUIRES_USER_AUTH: Boolean = true
     const val INVALIDATE_ON_BIOMETRIC_ENROLL: Boolean = true
+
+    // Time-based auth validity window (owner ruling 2026-08-28). Was 0 =
+    // per-use CryptoObject; now 30s = "any STRONG biometric within the last
+    // 30 seconds satisfies this cipher op". On Pixel this lets a lock-screen
+    // Face-unlock (Class 3) authorise a KEK/DEK unwrap that Pixel Face refuses
+    // to participate in via CryptoObject — Face becomes the effective default
+    // wallet unlock, with fingerprint tap as the natural fallback when Face
+    // isn't recent enough. Window kept intentionally short: an attacker who
+    // gets an unattended phone within 30 seconds of the user's last biometric
+    // is a real but bounded threat model, matching AndroidBiometricCachePlugin
+    // which already uses the same 30-second window for the PIN-cache key.
+    // BIOMETRIC_STRONG (Class 3) requirement is unchanged — no PIN/pattern
+    // bypass, no Class 2 face acceptance.
+    const val AUTH_VALIDITY_SECONDS: Int = 30
 
     // StrongBox is preferred; the service falls through to TEE on
     // StrongBoxUnavailableException. Never fabricates a StrongBox claim (I4).
