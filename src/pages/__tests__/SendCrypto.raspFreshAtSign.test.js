@@ -1,6 +1,7 @@
 // P2-1 / P2-4 / P2-7 audit findings — SendCrypto now routes RASP through the
-// shared hook (P2-7 dedup) with attestation deferred until step==='verify'
-// (P2-4) and calls getFreshRaspArtifact() at signing time (P2-1 anti-stale).
+// shared hook (P2-7 dedup) with attestation deferred until the review/confirm
+// step (P2-4; renamed from the pre-wizard "verify" in 2026-08-28's 3-step
+// split) and calls getFreshRaspArtifact() at signing time (P2-1 anti-stale).
 //
 // Structural pins on the source text. The behavioural properties are exercised
 // by the corresponding hook / helper unit tests.
@@ -35,7 +36,7 @@ describe('SendCrypto — P2-7 uses the shared useRaspArtifact hook (no inline du
   });
 });
 
-describe('SendCrypto — P2-4 attestation deferred until step==="verify"', () => {
+describe('SendCrypto — P2-4 attestation deferred until step is review or confirm', () => {
   it('passes deferAttestation to useRaspArtifact keyed off step', () => {
     // The hook is called with an options object; the deferAttestation flag is
     // derived from step so the network call is not fired on Send-page mount.
