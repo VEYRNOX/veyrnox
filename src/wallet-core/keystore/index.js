@@ -89,6 +89,15 @@ function makeNativeFacade() {
     async unlock(password, opts) {
       return (await load()).nativeKeyStore.unlock(password, opts);
     },
+    // Fast-path biometric-only unlock (#2019 Q3). Reads the wrapped-DEK cache
+    // in Android Keystore behind ONE biometric prompt — skips Argon2id KDF
+    // entirely on cache hit. Missing this forwarder made every WalletProvider
+    // `keyStore.unlockBiometricOnly(...)` call throw TypeError silently,
+    // which the WalletEntry auto-fire caught and fell through to the slow
+    // path (unlockWithBiometric → unlock → argon2), defeating Fast Unlock.
+    async unlockBiometricOnly(opts) {
+      return (await load()).nativeKeyStore.unlockBiometricOnly(opts);
+    },
     // Personal Backup Phase 1 — forwarded through the facade so WalletProvider's
     // `typeof keyStore.exportPersonalBackupShares === 'function'` gate resolves
     // synchronously against the facade shape (native.js is loaded lazily on

@@ -829,6 +829,18 @@ export default function WalletEntry() {
   const handleBiometricUnlock = async () => {
     setError(""); setBusy(true);
     try {
+      // Try the FAST path first (Q3 wrapped-DEK cache in StrongBox/TEE): if
+      // the cache is warm this skips Argon2id entirely — one biometric prompt,
+      // ~200ms to dashboard instead of ~3.5s. On ANY fastpath failure the
+      // WalletProvider returns { ok:false, fallbackToPin:true, code:'FASTPATH_*' }
+      // — fall through to the slow path (cached-PIN → Argon2 → KEK → DEK).
+      // The fastpath's own gate matrix in keyStore.unlockBiometricOnly
+      // (deniability, duress, disclosure marker, passkey, RASP tier) is
+      // authoritative — this call is a cheap best-effort attempt.
+      try {
+        const result = await unlockBiometricOnly();
+        if (result && result.ok === true) return;
+      } catch { /* fall through to slow path — never let a fastpath throw abort unlock */ }
       await unlockWithBiometric();
     } catch (e) {
       setBiometricFailed(true);
