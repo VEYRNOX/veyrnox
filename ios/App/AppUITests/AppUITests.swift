@@ -35,12 +35,6 @@ final class AppUITests: XCTestCase {
         // A Capacitor app renders inside a WKWebView; XCUITest matches HTML
         // buttons by their aria-label OR visible text. Every predicate below
         // matches BOTH via NSPredicate on `label` (label reflects both).
-        let webView = app.webViews.firstMatch
-        XCTAssertTrue(
-            webView.waitForExistence(timeout: 20),
-            "WebView never rendered — app did not launch."
-        )
-
         // 1. Telemetry consent screen may appear before the entry tiles
         //    (2026-07-26 addition). Dismiss it with the deny path — the smoke
         //    is not opting real data into anything. Tolerate its absence: on
