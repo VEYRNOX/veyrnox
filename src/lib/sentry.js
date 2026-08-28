@@ -40,12 +40,23 @@ function looksSecret(str) {
   return SECRET_PATTERNS.some((re) => re.test(str));
 }
 
+function shouldDropForDeniability() {
+  try {
+    return DEMO || isDeniabilityOrDemoActive();
+  } catch {
+    return true;
+  }
+}
+
 function scrub(event) {
+  if (shouldDropForDeniability()) return null;
+
   // Drop request details entirely — never send URL, query, cookies, body.
   event.request = undefined;
   event.user = undefined;
   event.server_name = undefined;
   event.breadcrumbs = [];
+  event.extra = undefined;
   event.contexts = event.contexts || {};
   delete event.contexts.device;
   delete event.contexts.culture;
@@ -66,11 +77,16 @@ function scrub(event) {
   return event;
 }
 
+export const __TEST_ONLY__ = {
+  scrub,
+  shouldDropForDeniability,
+};
+
 export function initSentry() {
   if (initialised) return;
   const dsn = import.meta.env.VITE_SENTRY_DSN;
   if (!dsn) return;
-  if (DEMO || isDeniabilityOrDemoActive()) return;
+  if (shouldDropForDeniability()) return;
   if (!hasConsent()) return;
 
   Sentry.init({
@@ -97,6 +113,7 @@ export function initSentry() {
 // For ErrorBoundary. Silently no-ops if init did not run.
 export function reportError(error, errorInfo) {
   if (!initialised) return;
+  if (shouldDropForDeniability()) return;
   try {
     Sentry.captureException(error, { extra: { componentStack: errorInfo?.componentStack } });
   } catch { /* never surface a reporter failure */ }
