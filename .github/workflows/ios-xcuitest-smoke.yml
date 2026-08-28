@@ -77,12 +77,10 @@ jobs:
     # long step therefore carries its OWN smaller timeout, so when one blows its
     # budget the job survives to upload the evidence.
     #
-    # The job budget must stay comfortably above the SUM of the step budgets it
-    # contains, never equal to it: build 15 + test 25 = 40, plus macOS setup
-    # and artifact upload. A 75-minute ceiling cancelled run 33100756767 before
-    # its bounded test step could report evidence, so retain 30 minutes of
-    # infrastructure headroom inside 105. If you raise a step, raise this too.
-    timeout-minutes: 105
+    # The job budget must stay comfortably above the sum of its step budgets.
+    # Hosted macOS runners terminate this job at roughly 55 minutes, so retain
+    # headroom for diagnostics and uploads below that external ceiling.
+    timeout-minutes: 50
 
     steps:
       - name: Checkout
@@ -191,11 +189,9 @@ jobs:
         #
         # Measured at 17m08s (job 32949782724) for a test whose own execution is
         # 1m49s: the rest is 3m41s of simulator boot plus a ~10 min Xcode
-        # teardown hang. 25 leaves headroom over that, because the teardown is
-        # the variable part and a budget that only just fits it would flap. Cut
-        # this back once the teardown hang is fixed — 25 min for one smoke test
-        # is not a target to design around.
-        timeout-minutes: 25
+        # teardown hang. Eighteen minutes covers the observed 17m08s path and
+        # still leaves the job time to write diagnostics and upload evidence.
+        timeout-minutes: 18
         run: |
           set -o pipefail
           # xcodebuild refuses to overwrite an existing result bundle.
@@ -218,7 +214,7 @@ jobs:
               os.killpg(child.pid, signal.SIGKILL)
               child.wait()
               raise SystemExit(124)
-          ' 1500 \
+          ' 1080 \
             xcodebuild test-without-building \
             -project App.xcodeproj \
             -scheme App \
