@@ -154,6 +154,14 @@ const IOC_CACHE_DB_NAME = 'veyrnox-ioc-cache';
 // a feed, so finding it contradicts a decoy story. Deleting it costs nothing
 // functionally — dApp screening falls back to the in-bundle seed list.
 const PHISHING_FEED_DB_NAME = 'veyrnox-phishing-feed';
+// WalletConnect v2 SDK's own IndexedDB store (@walletconnect/keyvaluestorage). Holds
+// approved sessions, pairings, and dApp peer metadata — session records embed the
+// wallet address as `eip155:<chainId>:<address>`, so surviving a wipe proves which
+// dApps the real wallet connected to and which addresses it exposed. Not key
+// material, but the same forensic-residue class as APPDATA/THREATINTEL/IOC above
+// (Strix retest 2026-08-29). Store name matches the SDK's DB_STORE_NAME.
+const WALLETCONNECT_DB_NAME = 'WALLET_CONNECT_V2_INDEXED_DB';
+const WALLETCONNECT_STORE = 'keyvaluestorage';
 // Neutral, non-incriminating key (follows 'primary'/'secondary'); a forensic dump
 // sees one more vault-shaped blob, not a key literally named "panic". The marker
 // is byte-shaped like every other vault blob, so it does not stand out.
@@ -1008,6 +1016,96 @@ async function erasePhishingFeedDatabase() {
   });
 }
 
+// Best-effort erase of the WalletConnect v2 SDK's IndexedDB store plus its
+// legacy localStorage fallback keys. Clear-then-delete because the SDK keeps
+// its storage driver alive for the session — a plain deleteDatabase() fires
+// `onblocked` and pends until the SDK closes its handle (typically the next
+// reload), leaving session records readable and the honesty check calling
+// clean:true on a surviving DB. Clearing rows through a live transaction
+// takes effect immediately regardless of whether the delete lands. The
+// `wc@`/`walletconnect`/`wc_`/`wallet_connect` prefix sweep mirrors the
+// SDK's own LocalStore fallback so a browser that ran WC on a downgraded
+// storage tier does not leave those tells behind either. Resolves on
+// success, error, OR blocked — a wipe must never hang. Strix retest
+// 2026-08-29 confirmed this gap; pattern matches eraseThreatIntelDatabase.
+/** @returns {Promise<void>} */
+async function eraseWalletConnectDatabase() {
+  // 1. Sweep legacy localStorage fallback keys the SDK's LocalStore driver writes
+  //    (used when IndexedDB is unavailable; the migration on next open moves them
+  //    to IndexedDB, but a pre-migration wipe must scrub both places).
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const kill = [];
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        const lc = k.toLowerCase();
+        if (lc.includes('wc@') || lc.includes('walletconnect') ||
+            lc.includes('wc_') || lc.includes('wallet_connect')) {
+          kill.push(k);
+        }
+      }
+      for (const k of kill) localStorage.removeItem(k);
+    }
+  } catch { /* best-effort */ }
+
+  // 2. Clear the rows through a normal transaction (works with an SDK handle open).
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    let req;
+    try {
+      req = indexedDB.open(WALLETCONNECT_DB_NAME);
+    } catch {
+      finish();
+      return;
+    }
+    // Do NOT create the store on a fresh install: abort the upgrade and let the
+    // delete below tidy up. Nothing to clear if the DB didn't exist.
+    req.onupgradeneeded = () => {
+      try { req.transaction?.abort(); } catch { /* ignore */ }
+      finish();
+    };
+    req.onerror = finish;
+    req.onblocked = finish;
+    req.onsuccess = () => {
+      const db = req.result;
+      try {
+        if (!db.objectStoreNames.contains(WALLETCONNECT_STORE)) {
+          db.close(); finish(); return;
+        }
+        const tx = db.transaction(WALLETCONNECT_STORE, 'readwrite');
+        tx.objectStore(WALLETCONNECT_STORE).clear();
+        tx.oncomplete = () => { db.close(); finish(); };
+        tx.onerror = () => { db.close(); finish(); };
+        tx.onabort = () => { db.close(); finish(); };
+      } catch {
+        try { db.close(); } catch { /* ignore */ }
+        finish();
+      }
+    };
+  });
+
+  // 3. Delete the database so the empty store structure is gone too. If a WC
+  //    client is still holding a handle this returns onblocked and lands on
+  //    next reload — rows were already cleared in step 2, so the residue is
+  //    already gone and resolving here overstates nothing.
+  await new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    let req;
+    try {
+      req = indexedDB.deleteDatabase(WALLETCONNECT_DB_NAME);
+    } catch {
+      finish();
+      return;
+    }
+    req.onsuccess = finish;
+    req.onerror = finish;
+    req.onblocked = finish;
+  });
+}
+
 /**
  * NON-DESTRUCTIVE inspection of what local key material currently exists. Used
  * BEFORE a wipe (to show what is there) and AFTER (to prove nothing recoverable
@@ -1046,7 +1144,7 @@ export async function inspectKeyMaterial() {
   // `sideDatabasesVerified` is false when the platform lacks
   // indexedDB.databases() (Firefox pre-126 still doesn't ship it), so a
   // failure to enumerate is reported honestly instead of falsely clean.
-  const SIDE_DB_NAMES = [APPDATA_DB_NAME, THREATINTEL_DB_NAME, IOC_CACHE_DB_NAME, PHISHING_FEED_DB_NAME];
+  const SIDE_DB_NAMES = [APPDATA_DB_NAME, THREATINTEL_DB_NAME, IOC_CACHE_DB_NAME, PHISHING_FEED_DB_NAME, WALLETCONNECT_DB_NAME];
   let sideDatabasesResidue = [];
   let sideDatabasesVerified = false;
   try {
@@ -1130,6 +1228,7 @@ export async function panicWipeLocal() {
   await eraseThreatIntelDatabase();
   await eraseIocCacheDatabase();
   await erasePhishingFeedDatabase();
+  await eraseWalletConnectDatabase();
   clearLocalAddressResidue();
   clearSessionResidue();  // C-1: sessionStorage tells (More-drawer recents)
   clearBrowserCookies(); // PW-02: expire known browser cookies (sidebar_state)
