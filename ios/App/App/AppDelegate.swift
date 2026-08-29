@@ -2,6 +2,7 @@ import UIKit
 import Capacitor
 import CapApp_SPM
 import Security
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -21,6 +22,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Crashlytics + Performance are opt-in for staging and Test Lab. The
         // production archive has neither the build flag nor Firebase config.
         FirebaseObservability.configureIfEnabled()
+
+        // XCUITest fresh-install honesty. The smoke bundle passes
+        // `--uitest-fresh-install` but nothing consumed it, so between reruns a
+        // stale WKWebsiteDataStore (localStorage/IndexedDB) survived even though
+        // the Keychain sweep below fired, letting the "fresh install" test pass
+        // on non-fresh state. Wipe web storage + the app's UserDefaults suite so
+        // the Keychain sweep runs and the WebView boots empty. Only active with
+        // the flag — never in a real user install.
+        if CommandLine.arguments.contains("--uitest-fresh-install") {
+            if let bundleId = Bundle.main.bundleIdentifier {
+                UserDefaults.standard.removePersistentDomain(forName: bundleId)
+            }
+            let store = WKWebsiteDataStore.default()
+            let types = WKWebsiteDataStore.allWebsiteDataTypes()
+            let sem = DispatchSemaphore(value: 0)
+            store.removeData(ofTypes: types, modifiedSince: Date(timeIntervalSince1970: 0)) {
+                sem.signal()
+            }
+            _ = sem.wait(timeout: .now() + 5)
+            NSLog("[VEYRNOX] --uitest-fresh-install honored: WKWebsiteDataStore + UserDefaults wiped")
+        }
 
         // First-launch Keychain cleanup: UserDefaults is wiped on app delete,
         // Keychain is not. If the flag is missing → fresh install → wipe stale

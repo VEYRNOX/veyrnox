@@ -63,6 +63,82 @@ final class AppUITests: XCTestCase {
         )
     }
 
+    /// Golden path #2 — the other tile an App Reviewer might tap.
+    /// Import a canonical BIP-39 test phrase, set PIN, land on the same
+    /// created-screen. Same fail-closed banner assertion: if the KEK/RASP
+    /// path fails on import, the app is NOT ready to submit.
+    func test_freshInstall_importSeedPhraseCreatesWalletWithoutFailureBanner() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "--uitest-fresh-install",
+            "--firebase-observability-smoke",
+        ]
+        app.launch()
+
+        // 1. Import path is "Have a wallet" tile → PIN cohort Phase-1 (set +
+        //    confirm) → import form. Same PinPad, same Submit label.
+        let haveWalletButton = app.buttons["Have a wallet"]
+        XCTAssertTrue(
+            haveWalletButton.waitForExistence(timeout: 10),
+            "Have a wallet entry tile never appeared on a fresh install."
+        )
+        haveWalletButton.tap()
+
+        let pin = "24681024"
+        enterPin(app: app, digits: pin, stage: "set")
+        submitPin(app: app, stage: "set")
+        enterPin(app: app, digits: pin, stage: "confirm")
+        submitPin(app: app, stage: "confirm")
+
+        // 2. SeedInputGrid renders 12 boxes with accessibility labels
+        //    "Recovery phrase entry N". Type one BIP-39 test word per box —
+        //    the canonical all-abandon vector, valid checksum.
+        let seedWords = [
+            "abandon", "abandon", "abandon", "abandon",
+            "abandon", "abandon", "abandon", "abandon",
+            "abandon", "abandon", "abandon", "about",
+        ]
+        let firstBox = app.textFields["Recovery phrase entry 1"]
+        XCTAssertTrue(
+            firstBox.waitForExistence(timeout: 10),
+            "SeedInputGrid never appeared after PIN confirmation on the import path."
+        )
+        for (i, word) in seedWords.enumerated() {
+            let box = app.textFields["Recovery phrase entry \(i + 1)"]
+            XCTAssertTrue(
+                box.waitForExistence(timeout: 3),
+                "Seed word box \(i + 1) never appeared."
+            )
+            box.tap()
+            box.typeText(word)
+        }
+
+        let submitImport = app.buttons["Restore / Import"]
+        XCTAssertTrue(
+            submitImport.waitForExistence(timeout: 3),
+            "Restore / Import button never appeared."
+        )
+        submitImport.tap()
+
+        // 3. Same fail-closed banner as the create path — copy is shared
+        //    between doCreateWallet and doImportWallet, so a KEK/RASP
+        //    failure on import surfaces identically.
+        let failureBanner = app.staticTexts[
+            "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
+        ]
+        XCTAssertFalse(
+            failureBanner.waitForExistence(timeout: 8),
+            "KEK/RASP fail-closed banner appeared on the import path."
+        )
+
+        // 4. Import lands on the same WalletCreatedFlash screen as fresh create.
+        let createdHeader = app.staticTexts["Created."]
+        XCTAssertTrue(
+            createdHeader.waitForExistence(timeout: 30),
+            "Wallet-created screen never appeared — import path is broken."
+        )
+    }
+
     /// Tap each digit on the on-screen keypad. Falls back to a text field
     /// (some layouts use SecureField instead of a custom keypad).
     private func enterPin(app: XCUIApplication, digits: String, stage: String) {
