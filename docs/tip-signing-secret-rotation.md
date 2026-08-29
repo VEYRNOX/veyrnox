@@ -28,13 +28,26 @@ system flip:
 NEW=$(openssl rand -hex 32); echo "$NEW"
 ```
 
-Update Cloudflare Worker D1 first — the verifier side. The Edge Functions
+Look up the CURRENT live production API key first. The key
+`vtip_82524a703712279fc6affac1320575d6` was revoked at scrub time
+(2026-08-11) and is dead — a UPDATE against it rotates nothing. Find the
+active row (typically the most recent non-revoked entry; confirm against
+Supabase secret `TIP_API_KEY` on `veyrnox-prod`, which the Edge Functions
+actually send):
+
+```bash
+npx wrangler d1 execute veyrnox-tip --remote \
+  --command "SELECT api_key, created_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC"
+LIVE_KEY=<paste the live vtip_… value>
+```
+
+Update Cloudflare Worker D1 — the verifier side. The Edge Functions
 still sign with the OLD value at this point, so `/chat` MUST fail here (401).
 That is expected; do not roll back on this signal.
 
 ```bash
 npx wrangler d1 execute veyrnox-tip --remote \
-  --command "UPDATE api_keys SET signing_secret='$NEW' WHERE api_key='vtip_82524a703712279fc6affac1320575d6'"
+  --command "UPDATE api_keys SET signing_secret='$NEW' WHERE api_key='$LIVE_KEY'"
 ```
 
 Flip Supabase Edge Function secret on production:
@@ -51,32 +64,31 @@ npx supabase@latest secrets set TIP_SIGNING_SECRET=$NEW \
   --project-ref nszlbcmcysftwyudthjz
 ```
 
-Force a fresh Cloudflare Pages deploy on both projects. Pages secret updates
-do NOT hot-propagate to running Pages Functions — takes effect only on next
-deployment (see CLAUDE.md 2026-08-10 lesson):
-
-```bash
-npx wrangler pages deploy dist --project-name veyrnox-prod    --branch main
-npx wrangler pages deploy dist --project-name veyrnox-staging --branch main
-```
+No Cloudflare Pages redeploy needed. `TIP_SIGNING_SECRET` is consumed only
+by the Supabase Edge Functions (`supabase/functions/tip-chat/index.ts`,
+`supabase/functions/tip-screen/index.ts`); the client-side bundle explicitly
+refuses `VITE_TIP_SIGNING_SECRET` (see `src/api/tipScreen.js`). Supabase Edge
+Function secrets take effect on the next function invocation — no deploy step.
+(The 2026-08-10 Pages hot-propagate lesson applied to `SUPABASE_ANON_KEY` in
+Pages Functions, a different code path.)
 
 ## Verification
 
 - Hit Security Advisor chat from prod client — expect 200 + streamed response.
 - Hit Security Advisor chat from staging client — expect 200.
-- If 401 persists past 60s after Pages redeploy: check Supabase Edge Function
-  secret store matches D1 exactly (`npx supabase@latest secrets list` on both
-  refs) and re-issue the Pages deploy.
+- If 401 persists past first request: confirm Supabase Edge Function secret
+  matches D1 exactly (`npx supabase@latest secrets list` on both refs) and
+  confirm `LIVE_KEY` matched the row `tip-chat` actually sends as `X-Api-Key`.
 
 ## Rollback
 
 Only if verification fails on BOTH environments simultaneously (indicates D1
-write bad, not a Pages cache issue). Record the OLD value from the ops
-password store as `OLD=…`, then:
+write bad or wrong `LIVE_KEY`). Record the OLD value from the ops password
+store as `OLD=…`, then:
 
 ```bash
 npx wrangler d1 execute veyrnox-tip --remote \
-  --command "UPDATE api_keys SET signing_secret='$OLD' WHERE api_key='vtip_82524a703712279fc6affac1320575d6'"
+  --command "UPDATE api_keys SET signing_secret='$OLD' WHERE api_key='$LIVE_KEY'"
 npx supabase@latest secrets set TIP_SIGNING_SECRET=$OLD --project-ref jwstkrtslotnjyerzzsi
 npx supabase@latest secrets set TIP_SIGNING_SECRET=$OLD --project-ref nszlbcmcysftwyudthjz
 ```
