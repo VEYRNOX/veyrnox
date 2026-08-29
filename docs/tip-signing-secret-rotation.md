@@ -1,175 +1,249 @@
 # TIP_SIGNING_SECRET rotation runbook
 
-Owner-only. Rotates the HMAC signing secret shared between the Cloudflare
-Worker (`veyrnox-tip`) and the two Supabase Edge Functions (`tip-chat`,
-`tip-screen`) on both `veyrnox-prod` and `veyrnox-staging`.
+Owner-only. Rotates the HMAC master signing secret shared between the
+Cloudflare Workers in the `veyrnox-tip` repo and the two Supabase Edge
+Functions (`tip-chat`, `tip-screen`).
 
-Trigger: the current production value was leaked in git history via commit
-`d8125e85` (2026-08-06), scrubbed at HEAD by `30919d6b` (2026-08-11) but never
-rotated. History-leaked secrets stay recoverable from any anonymous clone;
-rotation is the only containment. See STRIX retest 2026-08-29.
+**Worker side names it `API_SIGNING_SECRET`. Supabase side names it
+`TIP_SIGNING_SECRET`. Same value, different name.**
+
+## Mechanism
+
+The Worker verifier accepts up to two roots — `API_SIGNING_SECRET` (master)
+and `API_SIGNING_SECRET_PREVIOUS` (optional overlap). Rotation is
+zero-downtime: set PREVIOUS to OLD, flip master to NEW, flip Supabase to
+NEW, remove PREVIOUS. See `src/lib/auth.ts` `verificationRoots` for the
+verifier logic.
+
+Trigger: any known or suspected compromise of `API_SIGNING_SECRET`, or on
+a scheduled rotation cadence.
 
 ## Preconditions
 
-- Cloudflare account access with `wrangler` authenticated (`npx wrangler whoami`).
-- Supabase CLI logged in with owner role on both projects
-  (`npx supabase@latest projects list`).
-- Access to the operations password store to record the new value.
-- No in-flight PR touching `supabase/functions/tip-chat`,
-  `supabase/functions/tip-screen`, or the `veyrnox-tip` worker repo — those
-  files' signing logic must not move during rotation.
+- Cloudflare `npx wrangler whoami` authenticated with `workers` write scope.
+- Supabase owner role on both projects (`jwstkrtslotnjyerzzsi` prod,
+  `nszlbcmcysftwyudthjz` staging). Personal access token available.
+- `veyrnox-tip` repo checkout — commands run from its root so
+  `wrangler.toml` resolves.
+- OLD value in hand (from ops password store, or the leaked value if
+  rotating after disclosure).
+- No in-flight PR touching `src/lib/auth.ts` in the `veyrnox-tip` repo, or
+  `supabase/functions/tip-chat/index.ts` / `tip-screen/index.ts` in the
+  main app repo.
 
-## Steps (execute in order, do not skip)
+## Deployments to rotate
 
-Generate the new secret and stash it in the ops password store BEFORE any
-system flip:
+There are THREE Worker deployments and BOTH environments must be rotated
+together. Skipping one leaves the leaked value live on that surface.
 
-```bash
-NEW=$(openssl rand -hex 32); echo "$NEW"
-```
+- `veyrnox-tip` (default, no `--env` flag) — shares D1 with production
+- `veyrnox-tip-staging` (`--env staging`)
+- `veyrnox-tip-production` (`--env production`)
 
-Look up the CURRENT live API key on BOTH worker environments. Prod and
-staging are SEPARATE worker deployments (`tip.veyrnox.com` and
-`veyrnox-tip-staging.al-jobson.workers.dev`), each with its own D1 binding
-declared in the `veyrnox-tip` repo's `wrangler.toml`. Rotating one and not
-the other leaves the other side broken. Substitute the exact D1 binding names
-from that repo (e.g. `veyrnox_tip_prod`, `veyrnox_tip_staging`).
+And BOTH Supabase Edge Function stores:
 
-The key `vtip_82524a703712279fc6affac1320575d6` was revoked at scrub time
-(2026-08-11) and is dead — a UPDATE against it rotates nothing. Find the
-active row (confirm against Supabase secret `TIP_API_KEY` on each project,
-which the Edge Functions actually send):
+- `jwstkrtslotnjyerzzsi` — production
+- `nszlbcmcysftwyudthjz` — staging
 
-Add `--env production` / `--env staging` to EVERY `wrangler d1 execute`
-call below if the `veyrnox-tip` repo's `wrangler.toml` uses `[env.*]`
-sections (check first). Without the qualifier every call hits the default
-env — you can read/update prod twice and never touch staging.
+## Steps
+
+Generate the new secret and stash it BEFORE touching anything:
 
 ```bash
-# PROD worker
-npx wrangler d1 execute <prod-d1-binding> --remote [--env production] \
-  --command "SELECT api_key, created_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC"
-LIVE_KEY_PROD=<paste the live vtip_… value>
-
-# STAGING worker
-npx wrangler d1 execute <staging-d1-binding> --remote [--env staging] \
-  --command "SELECT api_key, created_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC"
-LIVE_KEY_STAGING=<paste the live vtip_… value>
+NEW=$(openssl rand -hex 32)
 ```
 
-Update BOTH Cloudflare Worker D1 rows — verifier side. Edge Functions
-still sign with the OLD value at this point, so requests MUST fail here.
-Client-visible status will be `502 tip_upstream_error` (not 401) because
-`tip-screen` maps every non-2xx upstream response to 502; the underlying
-Worker rejection is 401. This 502 window is expected; do not roll back on it.
+Save `$NEW` in the ops password store immediately. Losing it mid-rotation
+= no rollback path without a DB restore. Record its fingerprint too
+(`echo -n "$NEW" | shasum -a 256 | cut -c1-16`) — the marker in
+`docs/SecurityAdvisor-TIP-integration.md` uses the fingerprint, never the
+value.
 
-If the `veyrnox-tip` repo uses `[env.staging]` in its `wrangler.toml`, add
-`--env staging` to the staging call (and `--env production` to the prod
-call if that env exists) so wrangler resolves the env-specific D1 binding.
-Without the qualifier, both calls hit the default env and staging is
-never rotated.
+### Phase 1: set PREVIOUS to OLD on all three workers (safe, additive)
+
+Verifier now accepts BOTH master and previous. Nothing changes for callers.
 
 ```bash
-# PROD
-npx wrangler d1 execute <prod-d1-binding> --remote [--env production] \
-  --command "UPDATE api_keys SET signing_secret='$NEW' WHERE api_key='$LIVE_KEY_PROD'"
-# STAGING
-npx wrangler d1 execute <staging-d1-binding> --remote [--env staging] \
-  --command "UPDATE api_keys SET signing_secret='$NEW' WHERE api_key='$LIVE_KEY_STAGING'"
+cd /path/to/veyrnox-tip
+echo "$OLD" | npx wrangler secret put API_SIGNING_SECRET_PREVIOUS --env staging
+echo "$OLD" | npx wrangler secret put API_SIGNING_SECRET_PREVIOUS --env production
+echo "$OLD" | npx wrangler secret put API_SIGNING_SECRET_PREVIOUS
 ```
 
-(If both environments happen to share one D1 database — confirm in the
-`veyrnox-tip` repo's `wrangler.toml` — run the UPDATE once. Verify before
-skipping the second call.)
+The bare command (no `--env`) targets the default deployment. Wrangler
+prints a warning about the missing env flag — expected; the default
+deployment is a real Worker and needs the same rotation.
 
-Flip Supabase Edge Function secret on production:
+### Phase 2: flip master to NEW on all three workers
+
+Verifier now accepts NEW (master) + OLD (previous). Callers still signing
+with OLD stay working via the previous root.
 
 ```bash
-npx supabase@latest secrets set TIP_SIGNING_SECRET=$NEW \
-  --project-ref jwstkrtslotnjyerzzsi
+echo "$NEW" | npx wrangler secret put API_SIGNING_SECRET --env staging
+echo "$NEW" | npx wrangler secret put API_SIGNING_SECRET --env production
+echo "$NEW" | npx wrangler secret put API_SIGNING_SECRET
 ```
 
-Flip Supabase Edge Function secret on staging:
+### Phase 3: flip TIP_SIGNING_SECRET on both Supabase projects
+
+Supabase Edge Functions now sign with NEW.
 
 ```bash
-npx supabase@latest secrets set TIP_SIGNING_SECRET=$NEW \
-  --project-ref nszlbcmcysftwyudthjz
+export SUPABASE_ACCESS_TOKEN=<owner PAT>
+for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
+  curl -sS -X POST https://api.supabase.com/v1/projects/$REF/secrets \
+    -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "[{\"name\":\"TIP_SIGNING_SECRET\",\"value\":\"$NEW\"}]" \
+    -w "\n$REF http=%{http_code}\n"
+done
 ```
 
-No Cloudflare Pages redeploy needed. `TIP_SIGNING_SECRET` is consumed only
-by the Supabase Edge Functions (`supabase/functions/tip-chat/index.ts`,
-`supabase/functions/tip-screen/index.ts`); the client-side bundle explicitly
-refuses `VITE_TIP_SIGNING_SECRET` (see `src/api/tipScreen.js`). Supabase Edge
-Function secrets take effect on the next function invocation — no deploy step.
-(The 2026-08-10 Pages hot-propagate lesson applied to `SUPABASE_ANON_KEY` in
-Pages Functions, a different code path.)
+Expect `http=201` on both.
 
-## Verification
+### Phase 3.5: force fresh isolates on both functions on both projects (mandatory)
 
-Verify via `tip-screen`, not `tip-chat`. `tip-chat` has a separate open issue
-for Safety Plus subscribers (#1850) — a rotation-unrelated 401/5xx there
-would falsely signal rotation failure. `tip-screen` shares the same HMAC path
-with no such caveat.
+Supabase Edge Function isolates snapshot environment at boot. A warm
+isolate will keep signing with the OLD value until it evicts (~minutes)
+or is redeployed. This MUST be done for both functions on both projects
+BEFORE Phase 5 — waiting for the Phase 4 probe to catch it only checks
+`tip-screen`, so `tip-chat` can stay warm on OLD and start 502ing once
+Phase 5 removes `API_SIGNING_SECRET_PREVIOUS`.
 
-- Hit Security Advisor address screening from prod client — expect 200 with
-  a screening verdict.
-- Verify staging via a native mobile build pointed at the staging Supabase
-  project (or `npm run dev` from an allowlisted localhost origin). The
-  Supabase `Authorization`/`apikey` header is REQUIRED (`tip-screen`
-  returns 401 if both are absent); an `Origin` header is optional
-  (`tip-screen` allows no-Origin requests — Capacitor native sends none —
-  but if an Origin IS present it must be in `DEFAULT_ALLOWED_ORIGINS`).
-  Do NOT verify by loading `https://veyrnox-staging.pages.dev` in a
-  browser: that origin is not allowlisted and requests will 403
-  (`origin_not_allowed`) before the HMAC path runs. Do NOT verify with a
-  bare `curl` that omits the Supabase auth header (→ 401 before HMAC).
-  Either would falsely fail a correct rotation.
-- Optionally also try `tip-chat`; success is a bonus signal, failure is
-  inconclusive (see #1850).
-- If 502 persists past first request after BOTH Supabase secret flips
-  completed: `supabase secrets list` shows names only, not values, so it
-  cannot confirm the plaintext matches D1. Instead re-run BOTH `supabase
-  secrets set` commands from Steps above (idempotent), then repeat the
-  screening probe. If 502 STILL persists, the wrong `LIVE_KEY` row was
-  updated in D1 — SELECT the row again and confirm against what the Edge
-  Function sends as `X-Api-Key` (a bad LIVE_KEY presents as 502 to the
-  client, same as a bad signature — both come from `tip-screen`'s non-2xx
-  → 502 mapping).
+Run this from the main app repo (not the `veyrnox-tip` checkout), because
+`supabase functions deploy` needs the function source at
+`supabase/functions/<name>/index.ts`:
+
+```bash
+cd /path/to/veyrnox   # main app repo, NOT veyrnox-tip
+for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
+  for FN in tip-screen tip-chat; do
+    npx supabase@latest functions deploy $FN --project-ref $REF --use-api
+  done
+done
+```
+
+On the 2026-08-29 rotation only staging `tip-screen` visibly failed the
+Phase 4 probe; the other three isolates happened to be cold. The runbook
+cannot rely on that pattern — redeploy all four unconditionally.
+
+### Phase 4: verify
+
+Probe both environments via the Supabase Edge Function endpoint. Owner
+PAT works as the bearer for the `functions/v1/*` call because it inherits
+the project's anon key acceptance:
+
+```bash
+export SUPABASE_ACCESS_TOKEN=<owner PAT>
+for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
+  ANON=$(curl -sS https://api.supabase.com/v1/projects/$REF/api-keys \
+    -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+    | jq -r '.[] | select(.name=="anon") | .api_key')
+  STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+    -X POST "https://$REF.supabase.co/functions/v1/tip-screen" \
+    -H "Authorization: Bearer $ANON" -H "apikey: $ANON" \
+    -H "Content-Type: application/json" \
+    -d '{"chain":"ethereum","action_type":"address_lookup","from_address":"0x0000000000000000000000000000000000000000","to_address":"0xdead000000000000000000000000000000000000"}')
+  echo "$REF: $STATUS"
+done
+```
+
+Expect both `200`. `tip-chat` shares the same signing path and warm-isolate
+failure mode, but cannot be probed the same way — the current function
+rejects any request lacking `x-rc-user-id` + valid RevenueCat entitlement
+with `403 entitlement_required` before the signing path runs
+(`supabase/functions/tip-chat/index.ts:191-196`). A curl probe here would
+always 403 and give no signal on the rotation. Instead, ALWAYS include
+`tip-chat` in the Phase 3 redeploy (below) so its isolate boots with the
+new env, and validate `tip-chat` from a real client (native mobile build
+with an active Safety Plus entitlement) as part of the post-rotation
+sanity pass.
+
+If either returns `502`, that is `tip_upstream_error` — the Edge Function
+mapped a non-2xx from the Worker to 502. Diagnose via
+`npx wrangler tail <worker-name> --format json` on the veyrnox-tip repo
+side. Cases:
+
+- Worker returned 401 → signature or api-key mismatch. Check the Supabase
+  side has the NEW value stored (fingerprint via
+  `curl .../secrets | jq '.[] | select(.name=="TIP_SIGNING_SECRET") | .value[0:16]'`
+  — the API returns a hash, not the plaintext).
+- Isolate not warmed with new env → redeploy the function (see Phase 3).
+
+### Phase 5: remove PREVIOUS to close the rotation
+
+Verifier now only accepts NEW. Leaked value is dead.
+
+```bash
+cd /path/to/veyrnox-tip
+npx wrangler secret delete API_SIGNING_SECRET_PREVIOUS --env staging
+npx wrangler secret delete API_SIGNING_SECRET_PREVIOUS --env production
+npx wrangler secret delete API_SIGNING_SECRET_PREVIOUS
+```
+
+Answer `y` at each prompt. Re-run the Phase 4 probe once more to confirm
+both envs still return `200` with only the new root live.
 
 ## Rollback
 
-Only if verification fails on BOTH environments simultaneously (indicates D1
-write bad or wrong `LIVE_KEY`). Record the OLD value from the ops password
-store as `OLD=…`, then:
+Only if Phase 4 fails on BOTH environments after redeploy. Restore OLD as
+master on all three workers, and re-set the Supabase secret to OLD:
 
 ```bash
-npx wrangler d1 execute <prod-d1-binding> --remote [--env production] \
-  --command "UPDATE api_keys SET signing_secret='$OLD' WHERE api_key='$LIVE_KEY_PROD'"
-npx wrangler d1 execute <staging-d1-binding> --remote [--env staging] \
-  --command "UPDATE api_keys SET signing_secret='$OLD' WHERE api_key='$LIVE_KEY_STAGING'"
-npx supabase@latest secrets set TIP_SIGNING_SECRET=$OLD --project-ref jwstkrtslotnjyerzzsi
-npx supabase@latest secrets set TIP_SIGNING_SECRET=$OLD --project-ref nszlbcmcysftwyudthjz
+cd /path/to/veyrnox-tip
+echo "$OLD" | npx wrangler secret put API_SIGNING_SECRET --env staging
+echo "$OLD" | npx wrangler secret put API_SIGNING_SECRET --env production
+echo "$OLD" | npx wrangler secret put API_SIGNING_SECRET
+
+export SUPABASE_ACCESS_TOKEN=<owner PAT>
+for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
+  curl -sS -X POST https://api.supabase.com/v1/projects/$REF/secrets \
+    -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "[{\"name\":\"TIP_SIGNING_SECRET\",\"value\":\"$OLD\"}]"
+done
 ```
 
-Rollback restores the LEAKED value. Treat as short-term only; re-attempt
-rotation same day.
+Then force fresh isolates so warm functions stop signing with NEW —
+same reason as Phase 3.5. Without this the rollback appears healthy at
+the secret store but Advisor stays 502 until the isolates recycle.
+Run from the main app repo:
+
+```bash
+cd /path/to/veyrnox
+for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
+  for FN in tip-screen tip-chat; do
+    npx supabase@latest functions deploy $FN --project-ref $REF --use-api
+  done
+done
+```
+
+Rollback restores the potentially-compromised OLD value. Treat as
+short-term only; re-attempt rotation same day.
 
 ## Post-rotation
 
-- Record new value in ops password store with rotation date.
-- Update `docs/SecurityAdvisor-TIP-integration.md` "Last rotated:" line.
-- Close STRIX finding "TIP HMAC signing secret recoverable from public git
-  history" with the rotation commit SHA + verification timestamp.
-- Companion API key `vtip_82524a703712279fc6affac1320575d6` was revoked at
-  scrub time (confirmed dead 2026-08-11); no action needed.
+- Record NEW in ops password store with rotation date (already done in
+  the "before touching anything" step).
+- Update `TIP_SIGNING_SECRET last rotated:` line at
+  `docs/SecurityAdvisor-TIP-integration.md` with date + fingerprint (NOT
+  the value).
+- Close the STRIX finding with the rotation commit SHA + Phase 4 probe
+  output.
+- Revoke the Supabase PAT used for the rotation.
 
 ## Do NOT
 
+- Do NOT update D1 `api_keys.signing_secret` — that column does not exist.
+  The prior version of this runbook was wrong. The signing secret is a
+  Worker environment variable set via `wrangler secret put`, not a D1 row.
+  Per-key derivation reads `key_hash` from `api_keys` but the master root
+  is env, not DB. See `veyrnox-tip/src/lib/auth.ts:98-100`.
 - Do NOT rewrite git history to remove the leaked value. Rotation contains
-  the leak; history rewrite is optional hygiene AFTER rotation and coordinates
-  poorly with the 10+ live worktrees (CLAUDE.md).
-- Do NOT rotate the API key at the same time. One moving part at a time —
-  API key rotation requires a separate D1 row swap plus client-side coordination.
-- Do NOT flip Supabase secrets before D1. Reversed order gives a longer
-  outage window because clients retry against a verifier that still expects
-  the OLD signature.
+  the leak; history rewrite is optional hygiene AFTER rotation and
+  coordinates poorly with the many active worktrees.
+- Do NOT rotate the API key at the same time. One moving part at a time.
+- Do NOT skip the default `veyrnox-tip` deployment (no `--env` flag).
+  Supabase Edge Function `TIP_BASE_URL` may point at it for either
+  environment; rotating only the named envs leaves that one on OLD.
