@@ -98,6 +98,52 @@ final class AppUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not create a wallet.")
     }
 
+    /// Import follows the same native secure-store rule as new-wallet creation:
+    /// simulators must fail honestly rather than provisioning a usable vault.
+    func test_simulatorImportFailsClosedWithoutSecureStore() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["--uitest-fresh-install"]
+        app.launch()
+
+        tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
+        tapButton(
+            app: app,
+            label: "Have a wallet",
+            timeout: 15,
+            failureMessage: "Entry tiles / 'Have a wallet' never appeared."
+        )
+
+        let pin = "19283746"
+        enterPin(app: app, digits: pin, stage: "set")
+        submitPin(app: app, stage: "set")
+        enterPin(app: app, digits: pin, stage: "confirm")
+        submitPin(app: app, stage: "confirm")
+
+        let words = [
+            "abandon", "abandon", "abandon", "abandon",
+            "abandon", "abandon", "abandon", "abandon",
+            "abandon", "abandon", "abandon", "about",
+        ]
+        for (index, word) in words.enumerated() {
+            let field = app.textFields["Recovery phrase entry \(index + 1)"]
+            XCTAssertTrue(field.waitForExistence(timeout: index == 0 ? 15 : 3), "Seed word box \(index + 1) never appeared.")
+            field.tap()
+            field.typeText(word)
+        }
+        tapButton(
+            app: app,
+            label: "Restore / Import",
+            timeout: 5,
+            failureMessage: "Restore / Import button never appeared."
+        )
+
+        let failureBanner = app.staticTexts[
+            "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
+        ]
+        XCTAssertTrue(failureBanner.waitForExistence(timeout: 20), "Simulator import must fail closed without secure storage.")
+        XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not import a wallet.")
+    }
+
     // MARK: - helpers
 
     /// HTML aria-labels surface as XCUIElement identifiers. A direct identifier
