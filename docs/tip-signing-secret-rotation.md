@@ -74,11 +74,22 @@ Pages Functions, a different code path.)
 
 ## Verification
 
-- Hit Security Advisor chat from prod client — expect 200 + streamed response.
-- Hit Security Advisor chat from staging client — expect 200.
-- If 401 persists past first request: confirm Supabase Edge Function secret
-  matches D1 exactly (`npx supabase@latest secrets list` on both refs) and
-  confirm `LIVE_KEY` matched the row `tip-chat` actually sends as `X-Api-Key`.
+Verify via `tip-screen`, not `tip-chat`. `tip-chat` has a separate open issue
+for Safety Plus subscribers (#1850) — a rotation-unrelated 401/5xx there
+would falsely signal rotation failure. `tip-screen` shares the same HMAC path
+with no such caveat.
+
+- Hit Security Advisor address screening from prod client — expect 200 with
+  a screening verdict.
+- Hit Security Advisor address screening from staging client — expect 200.
+- Optionally also try `tip-chat`; success is a bonus signal, failure is
+  inconclusive (see #1850).
+- If 401 persists past first request: `supabase secrets list` shows names
+  only, not values, so it cannot confirm the plaintext matches D1. Instead
+  re-run BOTH `supabase secrets set` commands from Steps above (idempotent),
+  then repeat the screening probe. If it still 401s, the wrong `LIVE_KEY`
+  row was updated — SELECT the row again and confirm against what the Edge
+  Function sends as `X-Api-Key`.
 
 ## Rollback
 
