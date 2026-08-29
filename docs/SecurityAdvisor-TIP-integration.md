@@ -242,12 +242,12 @@ SecurityAdvisor streams response
 
 **API Client:** `src/api/tipScreen.js`
 - Constructs request payload
-- Signs request
+- POSTs to Supabase Edge Function (client never signs)
 - Handles SSE streaming
 - Error recovery to local KB
 
 **Edge Function:** `supabase/functions/tip-screen/index.ts`
-- Verifies request signature
+- Signs request to TIP (server-side)
 - Validates inputs
 - Forwards to TIP backend
 - Returns responses
