@@ -102,12 +102,21 @@ done
 
 Expect `http=201` on both.
 
-**Warm-isolate trap:** Supabase Edge Function isolates snapshot
-environment at boot. A warm isolate will keep serving with the OLD value
-until it evicts (~minutes) or is redeployed. If verification below fails
-with 502, force a fresh isolate by redeploying without source changes:
+### Phase 3.5: force fresh isolates on both functions on both projects (mandatory)
+
+Supabase Edge Function isolates snapshot environment at boot. A warm
+isolate will keep signing with the OLD value until it evicts (~minutes)
+or is redeployed. This MUST be done for both functions on both projects
+BEFORE Phase 5 — waiting for the Phase 4 probe to catch it only checks
+`tip-screen`, so `tip-chat` can stay warm on OLD and start 502ing once
+Phase 5 removes `API_SIGNING_SECRET_PREVIOUS`.
+
+Run this from the main app repo (not the `veyrnox-tip` checkout), because
+`supabase functions deploy` needs the function source at
+`supabase/functions/<name>/index.ts`:
 
 ```bash
+cd /path/to/veyrnox   # main app repo, NOT veyrnox-tip
 for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
   for FN in tip-screen tip-chat; do
     npx supabase@latest functions deploy $FN --project-ref $REF --use-api
@@ -115,13 +124,9 @@ for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
 done
 ```
 
-Both functions read `TIP_SIGNING_SECRET`; redeploy both on both projects,
-not just the one that failed the probe. Skipping the staging `tip-chat`
-redeploy will leave a warm chat isolate signing with OLD, and once
-Phase 5 removes `API_SIGNING_SECRET_PREVIOUS` those requests start 502ing
-until the isolate happens to evict. On the 2026-08-29 rotation, staging
-`tip-screen` was the one that surfaced the trap; the other three isolates
-happened to be cold, but the runbook cannot rely on that pattern.
+On the 2026-08-29 rotation only staging `tip-screen` visibly failed the
+Phase 4 probe; the other three isolates happened to be cold. The runbook
+cannot rely on that pattern — redeploy all four unconditionally.
 
 ### Phase 4: verify
 
