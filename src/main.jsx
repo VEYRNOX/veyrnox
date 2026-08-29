@@ -14,8 +14,32 @@ if (typeof globalThis.Buffer === 'undefined') {
   globalThis.Buffer = NodeBuffer
 }
 
+// Same class as the Buffer polyfill above. Digital Shield chunk (Keystone SDK
+// / bc-ur-registry / uuid transitively) reads bare `process` at runtime. WKWebView
+// has no `process` global, so the Send route ErrorBoundary'd on iOS with
+// `ReferenceError: Can't find variable: process` on 1.0.1(31) / (32).
+// Vite's `define: 'process.env': '{}'` covers property reads only, not
+// bare-identifier reads. Install a minimal shim before any lazy chunk can load
+// (Send/Receive/Buy chunks are all lazy — this runs before any of them).
+if (typeof globalThis.process === 'undefined') {
+  globalThis.process = { env: {}, browser: true, versions: {}, platform: 'browser' }
+}
+
 import { applyRpcEnvOverrides } from '@/wallet-core/rpcConfig.js'
 applyRpcEnvOverrides()
+
+// Hydrate the native-secure-storage cache (iOS Keychain / Android Keystore)
+// before render so sync accessors (getSessionToken) see the persisted value on
+// the very first read. Fire-and-forget: fail-open (a missed hydrate degrades
+// to "no cached secret" and callers regenerate — see secureStore.js).
+import { hydrateSecureStore } from '@/lib/secureStore.js'
+hydrateSecureStore()
+
+// Sentry init — NO-OP unless VITE_SENTRY_DSN is set AND consent granted AND
+// not in a demo/deniability session. Runs before React renders so global
+// error handlers are installed early. See src/lib/sentry.js for guards.
+import { initSentry } from '@/lib/sentry'
+initSentry()
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'

@@ -38,8 +38,8 @@ describe('checkDappDomain', () => {
   });
   it('is total: empty / non-string input is unflagged and never throws', () => {
     expect(() => checkDappDomain(undefined)).not.toThrow();
-    expect(checkDappDomain(undefined)).toEqual({ domain: '', flagged: false, reason: null });
-    expect(checkDappDomain('')).toEqual({ domain: '', flagged: false, reason: null });
+    expect(checkDappDomain(undefined)).toEqual({ domain: '', flagged: false, reason: null, source: null });
+    expect(checkDappDomain('')).toEqual({ domain: '', flagged: false, reason: null, source: null });
   });
   it('L5: flags a subdomain of a known-bad parent domain (suffix walk)', () => {
     const r = checkDappDomain('https://app.fakeswap-rewards.xyz/claim');

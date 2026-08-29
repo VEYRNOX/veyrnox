@@ -1,21 +1,37 @@
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react";
+import { getStoredBackTarget, hasBrowserBackHistory } from "@/lib/backNavigation";
 
-// Consistent in-page back affordance. The desktop layout has no back control of
-// its own (only the mobile top bar does, and not on root tabs like /settings),
-// so pages reached from e.g. the Security Dashboard would otherwise strand the
-// user. Defaults to history-back (returns to wherever you came from — the
-// Security Dashboard when you opened the setting from there); pass `to` for an
-// explicit destination.
+// Consistent in-page back affordance. Prefer real browser history when it
+// exists, but fall back to the tracked prior in-app route (important for
+// replace-style tab switches) and finally to the parent-route map for direct
+// deep-links. Pass `to` for an explicit destination.
 export default function BackButton({ to = undefined, label = undefined, className = "" }) {
   const { t } = useTranslation('wallet');
   const navigate = useNavigate();
+  const location = useLocation();
   const resolvedLabel = label ?? t('back.default_label');
+  const fallbackTarget = to ?? getStoredBackTarget(location);
+
+  const handleBack = () => {
+    if (to) {
+      navigate(to);
+      return;
+    }
+    if (hasBrowserBackHistory()) {
+      navigate(-1);
+      return;
+    }
+    if (fallbackTarget) {
+      navigate(fallbackTarget, { replace: true });
+    }
+  };
+
   return (
     <button
       type="button"
-      onClick={() => (to ? navigate(to) : navigate(-1))}
+      onClick={handleBack}
       className={`flex items-center gap-1 -ms-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors ${className}`}
     >
       {/* Icon mirrors under dir="rtl" so the chevron always points "backwards

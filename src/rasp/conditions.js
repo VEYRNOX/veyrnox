@@ -31,6 +31,18 @@
 // `blockedActions: []`. CONDITION.ROOTED is reserved for GENUINE root/jailbreak
 // (verdict.rooted / verdict.jailbroken) and keeps its stronger blockedActions.
 // ROOTED always outranks ELEVATED in classifyEnvironment()/composeConditions().
+//
+// SCREEN_CAPTURE (added 2026-08-25, weekly-audit M-5): active screen mirroring /
+// recording (iOS UIScreen.isCaptured — AirPlay or ReplayKit). Sits BETWEEN
+// ELEVATED and INTEGRITY_UNAVAILABLE on the danger ladder: WARN tier like
+// ELEVATED, but seed REVEAL is blocked because the phrase would be rendered onto
+// a screen that is being transmitted. Only seed-reveal — export/import write to a
+// file, not the screen, so mirroring does not capture them.
+// PLATFORM-ASYMMETRIC BY DESIGN, do NOT "simplify" the two together: on Android
+// the same signal stays on the `elevated` axis because MainActivity's
+// unconditional FLAG_SECURE genuinely blocks the capture at the OS layer. iOS has
+// no FLAG_SECURE equivalent (honest-disabled in RaspIntegrityPlugin.m), so on iOS
+// detection is the only control there is. See nativeProbe.js.
 export const CONDITION = Object.freeze({
   CLEAN: 'clean',
   ROOTED: 'rooted',

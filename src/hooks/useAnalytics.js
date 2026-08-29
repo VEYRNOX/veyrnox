@@ -5,7 +5,7 @@ import { usePortfolio } from '../lib/portfolioBalances';
 import { useLivePrices, isLivePricesEnabled } from '../lib/priceFeed';
 import { fetchAssetHistory } from '../lib/txHistory';
 import { getAsset } from '../wallet-core/assets';
-import { isDeniabilitySessionActive } from '../wallet-core/deniabilitySession';
+import { isDeniabilityOrDemoActive } from '../wallet-core/deniabilitySession';
 
 export function useAnalytics() {
   const { isUnlocked, wallets, walletAddresses } = useWallet();
@@ -59,8 +59,15 @@ export function useAnalytics() {
       return { transactions: allTxs, failedAssets };
     },
     // I3 zero-egress: disable in a deniability (decoy/hidden) session so no
-    // per-asset address->indexer disclosure is attempted.
-    enabled: isUnlocked && wallets.length > 0 && !isDeniabilitySessionActive(),
+    // per-asset address->indexer disclosure is attempted. Demo is covered by
+    // the SAME gate, not a separate one: the decoy/hidden flags are both false
+    // during a demo tour, so a demo-blind check leaks real wallet addresses to
+    // the indexers the moment a tour opens on a device that has real wallets
+    // (same reasoning already written down in useBasketPrices.js). Use the
+    // OrDemo helper rather than api/demoClient's DEMO — DEMO is a load-time
+    // snapshot and misses a flag set after import; this reads it live and
+    // fails closed.
+    enabled: isUnlocked && wallets.length > 0 && !isDeniabilityOrDemoActive(),
     staleTime: 60_000,
   });
 

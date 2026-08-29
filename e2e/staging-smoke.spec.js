@@ -13,8 +13,8 @@
 // hashed, static deployment there is no /src/**, so those imports 404 and the
 // tests fail — 26 of them did, for exactly this reason, not because anything
 // was wrong with the deployment. They are module-boundary tests wearing a
-// browser as a harness, and their correct home is the local dev server, where
-// `web-e2e-tests` already runs the full suite.
+// browser as a harness, and their correct home is the local dev server rather
+// than this deployed-preview workflow.
 //
 // So the deployed-preview check is scoped to what a deployment check can
 // honestly assert: the artifact we just published actually boots, and it is
@@ -31,9 +31,9 @@ test.describe('staging preview smoke', () => {
   // the SPA-fallback check passes because Vite serves index.html for every path
   // by default, proving nothing about Cloudflare's _redirects.
   //
-  // Skipping is not just tidiness: `web-e2e-tests` runs the full local suite
-  // across two projects, so an unguarded describe here added six vacuous tests
-  // to a 152-test run on 3 workers. That is the change that landed in 0a806908,
+  // Skipping is not just tidiness: the local Playwright suite already covers
+  // those paths, so an unguarded describe here added six vacuous tests to a
+  // 152-test run on 3 workers. That is the change that landed in 0a806908,
   // and the run on that sha was the first e2e failure this branch had had —
   // an already-racy neighbouring spec (qa-demo-isolation "send form rejects
   // invalid address", flaky by its own header comment) lost its race.

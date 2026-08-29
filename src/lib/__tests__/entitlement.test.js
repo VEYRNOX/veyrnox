@@ -8,6 +8,7 @@ vi.mock('@capacitor/core', () => ({
 const getCustomerInfo = vi.fn();
 vi.mock('../purchases', () => ({
   SAFETY_PLUS_ENTITLEMENT: 'safety_plus',
+  AI_SECURITY_PROTECTION_ENTITLEMENT: 'ai_security_protection',
   getCustomerInfo: () => getCustomerInfo(),
 }));
 
@@ -28,6 +29,16 @@ describe('resolveTier', () => {
     isNativePlatform.mockReturnValue(true);
     getCustomerInfo.mockResolvedValue({ entitlements: { active: { safety_plus: { isActive: true } } } });
     expect(await resolveTier()).toBe('safety_plus');
+  });
+
+  it('resolves ai_security_protection when that entitlement is active', async () => {
+    isNativePlatform.mockReturnValue(true);
+    getCustomerInfo.mockResolvedValue({
+      entitlements: {
+        active: { ai_security_protection: { isActive: true } },
+      },
+    });
+    expect(await resolveTier()).toBe('ai_security_protection');
   });
 
   it('resolves free when no entitlement is active', async () => {

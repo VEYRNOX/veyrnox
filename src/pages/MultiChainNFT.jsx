@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/lib/toast";
 import { safeNftImageUrl } from "@/lib/nftImageUrl";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 const CHAINS = [
   { id: "ethereum", label: "Ethereum", icon: "Ξ", color: "bg-secondary text-muted-foreground", marketplace: "https://opensea.io/assets/ethereum" },
@@ -28,8 +29,16 @@ export default function MultiChainNFT() {
   const [filterChain, setFilterChain] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [form, setForm] = useState({ name: "", collection: "", token_id: "", contract_address: "", chain: "ethereum", image_url: "", purchase_price: "", current_floor: "", status: "holding", note: "" });
+  const nftQueryEnabled = (() => {
+    try { return !isDeniabilityOrDemoActive(); } catch { return false; }
+  })();
 
-  const { data: nfts = [], isError } = useQuery({ queryKey: ["nfts"], queryFn: () => base44.entities.NFTAsset.list("-created_date") });
+  const { data: nftsRaw = [], isError } = useQuery({
+    queryKey: ["nfts"],
+    queryFn: () => base44.entities.NFTAsset.list("-created_date"),
+    enabled: nftQueryEnabled,
+  });
+  const nfts = nftQueryEnabled ? nftsRaw : [];
 
   const filtered = nfts
     .filter(n => filterChain === "all" || n.chain === filterChain)
@@ -58,6 +67,14 @@ export default function MultiChainNFT() {
   });
 
   const chain = (id) => CHAINS.find(c => c.id === id);
+
+  if (!nftQueryEnabled) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 text-center text-sm text-muted-foreground">
+        This page isn&apos;t available right now.
+      </div>
+    );
+  }
 
   const NFTCard = ({ n }) => {
     const pnl = (n.current_floor || 0) - (n.purchase_price || 0);
@@ -171,7 +188,7 @@ export default function MultiChainNFT() {
       {isError ? (
         <div className="text-center py-12 text-muted-foreground">
           <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm text-destructive">Couldn't load your NFTs. Please try again.</p>
+          <p className="text-sm text-destructive">Couldn&apos;t load your NFTs. Please try again.</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">

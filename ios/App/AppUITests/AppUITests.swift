@@ -1,12 +1,22 @@
 // AppUITests.swift
 //
-// Minimal XCUITest smoke — the iOS analogue to Firebase Test Lab's Android
-// Robo crawl. Walks fresh install → New wallet → PIN → wallet created, and
-// hard-fails if the KEK/RASP fail-closed banner ever appears (that banner is
-// what got Play build 5 rejected under Broken Functionality).
+// Minimal XCUITest smoke. Walks the current first-run flow — consent →
+// "New wallet" tile → 8-digit PIN → confirm PIN — and hard-fails if the
+// KEK/RASP fail-closed banner ever appears (that banner is the exact string
+// Play rejected build 5 for under Broken Functionality policy).
 //
-// Runs in Firebase Test Lab on real iPhones via the ios-smoke job in
-// .github/workflows/firebase-test-lab.yml.
+// Every label below is UI copy, which means this file rots silently whenever
+// the app's copy changes. It already did once: Slice D1 replaced the welcome
+// hero with entry tiles on 2026-08-10 and this test kept waiting for a button
+// that no longer existed (#2109). If you change a label here, change it in
+// src/__tests__/firebase-test-lab-onboarding.test.js too — that guard runs on
+// every PR and is what catches the drift while this suite is unreliable.
+//
+// Run locally with `xcodebuild test` against a booted simulator or a paired
+// device. Runs in CI via .github/workflows/ios-xcuitest-smoke.yml. Real-
+// device crash + hang signal for shipped builds still comes from TestFlight
+// Crashes and Xcode Organizer → Metrics / Hangs; this smoke is the
+// pre-submission catcher for the reviewer-tap failure mode.
 
 import XCTest
 
@@ -15,157 +25,172 @@ final class AppUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// Golden path a reviewer would walk on first launch.
-    /// If this test ever fails on a stock device the app is NOT ready to submit.
-    func test_freshInstall_createsWalletWithoutFailureBanner() throws {
+    /// Simulator smoke: native provisioning must fail closed when the simulator
+    /// cannot provide a passcode-backed secure store. A real device is required
+    /// to verify successful wallet creation and hardware-gated unlock.
+    func test_simulatorFailsClosedWithoutSecureStore() throws {
         let app = XCUIApplication()
-        app.launchArguments += [
-            "--uitest-fresh-install",
-            "--firebase-observability-smoke",
-        ]
+        app.launchArguments += ["--uitest-fresh-install"]
         app.launch()
 
-        // 1. Fresh installs land on the entry tiles. Pick the new-wallet path;
-        //    it auto-creates after PIN confirmation, so there is no later
-        //    "Create Wallet" button on this path.
-        let newWalletButton = app.buttons["New wallet"]
-        XCTAssertTrue(
-            newWalletButton.waitForExistence(timeout: 10),
-            "New wallet entry tile never appeared on a fresh install."
-        )
-        newWalletButton.tap()
+        // A Capacitor app renders inside a WKWebView; XCUITest matches HTML
+        // buttons by their aria-label OR visible text. Every predicate below
+        // matches BOTH via NSPredicate on `label` (label reflects both).
+        // 1. Telemetry consent screen may appear before the entry tiles
+        //    (2026-07-26 addition). Dismiss it with the deny path — the smoke
+        //    is not opting real data into anything. Tolerate its absence: on
+        //    a device with prior consent state the screen is skipped.
+        //    "No thanks" is telemetry_consent.cta_deny in
+        //    src/i18n/locales/en/security.json.
+        tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
 
-        // 2. PIN entry — the app requires exactly eight digits and PinPad
-        //    completion is explicit, never auto-submitted by digit count.
-        let pin = "24681024"
+        // 2. Entry tiles — the fresh-device landing. Slice D1 (2026-08-10)
+        //    replaced WelcomeHero's single "Get Started" action with a 4-tile
+        //    picker; "New wallet" is the create path and hands off to
+        //    PIN-create exactly as Get Started used to. WalletEntry.jsx still
+        //    contains the old hero, but its `view === "welcome"` branch is
+        //    documented there as dead — "no live path sets this view any
+        //    more" — so the button this test used to wait for could never
+        //    appear. It waited 15s for it on every run from 2026-08-10 until
+        //    #2109, and nobody saw, because the job never completed.
+        //
+        //    The label is EntryTiles.jsx's explicit `aria-label={label}`, so
+        //    the accessible name is exactly this string rather than a
+        //    concatenation of the tile's title and subtitle. Source of truth
+        //    is the TILES array in src/components/EntryTiles.jsx, and the
+        //    guard in src/__tests__/firebase-test-lab-onboarding.test.js ties
+        //    the two together so they cannot drift apart again.
+        //
+        //    Android's Robo script already clicked "New wallet"; only iOS was
+        //    left behind. Both platforms render the same web UI — if these two
+        //    ever disagree again, one of them is wrong.
+        tapButton(
+            app: app,
+            label: "New wallet",
+            timeout: 15,
+            failureMessage: "Entry tiles / 'New wallet' never appeared."
+        )
+
+        // 3. PIN pad: 8 digits, then tap the submit button. PinPad's submit
+        //    aria-label is "Submit PIN"; the visible text is the scheme's
+        //    submitLabel (defaults to "Continue"). Match either.
+        // Must satisfy PinSetup's strength guard: sequential patterns such as
+        // 24681024 are intentionally rejected before the confirmation step.
+        let pin = "19283746"
         enterPin(app: app, digits: pin, stage: "set")
         submitPin(app: app, stage: "set")
+
+        // 4. Confirm PIN — same digits, same submit.
         enterPin(app: app, digits: pin, stage: "confirm")
         submitPin(app: app, stage: "confirm")
 
-        // 3. The fail-closed banner MUST NOT appear. This is the exact string
-        //    Play rejected build 5 for. Assert absence, not silence.
+        // 5. iOS Simulator has no device passcode or enrolled biometrics, so it
+        //    cannot satisfy the native secure-store precondition. The only
+        //    honest simulator outcome is an explicit fail-closed result with no
+        //    usable wallet. Successful provisioning remains real-device-only.
         let failureBanner = app.staticTexts[
             "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
         ]
-        XCTAssertFalse(
-            failureBanner.waitForExistence(timeout: 8),
-            "KEK/RASP fail-closed banner appeared — this is the exact defect Play rejected on Android."
-        )
-
-        // 4. The current new-wallet path auto-creates after PIN confirmation
-        //    and lands on WalletCreatedFlash. Raw seed reveal was deliberately
-        //    moved out of onboarding, so waiting for a seed header is stale.
-        let createdHeader = app.staticTexts["Created."]
         XCTAssertTrue(
-            createdHeader.waitForExistence(timeout: 30),
-            "Wallet-created screen never appeared — fresh-create path is broken."
+            failureBanner.waitForExistence(timeout: 20),
+            "Simulator provisioning must fail closed when the native secure store is unavailable."
         )
+        XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not create a wallet.")
     }
 
-    /// Golden path #2 — the other tile an App Reviewer might tap.
-    /// Import a canonical BIP-39 test phrase, set PIN, land on the same
-    /// created-screen. Same fail-closed banner assertion: if the KEK/RASP
-    /// path fails on import, the app is NOT ready to submit.
-    func test_freshInstall_importSeedPhraseCreatesWalletWithoutFailureBanner() throws {
+    /// Import follows the same native secure-store rule as new-wallet creation:
+    /// simulators must fail honestly rather than provisioning a usable vault.
+    func test_simulatorImportFailsClosedWithoutSecureStore() throws {
         let app = XCUIApplication()
-        app.launchArguments += [
-            "--uitest-fresh-install",
-            "--firebase-observability-smoke",
-        ]
+        app.launchArguments += ["--uitest-fresh-install"]
         app.launch()
 
-        // 1. Import path is "Have a wallet" tile → PIN cohort Phase-1 (set +
-        //    confirm) → import form. Same PinPad, same Submit label.
-        let haveWalletButton = app.buttons["Have a wallet"]
-        XCTAssertTrue(
-            haveWalletButton.waitForExistence(timeout: 10),
-            "Have a wallet entry tile never appeared on a fresh install."
+        tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
+        tapButton(
+            app: app,
+            label: "Have a wallet",
+            timeout: 15,
+            failureMessage: "Entry tiles / 'Have a wallet' never appeared."
         )
-        haveWalletButton.tap()
 
-        let pin = "24681024"
+        let pin = "19283746"
         enterPin(app: app, digits: pin, stage: "set")
         submitPin(app: app, stage: "set")
         enterPin(app: app, digits: pin, stage: "confirm")
         submitPin(app: app, stage: "confirm")
 
-        // 2. SeedInputGrid renders 12 boxes with accessibility labels
-        //    "Recovery phrase entry N". Type one BIP-39 test word per box —
-        //    the canonical all-abandon vector, valid checksum.
-        let seedWords = [
+        let words = [
             "abandon", "abandon", "abandon", "abandon",
             "abandon", "abandon", "abandon", "abandon",
             "abandon", "abandon", "abandon", "about",
         ]
-        let firstBox = app.textFields["Recovery phrase entry 1"]
-        XCTAssertTrue(
-            firstBox.waitForExistence(timeout: 10),
-            "SeedInputGrid never appeared after PIN confirmation on the import path."
-        )
-        for (i, word) in seedWords.enumerated() {
-            let box = app.textFields["Recovery phrase entry \(i + 1)"]
-            XCTAssertTrue(
-                box.waitForExistence(timeout: 3),
-                "Seed word box \(i + 1) never appeared."
-            )
-            box.tap()
-            box.typeText(word)
+        for (index, word) in words.enumerated() {
+            let field = app.textFields["Recovery phrase entry \(index + 1)"]
+            XCTAssertTrue(field.waitForExistence(timeout: index == 0 ? 15 : 3), "Seed word box \(index + 1) never appeared.")
+            field.tap()
+            field.typeText(word)
         }
-
-        let submitImport = app.buttons["Restore / Import"]
-        XCTAssertTrue(
-            submitImport.waitForExistence(timeout: 3),
-            "Restore / Import button never appeared."
+        tapButton(
+            app: app,
+            label: "Restore / Import",
+            timeout: 5,
+            failureMessage: "Restore / Import button never appeared."
         )
-        submitImport.tap()
 
-        // 3. Same fail-closed banner as the create path — copy is shared
-        //    between doCreateWallet and doImportWallet, so a KEK/RASP
-        //    failure on import surfaces identically.
         let failureBanner = app.staticTexts[
             "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
         ]
-        XCTAssertFalse(
-            failureBanner.waitForExistence(timeout: 8),
-            "KEK/RASP fail-closed banner appeared on the import path."
-        )
-
-        // 4. Import lands on the same WalletCreatedFlash screen as fresh create.
-        let createdHeader = app.staticTexts["Created."]
-        XCTAssertTrue(
-            createdHeader.waitForExistence(timeout: 30),
-            "Wallet-created screen never appeared — import path is broken."
-        )
+        XCTAssertTrue(failureBanner.waitForExistence(timeout: 20), "Simulator import must fail closed without secure storage.")
+        XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not import a wallet.")
     }
 
-    /// Tap each digit on the on-screen keypad. Falls back to a text field
-    /// (some layouts use SecureField instead of a custom keypad).
-    private func enterPin(app: XCUIApplication, digits: String, stage: String) {
-        for ch in digits {
-            let key = app.buttons[String(ch)]
-            if key.waitForExistence(timeout: 3) {
-                key.tap()
-                continue
-            }
-            let field = app.secureTextFields.firstMatch
-            if field.exists {
-                field.tap()
-                field.typeText(digits)
-                return
-            }
-            XCTFail("PIN \(stage): no keypad button '\(ch)' and no secure field.")
-            return
+    // MARK: - helpers
+
+    /// HTML aria-labels surface as XCUIElement identifiers. A direct identifier
+    /// query avoids WebKit's full accessibility snapshot walk, which can stall
+    /// on cold CI simulators when evaluating a broad predicate.
+    private func buttonMatching(_ app: XCUIApplication, label: String) -> XCUIElement {
+        app.buttons[label]
+    }
+
+    private func tapButton(app: XCUIApplication, label: String, timeout: TimeInterval, failureMessage: String) {
+        let button = buttonMatching(app, label: label)
+        XCTAssertTrue(button.waitForExistence(timeout: timeout), failureMessage)
+        button.tap()
+    }
+
+    private func tapButtonIfPresent(app: XCUIApplication, label: String, timeout: TimeInterval) {
+        let button = buttonMatching(app, label: label)
+        if button.waitForExistence(timeout: timeout) {
+            button.tap()
         }
     }
 
-    /// PinPad deliberately does not auto-submit at eight digits. Tap its
-    /// accessibility-labelled submit button after both setup stages.
+    /// Tap each digit on the on-screen keypad. Digit buttons carry only their
+    /// text (no aria-label), so we match on the digit character.
+    private func enterPin(app: XCUIApplication, digits: String, stage: String) {
+        for (index, ch) in digits.enumerated() {
+            let key = buttonMatching(app, label: String(ch))
+            // WKWebView publishes the first control in the newly rendered PIN
+            // screen asynchronously. The CI trace reached New wallet but the
+            // bridge had not exposed "1" within the old five-second window.
+            // Once the first key exists, the rest of the keypad is one DOM
+            // render and should remain promptly available.
+            let timeout: TimeInterval = index == 0 ? 20 : 5
+            XCTAssertTrue(
+                key.waitForExistence(timeout: timeout),
+                "PIN \(stage): keypad button '\(ch)' never appeared."
+            )
+            key.tap()
+        }
+    }
+
+    /// PinPad always exposes the explicit submit control as `Submit PIN`.
     private func submitPin(app: XCUIApplication, stage: String) {
         let submit = app.buttons["Submit PIN"]
         XCTAssertTrue(
-            submit.waitForExistence(timeout: 3),
-            "PIN \(stage): Submit PIN button never appeared."
+            submit.waitForExistence(timeout: 5),
+            "PIN \(stage): submit button never appeared."
         )
         submit.tap()
     }

@@ -2,10 +2,24 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import { test, expect, vi } from "vitest";
+import { test, expect, vi, beforeEach } from "vitest";
 
+const walletState = { isUnlocked: false, wallets: [], walletAddresses: [], activeWalletId: null };
 vi.mock("@/lib/WalletProvider", () => ({
-  useWallet: () => ({ isUnlocked: false, accounts: [], btcAccount: null, solAccount: null }),
+  useWallet: () => walletState,
+}));
+vi.mock("@/api/base44Client", () => ({
+  base44: {
+    entities: {
+      WalletToken: {
+        list: vi.fn(async () => []),
+      },
+    },
+  },
+}));
+vi.mock("@/lib/advisorBridge", () => ({
+  openAdvisor: vi.fn(),
+  publishAdvisorContext: vi.fn(),
 }));
 vi.mock("@/hooks/useBasketPrices", () => ({
   useBasketPrices: () => ({ changeFor: () => null, isLive: false }),
@@ -21,11 +35,23 @@ vi.mock("@/lib/priceFeed", () => ({
 }));
 
 import CryptoDetailPage from "../CryptoDetailPage";
+import { base44 } from "@/api/base44Client";
 
-const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const walletTokenListMock = /** @type {any} */ (base44.entities.WalletToken.list);
+
+beforeEach(() => {
+  walletState.isUnlocked = false;
+  walletState.wallets = [];
+  walletState.walletAddresses = [];
+  walletState.activeWalletId = null;
+  walletTokenListMock.mockReset();
+  walletTokenListMock.mockResolvedValue([]);
+});
+
+const makeClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 const renderAt = (symbol) =>
   render(
-    <QueryClientProvider client={qc}>
+    <QueryClientProvider client={makeClient()}>
       <MemoryRouter initialEntries={[`/asset/${symbol}`]}>
         <Routes>
           <Route path="/asset/:symbol" element={<CryptoDetailPage />} />
@@ -54,4 +80,16 @@ test("renders chart with the correct symbol", () => {
 test("renders 'Asset not found' for unknown symbol", () => {
   renderAt("UNKNOWN");
   expect(screen.getByText(/asset not found/i)).toBeInTheDocument();
+});
+
+test("renders suspicious token warning when spam-token clones share the asset symbol", async () => {
+  walletState.isUnlocked = true;
+  walletTokenListMock.mockResolvedValueOnce([
+    { id: "clone", symbol: "USDC", name: "USDC-Rewards.com", value_usd: 0, balance: 5000, acquired_via: "airdrop", verified: false },
+  ]);
+
+  renderAt("USDC");
+  expect(await screen.findByText(/suspicious usdc token copy detected/i)).toBeInTheDocument();
+  expect(screen.getByText(/usdc-rewards\.com/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /ask ai advisor/i })).toBeInTheDocument();
 });

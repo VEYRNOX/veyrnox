@@ -35,6 +35,13 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Since the low-end threshold dropped to <=2GB/<=2 cores, CI chromium no
+    // longer counts as low-end and the two 14s/18s Framer Motion lamp loops
+    // run for the whole suite duration — enough load to trip the chromium
+    // session crash the onboarding illegal-transit specs hit. The components
+    // already short-circuit their animate/transition props when prefers-
+    // reduced-motion is set, so force reduce for every test.
+    reducedMotion: 'reduce',
   },
 
   projects: [

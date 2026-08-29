@@ -35,6 +35,7 @@ export const ALL_ROUTE_PATHS = [
   '/safety-plus',
   '/referrals',
   '/walletconnect',
+  '/suspicious-assets',
   '/asset/:symbol',
   '/verify',
 ];
@@ -94,11 +95,11 @@ export const CLASSIFICATION = {
   },
   '/buy': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Transak on-ramp entry. Amount + fiat + asset/network picker; on Continue, buildTransakUrl() reads the correct deposit address from the on-device wallet at press-time (never cached, never from URL param) and Browser.open() hands off to Transak\'s hosted widget in SFSafariViewController / Chrome Custom Tabs. Two-chokepoint deniability gate (render + URL builder throw BUY_DENIABILITY_BLOCKED). Ship gate: VITE_BUY_ENABLED defaults false. Precisely: the ENTRY TILES are dead-code-eliminated (SHIP_GATE is a load-time constant Vite folds), but this page and /buy/in-progress are NOT — their lazy imports and routes in App.jsx are unconditional, so both chunks ship in production and each needs its own render gate. No purchase has ever been completed on either store; BUILT (staging-gated), not verified.',
+    note: 'Transak on-ramp entry. Amount + fiat + asset/network picker; on Continue, buildTransakUrl() reads the correct deposit address from the on-device wallet at press-time (never cached, never from URL param) and Browser.open() hands off to Transak\'s hosted widget in SFSafariViewController / Chrome Custom Tabs. THREE gates compose in useBuyEnabled(), not two. (1) Two-chokepoint deniability gate (render + URL builder throw BUY_DENIABILITY_BLOCKED). (2) Ship gate VITE_BUY_ENABLED — CORRECTION 2026-08-24: this note said "defaults false", which describes .env.example only; .env.production has shipped true since PR #2030, and .env.staging/.env.canary are true, so on every build that reaches a user the ship gate is OPEN. (3) UK financial-promotions suppression, previously undocumented here: isUkBuyBlocked() hides Buy when the locale region tag is GB/UK or the timezone is Europe/London (s.21 FSMA; see docs/buy-uk-financial-promotions-checklist.md). That third gate FAILS OPEN — an undetectable region resolves to UTC/en-US and Buy renders — and it is device-reported, so it is a good-faith suppression for ordinary UK users, NOT an access control. Precisely on dead-code elimination: the ENTRY TILES are folded out when SHIP_GATE is false (a load-time constant), but this page and /buy/in-progress are NOT — their lazy imports and routes in App.jsx are unconditional, so both chunks ship in production and each needs its own render gate. No purchase has ever been completed on either store; BUILT, not verified.',
   },
   '/buy/in-progress': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'Neutral waiting screen for the Transak return. It POLLS NOTHING and shows no confirmation signal — earlier versions of this note claimed "confirmation comes from on-chain observation", which the file itself contradicts; it renders static copy plus links to Dashboard/Receive, which poll the addresses. The property that holds is negative and is the one that matters: nothing from the return-URL payload is read or displayed, so a spoofed return cannot fake a success. Gated at RENDER on both deniability and VITE_BUY_ENABLED — the route and its lazy chunk are registered unconditionally in App.jsx, so the ship gate does NOT dead-code-eliminate this page and a render check is the only thing standing between a production build and a fabricated "purchase in progress".',
+    note: 'Neutral waiting screen for the Transak return. It POLLS NOTHING and shows no confirmation signal — earlier versions of this note claimed "confirmation comes from on-chain observation", which the file itself contradicts; it renders static copy plus links to Dashboard/Receive, which poll the addresses. The property that holds is negative and is the one that matters: nothing from the return-URL payload is read or displayed, so a spoofed return cannot fake a success. Gated at RENDER on deniability, VITE_BUY_ENABLED, and — previously undocumented here — the UK financial-promotions suppression isUkBuyBlocked() that useBuyEnabled() composes in (s.21 FSMA; see docs/buy-uk-financial-promotions-checklist.md). The route and its lazy chunk are registered unconditionally in App.jsx, so the ship gate does NOT dead-code-eliminate this page and a render check is the only thing standing between a production build and a fabricated "purchase in progress". Note the consequence of the three gates being indistinguishable to a user: a blank screen here means deniability OR ship-gate-off OR UK region, and nothing tells them which.',
   },
   '/tx-history': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -186,6 +187,10 @@ export const CLASSIFICATION = {
     verdict: 'live', dataSource: 'on-device',
     note: 'Aggregates real local signals only: summarizeApprovals/summarizeSpamTokens/screenAddressHistory from lib/securityPosture.js (run over local entity records already held on device); biometric/passkey/session toggles from lib/biometric, lib/passkey, lib/session; hasStealthPool from WalletProvider (a non-destructive IndexedDB read of the universal baseline pool only — the provider exposes no duress/panic configured-state accessor, deniability v2). No external call, no fabrication. Explicitly disclaims being a guarantee.',
   },
+  '/suspicious-assets': {
+    verdict: 'live', dataSource: 'local-entities',
+    note: 'Reviews the local wallet token/NFT queue for spam or suspicious assets using on-device heuristics first, with optional TIP-backed contract review only when the remote-screening gate allows it. The page can surface locally stored WalletToken/NFTAsset rows, spam heuristics, and TIP review findings without inventing balances or risk labels.',
+  },
   '/security': {
     verdict: 'live', dataSource: 'local-entities',
     note: 'Sessions tab manages local UserSession records via local entities.entities; revocation enforced by lib/sessionRevocation (self-enforcing on each device). Limits tab stores TransactionLimit records in local IndexedDB; daily progress computed via lib/txLimits.js over local Transaction records. No external call, no fabricated data.',
@@ -228,7 +233,7 @@ export const CLASSIFICATION = {
   },
   '/hardware-wallet': {
     verdict: 'live', dataSource: 'wallet-core',
-    note: 'WebHID Ledger connection via @ledgerhq/hw-transport-webhid. Derives ETH address (m/44\'/60\'/0\'/0/0) from connected device via @ledgerhq/hw-app-eth. Private key never leaves device. Address derivation and transaction signing supported for ETH (EIP-1559), BTC (PSBT), and SOL on Ledger and Trezor; ERC-20 hardware signing and multi-account paths not yet wired. PLATFORM NOTE: WebHID is unavailable in the Capacitor iOS WKWebView — the page fails soft to a "WebHID unavailable" card (guarded dynamic import). Ledger flow works only on desktop Chrome/Edge.',
+    note: 'Digital Shield air-gapped QR signing is the sole hardware-wallet path (Trezor and Ledger removed 2026-08-24 — the Trezor WebUSB bundle crashed the iOS webview Send page). Imports public account data via crypto-multi-accounts UR QR, builds/finalizes PSBT/EVM/SOL signing requests over QR, and rejects ambiguous EVM account imports instead of guessing. Private key never leaves the Digital Shield device.',
   },
   '/personal-backup': {
     verdict: 'live', dataSource: 'wallet-core',
@@ -319,7 +324,7 @@ export const CLASSIFICATION = {
   },
   '/connect': {
     verdict: 'live', dataSource: 'on-device',
-    note: 'Uses real browser wallet injection (window.ethereum for MetaMask/Coinbase, window.solana for Phantom). Balance reads go through the injected provider API (eth_getBalance) or a public Solana JSON-RPC call (user-initiated, single request on connect, not a background feed). Imports to local entities Wallet as a read-only snapshot with an honest disclosure. No private key access.',
+    note: 'Uses real browser wallet injection (window.ethereum for MetaMask/Coinbase, window.solana for Phantom) plus WalletConnect App SDK / Reown AppKit for modal-based EVM wallet connection. Balance reads are user-initiated, one-shot only: injected EVM wallets use eth_getBalance via the provider, Phantom imports the public address without an immediate RPC balance read, and WalletConnect imports EVM accounts through the session then reads each supported chain\'s public balance through wallet-core RPC. Imports to local entities Wallet as a read-only snapshot with an honest disclosure. No private key access.',
   },
   // ── Core / Preferences group (audit batch 5) ──────────────────────────────
   '/settings': {

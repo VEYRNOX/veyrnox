@@ -204,12 +204,23 @@ Layer 2 (outer):  Platform end-to-end encrypted backup
 Recovery Key = Argon2id(
     recovery_passphrase,
     random_salt,
-    memorySize = 196608,   // 192 MiB — same as vault KDF
+    memorySize = 196608,   // 192 MiB — see note below; NO LONGER "same as vault KDF"
     iterations = 3,
     parallelism = 1,
     hashLength = 32
 )
 ```
+
+> **The "same as vault KDF" justification expired on 2026-08-24 and this parameter
+> choice needs an owner decision before implementation.** `KDF_PARAMS` moved to v2
+> (96 MiB / t=6, #2054) and pre-2026-08-24 vaults stay at v1 (192 MiB / t=3) with the
+> migration flag off, so there is no longer a single value this can be "the same as".
+> Total work is identical between the two (192×3 = 96×6 = 576 MiB-passes), so the
+> figures above are not *weaker* than v2 — but they are no longer derived from
+> anything, and a recovery passphrase is a different threat model from a device PIN
+> (typed rarely, higher entropy, attacked offline from cloud-held material). Decide it
+> on its own merits rather than inheriting a number. Flagged 2026-08-26; Personal
+> Backup is unimplemented, so nothing ships on this yet.
 
 The recovery passphrase is a user-chosen strong passphrase (minimum 16 characters,
 enforced at setup — longer than the 12-char PIN floor because this passphrase

@@ -36,6 +36,7 @@ vi.mock('@/lib/biometric', () => ({
   isBiometricUnlockEnabled: vi.fn(() => true),
   setBiometricUnlockEnabled: vi.fn(() => {}),
   getBiometricStatus: vi.fn(async () => ({ available: true, label: 'Face ID', mode: 'native' })),
+  hasBiometricConsentBeenRecorded: vi.fn(() => true),
 }));
 // Cache is EMPTY (no stored secret yet) — the condition the auto-cache fires on.
 vi.mock('@/lib/biometricUnlock', () => ({
@@ -59,7 +60,11 @@ function makeCtx(overrides = {}) {
     unlock: vi.fn(async () => ({ ok: true })), // correct real PIN → succeeds
     panicWipe: vi.fn(async () => ({ clean: true })),
     createWallet: vi.fn(), importWallet: vi.fn(),
-    enableBiometricUnlock: vi.fn(async () => true), unlockWithBiometric: vi.fn(),
+    enableBiometricUnlock: vi.fn(async () => true),
+    // The lock-screen auto-prompt is deliberately outside this suite's typed-PIN
+    // cache contract. A successful stub lets it settle without exercising the
+    // stale-cache recovery path, which owns separate coverage.
+    unlockWithBiometric: vi.fn(async () => ({ ok: true })),
     exploreMode: false, enterExplore: vi.fn(), leaveExplore: vi.fn(),
     confirmWalletBackup: vi.fn(), setupPin: vi.fn(),
     createWalletFromPendingPin: vi.fn(), importWalletForPendingPin: vi.fn(),
@@ -75,7 +80,9 @@ async function enterPin(pin = '13572468') {
 }
 
 async function waitForPinPad() {
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).toBeTruthy());
+  // If a cache exists, let the mount-time prompt settle before driving the
+  // typed-PIN fallback. A cache-free device never starts that prompt.
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit PIN' })).not.toBeDisabled());
 }
 
 beforeEach(() => {

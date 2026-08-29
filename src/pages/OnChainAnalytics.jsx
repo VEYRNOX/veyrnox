@@ -121,10 +121,10 @@ export default function OnChainAnalytics() {
           Object.entries(byCurrency).map(([cur, d]) => (
             <div key={cur} className="flex items-center gap-3">
               <span className="text-xs font-mono bg-secondary px-2 py-0.5 rounded w-14 text-center">{cur}</span>
-              <div className="flex-1 grid grid-cols-3 gap-2 text-xs">
-                <div><span className="text-muted-foreground">Sent </span><span className="font-medium text-destructive">{d.sent.toFixed(4)}</span></div>
-                <div><span className="text-muted-foreground">Recv </span><span className="font-medium text-success">{d.received.toFixed(4)}</span></div>
-                <div><span className="text-muted-foreground">Txs </span><span className="font-medium">{d.count}</span></div>
+              <div className="flex-1 grid grid-cols-1 gap-1 text-xs sm:grid-cols-3 sm:gap-2">
+                <div className="break-words"><span className="text-muted-foreground">Sent </span><span className="font-medium text-destructive">{d.sent.toFixed(4)}</span></div>
+                <div className="break-words"><span className="text-muted-foreground">Recv </span><span className="font-medium text-success">{d.received.toFixed(4)}</span></div>
+                <div className="break-words"><span className="text-muted-foreground">Txs </span><span className="font-medium">{d.count}</span></div>
               </div>
             </div>
           ))

@@ -183,6 +183,25 @@ export default defineConfig(({ command }) => {
       },
     },
     build: {
+      // Never inline fonts, at any size. Vite's default assetsInlineLimit is
+      // 4096 bytes, and #1504's Noto script subsets are the only fonts in the
+      // tree beneath it — 8 of them, 1–3 KB each. Inlining turns their `src`
+      // into a `data:` URI, which BOTH CSP sources reject: index.html's meta
+      // and public/_headers each declare `font-src 'self'`. The result was 8
+      // CSP violations on every page load for four weeks (#2115).
+      //
+      // The alternative was adding `data:` to font-src. Rejected: this is a
+      // key-handling wallet and the CSP is a real defence, so widening a
+      // directive app-wide to accommodate 13 KB of glyphs is the wrong trade.
+      // Keeping every font a file also removes the special case entirely —
+      // 483 font files, zero data: URIs, one rule.
+      //
+      // PAIRED with the font-src assertions in
+      // src/wallet-core/__tests__/csp-policy.test.js. Removing this without
+      // also loosening font-src re-opens #2115; that test fails if either half
+      // moves without the other.
+      assetsInlineLimit: (filePath) =>
+        (filePath.endsWith('.woff2') || filePath.endsWith('.woff') ? false : undefined),
       minify: 'esbuild', // Faster than terser, nearly same size
       sourcemap: false, // Disable sourcemaps in production
       esbuild: {
@@ -201,13 +220,6 @@ export default defineConfig(({ command }) => {
         // perf-score/FCP budget failures across /, /plans, /settings, /receive,
         // /calculator). Rollup's default automatic chunking already keeps
         // dynamic-import-only code out of the eager graph without this rule.
-        // The hardware-wallet libs (@ledgerhq/*) are OPTIONAL and not in
-        // package.json. Mark them external so a missing dep can't hard-fail the
-        // production build (rollup otherwise errors on the unresolved import).
-        // HardwareWalletPage.jsx imports them dynamically and guarded, so when
-        // they're absent the dynamic import rejects and the page degrades
-        // gracefully. Install the deps + remove this entry to bundle Ledger support.
-        external: [/^@ledgerhq\//],
       },
     },
   };

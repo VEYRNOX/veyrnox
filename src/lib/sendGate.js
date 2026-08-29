@@ -22,9 +22,11 @@
 //                    recency alone (audit H1). Demo has no vault/credential → exempt.
 //   7   spend limit  per-transaction / daily caps, unless explicitly acknowledged
 //   8a  risk score   the pre-sign risk score must compute (fail closed if it throws)
-//   8b  risk verdict composite RASP-env x tx-risk: BLOCK is a hard stop (no
-//                    override — a hostile runtime can hook the confirm itself),
-//                    CONFIRM needs the user's "sign anyway" acknowledgement
+//   8b  tx policy    the normalized composite policy snapshot, when supplied,
+//                    is the first source of truth for the risk plane. BLOCK is
+//                    a hard stop; ACKNOWLEDGE / STEP_UP require explicit user
+//                    completion before the signer is reached.
+//   8b' raw presign  fallback for surfaces still on the older raw gate inputs
 //   8c  btc risk     a high-severity BTC decode flag (e.g. entire_balance) needs
 //                    the user's acknowledgement (BTC has no EVM-shaped verdict)
 //   9   approval     an unlimited ERC-20 approval must be acknowledged
@@ -65,6 +67,8 @@ const block = (code, message) => ({ allowed: false, code, message });
  *                                      result of evaluateSendAgainstLimits()
  * @param {boolean} [i.limitAck]        the user acknowledged the limit breach
  * @param {boolean} [i.riskScoreFailed] the pre-sign risk score threw (fail closed)
+ * @param {{decision?:string, reason?:string, requiresBiometric?:boolean}|null} [i.txPolicy]
+ *                                      normalized signing policy snapshot
  * @param {{proceedAllowed:boolean, signerReachable:boolean}|null} [i.presign]
  *                                      result of presignGate()
  * @param {boolean} [i.btcRiskBlocked]  a high-severity BTC decode flag is unacknowledged
@@ -83,6 +87,7 @@ export function evaluateSendGate({
   limit = null,
   limitAck = false,
   riskScoreFailed = false,
+  txPolicy = null,
   presign = null,
   btcRiskBlocked = false,
   blockedByApproval = false,
@@ -128,8 +133,28 @@ export function evaluateSendGate({
     return block(SEND_GATE.RISK_SCORE_FAILED, 'Could not complete the pre-sign risk checks — not signing.');
   }
 
-  // 8b — composite pre-sign verdict. BLOCK (signer unreachable) is a hard stop with
-  // no override; CONFIRM is surfaced as the explicit "sign anyway" requirement.
+  // 8b — normalized composite policy. When present, this is the UI-aligned
+  // signer-facing snapshot for the risk plane, so it wins over the older raw
+  // `presign` fallback below.
+  if (txPolicy?.decision === 'PENDING') {
+    return block(SEND_GATE.RISK_SCORE_FAILED, txPolicy.reason || 'Transaction-intelligence checks are still running.');
+  }
+  if (txPolicy?.decision === 'BLOCK') {
+    return block(SEND_GATE.RISK_BLOCK, txPolicy.reason || 'Signing is turned off for this transaction.');
+  }
+  if (txPolicy?.decision === 'ACKNOWLEDGE') {
+    return block(SEND_GATE.RISK_CONFIRM, txPolicy.reason || 'Confirm the risk warning before signing.');
+  }
+  if (txPolicy?.decision === 'STEP_UP') {
+    return block(
+      SEND_GATE.RISK_CONFIRM,
+      txPolicy.reason || 'Complete the required biometric review before signing.',
+    );
+  }
+
+  // 8b' — raw composite pre-sign verdict fallback. BLOCK (signer unreachable) is a
+  // hard stop with no override; CONFIRM is surfaced as the explicit "sign anyway"
+  // requirement.
   if (presign && !presign.proceedAllowed) {
     return presign.signerReachable
       ? block(SEND_GATE.RISK_CONFIRM, 'Confirm the risk warning before signing.')

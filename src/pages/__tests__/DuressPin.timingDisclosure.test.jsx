@@ -103,7 +103,7 @@ const { getBiometricStatus } = vi.hoisted(() => ({
     mode: 'web', available: false, label: 'Biometrics', simulated: false, detail: '',
   })),
 }));
-vi.mock('@/lib/biometric', () => ({ getBiometricStatus, isBiometricUnlockEnabled: () => false }));
+vi.mock('@/lib/biometric', () => ({ getBiometricStatus, isBiometricUnlockEnabled: () => false, hasBiometricConsentBeenRecorded: () => true }));
 vi.mock('@/lib/authModel', () => ({ getAuthModel: () => 'pin', isPinModel: () => true }));
 
 import DuressPin from '@/pages/DuressPin';

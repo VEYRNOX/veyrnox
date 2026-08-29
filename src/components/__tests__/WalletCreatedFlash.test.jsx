@@ -1,7 +1,9 @@
-// WalletCreatedFlash — Slice G+H plan §2. Pins honest copy, CTAs, and the
-// compact/reduced-motion contracts.
+// WalletCreatedFlash — honest copy + single-CTA contract.
 //
-// RED phase: component does not yet exist.
+// Post-#1900 shape: the Personal Backup push was removed. The flash now
+// takes only { onDismiss } and renders a single "Go to my wallet" button.
+// Old tests asserted a primary/secondary two-CTA flow with onPrimary,
+// compact, and Personal-Backup copy — all deleted with that push.
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -30,68 +32,51 @@ async function loadFlash() {
 describe('WalletCreatedFlash — honest copy', () => {
   it('renders "WALLET" and "Created."', async () => {
     const Flash = await loadFlash();
-    render(<Flash onPrimary={() => {}} onDismiss={() => {}} />);
+    render(<Flash onDismiss={() => {}} />);
     expect(screen.getByText('WALLET')).toBeInTheDocument();
     expect(screen.getByText('Created.')).toBeInTheDocument();
   });
 
   it('never mentions Shamir / shards / 2-of-3 (spec, not shipped)', async () => {
     const Flash = await loadFlash();
-    const { container } = render(<Flash onPrimary={() => {}} onDismiss={() => {}} />);
+    const { container } = render(<Flash onDismiss={() => {}} />);
     expect(container.textContent).not.toMatch(/shamir|shard|2-of-3|three shards/i);
   });
 
   it('says "Your seed never leaves it" (NOT "Nothing left your phone")', async () => {
     const Flash = await loadFlash();
-    const { container } = render(<Flash onPrimary={() => {}} onDismiss={() => {}} />);
+    const { container } = render(<Flash onDismiss={() => {}} />);
     expect(container.textContent).toMatch(/Your seed never leaves it/);
     expect(container.textContent).not.toMatch(/Nothing left your phone/i);
   });
 
-  it('states "either one decrypts" AND "Store at least one safely"', async () => {
+  it('does not push Personal Backup any more (#1900)', async () => {
     const Flash = await loadFlash();
-    const { container } = render(<Flash onPrimary={() => {}} onDismiss={() => {}} />);
-    expect(container.textContent).toMatch(/either one decrypts/i);
-    expect(container.textContent).toMatch(/Store at least one safely/i);
+    const { container } = render(<Flash onDismiss={() => {}} />);
+    expect(container.textContent).not.toMatch(/Set up Personal Backup/i);
+    expect(container.textContent).not.toMatch(/either one decrypts/i);
+    expect(container.textContent).not.toMatch(/Store at least one safely/i);
   });
 });
 
-describe('WalletCreatedFlash — CTAs', () => {
-  it('renders exact primary + secondary CTA copy', async () => {
+describe('WalletCreatedFlash — single CTA', () => {
+  it('renders exactly one "Go to my wallet" button', async () => {
     const Flash = await loadFlash();
-    render(<Flash onPrimary={() => {}} onDismiss={() => {}} />);
-    expect(screen.getByRole('button', { name: /^Set up Personal Backup$/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Skip for now — take me to my wallet/ })).toBeInTheDocument();
+    render(<Flash onDismiss={() => {}} />);
+    expect(screen.getByRole('button', { name: /^Go to my wallet$/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Set up Personal Backup/i })).toBeNull();
   });
 
-  it('primary click fires onPrimary', async () => {
-    const Flash = await loadFlash();
-    const onPrimary = vi.fn();
-    render(<Flash onPrimary={onPrimary} onDismiss={() => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: /^Set up Personal Backup$/ }));
-    expect(onPrimary).toHaveBeenCalledTimes(1);
-  });
-
-  it('secondary click fires onDismiss', async () => {
+  it('clicking the CTA fires onDismiss', async () => {
     const Flash = await loadFlash();
     const onDismiss = vi.fn();
-    render(<Flash onPrimary={() => {}} onDismiss={onDismiss} />);
-    fireEvent.click(screen.getByRole('button', { name: /Skip for now — take me to my wallet/ }));
+    render(<Flash onDismiss={onDismiss} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Go to my wallet$/ }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('WalletCreatedFlash — compact + reduced-motion', () => {
-  it('compact prop toggles a distinguishing class/attribute on the root', async () => {
-    const Flash = await loadFlash();
-    const { container: full } = render(<Flash onPrimary={() => {}} onDismiss={() => {}} />);
-    const fullHtml = full.firstChild?.outerHTML ?? '';
-    cleanup();
-    const { container: compact } = render(<Flash compact onPrimary={() => {}} onDismiss={() => {}} />);
-    const compactHtml = compact.firstChild?.outerHTML ?? '';
-    expect(compactHtml).not.toEqual(fullHtml);
-  });
-
+describe('WalletCreatedFlash — reduced motion', () => {
   it('prefers-reduced-motion: no animation element rendered', async () => {
     matchMediaImpl = (q) => ({
       matches: /prefers-reduced-motion/.test(q),
@@ -99,8 +84,7 @@ describe('WalletCreatedFlash — compact + reduced-motion', () => {
       addListener: () => {}, removeListener: () => {},
     });
     const Flash = await loadFlash();
-    const { container } = render(<Flash onPrimary={() => {}} onDismiss={() => {}} />);
-    // No SVG stroke-draw animation should be present.
+    const { container } = render(<Flash onDismiss={() => {}} />);
     expect(container.querySelectorAll('animate, animateTransform').length).toBe(0);
     const html = container.innerHTML;
     expect(html).not.toMatch(/stroke-dashoffset:\s*[^0]/i);

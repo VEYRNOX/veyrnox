@@ -17,12 +17,12 @@ export default function VeyrnoxAmbient() {
   return (
     <>
       <style>{`
-        @keyframes vx-beam-breathe { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
-        @keyframes vx-beam-sway { 0%, 100% { transform: translateX(-50%) rotate(-1.5deg); } 50% { transform: translateX(-50%) rotate(1.5deg); } }
-        @keyframes vx-emitter-pulse { 0%, 100% { opacity: 0.65; transform: translateX(-50%) scale(1); } 50% { opacity: 0.95; transform: translateX(-50%) scale(1.08); } }
-        .vx-lamp-beam.vx-animated { animation: vx-beam-breathe 4s ease-in-out infinite; }
-        .vx-lamp-beam-inner.vx-animated { animation: vx-beam-sway 5s ease-in-out infinite; }
-        .vx-lamp-emitter.vx-animated { animation: vx-emitter-pulse 2s ease-in-out infinite; }
+        @keyframes vx-beam-breathe { 0%, 100% { opacity: 0.65; } 50% { opacity: 1; } }
+        @keyframes vx-beam-sway { 0%, 100% { transform: translateX(-50%) rotate(-2.5deg); } 50% { transform: translateX(-50%) rotate(2.5deg); } }
+        @keyframes vx-emitter-pulse { 0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); } 50% { opacity: 1; transform: translateX(-50%) scale(1.12); } }
+        .vx-lamp-beam.vx-animated { animation: vx-beam-breathe 2.4s ease-in-out infinite; }
+        .vx-lamp-beam-inner.vx-animated { animation: vx-beam-sway 3s ease-in-out infinite; }
+        .vx-lamp-emitter.vx-animated { animation: vx-emitter-pulse 1.2s ease-in-out infinite; }
       `}</style>
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
         {!isLowEndDevice && (

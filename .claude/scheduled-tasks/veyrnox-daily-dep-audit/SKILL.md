@@ -46,6 +46,15 @@ Check the Veyrnox wallet project at `C:\Users\aljob\Downloads\Veyrnox` for npm d
     findings tables — but never from the counts, and never silently: the widget
     must always state how many were suppressed and why (step 3, last bullets).
 
+    **Only entries under `## Accepted residuals` suppress anything.** Entries under
+    `## Retired residuals` are history: same `###` shape, same backticked root name,
+    same "Accounted for N findings" line, and they must never match. A retired
+    advisory reappearing in the resolved tree is a NEW finding that surfaces
+    normally — see the retired entry's own "If it comes back" line. Match on the
+    section, not on the entry shape; suppressing 12 high findings because a root
+    name appears somewhere in this file is exactly the silent vanishing that I4
+    forbids.
+
     If a listed residual ever appears at a **higher severity** than recorded, do
     NOT suppress it. Surface it as a normal finding and say the severity changed.
     That is the whole point of scoping by package rather than by severity level.
@@ -91,149 +100,229 @@ Before removing any entry, confirm the vulnerable package is actually gone from 
 resolved tree. Neither an upstream release nor npm's `fixAvailable` field is evidence on
 its own.
 
-### `elliptic` — max severity: low — accepted 2026-07-19
+### `elliptic` — max severity: low — accepted 2026-07-19, re-scoped 2026-08-25
 
-- **Advisory:** "Elliptic Uses a Cryptographic Primitive with a Risky Implementation".
+- **Advisory:** GHSA-848j-6mx2-7j84, "Elliptic Uses a Cryptographic Primitive with a
+  Risky Implementation".
 - **Why accepted:** no upstream fix exists at any version. `package.json` `overrides`
-  already pins `elliptic` to `^6.6.1`, the latest published release — the only
-  available mitigation is already applied.
-- **Blast radius:** not on the wallet's signing path. `src/wallet-core/` uses
-  `@noble`/`@scure` and ethers v6. `elliptic` reaches the tree solely through
-  hardware-wallet transport/APDU code, via two direct dependencies:
-  `@trezor/connect-web` → `@trezor/utxo-lib` → `tiny-secp256k1` → `elliptic`, and
-  `@ledgerhq/hw-app-eth` → `@ethersproject/transactions` → `signing-key` → `elliptic`.
-  The physical device performs the signing.
-- **Accounts for** ~18 findings (1 root + its transitive dependents, which include
-  `@trezor/connect` and `@trezor/connect-web` now that the protobufjs moderate is fixed).
-- **Revisit trigger:** a fixed `elliptic` release ships; OR the advisory is
-  re-rated above low; OR either direct dependency drops it (e.g. `@ledgerhq/hw-app-eth`
-  migrating off `@ethersproject/*` v5, or `@trezor/utxo-lib` moving to
-  `tiny-secp256k1 >= 2.0.0`, which already dropped elliptic); OR `elliptic` gains a
-  path into `src/wallet-core/`. On any of these, remove this entry and report normally.
-- **Tracked:** watcher `veyrnox-elliptic-upstream-watch` (weekly, Mondays ~10am) checks
-  all three signals above and reports remediation steps when any fires.
-- **Note:** npm's `fixAvailable` for the Ledger chain suggests
-  `@ledgerhq/hw-app-eth@6.40.3`. That is a major *downgrade* from the installed 7.8.x
-  and still declares `@ethersproject/{abi,rlp,transactions}` v5, so it does not clear
-  this advisory. Evaluated and rejected 2026-07-19. Do not propose it again.
+  already pins `elliptic` to `^6.6.1`, and 6.6.1 is still `latest` (checked
+  2026-08-25) — the only available mitigation is already applied.
+- **Blast radius — ONE chain, and it now runs through `src/wallet-core/`:**
+  `@keystonehq/keystone-sdk` → `@keystonehq/bc-ur-registry-eth` → `hdkey` →
+  `secp256k1` → `elliptic`. The Trezor and Ledger chains this entry used to name are
+  GONE — `@trezor/connect-web`, `@trezor/utxo-lib`, `tiny-secp256k1`,
+  `@ledgerhq/hw-app-eth` and `@ethersproject/signing-key` are all absent from
+  `origin/main`'s lockfile at `24333ad9`.
+- **The old "not on the wallet's signing path" line was retired, not reworded —
+  it stopped being true.** `src/wallet-core/hw/digitalShield.js:12` imports
+  `ETHSignature` from `@keystonehq/bc-ur-registry-eth`, and the repo's own
+  `src/wallet-core/hw/__tests__/digitalShield.deps.test.js` calls that package a
+  "signing-path dependency pin". The package's ESM build carries a module-level
+  `import HDKey from 'hdkey'` (verified by unpacking 0.22.1, 2026-08-25), so
+  `elliptic` is in the wallet-core import graph.
+  **What keeps it low, stated precisely rather than as a slogan:** `digitalShield.js`
+  calls only `ETHSignature.fromCBOR`. `hdkey` backs `generateAddressFromXpub` and
+  `findHDPathFromAddress`, neither of which appears anywhere in `src/`. The Keystone
+  device performs the signing; nothing here derives or holds a key. Veyrnox key
+  material is still `@noble`/`@scure`/ethers v6 only.
+- **Accounts for** 5 findings as of 2026-08-25 at `origin/main` `24333ad9` (1 advisory
+  root + 4 transitive dependents: `secp256k1`, `hdkey`,
+  `@keystonehq/bc-ur-registry-eth`, `@keystonehq/keystone-sdk`). It was 22 on
+  2026-08-22; the drop is the Trezor/Ledger removal above, not a fix. A count that
+  moves for an unexplained reason is a revisit trigger — re-derive the chain from
+  `npm audit --json` before trusting this number.
+- **Revisit trigger:** a fixed `elliptic` release ships; OR the advisory is re-rated
+  above low; OR the surviving chain drops it (`@keystonehq/bc-ur-registry-eth` moving
+  off `hdkey`, or `hdkey` moving off `secp256k1`/`elliptic`); OR `digitalShield.js`
+  starts calling `generateAddressFromXpub` / `findHDPathFromAddress`, or any other
+  `src/` code reaches an `elliptic`-backed API; OR a Trezor/Ledger integration returns
+  and reintroduces a second chain. On any of these, re-derive before acting — retire
+  the entry only if the vulnerable package is actually gone from the resolved tree.
+- **The "gains a path into `src/wallet-core/`" trigger already fired, on 2026-08-25,
+  and this entry was re-scoped rather than retired.** That is a judgment call and is
+  recorded as one: severity is unchanged (low), no fix exists at any version, and the
+  reachable-API analysis above says no `elliptic` code path is called. If the
+  reachability analysis ever stops holding, this entry goes.
+- **What each run should DO about that — unambiguous, because the previous wording was
+  not.** On 2026-08-25, the day the trigger fired, the audit suppressed NOTHING and
+  listed all 5 findings in full, so a reader that day saw the changed blast radius
+  rather than a one-line suppression note. **That was a one-off for the day of the
+  finding. From 2026-08-26 onward, suppress and state, per step 2a** — this entry is
+  under `## Accepted residuals`, its root is `elliptic`, its severity is still low, so
+  2a applies with no exception. The earlier wording ("doing that once is honest; doing
+  it every day would turn 'accepted residual' into 'permanently ignored'") left "that"
+  pointing at either behaviour and made the next run a coin flip; both readings produce
+  a defensible-looking widget, which is precisely how a rule stops constraining
+  anything. The guard against "permanently ignored" is the revisit-trigger list above
+  and the watcher, not a refusal to suppress.
+- **Tracked:** `veyrnox-elliptic-upstream-watch`, registered and enabled, weekly on
+  Tuesdays 09:34 (not "Mondays ~10am" as this entry claimed until 2026-08-25).
+  **Re-pointed at the Keystone chain 2026-08-25 by PR #2084** — its signals are now a
+  patched `elliptic` (SIGNAL 1), `secp256k1` dropping `elliptic` (2a), `hdkey` dropping
+  `secp256k1` (2b), and `@keystonehq/bc-ur-registry-eth` dropping `hdkey` (2c), each
+  firing on a dependency key disappearing rather than a version moving, and its step 0
+  re-derives the chain from the lockfile before probing. Until that PR it checked the
+  Trezor and Ledger chains, which no longer exist — it could not have fired, while
+  still reporting "no upstream movement". **It has not yet RUN under the new brief**
+  (see below for what its 2026-08-25 run actually was); treat the first report under the
+  new brief as the confirmation,
+  per the `brace-expansion` lesson below that a watcher existing is not evidence it
+  watches the thing you care about.
+- **Its `lastRunAt` moved on 2026-08-25 and that run does NOT count as the
+  confirmation.** The scheduler records a run at `2026-08-25T08:52:21Z`; PR #2084 —
+  the re-point — merged at `2026-08-25T09:26:29Z`, i.e. **34 minutes later**. The task
+  resolves its runbook from `origin/main`, so that run executed the OLD two-chain
+  version and probed `@ledgerhq/hw-app-eth` and `@trezor/utxo-lib`, packages absent
+  from the tree. Whatever it reported, it cannot have been evidence about the Keystone
+  chain. This bullet exists because a bare `lastRunAt` of today's date is exactly the
+  thing a future reader will take as "it ran, we're covered" — check the timestamp
+  against the merge, not the date against the calendar. The next genuine run is
+  Tue 2026-09-01 09:34.
+- **Note:** the old `@ledgerhq/hw-app-eth@6.40.3` `fixAvailable` warning is retired
+  with the Ledger chain. Kept as one line in case Ledger support returns: that version
+  is a major *downgrade* and still declares `@ethersproject/*` v5, so it never cleared
+  this advisory. Evaluated and rejected 2026-07-19.
 
-### `shell-quote` — max severity: high — accepted 2026-07-21, reinstated 2026-07-27
+## Retired residuals
+
+Entries that were accepted, then genuinely cleared. Kept as a record so a future reader
+can tell "this was fixed" from "this was never looked at", and so the evidence that
+justified each retirement is on file rather than in a PR description.
+
+### `shell-quote` — accepted 2026-07-21, reinstated 2026-07-27, RETIRED 2026-08-23
 
 - **Advisory:** GHSA-395f-4hp3-45gv — quadratic-complexity Denial of Service in
-  `shell-quote` `parse()` (vulnerable `<= 1.8.4`, patched in `1.9.0`).
-- **Retired and reinstated the same day — read this before acting on any "fix
-  available" signal.** It was retired on 2026-07-27 because `@appium/support@7.2.6`
-  shipped with its `shell-quote` pin moved from an exact `1.8.4` to a patched `1.10.0`,
-  and npm flipped to `fixAvailable: true`. Both facts are real. Both are useless here,
-  and the retirement was wrong.
-- **Why accepted:** the patched copies are ALREADY hoisted at the tree root
-  (`node_modules/{@appium/support 7.2.6, @appium/base-driver 10.7.2, shell-quote 1.10.0,
-  body-parser 2.3.0}`). What `npm audit` flags is a separate 258-package DUPLICATE
-  subtree under `node_modules/appium-uiautomator2-driver/node_modules/` still holding
-  `@appium/support 7.2.5` → `shell-quote 1.8.4` and `@appium/base-driver 10.7.1` →
-  `body-parser 2.2.2`. Four remediation routes were tested on a clean worktree off
-  `main` (2026-07-27) and all four failed: (1) a version bump is impossible — every
-  package in the chain is already at latest (`appium-uiautomator2-driver@8.1.2`,
-  `appium-android-driver@14.0.2`, `@appium/base-driver@10.7.2`); (2) `npm update` on the
-  four packages left the nested copies untouched; (3) `overrides` of `^7.2.6` / `^10.7.2`
-  on `@appium/support` and `@appium/base-driver` were silently ignored, extending the
-  original shell-quote override finding to the parent packages that carry the exact pins;
-  (4) deleting all 295 nested lockfile entries and re-resolving made npm re-derive them
-  byte-identically. `npm audit fix --dry-run` is a NO-OP — it prints "fix available via
-  `npm audit fix`", changes zero lockfile lines, and still reports 51 vulnerabilities.
-- **Blast radius:** DoS-only, confined to the `appium-uiautomator2-driver` devDependency
-  (the Android E2E test harness). Never imported by `src/`, never bundled in the
-  production wallet. `npm audit --omit=dev` reports 0 high / 0 critical. Not
-  attacker-reachable — the harness parses trusted local test fixtures.
-- **Accounts for** 3 high findings: `shell-quote`, `@appium/support`,
-  `@appium/base-driver`. (The chain was ~8 when first accepted; it shrank as the root
-  copies got patched.) Suppress the whole chain under this root.
-- **Revisit trigger — evidence, NOT a version number.** A version-based trigger is what
-  produced the false positive above. Trigger only on: the lockfile no longer containing
-  `node_modules/appium-uiautomator2-driver/node_modules/@appium/support`; OR the Android
-  E2E harness being retired; OR the advisory being re-rated above high. A new
-  `@appium/*` release is NOT sufficient on its own — verify the nested entry is actually
-  gone before retiring this again.
-- **Tracked:** watcher `veyrnox-appium-shellquote-watch` (weekly, Mondays ~9am),
-  deleted and REBUILT 2026-07-27. The original watched version numbers and produced the
-  false positive above; the rebuilt one ignores version numbers entirely and triggers
-  only on resolved-tree evidence — it copies `package.json` + `package-lock.json` to a
-  scratch dir, runs `npm install --package-lock-only`, and checks whether
-  `node_modules/appium-uiautomator2-driver/node_modules/@appium/support` is actually
-  gone. If a future run reports a trigger on the strength of a release number or an
-  `npm audit` `fixAvailable: true`, that is the old failure recurring — verify the
-  nested entry yourself before retiring anything.
-- Dependabot alert #12 dismissed as `tolerable_risk`.
+  `shell-quote` `parse()` (vulnerable `<= 1.8.4`, patched in `1.9.0`). Reached the tree
+  dev-only, through a ~257-package duplicate subtree under
+  `node_modules/appium-uiautomator2-driver/node_modules/` that carried its own
+  `@appium/support` → `shell-quote` pair, separate from the already-patched copies
+  hoisted at the tree root. Accounted for 3 high findings at retirement time, ~8 when
+  first accepted.
+- **How it cleared:** nothing was deliberately remediated, and no `overrides` entry was
+  ever added. The nested subtree was re-resolved as a side effect of routine lockfile
+  regeneration, and now duplicates PATCHED copies instead of vulnerable ones. Note the
+  shape of that: the entry's own condition 1 — "the nested `@appium/support` key
+  disappears" — never fired and was the wrong trigger. The key is still there; its
+  contents changed underneath it. That is exactly why conditions 2, 3 and 4 were added
+  after the 2026-07-27 false positive, and all three are what fired here.
+- **Retirement evidence — resolved tree, measured this run, per this file's own rule that
+  a version number and an npm `fixAvailable` are not evidence:**
+  1. Fresh `npm install --package-lock-only` (no `--legacy-peer-deps`) in a scratch dir,
+     from `origin/main` at `8b3d3fb`. Sanity check passed: `node_modules/appium` present
+     at `3.6.0`, so the resolve is not the corrupt/stripped kind that flag produces.
+  2. The nested subtree still exists (257 entries) and resolves PATCHED:
+     `@appium/support 7.2.6`, `shell-quote 1.10.0`, `@appium/base-driver 10.7.2`,
+     `body-parser 2.3.0`. Root copies match. Condition 2 (`shell-quote > 1.8.4`) and
+     condition 3 (`body-parser >= 2.3.0`) both true.
+  3. **Condition 4, the one retirement actually requires:** `npm audit` on that resolve
+     reports 22 low / 0 moderate / 0 high / 0 critical, with `elliptic` as the sole
+     advisory root. None of `shell-quote`, `@appium/support`, `@appium/base-driver`, or
+     `body-parser` appears as a root. A trigger from condition 1 or 5 alone would not
+     have been sufficient.
+  4. The fresh resolve is byte-identical in size to the committed lockfile (1,239,773
+     bytes), so this is `main`'s real state and not a scratch artifact.
+- **This was already recorded elsewhere 20 days earlier, and the drift is the finding.**
+  `package.json` `//overrides-audit-notes` has said "RESOLVED 2026-08-03 — no longer an
+  accepted residual" since 2026-08-03, with the same lockfile evidence. That note also
+  states "WATCHER RETIRED: veyrnox-appium-shellquote-watch deleted 2026-08-03". **Both
+  halves were out of step with reality:** this file kept both entries under
+  `## Accepted residuals` for three more weeks, and the watcher was never deleted — it
+  is still registered and enabled. A retirement recorded in one file and not the other
+  is indistinguishable from no retirement at all to whichever reader opens the other
+  file. If you retire a residual, change every place that names it in the same commit.
+- **If it comes back:** nothing is pinning this. No `overrides` entry holds the nested
+  subtree at patched versions — it landed there through ordinary range resolution and
+  could regress the same way (it already did once, transiently, on 2026-07-29: patched at
+  `87e9897b`, back to `1.8.4` at `ff78ac99` 12 minutes later, restored at `0295fd40`).
+  A reappearance is a NEW finding that must surface normally, not a reinstatement of this
+  entry — re-derive the chain before assuming this history applies.
+- **Watcher:** `veyrnox-appium-shellquote-watch` produced this retirement and is now
+  redundant. Recommend deleting the scheduled task; this task may not delete scheduled
+  tasks itself (see Constraints), so the owner acts. Its `SKILL.md` should be retained
+  the way `veyrnox-extract-zip-watch`'s was, in case the prompt is wanted back.
+- Dependabot alert #12 was dismissed as `tolerable_risk` and should now resolve.
 
-### `body-parser` — max severity: low — accepted 2026-07-21, reinstated 2026-07-27
+### `body-parser` — accepted 2026-07-21, reinstated 2026-07-27, RETIRED 2026-08-23
 
-- **Advisory:** GHSA-v422-hmwv-36x6 — DoS when an invalid `limit` value silently
-  disables size enforcement (vulnerable `2.0.0 - 2.2.x`, patched `2.3.0`).
-- **Why accepted:** the same nested-duplicate mechanism as `shell-quote` above, and
-  unfixable for the same four reasons. The root `body-parser` is already the patched
-  `2.3.0`; the flagged `2.2.2` is pinned exactly by the nested
-  `@appium/base-driver@10.7.1`. DoS-only, dev-only, never bundled.
-- **Accounts for** 1 low finding (`body-parser` under the appium subtree).
-- **Revisit trigger:** as `shell-quote` above — the nested entry actually disappearing.
-  Retired and reinstated 2026-07-27 alongside it; do not retire this one on an
-  `npm audit` `fixAvailable: true` either, which was verified to be a no-op.
-- **Tracked:** covered by the same rebuilt `veyrnox-appium-shellquote-watch` (weekly,
-  Mondays ~9am), which checks the nested `body-parser` resolution alongside
-  `shell-quote`.
-- Dependabot alert #14 auto-dismissed (low-severity dev dependency). That dismissal is
-  not itself a reason to suppress here; the rationale above is.
+- **Advisory:** GHSA-v422-hmwv-36x6 — DoS when an invalid `limit` value silently disables
+  size enforcement (vulnerable `2.0.0 - 2.2.x`, patched `2.3.0`). Same nested-duplicate
+  mechanism as `shell-quote` above, reached via the nested `@appium/base-driver`.
+  Accounted for 1 low finding.
+- **How it cleared and retirement evidence:** identical to `shell-quote` above and
+  measured in the same run — the nested `body-parser` resolves to the patched `2.3.0`,
+  and `npm audit` at `origin/main` `8b3d3fb` no longer lists it as an advisory root.
+- **If it comes back:** as above — unpinned, so a regression is possible and would be a
+  new finding rather than a reinstatement.
+- **Watcher:** same `veyrnox-appium-shellquote-watch`, same deletion recommendation.
+- Dependabot alert #14 was auto-dismissed (low-severity dev dependency) and should now
+  resolve. That dismissal was never the reason for suppression, and is not the reason for
+  retirement either.
 
-### `extract-zip` — max severity: high — accepted 2026-08-16
+### `extract-zip` — accepted 2026-08-16, RETIRED 2026-08-22
 
-- **Advisory:** GHSA-jmr9-qjv8-65gv — unvalidated symlink path traversal in `extract-zip`
-  (CVSS 8.1, CWE-22, vulnerable `<= 2.0.1`).
-- **Why accepted:** no upstream fix exists at any version. `2.0.1` is the latest
-  published release (`npm view extract-zip dist-tags` → `latest: 2.0.1`) and the advisory
-  range covers it, so there is no version bump that clears this.
-- **Blast radius:** dev-only. Reaches the tree solely through the WebdriverIO E2E test
-  harness: `@wdio/*` devDependencies (`^9.30.1`) → `@wdio/utils` → `@puppeteer/browsers`
-  → `extract-zip`. Never imported by `src/`, never bundled in the production wallet.
-  `npm audit --omit=dev` reports 0 high / 0 critical. Exploitation requires the harness to
-  extract an attacker-controlled zip; in practice `@puppeteer/browsers` extracts browser
-  builds from Google's Chrome for Testing endpoints.
-- **Accounts for** 12 high findings — the root plus its transitive dependents:
-  `extract-zip`, `@puppeteer/browsers`, `@wdio/utils`, `@wdio/config`, `@wdio/globals`,
-  `@wdio/runner`, `@wdio/cli`, `@wdio/local-runner`, `@wdio/mocha-framework`,
-  `expect-webdriverio`, `webdriver`, `webdriverio`. Suppress the whole chain under this
-  root.
-- **Revisit trigger:** an `extract-zip` release ships outside the `<= 2.0.1` range; OR
-  `@puppeteer/browsers` drops `extract-zip`; OR the WebdriverIO E2E harness is retired;
-  OR `extract-zip` gains a path into a production dependency. Verify the resolved tree
-  before retiring — an npm `fixAvailable: true` is not evidence.
-- **Tracked:** watcher `veyrnox-extract-zip-watch` (weekly, Mondays ~11am), created
-  2026-08-16. Checks for a patched `extract-zip`, for `@wdio/utils` moving its
-  `@puppeteer/browsers` pin to a range admitting `>= 3.0.0`, and for the E2E harness being
-  retired.
-- **PENDING RETIREMENT (2026-08-16) — the override below was taken, and the findings are
-  gone from the resolved tree.** `overrides` now pins `@puppeteer/browsers` to `^3`;
-  `npm install --package-lock-only` resolves it to `3.2.0` under `@wdio/utils`, and
-  `extract-zip` is absent from the lockfile entirely. `npm audit` drops from 12 high to
-  **0 high** (21 total: 18 low elliptic + 3 moderate uuid/xcode chain). The appium subtree
-  is byte-identical — no entries added or removed — so the `--legacy-peer-deps` collateral
-  hazard did not recur. **Do not retire this entry on that evidence alone.** The open
-  question is not whether the advisory clears — it does — but whether the harness still
-  launches its browser drivers under a semver-major `@puppeteer/browsers`. Retire only
-  once the E2E jobs have passed on the PR carrying the override. If they fail, the override
-  is reverted and this entry stands unchanged.
-- **The candidate remediation, as evaluated before it was taken:**
-  `@puppeteer/browsers@3.2.0` has already DROPPED `extract-zip` (its dependencies are now
-  `{yargs, modern-tar}`). The chain does not clear only because `@wdio/utils@9.30.1` —
-  which is also `@latest` — pins `@puppeteer/browsers: ^2.2.0`, and `3.x` is outside that
-  caret. A `package.json` `overrides` entry forcing `@puppeteer/browsers` to `^3` would
-  clear all 12 findings without waiting for upstream. It is a semver-MAJOR override of a
-  transitive dependency inside the test harness, so it can break browser-driver launch in
-  a way `npm audit` will not show. It needs a real E2E run to validate, which is why this
-  is an accepted residual rather than a fix. Do not apply it from the audit task.
-- **Note:** npm's `fixAvailable` suggests `@wdio/cli@8.14.6`, a major *downgrade* from the
-  installed 9.30.1. `@wdio/utils@8.x` still depends on `@puppeteer/browsers` →
-  `extract-zip`, so it does not clear the advisory. Evaluated and rejected 2026-08-16.
-  Do not propose it again.
-- Tracked as issue #1851.
+- **Advisory:** GHSA-jmr9-qjv8-65gv — unvalidated symlink path traversal (CVSS 8.1,
+  CWE-22, vulnerable `<= 2.0.1`). Reached the tree dev-only, via the WebdriverIO E2E
+  harness: `@wdio/*` → `@wdio/utils` → `@puppeteer/browsers` → `extract-zip`. Accounted
+  for 12 high findings.
+- **How it cleared:** not an upstream fix — `2.0.1` is still `latest` and still in range.
+  `@puppeteer/browsers@3.2.0` had already dropped `extract-zip` (deps are now
+  `{yargs, modern-tar}`), but `@wdio/utils@9.30.1` pinned `^2.2.0`. PR #1852 added a
+  `package.json` `overrides` entry forcing `@puppeteer/browsers` to `^3`.
+- **Retirement evidence — resolved tree plus a real E2E run, per this file's own rule
+  that a version number and an npm `fixAvailable` are not evidence:**
+  1. `extract-zip` is ABSENT from `origin/main`'s `package-lock.json` (verified
+     2026-08-22 at `b8f0127` by resolving the lockfile from the ref, not a working tree).
+  2. `npm audit` on that lockfile reports 0 high / 0 critical; the 12 findings are gone,
+     not merely suppressed.
+  3. The open question was never whether the advisory cleared but whether a semver-MAJOR
+     override broke browser-driver launch — invisible to `npm audit`. PR #1852 merged
+     2026-08-16 with `e2e-emulator-tests (31, google_apis)`, `web-e2e-tests` and `e2e`
+     all SUCCESS, which is the condition the entry set for itself.
+  4. The appium subtree was byte-identical across the override, so the
+     `--legacy-peer-deps` collateral hazard did not recur.
+- **If it comes back:** the override is the only thing holding this. Dropping
+  `overrides["@puppeteer/browsers"]`, or `@wdio/utils` widening its own pin in a way that
+  re-resolves to `2.x`, reopens all 12 findings. A reappearance is a new finding, not a
+  reinstatement — re-derive the chain before assuming this history still applies.
+- **No watcher — none needed.** `veyrnox-extract-zip-watch` (weekly, Mondays ~11am) was
+  deleted 2026-08-22, on owner instruction, once this entry was retired. Its `SKILL.md`
+  survives at `~/.claude/scheduled-tasks/veyrnox-extract-zip-watch/SKILL.md` if the prompt
+  is ever wanted back. Note the audit task itself may not delete scheduled tasks (see
+  Constraints) — it reports them and the owner acts.
+- **Issue #1851 was already closed** as COMPLETED on 2026-08-16, auto-closed by PR #1852
+  merging. An earlier draft of this entry said it "can be closed"; that was taken from the
+  old entry's `Tracked as issue #1851` line without checking the issue. Stated here because
+  it is the same mistake this file keeps recording in other forms: a tracking reference
+  ages into a claim about current state. Check the issue, not the line that names it.
+
+### `brace-expansion` — RETIRED 2026-08-22 (never an entry in this file)
+
+Recorded here because it was a real HIGH residual with its own watcher, and because a
+reader of this file would otherwise have no trace of it. It was never in the accepted-
+residuals list above — its rationale lived only in the watcher's runbook, which is how it
+stayed invisible to the daily audit for weeks.
+
+- **Advisory:** GHSA-mh99-v99m-4gvg, HIGH — DoS via unbounded expansion length causing an
+  out-of-memory crash. Accounted for ~28-29 of ~32 HIGH findings at its peak.
+- **How it cleared:** the advisory was re-scoped into per-line ranges (`< 1.1.17`,
+  `>= 2.0.0 < 2.1.3`, `>= 3.0.0 < 3.0.3`, `>= 4.0.0 < 5.0.8`) and the fix was BACKPORTED to
+  the old-shape 1.x and 2.x lines. Ordinary range resolution then reached it — no
+  `overrides` entry was ever added, and none is needed.
+- **Retirement evidence (2026-08-22, `origin/main` at `b8f0127`):** re-resolved lockfile
+  carries `1.1.18`, `2.1.4` x5, `5.0.9` x3, all at or above their line's patched floor;
+  `npm audit` lists `elliptic` as the sole advisory root, 0 high / 0 critical.
+- **The 5.x incompatibility was never fixed — it was routed around.** A `latest` override
+  still throws `TypeError: expand is not a function` at `minimatch.js:269`, and 6 of 9
+  `minimatch` copies still declare `^1.`/`^2.` ranges. So the old remediation advice
+  ("add a `^5.0.8` override") is now actively harmful: it would reintroduce the
+  `minimatch`/`eslint` breakage while fixing nothing.
+- **Watcher deleted** 2026-08-22. Its runbook is retained at
+  `.claude/scheduled-tasks/veyrnox-brace-expansion-watch/SKILL.md`, marked RETIRED, with
+  the corrected ranges and the probe method intact.
+- **Why it sat unnoticed:** the watcher was rebuilt 2026-07-27 and left DISABLED, so it
+  never ran once — no `lastRunAt` at all. Its "Tracked" claim was false for ~4 weeks. If a
+  residual's only tracking is a watcher, confirm the watcher is enabled, not merely that it
+  exists.
 
 ## Constraints
 - Do NOT run `npm audit fix` or modify any files — read-only audit only.

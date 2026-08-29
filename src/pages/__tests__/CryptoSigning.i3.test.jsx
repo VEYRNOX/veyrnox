@@ -35,11 +35,8 @@ vi.mock('@/lib/useMessageSigningEnabled', () => ({
 
 // --- RASP: ALLOW so the RASP gate doesn't interfere -------------------------
 vi.mock('@/rasp', () => ({
-  useRaspArtifact: () => ({ tier: 'ALLOW' }),
-  degrade: () => ({ tier: 'ALLOW' }),
-  detect: () => ({}),
+  getFreshRaspArtifact: async () => ({ tier: 'ALLOW' }),
   TIER: { BLOCK: 'BLOCK', ALLOW: 'ALLOW' },
-  browserProbeSource: {},
 }));
 vi.mock('@/sign-gate/presign', () => ({
   presignGate: () => ({ proceedAllowed: true, signerReachable: true }),

@@ -34,10 +34,46 @@ export const BIOMETRIC_PREF_KEY = 'veyrnox-biometric-unlock';
 // requiring them to unlock, and vice-versa. Stored as "1" (on) / absent (off).
 export const TWOFACTOR_BIOMETRIC_KEY = 'veyrnox-2fa-biometric';
 
-/** @returns {boolean} whether the user has required biometric unlock. */
+// One-time migration: before this file switched to default-ON for native,
+// turning biometric unlock off REMOVED the pref key. A user who deliberately
+// opted out therefore had an unset value — indistinguishable, post-flip, from
+// a fresh install. Codex 2026-08-27 P1b: without a migration those legacy
+// opt-outs would silently re-enable on upgrade. This runs once per device:
+// if the user is already past onboarding (auth-model marker present) AND the
+// pref is unset, we lock them at '0' (explicit off). Fresh installs (no
+// auth-model) fall through and get the new default-ON. Skipped inside a
+// deniable/demo session — writing there would be a decoy-side tell.
+const BIOMETRIC_PREF_MIGRATED_KEY = 'veyrnox-biometric-pref-v2';
+let __bioMigrated = false;
+function ensureLegacyOptOutPreserved() {
+  if (__bioMigrated) return;
+  try {
+    if (isDeniabilityOrDemoActive()) return;
+    if (localStorage.getItem(BIOMETRIC_PREF_MIGRATED_KEY) === '1') { __bioMigrated = true; return; }
+    const pref = localStorage.getItem(BIOMETRIC_PREF_KEY);
+    const hasAuthModel = !!localStorage.getItem('veyrnox-auth-model');
+    if (pref === null && hasAuthModel) {
+      localStorage.setItem(BIOMETRIC_PREF_KEY, '0');
+    }
+    localStorage.setItem(BIOMETRIC_PREF_MIGRATED_KEY, '1');
+    __bioMigrated = true;
+  } catch { /* best-effort; idempotent, retries next read */ }
+}
+
+/** @returns {boolean} whether the user has required biometric unlock.
+ *
+ * Default ON for native (iOS/Android) FRESH installs — users expect Face ID /
+ * Fingerprint to be the unlock path without hunting Settings. Explicit opt-out
+ * stored as '0'. Legacy opt-outs (unset + existing user) are preserved by
+ * ensureLegacyOptOutPreserved() above. Web/non-native stays OFF.
+ */
 export function isBiometricUnlockEnabled() {
   try {
-    return localStorage.getItem(BIOMETRIC_PREF_KEY) === '1';
+    ensureLegacyOptOutPreserved();
+    const v = localStorage.getItem(BIOMETRIC_PREF_KEY);
+    if (v === '1') return true;
+    if (v === '0') return false;
+    return Capacitor.isNativePlatform();
   } catch {
     return false;
   }
@@ -101,7 +137,8 @@ export async function verifyBiometric2fa() {
   // dialog is open — the dialog briefly pauses the app, which normally fires
   // lock() and redirects to the unlock screen mid-flow.
   const { nativeKeyStore } = await import('@/wallet-core/keystore/native.js');
-  const info = await BiometricAuth.checkBiometry();
+  const { getCachedBiometry } = await import('./biometricProbe.js');
+  const info = (await getCachedBiometry()) ?? { isAvailable: false, deviceIsSecure: false };
   if (!info.isAvailable && !info.deviceIsSecure) {
     throw new BiometricGateError('unavailable');
   }
@@ -202,10 +239,36 @@ export function setBiometricUnlockEnabled(on) {
   if (isDeniabilityOrDemoActive()) return;
   try {
     if (on) localStorage.setItem(BIOMETRIC_PREF_KEY, '1');
-    else localStorage.removeItem(BIOMETRIC_PREF_KEY);
+    // Explicit opt-out is '0', not remove — otherwise the new native default
+    // (unset → ON) would silently re-enable a user who deliberately turned it off.
+    else localStorage.setItem(BIOMETRIC_PREF_KEY, '0');
   } catch {
     /* storage unavailable — preference is best-effort, non-fatal. */
   }
+}
+
+// One-time onboarding consent for biometric unlock. Rendered by
+// BiometricConsent.jsx after TelemetryConsent, before wallet setup. Marker
+// distinguishes "user has been asked" from "biometric pref is unset" (the
+// default-ON native path leaves the pref unset for fresh installs). Skipped
+// in deniable/demo — same K-2 discipline as consent.js writers.
+export const BIOMETRIC_CONSENT_SEEN_KEY = 'veyrnox-biometric-consent-seen';
+
+/** @returns {boolean} whether the user has been shown the biometric-consent screen. */
+export function hasBiometricConsentBeenRecorded() {
+  try {
+    return localStorage.getItem(BIOMETRIC_CONSENT_SEEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Mark the biometric-consent screen as answered. I3-guarded like the other consent writers. */
+export function markBiometricConsentRecorded() {
+  if (isDeniabilityOrDemoActive()) return;
+  try {
+    localStorage.setItem(BIOMETRIC_CONSENT_SEEN_KEY, '1');
+  } catch { /* best-effort */ }
 }
 
 // Map the plugin's BiometryType enum to a human label for the settings screen
@@ -256,8 +319,10 @@ export async function getBiometricStatus() {
     try {
       // Dynamic import keeps the Capacitor plugin out of the web/test bundle,
       // exactly like keystore/index.js does for native.js.
-      const { BiometricAuth, BiometryType } = await import('@aparajita/capacitor-biometric-auth');
-      const info = await BiometricAuth.checkBiometry();
+      const { BiometryType } = await import('@aparajita/capacitor-biometric-auth');
+      const { getCachedBiometry } = await import('./biometricProbe.js');
+      const info = await getCachedBiometry();
+      if (!info) throw new Error('checkBiometry probe unavailable');
       const label = labelForBiometry(BiometryType, info);
       if (info.isAvailable) {
         return { mode: 'native', available: true, label, simulated: false,

@@ -38,7 +38,7 @@
 import { CONDITION } from './conditions.js';
 
 /**
- * @typedef {{ tampered?: boolean, hooked?: boolean, emulator?: boolean, rooted?: boolean, elevated?: boolean }} ProbeSignals
+ * @typedef {{ tampered?: boolean, hooked?: boolean, emulator?: boolean, rooted?: boolean, elevated?: boolean, screenCapture?: boolean }} ProbeSignals
  * The seam a native layer implements. `available` MUST be exactly true to assert
  * the probes genuinely ran; anything else is treated as "could not evaluate".
  * `elevated` (added 2026-07-16) is OPTIONAL — browserProbe.js and the required-shape
@@ -65,6 +65,10 @@ export function classifyEnvironment(signals) {
   if (signals.hooked) return CONDITION.HOOKED;
   if (signals.emulator) return CONDITION.EMULATOR;
   if (signals.rooted) return CONDITION.ROOTED;
+  // M-5 (2026-08-25): checked BEFORE `elevated` because SCREEN_CAPTURE blocks
+  // strictly more (seed-reveal) than ELEVATED does. nativeProbe.js only ever sets
+  // this signal on iOS — see the platform note there.
+  if (signals.screenCapture) return CONDITION.SCREEN_CAPTURE;
   if (signals.elevated) return CONDITION.ELEVATED;
   return CONDITION.CLEAN;
 }
