@@ -63,11 +63,14 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     Supabase auto-injects into Edge Functions.
   - **Cloudflare Pages Transak secrets** — the two projects run DIFFERENT
     Transak environments on purpose; do NOT collapse them.
-    * **`veyrnox-prod`** (set 2026-08-23): `TRANSAK_ENVIRONMENT=PRODUCTION`,
-      `TRANSAK_API_KEY=REDACTED-TRANSAK-KEY`,
-      `TRANSAK_API_SECRET=REDACTED-TRANSAK-SECRET` (**capital I in `XeIEUW`,
-      NOT lowercase l** — a lowercase-l value returns 400 "Invalid api-secret"
-      at `POST api.transak.com/partners/api/v2/refresh-token`, verified).
+    * **`veyrnox-prod`** (set 2026-08-23): `TRANSAK_ENVIRONMENT=PRODUCTION`;
+      `TRANSAK_API_KEY` and `TRANSAK_API_SECRET` live ONLY in the Cloudflare
+      Pages secret store — never in this file, never in git, never in logs.
+      Retrieve via `wrangler pages secret list --project-name veyrnox-prod`;
+      set/rotate via `wrangler pages secret put`. The secret is
+      base64-URL-safe and case-sensitive — a single wrong-case character
+      returns `400 Invalid api-secret` at
+      `POST api.transak.com/partners/api/v2/refresh-token`.
       Endpoint targets: `api.transak.com`, `api-gateway.transak.com`,
       `global.transak.com`. Real card charges.
     * **`veyrnox-staging`** stays on Transak STAGING: `TRANSAK_API_KEY` +
