@@ -57,7 +57,7 @@ describe('WalletConnect page QR scanner entry point', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /simulate scan/i }));
 
-    const input = screen.getByPlaceholderText('wc:...');
+    const input = /** @type {HTMLInputElement} */ (screen.getByPlaceholderText('wc:...'));
     expect(input.value).toMatch(/^wc:/);
     expect(input.value).toContain('relay-protocol=irn');
     expect(screen.queryByTestId('mock-qr-scanner')).toBeNull();
