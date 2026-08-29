@@ -10,6 +10,7 @@ import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
 // helper the provider uses to CAP the fee, so the ceiling shown here and the
 // ceiling enforced at send time are one value (H-7).
 import { resolveWcWorstCaseFeeWei } from '@/wallet-core/evm/walletconnect/fee.js';
+import { describeWcTokenTransfer } from '@/wallet-core/evm/walletconnect/tokenTransfer.js';
 import { checkDappDomain } from '@/risk/knownBadDapps.js';
 import { score } from '@/risk/score.js';
 import { buildRiskInputsFromWcRequest } from '@/risk/fromWalletConnect.js';
@@ -64,6 +65,17 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
     try { return resolveWcWorstCaseFeeWei(reqParams?.[0], wcNetwork?.key); } catch { return null; }
   })();
   const worstCaseFeeText = worstCaseFeeWei == null ? null : ethers.formatEther(worstCaseFeeWei);
+
+  // Strix retest 2026-08-29 — decode ERC-20 transfer/transferFrom calldata so
+  // the modal shows the token AMOUNT and RECIPIENT the dApp actually requested.
+  // Prior to this the modal only rendered the native `value` field, so a token
+  // drainer read as "0.0 ETH" and the recipient (the address a user must verify
+  // to defeat address-poisoning) was never on screen. Returns null when the
+  // calldata is not a decodable transfer/transferFrom — falls through to the
+  // native rows in that case.
+  const tokenTransfer = (() => {
+    try { return describeWcTokenTransfer(reqParams?.[0], wcNetwork?.key); } catch { return null; }
+  })();
 
   const needsReauth = isSendReauthRequired();
 
@@ -356,6 +368,40 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
                     : '0 ' + nativeSymbol}
                 </span>
               </div>
+              {tokenTransfer && tokenTransfer.isRegistryToken && (
+                <>
+                  <div className={styles.txRow}>
+                    <span>{t('wc.request_approval.token_amount_row_label')}</span>
+                    <span className={styles.mono} data-testid="wc-token-amount">
+                      {tokenTransfer.amountText} {tokenTransfer.symbol}
+                    </span>
+                  </div>
+                  <div className={styles.txRow}>
+                    <span>{t('wc.request_approval.token_recipient_row_label')}</span>
+                    <span className={styles.mono} data-testid="wc-token-recipient">
+                      {tokenTransfer.recipient}
+                    </span>
+                  </div>
+                </>
+              )}
+              {tokenTransfer && !tokenTransfer.isRegistryToken && (
+                <>
+                  <div className={styles.txRow}>
+                    <span>{t('wc.request_approval.token_recipient_row_label')}</span>
+                    <span className={styles.mono} data-testid="wc-token-recipient">
+                      {tokenTransfer.recipient}
+                    </span>
+                  </div>
+                  <div className={styles.permitWarning} data-testid="wc-unknown-token-warning">
+                    <p className={styles.permitTitle}>
+                      {t('wc.request_approval.unknown_token_title')}
+                    </p>
+                    <p className={styles.permitBody}>
+                      {t('wc.request_approval.unknown_token_body')}
+                    </p>
+                  </div>
+                </>
+              )}
               {worstCaseFeeText != null && (
                 <div className={styles.txRow}>
                   <span>{t('wc.request_approval.max_fee_row_label')}</span>
