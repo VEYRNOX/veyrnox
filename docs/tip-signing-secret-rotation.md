@@ -58,10 +58,18 @@ Client-visible status will be `502 tip_upstream_error` (not 401) because
 `tip-screen` maps every non-2xx upstream response to 502; the underlying
 Worker rejection is 401. This 502 window is expected; do not roll back on it.
 
+If the `veyrnox-tip` repo uses `[env.staging]` in its `wrangler.toml`, add
+`--env staging` to the staging call (and `--env production` to the prod
+call if that env exists) so wrangler resolves the env-specific D1 binding.
+Without the qualifier, both calls hit the default env and staging is
+never rotated.
+
 ```bash
-npx wrangler d1 execute <prod-d1-binding> --remote \
+# PROD
+npx wrangler d1 execute <prod-d1-binding> --remote [--env production] \
   --command "UPDATE api_keys SET signing_secret='$NEW' WHERE api_key='$LIVE_KEY_PROD'"
-npx wrangler d1 execute <staging-d1-binding> --remote \
+# STAGING
+npx wrangler d1 execute <staging-d1-binding> --remote [--env staging] \
   --command "UPDATE api_keys SET signing_secret='$NEW' WHERE api_key='$LIVE_KEY_STAGING'"
 ```
 
@@ -101,24 +109,27 @@ with no such caveat.
 - Hit Security Advisor address screening from prod client — expect 200 with
   a screening verdict.
 - Verify staging via a native mobile build pointed at the staging Supabase
-  project (or `npm run dev` from an allowlisted localhost origin like
-  `http://localhost:5173`). The native/dev client naturally sends both the
-  Supabase `Authorization` bearer and an allowlisted `Origin` — both are
-  required. Do NOT verify by hitting `https://veyrnox-staging.pages.dev`
-  directly (`tip-screen` `DEFAULT_ALLOWED_ORIGINS` excludes it → `403
-  origin_not_allowed` before the HMAC path runs) and do NOT verify via a
-  bare `curl` without the Supabase `apikey`/`Authorization` header (→ `401
-  unauthorized` before the HMAC path runs). Either false-negative would
-  make a correct rotation look broken.
+  project (or `npm run dev` from an allowlisted localhost origin). The
+  Supabase `Authorization`/`apikey` header is REQUIRED (`tip-screen`
+  returns 401 if both are absent); an `Origin` header is optional
+  (`tip-screen` allows no-Origin requests — Capacitor native sends none —
+  but if an Origin IS present it must be in `DEFAULT_ALLOWED_ORIGINS`).
+  Do NOT verify by loading `https://veyrnox-staging.pages.dev` in a
+  browser: that origin is not allowlisted and requests will 403
+  (`origin_not_allowed`) before the HMAC path runs. Do NOT verify with a
+  bare `curl` that omits the Supabase auth header (→ 401 before HMAC).
+  Either would falsely fail a correct rotation.
 - Optionally also try `tip-chat`; success is a bonus signal, failure is
   inconclusive (see #1850).
 - If 502 persists past first request after BOTH Supabase secret flips
-  completed: `supabase secrets list` shows names
-  only, not values, so it cannot confirm the plaintext matches D1. Instead
-  re-run BOTH `supabase secrets set` commands from Steps above (idempotent),
-  then repeat the screening probe. If it still 401s, the wrong `LIVE_KEY`
-  row was updated — SELECT the row again and confirm against what the Edge
-  Function sends as `X-Api-Key`.
+  completed: `supabase secrets list` shows names only, not values, so it
+  cannot confirm the plaintext matches D1. Instead re-run BOTH `supabase
+  secrets set` commands from Steps above (idempotent), then repeat the
+  screening probe. If 502 STILL persists, the wrong `LIVE_KEY` row was
+  updated in D1 — SELECT the row again and confirm against what the Edge
+  Function sends as `X-Api-Key` (a bad LIVE_KEY presents as 502 to the
+  client, same as a bad signature — both come from `tip-screen`'s non-2xx
+  → 502 mapping).
 
 ## Rollback
 
