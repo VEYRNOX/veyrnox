@@ -246,8 +246,16 @@ export default function SendCrypto() {
   // decision is unchanged — the hook delegates to the same pure resolveSend2faMethod.
   // I3: the resolver suppresses device-global factors in decoy/hidden sessions
   // (per-set Action Password still applies) — see lib/send2faMethod.js.
+  // Demo is a backend-less walkthrough with NO unlocked vault (see the DEMO FALLBACK
+  // note on the wallet source below, which consumes this too). Hoisted above every
+  // send-gate exemption input — the raw DEMO flag is persisted from `?demo=1` into
+  // shared localStorage and survives, so a stale flag coexisting with a real unlocked
+  // vault must NOT strip re-auth, second-factor, screening, or simulation. Every
+  // exemption below keys off `demoActive` (no real vault), not the raw flag.
+  const demoActive = DEMO && wallets.length === 0;
+
   const send2faMethod = useSend2faMethod({
-    demo: DEMO,
+    demo: demoActive,
     isNative: Capacitor.isNativePlatform(),
     actionPasswordConfigured,
     isDecoy,
@@ -263,12 +271,6 @@ export default function SendCrypto() {
     sendTracking.start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Demo is a backend-less walkthrough with NO unlocked vault (see the DEMO FALLBACK
-  // note on the wallet source below, which consumes this too). Defined up here because
-  // the cold-load guard needs it — one definition, so the guard and the data source can
-  // never disagree about whether this is a demo session.
-  const demoActive = DEMO && wallets.length === 0;
 
   // Cold-load / deep-link guard: if the vault is confirmed absent (new install),
   // redirect home rather than hanging on an empty form.
@@ -753,7 +755,7 @@ export default function SendCrypto() {
   const solUnsignedTxApplies = isSolana && remoteScreen && step === 'verify'
     && !!toAddress && !!selectedWallet?.address && addressFormatValid
     && !!canonicalAmount && parseFloat(canonicalAmount) > 0
-    && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive();
+    && !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive();
   const solUnsignedTxQuery = useQuery({
     queryKey: ['sol-unsigned', selectedWallet?.address, toAddress, canonicalAmount, networkKey],
     queryFn: async () => {
@@ -870,7 +872,7 @@ export default function SendCrypto() {
   // NOTE the EVM-family clause — this simulation NEVER runs for BTC/SOL, which
   // is exactly why keying readiness off it alone blocked those sends forever
   // (L-4).
-  const txSimApplies = simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden
+  const txSimApplies = simEnabled && step === "verify" && !demoActive && !isDecoy && !isHidden
     && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
     && !!selectedWallet?.address && !!toAddress && addressFormatValid
     && parseFloat(canonicalAmount) > 0;
@@ -917,7 +919,7 @@ export default function SendCrypto() {
       return describeBtcPlan({ plan, fromAddress });
     },
     // I3: never issue Esplora estimate RPC in a decoy/hidden (deniability) session.
-    enabled: simEnabled && step === "verify" && !DEMO && !isDecoy && !isHidden && !isDeniabilitySessionActive() && isBtc
+    enabled: simEnabled && step === "verify" && !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && isBtc
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(canonicalAmount) > 0,
     retry: false,
     staleTime: 10000,
@@ -948,7 +950,7 @@ export default function SendCrypto() {
   // scores as OK because it cannot tell "not answered" from "answered, clean" —
   // and, on BTC/SOL where txSim never runs, never became true at all.
   const riskReady = isRiskGateReady({
-    demo: DEMO,
+    demo: demoActive,
     contributors: [
       { applies: txSimApplies, query: txSim },
       { applies: tipScreenApplies, query: tipQuery },
@@ -964,7 +966,7 @@ export default function SendCrypto() {
   // the verdict is a real computation over the entered inputs; only the chain
   // fact behind S7 is demo-seeded.
   const scoreCurrentSend = () => {
-    const recipientCode = DEMO ? '0x' : txSim.data?.recipientCode;
+    const recipientCode = demoActive ? '0x' : txSim.data?.recipientCode;
     const { unsignedTx, activeSetLocalState, chainData } = buildRiskInputs({
       to: toAddress,
       amountText: canonicalAmount,
@@ -1237,8 +1239,8 @@ export default function SendCrypto() {
         devUngated,
         currency: selectedWallet?.currency,
         isUnlocked,
-        demo: DEMO,                                    // demo has no vault → re-auth exempt
-        reauthRequired: DEMO ? false : isSendReauthRequired(),
+        demo: demoActive,                              // demo has no vault → re-auth exempt
+        reauthRequired: demoActive ? false : isSendReauthRequired(),
         // Second factor (audit H1): when a second factor is configured — Action Password
         // OR a registered passkey (H-1 fix) — it must be verified THIS send, enforced here
         // so a recently-authed session can't reach the signer on PIN recency alone.
@@ -1881,7 +1883,7 @@ export default function SendCrypto() {
               {remoteScreen && import.meta.env.VITE_TIP_BASE_URL && (
                 <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
               )}
-              {DEMO && (
+              {demoActive && (
                 <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">
                   {tw("send.screening.demo_poison_button")}
                 </button>
@@ -1907,7 +1909,7 @@ export default function SendCrypto() {
               />
             </div>
             {simEnabled && (
-              DEMO ? <TransactionSimulationDemo /> : (
+              demoActive ? <TransactionSimulationDemo /> : (
                 <>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     {tw("send.simulation.description")}
@@ -2392,7 +2394,7 @@ export default function SendCrypto() {
                   />
                 );
               }
-              const reauthRequired = !DEMO && isSendReauthRequired();
+              const reauthRequired = !demoActive && isSendReauthRequired();
               if (!reauthRequired) {
                 return (
                   <Button
@@ -2402,7 +2404,7 @@ export default function SendCrypto() {
                       // Re-check freshness at click time (isSendReauthRequired reads a ref, always
                       // current). If the window lapsed while idle on this screen, force a re-render so
                       // the block below switches to the step-up prompt instead of sending.
-                      if (!DEMO && isSendReauthRequired()) { setReauthTick((t) => t + 1); return; }
+                      if (!demoActive && isSendReauthRequired()) { setReauthTick((t) => t + 1); return; }
                       actionHaptic();
                       sendTx.mutate();
                     }}

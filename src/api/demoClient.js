@@ -33,7 +33,31 @@ export const DEMO = (() => {
         const p = new URLSearchParams(window.location.search);
         if (p.get("demo") === "0") localStorage.removeItem("veyrnox-demo");
         else if (p.has("demo")) localStorage.setItem("veyrnox-demo", "1");
-        if (localStorage.getItem("veyrnox-demo") === "1") return true;
+        if (localStorage.getItem("veyrnox-demo") === "1") {
+          // COERCION-STALE-FLAG GUARD. A persisted `veyrnox-demo=1` from a prior
+          // `?demo=1` visit must not swap this device's data layer to the seeded
+          // demo store when a real vault has been set up here — that swap makes
+          // TransactionLimit.list() return empty (spend caps disarmed) and
+          // switches send-gate exemptions on. Truth signals for "a real vault was
+          // set up on this device" are the sync localStorage markers written at
+          // wallet creation: veyrnox-auth-model (PIN/password cohort),
+          // veyrnox-wallet-meta, veyrnox-active-wallet. If any is present, clear
+          // the stale flag and refuse demo. (VITE_DEMO_MODE builds and native-dev
+          // paths are unaffected — they cannot coexist with a real vault.)
+          const REAL_VAULT_MARKERS = [
+            "veyrnox-auth-model",
+            "veyrnox-wallet-meta",
+            "veyrnox-active-wallet",
+          ];
+          const hasRealVault = REAL_VAULT_MARKERS.some((k) => {
+            try { return localStorage.getItem(k) != null; } catch { return false; }
+          });
+          if (hasRealVault) {
+            try { localStorage.removeItem("veyrnox-demo"); } catch { /* best-effort */ }
+          } else {
+            return true;
+          }
+        }
       } catch {
         // window/localStorage unavailable — fall through to the native check.
       }
