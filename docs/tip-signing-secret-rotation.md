@@ -53,8 +53,10 @@ LIVE_KEY_STAGING=<paste the live vtip_… value>
 ```
 
 Update BOTH Cloudflare Worker D1 rows — verifier side. Edge Functions
-still sign with the OLD value at this point, so requests MUST fail here
-(401). That is expected; do not roll back on this signal.
+still sign with the OLD value at this point, so requests MUST fail here.
+Client-visible status will be `502 tip_upstream_error` (not 401) because
+`tip-screen` maps every non-2xx upstream response to 502; the underlying
+Worker rejection is 401. This 502 window is expected; do not roll back on it.
 
 ```bash
 npx wrangler d1 execute <prod-d1-binding> --remote \
@@ -101,7 +103,8 @@ with no such caveat.
 - Hit Security Advisor address screening from staging client — expect 200.
 - Optionally also try `tip-chat`; success is a bonus signal, failure is
   inconclusive (see #1850).
-- If 401 persists past first request: `supabase secrets list` shows names
+- If 502 persists past first request after BOTH Supabase secret flips
+  completed: `supabase secrets list` shows names
   only, not values, so it cannot confirm the plaintext matches D1. Instead
   re-run BOTH `supabase secrets set` commands from Steps above (idempotent),
   then repeat the screening probe. If it still 401s, the wrong `LIVE_KEY`
