@@ -100,7 +100,13 @@ with no such caveat.
 
 - Hit Security Advisor address screening from prod client — expect 200 with
   a screening verdict.
-- Hit Security Advisor address screening from staging client — expect 200.
+- Verify staging via native mobile build OR via `curl` with an allowlisted
+  Origin header (e.g. `-H "Origin: http://localhost:5173"`). Do NOT use
+  `https://veyrnox-staging.pages.dev` directly — `tip-screen` does not
+  allowlist that Pages origin and will reject with `403 origin_not_allowed`
+  before the HMAC path runs (see `DEFAULT_ALLOWED_ORIGINS` in
+  `supabase/functions/tip-screen/index.ts`), making a correct rotation look
+  broken.
 - Optionally also try `tip-chat`; success is a bonus signal, failure is
   inconclusive (see #1850).
 - If 502 persists past first request after BOTH Supabase secret flips

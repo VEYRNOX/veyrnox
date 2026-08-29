@@ -1,5 +1,8 @@
 # Veyrnox AI Security Advisor ↔ TIP Security Advisor Integration
 
+<!-- Signing-secret rotation record. Update on every rotation. See docs/tip-signing-secret-rotation.md -->
+TIP_SIGNING_SECRET last rotated: NEVER (leaked commit d8125e85 2026-08-06, scrubbed 30919d6b 2026-08-11 without rotation — STRIX retest 2026-08-29 confirmed still present)
+
 ## Architecture Overview
 
 ```
