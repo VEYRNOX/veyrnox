@@ -81,7 +81,7 @@ function upstreamErr(stage, res, text) {
 const RATE_LIMIT_MAX = 10;
 const RATE_LIMIT_WINDOW_S = 60;
 
-async function getPartnerToken(env) {
+async function getPartnerToken(env, clientIp) {
   const environment = env.TRANSAK_ENVIRONMENT || 'STAGING';
   const urls = ENDPOINTS[environment];
   if (!urls) err(500, 'Invalid TRANSAK_ENVIRONMENT');
@@ -104,6 +104,7 @@ async function getPartnerToken(env) {
       'Content-Type': 'application/json',
       'api-secret': apiSecret,
       'x-api-key': apiKey,
+      'x-user-ip': clientIp || '0.0.0.0',
     },
     body: JSON.stringify({ apiKey }),
   });
@@ -206,14 +207,14 @@ export async function onRequestPost(context) {
     });
   }
 
-  let { accessToken, urls } = await getPartnerToken(env);
+  let { accessToken, urls } = await getPartnerToken(env, clientIp);
   let sessionRes = await callCreateSession(accessToken, urls);
 
   if (sessionRes.status === 401) {
     await caches.default.delete(
       new Request(`https://edge-cache.internal/transak-partner-token-${env.TRANSAK_ENVIRONMENT || 'STAGING'}`)
     );
-    ({ accessToken, urls } = await getPartnerToken(env));
+    ({ accessToken, urls } = await getPartnerToken(env, clientIp));
     sessionRes = await callCreateSession(accessToken, urls);
   }
 
