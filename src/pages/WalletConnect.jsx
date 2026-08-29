@@ -1,14 +1,16 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, ScanLine } from 'lucide-react';
 import { takePendingWcUri } from '@/lib/deepLinkPairing';
 import styles from './WalletConnect.module.css';
 import { WalletConnectProvider, useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { SessionProposalModal } from '@/components/walletconnect/SessionProposalModal.jsx';
 import { RequestApprovalModal } from '@/components/walletconnect/RequestApprovalModal.jsx';
 import { ActiveSessions } from '@/components/walletconnect/ActiveSessions.jsx';
+import QRScanner from '@/components/QRScanner';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { WALLETCONNECT_PROJECT_ID } from '@/wallet-core/evm/walletconnect/projectId.js';
+import { validateWcUri } from '@/wallet-core/evm/walletconnect/session.js';
 import { DEMO } from '@/api/demoClient';
 
 // Committed public default in projectId.js keeps this true on every build (worktree,
@@ -83,6 +85,16 @@ const POPULAR_DAPPS = [
   { name: 'Blur', url: 'https://blur.io', category: 'NFT', chains: ['ETH'] },
 ];
 
+export function parseWalletConnectQr(raw) {
+  const candidate = String(raw ?? '').trim();
+  if (!candidate) return null;
+  try {
+    return validateWcUri(candidate);
+  } catch {
+    return null;
+  }
+}
+
 function PopularDapps() {
   return (
     <section className={styles.section}>
@@ -130,6 +142,7 @@ function WalletConnectInner() {
   const [activeProposal, setActiveProposal] = useState(null);
   const [activeRequest, setActiveRequest] = useState(null);
   const [fromDeepLink, setFromDeepLink] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   // A deep link (veyrnox://wc?uri=… / https://veyrnox.com/wc?uri=…) routed here with
   // a pending pairing URI. Pre-fill it for the user to review and tap Pair — never
@@ -267,6 +280,18 @@ function WalletConnectInner() {
             Paste the URI below.
           </p>
         )}
+        <div className={styles.scanActions}>
+          <button
+            type="button"
+            className={styles.scanBtn}
+            onClick={() => setScannerOpen(true)}
+            disabled={!initialized || pairing}
+            aria-label="Scan WalletConnect QR code"
+          >
+            <ScanLine size={16} aria-hidden="true" />
+            <span>Scan QR</span>
+          </button>
+        </div>
         <div className={styles.pairRow}>
           <input
             className={styles.uriInput}
@@ -342,6 +367,21 @@ function WalletConnectInner() {
             setActiveRequest(null);
             window.history.back();
           }}
+        />
+      )}
+
+      {scannerOpen && (
+        <QRScanner
+          title="Scan WalletConnect QR"
+          helperText="Point your camera at a WalletConnect pairing QR code"
+          parse={parseWalletConnectQr}
+          onScan={(scannedUri) => {
+            setUri(scannedUri);
+            setFromDeepLink(false);
+            setPairError(null);
+            setScannerOpen(false);
+          }}
+          onClose={() => setScannerOpen(false)}
         />
       )}
     </div>
