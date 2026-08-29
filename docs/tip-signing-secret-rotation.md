@@ -40,14 +40,19 @@ The key `vtip_82524a703712279fc6affac1320575d6` was revoked at scrub time
 active row (confirm against Supabase secret `TIP_API_KEY` on each project,
 which the Edge Functions actually send):
 
+Add `--env production` / `--env staging` to EVERY `wrangler d1 execute`
+call below if the `veyrnox-tip` repo's `wrangler.toml` uses `[env.*]`
+sections (check first). Without the qualifier every call hits the default
+env — you can read/update prod twice and never touch staging.
+
 ```bash
 # PROD worker
-npx wrangler d1 execute <prod-d1-binding> --remote \
+npx wrangler d1 execute <prod-d1-binding> --remote [--env production] \
   --command "SELECT api_key, created_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC"
 LIVE_KEY_PROD=<paste the live vtip_… value>
 
-# STAGING worker (run from veyrnox-tip repo with --env staging if configured that way)
-npx wrangler d1 execute <staging-d1-binding> --remote \
+# STAGING worker
+npx wrangler d1 execute <staging-d1-binding> --remote [--env staging] \
   --command "SELECT api_key, created_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC"
 LIVE_KEY_STAGING=<paste the live vtip_… value>
 ```
@@ -138,9 +143,9 @@ write bad or wrong `LIVE_KEY`). Record the OLD value from the ops password
 store as `OLD=…`, then:
 
 ```bash
-npx wrangler d1 execute <prod-d1-binding> --remote \
+npx wrangler d1 execute <prod-d1-binding> --remote [--env production] \
   --command "UPDATE api_keys SET signing_secret='$OLD' WHERE api_key='$LIVE_KEY_PROD'"
-npx wrangler d1 execute <staging-d1-binding> --remote \
+npx wrangler d1 execute <staging-d1-binding> --remote [--env staging] \
   --command "UPDATE api_keys SET signing_secret='$OLD' WHERE api_key='$LIVE_KEY_STAGING'"
 npx supabase@latest secrets set TIP_SIGNING_SECRET=$OLD --project-ref jwstkrtslotnjyerzzsi
 npx supabase@latest secrets set TIP_SIGNING_SECRET=$OLD --project-ref nszlbcmcysftwyudthjz
