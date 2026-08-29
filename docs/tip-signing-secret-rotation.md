@@ -28,27 +28,44 @@ system flip:
 NEW=$(openssl rand -hex 32); echo "$NEW"
 ```
 
-Look up the CURRENT live production API key first. The key
-`vtip_82524a703712279fc6affac1320575d6` was revoked at scrub time
+Look up the CURRENT live API key on BOTH worker environments. Prod and
+staging are SEPARATE worker deployments (`tip.veyrnox.com` and
+`veyrnox-tip-staging.al-jobson.workers.dev`), each with its own D1 binding
+declared in the `veyrnox-tip` repo's `wrangler.toml`. Rotating one and not
+the other leaves the other side broken. Substitute the exact D1 binding names
+from that repo (e.g. `veyrnox_tip_prod`, `veyrnox_tip_staging`).
+
+The key `vtip_82524a703712279fc6affac1320575d6` was revoked at scrub time
 (2026-08-11) and is dead — a UPDATE against it rotates nothing. Find the
-active row (typically the most recent non-revoked entry; confirm against
-Supabase secret `TIP_API_KEY` on `veyrnox-prod`, which the Edge Functions
-actually send):
+active row (confirm against Supabase secret `TIP_API_KEY` on each project,
+which the Edge Functions actually send):
 
 ```bash
-npx wrangler d1 execute veyrnox-tip --remote \
+# PROD worker
+npx wrangler d1 execute <prod-d1-binding> --remote \
   --command "SELECT api_key, created_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC"
-LIVE_KEY=<paste the live vtip_… value>
+LIVE_KEY_PROD=<paste the live vtip_… value>
+
+# STAGING worker (run from veyrnox-tip repo with --env staging if configured that way)
+npx wrangler d1 execute <staging-d1-binding> --remote \
+  --command "SELECT api_key, created_at FROM api_keys WHERE revoked_at IS NULL ORDER BY created_at DESC"
+LIVE_KEY_STAGING=<paste the live vtip_… value>
 ```
 
-Update Cloudflare Worker D1 — the verifier side. The Edge Functions
-still sign with the OLD value at this point, so `/chat` MUST fail here (401).
-That is expected; do not roll back on this signal.
+Update BOTH Cloudflare Worker D1 rows — verifier side. Edge Functions
+still sign with the OLD value at this point, so requests MUST fail here
+(401). That is expected; do not roll back on this signal.
 
 ```bash
-npx wrangler d1 execute veyrnox-tip --remote \
-  --command "UPDATE api_keys SET signing_secret='$NEW' WHERE api_key='$LIVE_KEY'"
+npx wrangler d1 execute <prod-d1-binding> --remote \
+  --command "UPDATE api_keys SET signing_secret='$NEW' WHERE api_key='$LIVE_KEY_PROD'"
+npx wrangler d1 execute <staging-d1-binding> --remote \
+  --command "UPDATE api_keys SET signing_secret='$NEW' WHERE api_key='$LIVE_KEY_STAGING'"
 ```
+
+(If both environments happen to share one D1 database — confirm in the
+`veyrnox-tip` repo's `wrangler.toml` — run the UPDATE once. Verify before
+skipping the second call.)
 
 Flip Supabase Edge Function secret on production:
 
@@ -98,8 +115,10 @@ write bad or wrong `LIVE_KEY`). Record the OLD value from the ops password
 store as `OLD=…`, then:
 
 ```bash
-npx wrangler d1 execute veyrnox-tip --remote \
-  --command "UPDATE api_keys SET signing_secret='$OLD' WHERE api_key='$LIVE_KEY'"
+npx wrangler d1 execute <prod-d1-binding> --remote \
+  --command "UPDATE api_keys SET signing_secret='$OLD' WHERE api_key='$LIVE_KEY_PROD'"
+npx wrangler d1 execute <staging-d1-binding> --remote \
+  --command "UPDATE api_keys SET signing_secret='$OLD' WHERE api_key='$LIVE_KEY_STAGING'"
 npx supabase@latest secrets set TIP_SIGNING_SECRET=$OLD --project-ref jwstkrtslotnjyerzzsi
 npx supabase@latest secrets set TIP_SIGNING_SECRET=$OLD --project-ref nszlbcmcysftwyudthjz
 ```
