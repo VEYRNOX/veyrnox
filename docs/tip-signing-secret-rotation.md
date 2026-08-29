@@ -205,6 +205,20 @@ for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
 done
 ```
 
+Then force fresh isolates so warm functions stop signing with NEW —
+same reason as Phase 3.5. Without this the rollback appears healthy at
+the secret store but Advisor stays 502 until the isolates recycle.
+Run from the main app repo:
+
+```bash
+cd /path/to/veyrnox
+for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
+  for FN in tip-screen tip-chat; do
+    npx supabase@latest functions deploy $FN --project-ref $REF --use-api
+  done
+done
+```
+
 Rollback restores the potentially-compromised OLD value. Treat as
 short-term only; re-attempt rotation same day.
 
