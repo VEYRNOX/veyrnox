@@ -93,28 +93,31 @@ export function describeWcTokenTransfer(txParam, networkKey) {
   const selector = data.slice(0, 10).toLowerCase();
   const body = data.slice(10);
 
-  let kind = null;
-  let recipient = null;
-  let from = null;
-  let rawAmount = null;
-
+  /** @type {{ kind: 'transfer'|'transferFrom', recipient: string|null, from: string|null, rawAmount: bigint|null }} */
+  let decoded;
   if (selector === TRANSFER_SELECTOR) {
     // transfer(address to, uint256 amount) — 2 words = 128 hex chars.
     if (body.length < 128) return null;
-    recipient = readAddressWord(body, 0);
-    rawAmount = readUintWord(body, 1);
-    kind = 'transfer';
+    decoded = {
+      kind: 'transfer',
+      recipient: readAddressWord(body, 0),
+      from: null,
+      rawAmount: readUintWord(body, 1),
+    };
   } else if (selector === TRANSFER_FROM_SELECTOR) {
     // transferFrom(address from, address to, uint256 amount) — 3 words.
     if (body.length < 192) return null;
-    from = readAddressWord(body, 0);
-    recipient = readAddressWord(body, 1);
-    rawAmount = readUintWord(body, 2);
-    kind = 'transferFrom';
+    decoded = {
+      kind: 'transferFrom',
+      from: readAddressWord(body, 0),
+      recipient: readAddressWord(body, 1),
+      rawAmount: readUintWord(body, 2),
+    };
   } else {
     return null;
   }
 
+  const { kind, recipient, from, rawAmount } = decoded;
   if (recipient == null || rawAmount == null) return null;
 
   const contract = getAddress(to);
