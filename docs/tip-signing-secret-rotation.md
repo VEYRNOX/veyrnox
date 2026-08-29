@@ -108,15 +108,20 @@ until it evicts (~minutes) or is redeployed. If verification below fails
 with 502, force a fresh isolate by redeploying without source changes:
 
 ```bash
-npx supabase@latest functions deploy tip-screen \
-  --project-ref nszlbcmcysftwyudthjz --use-api
-npx supabase@latest functions deploy tip-screen \
-  --project-ref jwstkrtslotnjyerzzsi --use-api
-npx supabase@latest functions deploy tip-chat \
-  --project-ref jwstkrtslotnjyerzzsi --use-api
+for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
+  for FN in tip-screen tip-chat; do
+    npx supabase@latest functions deploy $FN --project-ref $REF --use-api
+  done
+done
 ```
 
-This was needed on the 2026-08-29 rotation for staging `tip-screen`.
+Both functions read `TIP_SIGNING_SECRET`; redeploy both on both projects,
+not just the one that failed the probe. Skipping the staging `tip-chat`
+redeploy will leave a warm chat isolate signing with OLD, and once
+Phase 5 removes `API_SIGNING_SECRET_PREVIOUS` those requests start 502ing
+until the isolate happens to evict. On the 2026-08-29 rotation, staging
+`tip-screen` was the one that surfaced the trap; the other three isolates
+happened to be cold, but the runbook cannot rely on that pattern.
 
 ### Phase 4: verify
 
@@ -139,9 +144,30 @@ for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
 done
 ```
 
-Expect both `200`. Verify via `tip-screen`, not `tip-chat` — `tip-chat`
-has a separate known issue for Safety Plus subscribers (#1850) that would
-falsely signal rotation failure.
+Expect both `200`. Then probe `tip-chat` on both projects too — it
+signs upstream requests with the same `TIP_SIGNING_SECRET` and shares
+the warm-isolate failure mode; skipping it means the rotation can be
+declared complete while chat still 502s:
+
+```bash
+for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
+  ANON=$(curl -sS https://api.supabase.com/v1/projects/$REF/api-keys \
+    -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+    | jq -r '.[] | select(.name=="anon") | .api_key')
+  STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
+    -X POST "https://$REF.supabase.co/functions/v1/tip-chat" \
+    -H "Authorization: Bearer $ANON" -H "apikey: $ANON" \
+    -H "Content-Type: application/json" \
+    -d '{"messages":[{"role":"user","content":"ping"}],"context":{"current_screen":"dashboard"}}')
+  echo "$REF tip-chat: $STATUS"
+done
+```
+
+Expect both `200`. A 502 here is the same signing-path failure as on
+`tip-screen`; the fact that `tip-chat` has an unrelated open bug for
+Safety Plus subscribers (#1850) is not an excuse to skip the probe — that
+bug shows up as a specific error body, not as auth/upstream 502, so a
+2xx here is still a valid rotation proof.
 
 If either returns `502`, that is `tip_upstream_error` — the Edge Function
 mapped a non-2xx from the Worker to 502. Diagnose via
