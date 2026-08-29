@@ -31,7 +31,7 @@
 //
 // Props:
 //   onEnroll: (pin: string) => Promise<{ ok: boolean, msg?: string, isInsecureTier?: boolean, isWrongPin?: boolean }>
-//   onSkip:   () => void
+//   onSkip:   ({ insecureDevice?: boolean }) => void
 //   origin?:  'fresh' | 'restored'  (default: 'restored' — matches historical copy)
 //   mode?:    'auto' | 'onboarding'  (default: 'auto' — current behavior, unchanged)
 //
@@ -127,7 +127,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
       setSkipWarned(true);
       setShowSkipWarning(true);
     }
-    onSkip?.();
+    onSkip?.({ insecureDevice });
   };
 
   const handleEnroll = async (testPin) => {

@@ -27,6 +27,13 @@ import path from 'node:path';
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const indexHtmlPath = path.resolve(__dir, '../../../index.html');
 const html = readFileSync(indexHtmlPath, 'utf8');
+// #2115: the two OTHER files that have to agree with the policy above —
+// public/_headers ships the same CSP to Cloudflare Pages, and vite.config.js
+// decides whether the build emits anything the policy forbids.
+const headersPath = path.resolve(__dir, '../../../public/_headers');
+const headers = readFileSync(headersPath, 'utf8');
+const viteConfigPath = path.resolve(__dir, '../../../vite.config.js');
+const viteConfig = readFileSync(viteConfigPath, 'utf8');
 
 // Pull every <meta http-equiv="Content-Security-Policy" content="..."> payload.
 // Tolerant of attribute order and of multi-line content (the VULN-4 meta wraps).
@@ -153,6 +160,22 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
       }
     });
 
+    // #2115. font-src must stay 'self'-only, and the build must not create the
+    // very thing it forbids. Vite inlines assets under assetsInlineLimit
+    // (default 4096 bytes) as `data:` URIs; #1504's Noto script subsets were
+    // the first fonts small enough to qualify, so 8 of them shipped as data:
+    // URIs that this directive then blocked — 8 CSP violations per page load,
+    // unnoticed for four weeks.
+    //
+    // Both halves are asserted, here, together, because each was individually
+    // correct and only their COMBINATION was wrong. font-src landed 2026-06-19
+    // when every font was a file; the subsets landed 2026-07-30. Nothing
+    // compared them.
+    it("font-src is 'self'-only — no data: (paired with vite.config.js, #2115)", () => {
+      const fontSrc = d.get('font-src') ?? d.get('default-src') ?? [];
+      expect(fontSrc, 'font-src missing').toEqual(["'self'"]);
+    });
+
     it('connect-src is an allowlist with no open wildcard (anti-exfiltration)', () => {
       const connectSrc = d.get('connect-src') ?? d.get('default-src') ?? [];
       expect(connectSrc.length, 'connect-src missing — falls back to default-src').toBeGreaterThan(0);
@@ -221,5 +244,42 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
       conflicts,
       `the duplicate CSP metas genuinely conflict — the browser-enforced intersection breaks these:\n  ${conflicts.join('\n  ')}`,
     ).toEqual([]);
+  });
+});
+
+// #2115 — the policy and the build must not drift apart.
+//
+// `font-src 'self'` only holds if nothing in the build produces a data: font.
+// Vite inlines assets under assetsInlineLimit (default 4096 bytes), and the
+// Noto script subsets from #1504 are the only fonts small enough to qualify.
+// Eight of them shipped as data: URIs and were blocked on every page load for
+// four weeks, because each half was correct on its own and nothing compared
+// them. These assertions are that comparison.
+describe('CSP font-src ↔ build config (#2115)', () => {
+  it('vite.config.js excludes fonts from asset inlining', () => {
+    // Match the config KEY (trailing colon), not the bare word — the comment
+    // above the setting mentions assetsInlineLimit too, and matching that
+    // instead is how the first cut of this test passed on prose alone.
+    const setting = viteConfig.match(/assetsInlineLimit:\s*[\s\S]{0,200}/)?.[0];
+    expect(
+      setting,
+      'vite.config.js has no assetsInlineLimit: setting — Vite will inline any font '
+      + "under 4096 bytes as a data: URI, which font-src 'self' blocks (#2115).",
+    ).toBeTruthy();
+    // Present is not enough: it must actually name the font extensions. An
+    // assetsInlineLimit that does not cover .woff2 re-opens the bug.
+    expect(setting, 'assetsInlineLimit does not exclude .woff2 — see #2115.').toContain('.woff2');
+  });
+
+  it("public/_headers declares the same font-src 'self' as index.html", () => {
+    // The two CSP sources have drifted before: _headers only gained a CSP in
+    // #1826, two months after the meta tag. Fixing one and not the other would
+    // leave the web build violating a policy the app build enforces.
+    const headerCsp = headers.match(/Content-Security-Policy:\s*([^\n]+)/i)?.[1];
+    expect(headerCsp, 'no Content-Security-Policy line in public/_headers').toBeTruthy();
+    const fontSrc = headerCsp.split(';').map(x => x.trim())
+      .find(x => x.toLowerCase().startsWith('font-src'));
+    expect(fontSrc, 'public/_headers has no font-src directive').toBeTruthy();
+    expect(fontSrc.split(/\s+/).slice(1)).toEqual(["'self'"]);
   });
 });

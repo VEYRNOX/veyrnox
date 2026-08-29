@@ -6,9 +6,15 @@ import { DEMO } from "@/api/demoClient";
 import { useWallet } from "@/lib/WalletProvider";
 import { summarizeAllowance, buildRevokeCalldata, sendRevoke } from "@/wallet-core/evm/approvals";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
-import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X } from "lucide-react";
+import { fetchRiskNoteAsync } from "@/lib/approvalRiskNotes";
+import { useApprovalMonitor } from "@/hooks/useApprovalMonitor";
+import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X, MessageSquare, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "@/lib/toast";
+import { useActionGuard } from "@/components/security/useActionGuard";
+import { useRaspArtifact, sensitiveGate } from "@/rasp";
+import { getFreshLocalRaspArtifact } from "@/lib/getFreshLocalRaspArtifact";
 
 const RISK_CFG = {
   low: { cls: "bg-success/10 text-success", label: "Low Risk" },
@@ -40,6 +46,8 @@ function decorate(a) {
 export default function TokenApprovals() {
   const qc = useQueryClient();
   const wallet = useWallet();
+  const { requireTwoFactor, gateModal } = useActionGuard();
+  const raspArtifact = useRaspArtifact({ excludeAttestation: true });
   const [filter, setFilter] = useState("active");
   const [result, setResult] = useState(null); // post-revoke summary dialog
   const [error, setError] = useState(null);
@@ -94,8 +102,54 @@ export default function TokenApprovals() {
     onError: (e) => setError(e?.message || "Revoke failed"),
   });
 
+  const spenders = useMemo(() => [...new Set(approvals.map(a => a.spender_address).filter(Boolean))], [approvals]);
+  const riskNoteQueries = useQuery({
+    queryKey: ["approval-risk-notes", ...spenders],
+    queryFn: async () => {
+      const notes = {};
+      await Promise.all(spenders.map(async (s) => {
+        notes[s.toLowerCase()] = await fetchRiskNoteAsync(s);
+      }));
+      return notes;
+    },
+    enabled: spenders.length > 0 && !DEMO,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const riskNotes = riskNoteQueries.data || {};
+
+  // Background approval monitor (started in Layout via useBackgroundSecurity).
+  // This page is where its alerts surface — the module collects them, it does
+  // not render anything on its own.
+  const {
+    alerts: monitorAlerts,
+    highCount: monitorHighCount,
+    dismiss: dismissMonitorAlert,
+    clearAll: clearMonitorAlerts,
+  } = useApprovalMonitor();
+
   const visible = approvals.filter((a) => filter === "all" || a.status === filter);
   const activeHigh = approvals.filter((a) => a.status === "active" && a.risk === "high").length;
+  const guardedRevoke = (approval) => {
+    const gate = sensitiveGate(raspArtifact, 'sign');
+    if (gate.blocked) {
+      toast.error(gate.sentence || 'Approval revocation is disabled on this device right now.');
+      return;
+    }
+    requireTwoFactor(async () => {
+      if (wallet.isSendReauthRequired?.()) {
+        setError('Re-enter your PIN or password to authorise this revoke.');
+        return;
+      }
+      const freshArtifact = await getFreshLocalRaspArtifact();
+      const freshGate = sensitiveGate(freshArtifact, 'sign');
+      if (freshGate.blocked) {
+        toast.error(freshGate.sentence || 'Approval revocation is disabled on this device right now.');
+        return;
+      }
+      revoke.mutate(approval);
+    }, { title: 'Revoke token approval' });
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -103,7 +157,7 @@ export default function TokenApprovals() {
         <div>
           <h1 className="text-xl font-bold">Token Approvals</h1>
           <p className="text-sm text-muted-foreground">
-            Review spending permissions you've granted. Revoke the risky ones.
+            Review spending permissions you&apos;ve granted. Revoke the risky ones.
           </p>
         </div>
         <span className="shrink-0 text-[10px] px-2 py-1 rounded-full bg-secondary text-muted-foreground font-semibold uppercase tracking-wide">
@@ -121,7 +175,7 @@ export default function TokenApprovals() {
 
       {activeHigh > 0 && (
         <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/5 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+          <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" aria-hidden="true" />
           <div>
             <p className="text-sm font-semibold text-destructive">
               {activeHigh} high-risk approval{activeHigh > 1 ? "s" : ""} detected
@@ -131,6 +185,62 @@ export default function TokenApprovals() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Background approval monitor. Alerts arrive asynchronously while the
+          page is open, so the list is a polite live region — a sighted user
+          sees it appear, and a screen-reader user is told. */}
+      {monitorAlerts.length > 0 && (
+        <section
+          aria-labelledby="approval-monitor-heading"
+          className="rounded-xl border border-border bg-card/50 overflow-hidden"
+        >
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
+            <h2 id="approval-monitor-heading" className="text-sm font-semibold flex items-center gap-2">
+              <BellRing className="h-4 w-4 text-caution" aria-hidden="true" />
+              Monitor alerts
+              <span className="text-[10px] font-normal text-muted-foreground">
+                ({monitorAlerts.length}
+                {monitorHighCount > 0 ? `, ${monitorHighCount} high` : ""})
+              </span>
+            </h2>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearMonitorAlerts}>
+              Dismiss all
+            </Button>
+          </div>
+          <ul role="status" aria-live="polite" className="divide-y divide-border">
+            {monitorAlerts.map((al) => {
+              const high = al.severity === "high";
+              const Icon = high ? ShieldAlert : AlertTriangle;
+              return (
+                <li key={al.id} className="flex items-start gap-2 px-4 py-3">
+                  <Icon
+                    className={`h-4 w-4 shrink-0 mt-0.5 ${high ? "text-destructive" : "text-caution"}`}
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0 flex-1">
+                    {/* Severity is stated in words, not carried by colour alone. */}
+                    <p className={`text-xs font-semibold ${high ? "text-destructive" : "text-caution"}`}>
+                      {high ? "High risk" : "Caution"} — {al.title}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 break-words">{al.detail}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => dismissMonitorAlert(al.id)}
+                    aria-label={`Dismiss alert: ${al.title}`}
+                    className="shrink-0 text-muted-foreground hover:text-foreground rounded p-1"
+                  >
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="px-4 py-2 text-[10px] text-muted-foreground border-t border-border">
+            Checked while the app is open. Absence of an alert is not a guarantee that nothing changed.
+          </p>
+        </section>
       )}
 
       {error && (
@@ -191,6 +301,35 @@ export default function TokenApprovals() {
                     <span>{net?.name || a.network}</span>
                     {a.last_used && <span>Last used: {new Date(a.last_used).toLocaleDateString()}</span>}
                   </div>
+                  {(() => {
+                    const note = riskNotes[a.spender_address?.toLowerCase()];
+                    if (!note) return null;
+                    // Severity is carried by an icon AND a leading word, never by
+                    // colour alone (WCAG 1.4.1). The note resolves asynchronously
+                    // after the list has already rendered, so the container is a
+                    // polite live region — otherwise it appears silently for
+                    // anyone not watching that row.
+                    const { cls, Icon, label } =
+                      note.severity === 'high'
+                        ? { cls: 'text-destructive', Icon: ShieldAlert, label: 'High risk' }
+                        : note.severity === 'medium'
+                          ? { cls: 'text-caution', Icon: AlertTriangle, label: 'Caution' }
+                          : note.severity === 'low'
+                            ? { cls: 'text-muted-foreground', Icon: ShieldCheck, label: 'No known threats' }
+                            : { cls: 'text-muted-foreground', Icon: MessageSquare, label: 'Not assessed' };
+                    return (
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className={`flex items-start gap-1.5 mt-2 text-[11px] ${cls}`}
+                      >
+                        <Icon className="h-3 w-3 shrink-0 mt-0.5" aria-hidden="true" />
+                        <span>
+                          <span className="font-semibold">{label}:</span> {note.note}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {a.status === "active" ? (
@@ -199,7 +338,7 @@ export default function TokenApprovals() {
                       variant="destructive"
                       className="gap-1 text-xs h-8"
                       disabled={pending}
-                      onClick={() => revoke.mutate(a)}
+                      onClick={() => guardedRevoke(a)}
                     >
                       {pending ? <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" /> : <ShieldAlert className="h-3.5 w-3.5" />}
                       Revoke
@@ -231,7 +370,7 @@ export default function TokenApprovals() {
               </p>
               {result.simulated && (
                 <p className="text-xs text-muted-foreground">
-                  Demo mode — no broadcast. Here's what a native build would sign and send:
+                  Demo mode — no broadcast. Here&apos;s what a native build would sign and send:
                 </p>
               )}
               <div className="rounded-lg border border-border bg-secondary/40 p-3">
@@ -253,6 +392,7 @@ export default function TokenApprovals() {
           )}
         </DialogContent>
       </Dialog>
+      {gateModal}
     </div>
   );
 }

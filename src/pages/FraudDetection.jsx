@@ -326,7 +326,7 @@ export default function FraudDetection() {
 
       {/* Summary counts (post-scan) */}
       {hasScanned && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
             {
               label: "Critical",
@@ -352,10 +352,10 @@ export default function FraudDetection() {
           ].map((s) => (
             <div
               key={s.label}
-              className="p-4 rounded-xl border border-border bg-card text-center"
+              className="p-4 rounded-xl border border-border bg-card text-center min-w-0"
             >
-              <p className={`font-bold text-2xl ${s.color}`}>{s.count}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+              <p className={`font-bold text-2xl break-words ${s.color}`}>{s.count}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 break-words">{s.label}</p>
             </div>
           ))}
         </div>

@@ -110,6 +110,20 @@ describe('threatIntelStore — I3 deniability gate', () => {
     });
     expect(row).toBeNull();
   });
+
+  it('surfaces a learned threat through lookupThreatSync after learning it', async () => {
+    const ADDR = '0x9999999999999999999999999999999999999998';
+    await learnThreat({
+      address: ADDR,
+      category: 'scam',
+      source: 'Veyrnox TIP',
+      note: 'persist + local reuse',
+      severity: 'high',
+    });
+
+    const hits = lookupThreatSync(ADDR);
+    expect(hits.some((h) => h.note === 'persist + local reuse')).toBe(true);
+  });
 });
 
 describe('cacheTipResult — sanctions are runtime-only, never persisted', () => {

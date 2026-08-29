@@ -47,7 +47,7 @@ describe('Finding 3 — decoy and real sessions render identically', () => {
     ).toEqual([]);
   });
 
-  it('isDecoy/isHidden are consumed only by the mutation gate (canManage)', () => {
+  it('isDecoy/isHidden are consumed only by the mutation/query gates (canManage, entityQueryEnabled)', () => {
     // An expression-USE of the flags (a `!`, `?`, `&&` or `||` alongside the
     // flag) must be the canManage definition and nothing else. The bare
     // destructure declaration (`...isDecoy, isHidden,`) carries no operator and
@@ -56,8 +56,8 @@ describe('Finding 3 — decoy and real sessions render identically', () => {
       .split('\n')
       .filter((l) => /\b(isDecoy|isHidden)\b/.test(l) && /[!?]|&&|\|\|/.test(l));
     expect(uses.length, 'sentinel: the canManage mutation gate should exist').toBeGreaterThan(0);
-    const nonGate = uses.filter((l) => !/canManage/.test(l));
-    expect(nonGate, 'isDecoy/isHidden used in an expression outside the canManage mutation gate').toEqual([]);
+    const nonGate = uses.filter((l) => !/(canManage|entityQueryEnabled)/.test(l));
+    expect(nonGate, 'isDecoy/isHidden used in an expression outside the approved gates').toEqual([]);
   });
 });
 

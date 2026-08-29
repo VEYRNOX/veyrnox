@@ -4,6 +4,7 @@
 // Tests pin structure/codes, NOT prose copy. Written BEFORE the implementation.
 
 import { describe, it, expect } from 'vitest';
+import { TIER } from '@/rasp';
 import {
   computePostureScore,
   getPostureColor,
@@ -21,7 +22,7 @@ function bareState(overrides = {}) {
     pinCreated: false,
     pinLength: null,
     biometricEnabled: false,
-    raspTier: 'BLOCK',
+    raspTier: TIER.BLOCK,
     kekActive: false,
     hardwareTier: null,
     recoveryPassphraseSet: false,
@@ -42,20 +43,20 @@ function typicalState(overrides = {}) {
     pinCreated: true,
     pinLength: 8,
     biometricEnabled: true,
-    raspTier: 'ALLOW',
+    raspTier: TIER.ALLOW,
     kekActive: true,
     hardwareTier: 'TEE',
     ...overrides,
   });
 }
 
-/** Full-score state: every check passes, StrongBox tier. */
+/** Full-score state: every live check passes, StrongBox tier. */
 function fullState(overrides = {}) {
   return bareState({
     pinCreated: true,
     pinLength: 14,
     biometricEnabled: true,
-    raspTier: 'ALLOW',
+    raspTier: TIER.ALLOW,
     kekActive: true,
     hardwareTier: 'STRONGBOX',
     recoveryPassphraseSet: true,
@@ -71,15 +72,15 @@ function fullState(overrides = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Post-onboard typical: PIN(10) + bio(5) + RASP(25) + KEK(5) + TEE(3) = 48
+// 1. Post-onboard typical: PIN(10) + PIN meets min(5) + bio(5) + RASP(25) + KEK(5) + TEE(3) = 53
 // ---------------------------------------------------------------------------
 describe('computePostureScore', () => {
   it('scores a typical post-onboard state correctly', () => {
     const state = typicalState();
     const result = computePostureScore(state);
 
-    // Authentication: PIN created(10) + PIN<12(0) + biometric(5) = 15
-    expect(result.dimensions.authentication.score).toBe(15);
+    // Authentication: PIN created(10) + PIN>=8(5) + biometric(5) = 20
+    expect(result.dimensions.authentication.score).toBe(20);
     expect(result.dimensions.authentication.max).toBe(20);
 
     // Device integrity: ALLOW = 25
@@ -88,7 +89,7 @@ describe('computePostureScore', () => {
 
     // Hardware: KEK(5) + TEE(3) = 8
     expect(result.dimensions.hardwareBinding.score).toBe(8);
-    expect(result.dimensions.hardwareBinding.max).toBe(15);
+    expect(result.dimensions.hardwareBinding.max).toBe(10);
 
     // Recovery: all off = 0
     expect(result.dimensions.recovery.score).toBe(0);
@@ -98,21 +99,19 @@ describe('computePostureScore', () => {
     expect(result.dimensions.sessionSecurity.score).toBe(0);
     expect(result.dimensions.sessionSecurity.max).toBe(10);
 
-    // Total: 15 + 25 + 8 + 0 + 0 = 48
-    expect(result.total).toBe(48);
-    expect(result.percentage).toBe(48);
-    expect(result.color).toBe('#E8A838');  // Amber
-    expect(result.label).toBe('Weak');
+    // Total: 20 + 25 + 8 + 0 + 0 = 53
+    expect(result.total).toBe(53);
+    expect(result.percentage).toBe(53);
+    expect(result.color).toBe('#D4C44A');  // Yellow
+    expect(result.label).toBe('Fair');
   });
 
   // -------------------------------------------------------------------------
-  // 2. Full score: all checks pass with StrongBox = 100
+  // 2. Full score: all live checks pass with StrongBox = 95
   // -------------------------------------------------------------------------
-  it('scores a full-security state as 95/100 Complete Green (hardware ceiling is 10/15 today)', () => {
+  it('scores a full-security state as 95/95 Complete Green', () => {
     const result = computePostureScore(fullState());
 
-    // Hardware items sum to 10 (KEK 5 + StrongBox 5) against a 15-pt max.
-    // The 5-pt gap is reserved for future items. Achievable ceiling: 95.
     expect(result.total).toBe(95);
     expect(result.percentage).toBe(95);
     expect(result.color).toBe('#4ADAC2');  // 86+ = Green
@@ -127,13 +126,13 @@ describe('computePostureScore', () => {
   });
 
   // -------------------------------------------------------------------------
-  // 3. TEE caps hardware at 8/15 (not 10/15)
+  // 3. TEE caps hardware at 8/10 (not 10/10)
   // -------------------------------------------------------------------------
-  it('TEE gives 3 pts (not 5), capping hardware at 8/15', () => {
+  it('TEE gives 3 pts (not 5), capping hardware at 8/10', () => {
     const result = computePostureScore(fullState({ hardwareTier: 'TEE' }));
 
     expect(result.dimensions.hardwareBinding.score).toBe(8);
-    // Total drops by 2 from achievable ceiling 95 (StrongBox 5 -> TEE 3)
+    // Total drops by 2 from the full 95 (StrongBox 5 -> TEE 3).
     expect(result.total).toBe(93);
   });
 
@@ -150,7 +149,7 @@ describe('computePostureScore', () => {
   // 4. RASP BLOCK = 0/25 device integrity
   // -------------------------------------------------------------------------
   it('RASP BLOCK scores 0/25 on device integrity', () => {
-    const result = computePostureScore(typicalState({ raspTier: 'BLOCK' }));
+    const result = computePostureScore(typicalState({ raspTier: TIER.BLOCK }));
     expect(result.dimensions.deviceIntegrity.score).toBe(0);
   });
 
@@ -158,7 +157,7 @@ describe('computePostureScore', () => {
   // 5. RASP WARN = 10/25 device integrity
   // -------------------------------------------------------------------------
   it('RASP WARN scores 10/25 on device integrity', () => {
-    const result = computePostureScore(typicalState({ raspTier: 'WARN' }));
+    const result = computePostureScore(typicalState({ raspTier: TIER.WARN }));
     expect(result.dimensions.deviceIntegrity.score).toBe(10);
   });
 
@@ -234,15 +233,15 @@ describe('computePostureScore', () => {
   // -------------------------------------------------------------------------
   // 10. Handles null pinLength gracefully
   // -------------------------------------------------------------------------
-  it('null pinLength gives 0 pts for the length check, not an error', () => {
+  it('null pinLength gives 0 pts for the minimum-length check, not an error', () => {
     const result = computePostureScore(typicalState({ pinLength: null }));
     // PIN created(10) + PIN length null(0) + biometric(5) = 15
     expect(result.dimensions.authentication.score).toBe(15);
   });
 
-  it('pinLength >= 12 gives full 5 pts', () => {
-    const result = computePostureScore(typicalState({ pinLength: 12 }));
-    // PIN created(10) + PIN>=12(5) + biometric(5) = 20
+  it('pinLength >= 8 gives full 5 pts', () => {
+    const result = computePostureScore(typicalState({ pinLength: 8 }));
+    // PIN created(10) + PIN>=8(5) + biometric(5) = 20
     expect(result.dimensions.authentication.score).toBe(20);
   });
 
@@ -251,7 +250,7 @@ describe('computePostureScore', () => {
   // -------------------------------------------------------------------------
   it('lowestDimension returns the key as a string matching a dimensions key', () => {
     const result = computePostureScore(fullState());
-    // All at 100% -- any dimension is valid when all tied at max
+    // All at max -- any dimension is valid when all tied at max
     const validKeys = ['authentication', 'deviceIntegrity', 'hardwareBinding', 'recovery', 'sessionSecurity'];
     expect(validKeys).toContain(result.lowestDimension);
   });

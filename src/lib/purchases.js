@@ -10,6 +10,7 @@ import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 
 export const SAFETY_PLUS_ENTITLEMENT = 'safety_plus';
+export const AI_SECURITY_PROTECTION_ENTITLEMENT = 'ai_security_protection';
 
 // RevenueCat standard package identifiers for the Safety Plus offering. Both
 // packages grant the SAME entitlement (`safety_plus`) — annual is a pricing
@@ -18,6 +19,10 @@ export const SAFETY_PLUS_ENTITLEMENT = 'safety_plus';
 // present — never crash, never surface a broken purchase button (I4).
 export const SAFETY_PLUS_MONTHLY_PACKAGE = '$rc_monthly';
 export const SAFETY_PLUS_ANNUAL_PACKAGE = '$rc_annual';
+
+export function getAiSecurityProtectionOfferingId() {
+  return import.meta.env.VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID || null;
+}
 
 // Offering used for the cancel-intent retention offer (components/subscription/
 // CancelOfferDialog.jsx). Resolved via getTierOffering() and absent by default:
@@ -154,9 +159,11 @@ function isNative() {
 }
 
 function apiKeyForPlatform() {
-  return Capacitor.getPlatform() === 'ios'
-    ? import.meta.env.VITE_REVENUECAT_APPLE_API_KEY
-    : import.meta.env.VITE_REVENUECAT_GOOGLE_API_KEY;
+  if (Capacitor.getPlatform() === 'ios')
+    return import.meta.env.VITE_REVENUECAT_APPLE_API_KEY;
+  if (import.meta.env.VITE_STORE_FLAVOR === 'samsung')
+    return import.meta.env.VITE_REVENUECAT_SAMSUNG_API_KEY;
+  return import.meta.env.VITE_REVENUECAT_GOOGLE_API_KEY;
 }
 
 export async function configurePurchases() {
@@ -197,6 +204,17 @@ export async function getTierOffering(offeringId) {
   try {
     const { all } = await Purchases.getOfferings();
     return all?.[offeringId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getRcUserId() {
+  if (!isNative()) return null;
+  if (isDeniabilityOrDemoActive()) return null;
+  try {
+    const { appUserID } = await Purchases.getAppUserID();
+    return typeof appUserID === 'string' && appUserID.trim() ? appUserID : null;
   } catch {
     return null;
   }
@@ -295,24 +313,21 @@ export async function addCustomerInfoUpdateListener(callback) {
   return () => Purchases.removeCustomerInfoUpdateListener({ listenerToRemove: listenerId });
 }
 
-// Tag the RC customer with a referral code so attribution is visible in the
-// RevenueCat dashboard alongside revenue data. Best-effort — a failure here
-// must never block the purchase flow or surface an error to the user.
-// Owner override 2026-07-18: setAttributes was previously on the "do not add"
-// list (identity leak concern); unlocked for referral-code-only attribution.
-// The referral code identifies the REFERRER, not the purchaser — no wallet
-// address, seed, or balance is ever sent. I3-gated at the call site
-// (Subscription.jsx only calls this after a successful real-session purchase).
-export async function setReferralAttributes(code, tierKey, isFoundingReferrer) {
-  if (!isNative() || !configured || !code) return;
-  const attrs = { referralCode: code };
-  if (tierKey) attrs.referralTier = tierKey;
-  if (isFoundingReferrer != null) attrs.isFoundingReferrer = String(isFoundingReferrer);
+// Bind THIS user's own referral code to their RC subscriber profile so the
+// rc-webhook can map their app_user_id back to their referrals row. Called at
+// app start (TierProvider) and is the ONLY writer of veyrnox_referral_code.
+// Best-effort — a failure must never block the purchase flow or app startup.
+// I3-safe: getLocalState() reads shared localStorage, but the attribute value
+// is a non-identifying VYX-XXXXXX code, not a wallet address or seed.
+export async function bindOwnReferralCode() {
+  if (!isNative() || !configured) return;
+  const { getLocalState } = await import('@/lib/referral');
+  const code = getLocalState().code;
+  if (!code) return;
   try {
-    await Purchases.setAttributes(attrs);
+    await Purchases.setAttributes({ veyrnox_referral_code: code });
   } catch { /* best-effort */ }
 }
-export const setReferralAttribute = setReferralAttributes;
 
 // Deep-link to the platform's own subscription management page (Apple: App Store
 // Subscriptions; Google: Play Store Subscriptions). The Capacitor RC plugin does
@@ -323,7 +338,9 @@ export async function manageSubscription() {
   if (!isNative()) throw new Error('PURCHASES_NATIVE_ONLY');
   const url = Capacitor.getPlatform() === 'ios'
     ? 'itms-apps://apps.apple.com/account/subscriptions'
-    : 'https://play.google.com/store/account/subscriptions';
+    : import.meta.env.VITE_STORE_FLAVOR === 'samsung'
+      ? 'https://galaxystore.samsung.com/mypage/subscriptions'
+      : 'https://play.google.com/store/account/subscriptions';
   // @capacitor/app@8.x's public TS surface does not include `openUrl`
   // (it exposes lifecycle events + getLaunchUrl only). The method exists on
   // the underlying native plugin bridge; PR #1085's own runbook flags the

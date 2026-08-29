@@ -18,6 +18,28 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('react-i18next', async () => {
+  const wallet = /** @type {any} */ (await import('@/i18n/locales/en/wallet.json'));
+  const common = /** @type {any} */ (await import('@/i18n/locales/en/common.json'));
+  const bundles = { wallet: wallet.default, common: common.default };
+  const resolve = (key, opts = {}) => {
+    const ns = opts.ns || 'common';
+    let v = bundles[ns];
+    for (const p of String(key).split('.')) v = v?.[p];
+    if (typeof v !== 'string') return opts.defaultValue || key;
+    return v.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in opts ? String(opts[k]) : `{{${k}}}`));
+  };
+  return {
+    useTranslation: (ns) => ({
+      t: (k, o) => resolve(k, { ns, ...(o || {}) }),
+      i18n: { language: 'en', resolvedLanguage: 'en' },
+    }),
+    Trans: ({ children }) => children,
+    initReactI18next: { type: '3rdParty', init: () => {} },
+    I18nextProvider: ({ children }) => children,
+  };
+});
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
@@ -29,6 +51,10 @@ vi.mock('@/wallet-core/deniabilitySession.js', () => ({
 }));
 vi.mock('@/api/demoClient', () => ({ DEMO: false }));
 vi.mock('@/api/tipScreen.js', () => ({ screenTransaction: vi.fn() }));
+const useTierMock = vi.fn(() => ({ currentTier: 'ai_security_protection' }));
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => useTierMock(),
+}));
 
 /** A fetch that resolves with a stream we never close, so the turn stays open. */
 function openEndedStream(signal) {
@@ -63,6 +89,7 @@ async function mountAdvisor() {
   vi.stubEnv('VITE_SUPABASE_URL', 'https://sb.test');
   vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
   vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+  useTierMock.mockReturnValue({ currentTier: 'ai_security_protection' });
 
   const SecurityAdvisor = (await import('@/components/SecurityAdvisor.jsx')).default;
   const utils = render(
@@ -75,13 +102,14 @@ async function mountAdvisor() {
       <SecurityAdvisor walletChain="ethereum" />
     </MemoryRouter>,
   );
-  fireEvent.click(screen.getByLabelText(/open security advisor/i));
+  fireEvent.click(screen.getByLabelText(/open vigil/i));
 }
 
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem(ADVISOR_KEY, 'granted'); // consent already given
   isDeniabilityOrDemoActive.mockReturnValue(false);
+  useTierMock.mockReturnValue({ currentTier: 'ai_security_protection' });
 });
 
 afterEach(() => {
@@ -102,7 +130,7 @@ describe('I3 — an in-flight Advisor stream is aborted when deniability activat
 
     await mountAdvisor();
 
-    const box = await screen.findByPlaceholderText(/ask about security/i);
+    const box = await screen.findByPlaceholderText(/ask vigil/i);
     fireEvent.change(box, { target: { value: 'is this address safe?' } });
     fireEvent.submit(box.closest('form'));
 
@@ -116,7 +144,7 @@ describe('I3 — an in-flight Advisor stream is aborted when deniability activat
 
     // The component is gone from the DOM...
     await waitFor(() =>
-      expect(screen.queryByLabelText(/open security advisor/i)).toBeNull(),
+      expect(screen.queryByLabelText(/open vigil/i)).toBeNull(),
     );
 
     // ...and the connection must be gone with it. Unmounting alone does not
@@ -133,7 +161,7 @@ describe('I3 — an in-flight Advisor stream is aborted when deniability activat
 
     await mountAdvisor();
 
-    const box = await screen.findByPlaceholderText(/ask about security/i);
+    const box = await screen.findByPlaceholderText(/ask vigil/i);
     fireEvent.change(box, { target: { value: 'hello' } });
     fireEvent.submit(box.closest('form'));
 
@@ -160,7 +188,7 @@ describe('I3 — an in-flight Advisor stream is aborted when deniability activat
       </MemoryRouter>,
     );
 
-    expect(screen.queryByLabelText(/open security advisor/i)).toBeNull();
+    expect(screen.queryByLabelText(/open vigil/i)).toBeNull();
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });

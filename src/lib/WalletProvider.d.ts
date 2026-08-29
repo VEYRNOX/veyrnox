@@ -91,6 +91,7 @@ export interface WalletContextValue {
   disableBiometricUnlock: any;
   enableDecoyBiometricUnlock: any;
   unlockWithBiometric: any;
+  unlockBiometricOnly: any;
   passkeyPreview: any;
   autoLockValue: any;
   setAutoLockTimeout: any;

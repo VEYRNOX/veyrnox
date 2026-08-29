@@ -1,0 +1,141 @@
+name: Canary Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag, or SHA to deploy to the canary lane"
+        required: false
+        default: "main"
+  push:
+    branches: [main]
+
+concurrency:
+  group: canary-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+  VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
+
+jobs:
+  deploy-canary:
+    runs-on: ubuntu-latest
+    outputs:
+      deployment_url: ${{ steps.deploy.outputs.deployment-url }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm install -g npm@11
+      - run: npm ci
+
+      - name: Build canary artifact
+        env:
+          VITE_BUY_ENABLED: 'true'
+          VITE_SUPABASE_URL: ''
+          VITE_SUPABASE_ANON_KEY: ''
+        run: npx vite build --mode canary
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@4.121.0
+
+      - name: Deploy canary to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: ''
+          command: pages deploy dist --project-name=veyrnox-prod --branch=canary
+
+      - name: Check edge endpoints
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: node scripts/check-edge-endpoints.mjs "$DEPLOY_URL"
+
+  canary-smoke:
+    needs: deploy-canary
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: ${{ needs.deploy-canary.outputs.deployment_url != '' }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm install -g npm@11
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for canary to be reachable
+        env:
+          URL: ${{ needs.deploy-canary.outputs.deployment_url }}
+        run: |
+          echo "Waiting for $URL to respond..."
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null "$URL"; then
+              echo "Canary is up"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Canary at $URL did not become reachable within 5 minutes"
+          exit 1
+
+      - name: Smoke-test the deployed canary
+        run: npx playwright test e2e/canary-smoke.spec.js --project=chromium
+        env:
+          BASE_URL: ${{ needs.deploy-canary.outputs.deployment_url }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: canary-e2e-report
+          path: playwright-report/
+          retention-days: 14
+
+  canary-gate:
+    needs: [deploy-canary, canary-smoke]
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - name: Evaluate canary result
+        run: |
+          DEPLOY_RESULT="${{ needs.deploy-canary.result }}"
+          SMOKE_RESULT="${{ needs.canary-smoke.result }}"
+
+          echo "deploy-canary: $DEPLOY_RESULT"
+          echo "canary-smoke: $SMOKE_RESULT"
+
+          if [ "$DEPLOY_RESULT" != "success" ]; then
+            echo "::error::Canary deploy failed ($DEPLOY_RESULT)"
+            exit 1
+          fi
+
+          if [ "$SMOKE_RESULT" != "success" ]; then
+            echo "::error::Canary smoke failed ($SMOKE_RESULT)"
+            exit 1
+          fi
+
+          echo "Canary deployed and smoke checks passed"

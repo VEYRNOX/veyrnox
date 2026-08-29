@@ -19,6 +19,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
   isNative: false,
+  // M-5 (2026-08-25): screenCapture is graded per platform, so the platform is now
+  // part of the probe's input. 'android' is the default here so every pre-existing
+  // case keeps its original meaning; the iOS grading lives in
+  // m5-ios-screen-capture-seed-reveal.test.js.
+  platform: 'android',
   // checkIntegrity impl the mocked native plugin uses; per-test override.
   checkIntegrity: null,
   // whether the plugin module resolves at all (false → import throws "absent")
@@ -26,7 +31,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('@capacitor/core', () => ({
-  Capacitor: { isNativePlatform: () => h.isNative },
+  Capacitor: { isNativePlatform: () => h.isNative, getPlatform: () => h.platform },
 }));
 
 vi.mock('@/rasp/raspIntegrityPlugin', () => ({
@@ -64,6 +69,7 @@ const withCore = (partial = {}) => ({ ...CORE, ...partial });
 
 beforeEach(() => {
   h.isNative = false;
+  h.platform = 'android';
   h.checkIntegrity = null;
   h.pluginPresent = true;
 });
@@ -96,14 +102,17 @@ describe('nativeProbeSource — native', () => {
     }));
     const src = await nativeProbeSource();
     expect(src.available).toBe(true);
-    // 2026-07-16 fix: `elevated` (the 8 soft signals) is now a distinct fifth
-    // signal alongside the original four core axes.
+    // 2026-07-16 fix: `elevated` (the soft signals) is a distinct fifth signal
+    // alongside the original four core axes.
+    // M-5 (2026-08-25): `screenCapture` is a distinct SIXTH signal — set only on
+    // iOS (h.platform below), false everywhere else.
     expect(src.signals).toEqual({
       rooted: false,
       hooked: false,
       emulator: false,
       tampered: false,
       elevated: false,
+      screenCapture: false,
     });
   });
 
@@ -155,8 +164,10 @@ describe('nativeProbeSource — native', () => {
     expect(src.signals.elevated).toBe(true);
   });
 
-  it('each of the 7 soft signals + screenCapture independently maps to elevated:true, rooted:false', async () => {
+  it('each of the 7 soft signals + screenCapture (Android) independently maps to elevated:true, rooted:false', async () => {
     // #1104: overlayActive removed. #1108: screenCapture added.
+    // M-5 (2026-08-25): screenCapture belongs to this union on ANDROID only —
+    // h.platform is 'android' here. On iOS it drives CONDITION.SCREEN_CAPTURE.
     const softFields = [
       'developerMode', 'virtualApp', 'suspiciousPackage',
       'thirdPartyKeyboard', 'mockLocation', 'networkProxy', 'accessibilityService',
@@ -776,13 +787,19 @@ describe('nativeProbeSource — item 19: overlayActive dropped (#1104 fix)', () 
   });
 });
 
-// ── Item 16 — screenCapture re-bucketed to elevated (#1108) ──────────────────
-// iOS checkScreenCapture (UIScreen.isCaptured) returns screenCapture:true when
-// the screen is being mirrored via AirPlay or captured via iOS screen recording.
+// ── Item 16 — screenCapture re-bucketed to elevated (#1108) — ANDROID ────────
+// checkScreenCapture returns screenCapture:true when the screen is being mirrored
+// (Miracast/WFD on Android, AirPlay/ReplayKit on iOS).
 // #1108: Previously bucketed as HOOKED → TIER.BLOCK, which was over-severity.
 // Screen recording is a surveillance vector but NOT the same as Frida-attach.
-// Now maps to signals.elevated (WARN, acknowledgeable).
-describe('nativeProbeSource — item 16: screenCapture → elevated (#1108 fix)', () => {
+// Maps to signals.elevated (WARN, acknowledgeable).
+//
+// M-5 (2026-08-25): this block now describes the ANDROID grading ONLY (h.platform
+// defaults to 'android'), because that downgrade rests on MainActivity's
+// unconditional FLAG_SECURE, which iOS has no equivalent of. The iOS grading —
+// its own signal, CONDITION.SCREEN_CAPTURE, seed-reveal blocked — is pinned in
+// m5-ios-screen-capture-seed-reveal.test.js. Do not re-merge the two.
+describe('nativeProbeSource — item 16: screenCapture → elevated on Android (#1108 fix)', () => {
   it('screenCapture:true maps to signals.elevated true, NOT signals.hooked', async () => {
     h.isNative = true;
     h.checkIntegrity = vi.fn(async () => withCore({

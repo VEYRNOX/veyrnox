@@ -48,6 +48,16 @@ vi.mock('hash-wasm', async (importOriginal) => {
   };
 });
 
+// Mock the credential verifier to a no-op so this suite isolates the unlock-path
+// timing/profile equalizer itself. The verifier contract has dedicated tests; this
+// file is strictly about success/duress/miss parity through WalletProvider.unlock().
+vi.mock('@/wallet-core/credentialVerifier', () => ({
+  captureVerifierSafe: vi.fn(async () => null),
+  verifyCredential: vi.fn(async () => false),
+  verifyCredentialDetailed: vi.fn(async () => ({ ok: false, reason: 'mocked' })),
+  createCredentialVerifier: vi.fn(async () => null),
+}));
+
 const PRIMARY_PW = 'correct-horse-battery-staple-pin';
 const PRIMARY_MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -95,7 +105,7 @@ vi.mock('@/wallet-core/keystore', () => {
 });
 
 import { KDF_PARAMS } from '@/wallet-core/vault.js';
-import { clearDuressVault } from '@/wallet-core/duress';
+import { clearDuressVault, _awaitPendingKdfRekey as awaitDuressRekey } from '@/wallet-core/duress';
 import { clearPanicVault } from '@/wallet-core/panic';
 import { wipeStealthPool, ensureStealthPool } from '@/wallet-core/stealth';
 import { makeContainer, serializeContainer, newWalletId } from '@/wallet-core/multiVault';
@@ -197,12 +207,26 @@ describe('[P1] H-1 — unlock() spends an identical KDF PARAM-PROFILE on success
 
     await renderProvider();
 
+    // Gate 2 (H-2, 2026-08-25): a successful duress unlock now silently
+    // rekeys the decoy blob to the current profile before returning. So the
+    // three-observation sequence must RE-SEED the legacy state before each
+    // measurement — otherwise the duress-hit run mutates the state under the
+    // next miss run and this test's "same v1 baseline" premise no longer
+    // holds. Reseeding is purely a testing-convenience concern; the H-1
+    // invariant it pins (success/miss are indistinguishable on the SAME
+    // state) is unchanged.
     const successProfile = await unlockMemoryProfile(PRIMARY_PW);
     expect(ctx.isDecoy).toBe(false);
 
+    await setLegacyDuressVault(DECOY_MNEMONIC, DURESS_PW);
     const duressProfile = await unlockMemoryProfile(DURESS_PW);
     expect(ctx.isDecoy).toBe(true);
+    // Drain the deferred (setTimeout 0) rekey the duress-hit path scheduled,
+    // BEFORE reseeding — otherwise the rekey races setLegacyDuressVault and can
+    // overwrite the fresh v1 blob with a v2 one, leaving miss to observe v2.
+    await awaitDuressRekey();
 
+    await setLegacyDuressVault(DECOY_MNEMONIC, DURESS_PW);
     const missProfile = await unlockMemoryProfile('totally-wrong-guess-0000', { expectThrow: true });
 
     // What this test pins (GREEN, resolver-reuse fix): the sorted memorySize profile is

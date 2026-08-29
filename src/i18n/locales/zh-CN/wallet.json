@@ -241,10 +241,22 @@
       "intro": "在你的 PIN 之上为敏感操作增加一次额外检查。即使有人看到你输入 PIN，没有第二步他们也无法完成这些操作。",
       "actions_protects_label": "受保护的操作",
       "gated_actions": [
-        { "label": "发送资金", "desc": "每次发送，通过安全检查后" },
-        { "label": "显示助记词", "desc": "查看或导出你的备份" },
-        { "label": "设置紧急 PIN", "desc": "创建紧急钱包" },
-        { "label": "创建或隐藏钱包", "desc": "隐藏钱包的更改" }
+        {
+          "label": "发送资金",
+          "desc": "每次发送，通过安全检查后"
+        },
+        {
+          "label": "显示助记词",
+          "desc": "查看或导出你的备份"
+        },
+        {
+          "label": "设置紧急 PIN",
+          "desc": "创建紧急钱包"
+        },
+        {
+          "label": "创建或隐藏钱包",
+          "desc": "隐藏钱包的更改"
+        }
       ],
       "currently_enforcing": "当前启用：",
       "badge_biometric": "PIN + {{label}}",
@@ -334,7 +346,8 @@
     "recent_heading": "最近",
     "tab_home": "首页",
     "tab_send": "发送",
-    "tab_receive": "接收"
+    "tab_receive": "接收",
+    "tab_buy": "Buy"
   },
   "back": {
     "default_label": "返回"
@@ -343,8 +356,14 @@
     "heading": "发送加密货币",
     "subheading": "安全地转移资金",
     "wallet_fallback": "钱包",
-    "wallet_picker": { "label": "来源钱包", "placeholder": "选择钱包" },
-    "asset_picker": { "label": "资产", "placeholder": "选择资产" },
+    "wallet_picker": {
+      "label": "来源钱包",
+      "placeholder": "选择钱包"
+    },
+    "asset_picker": {
+      "label": "资产",
+      "placeholder": "选择资产"
+    },
     "recipient": {
       "label": "发送至（地址或名称）",
       "placeholder": "粘贴地址或输入名称（例如 vitalik.eth）",
@@ -404,18 +423,18 @@
       "dev_ungate_body": "— 已通过 VITE_DEV_UNGATE_SEND 为 {{currency}} 绕过发送门（仅限开发构建）。该资产状态未变更（仍未上线）；主网仍处于禁用状态。仅用于测试网验证 — 切勿发布此构建。",
       "locked": "你的钱包已锁定。请在钱包设置中解锁以签名并发送。"
     },
-    "note": { "label": "备注（可选）", "placeholder": "这是做什么用的？" },
-    "trezor": {
-      "toggle_label": "使用 Trezor 签名",
-      "connected": "设备已连接",
-      "connect_button": "连接设备"
+    "note": {
+      "label": "备注（可选）",
+      "placeholder": "这是做什么用的？"
     },
     "buttons": {
       "continue": "继续",
       "confirm_send": "确认并发送",
       "back": "返回"
     },
-    "verify": { "summary_label": "你正在发送" },
+    "verify": {
+      "summary_label": "你正在发送"
+    },
     "fee": {
       "automatic": "{{currency}}（{{network}}）的网络费将自动设置。",
       "native_fee_note": "网络费以 {{symbol}}（{{network}}）支付 — 即使发送的是 {{token}}，你也需要 {{symbol}} 来支付网络费。"
@@ -708,5 +727,46 @@
     "allocation": "分布",
     "holdings": "持仓",
     "noHoldings": "尚无持仓。"
+  },
+  "buy": {
+    "title": "Buy crypto",
+    "asset_label": "You’re buying",
+    "continue": "Continue with Transak",
+    "provider": {
+      "transak": "Transak",
+      "transak_description": "Card, Apple Pay, Google Pay or bank transfer, delivered on-chain."
+    },
+    "disclosure": {
+      "body": "Transak Ltd handles this purchase, including identity checks, your card details and delivery to your wallet address. Their privacy policy and terms apply while you’re in the checkout — Veyrnox doesn’t see the card, ID or personal information you enter."
+    },
+    "route": {
+      "address_unavailable": "Wallet address not available. Please unlock your wallet first.",
+      "session_unavailable": "Buy is not available in this session.",
+      "start_failed": "Could not start buy session. Please try again.",
+      "starting": "Starting..."
+    }
+  },
+  "empty_state": {
+    "add_funds_title": "Add funds to get started",
+    "add_funds_body": "Scan or share your address to receive crypto. Your keys never leave this device."
+  },
+  "advisor": {
+    "title": "Security Advisor",
+    "open_aria": "Open Vigil - Security Advisor",
+    "offline_badge": "offline",
+    "empty_state": "Hi, I'm Vigil. Tap any question or type your own below.",
+    "thinking": "Thinking...",
+    "local_suffix": "from local knowledge base",
+    "local_fallback": "I don't have a specific answer for that in my local knowledge base. Try rephrasing your question, or ask about topics like wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "offline_fallback": "I'm currently offline. Try asking about wallet security, sending safely, deniability mode, WalletConnect, or backing up your wallet.",
+    "placeholder": "Ask Vigil anything...",
+    "send_aria": "Send message",
+    "consent": {
+      "title": "Answer questions online?",
+      "body_1": "The advisor can send the questions you type - plus which screen you are on and which chain is selected - to Veyrnox's threat-intelligence service for a fuller answer. Your addresses, balances, seed and PIN are never included.",
+      "body_2": "Decline and the advisor keeps working, answering from the guidance built into the app. You can change this later from the advisor.",
+      "allow": "Allow online answers",
+      "deny": "Keep answers local"
+    }
   }
 }

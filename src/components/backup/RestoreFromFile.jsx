@@ -50,6 +50,7 @@ import {
 } from '@/lib/restoreBackupFile';
 import { toast } from '@/lib/toast';
 import { useRaspArtifact, sensitiveGate } from '@/rasp';
+import { getFreshLocalRaspArtifact } from '@/lib/getFreshLocalRaspArtifact';
 import {
   Upload, Lock, CheckCircle2, Loader2,
   FileText, RefreshCw, ChevronLeft, FolderOpen,
@@ -259,6 +260,14 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const handleUnlock = async () => {
     const gate = sensitiveGate(raspArtifact, 'import');
     if (gate.blocked) { toast.error(gate.sentence || 'Backup restore is disabled on this device right now.'); return; }
+    // L-6 fix (audit 2026-08-25): raspArtifact above is a mount-time sample, up
+    // to ~60s stale. Probe FRESH at the confirm step — import is a
+    // "highest-danger moment" (degrade.js) — mirroring the sign hot-path
+    // (SendCrypto.jsx getFreshRaspArtifact) but on-device-only, same as the
+    // mount-time hook above (local seed material — see getFreshLocalRaspArtifact.js).
+    const freshArtifact = await getFreshLocalRaspArtifact();
+    const freshGate = sensitiveGate(freshArtifact, 'import');
+    if (freshGate.blocked) { toast.error(freshGate.sentence || 'Backup restore is disabled on this device right now.'); return; }
     if (unlockAttempts >= MAX_UNLOCK_ATTEMPTS) {
       // Guard against a re-entered stale render — the button is disabled
       // below, but a keyboard-submit could still get here.

@@ -34,6 +34,7 @@ globalThis.React = React;
 
 import RaspSecurity, { raspSurfaceModel } from '@/pages/RaspSecurity';
 import { STATUS } from '@/lib/featureCatalogue';
+import { CONDITION } from '@/rasp';
 
 // --- tree-walk helpers ---
 function shape(node) {
@@ -200,5 +201,35 @@ describe('RaspSecurity — deniability parity (§3, D2/D4): identical real-vs-de
     const decoy = renderUnderActiveSet('decoy');
     expect(JSON.stringify(shape(decoy))).toBe(JSON.stringify(shape(real)));
     expect(texts(decoy)).toEqual(texts(real));
+  });
+});
+
+// #2077 recurrence guard. The label map silently lost an entry when
+// CONDITION.SCREEN_CAPTURE was added in #2065: the page did not crash (:93 falls
+// back to the raw constant), so nothing failed and the gap shipped. The sibling
+// test above pins screen_capture specifically; this pins the PROPERTY, so the
+// NEXT condition added cannot repeat it.
+describe('RaspSecurity — every CONDITION has a human label (#2077)', () => {
+  it('renders no raw snake_case constant for any condition', () => {
+    for (const condition of Object.values(CONDITION)) {
+      withArtifact(
+        {
+          tier: 'warn-before-sign',
+          sentence: 'x',
+          blockedActions: [],
+          requiresBiometric: false,
+          condition,
+        },
+        () => {
+          const t = allText(RaspSecurity());
+          // A missing label falls through to the raw value, which is the only
+          // place a snake_case token would reach the page.
+          expect(
+            t.includes(condition) && condition.includes('_'),
+            `CONDITION_LABEL is missing an entry for "${condition}"`,
+          ).toBe(false);
+        },
+      );
+    }
   });
 });

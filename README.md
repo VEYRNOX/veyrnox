@@ -81,6 +81,8 @@ Native OS-level integrity is partial: the Android root/Frida/emulator/tamper pro
 
 ### Vault cryptography
 - AES-256-GCM with fresh IV per encryption, no nonce reuse
-- Argon2id KDF (192 MiB memory, 3 iterations, parallelism 1)
+- Argon2id KDF — new vaults 96 MiB / 6 iterations / parallelism 1; vaults created
+  before 2026-08-24 stay at 192 MiB / 3 iterations until the migration flag flips
+  (same total work: 192×3 = 96×6)
 - Blob-stored KDF params for forward-compatible migration
 - `crypto.getRandomValues` only — no `Math.random` in wallet-core

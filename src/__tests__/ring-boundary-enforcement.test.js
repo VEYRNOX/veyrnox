@@ -93,7 +93,7 @@ describe("ring-import-lint: R0/R1 crypto-core ring boundary", () => {
     const cases = [
       { spec: "@/wallet-core/keystore/kek.js", file: "src/components/security/PinPad.jsx" },
       { spec: "@/wallet-core/mnemonic.js", file: "src/components/SeedEntry.jsx" },
-      { spec: "@vault/deserialize", file: "src/components/hw/LedgerPanel.jsx" },
+      { spec: "@vault/deserialize", file: "src/components/hw/HardwarePanel.jsx" },
       // src/components/ui is exempted at CONFIG level (eslint.config.js), not
       // inside the rule — the raw rule still reports it. Pinned here so the
       // exemption stays visible and auditable in config rather than silently

@@ -19,7 +19,7 @@ vi.mock('@/components/security/useActionGuard', () => ({
   useActionGuard: () => ({ requireTwoFactor: (fn) => fn(), gateModal: null }),
 }));
 
-// PersonalBackup now consumes useTier() (Advanced tab is Safety-Plus-gated).
+// PersonalBackup now consumes useTier() (Advanced tab inherits Safety Plus access).
 // This test doesn't exercise the shards tab — safety_plus keeps the paid
 // branch alive as a benign side-effect and prevents the real TierProvider's
 // "useTier must be used within TierProvider" throw.

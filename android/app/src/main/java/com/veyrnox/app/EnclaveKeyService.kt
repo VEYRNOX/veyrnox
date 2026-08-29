@@ -33,7 +33,7 @@ package com.veyrnox.app
 // ciphertext, so the split has no security or UX benefit here. AES-GCM
 // single-key is the settled design for M2d.
 //
-// Alias: EnclaveKeySpecConfig.KEY_ALIAS (com.veyrnox.app.enclaveWrappingKey.v1)
+// Alias: EnclaveKeySpecConfig.KEY_ALIAS (com.veyrnox.app.enclaveWrappingKey.v2)
 // is the single source of truth. `.v1` encodes the ACL policy stamp — any
 // change to the KeyGenParameterSpec MUST bump the suffix.
 
@@ -679,7 +679,7 @@ class EnclaveKeyService {
                 .setInvalidatedByBiometricEnrollment(EnclaveKeySpecConfig.INVALIDATE_ON_BIOMETRIC_ENROLL)
                 // H16: BIOMETRIC_STRONG only — no AUTH_DEVICE_CREDENTIAL fallback.
                 // A PIN/pattern bypass degrades the possession factor to a knowledge factor.
-                .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+                .setUserAuthenticationParameters(EnclaveKeySpecConfig.AUTH_VALIDITY_SECONDS, KeyProperties.AUTH_BIOMETRIC_STRONG)
 
             if (useStrongBox && EnclaveKeySpecConfig.PREFER_STRONGBOX) {
                 specBuilder.setIsStrongBoxBacked(true)

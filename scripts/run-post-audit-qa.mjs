@@ -6,7 +6,7 @@
  * Generates detailed report with findings, coverage, and risk assessment
  */
 
-import { execSync, spawn } from 'child_process';
+import { execFileSync, execSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -166,8 +166,15 @@ for (const suite of TEST_SUITES) {
   const reportFile = path.join(REPORT_DIR, `${suiteName}-report.json`);
 
   try {
-    execSync(
-      `npx playwright test ${path.join(projectRoot, suite)} --reporter=json --reporter=html`,
+    execFileSync(
+      'npx',
+      [
+        'playwright',
+        'test',
+        path.join(projectRoot, suite),
+        '--reporter=json',
+        '--reporter=html',
+      ],
       {
         cwd: projectRoot,
         env: {

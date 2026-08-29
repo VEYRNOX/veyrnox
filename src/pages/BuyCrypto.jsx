@@ -13,6 +13,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { CreditCard, ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import CoinLogo from '@/components/CoinLogo';
@@ -51,6 +52,7 @@ const TRANSAK_NETWORK_MAP = {
 const BUYABLE_ASSETS = ASSETS.filter(a => TRANSAK_NETWORK_MAP[a.symbol]);
 
 export default function BuyCrypto() {
+  const { t } = useTranslation('wallet');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { accounts, btcAccount, solAccount } = useWallet();
@@ -80,7 +82,7 @@ export default function BuyCrypto() {
   const handleBuy = useCallback(async () => {
     const address = getAddress(selectedAsset);
     if (!address) {
-      setError('Wallet address not available. Please unlock your wallet first.');
+      setError(t('buy.route.address_unavailable', { defaultValue: 'Wallet address not available. Please unlock your wallet first.' }));
       return;
     }
     setLoading(true);
@@ -94,14 +96,14 @@ export default function BuyCrypto() {
       setWidgetUrl(url);
     } catch (err) {
       if (err.code === 'I3_DENIABILITY_ACTIVE') {
-        setError('Buy is not available in this session.');
+        setError(t('buy.route.session_unavailable', { defaultValue: 'Buy is not available in this session.' }));
       } else {
-        setError(err.message || 'Could not start buy session. Please try again.');
+        setError(err.message || t('buy.route.start_failed', { defaultValue: 'Could not start buy session. Please try again.' }));
       }
     } finally {
       setLoading(false);
     }
-  }, [selectedAsset, getAddress]);
+  }, [selectedAsset, getAddress, t]);
 
   useEffect(() => {
     function onMessage(event) {
@@ -132,7 +134,7 @@ export default function BuyCrypto() {
           <Button variant="ghost" size="icon" onClick={() => setWidgetUrl(null)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold">Buy {selectedAsset}</h1>
+          <h1 className="text-lg font-semibold">{t('nav.tab_buy')} {selectedAsset}</h1>
         </div>
         <iframe
           ref={iframeRef}
@@ -160,7 +162,7 @@ export default function BuyCrypto() {
           allow="camera;microphone;payment"
           className="flex-1 w-full border-none"
           style={{ minHeight: 'calc(100vh - 64px)' }}
-          title="Buy crypto"
+          title={t('buy.title')}
         />
       </div>
     );
@@ -172,7 +174,7 @@ export default function BuyCrypto() {
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-lg font-semibold">Buy Crypto</h1>
+        <h1 className="text-lg font-semibold">{t('buy.title')}</h1>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
@@ -181,15 +183,15 @@ export default function BuyCrypto() {
             <CreditCard className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="font-semibold">Buy with card</p>
+            <p className="font-semibold">{t('buy.provider.transak')}</p>
             <p className="text-xs text-muted-foreground">
-              Purchase crypto with a debit or credit card via Transak.
+              {t('buy.provider.transak_description')}
             </p>
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium" id="buy-asset-label">Asset</label>
+          <label className="text-sm font-medium" id="buy-asset-label">{t('buy.asset_label')}</label>
           <Select value={selectedAsset} onValueChange={(v) => { setSelectedAsset(v); setError(null); }}>
             <SelectTrigger className="h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="buy-asset-label">
               <SelectValue>
@@ -228,11 +230,11 @@ export default function BuyCrypto() {
         >
           {loading ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Starting...
+              <Loader2 className="h-4 w-4 animate-spin" /> {t('buy.route.starting', { defaultValue: 'Starting...' })}
             </>
           ) : (
             <>
-              <CreditCard className="h-4 w-4" /> Continue to Buy
+              <CreditCard className="h-4 w-4" /> {t('buy.continue')}
             </>
           )}
         </Button>
@@ -245,8 +247,7 @@ export default function BuyCrypto() {
       </div>
 
       <p className="text-xs text-muted-foreground text-center px-4">
-        Powered by Transak. KYC, payment processing, and delivery are handled
-        by Transak — Veyrnox never sees your payment details.
+        {t('buy.disclosure.body')}
       </p>
     </div>
   );

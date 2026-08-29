@@ -12,3 +12,9 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 VITE_BUY_ENABLED = "true"
+
+[env.preview.vars]
+ENVIRONMENT = "preview"
+
+[env.production.vars]
+ENVIRONMENT = "production"

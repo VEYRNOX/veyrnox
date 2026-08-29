@@ -152,15 +152,15 @@ export default function Analytics() {
       {portfolio?.indeterminate && <IncompleteBalanceNote />}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="rounded-xl border border-border bg-card p-3 space-y-1 min-w-0">
           <div className="flex items-center gap-1 text-muted-foreground">
             <Wallet className="h-3.5 w-3.5" />
             <span className="text-[10px] uppercase tracking-wide">Total Value</span>
           </div>
-          <p className="text-base font-bold">{pricesEnabled ? fmt(totalUSD) : "—"}</p>
+          <p className="text-base font-bold break-words">{pricesEnabled ? fmt(totalUSD) : "—"}</p>
         </div>
-        <div className={`rounded-xl border bg-card p-3 space-y-1 ${pricesEnabled && netPnL >= 0 ? "border-success/30" : pricesEnabled ? "border-destructive/30" : "border-border"}`}>
+        <div className={`rounded-xl border bg-card p-3 space-y-1 min-w-0 ${pricesEnabled && netPnL >= 0 ? "border-success/30" : pricesEnabled ? "border-destructive/30" : "border-border"}`}>
           <div className="flex items-center gap-1 text-muted-foreground">
             {pricesEnabled
               ? netPnL >= 0
@@ -170,19 +170,19 @@ export default function Analytics() {
             <span className="text-[10px] uppercase tracking-wide">Net PnL</span>
           </div>
           {pricesEnabled ? (
-            <p className={`text-base font-bold ${netPnL >= 0 ? "text-success" : "text-destructive"}`}>
+            <p className={`text-base font-bold break-words ${netPnL >= 0 ? "text-success" : "text-destructive"}`}>
               {netPnL >= 0 ? "+" : "-"}{fmtSmall(netPnL)}
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">Requires live prices</p>
+            <p className="text-xs text-muted-foreground break-words">Requires live prices</p>
           )}
         </div>
-        <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+        <div className="rounded-xl border border-border bg-card p-3 space-y-1 min-w-0">
           <div className="flex items-center gap-1 text-muted-foreground">
             <DollarSign className="h-3.5 w-3.5" />
             <span className="text-[10px] uppercase tracking-wide">Top Asset</span>
           </div>
-          <p className="text-base font-bold">{bestAsset?.name ?? "—"}</p>
+          <p className="text-base font-bold break-words">{bestAsset?.name ?? "—"}</p>
         </div>
       </div>
       <ReferenceRateNote />

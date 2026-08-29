@@ -44,12 +44,11 @@ describe('H-NEW-D — iOS HardwareKekPlugin is honest about SE-ECIES implementat
     : existsSync(resolve(repoRoot, SWIFT)) ? SWIFT
     : null;
 
-  if (!iosPath) {
-    // TODO(VEYRNOX/veyrnox#1836): activate when Phase 2 native iOS
-    // HardwareKekPlugin (Obj-C .m or Swift) lands.
-    it.skip('skipped: neither HardwareKekPlugin.m nor .swift found (Phase 2 — VEYRNOX/veyrnox#1836)', () => {});
-    return;
-  }
+  it('ships a native iOS HardwareKekPlugin source file in-repo (VEYRNOX/veyrnox#1836)', () => {
+    expect(iosPath).toBeTruthy();
+  });
+
+  if (!iosPath) return;
   const src = read(iosPath);
 
   // When the real SE-ECIES implementation is not present, the plugin MUST be
@@ -99,13 +98,11 @@ describe('H-NEW-D — iOS HardwareKekPlugin is honest about SE-ECIES implementat
 });
 
 describe('H15 — Android HardwareKekPlugin.kt does not claim enforced StrongBox/hardware backing', () => {
-  // Phase 2: native plugins not yet implemented. Skip this test if the file doesn't exist.
-  if (!existsSync(resolve(repoRoot, KT))) {
-    // TODO(VEYRNOX/veyrnox#1836): activate when Phase 2 native Android
-    // HardwareKekPlugin.kt lands.
-    it.skip('skipped: HardwareKekPlugin.kt not yet implemented (Phase 2 — VEYRNOX/veyrnox#1836)', () => {});
-    return;
-  }
+  it('ships the native Android HardwareKekPlugin source in-repo (VEYRNOX/veyrnox#1836)', () => {
+    expect(existsSync(resolve(repoRoot, KT))).toBe(true);
+  });
+
+  if (!existsSync(resolve(repoRoot, KT))) return;
   const kt = read(KT);
 
   it('does not use an unqualified "hardware-backed" or "StrongBox-backed" claim', () => {

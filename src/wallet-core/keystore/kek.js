@@ -141,13 +141,13 @@ export const KEK_ERR = Object.freeze({
  */
 export function decodeKekSalt(kekSalt) {
   if (typeof kekSalt !== 'string' || kekSalt.length === 0) {
-    throw new Error(KEK_ERR.MALFORMED_VAULT);
+    throw Object.assign(new Error(KEK_ERR.MALFORMED_VAULT), { code: KEK_ERR.MALFORMED_VAULT });
   }
   let bin;
   try {
     bin = atob(kekSalt);
   } catch {
-    throw new Error(KEK_ERR.MALFORMED_VAULT);
+    throw Object.assign(new Error(KEK_ERR.MALFORMED_VAULT), { code: KEK_ERR.MALFORMED_VAULT });
   }
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
@@ -169,14 +169,14 @@ export function decodeKekSalt(kekSalt) {
  */
 export function parseVaultBlob(raw) {
   if (raw && typeof raw === 'object') return raw;
-  if (typeof raw !== 'string') throw new Error(KEK_ERR.MALFORMED_VAULT);
+  if (typeof raw !== 'string') throw Object.assign(new Error(KEK_ERR.MALFORMED_VAULT), { code: KEK_ERR.MALFORMED_VAULT });
   let parsed;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error(KEK_ERR.MALFORMED_VAULT);
+    throw Object.assign(new Error(KEK_ERR.MALFORMED_VAULT), { code: KEK_ERR.MALFORMED_VAULT });
   }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error(KEK_ERR.MALFORMED_VAULT);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw Object.assign(new Error(KEK_ERR.MALFORMED_VAULT), { code: KEK_ERR.MALFORMED_VAULT });
   return parsed;
 }
 

@@ -24,8 +24,9 @@
 // checks isDeniabilitySessionActive() FIRST inside its own body — no set handle
 // is introduced here (byte-identical real/decoy).
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ethers } from 'ethers';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -45,10 +46,14 @@ import { classifyRequest, isBlocked, REQUEST_TYPES } from '@/wallet-core/evm/wal
 import { parseTypedData, detectAssetAuthorising, describeTypedData } from '@/wallet-core/evm/typed-data.js';
 import { getProvider } from '@/wallet-core/evm/provider.js';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
+import { base44 } from '@/api/base44Client';
 import { useWallet } from '@/lib/WalletProvider.jsx';
 import { presignGate } from '@/sign-gate/presign';
 import { LEVEL } from '@/risk/levels';
 import { scoreWcTypedDataLevel } from '@/lib/wcTypedLevel';
+import { buildWcTransactionIntelligence } from '@/risk/walletConnectIntel.js';
+import { buildReviewContributor } from '@/risk/reviewContributor.js';
+import { readRemoteScreenPreference } from '@/lib/remoteScreenPreference.js';
 
 // #1093 — WC pre-sign tx-risk plane. Risk-signal modules (`@/risk/signals` and
 // `@/risk/calldata`) instantiate an ethers Interface at MODULE INIT time, so a
@@ -66,40 +71,14 @@ import { scoreWcTypedDataLevel } from '@/lib/wcTypedLevel';
 //                           but wired for a future address-book pass.
 // A non-approve, non-lookalike send composes txLevel=LEVEL.OK, and the RASP
 // env plane is the sole determinant (previous behaviour preserved).
-export async function scoreWcTxLevel(txParams, caip2ChainId) {
-  try {
-    const [
-      { score },
-      { s2UnlimitedApproval },
-      { s4AddressPoisoning },
-      { buildRiskInputsFromWcRequest },
-    ] = await Promise.all([
-      import('@/risk/score'),
-      import('@/risk/signals/s2-unlimited-approval'),
-      import('@/risk/signals/s4-address-poisoning'),
-      import('@/risk/fromWalletConnect'),
-    ]);
-    const WC_TX_RISK_SIGNALS = [
-      { id: 'S2', fn: s2UnlimitedApproval },
-      { id: 'S4', fn: s4AddressPoisoning },
-    ];
-    const parsedChainId = typeof caip2ChainId === 'string'
-      ? parseInt(caip2ChainId.replace(/^eip155:/, ''), 10)
-      : undefined;
-    const riskInputs = buildRiskInputsFromWcRequest({
-      txParam: txParams,
-      chainId: Number.isFinite(parsedChainId) ? parsedChainId : undefined,
-    });
-    const verdict = score(
-      riskInputs.unsignedTx,
-      riskInputs.activeSetLocalState,
-      riskInputs.chainData,
-      WC_TX_RISK_SIGNALS,
-    );
-    return verdict?.level ?? LEVEL.CAUTION;
-  } catch {
-    return LEVEL.CAUTION;
-  }
+export async function scoreWcTxLevel(txParams, caip2ChainId, evmAddress = null, remoteScreenEnabled = false) {
+  const intel = await buildWcTransactionIntelligence({
+    txParams,
+    caip2ChainId,
+    evmAddress,
+    remoteScreenEnabled,
+  });
+  return intel?.txLevel ?? LEVEL.CAUTION;
 }
 import {
   detect,
@@ -119,6 +98,12 @@ import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession.js';
 import { trackEvent, EVENT } from '@/api/trackEvent';
 import { evaluateSendAgainstLimits } from '@/lib/txLimits';
 import { USD_RATES } from '@/lib/cryptos';
+import { is2faPasskeyEnabled, isPasskeyRegistered } from '@/lib/passkey';
+import { is2faBiometricEnabled } from '@/lib/biometric';
+import { resolveSend2faMethod, SEND_2FA } from '@/lib/send2faMethod';
+// M-6: the per-chain VERIFIED token registry (address + decimals). Data only —
+// no ethers Interface at module init, so it is safe to import statically here.
+import { TOKENS } from '@/wallet-core/evm/tokens.js';
 
 // L-1 (PR #962): use the shared constant from getFreshRaspArtifact so the
 // Send-path and WC-path stay in sync with a single source of truth.
@@ -282,6 +267,95 @@ export function resolveSessionCaip2(session, requestCaip2) {
     return approved.includes(requestCaip2) ? requestCaip2 : null;
   }
   return approved.length === 1 ? approved[0] : null;
+}
+
+// M-6 (weekly audit 2026-08-25, carried from M-5 2026-08-17) — value an outgoing
+// WC transaction for the SPEND-LIMIT axis.
+//
+// The gate used to read `txParams.value` alone, so an ERC-20 `transfer` — which
+// carries value 0x0 and puts the amount in calldata — scored $0 against even an
+// `ALL` cap. Nothing downstream compensated: the WC risk registry is S2
+// (unlimited approval) + S4 (poisoning) only, so no signal values a plain token
+// transfer, and the review contributor's level does not feed the verdict level.
+//
+// Decoded by hand rather than through calldata.js's `describeErc20Call`: that
+// module instantiates an ethers `Interface` at MODULE INIT, and several WC test
+// surfaces mock `ethers` without `Interface` (the same constraint documented for
+// the risk stack at :58). Both shapes are fixed-width, so hex slicing is exact.
+const ERC20_TRANSFER = '0xa9059cbb';      // transfer(address,uint256)
+const ERC20_TRANSFER_FROM = '0x23b872dd'; // transferFrom(address,address,uint256)
+const WORD = 64;                          // one abi word, in hex chars
+
+/** Resolve a `to` address against the chain's VERIFIED token registry. Pure. */
+function lookupRegistryToken(networkKey, address) {
+  const table = TOKENS[networkKey];
+  if (!table || typeof address !== 'string') return null;
+  const want = address.toLowerCase();
+  for (const t of Object.values(table)) {
+    if (t.address.toLowerCase() === want) return t;
+  }
+  return null;
+}
+
+/**
+ * What this transaction should be scored as spending, for the limit gate.
+ *
+ * Returns { valued: true, amount, currency } when the outgoing value is known,
+ * or { valued: false, reason } when it is an ERC-20 transfer we CANNOT value —
+ * an unregistered token (unknown decimals ⇒ unknown magnitude) or truncated
+ * calldata. An unvaluable transfer must be treated as OVER limit, never as $0
+ * (I4); the caller decides, this helper only refuses to guess.
+ *
+ * Calldata that is not one of the two transfer shapes (a swap, an approve, an
+ * arbitrary contract call) is valued on the native `value` as before: it moves
+ * no token balance NOW, and the approval case is what S2 exists for.
+ *
+ * `transferFrom` is valued regardless of whose `from` it names. Over-blocking a
+ * third-party pull is the safe direction; under-scoring our own is not.
+ *
+ * Pure; exported for unit tests.
+ */
+export function resolveWcSpendAmount(txParams, net) {
+  const data = typeof txParams?.data === 'string' ? txParams.data.toLowerCase() : '0x';
+  const selector = data.slice(0, 10);
+  const isTransfer = selector === ERC20_TRANSFER;
+  const isTransferFrom = selector === ERC20_TRANSFER_FROM;
+
+  if (isTransfer || isTransferFrom) {
+    // transfer: 4-byte selector + 2 words. transferFrom: + 3 words. The amount
+    // is always the LAST word. Anything shorter cannot be decoded honestly.
+    const words = isTransfer ? 2 : 3;
+    if (data.length < 10 + words * WORD) {
+      return { valued: false, reason: 'ERC20_CALLDATA_MALFORMED' };
+    }
+    const token = lookupRegistryToken(net?.key, txParams?.to);
+    if (!token) return { valued: false, reason: 'ERC20_TOKEN_UNKNOWN' };
+    let raw;
+    try {
+      raw = BigInt(`0x${data.slice(10 + (words - 1) * WORD, 10 + words * WORD)}`);
+    } catch {
+      return { valued: false, reason: 'ERC20_CALLDATA_MALFORMED' };
+    }
+    return {
+      valued: true,
+      amount: Number(raw) / 10 ** token.decimals,
+      currency: token.symbol,
+    };
+  }
+
+  let amount = 0;
+  if (txParams?.value != null && txParams.value !== '0x' && txParams.value !== '0x0') {
+    // wei → native units, safe for values up to ~9e6 ETH.
+    amount = Number(BigInt(txParams.value)) / 1e18;
+  }
+  return { valued: true, amount, currency: net?.symbol };
+}
+
+/** True if the user has ANY enabled cap that a send could breach. Pure. */
+function hasEnabledSpendLimit(limits) {
+  return Array.isArray(limits) && limits.some(
+    (l) => l && l.enabled && (l.per_transaction_limit != null || l.daily_limit != null),
+  );
 }
 
 // RASP-A3 (2026-07-05 internal audit, MEDIUM): the WalletConnect signing path has
@@ -478,7 +552,7 @@ export async function _handleSignTypedData({ withPrivateKey, evmAddress }, topic
 }
 
 export async function _handleSendTransaction(
-  { withPrivateKey, evmAddress, actionPasswordConfigured = false, txLimits = [], history = [], usdRates = USD_RATES },
+  { withPrivateKey, evmAddress, send2faMethod = SEND_2FA.NONE, txLimits = [], history = [], knownAddresses = [], whitelist = [], usdRates = USD_RATES, remoteScreenEnabled = false },
   topic, id, params, caip2ChainId,
 ) {
   const txParams = params[0] ?? {};
@@ -487,7 +561,16 @@ export async function _handleSendTransaction(
   // so unlimited approvals (and future poison-address hits) drive presignGate
   // → CONFIRM/BLOCK. Pure: no network, no signer, no seed. Failures fall back
   // to CAUTION (I4 fail-closed) — the WC surface has no "sign anyway" ack.
-  const txLevel = await scoreWcTxLevel(txParams, caip2ChainId);
+  const intel = await buildWcTransactionIntelligence({
+    txParams,
+    caip2ChainId,
+    evmAddress,
+    remoteScreenEnabled,
+    history,
+    knownAddresses,
+    whitelist,
+  });
+  const txLevel = intel?.txLevel ?? LEVEL.CAUTION;
 
   // RASP + tx compose gate. Kept BEFORE the from-binding so a WARN/BLOCK-tier
   // environment (or a tx-owned RISK) is reported by the appropriate code even
@@ -516,52 +599,65 @@ export async function _handleSendTransaction(
   const chainId = parseInt(caip2ChainId.replace(/^eip155:/, ''), 10);
   const net = getNetworkByChainId(chainId);
 
-  // #1090 — Action Password 2FA gate. The in-app Send flow requires the second
-  // factor at the sign chokepoint (see sendGate.js §6b). The WC surface has NO
-  // in-band affordance to collect the Action Password mid-flow; the honest
-  // fail-closed path (I4) is to REJECT so the user routes through the in-app
-  // Send screen where the full 2FA dance runs. Never bypass.
-  if (actionPasswordConfigured === true) {
+  // #1090 / Strix-13 — the WC surface has NO in-band affordance to satisfy any
+  // configured second factor (Action Password, passkey, or native biometric).
+  // The honest fail-closed path (I4) is to REJECT so the user completes the
+  // send in-app, where the real 2FA flow exists.
+  if (send2faMethod !== SEND_2FA.NONE) {
     await rejectRequest(topic, id, 'WC_TWO_FACTOR_REQUIRED').catch(() => {});
     throw new Error(
-      `Rejected transaction [WC_TWO_FACTOR_REQUIRED]: an Action Password ` +
+      `Rejected transaction [WC_TWO_FACTOR_REQUIRED]: a second factor ` +
       `is configured for this wallet. Complete the send from the in-app ` +
       `Send screen so the second factor can be entered.`,
     );
   }
 
   // #1090 — spend limit gate. Mirrors the in-app Send flow's evaluation. WC has
-  // no acknowledgement affordance, so a breach REJECTS (fail closed, I4). Only
-  // the native `value` field is scored — ERC-20 amount is inside calldata and
-  // is not decoded here (honest scope: unlimited ERC-20 spend still hits the
-  // approval-warning code path via risk scoring, see #1093).
+  // no acknowledgement affordance, so a breach REJECTS (fail closed, I4).
+  //
+  // THIS GATE IS THE ONLY THING ENFORCING THE CAP on the WC surface. The comment
+  // that used to sit here claimed risk scoring compensated for scoring the
+  // native `value` alone; it never did (M-6, see resolveWcSpendAmount for why).
+  // So the amount comes from resolveWcSpendAmount, which values BOTH the native
+  // field and standard ERC-20 transfer / transferFrom calldata.
+  //
+  // A transfer that cannot be valued (token outside the verified registry,
+  // truncated calldata) is treated as OVER limit while ANY cap is configured —
+  // unknown decimals means unknown magnitude AND unknown currency, so any
+  // enabled cap could be the one it breaches. It is never scored as $0.
+  let limitRejectCode = null;
   try {
-    let amount = 0;
-    if (txParams.value != null && txParams.value !== '0x' && txParams.value !== '0x0') {
-      // wei → native units, safe for values up to ~9e6 ETH.
-      amount = Number(BigInt(txParams.value)) / 1e18;
-    }
-    const limitGate = evaluateSendAgainstLimits({
-      amount,
-      currency: net?.symbol,
+    const spend = resolveWcSpendAmount(txParams, net);
+    if (!spend.valued) {
+      if (hasEnabledSpendLimit(txLimits)) limitRejectCode = 'WC_SEND_UNVALUED_TOKEN';
+    } else if (evaluateSendAgainstLimits({
+      amount: spend.amount,
+      currency: spend.currency,
       usdRates,
       history,
       limits: txLimits,
-    });
-    if (limitGate.blocked) {
-      await rejectRequest(topic, id, 'WC_SEND_LIMIT_EXCEEDED').catch(() => {});
-      throw new Error(
-        `Rejected transaction [WC_SEND_LIMIT_EXCEEDED]: this send would exceed ` +
-        `a configured spending cap. Complete the send from the in-app Send ` +
-        `screen so the limit can be reviewed and acknowledged.`,
-      );
+    }).blocked) {
+      limitRejectCode = 'WC_SEND_LIMIT_EXCEEDED';
     }
-  } catch (err) {
-    if (err && typeof err.message === 'string' && err.message.includes('WC_SEND_LIMIT_EXCEEDED')) throw err;
-    // Any other failure computing the limit gate is fail-open on the LIMIT
-    // axis specifically (matches the in-app Send flow where an empty
-    // limits/history yields no breach). We do NOT auto-reject on compute
-    // errors — the RASP + risk-score gates still bite.
+  } catch {
+    // A failure computing the gate is indistinguishable from an unvaluable
+    // transfer, so it gets the same treatment: refuse while a cap is configured
+    // rather than silently allow. (This path used to be unconditionally
+    // fail-open on the limit axis.) With no cap configured there is nothing to
+    // breach and nothing to fail closed about.
+    if (hasEnabledSpendLimit(txLimits)) limitRejectCode = 'WC_SEND_UNVALUED_TOKEN';
+  }
+  if (limitRejectCode) {
+    await rejectRequest(topic, id, limitRejectCode).catch(() => {});
+    throw new Error(
+      `Rejected transaction [${limitRejectCode}]: ` +
+      (limitRejectCode === 'WC_SEND_UNVALUED_TOKEN'
+        ? `this request moves a token Veyrnox cannot value on this chain, so it ` +
+          `cannot be checked against your spending caps. `
+        : `this send would exceed a configured spending cap. `) +
+      `Complete the send from the in-app Send screen so the limit can be ` +
+      `reviewed and acknowledged.`,
+    );
   }
 
   const hash = await withPrivateKey(0, async (pk) => {
@@ -623,12 +719,56 @@ export function WalletConnectProvider({ children }) {
   // that reads it. We expose isSendReauthRequired to the modal instead.
   const { accounts, isUnlocked, isDecoy, isHidden, withPrivateKey, isSendReauthRequired, actionPasswordConfigured } = useWallet();
   const evmAddress = accounts?.[0]?.address ?? null;
+  const send2faMethod = resolveSend2faMethod({
+    isNative: Capacitor.isNativePlatform(),
+    biometric2faEnabled: is2faBiometricEnabled(),
+    passkey2faEnabled: is2faPasskeyEnabled(),
+    passkeyRegistered: isPasskeyRegistered(),
+    actionPasswordConfigured,
+    isDecoy,
+    isHidden,
+  });
 
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState(null);
   const [pendingProposals, setPendingProposals] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [sessions, setSessions] = useState([]);
+  // I3: these three queries emit backend traffic carrying real-wallet metadata
+  // (counterparty history, saved contacts, whitelist). They must be sealed by the
+  // SAME predicate the relay effect below uses (:665) — not by the React flags
+  // alone. `isDecoy`/`isHidden` are React state and LAG the module-level
+  // deniability flag, so a panic/stealth transition leaves a window in which
+  // `setDeniabilitySession(true)` has already fired while these still read false.
+  // `isUnlocked` is required too: without it the queries run against a locked
+  // vault. Fail closed (I4) — one shared const so the three cannot drift apart.
+  const entityQueryEnabled = isUnlocked && !isDecoy && !isHidden && !isDeniabilityOrDemoActive();
+  const { data: corpusHistory = [] } = /** @type {{ data: any[] }} */ (useQuery({
+    queryKey: ['transactions'],
+    queryFn: () => base44.entities.Transaction.list('-created_date', 100),
+    enabled: entityQueryEnabled,
+  }));
+  const { data: addressBook = [] } = useQuery({
+    queryKey: ['address-book'],
+    queryFn: () => base44.entities.AddressBook.list(),
+    enabled: entityQueryEnabled,
+  });
+  const { data: whitelist = [] } = useQuery({
+    queryKey: ['whitelisted-addresses'],
+    queryFn: () => base44.entities.WhitelistedAddress.list(),
+    enabled: entityQueryEnabled,
+  });
+  const knownAddresses = useMemo(() => {
+    const out = [];
+    for (const tx of corpusHistory) {
+      if (tx.to_address) out.push({ address: tx.to_address, label: tx.type === 'send' ? "an address you've paid before" : 'a counterparty in your history', date: tx.created_date });
+      if (tx.from_address) out.push({ address: tx.from_address, label: 'a counterparty in your history', date: tx.created_date });
+      if (tx.address) out.push({ address: tx.address, label: 'a counterparty in your history', date: tx.created_date });
+    }
+    for (const c of addressBook) out.push({ address: c.address, label: c.name ? `your saved contact "${c.name}"` : 'a saved contact' });
+    for (const w of whitelist) out.push({ address: w.address, label: 'a whitelisted address' });
+    return out;
+  }, [corpusHistory, addressBook, whitelist]);
 
   // M11: getActiveSessions() may include sessions whose expiry has passed if the
   // SDK has not yet fired session_expire (e.g. the app was offline). Drop them so
@@ -687,8 +827,19 @@ export function WalletConnectProvider({ children }) {
           const txParam = reqParams[0] ?? {};
           const ownAddr = typeof evmAddress === 'string' ? evmAddress.toLowerCase() : null;
           const fromAddr = typeof txParam.from === 'string' ? txParam.from.toLowerCase() : null;
+          // L-3 (audit 2026-08-25) pre-modal chain bind. This branch checked
+          // `from` and nothing else, while the typed-data branch below already
+          // bound the chain — so a chain the session never approved reached the
+          // modal and was only caught at sign time (:895). Same helper, same
+          // fail-closed shape: an unapproved or ambiguous chain resolves to null.
+          const boundCaip2 = resolveSessionCaip2(
+            getActiveSessions().find((s) => s.topic === data.topic),
+            data.params?.chainId,
+          );
           if (!ownAddr || !fromAddr || ownAddr !== fromAddr) {
             rejectRequest(data.topic, data.id, 'SEND_ADDRESS_MISMATCH').catch(() => {});
+          } else if (boundCaip2 == null) {
+            rejectRequest(data.topic, data.id, 'SESSION_CHAINID_INVALID').catch(() => {});
           } else {
             setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
           }
@@ -705,26 +856,38 @@ export function WalletConnectProvider({ children }) {
             rejectRequest(data.topic, data.id, 'TYPED_DATA_ADDRESS_MISMATCH').catch(() => {});
             rejected = true;
           }
-          try {
-            if (rejected) throw new Error('__skip_h7_check');
-            const typedDataJson = reqParams[1] ?? reqParams[0];
-            const parsed = JSON.parse(typedDataJson);
-            const domainChainId = parsed?.domain?.chainId != null
-              ? toNumericChainId(parsed.domain.chainId) : null;
-            const session = getActiveSessions().find((s) => s.topic === data.topic);
-            const sessionCaip2 = resolveSessionCaip2(session, data.params?.chainId);
-            const sessionChainId = toNumericChainId(
-              typeof sessionCaip2 === 'string' ? sessionCaip2.split(':')[1] : null,
-            );
-            if (sessionChainId == null) {
-              rejectRequest(data.topic, data.id, 'SESSION_CHAINID_INVALID').catch(() => {});
-              rejected = true;
-            } else if (domainChainId == null || domainChainId !== sessionChainId) {
-              rejectRequest(data.topic, data.id, 'CHAIN_ID_MISMATCH').catch(() => {});
-              rejected = true;
+          // L-2 (audit 2026-08-25): this used JSON.parse where sign time uses
+          // parseTypedData (:397). dApps routinely send params[1] as an OBJECT,
+          // and JSON.parse(object) stringifies to "[object Object]" and throws —
+          // so the catch swallowed it and the chain bind was SKIPPED for every
+          // such request. Sign time still rejected CHAIN_ID_MISMATCH, but only
+          // after the user had walked a whole approval modal. parseTypedData
+          // takes string or object; toNumericChainId matches sign time's
+          // coercion so a hex domain.chainId is read identically on both sides.
+          // #2076: bind against the approved session chain, not the request's
+          // own CAIP-2 string, so an unapproved chain is rejected before the
+          // user sees the approval modal.
+          if (!rejected) {
+            const parsed = parseTypedData(reqParams[1] ?? reqParams[0]);
+            // Invalid payload: leave it queued so _handleSignTypedData rejects
+            // with the real parse error, exactly as before.
+            if (parsed.valid) {
+              const domainChainId = toNumericChainId(parsed?.domain?.chainId);
+              const sessionCaip2 = resolveSessionCaip2(
+                getActiveSessions().find((s) => s.topic === data.topic),
+                data.params?.chainId,
+              );
+              const sessionChainId = toNumericChainId(
+                typeof sessionCaip2 === 'string' ? sessionCaip2.split(':')[1] : null,
+              );
+              if (sessionChainId == null) {
+                rejectRequest(data.topic, data.id, 'SESSION_CHAINID_INVALID').catch(() => {});
+                rejected = true;
+              } else if (domainChainId == null || domainChainId !== sessionChainId) {
+                rejectRequest(data.topic, data.id, 'CHAIN_ID_MISMATCH').catch(() => {});
+                rejected = true;
+              }
             }
-          } catch {
-            // Malformed typed data — let _handleSignTypedData reject with the real error.
           }
           if (!rejected) {
             setPendingRequests((prev) => [...prev.filter((r) => r.id !== data.id), data]);
@@ -903,15 +1066,18 @@ export function WalletConnectProvider({ children }) {
       {
         withPrivateKey,
         evmAddress,
-        actionPasswordConfigured,
+        send2faMethod,
         txLimits,
         history,
+        knownAddresses,
+        whitelist,
         usdRates: USD_RATES,
+        remoteScreenEnabled: readRemoteScreenPreference(!!import.meta.env.VITE_TIP_BASE_URL),
       },
       topic, id, params, boundCaip2,
     );
     setPendingRequests((prev) => prev.filter((r) => !(r.topic === topic && r.id === id)));
-  }, [withPrivateKey, evmAddress, actionPasswordConfigured, assertSessionLive, isSendReauthRequired]);
+  }, [withPrivateKey, evmAddress, send2faMethod, assertSessionLive, isSendReauthRequired, knownAddresses, whitelist]);
 
   const handleRejectRequest = useCallback(async (topic, id) => {
     await rejectRequest(topic, id);
@@ -925,12 +1091,19 @@ export function WalletConnectProvider({ children }) {
 
   // Enrich a raw pending request with parsed typed-data / classification metadata
   const enrichRequest = useCallback((req) => {
-    const { request: { method, params } } = req.params;
+    // L-1 (audit 2026-08-25): destructured non-defensively, on the RENDER path.
+    // The handler that queues a request optional-chains the identical access
+    // (:683) and lets a method-less request fall through the permissive `else`,
+    // so a queued request with no `params.request` threw during render of the
+    // whole provider subtree. classifyRequest(undefined) already yields UNKNOWN,
+    // which the approval modal treats as approve-blocked — the honest outcome.
+    const { method, params } = req.params?.request ?? {};
     const type = classifyRequest(method);
     const blocked = isBlocked(method);
     let typedDataMeta = null;
+    let reviewMeta = null;
     if (type === REQUEST_TYPES.SIGN_TYPED_DATA) {
-      const raw = params[1] ?? params[0];
+      const raw = params?.[1] ?? params?.[0];
       const parsed = parseTypedData(raw);
       typedDataMeta = {
         parsed,
@@ -938,8 +1111,23 @@ export function WalletConnectProvider({ children }) {
         description: describeTypedData(parsed),
       };
     }
-    return { ...req, type, blocked, typedDataMeta };
-  }, []);
+    if (type === REQUEST_TYPES.SEND_TRANSACTION) {
+      const txParam = params?.[0] ?? {};
+      const chainId = typeof req.params?.chainId === 'string'
+        ? parseInt(req.params.chainId.replace(/^eip155:/, ''), 10)
+        : NaN;
+      const wcNetwork = Number.isFinite(chainId) ? getNetworkByChainId(chainId) : null;
+      reviewMeta = buildReviewContributor({
+        recipient: txParam.to ?? null,
+        currency: wcNetwork?.symbol ?? 'ETH',
+        history: corpusHistory,
+        knownAddresses,
+        whitelist,
+        sessionMeta: getActiveSessions().find((s) => s.topic === req.topic)?.peer?.metadata ?? null,
+      });
+    }
+    return { ...req, type, blocked, typedDataMeta, reviewMeta };
+  }, [corpusHistory, knownAddresses, whitelist]);
 
   return (
     <WalletConnectCtx.Provider value={{

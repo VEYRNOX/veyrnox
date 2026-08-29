@@ -68,4 +68,30 @@ describe('scrubSecrets — Security Advisor outbound redaction', () => {
     expect(scrubSecrets(undefined)).toBe('');
     expect(scrubSecrets(42)).toBe('42');
   });
+
+  // Synthetic body — 107 chars of base58 alphabet, deterministic.
+  const b58Body = (len) => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789'.repeat(3).slice(0, len);
+
+  it('redacts BIP32 xprv/yprv/zprv extended private keys', () => {
+    for (const prefix of ['xprv', 'yprv', 'zprv', 'tprv', 'uprv', 'vprv']) {
+      const key = prefix + b58Body(107);
+      const out = scrubSecrets(`paste ${key} here`);
+      expect(out).toContain(REDACTED);
+      expect(out).not.toContain(key);
+    }
+  });
+
+  it('redacts a Bitcoin WIF (compressed 52 chars) key', () => {
+    const wif = 'L' + b58Body(51); // 52 total
+    const out = scrubSecrets(`wif ${wif} pasted`);
+    expect(out).toContain(REDACTED);
+    expect(out).not.toContain(wif);
+  });
+
+  it('redacts a Solana base58 secret key (88 chars)', () => {
+    const sol = b58Body(88);
+    const out = scrubSecrets(sol);
+    expect(out).toContain(REDACTED);
+    expect(out).not.toContain(sol);
+  });
 });

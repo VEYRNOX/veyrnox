@@ -1,6 +1,6 @@
 // src/wallet-core/__tests__/sol-broadcast-split.test.js
 //
-// The Trezor SOL path signs on the device: send.js must be able to BUILD an
+// An external hardware signer signs on the device: send.js must be able to BUILD an
 // UNSIGNED System transfer (serialized base64) for the device to sign, then
 // BROADCAST the device-signed bytes. This pins buildUnsignedSolTx (network-free
 // when a blockhash is supplied): it must produce a base64 tx that commits to the
