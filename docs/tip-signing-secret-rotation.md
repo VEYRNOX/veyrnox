@@ -144,30 +144,16 @@ for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
 done
 ```
 
-Expect both `200`. Then probe `tip-chat` on both projects too — it
-signs upstream requests with the same `TIP_SIGNING_SECRET` and shares
-the warm-isolate failure mode; skipping it means the rotation can be
-declared complete while chat still 502s:
-
-```bash
-for REF in jwstkrtslotnjyerzzsi nszlbcmcysftwyudthjz; do
-  ANON=$(curl -sS https://api.supabase.com/v1/projects/$REF/api-keys \
-    -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-    | jq -r '.[] | select(.name=="anon") | .api_key')
-  STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
-    -X POST "https://$REF.supabase.co/functions/v1/tip-chat" \
-    -H "Authorization: Bearer $ANON" -H "apikey: $ANON" \
-    -H "Content-Type: application/json" \
-    -d '{"messages":[{"role":"user","content":"ping"}],"context":{"current_screen":"dashboard"}}')
-  echo "$REF tip-chat: $STATUS"
-done
-```
-
-Expect both `200`. A 502 here is the same signing-path failure as on
-`tip-screen`; the fact that `tip-chat` has an unrelated open bug for
-Safety Plus subscribers (#1850) is not an excuse to skip the probe — that
-bug shows up as a specific error body, not as auth/upstream 502, so a
-2xx here is still a valid rotation proof.
+Expect both `200`. `tip-chat` shares the same signing path and warm-isolate
+failure mode, but cannot be probed the same way — the current function
+rejects any request lacking `x-rc-user-id` + valid RevenueCat entitlement
+with `403 entitlement_required` before the signing path runs
+(`supabase/functions/tip-chat/index.ts:191-196`). A curl probe here would
+always 403 and give no signal on the rotation. Instead, ALWAYS include
+`tip-chat` in the Phase 3 redeploy (below) so its isolate boots with the
+new env, and validate `tip-chat` from a real client (native mobile build
+with an active Safety Plus entitlement) as part of the post-rotation
+sanity pass.
 
 If either returns `502`, that is `tip_upstream_error` — the Edge Function
 mapped a non-2xx from the Worker to 502. Diagnose via
