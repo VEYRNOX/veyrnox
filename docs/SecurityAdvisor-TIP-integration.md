@@ -24,13 +24,13 @@ TIP_SIGNING_SECRET last rotated: NEVER (leaked commit d8125e85 2026-08-06, scrub
 │  │  Supabase Edge Function              │   │
 │  │  (tip-screen)                        │   │
 │  │                                      │   │
-│  │  • HMAC signing                      │   │
+│  │  • Request signing                   │   │
 │  │  • Rate limiting                     │   │
 │  │  • Error handling                    │   │
 │  └──────────────────────────────────────┘   │
 └──────────────────────┬──────────────────────┘
                        │
-                       │ HTTPS + HMAC Signature
+                       │ HTTPS + signed request
                        │
 ┌──────────────────────▼──────────────────────┐
 │   TIP (Threat Intelligence Platform)        │
@@ -71,11 +71,10 @@ screenTransaction({
          ↓
 tipScreen.js (src/api/tipScreen.js)
          ├─ Validates request
-         ├─ HMAC signs payload with TIP_SIGNING_SECRET
          └─ POST to Supabase Edge Function
          ↓
 Supabase Edge Function (supabase/functions/tip-screen/index.ts)
-         ├─ Verifies HMAC signature
+         ├─ Signs request to TIP
          ├─ Extracts TIP_API_KEY from secrets
          ├─ Validates input (length, type, range)
          └─ Forwards to TIP backend
@@ -128,7 +127,7 @@ POST to Supabase Edge Function (tip-screen with action: 'chat')
 }
          ↓
 Supabase Edge Function
-         ├─ HMAC verification
+         ├─ Signs request to TIP
          ├─ Rate limiting check
          ├─ Input validation
          └─ Forwards to TIP
@@ -171,7 +170,6 @@ SecurityAdvisor streams response
    supabase/functions/tip-screen/index.ts
    
    Validates:
-   ✓ Request signature (HMAC)
    ✓ Address format (0x[40 hex])
    ✓ Action type (address_lookup)
    
@@ -244,7 +242,7 @@ SecurityAdvisor streams response
 
 **API Client:** `src/api/tipScreen.js`
 - Constructs request payload
-- HMAC signs request
+- Signs request
 - Handles SSE streaming
 - Error recovery to local KB
 
