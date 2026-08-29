@@ -9,7 +9,7 @@ import { copyPlain } from "@/lib/copySecret";
 import { useWallet } from "@/lib/WalletProvider";
 import { useMessageSigningEnabled } from "@/lib/useMessageSigningEnabled";
 import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession.js";
-import { useRaspArtifact, TIER } from "@/rasp";
+import { getFreshRaspArtifact, TIER } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { LEVEL } from "@/risk/levels";
 
@@ -30,7 +30,6 @@ export default function CryptoSigning() {
   const { accounts, isUnlocked, withPrivateKey } = useWallet();
   const signingEnabled = useMessageSigningEnabled();
 
-  const raspArtifact = useRaspArtifact();
   const [copied, setCopied] = useState(null);
   const [signMessage, setSignMessage] = useState("Hello from VEYRNOX!");
   const [signature, setSignature] = useState("");
@@ -48,8 +47,8 @@ export default function CryptoSigning() {
   // functions of the environment only (I3 set-blind); a RASP crash fails closed
   // to the strongest BLOCK (I4). This page signs an arbitrary message with the
   // user's REAL wallet key, so it is a signing chokepoint and carries the gate.
-  const raspGuardAllowsSigning = () => {
-    const tier = raspArtifact?.tier ?? TIER.BLOCK;
+  const raspGuardAllowsSigning = async () => {
+    const tier = (await getFreshRaspArtifact())?.tier ?? TIER.BLOCK;
     const gate = presignGate(tier, LEVEL.OK, false);
     return gate.proceedAllowed && gate.signerReachable;
   };
@@ -68,7 +67,7 @@ export default function CryptoSigning() {
     }
     // H13: RASP pre-sign gate. Refuse to sign in a hostile runtime (automation /
     // WebDriver). Fail closed — no signature is produced if the gate blocks.
-    if (!raspGuardAllowsSigning()) {
+    if (!(await raspGuardAllowsSigning())) {
       setError("Signing is blocked: this environment looks unsafe (automation or a tampered runtime was detected).");
       return;
     }

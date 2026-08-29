@@ -9,10 +9,10 @@
 // (WalletProvider's isDecoy/isHidden) and is NEVER persisted to localStorage —
 // persisting it would itself be a forensic deniability TELL. So wallet-core
 // modules (which run outside React and must gate network/device egress, e.g.
-// hw/trezor.js reaching connect.trezor.io) cannot read isDecoy/isHidden from
-// storage. The previous Trezor "deniability guard" only checked the demo flag
-// (`veyrnox-demo=1`), so a REAL coerced decoy/hidden session was NOT blocked —
-// an I2/I3 violation.
+// a hardware-signer path reaching an external device or relay) cannot read
+// isDecoy/isHidden from storage. An earlier hardware-signer "deniability guard"
+// only checked the demo flag (`veyrnox-demo=1`), so a REAL coerced decoy/hidden
+// session was NOT blocked — an I2/I3 violation.
 //
 // THE FIX. A single in-memory (module-scoped) boolean, set by WalletProvider the
 // instant a decoy/hidden session opens and cleared on lock / primary unlock.
@@ -23,7 +23,8 @@
 //   - Reset on reload (a fresh page load has no unlocked session anyway).
 //
 // FAIL CLOSED (I4). The reader treats "unknown" as deniability-active is NOT the
-// model here (a fresh primary session must be allowed to use Trezor). Instead the
+// model here (a fresh primary session must be allowed to use a hardware signer).
+// Instead the
 // SETTER is the trusted authority: WalletProvider sets the flag true for every
 // decoy/hidden unlock BEFORE any signing UI can run, and false only for a
 // confirmed primary session. Any wallet-core egress that cannot positively
@@ -71,7 +72,7 @@ export function isDeniabilitySessionActive() {
 
 /**
  * LIVE deniability-OR-demo check (issue #972 round-3 P1). Matches the OLD
- * hw/trezor.js:deniabilityActive() semantics verbatim: returns true when EITHER
+ * hardware-signer deniabilityActive() semantics verbatim: returns true when EITHER
  *   1. isDeniabilitySessionActive() (in-memory decoy/hidden session), OR
  *   2. `localStorage['veyrnox-demo']` === '1' (persisted demo/tour flag).
  * The persisted flag is read LIVE on every call, so a flag set AFTER module

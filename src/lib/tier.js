@@ -20,6 +20,36 @@ export function getCurrentTier() {
   return 'free';
 }
 
+export const TIER = Object.freeze({
+  FREE: 'free',
+  SAFETY_PLUS: 'safety_plus',
+  AI_SECURITY_PROTECTION: 'ai_security_protection',
+});
+
+export function tierLabel(tier) {
+  switch (tier) {
+    case TIER.SAFETY_PLUS:
+      return 'Safety Plus';
+    case TIER.AI_SECURITY_PROTECTION:
+      return 'AI Security Protection';
+    case TIER.FREE:
+    default:
+      return 'Free';
+  }
+}
+
+export function isPaidTier(tier) {
+  return tier === TIER.SAFETY_PLUS || tier === TIER.AI_SECURITY_PROTECTION;
+}
+
+export function hasSafetyPlusAccess(tier) {
+  return tier === TIER.SAFETY_PLUS || tier === TIER.AI_SECURITY_PROTECTION;
+}
+
+export function hasAdvisorOnlineAccess(tier) {
+  return tier === TIER.AI_SECURITY_PROTECTION;
+}
+
 // Two tiers: Free (the complete self-custody wallet + core security) and Safety
 // Plus (deeper security controls + advanced analytics). This catalogue mirrors
 // the public plans page at https://veyrnox.com/plans — that page is the source
@@ -29,16 +59,22 @@ export function getCurrentTier() {
 // SAFETY_PLUS_ROUTES.
 export const TIERS = [
   {
-    id: 'free',
+    id: TIER.FREE,
     name: 'Free',
     price: '$0',
     tagline: 'Complete self-custody wallet — everything you need to hold, send and secure your crypto, free forever.',
   },
   {
-    id: 'safety_plus',
+    id: TIER.SAFETY_PLUS,
     name: 'Safety Plus',
     price: '$5.99/mo',
     tagline: 'Everything in Free, plus deeper security controls and advanced analytics.',
+  },
+  {
+    id: TIER.AI_SECURITY_PROTECTION,
+    name: 'AI Security Protection',
+    price: 'Contact sales',
+    tagline: 'Everything in Free and Safety Plus, plus live online TIP-backed Vigil guidance.',
   },
 ];
 
@@ -83,7 +119,7 @@ export const SAFETY_PLUS_FEATURES = [
   { name: 'Calldata decode & approval guard', summary: 'Human-readable calldata before signing' },
   { name: 'Address-poisoning warnings', summary: 'Look-alike detection on send' },
   { name: 'Risk scoring (pre-sign gate)', summary: 'Rule-based gate wired into Send' },
-  { name: 'Hardware wallet (Trezor)', summary: 'Cold-key signing, keys never leave device' },
+  { name: 'Hardware wallet (Digital Shield)', summary: 'Cold-key signing, keys never leave device' },
   { name: 'Transaction simulation', summary: 'Pre-sign preview with risk flags' },
   { name: 'Anomaly / fraud detection', summary: 'Rule-based deviation flags' },
   { name: 'Suspicious-address screening', summary: 'Local blocklist + sanctions checks' },
@@ -96,4 +132,11 @@ export const SAFETY_PLUS_FEATURES = [
   { name: 'On-chain analytics', summary: 'Address-level activity insights' },
   { name: 'Recurring payments', summary: 'Scheduled payment reminders' },
   { name: 'Message signing', summary: 'Proof-of-ownership without sending funds' },
+];
+
+export const AI_SECURITY_PROTECTION_FEATURES = [
+  { name: 'Includes all Safety Plus features', summary: 'Deniability, advanced backup, analytics, and other paid protections stay unlocked' },
+  { name: 'Live Vigil answers via TIP', summary: 'Advisor can query the online threat-intelligence platform in real time' },
+  { name: 'TIP-backed AI security chat', summary: 'Remote AI responses for security questions instead of local-only guidance' },
+  { name: 'Advisor online paywall unlock', summary: 'Adds online Vigil on top of the full Free + Safety Plus feature set' },
 ];

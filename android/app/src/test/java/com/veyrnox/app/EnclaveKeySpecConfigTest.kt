@@ -18,7 +18,8 @@ import org.junit.Test
  *
  * Ungated after device verification (PR #1152, 2026-07-18). This test pins:
  *   - AES-GCM 256 single-key (fallback branch of docs/M2cd.native-acl-plan.md §5)
- *   - versioned alias `.v1` — ANY future ACL/cipher change MUST bump the suffix
+ *   - versioned alias `.v2` — ANY future ACL/cipher change MUST bump the suffix
+ *     (was `.v1`; bumped 2026-08-28 with the AUTH_VALIDITY_SECONDS 0→30 change)
  *   - REQUIRES_USER_AUTH is a `const val`, so no code path can flip it to false
  *   - PREFER_STRONGBOX true — StrongBox is preferred, not enforced (I4 truthful
  *     reporting; StrongBox unavailability falls through to TEE at the service)
@@ -79,7 +80,7 @@ class EnclaveKeySpecConfigTest {
     @Test
     fun `T1 key alias matches reserved value`() {
         assertEquals(
-            "com.veyrnox.app.enclaveWrappingKey.v1",
+            "com.veyrnox.app.enclaveWrappingKey.v2",
             EnclaveKeySpecConfig.KEY_ALIAS,
         )
     }
@@ -87,11 +88,25 @@ class EnclaveKeySpecConfigTest {
     // ── T2: alias includes a version suffix ──────────────────────────────
 
     @Test
-    fun `T2 key alias includes v1 version suffix (ACL policy stamp)`() {
-        // The alias itself is the ACL-policy proof: if a key exists under .v1,
-        // it was minted by THIS code with THIS ACL. Any change to the KeyGenParameterSpec
-        // (auth flags, cipher, key size) MUST bump this suffix.
-        assertTrue(EnclaveKeySpecConfig.KEY_ALIAS.endsWith(".v1"))
+    fun `T2 key alias includes v2 version suffix (ACL policy stamp)`() {
+        // The alias itself is the ACL-policy proof: if a key exists under .v2,
+        // it was minted by THIS code with THIS ACL. Any change to the
+        // KeyGenParameterSpec (auth flags, cipher, key size, validity window)
+        // MUST bump this suffix. v1 → v2 bump landed with AUTH_VALIDITY_SECONDS
+        // going 0 → 30s so Pixel Face can satisfy the KEK cipher via BiometricPrompt.
+        assertTrue(EnclaveKeySpecConfig.KEY_ALIAS.endsWith(".v2"))
+    }
+
+    // ── T5: AUTH_VALIDITY_SECONDS is 30 (30-second time-based STRONG auth window) ──
+
+    @Test
+    fun `T5 AUTH_VALIDITY_SECONDS is 30 (time-based STRONG auth window)`() {
+        // Owner ruling 2026-08-28: 30-second window so a STRONG biometric
+        // (Face-unlock on Pixel included) authorises the KEK cipher without a
+        // separate cipher-bound tap. Bounded: an attacker who gets an unattended
+        // phone within 30s of the user's last biometric can unwrap KEK; wider
+        // windows extend that gap without proportional UX gain.
+        assertEquals(30, EnclaveKeySpecConfig.AUTH_VALIDITY_SECONDS)
     }
 
     // ── T3: REQUIRES_USER_AUTH must be immutable — no code path can flip it ──

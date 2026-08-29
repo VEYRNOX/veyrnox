@@ -12,6 +12,7 @@ import {
   screenAddressHistory,
   buildReviewItems,
 } from "@/lib/securityPosture";
+import { buildSuspiciousAssetSnapshot } from "@/lib/suspiciousAssets";
 import { useRaspArtifact, TIER } from "@/rasp";
 import Spinner from "@/components/Spinner";
 import { isBiometricUnlockEnabled } from "@/lib/biometric";
@@ -78,13 +79,16 @@ function FeatureRow({ icon: Icon, label, on, detail, path, gapWhenOff = true }) 
 function StatCard({ icon: Icon, label, value, sub, tone, path }) {
   const toneCls = tone === "high" ? "border-destructive/30" : tone === "medium" ? "border-caution/30" : "border-border";
   return (
-    <Link to={path} className={`p-4 rounded-xl border bg-card hover:bg-secondary/40 transition-colors block ${toneCls}`}>
-      <div className="flex items-center gap-2 text-muted-foreground mb-2">
+    <Link
+      to={path}
+      className={`block h-full min-w-0 rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/40 ${toneCls}`}
+    >
+      <div className="mb-2 flex items-start gap-2 text-muted-foreground">
         <Icon className="h-4 w-4" />
-        <span className="text-xs font-medium">{label}</span>
+        <span className="min-w-0 text-xs font-medium leading-snug break-words">{label}</span>
       </div>
-      <p className={`text-2xl font-bold ${tone === "high" ? "text-destructive" : tone === "medium" ? "text-caution" : ""}`}>{value}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+      <p className={`break-words text-2xl font-bold ${tone === "high" ? "text-destructive" : tone === "medium" ? "text-caution" : ""}`}>{value}</p>
+      <p className="mt-0.5 text-xs leading-snug text-muted-foreground break-words">{sub}</p>
     </Link>
   );
 }
@@ -117,6 +121,11 @@ export default function SecurityDashboard() {
     queryFn: () => base44.entities.Transaction.list(),
     enabled: entityQueryEnabled,
   });
+  const { data: nftRows = [], isLoading: loadingNfts, isError: errorNfts } = useQuery({
+    queryKey: ["nft-assets"],
+    queryFn: () => base44.entities.NFTAsset.list(),
+    enabled: entityQueryEnabled,
+  });
 
   // ── Feature toggles. Sync ones read directly; the stealth-pool marker is
   //    resolved via WalletProvider. NOTE: duress/panic configured-state is
@@ -145,10 +154,22 @@ export default function SecurityDashboard() {
   const approvals = useMemo(() => summarizeApprovals(approvalRows), [approvalRows]);
   const spam = useMemo(() => summarizeSpamTokens(tokenRows), [tokenRows]);
   const addresses = useMemo(() => screenAddressHistory(txRows), [txRows]);
+  const suspiciousAssets = useMemo(
+    () => buildSuspiciousAssetSnapshot({ tokens: tokenRows, nfts: nftRows }),
+    [tokenRows, nftRows]
+  );
   const { review: postureReview } = useMemo(
     () => buildReviewItems({ approvals, spam, addresses, features: { autoLockNever } }),
     [approvals, spam, addresses, autoLockNever]
   );
+  const suspiciousAssetsReviewItem = useMemo(() => {
+    if (suspiciousAssets.totals.total <= 0) return null;
+    return {
+      severity: suspiciousAssets.totals.riskyContracts > 0 ? 'high' : 'medium',
+      text: `${suspiciousAssets.totals.total} suspicious asset${suspiciousAssets.totals.total > 1 ? 's' : ''} need review`,
+      path: '/suspicious-assets',
+    };
+  }, [suspiciousAssets]);
 
   // Prepend a RASP device-integrity item when the environment is non-clean.
   // BLOCK (tampered/hooked) → high; WARN (rooted/unavailable) → high.
@@ -163,11 +184,11 @@ export default function SecurityDashboard() {
   }, [raspArtifact]);
 
   const review = useMemo(
-    () => (raspReviewItem ? [raspReviewItem, ...postureReview] : postureReview),
-    [raspReviewItem, postureReview]
+    () => [raspReviewItem, suspiciousAssetsReviewItem, ...postureReview].filter(Boolean),
+    [raspReviewItem, suspiciousAssetsReviewItem, postureReview]
   );
 
-  const loading = loadingApprovals || loadingTokens || loadingTxs;
+  const loading = loadingApprovals || loadingTokens || loadingTxs || loadingNfts;
   const highCount = review.filter((r) => r.severity === "high").length;
 
   return (
@@ -240,7 +261,7 @@ export default function SecurityDashboard() {
       {/* Active risk signals (counts → jump to the existing action page). */}
       <div>
         <h2 className="text-sm font-semibold mb-2">Active risk signals</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
             icon={ShieldOff}
             label="Approvals"
@@ -258,6 +279,14 @@ export default function SecurityDashboard() {
             path="/spam-filter"
           />
           <StatCard
+            icon={ShieldAlert}
+            label="Suspicious assets"
+            value={loading ? "—" : suspiciousAssets.totals.total}
+            sub={`${suspiciousAssets.totals.riskyContracts} contract${suspiciousAssets.totals.riskyContracts === 1 ? '' : 's'} · ${suspiciousAssets.totals.suspiciousNfts} NFT${suspiciousAssets.totals.suspiciousNfts === 1 ? '' : 's'}`}
+            tone={suspiciousAssets.totals.riskyContracts > 0 ? "high" : suspiciousAssets.totals.total > 0 ? "medium" : "ok"}
+            path="/suspicious-assets"
+          />
+          <StatCard
             icon={ShieldQuestion}
             label="Addresses"
             value={loading ? "—" : addresses.flagged + addresses.lookAlikePairs}
@@ -271,6 +300,9 @@ export default function SecurityDashboard() {
         )}
         {errorTokens && (
           <p className="mt-2 text-xs text-caution">Couldn't load wallet tokens — this signal may be incomplete.</p>
+        )}
+        {errorNfts && (
+          <p className="mt-2 text-xs text-caution">Couldn't load NFT holdings — suspicious collectible review may be incomplete.</p>
         )}
         {errorTxs && (
           <p className="mt-2 text-xs text-caution">Couldn't load transaction history — address screening may be incomplete.</p>
@@ -333,6 +365,66 @@ export default function SecurityDashboard() {
         {/* Icon mirrors under dir="rtl" — list-row disclosure chevron. */}
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 rtl:-scale-x-100" />
       </Link>
+
+      {/* How the score is calculated — user-visible rubric that matches
+          lib/securityPosture.js. Every item is worth exactly the points shown;
+          the score never fabricates evidence for anything not earned (I4).
+          Kept in sync with lib/advisorKnowledge.js "How is the security score
+          calculated?" so the AI Advisor and the visible docs agree. */}
+      <details className="rounded-xl border border-border bg-card/50 open:bg-card">
+        <summary className="cursor-pointer list-none p-3 flex items-center justify-between">
+          <span className="text-sm font-medium">How is my score calculated?</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground rtl:-scale-x-100" />
+        </summary>
+        <div className="px-3 pb-3 space-y-3 text-xs text-muted-foreground">
+          <p>
+            Five dimensions sum to a maximum of 95 points. Every item scores exactly its listed points, or zero — nothing partial.
+          </p>
+          <div>
+            <p className="font-medium text-foreground">Authentication · 20</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>PIN created — 10</li>
+              <li>PIN meets 8-digit minimum — 5</li>
+              <li>Biometric unlock enabled (app-level, not iOS Face ID enrollment) — 5</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Device Integrity · 25</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>RASP ALLOW — 25 · WARN — 10 · BLOCK — 0</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Hardware Binding · 10</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>Hardware Protection active (KEK-wrapped vault) — 5</li>
+              <li>Top-tier hardware: iOS Secure Enclave or Android StrongBox — 5</li>
+              <li>Android TEE (Trusted Execution Environment) — 3 instead of 5</li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Recovery · 30</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>Recovery passphrase set — 8</li>
+              <li>Share A wrapped — 2</li>
+              <li>Share B uploaded — 8</li>
+              <li>Share C exported — 6</li>
+              <li>Share C verified — 6 <span className="italic">(gated on a real recovery round-trip; not yet loggable — currently unreachable)</span></li>
+            </ul>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">WalletConnect Session Security · 10</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              <li>Spend limit set — 3 <span className="italic">(not yet wired to score)</span></li>
+              <li>Session expiry set — 3 <span className="italic">(not yet wired to score)</span></li>
+              <li>Step-up re-auth enabled — 4 <span className="italic">(not yet wired to score)</span></li>
+            </ul>
+          </div>
+          <p className="border-t border-border pt-2">
+            <span className="font-medium text-foreground">Honest ceiling today: ~79 / 95.</span> The four <span className="italic">unwired/unreachable</span> items above cannot be earned until follow-up work lands. Everything else is under your control on this device.
+          </p>
+        </div>
+      </details>
 
       {/* Honest coverage note — KNOWN signals only, never a guarantee. */}
       <div className="p-3 rounded-xl bg-secondary/50 border border-border">

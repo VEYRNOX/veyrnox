@@ -42,6 +42,7 @@ import { getAuthModel } from '@/lib/authModel';
 import { useWallet } from '@/lib/WalletProvider';
 import { useActionGuard } from '@/components/security/useActionGuard';
 import { useRaspArtifact, sensitiveGate } from '@/rasp';
+import { getFreshLocalRaspArtifact } from '@/lib/getFreshLocalRaspArtifact';
 
 const REAUTH_CAP = 5;
 
@@ -85,10 +86,22 @@ export function useRevealWithReauth(onRevealed) {
 
   // Entry point for callers: gate behind the existing 2FA action guard, then try
   // the reveal. Byte-identical first leg to the old per-callsite code.
-  const revealWithReauth = useCallback((walletId, opts = {}) => {
+  const revealWithReauth = useCallback(async (walletId, opts = {}) => {
     const gate = sensitiveGate(raspArtifact, 'seed-reveal');
     if (gate.blocked) {
       toast.error(gate.sentence || 'Seed access is disabled on this device right now.');
+      return;
+    }
+    // L-6 fix (audit 2026-08-25): raspArtifact above is a mount-time sample, up
+    // to ~60s stale (heartbeat). Seed reveal is a "highest-danger moment"
+    // (degrade.js) — probe FRESH at the confirm step, mirroring the sign
+    // hot-path (SendCrypto.jsx getFreshRaspArtifact) but on-device-only, same
+    // as raspArtifact above (local seed material is not gated on the remote
+    // leg — see getFreshLocalRaspArtifact.js). Fails closed on timeout/throw.
+    const freshArtifact = await getFreshLocalRaspArtifact();
+    const freshGate = sensitiveGate(freshArtifact, 'seed-reveal');
+    if (freshGate.blocked) {
+      toast.error(freshGate.sentence || 'Seed access is disabled on this device right now.');
       return;
     }
     requireTwoFactor(() => attemptReveal(walletId), {

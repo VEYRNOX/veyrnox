@@ -79,7 +79,7 @@ describe('recoveryShare — behaviour under flag stubbed on', () => {
     expect(obj.type).toBe('recovery-share');
     expect(obj.version).toBe(1);
     expect(obj.shareIndex).toBe(2);
-    expect(obj.kdf.memorySize).toBe(196608);
+    expect(obj.kdf.memorySize).toBe(98304);
     expect(typeof obj.salt).toBe('string');
     expect(typeof obj.iv).toBe('string');
     expect(typeof obj.ct).toBe('string');

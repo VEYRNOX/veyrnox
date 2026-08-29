@@ -36,8 +36,18 @@ const METHOD_MAP = {
 // Methods rejected immediately — never prompt the user.
 // eth_signTypedData (v1) and _v3 are unsupported: their encoding diverges from v4,
 // so signing under v4 semantics produces a hash the user never saw (H6).
+//
+// audit-L-4 (2026-08-25): eth_signTransaction is DEFENCE IN DEPTH, not a live
+// hole — it was already closed three ways downstream (session.js never
+// advertises it in the approved namespace; RequestApprovalModal marks an
+// UNKNOWN request approveBlocked and renders no approve button; its
+// handleApprove throws). Listing it here rejects it at the front door instead
+// of resting on three UI-layer guards all staying correct. Veyrnox has no
+// offline-signing surface: a signed-but-unbroadcast tx would leave the gas cap,
+// the spend limit and the chain bind unenforceable at broadcast time.
 export const BLOCKED_METHODS = new Set([
   'eth_sign',
+  'eth_signTransaction',
   'eth_signTypedData',
   'eth_signTypedData_v3',
   'wallet_addEthereumChain',

@@ -1,0 +1,59 @@
+[
+  {
+    "crawlStage": "crawl",
+    "contextDescriptor": { "condition": "always_true" },
+    "actions": [
+      {
+        "eventType": "VIEW_CLICKED",
+        "elementDescriptors": [{ "text": "Help improve Veyrnox" }]
+      }
+    ]
+  },
+  {
+    "crawlStage": "crawl",
+    "contextDescriptor": { "condition": "always_true" },
+    "actions": [
+      { "eventType": "DELAYED_MESSAGE_POSTED", "delayTime": 800 },
+      {
+        "eventType": "VIEW_CLICKED",
+        "elementDescriptors": [{ "text": "Get Started" }]
+      }
+    ]
+  },
+  {
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [{ "contentDescription": "Continue" }]
+    },
+    "actions": [
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "1" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "2" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "3" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "4" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "5" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "6" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "7" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "8" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Continue" }] }
+    ]
+  },
+  {
+    "crawlStage": "crawl",
+    "contextDescriptor": {
+      "condition": "element_present",
+      "elementDescriptors": [{ "contentDescription": "Continue" }]
+    },
+    "actions": [
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "1" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "2" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "3" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "4" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "5" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "6" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "7" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "text": "8" }] },
+      { "eventType": "VIEW_CLICKED", "elementDescriptors": [{ "contentDescription": "Continue" }] }
+    ]
+  }
+]

@@ -22,25 +22,6 @@ describe('Biometric Re-enrollment Invalidation — iOS (H-2/iOS-F11)', () => {
     await appHelper.pause(1500);
   });
 
-  it('should print the supervised re-enrollment procedure', async () => {
-    console.log(`
-🧪 H-2/iOS-F11 iOS runtime procedure (mirrors the passed Android test):
-
-  1. On an UNRESTRICTED iPhone, enroll the SE KEK (Face ID + PIN) from a clean vault.
-  2. iOS Settings → Face ID & Passcode → remove and re-enroll Face ID.
-  3. Force-close and cold restart Veyrnox.
-  4. Attempt a KEK unlock — kSecAccessControlBiometryCurrentSet must invalidate
-     the SE key.
-  5. App must FAIL CLOSED: "Hardware key invalidated — re-enrollment required"
-     (or equivalent), NOT silently open.
-  6. PIN fallback must still recover the vault (I4 recovery path intact).
-
-Acceptance: fail-closed message shown AND PIN fallback decrypts the vault.
-Record device model, iOS version, date as a META key in
-docs/verified-evidence.json (mirrors _hardware_kek_biometric_reenroll_invalidation).`);
-    expect(true).toBe(true);
-  });
-
   it('should assert fail-closed + PIN recovery after re-enroll (REENROLL_DONE=1)', async () => {
     if (process.env.REENROLL_DONE !== '1') {
       console.log(

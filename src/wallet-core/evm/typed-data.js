@@ -18,50 +18,52 @@ export function parseTypedData(raw) {
   if (!types || !primaryType || !message) {
     return { valid: false, error: 'Missing required EIP-712 fields (types, primaryType, message)' };
   }
+
+  // H-4 (2026-08-25 audit; first reported 2026-08-17 as H-1) — reconcile the
+  // dApp-declared `primaryType` with the graph in `types`, and fail CLOSED on
+  // mismatch AND on ambiguity.
+  //
+  // `primaryType` was previously an opaque string, yet every protection on this
+  // path keys off it: detectAssetAuthorising (the drain warning + the modal's
+  // mandatory ack checkbox) and scoreWcTypedDataLevel (the M-5 pre-sign risk
+  // plane). The signer does NOT use it — wallet.signTypedData(domain, types,
+  // message) has no primaryType parameter and ethers derives the real one from
+  // `types` as the single unreferenced struct. So a hostile dApp could ship a
+  // canonical `Permit` in `types` with `"primaryType": "Vote"`: ethers signs
+  // the EIP-2612 Permit typehash while Veyrnox warns about nothing.
+  //
+  // Deriving the root the same way ethers does closes that gap at the single
+  // chokepoint all three callers share. Ambiguity (0 or 2+ roots) is rejected
+  // rather than guessed — ethers refuses those payloads too ("ambiguous primary
+  // types or unused types"), so nothing signable is lost.
+  const structNames = Object.keys(types).filter((n) => n !== 'EIP712Domain');
+  const referenced = new Set();
+  for (const name of structNames) {
+    const fields = types[name];
+    if (!Array.isArray(fields)) {
+      return { valid: false, error: 'Malformed EIP-712 type definition' };
+    }
+    for (const f of fields) {
+      // Strip array suffixes: `OfferItem[]`, `PermitDetails[2]`,
+      // `OrderComponents[2][2]` all reference the bare struct name.
+      referenced.add(String(f?.type ?? '').replace(/(\[\d*\])+$/, ''));
+    }
+  }
+  const roots = structNames.filter((n) => !referenced.has(n));
+  if (roots.length !== 1 || roots[0] !== primaryType) {
+    return { valid: false, error: 'primaryType does not match the declared type graph' };
+  }
+
   return { valid: true, types, domain: domain ?? {}, primaryType, message };
 }
 
-// H7 — bind an EIP-712 signature to the WalletConnect SESSION chain.
-//
-// A dApp on e.g. a Sepolia session (caip2 "eip155:11155111") can supply a
-// typed-data payload whose domain.chainId is mainnet (1). EIP-712's domain
-// separator includes chainId, so signing the dApp-supplied domain yields a
-// signature valid on THAT chain — a cross-chain Permit/Permit2 drain. We must
-// reject (fail closed, I4) unless the parsed domain.chainId equals the numeric
-// chain id of the active session. Pure: returns a machine code, never throws.
-function toChainIdNum(v) {
-  if (typeof v === 'number' && Number.isInteger(v)) return v;
-  if (typeof v === 'bigint') return Number(v);
-  if (typeof v === 'string') {
-    const s = v.trim();
-    if (/^0x[0-9a-fA-F]+$/.test(s)) return parseInt(s, 16);
-    if (/^\d+$/.test(s)) return parseInt(s, 10);
-  }
-  return null;
-}
-
-export function checkTypedDataChainId(parsed, caip2SessionChainId) {
-  const expected = toChainIdNum(
-    typeof caip2SessionChainId === 'string'
-      ? caip2SessionChainId.split(':')[1]
-      : null,
-  );
-  if (expected == null || !Number.isFinite(expected)) {
-    return { ok: false, code: 'SESSION_CHAINID_INVALID', expected: null, got: null };
-  }
-  const rawDomainChainId = parsed?.domain?.chainId;
-  if (rawDomainChainId === undefined || rawDomainChainId === null) {
-    return { ok: false, code: 'CHAINID_MISSING', expected, got: null };
-  }
-  const got = toChainIdNum(rawDomainChainId);
-  if (got == null || !Number.isFinite(got)) {
-    return { ok: false, code: 'CHAINID_MISSING', expected, got: null };
-  }
-  if (got !== expected) {
-    return { ok: false, code: 'CHAINID_MISMATCH', expected, got };
-  }
-  return { ok: true, code: 'CHAINID_OK', expected, got };
-}
+// H7 (EIP-712 chain binding) is enforced INLINE in
+// `WalletConnectProvider.jsx` `_handleSignTypedData` — the single enforcement
+// site. `checkTypedDataChainId` used to live here as a second, exported,
+// unit-tested implementation of the same rule with no production caller
+// (prior audits: L-3 2026-07-14, INFO 2026-08-25). Two implementations of one
+// rule, only one of them exercised, is a drift hazard, so the unused copy was
+// deleted rather than left to rot.
 
 export function detectAssetAuthorising(parsed) {
   if (!parsed.valid) return { isAssetAuthorising: false, reason: null };

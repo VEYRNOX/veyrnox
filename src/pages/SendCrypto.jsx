@@ -4,30 +4,20 @@
 // src/pages/send/ sub-modules per the 2026-08 audit. This page is the
 // pre-sign chokepoint: RASP artifact
 // composition -> action-password re-auth -> gas / nonce / recipient screening
-// -> Trezor branch (hw-send.js) vs software branch. Any structural move risks
+// -> Digital Shield branch vs software branch. Any structural move risks
 // reordering the pre-sign gates (P2-7, #746 recovery check, #961 audited
 // helpers) the SEND signing correctness depends on. Extracted candidates for
 // a future audited pass (byte-identical, no reorder):
 //   1. amount/rate formatting helpers (pure functions)
 //   2. per-network fee-preset lookup tables
-//   3. TrezorConnectModal state machine (already isolated)
 // The signing/broadcast branch stays here until independently re-audited.
 import BackButton from "@/components/BackButton";
 import SuccessBeacon from "@/components/SuccessBeacon";
 import RiskShield from "@/components/RiskShield";
 import { motion, useReducedMotion } from "motion/react";
+import { Buffer } from "buffer";
 import { USD_RATES, approxUsd, USD_REFERENCE_NOTE } from "@/lib/cryptos";
-import { useTrezor } from '../context/TrezorContext.jsx';
-// Issue #961 (SEND H-1): the Trezor EVM branch now goes through the audited
-// hw-send.js helpers (signAndBroadcastEvmTrezor / signAndBroadcastEvmTrezorToken),
-// NOT the raw device wrapper — those helpers apply the M-2/#746 recovery check,
-// the 'pending' block-tag nonce + sanity window, and estimated gas + headroom.
-// BTC + SOL Trezor branches still use their raw wrappers (unrelated to #961).
-import { trezorSignBtcTx } from '../wallet-core/hw/trezor.js';
-import { signAndBroadcastEvmTrezor, signAndBroadcastEvmTrezorToken } from '../wallet-core/evm/hw-send.js';
-import { signAndBroadcastSolTrezor } from '../wallet-core/sol/hw-send.js';
-import { TrezorConnectModal } from '../components/hw/TrezorConnectModal.jsx';
-import { TrezorUnsupportedScreen } from '../components/hw/TrezorUnsupportedScreen.jsx';
+import { useDigitalShield } from '@/context/DigitalShieldContext';
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import ReferralPrompt from "@/components/ReferralPrompt";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -38,21 +28,23 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet, Activity } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowUpRight, Fingerprint, Loader2, CheckCircle2, ScanLine, ShieldCheck, ShieldAlert, AlertTriangle, ExternalLink, Lock, FileText, Fuel, Wallet } from "lucide-react";
 import QRScanner from "../components/QRScanner";
-import FeeSelector from "@/components/FeeSelector";
+import UrQrPlayer from "@/components/hw/UrQrPlayer";
 import CoinLogo from "@/components/CoinLogo";
+import WalletAssetPickerSheet from "@/components/send/WalletAssetPickerSheet";
+import NoteEditorSheet from "@/components/send/NoteEditorSheet";
+import FeeSheet from "@/components/send/FeeSheet";
 import TransactionPreview from "@/components/TransactionPreview";
-import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
+import TransactionIntelligencePanel from "@/components/TransactionIntelligencePanel";
 import { toast } from "@/lib/toast";
 import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
 import { useNavigate, useSearchParams } from "react-router";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
-import { MAX_BASE_FEE_GWEI } from "@/wallet-core/evm/fees";
+import { MAX_BASE_FEE_GWEI, evmFeeOverrides } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
 import { getBalanceSats } from "@/wallet-core/btc/provider.js";
 import { getBalanceSol } from "@/wallet-core/sol/provider.js";
@@ -61,17 +53,23 @@ import { isDevSendUngated } from "@/lib/devSendOverride";
 import { signAndBroadcastBtc, estimateBtcSend, broadcastBtcTx } from "@/wallet-core/btc/send";
 import { describeBtcPlan } from "@/wallet-core/btc/simulate";
 import { signAndBroadcastSol, buildUnsignedSolTx } from "@/wallet-core/sol/send";
+import { getSolNetwork } from "@/wallet-core/sol/networks.js";
+import { broadcastRawTx, confirmTx } from "@/wallet-core/sol/provider.js";
 import { toBaseUnits, normalizeSendResult } from "@/lib/sendDispatch";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { sendToken, buildTokenTransfer, getTokenBalance } from "@/wallet-core/evm/token-send";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import RiskVerdictBanner from "@/components/RiskVerdictBanner";
 import { score, buildRiskInputs } from "@/risk";
+import { composeTransactionVerdict } from "@/risk/composeVerdict";
+import { buildReviewContributor } from "@/risk/reviewContributor";
 import { TIER, useRaspArtifact, getFreshRaspArtifact } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
+import { deriveSigningPolicy } from "@/policy/signingPolicy";
 import { simulateEvmTransaction } from "@/wallet-core/evm/simulate";
 import { getToken } from "@/wallet-core/evm/tokens";
 import { screenRecipient } from "@/wallet-core/evm/poison";
+import { verifyLiveChainId, applyEstimatedGasLimit } from "@/wallet-core/evm/preflight.js";
 import SecurityAdvisorBanner from "@/components/SecurityAdvisorBanner";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { sendAddressErrorKind } from "@/lib/sendAddressError";
@@ -95,6 +93,7 @@ import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet,
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import { screenTransaction } from "@/api/tipScreen";
 import { ZERO_FROM_ADDRESS } from "@/lib/tipZeroFrom.js";
+import { persistRemoteScreenPreference, readRemoteScreenPreference } from "@/lib/remoteScreenPreference.js";
 import { resolveTipChain } from "./sendCryptoTipChain";
 import PinPad from "@/components/security/PinPad";
 import { getAuthModel } from "@/lib/authModel";
@@ -104,6 +103,15 @@ import { requiresVerification } from "@/lib/seedVerifyGate";
 import { useSendFlowTracking, useFirstSend } from "@/lib/tracking-integration";
 import { normalizeDecimalInput, resolveLocale } from "@/lib/locale";
 import { isRiskGateReady } from "@/lib/riskGateReady";
+import { openAdvisor, publishAdvisorContext } from "@/lib/advisorBridge";
+import {
+  buildDigitalShieldBtcPsbt,
+  buildDigitalShieldEvmRequest,
+  buildDigitalShieldSolRequest,
+  finalizeDigitalShieldBtcResponse,
+  finalizeDigitalShieldEvmResponse,
+  finalizeDigitalShieldSolResponse,
+} from "@/wallet-core/hw/digitalShield.js";
 
 // Maximum wrong-credential attempts before the vault locks (step-up re-auth).
 const REAUTH_CAP = 5;
@@ -120,6 +128,12 @@ function enrichWithTip(simResult, tipResult) {
       mode: simResult.source?.mode ? `${simResult.source.mode}+tip` : 'tip',
     },
   };
+}
+
+function parseDigitalShieldQr(raw) {
+  const trimmed = String(raw || '').trim();
+  if (!/^ur:/i.test(trimmed) || trimmed.length > 2048) return null;
+  return trimmed.toUpperCase();
 }
 
 // M-3: form-boundary amount validity. `parseFloat(amount) <= 0` alone ACCEPTS
@@ -178,6 +192,59 @@ function PoisonWarning({ screen }) {
 function SendDoneView({ amount, currency, txResult, onSendAnother }) {
   const { t: tw } = useTranslation("wallet");
   const reduce = useReducedMotion();
+
+  // Celebrate. Sustained confetti bursts + raining balloons falling from the
+  // top of the viewport behind the beacon. Both suppressed under prefers-
+  // reduced-motion (I4-adjacent — never surprise a user who asked the OS to
+  // hush motion). Confetti is fire-and-forget; the interval is cleared on
+  // unmount.
+  // Funk palette — bold, saturated, wide gamut. Confetti-only celebration
+  // now (balloons removed 2026-08-28); the check-mark is the one bold moment.
+  const CONFETTI_COLORS = [
+    "#4ADAC2", "#F5D061", "#F28FAD", "#8B5CF6", "#F97316",
+    "#3B82F6", "#22C55E", "#FDE68A", "#FCA5A5", "#A5F3FC",
+  ];
+
+  useEffect(() => {
+    if (reduce) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { default: confetti } = await import("canvas-confetti");
+        if (cancelled) return;
+        // Locate the checkmark beacon so the explosion emanates from IT, not
+        // a fixed screen coordinate. Falls back to top-third if the beacon
+        // hasn't rendered yet (first paint race).
+        const beacon = document.querySelector("[data-vx-beacon]");
+        let ox = 0.5, oy = 0.3;
+        if (beacon) {
+          const r = beacon.getBoundingClientRect();
+          ox = (r.left + r.width / 2) / window.innerWidth;
+          oy = (r.top + r.height / 2) / window.innerHeight;
+        }
+        const shoot = (opts) => confetti({
+          particleCount: 90,
+          spread: 360,             // radial in every direction
+          startVelocity: 42,
+          scalar: 1,
+          ticks: 220,
+          gravity: 0.9,
+          colors: CONFETTI_COLORS,
+          shapes: ["square", "circle"],
+          origin: { x: ox, y: oy },
+          disableForReducedMotion: true,
+          ...opts,
+        });
+        // One big explosion, then a smaller aftershock 180ms later.
+        shoot();
+        setTimeout(() => shoot({ particleCount: 40, startVelocity: 28, spread: 360 }), 180);
+      } catch { /* preview-only sparkle; a load failure is not worth surfacing */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduce]);
+
+
   const container = {
     hidden: {},
     show: { transition: reduce ? {} : { staggerChildren: 0.08, delayChildren: 0.15 } },
@@ -193,9 +260,9 @@ function SendDoneView({ amount, currency, txResult, onSendAnother }) {
       variants={container}
       initial="hidden"
       animate="show"
-      className="max-w-md mx-auto text-center py-16 space-y-5"
+      className="max-w-md mx-auto text-center py-16 space-y-5 relative"
     >
-      <motion.div variants={item} className="flex justify-center">
+      <motion.div variants={item} className="flex justify-center relative" data-vx-beacon="true">
         <SuccessBeacon size={112} label={tw("send.done.beacon_label")} />
       </motion.div>
       <motion.h2 variants={item} className="text-xl font-bold tracking-tight">{tw("send.done.heading")}</motion.h2>
@@ -234,6 +301,9 @@ export default function SendCrypto() {
   const [searchParams] = useSearchParams();
   const { isUnlocked, wallets, activeWalletId, switchWallet, accounts, btcAccount, solAccount, withPrivateKey, withBtcPrivateKey, withSolPrivateKey, lock, verifyActiveCredential, verifyActiveCredentialDetailed, isSendReauthRequired, actionPasswordConfigured, verifyActionPassword, recordAudit, isDecoy, isHidden, vaultExists, vaultChecking } = useWallet();
 
+  // A persisted demo flag must not exempt a session that has a real wallet.
+  const demoActive = DEMO && wallets.length === 0;
+
   // Resolve the active 2FA method for this send (mirrors useActionGuard.resolveMethod;
   // see lib/send2faMethod.js). Audit H-1: keying the send gate off actionPasswordConfigured
   // alone silently skipped a PASSKEY-only second factor. is2faPasskeyEnabled/isPasskeyRegistered
@@ -246,14 +316,6 @@ export default function SendCrypto() {
   // decision is unchanged — the hook delegates to the same pure resolveSend2faMethod.
   // I3: the resolver suppresses device-global factors in decoy/hidden sessions
   // (per-set Action Password still applies) — see lib/send2faMethod.js.
-  // Demo is a backend-less walkthrough with NO unlocked vault (see the DEMO FALLBACK
-  // note on the wallet source below, which consumes this too). Hoisted above every
-  // send-gate exemption input — the raw DEMO flag is persisted from `?demo=1` into
-  // shared localStorage and survives, so a stale flag coexisting with a real unlocked
-  // vault must NOT strip re-auth, second-factor, screening, or simulation. Every
-  // exemption below keys off `demoActive` (no real vault), not the raw flag.
-  const demoActive = DEMO && wallets.length === 0;
-
   const send2faMethod = useSend2faMethod({
     demo: demoActive,
     isNative: Capacitor.isNativePlatform(),
@@ -329,10 +391,20 @@ export default function SendCrypto() {
   const [txResult, setTxResult] = useState(/** @type {any} */ (null)); // { hash, explorerUrl } from a real broadcast
   const [selectedFee, setSelectedFee] = useState(/** @type {any} */ (null)); // user-chosen EIP-1559 fee (FeeSelector)
 
-  // TREZOR hardware-wallet signing mode
-  const { connected: trezorConnected, platform: trezorPlatform, evmAddress: trezorEvmAddress, btcAddress: trezorBtcAddress, solAddress: trezorSolAddress } = useTrezor();
-  const [useTrezorMode, setUseTrezorMode] = useState(false);
-  const [trezorModalOpen, setTrezorModalOpen] = useState(false);
+  const { connected: digitalShieldConnected, evmAccount: digitalShieldEvmAccount, btcAccount: digitalShieldBtcAccount, solAccount: digitalShieldSolAccount } = useDigitalShield();
+  const [useDigitalShieldMode, setUseDigitalShieldMode] = useState(false);
+  // Progressive-disclosure wizard sheet open flags (2026-08-28). Pure UI state:
+  // no security invariants touched, no persistence. Sheets close on selection.
+  const [walletAssetSheetOpen, setWalletAssetSheetOpen] = useState(false);
+  const [noteSheetOpen, setNoteSheetOpen] = useState(false);
+  const [feeSheetOpen, setFeeSheetOpen] = useState(false);
+  const [digitalShieldDialogOpen, setDigitalShieldDialogOpen] = useState(false);
+  const [digitalShieldScannerOpen, setDigitalShieldScannerOpen] = useState(false);
+  const [digitalShieldResponseDraft, setDigitalShieldResponseDraft] = useState("");
+  const [digitalShieldResponseParts, setDigitalShieldResponseParts] = useState([]);
+  const [digitalShieldFlow, setDigitalShieldFlow] = useState(null);
+  const [digitalShieldError, setDigitalShieldError] = useState("");
+  const [digitalShieldBusy, setDigitalShieldBusy] = useState(false);
 
   // STEP-UP RE-AUTH state (replaces the stranded passkey/OTP 2FA).
   const [reauthValue, setReauthValue] = useState("");
@@ -497,11 +569,7 @@ export default function SendCrypto() {
   // can always toggle it; the choice is persisted across sessions.
   const tipConfigured = !!import.meta.env.VITE_TIP_BASE_URL;
   const [remoteScreen, setRemoteScreen] = useState(() => {
-    try {
-      const stored = localStorage.getItem("veyrnox-remote-screen");
-      if (stored !== null) return stored === "1";
-      return tipConfigured;
-    } catch { return tipConfigured; }
+    return readRemoteScreenPreference(tipConfigured);
   });
   const toggleRemoteScreen = (v) => {
     setRemoteScreen(v);
@@ -510,7 +578,7 @@ export default function SendCrypto() {
     // change the real user's default on the next primary unlock. In-memory
     // state still updates so the current session behaves as chosen.
     if (isDecoy || isHidden) return;
-    try { localStorage.setItem("veyrnox-remote-screen", v ? "1" : "0"); } catch { /* ignore */ }
+    persistRemoteScreenPreference(v);
   };
 
   // User-controlled simulation toggle. On by default; persisted so the choice
@@ -531,12 +599,23 @@ export default function SendCrypto() {
   // (.currency/.address/.balance) from the live source, so downstream send / limit /
   // screening logic is unchanged. Address comes from the active wallet's derived
   // accounts (EVM shared / BTC / SOL) via resolveReceive.
-  const selectedWallet = /** @type {any} */ (buildSendWallet({ wallets: srcWallets, walletId, assetSymbol, accounts: srcAccounts, btcAccount: srcBtcAccount, solAccount: srcSolAccount }));
+  const vaultSelectedWallet = /** @type {any} */ (buildSendWallet({ wallets: srcWallets, walletId, assetSymbol, accounts: srcAccounts, btcAccount: srcBtcAccount, solAccount: srcSolAccount }));
 
   // Capability gate: only assets whose status is `live` may move funds. ETH is
   // live (Phase A); ERC-20 tokens (Phase B) are receive_only until a testnet
   // transfer is verified, so they read balances but cannot yet send.
-  const selectedAsset = /** @type {any} */ (getAsset(selectedWallet?.currency));
+  const selectedAsset = /** @type {any} */ (getAsset(assetSymbol || vaultSelectedWallet?.currency));
+  const digitalShieldAccount = useMemo(() => {
+    if (!useDigitalShieldMode) return null;
+    if (selectedAsset?.family === "btc") return digitalShieldBtcAccount;
+    if (selectedAsset?.family === "solana") return digitalShieldSolAccount;
+    return digitalShieldEvmAccount;
+  }, [useDigitalShieldMode, selectedAsset?.family, digitalShieldBtcAccount, digitalShieldSolAccount, digitalShieldEvmAccount]);
+  const selectedWallet = /** @type {any} */ (
+    useDigitalShieldMode && digitalShieldAccount
+      ? { ...(vaultSelectedWallet || {}), id: `${walletId || 'hardware'}:digital-shield`, name: `${selectedWalletName || 'Wallet'} · Digital Shield`, currency: assetSymbol || vaultSelectedWallet?.currency, address: digitalShieldAccount.address, balance: 0 }
+      : vaultSelectedWallet
+  );
   const sendEnabled = canSend(selectedAsset);
   const isErc20 = selectedAsset?.family === "erc20";
 
@@ -553,6 +632,7 @@ export default function SendCrypto() {
   const isBtc = family === "btc";
   const isSolana = family === "solana";
   const networkKey = selectedAsset?.chain || "sepolia";
+  const digitalShieldBtcUnsupported = isBtc && networkKey !== 'mainnet';
   // The EVM network registry only describes EVM chains; for BTC/SOL there is no
   // EIP-1559 fee model and the native symbol is just the asset's own currency.
   const activeNetwork = (isEvmFamily(selectedAsset) || isErc20) ? getNetworkInfo(networkKey) : null;
@@ -616,7 +696,15 @@ export default function SendCrypto() {
   // Unlimited-approval extra confirmation. Send flows are transfer-only, so this
   // stays false in normal use; it hard-gates the action only if an unlimited
   // `approve` is ever decoded.
+  //
+  // The reset useEffect below matches the freshness guarantee the other acks
+  // (limitAck, riskAck, raspWarnBioOk, btcRiskAck) already carry: any change to
+  // amount / currency / recipient invalidates a prior acknowledgement. Without
+  // it a stale approvalAck could survive an in-place amount edit on the review
+  // step and authorise a larger permission than the user last saw (wizard-split
+  // recon 2026-08-28).
   const [approvalAck, setApprovalAck] = useState(false);
+  useEffect(() => { setApprovalAck(false); }, [amount, selectedWallet?.currency, toAddress]);
   const blockedByApproval = tokenCalldata?.kind === "approve" && tokenCalldata.unlimited && !approvalAck;
 
   // Spend-limit acknowledgement. The cap is a warn-not-block control (matching
@@ -737,7 +825,7 @@ export default function SendCrypto() {
   // enables each query. Previously the gate was written independently of the
   // queries and drifted from them; declaring the condition once makes that
   // impossible. Both `enabled:` props below read these constants.
-  const tipScreenApplies = remoteScreen && step === 'verify' && !!toAddress
+  const tipScreenApplies = remoteScreen && (step === "review" || step === "confirm") && !!toAddress
     && !!selectedWallet?.address && addressFormatValid;
 
   // Unsigned SOL transaction for the TIP `solana-sim` lane. The Worker's
@@ -752,7 +840,7 @@ export default function SendCrypto() {
   // egress must NOT fire when remote screening is off, in demo, or in a
   // decoy/hidden session — mirrors the same suppression the other simulation
   // queries apply. Codex 2nd-review flagged this as [P1] in the first pass.
-  const solUnsignedTxApplies = isSolana && remoteScreen && step === 'verify'
+  const solUnsignedTxApplies = isSolana && remoteScreen && (step === "review" || step === "confirm")
     && !!toAddress && !!selectedWallet?.address && addressFormatValid
     && !!canonicalAmount && parseFloat(canonicalAmount) > 0
     && !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive();
@@ -857,6 +945,13 @@ export default function SendCrypto() {
     () => knownAddresses.map((k) => k.address?.toLowerCase()).filter(Boolean),
     [knownAddresses]
   );
+  const reviewContributor = useMemo(() => buildReviewContributor({
+    recipient: toAddress || null,
+    currency: selectedWallet?.currency || null,
+    history,
+    knownAddresses,
+    whitelist,
+  }), [toAddress, selectedWallet?.currency, history, knownAddresses, whitelist]);
 
   // PRE-SIGN TRANSACTION SIMULATION (Phase S2). Before the user confirms, dry-run
   // the transaction against the EXISTING RPC (eth_call / eth_getBalance /
@@ -872,7 +967,7 @@ export default function SendCrypto() {
   // NOTE the EVM-family clause — this simulation NEVER runs for BTC/SOL, which
   // is exactly why keying readiness off it alone blocked those sends forever
   // (L-4).
-  const txSimApplies = simEnabled && step === "verify" && !demoActive && !isDecoy && !isHidden
+  const txSimApplies = simEnabled && (step === "review" || step === "confirm") && !demoActive && !isDecoy && !isHidden
     && !isDeniabilitySessionActive() && (isEvmFamily(selectedAsset) || isErc20)
     && !!selectedWallet?.address && !!toAddress && addressFormatValid
     && parseFloat(canonicalAmount) > 0;
@@ -919,7 +1014,7 @@ export default function SendCrypto() {
       return describeBtcPlan({ plan, fromAddress });
     },
     // I3: never issue Esplora estimate RPC in a decoy/hidden (deniability) session.
-    enabled: simEnabled && step === "verify" && !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && isBtc
+    enabled: simEnabled && (step === "review" || step === "confirm") && !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive() && isBtc
       && !!selectedWallet?.address && !!toAddress && addressFormatValid && parseFloat(canonicalAmount) > 0,
     retry: false,
     staleTime: 10000,
@@ -1029,15 +1124,17 @@ export default function SendCrypto() {
   // G4-A foreground re-probe, G4-B 60 s heartbeat, and the attestation-on-
   // probeKey re-sample (the attestation freshness gap the inline version had).
   //
-  // P2-4 (audit 2026-07-15): deferAttestation is bound to step === "verify" so
-  // the attestation network call (Google Play Integrity / Apple App Attest)
-  // does NOT fire on Send-page mount — it fires only once the user has
-  // committed sign intent by entering the verify step. This matches the
-  // documented "attestation only on explicit pre-sign egress" boundary.
+  // P2-4 (audit 2026-07-15): deferAttestation is bound to the review + confirm
+  // steps so the attestation network call (Google Play Integrity / Apple App
+  // Attest) does NOT fire on Send-page mount — it fires only once the user has
+  // committed sign intent by entering the review step (the wizard's step 2).
+  // This matches the documented "attestation only on explicit pre-sign egress"
+  // boundary and stays the same under the 3-step wizard split (2026-08-28) —
+  // review + confirm together == the old "verify".
   //
   // I3: attestationProbeSource() checks isDeniabilityOrDemoActive() FIRST — no
   // egress under decoy/hidden/demo. I4: a RASP crash fails closed (BLOCK).
-  const raspArtifact = useRaspArtifact({ deferAttestation: step !== 'verify' });
+  const raspArtifact = useRaspArtifact({ deferAttestation: step !== "review" && step !== "confirm" });
   // I4 FAIL CLOSED (RASP-A2): missing tier → strongest BLOCK, never ALLOW.
   const raspTier = raspArtifact?.tier ?? TIER.BLOCK;
 
@@ -1083,6 +1180,74 @@ export default function SendCrypto() {
     && presign?.decision !== 'block';
   const blockedByRaspBio = raspNeedsBio && !raspWarnBioOk;
 
+  const txIntelVerdict = useMemo(() => composeTransactionVerdict({
+    localVerdict: riskVerdict,
+    localApplicable: riskApplicable,
+    localSettled: riskApplicable ? riskReady : false,
+    tipResult: tipQuery.data ?? null,
+    tipApplicable: tipScreenApplies,
+    tipSettled: !tipScreenApplies || tipQuery.isSuccess || tipQuery.isError,
+    review: reviewContributor,
+    raspTier,
+    raspArtifact,
+    presign,
+  }), [riskVerdict, riskApplicable, riskReady, tipQuery.data, tipQuery.isSuccess, tipQuery.isError, tipScreenApplies, reviewContributor, raspTier, raspArtifact, presign]);
+
+  const txIntelPolicy = useMemo(() => deriveSigningPolicy({
+    verdict: txIntelVerdict,
+    presign,
+    acknowledged: riskAck,
+    raspNeedsBio,
+    biometricCleared: raspWarnBioOk,
+  }), [txIntelVerdict, presign, riskAck, raspNeedsBio, raspWarnBioOk]);
+
+  const advisorTxContext = useMemo(() => {
+    if ((step !== "review" && step !== "confirm") || !selectedWallet?.currency) return null;
+    return {
+      transaction_intelligence: {
+        asset: selectedWallet.currency,
+        amount: amount || null,
+        recipient: toAddress || null,
+        level: txIntelVerdict?.level ?? null,
+        owner: txIntelVerdict?.owner ?? null,
+        primary_reason: txIntelVerdict?.primaryReason ?? null,
+        policy_decision: txIntelPolicy?.decision ?? null,
+        policy_action: txIntelPolicy?.actionLabel ?? null,
+        recommend_hardware_signer: txIntelPolicy?.recommendHardwareSigner === true,
+        contributors: Array.isArray(txIntelVerdict?.contributors)
+          ? txIntelVerdict.contributors.map((c) => ({
+              id: c.id,
+              label: c.label,
+              applicable: c.applicable,
+              settled: c.settled,
+              level: c.level ?? null,
+              summary: c.summary ?? null,
+            }))
+          : [],
+        local_signals: Array.isArray(txIntelVerdict?.localSignals)
+          ? txIntelVerdict.localSignals.map((s) => ({
+              id: s.id,
+              level: s.level,
+              summary: s.summary ?? null,
+            }))
+          : [],
+      },
+    };
+  }, [step, selectedWallet, amount, toAddress, txIntelVerdict, txIntelPolicy]);
+
+  useEffect(() => {
+    publishAdvisorContext(advisorTxContext);
+    return () => publishAdvisorContext(null);
+  }, [advisorTxContext]);
+
+  const handleAskAdvisorAboutTx = () => {
+    openAdvisor({
+      question: "Explain this transaction risk and tell me what I should verify before signing.",
+      autoSend: true,
+      context: advisorTxContext,
+    });
+  };
+
   // BTC pre-sign risk gate (internal audit M-2). BTC isn't EVM-shaped, so it has no
   // `presign` verdict — instead its honest decode (btcSim → describeBtcPlan) raises
   // high-severity flags (e.g. entire_balance). A high flag requires the same explicit
@@ -1099,6 +1264,120 @@ export default function SendCrypto() {
   // (mutationFn) consumes it per attempt and passes it to evaluateSendGate, so the
   // second factor is enforced at the chokepoint — not only by which JSX branch renders.
   const twoFactorVerifiedRef = useRef(false);
+
+  const evaluateCurrentSendGate = async ({ twoFactorVerified = twoFactorVerifiedRef.current } = {}) => {
+    // The Send gate must stay a SINGLE chokepoint even when the UX forks into a
+    // Digital Shield prepare/finalize flow. Recompute the same live inputs here
+    // instead of mirroring a subset of them in UI state.
+
+    const trimmedTo = String(toAddress || '').trim();
+    const chainKey = selectedWallet?.currency;
+    const networkName = activeNetwork?.name || '';
+    if (!trimmedTo || !isValidAddressForCurrency(trimmedTo, chainKey, networkName)) {
+      throw Object.assign(new Error('RECIPIENT_INVALID_AT_SIGN'), { code: 'RECIPIENT_INVALID_AT_SIGN' });
+    }
+    if (!isFormAmountWellFormed(canonicalAmount) || Number(canonicalAmount) <= 0) {
+      throw Object.assign(new Error('AMOUNT_INVALID_AT_SIGN'), { code: 'AMOUNT_INVALID_AT_SIGN' });
+    }
+
+    if (requiresVerification(activeWalletId, amountUsd)) {
+      throw Object.assign(new Error('VERIFY_REQUIRED'), { code: 'VERIFY_REQUIRED' });
+    }
+
+    const limitGate = evaluateSendAgainstLimits({
+      amount: canonicalAmount,
+      currency: selectedWallet.currency,
+      usdRates: USD_RATES,
+      history: /** @type {any} */ (history),
+      limits: /** @type {any} */ (txLimits),
+      now: new Date(),
+    });
+
+    const freshArtifact = await getFreshRaspArtifact();
+    const freshRaspTier = freshArtifact?.tier ?? TIER.BLOCK;
+    if (freshRaspTier !== 'allow') {
+      notifyRaspAlert({ tier: freshRaspTier, sentence: freshArtifact?.sentence ?? null, ts: Date.now() });
+    }
+
+    if (tipScreenApplies && !(tipQuery.isSuccess || tipQuery.isError)) {
+      throw Object.assign(
+        new Error('Threat screening has not finished for this transaction yet.'),
+        { code: 'TIP_SCREEN_PENDING' }
+      );
+    }
+
+    let riskScoreFailed = false;
+    let presignAtSign = /** @type {any} */ (null);
+    let txPolicyAtSign = /** @type {any} */ (null);
+    try {
+      const freshScore = scoreCurrentSend();
+      presignAtSign = presignGate(freshRaspTier, freshScore.level, riskAck);
+      const txVerdictAtSign = composeTransactionVerdict({
+        localVerdict: freshScore,
+        localApplicable: riskApplicable,
+        localSettled: riskApplicable ? riskReady : false,
+        tipResult: tipQuery.data ?? null,
+        tipApplicable: tipScreenApplies,
+        tipSettled: !tipScreenApplies || tipQuery.isSuccess || tipQuery.isError,
+        review: reviewContributor,
+        raspTier: freshRaspTier,
+        raspArtifact: freshArtifact,
+        presign: presignAtSign,
+      });
+      txPolicyAtSign = deriveSigningPolicy({
+        verdict: txVerdictAtSign,
+        presign: presignAtSign,
+        acknowledged: riskAck,
+        raspNeedsBio: freshArtifact?.requiresBiometric === true
+          && Capacitor.isNativePlatform()
+          && presignAtSign?.decision !== 'block',
+        biometricCleared: raspWarnBioOk,
+      });
+      notifyTxRiskAlert({ level: freshScore.level, sentence: freshScore.sentence, signalId: freshScore.signalId, ts: Date.now() });
+    } catch {
+      riskScoreFailed = true;
+    }
+
+    const raspNeedsBioAtSign = freshArtifact?.requiresBiometric === true
+      && Capacitor.isNativePlatform()
+      && presignAtSign?.decision !== 'block';
+    if (raspNeedsBioAtSign && !raspWarnBioOk) {
+      throw Object.assign(
+        new Error('Biometric confirmation required before signing on a modified device.'),
+        { code: 'RASP_BIO_REQUIRED' }
+      );
+    }
+
+    const gate = /** @type {any} */ (evaluateSendGate({
+      canSend: canSend(selectedAsset),
+      devUngated,
+      currency: selectedWallet?.currency,
+      isUnlocked,
+      demo: demoActive,
+      reauthRequired: demoActive ? false : isSendReauthRequired(),
+      twoFactorRequired: send2faMethod !== SEND_2FA.NONE,
+      twoFactorVerified,
+      limit: limitGate,
+      limitAck,
+      riskScoreFailed,
+      txPolicy: txPolicyAtSign,
+      presign: presignAtSign,
+      btcRiskBlocked: isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high") && !btcRiskAck,
+      blockedByApproval,
+    }));
+    if (!gate.allowed) {
+      throw Object.assign(new Error(gate.message), { code: gate.code });
+    }
+
+    if (!canSend(selectedAsset)) {
+      throw new Error(
+        `[Security] Send blocked: ${selectedAsset.symbol} status is "${selectedAsset.status}". ` +
+        `Only verified LIVE assets may send. This is a code-level safety assertion.`
+      );
+    }
+
+    return { freshArtifact, presignAtSign, txPolicyAtSign };
+  };
 
   // Codex P2 2026-08-15: imperative in-flight latch. The three call sites of
   // sendTx.mutate() (:1510 plain confirm, :2264 2FA success, :2314 direct)
@@ -1120,157 +1399,11 @@ export default function SendCrypto() {
       }
       broadcastInFlightRef.current = true;
 
-      // Codex P2 2026-08-15: recipient + amount re-validation at the
-      // chokepoint. QR / clipboard / ENS / contact-tap paths write straight
-      // into `toAddress`, and evaluateSendGate below re-checks limits +
-      // risk + 2FA but does NOT revalidate the address/amount shape. If
-      // stale verify state or a direct mutate() reaches here, we must
-      // re-assert shape at signing time — never delegate the final check to
-      // downstream chain libraries where a malformed value could be
-      // interpreted differently (e.g. an EIP-55 case-mangled address that
-      // ethers happily lowercases). Fails closed with a distinct code so
-      // the UI can toast "recipient invalid, please re-enter".
-      const trimmedTo = String(toAddress || '').trim();
-      const _chainKey = selectedWallet?.currency;
-      const _network = activeNetwork?.name || '';
-      if (!trimmedTo || !isValidAddressForCurrency(trimmedTo, _chainKey, _network)) {
-        throw Object.assign(new Error('RECIPIENT_INVALID_AT_SIGN'), { code: 'RECIPIENT_INVALID_AT_SIGN' });
-      }
-      if (!isFormAmountWellFormed(canonicalAmount) || Number(canonicalAmount) <= 0) {
-        throw Object.assign(new Error('AMOUNT_INVALID_AT_SIGN'), { code: 'AMOUNT_INVALID_AT_SIGN' });
-      }
-
-      // SEED-VERIFICATION GATE (Task 9, UI-level — distinct from evaluateSendGate()
-      // in lib/sendGate.js, which stays untouched). If this wallet deferred its
-      // seed-backup verification quiz and this send is at/above the safety
-      // threshold, block BEFORE any signing/broadcast work and send the user to
-      // finish verification. Checked first (cheap, local, no RPC) so a deferred
-      // wallet never even reaches the RASP/risk/limits machinery below.
-      if (requiresVerification(activeWalletId, amountUsd)) {
-        throw Object.assign(new Error('VERIFY_REQUIRED'), { code: 'VERIFY_REQUIRED' });
-      }
-
-      // DEFENSE-IN-DEPTH: re-assert EVERY UI gate at signing time, as one ordered
-      // decision, so no stale UI state can broadcast past a tripped gate. The order
-      // and the user-facing messages live in the pure evaluateSendGate()
-      // (lib/sendGate.js), which is exhaustively unit-tested — so the enforced
-      // verdict cannot drift from this call site. Each raw input below is recomputed
-      // here against live state / a fresh risk score.
-
-      // 7 — spend limits, recomputed against the latest local history (per-tx + daily).
-      const limitGate = evaluateSendAgainstLimits({
-        amount: canonicalAmount,
-        currency: selectedWallet.currency,
-        usdRates: USD_RATES,
-        history: /** @type {any} */ (history),
-        limits: /** @type {any} */ (txLimits),
-        now: new Date(),
-      });
-
-      // 8 — pre-sign risk. Uses the SAME scoreCurrentSend() the banner renders, so the
-      // enforced verdict matches what the user saw. Fail closed: if scoring throws,
-      // mark it failed and the gate refuses to sign. Otherwise compose the tx verdict
-      // with the RASP environment tier (Phase 3; raspTier is ALLOW when the flag is
-      // off → reduces to the tx-risk gate).
-      //
-      // P2-1 (audit 2026-07-15): fetch a FRESH RASP artifact right here on the sign
-      // hot-path instead of reusing the closure's `raspTier` (which could be up
-      // to ~60 s stale — last heartbeat sample). An attacker who injected a hook
-      // AFTER the last probe but BEFORE the user tapped Send previously slipped
-      // past a stale ALLOW. getFreshRaspArtifact awaits both the OS and
-      // attestation legs with a FRESH_PROBE_TIMEOUT_MS fail-closed timeout (WC pattern);
-      // timeout/throw/shape-drift → BLOCK. Never a fabricated CLEAN.
-      const freshArtifact = await getFreshRaspArtifact();
-      const freshRaspTier = freshArtifact?.tier ?? TIER.BLOCK;
-      // Emit a security notification if RASP found a non-clean environment at sign time.
-      // Fire-and-forget (I4) — the notification path must never block or unwind the send.
-      if (freshRaspTier !== 'allow') {
-        notifyRaspAlert({ tier: freshRaspTier, sentence: freshArtifact?.sentence ?? null, ts: Date.now() });
-      }
-
-      // H-1 chokepoint re-assert. The Continue button is disabled while remote
-      // screening is in flight, but button state is not the security boundary —
-      // scoreCurrentSend() below reads tipQuery.data through a closure, and an
-      // unsettled query means `tipResult` is undefined, which S9 scores as OK.
-      // Refuse to sign rather than sign on a verdict that never consulted the
-      // screening the user opted into. Mirrors the RASP fresh-artifact re-assert
-      // immediately below (I4 fail-closed).
-      if (tipScreenApplies && !(tipQuery.isSuccess || tipQuery.isError)) {
-        throw Object.assign(
-          new Error('Threat screening has not finished for this transaction yet.'),
-          { code: 'TIP_SCREEN_PENDING' }
-        );
-      }
-
-      let riskScoreFailed = false;
-      let presignAtSign = /** @type {any} */ (null);
-      try {
-        const freshScore = scoreCurrentSend();
-        presignAtSign = presignGate(freshRaspTier, freshScore.level, riskAck);
-        // Fire-and-forget (I4) — notification failure must never block or unwind the send.
-        notifyTxRiskAlert({ level: freshScore.level, sentence: freshScore.sentence, signalId: freshScore.signalId, ts: Date.now() });
-      } catch {
-        riskScoreFailed = true;
-      }
-
-      // B5 — RASP WARN biometric enforcement chokepoint (I4 fail-closed).
-      // Defense-in-depth: re-assert the bio gate at sign time so UI state cannot be
-      // bypassed. Uses the FRESH artifact (P2-1), not the stale closure, so a
-      // just-injected hook cannot slip past biometric friction.
-      const raspNeedsBioAtSign = freshArtifact?.requiresBiometric === true
-        && Capacitor.isNativePlatform()
-        && presignAtSign?.decision !== 'block';
-      if (raspNeedsBioAtSign && !raspWarnBioOk) {
-        throw Object.assign(
-          new Error('Biometric confirmation required before signing on a modified device.'),
-          { code: 'RASP_BIO_REQUIRED' }
-        );
-      }
-
-      // The single ordered verdict (capability → unlock → re-auth → limits → risk →
-      // approval). canSend() stays the production truth, relaxed only by the dev,
-      // testnet-only, build-eliminated ungate. Mainnet stays gated in networks.js.
-      // One-shot: consume the 2FA token for THIS attempt (a retry must re-verify).
+      // One-shot: consume the 2FA token for THIS software-key attempt before the
+      // shared gate evaluation, preserving the existing retry semantics.
       const twoFactorVerified = twoFactorVerifiedRef.current;
       twoFactorVerifiedRef.current = false;
-
-      const gate = /** @type {any} */ (evaluateSendGate({
-        canSend: canSend(selectedAsset),
-        devUngated,
-        currency: selectedWallet?.currency,
-        isUnlocked,
-        demo: demoActive,                              // demo has no vault → re-auth exempt
-        reauthRequired: demoActive ? false : isSendReauthRequired(),
-        // Second factor (audit H1): when a second factor is configured — Action Password
-        // OR a registered passkey (H-1 fix) — it must be verified THIS send, enforced here
-        // so a recently-authed session can't reach the signer on PIN recency alone.
-        // evaluateSendGate exempts demo internally; send2faMethod is already 'none' in demo.
-        twoFactorRequired: send2faMethod !== SEND_2FA.NONE,
-        twoFactorVerified,
-        limit: limitGate,
-        limitAck,
-        riskScoreFailed,
-        presign: presignAtSign,
-        // BTC risk re-checked from the settled preview at signing time (M-2), so a
-        // high decode flag can't be bypassed by stale UI state — mirrors how the EVM
-        // verdict is recomputed above.
-        btcRiskBlocked: isBtc && (btcSim.data?.risks || []).some((r) => r.level === "high") && !btcRiskAck,
-        blockedByApproval,
-      }));
-      if (!gate.allowed) {
-        throw Object.assign(new Error(gate.message), { code: gate.code });
-      }
-
-      // CODE-LEVEL SEND GUARD (Task 7 — audit remediation). Defense-in-depth:
-      // even if the gate above was somehow bypassed or a stale UI state persisted,
-      // this hard assertion ensures no unverified asset can sign. Only assets with
-      // status === LIVE may send — period. This is a wallet-core–layer invariant.
-      if (!canSend(selectedAsset)) {
-        throw new Error(
-          `[Security] Send blocked: ${selectedAsset.symbol} status is "${selectedAsset.status}". ` +
-          `Only verified LIVE assets may send. This is a code-level safety assertion.`
-        );
-      }
+      await evaluateCurrentSendGate({ twoFactorVerified });
 
       // NOTE: the HD-account lookup that main did here is intentionally NOT hoisted —
       // it is EVM-only (matches selectedWallet.address against an EVM account) and now
@@ -1278,197 +1411,47 @@ export default function SendCrypto() {
       // throw "not in the unlocked HD set" for BTC/SOL, whose address is not an EVM
       // account.
 
-      // I3 hardware-send gate (#972 P1, codex round 2). The old hw/trezor.js
-      // module's requireWebUsb() gated ALL three device paths (EVM/BTC/SOL) on
-      // isDeniabilitySessionActive() — throwing TREZOR_DENIABILITY_BLOCKED before
-      // any RPC or device call. My earlier hotfix restored that gate inside
-      // hw-send.js's public entrypoints, but the caller pre-computes a fee-clamp
-      // (getFeeData for EVM) / a UTXO+blockhash preflight (BTC/SOL) BEFORE reaching
-      // those helpers — leaking one RPC round-trip. Under decoy/hidden with a
-      // Trezor connected the device holds the REAL seed regardless of session
-      // type, so any egress here is an I3 violation AND a coercion-exfil vector.
-      // One gate above the family dispatch catches all three Trezor branches;
-      // software-key sends are UNAFFECTED (decoy has its own decoy vault, that
-      // path is legitimate). Error string matches hw-send.js exactly so downstream
-      // catch-by-message keeps working. Demo-mode check mirrors hw/trezor.js's
-      // deniabilityActive() — a demo build (VITE_DEMO_MODE / veyrnox-demo=1)
-      // must never touch a real Trezor device or leak fee/nonce RPC (codex
-      // round-2 finding, #972 P1b).
-      // Use the LIVE deniability-OR-demo check (round-3 codex finding): the
-      // module-level DEMO constant is a load-time IIFE snapshot, so a
-      // veyrnox-demo=1 flag flipped AFTER import wouldn't fire this gate. The
-      // shared helper reads both signals fresh on every call.
-      if (useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) {
-        throw new Error('TREZOR_DENIABILITY_BLOCKED');
-      }
-
       // Sign LOCALLY and broadcast. The signing key is transient and never
       // persisted. Branch on the asset family — each has its own derivation/
       // signing stack and send function; the human-entered `amount` is converted
       // to that chain's integer base unit (sats / lamports / wei) for signing.
       let raw;
       if (isBtc) {
-        if (useTrezorMode) {
-          if (!trezorConnected) throw new Error('Trezor not connected');
-          if (!trezorBtcAddress) throw new Error('Trezor BTC address not available');
-          // BTC Trezor path: the key never leaves the device (I1). Build a
-          // coin-selection plan against the Trezor-derived address (it owns the
-          // UTXOs and receives change), translate it into the device's input/
-          // output shape, sign on-device, then broadcast the signed bytes.
-          const amountSats = toBaseUnits(canonicalAmount, 8);
-          const { plan } = await estimateBtcSend({
+        // BTC (BIP-84 P2WPKH). Auto fee-rate this slice (no fee UI). BTC -> sats.
+        raw = await withBtcPrivateKey(({ privateKey, publicKey, address }) =>
+          signAndBroadcastBtc({
             networkKey,
-            fromAddress: trezorBtcAddress,
+            privateKey,
+            publicKey,
+            fromAddress: address,
             toAddress,
-            amountSats,
-            changeAddress: trezorBtcAddress,
-          });
-          // coinselect plan -> @trezor/connect signTransaction shape. Recipient
-          // outputs use { address, amountSats }; the change output (isChange) is
-          // collapsed into changeAmountSats so the device derives + pays-to-self.
-          const changeOut = plan.outputs.find((o) => o.isChange);
-          const trezorPlan = {
-            inputs: plan.inputs.map((i) => ({ txid: i.txid, vout: i.vout, amountSats: BigInt(i.value) })),
-            outputs: plan.outputs
-              .filter((o) => !o.isChange)
-              .map((o) => ({ address: o.address, amountSats: BigInt(o.value) })),
-            changeAmountSats: changeOut ? BigInt(changeOut.value) : 0n,
-          };
-          const signedHex = await trezorSignBtcTx({ plan: trezorPlan, networkKey });
-          raw = await broadcastBtcTx(networkKey, signedHex);
-        } else {
-          // BTC (BIP-84 P2WPKH). Auto fee-rate this slice (no fee UI). BTC -> sats.
-          raw = await withBtcPrivateKey(({ privateKey, publicKey, address }) =>
-            signAndBroadcastBtc({
-              networkKey,
-              privateKey,
-              publicKey,
-              fromAddress: address,
-              toAddress,
-              amountSats: toBaseUnits(canonicalAmount, 8),
-            })
-          );
-        }
+            amountSats: toBaseUnits(canonicalAmount, 8),
+          })
+        );
       } else if (isSolana) {
-        if (useTrezorMode) {
-          if (!trezorConnected) throw new Error('Trezor not connected');
-          if (!trezorSolAddress) throw new Error('Trezor SOL address not available');
-          // SOL Trezor path: the key never leaves the device (I1). Codex P1
-          // 2026-08-15: the previous raw buildUnsignedSolTx + trezorSignSolTx
-          // + attachSolSignature chain bypassed the audited planSolTransfer
-          // pre-flight — a transfer the planner would refuse for rent-
-          // exemption / sender-remainder reasons could still be signed and
-          // fail after broadcast. Route through the audited
-          // signAndBroadcastSolTrezor helper (src/wallet-core/sol/hw-send.js)
-          // which uses planSolTransfer internally, matching the Ledger path.
-          raw = await signAndBroadcastSolTrezor({
+        // SOL (ed25519). Base fee only this slice (no priority UI). SOL -> lamports.
+        raw = await withSolPrivateKey(({ privateKey, address }) =>
+          signAndBroadcastSol({
             networkKey,
-            fromAddress: trezorSolAddress,
+            privateKey,
+            fromAddress: address,
             toAddress,
             amountLamports: toBaseUnits(canonicalAmount, 9),
-          });
-        } else {
-          // SOL (ed25519). Base fee only this slice (no priority UI). SOL -> lamports.
-          raw = await withSolPrivateKey(({ privateKey, address }) =>
-            signAndBroadcastSol({
-              networkKey,
-              privateKey,
-              fromAddress: address,
-              toAddress,
-              amountLamports: toBaseUnits(canonicalAmount, 9),
-            })
-          );
-        }
+          })
+        );
       } else {
-        // EVM native + ERC-20.
-        if (useTrezorMode) {
-          if (!trezorConnected) throw new Error('Trezor not connected');
-          // Fee-clamp still lives here (NOT inside hw-send.js): the merge of
-          // selectedFee with the provider's fee-data fallback is a UI concern,
-          // and the F-08-TREZOR / L-2 caps must apply BEFORE the fee crosses the
-          // wallet-core boundary. We pre-compute the clamped values, then pass
-          // them into the audited helper via a normal { ...Wei } fee object so
-          // the exact clamped numbers are what get signed.
-          const provider = getProvider(networkKey);
-          const feeData = await provider.getFeeData();
-          const fee = selectedFee?.fee || undefined;
-          const rawMaxFeePerGas = fee?.maxFeePerGas ?? feeData.maxFeePerGas ?? feeData.gasPrice;
-          // F-08-TREZOR (I5: RPC untrusted): clamp maxFeePerGas to the same
-          // per-network ceiling the regular tier maths uses, so a misreporting
-          // provider can't inflate the fee on a hardware signer that only shows
-          // raw values. Fall back to the highest cap if the network key is unknown.
-          const feeCapGwei = MAX_BASE_FEE_GWEI[networkKey] ?? 5_000n;
-          const maxFeePerGasCap = feeCapGwei * 1_000_000_000n;
-          const cappedMaxFeePerGas = rawMaxFeePerGas != null && rawMaxFeePerGas > maxFeePerGasCap
-            ? maxFeePerGasCap
-            : rawMaxFeePerGas;
-          // L-2 (I5: RPC untrusted): clamp the priority fee against the already-
-          // capped maxFeePerGas via the shared pure helper, so a misreporting
-          // provider can't pin an implausibly large tip on a hardware signer.
-          const clampedPriorityFee = resolveMaxPriorityFeePerGas(
-            fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n,
-            cappedMaxFeePerGas,
-          );
-          // Shape the clamped values into the { ...Wei } fee object hw-send.js
-          // expects (evmFeeOverrides). gasLimit is intentionally omitted — the
-          // helper estimates + applies +20% headroom (issue #961: replaces the
-          // old hardcoded 21000n/65000n that broke L2 native + USDT transfers).
-          //
-          // Codex P2 2026-08-15 (was TODO #972 P2a): the confirmation screen's
-          // displayed fee is computed from the tier hint's 21000/65000
-          // gasLimit, but the signed tx uses estimateGas + 20% (see
-          // preflight.js:applyEstimatedGasLimit, which always applies the
-          // MAX(userLimit, estimate*1.2)). So displayed fee is a FLOOR, not
-          // the actual signed fee — the Trezor device screen shows the real
-          // value (a careful user catches the divergence) but the in-app
-          // number can under-report by up to ~65% on L2s.
-          //
-          // Honest-note only in this PR — the properly-lazy fix is
-          // "estimateGas at verify-step render via useQuery, thread the
-          // resolved gasLimit through BOTH the display and fee.gasLimit
-          // handed to the signer here". That is a larger diff that needs
-          // its own PR (adds async state to a hot render path + touches
-          // the confirm-step fee-display JSX). Tracked with this comment
-          // so a reviewer can find it. Direction is safe: signed fee is
-          // always >= displayed fee; the user never underpays their
-          // display estimate at broadcast.
-          const clampedFee = (cappedMaxFeePerGas != null)
-            ? {
-                maxFeePerGasWei: cappedMaxFeePerGas.toString(),
-                maxPriorityFeePerGasWei: clampedPriorityFee.toString(),
-              }
-            : undefined;
-          if (isErc20) {
-            raw = await signAndBroadcastEvmTrezorToken({
-              networkKey,
-              fromAddress: trezorEvmAddress,
-              symbol: selectedAsset.symbol,
-              to: toAddress,
-              amount: canonicalAmount,
-              fee: clampedFee,
-            });
-          } else {
-            raw = await signAndBroadcastEvmTrezor({
-              networkKey,
-              fromAddress: trezorEvmAddress,
-              to: toAddress,
-              amountEth: canonicalAmount,
-              fee: clampedFee,
-            });
-          }
-        } else {
-          // Map the wallet to its HD derivation index (public address match).
-          // The user-selected EIP-1559 fee flows straight into the signing call;
-          // null falls back to ethers' auto-fill (never blocks send).
-          const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
-          if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
-          const fee = selectedFee?.fee || undefined;
-          raw = await withPrivateKey(acct.index, (privateKey) =>
-            isErc20
-              ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount, fee })
-              : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: canonicalAmount, fee })
-          );
-        }
+        // EVM native + ERC-20. Map the wallet to its HD derivation index
+        // (public address match). The user-selected EIP-1559 fee flows
+        // straight into the signing call; null falls back to ethers'
+        // auto-fill (never blocks send).
+        const acct = accounts.find(a => a.address.toLowerCase() === selectedWallet.address.toLowerCase());
+        if (!acct) throw new Error("Selected wallet is not in the unlocked HD set");
+        const fee = selectedFee?.fee || undefined;
+        raw = await withPrivateKey(acct.index, (privateKey) =>
+          isErc20
+            ? sendToken({ networkKey, privateKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount, fee })
+            : signAndBroadcast({ networkKey, privateKey, to: toAddress, amountEth: canonicalAmount, fee })
+        );
       }
 
       // Normalize each family's distinct result shape to one record shape.
@@ -1583,7 +1566,7 @@ export default function SendCrypto() {
       // UI step is rendered, not relaxing any security check.
       if (/** @type {Error & {code?: string}} */ (err)?.code === SEND_GATE.TWO_FACTOR) {
         toast.info(tw("send.toasts.two_factor_retry"));
-        setStep("verify");
+        setStep("confirm");
         return;
       }
       toast.error(err?.message || tw("send.toasts.send_failed_fallback"));
@@ -1604,7 +1587,7 @@ export default function SendCrypto() {
       }
       if (result.ok) {
         setReauthValue("");
-        sendTx.mutate();
+        void startSendAttempt();
         return;
       }
       const n = reauthAttempts + 1;
@@ -1628,6 +1611,203 @@ export default function SendCrypto() {
       setReauthError(tw("send.reauth.errors.unavailable"));
     } finally {
       setReauthPending(false);
+    }
+  };
+
+  const resetDigitalShieldFlow = () => {
+    setDigitalShieldDialogOpen(false);
+    setDigitalShieldScannerOpen(false);
+    setDigitalShieldResponseDraft("");
+    setDigitalShieldResponseParts([]);
+    setDigitalShieldFlow(null);
+    setDigitalShieldError("");
+    setDigitalShieldBusy(false);
+  };
+
+  const startSendAttempt = async () => {
+    if (!useDigitalShieldMode) {
+      sendTx.mutate();
+      return;
+    }
+    if (!digitalShieldConnected || !digitalShieldAccount) {
+      toast.error('Import Digital Shield on the Hardware Wallet page first.');
+      return;
+    }
+    if (digitalShieldBtcUnsupported) {
+      toast.error('Digital Shield BTC signing is currently supported on Bitcoin mainnet only.');
+      return;
+    }
+    if (isDeniabilityOrDemoActive() || DEMO) {
+      toast.error('Digital Shield signing is disabled in demo and deniability sessions.');
+      return;
+    }
+    setDigitalShieldBusy(true);
+    setDigitalShieldError("");
+    try {
+      await evaluateCurrentSendGate();
+      if (family === 'btc') {
+        const amountSats = toBaseUnits(canonicalAmount, 8);
+        const { plan } = await estimateBtcSend({
+          networkKey,
+          fromAddress: selectedWallet.address,
+          toAddress,
+          amountSats,
+          changeAddress: selectedWallet.address,
+        });
+        const request = buildDigitalShieldBtcPsbt({
+          account: digitalShieldAccount,
+          plan,
+          networkKey,
+        });
+        setDigitalShieldFlow({ kind: 'btc', networkKey, plan, ...request });
+      } else if (family === 'solana') {
+        const unsigned = await buildUnsignedSolTx({
+          fromAddress: selectedWallet.address,
+          toAddress,
+          lamports: toBaseUnits(canonicalAmount, 9),
+          networkKey,
+        });
+        const signDataHex = Buffer.from(unsigned.unsignedTxBase64, 'base64').toString('hex');
+        const request = buildDigitalShieldSolRequest({
+          account: digitalShieldAccount,
+          signDataHex,
+        });
+        setDigitalShieldFlow({ kind: 'solana', networkKey, unsigned, ...request });
+      } else {
+        const provider = getProvider(networkKey);
+        const feeData = await provider.getFeeData();
+        const fee = selectedFee?.fee || undefined;
+        const rawMaxFeePerGas = fee?.maxFeePerGas ?? feeData.maxFeePerGas ?? feeData.gasPrice;
+        const feeCapGwei = MAX_BASE_FEE_GWEI[networkKey] ?? 5_000n;
+        const maxFeePerGasCap = feeCapGwei * 1_000_000_000n;
+        const cappedMaxFeePerGas = rawMaxFeePerGas != null && rawMaxFeePerGas > maxFeePerGasCap
+          ? maxFeePerGasCap
+          : rawMaxFeePerGas;
+        const clampedPriorityFee = resolveMaxPriorityFeePerGas(
+          fee?.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas ?? 0n,
+          cappedMaxFeePerGas,
+        );
+        const overrides = evmFeeOverrides((cappedMaxFeePerGas != null)
+          ? {
+              maxFeePerGasWei: cappedMaxFeePerGas.toString(),
+              maxPriorityFeePerGasWei: clampedPriorityFee.toString(),
+            }
+          : undefined);
+        const net = getNetworkInfo(networkKey);
+        await verifyLiveChainId(provider, net.chainId);
+        const pendingNonce = await provider.getTransactionCount(selectedWallet.address, 'pending');
+        let tx;
+        if (isErc20) {
+          const built = buildTokenTransfer({ networkKey, symbol: selectedAsset.symbol, to: toAddress, amount: canonicalAmount });
+          tx = {
+            to: built.to,
+            value: 0n,
+            data: built.data,
+            chainId: net.chainId,
+            nonce: pendingNonce,
+            type: 2,
+          };
+        } else {
+          tx = {
+            to: toAddress,
+            value: parseEther(String(canonicalAmount)),
+            data: '0x',
+            chainId: net.chainId,
+            nonce: pendingNonce,
+            type: 2,
+          };
+        }
+        await applyEstimatedGasLimit(provider, { from: selectedWallet.address, to: tx.to, value: tx.value, data: tx.data }, overrides);
+        const request = buildDigitalShieldEvmRequest({
+          account: digitalShieldAccount,
+          tx: { ...tx, ...overrides },
+        });
+        setDigitalShieldFlow({ kind: isErc20 ? 'erc20' : 'evm', networkKey, ...request });
+      }
+      setDigitalShieldDialogOpen(true);
+    } catch (err) {
+      toast.error(err?.message || 'Could not prepare the Digital Shield request.');
+    } finally {
+      setDigitalShieldBusy(false);
+    }
+  };
+
+  const finalizeDigitalShieldSend = async (input) => {
+    if (!digitalShieldFlow) return;
+    setDigitalShieldBusy(true);
+    setDigitalShieldError("");
+    try {
+      const twoFactorVerified = twoFactorVerifiedRef.current;
+      await evaluateCurrentSendGate({ twoFactorVerified });
+      twoFactorVerifiedRef.current = false;
+      let raw;
+      let result;
+      if (digitalShieldFlow.kind === 'btc') {
+        result = finalizeDigitalShieldBtcResponse({
+          session: digitalShieldFlow.session,
+          unsignedPsbtHex: digitalShieldFlow.psbtHex,
+          input,
+        });
+        raw = await broadcastBtcTx(networkKey, result.finalizedTxHex);
+      } else if (digitalShieldFlow.kind === 'solana') {
+        result = finalizeDigitalShieldSolResponse({
+          session: digitalShieldFlow.session,
+          signDataHex: digitalShieldFlow.signDataHex,
+          input,
+        });
+        const { Transaction, PublicKey } = await import('@solana/web3.js');
+        const tx = Transaction.from(Buffer.from(digitalShieldFlow.unsigned.unsignedTxBase64, 'base64'));
+        tx.addSignature(new PublicKey(selectedWallet.address), Buffer.from(result.signatureHex.slice(2), 'hex'));
+        const rawTx = tx.serialize();
+        const sig = await broadcastRawTx(networkKey, rawTx);
+        await confirmTx(
+          networkKey,
+          sig,
+          digitalShieldFlow.unsigned.blockhash,
+          digitalShieldFlow.unsigned.lastValidBlockHeight,
+        );
+        raw = { signature: sig, explorerUrl: `${getSolNetwork(networkKey).explorer}/tx/${sig}` };
+      } else {
+        result = finalizeDigitalShieldEvmResponse({
+          session: digitalShieldFlow.session,
+          unsignedHex: digitalShieldFlow.unsignedHex,
+          input,
+        });
+        const txResponse = await getProvider(networkKey).broadcastTransaction(result.signedHex);
+        raw = {
+          hash: txResponse.hash,
+          explorerUrl: `${getNetworkInfo(networkKey).explorer}/tx/${txResponse.hash}`,
+          wait: (confirmations = 1) => txResponse.wait(confirmations),
+        };
+      }
+      const normalized = normalizeSendResult(digitalShieldFlow.kind, raw);
+      await base44.entities.Transaction.create({
+        wallet_id: walletId,
+        type: "send",
+        amount: parseFloat(canonicalAmount),
+        currency: selectedWallet.currency,
+        to_address: toAddress,
+        from_address: selectedWallet.address,
+        status: "pending",
+        tx_hash: normalized.hash,
+        explorer_url: normalized.explorerUrl,
+        has_note: !!(note && String(note).trim()),
+      });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["evm-balance", networkKey, selectedWallet?.address] });
+      setTxResult(normalized);
+      setStep("done");
+      resetDigitalShieldFlow();
+      successHaptic();
+      notifySendConfirmed({ amount: `${amount} ${selectedWallet.currency}`, to: toAddress, ts: Date.now() });
+      recordAudit("send_completed");
+      void trackEvent(EVENT.SEND_COMPLETED, { currency: selectedWallet?.currency }).catch(() => {});
+      markFirstSend();
+    } catch (err) {
+      setDigitalShieldError(err?.message || 'Could not verify the Digital Shield response.');
+      errorHaptic();
+    } finally {
+      setDigitalShieldBusy(false);
     }
   };
 
@@ -1666,6 +1846,39 @@ export default function SendCrypto() {
         <p className="text-sm text-muted-foreground mt-0.5">{tw("send.subheading")}</p>
       </div>
 
+      {/* Wizard progress indicator — three dots + step label. Signals where
+          the user is without adding an extra header row. Hidden on the done
+          screen (that view is its own composition). */}
+      {step !== "done" && (() => {
+        const stepIndex = step === "form" ? 0 : step === "review" ? 1 : 2;
+        const stepLabels = [
+          tw("send.wizard.step_recipient"),
+          tw("send.wizard.step_review"),
+          tw("send.wizard.step_confirm"),
+        ];
+        return (
+          <div className="flex items-center justify-center gap-2" aria-label={`Step ${stepIndex + 1} of 3: ${stepLabels[stepIndex]}`}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === stepIndex
+                      ? "w-8 bg-primary"
+                      : i < stepIndex
+                        ? "w-4 bg-primary/60"
+                        : "w-4 bg-border"
+                  }`}
+                  aria-hidden="true"
+                />
+              </div>
+            ))}
+            <span className="ms-2 text-[11px] text-muted-foreground font-medium uppercase tracking-widest">
+              {stepLabels[stepIndex]}
+            </span>
+          </div>
+        );
+      })()}
+
       <div className="space-y-4 p-5 rounded-xl border border-border bg-card">
         {fromDetail ? (
           <div className="flex items-center gap-3 pb-3 border-b border-border">
@@ -1695,65 +1908,31 @@ export default function SendCrypto() {
             </div>
           </div>
         ) : (
-          <>
-            <div>
-              <Label id="send-wallet-label">{tw("send.wallet_picker.label")}</Label>
-              <Select value={walletId} onValueChange={setWalletId}>
-                <SelectTrigger className="mt-1.5" aria-labelledby="send-wallet-label">
-                  <SelectValue placeholder={tw("send.wallet_picker.placeholder")}>
-                    {selectedWalletName ? (
-                      <span className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-primary/20 border border-primary/40">
-                          <Wallet className="h-3 w-3 text-primary" />
-                        </span>
-                        {selectedWalletName}
-                      </span>
-                    ) : null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {wallets.map(w => (
-                    <SelectItem key={w.id} value={w.id}>
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-primary/20 border border-primary/40">
-                          <Wallet className="h-3 w-3 text-primary" />
-                        </span>
-                        <span>{w.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          // Wizard step-1 header chip (2026-08-28). Replaces the two stacked
+          // Select dropdowns with one tap-target that opens WalletAssetPickerSheet.
+          // Same underlying state (walletId + assetSymbol) — pure UI collapse.
+          <button
+            type="button"
+            data-testid="wallet-asset-chip"
+            onClick={() => setWalletAssetSheetOpen(true)}
+            className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-secondary/40 text-start"
+            aria-label="Change wallet or asset"
+          >
+            {assetSymbol ? <CoinLogo symbol={assetSymbol} size={32} /> : (
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-primary/20 border border-primary/40">
+                <Wallet className="h-4 w-4 text-primary" />
+              </span>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">
+                {assetSymbol ? `${getAsset(assetSymbol)?.name || assetSymbol} — ${assetSymbol}` : tw("send.asset_picker.placeholder")}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {selectedWalletName || tw("send.wallet_picker.placeholder")}
+              </p>
             </div>
-            <div>
-              <Label id="send-asset-label">{tw("send.asset_picker.label")}</Label>
-              <Select value={assetSymbol} onValueChange={setAssetSymbol} disabled={/** @type {any} */ (!walletId)}>
-                <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="send-asset-label">
-                  <SelectValue placeholder={tw("send.asset_picker.placeholder")}>
-                    {assetSymbol ? (
-                      <>
-                        <CoinLogo symbol={assetSymbol} size={32} />
-                        <span>{getAsset(assetSymbol)?.name || assetSymbol} — {assetSymbol}</span>
-                      </>
-                    ) : null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {enabledAssets.map(sym => {
-                    const a = getAsset(sym);
-                    return (
-                      <SelectItem key={sym} value={sym}>
-                        <div className="flex items-center gap-2">
-                          <CoinLogo symbol={sym} size={20} />
-                          <span>{a?.name || sym} — {sym}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-          </>
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Change</span>
+          </button>
         )}
         <div>
           <Label htmlFor="send-recipient">{tw("send.recipient.label")}</Label>
@@ -1858,85 +2037,26 @@ export default function SendCrypto() {
           <div className="-mt-2"><SecurityAdvisorBanner address={toAddress} /></div>
         )}
 
-        {/* Local-first screening disclosure + the off-by-default remote opt-in.
-            Only relevant for EVM recipients (the look-alike screen targets EVM
-            addresses). The DEMO helper makes the warning trivially reproducible. */}
+        {/* On-device screening disclosure collapsed to a shield-icon tooltip
+            (2026-08-28). The remote-screening checkbox was removed from this
+            wizard step; `remoteScreen` state and its default from
+            `readRemoteScreenPreference()` still gate the TIP RPC. Surfacing the
+            opt-in inside Security Center is deferred — noted in the PR body.
+            The DEMO poison-address helper stays as a dev affordance. */}
         {selectedWallet && (isEvmFamily(selectedAsset) || isErc20) && (
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-secondary/40 border border-border -mt-2">
-            <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <div className="text-[11px] text-muted-foreground space-y-1.5 flex-1 min-w-0">
-              <p>{tw("send.screening.local_disclosure")}</p>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input type="checkbox" className="mt-0.5" checked={remoteScreen} onChange={e => toggleRemoteScreen(e.target.checked)} />
-                <span>{tw("send.screening.remote_opt_in")}</span>
-              </label>
-              {remoteScreen && !import.meta.env.VITE_TIP_BASE_URL && (
-                <p className="text-destructive/80">{tw("send.screening.remote_unavailable")}</p>
-              )}
-              {/* H-5 — the disclosure must name what actually leaves the device.
-                  The historical-counterparties leak (up to 20 addresses per
-                  request, sold as look-alike detection) was dropped by the
-                  send-leak fix in this PR; the copy no longer needs to
-                  disclose it. `remote_enabled` still names every field the
-                  payload actually carries (recipient, own address, amount,
-                  contract/calldata for token transfers). */}
-              {remoteScreen && import.meta.env.VITE_TIP_BASE_URL && (
-                <p className="text-primary/80">{tw("send.screening.remote_enabled")}</p>
-              )}
-              {demoActive && (
-                <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="underline hover:text-foreground">
-                  {tw("send.screening.demo_poison_button")}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-        {/* Transaction Simulation / Screening — toggle visible in both demo and
-            live mode. In demo the panel body shows representative risk samples;
-            in live mode it shows the feature teaser (real sim runs at verify). */}
-        {step === "form" && (
-          <div className={`space-y-2.5 p-3 rounded-xl border border-dashed ${simEnabled ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium flex items-center gap-1.5">
-                <Activity className={`h-3.5 w-3.5 ${simEnabled ? "text-primary" : "text-muted-foreground"}`} />
-                {tw("send.simulation.title")}
-              </p>
-              <Switch
-                id="sim-toggle"
-                checked={simEnabled}
-                onCheckedChange={toggleSim}
-                aria-label={tw("send.simulation.toggle_aria")}
-              />
-            </div>
-            {simEnabled && (
-              demoActive ? <TransactionSimulationDemo /> : (
-                <>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {tw("send.simulation.description")}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {/** @type {string[]} */ (tw("send.simulation.checks", { returnObjects: true })).map((label) => (
-                      <span
-                        key={label}
-                        className="text-[11px] px-2 py-1 rounded-md border border-border text-muted-foreground"
-                      >
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {tw("send.simulation.results_hint")}
-                  </p>
-                </>
-              )
-            )}
-            {!simEnabled && (
-              <p className="text-[11px] text-muted-foreground">
-                {tw("send.simulation.off_hint")}
-              </p>
+          <div className="flex items-center gap-2 -mt-2 text-[11px] text-muted-foreground" title={tw("send.screening.local_disclosure")}>
+            <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            <span>Checked on your device</span>
+            {demoActive && (
+              <button type="button" onClick={() => { setEnsName(""); setEnsResolved(null); setToAddress(DEMO_POISON_ADDRESS); }} className="ms-auto underline hover:text-foreground">
+                {tw("send.screening.demo_poison_button")}
+              </button>
             )}
           </div>
         )}
+        {/* Simulation toggle deliberately removed from step 1 (2026-08-28).
+            `simEnabled` state remains — default true from localStorage; the
+            "taking too long" hint on step 2 still exposes a one-tap escape. */}
 
         {showScanner && (
           <QRScanner
@@ -2055,10 +2175,17 @@ export default function SendCrypto() {
             <p className="text-xs text-caution">{tw("send.status.locked")}</p>
           </div>
         )}
-        <div>
-          <Label htmlFor="send-note">{tw("send.note.label")}</Label>
-          <Input id="send-note" value={note} onChange={e => setNote(e.target.value)} placeholder={tw("send.note.placeholder")} className="mt-1.5" />
-        </div>
+        {/* Note chip (2026-08-28) — inline pill that opens NoteEditorSheet.
+            Same `note` state; only the entry surface collapses. */}
+        <button
+          type="button"
+          data-testid="note-chip"
+          onClick={() => setNoteSheetOpen(true)}
+          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-dashed border-border text-muted-foreground hover:bg-secondary/40"
+        >
+          <FileText className="h-3 w-3" />
+          {note ? <span className="max-w-[12rem] truncate">{note}</span> : <span>{tw("send.note.label")}</span>}
+        </button>
 
         {/* Spend-limit breach — explicit, specific message. Per-transaction AND
             daily caps from Security Center, both now enforced (see lib/txLimits.js).
@@ -2108,28 +2235,9 @@ export default function SendCrypto() {
           </div>
         )}
 
-        {/* TREZOR SIGNING TOGGLE */}
-        {trezorPlatform === 'unsupported' && useTrezorMode && <TrezorUnsupportedScreen />}
-        {trezorPlatform !== 'unsupported' && (
-          <div className="flex items-center gap-3 my-4">
-            <label className="flex items-center gap-2 text-muted-foreground text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useTrezorMode}
-                onChange={(e) => { setUseTrezorMode(e.target.checked); if (e.target.checked && !trezorConnected) setTrezorModalOpen(true); }}
-                className="accent-primary"
-              />
-              {tw("send.trezor.toggle_label")}
-            </label>
-            {useTrezorMode && trezorConnected && <span className="text-primary text-xs">✓ {tw("send.trezor.connected")}</span>}
-            {useTrezorMode && !trezorConnected && (
-              <button onClick={() => setTrezorModalOpen(true)} className="bg-transparent border-none text-primary text-xs cursor-pointer underline">
-                {tw("send.trezor.connect_button")}
-              </button>
-            )}
-          </div>
-        )}
-        <TrezorConnectModal open={trezorModalOpen} onClose={() => setTrezorModalOpen(false)} onConnected={() => setTrezorModalOpen(false)} btcNetworkKey={networkKey === 'btc-mainnet' ? 'btc-mainnet' : 'btc-testnet'} />
+        {/* Digital Shield toggle relocated to step 3 (2026-08-28) — see the
+            full-width row card above the Confirm/Prepare-QR button. Step 1
+            stays focused on WHO + HOW MUCH. */}
 
         {step === "form" && (
           <Button
@@ -2145,7 +2253,7 @@ export default function SendCrypto() {
                 || (limitEval.blocked && !limitAck);
               if (invalid) { setShowErrors(true); return; }
               setShowErrors(false);
-              setStep("verify");
+              setStep("review");
             }}
           >
             <ArrowUpRight className="h-4 w-4 me-1.5" />
@@ -2153,7 +2261,16 @@ export default function SendCrypto() {
           </Button>
         )}
 
-        {step === "verify" && (
+        {/* WIZARD STEP 2 — Review + simulation.
+            Owns the RASP composite banner, TransactionIntelligencePanel, the
+            simulation preview, all high-severity acks, the ERC-20 calldata
+            fold, the unlimited-approval red banner, and the fee selector.
+            The Continue button re-uses the SAME `blockedBy*` composite flags
+            the old single-page Confirm button gated on — advancing to confirm
+            is only permitted once every ack the user must set is set. This
+            keeps enforcement identical to the pre-wizard shape: no new gate,
+            just moved. `resetVerify()` on Back drops step-3 state + reauth. */}
+        {step === "review" && (
           <div className="space-y-3">
             {/* Summary */}
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
@@ -2189,6 +2306,12 @@ export default function SendCrypto() {
             ) : (
               <RiskVerdictBanner verdict={riskVerdict} acknowledged={riskAck} onAcknowledge={setRiskAck} pending={riskPending} />
             )}
+
+            <TransactionIntelligencePanel
+              verdict={txIntelVerdict}
+              policy={txIntelPolicy}
+              onAskAdvisor={handleAskAdvisorAboutTx}
+            />
 
             {/* B5 — biometric re-confirm on native WARN (ROOTED / INTEGRITY_UNAVAILABLE).
                 Rendered OUTSIDE the owner-branch ternary so it appears regardless of which
@@ -2256,37 +2379,52 @@ export default function SendCrypto() {
             )}
 
             {/* Decoded calldata for ERC-20 sends — show EXACTLY what will be
-                signed before any signature (anti-blind-signing control). */}
-            {isErc20 && tokenCalldata && (
-              <div className="p-3 rounded-lg bg-secondary/30 border border-border space-y-2">
-                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5">
-                  <FileText className="h-3 w-3" /> {tw("send.decode.heading")}
-                </p>
-                {tokenCalldata.kind === "transfer" && (
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.send_tokens")}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.amount")}</span><span className="mono-value font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.recipient")}</span><span className="mono-value break-all">{tokenCalldata.to}</span></div>
-                  </div>
-                )}
-                {tokenCalldata.kind === "approve" && (
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.grant_permission")}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.permission")}</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.unlimited ? tw("send.decode.unlimited_permission") : tokenCalldata.amount}</span></div>
-                    <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.spender")}</span><span className="mono-value break-all">{tokenCalldata.spender}</span></div>
-                  </div>
-                )}
-                {tokenCalldata.kind === "unknown" && (
-                  <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {t("send_gates.tx_sim.unknown_tx")}</p>
-                )}
-                {/* Gas is always paid in the chain's native coin, even for tokens —
-                    and that coin is NOT always ETH (Phase C). Read it per-chain. */}
-                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
-                  <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.native_fee_note", { symbol: nativeSymbol, network: networkName, token: tokenCalldata.tokenSymbol || selectedWallet?.currency })}
+                signed before any signature (anti-blind-signing control).
+                MM/Trust pattern (2026-08-28): for transfer/approve the summary
+                sits behind an Advanced fold; `unknown` stays visible because it
+                is a red-flag surface. TransactionPreview above already shows
+                the balance change and (in Advanced) the "ERC-20 transfer" /
+                "ERC-20 approve" action — this block adds the exact spender,
+                permission amount and native-fee note underneath. */}
+            {isErc20 && tokenCalldata && tokenCalldata.kind === "unknown" && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/40">
+                <p className="text-xs text-destructive flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {t("send_gates.tx_sim.unknown_tx")}
                 </p>
               </div>
+            )}
+            {isErc20 && tokenCalldata && tokenCalldata.kind !== "unknown" && (
+              <details className="group p-3 rounded-lg bg-secondary/30 border border-border">
+                <summary className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest cursor-pointer select-none list-none flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="h-3 w-3" /> {tw("send.decode.heading")}
+                  </span>
+                  <span className="group-open:rotate-180 transition-transform">▾</span>
+                </summary>
+                <div className="pt-2 space-y-2">
+                  {tokenCalldata.kind === "transfer" && (
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.send_tokens")}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.amount")}</span><span className="mono-value font-semibold">{tokenCalldata.amount} {tokenCalldata.tokenSymbol}</span></div>
+                      <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.recipient")}</span><span className="mono-value break-all">{tokenCalldata.to}</span></div>
+                    </div>
+                  )}
+                  {tokenCalldata.kind === "approve" && (
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.action")}</span><span className="mono-value font-semibold">{tw("send.decode.grant_permission")}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.token")}</span><span className="font-semibold">{tokenCalldata.tokenSymbol}</span></div>
+                      <div className="flex justify-between gap-2"><span className="text-muted-foreground">{tw("send.decode.permission")}</span><span className={`mono-value font-semibold ${tokenCalldata.unlimited ? "text-destructive" : ""}`}>{tokenCalldata.unlimited ? tw("send.decode.unlimited_permission") : tokenCalldata.amount}</span></div>
+                      <div className="flex justify-between gap-2 min-w-0"><span className="text-muted-foreground shrink-0">{tw("send.decode.spender")}</span><span className="mono-value break-all">{tokenCalldata.spender}</span></div>
+                    </div>
+                  )}
+                  {/* Gas is always paid in the chain's native coin, even for tokens —
+                      and that coin is NOT always ETH (Phase C). Read it per-chain. */}
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-border/60">
+                    <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.native_fee_note", { symbol: nativeSymbol, network: networkName, token: tokenCalldata.tokenSymbol || selectedWallet?.currency })}
+                  </p>
+                </div>
+              </details>
             )}
 
             {/* Unlimited-approval red warning + required extra confirmation. */}
@@ -2302,34 +2440,113 @@ export default function SendCrypto() {
               </div>
             )}
 
-            {/* Per-chain fee control. The EVM send path is EIP-1559; the chosen
-                tier/custom fee is passed into signAndBroadcast/sendToken. BTC/SOL
-                use an automatic fee this slice (no selector).
-                I3 hardware gate (#972 round-2 P1a, codex): FeeSelector's
-                react-query fires estimateEvmFeeTiers() → provider.getFeeData() on
-                mount, with no deniability enabled clause. Under useTrezorMode +
-                decoy/hidden/demo the Trezor address is the REAL hardware address,
-                so that unguarded RPC leaks the real address to the fee provider.
-                Skip the selector in that combination — the send-time gate above
-                will refuse anyway, so a fee tier serves no purpose. */}
-            {!isBtc && !isSolana && !(useTrezorMode && (isDeniabilityOrDemoActive() || DEMO)) ? (
-              <FeeSelector
-                chain="evm"
-                networkKey={networkKey}
-                symbol={nativeSymbol}
-                decimals={activeNetwork?.decimals ?? 18}
-                usdRate={USD_RATES[nativeSymbol] ?? USD_RATES[selectedWallet?.currency]}
-                gasLimitHint={isErc20 ? 65000 : 21000}
-                onChange={setSelectedFee}
-              />
+            {/* Fee selection moved to step 3 (2026-08-28) as a compact row that
+                opens FeeSheet. The pre-sign RASP/tx-intel/preview surface on this
+                step no longer competes with fee controls. Reference-rate
+                disclosure moves alongside the fee row on step 3. */}
+
+            {/* Advance to Confirm. The condition is the SAME `blockedBy*`
+                composite the pre-wizard Confirm button gated on — every ack
+                the user must satisfy on this step must be satisfied before we
+                render the PIN / TwoFactorGate / passkey on the next step. No
+                new gate; identical enforcement, one screen later. */}
+            {(() => {
+              const advanceDisabled =
+                blockedByApproval ||
+                blockedByRisk ||
+                blockedByRaspBio ||
+                blockedByBtcRisk;
+              return (
+                <Button
+                  className="w-full gap-2"
+                  disabled={advanceDisabled}
+                  onClick={() => { actionHaptic(); setStep("confirm"); }}
+                >
+                  <ArrowUpRight className="h-4 w-4" />
+                  {tw("send.buttons.continue")}
+                </Button>
+              );
+            })()}
+
+            <Button variant="ghost" className="w-full" onClick={() => { setStep("form"); resetVerify(); }}>{tw("send.buttons.back")}</Button>
+          </div>
+        )}
+
+        {/* WIZARD STEP 3 — Confirm & sign.
+            Renders a compact recap + the TwoFactorGate / PIN reauth / Confirm
+            & Send button IIFE that used to live inside the verify step. The
+            IIFE is BYTE-EQUIVALENT to the pre-wizard shape — the four-flag AND
+            visibility condition (audit-fixed 2026-07-14), the biometric
+            evaluate branch, the reauth window handling — all preserved. Back
+            returns to review WITHOUT dropping acks (user just wants to look at
+            the sim again); returning to step 1 must go via review's Back. */}
+        {step === "confirm" && (
+          <div className="space-y-3">
+            {/* Compact recap — same summary card the review step opens with. */}
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
+              <p className="text-xs text-muted-foreground mb-1">{tw("send.verify.summary_label")}</p>
+              <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
+              {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
+              <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
+            </div>
+
+            {/* Network fee — compact row that opens FeeSheet (2026-08-28).
+                BTC/SOL still use an automatic fee this slice (no selector),
+                so the row shows the note inline and does not open a sheet. */}
+            {!isBtc && !isSolana ? (
+              <>
+                <button
+                  type="button"
+                  data-testid="fee-row"
+                  onClick={() => setFeeSheetOpen(true)}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border hover:bg-secondary/40 text-start"
+                >
+                  <Fuel className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs font-medium flex-1">Network fee</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {selectedFee?.label || selectedFee?.tier || "Standard"}
+                  </span>
+                  <span className="text-[10px] uppercase tracking-widest text-primary">Change</span>
+                </button>
+                <ReferenceRateNote className="text-center" />
+              </>
             ) : (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                 <Fuel className="h-3 w-3 shrink-0" /> {tw("send.fee.automatic", { currency: selectedWallet?.currency, network: networkName })}
               </p>
             )}
-            {/* The fee's fiat estimate (and the spend-cap previews) convert via
-                the static USD_RATES table, so disclose it's a reference rate. */}
-            <ReferenceRateNote className="text-center" />
+
+            {/* Digital Shield row — first-class per-transaction choice,
+                visually equal weight to the CTA below (full-width, same
+                border/padding). Kept in the wizard, NOT hidden behind
+                Security Center: air-gap signing is something we actively
+                promote at signing time. State + gating logic unchanged. */}
+            <label
+              className={`flex items-start gap-3 p-3 rounded-lg border ${useDigitalShieldMode ? "border-primary bg-primary/5" : "border-border"} ${digitalShieldBtcUnsupported ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:bg-secondary/30"}`}
+              data-testid="digital-shield-row"
+            >
+              <input
+                type="checkbox"
+                checked={useDigitalShieldMode}
+                disabled={digitalShieldBtcUnsupported}
+                onChange={(e) => setUseDigitalShieldMode(e.target.checked)}
+                className="mt-0.5 accent-primary"
+              />
+              <ShieldCheck className={`h-5 w-5 mt-0.5 shrink-0 ${useDigitalShieldMode ? "text-primary" : "text-muted-foreground"}`} aria-hidden="true" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Digital Shield</p>
+                <p className="text-xs text-muted-foreground">Sign offline via QR — your seed never touches the internet</p>
+                {digitalShieldBtcUnsupported && (
+                  <p className="text-[11px] text-caution mt-1">Bitcoin testnet and signet are not supported for Digital Shield yet.</p>
+                )}
+                {useDigitalShieldMode && digitalShieldConnected && (
+                  <p className="text-[11px] text-primary mt-1">✓ Imported</p>
+                )}
+                {useDigitalShieldMode && !digitalShieldConnected && (
+                  <p className="text-[11px] text-caution mt-1">Import it first on Hardware Wallet</p>
+                )}
+              </div>
+            </label>
 
             {/* STEP-UP RE-AUTH: friction-free within the recent-auth window; re-enter the
                 vault credential once it has lapsed. Skipped in demo (fake sends, no vault).
@@ -2356,7 +2573,7 @@ export default function SendCrypto() {
                     sendError={sendTx.isError ? /** @type {Error} */ (sendTx.error) : null}
                     onCancel={() => { setStep("form"); resetVerify(); }}
                     onLock={lock}
-                    onSuccess={() => { twoFactorVerifiedRef.current = true; actionHaptic(); sendTx.mutate(); }}
+                    onSuccess={() => { twoFactorVerifiedRef.current = true; actionHaptic(); void startSendAttempt(); }}
                     verify={async ({ pin, password }) => {
                       if (send2faMethod === SEND_2FA.BIOMETRIC) {
                         // BIOMETRIC mode: the user is already unlocked (vault open = PIN proved).
@@ -2396,21 +2613,29 @@ export default function SendCrypto() {
               }
               const reauthRequired = !demoActive && isSendReauthRequired();
               if (!reauthRequired) {
+                const confirmSendDisabled =
+                  blockedByApproval ||
+                  blockedByRisk ||
+                  blockedByRaspBio ||
+                  blockedByBtcRisk ||
+                  sendTx.isPending ||
+                  digitalShieldBusy;
                 return (
                   <Button
                     className="w-full gap-2"
-                    disabled={blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk || sendTx.isPending}
+                    disabled={confirmSendDisabled}
                     onClick={() => {
                       // Re-check freshness at click time (isSendReauthRequired reads a ref, always
                       // current). If the window lapsed while idle on this screen, force a re-render so
                       // the block below switches to the step-up prompt instead of sending.
                       if (!demoActive && isSendReauthRequired()) { setReauthTick((t) => t + 1); return; }
                       actionHaptic();
-                      sendTx.mutate();
+                      void startSendAttempt();
                     }}
                   >
-                    {sendTx.isPending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
-                    {tw("send.buttons.confirm_send")}
+                    {sendTx.isPending || digitalShieldBusy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <ArrowUpRight className="h-4 w-4" />}
+                    {/* blockedByRaspBio is part of confirmSendDisabled above; keep this button text pin nearby for B5. */}
+                    {useDigitalShieldMode ? 'Prepare Digital Shield QR' : tw("send.buttons.confirm_send")}
                   </Button>
                 );
               }
@@ -2426,7 +2651,7 @@ export default function SendCrypto() {
                       value={reauthValue}
                       onChange={setReauthValue}
                       onComplete={submitReauth}
-                      disabled={reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
+                      disabled={reauthPending || sendTx.isPending || digitalShieldBusy || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                       submitLabel={tw("send.reauth.submit_pin")}
                     />
                   ) : (
@@ -2441,7 +2666,7 @@ export default function SendCrypto() {
                       />
                       <Button
                         className="w-full gap-2"
-                        disabled={!reauthValue || reauthPending || sendTx.isPending || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
+                        disabled={!reauthValue || reauthPending || sendTx.isPending || digitalShieldBusy || blockedByApproval || blockedByRisk || blockedByRaspBio || blockedByBtcRisk}
                         onClick={() => submitReauth(reauthValue)}
                       >
                         {reauthPending || sendTx.isPending ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : <Lock className="h-4 w-4" />}
@@ -2453,11 +2678,116 @@ export default function SendCrypto() {
               );
             })()}
 
-            <Button variant="ghost" className="w-full" onClick={() => { setStep("form"); resetVerify(); }}>{tw("send.buttons.back")}</Button>
+            <Button variant="ghost" className="w-full" onClick={() => setStep("review")}>{tw("send.buttons.back")}</Button>
           </div>
         )}
       </div>
     </div>
+    {/* Progressive-disclosure sheets. Selecting a wallet closes the sheet;
+        selecting an asset does the same. Note sheet closes via its Done
+        button. Fee sheet stays open across FeeSelector interactions so the
+        user can preview tiers, and closes via Done. */}
+    <WalletAssetPickerSheet
+      open={walletAssetSheetOpen}
+      onOpenChange={setWalletAssetSheetOpen}
+      wallets={wallets}
+      enabledAssets={enabledAssets}
+      selectedWalletId={walletId}
+      selectedAssetSymbol={assetSymbol}
+      onSelectWallet={(id) => { setWalletId(id); }}
+      onSelectAsset={(sym) => { setAssetSymbol(sym); setWalletAssetSheetOpen(false); }}
+    />
+    <NoteEditorSheet
+      open={noteSheetOpen}
+      onOpenChange={setNoteSheetOpen}
+      value={note}
+      onChange={setNote}
+      label={tw("send.note.label")}
+      placeholder={tw("send.note.placeholder")}
+    />
+    {!isBtc && !isSolana && (
+      <FeeSheet
+        open={feeSheetOpen}
+        onOpenChange={setFeeSheetOpen}
+        chain="evm"
+        networkKey={networkKey}
+        symbol={nativeSymbol}
+        decimals={activeNetwork?.decimals ?? 18}
+        usdRate={USD_RATES[nativeSymbol] ?? USD_RATES[selectedWallet?.currency]}
+        gasLimitHint={isErc20 ? undefined : 21000}
+        from={selectedWallet?.address || undefined}
+        to={isErc20 ? (selectedAsset?.contractAddress || undefined) : (toAddress || undefined)}
+        txData={isErc20 ? (riskCalldata || undefined) : undefined}
+        value={isErc20 ? "0x0" : undefined}
+        onChange={setSelectedFee}
+      />
+    )}
+    <Dialog open={digitalShieldDialogOpen} onOpenChange={(open) => { if (!open) resetDigitalShieldFlow(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Digital Shield Signing</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-2">
+          <p className="text-sm text-muted-foreground">
+            Scan this request with Digital Shield, approve it on the device, then scan or paste the signed response UR below.
+          </p>
+          {digitalShieldFlow?.urParts?.length ? (
+            <div className="space-y-2">
+              <UrQrPlayer parts={digitalShieldFlow.urParts} size={220} title="Digital Shield request QR" />
+              <textarea
+                readOnly
+                value={digitalShieldFlow.urParts.join('\n')}
+                className="min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-[11px] font-mono"
+              />
+            </div>
+          ) : null}
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => setDigitalShieldScannerOpen(true)}>
+              Scan Signed QR
+            </Button>
+            {digitalShieldResponseParts.length > 0 && (
+              <Button type="button" variant="ghost" onClick={() => { setDigitalShieldResponseParts([]); setDigitalShieldResponseDraft(""); setDigitalShieldError(""); }}>
+                Clear response
+              </Button>
+            )}
+          </div>
+          {digitalShieldResponseParts.length > 0 && (
+            <div className="rounded-lg bg-secondary/40 border border-border p-3 text-xs text-muted-foreground">
+              Scanned response parts: {digitalShieldResponseParts.length}
+            </div>
+          )}
+          <Label htmlFor="digital-shield-signed-response">Signed response UR</Label>
+          <textarea
+            id="digital-shield-signed-response"
+            value={digitalShieldResponseDraft || digitalShieldResponseParts.join('\n')}
+            onChange={(e) => setDigitalShieldResponseDraft(e.target.value)}
+            placeholder="Paste one UR or multiple UR response parts here"
+            className="min-h-28 w-full rounded-lg border border-input bg-background px-3 py-2 text-[11px] font-mono"
+          />
+          {digitalShieldError ? <p className="text-xs text-destructive break-all">{digitalShieldError}</p> : null}
+          <Button
+            className="w-full"
+            disabled={digitalShieldBusy || !(digitalShieldResponseDraft || digitalShieldResponseParts.length)}
+            onClick={() => finalizeDigitalShieldSend(digitalShieldResponseDraft || digitalShieldResponseParts)}
+          >
+            {digitalShieldBusy ? <Loader2 className="h-4 w-4 motion-safe:animate-spin" /> : null}
+            Finalize and Broadcast
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    {digitalShieldScannerOpen && (
+      <QRScanner
+        parse={parseDigitalShieldQr}
+        title="Scan Signed Digital Shield QR"
+        helperText="Scan each signed UR fragment from the device. If there are multiple parts, reopen the scanner for the next one."
+        onScan={(value) => {
+          setDigitalShieldResponseParts((current) => current.includes(value) ? current : [...current, value]);
+          setDigitalShieldScannerOpen(false);
+        }}
+        onClose={() => setDigitalShieldScannerOpen(false)}
+      />
+    )}
     </>
   );
 }

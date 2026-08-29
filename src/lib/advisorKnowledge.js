@@ -3,6 +3,7 @@
 // Organised by screen/topic so the advisor can give contextual answers.
 
 import advisories from '../data/security-advisories.json';
+import { FEATURE_CATEGORIES } from './featureCatalogue.js';
 
 export const KNOWLEDGE_BASE = {
   wallet_basics: {
@@ -22,7 +23,7 @@ export const KNOWLEDGE_BASE = {
       },
       {
         q: 'How do I back up my wallet?',
-        a: 'Your seed phrase is the ultimate backup — write it on paper and store it somewhere safe offline. Safety Plus subscribers can also export an encrypted backup file protected by their PIN; store it on a USB drive or secure location, not in cloud storage.',
+        a: 'Your seed phrase is the ultimate backup — write it on paper and store it somewhere safe offline. Safety Plus subscribers can also export an encrypted backup file protected by their PIN; store it on a USB drive or secure location, not in cloud storage. The advanced 2-of-3 recovery-share export additionally requires Hardware Protection to be ON for that wallet first.',
       },
     ],
   },
@@ -112,7 +113,15 @@ export const KNOWLEDGE_BASE = {
     entries: [
       {
         q: 'How do I set up a strong PIN?',
-        a: 'Your PIN protects access to your wallet on this device. Use at least 8 digits (the minimum enforced by Veyrnox). Avoid patterns like 123456789012 or repeated digits. Your PIN encrypts the vault using Argon2id key derivation with 192 MiB of memory — making brute-force attacks extremely expensive.',
+        a: 'Your PIN protects access to your wallet on this device. Use at least 8 digits (the minimum enforced by Veyrnox). Avoid patterns like 12345678, 00000000, or repeated digits. Your PIN encrypts the vault using Argon2id key derivation with 192 MiB of memory — making brute-force attacks extremely expensive.',
+      },
+      {
+        q: 'How is the security score calculated?',
+        a: 'The score sums five dimensions out of 95 total points (the meter labels this as a percentage). Authentication (20): PIN created 10, PIN meets the 8-digit minimum 5, biometric unlock enabled 5. Device Integrity (25): RASP ALLOW 25, WARN 10, BLOCK 0. Hardware Binding (10): Hardware Protection active 5, plus 5 for top-tier hardware (iOS Secure Enclave / Android StrongBox) or 3 for TEE. Recovery (30): passphrase set 8, share A wrapped 2, share B uploaded 8, share C exported 6, share C verified 6 (this last one is gated on a real recovery round-trip and is not yet loggable, so it is currently unreachable). WalletConnect Session Security (10): spend limit 3, session expiry 3, step-up re-auth 4 — these three are not yet wired to the score, so they read 0 even when configured. Honest ceiling today: about 79 out of 95. Fixes for the WC wiring and share-C verification will lift that toward 95 over time.',
+      },
+      {
+        q: 'Why is my security score lower than expected?',
+        a: 'Every unearned item reads as 0 — the score never fabricates evidence (I4). Common gaps: (a) app-level biometric unlock is a separate toggle from iOS Face ID enrollment; turn it on in Settings → Biometric Auth. (b) Hardware Protection scores 5 for being active plus 5 more only if the vault blob records the tier — a vault enrolled before we started stamping hardwareKekTier reads null and misses the 5, re-enroll from Settings → Hardware Protection to refresh. (c) Recovery is worth 30 across five items, so nothing counts until you complete a Personal Backup ceremony. (d) The three WalletConnect session items are not yet wired — they read 0 even when configured. So a low score is usually configuration, not compromise.',
       },
       {
         q: 'What does hardware key encryption do?',
@@ -133,6 +142,10 @@ export const KNOWLEDGE_BASE = {
       {
         q: 'What is biometric authentication?',
         a: 'Biometric authentication (Face ID, Touch ID, fingerprint) provides a convenient way to unlock your wallet without entering your full PIN every time. In Veyrnox, biometric auth is always backed by a hardware-bound key — it\'s not just a simple "is fingerprint enrolled" check. The biometric unlocks a cryptographic key stored in your device\'s secure hardware.',
+      },
+      {
+        q: 'Why are recovery shares disabled?',
+        a: 'Recovery-share export is gated on Hardware Protection for the current vault, not just the Biometric Re-Auth toggle. If the Advanced 2-of-3 section is greyed out, open Settings and make sure Hardware Protection itself is enabled for this wallet. Once the vault is KEK-wrapped, shard export can proceed.',
       },
       {
         q: 'How do I export my seed phrase?',
@@ -262,11 +275,15 @@ export const KNOWLEDGE_BASE = {
         // screening" as a Safety Plus feature. The remote-screening toggle in the
         // send flow has no entitlement check of any kind — it is available on
         // every tier — so the claim described a gate that does not exist.
-        a: 'Safety Plus is Veyrnox\'s optional premium tier: advanced security alerts and priority access to new security features. It\'s a monthly ($5.99) or annual ($49.99) subscription managed through your device\'s app store. Note that on-device and online threat screening are NOT behind it — both are free and opt-in for everyone.',
+        a: 'Safety Plus is Veyrnox\'s optional premium tier: advanced security alerts and priority access to new security features. It\'s a monthly ($5.99) or annual ($49.99) subscription managed through your device\'s app store. Note that send-flow threat screening is still free and opt-in for everyone. The live online Vigil advisor is separate: Free and Safety Plus keep Vigil local/offline, while AI Security Protection unlocks live online TIP-backed answers.',
       },
       {
         q: 'Do I need Safety Plus to be secure?',
-        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, and RASP — is available to all users, and so is transaction threat screening. Safety Plus unlocks deniability features (duress PIN, stealth wallets, panic wipe) and encrypted personal backup, plus advanced security alerts. The free tier is already significantly more secure than most wallets.',
+        a: 'No. Veyrnox\'s core security — hardware encryption, vault protection, and RASP — is available to all users, and so is transaction threat screening. Safety Plus unlocks deniability features (duress PIN, stealth wallets, panic wipe) and encrypted personal backup, plus advanced security alerts. The free tier is already significantly more secure than most wallets. AI Security Protection is the separate tier that lets Vigil go online to query TIP in real time.',
+      },
+      {
+        q: 'What is AI Security Protection?',
+        a: 'AI Security Protection is the tier that unlocks live online Vigil answers through the TIP threat-intelligence platform. Free and Safety Plus still include the local, offline advisor built into the app; AI Security Protection is what turns on remote TIP-backed AI responses.',
       },
     ],
   },
@@ -317,10 +334,57 @@ export function getKnowledgeForScreen(screen) {
     send: ['sending', 'security', 'general'],
     receive: ['receiving', 'general'],
     settings: ['security', 'wallet_basics', 'general'],
+    buy: ['wallet_basics', 'security', 'general'],
     walletconnect: ['walletconnect', 'security'],
     deniability: ['deniability', 'security'],
     subscription: ['subscription', 'general'],
-    security: ['security', 'wallet_basics'],
+    security_dashboard: ['security', 'wallet_basics'],
+    security_center: ['security', 'wallet_basics', 'general'],
+    wallet_access: ['wallet_basics', 'security', 'general'],
+    session_manager: ['security', 'general'],
+    login_activity: ['security', 'general'],
+    duress_pin: ['deniability', 'security'],
+    stealth_wallets: ['deniability', 'security'],
+    panic_wipe: ['deniability', 'wallet_basics'],
+    address_checker: ['sending', 'security'],
+    wallet_seed_qr: ['wallet_basics', 'security'],
+    hardware_wallet: ['security', 'wallet_basics'],
+    personal_backup: ['wallet_basics', 'security'],
+    dapp_alerts: ['walletconnect', 'security'],
+    security_scanner: ['sending', 'security'],
+    biometric_auth: ['security', 'wallet_basics'],
+    anomaly_detection: ['security', 'general'],
+    rasp_security: ['security', 'general'],
+    token_approvals: ['walletconnect', 'security'],
+    trust_score: ['security', 'general'],
+    fraud_detection: ['security', 'general'],
+    analytics: ['general', 'security'],
+    tax: ['general'],
+    asset_detail: ['general', 'security'],
+    transaction_history: ['sending', 'general'],
+    transaction_receipt: ['sending', 'general'],
+    fee_analytics: ['sending', 'general'],
+    crypto_signing: ['walletconnect', 'security'],
+    calculator: ['general'],
+    recurring: ['sending', 'general'],
+    watchlist: ['general'],
+    nft: ['general', 'security'],
+    snapshots: ['general'],
+    onchain: ['general', 'security'],
+    spending: ['general'],
+    savings: ['general'],
+    budget: ['general'],
+    net_worth: ['general'],
+    connect_wallet: ['walletconnect', 'general'],
+    address_book: ['sending', 'security'],
+    watch_wallets: ['general', 'security'],
+    live_balances: ['general', 'security'],
+    network_manager: ['general', 'security'],
+    solana: ['general', 'security'],
+    gas_fees: ['sending', 'general'],
+    hd_wallet: ['wallet_basics', 'general'],
+    notifications: ['security', 'general'],
+    docs: ['general', 'security'],
     general: ['general', 'wallet_basics', 'security'],
   };
 
@@ -346,6 +410,17 @@ export function getFollowUpQuestions(asked, screen) {
     walletconnect: ['walletconnect', 'security'],
     deniability: ['deniability', 'security'],
     dashboard: ['wallet_basics', 'general', 'security'],
+    address_checker: ['sending', 'security'],
+    token_approvals: ['walletconnect', 'security'],
+    wallet_access: ['wallet_basics', 'security'],
+    personal_backup: ['wallet_basics', 'security'],
+    biometric_auth: ['security', 'wallet_basics'],
+    rasp_security: ['security'],
+    security_dashboard: ['security', 'wallet_basics'],
+    security_center: ['security', 'wallet_basics'],
+    analytics: ['general', 'security'],
+    transaction_history: ['sending', 'general'],
+    transaction_receipt: ['sending', 'general'],
   };
   const preferred = screenTopics[screen] || ['general', 'wallet_basics', 'security'];
   const preferredEntries = new Set();
@@ -388,7 +463,100 @@ export function buildAdvisorSystemContext(screen) {
       lines.push('');
     }
   }
+  const catalogueBlock = buildFeatureCatalogueDigest();
+  if (catalogueBlock) lines.push(catalogueBlock);
+  const pagesBlock = buildAppPagesDigest();
+  if (pagesBlock) lines.push(pagesBlock);
   const advisoriesBlock = buildAdvisoriesBlock();
   if (advisoriesBlock) lines.push(advisoriesBlock);
+  return lines.join('\n');
+}
+
+// Full feature catalogue as a compact digest. One line per feature:
+// "- Feature Name [status]: summary". Grouped by category. Fits within the
+// 32 KB system-prompt cap even at ~50 features. Sourced from the same
+// featureCatalogue.js that Documentation renders, so the Advisor never drifts
+// from what the user can see on /docs. Long explanations are intentionally
+// dropped — the summary is what a user needs; deep detail belongs on the page.
+export function buildFeatureCatalogueDigest() {
+  const lines = ['## Veyrnox Feature Catalogue (from /docs)'];
+  for (const cat of FEATURE_CATEGORIES) {
+    lines.push('');
+    lines.push(`### ${cat.category}`);
+    for (const f of cat.features) {
+      const status = f.status === 'roadmap' ? 'Roadmap' : 'Live';
+      lines.push(`- ${f.name} [${status}]: ${f.summary}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+// User-facing app routes with a one-line purpose per page. Kept as a small
+// hardcoded list rather than parsing App.jsx — the routing table has 89
+// entries including redirects and auth-shell paths that a user never asks
+// the Advisor about. Keep this in step with App.jsx when a NEW user-facing
+// page ships (Documentation.jsx quick-links section is the canonical list).
+export const APP_PAGES = [
+  { path: '/', label: 'Dashboard — portfolio overview, balances, quick actions' },
+  { path: '/send', label: 'Send Crypto — build, sign, broadcast transfers' },
+  { path: '/receive', label: 'Receive Crypto — per-chain address + QR' },
+  { path: '/buy', label: 'Buy Crypto — on-ramp via Transak' },
+  { path: '/tx-history', label: 'Transaction History — per-chain history (read-only)' },
+  { path: '/token-approvals', label: 'Token Approvals — inspect and revoke ERC-20 allowances' },
+  { path: '/security', label: 'Security Center — security controls and status' },
+  { path: '/security-dashboard', label: 'Security Dashboard — signal summary and risk posture' },
+  { path: '/rasp-security', label: 'Runtime Protection — automation, root/jailbreak, tamper detection' },
+  { path: '/duress-pin', label: 'Duress PIN — set a decoy-wallet PIN for coercion' },
+  { path: '/stealth-wallets', label: 'Stealth Wallets — deniable hidden wallets' },
+  { path: '/panic-wipe', label: 'Panic Wipe — irreversibly destroy local key material' },
+  { path: '/personal-backup', label: 'Personal Backup — encrypt-then-export vault file' },
+  { path: '/wallet-seed-qr', label: 'Wallet Seed QR — reveal / scan encrypted seed QR' },
+  { path: '/wallet-access', label: 'Account Access & Recovery — change password, re-import seed' },
+  { path: '/hardware-wallet', label: 'Hardware Wallet — Trezor via WebUSB (Chrome/Edge)' },
+  { path: '/biometric-auth', label: 'Biometric Unlock — Face ID / Touch ID / fingerprint gate' },
+  { path: '/session-manager', label: 'Session Manager — view and revoke device sessions' },
+  { path: '/login-activity', label: 'Login Activity — previous unlock history' },
+  { path: '/audit-log', label: 'Audit Log — opt-in encrypted local activity log' },
+  { path: '/address-book', label: 'Address Book — labelled trusted addresses' },
+  { path: '/address-checker', label: 'Suspicious Address Checker — local blocklist screening' },
+  { path: '/anomaly-detection', label: 'Anomaly Detection — deviations from your history' },
+  { path: '/fraud', label: 'Fraud Detection — drainer and approve-then-transfer patterns' },
+  { path: '/risk-score', label: 'Portfolio Risk Score — rule-based, on-device' },
+  { path: '/dapp-alerts', label: 'dApp Security Alerts — WalletConnect risk verdicts' },
+  { path: '/walletconnect', label: 'WalletConnect — connect to dApps (v2 transport)' },
+  { path: '/crypto-signing', label: 'Message Signing — proof-of-ownership' },
+  { path: '/plans', label: 'Subscription — Free and Safety Plus plans' },
+  { path: '/safety-plus', label: 'Safety Plus — premium tier feature list' },
+  { path: '/referrals', label: 'Referral Tracker — share your code, earn discounts' },
+  { path: '/notifications', label: 'Notification Centre — alerts and reminders' },
+  { path: '/alerts', label: 'Price Alerts — threshold-based (advisory only)' },
+  { path: '/price-charts', label: 'Price Charts — OHLCV candlesticks (opt-in prices)' },
+  { path: '/watchlist', label: 'Watchlist — track assets you do not hold' },
+  { path: '/analytics', label: 'Analytics — portfolio analytics' },
+  { path: '/advanced-analytics', label: 'Advanced Analytics — deeper portfolio breakdowns' },
+  { path: '/onchain', label: 'On-Chain Analytics — inbound/outbound activity' },
+  { path: '/net-worth', label: 'Net-Worth Tracker — aggregate net worth' },
+  { path: '/fee-analytics', label: 'Fee Analytics — network fees paid (native units)' },
+  { path: '/tax', label: 'Tax Report — raw CSV export (not tax advice)' },
+  { path: '/spending', label: 'Spending Patterns — outbound activity by recipient' },
+  { path: '/budget', label: 'Spending Limits — per-tx and daily rules' },
+  { path: '/recurring', label: 'Recurring Payments — reminder schedules' },
+  { path: '/invoices', label: 'Invoice Generator — request-for-payment invoices' },
+  { path: '/savings', label: 'Savings Goals — self-tracking savings targets' },
+  { path: '/nft', label: 'NFT Gallery — display-only owned NFTs' },
+  { path: '/nft-multichain', label: 'Multi-Chain NFT — cross-chain NFT display' },
+  { path: '/voice-commands', label: 'Voice Commands — hands-free navigation (read-only)' },
+  { path: '/settings', label: 'Settings — preferences, security, auto-lock' },
+  { path: '/what-this-protects', label: 'What This Protects — plain-language threat model' },
+  { path: '/docs', label: 'Documentation — full feature catalogue and workflows' },
+  { path: '/terms-legal', label: 'Terms & Legal — TOS and privacy' },
+  { path: '/demo', label: 'Demo Mode — browse without a backend or funded wallet' },
+];
+
+export function buildAppPagesDigest() {
+  const lines = ['## Veyrnox App Pages'];
+  for (const p of APP_PAGES) {
+    lines.push(`- ${p.path} — ${p.label}`);
+  }
   return lines.join('\n');
 }

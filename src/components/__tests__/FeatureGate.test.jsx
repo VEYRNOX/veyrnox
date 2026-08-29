@@ -58,8 +58,14 @@ describe('FeatureGate — Safety Plus tier check', () => {
     expect(screen.getByText(/Safety Plus feature/)).toBeTruthy();
   });
 
-  it('renders the real page for a Safety Plus route when the user is subscribed', () => {
+  it('renders the real page for a Safety Plus route when the user is on Safety Plus', () => {
     useTierMock.mockReturnValue({ currentTier: 'safety_plus', loading: false });
+    renderAt('/risk-score');
+    expect(screen.getByTestId('page')).toBeTruthy();
+  });
+
+  it('renders the real page for a Safety Plus route when the user is on ai_security_protection', () => {
+    useTierMock.mockReturnValue({ currentTier: 'ai_security_protection', loading: false });
     renderAt('/risk-score');
     expect(screen.getByTestId('page')).toBeTruthy();
   });

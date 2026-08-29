@@ -67,6 +67,10 @@ vi.mock('@/lib/WalletConnectProvider.jsx', () => ({
 }));
 
 afterEach(() => { cleanup(); mockSessions.length = 0; });
+afterEach(() => {
+  try { localStorage.removeItem('veyrnox-remote-screen'); } catch { /* ignore */ }
+  vi.unstubAllEnvs();
+});
 
 function personalSignRequest(url) {
   // The dApp identity lives on the live session (looked up by topic), so register
@@ -154,7 +158,9 @@ describe('RequestApprovalModal — eth_sendTransaction risk scoring', () => {
     render(<RequestApprovalModal request={sendTxRequest(APPROVE_UNLIMITED)} onClose={vi.fn()} />);
 
     // The risk verdict resolves after the (mocked) simulation; its sentence appears.
-    await screen.findByText(/unlimited spending/i);
+    const riskCopies = await screen.findAllByText(/unlimited spending/i);
+    expect(riskCopies.length).toBeGreaterThan(0);
+    expect(screen.getByText(/transaction intelligence/i)).toBeTruthy();
 
     const approve = screen.getByRole('button', { name: /^approve$/i });
     expect(approve.disabled).toBe(true);
@@ -164,6 +170,19 @@ describe('RequestApprovalModal — eth_sendTransaction risk scoring', () => {
     expect(boxes.length).toBe(2);
     boxes.forEach((b) => fireEvent.click(b));
     expect(approve.disabled).toBe(false);
+  });
+
+  it('discloses when remote threat-intelligence screening is enabled for WalletConnect', async () => {
+    vi.stubEnv('VITE_TIP_BASE_URL', 'https://tip.test');
+    localStorage.setItem('veyrnox-remote-screen', '1');
+    render(<RequestApprovalModal request={sendTxRequest('0x')} onClose={vi.fn()} />);
+    expect(await screen.findByText(/online threat-intelligence screening is active for this request/i)).toBeTruthy();
+  });
+
+  it('shows the separate review and history contributor for a first-time recipient', async () => {
+    render(<RequestApprovalModal request={sendTxRequest('0x')} onClose={vi.fn()} />);
+    expect(await screen.findByText(/review & history/i)).toBeTruthy();
+    expect(screen.getByText(/first-time recipient/i)).toBeTruthy();
   });
 });
 

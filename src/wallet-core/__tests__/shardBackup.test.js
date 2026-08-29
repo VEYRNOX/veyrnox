@@ -76,7 +76,7 @@ describe('shardBackup — hard-off gate', () => {
       path.resolve(hereDir, '..', 'shardBackup.js'),
       'utf8'
     );
-    const importLines = src.split('\n').filter(l => /^\s*import\s/.test(l));
+    const importLines = src.match(/^\s*import\s+(?!meta\b)[\s\S]*?;$/gm) || [];
     // Allowed imports for shardBackup: shamir.js plus the noble hashing
     // primitives used by the cross-device bundle codec (Phase 3). Any
     // OTHER import — especially KEK/hardware — is a bug.
@@ -216,6 +216,29 @@ describe('shardBackup — Personal Backup behaviour with flag stubbed on', () =>
     // which uses different setIds across generations so a MIXED pair with
     // distinct setIds should throw the commitment mismatch).
     expect(() => mod.combineDekForPersonalBackup([genA[0], genB[1]])).toThrow();
+  });
+
+  it('combineFromBundles rejects mixed-version bundle pairs with a stable mismatch error', async () => {
+    const mod = await loadShardBackupEnabled();
+    const dek = randomDek();
+    const shares = mod.splitDekForPersonalBackup(dek);
+    const vault = {
+      v: 2,
+      kdf: { memorySize: 196608, iterations: 3, parallelism: 1, hashLength: 32 },
+      salt: 'c2FsdA==',
+      iv: 'aXY=',
+      ct: 'Y3Q=',
+    };
+    const bundleA = mod.encodeShareBundle(shares[0], 1, vault);
+    const bundleB = mod.encodeShareBundle(shares[1], 2, vault);
+    const mixedBundleB = JSON.parse(JSON.stringify(bundleB));
+    const mixedBytes = Uint8Array.from(
+      Buffer.from(mixedBundleB.shareBytes, 'base64')
+    );
+    mixedBytes[0] = 0x03;
+    mixedBundleB.shareBytes = Buffer.from(mixedBytes).toString('base64');
+    expect(() => mod.combineFromBundles([bundleA, mixedBundleB]))
+      .toThrow(mod.SHARD_BUNDLE_MISMATCH);
   });
 
   it('rejects a DEK of the wrong length with SHARD_INVALID_DEK', async () => {

@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "canvas-confetti": ["./src/types/canvas-confetti.d.ts"]
     },
     "jsx": "react-jsx",
     "module": "esnext",

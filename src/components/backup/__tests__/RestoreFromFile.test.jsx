@@ -28,6 +28,17 @@ vi.mock('@/rasp', async (importOriginal) => {
   return { ...actual, useRaspArtifact: () => raspArtifact };
 });
 
+// L-6 fix (audit 2026-08-25): handleUnlock now ALSO awaits a fresh, on-device-
+// only probe at the confirm step (see the "(f)" describe block below).
+// Default mirrors the mount-time artifact so every existing (pre-L-6) test in
+// this file is unaffected; individual L-6 tests override it to diverge from
+// raspArtifact.
+let freshRaspArtifact = null; // null => tests below fall back to `raspArtifact`
+const getFreshLocalRaspArtifact = vi.fn(async () => freshRaspArtifact ?? raspArtifact);
+vi.mock('@/lib/getFreshLocalRaspArtifact', () => ({
+  getFreshLocalRaspArtifact: (...a) => getFreshLocalRaspArtifact(...a),
+}));
+
 // ── vaultBackup: the crypto/file-I/O we REUSE. Stubbed for unit testing. ─────────
 const parseBackupFile = vi.fn(() => ({ app: 'veyrnox', backup_v: 1, seals: { password: {}, pin: {} } }));
 const decryptPasswordSeal = vi.fn(async () => 'CONTAINER-JSON-PW');
@@ -43,7 +54,7 @@ vi.mock('@/lib/restoreBackupFile', () => ({
 
 // Web platform (uses <input type=file> + FileReader — no native plugin needed).
 vi.mock('@capacitor/core', () => ({
-  Capacitor: { getPlatform: () => 'web' },
+  Capacitor: { getPlatform: () => 'web', isNativePlatform: () => false },
   registerPlugin: vi.fn(() => ({})),
 }));
 vi.mock('@capacitor/haptics', () => ({
@@ -96,6 +107,8 @@ async function setDevicePinViaPad(pin) {
 
 beforeEach(() => {
   raspArtifact = { tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false };
+  freshRaspArtifact = null;
+  getFreshLocalRaspArtifact.mockClear();
   parseBackupFile.mockReset().mockReturnValue({ app: 'veyrnox', backup_v: 1, seals: { password: {}, pin: {} } });
   decryptPasswordSeal.mockReset().mockResolvedValue('CONTAINER-JSON-PW');
   decryptPinSeal.mockReset().mockResolvedValue('CONTAINER-JSON-PIN');
@@ -256,5 +269,39 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     expect(await screen.findByText(/pins do not match/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /save & restore/i })).toBeNull();
     expect(finalisePinRestore).not.toHaveBeenCalled();
+  });
+
+  // L-6 (audit 2026-08-25): the mount-time raspArtifact sample can be up to
+  // ~60s stale (heartbeat). handleUnlock now ALSO awaits a fresh probe right
+  // at the confirm tap — the highest-danger moment (degrade.js) — so a hook
+  // injected after the last mount-time sample but before the click is caught.
+  describe('(f) fresh-at-confirm RASP probe (L-6)', () => {
+    it('awaits getFreshLocalRaspArtifact on unlock', async () => {
+      const { container } = renderShared();
+      await loadFile(container);
+      const pw = await screen.findByPlaceholderText(/your original password/i);
+      fireEvent.change(pw, { target: { value: 'my-original-password' } });
+      fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
+
+      await waitFor(() => expect(getFreshLocalRaspArtifact).toHaveBeenCalledTimes(1));
+    });
+
+    it('mount-time ALLOW + fresh BLOCK refuses the restore (closes the staleness window)', async () => {
+      freshRaspArtifact = {
+        tier: 'BLOCK',
+        sentence: 'This app appears to have been altered…',
+        blockedActions: ['sign', 'seed-reveal', 'export', 'import'],
+        requiresBiometric: false,
+      };
+      const { container } = renderShared();
+      await loadFile(container);
+      const pw = await screen.findByPlaceholderText(/your original password/i);
+      fireEvent.change(pw, { target: { value: 'my-original-password' } });
+      fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
+
+      await waitFor(() => expect(toastError).toHaveBeenCalled());
+      expect(decryptPasswordSeal).not.toHaveBeenCalled();
+      expect(decryptPinSeal).not.toHaveBeenCalled();
+    });
   });
 });

@@ -64,6 +64,14 @@ function makeNativeFacade() {
     async getVaultKekVersion() {
       return (await load()).nativeKeyStore.getVaultKekVersion();
     },
+    // Native-only: read-only compatibility/diagnostic snapshot for Android/iOS.
+    // Helps the UI explain vendor-specific behavior without touching secrets.
+    async getNativeSecuritySnapshot() {
+      return (await load()).nativeKeyStore.getNativeSecuritySnapshot();
+    },
+    async refreshNativeSecuritySnapshot() {
+      return (await load()).nativeKeyStore.refreshNativeSecuritySnapshot();
+    },
     // Native-only: EXPLICIT, consented, FAIL-CLOSED re-enroll of a non-v3 KEK vault to a
     // genuinely salt-bound v3 wrap. Fires two biometric prompts (unwrap + re-wrap) for a
     // one-time action; propagates any failure (no swallow). Idempotent on a v3 vault.
@@ -80,6 +88,15 @@ function makeNativeFacade() {
     },
     async unlock(password, opts) {
       return (await load()).nativeKeyStore.unlock(password, opts);
+    },
+    // Fast-path biometric-only unlock (#2019 Q3). Reads the wrapped-DEK cache
+    // in Android Keystore behind ONE biometric prompt — skips Argon2id KDF
+    // entirely on cache hit. Missing this forwarder made every WalletProvider
+    // `keyStore.unlockBiometricOnly(...)` call throw TypeError silently,
+    // which the WalletEntry auto-fire caught and fell through to the slow
+    // path (unlockWithBiometric → unlock → argon2), defeating Fast Unlock.
+    async unlockBiometricOnly(opts) {
+      return (await load()).nativeKeyStore.unlockBiometricOnly(opts);
     },
     // Personal Backup Phase 1 — forwarded through the facade so WalletProvider's
     // `typeof keyStore.exportPersonalBackupShares === 'function'` gate resolves
