@@ -78,6 +78,42 @@
   gap: 10px;
 }
 
+.scanActions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.scanBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 11px 16px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.scanBtn:hover:not(:disabled) {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--card) / 0.92);
+}
+
+.scanBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.scanBtn:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
 .uriInput {
   flex: 1 1 200px;
   min-width: 0;
