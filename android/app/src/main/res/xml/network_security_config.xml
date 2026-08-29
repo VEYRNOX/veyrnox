@@ -1,7 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Certificate pinning — STATUS: HONEST-DISABLED (structure documented,
+    pins NOT active).
+
+    The <pin-set> blocks are COMMENTED OUT below. Android's <pin-set> is
+    strict: any live pin element that does not match the cert chain fails
+    the connection, so shipping a placeholder pin would brick every
+    request. Uncomment ONLY after capturing real SPKI hashes.
+
+    To ACTIVATE pinning:
+      1) `node scripts/capture-spki.mjs <host>` for each domain — prints
+         current-leaf + current-issuer SPKI SHA-256 in base64.
+      2) Uncomment the <domain-config> block, replace the ...=== SPKI-SHA256
+         markers with the captured hashes (leaf FIRST as primary, issuer
+         SECOND as backup — a rotated leaf keeps working while the issuer
+         stays the same).
+      3) Set `expiration="YYYY-MM-DD"` to the earliest cert expiry so a
+         stale build fails OPEN (unpinned) rather than bricking installed
+         users when both pins expire.
+      4) Ship an app update. A pin rotation without an app update WILL
+         break installed users — Android accepts that trade. Keep a backup
+         pin one issuer ahead.
+
+    Every request through CapacitorHttp (capacitor.config.json) routes
+    through the native stack and would honour this file once activated.
+    Vault seed / wallet-core signing never touch these hosts.
+-->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">10.0.2.2</domain>
     </domain-config>
+
+    <!--
+    <domain-config>
+        <domain includeSubdomains="true">supabase.co</domain>
+        <pin-set expiration="2027-01-01">
+            <pin digest="SHA-256">REPLACE_WITH_LEAF_SPKI_SHA256_BASE64=</pin>
+            <pin digest="SHA-256">REPLACE_WITH_ISSUER_SPKI_SHA256_BASE64=</pin>
+        </pin-set>
+    </domain-config>
+    <domain-config>
+        <domain includeSubdomains="true">veyrnox.com</domain>
+        <pin-set expiration="2027-01-01">
+            <pin digest="SHA-256">REPLACE_WITH_LEAF_SPKI_SHA256_BASE64=</pin>
+            <pin digest="SHA-256">REPLACE_WITH_ISSUER_SPKI_SHA256_BASE64=</pin>
+        </pin-set>
+    </domain-config>
+    <domain-config>
+        <domain includeSubdomains="true">publicnode.com</domain>
+        <pin-set expiration="2027-01-01">
+            <pin digest="SHA-256">REPLACE_WITH_LEAF_SPKI_SHA256_BASE64=</pin>
+            <pin digest="SHA-256">REPLACE_WITH_ISSUER_SPKI_SHA256_BASE64=</pin>
+        </pin-set>
+    </domain-config>
+    -->
 </network-security-config>

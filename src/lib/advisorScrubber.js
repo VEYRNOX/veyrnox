@@ -76,6 +76,21 @@ const BARE_HEX_KEY_RE = /(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])/g;
 // caller (Advisor chat) rarely has legitimate long digit runs anyway.
 const PIN_RE = /(?<!\d)\d{4,16}(?!\d)/g;
 
+// BIP32 extended PRIVATE keys — every SLIP-132 variant. `xprv/tprv` (BIP44),
+// `yprv/uprv` (BIP49), `zprv/vprv` (BIP84). Base58 is [1-9A-HJ-NP-Za-km-z].
+// Extended keys are always 111 chars total → 107 after the 4-char prefix.
+const XPRV_RE = /\b(?:xprv|yprv|zprv|tprv|uprv|vprv)[1-9A-HJ-NP-Za-km-z]{107}\b/g;
+
+// Bitcoin WIF — mainnet compressed/uncompressed (K/L 52c, 5 51c) and testnet
+// (c 52c, 9 51c). Base58Check; length disambiguates so we don't false-positive
+// on regular base58 strings.
+const WIF_RE = /\b(?:[5K9][1-9A-HJ-NP-Za-km-z]{50}|[LKc][1-9A-HJ-NP-Za-km-z]{51})\b/g;
+
+// Solana secret keys are 64-byte ed25519 keypairs base58-encoded → 87–88
+// chars. Bounded by non-base58 chars so long base58 identifiers of other
+// lengths don't match.
+const SOL_SECRET_RE = /(?<![1-9A-HJ-NP-Za-km-z])[1-9A-HJ-NP-Za-km-z]{87,88}(?![1-9A-HJ-NP-Za-km-z])/g;
+
 /**
  * Scrub secrets from a chat message before it leaves the device.
  * @param {unknown} input
@@ -88,9 +103,22 @@ export function scrubSecrets(input) {
   let out = scrubMnemonicRuns(input);
   out = out.replace(EVM_PRIVATE_KEY_RE, REDACTED);
   out = out.replace(BARE_HEX_KEY_RE, REDACTED);
+  // Extended-key variants first so their base58 body cannot be re-matched
+  // by SOL_SECRET_RE.
+  out = out.replace(XPRV_RE, REDACTED);
+  out = out.replace(WIF_RE, REDACTED);
+  out = out.replace(SOL_SECRET_RE, REDACTED);
   out = out.replace(PIN_RE, REDACTED);
   return out;
 }
 
 // Exported for tests.
-export const __test__ = { REDACTED, EVM_PRIVATE_KEY_RE, BARE_HEX_KEY_RE, PIN_RE };
+export const __test__ = {
+  REDACTED,
+  EVM_PRIVATE_KEY_RE,
+  BARE_HEX_KEY_RE,
+  XPRV_RE,
+  WIF_RE,
+  SOL_SECRET_RE,
+  PIN_RE,
+};

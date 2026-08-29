@@ -41,12 +41,35 @@ vi.mock('@/lib/WalletProvider', () => ({
 }));
 
 const enrollKek = vi.fn(async () => {});
+const refreshNativeSecuritySnapshot = vi.fn(async () => ({
+  platform: 'android',
+  manufacturer: 'OnePlus',
+  model: 'OnePlus 15',
+  sdkInt: 36,
+  hardwareBacking: 'tee',
+  biometryEnrolled: true,
+  biometricAvailable: true,
+  deviceIsSecure: true,
+  secureHardwareAvailable: true,
+}));
 vi.mock('@/wallet-core/keystore', () => ({
   getKeyStore: () => ({
     enrollKek,
     hasVaultKekWrap: async () => false,
     getVaultKekTier: async () => 'STRONGBOX',
     getVaultKekVersion: async () => 3,
+    refreshNativeSecuritySnapshot,
+    getNativeSecuritySnapshot: async () => ({
+      platform: 'android',
+      manufacturer: 'OnePlus',
+      model: 'OnePlus 15',
+      sdkInt: 36,
+      hardwareBacking: 'tee',
+      biometryEnrolled: true,
+      biometricAvailable: true,
+      deviceIsSecure: true,
+      secureHardwareAvailable: true,
+    }),
   }),
 }));
 
@@ -63,7 +86,7 @@ import HardwareKekSettings from '../HardwareKekSettings';
 import { KEK_INSECURE_TIER_KEY } from '@/lib/useKekEnrollmentGate';
 
 describe('HardwareKekSettings — previously-ineligible retry', () => {
-  beforeEach(() => { try { localStorage.clear(); } catch { /* jsdom */ } });
+beforeEach(() => { try { localStorage.clear(); } catch { /* jsdom */ } });
   afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
   it('renders the caution banner only when the ineligible verdict is persisted', async () => {
@@ -78,6 +101,14 @@ describe('HardwareKekSettings — previously-ineligible retry', () => {
     render(<HardwareKekSettings />);
     await waitFor(() => expect(screen.queryByTestId('pin-strength-pre-enroll')).toBeTruthy());
     expect(screen.getByTestId('kek-previously-ineligible')).toBeTruthy();
+  });
+
+  it('renders the native compatibility snapshot for vendor Android devices', async () => {
+    render(<HardwareKekSettings />);
+    expect(await screen.findByTestId('android-security-snapshot')).toBeTruthy();
+    expect(screen.getByText('OnePlus OnePlus 15')).toBeTruthy();
+    expect(screen.getByText('TEE')).toBeTruthy();
+    expect(screen.getByText(/TEE-backed Android devices are supported/i)).toBeTruthy();
   });
 
   it('clears the ineligible verdict on successful native enroll', async () => {
@@ -104,6 +135,21 @@ describe('HardwareKekSettings — previously-ineligible retry', () => {
     await act(async () => { submit.click(); });
     await waitFor(() => {
       expect(enrollKek).toHaveBeenCalled();
+      expect(localStorage.getItem(KEK_INSECURE_TIER_KEY)).toBe(null);
+    });
+  });
+
+  it('retests device security and clears the persisted verdict when compatibility improves', async () => {
+    localStorage.setItem(KEK_INSECURE_TIER_KEY, '1');
+    render(<HardwareKekSettings />);
+    await waitFor(() => expect(screen.queryByTestId('pin-strength-pre-enroll')).toBeTruthy());
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Retest device security' }).click();
+    });
+
+    await waitFor(() => {
+      expect(refreshNativeSecuritySnapshot).toHaveBeenCalled();
       expect(localStorage.getItem(KEK_INSECURE_TIER_KEY)).toBe(null);
     });
   });

@@ -91,6 +91,30 @@ const SPECS = Object.freeze({
     blockedActions: [],
     requiresBiometric: true,
   },
+  [CONDITION.SCREEN_CAPTURE]: {
+    // M-5 (weekly audit 2026-08-25). Active screen mirroring / recording is the
+    // one soft signal whose whole threat IS the screen, so the one action it must
+    // refuse is the one that puts key material ON the screen: seed reveal.
+    //
+    // NOT the full SENSITIVE set: export and import write to a FILE, and a tx
+    // preview is not key material — blocking those would be over-blocking a state
+    // (AirPlay to a TV) that is usually benign.
+    //
+    // WHY THIS EXISTS ONLY ON iOS. Android's identical signal stays graded
+    // ELEVATED because MainActivity's unconditional FLAG_SECURE blocks the capture
+    // at the OS layer, so the phrase never reaches the mirror. iOS has no
+    // FLAG_SECURE equivalent — applyScreenshotProtection in RaspIntegrityPlugin.m
+    // is an HONEST-DISABLED placeholder — so refusing to render is the only
+    // control available. Do not "align" the two platforms; the backstop is real on
+    // one and absent on the other. nativeProbe.js is where the split is made.
+    //
+    // Copy names the state and the consequence, and promises no prevention.
+    tier: TIER.WARN,
+    sentence:
+      'This screen is being mirrored or recorded, so your recovery phrase stays hidden until that stops.',
+    blockedActions: ['seed-reveal'],
+    requiresBiometric: true,
+  },
   [CONDITION.INTEGRITY_UNAVAILABLE]: {
     // requiresBiometric: true — same B5 enforcement as ROOTED (native only;
     // web stays checkbox-only since verifyBiometric2fa() throws on web).
@@ -109,9 +133,16 @@ const SPECS = Object.freeze({
     // signerReachable:false for EVERY send, testnet included, so nothing ever
     // consumed it. Removed to avoid misleading future callers. Emulator blocks all
     // sends, and the copy does not promise testnet.
+    //
+    // L-5 (weekly audit 2026-08-25): blockedActions was ['sign'] only, while
+    // ROOTED and INTEGRITY_UNAVAILABLE — both ranked LOWER in attestation.js's
+    // DANGER_RANK — blocked seed-reveal/export/import. A rooted AND emulated
+    // device composes to EMULATOR, so the STRONGER condition granted MORE
+    // key-material access than the weaker one. Now the full SENSITIVE set, which
+    // restores danger-monotonicity (pinned generally by l5-tier-monotonicity.test.js).
     tier: TIER.BLOCK,
-    sentence: 'Signing is turned off in emulated environments.',
-    blockedActions: ['sign'],
+    sentence: 'Signing and key access are turned off in emulated environments.',
+    blockedActions: [...SENSITIVE],
     requiresBiometric: false,
   },
   [CONDITION.INTEGRITY_FAIL]: {

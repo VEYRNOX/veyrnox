@@ -20,6 +20,9 @@
 // Run: npm run android:test:log1
 import appHelper from '../helpers/appHelper.js';
 import walletHelper from '../helpers/walletHelper.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 // Matches a JSON "h" field (the HardwareKek factor) carrying a base64-looking
 // value, raw or JSON-escaped. The redacted placeholder contains '[' so a
@@ -31,6 +34,12 @@ const H_FACTOR_PATTERN = /\\?"h\\?"\s*:\s*\\?"[A-Za-z0-9+/=]{16,}\\?"/;
 // long base64 run inside a Capacitor/Console-tagged line is treated as a
 // potential leaked payload (vault blob, wrapped DEK, credential, etc.).
 const CONSOLE_PAYLOAD_PATTERN = /[A-Za-z0-9+/=]{64,}/;
+const here = dirname(fileURLToPath(import.meta.url));
+const packageJson = JSON.parse(readFileSync(join(here, '../../../package.json'), 'utf8'));
+const androidPatch = readFileSync(
+  join(here, '../../../patches/@capacitor+android+8.5.0.patch'),
+  'utf8',
+);
 
 async function scanForLeaks(logs) {
   const hLeak = logs.filter((l) => H_FACTOR_PATTERN.test(l.message));
@@ -168,24 +177,9 @@ describe('LOG-1 — App-Wide Debug Bridge Log Redaction Sweep', () => {
     expect(consolePayloadLeak.length).toBe(0);
   });
 
-  it('should confirm the patch-package patch is present in the shipped build environment', async () => {
-    // This is a build-config check, not a device check — included here so a
-    // regression that accidentally drops the patch (e.g. patch-package
-    // silently failing on a dependency bump) fails the SAME suite that
-    // verifies the runtime behavior it protects, keeping cause and effect
-    // together in one report.
-    // Bash/File access isn't available from the Appium test process directly;
-    // this assertion documents the dependency rather than re-implementing a
-    // filesystem check that belongs in CI (postinstall: patch-package already
-    // fails the build if a patch cannot apply — see package.json).
-    console.log(`
-ℹ️ patches/@capacitor+android+8.4.1.patch is applied via "postinstall": "patch-package"
-in package.json — patch-package hard-fails npm install if the patch cannot
-apply cleanly, which is the CI-side guarantee that this fix cannot silently
-regress via a dependency bump without the pipeline noticing. The three tests
-above are the device-side confirmation that the patched behavior is what
-actually ships in the APK under test.
-    `);
-    expect(true).toBe(true);
+  it('#2022 confirms the Android bridge-redaction patch is present in the shipped tree', async () => {
+    expect(packageJson.postinstall).toBe('patch-package');
+    expect(androidPatch).toContain('createLogFromNative');
+    expect(androidPatch).toMatch(/redact|REDACTED|sensitive/i);
   });
 });

@@ -49,14 +49,20 @@ describe('sensitiveGate — core blocking logic', () => {
     expect(sensitiveGate(artifact, 'sign').blocked).toBe(true);
   });
 
-  it('does NOT block seed-reveal on EMULATOR (only sign is blocked)', () => {
+  // L-5 (weekly audit 2026-08-25) — these two used to assert the OPPOSITE, i.e.
+  // they pinned the defect: EMULATOR is a BLOCK tier ranked ABOVE ROOTED, yet it
+  // let seed material out while ROOTED did not, so a rooted+emulated device
+  // (which composes to EMULATOR) could reveal its phrase. degrade() now gives
+  // EMULATOR the full SENSITIVE set; the general invariant is pinned in
+  // l5-tier-monotonicity.test.js.
+  it('blocks seed-reveal on EMULATOR (L-5: a BLOCK tier must not leak key material)', () => {
     const artifact = degrade(CONDITION.EMULATOR);
-    expect(sensitiveGate(artifact, 'seed-reveal').blocked).toBe(false);
+    expect(sensitiveGate(artifact, 'seed-reveal').blocked).toBe(true);
   });
 
-  it('does NOT block export on EMULATOR', () => {
+  it('blocks export on EMULATOR (L-5)', () => {
     const artifact = degrade(CONDITION.EMULATOR);
-    expect(sensitiveGate(artifact, 'export').blocked).toBe(false);
+    expect(sensitiveGate(artifact, 'export').blocked).toBe(true);
   });
 });
 

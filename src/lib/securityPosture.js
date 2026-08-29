@@ -20,6 +20,7 @@
 import { summarizeAllowance } from '@/wallet-core/evm/approvals';
 import { classifyToken } from '@/wallet-core/evm/spam';
 import { screenRecipient, isLocallyFlagged } from '@/wallet-core/evm/poison';
+import { TIER } from '@/rasp';
 
 /**
  * Aggregate ERC-20 allowance rows (local TokenApproval shape) into counts.
@@ -204,12 +205,19 @@ function item(id, earned, points) {
 
 /**
  * Score the authentication dimension (max 20).
+ *
+ * The shipping native cohort uses an 8-digit PIN, not a 12+ character unlock
+ * secret. The posture score must therefore reward meeting the real product
+ * minimum, not a legacy web-password threshold that native users cannot ever
+ * satisfy. `pinLength` remains numeric so legacy callers can still pass their
+ * observed length, but the earned-strength check keys off the current
+ * product-wide minimum of 8.
  * @param {PostureState} s
  */
 function scoreAuthentication(s) {
   const items = [
     item('pin_created', !!s.pinCreated, 10),
-    item('pin_length_12', !!s.pinCreated && typeof s.pinLength === 'number' && Number.isFinite(s.pinLength) && s.pinLength >= 12, 5),
+    item('pin_length_meets_min', !!s.pinCreated && typeof s.pinLength === 'number' && Number.isFinite(s.pinLength) && s.pinLength >= 8, 5),
     item('biometric_enrolled', !!s.biometricEnabled, 5),
   ];
   return { score: items.reduce((a, i) => a + i.points, 0), max: 20, items };
@@ -221,21 +229,35 @@ function scoreAuthentication(s) {
  */
 function scoreDeviceIntegrity(s) {
   const tier = s.raspTier;
-  const pts = tier === 'ALLOW' ? 25 : tier === 'WARN' ? 10 : 0;
+  const pts = tier === TIER.ALLOW ? 25 : tier === TIER.WARN ? 10 : 0;
   const items = [item('rasp_tier', pts > 0, pts)];
   return { score: pts, max: 25, items };
 }
 
+// Tier strings the native plugins actually persist into blob.hardwareKekTier
+// (see wallet-core/keystore/hardware.js ACCEPTED_TIER_NAMES). The scorer used
+// to check only the aspirational canonical names ('STRONGBOX', 'SECURE_ENCLAVE',
+// 'TEE'), so every iOS Secure-Enclave device (persisted as 'SecureEnclave')
+// scored 0 on the sub-item next to a live kekActive=true — a silent -5 for
+// every iPhone. Accept both the persisted and canonical spellings.
+const TOP_TIER_NAMES = new Set(['STRONGBOX', 'SECURE_ENCLAVE', 'SecureEnclave']);
+const TEE_TIER_NAMES = new Set([
+  'TEE',
+  'TRUSTED_ENVIRONMENT',      // Android AndroidKeyStore SecurityLevel.TRUSTED_ENVIRONMENT
+  'SECURE_HARDWARE_PRE31',    // pre-API-31 Androids reporting secure hw without a level
+  'UNKNOWN_SECURE',           // Android reported secure but level not surfaced (still hw)
+]);
+
 /**
- * Score the hardware binding dimension (max 15).
+ * Score the hardware binding dimension (max 10).
  * KEK active = 5. StrongBox/SecureEnclave = 5, TEE = 3 (mutually exclusive).
  * @param {PostureState} s
  */
 function scoreHardwareBinding(s) {
   const kekItem = item('kek_active', !!s.kekActive, 5);
 
-  const isTopTier = !!s.kekActive && (s.hardwareTier === 'STRONGBOX' || s.hardwareTier === 'SECURE_ENCLAVE');
-  const isTee = !!s.kekActive && s.hardwareTier === 'TEE';
+  const isTopTier = !!s.kekActive && TOP_TIER_NAMES.has(s.hardwareTier);
+  const isTee = !!s.kekActive && !isTopTier && TEE_TIER_NAMES.has(s.hardwareTier);
 
   const hwItem = isTopTier
     ? item('hardware_top_tier', true, 5)
@@ -244,7 +266,7 @@ function scoreHardwareBinding(s) {
       : item('hardware_none', false, 0);
 
   const items = [kekItem, hwItem];
-  return { score: items.reduce((a, i) => a + i.points, 0), max: 15, items };
+  return { score: items.reduce((a, i) => a + i.points, 0), max: 10, items };
 }
 
 /**

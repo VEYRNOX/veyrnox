@@ -24,7 +24,7 @@ import {
   RotateCcw, Mic,
   ShieldOff, Gauge, KeyRound, ScanLine, Frame, Wifi, Pen,
   CloudUpload, Compass, ScanSearch, Ghost, Bomb, Scissors,
-  CreditCard, ShoppingCart,
+  CreditCard, ShoppingCart, Boxes,
 } from "lucide-react";
 import { isCut } from './featureRegistry';
 
@@ -132,6 +132,7 @@ const RAW_NAV_GROUPS = [
       { path: "/voice-commands", label: "Voice Commands", icon: Mic },
       { path: "/token-approvals", label: "Token Approvals", icon: ShieldOff },
       { path: "/trust-score", label: "Token Spam Screening", icon: ScanLine },
+      { path: "/suspicious-assets", label: "Suspicious Assets", icon: Boxes },
       { path: "/fraud", label: "Fraud Detection", icon: ShieldAlert },
     ],
   },

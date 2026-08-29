@@ -31,6 +31,22 @@ function isChunkLoadError(err) {
   );
 }
 
+// Spurious rejections from Capacitor plugin proxies whose `.then` accessor is
+// routed to native as a method call and rejected as "not implemented on
+// android". Nothing in the app actually awaits these plugin objects; the
+// rejection is inert but leaks past the try/catch it originated in and
+// surfaces here as an "uncaught" event. Suppress the user-facing toast for
+// this specific shape only — the console.error above still logs it for
+// debugging, and any real logic error keeps producing the generic toast.
+//
+// Seen on Android for @aparajita/capacitor-secure-storage; the same proxy
+// shape is used across Capacitor plugins so the match is broad enough to
+// cover a future recurrence without matching real errors.
+function isCapacitorPluginThenNoise(err) {
+  const msg = (err && (err.message || String(err))) || "";
+  return /['"]\w+\.then\(\)['"] is not implemented on (android|ios|web)/i.test(msg);
+}
+
 function handle(err) {
   if (import.meta.env.DEV) {
     console.error("[globalErrorHandler]", err);
@@ -39,6 +55,10 @@ function handle(err) {
   }
   if (isChunkLoadError(err)) {
     toastOnce("A new version is available. Reload to continue.");
+    return;
+  }
+  if (isCapacitorPluginThenNoise(err)) {
+    // Logged above, not toasted — plugin-side quirk, not a user-actionable error.
     return;
   }
   toastOnce("Something went wrong. Please try again.");

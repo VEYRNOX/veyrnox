@@ -68,6 +68,27 @@ describe('credential selection', () => {
     expect(init.headers.apikey).toBe('anon-key');
   });
 
+  it('503s in production when the service-role key is absent', async () => {
+    const e = await thrown(() => onRequestPost(ctx('track_event', {
+      SUPABASE_URL: URL_BASE,
+      SUPABASE_ANON_KEY: 'anon-key',
+      ENVIRONMENT: 'production',
+    })));
+    expect(e.status).toBe(503);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('still allows the anon fallback outside production', async () => {
+    await onRequestPost(ctx('track_event', {
+      SUPABASE_URL: URL_BASE,
+      SUPABASE_ANON_KEY: 'anon-key',
+      ENVIRONMENT: 'preview',
+    }));
+
+    const [, init] = globalThis.fetch.mock.calls[0];
+    expect(init.headers.apikey).toBe('anon-key');
+  });
+
   it('503s when neither key is configured', async () => {
     const e = await thrown(() => onRequestPost(ctx('track_event', { SUPABASE_URL: URL_BASE })));
     expect(e.status).toBe(503);
@@ -83,8 +104,6 @@ describe('RPC allowlist — the only boundary once service_role is in play', () 
     'increment_referral',
     'get_referral_count',
     'get_referral_paid_count',
-    'record_attribution',
-    'get_referral_earnings',
   ])('allows %s', async (fn) => {
     const res = await onRequestPost(ctx(fn));
     expect(res.status).toBe(200);
@@ -92,6 +111,8 @@ describe('RPC allowlist — the only boundary once service_role is in play', () 
 
   it.each([
     ['an unlisted function', 'drop_everything'],
+    ['disabled attribution write', 'record_attribution'],
+    ['disabled earnings read', 'get_referral_earnings'],
     ['a table read', 'referral_attributions'],
     ['path traversal out of /rpc/', '../../rest/v1/referral_codes'],
     ['an absolute URL', 'https://evil.com/x'],
@@ -205,7 +226,7 @@ describe('response hygiene', () => {
       { status: 409, headers: { 'Content-Type': 'application/json' } },
     )));
 
-    const res = await onRequestPost(ctx('record_attribution'));
+    const res = await onRequestPost(ctx('track_event'));
     const body = await res.json();
 
     expect(body.error).not.toMatch(/uq_referral_attributions/);
@@ -234,7 +255,7 @@ describe('response hygiene', () => {
       { status: 409, headers: { 'Content-Type': 'application/json' } },
     )));
 
-    await onRequestPost(ctx('record_attribution'));
+    await onRequestPost(ctx('track_event'));
 
     const logged = spy.mock.calls.map((c) => c.join(' ')).join('\n');
     // Kept — this is what an operator greps for.

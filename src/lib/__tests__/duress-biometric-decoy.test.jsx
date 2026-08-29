@@ -38,6 +38,7 @@ vi.mock('@/lib/biometricUnlock', () => ({
   clearUnlockSecret: (...a) => clearUnlockSecret(...a),
   hasStoredUnlockSecret: vi.fn(async () => _cache != null),
   biometricUnlockSupported: () => true,
+  hasBiometricConsentBeenRecorded: () => true,
 }));
 
 // Report an available NATIVE biometric so enable/unlock take the real-device

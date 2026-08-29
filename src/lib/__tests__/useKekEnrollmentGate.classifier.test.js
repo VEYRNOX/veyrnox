@@ -23,6 +23,9 @@ vi.mock('@/wallet-core/keystore', () => ({
     isSecureHardwareAvailable: async () => false, // gate stays inactive — unit testing classifier only
     hasVaultKekWrap: async () => true,
   }),
+  // Transparent passthrough — real impl is a native-only lock-hook suppressor;
+  // classifier tests only care about the wrapped promise resolution.
+  withLockSuppressed: (fn) => Promise.resolve().then(fn),
 }));
 vi.mock('@/wallet-core/keystore/hardware.js', () => ({
   enrollHardwareCredential: vi.fn(),

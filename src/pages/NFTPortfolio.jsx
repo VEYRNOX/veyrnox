@@ -12,6 +12,7 @@ import { toast } from "@/lib/toast";
 import Spinner from "@/components/Spinner";
 import { safeNftImageUrl } from "@/lib/nftImageUrl";
 import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 const CHAIN_COLORS = { ethereum: "bg-secondary text-muted-foreground", solana: "bg-secondary text-muted-foreground", polygon: "bg-secondary text-muted-foreground", base: "bg-secondary text-muted-foreground" };
 const STATUS_COLORS = { holding: "bg-success/10 text-success", listed: "bg-caution/10 text-caution", sold: "bg-muted text-muted-foreground" };
@@ -20,11 +21,16 @@ export default function NFTPortfolio() {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name: "", collection: "", token_id: "", contract_address: "", chain: "ethereum", image_url: "", purchase_price: "", current_floor: "", status: "holding", note: "" });
+  const nftQueryEnabled = (() => {
+    try { return !isDeniabilityOrDemoActive(); } catch { return false; }
+  })();
 
-  const { data: nfts = [], isLoading, isError } = useQuery({
+  const { data: nftsRaw = [], isLoading, isError } = useQuery({
     queryKey: ["nft-assets"],
     queryFn: () => base44.entities.NFTAsset.list("-created_date"),
+    enabled: nftQueryEnabled,
   });
+  const nfts = nftQueryEnabled ? nftsRaw : [];
 
   const addNFT = useMutation({
     mutationFn: () => base44.entities.NFTAsset.create({
@@ -47,6 +53,14 @@ export default function NFTPortfolio() {
 
   const totalValueETH = nfts.filter(n => n.status !== "sold").reduce((s, n) => s + (n.current_floor || n.purchase_price || 0), 0);
   const totalPnlETH = nfts.reduce((s, n) => s + ((n.current_floor || 0) - (n.purchase_price || 0)), 0);
+
+  if (!nftQueryEnabled) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 text-center text-sm text-muted-foreground">
+        This page isn&apos;t available right now.
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -79,7 +93,7 @@ export default function NFTPortfolio() {
       ) : isError ? (
         <div className="text-center py-16 text-muted-foreground">
           <Image className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm text-destructive">Couldn't load your NFTs. Please try again.</p>
+          <p className="text-sm text-destructive">Couldn&apos;t load your NFTs. Please try again.</p>
         </div>
       ) : nfts.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">

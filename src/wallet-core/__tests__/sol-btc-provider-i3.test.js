@@ -38,8 +38,8 @@ describe('SOL + BTC provider I3 guards (Finding 1)', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  // H1: getBalanceLamports is the raw primitive called DIRECTLY by sol/send.js
-  // and sol/hw-send.js, bypassing the getBalanceSol wrapper guard entirely.
+  // H1: getBalanceLamports is the raw primitive called DIRECTLY by sol/send.js,
+  // bypassing the getBalanceSol wrapper guard entirely.
   // The guard must live on the primitive itself (choke-point), not just the
   // wrapper, or a hidden-wallet SOL send during a deniability session leaks
   // live RPC egress.

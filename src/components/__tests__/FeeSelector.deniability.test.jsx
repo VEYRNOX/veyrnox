@@ -7,8 +7,7 @@
 // mounted. `enabled` and the parent render conditional are NOT reactive to a
 // localStorage `veyrnox-demo` flip (same-window writes emit no event), so if the
 // demo/deniability flag is set AFTER mount, the interval refetch still hits the
-// live fee provider. Under useTrezorMode that queries the REAL hardware address
-// against a third-party RPC — a real I3 egress leak on a coerced mid-session flip.
+// live fee provider — a real I3 egress leak on a coerced mid-session flip.
 //
 // Fix (Option 1, minimal): the queryFn must call the LIVE
 // isDeniabilityOrDemoActive() gate on every invocation and fail closed (throw)

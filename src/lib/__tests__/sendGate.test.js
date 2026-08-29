@@ -19,6 +19,7 @@ const PASS = Object.freeze({
   limit: { blocked: false, reasons: [] },
   limitAck: false,
   riskScoreFailed: false,
+  txPolicy: null,
   presign: { proceedAllowed: true, signerReachable: true },
   blockedByApproval: false,
 });
@@ -172,6 +173,36 @@ describe('gate 8a — risk score must compute (fail closed)', () => {
 });
 
 describe('gate 8b — composite pre-sign verdict', () => {
+  it('uses the normalized tx policy BLOCK before the raw presign fallback', () => {
+    const r = evaluateSendGate({
+      ...PASS,
+      txPolicy: { decision: 'BLOCK', reason: 'Composite policy blocked this transaction.' },
+      presign: { proceedAllowed: true, signerReachable: true },
+    });
+    expect(r.code).toBe(SEND_GATE.RISK_BLOCK);
+    expect(r.message).toBe('Composite policy blocked this transaction.');
+  });
+
+  it('uses the normalized tx policy ACKNOWLEDGE before the raw presign fallback', () => {
+    const r = evaluateSendGate({
+      ...PASS,
+      txPolicy: { decision: 'ACKNOWLEDGE', reason: 'Escalated review is still required.' },
+      presign: { proceedAllowed: true, signerReachable: true },
+    });
+    expect(r.code).toBe(SEND_GATE.RISK_CONFIRM);
+    expect(r.message).toBe('Escalated review is still required.');
+  });
+
+  it('uses the normalized tx policy STEP_UP before the raw presign fallback', () => {
+    const r = evaluateSendGate({
+      ...PASS,
+      txPolicy: { decision: 'STEP_UP', reason: 'Biometric re-check required for stacked risk.' },
+      presign: { proceedAllowed: true, signerReachable: true },
+    });
+    expect(r.code).toBe(SEND_GATE.RISK_CONFIRM);
+    expect(r.message).toBe('Biometric re-check required for stacked risk.');
+  });
+
   it('hard-BLOCKs (no override) when the signer is unreachable', () => {
     const r = evaluateSendGate({
       ...PASS,

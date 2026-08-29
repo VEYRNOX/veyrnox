@@ -1,0 +1,299 @@
+name: iOS XCUITest Smoke
+
+# Machine-driven iOS crash catcher. macOS runner boots an iPhone simulator,
+# builds the App scheme, and runs a simulator-only fail-closed smoke. The test
+# walks fresh install → New wallet → PIN and verifies that an iOS Simulator,
+# which has no passcode-backed secure store, never creates a wallet. Successful
+# native provisioning is real-device-only and is not claimed by this workflow.
+#
+# HONESTY SCOPE: simulator-only. Real-device-only failure modes (StrongBox,
+# Secure Enclave attestation, RASP dyld scans) will not fire here. Crashes
+# do NOT populate ASC / Organizer — those are real-install-only telemetry.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/ios-xcuitest-smoke.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/ios-xcuitest-smoke.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ios-xcuitest-${{ github.ref }}
+  # #2100 — do NOT cancel runs on `main`. This job's ceiling is 45 min and the repo
+  # merges 10+ times a day, so an unconditional cancel-in-progress meant a main run was
+  # almost always superseded before it finished: 26 of 30 consecutive runs ended
+  # `cancelled`, 2 succeeded, 0 failed. A suite that completes once in fifteen attempts
+  # cannot tell anyone whether iOS is healthy.
+  #
+  # PR refs keep cancelling — `github.ref` is refs/pull/N/merge there, so pushing twice
+  # to a PR still supersedes the first run, which is the churn worth saving.
+  #
+  # COST, stated: main runs no longer cancel each other, so several can be in flight at
+  # once on the scarce macOS runners. The path filter above (ios/**, src/**, the two
+  # manifests, capacitor.config.json, this file) is what keeps that bounded. If runner
+  # contention becomes the problem, narrow the paths before re-enabling the cancel —
+  # re-enabling it puts the suite straight back to reporting nothing.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  VITE_WALLETCONNECT_PROJECT_ID: ${{ vars.VITE_WALLETCONNECT_PROJECT_ID }}
+  VITE_TIP_BASE_URL: ${{ vars.VITE_TIP_BASE_URL }}
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+  VITE_EDGE_BASE: ${{ vars.VITE_EDGE_BASE }}
+
+jobs:
+  xcuitest:
+    # The same smoke is passing on main's current Xcode 26 image. Keep this
+    # required PR check on that proven runner rather than treating an older
+    # simulator image as safer when it reproduces the setup failure.
+    runs-on: macos-latest
+    # Budget note (issues #2008, #2109). A JOB-level timeout kills the whole
+    # job, including `Upload test log` — which is why run after run produced
+    # zero artifacts and nobody could see why the test never finished. Each
+    # long step therefore carries its OWN smaller timeout, so when one blows its
+    # budget the job survives to upload the evidence.
+    #
+    # The job budget must stay comfortably above the sum of its step budgets.
+    # Hosted macOS runners terminate this job at roughly 55 minutes, so retain
+    # headroom for diagnostics and uploads below that external ceiling.
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Pin npm to 11
+        run: npm install -g npm@11
+
+      - name: Install deps
+        # `npm ci`, matching the Android job and the rest of the repo.
+        # --legacy-peer-deps has been unnecessary since #1372/#1376 and it
+        # strips the appium peer subtree, so this job would have proved the
+        # bundle works against a dep tree no other job builds.
+        run: npm ci
+
+      - name: Build webview payload
+        run: |
+          npm run build
+          npx cap sync ios
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      # ── build/test split (#2109) ─────────────────────────────────────────
+      # `Run AppUITests` used to cover BOTH the compile and the test, and never
+      # once completed: 55 min on main across four consecutive runs (to the
+      # second), 57 min after the budget went to 75/45. Worse, on that path
+      # NOTHING after it ran — not the `if: always()` upload steps, not even
+      # `Post Checkout` — so every run failed with no log to say why.
+      #
+      # Splitting the compile into its own step fixed the visibility and
+      # answered the question in one run (job 32949782724):
+      #
+      #     Build for testing        2m54s   ← COLD, no cache of any kind
+      #     Simulator boot + install 3m41s
+      #     The test itself          1m49s   ← fails, see below
+      #     Xcode teardown          10m07s   ← "took 606.79 seconds to
+      #                                         acknowledge that testing finished"
+      #
+      # So the compile was never the problem, and SPM/DerivedData caching —
+      # tried here first and removed again — cannot be the lever: a perfect
+      # cache saves under three minutes of a seventeen-minute job. The costs
+      # are simulator boot and an Xcode teardown hang. Do not re-add caching
+      # without a measurement that contradicts the table above.
+      #
+      # The remaining failure is a real one, and it is now legible:
+      #   AppUITests.swift:87: XCTAssertTrue failed —
+      #   "Welcome / Get Started never appeared."
+      # Worth ruling out the static-bundle-on-simulator issue before treating
+      # that as an app bug.
+      #
+      # KEEP THE SPLIT even when that is fixed. Per-step budgets are what stop
+      # a single runaway step from taking the evidence down with it (#2008).
+
+      - name: Resolve SPM packages
+        working-directory: ios/App
+        # -clonedSourcePackagesDirPath pins where the SPM checkouts land, so the
+        # build step below reuses this step's work instead of re-cloning. It has
+        # to, because that step passes a custom -derivedDataPath and the default
+        # checkout location lives inside DerivedData. Every later xcodebuild
+        # invocation MUST pass the same flag or it re-clones them.
+        run: |
+          xcodebuild -project App.xcodeproj \
+            -resolvePackageDependencies \
+            -clonedSourcePackagesDirPath SourcePackages
+
+      - name: Build for testing
+        working-directory: ios/App
+        # Measured at 2m54s cold (job 32949782724). 15 is ~5x that — generous
+        # for a cold runner without being a place a runaway build can hide. If
+        # the compile cannot fit here, that is the finding, and unlike the old
+        # combined step the upload steps below still run to tell you so.
+        timeout-minutes: 15
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project App.xcodeproj \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -clonedSourcePackagesDirPath SourcePackages \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee xcodebuild-build.log | xcbeautify --renderer github-actions || {
+              echo "xcodebuild build-for-testing failed"
+              exit 1
+            }
+
+      - name: Run AppUITests
+        working-directory: ios/App
+        # test-without-building: the compile already happened in its own step
+        # above, so this budget covers the TEST only. Keeping it well under the
+        # job's 105 matters for the reason #2008 documents — a step killed by the
+        # JOB timeout takes the upload steps with it and the failure goes
+        # invisible again.
+        #
+        # Measured at 17m08s (job 32949782724) for a test whose own execution is
+        # 1m49s: the rest is 3m41s of simulator boot plus a ~10 min Xcode
+        # teardown hang. Eighteen minutes covers the observed 17m08s path and
+        # still leaves the job time to write diagnostics and upload evidence.
+        timeout-minutes: 18
+        run: |
+          set -o pipefail
+          # xcodebuild refuses to overwrite an existing result bundle.
+          rm -rf TestResults.xcresult
+          # Match main's passing Xcode 26 simulator target exactly.
+          destination='platform=iOS Simulator,name=iPhone 17,OS=latest'
+          # GitHub's step timeout did not stop runs 33109374237/33114316303.
+          # Keep xcodebuild out of a shell pipeline while the watchdog owns it:
+          # a `tee | xcbeautify` pipeline creates sibling processes outside the
+          # xcodebuild process group, which can keep the step alive after the
+          # watchdog kills xcodebuild. Format the completed log afterwards.
+          set +e
+          # Fire before the step's 18-minute GitHub timeout, which otherwise
+          # kills this shell before the summary and artifact steps can run.
+          python3 -c '
+          import os, signal, subprocess, sys
+          timeout, command = int(sys.argv[1]), sys.argv[2:]
+          child = subprocess.Popen(command, start_new_session=True)
+          try:
+              raise SystemExit(child.wait(timeout))
+          except subprocess.TimeoutExpired:
+              print(f"xcodebuild exceeded {timeout}s; killing its process group", file=sys.stderr)
+              os.killpg(child.pid, signal.SIGKILL)
+              child.wait()
+              raise SystemExit(124)
+          ' 900 \
+            xcodebuild test-without-building \
+            -project App.xcodeproj \
+            -scheme App \
+            -destination "$destination" \
+            -only-testing:AppUITests/AppUITests/test_simulatorFailsClosedWithoutSecureStore \
+            -resultBundlePath TestResults.xcresult \
+            -clonedSourcePackagesDirPath SourcePackages \
+            -derivedDataPath DerivedData \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 300 \
+            CODE_SIGNING_ALLOWED=NO \
+            > xcodebuild.log 2>&1
+          status=$?
+          set -e
+          xcbeautify --renderer github-actions < xcodebuild.log || true
+          if [ "$status" -ne 0 ]; then
+              echo "xcodebuild test-without-building failed"
+              exit "$status"
+          fi
+
+      # Puts the assertion text in the job summary, so the reason a run failed
+      # is readable without downloading an artifact. `xcresulttool` on a local
+      # bundle produced the first real diagnosis of this test (issue #2008).
+      - name: Summarise test failures
+        if: always()
+        working-directory: ios/App
+        run: |
+          # The LOG is the primary source, not the result bundle. On run
+          # 32647666200 xcodebuild left TestResults.xcresult without an
+          # Info.plist on the failure path, so xcresulttool could not read it
+          # and the summary said nothing — while xcodebuild.log carried the
+          # exact assertion. Read the reliable one first.
+          if [ -f xcodebuild.log ]; then
+            {
+              echo '### xcuitest failures'
+              echo '```'
+              grep -aE '(error: -\[|Test Case .* failed|Testing failed|\*\* TEST .* \*\*)' \
+                xcodebuild.log | tail -40 || echo 'No failure lines matched.'
+              echo '```'
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          elif [ -f xcodebuild-build.log ]; then
+            # No test log but a build log means the split did its job: the
+            # COMPILE is what ran out of budget, not the test.
+            {
+              echo '### xcuitest never reached the test — build step did not finish'
+              echo '```'
+              tail -40 xcodebuild-build.log
+              echo '```'
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Neither xcodebuild.log nor xcodebuild-build.log — the job died before either step wrote one.' \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # Bonus only. Never gate the summary on this: the bundle is finalised
+          # by xcodebuild at the end of the test action and is routinely
+          # unreadable exactly when a run fails, which is when it is wanted.
+          if [ -f TestResults.xcresult/Info.plist ]; then
+            {
+              echo '### result bundle summary'
+              xcrun xcresulttool get test-results summary \
+                --path TestResults.xcresult 2>&1 || true
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo '_Result bundle unreadable (no Info.plist) — see the log lines above._' \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: xcodebuild-log
+          # Both halves of the split: the build log is the one that matters when
+          # the COMPILE is what blew the budget, and it is written even when the
+          # test step never starts.
+          path: |
+            ios/App/xcodebuild.log
+            ios/App/xcodebuild-build.log
+          if-no-files-found: warn
+
+      - name: Upload result bundle
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: xcuitest-result-bundle
+          path: ios/App/TestResults.xcresult
+          if-no-files-found: warn
+          retention-days: 7

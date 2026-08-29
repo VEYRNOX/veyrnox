@@ -37,9 +37,9 @@ export default function PasskeySetup({ wallet, onRegistered }) {
     if (!isNative) return;
     (async () => {
       try {
-        const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
-        const info = await BiometricAuth.checkBiometry();
-        setNativeBiometryAvailable(!!info.isAvailable);
+        const { getCachedBiometry } = await import("@/lib/biometricProbe.js");
+        const info = await getCachedBiometry();
+        setNativeBiometryAvailable(!!info?.isAvailable);
       } catch {
         setNativeBiometryAvailable(false);
       }

@@ -35,9 +35,25 @@
 // happens on that success (see the H-2 note above — failed attempts deliberately
 // do not tear down, or the retry would have nothing left to fire from).
 
+// Audit 2026-08-25 M-8: `visibilitychange` never fires when the page stays
+// VISIBLE but loses FOCUS (desktop window switch, a system dialog,
+// picture-in-picture) — so a wipe rejected in that state had no trigger left
+// to retry from. `focus`/`blur` cover exactly that gap, mirroring the
+// hidden/visible pair: blur attempts a wipe, focus retries one that failed.
+//
+// Also M-8: giving up at MAX_WIPE_ATTEMPTS used to tear down in silence with
+// the secret still on the clipboard. That is now reported on
+// WIPE_EXHAUSTED_EVENT (I4 — fail honest) rather than swallowed like a
+// transient retry.
+
 // The event WalletProvider.lock() dispatches on window to force an immediate
 // clipboard wipe the moment the wallet locks.
 export const APP_LOCK_EVENT = 'veyrnox:app-lock';
+// Dispatched on window when every wipe attempt up to MAX_WIPE_ATTEMPTS was
+// rejected and the secret is still resident on the clipboard. No payload —
+// this is a signal, not a data channel (I2/I3: local only, never sent
+// anywhere).
+export const WIPE_EXHAUSTED_EVENT = 'veyrnox:clipboard-wipe-exhausted';
 
 const WIPE_MS = 30_000;
 // The clipboard is overwritten with this string on wipe. Note: this is an
@@ -77,6 +93,8 @@ export async function copySecret(text) {
     }
     if (typeof window !== 'undefined') {
       window.removeEventListener(APP_LOCK_EVENT, onLock);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
     }
   };
 
@@ -97,6 +115,11 @@ export async function copySecret(text) {
         if (outcome === WIPE_FAILED && attempts < MAX_WIPE_ATTEMPTS) return;
         done = true;
         cleanup();
+        // I4: a wipe that never landed is reported, not swallowed — the
+        // secret is still sitting on the clipboard when this fires.
+        if (outcome === WIPE_FAILED && typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+          window.dispatchEvent(new CustomEvent(WIPE_EXHAUSTED_EVENT));
+        }
       });
   };
 
@@ -109,6 +132,12 @@ export async function copySecret(text) {
   }
   // Immediate wipe when the wallet locks while the page stays visible.
   function onLock() { wipe(); }
+  // Blur: the page can stay VISIBLE but lose focus (window switch, a system
+  // dialog, PiP) — visibilitychange never fires for that, so attempt a wipe
+  // directly. Focus: mirrors the visible branch above, retrying a wipe that
+  // previously failed for lack of focus.
+  function onBlur() { wipe(); }
+  function onFocus() { if (attempts > 0) wipe(); }
 
   timer = setTimeout(wipe, WIPE_MS);
   if (typeof document !== 'undefined') {
@@ -117,5 +146,7 @@ export async function copySecret(text) {
   if (typeof window !== 'undefined') {
     // Removed by cleanup() once a wipe write actually lands.
     window.addEventListener(APP_LOCK_EVENT, onLock);
+    window.addEventListener('blur', onBlur);
+    window.addEventListener('focus', onFocus);
   }
 }

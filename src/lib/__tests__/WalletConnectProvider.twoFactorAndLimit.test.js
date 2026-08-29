@@ -1,7 +1,7 @@
 // src/lib/__tests__/WalletConnectProvider.twoFactorAndLimit.test.js
 //
-// TDD pin for issue #1090: the WalletConnect send handler must NOT bypass the
-// Action Password 2FA gate or the per-tx / daily spend-limit gate that the in-app
+// TDD pin for issue #1090 / Strix-13: the WalletConnect send handler must NOT bypass
+// any configured 2FA gate or the per-tx / daily spend-limit gate that the in-app
 // Send flow enforces. Because the WC surface has no UI to prompt for the Action
 // Password mid-flow, and no in-band affordance to acknowledge a limit breach, the
 // honest fail-closed path (I4) is to REJECT the request with a dedicated code so
@@ -90,6 +90,7 @@ vi.mock('ethers', () => ({
 }));
 
 import { rejectRequest, respondToRequest } from '@/wallet-core/evm/walletconnect/session.js';
+import { SEND_2FA } from '@/lib/send2faMethod';
 
 const WALLET_ADDR = '0xAbCd1234567890AbCd1234567890abCd12345678';
 const RECIPIENT   = '0x1111222233334444555566667777888899990000';
@@ -110,13 +111,13 @@ describe('#1090 — WC eth_sendTransaction enforces 2FA + spend-limit gates', ()
 
   const baseTx = { from: WALLET_ADDR, to: RECIPIENT, value: '0x0', data: '0x' };
 
-  it('rejects WC_TWO_FACTOR_REQUIRED when actionPasswordConfigured=true (fail closed, I4)', async () => {
+  it('rejects WC_TWO_FACTOR_REQUIRED when any second factor is configured (fail closed, I4)', async () => {
     const { _handleSendTransaction } = await import('../WalletConnectProvider.jsx');
     await _handleSendTransaction(
       {
         withPrivateKey,
         evmAddress: WALLET_ADDR,
-        actionPasswordConfigured: true,
+        send2faMethod: SEND_2FA.PASSKEY,
         txLimits: [],
         history: [],
         usdRates: {},
@@ -135,7 +136,7 @@ describe('#1090 — WC eth_sendTransaction enforces 2FA + spend-limit gates', ()
       {
         withPrivateKey,
         evmAddress: WALLET_ADDR,
-        actionPasswordConfigured: false,
+        send2faMethod: SEND_2FA.NONE,
         txLimits: [{ enabled: true, currency: 'ETH', per_transaction_limit: 100 }],
         history: [],
         usdRates: { ETH: 2000 },
@@ -152,7 +153,7 @@ describe('#1090 — WC eth_sendTransaction enforces 2FA + spend-limit gates', ()
       {
         withPrivateKey,
         evmAddress: WALLET_ADDR,
-        actionPasswordConfigured: false,
+        send2faMethod: SEND_2FA.NONE,
         txLimits: [],
         history: [],
         usdRates: { ETH: 2000 },

@@ -42,9 +42,10 @@ describe('CryptoSigning — H13: RASP pre-sign gate guards signing', () => {
     expect(src).toMatch(/import\s*\{\s*presignGate\s*\}\s*from\s*["']@\/sign-gate\/presign["']/);
   });
 
-  it('imports useRaspArtifact and TIER from @/rasp', () => {
+  it('imports fresh-at-sign RASP attestation and TIER from @/rasp', () => {
     expect(src).toMatch(/from\s*["']@\/rasp["']/);
-    expect(src).toMatch(/useRaspArtifact/);
+    expect(src).toMatch(/getFreshRaspArtifact/);
+    expect(src).not.toMatch(/useRaspArtifact/);
     expect(src).toMatch(/\bTIER\b/);
   });
 

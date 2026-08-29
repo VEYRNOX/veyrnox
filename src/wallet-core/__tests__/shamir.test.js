@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import { split, combine, SHARE_SIZE, SECRET_SIZE, HEADER_SIZE } from '../shamir.js';
+import {
+  split,
+  combine,
+  SHARE_SIZE,
+  SECRET_SIZE,
+  HEADER_SIZE,
+  SHARE_VERSION_V2,
+  SHARE_VERSION_V3,
+  MIXED_SHARE_VERSIONS,
+  getShareVersion,
+  getShareSize,
+  isRecognizedShareVersion,
+  isValidShareShape,
+} from '../shamir.js';
 
 function randomSecret() {
   const buf = new Uint8Array(32);
@@ -14,6 +27,17 @@ describe('shamir – constants', () => {
     // envelope v2 (H-6): 1+1+1+16+1+32+32+4 — the extra 32 is the commitment.
     expect(SHARE_SIZE).toBe(88);
   });
+
+  it('exports version helpers for migration groundwork', () => {
+    expect(SHARE_VERSION_V2).toBe(0x02);
+    expect(SHARE_VERSION_V3).toBe(0x03);
+    expect(MIXED_SHARE_VERSIONS).toBe('MIXED_SHARE_VERSIONS');
+    expect(getShareSize(SHARE_VERSION_V2)).toBe(SHARE_SIZE);
+    expect(getShareSize(SHARE_VERSION_V3)).toBe(null);
+    expect(isRecognizedShareVersion(SHARE_VERSION_V2)).toBe(true);
+    expect(isRecognizedShareVersion(SHARE_VERSION_V3)).toBe(true);
+    expect(isRecognizedShareVersion(0xFF)).toBe(false);
+  });
 });
 
 describe('shamir – split', () => {
@@ -24,6 +48,8 @@ describe('shamir – split', () => {
     for (const s of shares) {
       expect(s).toBeInstanceOf(Uint8Array);
       expect(s.length).toBe(SHARE_SIZE);
+      expect(getShareVersion(s)).toBe(SHARE_VERSION_V2);
+      expect(isValidShareShape(s)).toBe(true);
     }
   });
 
@@ -151,6 +177,14 @@ describe('shamir – combine', () => {
     const shares = split(secret);
     const truncated = shares[1].slice(0, 20);
     expect(() => combine([shares[0], truncated])).toThrow('INVALID_SHARE_SIZE');
+  });
+
+  it('rejects a recognized mixed-version share set before attempting combine', () => {
+    const secret = randomSecret();
+    const shares = split(secret);
+    const mixed = new Uint8Array(shares[1]);
+    mixed[0] = SHARE_VERSION_V3;
+    expect(() => combine([shares[0], mixed])).toThrow(MIXED_SHARE_VERSIONS);
   });
 });
 

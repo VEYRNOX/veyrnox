@@ -21,7 +21,7 @@ vi.mock('../../lib/securityPosture', () => ({
 }));
 
 vi.mock('../../rasp/useRaspArtifact', () => ({
-  useRaspArtifact: () => ({ tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false }),
+  useRaspArtifact: () => ({ tier: 'allow', sentence: null, blockedActions: [], requiresBiometric: false }),
 }));
 
 const isBiometricUnlockEnabledMock = vi.fn(() => false);

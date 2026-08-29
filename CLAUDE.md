@@ -37,6 +37,19 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
     `DEFAULT_ALLOWED_ORIGINS` (localhost:5173/5199/5211 stay because they
     are how devs test), and the `STATUS: BUILT, WIRED` header comment which
     is paired to a test (`src/api/__tests__/tipEdge.chatRoute.test.js`).
+    **2026-08-23 checkpoint — DEPLOYED VERSION MUST match the repo source.**
+    The live function was v34 until 2026-08-23, pre-PR #1725: it read only
+    `Deno.env.get('TIP_BASE_URL')` and ignored `TIP_CHAT_BASE_URL`. Every
+    chat request went via `tip.veyrnox.com` and hit Cloudflare Turnstile
+    (`Just a moment…` HTML) — Edge returned 502 `tip_upstream_error`, the
+    Advisor showed generic "AI advisor unavailable". Redeployed to v35 with
+    the repo source that reads `TIP_CHAT_BASE_URL || TIP_BASE_URL`, then
+    set `TIP_CHAT_BASE_URL='https://veyrnox-tip.al-jobson.workers.dev'` on
+    the prod project. If you redeploy `tip-chat`, deploy from
+    `supabase/functions/tip-chat/index.ts` verbatim — never bring back an
+    older shape. If `TIP_CHAT_BASE_URL` is ever unset, chat silently reverts
+    to Turnstile-blocked. `verify_jwt: false` on the function (the header
+    comment above explains why — CORS OPTIONS preflight carries no auth).
   - **Supabase Edge Function `tip-screen`** — signing helpers, endpoint
     binding (`/api/v1/screen` only; the historical `action:'chat'` branch
     is deliberately removed and must stay removed).
@@ -48,6 +61,36 @@ require deep reasoning. When spawning subagents, pass `model: "haiku"` or
   - **Cloudflare Pages** `SUPABASE_ANON_KEY` env on `veyrnox-prod` /
     `veyrnox-staging` — must remain the publishable key that matches what
     Supabase auto-injects into Edge Functions.
+  - **Cloudflare Pages Transak secrets** — the two projects run DIFFERENT
+    Transak environments on purpose; do NOT collapse them.
+    * **`veyrnox-prod`** (set 2026-08-23): `TRANSAK_ENVIRONMENT=PRODUCTION`,
+      `TRANSAK_API_KEY=REDACTED-TRANSAK-KEY`,
+      `TRANSAK_API_SECRET=REDACTED-TRANSAK-SECRET` (**capital I in `XeIEUW`,
+      NOT lowercase l** — a lowercase-l value returns 400 "Invalid api-secret"
+      at `POST api.transak.com/partners/api/v2/refresh-token`, verified).
+      Endpoint targets: `api.transak.com`, `api-gateway.transak.com`,
+      `global.transak.com`. Real card charges.
+    * **`veyrnox-staging`** stays on Transak STAGING: `TRANSAK_API_KEY` +
+      `TRANSAK_API_SECRET` set, `TRANSAK_ENVIRONMENT` deliberately UNSET so
+      `functions/api/buy/session.js`'s `env.TRANSAK_ENVIRONMENT || 'STAGING'`
+      falls back to STAGING. Endpoint targets: `api-stg.transak.com`,
+      `api-gateway-stg.transak.com`, `global-stg.transak.com`. Simulated
+      flow, no real charges — the correct default for staging.
+    Rotate the prod secret only via Transak Partner Dashboard → Developers →
+    Production → Refresh; then re-set via `wrangler pages secret put
+    TRANSAK_API_SECRET --project-name veyrnox-prod` AND redeploy Pages
+    (`wrangler pages deploy dist --project-name veyrnox-prod --branch main`)
+    — Pages Functions bake env at deploy time. Never set
+    `TRANSAK_ENVIRONMENT=PRODUCTION` on `veyrnox-staging` unless you
+    genuinely intend every staging test to charge real cards.
+    **Current partner state (2026-08-23):** refresh-token accepts on prod,
+    but create-session returns `401 errorCode 1002 "Invalid or missing
+    access-token"` at `POST api-gateway.transak.com/api/v2/auth/session`.
+    That's a Transak partner-side widget enablement pending, NOT a wiring
+    bug — do not "diagnose" it into the code, do not roll prod back to
+    STAGING as a "fix", contact Transak support with errorCode 1002 + the
+    API key above. Buy will start working the moment they enable widget
+    access for that partner, no config change on our side needed.
   - **RevenueCat** offer identifiers (`APPLE_OFFER_IDS`, Play offer tags),
     entitlement `safety_plus`, and the `rc-webhook` Edge Function's shared
     secret with the RC dashboard.
@@ -107,7 +150,11 @@ outstanding.
 C-01 native fail-closed gate fixed (PR #825). Play Integrity ES256 JWS verification +
 nonce binding fixed (PRs #955, #1009).
 
-**Vault:** AES-256-GCM, Argon2id 192 MiB KDF. v:2 blobs with AAD binding (PR #1076).
+**Vault:** AES-256-GCM, Argon2id KDF — **96 MiB / t=6 for vaults created from
+2026-08-24 (#2054); 192 MiB / t=3 for older ones**, which stay there until the v2
+migration flag flips (Gate 1 of #2101, still OPEN). Same total work either way
+(192×3 = 96×6); v2 halves peak memory for mobile unlock latency. v:2 blobs with AAD
+binding (PR #1076).
 KEK-DEK AAD salt exclusion P1 fixed (PR #1079).
 
 **WalletConnect:** C3 RASP gate, H7 chain binding (pre-modal), H8 address binding
@@ -274,7 +321,17 @@ Upload key: `veyrnox-upload.jks` (SHA-1 `97:5A:05:8E…:BA:B2:F3`). App signing 
 Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Secrets
 (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`,
 `RELEASE_CERT_SHA256`) updated 2026-07-22 for CI.
-- versionCodes 1–5 consumed. Next upload must use **6+** (`build.gradle` is at 6).
+- **versionCode: `build.gradle` is at 32 on `main`** (bumped 2026-08-22).
+  Bumps: 5→6 (#1319), 6→7 (#1737), 7→8 (#1747), 8→10 (#1890), 10→11 (#1974),
+  11→32 (#1975, PLR Robo onboard). Product flavours added in #1890 do NOT override
+  `versionCode` — still one declaration, at `android/app/build.gradle:25`.
+  - **Codes 1–11 consumed on Play.** 1–5 from early uploads; 10–11 consumed by
+    `firebase-test-lab.yml`'s duplicate `publish-android-staging` job (removed in
+    #1980) before `ci.yml`'s `publish-to-play-internal` could use them.
+  - `ci.yml` is now the **single** Play upload path. The firebase duplicate was
+    removed because it raced CI and silently consumed versionCodes.
+  - Gating context: no Play Pre-launch report exists for versionCode 33, which is a
+    mandatory 1.0.1 submission gate. Tracked in #1960.
 - **Release build verified end-to-end 2026-07-23** (INTERNAL): signed `app-release.aab`,
   `jarsigner` verified, `BuildConfig.RELEASE_CERT_SHA256` = Google's app-signing cert.
   Fixed en route: `keystore.properties` `storeFile` resolved against the wrong directory
@@ -389,6 +446,8 @@ neither had been run against build 5 (Play Pre-launch report showed
   reupload. Do NOT submit for review without a clean report — this is the same tool
   Google's reviewer would have used, and its absence is why build 5 shipped a fatal
   Create-Wallet path.
+  Current Android candidate: **1.0.1 / versionCode 33**. This check remains
+  console-only: a green repo/CI state does NOT prove the report exists yet.
 - **iOS (mandatory — no equivalent auto-tool):** upload to TestFlight, install on at
   least one **physical iPhone that is NOT the dev machine's paired device** (a stock
   iPhone with no dev certs / no Xcode-installed KEK state), and walk the full
@@ -449,8 +508,8 @@ The `code_scanning` rule was **removed** from ruleset `Veyrnox Code Review` (`17
 CodeQL still scans all six languages on every PR and still files alerts to the Security
 tab; they no longer block merges. Swift stays covered by push-to-main and the weekly scan.
 Everything else on the ruleset is unchanged — `required_status_checks` (**five** contexts,
-tabulated in the two-layer note below — this file said three until 2026-08-08, five
-until 2026-08-15, and six until the later removal of `web-e2e-tests`),
+tabulated in the two-layer note below — this file said three until 2026-08-08, five until
+2026-08-15, and six until 2026-08-23, the last of those wrong from 2026-08-21 onward),
 `pull_request` (0 required approvals — **on the ruleset only**; classic branch protection
 is a separate layer, see that note), `deletion`, `non_fast_forward`. Exact rule JSON for
 restoring the removed rule is in issue #1375.
@@ -494,8 +553,8 @@ before concluding anything about what gates a merge —
 `gh api repos/VEYRNOX/veyrnox/branches/main/protection` is the half that
 `gh api repos/.../rulesets/17946638` does not show you, and vice versa.
 - **The two layers require DIFFERENT check sets. The effective gate is the UNION — FIVE
-  contexts** (six from 2026-08-15 until `web-e2e-tests` was later removed; re-verified
-  2026-08-25 by re-reading both endpoints):
+  contexts** (three until 2026-08-08, five until 2026-08-15, six until 2026-08-21, five
+  again since; verified 2026-08-23 by re-reading both endpoints):
 
   | context | ruleset `17946638` | classic protection |
   |---|---|---|
@@ -504,6 +563,24 @@ before concluding anything about what gates a merge —
   | `Release-cert guard rejects wrong fingerprints` | yes | yes |
   | `mainnet-flag-gate` | yes | — |
   | `staging-gate` | yes | — |
+
+  **`web-e2e-tests` was removed from BOTH layers on 2026-08-21 and is no longer a
+  required context.** This file listed it as required on both from 2026-08-15 until
+  2026-08-23 — two days after it was actually dropped. Why it went: by 2026-08-21 no
+  workflow job reported a `web-e2e-tests` status at all, so the gate blocked mobile PRs
+  behind a check they could never satisfy. This is a React/Capacitor mobile build; the
+  deployed-preview lane still runs `e2e/staging-smoke.spec.js`, but that is a scoped
+  smoke check inside `deploy-preview.yml` reporting through `staging-gate`, NOT a
+  standalone `web-e2e-tests` pipeline. Full record, including the restore payload:
+  `docs/branch-protection-config.md` 2026-08-21 entry.
+
+  **Note the failure mode this row demonstrates, because it is the same one the rest of
+  this section documents.** `docs/branch-protection-config.md` was updated the day of the
+  change and was correct throughout; `deploy-preview.yml` and `e2e/staging-smoke.spec.js`
+  had their comments corrected the same day too. Only this table was missed, and it is
+  the one a reader consults first. A required-check list is worth re-deriving from
+  `gh api` before acting on it — the command is two lines up.
+
   `staging-gate` is the one most likely to surprise you: it is defined in
   `deploy-preview.yml`, NOT `ci.yml`; it is a pure reporter whose verdict comes from its
   `deploy` + `e2e` dependencies; and it carries a docs-only escape hatch
@@ -853,6 +930,27 @@ LOG-1 remediation BUILT (PR #572), independent third-party audit outstanding.
     no accounts. Real containment: atomic single-grant claim, service_role-only RPCs,
     5/hour/code + 20/hour/IP rate limit.
 
+**2026-08-25 perf suite (tag `android-1.0.1-perf-suite-2026-08-25`, PRs #2039–#2106) —
+BUILT, INTERNAL, no on-chain txid.** Cold-unlock latency work: double-OS-prompt
+collapse on KEK vaults (#2039, hardened #2042), a perf trio (biometric-probe
+memoisation #2043, deferred RASP mount probe #2044, `SecurityAdvisor` lazy-load
+−246 KB #2045), fast-path DEK cache primitives (#2047) wired to a
+`keyStore.unlockBiometricOnly()` path (#2051) whose UI button is now **hidden**
+(#2106 — duplicated the existing biometric-unlock button and errored on cache-miss;
+the cache stays wired in code, not reachable from the UI), a screen-off grace window
+(#2052, opt-in), new-vault KDF v2 params 96 MiB/t=6 with the migration flag OFF
+(#2054), Fast Unlock flipped to default-ON with a first-run disclosure card (#2055,
+reverses the earlier Q3 "off by default" ruling), Fast-Unlock/Biometric-Unlock pref
+linkage (#2057), and an indeterminate KEK-enroll progress bar (#2064).
+Deniability-KDF parity (#2103) closed Gate 2 of issue #2101 — decoy/duress vaults now
+rekey to the writer's `KDF_PARAMS` on successful decrypt, with panic rekey
+deliberately excluded (would leave post-wipe residue) and a disclosed transient tell
+pinned by a regression test. **Gate 1 of #2101 (a real-device v2-vault unlock
+benchmark) is still open** — every trace captured this session was against a v1
+vault, so the migration flag stays off. Full per-item detail, honest caveats, and the
+Samsung Note 20 (~3.8 s, one prompt, v1 vault, firebase-test APK) / Pixel 10 Pro XL
+measurements: `docs/Feature-Status.md` 2026-08-25 entry.
+
 ## Security invariants
 
 - I1 — keys never leave the device
@@ -881,7 +979,8 @@ OWASP Top 10 for LLM Applications.
 
 ### Cryptographic standards (A04)
 - TLS 1.2+ for all network traffic; certificate pinning on native builds (Capacitor).
-- Vault: AES-256-GCM only; Argon2id KDF (192 MiB, already in place).
+- Vault: AES-256-GCM only; Argon2id KDF (96 MiB / t=6 for new vaults, 192 MiB / t=3
+  for pre-2026-08-24 ones — both already in place; see the Vault line above).
 - Key derivation: @noble/@scure only — never Web Crypto for seed/key derivation.
 - No custom crypto primitives. If a new algorithm is needed, it comes from an audited
   library (@noble, @scure, or ethers built-ins).
