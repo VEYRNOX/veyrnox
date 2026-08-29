@@ -19,10 +19,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             return true
         }
 
-        // Crashlytics + Performance are opt-in for staging and Test Lab. The
-        // production archive has neither the build flag nor Firebase config.
-        FirebaseObservability.configureIfEnabled()
-
         // XCUITest fresh-install honesty. The smoke bundle passes
         // `--uitest-fresh-install` but nothing consumed it, so between reruns a
         // stale WKWebsiteDataStore (localStorage/IndexedDB) survived even though
