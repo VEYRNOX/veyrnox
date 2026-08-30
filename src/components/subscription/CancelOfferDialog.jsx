@@ -36,14 +36,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ShieldOff, EyeOff, Trash2 } from "lucide-react";
+import { ShieldOff, EyeOff, Trash2, Sparkles } from "lucide-react";
 
-// What actually stops working. Deliberately the coercion-resistant set: these
-// are the reasons someone bought Safety Plus, not a generic feature dump.
+// What actually stops working. Deliberately the coercion-resistant set plus
+// AI Security Protection — the two things sold under one `safety_plus`
+// entitlement — not a generic feature dump.
 const LOSES = [
   { Icon: ShieldOff, label: "Duress PIN", detail: "decoy wallet on a forced unlock" },
   { Icon: EyeOff, label: "Hidden wallets", detail: "accounts absent from any list or count" },
   { Icon: Trash2, label: "Panic wipe", detail: "on-demand destruction of local key material" },
+  { Icon: Sparkles, label: "AI Security Protection", detail: "on-device risk checks before you sign" },
 ];
 
 /**
