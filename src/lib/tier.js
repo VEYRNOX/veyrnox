@@ -135,8 +135,11 @@ export const SAFETY_PLUS_FEATURES = [
 ];
 
 export const AI_SECURITY_PROTECTION_FEATURES = [
-  { name: 'Includes all Safety Plus features', summary: 'Deniability, advanced backup, analytics, and other paid protections stay unlocked' },
-  { name: 'Live Vigil answers via TIP', summary: 'Advisor can query the online threat-intelligence platform in real time' },
-  { name: 'TIP-backed AI security chat', summary: 'Remote AI responses for security questions instead of local-only guidance' },
-  { name: 'Advisor online paywall unlock', summary: 'Adds online Vigil on top of the full Free + Safety Plus feature set' },
+  { name: 'Everything in Safety Plus', summary: 'All paid protections stay unlocked' },
+  { name: 'Malicious dApp warnings', summary: 'Flagged before you connect your wallet' },
+  { name: 'Unsafe DEX & drainer contract warnings', summary: 'Flagged before you trade' },
+  { name: 'Phishing site detection', summary: 'When a link tries to open Veyrnox' },
+  { name: 'AI Advisor overlay on Transaction Simulation', summary: 'Reviews the simulated outcome, warns on scam approvals, hidden drains, suspicious counterparties' },
+  { name: 'Continuously updated threat intel', summary: 'New bad actors flagged as they are identified across the ecosystem' },
+  { name: 'Priority security incident response', summary: 'Faster support triage on security incidents' },
 ];

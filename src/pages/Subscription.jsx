@@ -725,10 +725,10 @@ export default function Subscription() {
             )}
           </h2>
           <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Everything in Free and Safety Plus stays included.</span>
-            {" "}AI Security Protection adds live online TIP-backed Vigil answers on top.
+            <span className="font-medium text-foreground">Meet the Veyrnox AI Security Advisor</span>
+            {" "}— a real-time protection layer connected to our threat intelligence backend. Everything in Safety Plus, plus warnings on malicious dApps, unsafe DEXs and phishing sites, and an AI overlay on Transaction Simulation.
           </p>
-          <HighlightChips features={AI_SECURITY_PROTECTION_FEATURES} max={4} />
+          <HighlightChips features={AI_SECURITY_PROTECTION_FEATURES} max={7} />
         </div>
       </div>
 
@@ -743,7 +743,7 @@ export default function Subscription() {
           {isAiSecurityProtectionPlan ? (
             <>
               <p className="text-sm text-muted-foreground">
-                You’re on AI Security Protection. This is the plan that lets Vigil talk to TIP online for live answers.
+                You're on AI Security Protection — the real-time protection layer with malicious dApp warnings, unsafe DEX and phishing detection, and the AI Advisor overlay on Transaction Simulation.
               </p>
               {renderManageSubscriptionControls()}
               {!isNative && (
@@ -755,8 +755,16 @@ export default function Subscription() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                AI Security Protection includes everything in Free and Safety Plus, then adds live online TIP-backed Vigil answers.
+                Meet the Veyrnox AI Security Advisor — a real-time protection layer connected to our threat intelligence backend. Everything in Safety Plus, plus:
               </p>
+              <ul className="text-sm text-muted-foreground space-y-1.5 ps-4 list-disc marker:text-sky-500/70">
+                <li>Warnings on malicious dApps before you connect your wallet</li>
+                <li>Warnings on unsafe DEXs and drainer contracts before you trade</li>
+                <li>Phishing site detection when a link tries to open Veyrnox</li>
+                <li>AI Advisor overlay on Transaction Simulation — the Advisor reviews the simulated outcome and warns you if it spots a scam approval, hidden token drain, or suspicious counterparty <span className="text-xs opacity-80">(Safety Plus users see the simulation; the AI tier adds the intervention layer)</span></li>
+                <li>Continuously updated threat intel — new bad actors flagged as they're identified across the ecosystem</li>
+                <li>Priority security incident response</li>
+              </ul>
               {isNative ? (
                 aiOfferingConfigured ? (
                   <>
