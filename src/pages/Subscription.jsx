@@ -757,8 +757,59 @@ export default function Subscription() {
                 AI Security Protection includes everything in Free and Safety Plus, then adds live online TIP-backed Vigil answers.
               </p>
               {isNative ? (
-                aiPurchaseAvailable ? (
+                aiOfferingConfigured ? (
                   <>
+                    {/* Monthly / Annual toggle — mirrors Safety Plus. Renders
+                        even when packages haven't resolved yet so the paywall
+                        keeps its shape; prices fall back to "—" and the
+                        Upgrade button is disabled below. */}
+                    <div
+                      role="radiogroup"
+                      aria-label="AI Security Protection billing period"
+                      className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
+                    >
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={effectiveBilling === "monthly"}
+                        onClick={() => setBilling("monthly")}
+                        className={
+                          "text-sm rounded-md px-3 py-2 transition-colors text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                          (effectiveBilling === "monthly"
+                            ? "bg-background border border-sky-500/40 font-medium"
+                            : "text-muted-foreground hover:text-foreground")
+                        }
+                      >
+                        Monthly
+                        <span className="block text-xs text-muted-foreground font-normal mono-value">
+                          {aiMonthlyPriceString ?? "—"}
+                          {hasAiDiscount && aiRegularMonthlyPrice && aiRegularMonthlyPrice !== aiMonthlyPriceString && (
+                            <span className="ms-1 line-through opacity-60">{aiRegularMonthlyPrice}</span>
+                          )}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={effectiveBilling === "annual"}
+                        onClick={() => setBilling("annual")}
+                        className={
+                          "text-sm rounded-md px-3 py-2 transition-colors text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                          (effectiveBilling === "annual"
+                            ? "bg-background border border-sky-500/40 font-medium"
+                            : "text-muted-foreground hover:text-foreground")
+                        }
+                      >
+                        Annual
+                        <span className="block text-xs text-muted-foreground font-normal mono-value">
+                          {aiAnnualPriceString ?? "—"}
+                          {hasAiDiscount && aiRegularAnnualPrice && aiRegularAnnualPrice !== aiAnnualPriceString && (
+                            <span className="ms-1 line-through opacity-60">{aiRegularAnnualPrice}</span>
+                          )}
+                        </span>
+                      </button>
+                    </div>
+
                     <div className="flex items-baseline gap-2">
                       <p className="text-sm font-medium text-foreground mono-value">
                         {aiSelectedPriceString ?? "—"}
@@ -772,7 +823,11 @@ export default function Subscription() {
                       onClick={handleAiUpgrade}
                       disabled={busy || !aiPurchaseAvailable}
                     >
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : `Upgrade to AI Security Protection${aiSelectedPriceString ? ` • ${aiSelectedPriceString}` : ''}`}
+                      {busy
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : aiPurchaseAvailable
+                          ? `Upgrade to AI Security Protection${aiSelectedPriceString ? ` • ${aiSelectedPriceString}` : ''}`
+                          : "Upgrade — loading pricing"}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
                       Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
@@ -780,9 +835,7 @@ export default function Subscription() {
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    {aiOfferingConfigured
-                      ? "AI Security Protection is intended to be sold as an in-app subscription, but no store package is available for this build yet."
-                      : "AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet."}
+                    AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet.
                   </p>
                 )
               ) : (
