@@ -717,19 +717,6 @@ export default function Subscription() {
           </Link>
         </div>
 
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-600 flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" /> AI Security Protection adds
-            {isAiSecurityProtectionPlan && (
-              <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
-            )}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Meet the Veyrnox AI Security Advisor</span>
-            {" "}— a real-time protection layer connected to our threat intelligence backend. Everything in Safety Plus, plus warnings on malicious dApps, unsafe DEXs and phishing sites, and an AI overlay on Transaction Simulation.
-          </p>
-          <HighlightChips features={AI_SECURITY_PROTECTION_FEATURES} max={7} />
-        </div>
       </div>
 
       <Card className="border-primary/30">
@@ -758,19 +745,6 @@ export default function Subscription() {
             </>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground">
-                Everything you need to keep your wallet safe under pressure. Coercion resistance, pre-sign intelligence and advanced analytics on top of Free:
-              </p>
-              <ul className="text-sm text-muted-foreground space-y-1.5 ps-4 list-disc marker:text-primary/70">
-                <li><span className="font-medium text-foreground">Duress PIN</span> — a decoy wallet under a second PIN, for a forced unlock</li>
-                <li><span className="font-medium text-foreground">Stealth / hidden wallets</span> — accounts absent from any list or count</li>
-                <li><span className="font-medium text-foreground">Panic wipe</span> — on-demand destruction of local key material</li>
-                <li><span className="font-medium text-foreground">Calldata decode & approval guard</span> — human-readable calldata before you sign</li>
-                <li><span className="font-medium text-foreground">Address-poisoning warnings</span> — look-alike detection on send</li>
-                <li><span className="font-medium text-foreground">Transaction simulation</span> — pre-sign preview with risk flags</li>
-                <li><span className="font-medium text-foreground">Hardware wallet (Digital Shield)</span> — cold-key signing, keys never leave device</li>
-                <li><span className="font-medium text-foreground">Encrypted personal backup</span> — export .enc vault file off-device</li>
-              </ul>
               {/* Month / Year selector */}
               {hasAnnualToggle && (
                 <div
@@ -903,6 +877,20 @@ export default function Subscription() {
       </Card>
 
       {/* ── Pricing (Month / Year) ── */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-600 flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5" /> AI Security Protection adds
+          {isAiSecurityProtectionPlan && (
+            <Badge variant="outline" className={`${CURRENT_BADGE} text-[10px] px-1.5 py-0 h-4`}>Current</Badge>
+          )}
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Everything in Free and Safety Plus stays included.</span>
+          {" "}AI Security Protection adds live online TIP-backed Vigil answers on top.
+        </p>
+        <HighlightChips features={AI_SECURITY_PROTECTION_FEATURES} max={4} />
+      </div>
+
       <Card className="border-sky-500/30">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg text-sky-700">
@@ -926,16 +914,8 @@ export default function Subscription() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                Meet the Veyrnox AI Security Advisor — a real-time protection layer connected to our threat intelligence backend. Everything in Safety Plus, plus:
+                AI Security Protection includes everything in Free and Safety Plus, then adds live online TIP-backed Vigil answers.
               </p>
-              <ul className="text-sm text-muted-foreground space-y-1.5 ps-4 list-disc marker:text-sky-500/70">
-                <li>Warnings on malicious dApps before you connect your wallet</li>
-                <li>Warnings on unsafe DEXs and drainer contracts before you trade</li>
-                <li>Phishing site detection when a link tries to open Veyrnox</li>
-                <li>AI Advisor overlay on Transaction Simulation — the Advisor reviews the simulated outcome and warns you if it spots a scam approval, hidden token drain, or suspicious counterparty <span className="text-xs opacity-80">(Safety Plus users see the simulation; the AI tier adds the intervention layer)</span></li>
-                <li>Continuously updated threat intel — new bad actors flagged as they're identified across the ecosystem</li>
-                <li>Priority security incident response</li>
-              </ul>
               {isNative ? (
                 aiOfferingConfigured ? (
                   <>
