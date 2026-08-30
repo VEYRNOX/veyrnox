@@ -892,6 +892,19 @@ export default function Subscription() {
             </>
           ) : (
             <>
+              <p className="text-sm text-muted-foreground">
+                Everything you need to keep your wallet safe under pressure. Coercion resistance, pre-sign intelligence and advanced analytics on top of Free:
+              </p>
+              <ul className="text-sm text-muted-foreground space-y-1.5 ps-4 list-disc marker:text-primary/70">
+                <li><span className="font-medium text-foreground">Duress PIN</span> — a decoy wallet under a second PIN, for a forced unlock</li>
+                <li><span className="font-medium text-foreground">Stealth / hidden wallets</span> — accounts absent from any list or count</li>
+                <li><span className="font-medium text-foreground">Panic wipe</span> — on-demand destruction of local key material</li>
+                <li><span className="font-medium text-foreground">Calldata decode & approval guard</span> — human-readable calldata before you sign</li>
+                <li><span className="font-medium text-foreground">Address-poisoning warnings</span> — look-alike detection on send</li>
+                <li><span className="font-medium text-foreground">Transaction simulation</span> — pre-sign preview with risk flags</li>
+                <li><span className="font-medium text-foreground">Hardware wallet (Digital Shield)</span> — cold-key signing, keys never leave device</li>
+                <li><span className="font-medium text-foreground">Encrypted personal backup</span> — export .enc vault file off-device</li>
+              </ul>
               {/* Month / Year selector */}
               {hasAnnualToggle && (
                 <div
