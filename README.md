@@ -86,3 +86,14 @@ Native OS-level integrity is partial: the Android root/Frida/emulator/tamper pro
   (same total work: 192×3 = 96×6)
 - Blob-stored KDF params for forward-compatible migration
 - `crypto.getRandomValues` only — no `Math.random` in wallet-core
+
+### AI Security Protection
+- Per-page context awareness — detects surface (send, receive, buy, settings, WalletConnect, deniability, plans, security dashboard, access/recovery, duress PIN, panic wipe, address screening, seed/QR, hardware wallets, personal backup, pre-sign scanner, biometric auth, token approvals, spam/trust score, suspicious assets, analytics, tax report, transaction history) and tailors guidance.
+- Pre-sign risk explanation — address poisoning, wrong address, wrong chain, excessive fees, scam addresses; recipient verification, amount double-check, gas fee understanding.
+- Token approval guidance — unlimited approvals, revocation, malicious dApp abuse of stale approvals.
+- Address screening interpretation — explains BLOCKED / CAUTION / CLEAR / UNKNOWN honestly; reminds local verification still matters.
+- Spam / suspicious asset triage — flags unsolicited tokens as phishing lures, separates local heuristics from contract fields from unknowns.
+- Seed / key hygiene — discourages screenshots, cloud sync, digital copying; "anyone who sees the seed controls the funds".
+- Deniability explainer — decoy vs stealth wallets, panic wipe consequences, I3 (zero network calls in deniability mode).
+- dApp / WalletConnect guidance — permissions, legitimacy checks, approval risks, session disconnect timing.
+- Deniability suppression — Vigil makes zero network calls when decoy/duress session active (I3 invariant).
