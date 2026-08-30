@@ -732,140 +732,6 @@ export default function Subscription() {
         </div>
       </div>
 
-      <Card className="border-sky-500/30">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg text-sky-700">
-            AI Security Protection
-            <Sparkles className="h-4 w-4 text-sky-600" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4" data-testid="ai-security-protection-card">
-          {isAiSecurityProtectionPlan ? (
-            <>
-              <p className="text-sm text-muted-foreground">
-                You're on AI Security Protection — the real-time protection layer with malicious dApp warnings, unsafe DEX and phishing detection, and the AI Advisor overlay on Transaction Simulation.
-              </p>
-              {renderManageSubscriptionControls()}
-              {!isNative && (
-                <p className="text-xs text-muted-foreground text-center">
-                  Web remains read-only for subscriptions; manage this plan from your mobile app store account.
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Meet the Veyrnox AI Security Advisor — a real-time protection layer connected to our threat intelligence backend. Everything in Safety Plus, plus:
-              </p>
-              <ul className="text-sm text-muted-foreground space-y-1.5 ps-4 list-disc marker:text-sky-500/70">
-                <li>Warnings on malicious dApps before you connect your wallet</li>
-                <li>Warnings on unsafe DEXs and drainer contracts before you trade</li>
-                <li>Phishing site detection when a link tries to open Veyrnox</li>
-                <li>AI Advisor overlay on Transaction Simulation — the Advisor reviews the simulated outcome and warns you if it spots a scam approval, hidden token drain, or suspicious counterparty <span className="text-xs opacity-80">(Safety Plus users see the simulation; the AI tier adds the intervention layer)</span></li>
-                <li>Continuously updated threat intel — new bad actors flagged as they're identified across the ecosystem</li>
-                <li>Priority security incident response</li>
-              </ul>
-              {isNative ? (
-                aiOfferingConfigured ? (
-                  <>
-                    {/* Monthly / Annual toggle — mirrors Safety Plus. Renders
-                        even when packages haven't resolved yet so the paywall
-                        keeps its shape; prices fall back to "—" and the
-                        Upgrade button is disabled below. */}
-                    <div
-                      role="radiogroup"
-                      aria-label="AI Security Protection billing period"
-                      className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
-                    >
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={effectiveBilling === "monthly"}
-                        onClick={() => setBilling("monthly")}
-                        className={
-                          "text-sm rounded-md px-3 py-2 transition-colors text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                          (effectiveBilling === "monthly"
-                            ? "bg-background border border-sky-500/40 font-medium"
-                            : "text-muted-foreground hover:text-foreground")
-                        }
-                      >
-                        Monthly
-                        <span className="block text-xs text-muted-foreground font-normal mono-value">
-                          {aiMonthlyPriceString ?? "—"}
-                          {hasAiDiscount && aiRegularMonthlyPrice && aiRegularMonthlyPrice !== aiMonthlyPriceString && (
-                            <span className="ms-1 line-through opacity-60">{aiRegularMonthlyPrice}</span>
-                          )}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={effectiveBilling === "annual"}
-                        onClick={() => setBilling("annual")}
-                        className={
-                          "text-sm rounded-md px-3 py-2 transition-colors text-center relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-                          (effectiveBilling === "annual"
-                            ? "bg-background border border-sky-500/40 font-medium"
-                            : "text-muted-foreground hover:text-foreground")
-                        }
-                      >
-                        Annual
-                        {aiSavingPercent != null && (
-                          <Badge
-                            variant="outline"
-                            className="absolute -top-2 end-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-sky-500/40 bg-background text-sky-600 whitespace-nowrap"
-                          >
-                            Save {aiSavingPercent}%
-                          </Badge>
-                        )}
-                        <span className="block text-xs text-muted-foreground font-normal mono-value">
-                          {aiAnnualPriceString ?? "—"}
-                          {hasAiDiscount && aiRegularAnnualPrice && aiRegularAnnualPrice !== aiAnnualPriceString && (
-                            <span className="ms-1 line-through opacity-60">{aiRegularAnnualPrice}</span>
-                          )}
-                        </span>
-                      </button>
-                    </div>
-
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-sm font-medium text-foreground mono-value">
-                        {aiSelectedPriceString ?? "—"}
-                      </p>
-                      {hasAiDiscount && aiSelectedRegularPrice && aiSelectedRegularPrice !== aiSelectedPriceString && (
-                        <span className="text-xs text-muted-foreground line-through mono-value">{aiSelectedRegularPrice}</span>
-                      )}
-                    </div>
-                    <Button
-                      className="w-full bg-sky-600 hover:bg-sky-700 text-white"
-                      onClick={handleAiUpgrade}
-                      disabled={busy || !aiPurchaseAvailable}
-                    >
-                      {busy
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : aiPurchaseAvailable
-                          ? `Subscribe${aiSelectedPriceString ? ` • ${aiSelectedPriceString}` : ''}`
-                          : "Subscribe — loading pricing"}
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                      Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet.
-                  </p>
-                )
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Web remains read-only for subscriptions; this plan is purchased and managed through the mobile app stores.
-                </p>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── Pricing (Month / Year) ── */}
       <Card className="border-primary/30">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -1029,6 +895,140 @@ export default function Subscription() {
               ) : (
                 <p className="text-xs text-muted-foreground text-center">
                   No payment can be made on this screen. Your plan stays Free on web.
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Pricing (Month / Year) ── */}
+      <Card className="border-sky-500/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg text-sky-700">
+            AI Security Protection
+            <Sparkles className="h-4 w-4 text-sky-600" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4" data-testid="ai-security-protection-card">
+          {isAiSecurityProtectionPlan ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                You're on AI Security Protection — the real-time protection layer with malicious dApp warnings, unsafe DEX and phishing detection, and the AI Advisor overlay on Transaction Simulation.
+              </p>
+              {renderManageSubscriptionControls()}
+              {!isNative && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Web remains read-only for subscriptions; manage this plan from your mobile app store account.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Meet the Veyrnox AI Security Advisor — a real-time protection layer connected to our threat intelligence backend. Everything in Safety Plus, plus:
+              </p>
+              <ul className="text-sm text-muted-foreground space-y-1.5 ps-4 list-disc marker:text-sky-500/70">
+                <li>Warnings on malicious dApps before you connect your wallet</li>
+                <li>Warnings on unsafe DEXs and drainer contracts before you trade</li>
+                <li>Phishing site detection when a link tries to open Veyrnox</li>
+                <li>AI Advisor overlay on Transaction Simulation — the Advisor reviews the simulated outcome and warns you if it spots a scam approval, hidden token drain, or suspicious counterparty <span className="text-xs opacity-80">(Safety Plus users see the simulation; the AI tier adds the intervention layer)</span></li>
+                <li>Continuously updated threat intel — new bad actors flagged as they're identified across the ecosystem</li>
+                <li>Priority security incident response</li>
+              </ul>
+              {isNative ? (
+                aiOfferingConfigured ? (
+                  <>
+                    {/* Monthly / Annual toggle — mirrors Safety Plus. Renders
+                        even when packages haven't resolved yet so the paywall
+                        keeps its shape; prices fall back to "—" and the
+                        Upgrade button is disabled below. */}
+                    <div
+                      role="radiogroup"
+                      aria-label="AI Security Protection billing period"
+                      className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-muted/40 border border-border"
+                    >
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={effectiveBilling === "monthly"}
+                        onClick={() => setBilling("monthly")}
+                        className={
+                          "text-sm rounded-md px-3 py-2 transition-colors text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                          (effectiveBilling === "monthly"
+                            ? "bg-background border border-sky-500/40 font-medium"
+                            : "text-muted-foreground hover:text-foreground")
+                        }
+                      >
+                        Monthly
+                        <span className="block text-xs text-muted-foreground font-normal mono-value">
+                          {aiMonthlyPriceString ?? "—"}
+                          {hasAiDiscount && aiRegularMonthlyPrice && aiRegularMonthlyPrice !== aiMonthlyPriceString && (
+                            <span className="ms-1 line-through opacity-60">{aiRegularMonthlyPrice}</span>
+                          )}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={effectiveBilling === "annual"}
+                        onClick={() => setBilling("annual")}
+                        className={
+                          "text-sm rounded-md px-3 py-2 transition-colors text-center relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                          (effectiveBilling === "annual"
+                            ? "bg-background border border-sky-500/40 font-medium"
+                            : "text-muted-foreground hover:text-foreground")
+                        }
+                      >
+                        Annual
+                        {aiSavingPercent != null && (
+                          <Badge
+                            variant="outline"
+                            className="absolute -top-2 end-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-sky-500/40 bg-background text-sky-600 whitespace-nowrap"
+                          >
+                            Save {aiSavingPercent}%
+                          </Badge>
+                        )}
+                        <span className="block text-xs text-muted-foreground font-normal mono-value">
+                          {aiAnnualPriceString ?? "—"}
+                          {hasAiDiscount && aiRegularAnnualPrice && aiRegularAnnualPrice !== aiAnnualPriceString && (
+                            <span className="ms-1 line-through opacity-60">{aiRegularAnnualPrice}</span>
+                          )}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-sm font-medium text-foreground mono-value">
+                        {aiSelectedPriceString ?? "—"}
+                      </p>
+                      {hasAiDiscount && aiSelectedRegularPrice && aiSelectedRegularPrice !== aiSelectedPriceString && (
+                        <span className="text-xs text-muted-foreground line-through mono-value">{aiSelectedRegularPrice}</span>
+                      )}
+                    </div>
+                    <Button
+                      className="w-full bg-sky-600 hover:bg-sky-700 text-white"
+                      onClick={handleAiUpgrade}
+                      disabled={busy || !aiPurchaseAvailable}
+                    >
+                      {busy
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : aiPurchaseAvailable
+                          ? `Subscribe${aiSelectedPriceString ? ` • ${aiSelectedPriceString}` : ''}`
+                          : "Subscribe — loading pricing"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    AI Security Protection is intended to be sold as an in-app subscription, but its RevenueCat offering is not configured in this build yet.
+                  </p>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Web remains read-only for subscriptions; this plan is purchased and managed through the mobile app stores.
                 </p>
               )}
             </>
