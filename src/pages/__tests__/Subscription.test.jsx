@@ -423,7 +423,7 @@ describe('Subscription page — Manage subscription hidden when it should be', (
     useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
     renderPage();
     const aiCard = await screen.findByTestId('ai-security-protection-card');
-    expect(aiCard).toHaveTextContent(/Everything in Safety Plus, plus/i);
+    expect(aiCard).toHaveTextContent(/includes everything in Free and Safety Plus/i);
   });
 
   it('fails closed with an honest message when the AI store offering is not configured', async () => {
