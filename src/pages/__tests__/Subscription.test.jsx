@@ -392,8 +392,8 @@ describe('Subscription page — Manage subscription (paid tier, native)', () => 
     renderPage();
     const aiCard = await screen.findByTestId('ai-security-protection-card');
     expect(screen.getByText(/You are on the/i)).toBeTruthy();
-    expect(aiCard).toHaveTextContent(/Vigil talk to TIP online for live answers/i);
-    expect(screen.getByText(/already includes every Safety Plus feature/i)).toBeTruthy();
+    expect(aiCard).toHaveTextContent(/real-time protection layer with malicious dApp warnings/i);
+    expect(aiCard).toHaveTextContent(/AI Advisor overlay on Transaction Simulation/i);
     expect(screen.getByRole('button', { name: /manage subscription/i })).toBeTruthy();
   });
 });
@@ -422,8 +422,8 @@ describe('Subscription page — Manage subscription hidden when it should be', (
     isNativePlatform.mockReturnValue(false);
     useTierMock.mockReturnValue({ currentTier: 'free', tiers: [], refreshTier });
     renderPage();
-    expect(await screen.findByTestId('ai-security-protection-card')).toBeTruthy();
-    expect(screen.getByText(/includes everything in Free and Safety Plus/i)).toBeTruthy();
+    const aiCard = await screen.findByTestId('ai-security-protection-card');
+    expect(aiCard).toHaveTextContent(/Everything in Safety Plus, plus/i);
   });
 
   it('fails closed with an honest message when the AI store offering is not configured', async () => {
@@ -433,7 +433,7 @@ describe('Subscription page — Manage subscription hidden when it should be', (
     renderPage();
     expect(await screen.findByTestId('ai-security-protection-card')).toBeTruthy();
     expect(screen.getByText(/offering is not configured in this build yet/i)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /upgrade to ai security protection/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /subscribe/i })).toBeNull();
   });
 
   it('uses the native AI in-app purchase flow when an AI offering is configured', async () => {
@@ -449,7 +449,7 @@ describe('Subscription page — Manage subscription hidden when it should be', (
     purchasePackage.mockResolvedValue({});
     refreshTier.mockResolvedValue('ai_security_protection');
     renderPage();
-    const button = await screen.findByRole('button', { name: /upgrade to ai security protection.*\$199\.99/i });
+    const button = await screen.findByRole('button', { name: /subscribe.*\$199\.99/i });
     fireEvent.click(button);
     await waitFor(() => expect(getTierOffering).toHaveBeenCalledWith('ai-security-protection'));
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith(
@@ -727,7 +727,7 @@ describe('Subscription page — tier-based referral discount', () => {
 
 
     renderPage();
-    const button = await screen.findByRole('button', { name: /upgrade to ai security protection.*\$179\.99/i });
+    const button = await screen.findByRole('button', { name: /subscribe.*\$179\.99/i });
     fireEvent.click(button);
     await waitFor(() => expect(purchasePackage).toHaveBeenCalledWith(
       { identifier: '$rc_annual', product: { priceString: '$199.99', price: 199.99 } },
@@ -777,7 +777,7 @@ describe('Subscription page — tier-based referral discount', () => {
     });
 
     renderPage();
-    const button = await screen.findByRole('button', { name: /upgrade to ai security protection.*\$179\.99/i });
+    const button = await screen.findByRole('button', { name: /subscribe.*\$179\.99/i });
     fireEvent.click(button);
     await waitFor(() => expect(purchasePackage).not.toHaveBeenCalled());
     expect(recordAttribution).not.toHaveBeenCalled();
