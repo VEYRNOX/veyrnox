@@ -4,7 +4,8 @@ import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import {
   Shield, Smartphone, Lock, Zap, Eye, ArrowRight,
-  CheckCircle2, Bell, BarChart3, Key, Menu, X
+  CheckCircle2, Bell, BarChart3, Key, Menu, X,
+  Sparkles, Bot, WifiOff, FileSearch
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -50,6 +51,13 @@ export default function LandingPage() {
               className="text-muted-foreground hover:text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
             >
               Features
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById("ai-security")?.scrollIntoView({ behavior: "smooth" })}
+              className="text-muted-foreground hover:text-foreground transition focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+            >
+              AI Security
             </button>
             <button
               type="button"
@@ -205,6 +213,7 @@ export default function LandingPage() {
               { icon: BarChart3, title: "Analytics", desc: "Portfolio tracking and P&L reports" },
               { icon: Bell, title: "Smart Alerts", desc: "Price and local security notifications" },
               { icon: Key, title: "Self-custody", desc: "Keys are generated and stay on your device — we hold none" },
+              { icon: Sparkles, title: "AI Security Protection", desc: "Vigil advisor with live online answers backed by the TIP threat-intelligence platform" },
             ].map((item, idx) => (
               <div key={idx} className="p-6 rounded-lg border border-border bg-card/50 hover:border-primary/50 transition group cursor-pointer">
                 <item.icon className="w-8 h-8 text-primary mb-4 group-hover:scale-110 transition" />
@@ -212,6 +221,78 @@ export default function LandingPage() {
                 <p className="text-muted-foreground">{item.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* AI Security Protection */}
+      <section id="ai-security" aria-labelledby="ai-security-heading" className="py-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <div className="inline-block px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
+              <span className="text-sm font-semibold text-primary inline-flex items-center gap-2">
+                <Sparkles className="w-4 h-4" /> AI Security Protection
+              </span>
+            </div>
+            <h2 id="ai-security-heading" className="text-4xl font-bold mb-4">Vigil, your on-device security advisor</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Local guidance is always on and offline. AI Security Protection unlocks live online answers backed by the TIP threat-intelligence platform.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-6">
+            {[
+              { icon: Bot, title: "Context-aware advisor", desc: "Vigil sees which surface you're on — send, approvals, seed reveal — and tailors guidance to that page" },
+              { icon: FileSearch, title: "Pre-sign review", desc: "Ask about a transaction, address, or approval before you sign; get plain-language risk explanations" },
+              { icon: Sparkles, title: "Live TIP-backed answers", desc: "Live online responses through the TIP threat-intelligence platform for fresh threat context" },
+              { icon: WifiOff, title: "Offline fallback", desc: "If online chat is unavailable or you're in deniability mode, the local knowledge base still answers" },
+            ].map((item, idx) => (
+              <div key={idx} className="p-6 rounded-lg border border-border bg-card/50 hover:border-primary/50 transition">
+                <item.icon className="w-8 h-8 text-primary mb-4" />
+                <h3 className="text-lg font-bold mb-2">{item.title}</h3>
+                <p className="text-sm text-muted-foreground">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-12">
+            <h3 className="text-2xl font-bold mb-6 text-center">What Vigil covers</h3>
+            <div className="grid md:grid-cols-2 gap-x-8 gap-y-3 max-w-5xl mx-auto">
+              {[
+                { title: "Per-page context awareness", desc: "Detects surface (send, approvals, seed reveal, dApps, deniability, backup, and more) and tailors guidance" },
+                { title: "Pre-sign risk explanation", desc: "Address poisoning, wrong chain, excessive fees, scam addresses; recipient and amount checks; gas fee context" },
+                { title: "Token approval guidance", desc: "Unlimited approvals, revocation, stale-approval abuse by malicious dApps" },
+                { title: "Address screening interpretation", desc: "Explains BLOCKED / CAUTION / CLEAR / UNKNOWN honestly; reminds local verification still matters" },
+                { title: "Spam and suspicious asset triage", desc: "Unsolicited tokens as phishing lures; separates local heuristics from contract fields from unknowns" },
+                { title: "Seed and key hygiene", desc: "Discourages screenshots, cloud sync, digital copying; whoever sees the seed controls the funds" },
+                { title: "Deniability explainer", desc: "Decoy vs stealth wallets, panic wipe consequences, I3 (zero network calls in deniability mode)" },
+                { title: "Duress PIN guidance", desc: "Decoy session must look ordinary and leave zero distinctive network traces" },
+                { title: "Hardware and KEK distinction", desc: "External hardware wallets vs Veyrnox's own hardware-bound KEK protections" },
+                { title: "Personal Backup coaching", desc: "Plaintext keys never leave device; test recovery before relying on it; 2-of-3 shard export needs Hardware Protection ON" },
+                { title: "Biometric framing", desc: "Biometrics are a convenience gate over hardware-bound crypto — not a seed replacement" },
+                { title: "dApp / WalletConnect guidance", desc: "dApp legitimacy checks, permission risks, approval hazards, when to disconnect sessions" },
+                { title: "Panic wipe consequences", desc: "Device wiped; chain funds recoverable only from the seed phrase" },
+                { title: "Tax and analytics honesty", desc: "Records vs legal determination; informational vs on-chain-verified" },
+                { title: "Secret scrubbing", desc: "Seed phrases, private keys, and PINs stripped from prompts before egress" },
+                { title: "Prompt-injection resistance", desc: "Hardened against instructions embedded in on-chain data or dApp metadata" },
+                { title: "Fail-closed offline fallback", desc: "If TIP cap hit or offline, local knowledge base still answers" },
+                { title: "Deniability suppression", desc: "Zero network calls whenever a decoy or duress session is active (I3 invariant)" },
+              ].map((item) => (
+                <div key={item.title} className="flex gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="font-semibold text-foreground">{item.title}</p>
+                    <p className="text-sm text-muted-foreground">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-10 max-w-3xl mx-auto p-6 rounded-lg border border-border bg-card/50">
+            <p className="text-sm text-muted-foreground">
+              <span className="text-foreground font-semibold">Privacy:</span> secrets, seed phrases, and private keys are scrubbed before any prompt leaves the device. Vigil makes zero network calls in deniability mode (I3). Free and Safety Plus tiers keep Vigil local and offline; live online answers require AI Security Protection.
+            </p>
           </div>
         </div>
       </section>
