@@ -826,8 +826,8 @@ export default function Subscription() {
                       {busy
                         ? <Loader2 className="h-4 w-4 animate-spin" />
                         : aiPurchaseAvailable
-                          ? `Upgrade to AI Security Protection${aiSelectedPriceString ? ` • ${aiSelectedPriceString}` : ''}`
-                          : "Upgrade — loading pricing"}
+                          ? `Subscribe${aiSelectedPriceString ? ` • ${aiSelectedPriceString}` : ''}`
+                          : "Subscribe — loading pricing"}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
                       Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
