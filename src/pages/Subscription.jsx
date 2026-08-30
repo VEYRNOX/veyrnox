@@ -404,6 +404,7 @@ export default function Subscription() {
   // null whenever either side is unresolvable or annual is not actually cheaper —
   // the badge and the billing note then render nothing at all (I4).
   const savingPercent = annualSavingPercent(monthlyPriceNumber, annualPriceNumber);
+  const aiSavingPercent = annualSavingPercent(aiMonthlyPriceNumber, aiAnnualPriceNumber);
 
   // The referral banner's "% off", derived from the BASE list price and the price
   // the store will actually charge for the plan currently selected. It used to
@@ -794,13 +795,21 @@ export default function Subscription() {
                         aria-checked={effectiveBilling === "annual"}
                         onClick={() => setBilling("annual")}
                         className={
-                          "text-sm rounded-md px-3 py-2 transition-colors text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                          "text-sm rounded-md px-3 py-2 transition-colors text-center relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
                           (effectiveBilling === "annual"
                             ? "bg-background border border-sky-500/40 font-medium"
                             : "text-muted-foreground hover:text-foreground")
                         }
                       >
                         Annual
+                        {aiSavingPercent != null && (
+                          <Badge
+                            variant="outline"
+                            className="absolute -top-2 end-1 text-[9px] leading-none px-1.5 py-0.5 h-auto border-sky-500/40 bg-background text-sky-600 whitespace-nowrap"
+                          >
+                            Save {aiSavingPercent}%
+                          </Badge>
+                        )}
                         <span className="block text-xs text-muted-foreground font-normal mono-value">
                           {aiAnnualPriceString ?? "—"}
                           {hasAiDiscount && aiRegularAnnualPrice && aiRegularAnnualPrice !== aiAnnualPriceString && (
