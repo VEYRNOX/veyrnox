@@ -626,6 +626,7 @@ export default function Subscription() {
         onOpenChange={setCancelOfferOpen}
         onKeep={() => setCancelOfferOpen(false)}
         onContinue={openStoreSubscriptions}
+        currentTier={currentTier}
         // Only ever a package that genuinely exists in the current offering —
         // never a client-side computed "discount". With no promotional offer
         // configured in App Store Connect / Play Console this is null and the

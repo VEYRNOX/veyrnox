@@ -36,15 +36,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ShieldOff, EyeOff, Trash2 } from "lucide-react";
+import { ShieldOff, EyeOff, Trash2, Sparkles } from "lucide-react";
+import { TIER, tierLabel } from "@/lib/tier";
 
-// What actually stops working. Deliberately the coercion-resistant set: these
-// are the reasons someone bought Safety Plus, not a generic feature dump.
-const LOSES = [
+// What actually stops working. Coercion-resistant Safety Plus set for
+// everyone; the AI Security Protection tier bundles Safety Plus + live
+// Vigil, so it loses one extra bullet on cancel.
+const SAFETY_PLUS_LOSES = [
   { Icon: ShieldOff, label: "Duress PIN", detail: "decoy wallet on a forced unlock" },
   { Icon: EyeOff, label: "Hidden wallets", detail: "accounts absent from any list or count" },
   { Icon: Trash2, label: "Panic wipe", detail: "on-demand destruction of local key material" },
 ];
+const AI_SECURITY_PROTECTION_EXTRA_LOSS = {
+  Icon: Sparkles,
+  label: "Live Vigil (TIP-backed AI security chat)",
+  detail: "online threat-intel answers stop; local advisor stays",
+};
 
 /**
  * @param {object}   props
@@ -68,7 +75,13 @@ export default function CancelOfferDialog({
   offerPrice: offerPriceData = null,
   currentPackage = null,
   currentPriceString = null,
+  currentTier = TIER.SAFETY_PLUS,
 }) {
+  const isAiTier = currentTier === TIER.AI_SECURITY_PROTECTION;
+  const tierName = tierLabel(isAiTier ? TIER.AI_SECURITY_PROTECTION : TIER.SAFETY_PLUS);
+  const loses = isAiTier
+    ? [...SAFETY_PLUS_LOSES, AI_SECURITY_PROTECTION_EXTRA_LOSS]
+    : SAFETY_PLUS_LOSES;
   // The offer price comes from the OFFER, not the package: a package's
   // priceString is always its base plan's, so `retentionMonthly` and
   // `monthlyPackage` both report $5.99. Reading it here rendered a
@@ -106,7 +119,7 @@ export default function CancelOfferDialog({
         </DialogHeader>
 
         <ul className="space-y-3 py-2">
-          {LOSES.map(({ Icon, label, detail }) => (
+          {loses.map(({ Icon, label, detail }) => (
             <li key={label} className="flex items-start gap-3">
               <Icon className="h-4 w-4 text-caution shrink-0 mt-0.5" aria-hidden="true" />
               <p className="text-sm text-foreground">
@@ -141,14 +154,14 @@ export default function CancelOfferDialog({
 
         <DialogFooter className="flex-col sm:flex-col gap-2">
           <Button className="w-full" onClick={onKeep}>
-            {hasRealOffer ? "Keep Safety Plus at this price" : "Keep Safety Plus"}
+            {hasRealOffer ? `Keep ${tierName} at this price` : `Keep ${tierName}`}
           </Button>
           <Button variant="ghost" className="w-full" onClick={onContinue}>
             Continue to cancel
           </Button>
           <p className="text-xs text-muted-foreground text-center pt-1">
             Cancelling is handled by the App Store or Google Play. You keep
-            Safety Plus until the end of the period you've paid for.
+            {" "}{tierName} until the end of the period you've paid for.
           </p>
         </DialogFooter>
       </DialogContent>
