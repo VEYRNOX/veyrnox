@@ -2,6 +2,7 @@ package com.veyrnox.app
 
 import android.app.Activity
 import android.content.Intent
+import android.util.Base64
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -161,6 +162,16 @@ class HuaweiIapPlugin : Plugin() {
                     savedCall.reject("Huawei purchase succeeded but returned no purchase payload")
                     return
                 }
+                if (!receiptIsVerified(rawData, purchaseResultInfo.inAppDataSignature)) {
+                    releaseCall(savedCall)
+                    savedCall.reject(
+                        "Huawei purchase receipt failed signature verification",
+                        RECEIPT_UNVERIFIED,
+                        null,
+                        JSObject(),
+                    )
+                    return
+                }
                 try {
                     val purchaseData = InAppPurchaseData(rawData)
                     val customerInfo = customerInfoFromPurchases(listOf(purchaseData))
@@ -226,7 +237,16 @@ class HuaweiIapPlugin : Plugin() {
         }
         iapClient().obtainOwnedPurchases(req)
             .addOnSuccessListener { result ->
-                result.inAppPurchaseDataList?.forEach { raw ->
+                val rawList = result.inAppPurchaseDataList.orEmpty()
+                // HMS returns inAppSignature positionally parallel to
+                // inAppPurchaseDataList. Pair by index and drop anything whose
+                // signature is absent at that index or does not verify — an
+                // unverified receipt must never reach entitlement mapping (I4).
+                val signatures = result.inAppSignature.orEmpty()
+                rawList.forEachIndexed { index, raw ->
+                    if (!receiptIsVerified(raw, signatures.getOrNull(index))) {
+                        return@forEachIndexed
+                    }
                     try {
                         collected.add(InAppPurchaseData(raw))
                     } catch (_: Exception) {
@@ -355,8 +375,31 @@ class HuaweiIapPlugin : Plugin() {
         return value
     }
 
+    /**
+     * True only if HMS signed this exact receipt with the key from AppGallery
+     * Connect. Everything else — no signature, no configured key, a malformed
+     * key, a thrown exception — is false, so the receipt is dropped rather than
+     * granted (I4).
+     *
+     * The key is embedded at build time via BuildConfig.HUAWEI_IAP_PUBLIC_KEY
+     * and defaults to "". An unconfigured huawei build therefore grants NO
+     * entitlement at all, which is the intended failure direction: a build that
+     * cannot check is a build that must not trust. android/app/build.gradle
+     * fails a huawei RELEASE build outright when the property is blank, so this
+     * default can only be hit in a local debug build.
+     *
+     * See HuaweiReceiptVerifier for the honest ceiling of client-side checking.
+     */
+    private fun receiptIsVerified(rawData: String?, signature: String?): Boolean =
+        HuaweiReceiptVerifier.verify(
+            rawData,
+            signature,
+            BuildConfig.HUAWEI_IAP_PUBLIC_KEY,
+        ) { Base64.decode(it, Base64.DEFAULT) }
+
     companion object {
         private const val PURCHASE_REQUEST_CODE = 0x4877
         private const val SUBSCRIPTION_PRICE_TYPE = IapClient.PriceType.IN_APP_SUBSCRIPTION
+        private const val RECEIPT_UNVERIFIED = "RECEIPT_UNVERIFIED"
     }
 }
