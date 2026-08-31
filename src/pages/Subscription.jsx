@@ -1027,6 +1027,24 @@ export default function Subscription() {
                     <p className="text-xs text-muted-foreground text-center">
                       Billed as an in-app subscription through the {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}.
                     </p>
+                    <button
+                      type="button"
+                      onClick={handleRestore}
+                      disabled={busy}
+                      className="text-xs text-muted-foreground underline w-full text-center"
+                    >
+                      Restore purchases
+                    </button>
+                    {!isHuawei && (
+                      <button
+                        type="button"
+                        onClick={handleRedeemCode}
+                        disabled={busy}
+                        className="text-xs text-muted-foreground underline w-full text-center"
+                      >
+                        Redeem code
+                      </button>
+                    )}
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground">
