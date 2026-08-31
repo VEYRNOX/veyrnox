@@ -122,6 +122,17 @@ android {
             buildConfigField "boolean", "HAS_HUAWEI_IAP", "false"
         }
     }
+    // MainActivity's Firebase Test Lab observability block referenced
+    // com.google.firebase.* from the `main` source set, which only google and
+    // samsung put on the classpath — so huawei and fdroid did not compile at
+    // all, and no CI job built them to notice. The body now lives in a
+    // per-flavor FirebaseTestLabObservability: real in gms, no-op in nogms.
+    sourceSets {
+        google { java.srcDirs += 'src/gms/java' }
+        samsung { java.srcDirs += 'src/gms/java' }
+        huawei { java.srcDirs += 'src/nogms/java' }
+        fdroid { java.srcDirs += 'src/nogms/java' }
+    }
     buildTypes {
         debug {
             applicationIdSuffix ".debug"
@@ -205,13 +216,17 @@ dependencies {
     samsungImplementation 'com.google.firebase:firebase-crashlytics'
     samsungImplementation 'com.google.firebase:firebase-perf'
 
-    // --- Samsung Galaxy Store (RevenueCat handles billing) ---
-    // The Galaxy module exposes the store backend but marks the core SDK as a
-    // runtime dependency. The native Capacitor adapter imports these APIs, so
-    // keep the matching compile dependencies scoped to Samsung only.
-    samsungImplementation 'com.revenuecat.purchases:purchases:10.16.2'
-    samsungImplementation 'com.revenuecat.purchases:purchases-hybrid-common:18.29.0'
-    samsungImplementation 'com.revenuecat.purchases:purchases-store-galaxy:10.16.2'
+    // --- Samsung Galaxy Store ---
+    // No RevenueCat Galaxy dependencies here on purpose. #2171 added
+    // purchases, purchases-hybrid-common and purchases-store-galaxy for
+    // SamsungIapPlugin.kt, then #2174 deleted that plugin and left the three
+    // dependencies behind — nothing on the samsung classpath imports
+    // com.revenuecat.purchases.* any more, so they were dead weight shipped in
+    // the Galaxy Store APK. Restore them in the same commit that restores an
+    // adapter, and pin purchases-hybrid-common to the version the RevenueCat
+    // Capacitor plugin declares (node_modules/@revenuecat/purchases-capacitor/
+    // android/build.gradle): Gradle resolves the union to the HIGHEST version,
+    // so a lower pin compiles against an API that never runs.
 
     // --- Huawei HMS (AppGallery — no RevenueCat support, direct HMS IAP) ---
     huaweiImplementation 'com.huawei.hms:base:6.13.0.303'

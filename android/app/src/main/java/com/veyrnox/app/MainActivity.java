@@ -6,10 +6,6 @@ import android.view.WindowManager;
 import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-import com.google.firebase.perf.FirebasePerformance;
-import com.google.firebase.perf.metrics.Trace;
 import com.veyrnox.app.FileSaverPlugin;
 import com.veyrnox.app.HardwareKekPlugin;
 import com.veyrnox.app.RaspIntegrityPlugin;
@@ -49,36 +45,16 @@ public class MainActivity extends BridgeActivity {
         }
         super.onCreate(savedInstanceState);
 
-        // Firebase Test Lab-ONLY observability (F-1, 2026-08-15). The staging
-        // channel was removed: Crashlytics/Performance are native-layer and
-        // consult neither lib/consent.js nor isDeniabilityOrDemoActive(), so on
-        // any build a human installs, a crash inside a decoy/duress session
-        // would transmit to Google (I3). FIREBASE_OBSERVABILITY_ENABLED is now
-        // true only in the isolated `firebaseTest` variant. Never attach wallet
-        // state, addresses, balances, PINs, seeds, URLs, or user identifiers.
-        if (BuildConfig.FIREBASE_OBSERVABILITY_ENABLED
-                && !FirebaseApp.getApps(this).isEmpty()) {
-            FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
-            crashlytics.setCrashlyticsCollectionEnabled(true);
-            crashlytics.setCustomKey("build_channel", "firebase_test_lab");
-
-            FirebasePerformance performance = FirebasePerformance.getInstance();
-            performance.setPerformanceCollectionEnabled(true);
-
-            // Synthetic fixed-value events belong only to the isolated Test Lab APK.
-            if (BuildConfig.FIREBASE_OBSERVABILITY_SMOKE) {
-                crashlytics.log("Firebase Test Lab observability smoke started");
-                crashlytics.recordException(new IllegalStateException(
-                    "VEYRNOX_FIREBASE_NONFATAL_SMOKE"
-                ));
-                crashlytics.sendUnsentReports();
-
-                Trace trace = performance.newTrace("staging_launch_smoke");
-                trace.start();
-                trace.putMetric("completed", 1L);
-                trace.stop();
-            }
-        }
+        // Firebase Test Lab-ONLY observability (F-1, 2026-08-15). The body lives
+        // in a per-flavor class: the real one in src/gms (google + samsung), a
+        // no-op in src/nogms (huawei + fdroid). It was inline here and imported
+        // the Firebase SDK directly, which made the huawei and fdroid flavors
+        // fail to compile — neither declares a Firebase dependency, and no CI
+        // job ever built them. See android/app/build.gradle sourceSets.
+        //
+        // This file is in the shared `main` source set, so it must never name
+        // that SDK again; firebase-observability.test.js asserts exactly that.
+        FirebaseTestLabObservability.start(this);
 
         // FLAG_SECURE — block screenshots, screen recording, and the recents /
         // app-switcher thumbnail for the whole window. The wallet's threat model
