@@ -36,6 +36,17 @@ public class MainActivity extends BridgeActivity {
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         registerPlugin(AndroidBiometricCachePlugin.class);
+        // HuaweiIapPlugin lives in the `huawei` source set (HMS-only classpath).
+        // Load reflectively so google/samsung/fdroid builds compile without HMS.
+        if (BuildConfig.HAS_HUAWEI_IAP) {
+            try {
+                Class<?> huaweiIap = Class.forName("com.veyrnox.app.HuaweiIapPlugin");
+                registerPlugin((Class) huaweiIap);
+            } catch (ClassNotFoundException e) {
+                // Flavor mislabelled — fail-open on registration only. IAP calls
+                // will surface HUAWEI_IAP_NOT_WIRED at the JS boundary.
+            }
+        }
         super.onCreate(savedInstanceState);
 
         // Firebase Test Lab-ONLY observability (F-1, 2026-08-15). The staging
