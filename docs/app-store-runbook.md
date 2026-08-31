@@ -92,6 +92,16 @@ Referral tiers on Apple use SIGNED PROMOTIONAL OFFERS keyed by identifier (`APPL
   4. `POST /v1/subscriptionPrices` for each equalized pricePoint. That gives the sub 175 prices matching the US base's equalization ladder.
 - The ASC UI wraps all of this in one "Set Base Price + Equalize" button. Via API it's 175+ calls.
 
+**Subscription group localization + submission bundle attach (Apple UI truth vs API state)**:
+- After creating a new subscription group (e.g. `AI Security Protection` = `22348777`), the group ALSO needs its own `subscriptionGroupLocalizations` record (`POST /v1/subscriptionGroupLocalizations` with `locale`, `name`, `customAppName: null`, relationship to `subscriptionGroup`). This is SEPARATE from the per-subscription localizations; without it "Add for Review" fails with `Unable to Add for Review — You must add at least one subscription group localization.` The `name` here is what appears on the user's Subscription Management screen; `customAppName` overrides the app name for that page (null = use app default).
+- **API sub state can lag the UI truth**: the API reported `MISSING_METADATA` for both new AI SP subs for 30+ minutes after every field was populated (localization + prices + screenshot + review notes + availability + promoted images). The ASC UI, at the same moment, correctly showed `Prepare for Submission` (yellow) and let "Add for Review" proceed. **Trust the UI over API state when they disagree.**
+- **Attach flow for the review bundle** (each entity clicks its own "Add for Review" button):
+  1. Subscription group page → Add for Review → picks the existing draft.
+  2. Each subscription page → Add for Review → picks the same draft. Group + subs are separate items in the bundle (Apple's UI enforces both; the group alone is rejected with "New subscription groups must be submitted with an auto-renewable subscription from within that group.").
+  3. Verify the Draft Submission drawer shows: App version + Subscription Group + collapsed "Subscriptions (N)" row.
+- **Review Information screenshot must exist per sub**: the earlier `subscriptionAppStoreReviewScreenshots` copy dropped ONE of the two silently — reported HTTP 200 but nothing landed. Always re-query `subscriptions/{id}/appStoreReviewScreenshot` per sub after batch uploads and re-upload for any sub returning no data. UI blocks with `You must add a Review Information screenshot.` when missing.
+- **Attach via API is impossible** for subs, subscription groups, and promoted purchases — `reviewSubmissionItems` only accepts these relationships: `appStoreVersion`, `appCustomProductPageVersion`, `appEvent`, `appStoreVersionExperimentV2`, `appStoreVersionExperiment`. The UI's "Add for Review" is the only path for the other item types.
+
 **Promoted-purchase artwork (2026-08-31 evening, both new AI SP subs)**:
 - Spec: 1024×1024 JPG or PNG, 72 DPI, RGB, flattened, no rounded corners.
 - 4-iteration API discovery — endpoint names matter:
