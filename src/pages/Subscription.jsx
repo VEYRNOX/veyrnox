@@ -26,6 +26,7 @@ import {
 } from "@/lib/tier";
 import * as rcPurchases from "@/lib/purchases";
 import * as huaweiPurchases from "@/lib/purchases/huaweiPurchases.js";
+import { redeemCode } from "@/lib/redeemCode";
 import {
   getAiSecurityProtectionOfferingId,
   offerPriceInfo,
@@ -569,6 +570,14 @@ export default function Subscription() {
     }
   }
 
+  async function handleRedeemCode() {
+    try {
+      await redeemCode();
+    } catch {
+      toast.error("Could not open the store — please try again");
+    }
+  }
+
   // Cancel INTENT, not cancellation. Tapping "Manage subscription" is the last
   // moment we own — the deep-link below hands off to Apple/Google, and there is
   // no event, callback or hook available to us on the far side of it. So the
@@ -864,14 +873,26 @@ export default function Subscription() {
                 {Capacitor.getPlatform() === "ios" ? "App Store" : "Google Play"} account settings.
               </p>
               {isNative ? (
-                <button
-                  type="button"
-                  onClick={handleRestore}
-                  disabled={busy}
-                  className="text-xs text-muted-foreground underline w-full text-center"
-                >
-                  Restore purchases
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleRestore}
+                    disabled={busy}
+                    className="text-xs text-muted-foreground underline w-full text-center"
+                  >
+                    Restore purchases
+                  </button>
+                  {!isHuawei && (
+                    <button
+                      type="button"
+                      onClick={handleRedeemCode}
+                      disabled={busy}
+                      className="text-xs text-muted-foreground underline w-full text-center"
+                    >
+                      Redeem code
+                    </button>
+                  )}
+                </>
               ) : (
                 <p className="text-xs text-muted-foreground text-center">
                   No payment can be made on this screen. Your plan stays Free on web.

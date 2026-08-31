@@ -278,21 +278,19 @@ describe('shamir – envelope validation', () => {
   it('rejects an inconsistent extra share (wrong y-values but valid CRC)', () => {
     const secret = randomSecret();
     const sharesA = split(secret);
-    const sharesB = split(secret); // different polynomial (different random coefficients)
-    // Build a Frankenstein: take sharesA[0] and sharesA[1] (consistent),
-    // plus sharesB[2] re-enveloped with sharesA's header so CRC passes
+    // Build a Frankenstein: take two consistent shares plus an extra whose
+    // y-value is deliberately corrupted while its envelope remains valid.
+    // A second random split is not reliable here: it can occasionally produce
+    // the same polynomial, leaving the purportedly inconsistent share intact.
     const franken = new Uint8Array(sharesA[2]);
-    // Copy y-values from sharesB[2] (different polynomial, same secret). Offsets
-    // are derived from the exported constants, not hardcoded, so an envelope
-    // format change cannot silently point this at the wrong bytes (it did:
-    // these were literal v1 offsets before H-6 widened the envelope).
+    // Offsets are derived from exported constants, so an envelope format change
+    // cannot silently point this mutation at the wrong bytes.
     const Y_START = HEADER_SIZE;
-    const Y_END = HEADER_SIZE + SECRET_SIZE;
     const CRC_AT = SHARE_SIZE - 4;
-    for (let i = Y_START; i < Y_END; i++) franken[i] = sharesB[2][i];
-    // The commitment (Y_END..CRC_AT) is left as sharesA's, so this share is
-    // authentic-looking at every layer EXCEPT the polynomial itself — which is
-    // the point: it isolates the extra-share consistency check.
+    franken[Y_START] ^= 0x01;
+    // The commitment is left unchanged, so the share is authentic-looking at
+    // every layer except the polynomial itself. This isolates the extra-share
+    // consistency check.
     // Recompute CRC so it passes the corruption check
     const crc32Fn = (data) => {
       const T = new Uint32Array(256);
