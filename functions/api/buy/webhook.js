@@ -25,6 +25,33 @@ function reqId() {
   return crypto.randomUUID().slice(0, 8);
 }
 
+// Max characters kept per logged field. Transak's longest real value is an
+// order id (UUID, 36 chars); 64 leaves headroom without letting a caller pad
+// the log.
+const MAX_FIELD = 64;
+
+// Every logged field below comes from an unauthenticated caller — this endpoint
+// deliberately does no signature verification yet (see the header note), so the
+// body is fully attacker-controlled.
+//
+// Without this, a newline inside eventID forges additional log lines:
+//
+//   {"eventID": "X\n[buy/webhook] ref=deadbeef event=ORDER_COMPLETED order=…"}
+//
+// which renders as a second, well-formed-looking entry. The header already
+// names "a spoofed event misleads an operator reading logs" as the residual
+// risk; forged log LINES are the sharper form of it, and are not mitigated by
+// the endpoint being side-effect-free.
+//
+// Strips C0 controls + DEL (covers CR, LF, tab) and the Unicode line
+// separators, which some log viewers also break on. Returns null unchanged so
+// an absent field still prints as `null`.
+function logSafe(value) {
+  if (value == null) return null;
+  const cleaned = String(value).replace(/[\u0000-\u001F\u007F\u2028\u2029]/g, '');
+  return cleaned.length > MAX_FIELD ? `${cleaned.slice(0, MAX_FIELD)}…` : cleaned;
+}
+
 export async function onRequestPost({ request }) {
   const ref = reqId();
   let body = null;
@@ -40,12 +67,13 @@ export async function onRequestPost({ request }) {
     });
   }
 
-  const eventID = body?.eventID || 'UNKNOWN';
-  const orderId = body?.webhookData?.id || body?.webhookData?.orderId || null;
-  const status = body?.webhookData?.status || null;
+  const eventID = logSafe(body?.eventID) || 'UNKNOWN';
+  const orderId = logSafe(body?.webhookData?.id || body?.webhookData?.orderId);
+  const status = logSafe(body?.webhookData?.status);
 
   // Log only non-PII fields. Full payload contains user email + address on
-  // some events; we do not need those for operator triage.
+  // some events; we do not need those for operator triage. Every value goes
+  // through logSafe first — see its note; the body is unauthenticated.
   console.log(`[buy/webhook] ref=${ref} event=${eventID} order=${orderId} status=${status}`);
 
   return new Response(JSON.stringify({ ok: true }), {
