@@ -1757,13 +1757,12 @@ export default function WalletEntry() {
   // ---- View: Unlock (PIN cohort) ----
   if (view === "unlock" && authModel === "pin") {
     const bioLabel = bioStatus?.label || (Capacitor.getPlatform?.() === "ios" ? "Face ID" : "Fingerprint");
-    // Android hides the manual "Unlock with {label}" button entirely — the
-    // #2120 auto-fire already invokes BiometricPrompt on mount, which shows
-    // the system sheet accepting BOTH Face Unlock and Fingerprint on devices
-    // that have both enrolled. The manual button was redundant AND wrong
-    // (labelled "Fingerprint" even when Face Unlock was the primary sensor).
-    // iOS keeps the button as an explicit retry after a Face ID cancel.
-    const showBioButton = biometricEnabled && !biometricFailed && Capacitor.getPlatform?.() !== 'android';
+    // Both native platforms hide the manual "Unlock with {label}" button —
+    // the #2120 auto-fire raises the OS biometric sheet on mount (Face ID on
+    // iOS, BiometricPrompt on Android accepting Face Unlock + Fingerprint).
+    // A Face ID cancel sets `biometricFailed` and the copy below points the
+    // user at the PIN pad — no manual retry button needed.
+    const showBioButton = false;
     // FAST-PATH BIOMETRIC UNLOCK BUTTON (#2019). PARALLEL to the PIN pad — never
     // replaces PIN entry. FIVE AND-gates below; missing any → button not rendered
     // (fail-closed visibility). Uses Capacitor.getPlatform() (not
@@ -1899,9 +1898,10 @@ export default function WalletEntry() {
   // ---- View: Unlock existing vault (returning user) ----
   if (view === "unlock") {
     const bioLabel = bioStatus?.label || (Capacitor.getPlatform?.() === "ios" ? "Face ID" : "Fingerprint");
-    // See PIN-cohort branch above — Android relies on #2120 auto-fire and hides
-    // the manual button. iOS keeps it as a retry after a Face ID cancel.
-    const showBioButton = biometricEnabled && !biometricFailed && Capacitor.getPlatform?.() !== 'android';
+    // See PIN-cohort branch above — both native platforms rely on the #2120
+    // auto-fire and hide the manual button. Failed/cancelled biometric falls
+    // through to the vault-password field below.
+    const showBioButton = false;
     return (
       <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-3">
