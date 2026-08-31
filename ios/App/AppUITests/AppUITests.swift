@@ -44,6 +44,17 @@ final class AppUITests: XCTestCase {
         //    src/i18n/locales/en/security.json.
         tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
 
+        // 1b. BiometricConsent (#2129, 2026-08-27) — rendered between telemetry
+        //     consent and the entry tiles when Capacitor.isNativePlatform() is
+        //     true and the seen-marker is absent. Before #2149 wired the
+        //     --uitest-fresh-install flag through AppDelegate the marker leaked
+        //     across runs and this screen never re-appeared in CI, which is why
+        //     the test could reach New wallet without dismissing it. On a stock
+        //     simulator the "Not now" path is the honest choice: no biometric is
+        //     enrolled. Tolerate its absence — the probe silently skips when
+        //     getBiometricStatus() reports available: false.
+        tapButtonIfPresent(app: app, label: "Not now", timeout: 6)
+
         // 2. Entry tiles — the fresh-device landing. Slice D1 (2026-08-10)
         //    replaced WelcomeHero's single "Get Started" action with a 4-tile
         //    picker; "New wallet" is the create path and hands off to
@@ -106,6 +117,7 @@ final class AppUITests: XCTestCase {
         app.launch()
 
         tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
+        tapButtonIfPresent(app: app, label: "Not now", timeout: 6)
         tapButton(
             app: app,
             label: "Have a wallet",
