@@ -102,20 +102,24 @@ android {
         google {
             dimension "store"
             // Default — Play Store distribution. GMS + Play Integrity + Play Billing.
+            buildConfigField "boolean", "HAS_HUAWEI_IAP", "false"
         }
         samsung {
             dimension "store"
             // Galaxy Store. Same GMS stack; Samsung IAP added via samsungImplementation.
+            buildConfigField "boolean", "HAS_HUAWEI_IAP", "false"
         }
         huawei {
             dimension "store"
             applicationIdSuffix ".huawei"
             // AppGallery. HMS replaces GMS — Play Integrity and Firebase excluded.
+            buildConfigField "boolean", "HAS_HUAWEI_IAP", "true"
         }
         fdroid {
             dimension "store"
             applicationIdSuffix ".fdroid"
             // F-Droid. No proprietary dependencies. No IAP. Local-only RASP.
+            buildConfigField "boolean", "HAS_HUAWEI_IAP", "false"
         }
     }
     buildTypes {
@@ -211,7 +215,7 @@ dependencies {
 
     // --- Huawei HMS (AppGallery — no RevenueCat support, direct HMS IAP) ---
     huaweiImplementation 'com.huawei.hms:base:6.13.0.303'
-    huaweiImplementation 'com.huawei.hms:iap:6.5.1.300'
+    huaweiImplementation 'com.huawei.hms:iap:6.16.6.305'
     huaweiImplementation 'com.huawei.hms:safetydetect:6.3.0.301'
 }
 

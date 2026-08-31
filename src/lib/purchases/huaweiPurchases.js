@@ -248,9 +248,6 @@ export async function addCustomerInfoUpdateListener(callback) {
 export async function setReferralAttributes() {}
 export const setReferralAttribute = setReferralAttributes;
 
-/**
- * @param {unknown} [pkg]
- */
 export async function manageSubscription(pkg = null) {
   if (!isNative()) throw new Error('PURCHASES_NATIVE_ONLY');
   const productId = pkg ? productIdFromPackage(pkg) : null;

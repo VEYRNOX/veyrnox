@@ -24,18 +24,24 @@ import {
   isPaidTier,
   TIER,
 } from "@/lib/tier";
+import * as rcPurchases from "@/lib/purchases";
+import * as huaweiPurchases from "@/lib/purchases/huaweiPurchases.js";
 import {
-  getOfferings,
-  getTierOffering,
   getAiSecurityProtectionOfferingId,
-  purchasePackage,
-  restorePurchases,
-  manageSubscription,
   offerPriceInfo,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   SAFETY_PLUS_ANNUAL_PACKAGE,
   RETENTION_OFFERING_ID,
 } from "@/lib/purchases";
+
+// AppGallery has no RevenueCat backend — huawei flavor dispatches to HMS IAP
+// via HuaweiIapPlugin. Every other flavor (google, samsung, fdroid, iOS) goes
+// through RevenueCat unchanged. Set at build time by VITE_STORE_FLAVOR.
+const isHuawei =
+  import.meta.env.VITE_STORE_FLAVOR === "huawei" &&
+  Capacitor.getPlatform() === "android";
+const store = isHuawei ? huaweiPurchases : rcPurchases;
+const { getOfferings, getTierOffering, purchasePackage, restorePurchases, manageSubscription } = store;
 import {
   getRedeemedCode,
   hasRedeemed,
