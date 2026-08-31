@@ -114,6 +114,12 @@ android {
             applicationIdSuffix ".huawei"
             // AppGallery. HMS replaces GMS — Play Integrity and Firebase excluded.
             buildConfigField "boolean", "HAS_HUAWEI_IAP", "true"
+            // IAP receipt signature verification key, from AppGallery Connect →
+            // My apps → <app> → Development → Product Operation → public key.
+            // Inject via -PHUAWEI_IAP_PUBLIC_KEY=<base64>. Blank means the app
+            // can verify nothing and therefore grants nothing (I4); a huawei
+            // RELEASE build with it blank is rejected outright, see below.
+            buildConfigField "String", "HUAWEI_IAP_PUBLIC_KEY", "\"${project.findProperty('HUAWEI_IAP_PUBLIC_KEY') ?: ''}\""
         }
         fdroid {
             dimension "store"
@@ -297,6 +303,43 @@ tasks.matching { it.name == 'assembleGoogleFirebaseTest' }.configureEach {
                 'Refusing to create a Firebase artifact that RASP will block at launch.')
         }
         logger.lifecycle('firebase-test signing guard: embedded fingerprint matches APK signer')
+    }
+}
+
+// Huawei RELEASE builds must carry the AppGallery IAP public key.
+//
+// HuaweiReceiptVerifier fails closed on a blank key, so a huawei release built
+// without it would verify nothing, drop every receipt, and grant NO entitlement
+// on any device. That is the correct failure direction (I4) but it is silent —
+// the app installs and runs, purchases just never take effect. Catch it here,
+// at build time, where the message can say what to do.
+tasks.matching {
+    it.name.endsWith('Release') &&
+        it.name.toLowerCase().contains('huawei') &&
+        (it.name.startsWith('bundle') || it.name.startsWith('assemble'))
+}.configureEach {
+    doFirst {
+        def key = (project.findProperty('HUAWEI_IAP_PUBLIC_KEY') ?: '').toString().trim()
+        if (key.isEmpty()) {
+            throw new GradleException(
+                'HUAWEI_IAP_PUBLIC_KEY is blank — this build would verify no IAP receipt\n' +
+                'and grant no entitlement on any device (fail-closed, I4).\n' +
+                'Pass -PHUAWEI_IAP_PUBLIC_KEY="<base64 public key>". Find it in AppGallery\n' +
+                'Connect > My apps > <app> > Development > Product Operation > public key.')
+        }
+        // A blank key is the common mistake; the next one is pasting something
+        // that is not the key at all. Parse it exactly as the app will, so a bad
+        // value fails here rather than silently on every customer's device.
+        try {
+            def der = key.decodeBase64()
+            java.security.KeyFactory.getInstance('RSA')
+                .generatePublic(new java.security.spec.X509EncodedKeySpec(der))
+        } catch (Exception e) {
+            throw new GradleException(
+                'HUAWEI_IAP_PUBLIC_KEY is not a valid base64 X.509 RSA public key: ' + e.message + '\n' +
+                'Copy it verbatim from AppGallery Connect — no line breaks, no PEM header.')
+        }
+        logger.lifecycle('huawei IAP guard: receipt-verification public key present and parseable')
     }
 }
 
