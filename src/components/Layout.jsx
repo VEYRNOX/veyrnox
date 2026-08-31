@@ -321,7 +321,7 @@ export default function Layout() {
   // the same session-scoped queue. Mounted inside WalletGate, so it unmounts and
   // wipes on lock/reload — never hydrated from a store (deniability: no residual).
   // Opening the bell marks all seen and routes to the notification centre.
-  const { latest, unseenCount, dismiss, markAllSeen } = useNotifications();
+  const { latest, unseenCount, hideLatest, markAllSeen } = useNotifications();
   const openNotifications = useCallback(() => {
     markAllSeen();
     navigate("/notifications");
@@ -499,7 +499,7 @@ export default function Layout() {
       <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center md:justify-end px-4 pointer-events-none"
            style={{ paddingBottom: "calc(5.5rem + env(safe-area-inset-bottom))" }}>
         <div className={`w-full max-w-sm ${latest ? 'pointer-events-auto' : 'pointer-events-none'}`}>
-          <NotificationToast notification={latest} onDismiss={dismiss} />
+          <NotificationToast notification={latest} onDismiss={hideLatest} />
         </div>
       </div>
 

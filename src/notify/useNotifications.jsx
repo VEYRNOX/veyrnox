@@ -43,6 +43,7 @@ const INERT = Object.freeze({
   unseenCount: 0,
   latest: null,
   markAllSeen: () => {},
+  hideLatest: () => {},
   dismiss: () => {},
   clear: () => {},
 });
@@ -70,6 +71,7 @@ export function NotificationsProvider() {
   }, []);
 
   const markAllSeen = useCallback(() => (/** @type {any} */ (dispatch))({ type: 'markAllSeen' }), []);
+  const hideLatest = useCallback(() => (/** @type {any} */ (dispatch))({ type: 'hideLatest' }), []);
   const dismiss = useCallback((id) => (/** @type {any} */ (dispatch))({ type: 'dismiss', id }), []);
   const clear = useCallback(() => (/** @type {any} */ (dispatch))({ type: 'clear' }), []);
 
@@ -79,10 +81,11 @@ export function NotificationsProvider() {
       unseenCount: state.unseenCount,
       latest: state.latest,
       markAllSeen,
+      hideLatest,
       dismiss,
       clear,
     }),
-    [state, markAllSeen, dismiss, clear],
+    [state, markAllSeen, hideLatest, dismiss, clear],
   );
 
   return (

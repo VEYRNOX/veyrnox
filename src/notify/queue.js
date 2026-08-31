@@ -31,6 +31,7 @@ export const initialQueue = Object.freeze({
  * Actions:
  *   { type: 'push', notification }  add a notification (newest-first, ring-capped)
  *   { type: 'markAllSeen' }         reset the unseen badge to zero (items kept)
+ *   { type: 'hideLatest' }          clear the transient toast only (items kept)
  *   { type: 'dismiss', id }         remove one item; clear the toast if it was latest
  *   { type: 'clear' }               wipe back to initial (lock/reload lifecycle)
  *
@@ -50,6 +51,9 @@ export function queueReducer(state, action) {
     case 'markAllSeen':
       if (state.unseenCount === 0) return state;
       return { ...state, unseenCount: 0 };
+    case 'hideLatest':
+      if (state.latest === null) return state;
+      return { ...state, latest: null };
     case 'dismiss': {
       const items = state.items.filter((n) => n.id !== action.id);
       const latest = state.latest && state.latest.id === action.id ? null : state.latest;
