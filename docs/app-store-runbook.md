@@ -92,6 +92,14 @@ Referral tiers on Apple use SIGNED PROMOTIONAL OFFERS keyed by identifier (`APPL
   4. `POST /v1/subscriptionPrices` for each equalized pricePoint. That gives the sub 175 prices matching the US base's equalization ladder.
 - The ASC UI wraps all of this in one "Set Base Price + Equalize" button. Via API it's 175+ calls.
 
+**Promoted-purchase artwork (2026-08-31 evening, both new AI SP subs)**:
+- Spec: 1024×1024 JPG or PNG, 72 DPI, RGB, flattened, no rounded corners.
+- 4-iteration API discovery — endpoint names matter:
+  1. Create `promotedPurchases` (attributes: `enabled: true`, `visibleForAllUsers: true` — BOTH required; relationships: `subscription` + `app` — BOTH required; `visibleForDistribution` is NOT valid).
+  2. Upload image via `subscriptionImages` (NOT `promotedPurchaseImages` — that doesn't exist; NOT `images` / `promotionImages` / `artwork` — none of those exist as relationships on `promotedPurchases`). `subscriptionImages` POST → PUT bytes to upload operations → PATCH `uploaded: true` + MD5 checksum.
+- Uploaded via `/tmp/asc-upload-promoted.mjs` + `/tmp/asc-try-si.mjs`. Both new AI SP subs got the black-background variant of their respective paywall image, center-cropped and re-scaled to 1024×1024 with `sips`.
+- Promoted-purchase is OPTIONAL — SP monthly is APPROVED without one — so populating it does NOT unblock `MISSING_METADATA`.
+
 **Promotional offers (referral/retention discounts) — deferred**:
 - `subscriptionPromotionalOffers` endpoint requires attributes `duration`, `numberOfPeriods`, `offerMode`, `targetSubscriptionPlanType`, and a `prices` relationship pointing at 175 `subscriptionPromotionalOfferPrices` (one per territory, each with its own discount pricePoint). Total: 10 offers × 176 calls each = 1,760 calls to mirror Safety Plus's referral+retention on AI SP. **Not yet done — leave for UI or a dedicated batch script.** AI SP paywall works today at base price; discounts don't apply until promotional offers are populated.
 
