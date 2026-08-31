@@ -139,8 +139,7 @@ export const AI_SECURITY_PROTECTION_FEATURES = [
   { name: 'Live Vigil AI advisor', summary: 'Real-time TIP-backed answers instead of local-only guidance' },
   { name: 'Malicious dApp warnings', summary: 'Vigil flags risky dApp origins before you connect your wallet' },
   { name: 'Drainer & unsafe DEX warnings', summary: 'Vigil flags known drainer contracts and unsafe DEXs before you sign' },
-  { name: 'Phishing site detection', summary: 'Vigil detects phishing sites when a link tries to open Veyrnox' },
-  { name: 'Vigil overlay on Transaction Simulation', summary: 'Vigil reviews the simulated outcome and warns on scam approvals, hidden drains, or suspicious counterparties' },
+  { name: 'Phishing screening on Send', summary: 'Recipient addresses checked against the phishing-domain feed and threat-intel store' },
   { name: 'Continuously updated threat intel', summary: 'New bad actors flagged across the ecosystem as they emerge' },
   { name: 'Priority security incident response', summary: 'Higher-priority handling if you report an incident' },
 ];
