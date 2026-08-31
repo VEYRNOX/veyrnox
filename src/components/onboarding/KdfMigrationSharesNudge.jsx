@@ -29,10 +29,13 @@ import { useNavigate } from 'react-router';
 import { Capacitor } from '@capacitor/core';
 import { KeyRound } from 'lucide-react';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+// Key NAMES only, from wallet-core/ rather than wallet-core/keystore/ — this
+// card is R2 UI and must not import the R0/R1 crypto-core tree (ring-import
+// lint). The guard that writes these markers re-exports the same constants.
 import {
   NUDGE_PENDING_KEY,
   NUDGE_DISMISSED_KEY,
-} from '@/wallet-core/keystore/kdfMigrationGuard';
+} from '@/wallet-core/kdfMigrationNudgeKeys';
 
 const GATE_LOADING = 0;
 const GATE_HIDE = 1;

@@ -33,16 +33,16 @@
  * invalidate. */
 export const PERSONAL_BACKUP_EXPORTED_KEY = 'veyrnox-personal-backup-exported';
 
-/** Marker key read by components/onboarding/KdfMigrationSharesNudge.jsx to
- * decide whether to render the "regenerate your shares" card. Written by
- * `deferKdfMigrationForShares` when the migration is skipped. Panic-wipe
- * sweeps this key (see wallet-core/panic.js METADATA_RESIDUE_KEYS). */
-export const NUDGE_PENDING_KEY = 'veyrnox-kdf-migration-pending-shares-warning';
-
-/** Marker key written by the nudge card when the user taps "Not now" — the
- * card stays dismissed until a panic-wipe clears the marker. Also swept by
- * METADATA_RESIDUE_KEYS. */
-export const NUDGE_DISMISSED_KEY = 'veyrnox-kdf-nudge-dismissed';
+// The two nudge marker keys live in wallet-core/kdfMigrationNudgeKeys.js, NOT
+// here: the UI card that reads them cannot import from `wallet-core/keystore`
+// without tripping the R0/R1 ring-boundary lint. Re-exported so existing
+// importers of this module keep working and there is one definition of each
+// string. Panic-wipe sweeps both (wallet-core/panic.js METADATA_RESIDUE_KEYS).
+export {
+  NUDGE_PENDING_KEY,
+  NUDGE_DISMISSED_KEY,
+} from '../kdfMigrationNudgeKeys.js';
+import { NUDGE_PENDING_KEY } from '../kdfMigrationNudgeKeys.js';
 
 /**
  * Fail-closed check. Returns `true` when the KDF-profile rekey MUST be
