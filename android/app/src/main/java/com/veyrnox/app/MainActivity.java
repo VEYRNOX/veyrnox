@@ -6,6 +6,7 @@ import android.view.WindowManager;
 import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Plugin;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.perf.FirebasePerformance;
@@ -41,10 +42,10 @@ public class MainActivity extends BridgeActivity {
         // has neither the RevenueCat Galaxy store module nor the Huawei HMS IAP
         // classes, so registering them unconditionally would fail there.
         if ("samsung".equals(BuildConfig.FLAVOR)) {
-            registerPlugin(SamsungIapPlugin.class);
+            registerStorePlugin("com.veyrnox.app.SamsungIapPlugin");
         }
         if ("huawei".equals(BuildConfig.FLAVOR)) {
-            registerPlugin(HuaweiIapPlugin.class);
+            registerStorePlugin("com.veyrnox.app.HuaweiIapPlugin");
         }
         super.onCreate(savedInstanceState);
 
@@ -108,6 +109,17 @@ public class MainActivity extends BridgeActivity {
         // TARGET: verify on a REAL release build that CDP can no longer attach.
         if (!BuildConfig.DEBUG) {
             WebView.setWebContentsDebuggingEnabled(false);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void registerStorePlugin(String className) {
+        try {
+            Class<?> pluginClass = Class.forName(className);
+            registerPlugin((Class<? extends Plugin>) pluginClass);
+        } catch (ClassNotFoundException e) {
+            // A selected store flavor must include its adapter rather than silently omitting billing.
+            throw new IllegalStateException("Missing store plugin: " + className, e);
         }
     }
 

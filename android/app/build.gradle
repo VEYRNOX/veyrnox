@@ -202,6 +202,11 @@ dependencies {
     samsungImplementation 'com.google.firebase:firebase-perf'
 
     // --- Samsung Galaxy Store (RevenueCat handles billing) ---
+    // The Galaxy module exposes the store backend but marks the core SDK as a
+    // runtime dependency. The native Capacitor adapter imports these APIs, so
+    // keep the matching compile dependencies scoped to Samsung only.
+    samsungImplementation 'com.revenuecat.purchases:purchases:10.16.2'
+    samsungImplementation 'com.revenuecat.purchases:purchases-hybrid-common:18.29.0'
     samsungImplementation 'com.revenuecat.purchases:purchases-store-galaxy:10.16.2'
 
     // --- Huawei HMS (AppGallery — no RevenueCat support, direct HMS IAP) ---
