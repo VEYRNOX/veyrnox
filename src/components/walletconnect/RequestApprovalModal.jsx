@@ -12,6 +12,8 @@ import { REQUEST_TYPES } from '@/wallet-core/evm/walletconnect/router.js';
 import { resolveWcWorstCaseFeeWei } from '@/wallet-core/evm/walletconnect/fee.js';
 import { describeWcTokenTransfer } from '@/wallet-core/evm/walletconnect/tokenTransfer.js';
 import { checkDappDomain } from '@/risk/knownBadDapps.js';
+import { useTier } from '@/lib/TierProvider';
+import { hasAdvisorOnlineAccess } from '@/lib/tier';
 import TransactionIntelligencePanel from '@/components/TransactionIntelligencePanel.jsx';
 import { deriveSigningPolicy } from '@/policy/signingPolicy.js';
 import { buildWcTransactionIntelligence } from '@/risk/walletConnectIntel.js';
@@ -57,8 +59,13 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
       ? t('wc.request_approval.unknown_network_with_id', { id: wcChainIdNum })
       : t('wc.request_approval.unknown_network'));
   const realFundsWarning = wcNetwork ? wcNetwork.isTestnet === false : true;
+  // AI Security Protection tier gate — drainer / phishing / threat-intel
+  // remote screen is an upsell capability. Lower tiers never enable the
+  // remote path regardless of the user's preference.
+  const { currentTier } = useTier();
+  const advisorOnline = hasAdvisorOnlineAccess(currentTier);
   const tipConfigured = !!import.meta.env.VITE_TIP_BASE_URL;
-  const remoteScreenRequested = readRemoteScreenPreference(tipConfigured);
+  const remoteScreenRequested = advisorOnline && readRemoteScreenPreference(tipConfigured);
   const remoteScreenEnabled = remoteScreenRequested && tipConfigured;
   const remoteScreenUnavailable = remoteScreenRequested && !tipConfigured;
 
@@ -220,7 +227,14 @@ export function RequestApprovalModal({ request, onClose, onReauthNeeded }) {
   const liveSession = (Array.isArray(sessions) ? sessions : []).find((s) => s?.topic === topic);
   const sessionMeta = liveSession?.peer?.metadata ?? {};
   const sessionUnresolved = !liveSession;
-  const dappCheck = checkDappDomain(sessionMeta.url);
+  // AI Security Protection tier gate for the domain-blocklist verdict —
+  // malicious dApp warnings are an upsell capability. Lower tiers get an
+  // unflagged sentinel so no "known bad domain" banner renders. The
+  // sessionUnresolved fail-closed branch stays for ALL tiers — that is core
+  // I4 hygiene, not an upsell surface.
+  const dappCheck = advisorOnline
+    ? checkDappDomain(sessionMeta.url)
+    : { flagged: false, reason: null, domain: null };
   const dapp = sessionUnresolved
     ? {
         domain: sessionMeta.url ? dappCheck.domain : t('wc.request_approval.unresolved_domain_fallback'),

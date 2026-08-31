@@ -916,6 +916,10 @@ export default function Subscription() {
           {" "}AI Security Protection adds live online TIP-backed Vigil answers on top.
         </p>
         <HighlightChips features={AI_SECURITY_PROTECTION_FEATURES} max={4} />
+        <Link to="/ai-security-protection" className="inline-flex items-center gap-1 text-xs text-sky-700 hover:underline">
+          {/* Icon mirrors under dir="rtl" — forward navigation link arrow. */}
+          See all AI Security Protection features <ArrowRight className="h-3 w-3 rtl:-scale-x-100" />
+        </Link>
       </div>
 
       <Card className="border-sky-500/30">
