@@ -36,6 +36,16 @@ public class MainActivity extends BridgeActivity {
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         registerPlugin(AndroidBiometricCachePlugin.class);
+        // Store-specific billing plugins must only load in the flavor that ships
+        // their runtime SDKs. The google flavor (which Firebase/Test Lab uses)
+        // has neither the RevenueCat Galaxy store module nor the Huawei HMS IAP
+        // classes, so registering them unconditionally would fail there.
+        if ("samsung".equals(BuildConfig.FLAVOR)) {
+            registerPlugin(SamsungIapPlugin.class);
+        }
+        if ("huawei".equals(BuildConfig.FLAVOR)) {
+            registerPlugin(HuaweiIapPlugin.class);
+        }
         super.onCreate(savedInstanceState);
 
         // Firebase Test Lab-ONLY observability (F-1, 2026-08-15). The staging
