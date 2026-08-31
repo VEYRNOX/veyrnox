@@ -6,6 +6,7 @@ import android.view.WindowManager;
 import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Plugin;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.perf.FirebasePerformance;
@@ -36,6 +37,13 @@ public class MainActivity extends BridgeActivity {
         // M2d — Android StrongBox/TEE vault-blob wrap (ungated PR #1152).
         registerPlugin(VeyrnoxEnclavePlugin.class);
         registerPlugin(AndroidBiometricCachePlugin.class);
+        // Store-specific billing plugins must only load in the flavor that ships
+        // their runtime SDKs. The google flavor (which Firebase/Test Lab uses)
+        // has neither the RevenueCat Galaxy store module nor the Huawei HMS IAP
+        // classes, so registering them unconditionally would fail there.
+        if ("samsung".equals(BuildConfig.FLAVOR)) {
+            registerStorePlugin("com.veyrnox.app.SamsungIapPlugin");
+        }
         // HuaweiIapPlugin lives in the `huawei` source set (HMS-only classpath).
         // Load reflectively so google/samsung/fdroid builds compile without HMS.
         if (BuildConfig.HAS_HUAWEI_IAP) {
@@ -109,6 +117,17 @@ public class MainActivity extends BridgeActivity {
         // TARGET: verify on a REAL release build that CDP can no longer attach.
         if (!BuildConfig.DEBUG) {
             WebView.setWebContentsDebuggingEnabled(false);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void registerStorePlugin(String className) {
+        try {
+            Class<?> pluginClass = Class.forName(className);
+            registerPlugin((Class<? extends Plugin>) pluginClass);
+        } catch (ClassNotFoundException e) {
+            // A selected store flavor must include its adapter rather than silently omitting billing.
+            throw new IllegalStateException("Missing store plugin: " + className, e);
         }
     }
 
