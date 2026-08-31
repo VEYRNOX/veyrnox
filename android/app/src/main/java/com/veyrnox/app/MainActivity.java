@@ -5,6 +5,8 @@ import android.os.Bundle;
 import android.view.WindowManager;
 import android.webkit.WebView;
 
+import androidx.activity.EdgeToEdge;
+
 import com.getcapacitor.BridgeActivity;
 import com.veyrnox.app.FileSaverPlugin;
 import com.veyrnox.app.HardwareKekPlugin;
@@ -16,6 +18,14 @@ import com.veyrnox.app.AndroidBiometricCachePlugin;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Android 15 (SDK 35+) draws every activity edge-to-edge by default.
+        // targetSdk=36 is subject to that; call EdgeToEdge.enable() so the
+        // WebView renders under the status/nav bars instead of the deprecated
+        // Window.setStatusBarColor / setNavigationBarColor path Play's console
+        // still flags on our pre-1.0.1 releases. Applies to both the normal
+        // path and the RASP-block AlertDialog below — safe on both.
+        EdgeToEdge.enable(this);
+
         // Pre-WebView RASP gate — must run before plugin registration and
         // super.onCreate() so the Capacitor bridge never initialises on
         // BLOCK-tier (hooked/tampered) devices.
