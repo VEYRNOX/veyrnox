@@ -40,6 +40,19 @@ and document the store-side ids you want to standardize on.
 > pointed at those exact products. The app only requires that the offering named in
 > `VITE_RC_AI_SECURITY_PROTECTION_OFFERING_ID` exposes `$rc_monthly` / `$rc_annual`.
 
+> **Apple promotional-offer caveat confirmed live on 2026-08-21:** App Store Connect
+> enforces promotional-offer reference names and identifiers at the **subscription-group**
+> scope, not per subscription product. Because AI Security Protection sits in the same
+> subscription group as Safety Plus, AI **cannot** reuse Safety Plus Apple offer
+> identifiers like `referral_gold_annual` or `retention_50_m2`. Use distinct AI Apple
+> identifiers instead:
+>
+> - `ai_referral_bronze_m2` / `ai_referral_bronze_annual`
+> - `ai_referral_silver_m2` / `ai_referral_silver_annual`
+> - `ai_referral_gold_m2` / `ai_referral_gold_annual`
+> - `ai_referral_platinum_m2` / `ai_referral_platinum_annual`
+> - `ai_retention_50_m2` / `ai_retention_50_annual`
+
 ## Live Safety Plus model this should mirror
 
 These are the important live patterns already confirmed on 2026-08-19:
