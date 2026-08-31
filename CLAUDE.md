@@ -1176,6 +1176,24 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
   `git fetch origin main && git log origin/main --oneline -15` before diagnosing bugs.
 - Pure helpers + unit tests where logic can be extracted.
 - One moving part at a time. Don't mark anything verified without the user's on-chain txid.
+- **A search list is a floor, not a ceiling — "I grepped and found nothing" is not
+  evidence of absence.** Two independent runs on 2026-08-31 hit the same failure from
+  opposite directions: the honesty check flagged two shipping features as unimplemented
+  (`docs/honesty-check-2026-08-31.md`, PR #2187, zero code changes — both flags wrong),
+  and the daily security diff produced BOTH its findings from files no scan pattern
+  matched (`docs/security-diffs/diff-2026-08-31.md` — third consecutive run to do so).
+  - **Search the words the CODE uses, not the words the CLAIM uses.** Implementation
+    nouns (`Panel`, `Handler`, `Feed`, `Store`, `Verifier`) find features; marketing
+    verbs (`reviews`, `detects`, `protects`) do not. `advisor.*simulation` misses a
+    feature that is really `TransactionIntelligencePanel` + `advisorTxContext`.
+  - **A near-miss neighbour is the trap, not the absence.** `threatIntelStore.js` is
+    ADDRESS-keyed; dApp-origin screening lives in `risk/knownBadDapps.js` +
+    `phishingFeed.js` and is DOMAIN-keyed. Finding the wrong one of a pair reads exactly
+    like finding the only one.
+  - **Cross-check `featureCatalogue.js` before writing "not implemented"**, and before
+    calling a scan clean, ask which surfaces the pattern list cannot see. When a real
+    finding comes from an unmatched file, widen the list in the same session — that is
+    the only thing keeping it alive rather than fossilised.
 
 ## The primary checkout is SHARED — never work in it
 
