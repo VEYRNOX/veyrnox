@@ -132,24 +132,41 @@ Referral tiers on Apple use SIGNED PROMOTIONAL OFFERS keyed by identifier (`APPL
 
 ### 3b. Google Play
 
-**Account**
-- Personal developer account. 12-tester/14-day rule gates production only.
+**Account (verified 2026-08-31)**
+- **Organization account** (was Personal per older CLAUDE.md; Console UI now shows "Organization account"). Account ID `6178387777449533067`, developer name "Al Jobson", app id `4975376912225200470` (`com.veyrnox.app`).
+- Signed-in user: `al.jobson1@gmail.com`.
 - Upload keystore `veyrnox-upload.jks`, SHA-1 `97:5A:05:8E…:BA:B2:F3`. App-signing cert (Google's) SHA-256 in CLAUDE.md.
 
 **Build**
 - `google` flavor. Current versionCode 39 on `main`; next Play upload is 1.0.1 versionCode 33 per CLAUDE.md history (Codes 1–11 consumed, 12–32 available).
 - `android-release` job in `ci.yml` is the SINGLE upload path — do not add a second uploader (previous Firebase job silently consumed versionCodes).
 
-**Subscriptions**
-- All products defined in Play Console → In-app products / Subscriptions.
-- Base plan + offer model: base plan `monthly` / `annual`; offer tags for referral/retention (`referral-bronze`, `referral-silver`, `referral-gold`, `referral-platinum`, `retention_50`).
-- Products for `ai_security_protection_*_v2` created; not yet product-verified via a real Play purchase.
+**Subscriptions (verified 2026-08-31 in Play Console)**
+- **Play has no "subscription groups" concept**, unlike Apple. Each subscription product is standalone. Referral tiers and retention live as **offer TAGS on the base plan** of the main product — NOT as separate subscription products.
+- 12 subscription products total:
+  - **4 working** (each: 1 base plan, 5 offers = referral-bronze/silver/gold/platinum + retention-50):
+    - `safety_plus_monthly` — 1 base plan `monthly`, Active, 174 countries
+    - `safety_plus_annual` — 1 base plan `annual`, Active, 174 countries
+    - `ai_security_protection_monthly_v2` — 1 base plan, 5 offers
+    - `ai_security_protection_annual_v2` — 1 base plan, 5 offers
+  - **8 dead artifacts** — legacy attempt at per-tier products; all base plans Inactive, unreferenced by RC. Renamed with `[DEPRECATED]` prefix 2026-08-31 so the Play Console list is self-documenting: `[DEPRECATED] Safety Plus {Annual|Monthly} ({Bronze|Silver|Gold|Platinum})`. Cannot delete — see gotcha below.
+
+**Play Console gotchas**
+- **Subscription products are permanent — no delete.** Once created, a Play subscription cannot be deleted, only its base plans and offers can be activated/deactivated. Google keeps them for billing-history / order-record integrity even at 0 purchases. Rename the reference name with `[DEPRECATED]` to visually retire.
+- **The reference-name field is USER-facing.** The Console labels it "A short name for your subscription. Users will see this in emails and the subscription center." Safe to prefix `[DEPRECATED]` on products with 0 purchases (nobody sees it); think twice on products that ever had purchases.
+- **Play has no per-sub "Add for Review" attach step** (unlike Apple). Once a Play sub is Active with a base plan + offers, it auto-ships with any AAB release. The "submission" on Play is the APP RELEASE workflow, not per-sub.
+
+**Play Console recommendations against Release 6** (build-level, not hard blockers — fresh AAB re-evaluates)
+- **Edge-to-edge display for all users** — `targetSdk=36` enforces edge-to-edge by default. Fixed 2026-08-31 by PR #2185 — `EdgeToEdge.enable(this)` first line of [MainActivity.onCreate](android/app/src/main/java/com/veyrnox/app/MainActivity.java), + explicit `androidx.activity:1.9.3` dep.
+- **Deprecated `setStatusBarColor` / `setNavigationBarColor`** — traced to obfuscated class `hm.a` in a compiled AAR dependency (Capacitor internals). `EdgeToEdge.enable()` supersedes them in the modern path; should clear on next AAB upload.
+- **R8 optimization not enabled** — already enabled in code: `minifyEnabled true`, `shrinkResources true`, 59-line `proguard-rules.pro`, AGP `8.13.0` (well past the 8.9+ threshold Play recommends). Warning reflects the OLDER Release 6 AAB; next fresh upload should clear.
+- **16 KB native library alignment** — our own native lib `rasp_early` is already 16KB-aligned via [CMakeLists.txt](android/app/src/main/cpp/CMakeLists.txt) `-Wl,-z,max-page-size=16384`. Warning likely triggered by a bundled `.so` from a dependency (Capacitor sqlite / secp256k1 native / etc.); needs dep bump.
 
 **Pre-submission verification (mandatory)**
 - Upload AAB to Internal testing.
 - **Pre-launch report** must be Overview: clean. If Overview says "Upload artifacts to generate pre-launch reports" after ~30 min, enable auto-run in Pre-launch report → Settings.
 - **Android Vitals** — Crashes & ANRs for the new versionCode must be zero across the internal window. Testers must enable "Settings → Google → Usage & diagnostics → ON".
-- Data Safety form: Analytics purpose added 2026-07-23; consent flow described in `TelemetryConsent.jsx`.
+- Data Safety form: Analytics purpose added 2026-07-23; consent flow described in `TelemetryConsent.jsx`. Consider mirroring Apple's App Privacy update (Financial Info removed, Diagnostic added) if not already done.
 
 **Reason to hold**: 1.0.1 pre-submission gate (both stores) is owner-locked per CLAUDE.md after Play rejected build 5 under Broken Functionality — Create Wallet failed on a stock device due to KEK/RASP fail-closed on hardware never tested. **Golden path on a device the dev machine has never paired must pass before any submission.**
 
