@@ -310,6 +310,47 @@ jobs:
           ./gradlew :app:testGoogleDebugUnitTest --info
         working-directory: android
 
+  # Compile EVERY store flavor on every PR.
+  #
+  # Deliberately NOT gated on `github.ref == 'refs/heads/main'`. The only jobs
+  # that touched the samsung and huawei source sets (`samsung-release`,
+  # `android-release`) carry exactly that condition, so no pull request ever
+  # compiled them — the same shape as the debug-cert guard that sat inert for
+  # ~15 merges because its test ran only on main. When this job was added, both
+  # the huawei and fdroid flavors were already broken on main: MainActivity
+  # referenced com.google.firebase.* from the shared `main` source set while
+  # neither flavor declares a Firebase dependency.
+  #
+  # Compile-only and debug-only: no signing, no keystore, no artifact. The
+  # release/signing path stays where it is.
+  store-flavor-compile:
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install JS deps and sync Capacitor Android
+        run: |
+          npm install -g npm@11
+          npm ci
+          mkdir -p dist && echo '<html></html>' > dist/index.html
+          npx cap sync android
+      - name: Compile google, samsung, huawei and fdroid source sets
+        run: |
+          chmod +x gradlew
+          ./gradlew --console=plain \
+            :app:compileGoogleDebugJavaWithJavac \
+            :app:compileSamsungDebugJavaWithJavac \
+            :app:compileHuaweiDebugJavaWithJavac \
+            :app:compileFdroidDebugJavaWithJavac
+        working-directory: android
+
   android-release:
     runs-on: ubuntu-latest
     # Build production artifacts on main as before, or explicitly for a manual

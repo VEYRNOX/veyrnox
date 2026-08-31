@@ -6,7 +6,6 @@ import {
   SAFETY_PLUS_ENTITLEMENT,
   SAFETY_PLUS_MONTHLY_PACKAGE,
   RETENTION_OFFERING_ID,
-  findOfferOption,
   getAiSecurityProtectionOfferingId,
   offerUnavailable,
 } from './shared.js';
@@ -201,12 +200,10 @@ export async function getTierOffering(offeringId) {
 
 export async function purchasePackage(pkg, opts = {}) {
   if (!isNative()) throw new Error('PURCHASES_NATIVE_ONLY');
-  const offerTag = opts?.offerTag;
-  if (offerTag) {
-    const option = findOfferOption(pkg, offerTag);
-    if (!option) throw offerUnavailable(offerTag);
-    throw offerUnavailable(offerTag);
-  }
+  // HMS IAP has no promotional-offer mechanism, so an offer tag can never be
+  // honoured here. Fail closed rather than falling through to a full-price
+  // charge (I4).
+  if (opts?.offerTag) throw offerUnavailable(opts.offerTag);
   const productId = productIdFromPackage(pkg);
   if (!productId) throw new Error('HUAWEI_PRODUCT_ID_MISSING');
   const { customerInfo } = await plugin().purchaseSubscription({
@@ -238,7 +235,10 @@ export async function getAppUserId() {
 
 export async function addCustomerInfoUpdateListener(callback) {
   if (!isNative()) return () => {};
-  const listenerId = await plugin().addCustomerInfoUpdateListener((payload) => {
+  // Capacitor's RETURN_CALLBACK proxy is `(options, callback)`. Passing the
+  // callback in the options slot still works via a deprecated shim in
+  // native-bridge.js, but warns on every registration — pass it positionally.
+  const listenerId = await plugin().addCustomerInfoUpdateListener({}, (payload) => {
     const customerInfo = payload?.customerInfo ?? payload;
     callback(normalizeCustomerInfo(customerInfo ?? null));
   });

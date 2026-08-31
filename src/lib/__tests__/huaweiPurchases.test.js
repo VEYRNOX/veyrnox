@@ -173,7 +173,10 @@ describe('huaweiPurchases', () => {
 
   it('normalizes listener payloads to the customerInfo shape', async () => {
     const callback = vi.fn();
-    huaweiAddListenerMock.mockImplementation(async (listener) => {
+    // Capacitor's RETURN_CALLBACK proxy is `(options, callback)` — the listener
+    // is the SECOND argument. Passing it first only worked via a deprecated
+    // shim in native-bridge.js that warns on every registration.
+    huaweiAddListenerMock.mockImplementation(async (_options, listener) => {
       listener({
         customerInfo: {
           entitlements: { active: { ai_security_protection: { isActive: true, productIdentifier: 'ai_security_protection_monthly' } } },
@@ -182,6 +185,7 @@ describe('huaweiPurchases', () => {
       return 'huawei-listener-1';
     });
     const unsubscribe = await huawei.addCustomerInfoUpdateListener(callback);
+    expect(huaweiAddListenerMock).toHaveBeenCalledWith({}, expect.any(Function));
     expect(callback).toHaveBeenCalledWith({
       entitlements: {
         active: {

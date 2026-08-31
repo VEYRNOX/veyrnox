@@ -8,6 +8,16 @@ const androidRoot = read('android/build.gradle');
 const androidApp = read('android/app/build.gradle');
 const androidManifest = read('android/app/src/main/AndroidManifest.xml');
 const androidActivity = read('android/app/src/main/java/com/veyrnox/app/MainActivity.java');
+// The observability body moved out of MainActivity into a per-flavor class:
+// MainActivity is in the shared `main` source set, so referencing
+// com.google.firebase.* there made the huawei and fdroid flavors — neither of
+// which declares Firebase — fail to compile at all.
+const androidObservabilityGms = read(
+  'android/app/src/gms/java/com/veyrnox/app/FirebaseTestLabObservability.java',
+);
+const androidObservabilityNoGms = read(
+  'android/app/src/nogms/java/com/veyrnox/app/FirebaseTestLabObservability.java',
+);
 const iosPackage = read('ios/App/CapApp-SPM/Package.swift');
 const iosBootstrapPath = 'ios/App/CapApp-SPM/Sources/CapApp-SPM/FirebaseObservability.swift';
 const iosHasBootstrap = existsSync(resolve(process.cwd(), iosBootstrapPath));
@@ -56,13 +66,45 @@ describe('Firebase staging observability', () => {
     expect(firebaseTestVariant).toContain(
       'manifestPlaceholders.firebasePerformanceDeactivated = false',
     );
-    expect(androidActivity).toContain('BuildConfig.FIREBASE_OBSERVABILITY_ENABLED');
+    expect(androidObservabilityGms).toContain('BuildConfig.FIREBASE_OBSERVABILITY_ENABLED');
     // F-1: Test Lab is the only channel — no "staging" build_channel branch.
-    expect(androidActivity).toContain('"build_channel", "firebase_test_lab"');
-    expect(androidActivity).not.toContain(': "staging"');
-    expect(androidActivity).toContain('VEYRNOX_FIREBASE_NONFATAL_SMOKE');
-    expect(androidActivity).toContain('newTrace("staging_launch_smoke")');
-    expect(androidActivity).not.toContain('setUserId');
+    expect(androidObservabilityGms).toContain('"build_channel", "firebase_test_lab"');
+    expect(androidObservabilityGms).not.toContain(': "staging"');
+    expect(androidObservabilityGms).toContain('VEYRNOX_FIREBASE_NONFATAL_SMOKE');
+    expect(androidObservabilityGms).toContain('newTrace("staging_launch_smoke")');
+    expect(androidObservabilityGms).not.toContain('setUserId');
+    // MainActivity must call it but must NOT reference Firebase itself — that
+    // reference is what broke the huawei and fdroid builds.
+    expect(androidActivity).toContain('FirebaseTestLabObservability.start(this)');
+    expect(androidActivity).not.toContain('com.google.firebase');
+
+    // The non-GMS twin must stay a genuine no-op. huawei replaces GMS with HMS
+    // and fdroid ships no proprietary dependencies, so a Firebase call reaching
+    // either flavor is both a build break and an I3 egress path.
+    expect(androidObservabilityNoGms).not.toContain('com.google.firebase');
+    expect(androidObservabilityNoGms).not.toContain('Crashlytics');
+
+    // Per-flavor wiring: only google and samsung may see the GMS implementation.
+    expect(androidApp).toContain("google { java.srcDirs += 'src/gms/java' }");
+    expect(androidApp).toContain("samsung { java.srcDirs += 'src/gms/java' }");
+    expect(androidApp).toContain("huawei { java.srcDirs += 'src/nogms/java' }");
+    expect(androidApp).toContain("fdroid { java.srcDirs += 'src/nogms/java' }");
+  });
+
+  it('compiles every store flavor on pull requests, not only on main', () => {
+    // The jobs that touch the samsung and huawei source sets (samsung-release,
+    // android-release) are gated on `ref == 'refs/heads/main'`, so no PR ever
+    // compiled them — which is how huawei and fdroid stayed broken unnoticed.
+    // Same inert-guard shape as the release-cert guard (regressed ×4).
+    const compileJob = ci.slice(
+      ci.indexOf('  store-flavor-compile:'),
+      ci.indexOf('  android-release:'),
+    );
+    expect(compileJob).not.toBe('');
+    expect(compileJob).not.toContain("github.ref == 'refs/heads/main'");
+    for (const flavor of ['Google', 'Samsung', 'Huawei', 'Fdroid']) {
+      expect(compileJob).toContain(`:app:compile${flavor}DebugJavaWithJavac`);
+    }
   });
 
   it('strips Firebase from the iOS app while keeping the CI tripwires', () => {
