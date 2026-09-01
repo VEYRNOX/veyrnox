@@ -2648,6 +2648,14 @@ export function WalletProvider({ children }) {
       // / asset prefs) still ships in a separate localStorage key that is
       // not in the bundle by design — those default on the new device.
       await keyStore.createVault(mv.serializeContainer(restoredContainer), newPin);
+      // 2026-09-01: the desync guard in WalletEntry.jsx (view === 'vault-desync')
+      // fires when native + hasVault() && !localStorage['veyrnox-auth-model'].
+      // Fresh-create writes this via pinOnboarding/pinRecovery; shard restore
+      // wrote the vault but never the marker, so closing the app after a
+      // restore + KEK enrol dropped the user into "Wallet found, settings
+      // missing" on the next cold mount. Native path uses an 8-digit PIN
+      // (see RestoreFromShares), web uses a passphrase → mirror both here.
+      setAuthModel(Capacitor.isNativePlatform() ? 'pin' : 'password');
       const firstWalletId = walletsArr[0].id;
       containerRef.current = restoredContainer;
       activeIdRef.current = firstWalletId;
