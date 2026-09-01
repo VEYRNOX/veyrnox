@@ -111,6 +111,29 @@ describe('Content-Security-Policy — static strictness (XSS defence)', () => {
       expect(scriptSrc).toContain("'wasm-unsafe-eval'");
     });
 
+    // #2207. The directives above constrain script-src's KEYWORDS but never its
+    // ORIGINS, so every assertion here passed for a parked change that added
+    // https://www.googletagmanager.com and https://www.redditstatic.com to
+    // script-src and loaded both as <script defer> in the head of index.html.
+    //
+    // index.html is not the marketing page — it mounts /src/main.jsx -> App.jsx,
+    // the whole SPA, and `webDir: "dist"` ships it inside the Capacitor native
+    // builds. A head script tag therefore runs on EVERY route, before React, and
+    // so outside both telemetry chokepoints: trackEvent.js's `if (!hasConsent())
+    // return` and lib/consent.js's isDeniabilityOrDemoActive() gate. That breaks
+    // I2 (a declined user still transmits) and I3 (a decoy session makes a
+    // backend call, which is an observable tell that the app was opened).
+    //
+    // img-src (M-10 above) can be an allowlist because an <img> leaks a request.
+    // script-src cannot: any remote origin here is third-party code execution in
+    // the same context as the seed, so this pins the set CLOSED rather than
+    // merely explicit. Marketing pixels belong on a surface that is not the
+    // wallet's document — adding a host here is never the right fix.
+    it('script-src is closed: no remote origins, ever (#2207)', () => {
+      const scriptSrc = d.get('script-src') ?? d.get('default-src') ?? [];
+      expect(new Set(scriptSrc)).toEqual(new Set(["'self'", "'wasm-unsafe-eval'"]));
+    });
+
     it("object-src is 'none' (no plugin/embed injection)", () => {
       const objectSrc = d.get('object-src') ?? d.get('default-src') ?? [];
       expect(objectSrc).toEqual(["'none'"]);
