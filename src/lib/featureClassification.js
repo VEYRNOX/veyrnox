@@ -32,7 +32,7 @@ export const ALL_ROUTE_PATHS = [
   '/trust-score', '/solana', '/crypto-signing', '/live-balances', '/dapp-alerts',
   '/security-scanner', '/docs',
   '/plans',
-  '/safety-plus',
+  '/safety-plus', '/ai-security-protection',
   '/referrals',
   '/walletconnect',
   '/suspicious-assets',
@@ -342,6 +342,10 @@ export const CLASSIFICATION = {
   '/safety-plus': {
     verdict: 'live', dataSource: 'static',
     note: 'Safety Plus feature hub. Lists the Safety Plus analytics features with lock badges for Free users and live links for Safety Plus subscribers. Tier comes from the real, fail-closed entitlement (useTier -> resolveTier); the paid routes are enforced by the tier gate in components/FeatureGate (safety/anti-fraud controls are FREE, not gated). In-app purchase is BUILT / unit-tested only, NOT device-verified.',
+  },
+  '/ai-security-protection': {
+    verdict: 'live', dataSource: 'static',
+    note: 'AI Security Protection feature hub. Lists the AI-tier threat-screening capabilities with lock badges for lower tiers. Tier comes from the real, fail-closed entitlement (useTier -> resolveTier); in-app purchase is BUILT / unit-tested only, NOT device-verified.',
   },
   '/referrals': {
     verdict: 'live', dataSource: 'on-device',
