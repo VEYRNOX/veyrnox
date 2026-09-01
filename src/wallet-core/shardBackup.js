@@ -247,23 +247,38 @@ export const SHARD_BUNDLE_VERSION = 2;
 // check. `v` is read from the same file being validated, so keeping a v1
 // branch let an attacker-supplied bundle select the weak verifier for itself.
 //
-// The compatibility branch was removed on 2026-08-15 (#1753). The stated
-// justification was that no user could hold a v1 bundle because the feature
-// flag was "set in NO shipping build — not ci.yml, deploy-preview.yml, or
-// firebase-test-lab.yml". Every workflow named there was checked;
-// `.env.production` was not, and it has carried
-// VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 since 2026-08-12 (#1728) — THREE DAYS
-// BEFORE the removal, not after it. `npm run build` is plain `vite build`,
-// i.e. mode `production`, so release-channel builds from that window shipped
-// the feature and wrote v1 bundles.
+// #1753 (2026-08-15 07:10 UTC) BUMPED the version 1->2 and ADDED a v1
+// compatibility branch; #1778 (3dc43cb5, 11:43 UTC the same day) is what
+// REMOVED it. The stated justification for removing it was that no user could
+// hold a v1 bundle because the feature flag was "set in NO shipping build —
+// not ci.yml, deploy-preview.yml, or firebase-test-lab.yml". Every workflow
+// named there was checked; `.env.production` was not, and it has carried
+// VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 since 2026-08-12 (#1728). `npm run
+// build` is plain `vite build`, i.e. mode `production`, so release-channel
+// builds loaded it.
+//
+// The flag date is NOT the window, though. `SHARD_BUNDLE_VERSION` and the `v:`
+// field did not exist on 2026-08-12 — they arrive with #1742 (0e286a3c,
+// 08-13 12:51 UTC), which is the first commit where createShardBundle writes
+// `v: 1`. So v1 bundles are producible for ~42 hours, 08-13 12:51 -> 08-15
+// 07:10, not the three days from the flag date. The versionCode 7 build
+// (be7a1896, 08-13 08:52) predates that: at it this file exports only the
+// split/combine helpers, with no createShardBundle or decodeShareBundle at
+// all, so it cannot have produced a bundle of any version. That leaves
+// 1.0.1 (2) (9a77715d, 08-13 19:27) as the one release cut inside the window.
+//
+// Bundles written before #1742 carry no `v` at all and are rejected here too
+// (undefined !== 2) — and would have failed #1753's legacy branch as well,
+// since undefined !== 1.
 //
 // So "confirmed zero real v1 artifacts" was never established. What IS
 // established: no automated Play upload fired in that window (every
 // publish-to-play-internal run 2026-08-12..15 was skipped or cancelled), and
 // uploads on this project are done by hand, so the repository cannot answer
-// whether a v1 bundle reached anyone. Open in issue #2220; it needs the Play
-// Console and App Store Connect upload dates for versionCode 7/8 and
-// 1.0.1 (2).
+// whether a v1 bundle reached anyone. Open in issue #2220; what it needs is
+// narrow — whether 1.0.1 (2) reached a tester who held Safety Plus (the
+// export UI is behind SAFETY_PLUS_ROUTES) and exported recovery shares before
+// 08-15 07:10. versionCode 7 does not need checking: it has no bundle export.
 //
 // Do not re-derive "which builds ship this" from the CI workflows alone —
 // that is the exact reasoning that produced the false claim. `.env.production`
