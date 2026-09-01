@@ -43,11 +43,11 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     const pin = swift.match(/let pin = "(\d+)"/)?.[1];
     expect(pin).toBe('19283746');
 
-    // Read the label out of the Swift rather than asserting a second copy of
-    // it. `tapButton` is the only call that takes a bare `label:` followed by
-    // a `timeout:` — the optional-tap helper below it passes them inline.
-    const tileLabel = swift.match(/label: "([^"]+)",\s*\n\s*timeout:/)?.[1];
-    expect(tileLabel, 'no tapButton(label:timeout:) call found in the Swift').toBeTruthy();
+    // Read the label out of the create-flow retry helper rather than asserting
+    // a second copy of it. Later submit controls are not entry tiles and must
+    // not be checked against EntryTiles.
+    const tileLabel = swift.match(/tapButtonUntilAdvanced\([\s\S]*?label: "([^"]+)"/)?.[1];
+    expect(tileLabel, 'no tapButtonUntilAdvanced entry-tile call found in the Swift').toBeTruthy();
 
     // …and hold it against the component that renders it. EntryTiles sets an
     // explicit aria-label per tile, so this string IS the accessible name
@@ -69,7 +69,7 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     const roboFirstClick = roboScript.find(({ eventType }) => eventType === 'VIEW_CLICKED');
     expect(roboFirstClick?.elementDescriptors?.[0]).toEqual({ text: tileLabel });
 
-    const getStarted = indexOrFail(swift, 'tapButton(');
+    const getStarted = indexOrFail(swift, 'tapButtonUntilAdvanced(');
     const getStartedLabel = indexOrFail(swift, `label: "${tileLabel}"`);
     const setDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "set")');
     const setSubmit = indexOrFail(swift, 'submitPin(app: app, stage: "set")');
