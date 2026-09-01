@@ -946,6 +946,44 @@ value / mutate balances without a user signature through wallet-core signing).
         removed in PR #2216. Per the standing rule, code-complete + tests
         green is BUILT at most; nothing here has had an on-device recovery
         round-trip or an independent audit.
+    - **Cross-device restore — PIN + KEK + auth-model fixes (2026-09-01, PRs #2227 + #2229, TF 1.0.1(45) INTERNAL user-confirmed).** Two follow-on
+      defects surfaced during the first real on-device shard-restore trip:
+      - **#2227 — no PIN prompt, no KEK gate, silent overwrite of an existing
+        vault.** `RestoreFromShares.jsx` asked for a re-wrap PASSPHRASE and
+        then `navigate('/')` straight into the wallet. The KEK gate
+        (`KekEnrollmentGate` in `WalletEntry.jsx`) never fired because
+        `restoreFromRecoveryBundles` had already set `isUnlocked=true`, and
+        `keyStore.createVault` overwrote any existing vault silently.
+        Fix: on native, prompt for a fresh 8-digit PIN + confirm (web keeps
+        the passphrase — no hardware anchor). Read `vaultExists` from the
+        WalletProvider facade and block Continue with a Panic-Wipe message
+        when a vault is already on the device. Hand the just-typed PIN to
+        `WalletEntry` via `location.state.pendingKekEnrollPin` (in-memory,
+        single-consume, cleared via `history.replaceState`); WalletEntry
+        seeds `autoEnrollPinRef` + forces `kekOrigin='restored'` so the
+        existing gate auto-enrols without asking for the PIN a second time.
+        Matches the KEK-BYPASS ARCHITECTURE note's compensating factor
+        ("hardware KEK re-enrolment before first sign") — owner sign-off in
+        the file header. Standing web behaviour unchanged.
+      - **#2229 — cold reopen dropped user into "Wallet found, settings
+        missing" desync screen.** `WalletEntry.jsx:757` routes native +
+        `hasVault()` && !`localStorage['veyrnox-auth-model']` to
+        `view='vault-desync'`. Fresh-create writes that marker via
+        `pinOnboarding` / `pinRecovery`; `restoreFromRecoveryBundles` wrote
+        the vault but never called `setAuthModel`, so the next cold mount
+        offered only Restore-from-seed / Wipe — neither matches shard-restore
+        state (no seed to type, no shard passphrase saved). Fix: mirror the
+        fresh-create pattern — `setAuthModel('pin')` on native,
+        `setAuthModel('password')` on web, immediately after the successful
+        `keyStore.createVault` call inside `restoreFromRecoveryBundles`.
+      - **User-confirmed on TF 1.0.1(45) — "fix worked".** Full trip: shard
+        restore → 8-digit PIN → biometric enable → Hardware Protection
+        enrol → force-close app → reopen → clean unlock screen (no desync
+        surface). Existing-vault block also observed on second restore
+        attempt. INTERNAL user acceptance only — still not an on-device
+        recovery round-trip with a real testnet txid, and still not
+        independently audited. Regression: `RestoreFromShares.pinKek.test.jsx`
+        (native PIN input renders + vault-present blocks Continue).
     - **Phase 1 (PR #1666)** — 2-of-3 Shamir DEK split + export-only UI. New
       "Recovery shares" tab in Personal Backup. `nativeKeyStore.exportPersonal
       BackupShares` runs KEK unlock chain and splits the DEK inside its own
