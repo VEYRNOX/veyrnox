@@ -5,15 +5,18 @@ import { useTranslation } from "react-i18next";
 import { formatDistanceToNow } from "date-fns";
 import {
   ArrowUpRight, ArrowDownLeft, ArrowLeftRight, Clock, CheckCircle2, XCircle,
-  ExternalLink, Loader2, AlertTriangle, Lock, ShieldCheck, History, Info,
+  ExternalLink, Loader2, AlertTriangle, Lock, ShieldCheck, History, Info, Printer,
 } from "lucide-react";
 import { DEMO } from "@/api/demoClient";
+import { base44 } from "@/api/base44Client";
 import { SkeletonList } from "@/components/Skeleton";
 import { ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { useWallet } from "@/lib/WalletProvider";
 import { ASSETS, canReceive } from "@/wallet-core/assets";
 import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 // Only assets that derive a real address can have an address to look up. The
 // history view mirrors the wallet's receivable assets (coming_soon assets have no
@@ -43,7 +46,7 @@ function addressFor(asset, wallet) {
   return wallet.accounts?.[0]?.address || null; // evm / erc20 share one address
 }
 
-function TxRow({ tx }) {
+function TxRow({ tx, onOpen }) {
   const { t } = useTranslation("wallet");
   const sMeta = statusMeta[tx.status] || statusMeta.unknown;
   const StatusIcon = sMeta.icon;
@@ -51,7 +54,11 @@ function TxRow({ tx }) {
   const isSelf = tx.type === "self";
   const DirIcon = isSelf ? ArrowLeftRight : isSend ? ArrowUpRight : ArrowDownLeft;
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/20 transition-colors">
+    <button
+      type="button"
+      onClick={() => onOpen?.(tx)}
+      className="w-full text-start flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/40 focus-visible:border-primary focus-visible:outline-none transition-colors"
+    >
       <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${
         isSelf ? "bg-secondary" : isSend ? "bg-destructive/10" : "bg-primary/10"
       }`}>
@@ -77,19 +84,142 @@ function TxRow({ tx }) {
           {tx.timestamp ? formatDistanceToNow(new Date(tx.timestamp), { addSuffix: true }) : t("tx.history.awaiting_confirmation")}
         </p>
       </div>
-      {tx.explorerUrl && (
-        <a
-          href={tx.explorerUrl}
-          target="_blank"
-          rel="noreferrer"
-          title={t("tx.history.view_explorer_title")}
-          className="shrink-0 p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary transition-colors"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
-      )}
-    </div>
+    </button>
   );
+}
+
+// Detail drawer: full receipt for one tx. Shows REAL on-chain hash (not an
+// internal UUID), hyperlinks it to the explorer for that asset's chain, and
+// exposes a print button that emits a text-only receipt via a fresh window.
+// Print DOM built with textContent only — never innerHTML with user-derived
+// strings (VULN-3 rule preserved from the removed TransactionReceipt page).
+function TxDetailDialog({ tx, open, onClose }) {
+  const { t } = useTranslation("wallet");
+  if (!tx) return null;
+  const sMeta = statusMeta[tx.status] || statusMeta.unknown;
+  const isSend = tx.type === "send";
+  const feeLine = tx.feeNative && tx.feePaidByUs
+    ? `${tx.feeNative} ${tx.assetSymbol}`
+    : "—";
+  const dateStr = tx.timestamp
+    ? new Date(tx.timestamp).toLocaleString(undefined)
+    : t("tx.history.awaiting_confirmation");
+  const rows = [
+    ["Type", (tx.type || "").toUpperCase()],
+    ["Status", (sMeta.label || tx.status || "").toUpperCase()],
+    ["Asset", tx.assetSymbol],
+    ["Amount", `${isSend ? "-" : "+"}${tx.amount} ${tx.assetSymbol}`],
+    ["Network Fee", feeLine],
+    [isSend ? "To" : "From", tx.counterparty || "—"],
+    ["Date", dateStr],
+    ["Tx Hash", tx.hash || "—"],
+  ];
+
+  const handlePrint = () => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const doc = win.document;
+    doc.open();
+    doc.write(`<html><head><title>VEYRNOX Transaction Receipt</title><style>
+      body{font-family:monospace;padding:32px;max-width:520px;margin:auto;color:#111;}
+      h2{text-align:center;margin-bottom:8px;}
+      .sub{text-align:center;color:#666;margin-bottom:16px;font-size:12px;}
+      .div{border-top:1px dashed #ccc;margin:12px 0;}
+      .row{display:flex;justify-content:space-between;gap:12px;margin:6px 0;font-size:12px;}
+      .label{color:#666;} .value{font-weight:600;word-break:break-all;text-align:right;}
+      .foot{text-align:center;color:#666;font-size:10px;}
+    </style></head><body></body></html>`);
+    doc.close();
+    const h2 = doc.createElement("h2"); h2.textContent = "VEYRNOX"; doc.body.appendChild(h2);
+    const sub = doc.createElement("p"); sub.className = "sub"; sub.textContent = "TRANSACTION RECEIPT"; doc.body.appendChild(sub);
+    const d1 = doc.createElement("div"); d1.className = "div"; doc.body.appendChild(d1);
+    rows.forEach(([k, v]) => {
+      const r = doc.createElement("div"); r.className = "row";
+      const l = doc.createElement("span"); l.className = "label"; l.textContent = k;
+      const val = doc.createElement("span"); val.className = "value"; val.textContent = String(v);
+      r.appendChild(l); r.appendChild(val); doc.body.appendChild(r);
+    });
+    if (tx.explorerUrl) {
+      const r = doc.createElement("div"); r.className = "row";
+      const l = doc.createElement("span"); l.className = "label"; l.textContent = "Explorer";
+      const val = doc.createElement("span"); val.className = "value"; val.textContent = tx.explorerUrl;
+      r.appendChild(l); r.appendChild(val); doc.body.appendChild(r);
+    }
+    const d2 = doc.createElement("div"); d2.className = "div"; doc.body.appendChild(d2);
+    const foot = doc.createElement("p"); foot.className = "foot";
+    foot.textContent = "Digital transaction record — verify on block explorer.";
+    doc.body.appendChild(foot);
+    win.print();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between gap-3">
+            <span>Transaction Receipt</span>
+            <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs">
+              <Printer className="h-3.5 w-3.5" /> Print
+            </Button>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="font-mono text-xs space-y-1">
+          <div className="border-t border-dashed border-border my-2" />
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-3 py-0.5">
+              <span className="text-muted-foreground shrink-0">{k}</span>
+              <span className="font-semibold break-all text-end mono-value">{v}</span>
+            </div>
+          ))}
+          {tx.explorerUrl && (
+            <div className="flex justify-between gap-3 py-0.5 items-center">
+              <span className="text-muted-foreground shrink-0">Explorer</span>
+              <a
+                href={tx.explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-primary hover:underline break-all text-end"
+              >
+                View on chain <ExternalLink className="h-3 w-3 shrink-0" />
+              </a>
+            </div>
+          )}
+          <div className="border-t border-dashed border-border my-2" />
+          <p className="text-center text-muted-foreground text-[10px]">
+            Digital transaction record — verify on the block explorer.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Coerce a locally-stored Transaction row (from base44 Transaction entity —
+// only sends land here today, via SendCrypto's Transaction.create) into the
+// same normalized shape chain history uses, so both sources merge cleanly.
+// Chain rows win on dedup because they carry authoritative confirmed/failed
+// status. EVM has no in-app history indexer (see txHistory.js), so this local
+// mirror is the ONLY way an EVM send shows up here with a receipt.
+function normalizeLocalSend(row, assetSymbol) {
+  if (!row || !row.tx_hash) return null;
+  if ((row.currency || "").toUpperCase() !== assetSymbol.toUpperCase()) return null;
+  const ts = row.updated_date || row.created_date;
+  return {
+    id: row.tx_hash,
+    hash: row.tx_hash,
+    family: null,
+    networkKey: null,
+    assetSymbol,
+    type: row.type || "send",
+    status: row.status || "pending",
+    amount: String(row.amount ?? ""),
+    feeNative: row.fee != null ? String(row.fee) : null,
+    feePaidByUs: (row.type || "send") === "send",
+    counterparty: row.to_address || row.from_address || null,
+    timestamp: ts ? new Date(ts).getTime() : null,
+    explorerUrl: row.explorer_url || "",
+    demo: false,
+  };
 }
 
 export default function TransactionHistory() {
@@ -113,6 +243,17 @@ export default function TransactionHistory() {
     retry: 1,
   });
 
+  // Locally-stored sends (Transaction entity, on-device IndexedDB). Read-only,
+  // gated on the same deniability flag as the chain fetch — a decoy session
+  // must never render real-session tx rows even from local cache.
+  const { data: localRowsRaw = [] } = useQuery({
+    queryKey: ["local-transactions"],
+    queryFn: () => base44.entities.Transaction.list("-created_date", 200),
+    enabled: !isDeniabilitySessionActive(),
+    staleTime: 5000,
+  });
+  const [selected, setSelected] = useState(null);
+
   // Codex P1 2026-08-15: `enabled:false` stops refetches, NOT cached reads.
   // A real-session cache under the same queryKey would still render into a
   // decoy/hidden session on mount. Blank the derived shape so the neutral
@@ -120,9 +261,24 @@ export default function TransactionHistory() {
   // repeated in TransactionReceipt + LoginActivity in this wave.
   const denySession = isDeniabilitySessionActive();
   const source = denySession ? undefined : data?.source;
-  const txs = denySession ? [] : (data?.transactions || []);
+  const chainTxs = denySession ? [] : (data?.transactions || []);
   const lockedLive = !DEMO && !denySession && data?.reason === "locked";
   const evmNoIndexer = data?.supported === false && data?.reason === "evm-no-indexer";
+
+  // Merge local sends into the list (deduped by hash — chain-derived rows win
+  // because they carry authoritative status). Local sends are the ONLY way an
+  // EVM send appears here today, and they also cover the pending window before
+  // an indexer catches up on BTC/SOL. Sorted newest-first by timestamp.
+  const txs = useMemo(() => {
+    if (denySession) return [];
+    const localNormalized = localRowsRaw
+      .map((r) => normalizeLocalSend(r, asset.symbol))
+      .filter(Boolean);
+    const byHash = new Map();
+    for (const row of localNormalized) byHash.set(row.hash, row);
+    for (const row of chainTxs) if (row.hash) byHash.set(row.hash, row); // chain wins
+    return Array.from(byHash.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  }, [denySession, localRowsRaw, chainTxs, asset.symbol]);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -236,9 +392,22 @@ export default function TransactionHistory() {
           </div>
         )}
 
-        {/* Data */}
-        {!isLoading && txs.map((tx) => <TxRow key={tx.id} tx={tx} />)}
+        {/* Data — clicking a row opens the receipt detail (real tx_hash + explorer link + print).
+            Includes chain-fetched history (BTC/SOL) merged with local on-device sends (all
+            chains, including EVM — the only in-app source for EVM history). Dedup by hash. */}
+        {!isLoading && txs.length > 0 && (
+          <>
+            {evmNoIndexer && (
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground pt-1">
+                Your sends (stored on-device)
+              </p>
+            )}
+            {txs.map((tx) => <TxRow key={tx.id} tx={tx} onOpen={setSelected} />)}
+          </>
+        )}
       </div>
+
+      <TxDetailDialog tx={selected} open={!!selected} onClose={() => setSelected(null)} />
 
       {/* Footer: count + manual refresh (keeps the disclosure on-demand, not auto). */}
       {data?.supported && !evmNoIndexer && !lockedLive && (

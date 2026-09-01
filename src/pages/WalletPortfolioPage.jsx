@@ -17,7 +17,7 @@
 // about any seed not yet confirmed backed up (multi-seed fund-loss risk).
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/lib/toast";
 import {
@@ -517,7 +517,7 @@ function ActivityTabContent({ wallet }) {
     return (
       <div className="text-center py-10 space-y-3">
         <p className="text-sm text-muted-foreground">{isError ? t("portfolio.activity.loadError") : t("portfolio.activity.noTransactions")}</p>
-        <a href="/tx-history" className="text-xs text-primary hover:underline">{t("portfolio.activity.viewFullHistory")}</a>
+        <Link to="/tx-history" className="text-xs text-primary hover:underline">{t("portfolio.activity.viewFullHistory")}</Link>
       </div>
     );
   }
@@ -563,9 +563,9 @@ function ActivityTabContent({ wallet }) {
           </div>
         );
       })}
-      <a href="/tx-history" className="block text-center text-xs text-primary hover:underline pt-2">
+      <Link to="/tx-history" className="block text-center text-xs text-primary hover:underline pt-2">
         {t("portfolio.activity.viewFullHistory")}
-      </a>
+      </Link>
     </div>
   );
 }

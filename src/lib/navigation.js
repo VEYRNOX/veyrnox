@@ -14,7 +14,7 @@
 
 import {
   LayoutDashboard, Send, Download, Settings, ShieldCheck, Plug, Calculator, BarChart2, Zap,
-  Receipt, Repeat, ShieldAlert, Image,
+  Repeat, ShieldAlert, Image,
   BarChart3, Camera, TrendingUp, Network, PieChart, BellRing, Link2, Users,
   Activity, Layers, WalletCards, Fingerprint, Cpu,
   Leaf, ScrollText, Newspaper,
@@ -75,7 +75,6 @@ const RAW_NAV_GROUPS = [
       { path: "/buy", label: "Buy", icon: ShoppingCart, keywords: "buy crypto fiat onramp transak purchase card bank" },
       { path: "/tx-history", label: "Transaction History", icon: History, keywords: "bitcoin btc ethereum eth transactions history activity" },
       { path: "/split-bill", label: "Split Bill", icon: Scissors },
-      { path: "/receipt", label: "TX Receipts", icon: Receipt },
       { path: "/fee-analytics", label: "Fee Analytics", icon: Fuel },
       { path: "/crypto-signing", label: "Crypto Signing", icon: Pen },
       { path: "/recurring", label: "Recurring Payments", icon: Repeat },

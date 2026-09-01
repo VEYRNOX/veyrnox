@@ -75,7 +75,6 @@ const PortfolioRiskScore = lazy(() => import('./pages/PortfolioRiskScore'));
 const CorrelationMatrix = lazy(() => import('./pages/CorrelationMatrix'));
 const SessionManager = lazy(() => import('./pages/SessionManager'));
 const LoginActivity = lazy(() => import('./pages/LoginActivity'));
-const TransactionReceipt = lazy(() => import('./pages/TransactionReceipt'));
 const TransactionHistory = lazy(() => import('./pages/TransactionHistory'));
 const SuspiciousAddressChecker = lazy(() => import('./pages/SuspiciousAddressChecker'));
 const TokenApprovals = lazy(() => import('./pages/TokenApprovals'));
@@ -196,7 +195,7 @@ const AuthenticatedApp = () => {
           <Route path="/correlation" element={<CorrelationMatrix />} />
           <Route path="/session-manager" element={<SessionManager />} />
           <Route path="/login-activity" element={<LoginActivity />} />
-          <Route path="/receipt" element={<TransactionReceipt />} />
+          <Route path="/receipt" element={<Navigate to="/tx-history" replace />} />
           <Route path="/tx-history" element={<TransactionHistory />} />
           <Route path="/transaction-history" element={<Navigate to="/tx-history" replace />} />
           <Route path="/history" element={<Navigate to="/tx-history" replace />} />
