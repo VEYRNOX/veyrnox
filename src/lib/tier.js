@@ -103,6 +103,7 @@ export const FREE_FEATURES = [
   { name: 'WalletConnect / dApp connector', summary: 'Verified on Sepolia' },
   { name: 'NFT gallery', summary: 'View owned NFTs across chains' },
   { name: 'Notifications & push', summary: 'Web push notification centre' },
+  { name: 'Tx analytics', summary: 'Per-address stats derived from local tx history — no chain query' },
 ];
 
 // Safety Plus tier features — shown on the Plans card. Mirrors the SAFETY PLUS
@@ -129,7 +130,6 @@ export const SAFETY_PLUS_FEATURES = [
   { name: 'Encrypted personal backup', summary: 'Export .enc vault file off-device' },
   { name: 'Audit log', summary: 'Encrypted local activity record' },
   { name: 'Advanced analytics', summary: 'Sharpe ratio, correlation matrix' },
-  { name: 'On-chain analytics', summary: 'Address-level activity insights' },
   { name: 'Recurring payments', summary: 'Scheduled payment reminders' },
   { name: 'Message signing', summary: 'Proof-of-ownership without sending funds' },
 ];

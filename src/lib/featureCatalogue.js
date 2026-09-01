@@ -336,10 +336,10 @@ export const FEATURE_CATEGORIES = [
         explanation: 'Built (/net-worth). Aggregates current net worth on-device from portfolio balances via usePortfolio + buildAllocation. I2-gated: live price conversion requires explicit opt-in; shows reference-rate note otherwise. No time-series store (avoids size oracle). Read-only; no backend.',
       },
       {
-        name: 'On-Chain Analytics',
+        name: 'Tx Analytics',
         status: 'verified',
-        summary: 'Public on-chain activity insights',
-        explanation: 'Built (/onchain). Address-level transaction history analytics from local records: inbound/outbound activity breakdown. Read-only; uses local entities only — no blockchain query is made. No private data egress.',
+        summary: 'Address-level activity insights from local tx history — no chain query',
+        explanation: 'Built (/onchain). Analytics over local transaction records: inbound/outbound breakdown, per-currency, daily volume. Read-only; uses local entities only — no blockchain query is made. No private data egress. Previously labelled "On-Chain Analytics" — renamed 2026-09-01 because the page never queries chain and the old label implied a remote indexer.',
       },
       {
         name: 'Fee Analytics',

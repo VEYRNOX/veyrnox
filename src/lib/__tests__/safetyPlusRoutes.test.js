@@ -28,7 +28,6 @@ const EXPECTED_GATED = [
   '/audit-log',
   // FINANCE
   '/advanced-analytics',
-  '/onchain',
   '/recurring',
 ];
 

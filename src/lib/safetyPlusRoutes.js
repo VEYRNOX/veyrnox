@@ -30,7 +30,6 @@ export const SAFETY_PLUS_ROUTES = [
   '/audit-log',
   // FINANCE
   '/advanced-analytics',
-  '/onchain',
   '/recurring',
 ];
 

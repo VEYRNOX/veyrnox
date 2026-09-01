@@ -534,7 +534,7 @@ export const APP_PAGES = [
   { path: '/watchlist', label: 'Watchlist — track assets you do not hold' },
   { path: '/analytics', label: 'Analytics — portfolio analytics' },
   { path: '/advanced-analytics', label: 'Advanced Analytics — deeper portfolio breakdowns' },
-  { path: '/onchain', label: 'On-Chain Analytics — inbound/outbound activity' },
+  { path: '/onchain', label: 'Tx Analytics — inbound/outbound activity from local history (no chain query)' },
   { path: '/net-worth', label: 'Net-Worth Tracker — aggregate net worth' },
   { path: '/fee-analytics', label: 'Fee Analytics — network fees paid (native units)' },
   { path: '/tax', label: 'Tax Report — raw CSV export (not tax advice)' },
