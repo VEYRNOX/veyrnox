@@ -10,7 +10,12 @@
 #
 # Rules are processed top-down, first match wins. The SPA fallback MUST be last.
 
-/r/*  /?ref=:splat  302
+# /r/:code is handled by functions/r/[code].js, NOT here (#2214). Two attempts to
+# express it as a rule in this file — `/r/:code  /?ref=:code` and `/r/*
+# /?ref=:splat` — both shipped to production emitting the LITERAL placeholder
+# (`/?ref=:code`, then `/?ref=:splat`), silently dropping every referral code.
+# Cloudflare does not apply _redirects rules to a path served by a Pages Function,
+# so re-adding a /r/ rule here would be dead weight at best. Do not restore it.
 
 # SPA fallback — serve index.html for all unmatched routes.
 # /.well-known files exist as static files in public/ and are served before this
