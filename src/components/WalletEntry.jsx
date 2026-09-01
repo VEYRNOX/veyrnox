@@ -687,19 +687,18 @@ export default function WalletEntry() {
   // Shard-restore handoff (2026-09-01). RestoreFromShares hands the just-typed
   // PIN via router state (`pendingKekEnrollPin`) so the mandatory KEK
   // enrollment gate can auto-enrol without asking for the PIN a second time.
-  // One-shot: clear history state immediately on consume so a refresh/back
-  // does not re-surface it. In-memory only — never touches localStorage.
+  // One-shot: clear Router state immediately on consume so a refresh/back
+  // does not re-surface it. Use Router's replacement rather than the raw
+  // history API: React Router owns its `idx`/key state in history.state.
+  // In-memory only — never touches localStorage.
   const location = useLocation();
   useEffect(() => {
     const pin = location.state?.pendingKekEnrollPin;
     if (!pin) return;
     autoEnrollPinRef.current = pin;
     setKekOrigin('restored');
-    try {
-      window.history.replaceState({}, "", location.pathname + location.search);
-    } catch { /* best-effort */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    navigate(location.pathname + location.search, { replace: true, state: null });
+  }, [location.pathname, location.search, location.state, navigate]);
 
   // Notify user when decoy wallet is unlocked (duress PIN).
   useEffect(() => {
