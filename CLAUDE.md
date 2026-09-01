@@ -324,17 +324,24 @@ Upload key: `veyrnox-upload.jks` (SHA-1 `97:5A:05:8E…:BA:B2:F3`). App signing 
 Security Alert). Play Billing (IAP) device-verified on internal track. GitHub Secrets
 (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`,
 `RELEASE_CERT_SHA256`) updated 2026-07-22 for CI.
-- **versionCode: `build.gradle` is at 32 on `main`** (bumped 2026-08-22).
+- **versionCode: `build.gradle` is at 40 on `main`** (bumped 2026-08-31, #2197).
   Bumps: 5→6 (#1319), 6→7 (#1737), 7→8 (#1747), 8→10 (#1890), 10→11 (#1974),
-  11→32 (#1975, PLR Robo onboard). Product flavours added in #1890 do NOT override
-  `versionCode` — still one declaration, at `android/app/build.gradle:25`.
+  11→32 (#1975, PLR Robo onboard), 32→33 (#1986), 33→34 (#2031), 34→35 (#2033),
+  35→36 (#2036), 36→37 (#2107), 37→38 (#2137), 38→39 (#2161), 39→40 (#2197).
+  Product flavours added in #1890 do NOT override `versionCode` — still one
+  declaration, at `android/app/build.gradle:25`.
+  **This line said 32 until 2026-09-01, eight bumps behind.** A number that moves
+  almost daily does not survive being written down; re-read
+  `android/app/build.gradle:25` rather than trusting this bullet.
   - **Codes 1–11 consumed on Play.** 1–5 from early uploads; 10–11 consumed by
     `firebase-test-lab.yml`'s duplicate `publish-android-staging` job (removed in
     #1980) before `ci.yml`'s `publish-to-play-internal` could use them.
   - `ci.yml` is now the **single** Play upload path. The firebase duplicate was
     removed because it raced CI and silently consumed versionCodes.
-  - Gating context: no Play Pre-launch report exists for versionCode 33, which is a
-    mandatory 1.0.1 submission gate. Tracked in #1960.
+  - Gating context: **no Play Pre-launch report exists for ANY versionCode** —
+    verified in the console 2026-09-01 against the current candidate, 40. A clean
+    report is a mandatory 1.0.1 submission gate, so the gate is unmet. Tracked in
+    #1960.
 - **Release build verified end-to-end 2026-07-23** (INTERNAL): signed `app-release.aab`,
   `jarsigner` verified, `BuildConfig.RELEASE_CERT_SHA256` = Google's app-signing cert.
   Fixed en route: `keystore.properties` `storeFile` resolved against the wrong directory
@@ -444,13 +451,29 @@ neither had been run against build 5 (Play Pre-launch report showed
 - **Play (mandatory):** upload the AAB to Internal testing → open **Test and release →
   Testing → Pre-launch report → Overview** and confirm a report exists for the new
   versionCode. Fix every crash/ANR/error dialog it reports before promoting to review.
-  If Overview still says "Upload artifacts to generate pre-launch reports" after
-  ~30 min, enable it in **Pre-launch report → Settings** (auto-run must be ON) and
-  reupload. Do NOT submit for review without a clean report — this is the same tool
+  Do NOT submit for review without a clean report — this is the same tool
   Google's reviewer would have used, and its absence is why build 5 shipped a fatal
   Create-Wallet path.
-  Current Android candidate: **1.0.1 / versionCode 33**. This check remains
-  console-only: a green repo/CI state does NOT prove the report exists yet.
+  Current Android candidate: **1.0.1 / versionCode 40** (released to Internal
+  testing 2026-08-31 22:05). This check remains console-only: a green repo/CI
+  state does NOT prove the report exists yet.
+  - **Verified in the console 2026-09-01: NO pre-launch report exists, for 40 or
+    for any of the 39 bundles uploaded to date.** Overview and Details both show
+    the empty "Upload artifacts to generate pre-launch reports" state; Settings
+    is configured (Robo script `plr-onboard.json`, 4 en locales, no test
+    credentials, no deep links). So this is not "not generated yet for the newest
+    build" — it has never been generated at all.
+  - **This bullet used to say: if Overview is empty after ~30 min, "enable it in
+    Pre-launch report → Settings (auto-run must be ON)". There is no such
+    toggle.** That Settings page contains only test-account credentials, three
+    deep-link fields, language selection and the Robo script slot. Following that
+    instruction leads nowhere, which is probably why the gap has survived from
+    versionCode 33 to 40.
+  - Root cause NOT established. Candidates seen but unverified: the app still
+    carries the temporary name `com.veyrnox.app (unreviewed)`, and the Overview
+    copy suggests uploading to the **closed** testing track. Do not act on either
+    as fact — the owner has stated Internal testing is the intended track. See
+    #1960.
 - **iOS (mandatory — no equivalent auto-tool):** upload to TestFlight, install on at
   least one **physical iPhone that is NOT the dev machine's paired device** (a stock
   iPhone with no dev certs / no Xcode-installed KEK state), and walk the full
