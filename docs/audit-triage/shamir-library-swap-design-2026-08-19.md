@@ -248,3 +248,36 @@ If any one of these fails, it is not Path A anymore; it becomes Path B.
 
 That spike was still useful: it proved the main hidden risk in `#1833` is
 **scheme compatibility**, not dependency wiring.
+
+## Correction and remediation (2026-09-01)
+
+The status above accurately describes the August 19 spike, but it is not the
+final implementation record. PR #1923 subsequently adopted
+`@stablelib/tss`'s raw primitives. That change was not a transparent safety
+improvement: `splitRaw(secret, k, n)` samples the non-constant polynomial
+coefficients once for the entire multi-byte input, then reuses them for every
+secret octet. For a 32-byte DEK with `k = 2`, one share therefore reduced the
+DEK to 256 candidates instead of providing the intended threshold secrecy.
+
+PR #2216 corrected the wrapper without changing the v2 envelope: it invokes
+`splitRaw` once per secret octet, so every octet receives independently sampled
+coefficients, then reassembles the resulting raw shares. `combineRaw` remains
+safe to use on the reassembled byte-wise shares. The regression suite includes
+an explicit coefficient-reuse attack test to prevent a future simplification
+back to one multi-byte `splitRaw` call.
+
+This remediation applies only to new exports. Bundles created after PR #1923
+and before PR #2216 still reconstruct, but their threshold secrecy is weak and
+must be re-exported. The feature remains **BUILT**, not verified: a successful
+test suite does not establish a real-device recovery round-trip or an
+independent audit.
+
+The remaining #2219 follow-ups are operational rather than evidence that the
+math fix is incomplete:
+
+1. Tell affected bundle holders to export a fresh set. A local export timestamp
+   is not a reliable inventory of all copies, so this cannot prove every weak
+   bundle has been rotated.
+2. Decide whether and how to make a coordinated upstream disclosure to
+   StableLib. That communication must be owner-approved and is not implied by
+   this repository documentation update.
