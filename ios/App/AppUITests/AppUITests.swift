@@ -75,11 +75,23 @@ final class AppUITests: XCTestCase {
         //    Android's Robo script already clicked "New wallet"; only iOS was
         //    left behind. Both platforms render the same web UI — if these two
         //    ever disagree again, one of them is wrong.
-        tapButton(
+        //
+        //    Retry-on-no-advance: the first press against a cold WKWebView
+        //    on iOS 26 Simulator is intermittently swallowed at the click
+        //    layer (run 33529062151: PIN pad never rendered despite the
+        //    press succeeding at the AX layer). If the PIN pad hasn't
+        //    appeared shortly after the tap, re-press the tile before the
+        //    enterPin helper's own wait times out. Cheap and honest — the
+        //    tile is idempotent, a second press produces no user-visible
+        //    change if the first landed.
+        tapButtonUntilAdvanced(
             app: app,
             label: "New wallet",
-            timeout: 15,
-            failureMessage: "Entry tiles / 'New wallet' never appeared."
+            waitFor: app.buttons["1"],
+            appearTimeout: 15,
+            perAttemptWait: 6,
+            maxAttempts: 3,
+            failureMessage: "Entry tiles / 'New wallet' never advanced to the PIN pad."
         )
 
         // 3. PIN pad: 8 digits, then tap the submit button. PinPad's submit
@@ -99,12 +111,26 @@ final class AppUITests: XCTestCase {
         //    cannot satisfy the native secure-store precondition. The only
         //    honest simulator outcome is an explicit fail-closed result with no
         //    usable wallet. Successful provisioning remains real-device-only.
-        let failureBanner = app.staticTexts[
-            "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
-        ]
+        // The user-visible fail-closed signal on this simulator flow is a
+        // sonner toast (`toast.error(...)` in WalletEntry.doCreateWallet).
+        // Sonner renders inside a portal-mounted <li> that WKWebView does
+        // NOT publish to XCUITest's accessibility tree — confirmed twice
+        // (runs 33524731172 + 33526853634): the banner IS visible on the
+        // recorded screen but every staticTexts label/identifier query
+        // returned false through the entire poll window. The toast also
+        // auto-dismisses in ~4 s, and WalletEntry then clears chosenPath +
+        // routes back to `entry-tiles`, so there is no persistent inline
+        // banner to poll either.
+        //
+        // The AX-visible fail-closed signal is: after PIN confirm, the app
+        // has returned to the entry-tiles view rather than moved forward to
+        // a dashboard. On success the "New wallet" tile is gone; on failure
+        // it re-appears. Give the flow long enough to complete provisioning
+        // + failure routing (~30 s on cold CI simulators).
+        let entryTileAfterFailure = app.buttons["New wallet"]
         XCTAssertTrue(
-            failureBanner.waitForExistence(timeout: 20),
-            "Simulator provisioning must fail closed when the native secure store is unavailable."
+            entryTileAfterFailure.waitForExistence(timeout: 45),
+            "Simulator provisioning must fail closed and return the user to the entry-tiles picker. If this fails, the flow may have provisioned a wallet on a device with no secure store — check the recording for a dashboard."
         )
         XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not create a wallet.")
     }
@@ -118,11 +144,15 @@ final class AppUITests: XCTestCase {
 
         tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
         tapButtonIfPresent(app: app, label: "Not now", timeout: 6)
-        tapButton(
+        // Same retry rationale as the create path.
+        tapButtonUntilAdvanced(
             app: app,
             label: "Have a wallet",
-            timeout: 15,
-            failureMessage: "Entry tiles / 'Have a wallet' never appeared."
+            waitFor: app.buttons["1"],
+            appearTimeout: 15,
+            perAttemptWait: 6,
+            maxAttempts: 3,
+            failureMessage: "Entry tiles / 'Have a wallet' never advanced to the PIN pad."
         )
 
         let pin = "19283746"
@@ -149,10 +179,13 @@ final class AppUITests: XCTestCase {
             failureMessage: "Restore / Import button never appeared."
         )
 
-        let failureBanner = app.staticTexts[
-            "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
-        ]
-        XCTAssertTrue(failureBanner.waitForExistence(timeout: 20), "Simulator import must fail closed without secure storage.")
+        // Same reasoning as the create path: sonner toast is not AX-visible
+        // in WKWebView, and after failure the app routes back to entry tiles.
+        let entryTileAfterFailure = app.buttons["Have a wallet"]
+        XCTAssertTrue(
+            entryTileAfterFailure.waitForExistence(timeout: 45),
+            "Simulator import must fail closed and return the user to the entry-tiles picker."
+        )
         XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not import a wallet.")
     }
 
@@ -168,14 +201,56 @@ final class AppUITests: XCTestCase {
     private func tapButton(app: XCUIApplication, label: String, timeout: TimeInterval, failureMessage: String) {
         let button = buttonMatching(app, label: label)
         XCTAssertTrue(button.waitForExistence(timeout: timeout), failureMessage)
-        button.tap()
+        webViewSafeTap(button)
     }
 
     private func tapButtonIfPresent(app: XCUIApplication, label: String, timeout: TimeInterval) {
         let button = buttonMatching(app, label: label)
         if button.waitForExistence(timeout: timeout) {
-            button.tap()
+            webViewSafeTap(button)
         }
+    }
+
+    /// Press a button and confirm the next-view element appears. Retries the
+    /// press if it doesn't — a cold WKWebView on iOS 26 Simulator sometimes
+    /// swallows the first click at the WebKit layer even though XCUITest's
+    /// press succeeded at the AX layer (idempotent tile taps make retry safe).
+    private func tapButtonUntilAdvanced(
+        app: XCUIApplication,
+        label: String,
+        waitFor next: XCUIElement,
+        appearTimeout: TimeInterval,
+        perAttemptWait: TimeInterval,
+        maxAttempts: Int,
+        failureMessage: String
+    ) {
+        let button = buttonMatching(app, label: label)
+        XCTAssertTrue(button.waitForExistence(timeout: appearTimeout), "Entry tile '\(label)' never appeared.")
+        for attempt in 1...maxAttempts {
+            webViewSafeTap(button)
+            if next.waitForExistence(timeout: perAttemptWait) { return }
+            if attempt < maxAttempts { NSLog("[VEYRNOX-XCUITEST] '\(label)' press attempt \(attempt) did not advance the view; retrying") }
+        }
+        XCTFail(failureMessage)
+    }
+
+    /// XCUITest's `.tap()` on a WKWebView button dispatches an accessibility
+    /// press (AXPress). On iOS 26 Simulator against a shadcn/Radix `<button>`
+    /// this only paints the CSS `:active` state — no `click` event ever fires,
+    /// so React `onClick` handlers never run and the view never advances (run
+    /// 33508180774: "New wallet" tile stuck pressed for 30+ s).
+    ///
+    /// `.coordinate(withNormalizedOffset:).tap()` should synthesise a real
+    /// touch, but on this project's WKWebView the frame-resolution snapshot
+    /// times out (run 33520465094: "Failed to get matching snapshot: Timed
+    /// out while evaluating UI query", 423 s stall).
+    ///
+    /// `.press(forDuration:)` is the middle path: it fires touchDown +
+    /// touchUp at the element's own hit-point without re-snapshotting, and it
+    /// produces a real `click` event in the WebView (bypasses AXPress).
+    /// Anything under ~0.2 s is registered as a tap, not a long-press.
+    private func webViewSafeTap(_ element: XCUIElement) {
+        element.press(forDuration: 0.05)
     }
 
     /// Tap each digit on the on-screen keypad. Digit buttons carry only their
@@ -193,7 +268,7 @@ final class AppUITests: XCTestCase {
                 key.waitForExistence(timeout: timeout),
                 "PIN \(stage): keypad button '\(ch)' never appeared."
             )
-            key.tap()
+            webViewSafeTap(key)
         }
     }
 
@@ -204,6 +279,6 @@ final class AppUITests: XCTestCase {
             submit.waitForExistence(timeout: 5),
             "PIN \(stage): submit button never appeared."
         )
-        submit.tap()
+        webViewSafeTap(submit)
     }
 }
