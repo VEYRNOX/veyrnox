@@ -600,12 +600,6 @@ export function verifiedFeatureNames() {
 }
 
 /**
- * Resolve a feature's RENDERED status. Returns the catalogued status as-is.
- * @param {{name:string, status:string, verifiedBy?:string}} feature
- * @param {Set<string>} [verifiedNames] - kept for call-site compat; unused
- * @returns {'verified'|'built'|'roadmap'}
- */
-/**
  * Resolve a feature's DISPLAYED status.
  *
  * `verified` is IMPOSSIBLE TO ASSERT BY INSPECTION. A hand-typed
