@@ -40,14 +40,14 @@ vi.mock('@/lib/getFreshLocalRaspArtifact', () => ({
 }));
 
 // ── vaultBackup: the crypto/file-I/O we REUSE. Stubbed for unit testing. ─────────
-const parseBackupFile = vi.fn(() => ({ app: 'veyrnox', backup_v: 1, seals: { password: {}, pin: {} } }));
-const decryptPasswordSeal = vi.fn(async () => 'CONTAINER-JSON-PW');
-const decryptPinSeal = vi.fn(async () => 'CONTAINER-JSON-PIN');
+// 2026-09-01: envelope model is now a SINGLE combined seal (password + PIN both
+// required). See wallet-core/vaultBackup.js file-top DESIGN comment.
+const parseBackupFile = vi.fn(() => ({ app: 'veyrnox', backup_v: 2, seals: { combined: {} } }));
+const decryptBackupSeal = vi.fn(async () => 'CONTAINER-JSON');
 const finalisePinRestore = vi.fn(async () => undefined);
 vi.mock('@/lib/restoreBackupFile', () => ({
   parseBackupFile: (...a) => parseBackupFile(...a),
-  decryptPasswordSeal: (...a) => decryptPasswordSeal(...a),
-  decryptPinSeal: (...a) => decryptPinSeal(...a),
+  decryptBackupSeal: (...a) => decryptBackupSeal(...a),
   finalisePinRestore: (...a) => finalisePinRestore(...a),
   withLockSuppressed: (fn) => fn(),
 }));
@@ -109,9 +109,8 @@ beforeEach(() => {
   raspArtifact = { tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false };
   freshRaspArtifact = null;
   getFreshLocalRaspArtifact.mockClear();
-  parseBackupFile.mockReset().mockReturnValue({ app: 'veyrnox', backup_v: 1, seals: { password: {}, pin: {} } });
-  decryptPasswordSeal.mockReset().mockResolvedValue('CONTAINER-JSON-PW');
-  decryptPinSeal.mockReset().mockResolvedValue('CONTAINER-JSON-PIN');
+  parseBackupFile.mockReset().mockReturnValue({ app: 'veyrnox', backup_v: 2, seals: { combined: {} } });
+  decryptBackupSeal.mockReset().mockResolvedValue('CONTAINER-JSON');
   finalisePinRestore.mockReset().mockResolvedValue(undefined);
   toastError.mockReset();
   toastSuccess.mockReset();
@@ -136,25 +135,26 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     await loadFile(container);
 
     const pw = await screen.findByPlaceholderText(/your original password/i);
-    fireEvent.change(pw, { target: { value: 'my-original-password' } });
+    fireEvent.change(pw, { target: { value: 'sixteen-char-pass' } });
+    typePinDigits('12345678');
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
     await waitFor(() => expect(toastError).toHaveBeenCalled());
     // The gate must have refused BEFORE any crypto ran (I4 fail-closed).
-    expect(decryptPasswordSeal).not.toHaveBeenCalled();
-    expect(decryptPinSeal).not.toHaveBeenCalled();
+    expect(decryptBackupSeal).not.toHaveBeenCalled();
   });
 
   it('(b) wrong credential fails closed to a GENERIC error (no oracle) and returns to the unlock phase', async () => {
-    decryptPasswordSeal.mockRejectedValueOnce(Object.assign(new Error('OperationError'), { name: 'OperationError' }));
+    decryptBackupSeal.mockRejectedValueOnce(Object.assign(new Error('OperationError'), { name: 'OperationError' }));
     const { container } = renderShared();
     await loadFile(container);
 
     const pw = await screen.findByPlaceholderText(/your original password/i);
-    fireEvent.change(pw, { target: { value: 'wrong-password' } });
+    fireEvent.change(pw, { target: { value: 'wrong-password-16ch' } });
+    typePinDigits('12345678');
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
-    await waitFor(() => expect(decryptPasswordSeal).toHaveBeenCalled());
+    await waitFor(() => expect(decryptBackupSeal).toHaveBeenCalled());
     // Generic message — must NOT distinguish "wrong password" from "corrupt file".
     // Countdown suffix added 2026-08-15 (Codex P2, attempt cap). The generic
     // wording — "Wrong credential OR corrupted backup" — is what preserves the
@@ -173,44 +173,46 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     await waitFor(() => expect(toastError).toHaveBeenCalled());
     // Never reached the credential/unlock phase — no crypto attempted.
     expect(screen.queryByRole('button', { name: /restore wallet/i })).toBeNull();
-    expect(decryptPasswordSeal).not.toHaveBeenCalled();
+    expect(decryptBackupSeal).not.toHaveBeenCalled();
   });
 
   it('(c) the restoring state is an ISOLATED dedicated component (animation seam), shown while crypto runs', async () => {
     // Defer the decrypt so we can observe the intermediate 'restoring' phase.
     let resolveDecrypt;
-    decryptPasswordSeal.mockImplementationOnce(() => new Promise((res) => { resolveDecrypt = res; }));
+    decryptBackupSeal.mockImplementationOnce(() => new Promise((res) => { resolveDecrypt = res; }));
     const { container } = renderShared();
     await loadFile(container);
 
     const pw = await screen.findByPlaceholderText(/your original password/i);
-    fireEvent.change(pw, { target: { value: 'my-original-password' } });
+    fireEvent.change(pw, { target: { value: 'sixteen-char-pass' } });
+    typePinDigits('12345678');
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
     // The dedicated restoring seam is on screen while the Argon2id decrypt runs.
     await waitFor(() => expect(screen.getByTestId('restore-progress')).toBeTruthy());
 
-    resolveDecrypt('CONTAINER-JSON-PW');
+    resolveDecrypt('CONTAINER-JSON');
     // After decrypt resolves, we should advance to the setpin phase.
     await screen.findByText(/choose a device pin/i);
   });
 
-  it('(d) PASSWORD method: decryptPasswordSeal → set-device-PIN → finalisePinRestore (PIN-cohort)', async () => {
+  it('(d) combined credential: decryptBackupSeal(env, pw, pin) → set-device-PIN → finalisePinRestore (PIN-cohort)', async () => {
     const onFinish = vi.fn();
     const { container } = renderShared({ onFinish });
     await loadFile(container);
 
-    // Enter backup password and submit.
+    // Both backup password AND backup PIN required — single combined seal (2026-09-01).
     const pw = await screen.findByPlaceholderText(/your original password/i);
-    fireEvent.change(pw, { target: { value: 'my-original-password' } });
+    fireEvent.change(pw, { target: { value: 'sixteen-char-pass' } });
+    typePinDigits('12345678');
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
-    await waitFor(() => expect(decryptPasswordSeal).toHaveBeenCalledWith(expect.anything(), 'my-original-password'));
+    await waitFor(() => expect(decryptBackupSeal).toHaveBeenCalledWith(expect.anything(), 'sixteen-char-pass', '12345678'));
 
     // Now on the set-device-PIN phase — choose + confirm a fresh 8-digit device PIN.
     await setDevicePinViaPad('87654321');
 
-    await waitFor(() => expect(finalisePinRestore).toHaveBeenCalledWith('CONTAINER-JSON-PW', '87654321'));
+    await waitFor(() => expect(finalisePinRestore).toHaveBeenCalledWith('CONTAINER-JSON', '87654321'));
 
     // Done phase → the single finish button hands control back to the caller.
     const finishBtn = await screen.findByRole('button', { name: /lock/i });
@@ -218,32 +220,28 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     expect(onFinish).toHaveBeenCalled();
   });
 
-  it('(d) PIN method: decryptPinSeal → set-device-PIN → finalisePinRestore (PIN-cohort)', async () => {
-    const onFinish = vi.fn();
-    const { container } = renderShared({ onFinish });
+  it('(d-guard) Restore wallet button disabled until BOTH password ≥16 chars AND 8-digit PIN present', async () => {
+    const { container } = renderShared();
     await loadFile(container);
 
-    // Enter the backup PIN on the keypad (this unlocks the .enc file — NOT the
-    // device PIN) then restore. The backup PIN pad has no auto-complete; the
-    // "Restore wallet" button drives the unlock once the pad holds a valid PIN.
-    // Wait for the unlock-phase specific copy — /backup pin/i alone also matches
-    // the pick-phase readout ("Unlock with the file's password or backup PIN.")
-    // added in Slice I, which would race the click into pick phase.
-    await screen.findByText(/backup password or PIN you created with this file/i);
+    const pw = await screen.findByPlaceholderText(/your original password/i);
+    const btn = () => screen.getByRole('button', { name: /restore wallet/i });
+
+    // Neither field: disabled.
+    expect(btn()).toBeDisabled();
+
+    // Password only: still disabled (PIN missing).
+    fireEvent.change(pw, { target: { value: 'sixteen-char-pass' } });
+    expect(btn()).toBeDisabled();
+
+    // Password too short + PIN present: disabled.
+    fireEvent.change(pw, { target: { value: 'too-short' } });
     typePinDigits('12345678');
-    fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
+    expect(btn()).toBeDisabled();
 
-    await waitFor(() => expect(decryptPinSeal).toHaveBeenCalledWith(expect.anything(), '12345678'));
-
-    // Now on the set-device-PIN phase — choose a DIFFERENT 8-digit device PIN.
-    await setDevicePinViaPad('99887766');
-
-    await waitFor(() => expect(finalisePinRestore).toHaveBeenCalledWith('CONTAINER-JSON-PIN', '99887766'));
-
-    // Done phase.
-    const finishBtn = await screen.findByRole('button', { name: /lock/i });
-    fireEvent.click(finishBtn);
-    expect(onFinish).toHaveBeenCalled();
+    // Both satisfy: enabled.
+    fireEvent.change(pw, { target: { value: 'sixteen-char-pass' } });
+    expect(btn()).not.toBeDisabled();
   });
 
   it('(e) setpin phase rejects mismatched PINs', async () => {
@@ -251,10 +249,11 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
     await loadFile(container);
 
     const pw = await screen.findByPlaceholderText(/your original password/i);
-    fireEvent.change(pw, { target: { value: 'my-original-password' } });
+    fireEvent.change(pw, { target: { value: 'sixteen-char-pass' } });
+    typePinDigits('12345678');
     fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
-    await waitFor(() => expect(decryptPasswordSeal).toHaveBeenCalled());
+    await waitFor(() => expect(decryptBackupSeal).toHaveBeenCalled());
 
     // Choose one PIN, then confirm a DIFFERENT one — the keypad is choose→confirm.
     await screen.findByText(/choose a device pin/i);
@@ -280,7 +279,8 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
       const { container } = renderShared();
       await loadFile(container);
       const pw = await screen.findByPlaceholderText(/your original password/i);
-      fireEvent.change(pw, { target: { value: 'my-original-password' } });
+      fireEvent.change(pw, { target: { value: 'sixteen-char-pass' } });
+      typePinDigits('12345678');
       fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
       await waitFor(() => expect(getFreshLocalRaspArtifact).toHaveBeenCalledTimes(1));
@@ -296,12 +296,12 @@ describe('RestoreFromFile — shared encrypted-backup restore', () => {
       const { container } = renderShared();
       await loadFile(container);
       const pw = await screen.findByPlaceholderText(/your original password/i);
-      fireEvent.change(pw, { target: { value: 'my-original-password' } });
+      fireEvent.change(pw, { target: { value: 'sixteen-char-pass' } });
+      typePinDigits('12345678');
       fireEvent.click(screen.getByRole('button', { name: /restore wallet/i }));
 
       await waitFor(() => expect(toastError).toHaveBeenCalled());
-      expect(decryptPasswordSeal).not.toHaveBeenCalled();
-      expect(decryptPinSeal).not.toHaveBeenCalled();
+      expect(decryptBackupSeal).not.toHaveBeenCalled();
     });
   });
 });

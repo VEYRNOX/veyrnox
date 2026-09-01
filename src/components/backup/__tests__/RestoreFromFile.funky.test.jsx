@@ -31,14 +31,12 @@ vi.mock('@/rasp', async (importOriginal) => {
 
 // parseBackupFile is the "envelope handler" for the drop-path test: dropping a
 // .enc must reach it exactly as the click+select path does.
-const parseBackupFile = vi.fn(() => ({ app: 'veyrnox', backup_v: 1, seals: { password: {}, pin: {} } }));
-const decryptPasswordSeal = vi.fn(async () => 'CONTAINER-JSON-PW');
-const decryptPinSeal = vi.fn(async () => 'CONTAINER-JSON-PIN');
+const parseBackupFile = vi.fn(() => ({ app: 'veyrnox', backup_v: 2, seals: { combined: {} } }));
+const decryptBackupSeal = vi.fn(async () => 'CONTAINER-JSON');
 const finalisePinRestore = vi.fn(async () => undefined);
 vi.mock('@/lib/restoreBackupFile', () => ({
   parseBackupFile: (...a) => parseBackupFile(...a),
-  decryptPasswordSeal: (...a) => decryptPasswordSeal(...a),
-  decryptPinSeal: (...a) => decryptPinSeal(...a),
+  decryptBackupSeal: (...a) => decryptBackupSeal(...a),
   finalisePinRestore: (...a) => finalisePinRestore(...a),
   withLockSuppressed: (fn) => fn(),
 }));
@@ -64,7 +62,7 @@ import RestoreFromFile from '@/components/backup/RestoreFromFile';
 // The 4 readout steps must render verbatim (plan §Test invariants).
 const READOUT_STEPS = [
   'Read your .enc file locally — nothing uploaded.',
-  "Unlock with the file's password or backup PIN.",
+  "Unlock with both the file's password and backup PIN.",
   'Set a fresh device PIN for this app.',
   'Replaces any current wallet on this device.',
 ];
@@ -107,7 +105,7 @@ function fireDragOverEv(target) {
 
 beforeEach(() => {
   raspArtifact = { tier: 'ALLOW', sentence: null, blockedActions: [], requiresBiometric: false };
-  parseBackupFile.mockReset().mockReturnValue({ app: 'veyrnox', backup_v: 1, seals: { password: {}, pin: {} } });
+  parseBackupFile.mockReset().mockReturnValue({ app: 'veyrnox', backup_v: 2, seals: { combined: {} } });
   toastError.mockReset();
   toastSuccess.mockReset();
   setReducedMotion(false);

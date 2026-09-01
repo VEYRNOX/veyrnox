@@ -37,7 +37,7 @@ async function loadModule() {
 }
 
 // Minimal envelope shape matching what encodeBinary() in vaultBackup.js
-// consumes: two seals ('password' + 'pin'), each with salt/iv/ct + kdf.
+// consumes: single combined seal (2026-09-01 combined-credential model).
 const fakeSeal = () => ({
   v: 2,
   salt: 'AAAA',
@@ -47,7 +47,7 @@ const fakeSeal = () => ({
 });
 const fakeEnvelope = () => ({
   created_at: 0,
-  seals: { password: fakeSeal(), pin: fakeSeal() },
+  seals: { combined: fakeSeal() },
 });
 
 beforeEach(() => {

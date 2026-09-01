@@ -42,9 +42,9 @@ const { downloadBackupFile, downloadBackupFilePicker } = await import('../vaultB
 const blob = (ct) => ({ v: 1, ct, iv: 'ZGVm', salt: 'YWJj' });
 const ENVELOPE = {
   app: 'veyrnox',
-  backup_v: 1,
+  backup_v: 2,
   created_at: 1700000000000,
-  seals: { password: blob('Z2hp'), pin: blob('amts') },
+  seals: { combined: blob('Z2hp') },
 };
 
 beforeEach(() => {

@@ -6,8 +6,13 @@ describe('vaultBackup export surface (#1101)', () => {
     expect(vaultBackup).not.toHaveProperty('restoreWithPassword');
   });
 
-  it('still exports decryptPasswordSeal', () => {
-    expect(typeof vaultBackup.decryptPasswordSeal).toBe('function');
+  it('exports decryptBackupSeal (combined-credential replacement for the two split seal decrypters, 2026-09-01)', () => {
+    expect(typeof vaultBackup.decryptBackupSeal).toBe('function');
+  });
+
+  it('does NOT export the legacy split-seal decrypters (removed 2026-09-01 with the combined-credential model)', () => {
+    expect(vaultBackup).not.toHaveProperty('decryptPasswordSeal');
+    expect(vaultBackup).not.toHaveProperty('decryptPinSeal');
   });
 
   it('still exports finalisePinRestore', () => {

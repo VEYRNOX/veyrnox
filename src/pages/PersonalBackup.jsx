@@ -36,7 +36,6 @@ import RestoreFromFile from "@/components/backup/RestoreFromFile";
 import PinPad from "@/components/security/PinPad";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { isHardwareKekEnrolled } from "@/lib/hardwareKekStatus";
-import { MIN_PASSWORD_LENGTH } from "@/lib/passwordStrength";
 import { checkPinStrength } from "@/lib/pinStrength";
 import { hasSafetyPlusAccess } from "@/lib/tier";
 import {
@@ -114,15 +113,17 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
     );
   }
 
-  // 2026-08-16 audit remediation: backup file unlock via PIN branch used to
-  // accept 8 digits (~10^8 offline search). Raise the floor to 12 digits so
-  // the PIN branch of a stored backup has a meaningfully wider search space
-  // than a phone-unlock PIN. Full audit fix is to require an alphanumeric
-  // passphrase, but user copy commits to a numeric PIN — this is the smallest
-  // UX-preserving upgrade. ponytail: pinned at 12 digits; upgrade to
-  // alphanumeric passphrase-only when the copy can be reworked.
-  const BACKUP_PIN_MIN_LENGTH = 12;
-  const canExport = password.length >= MIN_PASSWORD_LENGTH && pin.length >= BACKUP_PIN_MIN_LENGTH && pin === pinConfirm;
+  // 2026-09-01: backup credential is now COMBINED (password + PIN, both
+  // required). See wallet-core/vaultBackup.js file-top DESIGN comment. Kills
+  // the two-doors model that made the 2026-08-16 audit finding (PIN-only
+  // branch = ~10^8 offline surface) live. Password floor raised to 16 chars
+  // to match the shard-export model (RestoreFromShares.jsx passphrase floor);
+  // PIN back to 8 digits, matching every other PinPad in the app.
+  const BACKUP_PASSWORD_MIN_LENGTH = 16;
+  const BACKUP_PIN_LENGTH = 8;
+  const canExport = password.length >= BACKUP_PASSWORD_MIN_LENGTH
+    && pin.length === BACKUP_PIN_LENGTH
+    && pin === pinConfirm;
 
   const runExport = async () => {
     const gate = sensitiveGate(raspArtifact, 'export');
@@ -277,14 +278,11 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
         <p className="font-medium text-foreground text-sm">What's in the backup</p>
         <ul className="list-disc list-inside space-y-0.5 mt-1">
           <li>Your encrypted wallet — no seed in plaintext.</li>
-          <li>Two ways to open it: backup password OR backup PIN (your choice).</li>
+          <li>Opened with <b>both</b> the backup password AND the backup PIN.</li>
           <li>No addresses, no transaction history, no personal data.</li>
         </ul>
         <p className="mt-2 text-caution font-medium">
-          Choose a backup password and PIN now — different from your app unlock PIN, not stored in the file. Forget both and your funds are gone forever.
-        </p>
-        <p className="mt-1">
-          Use the password for highest security. A short PIN has weaker entropy but works in a pinch.
+          Choose a backup password and PIN now — different from your app unlock PIN, not stored in the file. Both are required to restore. Forget either and your funds are gone forever.
         </p>
       </div>
 
@@ -294,17 +292,17 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
           <PasswordInput
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={`A new password to protect this backup (min ${MIN_PASSWORD_LENGTH})`}
+            placeholder={`A new password to protect this backup (min ${BACKUP_PASSWORD_MIN_LENGTH})`}
             className="w-full"
           />
         </div>
-        <p className="text-xs text-muted-foreground mt-1">At least {MIN_PASSWORD_LENGTH} characters · any characters allowed</p>
-        {password.length > 0 && password.length < MIN_PASSWORD_LENGTH && (
-          <p className="text-xs text-destructive">Use at least {MIN_PASSWORD_LENGTH} characters.</p>
+        <p className="text-xs text-muted-foreground mt-1">At least {BACKUP_PASSWORD_MIN_LENGTH} characters · any characters allowed</p>
+        {password.length > 0 && password.length < BACKUP_PASSWORD_MIN_LENGTH && (
+          <p className="text-xs text-destructive">Use at least {BACKUP_PASSWORD_MIN_LENGTH} characters.</p>
         )}
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">
-            {pinStep === "choose" ? "Choose a backup PIN (12 digits)" : "Confirm backup PIN"}
+            {pinStep === "choose" ? "Choose a backup PIN (8 digits)" : "Confirm backup PIN"}
           </label>
           <PinPad
             value={pinStep === "choose" ? pin : pinConfirm}
@@ -325,7 +323,7 @@ function ExportTab({ createBackup, isDecoy, isHidden, publicAddresses }) {
                 }
               }
             }}
-            length={12}
+            length={BACKUP_PIN_LENGTH}
             submitLabel={pinStep === "choose" ? "Next" : "Confirm"}
           />
           {pinStep === "confirm" && (
