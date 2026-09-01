@@ -907,6 +907,45 @@ value / mutate balances without a user signature through wallet-core signing).
     dead-code-eliminated in prod bundles until the flag is set). All three
     phases pass full regression (208 test files / 1658 tests) plus Codex
     second-pass review with all findings fixed pre-commit.
+    - ⚠️ **Correction (2026-09-01) — two claims above are false, and the
+      threshold property was broken for 12 days. See issue #2213.** Kept in
+      place rather than reworded: this file is the honesty ledger, and the
+      2026-08-03 L-5 correction a few bullets up exists for exactly this.
+      - **"dead-code-eliminated in prod bundles until the flag is set" is
+        wrong.** `.env.production:11` has carried
+        `VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1` since PR #1728 (2026-08-12), so
+        the feature ships in production builds. The same false claim is
+        repeated in code at `shardBackup.js:250-256` ("is set in NO shipping
+        build — not ci.yml, deploy-preview.yml, or firebase-test-lab.yml"),
+        which was accurate when written on 2026-08-15 and had already been
+        falsified three days earlier. Both were written by readers who checked
+        the CI workflows and did not check `.env.production`.
+      - **The 2-of-3 threshold property did not hold between 2026-08-20 and
+        the fix.** PR #1923 replaced the hand-rolled split — which allocated
+        `(k-1) * SECRET_SIZE` random bytes, one coefficient per octet, and was
+        correct — with `@stablelib/tss`'s `splitRaw`, which draws its
+        coefficient vector once and reuses it for every octet. At `k=2` one
+        random byte masked all 32 bytes of the DEK, so a single share
+        determined it up to 256 guesses (1000/1000 recovery in testing), and a
+        recovery bundle carries that share alongside the encrypted vault and a
+        SHA-256 commitment over the DEK — enough to confirm the right candidate
+        offline. `recoveryShare.js:9-11`'s premise, "one share alone is
+        information-theoretically zero-knowledge", was false for that window.
+        Fixed by PR #2216 (per-octet `splitRaw`; format unchanged, no
+        migration, pre-fix shares still reconstruct). **Bundles exported before
+        that fix remain weak and should be re-exported.**
+      - **PR #1923 has no entry anywhere in this file.** A swap of the
+        primitive under the shard feature landed with nothing in the ledger,
+        which is why every later reader of this entry — including the
+        2026-09-01 security diff — reasoned about the superseded hand-rolled
+        implementation. A crypto-primitive change needs an entry here even
+        when it is framed as a de-risking refactor; especially then.
+      - **Consequence for the status tag.** `featureCatalogue.js:292` marks
+        Shamir Shard Backup `status: 'verified'`. That was not defensible
+        during the window above and is an owner decision now, not a doc edit.
+        Per the standing rule, code-complete + tests green is BUILT at most;
+        nothing here has had an on-device recovery round-trip or an
+        independent audit.
     - **Phase 1 (PR #1666)** — 2-of-3 Shamir DEK split + export-only UI. New
       "Recovery shares" tab in Personal Backup. `nativeKeyStore.exportPersonal
       BackupShares` runs KEK unlock chain and splits the DEK inside its own
@@ -2525,6 +2564,19 @@ none of this is "verified" in the strict on-chain / independent-audit sense).
 - **#1847** daily security-diff scan 2026-08-16
 - **#1836** activate native `HardwareKekPlugin` tests when Phase 2 lands (deferred, tracked)
 - **#1833** replace hand-rolled Shamir with audited library (`@stablelib/sss` — parking, needs its own PR + parity fixtures)
+  - **Correction (2026-09-01).** This reads as still-pending; it is not. PR
+    #1923 (2026-08-20) already swapped the split/combine core to
+    `@stablelib/tss` — a different package from the `@stablelib/sss` named
+    here. That swap introduced the coefficient-reuse defect in issue #2213, so
+    the "audited library is safer than hand-rolled" premise behind #1833 does
+    not survive as stated: `@stablelib/tss`'s `splitRaw` is unsound for
+    multi-byte secrets regardless of audit status, and the hand-rolled code it
+    replaced was correct on exactly the point it got wrong.
+    `docs/audit-triage/shamir-library-swap-design-2026-08-19.md` evaluates
+    `@stablelib/tss` as Candidate 1 without noting this, and says the local
+    experiment "was backed out" — which #1923 then reversed the next day.
+    Whatever #1833 concludes, per-octet coefficient generation is the property
+    to test any candidate against first.
 
 ### Known-open items after the sprint (issues, not defects on `main`)
 - **#1600** — `veyrnox` CF Worker is a Hello-World stub, still noisy on every PR (owner needs to Delete via CF dashboard)
