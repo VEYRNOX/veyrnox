@@ -92,6 +92,8 @@ import { notifySendConfirmed, notifyRaspAlert, notifyTxRiskAlert } from "@/notif
 import { defaultWalletId, sendAssetSymbols, defaultAssetSymbol, buildSendWallet, demoSendSource } from "@/lib/sendWalletSource";
 import { DEMO, DEMO_POISON_ADDRESS } from "@/api/demoClient";
 import { screenTransaction } from "@/api/tipScreen";
+import { useTier } from "@/lib/TierProvider";
+import { hasAdvisorOnlineAccess } from "@/lib/tier";
 import { ZERO_FROM_ADDRESS } from "@/lib/tipZeroFrom.js";
 import { persistRemoteScreenPreference, readRemoteScreenPreference } from "@/lib/remoteScreenPreference.js";
 import { resolveTipChain } from "./sendCryptoTipChain";
@@ -568,6 +570,12 @@ export default function SendCrypto() {
   // active without manual opt-in. When unconfigured, defaults to OFF. The user
   // can always toggle it; the choice is persisted across sessions.
   const tipConfigured = !!import.meta.env.VITE_TIP_BASE_URL;
+  // AI Security Protection tier gate — phishing / TIP recipient screening
+  // is an upsell capability. Free + Safety Plus never fire the remote screen
+  // regardless of the user's toggle. Kept ALONGSIDE remoteScreen (not
+  // replacing it) so an AI-tier user can still opt out.
+  const { currentTier } = useTier();
+  const advisorOnline = hasAdvisorOnlineAccess(currentTier);
   const [remoteScreen, setRemoteScreen] = useState(() => {
     return readRemoteScreenPreference(tipConfigured);
   });
@@ -825,7 +833,7 @@ export default function SendCrypto() {
   // enables each query. Previously the gate was written independently of the
   // queries and drifted from them; declaring the condition once makes that
   // impossible. Both `enabled:` props below read these constants.
-  const tipScreenApplies = remoteScreen && (step === "review" || step === "confirm") && !!toAddress
+  const tipScreenApplies = advisorOnline && remoteScreen && (step === "review" || step === "confirm") && !!toAddress
     && !!selectedWallet?.address && addressFormatValid;
 
   // Unsigned SOL transaction for the TIP `solana-sim` lane. The Worker's
@@ -840,7 +848,7 @@ export default function SendCrypto() {
   // egress must NOT fire when remote screening is off, in demo, or in a
   // decoy/hidden session — mirrors the same suppression the other simulation
   // queries apply. Codex 2nd-review flagged this as [P1] in the first pass.
-  const solUnsignedTxApplies = isSolana && remoteScreen && (step === "review" || step === "confirm")
+  const solUnsignedTxApplies = advisorOnline && isSolana && remoteScreen && (step === "review" || step === "confirm")
     && !!toAddress && !!selectedWallet?.address && addressFormatValid
     && !!canonicalAmount && parseFloat(canonicalAmount) > 0
     && !demoActive && !isDecoy && !isHidden && !isDeniabilitySessionActive();

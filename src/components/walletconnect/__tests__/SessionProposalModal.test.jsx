@@ -28,6 +28,10 @@ vi.mock('react-i18next', async () => {
     useTranslation: (ns) => ({ t: (k, o) => resolve(k, { ns, ...(o || {}) }) }),
   };
 });
+// These cases assert AI-tier dApp-screening behavior.
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'ai_security_protection' }),
+}));
 import { render, screen, cleanup } from '@testing-library/react';
 import { SessionProposalModal } from '@/components/walletconnect/SessionProposalModal.jsx';
 

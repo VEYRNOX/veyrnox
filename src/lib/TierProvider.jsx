@@ -23,6 +23,7 @@ import {
   AI_SECURITY_PROTECTION_ENTITLEMENT,
 } from '@/lib/purchases';
 import { TIERS } from '@/lib/tier';
+import { setCachedTier } from '@/lib/tierCache';
 import {
   isDeniabilitySessionActive,
   DENIABILITY_SESSION_CHANGED_EVENT,
@@ -38,6 +39,15 @@ export function TierProvider({ children }) {
     : null;
   const [currentTier, setCurrentTier] = useState(FORCED_TIER || 'free');
   const [loading, setLoading] = useState(true);
+
+  // Mirror React state into the sync tier cache so non-React readers
+  // (approvalRiskNotes.js, phishing feed init, etc.) can gate on tier
+  // without threading it through every call chain. Fail-closed by default
+  // — the cache starts at 'free' and any state we mirror in is one the
+  // deniability + resolve-generation guards already vetted.
+  useEffect(() => {
+    setCachedTier(currentTier);
+  }, [currentTier]);
 
   // Codex P2 (2026-07-17) — resolveTier race on mid-flight deniability flip.
   // Every async resolveTier() invocation captures the current generation before

@@ -17,6 +17,7 @@
 import { screenTransaction } from '@/api/tipScreen';
 import { lookupThreatSync } from '@/lib/threatIntelStore';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
+import { hasAdvisorOnlineAccessCached } from '@/lib/tierCache';
 
 const _cache = new Map();
 const _inflight = new Map();
@@ -36,6 +37,10 @@ export function getRiskNote(spender, chain = 'evm') {
   // and no background fetch. fetchRiskNote gates the egress too; this is the
   // read-side half, and it must be here rather than only at the call site.
   if (isDeniabilityOrDemoActive()) return null;
+  // Drainer & unsafe DEX warnings are an AI Security Protection capability.
+  // Lower tiers see no note (upsell surface); paid tier gets local seed +
+  // remote screen exactly as before.
+  if (!hasAdvisorOnlineAccessCached()) return null;
   const key = `${chain}:${spender}`.toLowerCase();
 
   if (_cache.has(key)) return _cache.get(key);
@@ -71,6 +76,8 @@ export async function fetchRiskNoteAsync(spender, chain = 'evm') {
   // Returns BEFORE the cache read: notes are keyed by real spender addresses,
   // so a decoy session must not be able to read one the real session cached.
   if (isDeniabilityOrDemoActive()) return null;
+  // AI Security Protection tier gate — matches getRiskNote() above.
+  if (!hasAdvisorOnlineAccessCached()) return null;
 
   const key = `${chain}:${spender}`.toLowerCase();
   if (_cache.has(key)) return _cache.get(key);

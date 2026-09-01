@@ -111,6 +111,7 @@ const WhatThisProtects = lazy(() => import('./pages/WhatThisProtects'));
 const TermsLegal = lazy(() => import('./pages/TermsLegal'));
 const Subscription = lazy(() => import('./pages/Subscription'));
 const SafetyPlus = lazy(() => import('./pages/SafetyPlus'));
+const AiSecurityProtection = lazy(() => import('./pages/AiSecurityProtection'));
 const ReferralTracker = lazy(() => import('./pages/ReferralTracker'));
 const SeedVerificationPage = lazy(() => import('./pages/SeedVerificationPage'));
 
@@ -235,6 +236,7 @@ const AuthenticatedApp = () => {
           <Route path="/features" element={<Navigate replace to="/docs" />} />
           <Route path="/plans" element={<Subscription />} />
           <Route path="/safety-plus" element={<SafetyPlus />} />
+          <Route path="/ai-security-protection" element={<AiSecurityProtection />} />
           <Route path="/suspicious-assets" element={<SuspiciousAssets />} />
           <Route path="/referrals" element={<ReferralTracker />} />
           <Route path="/verify" element={<SeedVerificationPage />} />

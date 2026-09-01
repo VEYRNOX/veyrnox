@@ -35,6 +35,9 @@ vi.mock('react-i18next', async () => {
     useTranslation: (ns) => ({ t: (k, o) => resolve(k, { ns, ...(o || {}) }) }),
   };
 });
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'ai_security_protection' }),
+}));
 
 import { render, screen, cleanup } from '@testing-library/react';
 import { RequestApprovalModal } from '@/components/walletconnect/RequestApprovalModal.jsx';

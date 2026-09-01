@@ -5,6 +5,8 @@ import { useWalletConnect } from '@/lib/WalletConnectProvider.jsx';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkDappDomain, LOCAL_KNOWN_BAD } from '@/risk/knownBadDapps.js';
+import { useTier } from '@/lib/TierProvider';
+import { hasAdvisorOnlineAccess } from '@/lib/tier';
 import { getNetworkByChainId } from '@/wallet-core/evm/networks.js';
 import { SUPPORTED_CHAIN_IDS } from '@/wallet-core/evm/walletconnect/router.js';
 import { useModalA11y } from '@/lib/useModalA11y.js';
@@ -39,7 +41,14 @@ export function SessionProposalModal({ proposal, onClose }) {
   const optionalChains = optionalNs.eip155?.chains ?? [];
   const optionalMethods = optionalNs.eip155?.methods ?? [];
 
-  const dapp = checkDappDomain(meta.url);
+  // AI Security Protection tier gate — malicious dApp warnings are an upsell
+  // capability. Lower tiers receive an unflagged sentinel so the risk banner
+  // stays hidden and the approve button is not disabled by dApp verdict.
+  const { currentTier } = useTier();
+  const advisorOnline = hasAdvisorOnlineAccess(currentTier);
+  const dapp = advisorOnline
+    ? checkDappDomain(meta.url)
+    : { flagged: false, reason: null, domain: null };
   const titleId = useId();
 
   const dialogRef = useModalA11y({

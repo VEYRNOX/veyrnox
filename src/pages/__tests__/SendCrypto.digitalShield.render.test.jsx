@@ -143,6 +143,10 @@ vi.mock('@/context/DigitalShieldContext', () => ({
   }),
 }));
 
+vi.mock('@/lib/TierProvider', () => ({
+  useTier: () => ({ currentTier: 'ai_security_protection' }),
+}));
+
 vi.mock('@/lib/WalletProvider', () => ({
   useWallet: () => ({
     isUnlocked: true,
