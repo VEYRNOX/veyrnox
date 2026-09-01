@@ -105,6 +105,25 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Boot iPhone simulator
+        # Do not let xcodebuild discover and boot an arbitrary matching device
+        # while it is trying to dispatch the test bundle. On Xcode 26 that path
+        # can leave a suite started but with no test ever launched (#2180).
+        run: |
+          simulator_id="$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          for devices in json.load(sys.stdin)["devices"].values():
+              for device in devices:
+                  if device["name"] == "iPhone 17" and device.get("isAvailable"):
+                      print(device["udid"])
+                      raise SystemExit(0)
+          raise SystemExit("No available iPhone 17 simulator")
+          ')"
+          test -n "$simulator_id"
+          xcrun simctl boot "$simulator_id" || true
+          xcrun simctl bootstatus "$simulator_id" -b
+          echo "IOS_SIMULATOR_UDID=$simulator_id" >> "$GITHUB_ENV"
+
       # ── build/test split (#2109) ─────────────────────────────────────────
       # `Run AppUITests` used to cover BOTH the compile and the test, and never
       # once completed: 55 min on main across four consecutive runs (to the
@@ -160,7 +179,7 @@ jobs:
           xcodebuild build-for-testing \
             -project App.xcodeproj \
             -scheme App \
-            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_UDID" \
             -clonedSourcePackagesDirPath SourcePackages \
             -derivedDataPath DerivedData \
             CODE_SIGNING_ALLOWED=NO \
@@ -186,8 +205,8 @@ jobs:
           set -o pipefail
           # xcodebuild refuses to overwrite an existing result bundle.
           rm -rf TestResults.xcresult
-          # Match main's passing Xcode 26 simulator target exactly.
-          destination='platform=iOS Simulator,name=iPhone 17,OS=latest'
+          # Use the simulator that was fully booted before building.
+          destination="platform=iOS Simulator,id=$IOS_SIMULATOR_UDID"
           # GitHub's step timeout did not stop runs 33109374237/33114316303.
           # Keep xcodebuild out of a shell pipeline while the watchdog owns it:
           # a `tee | xcbeautify` pipeline creates sibling processes outside the
