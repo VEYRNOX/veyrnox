@@ -6,9 +6,11 @@
 // top of whatever the cloud provider offers. Matches spec §5.1 / §5.3 of
 // docs/cloud-recovery-shard-spec.md.
 //
-// **Why an extra wrap on top of shamir?** One share alone is
-// information-theoretically zero-knowledge — so the raw byte layout is safe
-// in cloud storage by itself. But two shares from independent locations
+// **Why an extra wrap on top of Shamir?** A correctly generated share alone is
+// information-theoretically zero-knowledge, but it is still wrapped before
+// export as defence in depth. Shares generated before the 2026-09-01
+// coefficient-isolation fix are not safe to treat as threshold-protected and
+// must be replaced. Two shares from independent locations
 // reconstruct the DEK. If a user's cloud provider is compromised AND a second
 // share leaks separately, the attacker gets the DEK. The Argon2id + AES-GCM
 // wrap adds a per-file passphrase gate so a leaked cloud share is not
@@ -21,7 +23,7 @@
 // Google Backup silent-sync integration is a later phase.
 //
 // **Gate.** Reuses the same ENABLE_PERSONAL_BACKUP_SHARDS flag as the split
-// primitive. Nothing here ships in prod bundles until the flag is on.
+// primitive. The feature remains an owner-authorized pre-audit preview.
 //
 // **Fail-closed contract (I4).** A wrong passphrase fails at the AES-GCM auth
 // tag with a generic 'RECOVERY_SHARE_UNWRAP_FAILED' — no oracle for "wrong

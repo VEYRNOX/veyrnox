@@ -248,12 +248,9 @@ export const SHARD_BUNDLE_VERSION = 2;
 // branch let an attacker-supplied bundle select the weak verifier for itself.
 //
 // The compatibility branch was removed (2026-08-15) after confirming it served
-// zero real artifacts: VITE_ENABLE_PERSONAL_BACKUP_SHARDS gates the whole
-// feature, defaults false, and is set in NO shipping build — not ci.yml,
-// deploy-preview.yml, or firebase-test-lab.yml. Only local dev and the
-// android-e2e-emulator job ever turned it on, so no user could have produced a
-// v1 bundle. A developer holding a locally-generated v1 test bundle must
-// re-export it.
+// zero real v1 artifacts. The feature was later enabled in production; this
+// comment records only the v1-format decision, not the current feature state.
+// A developer holding a locally-generated v1 test bundle must re-export it.
 export const SHARD_BUNDLE_MISMATCH = 'SHARD_BUNDLE_MISMATCH';
 export const SHARD_BUNDLE_INVALID = 'SHARD_BUNDLE_INVALID';
 

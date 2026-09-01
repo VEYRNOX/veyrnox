@@ -1,6 +1,7 @@
-// Audited Shamir wrapper. The raw split/combine core now routes through
-// `@stablelib/tss`, while this module preserves Veyrnox's envelope/versioning,
-// commitment, CRC, and validation behaviour around that core.
+// Audited Shamir wrapper. The raw combine core routes through `@stablelib/tss`;
+// splitting invokes its raw primitive once per secret octet so every byte has
+// independently sampled polynomial coefficients. This module preserves
+// Veyrnox's envelope/versioning, commitment, CRC, and validation behaviour.
 //
 // Security-sensitive changes here still need explicit review: this file sits on
 // the recovery-share boundary and owns the compatibility contract for the share
@@ -130,6 +131,36 @@ function rawShareFromEnvelope(share) {
   raw[0] = share[19];
   raw.set(share.subarray(HEADER_SIZE, COMMITMENT_OFFSET), 1);
   return raw;
+}
+
+// StableLib samples polynomial coefficients once per splitRaw() call. A DEK is
+// 32 octets, so split every octet independently and retain the x||y[32] layout.
+function splitRawBytewise(secret, k, n) {
+  const rawShares = Array.from({ length: n }, () => new Uint8Array(1 + SECRET_SIZE));
+  try {
+    for (let byteIndex = 0; byteIndex < SECRET_SIZE; byteIndex++) {
+      const octet = new Uint8Array([secret[byteIndex]]);
+      let octetShares = [];
+      try {
+        octetShares = splitRaw(octet, k, n);
+        for (let shareIndex = 0; shareIndex < n; shareIndex++) {
+          const raw = octetShares[shareIndex];
+          if (raw.length !== 2 || raw[0] !== shareIndex + 1) {
+            throw new Error('INVALID_RAW_SHARE');
+          }
+          rawShares[shareIndex][0] = raw[0];
+          rawShares[shareIndex][byteIndex + 1] = raw[1];
+        }
+      } finally {
+        octet.fill(0);
+        for (const raw of octetShares) raw.fill(0);
+      }
+    }
+    return rawShares;
+  } catch (error) {
+    for (const raw of rawShares) raw.fill(0);
+    throw error;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -289,7 +320,7 @@ export function split(secret, n = 3, k = 2) {
     crypto.getRandomValues(setId);
 
     try {
-      const rawShares = splitRaw(sec, k, n);
+      const rawShares = splitRawBytewise(sec, k, n);
       const shares = new Array(rawShares.length);
       try {
         for (let i = 0; i < rawShares.length; i++) {

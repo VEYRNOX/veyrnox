@@ -290,9 +290,9 @@ export const FEATURE_CATEGORIES = [
       },
       {
         name: 'Shamir Shard Backup (2-of-3)',
-        status: 'verified',
+        status: 'built',
         summary: 'Split vault DEK into 2-of-3 Shamir shares for distributed recovery',
-        explanation: 'Built (/personal-backup, Advanced tab). The vault DEK is split into three Shamir Secret Sharing shares over GF(2^8); any two of three reconstruct the key. Each share is exported as a passphrase-wrapped, integrity-checked recovery bundle (SHARD_BUNDLE_VERSION 2, with nested-key-aware vault hash). Same-device and cross-device restore are supported. Gated behind Safety Plus subscription. Pre-audit preview: owner-authorized 2026-08-08 carve-out ahead of independent audit. Passphrase wrapping is mandatory (PR #1752 closed an earlier gap where the checkbox shipped unwired, silently producing unencrypted bundles). NOT verified: no real on-device recovery round-trip confirmed, no independent audit. Cross-platform cloud sync (iCloud/Google Backup) not shipped. Hand-rolled Shamir implementation — audited library replacement (#1833) parked.',
+        explanation: 'Built (/personal-backup, Advanced tab). The vault DEK is split into three Shamir Secret Sharing shares over GF(2^8); any two of three reconstruct the key. Each share is exported as a passphrase-wrapped, integrity-checked recovery bundle (SHARD_BUNDLE_VERSION 2, with nested-key-aware vault hash). Same-device and cross-device restore are supported. Gated behind Safety Plus subscription. Security remediation (2026-09-01): new exports use independently sampled coefficients per DEK byte; bundles exported with the 2026-08-20 library-swap implementation must be discarded and re-exported because one share did not provide the required threshold protection. Pre-audit preview: owner-authorized 2026-08-08 carve-out ahead of independent audit. Passphrase wrapping is mandatory (PR #1752 closed an earlier gap where the checkbox shipped unwired, silently producing unencrypted bundles). NOT verified: no real on-device recovery round-trip confirmed, no independent audit. Cross-platform cloud sync (iCloud/Google Backup) not shipped.',
       },
     ],
   },
