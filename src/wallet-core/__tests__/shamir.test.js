@@ -280,8 +280,20 @@ describe('shamir – envelope validation', () => {
     const sharesA = split(secret);
     // Build a Frankenstein: take two consistent shares plus an extra whose
     // y-value is deliberately corrupted while its envelope remains valid.
-    // A second random split is not reliable here: it can occasionally produce
-    // the same polynomial, leaving the purportedly inconsistent share intact.
+    //
+    // This used to build the extra share from a SECOND split of the same
+    // secret, and bf233155 changed it because that was flaky. The rationale it
+    // recorded — "a second random split can occasionally produce the same
+    // polynomial" — was correct, and the cause turned out to matter far more
+    // than the flake: @stablelib/tss reused ONE coefficient byte across all 32
+    // secret bytes, so two splits collided at 1/256 (measured 0.380% over
+    // 200k trials) and, much worse, a single share determined the secret up to
+    // 256 guesses. Fixed in shamir.js by calling splitRaw per octet; see issue
+    // #2213 and shamir.coefficientReuse.test.js.
+    //
+    // Two splits now collide with probability ~2^-256, so the old construction
+    // would no longer flake — but the deterministic mutation below is still
+    // the better test, so it stays.
     const franken = new Uint8Array(sharesA[2]);
     // Offsets are derived from exported constants, so an envelope format change
     // cannot silently point this mutation at the wrong bytes.

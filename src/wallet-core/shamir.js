@@ -133,36 +133,6 @@ function rawShareFromEnvelope(share) {
   return raw;
 }
 
-// StableLib samples polynomial coefficients once per splitRaw() call. A DEK is
-// 32 octets, so split every octet independently and retain the x||y[32] layout.
-function splitRawBytewise(secret, k, n) {
-  const rawShares = Array.from({ length: n }, () => new Uint8Array(1 + SECRET_SIZE));
-  try {
-    for (let byteIndex = 0; byteIndex < SECRET_SIZE; byteIndex++) {
-      const octet = new Uint8Array([secret[byteIndex]]);
-      let octetShares = [];
-      try {
-        octetShares = splitRaw(octet, k, n);
-        for (let shareIndex = 0; shareIndex < n; shareIndex++) {
-          const raw = octetShares[shareIndex];
-          if (raw.length !== 2 || raw[0] !== shareIndex + 1) {
-            throw new Error('INVALID_RAW_SHARE');
-          }
-          rawShares[shareIndex][0] = raw[0];
-          rawShares[shareIndex][byteIndex + 1] = raw[1];
-        }
-      } finally {
-        octet.fill(0);
-        for (const raw of octetShares) raw.fill(0);
-      }
-    }
-    return rawShares;
-  } catch (error) {
-    for (const raw of rawShares) raw.fill(0);
-    throw error;
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Envelope helpers
 // ---------------------------------------------------------------------------
@@ -285,6 +255,74 @@ export function gfInv(a) {
   return gfPow254(x);
 }
 
+/**
+ * Shamir-split a secret one OCTET at a time, so each octet gets its own fresh
+ * coefficient vector.
+ *
+ * WHY THIS EXISTS — do not "simplify" it back to a single splitRaw(secret,…)
+ * call. @stablelib/tss draws its coefficients ONCE, outside both of its loops
+ * (`const a = randomBytes(threshold)` in tss.js), then overwrites only a[0]
+ * with each successive secret byte. For our k=2 that leaves ONE random byte
+ * masking all 32 bytes of the DEK — the same-key-twice shape.
+ *
+ * The consequence is not subtle. With y[i] = s[i] + a1*x and a single shared
+ * a1, guessing a1 over GF(256) yields 256 candidate secrets, one of which is
+ * correct — so a single share determines the DEK up to 256 tries, and the
+ * commitment stored in that same share confirms which. That voids the whole
+ * point of a 2-of-3 split. Measured before this fix: 1000/1000 recovery from
+ * one share. See issue #2213.
+ *
+ * Calling splitRaw per octet gives each byte an independent coefficient
+ * vector, which is what sound bytewise Shamir over GF(256) requires and what
+ * this module's own pre-#1923 implementation did (it allocated
+ * (k-1) * SECRET_SIZE random bytes). The library stays the audited core; it is
+ * simply invoked on a domain where its coefficient reuse cannot bite.
+ *
+ * Output shape is byte-identical to splitRaw's: [x, y0, y1, …]. Shares
+ * produced before this fix still reconstruct — combineRaw is Lagrange
+ * interpolation and does not care how the coefficients were chosen — so there
+ * is no envelope bump and no migration. Bundles exported before the fix are
+ * still weak and should be re-exported.
+ *
+ * @param {Uint8Array} secret
+ * @param {number} k threshold
+ * @param {number} n share count
+ * @returns {Uint8Array[]} n raw shares of (1 + secret.length) bytes
+ */
+function splitRawPerOctet(secret, k, n) {
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    out[i] = new Uint8Array(1 + secret.length);
+    // splitRaw assigns x = 1..n in order; asserted per octet below.
+    out[i][0] = i + 1;
+  }
+  const octet = new Uint8Array(1);
+  try {
+    for (let b = 0; b < secret.length; b++) {
+      octet[0] = secret[b];
+      const parts = splitRaw(octet, k, n);
+      try {
+        for (let i = 0; i < n; i++) {
+          // Fail closed if the library ever changes its x assignment: a silent
+          // mismatch here would emit shares whose header x does not match the
+          // polynomial their y-values came from, and combine() would return
+          // garbage that still passed the CRC.
+          if (parts[i][0] !== out[i][0]) throw new Error('SPLIT_X_MISMATCH');
+          out[i][b + 1] = parts[i][1];
+        }
+      } finally {
+        for (const p of parts) p.fill(0);
+      }
+    }
+  } catch (err) {
+    for (const s of out) s.fill(0);
+    throw err;
+  } finally {
+    octet.fill(0);
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -320,7 +358,7 @@ export function split(secret, n = 3, k = 2) {
     crypto.getRandomValues(setId);
 
     try {
-      const rawShares = splitRawBytewise(sec, k, n);
+      const rawShares = splitRawPerOctet(sec, k, n);
       const shares = new Array(rawShares.length);
       try {
         for (let i = 0; i < rawShares.length; i++) {
