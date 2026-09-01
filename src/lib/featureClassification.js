@@ -23,7 +23,7 @@ export const ALL_ROUTE_PATHS = [
   '/savings', '/invoices', '/watchlist', '/address-book',
   '/net-worth', '/budget', '/duress-pin',
   '/wallet-access', '/stealth-wallets', '/panic-wipe', '/risk-score',
-  '/correlation', '/session-manager', '/receipt', '/tx-history',
+  '/correlation', '/session-manager', '/tx-history',
   '/address-checker', '/fee-analytics', '/correlation-timeline',
   '/dashboard-widgets', '/wallet-seed-qr',
   '/hardware-wallet', '/personal-backup', '/rasp-security', '/audit-log', '/login-activity', '/biometric-auth', '/anomaly-detection', '/portfolio-rewind',
@@ -104,10 +104,6 @@ export const CLASSIFICATION = {
   '/tx-history': {
     verdict: 'live', dataSource: 'wallet-core',
     note: 'BTC history from wallet-core/btc/provider (Esplora — same endpoint used for UTXOs/broadcast); SOL from wallet-core/sol/provider (same RPC used for balance/broadcast); EVM explicitly unsupported (no third-party indexer added — shows honest explorer fallback). Demo rows clearly badged "Sample". Privacy disclosure surfaced in-app.',
-  },
-  '/receipt': {
-    verdict: 'live', dataSource: 'local-entities',
-    note: 'Reads real local Transaction records. USD Value row removed — receipt now shows native amount and fee only, with no stale fiat conversion on a financial document.',
   },
   '/fee-analytics': {
     verdict: 'live', dataSource: 'wallet-core',
