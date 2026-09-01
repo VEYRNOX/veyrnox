@@ -247,9 +247,35 @@ export const SHARD_BUNDLE_VERSION = 2;
 // check. `v` is read from the same file being validated, so keeping a v1
 // branch let an attacker-supplied bundle select the weak verifier for itself.
 //
-// The compatibility branch was removed (2026-08-15) after confirming it served
-// zero real v1 artifacts. The feature was later enabled in production; this
-// comment records only the v1-format decision, not the current feature state.
+// The compatibility branch was removed on 2026-08-15 (#1753). The stated
+// justification was that no user could hold a v1 bundle because the feature
+// flag was "set in NO shipping build — not ci.yml, deploy-preview.yml, or
+// firebase-test-lab.yml". Every workflow named there was checked;
+// `.env.production` was not, and it has carried
+// VITE_ENABLE_PERSONAL_BACKUP_SHARDS=1 since 2026-08-12 (#1728) — THREE DAYS
+// BEFORE the removal, not after it. `npm run build` is plain `vite build`,
+// i.e. mode `production`, so release-channel builds from that window shipped
+// the feature and wrote v1 bundles.
+//
+// So "confirmed zero real v1 artifacts" was never established. What IS
+// established: no automated Play upload fired in that window (every
+// publish-to-play-internal run 2026-08-12..15 was skipped or cancelled), and
+// uploads on this project are done by hand, so the repository cannot answer
+// whether a v1 bundle reached anyone. Open in issue #2220; it needs the Play
+// Console and App Store Connect upload dates for versionCode 7/8 and
+// 1.0.1 (2).
+//
+// Do not re-derive "which builds ship this" from the CI workflows alone —
+// that is the exact reasoning that produced the false claim. `.env.production`
+// is a shipping-build input.
+//
+// The v1 FORMAT decision above stands on its own merits regardless of that
+// outcome: the broken hasher and the self-selecting `v` field are reasons not
+// to keep a v1 branch, independent of how many artifacts exist. If #2220
+// concludes real v1 bundles are out there, the fix is a separate,
+// user-invoked legacy-import path that does not choose its verifier from the
+// file's own `v` — not a revival of this branch.
+//
 // A developer holding a locally-generated v1 test bundle must re-export it.
 export const SHARD_BUNDLE_MISMATCH = 'SHARD_BUNDLE_MISMATCH';
 export const SHARD_BUNDLE_INVALID = 'SHARD_BUNDLE_INVALID';
