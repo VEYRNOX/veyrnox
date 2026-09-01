@@ -104,15 +104,25 @@ export const FREE_FEATURES = [
   { name: 'NFT gallery', summary: 'View owned NFTs across chains' },
   { name: 'Notifications & push', summary: 'Web push notification centre' },
   { name: 'Tx analytics', summary: 'Per-address stats derived from local tx history — no chain query' },
+  { name: 'Message signing', summary: 'Proof-of-ownership without sending funds' },
 ];
 
 // Safety Plus tier features — shown on the Plans card. Mirrors the SAFETY PLUS
 // column of https://veyrnox.com/plans. Presentation only: access is enforced by
 // the tier gate in components/FeatureGate against SAFETY_PLUS_ROUTES, not by
-// this list. NOTE: three of these (Calldata decode & approval guard,
-// Address-poisoning warnings, Transaction simulation) are embedded in the Send
-// flow rather than standalone routes, so they are listed here but are NOT yet
-// route-gated — see docs and SAFETY_PLUS_ROUTES.
+// this list.
+//
+// NOTE: FOUR of these — Calldata decode & approval guard, Address-poisoning
+// warnings, Risk scoring (pre-sign gate) and Transaction simulation — are
+// embedded in the Send flow rather than standalone routes, so they are listed
+// here but are NOT yet route-gated. (This said "three" and omitted Risk
+// scoring until 2026-09-01. An undercount here is how a genuine drift hides:
+// the next reader checking "is this entry unrouted on purpose?" is reading
+// exactly this sentence.)
+//
+// Every OTHER entry must correspond to a path in SAFETY_PLUS_ROUTES. That
+// correspondence is asserted both ways by tier.featureRouteParity.test.js —
+// this list and that one drifted apart twice before the test existed.
 export const SAFETY_PLUS_FEATURES = [
   { name: 'Duress PIN', summary: 'Decoy wallet under coercion' },
   { name: 'Stealth / hidden wallets', summary: 'Deniable hidden-wallet pool' },
@@ -131,7 +141,6 @@ export const SAFETY_PLUS_FEATURES = [
   { name: 'Audit log', summary: 'Encrypted local activity record' },
   { name: 'Advanced analytics', summary: 'Sharpe ratio, correlation matrix' },
   { name: 'Recurring payments', summary: 'Scheduled payment reminders' },
-  { name: 'Message signing', summary: 'Proof-of-ownership without sending funds' },
 ];
 
 export const AI_SECURITY_PROTECTION_FEATURES = [
