@@ -150,7 +150,7 @@ try {
   function slip10(seed, path) {
     let I = hmac(sha512, new TextEncoder().encode('ed25519 seed'), seed);
     for (const seg of path.slice(2).split('/')) {
-      const idx = parseInt(seg.replace("'", ''), 10) + 0x80000000;
+      const idx = parseInt(seg.replaceAll("'", ''), 10) + 0x80000000;
       const buf = new Uint8Array(37);
       buf[0] = 0;
       buf.set(I.slice(0, 32), 1);
