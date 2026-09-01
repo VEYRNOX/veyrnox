@@ -45,4 +45,14 @@ describe('shamir — end-to-end unaffected by the library swap', () => {
     const shares = split(secret, 5, 3);
     expect(combine([shares[0], shares[2], shares[4]])).toEqual(secret);
   });
+
+  it('uses independent per-octet coefficients for a 2-of-3 split', () => {
+    const secret = randomSecret();
+    const [first, second] = split(secret, 3, 2);
+    const pairwiseDeltas = new Set();
+    for (let i = 0; i < 32; i++) pairwiseDeltas.add(first[20 + i] ^ second[20 + i]);
+
+    // A reused coefficient makes every y1 XOR y2 byte identical.
+    expect(pairwiseDeltas.size).toBeGreaterThan(1);
+  });
 });

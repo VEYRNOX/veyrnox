@@ -1,6 +1,7 @@
-// Audited Shamir wrapper. The raw split/combine core now routes through
-// `@stablelib/tss`, while this module preserves Veyrnox's envelope/versioning,
-// commitment, CRC, and validation behaviour around that core.
+// Audited Shamir wrapper. The raw combine core routes through `@stablelib/tss`;
+// splitting invokes its raw primitive once per secret octet so every byte has
+// independently sampled polynomial coefficients. This module preserves
+// Veyrnox's envelope/versioning, commitment, CRC, and validation behaviour.
 //
 // Security-sensitive changes here still need explicit review: this file sits on
 // the recovery-share boundary and owns the compatibility contract for the share
