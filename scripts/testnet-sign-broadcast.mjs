@@ -9,7 +9,7 @@ import {
 import * as btc from '@scure/btc-signer';
 import { hex } from '@scure/base';
 import {
-  Connection, PublicKey, Keypair, SystemProgram,
+  Connection, Keypair, SystemProgram,
   Transaction, LAMPORTS_PER_SOL, clusterApiUrl,
 } from '@solana/web3.js';
 import { hmac } from '@noble/hashes/hmac';
