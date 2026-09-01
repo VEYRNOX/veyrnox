@@ -940,12 +940,11 @@ value / mutate balances without a user signature through wallet-core signing).
         2026-09-01 security diff — reasoned about the superseded hand-rolled
         implementation. A crypto-primitive change needs an entry here even
         when it is framed as a de-risking refactor; especially then.
-      - **Consequence for the status tag.** `featureCatalogue.js:292` marks
-        Shamir Shard Backup `status: 'verified'`. That was not defensible
-        during the window above and is an owner decision now, not a doc edit.
-        Per the standing rule, code-complete + tests green is BUILT at most;
-        nothing here has had an on-device recovery round-trip or an
-        independent audit.
+      - **Consequence for the status tag.** `featureCatalogue.js` now marks
+        Shamir Shard Backup `status: 'built'`; the earlier `verified` tag was
+        removed in PR #2216. Per the standing rule, code-complete + tests
+        green is BUILT at most; nothing here has had an on-device recovery
+        round-trip or an independent audit.
     - **Phase 1 (PR #1666)** — 2-of-3 Shamir DEK split + export-only UI. New
       "Recovery shares" tab in Personal Backup. `nativeKeyStore.exportPersonal
       BackupShares` runs KEK unlock chain and splits the DEK inside its own
