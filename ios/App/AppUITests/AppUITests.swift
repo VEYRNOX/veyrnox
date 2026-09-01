@@ -75,11 +75,23 @@ final class AppUITests: XCTestCase {
         //    Android's Robo script already clicked "New wallet"; only iOS was
         //    left behind. Both platforms render the same web UI — if these two
         //    ever disagree again, one of them is wrong.
-        tapButton(
+        //
+        //    Retry-on-no-advance: the first press against a cold WKWebView
+        //    on iOS 26 Simulator is intermittently swallowed at the click
+        //    layer (run 33529062151: PIN pad never rendered despite the
+        //    press succeeding at the AX layer). If the PIN pad hasn't
+        //    appeared shortly after the tap, re-press the tile before the
+        //    enterPin helper's own wait times out. Cheap and honest — the
+        //    tile is idempotent, a second press produces no user-visible
+        //    change if the first landed.
+        tapButtonUntilAdvanced(
             app: app,
             label: "New wallet",
-            timeout: 15,
-            failureMessage: "Entry tiles / 'New wallet' never appeared."
+            waitFor: app.buttons["1"],
+            appearTimeout: 15,
+            perAttemptWait: 6,
+            maxAttempts: 3,
+            failureMessage: "Entry tiles / 'New wallet' never advanced to the PIN pad."
         )
 
         // 3. PIN pad: 8 digits, then tap the submit button. PinPad's submit
@@ -132,11 +144,15 @@ final class AppUITests: XCTestCase {
 
         tapButtonIfPresent(app: app, label: "No thanks", timeout: 6)
         tapButtonIfPresent(app: app, label: "Not now", timeout: 6)
-        tapButton(
+        // Same retry rationale as the create path.
+        tapButtonUntilAdvanced(
             app: app,
             label: "Have a wallet",
-            timeout: 15,
-            failureMessage: "Entry tiles / 'Have a wallet' never appeared."
+            waitFor: app.buttons["1"],
+            appearTimeout: 15,
+            perAttemptWait: 6,
+            maxAttempts: 3,
+            failureMessage: "Entry tiles / 'Have a wallet' never advanced to the PIN pad."
         )
 
         let pin = "19283746"
@@ -193,6 +209,29 @@ final class AppUITests: XCTestCase {
         if button.waitForExistence(timeout: timeout) {
             webViewSafeTap(button)
         }
+    }
+
+    /// Press a button and confirm the next-view element appears. Retries the
+    /// press if it doesn't — a cold WKWebView on iOS 26 Simulator sometimes
+    /// swallows the first click at the WebKit layer even though XCUITest's
+    /// press succeeded at the AX layer (idempotent tile taps make retry safe).
+    private func tapButtonUntilAdvanced(
+        app: XCUIApplication,
+        label: String,
+        waitFor next: XCUIElement,
+        appearTimeout: TimeInterval,
+        perAttemptWait: TimeInterval,
+        maxAttempts: Int,
+        failureMessage: String
+    ) {
+        let button = buttonMatching(app, label: label)
+        XCTAssertTrue(button.waitForExistence(timeout: appearTimeout), "Entry tile '\(label)' never appeared.")
+        for attempt in 1...maxAttempts {
+            webViewSafeTap(button)
+            if next.waitForExistence(timeout: perAttemptWait) { return }
+            if attempt < maxAttempts { NSLog("[VEYRNOX-XCUITEST] '\(label)' press attempt \(attempt) did not advance the view; retrying") }
+        }
+        XCTFail(failureMessage)
     }
 
     /// XCUITest's `.tap()` on a WKWebView button dispatches an accessibility
