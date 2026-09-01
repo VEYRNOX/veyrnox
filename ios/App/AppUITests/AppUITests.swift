@@ -99,11 +99,21 @@ final class AppUITests: XCTestCase {
         //    cannot satisfy the native secure-store precondition. The only
         //    honest simulator outcome is an explicit fail-closed result with no
         //    usable wallet. Successful provisioning remains real-device-only.
-        let failureBanner = app.staticTexts[
-            "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
-        ]
+        // `app.staticTexts["<exact>"]` matches by IDENTIFIER, not label. The
+        // sonner toast the app renders for this failure has no identifier
+        // (it's a portal-mounted <li> whose accessible name is the visible
+        // text), so the exact-key subscript never matches even when the
+        // banner is on-screen (run 33524731172: banner visible at t=200 s in
+        // the recording, staticTexts["…"].exists returned false throughout
+        // the 20 s wait). Use a label-substring predicate that DOES match a
+        // toast's accessible name. Widened to 45 s because provisioning +
+        // KEK/RASP + toast animation lands around ~30 s on cold CI simulators.
+        let bannerPrefix = "Wallet setup couldn't finish securely"
+        let failureBanner = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", bannerPrefix)
+        ).firstMatch
         XCTAssertTrue(
-            failureBanner.waitForExistence(timeout: 20),
+            failureBanner.waitForExistence(timeout: 45),
             "Simulator provisioning must fail closed when the native secure store is unavailable."
         )
         XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not create a wallet.")
@@ -149,10 +159,13 @@ final class AppUITests: XCTestCase {
             failureMessage: "Restore / Import button never appeared."
         )
 
-        let failureBanner = app.staticTexts[
-            "Wallet setup couldn't finish securely, so nothing was saved. Please set your PIN and try again."
-        ]
-        XCTAssertTrue(failureBanner.waitForExistence(timeout: 20), "Simulator import must fail closed without secure storage.")
+        // Same fragility as the create path — sonner toast has no identifier;
+        // match by label-substring predicate. Same widened 45 s timeout.
+        let bannerPrefix = "Wallet setup couldn't finish securely"
+        let failureBanner = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", bannerPrefix)
+        ).firstMatch
+        XCTAssertTrue(failureBanner.waitForExistence(timeout: 45), "Simulator import must fail closed without secure storage.")
         XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not import a wallet.")
     }
 
