@@ -11,7 +11,7 @@
 // gate in components/FeatureGate, not by this display component.
 
 import { Link } from "react-router";
-import { ShieldCheck, TrendingUp, Link2, Lock, Sparkles, ArrowRight, Check } from "lucide-react";
+import { ShieldCheck, TrendingUp, Lock, Sparkles, ArrowRight, Check } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";
 import { hasSafetyPlusAccess, TIER } from "@/lib/tier";
@@ -45,15 +45,7 @@ const SECTIONS = [
     icon: TrendingUp,
     features: [
       { name: "Advanced Analytics", summary: "Sharpe ratio, correlation matrix, volatility analysis", route: "/advanced-analytics" },
-      { name: "On-Chain Analytics", summary: "Address-level transaction activity and insights", route: "/onchain" },
       { name: "Recurring Payments", summary: "Scheduled payment reminders with built-in Send flow", route: "/recurring" },
-    ],
-  },
-  {
-    nav: "CONNECT",
-    icon: Link2,
-    features: [
-      { name: "Message Signing", summary: "Proof-of-ownership without sending funds", route: "/crypto-signing" },
     ],
   },
 ];

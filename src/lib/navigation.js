@@ -97,7 +97,7 @@ const RAW_NAV_GROUPS = [
       { path: "/nft-multichain", label: "Multi-Chain NFT", icon: Layers },
       { path: "/spending", label: "Spending", icon: PieChart },
       { path: "/snapshots", label: "Snapshots", icon: Camera },
-      { path: "/onchain", label: "On-Chain", icon: Network },
+      { path: "/onchain", label: "Tx Analytics", icon: Network, keywords: "onchain on-chain transaction history analytics local" },
     ],
   },
   {

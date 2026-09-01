@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { SAFETY_PLUS_ROUTES, isSafetyPlusRoute } from '../safetyPlusRoutes';
+import {
+  SAFETY_PLUS_ROUTES,
+  isSafetyPlusRoute,
+  AI_SECURITY_PROTECTION_ROUTES,
+  isAiSecurityProtectionRoute,
+} from '../safetyPlusRoutes';
 
 // This set mirrors the SAFETY PLUS column of the public plans page at
 // https://veyrnox.com/plans (owner decision: full-match the plans page). The
@@ -23,10 +28,7 @@ const EXPECTED_GATED = [
   '/audit-log',
   // FINANCE
   '/advanced-analytics',
-  '/onchain',
   '/recurring',
-  // CONNECT
-  '/crypto-signing',
 ];
 
 describe('safetyPlusRoutes', () => {
@@ -76,5 +78,20 @@ describe('safetyPlusRoutes', () => {
   it('isSafetyPlusRoute is false for the plans/safety-plus hub pages themselves', () => {
     expect(isSafetyPlusRoute('/plans')).toBe(false);
     expect(isSafetyPlusRoute('/safety-plus')).toBe(false);
+  });
+
+  // AI Security Protection tier — higher than Safety Plus. These routes gate
+  // via hasAdvisorOnlineAccess and must NOT unlock for a Safety-Plus-only user.
+  const EXPECTED_AI_GATED = ['/trust-score', '/suspicious-assets'];
+
+  it('gates exactly the AI Security Protection routes', () => {
+    expect(AI_SECURITY_PROTECTION_ROUTES).toEqual(EXPECTED_AI_GATED);
+  });
+
+  it('AI-tier routes are not double-gated by Safety Plus', () => {
+    for (const route of EXPECTED_AI_GATED) {
+      expect(isAiSecurityProtectionRoute(route)).toBe(true);
+      expect(SAFETY_PLUS_ROUTES, `${route} must not be in Safety Plus list`).not.toContain(route);
+    }
   });
 });

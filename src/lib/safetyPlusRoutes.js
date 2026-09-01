@@ -30,12 +30,23 @@ export const SAFETY_PLUS_ROUTES = [
   '/audit-log',
   // FINANCE
   '/advanced-analytics',
-  '/onchain',
   '/recurring',
-  // CONNECT
-  '/crypto-signing',
 ];
 
 export function isSafetyPlusRoute(path) {
   return SAFETY_PLUS_ROUTES.includes(path);
+}
+
+// Routes gated at the AI Security Protection tier (higher than Safety Plus).
+// Same shape as SAFETY_PLUS_ROUTES; FeatureGate.jsx checks this AFTER the
+// Safety Plus check so an AI-tier route always requires the AI entitlement
+// even for a Safety-Plus subscriber. Add here — not to SAFETY_PLUS_ROUTES —
+// when a feature is priced above Safety Plus.
+export const AI_SECURITY_PROTECTION_ROUTES = [
+  '/trust-score',
+  '/suspicious-assets',
+];
+
+export function isAiSecurityProtectionRoute(path) {
+  return AI_SECURITY_PROTECTION_ROUTES.includes(path);
 }

@@ -9,9 +9,9 @@
 // passed (see below).
 import { useLocation } from 'react-router';
 import { featureRouteOutcome } from '@/lib/featureRegistry';
-import { isSafetyPlusRoute } from '@/lib/safetyPlusRoutes';
+import { isSafetyPlusRoute, isAiSecurityProtectionRoute } from '@/lib/safetyPlusRoutes';
 import { useTier } from '@/lib/TierProvider';
-import { hasSafetyPlusAccess } from '@/lib/tier';
+import { hasSafetyPlusAccess, hasAdvisorOnlineAccess } from '@/lib/tier';
 import HonestDisabledPage from './HonestDisabledPage';
 import TierLockedPage from './TierLockedPage';
 import PageNotFound from '@/lib/PageNotFound';
@@ -34,7 +34,16 @@ export default function FeatureGate({ children, path }) {
   if (outcome === 'notFound') return <PageNotFound />;
   if (outcome === 'disabled') return <HonestDisabledPage path={target} />;
 
-  if (isSafetyPlusRoute(target)) {
+  if (isAiSecurityProtectionRoute(target)) {
+    if (loading) {
+      return (
+        <div className="max-w-md mx-auto mt-12 text-sm text-muted-foreground text-center">
+          Loading…
+        </div>
+      );
+    }
+    if (!hasAdvisorOnlineAccess(currentTier)) return <TierLockedPage tier="ai_security_protection" />;
+  } else if (isSafetyPlusRoute(target)) {
     if (loading) {
       return (
         <div className="max-w-md mx-auto mt-12 text-sm text-muted-foreground text-center">
