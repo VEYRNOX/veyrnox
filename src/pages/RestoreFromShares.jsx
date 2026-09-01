@@ -10,19 +10,23 @@
 // action-password chain: any 2 recovery bundles + a new user-supplied
 // credential = full seed recovery on a brand-new device. That is the whole
 // POINT of cross-device recovery — a lost or destroyed device must be
-// recoverable from the 2 remaining bundles alone. The design consequence:
-// the OFFLINE strength of the recovered wallet on the new device is bounded
-// by whatever the user types here. A short numeric PIN would give an
-// attacker who obtains 2 bundles a ~10^8 offline crack surface — with no
-// hardware anchor to slow it down. This screen therefore enforces a
-// PASSPHRASE (via checkRecoveryPassphrase, min 16 chars) as the re-wrap
-// credential; do NOT relax that back to a numeric PIN without owner sign-off
-// and a compensating factor (hardware KEK re-enrolment before first sign,
-// old-vault password verification, etc.).
+// recoverable from the 2 remaining bundles alone.
+//
+// 2026-09-01 (owner sign-off): on NATIVE the re-wrap credential is an
+// 8-digit PIN and hardware KEK re-enrolment is MANDATORY before first
+// sign. That combination is the compensating factor the note below
+// requires — the KEK gate (WalletEntry) fires post-restore, the PIN is
+// handed to it via router state for auto-enrol, and hardware unavailable
+// falls back to the same "insecure tier" path fresh-create uses.
+//
+// On WEB there is no hardware anchor, so the passphrase path is retained
+// (checkRecoveryPassphrase, min 16 chars). Do NOT relax that on web
+// without a new compensating factor.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { Capacitor } from "@capacitor/core";
 import { ArrowLeft, Upload, FileText } from "lucide-react";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useWallet } from "@/lib/WalletProvider";
@@ -32,6 +36,11 @@ import {
   checkRecoveryPassphrase,
   RECOVERY_PASSPHRASE_MIN_LENGTH,
 } from "@/wallet-core/recoveryShare";
+
+// Native shard restore uses an 8-digit PIN as the new vault credential;
+// the KEK gate in WalletEntry re-wraps it under hardware before first sign.
+const RESTORE_PIN_LENGTH = 8;
+const IS_NATIVE = Capacitor.isNativePlatform();
 
 const BUNDLE_ENVELOPE_TYPE = "recovery-bundle-v1";
 
@@ -68,7 +77,7 @@ function readFileText(file) {
 
 export default function RestoreFromShares() {
   const navigate = useNavigate();
-  const { restoreFromRecoveryBundles } = useWallet();
+  const { restoreFromRecoveryBundles, vaultExists } = useWallet();
   // ponytail: these strings sit in React state closure — String is immutable
   // in JS, so we cannot literally zero the underlying bytes. We minimise the
   // window by clearing on unmount + immediately after successful reconstruction
@@ -77,10 +86,18 @@ export default function RestoreFromShares() {
   // ceiling every other password-typed field on the app hits.
   const [shareA, setShareA] = useState("");
   const [shareB, setShareB] = useState("");
-  const [phase, setPhase] = useState("input"); // input | passphrase | busy
+  const [phase, setPhase] = useState("input"); // input | credential | busy
   const [newPassphrase, setNewPassphrase] = useState("");
   const [newPassphraseConfirm, setNewPassphraseConfirm] = useState("");
+  // Native-only: 8-digit PIN + confirm. On web the passphrase fields above are used.
+  const [newPin, setNewPin] = useState("");
+  const [newPinConfirm, setNewPinConfirm] = useState("");
   const [error, setError] = useState("");
+  // Contingency: existing vault on this device (from WalletProvider's
+  // synchronous probe). If true, restore is blocked — user must Panic Wipe
+  // first (overwriting an existing vault silently is a destructive-tap risk).
+  // vaultExists is tri-state (true | false | null-unknown); only `true` blocks.
+  const vaultPresent = vaultExists === true;
   const fileRefA = useRef(null);
   const fileRefB = useRef(null);
   const [passphraseA, setPassphraseA] = useState("");
@@ -90,7 +107,7 @@ export default function RestoreFromShares() {
   const envelopeB = useMemo(() => detectBundleEnvelope(shareB), [shareB]);
 
   // Clear every credential-shaped state on unmount so navigating away doesn't
-  // leave a share/bundle passphrase/new-passphrase live on the React fiber.
+  // leave a share/bundle passphrase/new-passphrase/PIN live on the React fiber.
   useEffect(() => {
     return () => {
       setShareA("");
@@ -99,8 +116,11 @@ export default function RestoreFromShares() {
       setPassphraseB("");
       setNewPassphrase("");
       setNewPassphraseConfirm("");
+      setNewPin("");
+      setNewPinConfirm("");
     };
   }, []);
+
 
   const pickInto = useCallback(async (which, file) => {
     setError("");
@@ -114,8 +134,14 @@ export default function RestoreFromShares() {
     }
   }, []);
 
-  const advanceToPassphrase = useCallback(() => {
+  const advanceToCredential = useCallback(() => {
     setError("");
+    if (vaultPresent) {
+      setError(
+        "This device already has a wallet. Wipe it from Settings → Panic Wipe before restoring from recovery bundles."
+      );
+      return;
+    }
     if (!shareA.trim() || !shareB.trim()) {
       setError("Provide both recovery bundles.");
       return;
@@ -128,22 +154,40 @@ export default function RestoreFromShares() {
       setError(`Enter the recovery passphrase for share 2 (min ${RECOVERY_PASSPHRASE_MIN_LENGTH} characters).`);
       return;
     }
-    setPhase("passphrase");
-  }, [shareA, shareB, envelopeA, envelopeB, passphraseA, passphraseB]);
+    setPhase("credential");
+  }, [shareA, shareB, envelopeA, envelopeB, passphraseA, passphraseB, vaultPresent]);
 
-  const submitPassphrase = useCallback(async () => {
+  const submitCredential = useCallback(async () => {
     setError("");
-    // 2026-08-16 audit: the re-wrap credential MUST be a passphrase, not a
-    // numeric PIN. See the KEK-bypass architecture note at the top of this
-    // file for the rationale.
-    const strength = checkRecoveryPassphrase(newPassphrase);
-    if (!strength.ok) {
-      setError(strength.reason || `Use at least ${RECOVERY_PASSPHRASE_MIN_LENGTH} characters.`);
+    if (vaultPresent) {
+      setError("This device already has a wallet. Wipe it first (Settings → Panic Wipe).");
       return;
     }
-    if (newPassphrase !== newPassphraseConfirm) {
-      setError("Passphrases do not match.");
-      return;
+    // Native: 8-digit PIN, compensated by mandatory hardware KEK re-enrol
+    // in WalletEntry post-restore. Web: passphrase, no hardware anchor
+    // available. See the KEK-BYPASS ARCHITECTURE note at the top of this file.
+    let credential;
+    if (IS_NATIVE) {
+      if (!/^\d{8}$/.test(newPin)) {
+        setError(`Enter your new ${RESTORE_PIN_LENGTH}-digit PIN.`);
+        return;
+      }
+      if (newPin !== newPinConfirm) {
+        setError("PINs do not match.");
+        return;
+      }
+      credential = newPin;
+    } else {
+      const strength = checkRecoveryPassphrase(newPassphrase);
+      if (!strength.ok) {
+        setError(strength.reason || `Use at least ${RECOVERY_PASSPHRASE_MIN_LENGTH} characters.`);
+        return;
+      }
+      if (newPassphrase !== newPassphraseConfirm) {
+        setError("Passphrases do not match.");
+        return;
+      }
+      credential = newPassphrase;
     }
     setPhase("busy");
     // An encrypted share is unwrapped back to its raw bundle JSON here —
@@ -164,18 +208,25 @@ export default function RestoreFromShares() {
       return;
     }
     try {
-      await restoreFromRecoveryBundles([resolvedA, resolvedB], newPassphrase);
+      await restoreFromRecoveryBundles([resolvedA, resolvedB], credential);
+      // Hand the just-typed PIN to WalletEntry via router state so its
+      // KekEnrollmentGate can auto-enrol without a redundant re-entry. In-
+      // memory only, single-consume (WalletEntry clears history state on
+      // read). Passphrase path (web) has no KEK gate to feed. See the
+      // KEK-BYPASS ARCHITECTURE note at the top of this file.
+      const navState = IS_NATIVE ? { pendingKekEnrollPin: credential } : undefined;
       // Zero every credential-shaped state on success. String immutability
       // means we replace the closure ref, not the bytes; the GC decides.
       setShareA(""); setShareB("");
       setNewPassphrase(""); setNewPassphraseConfirm("");
+      setNewPin(""); setNewPinConfirm("");
       setPassphraseA(""); setPassphraseB("");
-      navigate("/");
+      navigate("/", navState ? { state: navState, replace: true } : { replace: true });
     } catch (err) {
       setError((err instanceof Error && err.message) || "Restore failed.");
-      setPhase("passphrase");
+      setPhase("credential");
     }
-  }, [newPassphrase, newPassphraseConfirm, shareA, shareB, envelopeA, envelopeB, passphraseA, passphraseB, restoreFromRecoveryBundles, navigate]);
+  }, [newPassphrase, newPassphraseConfirm, newPin, newPinConfirm, vaultPresent, shareA, shareB, envelopeA, envelopeB, passphraseA, passphraseB, restoreFromRecoveryBundles, navigate]);
 
   const ShareInput = ({ label, value, setValue, fileRef, which }) => (
     <div className="space-y-2">
@@ -224,6 +275,13 @@ export default function RestoreFromShares() {
         This device rebuilds the wallet and locks it under a new passphrase — the seed never leaves the device.
       </p>
 
+      {vaultPresent && (
+        <p className="text-sm text-red-500" role="alert">
+          This device already has a wallet. Wipe it from Settings → Panic Wipe before restoring
+          — the restore would otherwise overwrite it.
+        </p>
+      )}
+
       {phase === "input" && (
         <div className="space-y-4">
           <ShareInput label="Share 1" value={shareA} setValue={setShareA} fileRef={fileRefA} which="A" />
@@ -246,8 +304,8 @@ export default function RestoreFromShares() {
           )}
           {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
           <button
-            onClick={advanceToPassphrase}
-            disabled={!shareA.trim() || !shareB.trim()}
+            onClick={advanceToCredential}
+            disabled={!shareA.trim() || !shareB.trim() || vaultPresent}
             className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50"
           >
             Continue
@@ -255,12 +313,47 @@ export default function RestoreFromShares() {
         </div>
       )}
 
-      {phase === "passphrase" && (
+      {phase === "credential" && IS_NATIVE && (
+        <div className="space-y-4">
+          <p className="text-sm">
+            Choose a new {RESTORE_PIN_LENGTH}-digit PIN for this device. After restore you
+            will be prompted to re-enable Hardware Protection — that step is required before
+            you can sign any transaction.
+          </p>
+          <PasswordInput
+            value={newPin}
+            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, RESTORE_PIN_LENGTH))}
+            placeholder={`New ${RESTORE_PIN_LENGTH}-digit PIN`}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={RESTORE_PIN_LENGTH}
+            autoComplete="new-password"
+          />
+          <PasswordInput
+            value={newPinConfirm}
+            onChange={(e) => setNewPinConfirm(e.target.value.replace(/\D/g, "").slice(0, RESTORE_PIN_LENGTH))}
+            placeholder="Confirm PIN"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={RESTORE_PIN_LENGTH}
+            autoComplete="new-password"
+          />
+          {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
+          <button
+            onClick={submitCredential}
+            disabled={newPin.length !== RESTORE_PIN_LENGTH || newPinConfirm.length !== RESTORE_PIN_LENGTH}
+            className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50"
+          >
+            Restore
+          </button>
+        </div>
+      )}
+
+      {phase === "credential" && !IS_NATIVE && (
         <div className="space-y-4">
           <p className="text-sm">
             Choose a new passphrase for this device (min {RECOVERY_PASSPHRASE_MIN_LENGTH} characters).
-            This must be a PASSPHRASE, not a PIN — a short PIN is not enough entropy to protect a
-            cross-device restore.
+            Web has no hardware anchor, so a passphrase (not a PIN) is required here.
           </p>
           <PasswordInput
             value={newPassphrase}
@@ -276,7 +369,7 @@ export default function RestoreFromShares() {
           />
           {error && <p className="text-sm text-red-500" role="alert">{error}</p>}
           <button
-            onClick={submitPassphrase}
+            onClick={submitCredential}
             disabled={!newPassphrase}
             className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50"
           >
