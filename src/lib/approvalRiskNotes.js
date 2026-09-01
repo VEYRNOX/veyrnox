@@ -13,6 +13,14 @@
 //     "this spender is safe" (no false negatives from errors).
 // I2: uses the same tip-screen proxy as pre-send screening — no new
 //     network surface.
+//
+// TIER: "Drainer & unsafe DEX warnings" is sold as an AI Security Protection
+// capability, and the REMOTE screen is what that gate buys. The LOCAL
+// threat-intel hit is not gated: it costs nothing, makes no network call, and
+// its data already ships in the app. Suppressing it would leave a free user
+// approving a spender we already know is a drainer, with silence — which reads
+// as safe (I4). Same split useBackgroundSecurity.js applies: the phishing-feed
+// hydrate is tier-gated, the local seed keeps serving every tier.
 
 import { screenTransaction } from '@/api/tipScreen';
 import { lookupThreatSync } from '@/lib/threatIntelStore';
@@ -37,27 +45,17 @@ export function getRiskNote(spender, chain = 'evm') {
   // and no background fetch. fetchRiskNote gates the egress too; this is the
   // read-side half, and it must be here rather than only at the call site.
   if (isDeniabilityOrDemoActive()) return null;
-  // Drainer & unsafe DEX warnings are an AI Security Protection capability.
-  // Lower tiers see no note (upsell surface); paid tier gets local seed +
-  // remote screen exactly as before.
-  if (!hasAdvisorOnlineAccessCached()) return null;
   const key = `${chain}:${spender}`.toLowerCase();
 
   if (_cache.has(key)) return _cache.get(key);
 
-  // Local threat intel — instant, no network. Returns Array of matches;
-  // take the first if any.
-  const localHits = lookupThreatSync(spender);
-  const localHit = localHits.length > 0 ? localHits[0] : null;
-  if (localHit) {
-    const note = {
-      note: `Flagged: ${localHit.note || localHit.category}. ${severityAdvice(localHit.severity)}`,
-      severity: localHit.severity === 'critical' ? 'high' : localHit.severity || 'medium',
-      source: 'local-threat-intel',
-    };
-    _cache.set(key, note);
-    return note;
-  }
+  // Local threat intel — every tier, before the tier gate. See the TIER note
+  // in the header.
+  const local = localNote(spender, key);
+  if (local) return local;
+
+  // Remote TIP screen is the paid half.
+  if (!hasAdvisorOnlineAccessCached()) return null;
 
   // Kick off remote fetch if not already in flight.
   if (!_inflight.has(key)) {
@@ -76,13 +74,38 @@ export async function fetchRiskNoteAsync(spender, chain = 'evm') {
   // Returns BEFORE the cache read: notes are keyed by real spender addresses,
   // so a decoy session must not be able to read one the real session cached.
   if (isDeniabilityOrDemoActive()) return null;
-  // AI Security Protection tier gate — matches getRiskNote() above.
-  if (!hasAdvisorOnlineAccessCached()) return null;
 
   const key = `${chain}:${spender}`.toLowerCase();
   if (_cache.has(key)) return _cache.get(key);
 
+  // Same order as getRiskNote(): local intel for every tier, remote screen
+  // for the AI tier only. This path is the one TokenApprovals actually calls,
+  // and before this it never consulted the local store at all — the local
+  // branch existed only in getRiskNote(), which has no callers.
+  const local = localNote(spender, key);
+  if (local) return local;
+
+  if (!hasAdvisorOnlineAccessCached()) return null;
+
   return fetchRiskNote(spender, chain, key);
+}
+
+/**
+ * Local threat-intel hit for a spender, or null. No network, no tier gate.
+ * Caches under the same key as a remote note so the two paths cannot disagree
+ * within a session; lookupThreatSync self-suppresses in deniability/demo.
+ */
+function localNote(spender, key) {
+  const localHits = lookupThreatSync(spender);
+  const localHit = localHits.length > 0 ? localHits[0] : null;
+  if (!localHit) return null;
+  const note = {
+    note: `Flagged: ${localHit.note || localHit.category}. ${severityAdvice(localHit.severity)}`,
+    severity: localHit.severity === 'critical' ? 'high' : localHit.severity || 'medium',
+    source: 'local-threat-intel',
+  };
+  _cache.set(key, note);
+  return note;
 }
 
 async function fetchRiskNote(spender, chain, key) {
