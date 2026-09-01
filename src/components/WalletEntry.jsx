@@ -1773,12 +1773,10 @@ export default function WalletEntry() {
   // ---- View: Unlock (PIN cohort) ----
   if (view === "unlock" && authModel === "pin") {
     const bioLabel = bioStatus?.label || (Capacitor.getPlatform?.() === "ios" ? "Face ID" : "Fingerprint");
-    // Both native platforms hide the manual "Unlock with {label}" button —
-    // the #2120 auto-fire raises the OS biometric sheet on mount (Face ID on
-    // iOS, BiometricPrompt on Android accepting Face Unlock + Fingerprint).
-    // A Face ID cancel sets `biometricFailed` and the copy below points the
-    // user at the PIN pad — no manual retry button needed.
-    const showBioButton = false;
+    // Manual "Unlock with {label}" retry button — restored after owner request.
+    // The #2120 auto-fire still raises the OS sheet on mount; this button lets
+    // the user retry biometric after a cancel/timeout without leaving the view.
+    const showBioButton = biometricEnabled && !biometricFailed && Capacitor.isNativePlatform();
     // FAST-PATH BIOMETRIC UNLOCK BUTTON (#2019). PARALLEL to the PIN pad — never
     // replaces PIN entry. FIVE AND-gates below; missing any → button not rendered
     // (fail-closed visibility). Uses Capacitor.getPlatform() (not
@@ -1914,10 +1912,9 @@ export default function WalletEntry() {
   // ---- View: Unlock existing vault (returning user) ----
   if (view === "unlock") {
     const bioLabel = bioStatus?.label || (Capacitor.getPlatform?.() === "ios" ? "Face ID" : "Fingerprint");
-    // See PIN-cohort branch above — both native platforms rely on the #2120
-    // auto-fire and hide the manual button. Failed/cancelled biometric falls
-    // through to the vault-password field below.
-    const showBioButton = false;
+    // Manual retry button restored (owner request). Auto-fire still runs on
+    // mount; this gives the user an explicit tap after a cancel/timeout.
+    const showBioButton = biometricEnabled && !biometricFailed && Capacitor.isNativePlatform();
     return (
       <EntryShell error={error}>
         <div className="p-4 rounded-xl border border-border bg-card space-y-3">
