@@ -227,3 +227,16 @@ describe('forwarded parameter validation', () => {
     expect((await thrown(() => onRequestPost(ctx({ ...VALID, address: 'short' })))).status).toBe(400);
   });
 });
+
+describe('Transak WAF Referer requirement (T-INF-103 fix)', () => {
+  it('sends Referer=https://veyrnox.com/ on refresh-token and create-session', async () => {
+    await onRequestPost(ctx(VALID));
+    const calls = globalThis.fetch.mock.calls;
+    // Two upstream calls: refresh-token then create-session.
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    for (const [url, init] of calls) {
+      expect(String(url)).toMatch(/transak\.com/);
+      expect(init.headers['Referer']).toBe('https://veyrnox.com/');
+    }
+  });
+});

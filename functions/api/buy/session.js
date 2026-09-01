@@ -29,6 +29,12 @@ const ENDPOINTS = {
   },
 };
 
+// Referer sent on server-to-server calls to Transak. Must match the
+// `referrerDomain` in the session body and the domain allowlisted with
+// Transak for our partner key. See T-INF-103 remediation in this file's
+// history.
+const PARTNER_REFERER = 'https://veyrnox.com/';
+
 const SUPPORTED_ASSETS = new Map([
   ['ETH:ethereum',     { code: 'ETH',  network: 'ethereum'   }],
   ['MATIC:polygon',    { code: 'MATIC', network: 'polygon'   }],
@@ -105,6 +111,12 @@ async function getPartnerToken(env, clientIp) {
       'api-secret': apiSecret,
       'x-api-key': apiKey,
       'x-user-ip': clientIp || '0.0.0.0',
+      // Transak support 2026-08-31: their WAF rejects the create-widget-URL
+      // family with `T-INF-103 Missing referer header in request` unless
+      // the server-side call carries a Referer matching `referrerDomain`.
+      // Set from the backend (not forwarded from the client) so the value
+      // is trusted and cannot be spoofed by end users.
+      'Referer': PARTNER_REFERER,
     },
     body: JSON.stringify({ apiKey }),
   });
@@ -202,6 +214,7 @@ export async function onRequestPost(context) {
         'x-api-key': apiKey,
         'x-user-ip': clientIp,
         'access-token': token,
+        'Referer': PARTNER_REFERER,
       },
       body: JSON.stringify(sessionBody),
     });
