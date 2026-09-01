@@ -2516,6 +2516,7 @@ none of this is "verified" in the strict on-chain / independent-audit sense).
 
 ### Audit remediation rounds (multi-file, mixed-severity)
 - **#1834** audit remediation 2026-08-16 — rate limits, VULN-19 nonce, shard hardening, advisor abort
+  - **Update 2026-09-01 (PR #2230, merged commit `910c729a`):** the backup-PIN portion of this remediation (bump PersonalBackup `.enc` PIN branch 8→12 digits to widen the standalone PIN seal's offline-crack surface from ~10^8 to ~10^12) is **RESOLVED / SUPERSEDED**. The PIN branch was a stopgap around the underlying two-parallel-seals model — attacker with the file attacks the weaker of two independent doors, and password strength never touched the PIN door. PR #2230 collapses the model to a SINGLE combined seal keyed off `Argon2id(password ‖ 0x1F ‖ pin)`, with password floor raised 12→16 chars (matching the shard-flow passphrase floor from this same PR #1834) and PIN back to exactly 8 digits (matching the PinPad everywhere else in the app). Both credentials are now required to restore — the PIN-only "in a pinch" recovery door does not exist. Combined entropy ~121 bits, Argon2id-slowed. No legacy read path (pre-launch, no production users; owner-verified). The OTHER PR #1834 items (rate limits, VULN-19 nonce, shard hardening, advisor abort) are unaffected and remain in effect.
 - **#1837** audit round 3 — RPC rate-limit, shard hardening, trezor prod hard-fail, test theater
 - **#1841** audit round 4 — VULN-19 ERC-20 nonce pin, test-theater purge, netUrl dead branch
 
