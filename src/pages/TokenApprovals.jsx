@@ -7,6 +7,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { summarizeAllowance, buildRevokeCalldata, sendRevoke } from "@/wallet-core/evm/approvals";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { fetchRiskNoteAsync } from "@/lib/approvalRiskNotes";
+import { useTier } from "@/lib/TierProvider";
 import { useApprovalMonitor } from "@/hooks/useApprovalMonitor";
 import { ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2, X, MessageSquare, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ export default function TokenApprovals() {
   const wallet = useWallet();
   const { requireTwoFactor, gateModal } = useActionGuard();
   const raspArtifact = useRaspArtifact({ excludeAttestation: true });
+  const { currentTier } = useTier();
   const [filter, setFilter] = useState("active");
   const [result, setResult] = useState(null); // post-revoke summary dialog
   const [error, setError] = useState(null);
@@ -103,8 +105,15 @@ export default function TokenApprovals() {
   });
 
   const spenders = useMemo(() => [...new Set(approvals.map(a => a.spender_address).filter(Boolean))], [approvals]);
+  // `currentTier` is part of the key because it is an INPUT to the queryFn:
+  // fetchRiskNoteAsync withholds the remote TIP screen below the AI Security
+  // Protection tier. Without it in the key, a user who upgrades mid-session
+  // keeps being served the notes cached while they were on the free tier —
+  // for the full staleTime, with refetchOnWindowFocus off, so nothing
+  // re-triggers. They have paid for the warning and do not get it.
+  // Sits BEFORE the spread: a fixed position cannot collide with an address.
   const riskNoteQueries = useQuery({
-    queryKey: ["approval-risk-notes", ...spenders],
+    queryKey: ["approval-risk-notes", currentTier, ...spenders],
     queryFn: async () => {
       const notes = {};
       await Promise.all(spenders.map(async (s) => {
