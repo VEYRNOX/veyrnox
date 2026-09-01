@@ -168,14 +168,27 @@ final class AppUITests: XCTestCase {
     private func tapButton(app: XCUIApplication, label: String, timeout: TimeInterval, failureMessage: String) {
         let button = buttonMatching(app, label: label)
         XCTAssertTrue(button.waitForExistence(timeout: timeout), failureMessage)
-        button.tap()
+        webViewSafeTap(button)
     }
 
     private func tapButtonIfPresent(app: XCUIApplication, label: String, timeout: TimeInterval) {
         let button = buttonMatching(app, label: label)
         if button.waitForExistence(timeout: timeout) {
-            button.tap()
+            webViewSafeTap(button)
         }
+    }
+
+    /// XCUITest's `.tap()` on a WKWebView button dispatches an accessibility
+    /// press (AXPress). On iOS 26 Simulator against a shadcn/Radix `<button>`
+    /// this only paints the CSS `:active` state — no `click` event ever fires,
+    /// so React `onClick` handlers never run and the view never advances. Run
+    /// 33508180774 recorded 30 s of the "New wallet" tile stuck in its green
+    /// pressed background with no navigation. A coordinate-anchored tap
+    /// synthesises a real touch (touchstart + touchend at the same point) and
+    /// produces a proper click, which is what the app is bound to. Applies to
+    /// every WebView button we drive from the smoke — tiles, digit keys, submit.
+    private func webViewSafeTap(_ element: XCUIElement) {
+        element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
     /// Tap each digit on the on-screen keypad. Digit buttons carry only their
@@ -193,7 +206,7 @@ final class AppUITests: XCTestCase {
                 key.waitForExistence(timeout: timeout),
                 "PIN \(stage): keypad button '\(ch)' never appeared."
             )
-            key.tap()
+            webViewSafeTap(key)
         }
     }
 
@@ -204,6 +217,6 @@ final class AppUITests: XCTestCase {
             submit.waitForExistence(timeout: 5),
             "PIN \(stage): submit button never appeared."
         )
-        submit.tap()
+        webViewSafeTap(submit)
     }
 }
