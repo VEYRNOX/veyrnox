@@ -1348,9 +1348,9 @@ export default function WalletEntry() {
   };
 
   // ---- Restore from an encrypted backup FILE (onboarding, no seed phrase) ----
-  // The shared RestoreFromFile component decrypts the backup (via decryptPasswordSeal
-  // or decryptPinSeal), asks the user to set a fresh 8-digit device PIN, and re-wraps
-  // the vault under that PIN via finalisePinRestore. On success it calls this
+  // The shared RestoreFromFile component decrypts the backup (via decryptBackupSeal
+  // with the combined password+PIN credential), asks the user to set a fresh 8-digit
+  // device PIN, and re-wraps the vault under that PIN via finalisePinRestore. On success it calls this
   // onFinish. At that point a PIN-unlockable vault EXISTS on this device. We mark the
   // cohort 'pin' so the returning-user surface renders a PinPad (not a password
   // input). isUnlocked is still false — the user unlocks with their new device PIN,

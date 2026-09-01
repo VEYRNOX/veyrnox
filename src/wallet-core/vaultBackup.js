@@ -1,39 +1,39 @@
 // @ts-nocheck
 // wallet-core/vaultBackup.js
 //
-// Self-custodial encrypted vault backup (S4 — Option A: two sealed copies).
+// Self-custodial encrypted vault backup (S4 — single combined-credential seal).
 //
 // DESIGN
 // ------
-// The backup file is a JSON envelope containing TWO independently-decryptable
-// copies of the serialized vault container, each sealed with a different
-// credential under full Argon2id+AES-GCM:
+// The backup file is an envelope containing ONE encrypted copy of the
+// serialized vault container, sealed under a credential COMBINED from both:
 //
-//   seals.password — encrypted with the user's full wallet password
-//   seals.pin      — encrypted with the user's 8-digit PIN
+//   secret = password + 0x1F + pin
 //
-// Either seal decrypts the same plaintext (the serialized container JSON).
-// The file carries no unencrypted seed material, no wallet addresses, and no
-// credential hints. It is safe to store anywhere the user chooses — iCloud,
-// Google Drive, a USB drive, a local folder.
+// Both credentials are required to restore. The unit-separator byte (0x1F,
+// forbidden in a keyboard-typed PIN or password) is a domain-separator so no
+// two distinct (password, pin) pairs collide.
 //
-// HONESTY NOTE on PIN seal: the seal is only as strong as the PIN. The export
-// function enforces /^\d{8,12}$/ (see line ~213), matching PersonalBackup.jsx
-// canExport, so a real seal carries ~27 bits (8-digit, 10^8) up to ~40 bits
-// (12-digit). At 192 MiB Argon2id per attempt (KDF_PARAMS.memorySize, raised
-// 64→192 MiB by PR #604, 2026-07-05), offline brute-force of an 8-digit seal is
-// materially harder than the earlier 64 MiB assumption but is still bounded by the
-// ~27-bit floor — a well-resourced attacker who obtains the file can still exhaust
-// it eventually. The password seal is the stronger recovery path. If both are
-// forgotten, there is no recovery — this is non-custodial. (2026-07-14 audit LOW:
-// docstring corrected from stale "6–12 digits / 64 MiB Argon2id" claims that
-// predated PR #604 and the 8-digit floor.)
+// 2026-09-01 (this rewrite): replaced the earlier two-seal model
+// (seals.password OR seals.pin — either alone unlocked the vault) with a
+// single combined seal. The PIN-only seal exposed the file to a ~10^8 offline
+// crack surface even when the password was strong; the audit floor bumped to
+// 12 digits (2026-08-16, PR #1834) was a stopgap that broke UI parity with
+// the rest of the app (8-digit PinPad). Combined model matches the shard
+// export flow (8-digit PIN + 16-char passphrase, both required — PR #1834).
+// No production users existed at the time of the cut, so no legacy-envelope
+// read path is retained. A stale legacy .enc file will fail parseBackupFile.
+//
+// HONESTY NOTE. Combined credential entropy: 16-char alphanumeric passphrase
+// ≈ 95 bits, 8-digit PIN ≈ 27 bits — jointly ~121 bits, KDF-slowed by
+// Argon2id at 192 MiB / t=3 per attempt (KDF_PARAMS.memorySize). If either
+// is forgotten, there is no recovery — this is non-custodial.
 //
 // RESTORE
-//   Password restore: the password seal IS a valid vault blob → saved directly
-//     via saveVault; user unlocks with their original password.
-//   PIN restore: PIN seal is decrypted → containerJson extracted → re-encrypted
-//     under a new password the user sets → saved via createVault.
+//   User supplies password + pin → combined credential decrypts the single
+//   seal → containerJson extracted → re-encrypted under a fresh on-device
+//   8-digit PIN via finalisePinRestore. The restored vault is ALWAYS
+//   PIN-cohort — unlock and hardware-KEK both use the PIN.
 
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -43,7 +43,23 @@ import { saveVault } from './evm/vaultStore.js';
 import { getKeyStore, withLockSuppressed } from './keystore/index.js';
 
 export const BACKUP_APP = 'veyrnox';
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2; // bumped 1→2 (2026-09-01) for single-combined-seal model
+
+// Domain-separator between password and pin when combining. 0x1F (US, unit
+// separator) is a control byte — not typable in a PIN or password entry — so
+// no two distinct (password, pin) pairs can collide onto the same secret.
+const CREDENTIAL_SEPARATOR = '\x1f';
+
+/**
+ * Combine backup password + PIN into a single credential for the seal.
+ * Both are required to restore; forgetting either loses the backup.
+ * @param {string} password
+ * @param {string} pin
+ * @returns {string} combined credential
+ */
+export function combineBackupCredential(password, pin) {
+  return password + CREDENTIAL_SEPARATOR + pin;
+}
 
 // ── On-disk format: a BINARY encrypted-vault container ──────────────────────────
 //
@@ -64,15 +80,14 @@ export const BACKUP_VERSION = 1;
 //   version 1 byte
 //   created 8 bytes  Float64 epoch-ms
 //   nSeals  1 byte
-//   per seal (version 1): id(1: 0=password,1=pin) hasKdf(1) [kdf(16)] saltLen(1) salt ivLen(1) iv ctLen(4) ct
-//   per seal (version 2): id(1) hasKdf(1) blobV(1) [kdf(16)] saltLen(1) salt ivLen(1) iv ctLen(4) ct
+//   per seal (version 3): id(1: 2=combined) hasKdf(1) blobV(1) [kdf(16)] saltLen(1) salt ivLen(1) iv ctLen(4) ct
 //     blobV carries the vault blob schema version (e.g. 2 for M-8 AAD binding).
-//     Version 2 new in M-8 so decrypt can supply the correct additionalData.
+//   BIN_VERSION 1/2 (dual seals: id 0=password, id 1=pin) — REMOVED 2026-09-01,
+//     no legacy read path. See file-top DESIGN comment for the rationale.
 const BIN_MAGIC = new Uint8Array([0x56, 0x59, 0x52, 0x4e, 0x58, 0x45, 0x4e, 0x43]); // "VYRNXENC"
-const BIN_VERSION = 2; // bumped from 1 → 2 for M-8 AAD binding (adds blobV per seal)
-const BIN_VERSION_LEGACY = 1; // old files still accepted on read (no blobV byte)
-const SEAL_IDS = { password: 0, pin: 1 };
-const SEAL_NAMES = { 0: 'password', 1: 'pin' };
+const BIN_VERSION = 3; // bumped 2→3 (2026-09-01) for single-combined-seal model
+const SEAL_IDS = { combined: 2 };
+const SEAL_NAMES = { 2: 'combined' };
 
 // Legacy text container (pre-binary). Kept so an older .enc still restores.
 const LEGACY_TEXT_MAGIC = 'VYRNXVLT1:';
@@ -96,7 +111,7 @@ function encodeBinary(envelope) {
   const created = new Uint8Array(8);
   new DataView(created.buffer).setFloat64(0, Number(envelope.created_at) || 0, false);
   parts.push(created);
-  const seals = ['password', 'pin'];
+  const seals = ['combined'];
   parts.push(Uint8Array.of(seals.length));
   for (const name of seals) {
     const blob = envelope.seals[name];
@@ -147,15 +162,13 @@ function decodeBinary(bytes) {
   let o = BIN_MAGIC.length;
   const need = (n) => { if (o + n > bytes.length) throw new Error('Not a valid Veyrnox backup file'); };
   need(1); const version = bytes[o]; o += 1;
-  if (version !== BIN_VERSION && version !== BIN_VERSION_LEGACY) throw new Error('Unsupported backup version');
+  if (version !== BIN_VERSION) throw new Error('Unsupported backup version');
   need(8); const created_at = dv.getFloat64(o, false); o += 8;
   need(1); const nSeals = bytes[o]; o += 1;
   const seals = {};
   for (let s = 0; s < nSeals; s++) {
     need(2); const id = bytes[o]; o += 1; const hasKdf = bytes[o]; o += 1;
-    // blobV: present only in BIN_VERSION 2+ — vault blob schema version for AAD (M-8).
-    let blobV = 1;
-    if (version >= BIN_VERSION) { need(1); blobV = bytes[o]; o += 1; }
+    need(1); const blobV = bytes[o]; o += 1;
     let kdf = null;
     if (hasKdf) {
       need(16);
@@ -204,42 +217,38 @@ export function isValidBackup(parsed) {
   if (p.app !== BACKUP_APP) return false;
   if (p.backup_v !== BACKUP_VERSION) return false;
   if (!p.seals || typeof p.seals !== 'object') return false;
-  return isValidBlob(p.seals.password) && isValidBlob(p.seals.pin);
+  return isValidBlob(p.seals.combined);
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────────
 
 /**
  * Create the backup envelope from an already-serialized container string plus
- * the two credentials. Both seals are computed at full Argon2id strength.
+ * both credentials. Password and PIN are combined into a single secret and
+ * sealed once at full Argon2id strength. Both are required to restore.
  * This is the pure creation step — the caller is responsible for downloading.
  *
  * @param {string} containerJson  mv.serializeContainer output (LIVE SECRET)
- * @param {string} password       the vault password
+ * @param {string} password       the backup password (min 16 chars)
  * @param {string} pin            8-digit PIN string
  * @returns {Promise<object>}     the backup envelope (safe to JSON.stringify)
  */
 export async function createBackupEnvelope(containerJson, password, pin) {
   if (typeof containerJson !== 'string' || containerJson.length === 0)
     throw new Error('No container to back up');
-  if (typeof password !== 'string' || password.length < 12)
-    throw new Error('Backup password must be at least 12 characters');
-  if (typeof pin !== 'string' || !/^\d{8,12}$/.test(pin))
-    throw new Error('PIN must be 8–12 digits');
+  if (typeof password !== 'string' || password.length < 16)
+    throw new Error('Backup password must be at least 16 characters');
+  if (typeof pin !== 'string' || !/^\d{8}$/.test(pin))
+    throw new Error('Backup PIN must be exactly 8 digits');
 
-  // Encrypt the SAME plaintext under both credentials (full KDF strength for each).
-  // Two sequential Argon2id calls — ~1–4 s each on a phone. Acceptable for an
-  // infrequent backup operation.
-  const passwordBlob = await encryptVault(containerJson, password);
-  const pinBlob      = await encryptVault(containerJson, pin);
+  const combinedBlob = await encryptVault(containerJson, combineBackupCredential(password, pin));
 
   return {
     app:       BACKUP_APP,
     backup_v:  BACKUP_VERSION,
     created_at: Date.now(),
     seals: {
-      password: passwordBlob,
-      pin:      pinBlob,
+      combined: combinedBlob,
     },
   };
 }
@@ -265,15 +274,14 @@ export async function verifyBackupEnvelope(envelope, password, pin) {
   } catch {
     throw new Error('Backup verification failed — the file did not encode correctly. Not saved.');
   }
-  let fromPassword, fromPin;
+  let plaintext;
   try {
-    fromPassword = await decryptVault(parsed.seals.password, password);
-    fromPin = await decryptVault(parsed.seals.pin, pin);
+    plaintext = await decryptVault(parsed.seals.combined, combineBackupCredential(password, pin));
   } catch {
     throw new Error('Backup verification failed — it could not be reopened with these credentials. Not saved.');
   }
-  if (fromPassword !== fromPin || typeof fromPassword !== 'string' || fromPassword.length === 0) {
-    throw new Error('Backup verification failed — seal mismatch. Not saved.');
+  if (typeof plaintext !== 'string' || plaintext.length === 0) {
+    throw new Error('Backup verification failed — empty plaintext. Not saved.');
   }
   return true;
 }
@@ -425,59 +433,41 @@ export function parseBackupFile(data) {
 
 // #1101: restoreWithPassword() REMOVED — dead export since PR #1032 unified
 // restore on finalisePinRestore(). It bypassed native keystore selection by
-// writing directly to web storage on native. Use decryptPasswordSeal() +
+// writing directly to web storage on native. Use decryptBackupSeal() +
 // finalisePinRestore() instead.
 
 /**
- * Restore from a backup using the PIN seal, then re-encrypt under a new
- * password for the local vault. Returns the decrypted container JSON so the
- * caller can drive the re-encryption step (via keyStore.createVault).
- *
- * @param {object} envelope    result of parseBackupFile()
- * @param {string} pin         the PIN the backup was created with
- * @returns {Promise<string>}  the decrypted container JSON (LIVE SECRET — short-lived)
- * @throws if the PIN is wrong or the blob is corrupted
- */
-export async function decryptPinSeal(envelope, pin) {
-  if (!isValidBackup(envelope)) throw new Error('Invalid backup');
-  const env = /** @type {any} */ (envelope);
-  return await decryptVault(env.seals.pin, pin);
-}
-
-/**
- * Decrypt the PASSWORD seal to the container JSON (mirror of decryptPinSeal).
- * Unlike the removed restoreWithPassword (which saved the password-sealed blob
- * verbatim and left the on-device vault in the PASSWORD cohort), this only
- * RETURNS the plaintext
- * container so the caller can re-wrap it under an on-device PIN — keeping the whole
- * app PIN-cohort (owner decision 2026-07-16). Does NOT persist anything.
+ * Decrypt the combined seal to the container JSON. Both backup password and
+ * backup PIN are required — they are combined via combineBackupCredential
+ * before Argon2id. Does NOT persist anything; caller re-wraps the plaintext
+ * under a fresh on-device PIN via finalisePinRestore.
  * @param {object} envelope   result of parseBackupFile()
  * @param {string} password   the backup password
+ * @param {string} pin        the backup PIN
  * @returns {Promise<string>} the decrypted container JSON (LIVE SECRET — short-lived)
- * @throws if the password is wrong or the blob is corrupted
+ * @throws if credentials are wrong or the blob is corrupted
  */
-export async function decryptPasswordSeal(envelope, password) {
+export async function decryptBackupSeal(envelope, password, pin) {
   if (!isValidBackup(envelope)) throw new Error('Invalid backup');
   const env = /** @type {any} */ (envelope);
-  return await decryptVault(env.seals.password, password);
+  return await decryptVault(env.seals.combined, combineBackupCredential(password, pin));
 }
 
 /**
  * Final step of a file restore: encrypt the container JSON under the on-device
- * 8-digit PIN the user just set, and save it as the local primary vault. Both
- * restore paths (backup-password seal via decryptPasswordSeal, backup-PIN seal via
- * decryptPinSeal) converge here, so the restored on-device vault is ALWAYS
- * PIN-cohort — unlock and the hardware-KEK gate both use the PIN (owner decision
- * 2026-07-16). Mirrors createBackupEnvelope's PIN shape (/^\d{8,12}$/) so a
- * caller cannot smuggle a non-digit or out-of-range string past this boundary.
- * @param {string} containerJson  result of decryptPinSeal() / decryptPasswordSeal()
+ * 8-digit PIN the user just set, and save it as the local primary vault.
+ * The restored on-device vault is ALWAYS PIN-cohort — unlock and the
+ * hardware-KEK gate both use the PIN (owner decision 2026-07-16). Enforces
+ * exactly 8 digits so a caller cannot smuggle a non-digit or out-of-range
+ * string past this boundary.
+ * @param {string} containerJson  result of decryptBackupSeal()
  * @param {string} devicePin      the on-device 8-digit PIN chosen during restore
  */
 export async function finalisePinRestore(containerJson, devicePin) {
   if (typeof containerJson !== 'string' || containerJson.length === 0)
     throw new Error('No container to save');
-  if (typeof devicePin !== 'string' || !/^\d{8,12}$/.test(devicePin))
-    throw new Error('Device PIN must be 8-12 digits');
+  if (typeof devicePin !== 'string' || !/^\d{8}$/.test(devicePin))
+    throw new Error('Device PIN must be exactly 8 digits');
   try {
     await getKeyStore().createVault(containerJson, devicePin);
   } catch (e) {

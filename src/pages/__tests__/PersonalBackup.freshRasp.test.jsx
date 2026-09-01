@@ -77,10 +77,13 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 function fillExportForm() {
+  // 2026-09-01: password floor bumped 12→16; PIN pinned at exactly 8 digits
+  // alongside the single-combined-seal rewrite. See wallet-core/vaultBackup.js
+  // file-top DESIGN comment.
   fireEvent.change(screen.getByPlaceholderText(/a new password to protect this backup/i), {
-    target: { value: 'a-very-strong-backup-password' },
+    target: { value: 'a-very-strong-backup-password' }, // 28 chars, over the 16 floor
   });
-  const digits = '123456789012';
+  const digits = '12345678';
   // PinPad's submit button carries aria-label="Submit PIN" always (Fix A) — its
   // visible text ("Next"/"Confirm") is NOT the accessible name (RestoreFromFile
   // .test.jsx's submitPinPad() uses the same query).

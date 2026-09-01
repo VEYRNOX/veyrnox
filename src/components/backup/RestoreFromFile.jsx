@@ -8,17 +8,18 @@
 //   • WalletEntry.jsx     — fresh-install onboarding "Restore from backup file".
 //
 // The crypto and file I/O are REUSED, never reimplemented — every operation calls a
-// wallet-core/vaultBackup export (parseBackupFile / decryptPasswordSeal /
-// decryptPinSeal / finalisePinRestore). This component owns only the UI state
-// machine + the RASP import gate.
+// wallet-core/vaultBackup export (parseBackupFile / decryptBackupSeal /
+// finalisePinRestore). This component owns only the UI state machine + the
+// RASP import gate.
 //
 // RESTORE→PIN COHORT (owner decision 2026-07-16):
-// Both backup-credential paths (password seal, PIN seal) decrypt the container
-// JSON and then re-wrap it under a fresh 8-digit ON-DEVICE PIN via
-// finalisePinRestore. The restored vault is ALWAYS PIN-cohort — unlock and the
-// hardware-KEK gate both use the PIN. This eliminates the "forced password reset
-// after restore breaks KEK enrollment" bug: KEK enrollment expects a PIN, and the
-// vault is encrypted under that same PIN.
+// The combined backup credential (password + PIN, both required — 2026-09-01)
+// decrypts the container JSON, which is then re-wrapped under a fresh 8-digit
+// ON-DEVICE PIN via finalisePinRestore. The restored vault is ALWAYS
+// PIN-cohort — unlock and the hardware-KEK gate both use the PIN. This
+// eliminates the "forced password reset after restore breaks KEK enrollment"
+// bug: KEK enrollment expects a PIN, and the vault is encrypted under that
+// same PIN.
 //
 // SECURITY / DENIABILITY (unchanged from the original RestoreTab):
 //   • RASP: every restore is gated by sensitiveGate(raspArtifact, 'import') — a
@@ -44,8 +45,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import {
   withLockSuppressed,
   parseBackupFile,
-  decryptPasswordSeal,
-  decryptPinSeal,
+  decryptBackupSeal,
   finalisePinRestore,
 } from '@/lib/restoreBackupFile';
 import { toast } from '@/lib/toast';
@@ -97,12 +97,11 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const fileRef = useRef(null);
   const [envelope, setEnvelope] = useState(null);
   const [fileName, setFileName] = useState('');
-  // Two stacked credential fields — the backup file carries BOTH a password seal
-  // and a PIN seal, so the user simply fills whichever they have (no confusing
-  // either/or toggle). Whichever they use, we DECRYPT the seal to the container and
-  // then re-wrap it under a fresh on-device 8-digit PIN — so the restored vault is
-  // ALWAYS PIN-cohort (unlock + hardware-KEK both use the PIN). Owner decision
-  // 2026-07-16.
+  // Single combined credential: backup password + backup PIN, BOTH required.
+  // The seal is one AES-GCM blob under Argon2id(combineBackupCredential(pw, pin)).
+  // On success we DECRYPT to the container and re-wrap it under a fresh
+  // on-device 8-digit PIN — so the restored vault is ALWAYS PIN-cohort (unlock
+  // + hardware-KEK both use the PIN). Owner decision 2026-07-16.
   const [unlockPassword, setUnlockPassword] = useState('');
   const [unlockPin, setUnlockPin] = useState('');
   const [devicePin, setDevicePin] = useState('');
@@ -113,7 +112,6 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
   const [phase, setPhase] = useState('pick'); // pick | browse | unlock | restoring | setpin | done
   const [busy, setBusy] = useState(false);
   const [decryptedContainer, setDecryptedContainer] = useState(null);
-  const [restoredVia, setRestoredVia] = useState('password');
   // Attempt cap parity with useRevealWithReauth's seed-reveal gate (5). Prior
   // behaviour let a caller retry passwords/PINs forever with only a generic
   // toast — materially weaker than the paired reveal surface it protects.
@@ -273,14 +271,10 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
       // below, but a keyboard-submit could still get here.
       return;
     }
-    const usePassword = unlockPassword.length > 0;
-    setRestoredVia(usePassword ? 'password' : 'pin');
     setBusy(true);
     setPhase('restoring');
     try {
-      const containerJson = usePassword
-        ? await decryptPasswordSeal(envelope, unlockPassword)
-        : await decryptPinSeal(envelope, unlockPin);
+      const containerJson = await decryptBackupSeal(envelope, unlockPassword, unlockPin);
       setDecryptedContainer(containerJson);
       setUnlockAttempts(0);
       setPhase('setpin');
@@ -335,7 +329,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
 
   if (phase === 'restoring') {
     // ISOLATED animation seam — see components/backup/RestoreProgress.jsx.
-    content = <RestoreProgress method={restoredVia} />;
+    content = <RestoreProgress method="combined" />;
   } else if (phase === 'done') {
     content = (
       <div className="space-y-4">
@@ -380,7 +374,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
         <div className="p-3 rounded-lg border border-border bg-card/50 flex items-start gap-2 text-xs text-muted-foreground">
           <Lock className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
           <p>
-            {restoredVia === 'pin' ? 'Backup PIN' : 'Backup password'} verified.
+            Backup credentials verified.
             {pinStep === 'choose'
               ? ' Choose an 8-digit PIN to lock this wallet on your device.'
               : ' Enter the same PIN again to confirm.'}
@@ -432,7 +426,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
       </div>
     );
   } else if (phase === 'unlock') {
-    const credOk = unlockPassword.length > 0 || /^\d{4,12}$/.test(unlockPin);
+    const credOk = unlockPassword.length >= 16 && /^\d{8}$/.test(unlockPin);
     content = (
       <div className="space-y-4">
         <div className="p-3 rounded-lg border border-border bg-card/50 flex items-center gap-2 text-xs text-muted-foreground">
@@ -441,29 +435,21 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Enter the <b>backup password or PIN you created with this file</b> — whichever you have. This is <b>not</b> your app unlock PIN.
+          Enter <b>both</b> the backup password and PIN you created with this file. This is <b>not</b> your app unlock PIN.
         </p>
 
-        {/* Both credentials shown stacked — the backup carries a password seal AND a
-            PIN seal, so the user simply fills the one they remember. No toggle. */}
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Backup password</label>
           <PasswordInput
             value={unlockPassword}
             onChange={(e) => setUnlockPassword(e.target.value)}
-            placeholder="Your original password"
+            placeholder="Your original password (min 16)"
           />
         </div>
 
-        <div className="flex items-center gap-3" aria-hidden>
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">or</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Backup PIN</label>
-          <PinPad value={unlockPin} onChange={setUnlockPin} length={12} />
+          <label className="text-xs font-medium text-muted-foreground">Backup PIN (8 digits)</label>
+          <PinPad value={unlockPin} onChange={setUnlockPin} length={8} />
         </div>
 
         <button
@@ -662,7 +648,7 @@ export default function RestoreFromFile({ onBack, onFinish, backLabel = 'Back to
 
         <ul className="space-y-1.5 text-xs text-muted-foreground">
           <li>Read your .enc file locally — nothing uploaded.</li>
-          <li>Unlock with the file's password or backup PIN.</li>
+          <li>Unlock with both the file's password and backup PIN.</li>
           <li>Set a fresh device PIN for this app.</li>
           <li>Replaces any current wallet on this device.</li>
         </ul>
