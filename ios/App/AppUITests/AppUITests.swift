@@ -181,14 +181,20 @@ final class AppUITests: XCTestCase {
     /// XCUITest's `.tap()` on a WKWebView button dispatches an accessibility
     /// press (AXPress). On iOS 26 Simulator against a shadcn/Radix `<button>`
     /// this only paints the CSS `:active` state — no `click` event ever fires,
-    /// so React `onClick` handlers never run and the view never advances. Run
-    /// 33508180774 recorded 30 s of the "New wallet" tile stuck in its green
-    /// pressed background with no navigation. A coordinate-anchored tap
-    /// synthesises a real touch (touchstart + touchend at the same point) and
-    /// produces a proper click, which is what the app is bound to. Applies to
-    /// every WebView button we drive from the smoke — tiles, digit keys, submit.
+    /// so React `onClick` handlers never run and the view never advances (run
+    /// 33508180774: "New wallet" tile stuck pressed for 30+ s).
+    ///
+    /// `.coordinate(withNormalizedOffset:).tap()` should synthesise a real
+    /// touch, but on this project's WKWebView the frame-resolution snapshot
+    /// times out (run 33520465094: "Failed to get matching snapshot: Timed
+    /// out while evaluating UI query", 423 s stall).
+    ///
+    /// `.press(forDuration:)` is the middle path: it fires touchDown +
+    /// touchUp at the element's own hit-point without re-snapshotting, and it
+    /// produces a real `click` event in the WebView (bypasses AXPress).
+    /// Anything under ~0.2 s is registered as a tap, not a long-press.
     private func webViewSafeTap(_ element: XCUIElement) {
-        element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        element.press(forDuration: 0.05)
     }
 
     /// Tap each digit on the on-screen keypad. Digit buttons carry only their
