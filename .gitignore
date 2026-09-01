@@ -17,6 +17,12 @@ build/
 # Re-created by: node scripts/bundle-trezor-connect.mjs  (also runs as npm prebuild).
 public/trezor-connect/
 
+# Ad creatives (Reddit/paid-social videos and stills). Large binaries — one local
+# working set was already 46 MB of MP4/PNG — and they are distributed through the ad
+# platforms, not from this repo. A `git add -A` in a worktree holding them would
+# otherwise write tens of MB into history permanently.
+public/assets/ads/
+
 # Local-only test/config overrides — NEVER commit (CI uses a full checkout).
 # e.g. the worktree vitest shim that extends vitest.config.js with a server.fs.allow
 # widening so the parent repo's node_modules resolves under Vite's /@fs guard.
