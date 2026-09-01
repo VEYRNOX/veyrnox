@@ -99,22 +99,26 @@ final class AppUITests: XCTestCase {
         //    cannot satisfy the native secure-store precondition. The only
         //    honest simulator outcome is an explicit fail-closed result with no
         //    usable wallet. Successful provisioning remains real-device-only.
-        // `app.staticTexts["<exact>"]` matches by IDENTIFIER, not label. The
-        // sonner toast the app renders for this failure has no identifier
-        // (it's a portal-mounted <li> whose accessible name is the visible
-        // text), so the exact-key subscript never matches even when the
-        // banner is on-screen (run 33524731172: banner visible at t=200 s in
-        // the recording, staticTexts["…"].exists returned false throughout
-        // the 20 s wait). Use a label-substring predicate that DOES match a
-        // toast's accessible name. Widened to 45 s because provisioning +
-        // KEK/RASP + toast animation lands around ~30 s on cold CI simulators.
-        let bannerPrefix = "Wallet setup couldn't finish securely"
-        let failureBanner = app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", bannerPrefix)
-        ).firstMatch
+        // The user-visible fail-closed signal on this simulator flow is a
+        // sonner toast (`toast.error(...)` in WalletEntry.doCreateWallet).
+        // Sonner renders inside a portal-mounted <li> that WKWebView does
+        // NOT publish to XCUITest's accessibility tree — confirmed twice
+        // (runs 33524731172 + 33526853634): the banner IS visible on the
+        // recorded screen but every staticTexts label/identifier query
+        // returned false through the entire poll window. The toast also
+        // auto-dismisses in ~4 s, and WalletEntry then clears chosenPath +
+        // routes back to `entry-tiles`, so there is no persistent inline
+        // banner to poll either.
+        //
+        // The AX-visible fail-closed signal is: after PIN confirm, the app
+        // has returned to the entry-tiles view rather than moved forward to
+        // a dashboard. On success the "New wallet" tile is gone; on failure
+        // it re-appears. Give the flow long enough to complete provisioning
+        // + failure routing (~30 s on cold CI simulators).
+        let entryTileAfterFailure = app.buttons["New wallet"]
         XCTAssertTrue(
-            failureBanner.waitForExistence(timeout: 45),
-            "Simulator provisioning must fail closed when the native secure store is unavailable."
+            entryTileAfterFailure.waitForExistence(timeout: 45),
+            "Simulator provisioning must fail closed and return the user to the entry-tiles picker. If this fails, the flow may have provisioned a wallet on a device with no secure store — check the recording for a dashboard."
         )
         XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not create a wallet.")
     }
@@ -159,13 +163,13 @@ final class AppUITests: XCTestCase {
             failureMessage: "Restore / Import button never appeared."
         )
 
-        // Same fragility as the create path — sonner toast has no identifier;
-        // match by label-substring predicate. Same widened 45 s timeout.
-        let bannerPrefix = "Wallet setup couldn't finish securely"
-        let failureBanner = app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", bannerPrefix)
-        ).firstMatch
-        XCTAssertTrue(failureBanner.waitForExistence(timeout: 45), "Simulator import must fail closed without secure storage.")
+        // Same reasoning as the create path: sonner toast is not AX-visible
+        // in WKWebView, and after failure the app routes back to entry tiles.
+        let entryTileAfterFailure = app.buttons["Have a wallet"]
+        XCTAssertTrue(
+            entryTileAfterFailure.waitForExistence(timeout: 45),
+            "Simulator import must fail closed and return the user to the entry-tiles picker."
+        )
         XCTAssertFalse(app.staticTexts["Created."].exists, "A simulator without secure storage must not import a wallet.")
     }
 
