@@ -142,4 +142,5 @@ export const AI_SECURITY_PROTECTION_FEATURES = [
   { name: 'Phishing screening on Send', summary: 'Recipient addresses checked against the phishing-domain feed and threat-intel store' },
   { name: 'Continuously updated threat intel', summary: 'New bad actors flagged across the ecosystem as they emerge' },
   { name: 'Priority security incident response', summary: 'Higher-priority handling if you report an incident' },
+  { name: 'Token spam & suspicious-asset screening', summary: 'AI-tier gate over the local classifier and asset review pages' },
 ];
