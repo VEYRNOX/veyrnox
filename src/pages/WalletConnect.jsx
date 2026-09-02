@@ -12,6 +12,7 @@ import { useWallet } from '@/lib/WalletProvider.jsx';
 import { WALLETCONNECT_PROJECT_ID } from '@/wallet-core/evm/walletconnect/projectId.js';
 import { validateWcUri } from '@/wallet-core/evm/walletconnect/session.js';
 import { DEMO } from '@/api/demoClient';
+import { publishAdvisorContext } from '@/lib/advisorBridge';
 
 // Committed public default in projectId.js keeps this true on every build (worktree,
 // fresh clone, CI) so the connector is never accidentally honest-disabled after an
@@ -133,7 +134,7 @@ function PopularDapps() {
 }
 
 function WalletConnectInner() {
-  const { initialized, error, pendingProposals, pendingRequests, pair } = useWalletConnect();
+  const { initialized, error, pendingProposals, pendingRequests, sessions, pair } = useWalletConnect();
   const { isUnlocked, isDecoy, isHidden } = useWallet();
 
   const [uri, setUri] = useState('');
@@ -143,6 +144,27 @@ function WalletConnectInner() {
   const [activeRequest, setActiveRequest] = useState(null);
   const [fromDeepLink, setFromDeepLink] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+
+  // Publish live non-secret WC state to the Security Advisor. Suppressed in
+  // decoy/hidden/DEMO sessions and while the wallet is locked (I3) — the
+  // advisor sees nothing rather than a decoy-shaped payload.
+  useEffect(() => {
+    const suppress = DEMO || !CONFIGURED || isDecoy || isHidden || !isUnlocked;
+    if (suppress) {
+      publishAdvisorContext(null);
+      return;
+    }
+    publishAdvisorContext({
+      walletconnect: {
+        initialized: initialized === true,
+        has_error: !!error,
+        session_count: Array.isArray(sessions) ? sessions.length : 0,
+        pending_proposal_count: Array.isArray(pendingProposals) ? pendingProposals.length : 0,
+        pending_request_count: Array.isArray(pendingRequests) ? pendingRequests.length : 0,
+      },
+    });
+    return () => publishAdvisorContext(null);
+  }, [isDecoy, isHidden, isUnlocked, initialized, error, sessions, pendingProposals, pendingRequests]);
 
   // A deep link (veyrnox://wc?uri=… / https://veyrnox.com/wc?uri=…) routed here with
   // a pending pairing URI. Pre-fill it for the user to review and tap Pair — never

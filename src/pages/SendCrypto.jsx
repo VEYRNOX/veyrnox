@@ -1222,6 +1222,14 @@ export default function SendCrypto() {
     // are case-sensitive and canonical, so lower() is a no-op for the match.
     const ownAddr = selectedWallet?.address || null;
     const isSelfSend = !!(ownAddr && toAddress && ownAddr.toLowerCase() === toAddress.toLowerCase());
+    // whitelist/addressBook queries are already disabled in decoy/hidden
+    // sessions (empty arrays), so these lookups fail closed on their own
+    // without a second guard here.
+    const addressBookHit = !!(toAddress && addressBook.some(
+      (c) => c?.address && String(c.address).toLowerCase() === String(toAddress).toLowerCase()
+    ));
+    const isBtcAsset = selectedAsset?.family === "btc";
+    const btcHigh = isBtcAsset && (btcSim?.data?.risks || []).some((r) => r.level === "high");
     return {
       transaction_intelligence: {
         asset: selectedWallet.currency,
@@ -1252,9 +1260,26 @@ export default function SendCrypto() {
               summary: s.summary ?? null,
             }))
           : [],
+        network: networkKey || null,
+        is_testnet: activeNetwork ? activeNetwork.isTestnet === true : null,
+        fee_tier: selectedFee?.tier ?? selectedFee?.label ?? null,
+        whitelist_hit: currencyWhitelist.length > 0 && isAddressWhitelisted === true,
+        address_book_hit: addressBookHit,
+        digital_shield: {
+          enabled: useDigitalShieldMode === true,
+          connected: useDigitalShieldMode ? digitalShieldConnected === true : false,
+        },
+        rasp: {
+          tier: raspTier ?? null,
+          requires_biometric: raspArtifact?.requiresBiometric === true,
+        },
+        btc_risk_high: btcHigh,
       },
     };
-  }, [step, selectedWallet, amount, toAddress, txIntelVerdict, txIntelPolicy]);
+  }, [step, selectedWallet, amount, toAddress, txIntelVerdict, txIntelPolicy,
+      networkKey, activeNetwork, selectedFee, currencyWhitelist, isAddressWhitelisted,
+      addressBook, useDigitalShieldMode, digitalShieldConnected, raspTier, raspArtifact,
+      selectedAsset, btcSim?.data]);
 
   useEffect(() => {
     publishAdvisorContext(advisorTxContext);
