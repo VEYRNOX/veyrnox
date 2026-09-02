@@ -74,7 +74,13 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     const setDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "set")');
     const setSubmit = indexOrFail(swift, 'submitPinUntilAdvanced(app: app, stage: "set"');
     const confirmDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "confirm")');
-    const confirmSubmit = indexOrFail(swift, 'stage: "confirm",\n                advanced: { !confirmHeading.exists || mismatch.exists }');
+    // Anchored on the FUNCTION NAME plus its stage, not on raw source layout.
+    // This needle used to be `stage: "confirm",\n<16 spaces>advanced: { ... }`,
+    // which coupled the guard to the Swift's exact indentation and to the whole
+    // predicate body — a reindent or any change to the predicate would have
+    // broken it, surfacing as a confusing failure in a JS test about a Swift
+    // file. AppUITests.swift keeps this call on one line for that reason.
+    const confirmSubmit = indexOrFail(swift, 'submitPinUntilAdvanced(app: app, stage: "confirm"');
 
     expect(getStarted).toBeLessThan(getStartedLabel);
     expect(getStartedLabel).toBeLessThan(setDigits);

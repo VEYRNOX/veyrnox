@@ -250,11 +250,19 @@ final class AppUITests: XCTestCase {
             //
             // Done means PinSetup is gone (success) OR the mismatch banner is
             // up (reset — the outer loop's job, not this one's).
-            let left = submitPinUntilAdvanced(
-                app: app,
-                stage: "confirm",
-                advanced: { !confirmHeading.exists || mismatch.exists }
-            )
+            // Kept on ONE line, with the predicate hoisted, so the call site
+            // stays greppable for the drift guard in
+            // src/__tests__/firebase-test-lab-onboarding.test.js: that guard
+            // matches call-site text and asserts stage ordering. Splitting this
+            // across lines forces the guard to match raw indentation and the
+            // whole predicate body instead, which is how it looked before.
+            // Do NOT quote the matched call text in a comment anywhere in this
+            // file — the guard greps the entire source, so a comment containing
+            // it satisfies the guard on its own and the check keeps passing
+            // with the real call deleted. That was caught by mutation-testing
+            // an earlier draft of this very block.
+            let confirmDone: () -> Bool = { !confirmHeading.exists || mismatch.exists }
+            let left = submitPinUntilAdvanced(app: app, stage: "confirm", advanced: confirmDone)
 
             if left && !mismatch.exists { return }
             if mismatch.exists {
