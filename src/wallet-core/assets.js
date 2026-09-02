@@ -154,12 +154,13 @@ export const ASSETS = Object.freeze(
   ASSETS_RAW.map((a) => Object.freeze({ ...a, id: formatAssetId(a) }))
 );
 
-/** Legacy symbol lookup — unchanged. Returns the ASSETS entry whose `symbol`
- * matches (there is exactly one today; Phase 1 may introduce duplicates, at
- * which point this returns the FIRST match and callers should migrate to
- * `getAssetById`). Kept for backward compat with every current caller. */
-export function getAsset(symbol) {
-  return ASSETS.find(a => a.symbol === symbol) || null;
+/** Lookup by either composite id (`"ETH:mainnet"`) or bare symbol (`"ETH"`).
+ * Phase 1a migrated `enabledAssets` + DEFAULT_ENABLED_ASSETS to composite ids
+ * but send picker, receive detector, portfolio balances and analytics still
+ * call this with whatever the store holds. Try id first so a per-chain USDC
+ * row resolves exactly; fall back to symbol so legacy callers keep working. */
+export function getAsset(key) {
+  return ASSETS.find(a => a.id === key) || ASSETS.find(a => a.symbol === key) || null;
 }
 
 /** Composite-key lookup — returns the ASSETS entry with the exact `(symbol,
