@@ -44,8 +44,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
 import { resolveAssetRow } from "@/lib/balanceDisplay";
-import { ASSETS, getAsset } from "@/wallet-core/assets.js";
+import { ASSETS, getAsset, getAssetById } from "@/wallet-core/assets.js";
+import { isAssetIdString } from "@/wallet-core/assetId.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
+import { isMultiChainRowsEnabled } from "@/lib/multiChainFlag";
+
+// Phase 1b — SYMBOL (Chain) disambiguation for the per-chain expansion rows.
+// mainnet carries no suffix (it's the original, unambiguous row for that symbol).
+const CHAIN_LABEL = {
+  mainnet: "Ethereum",
+  polygon: "Polygon",
+  arbitrum: "Arbitrum",
+  optimism: "Optimism",
+  avalanche: "Avalanche",
+  bnb: "BNB Chain",
+};
+
+// Phase 1b visibility rule: experimental (per-chain) rows only render when the
+// flag is on, regardless of what's in stored meta (flag OFF must never show
+// them even if a stray id landed in localStorage). When the flag IS on, they
+// always render — they were deliberately excluded from DEFAULT_ENABLED_ASSETS
+// so toggling the flag never depends on re-migrating stored wallet meta.
+function visibleAssetIds(enabledAssets) {
+  const stored = enabledAssets || [];
+  if (!isMultiChainRowsEnabled()) {
+    return stored.filter((id) => !getAssetById(id)?.experimental && !getAsset(id)?.experimental);
+  }
+  const experimentalIds = ASSETS.filter((a) => a.experimental).map((a) => a.id);
+  return ASSETS.map((a) => a.id).filter(
+    (id) => stored.includes(id) || experimentalIds.includes(id)
+  );
+}
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { defaultAssetSymbol } from "@/lib/sendWalletSource";
 import { formatFiat } from "@/components/FiatCurrencySelector";
@@ -177,13 +206,13 @@ function BackupDialog({ walletName, mnemonic = null, reauthPrompt = null, onClos
 }
 
 // Asset multi-select chips (used at create/import to pick which assets to show).
-function AssetPicker({ selected, onToggle }) {
+export function AssetPicker({ selected, onToggle }) {
   return (
     <div className="flex flex-wrap gap-1.5">
-      {ASSETS.map((a) => {
-        const on = selected.includes(a.symbol);
+      {ASSETS.filter((a) => !a.experimental).map((a) => {
+        const on = selected.includes(a.id);
         return (
-          <button key={a.symbol} type="button" onClick={() => onToggle(a.symbol)}
+          <button key={a.id} type="button" onClick={() => onToggle(a.id)}
             className={`text-xs px-2 py-1 rounded-md border ${on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
             {a.symbol}
           </button>
@@ -317,16 +346,20 @@ function ManageAssetsDialog({ wallet, onClose }) {
   const { t } = useTranslation("wallet");
   const { toggleWalletAsset } = useWallet();
   const enabled = new Set(wallet.enabledAssets || []);
+  // Experimental (per-chain expansion) rows only offer an opt-in toggle once
+  // the flag is on — flipping one while the flag is off would persist an id
+  // that still renders nowhere, which just confuses the toggle's purpose.
+  const visibleAssets = isMultiChainRowsEnabled() ? ASSETS : ASSETS.filter((a) => !a.experimental);
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
         <DialogHeader><DialogTitle>{t("portfolio.manageAssets.title", { name: wallet.name })}</DialogTitle></DialogHeader>
         <p className="text-xs text-muted-foreground">{t("portfolio.manageAssets.description")}</p>
         <div className="space-y-1.5 pt-1 max-h-80 overflow-y-auto">
-          {ASSETS.map((a) => (
-            <label key={a.symbol} className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border bg-card cursor-pointer">
+          {visibleAssets.map((a) => (
+            <label key={a.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border bg-card cursor-pointer">
               <span className="flex items-center gap-2 text-sm"><span className="font-semibold">{a.symbol}</span><span className="text-xs text-muted-foreground">{a.name}</span></span>
-              <input type="checkbox" className="h-4 w-4 accent-primary" checked={enabled.has(a.symbol)} onChange={() => toggleWalletAsset(wallet.id, a.symbol)} />
+              <input type="checkbox" className="h-4 w-4 accent-primary" checked={enabled.has(a.id)} onChange={() => toggleWalletAsset(wallet.id, a.id)} />
             </label>
           ))}
         </div>
@@ -778,6 +811,7 @@ export default function WalletPortfolioPage() {
   const walletCards = pfWallets.map((w) => {
     const data = byWallet[w.id] || { assets: [], total: 0 };
     const isActive = w.id === activeWalletId;
+    const visibleIds = visibleAssetIds(w.enabledAssets);
     return (
       <div key={w.id} className="rounded-2xl border border-border bg-card overflow-hidden">
         <div
@@ -826,34 +860,34 @@ export default function WalletPortfolioPage() {
           )}
         </div>
         <div className="divide-y divide-border">
-          {(w.enabledAssets || []).length === 0 ? (
+          {visibleIds.length === 0 ? (
             <p className="px-4 py-4 text-xs text-muted-foreground text-center">{t("portfolio.walletCard.noAssetsShown")}</p>
-          ) : (w.enabledAssets || []).map((symbol) => {
-            const a = getAsset(symbol);
+          ) : visibleIds.map((entry) => {
+            // enabledAssets holds composite ids; a legacy bare-symbol entry (from
+            // a wallet not yet migrated) is tolerated via the getAsset fallback.
+            const a = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
+            const symbol = a?.symbol || entry;
+            const chainLabel = a?.chain && a.chain !== "mainnet" ? CHAIN_LABEL[a.chain] || a.chain : null;
             // A genuinely MISSING row (not yet computed / race) is INDETERMINATE,
             // not a confident "0" — resolveAssetRow fails closed to amount:null so
             // the row renders "—", never a fabricated $0.00 (I4 fail-closed).
-            const row = resolveAssetRow(data.assets, symbol);
+            const row = resolveAssetRow(data.assets, a?.id || symbol);
             const suspiciousCount = flaggedTokenCountsBySymbol.get(String(symbol || '').toUpperCase()) || 0;
             return (
-              <button key={symbol} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
+              // Phase 1b: navigate straight to the canonical dual-route URL
+              // (no redirect needed for in-app links — that's only for the
+              // legacy /asset/:symbol entry point). Key is the id, not the
+              // symbol, so a duplicate-symbol row never collides.
+              <button key={entry} type="button" aria-label={chainLabel ? `${symbol} (${chainLabel})` : symbol} onClick={() => navigate(`/asset/${symbol}/${a?.chain || "mainnet"}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
                 <CoinLogo symbol={symbol} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold">
-                      {symbol}
-                      {/* Honest chain label — ERC-20s (USDC/USDT) live on Ethereum
-                          mainnet in Veyrnox today; every other row's asset.name is
-                          already the chain (Ethereum/Polygon/Arbitrum/Optimism/
-                          Avalanche/BNB Chain/Bitcoin/Solana). Don't fabricate
-                          multi-chain rows for tickers Veyrnox doesn't actually
-                          derive/price separately. */}
-                      {a && (
-                        <span className="text-muted-foreground font-normal">
-                          {" ("}{a.family === "erc20" ? "Ethereum" : a.name}{")"}
-                        </span>
-                      )}
-                    </p>
+                    <p className="text-sm font-semibold">{symbol}{chainLabel ? ` (${chainLabel})` : ""}</p>
+                    {a?.status === "receive_only" && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution" title="No on-chain send has been verified for this asset yet">
+                        Receive only
+                      </span>
+                    )}
                     {suspiciousCount > 0 && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">
                         {suspiciousCount} suspicious token{suspiciousCount > 1 ? 's' : ''}

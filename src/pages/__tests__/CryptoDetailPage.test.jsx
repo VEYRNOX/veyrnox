@@ -49,12 +49,15 @@ beforeEach(() => {
 });
 
 const makeClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+// Phase 1b: both routes registered, matching App.jsx's dual-route setup — the
+// legacy /asset/:symbol entry point redirects (replace) to this canonical one.
 const renderAt = (symbol) =>
   render(
     <QueryClientProvider client={makeClient()}>
       <MemoryRouter initialEntries={[`/asset/${symbol}`]}>
         <Routes>
           <Route path="/asset/:symbol" element={<CryptoDetailPage />} />
+          <Route path="/asset/:symbol/:chain" element={<CryptoDetailPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
@@ -80,6 +83,15 @@ test("renders chart with the correct symbol", () => {
 test("renders 'Asset not found' for unknown symbol", () => {
   renderAt("UNKNOWN");
   expect(screen.getByText(/asset not found/i)).toBeInTheDocument();
+});
+
+test("legacy /asset/:symbol redirects to the canonical /asset/:symbol/:chain URL", async () => {
+  renderAt("BTC");
+  // First-match resolves BTC to chain 'mainnet' (wallet-core/assets.js); the
+  // redirect effect fires on mount and swaps the route, re-rendering the same
+  // page content at the canonical URL — content stays visible throughout.
+  expect(await screen.findByText("Bitcoin")).toBeInTheDocument();
+  expect(screen.getByText("BTC")).toBeInTheDocument();
 });
 
 test("renders suspicious token warning when spam-token clones share the asset symbol", async () => {

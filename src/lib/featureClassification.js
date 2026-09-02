@@ -37,6 +37,7 @@ export const ALL_ROUTE_PATHS = [
   '/walletconnect',
   '/suspicious-assets',
   '/asset/:symbol',
+  '/asset/:symbol/:chain',
   '/verify',
 ];
 
@@ -368,7 +369,8 @@ export const CLASSIFICATION = {
   // (duplicate '/asset/:symbol' entry removed 2026-07-11 — PR #784/#788 merge
   // artifact; the surviving entry below was the one winning at runtime.)
   '/walletconnect':     { verdict: 'live', dataSource: 'on-device', note: 'WalletConnect v2 transport + signing (D1+D2). Pairing + session management via WC relay; signing via on-device key derivation (withPrivateKey). CORRECTION (factual): eth_sendTransaction is NOT display-only — WalletConnectProvider.handleSendTransaction builds new ethers.Wallet(pk, provider) and calls wallet.sendTransaction(tx), a REAL on-chain sign + broadcast (the UI warns "Approving sends a real on-chain transaction"). It is mainnet-capable: the target chain comes from the WC session namespace (getNetworkByChainId on the CAIP-2 chainId), not restricted to testnet. STATUS: BUILT, UNVERIFIED — no on-chain testnet txid has been supplied/confirmed on an explorer, so this is not "verified". Guards present: gas capped at 1M and an eth_chainId match check (VULN-19) before broadcast.' },
-  '/asset/:symbol':     { verdict: 'live', dataSource: 'on-device', note: 'CryptoDetailPage — candlestick chart + period selector for a single asset. Price data from useBasketPrices (live market feed, same source as portfolio). Balance strip shows real on-device balance via usePortfolio. Send/Receive deep-links pre-select the asset via ?asset= query param. BUILT, UI-complete.' },
+  '/asset/:symbol':     { verdict: 'live', dataSource: 'on-device', note: 'CryptoDetailPage — candlestick chart + period selector for a single asset. Price data from useBasketPrices (live market feed, same source as portfolio). Balance strip shows real on-device balance via usePortfolio. Send/Receive deep-links pre-select the asset via ?asset= query param. Phase 1b (docs/per-chain-expansion-scope.md): resolves first-match (mainnet) via getAsset(symbol) and redirects (replace) to the canonical /asset/:symbol/:chain URL — legacy links keep working. BUILT, UI-complete.' },
+  '/asset/:symbol/:chain': { verdict: 'live', dataSource: 'on-device', note: 'CryptoDetailPage — Phase 1b dual-route canonical URL. Resolves the exact (symbol, chain) row via getAssetById; Send is hard-disabled (canSend gate, matching the SendCrypto.jsx chokepoint) for receive_only rows. Same chart/price/balance-strip behaviour as /asset/:symbol.' },
   '/verify':            { verdict: 'live', dataSource: 'on-device', note: 'SeedVerificationPage — route target for deferred seed backup verification. Renders a static placeholder and calls cancelVerificationReminders on mount; it CANNOT verify anything. The SeedVerification quiz component exists but has no route and no production import, because building the quiz requires the reauth-gated mnemonic reveal (useRevealWithReauth) which is not wired. Consequently markDeferred() is never called, isDeferred() is always false, and the send-side gate in lib/seedVerifyGate.js is inert for every wallet. STATUS: HONEST-DISABLED — do not count this as a shipped safety control.' },
 };
 

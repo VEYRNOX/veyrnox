@@ -40,14 +40,17 @@ export function fmtIndeterminateAmount(n) {
  * portfolio or a race) is treated as INDETERMINATE, NOT a confident empty `0`:
  * we never assert an amount we did not read (I4 fail-closed). A present row is
  * returned verbatim, so a real `0` (empty wallet) is preserved as `0`.
- * @param {Array<{symbol:string, amount:number|null, usd:number|null, indeterminate?:boolean}>} assets
- * @param {string} symbol
- * @returns {{symbol:string, amount:number|null, usd:number|null, indeterminate?:boolean}}
+ * Matches by composite id first (`row.id === key`), falling back to symbol
+ * (`row.symbol === key`) so callers can migrate to id-based lookups lazily.
+ * @param {Array<{id?:string, symbol:string, amount:number|null, usd:number|null, indeterminate?:boolean}>} assets
+ * @param {string} key - an asset id ("ETH:mainnet") or, for lazy callers, a bare symbol
+ * @returns {{id?:string, symbol:string, amount:number|null, usd:number|null, indeterminate?:boolean}}
  */
-export function resolveAssetRow(assets, symbol) {
-  const row = (assets || []).find((x) => x && x.symbol === symbol);
+export function resolveAssetRow(assets, key) {
+  const list = assets || [];
+  const row = list.find((x) => x && x.id === key) || list.find((x) => x && x.symbol === key);
   if (row) return row;
   // Missing row → we never computed a value for it. Fail-closed to indeterminate
   // so the UI shows "—" (not a fabricated "0"/"$0.00").
-  return { symbol, amount: null, usd: null, indeterminate: true };
+  return { symbol: key, amount: null, usd: null, indeterminate: true };
 }

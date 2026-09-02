@@ -14,6 +14,8 @@
 // assets never render an address. Flipping an asset to `live` is a deliberate,
 // one-line change made only after that asset's crypto path is verified.
 
+import { formatAssetId } from './assetId.js';
+
 export const ASSET_STATUS = Object.freeze({
   LIVE: 'live',
   RECEIVE_ONLY: 'receive_only',
@@ -25,7 +27,10 @@ export const ASSET_STATUS = Object.freeze({
 //   erc20  - token on an EVM chain (same keys; contract-call send path)
 //   btc    - Bitcoin (separate: bech32, UTXO, PSBT)
 //   solana - Solana (separate: ed25519, base58)
-export const ASSETS = Object.freeze([
+// Raw entries — the composite `id` field is stamped on below so every entry in
+// the exported ASSETS array carries an explicit "{symbol}:{chain}" identifier
+// (Phase 0 of per-chain expansion; docs/per-chain-expansion-scope.md).
+const ASSETS_RAW = Object.freeze([
   { symbol: 'ETH',   name: 'Ethereum',  family: 'evm',    chain: 'mainnet',   status: ASSET_STATUS.LIVE },
   // USDC: VERIFIED LIVE on testnet AND Ethereum mainnet.
   // Testnet: real ERC-20 transfer through the full in-app UI send path (asset
@@ -116,6 +121,20 @@ export const ASSETS = Object.freeze([
   //   https://mempool.space/testnet/tx/2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27
   // Mainnet stays gated in btc/networks.js.
   { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'mainnet',   status: ASSET_STATUS.LIVE },
+  // Phase 1b (docs/per-chain-expansion-scope.md): USDC/USDT on the 5 EVM
+  // chains already supported. status: receive_only — no on-chain UI-path
+  // send has been captured for these rows yet (I4 fail-honest). experimental:
+  // true — hidden unless VITE_MULTI_CHAIN_ROWS=1 (see lib/multiChainFlag.js).
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'polygon',   status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'arbitrum',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'optimism',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'avalanche', status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'bnb',       status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'polygon',   status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'arbitrum',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'optimism',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'avalanche', status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'bnb',       status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
   // Phase SOL: ed25519 / SLIP-0010 on Solana mainnet-beta (ALLOW_MAINNET = true
   // since 2026-06-17). `chain: 'mainnet'` — address derivation, balance reads,
   // and send path all resolve against sol/networks.js mainnet (api.mainnet-beta.solana.com).
@@ -128,8 +147,25 @@ export const ASSETS = Object.freeze([
   { symbol: 'SOL',   name: 'Solana',    family: 'solana', chain: 'mainnet',   status: ASSET_STATUS.LIVE },
 ]);
 
+// Public registry — each entry gains an `id` field (`"{symbol}:{chain}"`) via
+// formatAssetId. Frozen at both levels: array-frozen so entries can't be
+// spliced, entry-frozen so no consumer can mutate an asset's identity.
+export const ASSETS = Object.freeze(
+  ASSETS_RAW.map((a) => Object.freeze({ ...a, id: formatAssetId(a) }))
+);
+
+/** Legacy symbol lookup — unchanged. Returns the ASSETS entry whose `symbol`
+ * matches (there is exactly one today; Phase 1 may introduce duplicates, at
+ * which point this returns the FIRST match and callers should migrate to
+ * `getAssetById`). Kept for backward compat with every current caller. */
 export function getAsset(symbol) {
   return ASSETS.find(a => a.symbol === symbol) || null;
+}
+
+/** Composite-key lookup — returns the ASSETS entry with the exact `(symbol,
+ * chain)` identity. Phase 1 callers should prefer this over `getAsset`. */
+export function getAssetById(id) {
+  return ASSETS.find(a => a.id === id) || null;
 }
 
 /** HARD capability gate: only `live` assets may send. The send flow MUST check this. */

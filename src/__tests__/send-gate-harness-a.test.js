@@ -43,6 +43,7 @@ import { fileURLToPath } from 'node:url';
 import {
   ASSETS,
   getAsset,
+  getAssetById,
   canSend,
   canReceive,
   ASSET_STATUS,
@@ -136,7 +137,7 @@ describe('Harness A · G1 — demo-active predicate (and the persisted-flag trap
 // ─────────────────────────────────────────────────────────────────────────────
 // G2 — canSend().  false for every receive_only asset; true ONLY for the live set.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Harness A · G2 — canSend() is true only for the live set (all 10 assets live as of 2026-06-19)', () => {
+describe('Harness A · G2 — canSend() is true only for the live set', () => {
   it('the live (sendable) set is exactly [ETH, USDC, USDT, MATIC, ARB, OP, BTC, SOL, AVAX, BNB]', () => {
     // Each earned `live` via a real explorer-confirmed on-chain send:
     //   ETH  0x3ebb8fd7c844cdb88455408a8a17a4cd242b61ea2c475444fa334ef8a0a2b5c3 (Sepolia)
@@ -153,12 +154,11 @@ describe('Harness A · G2 — canSend() is true only for the live set (all 10 as
     expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL']);
   });
 
-  it('canSend() is FALSE for every receive_only asset (all 10 are live — set is empty)', () => {
+  it('canSend() is FALSE for every receive_only per-chain asset', () => {
     const receiveOnly = ASSETS.filter((a) => a.status === ASSET_STATUS.RECEIVE_ONLY);
-    // All 10 wallet assets are live as of 2026-06-19 (AVAX + BNB verified on-chain).
-    // The receive_only set is now empty; this test remains to catch any regression that
-    // reintroduces a receive_only asset without updating the live set above.
-    expect(receiveOnly.length).toBe(0);
+    // Phase 1b adds USDC/USDT on five additional chains. They are deliberately
+    // receive_only until a real in-app testnet send earns each row live status.
+    expect(receiveOnly).toHaveLength(10);
     for (const a of receiveOnly) {
       expect(canSend(a)).toBe(false);
       expect(canReceive(a)).toBe(true);
@@ -205,7 +205,7 @@ describe('Harness A · G3 — the dev ungate relaxes the FLOW, never the status'
     expect(isDevSendUngated(UNGATE_ON)).toBe(true); // ungate is "on" for this block
     for (const a of ASSETS) {
       if (a.status === ASSET_STATUS.RECEIVE_ONLY) {
-        const fresh = getAsset(a.symbol);
+        const fresh = getAssetById(a.id);
         expect(fresh.status).toBe(ASSET_STATUS.RECEIVE_ONLY); // status untouched
         expect(canSend(fresh)).toBe(false); // live-classification untouched
       }

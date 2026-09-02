@@ -23,7 +23,9 @@
 // wallet active (switchWallet) so `accounts`/`btcAccount`/`solAccount` belong to it.
 
 import { resolveReceive } from '@/lib/receiveAddress';
-import { DEFAULT_ENABLED_ASSETS, ALL_ASSET_SYMBOLS } from '@/lib/walletMeta';
+import { DEFAULT_ENABLED_ASSETS, ALL_ASSET_SYMBOLS, ALL_ASSET_IDS } from '@/lib/walletMeta';
+import { getAssetById } from '@/wallet-core/assets';
+import { isAssetIdString } from '@/wallet-core/assetId';
 
 // ── DEMO SEND SOURCE ────────────────────────────────────────────────────────
 // Demo is a backend-less walkthrough with NO unlocked on-device vault, so the
@@ -87,17 +89,20 @@ export function defaultWalletId(wallets, activeWalletId) {
 }
 
 /**
- * The assets to show for a wallet — exactly its enabledAssets, in stored (canonical)
- * order. This is the SAME list the dashboard renders per wallet. Empty for an
- * unknown id.
+ * The asset ids to show for a wallet — exactly its enabledAssets, in stored
+ * (canonical) order. This is the SAME list the dashboard renders per wallet.
+ * Empty for an unknown id.
  */
-export function walletAssetSymbols(wallets, walletId) {
+export function walletAssetIds(wallets, walletId) {
   const w = (wallets || []).find((x) => x.id === walletId);
   return Array.isArray(w?.enabledAssets) ? w.enabledAssets : [];
 }
 
+/** @deprecated use walletAssetIds — kept as an alias for one PR (Phase 1a). */
+export const walletAssetSymbols = walletAssetIds;
+
 /**
- * Asset symbols to OFFER in the Send asset picker. Normally a wallet's own
+ * Asset ids to OFFER in the Send asset picker. Normally a wallet's own
  * enabledAssets (the same list the dashboard shows). When the dev-real testnet
  * send ungate is active, surface EVERY supported asset so any `receive_only`
  * asset can be exercised through the real send path for verification WITHOUT first
@@ -108,22 +113,32 @@ export function walletAssetSymbols(wallets, walletId) {
  * @param {Array}   wallets
  * @param {string}  walletId
  * @param {boolean} [ungated]  the dev-only testnet send ungate is active
- * @returns {string[]}
+ * @returns {string[]} asset ids
  */
 export function sendAssetSymbols(wallets, walletId, ungated = false) {
-  return ungated ? [...ALL_ASSET_SYMBOLS] : walletAssetSymbols(wallets, walletId);
+  return ungated ? [...ALL_ASSET_IDS] : walletAssetIds(wallets, walletId);
 }
 
 /**
- * Default asset for a wallet: keep the current pick if it is still enabled; else
- * prefer ETH (the one live/sendable asset) when shown; else the first enabled asset;
- * else "".
+ * Default asset SYMBOL (routes still key off bare symbols) for a wallet.
+ * `enabledAssets` holds composite ids; `current` is a bare symbol. Keeps the
+ * current pick if it is still among the wallet's enabled assets; else prefers
+ * ETH (the one live/sendable asset) when shown; else the first enabled asset's
+ * symbol; else "".
+ * @param {string[]} enabledAssets - composite ids (or, from a wallet not yet
+ *   migrated, legacy bare symbols)
+ * @param {string} current - a bare symbol
+ * @returns {string} a bare symbol
  */
 export function defaultAssetSymbol(enabledAssets, current) {
-  const list = Array.isArray(enabledAssets) ? enabledAssets : [];
-  if (current && list.includes(current)) return current;
-  if (list.includes('ETH')) return 'ETH';
-  return list[0] || '';
+  const ids = Array.isArray(enabledAssets) ? enabledAssets : [];
+  const symbols = ids.map((entry) => {
+    if (isAssetIdString(entry)) return getAssetById(entry)?.symbol ?? null;
+    return entry; // legacy bare symbol, tolerated
+  }).filter(Boolean);
+  if (current && symbols.includes(current)) return current;
+  if (symbols.includes('ETH')) return 'ETH';
+  return symbols[0] || '';
 }
 
 /**

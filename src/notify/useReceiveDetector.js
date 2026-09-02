@@ -21,7 +21,8 @@
 import { useEffect, useRef } from 'react';
 import { useWallet } from '@/lib/WalletProvider';
 import { fetchAssetAmount } from '@/lib/portfolioBalances.js';
-import { getAsset } from '@/wallet-core/assets.js';
+import { getAsset, getAssetById } from '@/wallet-core/assets.js';
+import { isAssetIdString } from '@/wallet-core/assetId.js';
 import { emitReceiveDetected } from './events.js';
 import { DEMO } from '@/api/demoClient';
 
@@ -81,16 +82,22 @@ export function useReceiveDetector() {
       sol: solAccount?.address ?? null,
     };
 
-    const enabledAssets = activeWallet.enabledAssets || [];
+    // enabledAssets holds composite ids; resolve each to its ASSETS entry (a
+    // legacy bare-symbol entry, from a wallet not yet migrated, is tolerated).
+    // detectDeltas still keys off bare symbols — prices/deltas are symbol-scoped.
+    const enabledIds = activeWallet.enabledAssets || [];
+    const enabledSymbols = enabledIds
+      .map((entry) => (getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null))?.symbol)
+      .filter(Boolean);
 
     async function poll() {
       const current = {};
       await Promise.all(
-        enabledAssets.map(async (symbol) => {
-          const asset = getAsset(symbol);
+        enabledIds.map(async (entry) => {
+          const asset = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
           if (!asset) return;
           const amount = await fetchAssetAmount(asset, addr);
-          current[symbol] = amount; // null = indeterminate (failed read)
+          current[asset.symbol] = amount; // null = indeterminate (failed read)
         }),
       );
 
@@ -101,7 +108,7 @@ export function useReceiveDetector() {
       // out of the RING_CAP=20 queue. Same-tick receives on multiple assets
       // are functionally one event ("your wallet moved"), not N unrelated
       // ones — coalesce into one string.
-      const deltas = detectDeltas(priorRef.current, current, enabledAssets);
+      const deltas = detectDeltas(priorRef.current, current, enabledSymbols);
       if (deltas.length > 0) {
         try {
           const amount = deltas.length === 1
