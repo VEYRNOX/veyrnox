@@ -22,7 +22,8 @@
 
 import { Contract, formatUnits } from 'ethers';
 import { useQuery } from '@tanstack/react-query';
-import { ASSETS, getAsset } from '@/wallet-core/assets.js';
+import { ASSETS, getAsset, getAssetById } from '@/wallet-core/assets.js';
+import { isAssetIdString } from '@/wallet-core/assetId.js';
 import { USD_RATES } from '@/lib/cryptos.js';
 import { getProvider, getBalanceEth } from '@/wallet-core/evm/provider.js';
 import { getToken, ERC20_ABI } from '@/wallet-core/evm/tokens.js';
@@ -117,7 +118,8 @@ export async function fetchAssetAmount(asset, addr) {
  * `total`/`grandTotal`/`assetTotals` sum only what was readable; a true
  * `indeterminate` means the figure is incomplete, so the UI marks it rather than
  * presenting a silently-understated total as fact.
- * @param {Array<{id:any,enabledAssets:any}>} wallets
+ * @param {Array<{id:any,enabledAssets:string[]}>} wallets - enabledAssets holds
+ *   composite "{symbol}:{chain}" ids (a legacy bare-symbol entry is tolerated).
  * @param {Object.<string,{evm:any,btc:any,sol:any}>} walletAddresses
  */
 export async function computePortfolio(wallets, walletAddresses, livePrices) {
@@ -132,41 +134,45 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
   let grandTotal = 0;
   let anyIndeterminate = false;
 
-  // Flatten every (wallet, enabled asset) pair, fetch all in parallel.
+  // Flatten every (wallet, enabled asset) pair, fetch all in parallel. Each
+  // enabledAssets entry is normally a composite id (getAssetById); a wallet not
+  // yet migrated by sanitizeAssets may still hold a legacy bare symbol, so an id
+  // lookup miss falls back to getAsset() rather than dropping the asset.
   const jobs = [];
   for (const w of wallets) {
     byWallet[w.id] = { assets: [], total: 0, indeterminate: false };
-    for (const symbol of w.enabledAssets || []) {
-      const asset = getAsset(symbol);
+    for (const entry of w.enabledAssets || []) {
+      const asset = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
       if (!asset) continue;
       jobs.push(
         fetchAssetAmount(asset, walletAddresses[w.id] || {}).then((amount) => ({
-          walletId: w.id, symbol, amount,
+          walletId: w.id, id: asset.id, symbol: asset.symbol, amount,
         })),
       );
     }
   }
   const results = await Promise.all(jobs);
-  for (const { walletId, symbol, amount } of results) {
+  for (const { walletId, id, symbol, amount } of results) {
     const indeterminate = amount === null; // read FAILED, not an empty wallet
+    // Prices are symbol-scoped (usdRate keys off symbol), not per-chain.
     const usd = indeterminate ? null : amount * usdRate(symbol, livePrices);
-    byWallet[walletId].assets.push({ symbol, amount, usd, indeterminate });
-    if (!assetTotals[symbol]) assetTotals[symbol] = { amount: 0, usd: 0, indeterminate: false };
+    byWallet[walletId].assets.push({ id, symbol, amount, usd, indeterminate });
+    if (!assetTotals[id]) assetTotals[id] = { symbol, amount: 0, usd: 0, indeterminate: false };
     if (indeterminate) {
       byWallet[walletId].indeterminate = true;
-      assetTotals[symbol].indeterminate = true;
+      assetTotals[id].indeterminate = true;
       anyIndeterminate = true;
     } else {
       byWallet[walletId].total += usd;
       grandTotal += usd;
-      assetTotals[symbol].amount += amount;
-      assetTotals[symbol].usd += usd;
+      assetTotals[id].amount += amount;
+      assetTotals[id].usd += usd;
     }
   }
   // Keep each wallet's asset rows in canonical ASSETS order for a stable UI.
-  const order = ASSETS.map((a) => a.symbol);
-  for (const id of Object.keys(byWallet)) {
-    byWallet[id].assets.sort((a, b) => order.indexOf(a.symbol) - order.indexOf(b.symbol));
+  const order = ASSETS.map((a) => a.id);
+  for (const walletId of Object.keys(byWallet)) {
+    byWallet[walletId].assets.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   }
   return { byWallet, grandTotal, assetTotals, indeterminate: anyIndeterminate };
 }

@@ -50,14 +50,26 @@ describe('walletMeta — defaults', () => {
   });
 
   it('ensureWalletMeta is idempotent and seeds initial values', () => {
-    ensureWalletMeta('a', { name: 'Savings', backedUp: true, enabledAssets: ['ETH'] });
+    ensureWalletMeta('a', { name: 'Savings', backedUp: true, enabledAssets: ['ETH:mainnet'] });
     const first = getWalletMeta('a');
     expect(first.name).toBe('Savings');
     expect(first.backedUp).toBe(true);
-    expect(first.enabledAssets).toEqual(['ETH']);
+    expect(first.enabledAssets).toEqual(['ETH:mainnet']);
     // Second call must not overwrite.
     ensureWalletMeta('a', { name: 'Changed', backedUp: false });
     expect(getWalletMeta('a').name).toBe('Savings');
+  });
+});
+
+describe('walletMeta — Phase 1a composite-id migration', () => {
+  it('a legacy bare-symbol list upgrades to composite ids, canonical order, on read', () => {
+    ensureWalletMeta('legacy', { name: 'Old', backedUp: true, enabledAssets: ['USDC', 'ETH'] });
+    expect(getWalletMeta('legacy').enabledAssets).toEqual(['ETH:mainnet', 'USDC:mainnet']);
+  });
+
+  it('drops an unknown legacy symbol rather than throwing', () => {
+    setEnabledAssets('u', ['ETH', 'NOT_A_REAL_ASSET']);
+    expect(getWalletMeta('u').enabledAssets).toEqual(['ETH:mainnet']);
   });
 });
 
@@ -70,13 +82,13 @@ describe('walletMeta — mutations', () => {
     setWalletBackedUp('a', true);
     expect(getWalletMeta('a').backedUp).toBe(true);
 
-    setEnabledAssets('a', ['BTC', 'ETH', 'NONSENSE']); // unknown dropped, canonical order
-    expect(getWalletMeta('a').enabledAssets).toEqual(['ETH', 'BTC']);
+    setEnabledAssets('a', ['BTC:mainnet', 'ETH:mainnet', 'NONSENSE']); // unknown dropped, canonical order
+    expect(getWalletMeta('a').enabledAssets).toEqual(['ETH:mainnet', 'BTC:mainnet']);
 
-    const after = toggleWalletAsset('a', 'BTC'); // remove BTC
-    expect(after).toEqual(['ETH']);
-    toggleWalletAsset('a', 'SOL'); // add SOL
-    expect(getWalletMeta('a').enabledAssets).toEqual(['ETH', 'SOL']);
+    const after = toggleWalletAsset('a', 'BTC:mainnet'); // remove BTC
+    expect(after).toEqual(['ETH:mainnet']);
+    toggleWalletAsset('a', 'SOL:mainnet'); // add SOL
+    expect(getWalletMeta('a').enabledAssets).toEqual(['ETH:mainnet', 'SOL:mainnet']);
   });
 
   it('name is length-capped', () => {

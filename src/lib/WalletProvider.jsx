@@ -65,7 +65,7 @@ import {
   setActiveWalletId as persistActiveWalletId,
   reconcileWalletMeta,
   clearAllWalletMeta,
-  ALL_ASSET_SYMBOLS,
+  ALL_ASSET_IDS,
 } from '@/lib/walletMeta';
 // PORTFOLIOS (named groups of wallets; one-portfolio-per-wallet partition with an
 // always-present "Main"). Non-secret organisation only — no seeds. See portfolios.js.
@@ -1490,9 +1490,9 @@ export function WalletProvider({ children }) {
     setWalletEnabledAssets(walletId, symbols);
     refreshWalletsState();
   }, [isDecoy, isHidden, refreshWalletsState]);
-  const toggleWalletAsset = useCallback((walletId, symbol) => {
+  const toggleWalletAsset = useCallback((walletId, assetId) => {
     if (isDecoy || isHidden) return;
-    toggleWalletAssetMeta(walletId, symbol);
+    toggleWalletAssetMeta(walletId, assetId);
     refreshWalletsState();
   }, [isDecoy, isHidden, refreshWalletsState]);
 
@@ -1932,7 +1932,7 @@ export function WalletProvider({ children }) {
         // keeps ALL assets visible so nothing the user saw disappears. This local
         // metadata setup runs REGARDLESS of KEK state (session correctness); only the
         // biometric-prompting DISK write below is deferred on a KEK vault.
-        ensureWalletMeta(firstId, { name: 'Wallet 1', backedUp: true, enabledAssets: [...ALL_ASSET_SYMBOLS] });
+        ensureWalletMeta(firstId, { name: 'Wallet 1', backedUp: true, enabledAssets: [...ALL_ASSET_IDS] });
         if (!kekEnrolled) {
           try { await keyStore.saveVaultContents(mv.serializeContainer(stamped), password, repersistOpts); }
           catch { /* best-effort; retried next unlock */ }
@@ -1989,7 +1989,7 @@ export function WalletProvider({ children }) {
       setIsDecoy(decoy);
       setIsHidden(hidden);
       setLastUnlockAt(null); // never surface a last-unlock in a decoy/hidden session
-      setWallets(ids.map((id, i) => ({ id, name: `Wallet ${i + 1}`, backedUp: true, enabledAssets: [...ALL_ASSET_SYMBOLS] })));
+      setWallets(ids.map((id, i) => ({ id, name: `Wallet ${i + 1}`, backedUp: true, enabledAssets: [...ALL_ASSET_IDS] })));
       setActiveWalletIdState(ids[0]);
       // Transient single "Main" portfolio for the decoy/hidden session — never
       // touch the persisted portfolio store (deniability + no pollution).

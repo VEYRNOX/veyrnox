@@ -6,7 +6,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Wallet } from "lucide-react";
 import CoinLogo from "@/components/CoinLogo";
-import { getAsset } from "@/wallet-core/assets";
+import { getAssetById } from "@/wallet-core/assets";
 
 export default function WalletAssetPickerSheet({
   open,
@@ -51,12 +51,13 @@ export default function WalletAssetPickerSheet({
           <div>
             <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Asset</p>
             <div className="space-y-1.5">
-              {enabledAssets.map((sym) => {
+              {enabledAssets.map((id) => {
+                const a = getAssetById(id);
+                const sym = a?.symbol || id;
                 const active = sym === selectedAssetSymbol;
-                const a = getAsset(sym);
                 return (
                   <button
-                    key={sym}
+                    key={id}
                     type="button"
                     onClick={() => onSelectAsset?.(sym)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-start ${active ? "border-primary bg-primary/10" : "border-border hover:bg-secondary/40"}`}
