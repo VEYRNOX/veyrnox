@@ -138,6 +138,22 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
   // enabledAssets entry is normally a composite id (getAssetById); a wallet not
   // yet migrated by sanitizeAssets may still hold a legacy bare symbol, so an id
   // lookup miss falls back to getAsset() rather than dropping the asset.
+  //
+  // Per-job timeout: a single slow/hung chain provider used to gate the whole
+  // Promise.all — the aggregate resolved only when the slowest fetchAssetAmount
+  // did, so one wedged RPC (Esplora is the usual suspect) blocked the entire
+  // portfolio render for ~15s on cold unlock. Race each job with a hard cap;
+  // on expiry the job resolves to amount=null, which the existing
+  // `indeterminate = amount === null` branch below already handles — the row
+  // renders as "—" instead of stalling the whole page. The cap is longer than
+  // any healthy read (~1s) but short enough that the worst case stays under
+  // ~9s. ponytail: fixed constant; wire per-family caps if BTC's typical
+  // latency ever justifies a separate budget.
+  const PER_JOB_TIMEOUT_MS = 8000;
+  const withPerJobTimeout = (p) => Promise.race([
+    p,
+    new Promise((resolve) => setTimeout(() => resolve(null), PER_JOB_TIMEOUT_MS)),
+  ]);
   const jobs = [];
   for (const w of wallets) {
     byWallet[w.id] = { assets: [], total: 0, indeterminate: false };
@@ -145,7 +161,7 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
       const asset = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
       if (!asset) continue;
       jobs.push(
-        fetchAssetAmount(asset, walletAddresses[w.id] || {}).then((amount) => ({
+        withPerJobTimeout(fetchAssetAmount(asset, walletAddresses[w.id] || {})).then((amount) => ({
           walletId: w.id, id: asset.id, symbol: asset.symbol, priceSymbol: asset.priceSymbol || asset.symbol, amount,
         })),
       );

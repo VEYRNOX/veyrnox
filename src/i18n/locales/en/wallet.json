@@ -449,7 +449,11 @@
       "balance_prefix": "Balance:",
       "demo_suffix": "(demo)",
       "live_suffix": "(live)",
-      "reading_from_network": "reading from network…"
+      "reading_from_network": "reading from network…",
+      "mode_crypto_aria": "Enter amount in {{currency}}",
+      "mode_fiat_aria": "Enter amount in USD",
+      "fiat_placeholder": "$0.00",
+      "approx_crypto": "≈ {{amount}} {{currency}}"
     },
     "errors": {
       "amount_missing": "Amount is required",
@@ -550,6 +554,13 @@
       "copy_aria": "Copy address",
       "copied_toast": "Address copied",
       "copy_failed_toast": "Couldn't copy — select and copy the address manually"
+    },
+    "actions": {
+      "copy": "Copy",
+      "copied": "Copied",
+      "share": "Share",
+      "share_dialog_title": "Share address",
+      "share_failed_toast": "Couldn't open the share sheet"
     },
     "network_notes": {
       "erc20": "{{symbol}} is a token on an Ethereum-compatible network. This is your wallet address — only have the sender send {{symbol}} on {{network}}. Sending it on a different network can permanently lose the funds.",
