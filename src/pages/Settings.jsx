@@ -17,7 +17,6 @@ import { hasConsent, setConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { publishAdvisorContext } from "@/lib/advisorBridge";
 import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
-import { isDuressConfigured } from "@/lib/duressBiometricGuard";
 import { Link } from "react-router";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -68,13 +67,31 @@ export default function Settings() {
   // rather than a decoy-shaped payload, matching the WalletConnect publisher.
   // KEK + passkey/biometric come from the shared R2 facade that is already
   // fail-closed and I3-safe.
+  //
+  // NO COERCION ORACLES IN THIS PAYLOAD (#2256). What is published here does
+  // not stay on the device: SecurityAdvisor merges it into
+  // `effectivePageSnapshot` and sends it to the tip-chat backend as
+  // `context.page_snapshot`, next to a PERSISTENT `device_id`. A field here is
+  // therefore a durable, per-device disclosure to a backend that I5 declares
+  // untrusted.
+  //
+  // `duress_configured` was in this object and has been removed. The I3
+  // suppression below is correct and was never the problem — the disclosure
+  // came from the REAL session, which is precisely the session I3 does not
+  // gate. Telling a backend that a device HAS a duress wallet defeats the only
+  // thing duress provides: that under coercion the user can credibly say there
+  // is nothing else here. Consenting to an AI advisor is not consent to
+  // disclose that. SecurityDashboard.jsx's header reached the same conclusion
+  // independently and refuses to render duress state at all — "always-
+  // provisioned slots = coercion oracle".
+  //
+  // The four remaining fields are posture booleans carrying no
+  // coercion-relevant information. Before adding a fifth, ask what it tells an
+  // adversary holding the backend's logs about a user they are standing next
+  // to. advisorContext.noCoercionOracles.test.js pins this for every
+  // publisher, not just this one.
   const { isVaultKekEnrolled, hasPasskeyOrBiometric, isDeniability } =
     usePortfolioHealthInputs({ isUnlocked });
-  const [duressConfigured, setDuressCfg] = useState(false);
-  useEffect(() => {
-    if (isDeniability || !isUnlocked) { setDuressCfg(false); return; }
-    try { setDuressCfg(isDuressConfigured() === true); } catch { setDuressCfg(false); }
-  }, [isDeniability, isUnlocked]);
   useEffect(() => {
     if (isDecoy || isHidden || isDeniability || !isUnlocked) {
       publishAdvisorContext(null);
@@ -86,14 +103,13 @@ export default function Settings() {
       settings: {
         kek_enrolled: isVaultKekEnrolled === true,
         biometric_or_passkey: hasPasskeyOrBiometric === true,
-        duress_configured: duressConfigured === true,
         telemetry_consent: consented,
         safety_plus_active: isSafetyPlus === true,
       },
     });
     return () => publishAdvisorContext(null);
   }, [isDecoy, isHidden, isDeniability, isUnlocked, isVaultKekEnrolled,
-      hasPasskeyOrBiometric, duressConfigured, isSafetyPlus]);
+      hasPasskeyOrBiometric, isSafetyPlus]);
 
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== "DELETE") return;
