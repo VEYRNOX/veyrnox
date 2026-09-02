@@ -227,22 +227,80 @@ final class AppUITests: XCTestCase {
 
         for attempt in 1...maxAttempts {
             enterPin(app: app, digits: pin, stage: "set")
-            submitPin(app: app, stage: "set")
 
-            // A short buffer at stage one does not advance. Recover the same
-            // way — the next attempt re-enters from a cleared pad.
-            guard confirmHeading.waitForExistence(timeout: 15) else {
+            // A short buffer at stage one does not advance, and neither does a
+            // swallowed submit press. Re-press before spending a whole ceremony
+            // attempt on it — a re-press costs seconds, a ceremony costs ~140s.
+            guard submitPinUntilAdvanced(app: app, stage: "set", advanced: { confirmHeading.exists }) else {
                 NSLog("[VEYRNOX-XCUITEST] PIN attempt \(attempt): stage one never advanced to confirm; retrying")
                 clearPinPadIfPossible(app: app)
                 continue
             }
 
             enterPin(app: app, digits: pin, stage: "confirm")
-            submitPin(app: app, stage: "confirm")
 
-            if !mismatch.waitForExistence(timeout: 5) { return }
-            NSLog("[VEYRNOX-XCUITEST] PIN attempt \(attempt): confirm mismatched, PinSetup reset both buffers; retrying")
+            // The confirm submit needs the same treatment, and until run
+            // 33626090694 it did not get it. There, the press at t=452.7s was
+            // swallowed at the WebKit layer, PinSetup stayed on screen with all
+            // eight dots filled through the entire 45s window (frames at t=470s
+            // and t=505s are identical), and the flow fell through to the
+            // fail-closed assertion — which then accused the app of having
+            // provisioned a wallet without a secure store. Nothing had been
+            // provisioned; the submit press simply never landed.
+            //
+            // Done means PinSetup is gone (success) OR the mismatch banner is
+            // up (reset — the outer loop's job, not this one's).
+            let left = submitPinUntilAdvanced(
+                app: app,
+                stage: "confirm",
+                advanced: { !confirmHeading.exists || mismatch.exists }
+            )
+
+            if left && !mismatch.exists { return }
+            if mismatch.exists {
+                NSLog("[VEYRNOX-XCUITEST] PIN attempt \(attempt): confirm mismatched, PinSetup reset both buffers; retrying")
+            } else {
+                NSLog("[VEYRNOX-XCUITEST] PIN attempt \(attempt): confirm submit never advanced past PinSetup; retrying")
+                clearPinPadIfPossible(app: app)
+            }
         }
+    }
+
+    /// Press "Submit PIN" and confirm the flow actually moved, re-pressing if it
+    /// did not. Same failure and same remedy as tapButtonUntilAdvanced: on a
+    /// cold WKWebView the press succeeds at the AX layer while WebKit swallows
+    /// the click, so the only honest confirmation is an observable state change.
+    ///
+    /// Re-presses only while `advanced` is still false, so a press that landed
+    /// but rendered slowly is not double-submitted. PinSetup fires onDone once
+    /// per stage (see its header), so a duplicate press on a stage that has
+    /// already advanced would be inert anyway.
+    ///
+    /// Budget: 3 presses x 8s = 24s worst case per stage. Run 33626090694 used
+    /// 532s of the 600s allowance with no re-presses, so this fits — but it is
+    /// the tightest thing in the file. If the allowance moves, re-do this sum.
+    @discardableResult
+    private func submitPinUntilAdvanced(
+        app: XCUIApplication,
+        stage: String,
+        advanced: () -> Bool,
+        maxPresses: Int = 3,
+        perPressWait: TimeInterval = 8
+    ) -> Bool {
+        for press in 1...maxPresses {
+            if advanced() { return true }
+            submitPin(app: app, stage: stage)
+
+            let deadline = Date().addingTimeInterval(perPressWait)
+            while Date() < deadline {
+                if advanced() { return true }
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+            if press < maxPresses {
+                NSLog("[VEYRNOX-XCUITEST] PIN \(stage): submit press \(press) did not advance the view; re-pressing")
+            }
+        }
+        return advanced()
     }
 
     /// Clear the pad so a retry starts from a known-empty buffer. The control is
@@ -292,6 +350,20 @@ final class AppUITests: XCTestCase {
             mismatch.waitForExistence(timeout: 5),
             "PIN confirm desynced and PinSetup reset to stage one, so the flow never reached provisioning. This is a test-harness failure against a slow WKWebView, NOT a fail-closed result and NOT evidence about secure-store handling — the run proves nothing either way about provisioning."
         )
+
+        // The mismatch banner is only ONE of the ways the flow can still be
+        // sitting in PinSetup. Run 33626090694 ended on "Confirm your PIN" with
+        // all eight dots filled and no banner at all, because the submit press
+        // was swallowed — and this guard, checking only the banner, let it fall
+        // through to the fail-closed assertion and its accusation.
+        // Either heading still being on screen means the same thing: the
+        // ceremony did not finish, so the run says nothing about provisioning.
+        for heading in ["Choose an 8-digit PIN", "Confirm your PIN"] {
+            XCTAssertFalse(
+                app.staticTexts[heading].exists,
+                "PinSetup is still showing '\(heading)' after the ceremony, so the flow never reached provisioning. This is a test-harness failure against a slow WKWebView, NOT a fail-closed result and NOT evidence about secure-store handling."
+            )
+        }
     }
 
     /// HTML aria-labels surface as XCUIElement identifiers. A direct identifier

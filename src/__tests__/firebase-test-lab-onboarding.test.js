@@ -72,9 +72,9 @@ describe('Firebase Test Lab first-run PIN smoke', () => {
     const getStarted = indexOrFail(swift, 'tapButtonUntilAdvanced(');
     const getStartedLabel = indexOrFail(swift, `label: "${tileLabel}"`);
     const setDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "set")');
-    const setSubmit = indexOrFail(swift, 'submitPin(app: app, stage: "set")');
+    const setSubmit = indexOrFail(swift, 'submitPinUntilAdvanced(app: app, stage: "set"');
     const confirmDigits = indexOrFail(swift, 'enterPin(app: app, digits: pin, stage: "confirm")');
-    const confirmSubmit = indexOrFail(swift, 'submitPin(app: app, stage: "confirm")');
+    const confirmSubmit = indexOrFail(swift, 'stage: "confirm",\n                advanced: { !confirmHeading.exists || mismatch.exists }');
 
     expect(getStarted).toBeLessThan(getStartedLabel);
     expect(getStartedLabel).toBeLessThan(setDigits);
