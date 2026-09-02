@@ -206,13 +206,13 @@ function BackupDialog({ walletName, mnemonic = null, reauthPrompt = null, onClos
 }
 
 // Asset multi-select chips (used at create/import to pick which assets to show).
-function AssetPicker({ selected, onToggle }) {
+export function AssetPicker({ selected, onToggle }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {ASSETS.filter((a) => !a.experimental).map((a) => {
-        const on = selected.includes(a.symbol);
+        const on = selected.includes(a.id);
         return (
-          <button key={a.symbol} type="button" onClick={() => onToggle(a.symbol)}
+          <button key={a.id} type="button" onClick={() => onToggle(a.id)}
             className={`text-xs px-2 py-1 rounded-md border ${on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
             {a.symbol}
           </button>
