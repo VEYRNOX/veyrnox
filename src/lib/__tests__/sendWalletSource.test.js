@@ -17,7 +17,8 @@ import {
   demoSendSource,
   DEMO_SEND_WALLET_ID,
 } from '@/lib/sendWalletSource';
-import { DEFAULT_ENABLED_ASSETS, ALL_ASSET_SYMBOLS } from '@/lib/walletMeta';
+import { DEFAULT_ENABLED_ASSETS, ALL_ASSET_IDS } from '@/lib/walletMeta';
+import { getAssetById } from '@/wallet-core/assets';
 
 // Distinct, format-plausible addresses so a chain mix-up would be caught.
 const EVM = '0xAbC0000000000000000000000000000000000001';
@@ -63,8 +64,8 @@ describe('sendWalletSource — binding Send to the live vault source', () => {
       expect(sendAssetSymbols(wallets, 'w1')).toEqual(['ETH', 'USDC', 'USDT', 'BTC', 'SOL']);
       expect(sendAssetSymbols(wallets, 'w2', false)).toEqual(['ETH', 'BTC']);
     });
-    it('surfaces EVERY supported asset when the dev ungate is active', () => {
-      expect(sendAssetSymbols(wallets, 'w2', true)).toEqual([...ALL_ASSET_SYMBOLS]);
+    it('surfaces EVERY supported asset (as composite ids) when the dev ungate is active', () => {
+      expect(sendAssetSymbols(wallets, 'w2', true)).toEqual([...ALL_ASSET_IDS]);
     });
     it('the ungate override is VIEW-ONLY — it never mutates the wallet enabledAssets', () => {
       const before = wallets[1].enabledAssets;
@@ -73,7 +74,7 @@ describe('sendWalletSource — binding Send to the live vault source', () => {
       expect(wallets[1].enabledAssets).toEqual(['ETH', 'BTC']);
     });
     it('the ungate widens even an unknown wallet id (every asset still available)', () => {
-      expect(sendAssetSymbols(wallets, 'nope', true)).toEqual([...ALL_ASSET_SYMBOLS]);
+      expect(sendAssetSymbols(wallets, 'nope', true)).toEqual([...ALL_ASSET_IDS]);
     });
   });
 
@@ -141,7 +142,8 @@ describe('sendWalletSource — binding Send to the live vault source', () => {
     it('its wallet flows through the existing helpers (asset list, default, default wallet)', () => {
       const src = demoSendSource();
       expect(defaultWalletId(src.wallets, '')).toBe(DEMO_SEND_WALLET_ID);
-      expect(walletAssetSymbols(src.wallets, DEMO_SEND_WALLET_ID)).toContain('ETH');
+      // enabledAssets holds composite ids now, not bare symbols.
+      expect(walletAssetSymbols(src.wallets, DEMO_SEND_WALLET_ID)).toContain('ETH:mainnet');
       // ETH is enabled, so the auto-pick prefers it (the one sendable asset).
       expect(defaultAssetSymbol(walletAssetSymbols(src.wallets, DEMO_SEND_WALLET_ID), '')).toBe('ETH');
     });
@@ -161,11 +163,14 @@ describe('sendWalletSource — binding Send to the live vault source', () => {
     });
 
     it('seeds a positive demo balance for EVERY default-enabled asset (no bare-0 in the picker)', () => {
-      // The demo wallet enables DEFAULT_ENABLED_ASSETS; each must have a seeded
-      // balance or the demo Asset picker shows it at 0 (looks broken). Guards the
-      // demo balances from drifting behind a change to the default asset set.
+      // The demo wallet enables DEFAULT_ENABLED_ASSETS (composite ids); each
+      // must have a seeded balance (keyed by bare symbol — prices are
+      // symbol-scoped) or the demo Asset picker shows it at 0 (looks broken).
+      // Guards the demo balances from drifting behind a change to the default
+      // asset set.
       const { wallets, balances } = demoSendSource();
-      for (const symbol of wallets[0].enabledAssets) {
+      for (const id of wallets[0].enabledAssets) {
+        const symbol = getAssetById(id)?.symbol || id;
         expect(balances[symbol]).toBeGreaterThan(0);
       }
     });

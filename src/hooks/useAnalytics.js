@@ -4,7 +4,8 @@ import { useWallet } from '../lib/WalletProvider';
 import { usePortfolio } from '../lib/portfolioBalances';
 import { useLivePrices, isLivePricesEnabled } from '../lib/priceFeed';
 import { fetchAssetHistory } from '../lib/txHistory';
-import { getAsset } from '../wallet-core/assets';
+import { getAsset, getAssetById } from '../wallet-core/assets';
+import { isAssetIdString } from '../wallet-core/assetId';
 import { isDeniabilityOrDemoActive } from '../wallet-core/deniabilitySession';
 
 export function useAnalytics() {
@@ -33,8 +34,11 @@ export function useAnalytics() {
       const failedAssets = [];
       for (const wallet of wallets) {
         const addrs = walletAddresses[wallet.id] || {};
-        for (const asset of wallet.enabledAssets || []) {
-          const assetDef = getAsset(asset);
+        // enabledAssets holds composite ids; resolve each to its ASSETS entry
+        // (a legacy bare-symbol entry, from a wallet not yet migrated, is
+        // tolerated via the getAsset fallback).
+        for (const entry of wallet.enabledAssets || []) {
+          const assetDef = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
           if (!assetDef) continue;
           const { family } = assetDef;
           let address;
@@ -47,12 +51,12 @@ export function useAnalytics() {
           }
           if (!address) continue;
           try {
-            const result = await fetchAssetHistory({ asset, address, demo: false });
+            const result = await fetchAssetHistory({ asset: entry, address, demo: false });
             if (result.supported && result.transactions) {
               allTxs.push(...result.transactions);
             }
           } catch {
-            failedAssets.push(asset);
+            failedAssets.push(entry);
           }
         }
       }

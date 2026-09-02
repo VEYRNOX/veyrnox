@@ -11,6 +11,13 @@
 // the active wallet stay cheap and DON'T require the vault password or a KDF
 // re-encrypt (those are reserved for actually mutating the SEED SET).
 //
+// STORAGE SHAPE (Phase 1a of per-chain expansion, docs/per-chain-expansion-scope.md):
+// `enabledAssets` persists as composite "{symbol}:{chain}" ids (ASSETS[i].id), not
+// bare symbols. `sanitizeAssets` on read tolerates BOTH shapes — a legacy bare
+// symbol upgrades to its matching ASSETS entry's id; an unknown symbol/id is
+// dropped, never thrown (fail-honest). Every write goes through `sanitizeAssets`,
+// so the store self-heals to ids the first time any wallet's meta is touched.
+//
 // AT-REST NOTE (flagged for audit): wallet ids + names + asset prefs persist in
 // localStorage in plaintext, so a device-access observer can see HOW MANY
 // wallets the primary vault holds and their names. This is acceptable for the
@@ -24,7 +31,7 @@
 // meta store degrades to "Wallet N" names with backedUp=false — i.e. it WARNS
 // MORE, never less (you can never lose a backup warning by losing this file).
 
-import { ASSETS } from '@/wallet-core/assets.js';
+import { ASSETS, getAsset } from '@/wallet-core/assets.js';
 
 const META_KEY = 'veyrnox-wallet-meta';     // { [walletId]: { name, backedUp, enabledAssets } }
 const ACTIVE_KEY = 'veyrnox-active-wallet';  // walletId string
@@ -38,13 +45,12 @@ const ACTIVE_KEY = 'veyrnox-active-wallet';  // walletId string
 // automatically. The migrated legacy wallet likewise keeps ALL assets (see
 // WalletProvider), so no existing user ever sees an asset disappear.
 export const ALL_ASSET_SYMBOLS = Object.freeze(ASSETS.map((a) => a.symbol));
-export const DEFAULT_ENABLED_ASSETS = ALL_ASSET_SYMBOLS;
-// Phase 0 of per-chain expansion — composite "{symbol}:{chain}" ids alongside
-// the legacy symbol list. On-disk shape and every current reader stay on
-// symbol identity; this export is here so Phase 1 can flip DEFAULT_ENABLED_ASSETS
-// and sanitizeAssets to composite ids in one coordinated PR that also adds the
-// first duplicate-symbol row. Do NOT consume this in a reader until then.
 export const ALL_ASSET_IDS = Object.freeze(ASSETS.map((a) => a.id));
+// Phase 1a of per-chain expansion — storage + every reader now speak composite
+// ids. Every ASSETS entry is still symbol-unique today, so this is 1:1 with
+// ALL_ASSET_SYMBOLS; the distinction matters starting Phase 1b, which adds
+// duplicate-symbol rows.
+export const DEFAULT_ENABLED_ASSETS = ALL_ASSET_IDS;
 
 function readMap() {
   try {
@@ -65,10 +71,21 @@ function writeMap(map) {
   }
 }
 
-// Keep only known asset symbols, de-duplicated, in canonical ASSETS order.
+// Keep only known asset ids, de-duplicated, in canonical ASSETS order. Tolerates
+// BOTH composite ids ("ETH:mainnet") and legacy bare symbols ("ETH") on read — a
+// legacy symbol migrates to the id of its (unique) matching ASSETS entry; an
+// unknown symbol/id is DROPPED, never thrown (fail-honest). Always returns ids;
+// callers write back through this, so the store self-heals on first touch.
 function sanitizeAssets(list) {
-  const set = new Set(Array.isArray(list) ? list : []);
-  return ALL_ASSET_SYMBOLS.filter((s) => set.has(s));
+  const raw = Array.isArray(list) ? list : [];
+  const ids = new Set();
+  for (const entry of raw) {
+    if (typeof entry !== 'string') continue;
+    if (ALL_ASSET_IDS.includes(entry)) { ids.add(entry); continue; }
+    const asset = getAsset(entry); // legacy bare-symbol migration
+    if (asset) ids.add(asset.id);
+  }
+  return ALL_ASSET_IDS.filter((id) => ids.has(id));
 }
 
 function defaultMeta(name) {
@@ -116,18 +133,18 @@ export function setWalletBackedUp(id, backedUp) {
   writeMap(map);
 }
 
-export function setEnabledAssets(id, symbols) {
+export function setEnabledAssets(id, assetIds) {
   const map = readMap();
-  map[id] = { ...(map[id] || defaultMeta('Wallet')), enabledAssets: sanitizeAssets(symbols) };
+  map[id] = { ...(map[id] || defaultMeta('Wallet')), enabledAssets: sanitizeAssets(assetIds) };
   writeMap(map);
 }
 
 /** Toggle a single asset on/off for a wallet; returns the new enabled list. */
-export function toggleWalletAsset(id, symbol) {
+export function toggleWalletAsset(id, assetId) {
   const current = getWalletMeta(id).enabledAssets;
-  const next = current.includes(symbol)
-    ? current.filter((s) => s !== symbol)
-    : [...current, symbol];
+  const next = current.includes(assetId)
+    ? current.filter((x) => x !== assetId)
+    : [...current, assetId];
   setEnabledAssets(id, next);
   return sanitizeAssets(next);
 }

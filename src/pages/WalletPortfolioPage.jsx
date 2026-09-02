@@ -44,7 +44,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/lib/WalletProvider";
 import { usePortfolio, sumPortfolioTotal } from "@/lib/portfolioBalances";
 import { resolveAssetRow } from "@/lib/balanceDisplay";
-import { ASSETS, getAsset } from "@/wallet-core/assets.js";
+import { ASSETS, getAsset, getAssetById } from "@/wallet-core/assets.js";
+import { isAssetIdString } from "@/wallet-core/assetId.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { defaultAssetSymbol } from "@/lib/sendWalletSource";
@@ -323,9 +324,9 @@ function ManageAssetsDialog({ wallet, onClose }) {
         <p className="text-xs text-muted-foreground">{t("portfolio.manageAssets.description")}</p>
         <div className="space-y-1.5 pt-1 max-h-80 overflow-y-auto">
           {ASSETS.map((a) => (
-            <label key={a.symbol} className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border bg-card cursor-pointer">
+            <label key={a.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border bg-card cursor-pointer">
               <span className="flex items-center gap-2 text-sm"><span className="font-semibold">{a.symbol}</span><span className="text-xs text-muted-foreground">{a.name}</span></span>
-              <input type="checkbox" className="h-4 w-4 accent-primary" checked={enabled.has(a.symbol)} onChange={() => toggleWalletAsset(wallet.id, a.symbol)} />
+              <input type="checkbox" className="h-4 w-4 accent-primary" checked={enabled.has(a.id)} onChange={() => toggleWalletAsset(wallet.id, a.id)} />
             </label>
           ))}
         </div>
@@ -812,15 +813,21 @@ export default function WalletPortfolioPage() {
         <div className="divide-y divide-border">
           {(w.enabledAssets || []).length === 0 ? (
             <p className="px-4 py-4 text-xs text-muted-foreground text-center">{t("portfolio.walletCard.noAssetsShown")}</p>
-          ) : (w.enabledAssets || []).map((symbol) => {
-            const a = getAsset(symbol);
+          ) : (w.enabledAssets || []).map((entry) => {
+            // enabledAssets holds composite ids; a legacy bare-symbol entry (from
+            // a wallet not yet migrated) is tolerated via the getAsset fallback.
+            const a = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
+            const symbol = a?.symbol || entry;
             // A genuinely MISSING row (not yet computed / race) is INDETERMINATE,
             // not a confident "0" — resolveAssetRow fails closed to amount:null so
             // the row renders "—", never a fabricated $0.00 (I4 fail-closed).
-            const row = resolveAssetRow(data.assets, symbol);
+            const row = resolveAssetRow(data.assets, a?.id || symbol);
             const suspiciousCount = flaggedTokenCountsBySymbol.get(String(symbol || '').toUpperCase()) || 0;
             return (
-              <button key={symbol} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
+              // Routing stays symbol-based (Phase 1a keeps single-route dApp
+              // navigation; dual-route by chain arrives in a later PR). Key is
+              // the id, not the symbol, so a future duplicate-symbol row won't collide.
+              <button key={entry} type="button" aria-label={symbol} onClick={() => navigate(`/asset/${symbol}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
                 <CoinLogo symbol={symbol} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
