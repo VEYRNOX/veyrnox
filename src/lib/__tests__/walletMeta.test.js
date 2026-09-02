@@ -35,6 +35,7 @@ import {
   reconcileWalletMeta,
   clearAllWalletMeta,
 } from '../walletMeta.js';
+import { ASSETS } from '@/wallet-core/assets.js';
 
 beforeEach(() => {
   clearAllWalletMeta();
@@ -58,6 +59,21 @@ describe('walletMeta — defaults', () => {
     // Second call must not overwrite.
     ensureWalletMeta('a', { name: 'Changed', backedUp: false });
     expect(getWalletMeta('a').name).toBe('Savings');
+  });
+});
+
+describe('walletMeta — Phase 1b experimental-asset defaults', () => {
+  it('DEFAULT_ENABLED_ASSETS excludes every experimental (per-chain) id', () => {
+    const experimentalIds = ASSETS.filter((a) => a.experimental).map((a) => a.id);
+    expect(experimentalIds.length).toBeGreaterThan(0); // sanity: Phase 1b rows exist
+    for (const id of experimentalIds) {
+      expect(DEFAULT_ENABLED_ASSETS).not.toContain(id);
+    }
+  });
+
+  it('sanitizeAssets (via setEnabledAssets) still accepts an experimental id opted in through Manage Assets', () => {
+    setEnabledAssets('opted-in', ['ETH:mainnet', 'USDC:polygon']);
+    expect(getWalletMeta('opted-in').enabledAssets).toEqual(['ETH:mainnet', 'USDC:polygon']);
   });
 });
 

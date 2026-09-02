@@ -125,7 +125,8 @@ function buildAdvisorSearchSnapshot(search) {
 function resolveAdvisorChain(pathname, search) {
   if (pathname === '/solana') return 'solana';
   if (pathname.startsWith('/asset/')) {
-    const symbol = pathname.slice('/asset/'.length).toUpperCase();
+    // Phase 1b dual-route: pathname may be /asset/:symbol or /asset/:symbol/:chain.
+    const symbol = pathname.slice('/asset/'.length).split('/')[0].toUpperCase();
     if (symbol === 'BTC') return 'bitcoin';
     if (symbol === 'SOL') return 'solana';
   }

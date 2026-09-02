@@ -4,8 +4,10 @@ import { ASSETS, getAsset, canSend, canReceive, isEvmFamily, ASSET_STATUS } from
 import { getNetwork } from '../evm/networks.js';
 
 describe('asset registry', () => {
-  it('contains all 10 expected assets', () => {
-    const symbols = ASSETS.map(a => a.symbol);
+  it('contains all 10 original assets, in order, ahead of the Phase 1b experimental rows', () => {
+    // Phase 1b (docs/per-chain-expansion-scope.md) appended 10 more (symbol,
+    // chain) rows before SOL — see assets.phase1b.test.js for those.
+    const symbols = ASSETS.filter(a => !a.experimental).map(a => a.symbol);
     expect(symbols).toEqual(['ETH','USDC','USDT','MATIC','ARB','OP','AVAX','BNB','BTC','SOL']);
   });
 

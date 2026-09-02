@@ -24,11 +24,22 @@ import {
   setSpamTokenOverride,
 } from "@/lib/spamTokenIntel";
 import { evaluateSuspiciousToken } from "@/lib/suspiciousAssets";
+import { getAsset, getAssetById, canSend } from "@/wallet-core/assets.js";
+import { formatAssetId } from "@/wallet-core/assetId.js";
 
 export default function CryptoDetailPage() {
   const { t } = useTranslation("wallet");
-  const { symbol } = useParams();
+  const { symbol, chain } = useParams();
   const navigate = useNavigate();
+  // Phase 1b dual-route: /asset/:symbol/:chain resolves the exact (symbol,
+  // chain) row; the legacy /asset/:symbol resolves first-match (mainnet,
+  // same as every other symbol-only caller) and normalises the URL below.
+  const resolvedAsset = chain ? getAssetById(formatAssetId({ symbol, chain })) : getAsset(symbol);
+  useEffect(() => {
+    if (!chain && resolvedAsset) {
+      navigate(`/asset/${resolvedAsset.symbol}/${resolvedAsset.chain}`, { replace: true });
+    }
+  }, [chain, resolvedAsset, navigate]);
   const buyEnabled = useBuyEnabled();
   const [period, setPeriod] = useState("1D");
   const [spamOverrides, setSpamOverrides] = useState(() => readSpamTokenOverrides());
@@ -136,7 +147,11 @@ export default function CryptoDetailPage() {
       {isUnlocked && (() => {
         const activeWallet = wallets?.find((w) => w.id === activeWalletId) ?? wallets?.[0];
         const assets = activeWallet ? (portfolio?.byWallet?.[activeWallet.id]?.assets ?? []) : [];
-        const row = resolveAssetRow(assets, symbol);
+        // Prefer the resolved (symbol, chain) composite id so a per-chain row
+        // (e.g. USDC on Polygon) reads its OWN balance, not the first symbol
+        // match's (resolveAssetRow falls back to a bare symbol match when the
+        // id isn't found, e.g. for the XRP/DOGE/ADA/TRX display-only rows).
+        const row = resolveAssetRow(assets, resolvedAsset?.id || symbol);
         const nativeFmt = fmtIndeterminateAmount(row.amount);
         const usdFmt = row.usd != null ? `$${row.usd.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : null;
         return (
@@ -245,8 +260,14 @@ export default function CryptoDetailPage() {
           #1507 just removed, so the neighbours were converted at the same time
           rather than matching the old hardcoded convention. */}
       <div className={`grid gap-3 pt-1 ${buyEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
+        {/* receive_only rows (Phase 1b per-chain expansion) hard-disable Send
+            here — canSend() is the same gate SendCrypto.jsx itself enforces,
+            checked again at this earlier chokepoint so the button never even
+            invites a dead-end tap (I4 fail-closed). */}
         <Button
           className="h-14 gap-2 text-base"
+          disabled={!canSend(resolvedAsset)}
+          title={!canSend(resolvedAsset) ? "Receive only — sending isn't verified for this asset yet" : undefined}
           onClick={() => navigate(`/send?asset=${symbol}`)}
         >
           <ArrowUpRight className="h-5 w-5" />

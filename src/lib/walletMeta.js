@@ -46,11 +46,14 @@ const ACTIVE_KEY = 'veyrnox-active-wallet';  // walletId string
 // WalletProvider), so no existing user ever sees an asset disappear.
 export const ALL_ASSET_SYMBOLS = Object.freeze(ASSETS.map((a) => a.symbol));
 export const ALL_ASSET_IDS = Object.freeze(ASSETS.map((a) => a.id));
-// Phase 1a of per-chain expansion — storage + every reader now speak composite
-// ids. Every ASSETS entry is still symbol-unique today, so this is 1:1 with
-// ALL_ASSET_SYMBOLS; the distinction matters starting Phase 1b, which adds
-// duplicate-symbol rows.
-export const DEFAULT_ENABLED_ASSETS = ALL_ASSET_IDS;
+// Phase 1b: `experimental` rows (the flag-gated per-chain USDC/USDT expansion,
+// off by default) are excluded from the default set so a fresh wallet never
+// silently enables them — they're rendered separately by WalletPortfolioPage
+// only when VITE_MULTI_CHAIN_ROWS=1. sanitizeAssets below still accepts them
+// on read, so a user who explicitly opts one in via Manage Assets persists.
+export const DEFAULT_ENABLED_ASSETS = Object.freeze(
+  ASSETS.filter((a) => !a.experimental).map((a) => a.id)
+);
 
 function readMap() {
   try {
