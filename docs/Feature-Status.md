@@ -965,6 +965,27 @@ value / mutate balances without a user signature through wallet-core signing).
         Matches the KEK-BYPASS ARCHITECTURE note's compensating factor
         ("hardware KEK re-enrolment before first sign") — owner sign-off in
         the file header. Standing web behaviour unchanged.
+        - ⚠️ **Correction (2026-09-02, PR #2258 + issue #2257): that last
+          sentence overstates it — the compensating factor is NOT enforced,
+          and the source comment making the same claim has been removed.**
+          On the happy path the claim holds: `autoEnrollPin` is present, so
+          `KekEnrollmentGate.jsx:196` returns the auto-enroll progress view
+          with "no PIN pad, no skip", and the vault is hardware-anchored
+          before the user reaches the wallet (TF 1.0.1(45) confirmed exactly
+          this trip). But the manual gate — WITH a Skip button — is the
+          fallback whenever auto-enrol fails, `handleKekSkip` only calls
+          `kekDismiss()` (in-memory), and **no signing path consults
+          `isHardwareKekEnrolled`**: its only callers are `SecurityPosture`
+          (display), `hardwareKekStatus` (the definition), `PersonalBackup`
+          (shard-export readiness) and two tests. Worst case is an
+          insecure-tier device: `suppressInsecureTier()` persists
+          `veyrnox-kek-insecure-tier`, `useKekEnrollmentGate.js:173` then
+          returns early **permanently**, and the vault signs unanchored
+          forever with nothing surfacing it. So "before first sign" describes
+          an intent, not a control. PR #2258 removed the equivalent claim
+          from `RestoreFromShares.jsx` and its user-facing copy; #2257 tracks
+          making it true. Until then, do not cite this line as evidence the
+          2026-08-16 audit constraint is satisfied.
       - **#2229 — cold reopen dropped user into "Wallet found, settings
         missing" desync screen.** `WalletEntry.jsx:757` routes native +
         `hasVault()` && !`localStorage['veyrnox-auth-model']` to
