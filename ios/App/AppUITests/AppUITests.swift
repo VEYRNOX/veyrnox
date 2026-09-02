@@ -107,6 +107,8 @@ final class AppUITests: XCTestCase {
         enterPin(app: app, digits: pin, stage: "confirm")
         submitPin(app: app, stage: "confirm")
 
+        assertPinFlowLeftPinSetup(app: app)
+
         // 5. iOS Simulator has no device passcode or enrolled biometrics, so it
         //    cannot satisfy the native secure-store precondition. The only
         //    honest simulator outcome is an explicit fail-closed result with no
@@ -161,6 +163,8 @@ final class AppUITests: XCTestCase {
         enterPin(app: app, digits: pin, stage: "confirm")
         submitPin(app: app, stage: "confirm")
 
+        assertPinFlowLeftPinSetup(app: app)
+
         let words = [
             "abandon", "abandon", "abandon", "abandon",
             "abandon", "abandon", "abandon", "abandon",
@@ -190,6 +194,45 @@ final class AppUITests: XCTestCase {
     }
 
     // MARK: - helpers
+
+    /// Fails fast, and with an accurate message, when the PIN-create flow reset
+    /// itself instead of moving on to provisioning.
+    ///
+    /// Both fail-closed assertions below read the SAME signal — "the entry tile
+    /// came back" — for two different situations, and cannot tell them apart:
+    ///
+    ///   A. provisioning ran, hit the missing secure store, failed closed, and
+    ///      routed back to the tiles. This is the pass the test is written for.
+    ///   B. the flow never reached provisioning at all, so the tile never came
+    ///      back and the 45 s wait expired.
+    ///
+    /// Both produce the same red, and that red asserts A's failure mode — "the
+    /// flow may have provisioned a wallet on a device with no secure store".
+    /// That is a security-shaped accusation, and in case B it is simply untrue.
+    ///
+    /// Case B is real and is the common one on CI. Run 33617705223: the
+    /// confirm-PIN entry desynced against a slow WKWebView (8 digits spread over
+    /// 39 s, then a 28 s stall before the submit button resolved), PinSetup.jsx
+    /// showed "PINs didn't match. Start again." and reset to stage one, and the
+    /// app sat on the PIN pad for the whole 45 s window. The recorded frames
+    /// show a PIN pad, not a dashboard — nothing was ever provisioned.
+    ///
+    /// Unlike the sonner toast described above, this string IS published to the
+    /// accessibility tree — verified as a `StaticText` in that run's AX dump at
+    /// failure time — so it can be asserted on directly. Source of truth is the
+    /// `setError(...)` call in src/components/PinSetup.jsx; if that copy changes,
+    /// this string must change with it.
+    ///
+    /// Deliberately NOT a retry or a longer timeout: the wait was never too
+    /// short, the app was never going to leave that screen. Widening it would
+    /// only turn an inaccurate red into a slower inaccurate red.
+    private func assertPinFlowLeftPinSetup(app: XCUIApplication) {
+        let mismatch = app.staticTexts["PINs didn't match. Start again."]
+        XCTAssertFalse(
+            mismatch.waitForExistence(timeout: 5),
+            "PIN confirm desynced and PinSetup reset to stage one, so the flow never reached provisioning. This is a test-harness failure against a slow WKWebView, NOT a fail-closed result and NOT evidence about secure-store handling — the run proves nothing either way about provisioning."
+        )
+    }
 
     /// HTML aria-labels surface as XCUIElement identifiers. A direct identifier
     /// query avoids WebKit's full accessibility snapshot walk, which can stall
