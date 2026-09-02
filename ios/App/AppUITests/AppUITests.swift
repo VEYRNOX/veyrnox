@@ -209,10 +209,19 @@ final class AppUITests: XCTestCase {
     /// rather than to re-press individual keys (which would risk entering a
     /// digit twice and desyncing in the other direction).
     ///
-    /// Bounded at 3 attempts. If they are all consumed the caller's
-    /// assertPinFlowLeftPinSetup() reports the desync honestly rather than
-    /// letting it masquerade as a fail-closed provisioning result.
-    private func setPinCeremony(app: XCUIApplication, pin: String, maxAttempts: Int = 3) {
+    /// Bounded at 2 attempts, and the bound is a TIME budget, not a taste
+    /// judgement. One ceremony measured ~280s (run 33617705223); at 3 attempts
+    /// run 33623177119 was killed at the then-300s per-test allowance mid-retry
+    /// and reported "Executed 0 tests", losing the assertion entirely — a retry
+    /// that cannot finish is worse than no retry at all. The allowance is now
+    /// 600s (ios-xcuitest-smoke.yml) and two attempts fit in ~420s. Raising
+    /// this count means raising that allowance in the same commit, and
+    /// re-checking it still clears the 900s watchdog in that file.
+    ///
+    /// If both attempts are consumed the caller's assertPinFlowLeftPinSetup()
+    /// reports the desync honestly rather than letting it masquerade as a
+    /// fail-closed provisioning result.
+    private func setPinCeremony(app: XCUIApplication, pin: String, maxAttempts: Int = 2) {
         let confirmHeading = app.staticTexts["Confirm your PIN"]
         let mismatch = app.staticTexts["PINs didn't match. Start again."]
 
