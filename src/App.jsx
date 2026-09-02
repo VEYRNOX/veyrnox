@@ -228,6 +228,9 @@ const AuthenticatedApp = () => {
           <Route path="/trust-score" element={<TrustScore />} />
           <Route path="/solana" element={<SolanaTokens />} />
           <Route path="/asset/:symbol" element={<CryptoDetailPage />} />
+          {/* Phase 1b dual-route: canonical URL once a chain is known. The
+              :symbol-only route above resolves first-match and redirects here. */}
+          <Route path="/asset/:symbol/:chain" element={<CryptoDetailPage />} />
           <Route path="/crypto-signing" element={<CryptoSigning />} />
           <Route path="/live-balances" element={<LiveBalances />} />
           <Route path="/dapp-alerts" element={<DAppSecurityAlerts />} />

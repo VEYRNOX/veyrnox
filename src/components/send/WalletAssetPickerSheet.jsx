@@ -51,7 +51,9 @@ export default function WalletAssetPickerSheet({
           <div>
             <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Asset</p>
             <div className="space-y-1.5">
-              {enabledAssets.map((id) => {
+              {/* Phase 1b: hide receive_only experimental rows here — they'd
+                  just error the send flow (canSend gates them out anyway). */}
+              {enabledAssets.filter((id) => !getAssetById(id)?.experimental).map((id) => {
                 const a = getAssetById(id);
                 const sym = a?.symbol || id;
                 const active = sym === selectedAssetSymbol;

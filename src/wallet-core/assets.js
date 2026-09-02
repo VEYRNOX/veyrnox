@@ -121,6 +121,20 @@ const ASSETS_RAW = Object.freeze([
   //   https://mempool.space/testnet/tx/2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27
   // Mainnet stays gated in btc/networks.js.
   { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'mainnet',   status: ASSET_STATUS.LIVE },
+  // Phase 1b (docs/per-chain-expansion-scope.md): USDC/USDT on the 5 EVM
+  // chains already supported. status: receive_only — no on-chain UI-path
+  // send has been captured for these rows yet (I4 fail-honest). experimental:
+  // true — hidden unless VITE_MULTI_CHAIN_ROWS=1 (see lib/multiChainFlag.js).
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'polygon',   status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'arbitrum',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'optimism',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'avalanche', status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'bnb',       status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'polygon',   status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'arbitrum',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'optimism',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'avalanche', status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
+  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'bnb',       status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
   // Phase SOL: ed25519 / SLIP-0010 on Solana mainnet-beta (ALLOW_MAINNET = true
   // since 2026-06-17). `chain: 'mainnet'` — address derivation, balance reads,
   // and send path all resolve against sol/networks.js mainnet (api.mainnet-beta.solana.com).
