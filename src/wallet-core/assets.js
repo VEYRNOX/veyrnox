@@ -73,7 +73,13 @@ const ASSETS_RAW = Object.freeze([
   //    from 0x90f9f1F9…E68a729 → 0xd8dA6BF2…aA96045, gasUsed 21000)
   //   https://amoy.polygonscan.com/tx/0x6a4dede58e578f10dfa2039e2af3230c0d0e7b18596c0832f0a84348cea954a7
   // Native gas token is POL on Amoy (see networks.js). Mainnet stays gated.
-  { symbol: 'MATIC', name: 'Polygon',   family: 'evm',    chain: 'polygon',         status: ASSET_STATUS.LIVE },
+  // SafePal-parity display: shown as "POL (Polygon)". The internal `symbol`
+  // stays MATIC so persisted `enabledAssets` ids (`"MATIC:polygon"`), the
+  // CoinGecko id `matic-network` (which redirects to POL post-Sept-2024
+  // migration), and every existing consumer keep working unchanged. Only the
+  // row LABEL flips via displaySymbol. priceSymbol omitted — MATIC price feed
+  // resolves to POL price on CoinGecko already.
+  { symbol: 'MATIC', displaySymbol: 'POL', name: 'Polygon', family: 'evm', chain: 'polygon', status: ASSET_STATUS.LIVE },
   // ARB: VERIFIED LIVE. A real testnet transfer was constructed, signed, and
   // broadcast through the full in-app UI send path (asset picker → recipient →
   // amount → fee → Confirm & Send → step-up re-auth) and confirmed on-chain:
@@ -81,14 +87,22 @@ const ASSETS_RAW = Object.freeze([
   //   (Arbitrum Sepolia, status SUCCESS, from m/44'/60'/0'/0/0, gasUsed 23534)
   //   https://sepolia.arbiscan.io/tx/0x797928efdccfe85e858c4050c979b6b69b324c42b11eb642b8c5607109bdca39
   // Mainnet stays gated in networks.js (this is the Arbitrum SEPOLIA testnet).
-  { symbol: 'ARB',   name: 'Arbitrum',  family: 'evm',    chain: 'arbitrum',        status: ASSET_STATUS.LIVE },
+  // SafePal-parity display: shown as "ETH (Arbitrum)" because the row's actual
+  // native balance IS native ETH on the Arbitrum L2 (not the ARB governance
+  // token). Internal symbol stays ARB so storage / send flow / tokens.js keys
+  // are untouched; priceSymbol flips to ETH so the row's displayed price + 24h
+  // change match what's actually held (was showing ARB governance ~$1, now
+  // shows real ETH price).
+  { symbol: 'ARB', displaySymbol: 'ETH', priceSymbol: 'ETH', name: 'Arbitrum', family: 'evm', chain: 'arbitrum', status: ASSET_STATUS.LIVE },
   // OP: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path,
   // confirmed on-chain:
   //   tx 0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
   //   (OP Sepolia, status SUCCESS, from m/44'/60'/0'/0/0, gasUsed 21000)
   //   https://sepolia-optimism.etherscan.io/tx/0xc3fd1e145a6d37c18a211a1ff673251b42dd72a9d4d56c24c48483c25d3c1a47
   // Funded by bridging Sepolia ETH via the OptimismPortal. Mainnet stays gated.
-  { symbol: 'OP',    name: 'Optimism',  family: 'evm',    chain: 'optimism',        status: ASSET_STATUS.LIVE },
+  // Same story as ARB: row balance IS native ETH on the Optimism L2. Display
+  // as "ETH (Optimism)"; price feed switches to ETH.
+  { symbol: 'OP', displaySymbol: 'ETH', priceSymbol: 'ETH', name: 'Optimism', family: 'evm', chain: 'optimism', status: ASSET_STATUS.LIVE },
   // AVAX: VERIFIED LIVE. Real testnet transfer through the full in-app UI send path
   // (asset picker → recipient → amount → Standard fee → step-up PIN re-auth →
   // broadcast), confirmed on-chain:
@@ -121,20 +135,6 @@ const ASSETS_RAW = Object.freeze([
   //   https://mempool.space/testnet/tx/2da87a2755881de629c8a8a78627524b39f1235774ea215fbd58adfb0c09df27
   // Mainnet stays gated in btc/networks.js.
   { symbol: 'BTC',   name: 'Bitcoin',   family: 'btc',    chain: 'mainnet',   status: ASSET_STATUS.LIVE },
-  // Phase 1b (docs/per-chain-expansion-scope.md): USDC/USDT on the 5 EVM
-  // chains already supported. status: receive_only — no on-chain UI-path
-  // send has been captured for these rows yet (I4 fail-honest). experimental:
-  // true — hidden unless VITE_MULTI_CHAIN_ROWS=1 (see lib/multiChainFlag.js).
-  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'polygon',   status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
-  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'arbitrum',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
-  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'optimism',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
-  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'avalanche', status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
-  { symbol: 'USDC', name: 'USD Coin', family: 'erc20', chain: 'bnb',       status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
-  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'polygon',   status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
-  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'arbitrum',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
-  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'optimism',  status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
-  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'avalanche', status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
-  { symbol: 'USDT', name: 'Tether',   family: 'erc20', chain: 'bnb',       status: ASSET_STATUS.RECEIVE_ONLY, experimental: true },
   // Phase SOL: ed25519 / SLIP-0010 on Solana mainnet-beta (ALLOW_MAINNET = true
   // since 2026-06-17). `chain: 'mainnet'` — address derivation, balance reads,
   // and send path all resolve against sol/networks.js mainnet (api.mainnet-beta.solana.com).

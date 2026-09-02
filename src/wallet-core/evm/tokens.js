@@ -56,32 +56,6 @@ export const TOKENS = {
     USDC: { address: MAINNET_USDC, decimals: 6, symbol: 'USDC' },
     USDT: { address: MAINNET_USDT, decimals: 6, symbol: 'USDT' },
   },
-  // Phase 1b (docs/per-chain-expansion-scope.md) — USDC/USDT on the 5 EVM
-  // chains Veyrnox already supports. Addresses are Circle/Tether-published,
-  // pinned verbatim per the phase-1b task spec. receive_only until an
-  // on-chain UI-path send is captured (see assets.js ASSETS_RAW).
-  polygon: {
-    USDC: { address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', decimals: 6, symbol: 'USDC' },
-    USDT: { address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', decimals: 6, symbol: 'USDT' },
-  },
-  arbitrum: {
-    USDC: { address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', decimals: 6, symbol: 'USDC' },
-    USDT: { address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', decimals: 6, symbol: 'USDT' },
-  },
-  optimism: {
-    USDC: { address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85', decimals: 6, symbol: 'USDC' },
-    USDT: { address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58', decimals: 6, symbol: 'USDT' },
-  },
-  avalanche: {
-    USDC: { address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E', decimals: 6, symbol: 'USDC' },
-    USDT: { address: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7', decimals: 6, symbol: 'USDT' },
-  },
-  // BEP-20 uses 18 decimals — Binance-Peg USDC and USDT are BOTH 18. Do NOT
-  // copy the 6 used by the other chains above.
-  bnb: {
-    USDC: { address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', decimals: 18, symbol: 'USDC' },
-    USDT: { address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, symbol: 'USDT' },
-  },
 };
 
 /**

@@ -47,34 +47,14 @@ import { resolveAssetRow } from "@/lib/balanceDisplay";
 import { ASSETS, getAsset, getAssetById } from "@/wallet-core/assets.js";
 import { isAssetIdString } from "@/wallet-core/assetId.js";
 import { DEFAULT_ENABLED_ASSETS } from "@/lib/walletMeta";
-import { isMultiChainRowsEnabled } from "@/lib/multiChainFlag";
 
-// Phase 1b — SYMBOL (Chain) disambiguation for the per-chain expansion rows.
-// mainnet carries no suffix (it's the original, unambiguous row for that symbol).
+// Row chain label for the ERC-20 override (`USDC (Ethereum)`). Every other
+// row's asset.name is already the chain-shaped label (Polygon / Arbitrum /
+// Optimism / Avalanche / BNB Chain / Bitcoin / Solana / Ethereum) so this map
+// exists solely to translate the mainnet chain key.
 const CHAIN_LABEL = {
   mainnet: "Ethereum",
-  polygon: "Polygon",
-  arbitrum: "Arbitrum",
-  optimism: "Optimism",
-  avalanche: "Avalanche",
-  bnb: "BNB Chain",
 };
-
-// Phase 1b visibility rule: experimental (per-chain) rows only render when the
-// flag is on, regardless of what's in stored meta (flag OFF must never show
-// them even if a stray id landed in localStorage). When the flag IS on, they
-// always render — they were deliberately excluded from DEFAULT_ENABLED_ASSETS
-// so toggling the flag never depends on re-migrating stored wallet meta.
-function visibleAssetIds(enabledAssets) {
-  const stored = enabledAssets || [];
-  if (!isMultiChainRowsEnabled()) {
-    return stored.filter((id) => !getAssetById(id)?.experimental && !getAsset(id)?.experimental);
-  }
-  const experimentalIds = ASSETS.filter((a) => a.experimental).map((a) => a.id);
-  return ASSETS.map((a) => a.id).filter(
-    (id) => stored.includes(id) || experimentalIds.includes(id)
-  );
-}
 import { MAIN_PORTFOLIO_ID } from "@/lib/portfolios";
 import { defaultAssetSymbol } from "@/lib/sendWalletSource";
 import { formatFiat } from "@/components/FiatCurrencySelector";
@@ -209,12 +189,12 @@ function BackupDialog({ walletName, mnemonic = null, reauthPrompt = null, onClos
 export function AssetPicker({ selected, onToggle }) {
   return (
     <div className="flex flex-wrap gap-1.5">
-      {ASSETS.filter((a) => !a.experimental).map((a) => {
+      {ASSETS.map((a) => {
         const on = selected.includes(a.id);
         return (
           <button key={a.id} type="button" onClick={() => onToggle(a.id)}
             className={`text-xs px-2 py-1 rounded-md border ${on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>
-            {a.symbol}
+            {a.displaySymbol || a.symbol}
           </button>
         );
       })}
@@ -349,7 +329,7 @@ function ManageAssetsDialog({ wallet, onClose }) {
   // Experimental (per-chain expansion) rows only offer an opt-in toggle once
   // the flag is on — flipping one while the flag is off would persist an id
   // that still renders nowhere, which just confuses the toggle's purpose.
-  const visibleAssets = isMultiChainRowsEnabled() ? ASSETS : ASSETS.filter((a) => !a.experimental);
+  const visibleAssets = ASSETS;
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
@@ -811,7 +791,7 @@ export default function WalletPortfolioPage() {
   const walletCards = pfWallets.map((w) => {
     const data = byWallet[w.id] || { assets: [], total: 0 };
     const isActive = w.id === activeWalletId;
-    const visibleIds = visibleAssetIds(w.enabledAssets);
+    const visibleIds = w.enabledAssets || [];
     return (
       <div key={w.id} className="rounded-2xl border border-border bg-card overflow-hidden">
         <div
@@ -867,7 +847,13 @@ export default function WalletPortfolioPage() {
             // a wallet not yet migrated) is tolerated via the getAsset fallback.
             const a = getAssetById(entry) || (!isAssetIdString(entry) ? getAsset(entry) : null);
             const symbol = a?.symbol || entry;
-            const chainLabel = a?.chain && a.chain !== "mainnet" ? CHAIN_LABEL[a.chain] || a.chain : null;
+            // SafePal-parity label: show every row as `DISPLAY (Chain)`. Chain
+            // label comes from asset.name (already chain-shaped for every
+            // native row) EXCEPT for ERC-20s where the name is the token brand
+            // ("USD Coin" / "Tether") — override to "Ethereum" since USDC/USDT
+            // live on Ethereum mainnet in Veyrnox today.
+            const displaySymbol = a?.displaySymbol || symbol;
+            const chainLabel = a?.family === "erc20" ? "Ethereum" : a?.name;
             // A genuinely MISSING row (not yet computed / race) is INDETERMINATE,
             // not a confident "0" — resolveAssetRow fails closed to amount:null so
             // the row renders "—", never a fabricated $0.00 (I4 fail-closed).
@@ -878,11 +864,11 @@ export default function WalletPortfolioPage() {
               // (no redirect needed for in-app links — that's only for the
               // legacy /asset/:symbol entry point). Key is the id, not the
               // symbol, so a duplicate-symbol row never collides.
-              <button key={entry} type="button" aria-label={chainLabel ? `${symbol} (${chainLabel})` : symbol} onClick={() => navigate(`/asset/${symbol}/${a?.chain || "mainnet"}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
+              <button key={entry} type="button" aria-label={chainLabel ? `${displaySymbol} (${chainLabel})` : displaySymbol} onClick={() => navigate(`/asset/${symbol}/${a?.chain || "mainnet"}`)} className="w-full cursor-pointer text-start flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/40 active:bg-secondary/60 transition-colors">
                 <CoinLogo symbol={symbol} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold">{symbol}{chainLabel ? ` (${chainLabel})` : ""}</p>
+                    <p className="text-sm font-semibold">{displaySymbol}{chainLabel ? ` (${chainLabel})` : ""}</p>
                     {a?.status === "receive_only" && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution" title="No on-chain send has been verified for this asset yet">
                         Receive only
@@ -896,8 +882,12 @@ export default function WalletPortfolioPage() {
                   </div>
                   {/* Spot price + 24h %: pricesLive false (off / decoy / hidden / DEMO) → render nothing (I3/I4). */}
                   {pricesLive && (() => {
-                    const p = priceFor(symbol);
-                    const c = changeFor(symbol);
+                    // priceSymbol lets a row point at a different price feed
+                    // than its own symbol — e.g. ARB row shows real ETH price
+                    // because its balance IS native ETH on the Arbitrum L2.
+                    const ps_sym = a?.priceSymbol || symbol;
+                    const p = priceFor(ps_sym);
+                    const c = changeFor(ps_sym);
                     const ps = fmtPrice(p);
                     const cs = fmtChange(c);
                     if (!ps && !cs) return null;

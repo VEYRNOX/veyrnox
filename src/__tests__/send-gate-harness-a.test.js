@@ -154,11 +154,11 @@ describe('Harness A · G2 — canSend() is true only for the live set', () => {
     expect(sendable).toEqual(['ETH', 'USDC', 'USDT', 'MATIC', 'ARB', 'OP', 'AVAX', 'BNB', 'BTC', 'SOL']);
   });
 
-  it('canSend() is FALSE for every receive_only per-chain asset', () => {
+  it('canSend() is FALSE for every receive_only asset (the current catalog has none)', () => {
     const receiveOnly = ASSETS.filter((a) => a.status === ASSET_STATUS.RECEIVE_ONLY);
-    // Phase 1b adds USDC/USDT on five additional chains. They are deliberately
-    // receive_only until a real in-app testnet send earns each row live status.
-    expect(receiveOnly).toHaveLength(10);
+    // This PR removes the unverified Phase 1b rows, leaving only the ten assets
+    // that have completed the app's real testnet-send gate.
+    expect(receiveOnly).toHaveLength(0);
     for (const a of receiveOnly) {
       expect(canSend(a)).toBe(false);
       expect(canReceive(a)).toBe(true);
