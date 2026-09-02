@@ -30,8 +30,14 @@
 //     memoized VaultIllustration.
 //
 // Props:
-//   onEnroll: (pin: string) => Promise<{ ok: boolean, msg?: string, isInsecureTier?: boolean, isWrongPin?: boolean }>
-//   onSkip:   ({ insecureDevice?: boolean }) => void
+//   onEnroll: (pin: string) => Promise<{ ok: boolean, msg?: string, isInsecureTier?: boolean, isWrongPin?: boolean, deviceVerdict?: boolean }>
+//   onSkip:   ({ insecureDevice?: boolean, deviceVerdict?: boolean }) => void
+//
+// deviceVerdict (#2257) — whether the failure is a property of the DEVICE
+// (cacheable forever) or of this BUILD (must not be cached). Only the caller
+// persists anything; this component just carries the flag through so the skip
+// path cannot cache a build fault that enroll() already refuses to cache.
+// `undefined` means device-derived, preserving prior behaviour.
 //   origin?:  'fresh' | 'restored'  (default: 'restored' — matches historical copy)
 //   mode?:    'auto' | 'onboarding'  (default: 'auto' — current behavior, unchanged)
 //
@@ -97,6 +103,11 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
   // When the device reports an insecure tier, hide the enroll form and offer Skip only —
   // hardware protection genuinely can't be enabled here (I4 honest-disable).
   const [insecureDevice, setInsecureDevice] = useState(false);
+  // #2257 — is the insecure-tier verdict about the DEVICE, or about this BUILD?
+  // Only a device verdict may be cached forever by the caller. null = no verdict
+  // yet; false = build fault (unregistered native plugin), which must not be
+  // persisted or the next build that fixes the plugin still cannot re-prompt.
+  const [deviceVerdict, setDeviceVerdict] = useState(null);
   // Tracks whether auto-enroll was attempted so we only try once.
   const autoEnrollAttempted = useRef(false);
   // True while auto-enrollment is running (show progress, not the PIN pad).
@@ -127,7 +138,11 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
       setSkipWarned(true);
       setShowSkipWarning(true);
     }
-    onSkip?.({ insecureDevice });
+    // Pass deviceVerdict through so the caller cannot cache a build fault via
+    // the skip path — enroll() already refuses to cache it (#2257). Sent as
+    // undefined when no verdict was produced, which reads as device-derived and
+    // preserves the prior behaviour for every other cause.
+    onSkip?.({ insecureDevice, deviceVerdict: deviceVerdict ?? undefined });
   };
 
   const handleEnroll = async (testPin) => {
@@ -145,6 +160,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
       }
       if (result.isInsecureTier) {
         setInsecureDevice(true);
+        setDeviceVerdict(result.deviceVerdict !== false);
         setError(result.msg);
       } else if (result.isWrongPin) {
         setPin('');
@@ -173,6 +189,7 @@ export default function KekEnrollmentGate({ onEnroll, onSkip, origin = 'restored
       setAutoEnrolling(false);
       if (result.isInsecureTier) {
         setInsecureDevice(true);
+        setDeviceVerdict(result.deviceVerdict !== false);
         setError(result.msg);
       } else {
         setError(result.msg);

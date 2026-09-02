@@ -807,7 +807,14 @@ export default function WalletEntry() {
   }, [kekEnroll, kekDismiss]);
 
   const handleKekSkip = useCallback((opts = {}) => {
-    if (opts.insecureDevice) kekSuppressInsecureTier();
+    // Persist "this device cannot pass the hardware bar" ONLY when the verdict
+    // is about the DEVICE (#2257). KekEnrollmentGate forwards deviceVerdict:false
+    // for a build fault — today, an unregistered native plugin — which must not
+    // be cached: the detect effect returns early on the persisted key, so a
+    // cached build fault survives the very build that fixes it and the gate
+    // never fires again. Absent/undefined reads as device-derived, so every
+    // other insecure-tier cause behaves exactly as before.
+    if (opts.insecureDevice && opts.deviceVerdict !== false) kekSuppressInsecureTier();
     autoEnrollPinRef.current = null;
     kekDismiss();
   }, [kekDismiss, kekSuppressInsecureTier]);

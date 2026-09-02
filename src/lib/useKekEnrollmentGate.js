@@ -114,8 +114,27 @@ function classifyEnrollError(e) {
   // (see scripts/register-local-ios-plugins.mjs). It is NOT a device fault, so FAIL
   // OPEN like the insecure-tier case: surface a "continue without it" message and let
   // the gate be skipped, rather than a generic dead-end that re-fires every unlock.
+  //
+  // deviceVerdict:false — #2257. `isInsecureTier` carries TWO consequences, and
+  // this branch only ever wanted one of them. It makes the gate skippable (what
+  // the comment above describes and intends) AND it makes enroll() persist
+  // veyrnox-kek-insecure-tier, a PERMANENT per-device verdict that stops the
+  // gate ever firing again (useKekEnrollmentGate detect effect). A missing
+  // plugin is a property of the BUILD, not the device: ship one build without
+  // the plugin and every device that runs it is marked hardware-ineligible
+  // forever, including after the next build restores it. Those users then have
+  // to discover Settings → Security and retry by hand — and the "Retest device
+  // security" affordance there is Android-only (HardwareKekSettings), so on iOS
+  // the banner invites a retry the screen cannot offer directly (the enroll
+  // button does clear it on success, which is the actual recovery path).
+  // So: still skippable, but never cached.
   if (code === 'UNIMPLEMENTED' || emsg.includes('not implemented')) {
-    return { msg: PLUGIN_UNAVAILABLE_MSG, isInsecureTier: true, isWrongPin: false };
+    return {
+      msg: PLUGIN_UNAVAILABLE_MSG,
+      isInsecureTier: true,
+      isWrongPin: false,
+      deviceVerdict: false,
+    };
   }
   // Biometric lockout: the user cancelled the OS device-credential recovery dialog
   // that Android shows when biometric is locked out from too many attempts. The
@@ -211,12 +230,21 @@ export function useKekEnrollmentGate({ isUnlocked }) {
         });
         return { ok: true };
       } catch (e) {
-        const { msg, isInsecureTier, isWrongPin } = classifyEnrollError(e);
+        const { msg, isInsecureTier, isWrongPin, deviceVerdict } = classifyEnrollError(e);
         if (!isInsecureTier) await bestEffortClearCredential();
         // Persist the ineligible verdict so the next unlock does NOT re-prompt.
         // Deterministic per device — no benefit to asking again.
-        if (isInsecureTier) persistKekInsecureTier();
-        return { ok: false, msg, isInsecureTier, isWrongPin };
+        //
+        // ...but ONLY when the verdict really is about the DEVICE (#2257).
+        // classifyEnrollError sets deviceVerdict:false for causes that are
+        // properties of the BUILD rather than the hardware — today that is the
+        // unregistered-native-plugin case. Caching one of those marks every
+        // device running a bad build as permanently ineligible, and the next
+        // build that fixes the plugin cannot undo it: the detect effect returns
+        // early on the persisted key, so the gate never fires again. Absent
+        // (undefined) means device-derived, so every other branch is unchanged.
+        if (isInsecureTier && deviceVerdict !== false) persistKekInsecureTier();
+        return { ok: false, msg, isInsecureTier, isWrongPin, deviceVerdict };
       }
     });
   }, []);

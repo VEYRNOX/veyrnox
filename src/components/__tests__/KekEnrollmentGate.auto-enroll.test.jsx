@@ -158,7 +158,38 @@ describe('KekEnrollmentGate — auto-enrollment', () => {
 
     await waitFor(() => expect(screen.getByTestId(GATE_TESTID)).toBeTruthy());
     screen.getByRole('button', { name: /continue with pin protection/i }).click();
-    expect(onSkip).toHaveBeenCalledWith({ insecureDevice: true });
+    // deviceVerdict added in #2257. onEnroll here reports no deviceVerdict,
+    // which reads as device-derived — so the caller MAY cache this verdict, and
+    // the assertion pins that rather than loosening to objectContaining.
+    expect(onSkip).toHaveBeenCalledWith({ insecureDevice: true, deviceVerdict: true });
+  });
+
+  it('4c. a BUILD fault passes deviceVerdict=false to onSkip so it is never cached (#2257)', async () => {
+    // The unregistered-native-plugin case. Still insecure-tier (the gate stays
+    // skippable), but explicitly NOT a statement about this device: caching it
+    // would suppress the enrollment gate permanently, including on the next
+    // build that restores the plugin.
+    const onEnroll = vi.fn(async () => ({
+      ok: false,
+      msg: "Hardware protection isn't available on this version of the app.",
+      isInsecureTier: true,
+      isWrongPin: false,
+      deviceVerdict: false,
+    }));
+    const onSkip = vi.fn();
+
+    render(
+      <KekEnrollmentGate
+        origin="fresh"
+        autoEnrollPin="12345678"
+        onEnroll={onEnroll}
+        onSkip={onSkip}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByTestId(GATE_TESTID)).toBeTruthy());
+    screen.getByRole('button', { name: /continue with pin protection/i }).click();
+    expect(onSkip).toHaveBeenCalledWith({ insecureDevice: true, deviceVerdict: false });
   });
 
   it('5. no autoEnrollPin → shows manual gate immediately (no auto-enroll attempt)', async () => {
