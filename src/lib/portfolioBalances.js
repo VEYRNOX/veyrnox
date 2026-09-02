@@ -146,16 +146,17 @@ export async function computePortfolio(wallets, walletAddresses, livePrices) {
       if (!asset) continue;
       jobs.push(
         fetchAssetAmount(asset, walletAddresses[w.id] || {}).then((amount) => ({
-          walletId: w.id, id: asset.id, symbol: asset.symbol, amount,
+          walletId: w.id, id: asset.id, symbol: asset.symbol, priceSymbol: asset.priceSymbol || asset.symbol, amount,
         })),
       );
     }
   }
   const results = await Promise.all(jobs);
-  for (const { walletId, id, symbol, amount } of results) {
+  for (const { walletId, id, symbol, priceSymbol, amount } of results) {
     const indeterminate = amount === null; // read FAILED, not an empty wallet
-    // Prices are symbol-scoped (usdRate keys off symbol), not per-chain.
-    const usd = indeterminate ? null : amount * usdRate(symbol, livePrices);
+    // priceSymbol lets a row use a different price feed than its own symbol
+    // (ARB/OP rows hold native ETH on their L2, so priceSymbol='ETH').
+    const usd = indeterminate ? null : amount * usdRate(priceSymbol, livePrices);
     byWallet[walletId].assets.push({ id, symbol, amount, usd, indeterminate });
     if (!assetTotals[id]) assetTotals[id] = { symbol, amount: 0, usd: 0, indeterminate: false };
     if (indeterminate) {

@@ -62,18 +62,17 @@ describe('walletMeta — defaults', () => {
   });
 });
 
-describe('walletMeta — Phase 1b experimental-asset defaults', () => {
-  it('DEFAULT_ENABLED_ASSETS excludes every experimental (per-chain) id', () => {
-    const experimentalIds = ASSETS.filter((a) => a.experimental).map((a) => a.id);
-    expect(experimentalIds.length).toBeGreaterThan(0); // sanity: Phase 1b rows exist
-    for (const id of experimentalIds) {
-      expect(DEFAULT_ENABLED_ASSETS).not.toContain(id);
-    }
+describe('walletMeta — DEFAULT_ENABLED_ASSETS is every asset', () => {
+  // Post-SafePal-rename (2026-09-02): the Phase 1b experimental per-chain
+  // USDC/USDT rows were deleted, so no asset carries `experimental: true` any
+  // more. DEFAULT_ENABLED_ASSETS now equals ALL_ASSET_IDS. If a future asset
+  // needs an opt-in default, restore the `experimental` filter here.
+  it('DEFAULT_ENABLED_ASSETS contains every ASSETS id in canonical order', () => {
+    expect(DEFAULT_ENABLED_ASSETS).toEqual(ASSETS.map((a) => a.id));
   });
 
-  it('sanitizeAssets (via setEnabledAssets) still accepts an experimental id opted in through Manage Assets', () => {
-    setEnabledAssets('opted-in', ['ETH:mainnet', 'USDC:polygon']);
-    expect(getWalletMeta('opted-in').enabledAssets).toEqual(['ETH:mainnet', 'USDC:polygon']);
+  it('no asset carries an `experimental` flag today', () => {
+    expect(ASSETS.filter((a) => a.experimental)).toEqual([]);
   });
 });
 
