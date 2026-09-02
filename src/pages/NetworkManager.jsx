@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Plus, Wifi, Trash2, CheckCircle, Globe, TestTube } from "lucide-react";
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { assertSafeRpcUrl, safeExplorerUrl } from "@/wallet-core/netUrl.js";
 import CoinLogo from "@/components/CoinLogo";
 import { useWallet } from "@/lib/WalletProvider";
+import { publishAdvisorContext } from "@/lib/advisorBridge";
 
 const DEFAULTS = [
   { id: "d1", name: "Ethereum Mainnet", rpc_url: "https://mainnet.infura.io/v3/", chain_id: 1, symbol: "ETH", explorer_url: "https://etherscan.io", is_testnet: false, is_active: true, logo_color: "#627EEA" },
@@ -79,6 +80,22 @@ export default function NetworkManager() {
 
   const active = networks.find(n => n.is_active);
   const visible = networks.filter(n => showTestnets || !n.is_testnet);
+
+  // Publish live network selection to the Security Advisor. Suppressed in
+  // decoy/hidden — matches the WalletConnect/Settings publisher gate (I3).
+  useEffect(() => {
+    if (deniable) { publishAdvisorContext(null); return; }
+    publishAdvisorContext({
+      network_manager: {
+        selected_network: active?.name || active?.symbol || null,
+        chain_id: active?.chain_id ?? null,
+        symbol: active?.symbol || null,
+        is_testnet: active ? active.is_testnet === true : null,
+        custom_network_count: networks.length,
+      },
+    });
+    return () => publishAdvisorContext(null);
+  }, [deniable, active?.id, active?.name, active?.symbol, active?.chain_id, active?.is_testnet, networks.length]);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

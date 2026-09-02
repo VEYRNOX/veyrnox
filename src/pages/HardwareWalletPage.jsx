@@ -1,8 +1,10 @@
 // @ts-nocheck
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Copy, Cpu, QrCode, Shield, Trash2 } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { useDigitalShield } from '@/context/DigitalShieldContext';
+import { publishAdvisorContext } from '@/lib/advisorBridge';
+import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import QRScanner from '@/components/QRScanner';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -58,6 +60,23 @@ export default function HardwareWalletPage() {
   const [importError, setImportError] = useState('');
 
   const importPreview = useMemo(() => importParts.join('\n'), [importParts]);
+
+  // Publish live hardware-signer state to the Security Advisor. Suppressed in
+  // decoy/hidden/demo — matches the WalletConnect/Settings publisher gate (I3).
+  const hwProfileKind = profile?.kind || profile?.device || null;
+  useEffect(() => {
+    if (isDeniabilityOrDemoActive()) { publishAdvisorContext(null); return; }
+    publishAdvisorContext({
+      hardware_signer: {
+        connected: digitalShieldConnected === true,
+        kind: hwProfileKind,
+        has_evm_account: !!evmAccount?.address,
+        has_btc_account: !!btcAccount?.address,
+        has_sol_account: !!solAccount?.address,
+      },
+    });
+    return () => publishAdvisorContext(null);
+  }, [digitalShieldConnected, hwProfileKind, evmAccount?.address, btcAccount?.address, solAccount?.address]);
 
   function openScanner() {
     // Avoid stacking the dialog focus trap behind the full-screen scanner on
