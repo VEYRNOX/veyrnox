@@ -15,6 +15,9 @@ import { Fingerprint, Sun, Moon, ShieldAlert, ShieldCheck, Trash2, AlertTriangle
 import { isMessageSigningEnabled, setMessageSigningEnabled } from "@/lib/messageSigning";
 import { hasConsent, setConsent } from "@/lib/consent";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { publishAdvisorContext } from "@/lib/advisorBridge";
+import { usePortfolioHealthInputs } from "@/lib/usePortfolioHealthInputs";
+import { isDuressConfigured } from "@/lib/duressBiometricGuard";
 import { Link } from "react-router";
 import { Switch } from "@/components/ui/switch";
 import BackButton from "@/components/BackButton";
@@ -37,6 +40,7 @@ export default function Settings() {
     // Branch review 2026-08-15 (S-2/A-1) — see AuditLog.jsx for why this
     // defaults true: it governs the aria annotation only, never the write.
     auditLogWritable = true,
+    isUnlocked, isDecoy, isHidden,
   } = useWallet();
   const { currentTier } = useTier();
   const isSafetyPlus = hasSafetyPlusAccess(currentTier);
@@ -58,6 +62,38 @@ export default function Settings() {
     if (!auditLog) { setAuditEntries(null); return; }
     fetchAuditEntries().then(setAuditEntries).catch(() => setAuditEntries([]));
   }, [auditLog, fetchAuditEntries]);
+
+  // Publish live non-secret settings state to the Security Advisor. Fully
+  // suppressed (null) in decoy/hidden/demo/locked — the advisor sees nothing
+  // rather than a decoy-shaped payload, matching the WalletConnect publisher.
+  // KEK + passkey/biometric come from the shared R2 facade that is already
+  // fail-closed and I3-safe.
+  const { isVaultKekEnrolled, hasPasskeyOrBiometric, isDeniability } =
+    usePortfolioHealthInputs({ isUnlocked });
+  const [duressConfigured, setDuressCfg] = useState(false);
+  useEffect(() => {
+    if (isDeniability || !isUnlocked) { setDuressCfg(false); return; }
+    try { setDuressCfg(isDuressConfigured() === true); } catch { setDuressCfg(false); }
+  }, [isDeniability, isUnlocked]);
+  useEffect(() => {
+    if (isDecoy || isHidden || isDeniability || !isUnlocked) {
+      publishAdvisorContext(null);
+      return;
+    }
+    let consented = false;
+    try { consented = hasConsent() === true; } catch { consented = false; }
+    publishAdvisorContext({
+      settings: {
+        kek_enrolled: isVaultKekEnrolled === true,
+        biometric_or_passkey: hasPasskeyOrBiometric === true,
+        duress_configured: duressConfigured === true,
+        telemetry_consent: consented,
+        safety_plus_active: isSafetyPlus === true,
+      },
+    });
+    return () => publishAdvisorContext(null);
+  }, [isDecoy, isHidden, isDeniability, isUnlocked, isVaultKekEnrolled,
+      hasPasskeyOrBiometric, duressConfigured, isSafetyPlus]);
 
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== "DELETE") return;
