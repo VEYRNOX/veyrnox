@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -19,6 +19,7 @@ import { isBiometricUnlockEnabled } from "@/lib/biometric";
 import { isPasskeyUnlockEnabled, isPasskeyRegistered } from "@/lib/passkey";
 import { loadAutoLockValue, AUTO_LOCK_OPTIONS } from "@/lib/session";
 import { formatUnlockTime } from "@/lib/formatUnlockTime";
+import { publishAdvisorContext } from "@/lib/advisorBridge";
 import {
   Shield, ShieldAlert, ShieldCheck, AlertTriangle, ChevronRight,
   Fingerprint, KeyRound, Lock, Ghost, ScanSearch, ShieldOff, FilterX, ShieldQuestion, History,
@@ -190,6 +191,32 @@ export default function SecurityDashboard() {
 
   const loading = loadingApprovals || loadingTokens || loadingTxs || loadingNfts;
   const highCount = review.filter((r) => r.severity === "high").length;
+
+  // Publish live security-dashboard state to the Security Advisor. Replaces
+  // the route-derived prose in SecurityAdvisor.SCREEN_DEFINITIONS. Suppressed
+  // in decoy/hidden (I3); entity queries are already gated the same way, so
+  // review items reflect empty inputs in deniable sessions anyway.
+  useEffect(() => {
+    if (isDecoy || isHidden) { publishAdvisorContext(null); return; }
+    publishAdvisorContext({
+      security_dashboard: {
+        rasp_tier: raspArtifact?.tier ?? null,
+        rasp_sentence: raspArtifact?.sentence ?? null,
+        biometric_on: biometricOn === true,
+        passkey_on: passkeyOn === true,
+        auto_lock: autoLockLabel,
+        auto_lock_never: autoLockNever === true,
+        review_item_count: review.length,
+        high_severity_count: highCount,
+        suspicious_asset_totals: suspiciousAssets?.totals ?? null,
+        stealth_pool_present: s3?.stealth === true,
+        loading,
+      },
+    });
+    return () => publishAdvisorContext(null);
+  }, [isDecoy, isHidden, raspArtifact?.tier, raspArtifact?.sentence, biometricOn,
+      passkeyOn, autoLockLabel, autoLockNever, review.length, highCount,
+      suspiciousAssets?.totals, s3?.stealth, loading]);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
