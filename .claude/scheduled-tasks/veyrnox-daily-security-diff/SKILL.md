@@ -115,8 +115,20 @@ If there are no commits in the last 24 hours, write a one-line "No security-rele
 > risk was *known* to be; it always lags where risk actually is.
 >
 > **Maintenance rule:** if a real finding comes from a file no pattern below
-> matches, add the pattern in the same session. That is how this list stays
-> alive rather than fossilising.
+> matches, record the pattern to add in a `## Scan-list maintenance` section of
+> that day's report, naming the file, the finding, and why the current shape
+> missed it.
+>
+> **This rule used to say "add the pattern in the same session" — which the
+> hard constraints forbid** (the report file is the only file this task may
+> write). So for four consecutive runs the list was never widened, every one of
+> those runs produced findings from unmatched files, and each report dutifully
+> noted the omission it was not permitted to fix. The instruction was
+> unfollowable, not ignored. Writing it into the report puts it in front of a
+> human who CAN edit this file — that is the handoff, and it works the same way
+> a `.skip` with an un-skip condition written into the test file did on
+> 2026-07-28. If several runs in a row carry the same maintenance note, that is
+> the signal to escalate it rather than repeat it.
 
 From the commit list, flag any file matching these patterns:
 
@@ -162,6 +174,44 @@ function overloads.
 - `src/lib/tracking-integration.jsx`
 - `src/notify/**`
 
+**Security Advisor egress (I2 / I5)** — the largest client-side egress sink in
+the app, and it matched NO pattern until 2026-09-02, when it produced both of
+that day's regressions. `SecurityAdvisor` merges every published page snapshot
+into `effectivePageSnapshot` and POSTs it to `tip-chat` as
+`context.page_snapshot` **next to a persistent `device_id`**, so anything a page
+publishes becomes a durable, per-device disclosure to a backend I5 declares
+untrusted. Consent gates the transmission; it does not make a fact safe to send.
+- `src/components/SecurityAdvisor.jsx`
+- `src/lib/advisorBridge.js`
+- **any file calling `publishAdvisorContext`** — this is the rule that matters,
+  because the publisher set grows. It was 1 file, then 6 within a week. Find them
+  with `git grep -l publishAdvisorContext -- src`, and diff the payload, not just
+  the import.
+
+  What to look for in a payload: does any key state a fact about the user's
+  DENIABILITY setup (duress configured, stealth/hidden pool present, decoy
+  state), or identify them on-chain (own wallet address)? #2256 removed
+  `duress_configured` and `stealth_pool_present` for exactly this. The standing
+  guard is `src/pages/__tests__/advisorContext.noCoercionOracles.test.js` — if a
+  finding here is not already caught by it, widen that test in the same session.
+
+**Outbound network calls outside `src/api/**`** — `src/lib/analytics.js` was
+listed for years while its neighbours were not.
+- `src/lib/coinGecko.js`
+- `src/hooks/usePortfolioMarketData.js`
+- `src/hooks/useAnalytics.js`
+- more generally: a new `fetch(` outside `src/api/**` is a new egress path.
+  Check it is fixed-shape (never derived from holdings), decoy/demo-gated (I3),
+  and fail-honest on error (I4) — the `usePortfolioMarketData` shape.
+
+**Credential floors and coercion state** — files that decide how strong a
+credential must be, or that read/write duress/stealth configuration. None of
+these matched before 2026-09-02; two produced findings that day.
+- `src/pages/RestoreFromShares.jsx` (cross-device seed recovery + re-wrap floor)
+- `src/pages/PersonalBackup.jsx` (backup export password/PIN floors)
+- `src/pages/Settings.jsx` (consent, duress, KEK and biometric posture)
+- `src/lib/walletMeta.js` (persists `enabledAssets`; migration surface)
+
 **Signing and money-movement UI**
 - `src/lib/WalletConnect*`
 - `src/lib/WalletProvider.jsx`
@@ -194,8 +244,19 @@ Supabase.
 security control is a removed control — diff test files that cover anything
 above, and say so if an assertion disappeared.
 
-Genuinely non-security files (UI copy, styling, docs, unrelated tests) can be
-noted briefly in the summary and do not need deep analysis.
+**Docs are not automatically "non-security" either.** A doc that RECORDS what a
+security change does is part of that change. On 2026-09-02 the scan filed a
+46-insertion `docs/Feature-Status.md` diff under "Non-security changes" — and
+that diff was the record of the very commit the scan was rating a REGRESSION,
+including the device-verification result that would have corrected the severity.
+**If a commit in the window is being rated, read every file its PR touched,
+docs included, before writing the rating.** `docs/Feature-Status.md`,
+`docs/audit-*.md` and `docs/security-diffs/**` are where this repo keeps the
+"what was actually verified" half of a change.
+
+Genuinely non-security files (UI copy, styling, unrelated tests, and docs that
+describe none of the above) can be noted briefly in the summary and do not need
+deep analysis.
 
 *Widened 2026-07-27.* The previous list held 15 patterns and matched **none** of
 the surfaces that produced the actual findings of the two preceding reports. On
@@ -203,6 +264,26 @@ the surfaces that produced the actual findings of the two preceding reports. On
 matched it — and both were import-path-only changes rated SAFE. A run following
 that list literally would have reported a quiet day while missing anon-callable
 SQL RPCs, an unauthenticated edge function, and telemetry egress.
+
+*Widened again 2026-09-02*, after a **fourth consecutive** run whose findings
+came from unmatched files — that day both regressions did. Added: the Security
+Advisor egress sink and its publisher set, outbound calls outside `src/api/**`,
+and the credential-floor / coercion-state pages.
+
+**Why the list kept lagging, structurally.** It was organised by MODULE ROLE
+(`wallet-core`, `rasp`, `sign-gate`) and by NAMED FILE. Two whole categories cut
+across both and were therefore invisible until someone remembered to name them:
+
+- **Egress sinks.** Where data LEAVES the device is a property of what a file
+  calls, not where it lives. `src/pages/Settings.jsx` is a settings screen by
+  location and an egress source by behaviour.
+- **Credential-floor owners.** A file that decides "16 chars" or "8 digits" is
+  security-critical regardless of directory.
+
+So prefer a BEHAVIOURAL question over a path match when triaging a changed file:
+*does it send data off-device, decide a credential floor, gate an action, or
+record what a security change does?* Any yes → deep analysis, whether or not a
+pattern above matches. The paths are a fast index, not the definition.
 
 ### Step 3 — For each flagged file, read the diff
 Run: `git diff <oldest-in-window>~1 origin/main -- <file>`.
@@ -214,6 +295,32 @@ git log origin/main --since="24 hours ago" --format="%H" | Select-Object -Last 1
 ```
 then diff that commit's parent against `origin/main`. On 2026-07-19 the window
 held 49 commits, so a single-commit range would have missed nearly everything.
+
+**Read the file. Do not grep it.** The pattern list is only half the failure
+mode; the other half is reaching a flagged file and skimming it. On 2026-09-02
+this happened THREE times in one run:
+
+- `WalletAssetPickerSheet.jsx` reached the flagged list and was skimmed. It was
+  fine only because an unrelated PR had already fixed it.
+- `docs/Feature-Status.md` was categorised as non-security (see Step 2).
+- `KekEnrollmentGate.jsx` — a CONTEXT file, not in the window — was consulted
+  with `grep -n "onSkip\|Skip\|skip\|Not now\|later"`. That found a Skip button
+  and the scan stopped, concluding the gate was skippable. It could not surface
+  `if (autoEnrolling)` twenty lines earlier, which suppresses that button on
+  exactly the path being rated. The grep answered the question asked, and was
+  treated as answering the question that mattered. The finding shipped a
+  severity too high and needed a public correction.
+
+The rule, concretely: **when a verdict depends on how a component BEHAVES, open
+the component.** A grep can prove a string is present; it cannot prove the
+absence of an earlier return, a guard, or a branch that makes the string
+unreachable. `CLAUDE.md` states this generally — *a search list is a floor, not
+a ceiling* — and the 2026-09-02 run demonstrates that knowing the rule is not
+enough: it was quoted in that same report's own maintenance section.
+
+Cost check before skipping a read: these files are 200–900 lines. Reading one
+costs a fraction of the run. Publishing a wrong severity costs a correction PR,
+and a reader who believed it in between.
 
 For each changed security file, assess:
 - Does the change ADD or REMOVE a security control?
@@ -458,6 +565,10 @@ after.
   never bypass a required check — see the Step 5 note.
 - Do NOT modify any source files — read-only analysis only. The report file
   under `docs/security-diffs/` is the ONLY file this task may ever write.
+  That includes THIS runbook: when the scan list needs widening, write the
+  proposed patterns into the report's `## Scan-list maintenance` section (Step 2
+  maintenance rule) rather than editing `SKILL.md`. A scheduled task that can
+  rewrite its own instructions is a worse problem than a stale pattern list.
 - Do NOT delete a report branch whose PR has not merged — it is the only copy.
 - Do NOT call the scan finished at `gh pr merge --auto`. If the report carries
   an open item, Step 6 (post-merge re-check) is part of the run — three
