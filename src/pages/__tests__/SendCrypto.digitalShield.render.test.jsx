@@ -186,6 +186,10 @@ vi.mock('@/api/base44Client', () => ({
 
 vi.mock('@/wallet-core/assets', () => ({
   getAsset: (symbol) => ({ symbol, family: 'evm', chain: 'mainnet', name: 'Ether', status: 'live' }),
+  getAssetById: (id) => {
+    const [symbol, chain = 'mainnet'] = id.split(':');
+    return { symbol, family: 'evm', chain, name: 'Ether', status: 'live' };
+  },
   canSend: () => true,
   canReceive: () => true,
   isEvmFamily: () => true,
