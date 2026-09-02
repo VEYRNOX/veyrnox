@@ -74,6 +74,7 @@ import { fetchAssetHistory } from "@/lib/txHistory";
 import { isDeferred } from "@/lib/seedVerifyState";
 import { useWalletReady, useFirstInbound } from "@/lib/tracking-integration";
 import { buildAssetSpamIntel } from "@/lib/spamTokenIntel";
+import { usePortfolioMarketData } from "@/hooks/usePortfolioMarketData";
 
 // Read-only supplier of the posture-state fields the SecurityPosture widget
 // intentionally does NOT self-detect (portable-by-design): PIN cohort / length,
@@ -596,6 +597,21 @@ export default function WalletPortfolioPage() {
   // sites below.
   const { locale, fiatCurrency } = useLocalePreferences();
   const fmtFiat = (usd) => formatFiat(usd, fiatCurrency, locale);
+  // Portfolio market data (spot USD + 24h % change) — SafePal-parity row display.
+  // I2/I3-safe: fixed basket, decoy/hidden/DEMO ⇒ null values (row hides delta).
+  const { priceFor, changeFor, isLive: pricesLive } = usePortfolioMarketData();
+  const fmtPrice = (usd) => {
+    if (!Number.isFinite(usd)) return null;
+    if (usd >= 1) return formatFiat(usd, fiatCurrency, locale);
+    // sub-$1 assets: keep 4 significant digits so 0.0901 renders as 0.0901, not $0.09
+    const digits = Math.min(6, Math.max(2, 2 - Math.floor(Math.log10(usd))));
+    return formatFiat(Number(usd.toFixed(digits)), fiatCurrency, locale);
+  };
+  const fmtChange = (pct) => {
+    if (!Number.isFinite(pct)) return null;
+    const sign = pct >= 0 ? "+" : "";
+    return `${sign}${pct.toFixed(2)}%`;
+  };
   const [backupTarget, setBackupTarget] = useState(null);
   const [pfManageOpen, setPfManageOpen] = useState(false);
   // Seed reveal (2FA gate + M6 recent-auth window). On a lapsed window this shows
@@ -824,14 +840,34 @@ export default function WalletPortfolioPage() {
                 <CoinLogo symbol={symbol} size={36} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold">{symbol}</p>
+                    <p className="text-sm font-semibold">
+                      {symbol}
+                      {a?.name && <span className="text-muted-foreground font-normal"> ({a.name})</span>}
+                    </p>
                     {suspiciousCount > 0 && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">
                         {suspiciousCount} suspicious token{suspiciousCount > 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">{a?.name}</p>
+                  {/* Spot price + 24h %: pricesLive false (off / decoy / hidden / DEMO) → render nothing (I3/I4). */}
+                  {pricesLive && (() => {
+                    const p = priceFor(symbol);
+                    const c = changeFor(symbol);
+                    const ps = fmtPrice(p);
+                    const cs = fmtChange(c);
+                    if (!ps && !cs) return null;
+                    return (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {ps && <span className="font-semibold text-foreground">{ps}</span>}
+                        {cs && (
+                          <span className={`ms-1.5 font-semibold ${c >= 0 ? "text-success" : "text-destructive"}`}>
+                            {cs}
+                          </span>
+                        )}
+                      </p>
+                    );
+                  })()}
                 </div>
                 <div className="text-end shrink-0">
                   <p

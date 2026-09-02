@@ -140,6 +140,36 @@ export async function fetchMarketChanges24hCG() {
   return out;
 }
 
+/**
+ * Portfolio-basket spot price + 24h % change in one call.
+ * Returns { [sym]: { price: number|null, change24h: number|null } }.
+ * I2: request is fixed to PORTFOLIO_CG_IDS, never derived from holdings.
+ */
+export async function fetchPortfolioMarkets24hCG() {
+  const raw = await fetchCoinGecko('coins/markets', {
+    vs_currency: 'usd',
+    ids: PORTFOLIO_CG_IDS.join(','),
+    price_change_percentage: '24h',
+    per_page: '50',
+  });
+  const out = {};
+  for (const ticker of PORTFOLIO_TICKERS) {
+    out[ticker] = { price: null, change24h: null };
+  }
+  for (const coin of raw) {
+    const ticker = PORTFOLIO_TICKERS.find(t => TICKER_TO_CG[t] === coin.id);
+    if (ticker) {
+      const price = coin.current_price;
+      const pct = coin.price_change_percentage_24h;
+      out[ticker] = {
+        price: typeof price === 'number' && Number.isFinite(price) ? price : null,
+        change24h: typeof pct === 'number' && Number.isFinite(pct) ? pct : null,
+      };
+    }
+  }
+  return out;
+}
+
 // ── OHLCV ─────────────────────────────────────────────────────────────────
 
 // CoinGecko OHLC granularity is determined by the `days` param:
