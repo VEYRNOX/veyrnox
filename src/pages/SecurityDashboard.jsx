@@ -196,6 +196,23 @@ export default function SecurityDashboard() {
   // the route-derived prose in SecurityAdvisor.SCREEN_DEFINITIONS. Suppressed
   // in decoy/hidden (I3); entity queries are already gated the same way, so
   // review items reflect empty inputs in deniable sessions anyway.
+  // NO COERCION ORACLES IN THIS PAYLOAD (#2256). `stealth_pool_present` was in
+  // this object and has been removed. Rendering the stealth-pool marker ON
+  // SCREEN is fine and continues below (FeatureRow) — the file's LOCAL-ONLY
+  // premise in the header covers that. Publishing it does NOT stay local:
+  // SecurityAdvisor merges this payload into `effectivePageSnapshot` and sends
+  // it to the tip-chat backend next to a PERSISTENT `device_id`, so the marker
+  // became a durable per-device record that this wallet has hidden wallets —
+  // held by a backend I5 declares untrusted, and directly against this file's
+  // own "No new third-party source, no phone-home" claim.
+  //
+  // This is the same class as the `duress_configured` leak removed from
+  // Settings.jsx in the same PR. The header above already refuses to SHOW
+  // duress/panic state because "always-provisioned slots = coercion oracle";
+  // the publisher added 2026-09-01 sent an adjacent signal off-device without
+  // revisiting that reasoning. Do not re-add it, and apply the header's test
+  // to any new field: would an adversary holding the backend's logs learn
+  // something about a user they are standing next to?
   useEffect(() => {
     if (isDecoy || isHidden) { publishAdvisorContext(null); return; }
     publishAdvisorContext({
@@ -209,14 +226,13 @@ export default function SecurityDashboard() {
         review_item_count: review.length,
         high_severity_count: highCount,
         suspicious_asset_totals: suspiciousAssets?.totals ?? null,
-        stealth_pool_present: s3?.stealth === true,
         loading,
       },
     });
     return () => publishAdvisorContext(null);
   }, [isDecoy, isHidden, raspArtifact?.tier, raspArtifact?.sentence, biometricOn,
       passkeyOn, autoLockLabel, autoLockNever, review.length, highCount,
-      suspiciousAssets?.totals, s3?.stealth, loading]);
+      suspiciousAssets?.totals, loading]);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
