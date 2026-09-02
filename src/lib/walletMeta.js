@@ -39,6 +39,12 @@ const ACTIVE_KEY = 'veyrnox-active-wallet';  // walletId string
 // WalletProvider), so no existing user ever sees an asset disappear.
 export const ALL_ASSET_SYMBOLS = Object.freeze(ASSETS.map((a) => a.symbol));
 export const DEFAULT_ENABLED_ASSETS = ALL_ASSET_SYMBOLS;
+// Phase 0 of per-chain expansion — composite "{symbol}:{chain}" ids alongside
+// the legacy symbol list. On-disk shape and every current reader stay on
+// symbol identity; this export is here so Phase 1 can flip DEFAULT_ENABLED_ASSETS
+// and sanitizeAssets to composite ids in one coordinated PR that also adds the
+// first duplicate-symbol row. Do NOT consume this in a reader until then.
+export const ALL_ASSET_IDS = Object.freeze(ASSETS.map((a) => a.id));
 
 function readMap() {
   try {
