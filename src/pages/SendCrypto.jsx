@@ -1069,7 +1069,13 @@ export default function SendCrypto() {
   // the verdict is a real computation over the entered inputs; only the chain
   // fact behind S7 is demo-seeded.
   const scoreCurrentSend = () => {
-    const recipientCode = demoActive ? '0x' : txSim.data?.recipientCode;
+    // S7 asks "is the recipient a contract?" — an EVM-only concept fed by
+    // eth_getCode. On non-EVM chains (BTC/SOL) there is no such fetch and no
+    // contract-vs-EOA distinction, so treat the recipient as an EOA ('0x')
+    // rather than letting S7 fail closed with a misleading warning. On EVM,
+    // undefined recipientCode still means "sim errored/disabled" -> fail closed.
+    const isEvmSend = isEvmFamily(selectedAsset) || isErc20;
+    const recipientCode = (demoActive || !isEvmSend) ? '0x' : txSim.data?.recipientCode;
     const { unsignedTx, activeSetLocalState, chainData } = buildRiskInputs({
       to: toAddress,
       amountText: canonicalAmount,
