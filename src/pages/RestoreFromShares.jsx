@@ -13,11 +13,35 @@
 // recoverable from the 2 remaining bundles alone.
 //
 // 2026-09-01 (owner sign-off): on NATIVE the re-wrap credential is an
-// 8-digit PIN and hardware KEK re-enrolment is MANDATORY before first
-// sign. That combination is the compensating factor the note below
-// requires — the KEK gate (WalletEntry) fires post-restore, the PIN is
-// handed to it via router state for auto-enrol, and hardware unavailable
-// falls back to the same "insecure tier" path fresh-create uses.
+// 8-digit PIN, matching every other vault-entry path (fresh create, phrase
+// import, PIN recovery, file restore). The KEK gate (WalletEntry) fires
+// post-restore and the PIN is handed to it via router state so it can
+// auto-enrol without a second entry.
+//
+// HONEST LIMIT — the KEK gate is NOT an enforced compensating factor, and
+// this note claimed it was ("MANDATORY before first sign") until
+// 2026-09-02. It is not. Three independent ways to reach a signing surface
+// from a restored vault with no hardware anchor:
+//   1. KekEnrollmentGate renders an explicit "Skip for now" button, and
+//      handleKekSkip (WalletEntry) only calls kekDismiss() — which is
+//      setGateActive(false), in-memory. The gate re-fires next unlock; the
+//      user is in the wallet now.
+//   2. NO signing path consults isHardwareKekEnrolled. Grep it: the only
+//      callers are SecurityPosture (display), hardwareKekStatus (the
+//      definition), PersonalBackup (shard-export readiness) and two tests.
+//      Not sign-gate, not SendCrypto, not CryptoSigning, not WalletConnect.
+//   3. An insecure-tier device persists veyrnox-kek-insecure-tier via
+//      suppressInsecureTier() and stops prompting permanently.
+// So the restored vault can sit at ~27 bits (8-digit PIN + Argon2id) with
+// nothing above it. That is the same exposure fresh-create carries, which
+// is why the parity argument holds — but it is NOT a compensating factor,
+// and must not be described as one. See issue #2257; closing the gap means
+// gating the signing chokepoints on KEK enrolment, with a deliberate answer
+// for devices that genuinely cannot enrol (or it becomes a lockout).
+//
+// Until that lands: do not write "required" / "mandatory" about KEK
+// re-enrolment here or in user-facing copy. KekEnrollmentGate's own skip
+// warning is the honest register to match.
 //
 // On WEB there is no hardware anchor, so the passphrase path is retained
 // (checkRecoveryPassphrase, min 16 chars). Do NOT relax that on web
@@ -163,9 +187,10 @@ export default function RestoreFromShares() {
       setError("This device already has a wallet. Wipe it first (Settings → Panic Wipe).");
       return;
     }
-    // Native: 8-digit PIN, compensated by mandatory hardware KEK re-enrol
-    // in WalletEntry post-restore. Web: passphrase, no hardware anchor
-    // available. See the KEK-BYPASS ARCHITECTURE note at the top of this file.
+    // Native: 8-digit PIN. WalletEntry's KEK gate offers re-enrol
+    // post-restore, but it is SKIPPABLE and no signing path checks it — see
+    // the HONEST LIMIT block in the KEK-BYPASS ARCHITECTURE note at the top
+    // of this file (#2257). Web: passphrase, no hardware anchor available.
     let credential;
     if (IS_NATIVE) {
       if (!/^\d{8}$/.test(newPin)) {
@@ -317,8 +342,12 @@ export default function RestoreFromShares() {
         <div className="space-y-4">
           <p className="text-sm">
             Choose a new {RESTORE_PIN_LENGTH}-digit PIN for this device. After restore you
-            will be prompted to re-enable Hardware Protection — that step is required before
-            you can sign any transaction.
+            will be prompted to turn on Hardware Protection — do it then if you can.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Until you do, this wallet is protected by your PIN alone. Someone who copies it
+            could try to break a {RESTORE_PIN_LENGTH}-digit PIN offline. You can turn
+            Hardware Protection on later in Security settings.
           </p>
           <PasswordInput
             value={newPin}
