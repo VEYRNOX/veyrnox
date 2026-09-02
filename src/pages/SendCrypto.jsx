@@ -1217,11 +1217,18 @@ export default function SendCrypto() {
 
   const advisorTxContext = useMemo(() => {
     if ((step !== "review" && step !== "confirm") || !selectedWallet?.currency) return null;
+    // Self-send detection: recipient == the sending wallet's own address.
+    // EVM addresses are checksummed so compare case-insensitively; BTC/SOL
+    // are case-sensitive and canonical, so lower() is a no-op for the match.
+    const ownAddr = selectedWallet?.address || null;
+    const isSelfSend = !!(ownAddr && toAddress && ownAddr.toLowerCase() === toAddress.toLowerCase());
     return {
       transaction_intelligence: {
         asset: selectedWallet.currency,
         amount: amount || null,
         recipient: toAddress || null,
+        sender_address: ownAddr,
+        self_send: isSelfSend,
         level: txIntelVerdict?.level ?? null,
         owner: txIntelVerdict?.owner ?? null,
         primary_reason: txIntelVerdict?.primaryReason ?? null,
