@@ -213,6 +213,20 @@ jobs:
           # xcodebuild process group, which can keep the step alive after the
           # watchdog kills xcodebuild. Format the completed log afterwards.
           set +e
+          # Per-test allowance is 600s, raised from 300s after #2246. The PIN
+          # ceremony retries once on a confirm desync (setPinCeremony in
+          # AppUITests.swift) and 300s could not fit two attempts: run
+          # 33623177119 was KILLED at the 5-minute allowance mid-retry, which
+          # reports as "Executed 0 tests" and loses the assertion entirely —
+          # strictly less informative than the failure it replaced.
+          # Budget, from run 33617705223's measured timeline: first ceremony
+          # ~280s (most of it one-time — 12s launch, first keypad key at 85s),
+          # second ~140s, so worst case ~420s. 600s leaves headroom without
+          # crowding the 900s watchdog below (non-test overhead measured ~150s,
+          # so ~750s worst case against that 900s kill).
+          # Keep flag comments OUT of the backslash-continued command below —
+          # a comment line inside a continuation is spliced into the command
+          # and silently comments out every flag after it.
           # Fire before the step's 18-minute GitHub timeout, which otherwise
           # kills this shell before the summary and artifact steps can run.
           python3 -c '
@@ -236,7 +250,7 @@ jobs:
             -clonedSourcePackagesDirPath SourcePackages \
             -derivedDataPath DerivedData \
             -test-timeouts-enabled YES \
-            -default-test-execution-time-allowance 300 \
+            -default-test-execution-time-allowance 600 \
             CODE_SIGNING_ALLOWED=NO \
             > xcodebuild.log 2>&1
           status=$?
