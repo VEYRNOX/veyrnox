@@ -842,7 +842,17 @@ export default function WalletPortfolioPage() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold">
                       {symbol}
-                      {a?.name && <span className="text-muted-foreground font-normal"> ({a.name})</span>}
+                      {/* Honest chain label — ERC-20s (USDC/USDT) live on Ethereum
+                          mainnet in Veyrnox today; every other row's asset.name is
+                          already the chain (Ethereum/Polygon/Arbitrum/Optimism/
+                          Avalanche/BNB Chain/Bitcoin/Solana). Don't fabricate
+                          multi-chain rows for tickers Veyrnox doesn't actually
+                          derive/price separately. */}
+                      {a && (
+                        <span className="text-muted-foreground font-normal">
+                          {" ("}{a.family === "erc20" ? "Ethereum" : a.name}{")"}
+                        </span>
+                      )}
                     </p>
                     {suspiciousCount > 0 && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-caution/15 text-caution">
