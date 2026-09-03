@@ -28,7 +28,6 @@ export function useAdvisorSnapshot(snapshot) {
     }
     publishAdvisorContext(snapshot);
     return () => publishAdvisorContext(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialized]);
 }
 
