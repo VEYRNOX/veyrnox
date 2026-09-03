@@ -1270,6 +1270,22 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
     fix could not be in `main`, and two facts disagreeing forced a direct re-read.
     **When a grep result would let you close a finding, confirm it against something
     that is not a grep** — the PR state, the file read in full, or a test.
+  - **An absence-check must be scoped to CODE, because the fix usually documents the
+    thing it removed.** A security fix worth making is worth a comment saying what used
+    to be there — so the file that removes `X` is the same file that now quotes `X` as
+    history, and any check asserting "`X` is gone" matches the comment and fires.
+    **This happened three times on 2026-09-03**, in two test pins and then in a merge
+    watcher an hour after the pins were fixed, because a shell one-liner did not feel
+    like "a pin". Scope the assertion instead of matching the whole file: strip `//`
+    lines, target the structural form (`// N.` list items, a declaration, an assignment),
+    or read the specific line number. Concretely, the merge watcher for the webhook fix
+    counted `oldform=1` and cried CONTENT-WRONG on a perfectly good merge — line 188 had
+    the fix, line 66 was the comment explaining it.
+  - **Note which way each failure points.** The `-F` bug fails DANGEROUS: it stays silent
+    and reports a clean result that is wrong. The absence-check-hits-its-own-comment bug
+    fails SAFE: it cries wolf on correct work. Both come from a check that cannot tell
+    code from prose, and only the second one announces itself — so finding one is a
+    prompt to go looking for the other, not evidence that verification is working.
 - **Mutation-check every new test pin, or you ship coverage that cannot fail.** Three
   pins written on 2026-09-03 were broken on the first attempt and ALL THREE looked green:
   - **A prefix ate the assertion.** A status-tag pin used `startsWith()` against
