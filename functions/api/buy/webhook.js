@@ -26,8 +26,9 @@
 // If TRANSAK_WEBHOOK_SECRET is unset, we fall back to log-only regardless of
 // mode (do NOT 500 — that would drop all legitimate webhooks the moment the
 // secret rotates or is missing on a fresh deploy).
-// Response carries `X-Verify-Mode` on non-strict paths so operators can
-// confirm which mode fired.
+// Mode is logged server-side with `ref` for operator triage — never echoed
+// on the response, since an unauthenticated attacker POSTing would otherwise
+// learn whether webhook verification is disabled and invite forgery.
 //
 // TODO: once real Transak traffic is captured in `warn` mode with matching
 // signatures, flip TRANSAK_WEBHOOK_VERIFY_MODE=strict on Cloudflare Pages.
@@ -111,8 +112,14 @@ function jsonResponse(status, body, extraHeaders) {
 
 const VALID_MODES = new Set(['off', 'warn', 'strict']);
 function resolveMode(env) {
-  const raw = ((env && env.TRANSAK_WEBHOOK_VERIFY_MODE) || 'off').toLowerCase();
-  return VALID_MODES.has(raw) ? raw : 'off';
+  const rawRaw = (env && env.TRANSAK_WEBHOOK_VERIFY_MODE) || '';
+  const raw = String(rawRaw).toLowerCase();
+  if (!raw) return 'off';
+  if (VALID_MODES.has(raw)) return raw;
+  console.warn(
+    `[buy/webhook] invalid TRANSAK_WEBHOOK_VERIFY_MODE=${logSafe(rawRaw)}, falling back to off`,
+  );
+  return 'off';
 }
 
 export async function onRequestPost({ request, env }) {
@@ -158,7 +165,7 @@ export async function onRequestPost({ request, env }) {
     body = rawBody ? JSON.parse(rawBody) : null;
   } catch {
     console.error(`[buy/webhook] ref=${ref} parse_error`);
-    return jsonResponse(200, { ok: true }, mode !== 'strict' ? { 'X-Verify-Mode': mode } : undefined);
+    return jsonResponse(200, { ok: true });
   }
 
   const eventID = logSafe(body?.eventID) || 'UNKNOWN';
@@ -167,9 +174,11 @@ export async function onRequestPost({ request, env }) {
 
   // Log only non-PII fields. Full payload contains user email + address on
   // some events; we do not need those for operator triage.
-  console.log(`[buy/webhook] ref=${ref} event=${eventID} order=${orderId} status=${status}`);
+  console.log(
+    `[buy/webhook] ref=${ref} mode=${mode} event=${eventID} order=${orderId} status=${status}`,
+  );
 
-  return jsonResponse(200, { ok: true }, mode !== 'strict' ? { 'X-Verify-Mode': mode } : undefined);
+  return jsonResponse(200, { ok: true });
 }
 
 // Any non-POST — Transak only POSTs. Reject cleanly rather than falling

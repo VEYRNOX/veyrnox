@@ -120,7 +120,7 @@ describe('buy/webhook', () => {
       const request = await signedReq('POST', { eventID: 'ORDER_COMPLETED' });
       const res = await onRequestPost({ request, env: { TRANSAK_WEBHOOK_VERIFY_MODE: 'strict' } });
       expect(res.status).toBe(200);
-      expect(res.headers.get('X-Verify-Mode')).toBe('off');
+      expect(res.headers.get('X-Verify-Mode')).toBeNull();
       expect(console.warn).toHaveBeenCalled();
     });
   });
@@ -133,17 +133,33 @@ describe('buy/webhook', () => {
       });
       const res = await onRequestPost({ request, env: ENV_OFF });
       expect(res.status).toBe(200);
-      expect(res.headers.get('X-Verify-Mode')).toBe('off');
+      expect(res.headers.get('X-Verify-Mode')).toBeNull();
       const line = console.log.mock.calls[0][0];
       expect(line).toContain('event=ORDER_CREATED');
       expect(line).toContain('order=off-1');
+      expect(line).toContain('mode=off');
     });
 
     it('no env var at all defaults to off (no 500)', async () => {
       const request = unsignedReq('POST', { eventID: 'ORDER_CREATED' });
       const res = await onRequestPost({ request, env: {} });
       expect(res.status).toBe(200);
-      expect(res.headers.get('X-Verify-Mode')).toBe('off');
+      expect(res.headers.get('X-Verify-Mode')).toBeNull();
+    });
+
+    it('invalid mode value (e.g. "true") warns once and resolves to off', async () => {
+      const request = unsignedReq('POST', { eventID: 'ORDER_CREATED' });
+      const res = await onRequestPost({
+        request,
+        env: { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'true' },
+      });
+      expect(res.status).toBe(200);
+      const warnLine = console.warn.mock.calls[0][0];
+      expect(warnLine).toContain('invalid TRANSAK_WEBHOOK_VERIFY_MODE=true');
+      expect(warnLine).toContain('falling back to off');
+      // resolved to off → main log line reports mode=off
+      const logLine = console.log.mock.calls[0][0];
+      expect(logLine).toContain('mode=off');
     });
   });
 
@@ -156,7 +172,7 @@ describe('buy/webhook', () => {
       );
       const res = await onRequestPost({ request, env: ENV_WARN });
       expect(res.status).toBe(200);
-      expect(res.headers.get('X-Verify-Mode')).toBe('warn');
+      expect(res.headers.get('X-Verify-Mode')).toBeNull();
       const warnLine = console.warn.mock.calls[0][0];
       expect(warnLine).toContain('verify_warn');
       expect(warnLine).toContain('reason=signature_mismatch');
@@ -175,7 +191,7 @@ describe('buy/webhook', () => {
       });
       const res = await onRequestPost({ request, env: ENV_WARN });
       expect(res.status).toBe(200);
-      expect(res.headers.get('X-Verify-Mode')).toBe('warn');
+      expect(res.headers.get('X-Verify-Mode')).toBeNull();
       expect(console.warn).not.toHaveBeenCalled();
     });
   });
