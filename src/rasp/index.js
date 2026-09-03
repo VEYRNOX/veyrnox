@@ -32,10 +32,19 @@
 //   BUILT · UNAUDITED-PROVISIONAL · NOT device-verified · NOT independently audited.
 //   Play Integrity JWS RS256/ES256 IS on-device signature-verified (PR #943
 //   landed RS256 with cert-chain walk; PR #955 added ES256 raw→DER transcoding;
-//   PR #1009 added nonce binding). Tracked residual: G2-ROOTCERT-PIN — the
-//   cert-chain walk still uses a weak issuer heuristic instead of a pinned
-//   Google root cert. iOS App Attest still needs the appattest entitlement +
-//   DeviceCheck linkage.
+//   PR #1009 added nonce binding). Tracked residuals — do NOT close these
+//   without device verification (silently landing a wrong pin/entitlement
+//   would fail-closed forever on a real device):
+//     • G2-ROOTCERT-PIN (issue #2276): the Android cert-chain walk still
+//       uses a weak issuer.contains("Google") heuristic instead of a pinned
+//       Play Integrity root (GTS Root R1 lineage). Needs a real Play
+//       Integrity token from a device to verify against — Phase 4/5 work.
+//     • iOS App Attest entitlement + DeviceCheck (issue #2277): the
+//       com.apple.developer.devicecheck.appattest-environment entitlement
+//       and DeviceCheck.framework linkage are not yet present in the build,
+//       so the iOS leg honestly returns INTEGRITY_UNAVAILABLE (→ WARN)
+//       rather than fail-closed FAIL. Requires the Apple Developer profile
+//       + a real iPhone to exercise.
 //   The wiring into SendCrypto.jsx / useRaspArtifact is a SEPARATE follow-on PR;
 //   this module + the native plugin layer are what land here. detect()'s on-device
 //   probes still fail closed to INTEGRITY_UNAVAILABLE with no native capability, and

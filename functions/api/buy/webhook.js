@@ -11,15 +11,16 @@
 //
 // Payload shape (per docs.transak.com/features/webhooks):
 //   { eventID: 'ORDER_COMPLETED', createdAt: '...', webhookData: <object|JWT> }
-// The docs say "verify with your Partner Access Token before processing" but
-// do not spell out the signing scheme (Ed25519 pub key? HMAC?). Until we
-// confirm the exact verification with Transak, this receiver logs-and-acks
-// with no cryptographic verification — cheaper than shipping a wrong verifier.
-// The endpoint itself does no side effect other than console logging, so an
-// unverified event cannot corrupt state; the risk is a spoofed event misleads
-// an operator reading logs. Add real verification before this data drives
-// any user-visible action (attribution, referral bonuses, UI state).
-// ponytail: log-only, add HMAC/JWT verify when Transak returns exact spec.
+//
+// SIGNATURE VERIFICATION (added 2026-08-16, round 9):
+// Transak's webhook signing uses HMAC-SHA256 over the raw request body with a
+// shared secret, delivered in the `X-Transak-Signature` header (hex). We
+// require env.TRANSAK_WEBHOOK_SECRET; a missing secret fail-closes with 500
+// (RASP-style — no silent accept). A missing/mismatched header returns 401.
+// The endpoint still does no state-changing side effect (log-only), but we no
+// longer let an unauthenticated caller mislead an operator via forged log
+// entries even under the sanitiser (see logSafe below for the residual
+// defense-in-depth).
 
 function reqId() {
   return crypto.randomUUID().slice(0, 8);
@@ -30,41 +31,107 @@ function reqId() {
 // the log.
 const MAX_FIELD = 64;
 
-// Every logged field below comes from an unauthenticated caller — this endpoint
-// deliberately does no signature verification yet (see the header note), so the
-// body is fully attacker-controlled.
-//
-// Without this, a newline inside eventID forges additional log lines:
-//
-//   {"eventID": "X\n[buy/webhook] ref=deadbeef event=ORDER_COMPLETED order=…"}
-//
-// which renders as a second, well-formed-looking entry. The header already
-// names "a spoofed event misleads an operator reading logs" as the residual
-// risk; forged log LINES are the sharper form of it, and are not mitigated by
-// the endpoint being side-effect-free.
-//
-// Strips C0 controls + DEL (covers CR, LF, tab) and the Unicode line
-// separators, which some log viewers also break on. Returns null unchanged so
-// an absent field still prints as `null`.
+// Defense-in-depth on the log line even after signature verification: a valid
+// signer with a compromised backend could still push newlines into fields.
+// Strips C0 controls + DEL and the Unicode line separators. Returns null
+// unchanged so an absent field still prints as `null`.
 function logSafe(value) {
   if (value == null) return null;
   const cleaned = String(value).replace(/[\u0000-\u001F\u007F\u2028\u2029]/g, '');
   return cleaned.length > MAX_FIELD ? `${cleaned.slice(0, MAX_FIELD)}…` : cleaned;
 }
 
-export async function onRequestPost({ request }) {
+// Constant-time hex comparison so a partial-prefix match cannot be timed.
+function timingSafeEqualHex(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function bufToHex(buf) {
+  const bytes = new Uint8Array(buf);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += bytes[i].toString(16).padStart(2, '0');
+  }
+  return hex;
+}
+
+// Compute HMAC-SHA256(rawBody, secret) as hex.
+export async function computeTransakSignature(rawBody, secret) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
+  return bufToHex(sig);
+}
+
+// Verify the `X-Transak-Signature` header against HMAC-SHA256(rawBody, secret).
+// Returns { ok:true } on match, { ok:false, reason } otherwise.
+export async function verifyTransakSignature(request, rawBody, secret) {
+  const header =
+    request.headers.get('x-transak-signature') ||
+    request.headers.get('X-Transak-Signature');
+  if (!header) return { ok: false, reason: 'missing_signature' };
+  let expected;
+  try {
+    expected = await computeTransakSignature(rawBody, secret);
+  } catch {
+    return { ok: false, reason: 'hmac_error' };
+  }
+  return timingSafeEqualHex(header.trim().toLowerCase(), expected)
+    ? { ok: true }
+    : { ok: false, reason: 'signature_mismatch' };
+}
+
+function jsonResponse(status, body) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+export async function onRequestPost({ request, env }) {
   const ref = reqId();
+  const secret = env && env.TRANSAK_WEBHOOK_SECRET;
+  if (!secret) {
+    // RASP-style fail-closed: a receiver deployed without a secret cannot
+    // authenticate anything, so refuse rather than accept-and-log.
+    console.error(`[buy/webhook] ref=${ref} config_error=missing_secret`);
+    return jsonResponse(500, { ok: false, error: 'server_misconfigured' });
+  }
+
+  // Read raw body ONCE for both HMAC verify and JSON parse — a second read
+  // would drain nothing (Request bodies are single-use).
+  let rawBody;
+  try {
+    rawBody = await request.text();
+  } catch {
+    console.error(`[buy/webhook] ref=${ref} read_error`);
+    return jsonResponse(400, { ok: false, error: 'read_error' });
+  }
+
+  const verify = await verifyTransakSignature(request, rawBody, secret);
+  if (!verify.ok) {
+    console.error(`[buy/webhook] ref=${ref} auth_fail reason=${verify.reason}`);
+    return jsonResponse(401, { ok: false, error: 'unauthorized' });
+  }
+
   let body = null;
   try {
-    body = await request.json();
+    body = rawBody ? JSON.parse(rawBody) : null;
   } catch {
-    // Return 200 anyway — Transak retries on non-2xx, and a malformed body is
-    // a Transak-side issue we cannot fix by retrying.
+    // Signature was valid but body isn't JSON — Transak-side issue. Ack so
+    // they do not retry the same broken payload forever.
     console.error(`[buy/webhook] ref=${ref} parse_error`);
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return jsonResponse(200, { ok: true });
   }
 
   const eventID = logSafe(body?.eventID) || 'UNKNOWN';
@@ -72,19 +139,15 @@ export async function onRequestPost({ request }) {
   const status = logSafe(body?.webhookData?.status);
 
   // Log only non-PII fields. Full payload contains user email + address on
-  // some events; we do not need those for operator triage. Every value goes
-  // through logSafe first — see its note; the body is unauthenticated.
+  // some events; we do not need those for operator triage.
   console.log(`[buy/webhook] ref=${ref} event=${eventID} order=${orderId} status=${status}`);
 
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return jsonResponse(200, { ok: true });
 }
 
 // Any non-POST — Transak only POSTs. Reject cleanly rather than falling
 // through to the 405-with-HTML default.
-export async function onRequest({ request }) {
-  if (request.method === 'POST') return onRequestPost({ request });
+export async function onRequest({ request, env }) {
+  if (request.method === 'POST') return onRequestPost({ request, env });
   return new Response('Method Not Allowed', { status: 405 });
 }
