@@ -153,6 +153,38 @@ outstanding.
 C-01 native fail-closed gate fixed (PR #825). Play Integrity ES256 JWS verification +
 nonce binding fixed (PRs #955, #1009).
 
+**Attestation honesty sweep, 2026-09-03 (branch review of #2280 → 5 findings).** All
+comment/config-level; no attestation BEHAVIOUR changed and nothing advanced to verified.
+- **The pinset comment claimed evidence that does not exist** (S-1, `c2335704`).
+  `PlayIntegrityJwsVerifier.kt` read "real tokens observed in the wild have chained via
+  any of R1/R2/R3/R4". No production token has ever been captured. Now sourcing-only:
+  transcribed from `pki.goog/repository`, live signing rotation marked UNVERIFIED.
+  #2280 rewrote the four files POINTING AT this and left the file HOLDING it — a
+  comment-only PR is exactly where a security claim hides.
+- **Shipped iOS archives carried `appattest-environment=development`** (S-2, #2282, not
+  my fix). One `App.entitlements` was wired to Debug AND Release, so every archive
+  through 1.0.1 build 47 requested Apple's *development* attestation servers — the iOS
+  leg was inert in distribution, not merely unprovisioned. Fixed with
+  `$(APP_ATTEST_ENVIRONMENT)` set per build configuration (development/production) and
+  substituted into the single entitlements file. **Do not "simplify" that back to a
+  literal value.** Not archive-verified: if codesign ever rejects `production`, delete
+  the key (omission also means production) rather than reverting to `development`.
+- **A mutable trust anchor shipped in the release binary** (S-3, PR #2284 — open at time
+  of writing, verify before citing). `ADDITIONAL_TRUSTED_ROOTS_FOR_TESTING` was a
+  process-wide `MutableSet` OR-ed into the root-trust decision, empty at rest and guarded
+  only by a comment. Replaced with an `extraTrustedRoots: Set<String> = emptySet()`
+  parameter — production passes none, so there is no writable trust state at all. Chosen
+  over a `BuildConfig.DEBUG` gate, which would have left the set in the binary and
+  coupled this deliberately `android.*`-free file to build variants.
+- S-4/S-5 (`a0d99c05`): DeviceCheck linkage was RESOLVED (clang module autolinking) but
+  #2280 swapped it for a different gap without saying so; and one header carried three
+  status declarations in two vocabularies. Both now explicit.
+- **Still open and now untracked:** #2276 is CLOSED administratively with DoD items 3
+  (chain/pin failure must return INTEGRITY_FAIL, still maps to WARN) and 4 (real-token
+  device exercise) UNMET. Ordering is load-bearing — capture a token BEFORE tightening
+  to INTEGRITY_FAIL, or a wrong pin fails closed on every real device forever. Per-item
+  audit in that issue's comments.
+
 **Vault:** AES-256-GCM, Argon2id KDF — **96 MiB / t=6 for vaults created from
 2026-08-24 (#2054); 192 MiB / t=3 for older ones**, which stay there until the v2
 migration flag flips (Gate 1 of #2101, still OPEN). Same total work either way
@@ -1217,6 +1249,32 @@ Schibsted Grotesk for prose / IBM Plex Mono for verifiable values, deniability b
     calling a scan clean, ask which surfaces the pattern list cannot see. When a real
     finding comes from an unmatched file, widen the list in the same session — that is
     the only thing keeping it alive rather than fossilised.
+- **Mutation-check every new test pin, or you ship coverage that cannot fail.** Three
+  pins written on 2026-09-03 were broken on the first attempt and ALL THREE looked green:
+  - **A prefix ate the assertion.** A status-tag pin used `startsWith()` against
+    `['BUILT-UNVALIDATED', 'BUILT', …]`. `"BUILT / unit-tested…"` starts with `BUILT`,
+    so reintroducing the exact defect passed. Read a tag as a whole token when one
+    valid value is a prefix of another.
+  - **Two pins fired on their own documentation.** Both asserted a file did NOT contain a
+    retired phrase, and matched the comment that recorded the phrase as removed. Strip
+    comments, or scope to the structural form (`// N.` gap items, a declaration), before
+    asserting absence in source text.
+  The discipline that catches all three is the same and takes one minute: reintroduce the
+  defect, confirm THAT pin goes red, restore. A pin that stays green under its own
+  mutation is worse than no pin — it reads as coverage.
+- **Targeted test runs are not enough; run the full suite before calling a branch green.**
+  A one-line Kotlin signature change (S-3) broke a structural pin in
+  `g2-rs256-chain-walk.test.js` — **three** separate G2 test files pin the same function,
+  and only one was run. Related: a test file with a syntax error reports FEWER tests, not
+  a failure (427 instead of 644 here), so a shrinking test count is a red flag in itself.
+- **Two sessions found and fixed the same finding ~30 minutes apart** (S-2, mine vs
+  #2282), the third instance of this collision after #1414/#1415. When your fix conflicts
+  with one that just landed, read the other one before resolving — #2282's mechanism was
+  better than mine and the right move was to drop my half, not merge over it.
+- **Concurrent PRs that both add tests to the same file WILL conflict.** #2284 and #2285
+  both appended pins at the same anchor. Resolving by keeping both sides naively left an
+  unclosed `it()` block, because each side ended mid-block. Run lint after any
+  conflict resolution in a test file.
 
 ## The primary checkout is SHARED — never work in it
 
