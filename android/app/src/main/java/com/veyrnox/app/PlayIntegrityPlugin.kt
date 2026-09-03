@@ -45,9 +45,10 @@ package com.veyrnox.app
 // ECDSA-Sig-Value (RFC 3279). Before #951 the raw bytes were fed straight to
 // verify(), so every real ES256 token silently failed fail-closed and the
 // attested axis was inert. rawEcdsaSignatureToDer() now transcodes raw → DER
-// before verify() on the ES256 branch. STATUS: algorithmically correct, but
-// still NOT device-verified against a real Play Integrity token — the residual
-// gap sits with Phase 4 device exercise + Phase 5 independent audit.
+// before verify() on the ES256 branch. STATUS: BUILT-UNVALIDATED —
+// algorithmically correct and unit-tested, but still NOT device-verified against
+// a real Play Integrity token; the residual gap sits with Phase 4 device
+// exercise + Phase 5 independent audit.
 //
 // NONCE ROUND-TRIP (audit finding P1-1, 2026-07-14): the caller-supplied nonce
 // passed to IntegrityTokenRequest.setNonce() is now compared byte-for-byte against
@@ -60,10 +61,11 @@ package com.veyrnox.app
 //
 // ROOT CERT PINNING (G2-ROOTCERT-PIN): SHA-256 fingerprint of root cert DER bytes
 // is checked against GOOGLE_ROOT_CA_SHA256 (verifyRootCertFingerprint). There is
-// NO issuer-string fallback. Status: BUILT / unit-tested, but unvalidated against
-// a real production Play Integrity token. Until device evidence confirms the
-// selected Google pinset, treat this attestation channel as PROVISIONAL. A pin or
-// chain mismatch currently degrades to INTEGRITY_UNAVAILABLE (WARN, not BLOCK);
+// NO issuer-string fallback. STATUS: BUILT-UNVALIDATED — unit-tested, but not
+// validated against a real production Play Integrity token. Until device
+// evidence confirms the selected Google pinset, treat this attestation channel
+// as PROVISIONAL. A pin or chain mismatch degrades to INTEGRITY_UNAVAILABLE
+// (WARN, not BLOCK);
 // changing that policy requires real-token verification first.
 //
 // I4 — FAIL CLOSED. A missing/short nonce, absent Play Services, a token request

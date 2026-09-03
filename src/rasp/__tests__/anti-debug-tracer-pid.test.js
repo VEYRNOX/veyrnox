@@ -491,6 +491,60 @@ describe('Play Integrity root cert SHA-256 pinning (G2-ROOTCERT-PIN)', () => {
   // token"). No token has ever been captured. Under verify-don't-assert that
   // sentence is exactly the class of claim that needs evidence, so it is now
   // sourcing-only. Guard against the observation claim coming back.
+  // ── S-5 (branch review 2026-09-03) ──────────────────────────────────────────
+  // PlayIntegrityPlugin.kt carried three status declarations in one header, two
+  // of them free text ("Status: BUILT / unit-tested, but unvalidated…",
+  // "STATUS: algorithmically correct…"). The project uses a controlled
+  // vocabulary — BUILT / BUILT-UNVALIDATED / TARGET / PLANNED /
+  // HONEST-DISABLED — and a status that is not one of those is invisible to a
+  // grep over the vocabulary, which is how the file ends up describing itself
+  // two different ways. Prose after the tag is encouraged; the tag itself must
+  // be from the list.
+  it('every status declaration in PlayIntegrityPlugin.kt uses ONE controlled tag', () => {
+    const TAGS = ['BUILT-UNVALIDATED', 'BUILT', 'TARGET', 'PLANNED', 'HONEST-DISABLED'];
+    const declarations = playKt.match(/STATUS:\s*[^\n]*/gi) ?? [];
+    expect(declarations.length).toBeGreaterThan(0);
+
+    // The tag is the leading token; prose after it (em-dash, comma, etc.) is
+    // encouraged. Note "BUILT" is a prefix of "BUILT-UNVALIDATED", so the tag
+    // must be read as a whole token — a startsWith() check would accept
+    // "BUILT / unit-tested…" as the tag BUILT and miss the drift entirely.
+    const tags = declarations.map((line) => {
+      const m = /^STATUS:\s*([A-Z-]+)/i.exec(line);
+      return m ? m[1].toUpperCase() : null;
+    });
+
+    for (const [i, tag] of tags.entries()) {
+      expect(TAGS, `not a controlled tag in: ${declarations[i]}`).toContain(tag);
+    }
+
+    // All three declarations describe the maturity of the SAME component. Two
+    // different tags in one header is the S-5 defect: the file said
+    // BUILT-UNVALIDATED in one place and "BUILT / unit-tested" in another.
+    expect(new Set(tags).size, `header declares conflicting statuses: ${tags.join(', ')}`).toBe(1);
+  });
+
+  // ── S-4 (branch review 2026-09-03) ──────────────────────────────────────────
+  // PR #2280 replaced AppAttestPlugin.m's "DeviceCheck.framework must be linked
+  // to the App target" gap with a DIFFERENT gap (no independent DeviceCheck
+  // signal) without stating whether the original had been resolved. A reader
+  // could not tell if linkage was done or merely dropped. Linkage IS done — the
+  // import plus CLANG_ENABLE_MODULES autolinks it — so the header must not still
+  // list linking as outstanding work.
+  it('does not list DeviceCheck linkage as an open gap while the import is present', () => {
+    expect(appAttestM).toContain('#import <DeviceCheck/DeviceCheck.h>');
+    expect(pbxproj).toContain('CLANG_ENABLE_MODULES = YES');
+    // Check the NUMBERED gap items only, not the whole file. The header quotes
+    // the retired wording verbatim so the change is auditable, and a
+    // whole-file substring check would fire on that history note — the same
+    // trap the S-3 pin above fell into. What must not come back is the claim
+    // as a LIVE item in the gap list.
+    const gapItems = (appAttestM.match(/^\/\/ \d+\.[^\n]*/gm) ?? []).join('\n');
+    expect(gapItems).not.toMatch(/must be linked/i);
+    // The resolution must be recorded, not silently dropped.
+    expect(gapItems).toMatch(/RESOLVED/);
+  });
+
   it('pinset provenance claims SOURCING only, never real-token observation', () => {
     expect(playJwsKt).not.toMatch(/observed in the wild/i);
     expect(playJwsKt).not.toMatch(/currently in Play Integrity signing rotation/i);
