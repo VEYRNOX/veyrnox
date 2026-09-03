@@ -29,6 +29,10 @@ vi.mock('@/rasp', async (importOriginal) => {
   };
 });
 
+// This suite invokes the page function directly to inspect its element tree,
+// so snapshot publication must stay outside React's hook dispatcher here.
+vi.mock('@/lib/useAdvisorSnapshot', () => ({ useAdvisorSnapshot: () => {} }));
+
 import React from 'react';
 globalThis.React = React;
 
