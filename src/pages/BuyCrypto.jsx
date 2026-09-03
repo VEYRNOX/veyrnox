@@ -198,20 +198,29 @@ export default function BuyCrypto() {
                 {selectedAsset ? (
                   <>
                     <CoinLogo symbol={selectedAsset} size={32} />
-                    <span>{BUYABLE_ASSETS.find(a => a.symbol === selectedAsset)?.name || selectedAsset} — {selectedAsset}</span>
+                    {(() => {
+                      const a = BUYABLE_ASSETS.find(x => x.symbol === selectedAsset);
+                      const disp = a?.displaySymbol || a?.symbol || selectedAsset;
+                      const chainLabel = a?.family === "erc20" ? "Ethereum" : a?.name;
+                      return <span>{disp}{chainLabel ? ` (${chainLabel})` : ""}</span>;
+                    })()}
                   </>
                 ) : null}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {BUYABLE_ASSETS.map((a) => (
-                <SelectItem key={a.symbol} value={a.symbol}>
-                  <div className="flex items-center gap-2">
-                    <CoinLogo symbol={a.symbol} size={20} />
-                    <span>{a.name} — {a.symbol}</span>
-                  </div>
-                </SelectItem>
-              ))}
+              {BUYABLE_ASSETS.map((a) => {
+                const disp = a.displaySymbol || a.symbol;
+                const chainLabel = a.family === "erc20" ? "Ethereum" : a.name;
+                return (
+                  <SelectItem key={a.symbol} value={a.symbol}>
+                    <div className="flex items-center gap-2">
+                      <CoinLogo symbol={a.symbol} size={20} />
+                      <span>{disp}{chainLabel ? ` (${chainLabel})` : ""}</span>
+                    </div>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>

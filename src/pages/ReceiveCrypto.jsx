@@ -202,23 +202,33 @@ export default function ReceiveCrypto() {
           <Select value={symbol} onValueChange={(v) => { setSymbol(v); setCopied(false); }}>
             <SelectTrigger className="mt-1.5 h-12 [&>span]:flex [&>span]:items-center [&>span]:gap-3" aria-labelledby="receive-asset-label">
               <SelectValue placeholder={t("receive.asset_placeholder")}>
-                {symbol ? (
-                  <>
-                    <CoinLogo symbol={symbol} size={32} />
-                    <span>{ASSETS.find(a => a.symbol === symbol)?.name || symbol} — {symbol}</span>
-                  </>
-                ) : null}
+                {(() => {
+                  if (!symbol) return null;
+                  const a = ASSETS.find(x => x.symbol === symbol);
+                  const disp = a?.displaySymbol || a?.symbol || symbol;
+                  const chainLabel = a?.family === "erc20" ? "Ethereum" : a?.name;
+                  return (
+                    <>
+                      <CoinLogo symbol={symbol} size={32} />
+                      <span>{disp}{chainLabel ? ` (${chainLabel})` : ""}</span>
+                    </>
+                  );
+                })()}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {ASSETS.map((a) => (
-                <SelectItem key={a.symbol} value={a.symbol}>
-                  <div className="flex items-center gap-2">
-                    <CoinLogo symbol={a.symbol} size={20} />
-                    <span>{a.name} — {a.symbol}</span>
-                  </div>
-                </SelectItem>
-              ))}
+              {ASSETS.map((a) => {
+                const disp = a.displaySymbol || a.symbol;
+                const chainLabel = a.family === "erc20" ? "Ethereum" : a.name;
+                return (
+                  <SelectItem key={a.symbol} value={a.symbol}>
+                    <div className="flex items-center gap-2">
+                      <CoinLogo symbol={a.symbol} size={20} />
+                      <span>{disp}{chainLabel ? ` (${chainLabel})` : ""}</span>
+                    </div>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>

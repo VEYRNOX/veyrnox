@@ -55,6 +55,14 @@ export default function WalletAssetPickerSheet({
                 const a = getAssetById(id);
                 const sym = a?.symbol || id;
                 const disp = a?.displaySymbol || sym;
+                // Match the Dashboard row label formula (WalletPortfolioPage.jsx:867):
+                // `DISPLAY (Chain)`. Chain comes from asset.name for native rows,
+                // hardcoded to "Ethereum" for erc20s (a.name there is the token
+                // brand — "USD Coin" / "Tether"). Keeping the two labels in lock-
+                // step so the same asset reads the same in the picker and on the
+                // home list. ponytail: if a third surface needs it, extract a
+                // shared `formatAssetLabel(a)` helper.
+                const chainLabel = a?.family === "erc20" ? "Ethereum" : a?.name;
                 const active = sym === selectedAssetSymbol;
                 return (
                   <button
@@ -65,7 +73,7 @@ export default function WalletAssetPickerSheet({
                     aria-pressed={active}
                   >
                     <CoinLogo symbol={sym} size={24} />
-                    <span className="flex-1 text-sm font-medium">{a?.name || sym} <span className="text-muted-foreground">— {disp}</span></span>
+                    <span className="flex-1 text-sm font-medium">{disp}{chainLabel ? <span className="text-muted-foreground"> ({chainLabel})</span> : null}</span>
                     {active && <span className="text-[10px] uppercase tracking-widest text-primary">Selected</span>}
                   </button>
                 );
