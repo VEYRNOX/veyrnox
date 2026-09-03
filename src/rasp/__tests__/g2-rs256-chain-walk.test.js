@@ -69,7 +69,11 @@ describe('G2 RS256 — x5c chain-walk (PlayIntegrityJwsVerifier.kt regression pi
     // cert in the chain must be extracted and pinned via verifyRootCertFingerprint;
     // pin-miss fails closed (no issuer-string bypass).
     expect(src).toContain('chain[chainLen - 1]');
-    expect(src).toMatch(/verifyRootCertFingerprint\s*\(\s*rootCert\s*\)/);
+    // S-3 (2026-09-03): the call gained a second argument, `extraTrustedRoots`,
+    // when the process-wide mutable test-seam set was removed. rootCert must
+    // still be the FIRST argument — that is what this pin is for; the trailing
+    // argument list is deliberately not over-specified.
+    expect(src).toMatch(/verifyRootCertFingerprint\s*\(\s*rootCert\s*[,)]/);
     // Regression guard: the removed issuer-string fallback must not sneak back in.
     expect(src).not.toContain('.subjectX500Principal');
     expect(src).not.toMatch(/issuer[^\n]*\.contains\("Google"/);
