@@ -98,10 +98,17 @@ export default function AssetCorrelationTimeline() {
   // with the runtime guard inside fetchOHLCV itself).
   const livePricesOn = isLivePricesEnabled() && !isDeniabilityOrDemoActive();
 
-  // News sentiment (always fetched — no price data required)
+  // News sentiment — gated on the SAME I3 helper as the OHLCV queries below.
+  // Previously "always fetched — no price data required", which leaked a
+  // network call from decoy/hidden/demo. The sentiment records are an
+  // ambient tell too, not just the OHLCV: any egress here proves the app
+  // is running and networked, defeating the deniability posture the sibling
+  // queries below carefully preserve.
+  const newsQueryEnabled = !isDeniabilityOrDemoActive();
   const { data: newsSentiments = [], isError: newsError } = useQuery({
     queryKey: ["news-sentiments"],
     queryFn: () => base44.entities.NewsSentiment.list("-created_date", 20),
+    enabled: newsQueryEnabled,
   });
 
   // OHLCV queries — gated on live prices being enabled

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Info } from "lucide-react";
+import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 
 // Realistic correlation coefficients between major crypto assets
 const CORRELATIONS = {
@@ -37,7 +38,16 @@ function getLabel(value) {
 
 export default function CorrelationMatrix() {
   const [hovered, setHovered] = useState(null);
-  const { data: wallets = [] } = useQuery({ queryKey: ["wallets"], queryFn: () => base44.entities.Wallet.list() });
+  // I3 zero-egress: skip the wallet fetch entirely in decoy/hidden/demo.
+  // Without this the page enumerated real wallets even in a coerced session
+  // (only used to bias which columns show up in the matrix, but the network
+  // call itself is the leak). Sibling page AssetCorrelationTimeline already
+  // gates its OHLCV queries on the same helper — matching that discipline.
+  const { data: wallets = [] } = useQuery({
+    queryKey: ["wallets"],
+    queryFn: () => base44.entities.Wallet.list(),
+    enabled: !isDeniabilityOrDemoActive(),
+  });
 
   const myAssets = [...new Set(wallets.map(w => w.currency).filter(c => ALL_ASSETS.includes(c)))];
   const assets = myAssets.length >= 2 ? myAssets : ALL_ASSETS;
