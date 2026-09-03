@@ -64,6 +64,94 @@ Parse the JSON output. Extract all vulnerabilities with:
 - Fixed version (if available)
 - Whether it's a direct dependency or transitive
 
+### Step 1b — Read the accepted-residuals list BEFORE deciding anything (MANDATORY)
+
+Read `.claude/scheduled-tasks/veyrnox-daily-dep-audit/SKILL.md` **from `origin/main`, not
+the working tree**, and find its `## Accepted residuals` section. It is the single source
+of truth for which advisories have already been reviewed and consciously accepted, and it
+carries the reasoning, the revisit trigger, and the watcher for each. Without it this task
+can open a PR "fixing" a finding whose fix is known to be broken.
+
+```bash
+git show origin/main:.claude/scheduled-tasks/veyrnox-daily-dep-audit/SKILL.md > "${TMPDIR:-/tmp}/vx-residuals.md"
+git cat-file -s origin/main:.claude/scheduled-tasks/veyrnox-daily-dep-audit/SKILL.md
+```
+
+**Read the list each run; do not hardcode its contents here.** As of 2026-09-03 one root
+is accepted — `elliptic`, 5 low — but that number has moved twice in a month. Only
+entries under `## Accepted residuals` suppress anything; `## Retired residuals` is history
+and must never match.
+
+Rules, in order of importance:
+
+1. **Never spawn a fix agent, open a PR, or propose a remediation for an advisory whose
+   root package is on that list.** Suppression is scoped by ROOT package name: if a
+   finding traces back to an accepted root through its `via` chain, it is covered.
+2. **Report accepted residuals as accepted, never as new.** Name each suppressed root, its
+   count, and its watcher. Never omit the suppression — a finding that vanishes without a
+   trace is what I4 (fail honest) forbids.
+3. **Escalate rather than suppress** if a listed residual appears ABOVE its recorded max
+   severity, or if a NEW root appears that is not on the list. Those are the cases this
+   task exists for, and they keep the full fix-agent and PR flow.
+4. If reading that file fails, say so and suppress NOTHING — report everything and note
+   the residuals list was unreadable. Fail honest, fail closed.
+
+### Step 1c — Short-circuit when there is nothing new
+
+Evaluate this immediately after Step 1b, BEFORE Step 2. Short-circuit if ALL of:
+
+- every advisory `npm audit` reported traces to a root on the accepted-residuals list; AND
+- none of them exceeds its recorded max severity; AND
+- no new root appeared.
+
+**An advisory can trace to MORE THAN ONE root — handle that explicitly.** It is covered if
+**ANY** of its mapped roots permits its severity. It has escalated only if its severity
+exceeds **EVERY** one of them. Comparing against each root independently is wrong and
+produces false escalations. Verified case, 2026-07-28: `@appium/base-driver` was HIGH and
+traced to both `shell-quote` (recorded high) and `body-parser` (recorded low) — it was
+covered by `shell-quote`, and a per-root comparison wrongly flagged it as
+"high > recorded low". That false positive was produced by a first cut of this very step,
+so do not re-derive the simpler rule. (Both of those roots have since been retired; the
+rule stands because the multi-root shape recurs, not because those packages still do.)
+
+If short-circuiting: report the counts, name each suppressed root with its count and
+watcher, state plainly that nothing new was found — then **stop**. Do NOT continue to
+Steps 2–5, do NOT commit, push, or open a PR. Clean up instead, from the primary
+directory:
+
+```bash
+cd "/Users/aljobson/Documents/GitHub/veyrnox"
+git worktree remove "${TMPDIR:-/tmp}/veyrnox-dep-audit"
+git branch -D "dep-audit/<DATE>"
+```
+
+Use the LITERAL branch name with `<DATE>` substituted, exactly as Step 0 built it — not
+`$branch`. Shell state does not survive between steps, so `$branch` is empty here and
+`git branch -D` would run with no argument: it errors harmlessly, the branch is never
+deleted, and the cleanup silently does not happen. (`git worktree remove` is fine — its
+path is a literal.)
+
+Removing the branch matters: Step 0 reuses `dep-audit/<DATE>` if it already exists, so an
+abandoned branch left behind would be picked up by a later run. Run `git worktree prune`
+too if the remove reports the worktree was already gone.
+
+**Why this exists.** When every advisory is an accepted residual, a no-change run is the
+EXPECTED outcome most weeks. Without this step the task opens a report-only PR every week
+forever, and a recurring no-op PR trains reviewers to stop reading these — which costs
+exactly the attention the escalation cases need.
+
+**This is a reporting short-circuit, not a silencer.** Still run and still produce the
+full report-and-PR flow whenever anything is genuinely new: a residual above its recorded
+severity, a root not on the list, any advisory in a security-critical package from the
+list above, or an unreadable residuals file (Step 1b rule 4). When in doubt, do NOT
+short-circuit — a redundant PR is a much cheaper mistake than a silent one.
+
+Note that Step 2 (`npm outdated` on security-critical packages) is skipped by this
+short-circuit. That is deliberate — it is an advisory-driven task — but it does mean a
+newly outdated `@noble`/`@scure`/`ethers` with no advisory attached will not be reported
+on a short-circuited week. If that becomes the thing you care about, move Step 2 above
+this gate rather than weakening the gate.
+
 ### Step 2 — Check for outdated critical packages
 ```
 npm outdated --json 2>&1

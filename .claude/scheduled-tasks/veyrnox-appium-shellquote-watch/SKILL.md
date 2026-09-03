@@ -48,6 +48,44 @@ So: **a version number is not evidence. Only the resolved tree is evidence.** Ne
 5. Run `npm audit --json` in the scratch dir and record the counts, plus which advisory roots remain.
 6. Separately, check whether the COMMITTED lockfile on `origin/main` still contains the nested `@appium/support` key — someone may have fixed it directly. Use `git fetch origin main` then read the file from `origin/main` (read-only; do not check anything out).
 
+## Known asymmetry: the fresh resolve has FEWER nested entries than the committed lockfile
+
+Measured 2026-07-28, and expected — do not read it as movement:
+
+- committed `package-lock.json`: **295** `node_modules/appium-uiautomator2-driver/node_modules/*` entries
+- fresh `npm install --package-lock-only` of the same `package.json`: **258**
+
+The 37 that disappear are the nested `@appium/docutils` subtree and its dependency
+closure (`yargs`, `chalk`, `ansi-*`, `consola`, `yaml`, `tslib`, …). This is the same
+instability CLAUDE.md records from the other direction — "a full `npm install` re-adds
+~37 nested `appium-uiautomator2-driver/node_modules/*` entries".
+
+Consequences, in order of importance:
+
+1. **The four keys in step 4 all SURVIVE the re-resolve.** Verified 2026-07-28:
+   `@appium/support` is PRESENT in both the committed lockfile and the fresh resolve, as
+   are the other three. The triggers below are therefore sound. Had the re-resolve
+   dropped the nested `@appium/support` the way it drops `@appium/docutils`, trigger 1
+   would fire every single week for no reason — so if a future run reports that key
+   ABSENT, first confirm it is genuinely gone and not just this asymmetry widening.
+2. **The audit counts differ between the two lockfiles.** The committed lockfile carries
+   a nested `@appium/docutils@2.5.1` (the hoisted copy is the patched `2.5.2`); a fresh
+   resolve keeps only the hoisted one. That single package is the whole difference:
+   repo tree = 51 advisories / 32 high, fresh resolve = 50 / 31. Report the scratch-dir
+   number and say it is from the re-resolve — do NOT report it as a drop versus the
+   daily audit, which reads the committed lockfile.
+3. `@appium/docutils` is a `shell-quote`-chain member. Its appearance took that chain
+   from 3 findings to 4 on 2026-07-28. That is this nested entry, not upstream movement.
+4. The rest of the lockfile diff (~537 lines) is mostly `"dev": true` markers the
+   re-resolve drops, plus `optional`/`peer` entries such as `utf-8-validate`. Harmless
+   to the audit, but it is why a casual `--package-lock-only` run produces a large diff.
+
+*Preserved 2026-09-03 from `docs/scheduled-tasks/veyrnox-appium-shellquote-watch.md`,
+which was deleted in the same commit. This section existed ONLY in that copy — it was
+never in the runbook that ran. Retained because it documents a standing property of this
+repo's lockfile, not just this retired watcher.*
+
+
 ## Decision — trigger ONLY on resolved-tree evidence
 
 TRIGGER FIRED if ANY of these is true:
