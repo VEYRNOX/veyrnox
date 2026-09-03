@@ -35,6 +35,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useWallet } from "@/lib/WalletProvider";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 import { DEMO } from "@/api/demoClient";
 import {
   Bomb, AlertOctagon, ShieldOff, CheckCircle2,
@@ -161,6 +162,10 @@ export default function PanicWipe() {
   // users who have set no 2FA). The type-to-confirm + acknowledgement remain as the
   // intent check on top of re-auth. I4 fail-closed.
   const { requireTwoFactor, gateModal } = useActionGuard();
+
+  // Extremely generic on purpose — never expose whether panic-wipe is armed
+  // or which trigger is configured; that is a coercion oracle (see task rules).
+  useAdvisorSnapshot({ panic_wipe: { loaded: true } });
 
   // ----- setup card state -----
   const [pin, setPin] = useState("");

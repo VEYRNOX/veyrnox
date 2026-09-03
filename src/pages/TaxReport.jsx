@@ -6,6 +6,7 @@ import { FileText, Table2, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { safeFormat } from "@/lib/safeDate";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Raw CSV — date, type, asset, amount, fee, tx_hash only.
 // No fabricated cost basis, no invented USD rates.
@@ -55,6 +56,15 @@ export default function TaxReport() {
     downloadRawCSV(transactions);
     setExported(true);
   };
+
+  useAdvisorSnapshot({
+    tax_report: {
+      loading: isLoading,
+      error: isError,
+      transaction_count: transactions.length,
+      exported,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

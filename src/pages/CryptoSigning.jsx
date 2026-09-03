@@ -12,6 +12,7 @@ import { isDeniabilitySessionActive } from "@/wallet-core/deniabilitySession.js"
 import { getFreshRaspArtifact, TIER } from "@/rasp";
 import { presignGate } from "@/sign-gate/presign";
 import { LEVEL } from "@/risk/levels";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Public-value copy helper. This page NEVER holds a private key or mnemonic:
 // signing is scoped inside withPrivateKey(index, fn), which hands the key to the
@@ -40,6 +41,16 @@ export default function CryptoSigning() {
   const copy = makeCopy(setCopied);
 
   const address = accounts?.[0]?.address || "";
+
+  // Shell state only — never the message/payload, signer address, or signature.
+  useAdvisorSnapshot({
+    crypto_signing: {
+      signing_enabled: signingEnabled,
+      unlocked: isUnlocked,
+      has_signature: !!signature,
+      has_error: !!error,
+    },
+  });
 
   // H13: RASP pre-sign environment gate. Browser automation / WebDriver
   // (Playwright/Selenium) and other hostile-runtime tells must block signing

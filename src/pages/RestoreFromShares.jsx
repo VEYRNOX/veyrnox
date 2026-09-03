@@ -60,6 +60,7 @@ import {
   checkRecoveryPassphrase,
   RECOVERY_PASSPHRASE_MIN_LENGTH,
 } from "@/wallet-core/recoveryShare";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Native shard restore uses an 8-digit PIN as the new vault credential;
 // the KEK gate in WalletEntry re-wraps it under hardware before first sign.
@@ -129,6 +130,10 @@ export default function RestoreFromShares() {
 
   const envelopeA = useMemo(() => detectBundleEnvelope(shareA), [shareA]);
   const envelopeB = useMemo(() => detectBundleEnvelope(shareB), [shareB]);
+
+  // Sensitive-adjacent page (Shamir share restore): minimal snapshot only —
+  // no share contents, seed material, or PIN/passphrase state.
+  useAdvisorSnapshot({ restore_from_shares: { loaded: true } });
 
   // Clear every credential-shaped state on unmount so navigating away doesn't
   // leave a share/bundle passphrase/new-passphrase/PIN live on the React fiber.

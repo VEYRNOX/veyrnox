@@ -8,6 +8,7 @@ import ReferenceRateNote from "@/components/ReferenceRateNote";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 import { formatUsd, resolveLocale } from "@/lib/locale";
 import { getAssetById } from "@/wallet-core/assets";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const PERIODS = [
   { label: "30 Days Ago", key: "30d", days: 30 },
@@ -85,6 +86,17 @@ export default function PortfolioRewind() {
       const changePct = pastVal > 0 ? (change / pastVal) * 100 : 0;
       return { id, symbol, label, currentVal, pastVal, change, changePct };
     });
+
+  useAdvisorSnapshot({
+    portfolio_rewind: {
+      selected_period: selectedPeriod,
+      asset_count: assetBreakdown.length,
+      history_partial: !!historyPartial,
+      indeterminate: !!portfolio?.indeterminate,
+      prices_enabled: !!pricesEnabled,
+      unlocked: isUnlocked,
+    },
+  });
 
   if (!isUnlocked) {
     return (

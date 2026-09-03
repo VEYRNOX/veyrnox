@@ -23,6 +23,7 @@ import { getBalanceSats } from "@/wallet-core/btc/provider";
 import { getBalanceSol } from "@/wallet-core/sol/provider";
 import { copySecret } from "@/lib/copySecret";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // M15: build the clipboard-copy handler. The recovery phrase ("seed") is
 // sensitive and routes through copySecret, which schedules a 30 s best-effort
@@ -348,6 +349,10 @@ export default function HDWalletManager() {
   };
 
   const evmAddress = accounts[0]?.address || null;
+
+  // Sensitive-adjacent page (wallet derivation): minimal snapshot only — no
+  // derivation paths, account indices, or addresses.
+  useAdvisorSnapshot({ hd_wallet_manager: { loaded: true } });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

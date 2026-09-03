@@ -65,6 +65,7 @@ import OutcomeSteps, {
 } from "@/components/subscription/OutcomeSteps";
 import CancelOfferDialog from "@/components/subscription/CancelOfferDialog";
 import { useLocalePreferences } from "@/lib/useLocale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const CURRENT_BADGE = "bg-success/10 text-success border-success/20";
 
@@ -610,6 +611,17 @@ export default function Subscription() {
       </>
     );
   }
+
+  useAdvisorSnapshot({
+    subscription: {
+      current_tier: currentTier,
+      billing_period: billing,
+      is_native: isNative,
+      has_referral: hasReferral,
+      busy,
+      showing_outcome_preamble: outcomeStep !== null,
+    },
+  });
 
   // Outcome-first preamble: sell the result before showing a price. Skippable,
   // and never shown to someone who already subscribes.

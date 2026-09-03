@@ -29,6 +29,7 @@
 import { Cpu } from "lucide-react";
 import { STATUS } from "@/lib/featureCatalogue";
 import { useRaspArtifact, CONDITION, TIER } from "@/rasp";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Human-readable label for a CONDITION constant.
 const CONDITION_LABEL = {
@@ -93,6 +94,13 @@ export default function RaspSecurity() {
   const liveCondition = artifact?.condition;
   const liveConditionLabel = CONDITION_LABEL[liveCondition] ?? (liveCondition ?? "unavailable");
   const dotTone = DOT_TONE[liveTier] ?? "bg-caution";
+
+  useAdvisorSnapshot({
+    rasp_security: {
+      tier: liveTier,
+      condition: liveConditionLabel,
+    },
+  });
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6" data-testid="rasp-surface">

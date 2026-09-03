@@ -17,6 +17,7 @@ import { ShieldCheck, Sparkles, Lock, Check, Bot, Radar } from "lucide-react";
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";
 import { TIER, AI_SECURITY_PROTECTION_FEATURES } from "@/lib/tier";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const SECTIONS = [
   {
@@ -71,6 +72,12 @@ function FeatureTile({ feature, isUnlocked }) {
 export default function AiSecurityProtection() {
   const { currentTier } = useTier();
   const isUnlocked = currentTier === TIER.AI_SECURITY_PROTECTION;
+
+  useAdvisorSnapshot({
+    ai_security_protection: {
+      unlocked: isUnlocked,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-8 pb-10">

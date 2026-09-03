@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { classifyToken } from "@/wallet-core/evm/spam";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Representative inputs that exercise the REAL heuristics (no canned verdicts —
 // each is classified live by classifyToken when selected).
@@ -49,6 +50,14 @@ export default function TrustScore() {
     const { spam, reasons } = classifyToken(token);
     setResult({ token, spam, reasons });
   };
+
+  useAdvisorSnapshot({
+    trust_score: {
+      has_input: !!(symbol.trim() || name.trim()),
+      airdropped,
+      flagged: result?.spam ?? null,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

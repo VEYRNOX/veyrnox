@@ -26,6 +26,7 @@ import { Search, ShieldAlert, AlertTriangle, Info, Copy, Check, ServerCog } from
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { screenRecipient, isLocallyFlagged } from "@/wallet-core/evm/poison";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Verdict shapes — NONE asserts safety. The "clear" case is explicitly framed as
 // "not a guarantee", matching the simulation/preview language used app-wide.
@@ -120,6 +121,15 @@ export default function SuspiciousAddressChecker() {
   const copyAddr = () => { navigator.clipboard.writeText(address); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
   const cfg = result ? LEVEL_CFG[result.level] || LEVEL_CFG.info : null;
+
+  useAdvisorSnapshot({
+    suspicious_address_checker: {
+      has_input: address.trim().length > 0,
+      last_verdict_level: result?.level ?? null,
+      flagged: result?.flagged ?? false,
+      history_count: history.length,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

@@ -28,6 +28,7 @@ import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
 import { computeFeeAnalytics } from "@/analytics/feeAnalytics";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import Spinner from "@/components/Spinner";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Fee analytics mirrors the wallet's receivable assets (an asset needs a derived
 // address to have history). ETH is first/default — and is also the canonical
@@ -157,6 +158,16 @@ export default function FeeAnalytics() {
   const lockedLive = !liveDemo && data?.reason === "locked";
   const evmNoIndexer = data?.supported === false && data?.reason === "evm-no-indexer";
   const isErc20Empty = analytics?.available && analytics.paidTxCount === 0 && asset.family === "erc20";
+
+  useAdvisorSnapshot({
+    fee_analytics: {
+      selected_asset: asset.symbol,
+      loading: isLoading,
+      error: isError,
+      available: !!analytics?.available,
+      paid_tx_count: analytics?.paidTxCount ?? 0,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

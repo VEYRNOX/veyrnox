@@ -9,6 +9,7 @@ import ReferenceRateNote from "@/components/ReferenceRateNote";
 import CoinLogo from "@/components/CoinLogo";
 import { RefreshCw } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Crypto Net Worth (promoted from the honest-disabled NetWorth shell). Shows the
@@ -35,6 +36,16 @@ export default function NetWorthTracker() {
   // null amount/usd = indeterminate (read failed) → "—", never a misleading $0.
   const fmtUsd = (n) => (n == null ? "—" : live ? formatFiat(n, fiatCurrency, locale) : approxUsd(n));
   const allocation = buildAllocation(assetTotals);
+
+  useAdvisorSnapshot({
+    net_worth_tracker: {
+      asset_count: Object.keys(assetTotals).length,
+      price_basis: live ? "live" : "approximate",
+      incomplete,
+      loading: isLoading,
+      unlocked: isUnlocked,
+    },
+  });
 
   if (!isUnlocked) {
     return (

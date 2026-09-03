@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { ScanLine, AlertTriangle, CheckCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 
 function detectAnomalies(transactions) {
@@ -80,6 +81,16 @@ export default function AnomalyDetection() {
     : [];
   const dbAlerts = fraudAlerts.map(f => ({ id: f.id, type: f.alert_type, severity: f.severity, detail: f.description, usd: f.amount || 0, fromDB: true }));
   const allAlerts = scanResult ? [...activeAnomalies, ...dbAlerts] : dbAlerts;
+
+  useAdvisorSnapshot({
+    anomaly_detection: {
+      has_scanned: !!scanResult,
+      is_loading: isLoading,
+      is_error: isError,
+      alert_count: allAlerts.length,
+      critical_count: allAlerts.filter((a) => a.severity === "critical").length,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

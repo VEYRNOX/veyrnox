@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useWallet } from "@/lib/WalletProvider";
 import Spinner from "@/components/Spinner";
 import { useActionGuard } from "@/components/security/useActionGuard";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 function getDeviceIcon(ua) {
   if (!ua) return <Globe className="h-4 w-4" />;
@@ -73,6 +74,15 @@ export default function SessionManager() {
 
   const activeSessions = sessions.filter(s => s.status !== "revoked");
   const revokedSessions = sessions.filter(s => s.status === "revoked");
+
+  useAdvisorSnapshot({
+    session_manager: {
+      active_count: activeSessions.length,
+      revoked_count: revokedSessions.length,
+      loading: isLoading,
+      has_error: isError,
+    },
+  });
 
   if (isLoading) return <Spinner size="lg" className="py-20" />;
 

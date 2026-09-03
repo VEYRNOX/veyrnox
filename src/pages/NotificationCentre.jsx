@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useNotifications } from "@/notify/useNotifications";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const TABS = ["All", "Alerts", "Security", "Fraud"];
 
@@ -67,6 +68,14 @@ export default function NotificationCentre() {
   ].sort((a, b) => (b.time ? new Date(b.time).getTime() : 0) - (a.time ? new Date(a.time).getTime() : 0));
 
   const filtered = tab === "All" ? allNotifications : allNotifications.filter(n => n.category === tab);
+
+  useAdvisorSnapshot({
+    notification_centre: {
+      active_tab: tab,
+      total_count: allNotifications.length,
+      filtered_count: filtered.length,
+    },
+  });
 
   const severityStyle = {
     critical: "text-destructive bg-destructive/10",

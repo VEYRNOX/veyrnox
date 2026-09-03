@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 
 export default function WatchWallets() {
@@ -33,6 +34,13 @@ export default function WatchWallets() {
   const copyAddr = (addr, id) => { navigator.clipboard.writeText(addr); setCopied(id); setTimeout(() => setCopied(null), 1500); };
 
   const EXPLORERS = { Ethereum: "https://etherscan.io/address/", Bitcoin: "https://blockstream.info/address/", Solana: "https://solscan.io/account/", Polygon: "https://polygonscan.com/address/" };
+
+  useAdvisorSnapshot({
+    watch_wallets: {
+      wallet_count: displayed.length,
+      error: isError,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

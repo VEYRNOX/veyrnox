@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Info } from "lucide-react";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Realistic correlation coefficients between major crypto assets
 const CORRELATIONS = {
@@ -53,6 +54,13 @@ export default function CorrelationMatrix() {
   const assets = myAssets.length >= 2 ? myAssets : ALL_ASSETS;
 
   const hoveredVal = hovered ? CORRELATIONS[hovered[0]]?.[hovered[1]] : null;
+
+  useAdvisorSnapshot({
+    correlation_matrix: {
+      asset_count: assets.length,
+      hovered_pair: hovered ? `${hovered[0]}-${hovered[1]}` : null,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

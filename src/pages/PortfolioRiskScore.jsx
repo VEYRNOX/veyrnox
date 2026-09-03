@@ -3,6 +3,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { Zap } from "lucide-react";
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from "@/lib/recharts";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const VOLATILITY = { BTC: 0.65, ETH: 0.75, SOL: 0.85, USDC: 0.01, USDT: 0.01 };
 
@@ -52,6 +53,16 @@ export default function PortfolioRiskScore() {
   if (volatilityScore > 7) recs.push("Consider adding stablecoins to reduce volatility exposure.");
   if (diversificationScore > 5) recs.push("Hold more than 3 different assets to spread risk.");
   if (recs.length === 0) recs.push("Your portfolio risk profile looks healthy. Keep it up!");
+
+  useAdvisorSnapshot({
+    portfolio_risk_score: {
+      unlocked: isUnlocked,
+      has_holdings: totalUSD > 0,
+      overall_score: overallScore,
+      risk_label: risk.label,
+      indeterminate: !!portfolio?.indeterminate,
+    },
+  });
 
   if (!isUnlocked) {
     return (

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { trackEvent, EVENT } from '@/api/trackEvent';
+import { useAdvisorSnapshot } from '@/lib/useAdvisorSnapshot';
 import {
   generateCode,
   getEphemeralCode,
@@ -354,6 +355,18 @@ export default function ReferralTracker() {
 
   const tierInfo = getTierInfo(dPaid);
   const displayTiers = [...TIERS].reverse();
+
+  // Only the already I3-gated `d*` display values feed the snapshot — never
+  // the raw state — so a decoy/hidden session's own display-time gate is
+  // never bypassed even if the hook's own I3 check were somehow skipped.
+  useAdvisorSnapshot({
+    referral_tracker: {
+      tier: dTier,
+      redeemed: dRedeemed,
+      sync_status: syncFailed ? 'failed' : dSyncedAt ? 'synced' : 'syncing',
+      has_earnings: !!(dEarnings && dEarnings.count > 0),
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

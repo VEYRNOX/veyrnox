@@ -20,6 +20,7 @@ import {
   ENVELOPE_TYPE_BUNDLE,
 } from "@/wallet-core/recoveryShare";
 import { markPersonalBackupExported } from "@/lib/personalBackupState";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 import {
   markBackupCompleted,
   markBackupPendingConfirmation,
@@ -1031,6 +1032,14 @@ export default function PersonalBackup() {
     })();
     return () => { live = false; };
   }, []);
+
+  useAdvisorSnapshot({
+    personal_backup: {
+      tab,
+      has_safety_plus: hasSafetyPlus,
+      shard_export_ready: shardExportReady,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-5">

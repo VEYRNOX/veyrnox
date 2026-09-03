@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { notifyFraudAlert } from "@/notify/sources";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // ---------------------------------------------------------------------------
 // Anomaly detection — same 3-check logic as AnomalyDetection.jsx.
@@ -238,6 +239,16 @@ export default function FraudDetection() {
 
   const totalFindings = liveFindings.length + dbAlerts.length;
   const hasScanned = scanResult !== null;
+
+  useAdvisorSnapshot({
+    fraud_detection: {
+      has_scanned: hasScanned,
+      is_loading: isLoading,
+      is_error: isError,
+      total_finding_count: totalFindings,
+      critical_count: [...liveFindings, ...dbAlerts].filter((a) => a.severity === "critical").length,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
