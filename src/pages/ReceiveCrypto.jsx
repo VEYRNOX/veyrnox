@@ -12,7 +12,9 @@ import { DEMO } from "@/api/demoClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Copy, CheckCircle2, Lock, Clock, AlertTriangle, ArrowRight } from "lucide-react";
+import { Copy, CheckCircle2, Lock, Clock, AlertTriangle, ArrowRight, Share2 } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
 import QRCodeDisplay from "../components/QRCodeDisplay";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import CoinLogo from "@/components/CoinLogo";
@@ -140,6 +142,35 @@ export default function ReceiveCrypto() {
     }
   };
 
+  // Native share sheet on iOS/Android via Capacitor Share plugin; Web Share
+  // API on web when the browser supports it; fall back to copyAddress otherwise
+  // so the button is never a dead end. Deniable-session clipboard hygiene
+  // only applies to the copy fallback (the native sheet doesn't touch the
+  // clipboard). ponytail: single share text is the address; add a link/QR
+  // image only if the UX asks for it later.
+  const shareAddress = async () => {
+    if (!r?.address) return;
+    const text = r.address;
+    const title = t("receive.actions.share_dialog_title");
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Share.share({ title, text, dialogTitle: title });
+        return;
+      }
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({ title, text });
+        return;
+      }
+      await copyAddress();
+    } catch (err) {
+      // User dismissal is not an error — Capacitor rejects with a "canceled"
+      // shape, Web Share throws AbortError. Neither should toast.
+      const msg = String(err?.message || err || "");
+      if (/cancel|abort/i.test(msg) || err?.name === "AbortError") return;
+      toast.error(t("receive.actions.share_failed_toast"));
+    }
+  };
+
   // Per-asset "only send X here" guidance. The ERC-20 case is the dangerous one:
   // the address is the shared EVM address, so the network must be spelled out or a
   // user can lose a token by sending it on the wrong EVM chain.
@@ -225,12 +256,16 @@ export default function ReceiveCrypto() {
         {/* Ready: show the QR, the unmistakable network label, the address + copy. */}
         {r && r.address && (
           <div className="space-y-4">
-            {/* Unmistakable asset + network header */}
+            {/* Unmistakable asset + network header. The name/icon links to
+                the Home dashboard so a viewer who deep-linked in via
+                ?asset=X (no BackButton in that path) still has a one-tap
+                return, and users who navigated in via the selector get a
+                consistent affordance. */}
             <div className="text-center space-y-1.5">
-              <div className="flex items-center justify-center gap-2">
+              <Link to="/" className="inline-flex items-center justify-center gap-2 hover:text-primary transition-colors" aria-label={t("receive.locked.open_hd_wallet")}>
                 <CoinLogo symbol={r.asset.symbol} size={22} />
                 <p className="text-sm font-semibold">{t("receive.your_address", { asset: r.asset.name })}</p>
-              </div>
+              </Link>
               <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1">
                 <span className="text-xs font-medium">{r.network?.name || r.asset.chain}</span>
                 {r.network?.isTestnet && (
@@ -255,9 +290,24 @@ export default function ReceiveCrypto() {
               transition={reduceMotion ? { duration: 0 } : { duration: 0.28, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
             >
               <p className="text-[11px] text-muted-foreground text-center mb-1">{t("receive.receive_address_label", { symbol: r.asset.symbol })}</p>
-              <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2.5">
-                <code className="mono-value text-xs flex-1 break-all">{r.address}</code>
-                <Button size="icon" variant="ghost" className="relative h-11 w-11 shrink-0" onClick={copyAddress} aria-label={copied ? t("receive.copy.copied_aria") : t("receive.copy.copy_aria")}>
+              <div className="bg-secondary rounded-lg px-3 py-2.5">
+                <code className="mono-value text-xs block break-all text-center">{r.address}</code>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="h-12 gap-2"
+                  onClick={shareAddress}
+                  aria-label={t("receive.actions.share")}
+                >
+                  <Share2 className="h-4 w-4" />
+                  {t("receive.actions.share")}
+                </Button>
+                <Button
+                  className="h-12 gap-2"
+                  onClick={copyAddress}
+                  aria-label={copied ? t("receive.copy.copied_aria") : t("receive.copy.copy_aria")}
+                >
                   <AnimatePresence mode="wait" initial={false}>
                     {copied ? (
                       <motion.span
@@ -266,9 +316,10 @@ export default function ReceiveCrypto() {
                         animate={{ scale: 1, opacity: 1 }}
                         exit={reduceMotion ? { opacity: 0 } : { scale: 0.7, opacity: 0 }}
                         transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 18 }}
-                        className="flex"
+                        className="inline-flex items-center gap-2"
                       >
-                        <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                        <CheckCircle2 className="h-4 w-4" />
+                        {t("receive.actions.copied")}
                       </motion.span>
                     ) : (
                       <motion.span
@@ -277,9 +328,10 @@ export default function ReceiveCrypto() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.15 }}
-                        className="flex"
+                        className="inline-flex items-center gap-2"
                       >
-                        <Copy className="h-3.5 w-3.5" />
+                        <Copy className="h-4 w-4" />
+                        {t("receive.actions.copy")}
                       </motion.span>
                     )}
                   </AnimatePresence>

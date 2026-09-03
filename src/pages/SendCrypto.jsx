@@ -42,7 +42,7 @@ import { toast } from "@/lib/toast";
 import { successHaptic, errorHaptic, actionHaptic } from "@/lib/haptics";
 import { parseEther, parseUnits } from "ethers";
 import { useWallet } from "@/lib/WalletProvider";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { signAndBroadcast } from "@/wallet-core/evm/send";
 import { MAX_BASE_FEE_GWEI, evmFeeOverrides } from "@/wallet-core/evm/fees";
 import { getBalanceEth } from "@/wallet-core/evm/provider";
@@ -359,6 +359,17 @@ export default function SendCrypto() {
   const [assetSymbol, setAssetSymbol] = useState(searchParams.get("asset") ?? "");
   const [toAddress, setToAddress] = useState("");
   const [amount, setAmount] = useState("");
+  // Fiat/crypto input toggle. `amount` (crypto, canonical) stays the single
+  // source of truth for every downstream gate/send site — flipping the toggle
+  // only changes what the input renders and how typed characters are
+  // interpreted. `fiatDraft` holds the raw fiat string ONLY while
+  // amountMode === 'fiat' so decimal typing is smooth (typing "1.2" doesn't
+  // round-trip through crypto and back to "1.19999"). Toggle is hidden when
+  // no USD rate is available (I4 — never allow a fiat entry against a
+  // fabricated rate). Deniable-session note: `sendUsdRate` is already gated
+  // by the same policy as balanceUsd above; no extra guard needed here.
+  const [amountMode, setAmountMode] = useState('crypto');
+  const [fiatDraft, setFiatDraft] = useState("");
   // LOCALE-AWARE CANONICAL FORM of the raw input, for every DERIVE / GATE / SEND
   // site below. A de-DE / fr-FR / es-ES user who types "1,5" needs the same
   // Continue button to work as an en-US user typing "1.5" — but the downstream
@@ -2111,7 +2122,30 @@ export default function SendCrypto() {
           />
         )}
         <div>
-          <Label htmlFor="send-amount">{tw("send.amount.label")}</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="send-amount">{tw("send.amount.label")}</Label>
+            {sendUsdRate != null && selectedWallet && (
+              <button
+                type="button"
+                className="text-xs font-medium text-primary hover:underline underline-offset-2"
+                onClick={() => {
+                  setAmountMode((m) => {
+                    if (m === 'crypto') {
+                      const n = parseFloat(canonicalAmount);
+                      setFiatDraft(Number.isFinite(n) && n > 0 && sendUsdRate ? (n * sendUsdRate).toFixed(2) : "");
+                      return 'fiat';
+                    }
+                    return 'crypto';
+                  });
+                }}
+                aria-label={amountMode === 'crypto'
+                  ? tw("send.amount.mode_fiat_aria")
+                  : tw("send.amount.mode_crypto_aria", { currency: selectedWallet.currency })}
+              >
+                {amountMode === 'crypto' ? 'Switch to USD' : `Switch to ${selectedWallet.currency}`}
+              </button>
+            )}
+          </div>
           {(() => {
             // Which amount error applies — decided in one pure, tested helper
             // (lib/sendAmountError.js), the same shape as the address field. See that
@@ -2151,18 +2185,43 @@ export default function SendCrypto() {
                   // rejection has always been `isFormAmountWellFormed` +
                   // `sendAmountErrorKind` here and `toBaseUnits` on the send path,
                   // never the UA type (a spoofed DOM never bypassed the JS anyway).
+                  //
+                  // Fiat mode: value renders `fiatDraft` (raw typed string) so
+                  // decimal typing stays smooth; every keystroke also converts to
+                  // canonical crypto and writes `amount`, keeping downstream
+                  // validators/gates authoritative. Empty/malformed fiat clears
+                  // `amount` so the "missing" / "malformed" messages fire on the
+                  // crypto value the same way they do in crypto mode.
                   type="text"
                   inputMode="decimal"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
+                  value={amountMode === 'fiat' ? fiatDraft : amount}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    if (amountMode === 'fiat') {
+                      setFiatDraft(raw);
+                      const parsed = parseFloat(normalizeDecimalInput(raw, resolveLocale()));
+                      if (raw === '' || !Number.isFinite(parsed) || !(sendUsdRate > 0)) {
+                        setAmount('');
+                      } else {
+                        setAmount(String(parsed / sendUsdRate));
+                      }
+                    } else {
+                      setAmount(raw);
+                    }
+                  }}
                   onBlur={() => setAmountTouched(true)}
-                  placeholder={tw("send.amount.placeholder")}
+                  placeholder={amountMode === 'fiat' ? tw("send.amount.fiat_placeholder") : tw("send.amount.placeholder")}
                   className="mt-1.5 mono-value"
                   aria-invalid={amountInvalid || undefined}
                   aria-describedby={amountInvalid ? "send-amount-error" : undefined}
                 />
-                {amountUsd != null && (
+                {amountMode === 'crypto' && amountUsd != null && (
                   <p className="text-xs text-muted-foreground mt-1"><span className="mono-value">{approxUsd(amountUsd)}</span> {tw("send.amount.being_sent")}</p>
+                )}
+                {amountMode === 'fiat' && Number.isFinite(usableAmountNum) && usableAmountNum > 0 && selectedWallet && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <span className="mono-value">{tw("send.amount.approx_crypto", { amount: usableAmountNum.toPrecision(6), currency: selectedWallet.currency })}</span> {tw("send.amount.being_sent")}
+                  </p>
                 )}
                 {selectedWallet && (
                   <p className="text-xs text-muted-foreground mt-1">
@@ -2318,10 +2377,18 @@ export default function SendCrypto() {
             just moved. `resetVerify()` on Back drops step-3 state + reauth. */}
         {step === "review" && (
           <div className="space-y-3">
-            {/* Summary */}
+            {/* Summary — the asset symbol links back to Home so a user
+                mid-review can jump to the dashboard without losing their
+                place in the flow (the confirm step re-derives state on
+                remount, so navigating away is intentional, not costly). */}
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-center">
               <p className="text-xs text-muted-foreground mb-1">{tw("send.verify.summary_label")}</p>
-              <p className="text-lg font-bold mono-value">{amount} {selectedWallet?.currency}</p>
+              <p className="text-lg font-bold mono-value">
+                {amount}{' '}
+                <Link to="/" className="underline underline-offset-2 hover:text-primary" aria-label={`Open ${selectedWallet?.currency || 'asset'} on the Home dashboard`}>
+                  {selectedWallet?.currency}
+                </Link>
+              </p>
               {amountUsd != null && <p className="text-xs text-muted-foreground mono-value">{approxUsd(amountUsd)}</p>}
               <p className="text-sm text-muted-foreground mono-value mt-1 break-all">{toAddress}</p>
             </div>
