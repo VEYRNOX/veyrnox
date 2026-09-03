@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "@/lib/toast";
 import { safeNftImageUrl } from "@/lib/nftImageUrl";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const CHAINS = [
   { id: "ethereum", label: "Ethereum", icon: "Ξ", color: "bg-secondary text-muted-foreground", marketplace: "https://opensea.io/assets/ethereum" },
@@ -67,6 +68,16 @@ export default function MultiChainNFT() {
   });
 
   const chain = (id) => CHAINS.find(c => c.id === id);
+
+  useAdvisorSnapshot({
+    multi_chain_nft: {
+      nft_count: nfts.length,
+      filter_chain: filterChain,
+      filter_status: filterStatus,
+      view_mode: viewMode,
+      dialog_open: showAdd,
+    },
+  });
 
   if (!nftQueryEnabled) {
     return (

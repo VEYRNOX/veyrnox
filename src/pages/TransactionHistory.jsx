@@ -17,6 +17,7 @@ import { fetchAssetHistory, explorerAddressUrl } from "@/lib/txHistory";
 import { isDeniabilitySessionActive, isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Only assets that derive a real address can have an address to look up. The
 // history view mirrors the wallet's receivable assets (coming_soon assets have no
@@ -279,6 +280,15 @@ export default function TransactionHistory() {
     for (const row of chainTxs) if (row.hash) byHash.set(row.hash, row); // chain wins
     return Array.from(byHash.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   }, [denySession, localRowsRaw, chainTxs, asset.symbol]);
+
+  useAdvisorSnapshot({
+    transaction_history: {
+      selected_asset: asset.symbol,
+      loading: isLoading,
+      error: isError,
+      tx_count: txs.length,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

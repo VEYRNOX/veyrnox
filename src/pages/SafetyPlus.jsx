@@ -15,6 +15,7 @@ import { ShieldCheck, TrendingUp, Lock, Sparkles, ArrowRight, Check } from "luci
 import BackButton from "@/components/BackButton";
 import { useTier } from "@/lib/TierProvider";
 import { hasSafetyPlusAccess, TIER } from "@/lib/tier";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Safety Plus hub, grouped by nav section to mirror the public plans page at
 // https://veyrnox.com/plans. Every route below is in the SAFETY_PLUS_ROUTES
@@ -87,6 +88,14 @@ export default function SafetyPlus() {
   const { currentTier } = useTier();
   const isUnlocked = hasSafetyPlusAccess(currentTier);
   const isAiPlan = currentTier === TIER.AI_SECURITY_PROTECTION;
+
+  useAdvisorSnapshot({
+    safety_plus: {
+      unlocked: isUnlocked,
+      is_ai_plan: isAiPlan,
+      section_count: SECTIONS.length,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-8 pb-10">

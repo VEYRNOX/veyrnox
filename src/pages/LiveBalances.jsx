@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Networks come straight from the wallet-core EVM registry — the SAME source
 // send / receive / tx-history read from. listEnabledNetworks() returns only
@@ -109,6 +110,16 @@ export default function LiveBalances() {
 
   const net = NETWORKS.find((n) => n.id === network);
   const hasRegistryTokens = Object.keys(TOKENS[network] || {}).length > 0;
+
+  useAdvisorSnapshot({
+    live_balances: {
+      network,
+      loading,
+      error: !!error,
+      has_result: !!data,
+      token_count: tokens.length,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

@@ -8,6 +8,7 @@ import { toast } from "@/lib/toast";
 import { useNavigate } from "react-router";
 import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 import { connectWalletConnectImportPreview } from "@/lib/walletConnectAppSdk";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const PROVIDERS = [
   {
@@ -139,6 +140,16 @@ export default function ConnectWallet() {
       setConnecting(null);
     }
   };
+
+  useAdvisorSnapshot({
+    connect_wallet: {
+      connecting_provider: connecting,
+      preview_provider: preview?.provider?.id ?? null,
+      preview_asset_count: preview?.assets?.length ?? 0,
+      imported,
+      importing: importMutation.isPending,
+    },
+  });
 
   if (imported) {
     return (

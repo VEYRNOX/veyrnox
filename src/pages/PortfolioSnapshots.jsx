@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "@/lib/recharts";
 import { toast } from "@/lib/toast";
 import { formatUsd, resolveLocale } from "@/lib/locale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 
 export default function PortfolioSnapshots() {
@@ -37,6 +38,15 @@ export default function PortfolioSnapshots() {
   const previous = snapshots[1];
   const change = latest && previous ? latest.total_usd - previous.total_usd : null;
   const changePct = change != null && previous ? (change / previous.total_usd) * 100 : null;
+
+  useAdvisorSnapshot({
+    portfolio_snapshots: {
+      snapshot_count: snapshots.length,
+      has_chart_data: chartData.length > 1,
+      dialog_open: showSave,
+      unlocked: isUnlocked,
+    },
+  });
 
   if (!isUnlocked) {
     return (

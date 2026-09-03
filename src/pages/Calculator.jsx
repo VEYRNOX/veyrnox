@@ -12,6 +12,7 @@ import { useWallet } from "@/lib/WalletProvider";
 import { DEMO } from "@/api/demoClient";
 import Spinner from "@/components/Spinner";
 import { formatCryptoAmount, parseLocaleNumber, resolveLocale } from "@/lib/locale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const FIATS = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY"];
 
@@ -108,6 +109,16 @@ export default function Calculator() {
   // deniability session this is false, surfacing the neutral "Live prices off"
   // static state (no error tell).
   const livePricesOn = pricesEnabled;
+
+  useAdvisorSnapshot({
+    calculator: {
+      from_crypto: fromCrypto,
+      to_fiat: toFiat,
+      live_prices_on: livePricesOn,
+      loading: isLoading,
+      error: isError,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

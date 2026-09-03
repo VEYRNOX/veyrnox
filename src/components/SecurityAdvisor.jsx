@@ -553,6 +553,34 @@ The advisor can help the user understand transaction details, confirmation times
     questionsKey: 'general',
     pageContext: `The user is on a DOCUMENTATION or EXPLANATION page. This surface is educational, so the advisor should clarify terminology, explain security tradeoffs, and keep the app's honesty rules intact: BUILT is not verified.`,
   },
+  price_alerts: {
+    questionsKey: 'analytics',
+    pageContext: `The user is on the PRICE ALERTS page — configuring notifications when an asset hits a target price. Informational only: a triggered alert does NOT sign or send anything. Price data comes from external sources and can lag or diverge from a block explorer.`,
+  },
+  audit_log: {
+    questionsKey: 'device_security',
+    pageContext: `The user is on the AUDIT LOG page — a local record of security-relevant app events (unlock attempts, RASP triggers, gate decisions, PIN changes, KEK enrollment, panic/duress events). The log is device-local, not uploaded. Help the user distinguish app-local events from blockchain activity; a suspicious entry is a signal to investigate, not proof of compromise.`,
+  },
+  invoices: {
+    questionsKey: 'finance',
+    pageContext: `The user is on the INVOICE GENERATOR page — building payment requests (address + amount + memo) to share with a counterparty. Nothing is signed or sent here; an invoice is an ASK, not a transaction. Verify the address every time before sharing, treat memos as public, and warn that a shared invoice can be tampered with in transit — the receiver should confirm the address on the actual receive screen before paying.`,
+  },
+  voice_commands: {
+    questionsKey: 'settings',
+    pageContext: `The user is on the VOICE COMMANDS page — configuring or reviewing voice control. Voice input is a convenience surface: never a substitute for the PIN/biometric gate on signing, and it cannot approve or send funds on its own. Warn: microphones can be overheard — never speak seed phrases, PINs, or recovery answers out loud.`,
+  },
+  price_charts: {
+    questionsKey: 'portfolio',
+    pageContext: `The user is on the PRICE CHARTS page — historical price and market data across supported assets. Informational only; nothing here signs, sends, or changes on-chain state. Historic price data is not a prediction; on-chain balances must always be verified against a block explorer, not a chart.`,
+  },
+  ai_security_protection: {
+    questionsKey: 'subscription',
+    pageContext: `The user is on the AI SECURITY PROTECTION page — the highest paid tier, which unlocks live online answers from the Vigil advisor on top of everything in Safety Plus. Free and Safety Plus still get local Vigil guidance; AI Security Protection adds the online chat path (TIP-backed) with a higher per-device chat cap. Never imply upgrading makes the wallet itself more secure — the core controls (KEK, RASP, vault, threat screening) are the same across tiers.`,
+  },
+  onboarding_recovery: {
+    questionsKey: 'recovery',
+    pageContext: `The user is on the ONBOARDING RESTORE-FROM-SHARES page — recovering a wallet from Personal Backup shares. Coercion-sensitive, seed-adjacent flow. Reinforce: never enter shares on a device you do not control, verify the recovery completes to a KNOWN address before trusting it with funds, and remember a successful restore reproduces the seed — anyone with the resulting seed controls the funds.`,
+  },
   general: {
     questionsKey: 'general',
     pageContext: `The user is browsing the Veyrnox wallet app. Veyrnox is a self-custody, coercion-resistant crypto wallet supporting ETH, MATIC, ARB, OP, AVAX, BNB, BTC, SOL, USDC, and USDT. Key features: hardware-bound encryption (KEK), RASP tamper detection, deniability mode with duress PINs, vault with AES-256-GCM + Argon2id, and built-in threat intelligence screening.`,
@@ -636,6 +664,13 @@ const ROUTE_SCREEN_MAP = {
   '/verify': 'docs',
   '/what-this-protects': 'docs',
   '/terms-legal': 'docs',
+  '/alerts': 'price_alerts',
+  '/price-charts': 'price_charts',
+  '/audit-log': 'audit_log',
+  '/invoices': 'invoices',
+  '/voice-commands': 'voice_commands',
+  '/ai-security-protection': 'ai_security_protection',
+  '/onboarding/restore-shares': 'onboarding_recovery',
 };
 
 export function resolveScreen(pathname) {

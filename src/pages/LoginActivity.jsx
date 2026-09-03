@@ -35,6 +35,7 @@ import { Activity, Monitor, Smartphone, Globe, Clock, Info } from "lucide-react"
 import { base44 } from "@/api/base44Client";
 import { useWallet } from "@/lib/WalletProvider";
 import Spinner from "@/components/Spinner";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 function getDeviceIcon(ua) {
   if (!ua) return <Globe className="h-4 w-4" />;
@@ -102,6 +103,16 @@ export default function LoginActivity() {
 
   const activeSessions = sessions.filter((s) => s.status !== "revoked");
   const revokedSessions = sessions.filter((s) => s.status === "revoked");
+
+  useAdvisorSnapshot({
+    login_activity: {
+      active_device_count: activeSessions.length,
+      revoked_device_count: revokedSessions.length,
+      has_prior_session: !!lastUnlockAt,
+      loading: isLoading,
+      has_error: isError,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6" data-testid="login-activity">

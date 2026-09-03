@@ -13,6 +13,7 @@ import Spinner from "@/components/Spinner";
 import { safeNftImageUrl } from "@/lib/nftImageUrl";
 import { formatCryptoAmount, resolveLocale } from "@/lib/locale";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const CHAIN_COLORS = { ethereum: "bg-secondary text-muted-foreground", solana: "bg-secondary text-muted-foreground", polygon: "bg-secondary text-muted-foreground", base: "bg-secondary text-muted-foreground" };
 const STATUS_COLORS = { holding: "bg-success/10 text-success", listed: "bg-caution/10 text-caution", sold: "bg-muted text-muted-foreground" };
@@ -53,6 +54,16 @@ export default function NFTPortfolio() {
 
   const totalValueETH = nfts.filter(n => n.status !== "sold").reduce((s, n) => s + (n.current_floor || n.purchase_price || 0), 0);
   const totalPnlETH = nfts.reduce((s, n) => s + ((n.current_floor || 0) - (n.purchase_price || 0)), 0);
+
+  useAdvisorSnapshot({
+    nft_portfolio: {
+      nft_count: nfts.length,
+      holding_count: nfts.filter(n => n.status === "holding").length,
+      listed_count: nfts.filter(n => n.status === "listed").length,
+      dialog_open: showAdd,
+      loading: isLoading,
+    },
+  });
 
   if (!nftQueryEnabled) {
     return (

@@ -4,6 +4,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import CoinLogo from "@/components/CoinLogo";
 import { summarizeSpending } from "@/lib/spendingPatterns";
 import Spinner from "@/components/Spinner";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Native-unit amount formatter (no fiat — see lib/spendingPatterns for why).
 const fmtAmount = (n) =>
@@ -17,6 +18,17 @@ export default function SpendingPatterns() {
 
   const { counts, byAsset, monthly, byDow } = summarizeSpending(transactions);
   const dowData = byDow.map((d) => ({ day: d.day, count: d.sent + d.received }));
+
+  useAdvisorSnapshot({
+    spending_patterns: {
+      tx_count: counts.total,
+      sent_count: counts.sent,
+      received_count: counts.received,
+      this_month_count: counts.thisMonth,
+      asset_count: byAsset.length,
+      loading: isLoading,
+    },
+  });
 
   if (isLoading) return <Spinner className="py-16" />;
 

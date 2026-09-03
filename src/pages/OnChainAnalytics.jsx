@@ -9,6 +9,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "@/l
 import { toast } from "@/lib/toast";
 import { safeFormat } from "@/lib/safeDate";
 import Spinner from "@/components/Spinner";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Derive on-chain stats from internal transaction history
 export default function OnChainAnalytics() {
@@ -52,6 +53,17 @@ export default function OnChainAnalytics() {
     if (t.type === "send") byCurrency[t.currency].sent += t.amount || 0;
     else if (t.type === "receive") byCurrency[t.currency].received += t.amount || 0;
     byCurrency[t.currency].count += 1;
+  });
+
+  useAdvisorSnapshot({
+    on_chain_analytics: {
+      tx_count: transactions.length,
+      confirmed_count: confirmedCount,
+      failed_count: failedCount,
+      pending_count: pendingCount,
+      searching,
+      loading: isLoading,
+    },
   });
 
   const lookupAddress = async () => {

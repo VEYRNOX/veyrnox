@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const CURRENCIES = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
@@ -56,6 +57,15 @@ export default function BudgetLimits() {
       .filter(tx => tx.type === "send" && tx.currency === budget.currency && new Date(tx.created_date) >= periodStart)
       .reduce((s, tx) => s + (tx.amount || 0), 0);
   };
+
+  useAdvisorSnapshot({
+    budget_limits: {
+      budget_count: budgets.length,
+      enabled_count: budgets.filter(b => b.enabled).length,
+      dialog_open: open,
+      selected_period: form.period,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

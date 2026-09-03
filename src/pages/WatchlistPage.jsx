@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TOP_SYMBOLS } from "@/lib/cryptos";
 import CoinLogo from "@/components/CoinLogo";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const POPULAR = TOP_SYMBOLS;
 
@@ -43,6 +44,15 @@ export default function WatchlistPage() {
     if (items.find(i => i.symbol === symbol)) return;
     add.mutate({ symbol, name: symbol });
   }
+
+  useAdvisorSnapshot({
+    watchlist_page: {
+      watched_count: items.length,
+      editing: editId != null,
+      dialog_open: open,
+      loading: isLoading,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">

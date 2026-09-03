@@ -9,6 +9,7 @@ import { toast } from "@/lib/toast";
 import { formatDistanceToNow } from "date-fns";
 import { safeFormat } from "@/lib/safeDate";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const ASSETS = ["BTC", "ETH", "USDT", "BNB", "SOL", "USDC", "XRP", "DOGE", "ADA", "TRX"];
 
@@ -66,6 +67,14 @@ export default function NewsSentimentPage() {
       toast.success(`Updated ${items.length} sentiment signals`);
     },
     onError: () => toast.error("Refresh failed"),
+  });
+
+  useAdvisorSnapshot({
+    news_sentiment: {
+      filter_asset: filterAsset,
+      item_count: allNews.length,
+      refreshing: refresh.isPending,
+    },
   });
 
   return (

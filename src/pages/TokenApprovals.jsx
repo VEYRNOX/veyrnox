@@ -16,6 +16,7 @@ import { toast } from "@/lib/toast";
 import { useActionGuard } from "@/components/security/useActionGuard";
 import { useRaspArtifact, sensitiveGate } from "@/rasp";
 import { getFreshLocalRaspArtifact } from "@/lib/getFreshLocalRaspArtifact";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const RISK_CFG = {
   low: { cls: "bg-success/10 text-success", label: "Low Risk" },
@@ -139,6 +140,16 @@ export default function TokenApprovals() {
 
   const visible = approvals.filter((a) => filter === "all" || a.status === filter);
   const activeHigh = approvals.filter((a) => a.status === "active" && a.risk === "high").length;
+
+  useAdvisorSnapshot({
+    token_approvals: {
+      filter,
+      approval_count: approvals.length,
+      active_high_risk_count: activeHigh,
+      monitor_alert_count: monitorAlerts.length,
+      is_loading: isLoading,
+    },
+  });
   const guardedRevoke = (approval) => {
     const gate = sensitiveGate(raspArtifact, 'sign');
     if (gate.blocked) {

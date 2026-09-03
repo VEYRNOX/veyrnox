@@ -40,12 +40,16 @@ import { Button } from '@/components/ui/button';
 import BackButton from '@/components/BackButton';
 import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { useBuyEnabled } from '@/lib/buy/useBuyEnabled';
+import { useAdvisorSnapshot } from '@/lib/useAdvisorSnapshot';
 
 export default function BuyInProgress() {
   const { t } = useTranslation('wallet');
   // Hooks first — see the note in BuyCrypto.jsx. useBuyEnabled subscribes to the
   // deniability event, so the gates below can flip mid-session.
   const buyEnabled = useBuyEnabled();
+  // Hook itself enforces I3, and this screen is I3-gated below too — call
+  // before the early returns so hook order stays fixed regardless of gates.
+  useAdvisorSnapshot({ buy_in_progress: { buy_enabled: buyEnabled } });
 
   // Render gates — deniability wins over any query string, and the ship gate
   // wins over the route being present in the bundle. `tid` is never read: there

@@ -1,9 +1,19 @@
 // @ts-nocheck
 import { Mic, MicOff, Volume2, CheckCircle, AlertCircle, Zap, ShieldAlert } from "lucide-react";
 import { useVoice, COMMANDS } from "@/context/VoiceContext";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 export default function VoiceCommands() {
   const { listening, supported, lastCommand, error, toggle } = useVoice();
+
+  useAdvisorSnapshot({
+    voice_commands: {
+      listening,
+      supported,
+      last_recognized: lastCommand ? !lastCommand.unrecognized : null,
+      error: !!error,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

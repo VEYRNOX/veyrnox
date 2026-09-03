@@ -21,6 +21,7 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import CoinLogo from "@/components/CoinLogo";
 import { toast } from "@/lib/toast";
 import { trackEvent, EVENT } from "@/api/trackEvent";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // RECEIVE FLOW
 //
@@ -188,6 +189,16 @@ export default function ReceiveCrypto() {
       sendOnNote = t("receive.network_notes.solana", { network: networkName });
     }
   }
+
+  useAdvisorSnapshot({
+    receive_crypto: {
+      selected_asset: symbol,
+      network: r?.network?.name || null,
+      receivable: r?.receivable ?? null,
+      has_address: !!r?.address,
+      unlocked: isUnlocked,
+    },
+  });
 
   return (
     <div className="max-w-md mx-auto space-y-6">

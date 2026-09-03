@@ -25,6 +25,7 @@ import { isDeniabilityOrDemoActive } from '@/wallet-core/deniabilitySession';
 import { DEMO } from '@/api/demoClient';
 import { useBuyEnabled } from '@/lib/buy/useBuyEnabled';
 import { TRANSAK_ORIGINS } from '@/lib/buy/transakUrl.js';
+import { useAdvisorSnapshot } from '@/lib/useAdvisorSnapshot';
 
 // Codex P2 2026-08-15: the Transak return message MUST come from Transak's
 // origin. Without this check any frame or injected same-page script can post
@@ -124,6 +125,16 @@ export default function BuyCrypto() {
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [navigate]);
+
+  useAdvisorSnapshot({
+    buy_crypto: {
+      selected_asset: selectedAsset,
+      widget_open: !!widgetUrl,
+      loading,
+      has_error: !!error,
+      suppressed,
+    },
+  });
 
   if (suppressed) return null;
 

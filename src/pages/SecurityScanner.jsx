@@ -31,6 +31,7 @@ import TransactionPreview from "@/components/TransactionPreview";
 import TransactionSimulationDemo from "@/components/TransactionSimulationDemo";
 import { describeErc20Call } from "@/wallet-core/evm/calldata";
 import { assessEvmTransaction } from "@/wallet-core/evm/simulate";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const COVERAGE_NOTE =
   "Checked on your device, no keys or servers involved. Finds known risk patterns — not a guarantee. " +
@@ -42,6 +43,15 @@ export default function SecurityScanner() {
   const [decimals, setDecimals] = useState("18");
   const [result, setResult] = useState(null);
   const [inputError, setInputError] = useState(null);
+
+  useAdvisorSnapshot({
+    security_scanner: {
+      has_calldata: calldata.trim().length > 0,
+      has_result: !!result,
+      finding_count: result?.findings?.length ?? 0,
+      has_input_error: !!inputError,
+    },
+  });
 
   const handleScan = () => {
     setResult(null);

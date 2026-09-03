@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { differenceInDays } from "date-fns";
 import { safeFormat } from "@/lib/safeDate";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const EMOJIS = ["🎯","🏠","🚀","✈️","💎","🏖️","🎓","💻","🏋️","🎸"];
 
@@ -54,6 +55,16 @@ export default function SavingsGoals() {
 
   const totalSaved = goals.reduce((s, g) => s + (g.current_amount_usd || 0), 0);
   const totalTarget = goals.reduce((s, g) => s + (g.target_amount_usd || 0), 0);
+
+  useAdvisorSnapshot({
+    savings_goals: {
+      goal_count: goals.length,
+      completed_count: goals.filter(g => g.target_amount_usd > 0 && g.current_amount_usd >= g.target_amount_usd).length,
+      dialog_open: open,
+      depositing: depositId != null,
+      loading: isLoading,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">

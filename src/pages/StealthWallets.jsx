@@ -61,6 +61,7 @@ import { Button as ButtonBase } from "@/components/ui/button";
 import { Input as InputBase } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label as LabelBase } from "@/components/ui/label";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 /** @type {React.ComponentType<any>} */
 const Button = ButtonBase;
 /** @type {React.ComponentType<any>} */
@@ -406,6 +407,11 @@ export default function StealthWallets() {
     createWallet, unlock, lock, clearVault,
   } = wallet;
   const { requireTwoFactor, gateModal } = useActionGuard();
+
+  // Deliberately minimal: no wallet counts, hidden/decoy identities, or
+  // unlock state here — any of those would be a coercion oracle on this
+  // specific page (CLAUDE.md deniability rule for StealthWallets).
+  useAdvisorSnapshot({ stealth_wallets: { loaded: true } });
 
   // ----- create card state -----
   const [secret, setSecret] = useState("");

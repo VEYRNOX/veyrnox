@@ -8,6 +8,7 @@ import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tool
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const VOLATILITY = { BTC: 0.72, ETH: 0.85, SOL: 1.2, USDC: 0.01, USDT: 0.01 };
 const SHARPE = { BTC: 1.4, ETH: 1.1, SOL: 0.9, USDC: 0.05, USDT: 0.05 };
@@ -121,6 +122,17 @@ export default function AdvancedAnalytics() {
   ];
 
   const chartStyle = { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" };
+
+  useAdvisorSnapshot({
+    advanced_analytics: {
+      unlocked: isUnlocked,
+      asset_count: assets.length,
+      risk_level: riskLevel.label,
+      diversification_score: diversificationScore,
+      prices_enabled: !!pricesEnabled,
+      indeterminate: !!portfolio?.indeterminate,
+    },
+  });
 
   if (!isUnlocked) {
     return (

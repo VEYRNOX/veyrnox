@@ -19,6 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 import { sumSentTodayUSD } from "@/lib/txLimits";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
 import { getSessionToken, ensureSessionToken } from "@/lib/sessionRevocation";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 
 function getDeviceInfo() {
@@ -164,6 +165,15 @@ export default function SecurityCenter() {
   });
 
   const currentToken = getSessionToken();
+
+  useAdvisorSnapshot({
+    security_center: {
+      session_count: sessions.length,
+      limit_count: limits.length,
+      has_session_error: errorSessions,
+      has_limit_error: errorLimits,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

@@ -51,6 +51,7 @@ import {
   verifyBiometric2fa,
   getBiometricStatus,
 } from "@/lib/biometric";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // The actions the second factor actually gates — sourced from useActionGuard /
 // TwoFactorSettings' GATED_ACTIONS so this page describes only what truly enforces.
@@ -64,6 +65,14 @@ const PROTECTED_ACTIONS = [
 
 export default function BiometricAuth() {
   const native = Capacitor.isNativePlatform();
+
+  useAdvisorSnapshot({
+    biometric_auth: {
+      platform: native ? "native" : "web",
+      enabled: native ? is2faBiometricEnabled() : is2faPasskeyEnabled(),
+    },
+  });
+
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div>

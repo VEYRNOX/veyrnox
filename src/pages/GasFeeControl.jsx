@@ -5,6 +5,7 @@ import FeeSelector from "@/components/FeeSelector";
 import { getNetworkInfo, ALLOW_MAINNET } from "@/wallet-core/evm/networks";
 import { ALLOW_BTC_MAINNET } from "@/wallet-core/btc/networks";
 import { ALLOW_SOL_MAINNET } from "@/wallet-core/sol/networks";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Per-chain fee control. Each chain has a genuinely different fee model and is
 // shown in its own native units (EIP-1559 gwei for EVM, sat/vByte for BTC,
@@ -32,6 +33,14 @@ export default function GasFeeControl() {
   // Native symbol comes from the network registry for EVM (POL/AVAX/tBNB ≠ ETH).
   const evmInfo = cfg.chain === "evm" ? getNetworkInfo(cfg.networkKey) : null;
   const symbol = evmInfo?.symbol || cfg.symbol;
+
+  useAdvisorSnapshot({
+    gas_fee_control: {
+      active_chain: cfg.label,
+      fee_tier: sel?.tierId || null,
+      fee_selected: !!sel?.fee,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

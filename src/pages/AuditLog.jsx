@@ -34,6 +34,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { useWallet } from '@/lib/WalletProvider';
+import { useAdvisorSnapshot } from '@/lib/useAdvisorSnapshot';
 
 const EVENT_LABELS = {
   settings_changed: 'Settings changed',
@@ -77,6 +78,14 @@ export default function AuditLog() {
 
   // Newest first for display.
   const displayEntries = [...entries].reverse();
+
+  useAdvisorSnapshot({
+    audit_log: {
+      enabled: auditLogEnabled,
+      entry_count: entries.length,
+      loading,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">

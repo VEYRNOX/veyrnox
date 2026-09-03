@@ -16,6 +16,7 @@ import { addDays, isBefore, formatDistanceToNow } from "date-fns";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import Spinner from "@/components/Spinner";
 import { formatCryptoAmount, parseLocaleNumber, resolveLocale } from "@/lib/locale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const FREQ_LABELS = { daily: "Daily", weekly: "Weekly", biweekly: "Every 2 Weeks", monthly: "Monthly" };
 const FREQ_DAYS = { daily: 1, weekly: 7, biweekly: 14, monthly: 30 };
@@ -119,6 +120,17 @@ export default function RecurringPayments() {
   const trimmedToAddr = form.to_address.trim();
   const toAddrValid = isValidAddressForCurrency(trimmedToAddr, effectiveCurrency);
   const showToAddrError = trimmedToAddr.length > 0 && !toAddrValid;
+
+  useAdvisorSnapshot({
+    recurring_payments: {
+      active_count: payments.filter(p => p.status === "active").length,
+      paused_count: payments.filter(p => p.status === "paused").length,
+      due_count: payments.filter(p => p.status === "active" && p.next_run_at && isBefore(new Date(p.next_run_at), new Date())).length,
+      notif_permission: notifPerm,
+      dialog_open: showAdd,
+      loading: isLoading,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

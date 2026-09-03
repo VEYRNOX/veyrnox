@@ -24,10 +24,19 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LOCAL_KNOWN_BAD, checkDappDomain } from "@/risk/knownBadDapps.js";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 export default function DAppSecurityAlerts() {
   const [url, setUrl] = useState("");
   const [result, setResult] = useState(null);
+
+  useAdvisorSnapshot({
+    dapp_security_alerts: {
+      has_input: url.trim().length > 0,
+      flagged: result?.flagged ?? null,
+      known_bad_count: LOCAL_KNOWN_BAD.length,
+    },
+  });
 
   const handleCheck = () => {
     if (!url.trim()) return;

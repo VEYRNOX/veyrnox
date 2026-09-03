@@ -7,6 +7,7 @@ import { ALLOW_SOL_MAINNET, solExplorerUrl } from "@/wallet-core/sol/networks";
 import { Copy, RefreshCw, ExternalLink, ShieldCheck, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const NETWORK_KEY = ALLOW_SOL_MAINNET ? "mainnet" : "devnet";
 const NETWORK_LABEL = ALLOW_SOL_MAINNET ? "Mainnet" : "Devnet";
@@ -53,6 +54,16 @@ export default function SolanaTokens() {
   const explorerUrl = solAccount?.address
     ? solExplorerUrl(NETWORK_KEY, "address", solAccount.address)
     : "";
+
+  useAdvisorSnapshot({
+    solana_tokens: {
+      network: NETWORK_LABEL,
+      locked: isLocked,
+      has_account: !!solAccount,
+      loading,
+      error: !!error,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

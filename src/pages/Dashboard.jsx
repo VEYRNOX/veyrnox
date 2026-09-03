@@ -32,6 +32,7 @@ import { DEMO } from "@/api/demoClient";
 import WalletPortfolioPage from "./WalletPortfolioPage";
 import { USD_RATES } from "@/lib/cryptos";
 import ReferenceRateNote from "@/components/ReferenceRateNote";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 const STATUS_ICONS = {
   pending: <Clock className="h-3.5 w-3.5 text-caution" />,
   confirmed: <CheckCircle2 className="h-3.5 w-3.5 text-success" />,
@@ -184,6 +185,17 @@ function DemoDashboard() {
     if (secs < 60) return t("dashboard.syncSecondsAgo", { count: secs });
     return t("dashboard.syncMinutesAgo", { count: Math.floor(secs / 60) });
   })();
+
+  useAdvisorSnapshot({
+    dashboard: {
+      wallet_count: wallets.length,
+      transaction_count: transactions.length,
+      locked: isLocked,
+      alerts_triggered: triggeredAlerts.length,
+      fiat_currency: fiatCurrency,
+      loading: isLoading,
+    },
+  });
 
   if (isLoading) {
     return (

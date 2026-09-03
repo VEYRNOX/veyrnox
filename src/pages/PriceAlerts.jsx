@@ -18,6 +18,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const CURRENCY_COLORS = { BTC: "#F7931A", ETH: "#627EEA", USDT: "#26A17B", BNB: "#F3BA2F", SOL: "#9945FF", USDC: "#2775CA", XRP: "#0085C0", DOGE: "#C2A633", ADA: "#0033AD", TRX: "#EB0029" };
 
@@ -203,6 +204,15 @@ export default function PriceAlerts() {
   const activeAlerts = alerts.filter(a => a.status === "active");
   const triggeredAlerts = alerts.filter(a => a.status === "triggered");
   const dismissedAlerts = alerts.filter(a => a.status === "dismissed");
+
+  useAdvisorSnapshot({
+    price_alerts: {
+      active_count: activeAlerts.length,
+      triggered_count: triggeredAlerts.length,
+      dismissed_count: dismissedAlerts.length,
+      live_prices_on: livePricesOn,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

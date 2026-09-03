@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { isValidAddressForCurrency, addressKindLabel } from "@/lib/addressValidation";
 import PageState from "@/components/PageState";
 import { useWallet } from "@/lib/WalletProvider";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Codex P2 2026-08-15: cap user-authored strings before persistence. Prevents
 // a pasted multi-megabyte value from bloating IndexedDB and dragging every
@@ -96,6 +97,16 @@ export default function AddressBook() {
     c.address?.toLowerCase().includes(search.toLowerCase()) ||
     c.currency?.toLowerCase().includes(search.toLowerCase())
   );
+
+  useAdvisorSnapshot({
+    address_book: {
+      contact_count: contacts.length,
+      filtered_count: filtered.length,
+      searching: search.length > 0,
+      loading: isLoading,
+      error: isError,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

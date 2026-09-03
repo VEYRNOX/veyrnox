@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { GripVertical, Eye, EyeOff, RotateCcw, Save, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const DEFAULT_WIDGETS = [
   { id: "portfolio_value", label: "Portfolio Value", description: "Total balance with 24h change", emoji: "💰", enabled: true },
@@ -76,6 +77,14 @@ export default function CustomDashboardWidgets() {
   };
 
   const enabledCount = widgets.filter(w => w.enabled).length;
+
+  useAdvisorSnapshot({
+    custom_dashboard_widgets: {
+      widget_count: widgets.length,
+      enabled_count: enabledCount,
+      saved,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

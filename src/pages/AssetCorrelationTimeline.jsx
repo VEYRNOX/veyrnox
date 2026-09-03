@@ -17,6 +17,7 @@ import {
 } from "@/lib/recharts";
 import { Newspaper, TrendingUp, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -159,6 +160,16 @@ export default function AssetCorrelationTimeline() {
       "eth-sol": parseFloat(corrEthSol[i].toFixed(4)),
     }));
   }
+
+  useAdvisorSnapshot({
+    asset_correlation_timeline: {
+      live_prices_on: livePricesOn,
+      loading: isLoading,
+      error: isError,
+      has_chart: !!(chartData && chartData.length > 0),
+      news_count: newsSentiments.length,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

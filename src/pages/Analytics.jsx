@@ -12,6 +12,7 @@ import ReferenceRateNote from "@/components/ReferenceRateNote";
 import IncompleteBalanceNote from "@/components/IncompleteBalanceNote";
 import { formatUsd, resolveLocale } from "@/lib/locale";
 import { getAssetById } from "@/wallet-core/assets";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Fallback palette when CURRENCY_COLORS has no entry for a symbol. Order lifted
 // from the chart-N HSL scale so a per-index fallback still reads on-theme.
@@ -170,6 +171,15 @@ export default function Analytics() {
   const totalLosses = pnlData.reduce((s, m) => s + m.losses, 0);
   const netPnL = totalGains - totalLosses;
   const bestAsset = allocationData[0];
+
+  useAdvisorSnapshot({
+    analytics: {
+      unlocked: isUnlocked,
+      prices_enabled: pricesEnabled,
+      range_days: range,
+      asset_count: allocationData.length,
+    },
+  });
 
   if (!isUnlocked) {
     return (

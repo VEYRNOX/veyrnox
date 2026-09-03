@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { safeFormat } from "@/lib/safeDate";
 import { isValidAddressForCurrency } from "@/lib/addressValidation";
 import { parseLocaleNumber, resolveLocale } from "@/lib/locale";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const STATUS_COLORS = { draft: "secondary", sent: "default", paid: "outline", overdue: "destructive" };
 
@@ -63,6 +64,16 @@ export default function InvoiceGenerator() {
   }
 
   const totalPaid = invoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total_amount, 0);
+
+  useAdvisorSnapshot({
+    invoice_generator: {
+      invoice_count: invoices.length,
+      paid_count: invoices.filter(i => i.status === "paid").length,
+      draft_count: invoices.filter(i => i.status === "draft").length,
+      loading: isLoading,
+      error: isError,
+    },
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">

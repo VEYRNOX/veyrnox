@@ -9,6 +9,7 @@ import { isLivePricesEnabled, setLivePricesEnabled } from "@/lib/priceFeed";
 import CandlestickChart from "@/components/CandlestickChart";
 import { PERIOD_PARAMS, PERIODS, formatCandleTime } from "@/lib/chartPeriods";
 import { isDeniabilityOrDemoActive } from "@/wallet-core/deniabilitySession";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 const ASSETS = TOP_CRYPTOS.map((c) => ({
   symbol: c.symbol, name: c.name, price: c.usd, change24h: c.change24h, color: c.color, mcap: c.mcap,
@@ -45,6 +46,14 @@ export default function PriceCharts() {
   const lastPrice = data[data.length - 1]?.price;
   const change = firstPrice && lastPrice ? ((lastPrice - firstPrice) / firstPrice * 100).toFixed(2) : "0.00";
   const isUp = parseFloat(change) >= 0;
+
+  useAdvisorSnapshot({
+    price_charts: {
+      selected_symbol: selected,
+      period,
+      live_prices_on: livePricesOn,
+    },
+  });
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">

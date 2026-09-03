@@ -43,6 +43,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/lib/toast";
+import { useAdvisorSnapshot } from "@/lib/useAdvisorSnapshot";
 
 // Constant-time-ish PIN equality (mirrors WalletEntry.pinsEqual): compares every
 // character so a mismatch's position is not leaked by early return timing.
@@ -330,6 +331,17 @@ export default function WalletAccessReset() {
   };
 
   const newAddr = accounts?.[0]?.address;
+
+  useAdvisorSnapshot({
+    wallet_access_reset: {
+      unlocked: isUnlocked,
+      has_vault: vaultExists,
+      auth_model: isPin ? "pin" : "password",
+      pin_step: isPin ? pinStep : null,
+      password_changed: cpDone,
+      pin_changed: pinDone,
+    },
+  });
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
