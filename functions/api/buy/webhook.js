@@ -12,15 +12,25 @@
 // Payload shape (per docs.transak.com/features/webhooks):
 //   { eventID: 'ORDER_COMPLETED', createdAt: '...', webhookData: <object|JWT> }
 //
-// SIGNATURE VERIFICATION (added 2026-08-16, round 9):
-// Transak's webhook signing uses HMAC-SHA256 over the raw request body with a
-// shared secret, delivered in the `X-Transak-Signature` header (hex). We
-// require env.TRANSAK_WEBHOOK_SECRET; a missing secret fail-closes with 500
-// (RASP-style — no silent accept). A missing/mismatched header returns 401.
-// The endpoint still does no state-changing side effect (log-only), but we no
-// longer let an unauthenticated caller mislead an operator via forged log
-// entries even under the sanitiser (see logSafe below for the residual
-// defense-in-depth).
+// SIGNATURE VERIFICATION — three modes (round 10 audit concern):
+// Round 9 assumed Transak's signing scheme is raw-hex HMAC-SHA256 in a bare
+// `X-Transak-Signature` header. docs.transak.com does not spell this out, so
+// if Transak actually sends `sha256=<hex>`, base64, JWT, or Ed25519, every
+// legitimate webhook 401s. Gate verification behind env.TRANSAK_WEBHOOK_VERIFY_MODE:
+//   - "off"    (default) — log-only, no crypto, return 200. Current pre-round-9 behaviour.
+//   - "warn"   — attempt HMAC verify; on mismatch log a WARN with header +
+//                computed values and STILL return 200. Use to confirm the
+//                scheme against real Transak traffic before enforcing.
+//   - "strict" — attempt HMAC verify; on mismatch return 401. Enable only
+//                after `warn` telemetry confirms the scheme.
+// If TRANSAK_WEBHOOK_SECRET is unset, we fall back to log-only regardless of
+// mode (do NOT 500 — that would drop all legitimate webhooks the moment the
+// secret rotates or is missing on a fresh deploy).
+// Response carries `X-Verify-Mode` on non-strict paths so operators can
+// confirm which mode fired.
+//
+// TODO: once real Transak traffic is captured in `warn` mode with matching
+// signatures, flip TRANSAK_WEBHOOK_VERIFY_MODE=strict on Cloudflare Pages.
 
 function reqId() {
   return crypto.randomUUID().slice(0, 8);
@@ -74,38 +84,46 @@ export async function computeTransakSignature(rawBody, secret) {
 }
 
 // Verify the `X-Transak-Signature` header against HMAC-SHA256(rawBody, secret).
-// Returns { ok:true } on match, { ok:false, reason } otherwise.
+// Returns { ok:true, header, expected } on match, { ok:false, reason, header, expected } otherwise.
 export async function verifyTransakSignature(request, rawBody, secret) {
   const header =
     request.headers.get('x-transak-signature') ||
     request.headers.get('X-Transak-Signature');
-  if (!header) return { ok: false, reason: 'missing_signature' };
+  if (!header) return { ok: false, reason: 'missing_signature', header: null, expected: null };
   let expected;
   try {
     expected = await computeTransakSignature(rawBody, secret);
   } catch {
-    return { ok: false, reason: 'hmac_error' };
+    return { ok: false, reason: 'hmac_error', header, expected: null };
   }
-  return timingSafeEqualHex(header.trim().toLowerCase(), expected)
-    ? { ok: true }
-    : { ok: false, reason: 'signature_mismatch' };
+  const ok = timingSafeEqualHex(header.trim().toLowerCase(), expected);
+  return ok
+    ? { ok: true, header, expected }
+    : { ok: false, reason: 'signature_mismatch', header, expected };
 }
 
-function jsonResponse(status, body) {
+function jsonResponse(status, body, extraHeaders) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(extraHeaders || {}) },
   });
+}
+
+const VALID_MODES = new Set(['off', 'warn', 'strict']);
+function resolveMode(env) {
+  const raw = ((env && env.TRANSAK_WEBHOOK_VERIFY_MODE) || 'off').toLowerCase();
+  return VALID_MODES.has(raw) ? raw : 'off';
 }
 
 export async function onRequestPost({ request, env }) {
   const ref = reqId();
   const secret = env && env.TRANSAK_WEBHOOK_SECRET;
-  if (!secret) {
-    // RASP-style fail-closed: a receiver deployed without a secret cannot
-    // authenticate anything, so refuse rather than accept-and-log.
-    console.error(`[buy/webhook] ref=${ref} config_error=missing_secret`);
-    return jsonResponse(500, { ok: false, error: 'server_misconfigured' });
+  let mode = resolveMode(env);
+  // No secret → cannot verify anything. Degrade to log-only rather than 500,
+  // so a missing/rotating secret doesn't drop every legitimate webhook.
+  if (!secret && mode !== 'off') {
+    console.warn(`[buy/webhook] ref=${ref} config_warn=missing_secret mode=${mode}→off`);
+    mode = 'off';
   }
 
   // Read raw body ONCE for both HMAC verify and JSON parse — a second read
@@ -118,20 +136,29 @@ export async function onRequestPost({ request, env }) {
     return jsonResponse(400, { ok: false, error: 'read_error' });
   }
 
-  const verify = await verifyTransakSignature(request, rawBody, secret);
-  if (!verify.ok) {
-    console.error(`[buy/webhook] ref=${ref} auth_fail reason=${verify.reason}`);
-    return jsonResponse(401, { ok: false, error: 'unauthorized' });
+  if (mode !== 'off') {
+    const verify = await verifyTransakSignature(request, rawBody, secret);
+    if (!verify.ok) {
+      if (mode === 'strict') {
+        console.error(`[buy/webhook] ref=${ref} auth_fail reason=${verify.reason}`);
+        return jsonResponse(401, { ok: false, error: 'unauthorized' });
+      }
+      // warn: log detail but ack 200 so no legit webhook is dropped while
+      // we confirm the real scheme.
+      console.warn(
+        `[buy/webhook] ref=${ref} verify_warn reason=${verify.reason} ` +
+          `header=${logSafe(verify.header)} computed=${logSafe(verify.expected)} ` +
+          `hint=confirm_transak_signing_scheme`,
+      );
+    }
   }
 
   let body = null;
   try {
     body = rawBody ? JSON.parse(rawBody) : null;
   } catch {
-    // Signature was valid but body isn't JSON — Transak-side issue. Ack so
-    // they do not retry the same broken payload forever.
     console.error(`[buy/webhook] ref=${ref} parse_error`);
-    return jsonResponse(200, { ok: true });
+    return jsonResponse(200, { ok: true }, mode !== 'strict' ? { 'X-Verify-Mode': mode } : undefined);
   }
 
   const eventID = logSafe(body?.eventID) || 'UNKNOWN';
@@ -142,7 +169,7 @@ export async function onRequestPost({ request, env }) {
   // some events; we do not need those for operator triage.
   console.log(`[buy/webhook] ref=${ref} event=${eventID} order=${orderId} status=${status}`);
 
-  return jsonResponse(200, { ok: true });
+  return jsonResponse(200, { ok: true }, mode !== 'strict' ? { 'X-Verify-Mode': mode } : undefined);
 }
 
 // Any non-POST — Transak only POSTs. Reject cleanly rather than falling

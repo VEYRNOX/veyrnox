@@ -4,7 +4,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { onRequestPost, onRequest, computeTransakSignature } from '../webhook.js';
 
 const SECRET = 'test-transak-secret';
-const ENV = { TRANSAK_WEBHOOK_SECRET: SECRET };
+// Strict-mode env — used by the round-9 HMAC verification tests. Once real
+// Transak traffic is captured in `warn` mode with matching signatures, flip
+// TRANSAK_WEBHOOK_VERIFY_MODE=strict on Cloudflare Pages.
+const ENV_STRICT = { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'strict' };
+const ENV_OFF = { TRANSAK_WEBHOOK_SECRET: SECRET }; // default mode = off
+const ENV_WARN = { TRANSAK_WEBHOOK_SECRET: SECRET, TRANSAK_WEBHOOK_VERIFY_MODE: 'warn' };
 
 async function signedReq(method, bodyObj, { rawBody, secret = SECRET, signature } = {}) {
   const body = rawBody != null ? rawBody : bodyObj != null ? JSON.stringify(bodyObj) : null;
@@ -31,6 +36,7 @@ function unsignedReq(method, body) {
 describe('buy/webhook', () => {
   beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
   });
   afterEach(() => vi.restoreAllMocks());
@@ -40,7 +46,7 @@ describe('buy/webhook', () => {
       eventID: 'ORDER_COMPLETED',
       webhookData: { id: 'abc-123', status: 'COMPLETED' },
     });
-    const res = await onRequestPost({ request, env: ENV });
+    const res = await onRequestPost({ request, env: ENV_STRICT });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
     const line = console.log.mock.calls[0][0];
@@ -59,29 +65,29 @@ describe('buy/webhook', () => {
       },
       body: raw,
     });
-    const res = await onRequestPost({ request, env: ENV });
+    const res = await onRequestPost({ request, env: ENV_STRICT });
     expect(res.status).toBe(200);
     expect(console.error).toHaveBeenCalled();
   });
 
   it('GET is 405', async () => {
-    const res = await onRequest({ request: unsignedReq('GET'), env: ENV });
+    const res = await onRequest({ request: unsignedReq('GET'), env: ENV_STRICT });
     expect(res.status).toBe(405);
   });
 
   it('missing webhookData does not throw — logs UNKNOWN + null', async () => {
     const request = await signedReq('POST', {});
-    const res = await onRequestPost({ request, env: ENV });
+    const res = await onRequestPost({ request, env: ENV_STRICT });
     expect(res.status).toBe(200);
     const line = console.log.mock.calls[0][0];
     expect(line).toContain('event=UNKNOWN');
     expect(line).toContain('order=null');
   });
 
-  describe('signature verification', () => {
+  describe('signature verification (strict mode)', () => {
     it('rejects with 401 when X-Transak-Signature header is missing', async () => {
       const request = unsignedReq('POST', { eventID: 'ORDER_COMPLETED' });
-      const res = await onRequestPost({ request, env: ENV });
+      const res = await onRequestPost({ request, env: ENV_STRICT });
       expect(res.status).toBe(401);
       expect(await res.json()).toEqual({ ok: false, error: 'unauthorized' });
       expect(console.log).not.toHaveBeenCalled();
@@ -93,7 +99,7 @@ describe('buy/webhook', () => {
         { eventID: 'ORDER_COMPLETED' },
         { signature: '00'.repeat(32) },
       );
-      const res = await onRequestPost({ request, env: ENV });
+      const res = await onRequestPost({ request, env: ENV_STRICT });
       expect(res.status).toBe(401);
       expect(console.log).not.toHaveBeenCalled();
     });
@@ -104,15 +110,73 @@ describe('buy/webhook', () => {
         { eventID: 'ORDER_COMPLETED' },
         { secret: 'attacker-secret' },
       );
-      const res = await onRequestPost({ request, env: ENV });
+      const res = await onRequestPost({ request, env: ENV_STRICT });
       expect(res.status).toBe(401);
     });
 
-    it('fails closed with 500 when TRANSAK_WEBHOOK_SECRET is unset', async () => {
+    it('falls back to log-only (no 500) when TRANSAK_WEBHOOK_SECRET is unset even in strict mode', async () => {
+      // Round-10: reverts round-9 fail-closed-with-500 behaviour so a missing/
+      // rotating secret does not drop every legitimate webhook.
       const request = await signedReq('POST', { eventID: 'ORDER_COMPLETED' });
+      const res = await onRequestPost({ request, env: { TRANSAK_WEBHOOK_VERIFY_MODE: 'strict' } });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('X-Verify-Mode')).toBe('off');
+      expect(console.warn).toHaveBeenCalled();
+    });
+  });
+
+  describe('off mode (default)', () => {
+    it('unsigned request returns 200 + logs the raw event', async () => {
+      const request = unsignedReq('POST', {
+        eventID: 'ORDER_CREATED',
+        webhookData: { id: 'off-1', status: 'CREATED' },
+      });
+      const res = await onRequestPost({ request, env: ENV_OFF });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('X-Verify-Mode')).toBe('off');
+      const line = console.log.mock.calls[0][0];
+      expect(line).toContain('event=ORDER_CREATED');
+      expect(line).toContain('order=off-1');
+    });
+
+    it('no env var at all defaults to off (no 500)', async () => {
+      const request = unsignedReq('POST', { eventID: 'ORDER_CREATED' });
       const res = await onRequestPost({ request, env: {} });
-      expect(res.status).toBe(500);
-      expect(await res.json()).toEqual({ ok: false, error: 'server_misconfigured' });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('X-Verify-Mode')).toBe('off');
+    });
+  });
+
+  describe('warn mode', () => {
+    it('bad signature returns 200 + logs WARN with detail', async () => {
+      const request = await signedReq(
+        'POST',
+        { eventID: 'ORDER_COMPLETED', webhookData: { id: 'warn-1' } },
+        { signature: '00'.repeat(32) },
+      );
+      const res = await onRequestPost({ request, env: ENV_WARN });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('X-Verify-Mode')).toBe('warn');
+      const warnLine = console.warn.mock.calls[0][0];
+      expect(warnLine).toContain('verify_warn');
+      expect(warnLine).toContain('reason=signature_mismatch');
+      expect(warnLine).toContain('header=');
+      expect(warnLine).toContain('computed=');
+      // Payload still logged so operators see the event.
+      const logLine = console.log.mock.calls[0][0];
+      expect(logLine).toContain('event=ORDER_COMPLETED');
+      expect(logLine).toContain('order=warn-1');
+    });
+
+    it('valid signature is silent (no warn) and still 200', async () => {
+      const request = await signedReq('POST', {
+        eventID: 'ORDER_COMPLETED',
+        webhookData: { id: 'warn-ok' },
+      });
+      const res = await onRequestPost({ request, env: ENV_WARN });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('X-Verify-Mode')).toBe('warn');
+      expect(console.warn).not.toHaveBeenCalled();
     });
   });
 
@@ -125,7 +189,7 @@ describe('buy/webhook', () => {
           'X\n[buy/webhook] ref=deadbeef event=ORDER_COMPLETED order=fake-999 status=COMPLETED',
         webhookData: { id: 'real-1', status: 'PROCESSING' },
       });
-      const res = await onRequestPost({ request, env: ENV });
+      const res = await onRequestPost({ request, env: ENV_STRICT });
 
       expect(res.status).toBe(200);
       expect(console.log).toHaveBeenCalledTimes(1);
@@ -139,14 +203,14 @@ describe('buy/webhook', () => {
 
     it('strips CR, tab, DEL and the Unicode line separators', async () => {
       const request = await signedReq('POST', {
-        eventID: 'A\rB\tC\u007FD\u2028E\u2029F',
+        eventID: 'A\rB\tCD E F',
         webhookData: { id: 'x' },
       });
-      await onRequestPost({ request, env: ENV });
+      await onRequestPost({ request, env: ENV_STRICT });
 
       const line = console.log.mock.calls[0][0];
       expect(line).toContain('event=ABCDEF');
-      for (const ch of ['\r', '\t', '\u007F', '\u2028', '\u2029']) {
+      for (const ch of ['\r', '\t', '', ' ', ' ']) {
         expect(line).not.toContain(ch);
       }
     });
@@ -154,7 +218,7 @@ describe('buy/webhook', () => {
     it('caps an over-long field so a caller cannot pad the log', async () => {
       const huge = 'z'.repeat(5000);
       const request = await signedReq('POST', { eventID: huge, webhookData: { id: huge } });
-      await onRequestPost({ request, env: ENV });
+      await onRequestPost({ request, env: ENV_STRICT });
 
       const line = console.log.mock.calls[0][0];
       expect(line).toContain(`event=${'z'.repeat(64)}…`);
@@ -164,7 +228,7 @@ describe('buy/webhook', () => {
 
     it('a field that is only control characters degrades to UNKNOWN, not empty', async () => {
       const request = await signedReq('POST', { eventID: '\n\r\t', webhookData: {} });
-      await onRequestPost({ request, env: ENV });
+      await onRequestPost({ request, env: ENV_STRICT });
 
       const line = console.log.mock.calls[0][0];
       expect(line).toContain('event=UNKNOWN');
