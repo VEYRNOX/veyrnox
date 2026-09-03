@@ -26,10 +26,15 @@ import { Transaction } from 'ethers';
  */
 export function buildUnsignedEvmTx(params) {
   const { chainId, to, value, data, nonce, maxFeePerGas, maxPriorityFeePerGas, gasLimit } = params;
-  if (!chainId) throw new Error('chainId is required for cold signing (replay guard)');
+  // Coerce + strict-integer check so string chainIds ("1") don't slip through
+  // and desync cross-checks against ethers' bigint chainId on the return path.
+  const cid = typeof chainId === 'bigint' ? Number(chainId) : Number(chainId);
+  if (!Number.isInteger(cid) || cid <= 0) {
+    throw new Error('chainId must be a positive integer for cold signing (replay guard)');
+  }
   const tx = Transaction.from({
     type: 2,
-    chainId,
+    chainId: cid,
     to,
     value: value ?? 0n,
     data: data ?? '0x',
@@ -38,5 +43,5 @@ export function buildUnsignedEvmTx(params) {
     maxPriorityFeePerGas,
     gasLimit,
   });
-  return { unsignedHex: tx.unsignedSerialized, chainId };
+  return { unsignedHex: tx.unsignedSerialized, chainId: cid };
 }
