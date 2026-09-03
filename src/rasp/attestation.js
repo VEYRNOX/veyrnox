@@ -48,11 +48,15 @@
 //     device-verified against a real Play Integrity token yet — treat attestation
 //     results as PROVISIONAL until Phase 4 + 5. A pin or chain mismatch currently
 //     maps to INTEGRITY_UNAVAILABLE (WARN); changing that to INTEGRITY_FAIL needs
-//     real-token verification first (issue #2276).
+//     real-token verification first (issue #2276). The four pinned roots are
+//     transcribed from Google's published PKI bundle; WHICH roots Play Integrity
+//     actually signs with has never been measured (PlayIntegrityJwsVerifier.kt).
 //   • iOS: Debug selects the development entitlement and Release selects production,
 //     but release provisioning and device exercise have not confirmed it is present in
 //     a signed build. The current implementation also has no independent DeviceCheck
 //     signal. iOS is therefore honestly UNAVAILABLE until those gaps are resolved (#2277).
+//     Escalating BOTH-legs-unavailable on iOS from WARN to FAIL remains part of
+//     that fix path — PR #2280 dropped this note without resolving it.
 //   • NOT device-verified on either platform; NOT independently audited.
 
 import { Capacitor } from '@capacitor/core';

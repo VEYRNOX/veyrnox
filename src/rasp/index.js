@@ -39,6 +39,8 @@
 //       pinset with no issuer-string fallback, but the pinset lacks real-token
 //       device evidence and pin/chain failures currently map to WARN. Phase 4/5
 //       work must establish the real-token behavior before tightening policy.
+//       The roots come from Google's published PKI bundle only — which roots
+//       Play Integrity actually signs with has never been measured.
 //     • iOS App Attest + DeviceCheck (issue #2277): Debug selects the development
 //       entitlement and Release selects production, but release provisioning, an
 //       independent DeviceCheck signal, and real-device exercise remain outstanding.
