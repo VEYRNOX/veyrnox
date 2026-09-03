@@ -18,9 +18,11 @@
 // if Transak actually sends `sha256=<hex>`, base64, JWT, or Ed25519, every
 // legitimate webhook 401s. Gate verification behind env.TRANSAK_WEBHOOK_VERIFY_MODE:
 //   - "off"    (default) — log-only, no crypto, return 200. Current pre-round-9 behaviour.
-//   - "warn"   — attempt HMAC verify; on mismatch log a WARN with header +
-//                computed values and STILL return 200. Use to confirm the
-//                scheme against real Transak traffic before enforcing.
+//   - "warn"   — attempt HMAC verify; on mismatch log a WARN with 8-char
+//                PREFIXES of the received header and the computed HMAC (never
+//                the full digests — see logSigPrefix) and STILL return 200.
+//                Use to confirm the scheme against real Transak traffic before
+//                enforcing.
 //   - "strict" — attempt HMAC verify; on mismatch return 401. Enable only
 //                after `warn` telemetry confirms the scheme.
 // If TRANSAK_WEBHOOK_SECRET is unset, we fall back to log-only regardless of
@@ -50,6 +52,35 @@ function logSafe(value) {
   if (value == null) return null;
   const cleaned = String(value).replace(/[\u0000-\u001F\u007F\u2028\u2029]/g, '');
   return cleaned.length > MAX_FIELD ? `${cleaned.slice(0, MAX_FIELD)}…` : cleaned;
+}
+
+// Characters of a signature digest kept in the `warn` log line. 8 hex chars is
+// 32 bits — ample to tell at a glance whether the received header and the
+// computed HMAC agree, which is the only question `warn` mode exists to answer.
+const SIG_LOG_PREFIX = 8;
+
+// Log-safe rendering of a signature-shaped value: a short prefix only, never
+// the whole digest.
+//
+// Why (daily security diff, 2026-09-03): `warn` mode used to log
+// `computed=${logSafe(verify.expected)}` in full. `verify.expected` is
+// HMAC-SHA256(rawBody, TRANSAK_WEBHOOK_SECRET) over a body an UNAUTHENTICATED
+// caller fully controls, and logSafe's MAX_FIELD is 64 while a SHA-256 hex
+// digest is exactly 64 — so nothing was ever truncated. That made the log a
+// signing oracle: POST a chosen body, read back a valid signature for it.
+// HMACs do not expire, so signatures harvested during the warn window would
+// still verify after the planned flip to `strict` — precisely the enforcement
+// they would defeat. Exploiting it needs log-read access, so this was never an
+// open door; the cheap moment to close it is before warn traffic runs.
+//
+// Do NOT widen this back to the full digest to "make debugging easier". If the
+// prefixes match and the full values do not, the scheme is wrong in a way a
+// longer prefix would not explain — capture the body and compute locally.
+function logSigPrefix(value) {
+  if (value == null) return null;
+  const cleaned = logSafe(value);
+  if (cleaned === null || cleaned.length === 0) return cleaned;
+  return `${cleaned.slice(0, SIG_LOG_PREFIX)}…(len=${cleaned.length})`;
 }
 
 // Constant-time hex comparison so a partial-prefix match cannot be timed.
@@ -154,7 +185,7 @@ export async function onRequestPost({ request, env }) {
       // we confirm the real scheme.
       console.warn(
         `[buy/webhook] ref=${ref} verify_warn reason=${verify.reason} ` +
-          `header=${logSafe(verify.header)} computed=${logSafe(verify.expected)} ` +
+          `header=${logSigPrefix(verify.header)} computed=${logSigPrefix(verify.expected)} ` +
           `hint=confirm_transak_signing_scheme`,
       );
     }
